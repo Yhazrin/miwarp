@@ -1363,12 +1363,12 @@
                   class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
                   {currentLocale() === entry.code
                     ? 'bg-primary text-primary-foreground'
-                    : entry.status === 'beta'
+                    : (entry.status as string) === 'beta'
                       ? 'border-muted-foreground/30 text-muted-foreground hover:bg-accent'
                       : 'hover:bg-accent'}"
                   onclick={() => switchLocale(entry.code)}
                 >
-                  {entry.nativeName}{#if entry.status === "beta"}<span
+                  {entry.nativeName}{#if (entry.status as string) === "beta"}<span
                       class="ml-1 text-[10px] opacity-60">(Beta)</span
                     >{/if}
                 </button>
@@ -2200,7 +2200,7 @@
                   {#if localProxyStatus && !localProxyStatus.running}
                     <p class="text-xs text-amber-500">
                       {selectedPlatform.setup_hint
-                        ? t(selectedPlatform.setup_hint)
+                        ? t(selectedPlatform.setup_hint as Parameters<typeof t>[0])
                         : t("settings_local_startHint", { name: selectedPlatform.name })}
                     </p>
                   {/if}
@@ -2239,7 +2239,9 @@
                         placeholder={t("settings_general_customNamePlaceholder")}
                         class="mt-1 text-xs"
                         onblur={(e) => {
-                          const val = e.currentTarget.value.trim();
+                          const target = e.currentTarget as HTMLInputElement | null;
+                          if (!target) return;
+                          const val = target.value.trim();
                           if (selectedPlatformId) {
                             _upsertCredential(selectedPlatformId, { name: val || "Custom" });
                             saveGeneralPatch({ platform_credentials: platformCredentials });

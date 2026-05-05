@@ -7,6 +7,7 @@
 import * as api from "$lib/api";
 import type {
   TaskRun,
+  RunStatus,
   HookEvent,
   BusEvent,
   BusToolItem,
@@ -15,9 +16,9 @@ import type {
   CliCommand,
   McpServerInfo,
   ElicitationSchema,
+  SessionMode,
 } from "$lib/types";
 import { dbg, dbgWarn } from "$lib/utils/debug";
-import type { SessionMode } from "$lib/types";
 import { IMAGE_TYPES } from "$lib/utils/file-types";
 import { uuid } from "$lib/utils/uuid";
 import {
@@ -1053,10 +1054,7 @@ export class SessionStore {
     // (running, ask_pending, permission_prompt — these will never receive results)
     const runStatus = this.run?.status;
     const sessionDead =
-      runStatus === "stopped" ||
-      runStatus === "completed" ||
-      runStatus === "failed" ||
-      runStatus === "error";
+      runStatus === "stopped" || runStatus === "completed" || runStatus === "failed";
     if (sessionDead) {
       const staleStatuses = new Set(["running", "ask_pending", "permission_prompt"]);
       const finalizeTools = (tl: TimelineEntry[]): TimelineEntry[] => {
@@ -1105,7 +1103,7 @@ export class SessionStore {
       // Sync run.status and session_id for non-terminal states from batch
       if ((ctx.runStatus || ctx.sessionId) && this.run) {
         const updates: Partial<TaskRun> = {};
-        if (ctx.runStatus) updates.status = ctx.runStatus;
+        if (ctx.runStatus) updates.status = ctx.runStatus as RunStatus;
         if (ctx.sessionId) {
           dbg("store", "batch: updating session_id", {
             old: this.run.session_id,
@@ -1616,7 +1614,7 @@ export class SessionStore {
             xtermRef.writeText(`\x1b[90m${text}\x1b[0m\r\n`);
           }
         }
-        if (hasHistory && !this.isRunning) {
+        if (hasHistory && !this.isRunning && xtermRef) {
           xtermRef.writeText(`\r\n\x1b[90m--- Session ended ---\x1b[0m\r\n`);
         }
       }
@@ -2231,7 +2229,7 @@ export class SessionStore {
           }
         }
         if (subChanged) {
-          u[i] = { ...u[i], subTimeline: newSub };
+          u[i] = { ...u[i], subTimeline: newSub } as TimelineEntry;
           changed = true;
         }
       }

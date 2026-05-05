@@ -221,6 +221,7 @@ export interface HookEvent {
   model?: string;
   session_id?: string;
   worktree?: { name: string; path: string; branch: string; originalRepoDir: string };
+  [key: string]: unknown;
 }
 
 export interface TokenUsage {
@@ -1077,6 +1078,7 @@ export interface BusToolItem {
   suggestions?: PermissionSuggestion[];
   /** Structured tool result metadata from CLI verbose mode (e.g. file info for Read). */
   tool_use_result?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
 export type TimelineEntry =

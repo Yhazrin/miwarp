@@ -959,7 +959,10 @@
       // Initialize model: for third-party platforms, use credential > preset default model
       // Only for new sessions — if runId is set, loadRun will handle model restoration.
       if (!store.model && !runId && store.phase !== "loading") {
-        const initCred = findCredential(settings.platform_credentials ?? [], store.platformId);
+        const initCred = findCredential(
+          settings.platform_credentials ?? [],
+          store.platformId ?? "",
+        );
         const initPreset = PLATFORM_PRESETS.find((p) => p.id === store.platformId);
         const initModels = initCred?.models?.length ? initCred.models : initPreset?.models;
         if (store.platformId !== "anthropic" && initModels?.[0]) {
@@ -1568,7 +1571,10 @@
 
       const isThirdParty = store.platformId && store.platformId !== "anthropic";
       if (isThirdParty) {
-        const restoreCred = findCredential(settings?.platform_credentials ?? [], store.platformId);
+        const restoreCred = findCredential(
+          settings?.platform_credentials ?? [],
+          store.platformId ?? "",
+        );
         const restorePreset = PLATFORM_PRESETS.find((p) => p.id === store.platformId);
         const restoreModels = restoreCred?.models?.length
           ? restoreCred.models
@@ -2643,7 +2649,7 @@
             getAgentSettings: api.getAgentSettings,
             updateAgentSettings: api.updateAgentSettings,
             appendOutput: appendCommandOutput,
-            t,
+            t: t as (key: string, params?: Record<string, string>) => string,
           },
         );
       } catch (err) {
@@ -3958,7 +3964,12 @@
                         }}
                         attachments={entry.attachments}
                         onRewind={entry.cliUuid && store.sessionAlive && !store.isRunning
-                          ? () => handleRewindToMessage(entry)
+                          ? () =>
+                              handleRewindToMessage({
+                                cliUuid: entry.cliUuid!,
+                                content: entry.content,
+                                ts: entry.ts,
+                              })
                           : undefined}
                       />
                     {:else if entry.kind === "assistant"}

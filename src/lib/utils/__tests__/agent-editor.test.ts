@@ -23,6 +23,8 @@ describe("serializeAgentFile", () => {
       background: true,
       isolation: "worktree",
       systemPrompt: "You are a code reviewer.",
+      effort: "",
+      initialPrompt: "",
     };
     const result = serializeAgentFile(data);
     expect(result).toContain("name: code-reviewer");
@@ -88,6 +90,8 @@ describe("parseAgentFile", () => {
       background: true,
       isolation: "worktree",
       systemPrompt: "You are a test agent.",
+      effort: "",
+      initialPrompt: "",
     };
     const serialized = serializeAgentFile(original);
     const parsed = parseAgentFile(serialized);
