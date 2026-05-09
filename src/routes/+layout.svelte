@@ -20,6 +20,7 @@
   import Modal from "$lib/components/Modal.svelte";
   import CliSessionBrowser from "$lib/components/CliSessionBrowser.svelte";
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
+  import FolderPicker from "$lib/components/FolderPicker.svelte";
   import type {
     TaskRun,
     UserSettings,
@@ -39,6 +40,12 @@
     type ConversationGroup,
   } from "$lib/utils/sidebar-groups";
   import { loadRemovedCwds } from "$lib/utils/removed-cwds";
+  import {
+    getLastTarget,
+    setLastTarget,
+    getStoredRemoteCwd,
+    setStoredRemoteCwd,
+  } from "$lib/utils/remote-cwd";
   import { page } from "$app/stores";
   import { goto, afterNavigate } from "$app/navigation";
   import { onMount, setContext, untrack } from "svelte";
@@ -1067,39 +1074,53 @@
     expandedProjects = next;
   }
 
+  // ── Folder picker (sidebar "+ Open folder") ──
+  let folderPickerOpen = $state(false);
+  let folderPickerInitialHost = $state<string | null>(null);
+  let folderPickerInitialPath = $state("");
+
   async function pickFolder() {
-    if (getTransport().isDesktop()) {
-      try {
-        const { open } = await import("@tauri-apps/plugin-dialog");
-        const selected = await open({ directory: true, title: t("layout_selectProjectFolder") });
-        if (selected) {
-          const normalized = normalizeCwd(selected as string) || "";
-          if (normalized && removedCwds.includes(normalized)) {
-            removedCwds = removedCwds.filter((c) => c !== normalized);
-            persistRemovedCwds();
-            dbg("layout", "pickFolder: un-removed cwd", { cwd: normalized });
-          }
-          projectCwd = normalized;
-        }
-      } catch (e) {
-        dbgWarn("layout", "failed to open folder dialog:", e);
-      }
+    // Pre-fill from last-target so remote-using users don't lose their target.
+    // Validate against current settings — a host removed/renamed since the
+    // value was persisted should not silently leak through to the picker.
+    const lastTarget = getLastTarget();
+    const validatedTarget =
+      lastTarget && (settings?.remote_hosts ?? []).some((h) => h.name === lastTarget)
+        ? lastTarget
+        : null;
+    if (lastTarget && !validatedTarget) {
+      dbgWarn("layout", "lastTarget references unknown remote — falling back to local", {
+        lastTarget,
+      });
+    }
+    folderPickerInitialHost = validatedTarget;
+    folderPickerInitialPath = validatedTarget
+      ? getStoredRemoteCwd(validatedTarget)
+      : projectCwd || settings?.working_directory || "";
+    folderPickerOpen = true;
+  }
+
+  function onFolderPicked(result: { hostName: string | null; path: string }) {
+    const { hostName, path } = result;
+    if (!path) return;
+    if (hostName) {
+      // Remote: persist and navigate to chat with host+folder
+      setStoredRemoteCwd(hostName, path);
+      setLastTarget(hostName);
+      // Clear local projectCwd so the local file tree doesn't try to list a remote path
+      projectCwd = "";
+      dbg("layout", "pickFolder (remote)", { hostName, path });
+      goto(`/chat?host=${encodeURIComponent(hostName)}&folder=${encodeURIComponent(path)}`);
     } else {
-      // Browser mode: no native file picker, prompt for path
-      const input = window.prompt(
-        t("layout_selectProjectFolder"),
-        projectCwd || settings?.working_directory || "/",
-      );
-      dbg("layout", "pickFolder (browser)", { input });
-      if (input) {
-        const normalized = normalizeCwd(input.trim()) || "";
-        if (normalized && removedCwds.includes(normalized)) {
-          removedCwds = removedCwds.filter((c) => c !== normalized);
-          persistRemovedCwds();
-          dbg("layout", "pickFolder: un-removed cwd", { cwd: normalized });
-        }
-        projectCwd = normalized;
+      // Local target
+      const normalized = normalizeCwd(path) || "";
+      if (normalized && removedCwds.includes(normalized)) {
+        removedCwds = removedCwds.filter((c) => c !== normalized);
+        persistRemovedCwds();
+        dbg("layout", "pickFolder: un-removed cwd", { cwd: normalized });
       }
+      projectCwd = normalized;
+      setLastTarget(null);
     }
   }
 
@@ -1762,9 +1783,12 @@
           {#if explorerTab === "files"}
             <div class="flex-1 overflow-y-auto px-1 py-1">
               {#if !projectCwd}
+                {@const lastRemote = getLastTarget()}
                 <div class="flex items-center justify-center px-3 py-12">
                   <p class="text-xs text-muted-foreground text-center">
-                    {t("sidebar_selectProjectBrowse")}
+                    {lastRemote
+                      ? t("layout_remoteFileTreeUnavailable")
+                      : t("sidebar_selectProjectBrowse")}
                   </p>
                 </div>
               {:else if treeLoading}
@@ -2324,6 +2348,13 @@
 <AboutModal bind:open={showAbout} />
 
 <PermissionsModal bind:open={permissionsModalOpen} cwd={projectCwd} />
+
+<FolderPicker
+  bind:open={folderPickerOpen}
+  initialHost={folderPickerInitialHost}
+  initialPath={folderPickerInitialPath}
+  onConfirm={onFolderPicked}
+/>
 
 {#if showCliBrowser}
   <CliSessionBrowser

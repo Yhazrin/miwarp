@@ -66,6 +66,12 @@
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { yieldToMain } from "$lib/utils/yield";
+  import {
+    getLastTarget,
+    setLastTarget,
+    getStoredRemoteCwd,
+    setStoredRemoteCwd,
+  } from "$lib/utils/remote-cwd";
   import { shouldAutoName } from "$lib/utils/auto-name";
   import { resolvePermissionOptimistic } from "$lib/utils/resolve-permission";
   import { getToolColor } from "$lib/utils/tool-colors";
@@ -86,6 +92,7 @@
   import { mapSettled } from "$lib/utils/async-utils";
   import { uuid } from "$lib/utils/uuid";
   import RewindModal from "$lib/components/RewindModal.svelte";
+  import FolderPicker from "$lib/components/FolderPicker.svelte";
   import type { ElementSelection } from "$lib/types";
   import { isElementSelection } from "$lib/types";
 
@@ -125,6 +132,27 @@
   let targetDropdownOpen = $state(false);
   /** Auth overview for AuthSourceBadge. */
   let authOverview = $state<import("$lib/types").AuthOverview | null>(null);
+
+  /** Folder picker state — resolves a Promise on confirm/cancel. */
+  let folderPickerOpen = $state(false);
+  let folderPickerInitialHost = $state<string | null>(null);
+  let folderPickerInitialPath = $state("");
+  let folderPickerHideTarget = $state(false);
+  let folderPickerResolve: ((v: { hostName: string | null; path: string } | null) => void) | null =
+    null;
+  function openFolderPicker(opts: {
+    initialHost?: string | null;
+    initialPath?: string;
+    hideTargetSelector?: boolean;
+  }): Promise<{ hostName: string | null; path: string } | null> {
+    folderPickerInitialHost = opts.initialHost ?? null;
+    folderPickerInitialPath = opts.initialPath ?? "";
+    folderPickerHideTarget = opts.hideTargetSelector ?? false;
+    folderPickerOpen = true;
+    return new Promise((resolve) => {
+      folderPickerResolve = resolve;
+    });
+  }
   /** Preloaded skill details from filesystem (has descriptions). */
   let preloadedSkills = $state<import("$lib/types").StandaloneSkill[]>([]);
   /** Preloaded agent definitions from filesystem. */
@@ -1035,18 +1063,48 @@
   let runId = $derived($page.url.searchParams.get("run") ?? "");
   let hasResumeParam = $derived($page.url.searchParams.has("resume"));
   let folderParam = $derived($page.url.searchParams.get("folder"));
+  let hostParam = $derived($page.url.searchParams.get("host"));
 
-  // Consume ?folder= param: switch to new chat in that folder, then clean URL
+  // Consume ?folder= and/or ?host= params: switch target/folder, then clean URL.
   $effect(() => {
     const folder = folderParam;
-    if (!folder) return;
+    const host = hostParam;
+    if (!folder && !host) return;
     untrack(() => {
-      dbg("chat", "new chat in folder", { folder });
-      localStorage.setItem("ocv:project-cwd", folder);
-      folderCwdOverride = folder;
-      store.loadRun("", xtermRef);
+      dbg("chat", "url params", { folder, host });
+      // Validate non-empty host against currently loaded settings. If `remoteHosts`
+      // hasn't loaded yet (this effect can fire before onMount finishes settings
+      // fetch), fall back to optimistic acceptance — the backend surfaces a
+      // "Remote host '...' not found" error if the name is genuinely bogus.
+      let resolvedHost: string | null = null;
+      if (host !== null) {
+        if (host === "") {
+          resolvedHost = null; // explicit clear
+        } else if (remoteHosts.length === 0 || remoteHosts.some((h) => h.name === host)) {
+          resolvedHost = host;
+        } else {
+          dbgWarn("chat", "URL ?host= references unknown remote — ignoring", { host });
+          resolvedHost = null;
+        }
+        store.remoteHostName = resolvedHost;
+        setLastTarget(resolvedHost);
+      }
+      if (folder) {
+        if (resolvedHost) {
+          setStoredRemoteCwd(resolvedHost, folder);
+        } else {
+          try {
+            localStorage.setItem("ocv:project-cwd", folder);
+          } catch {
+            // localStorage may fail in restricted contexts
+          }
+        }
+        folderCwdOverride = folder;
+        store.loadRun("", xtermRef);
+      }
       const clean = new URL($page.url);
       clean.searchParams.delete("folder");
+      clean.searchParams.delete("host");
       replaceState(clean, {});
       requestAnimationFrame(() => promptRef?.focus());
     });
@@ -1070,15 +1128,12 @@
       settings = await api.getUserSettings();
       store.authMode = settings.auth_mode ?? "cli";
       remoteHosts = settings.remote_hosts ?? [];
-      // Restore last target selection
+      // Restore last target selection (must validate against current settings — a
+      // configured host may have been removed since the value was persisted).
       if (!store.run && remoteHosts.length > 0) {
-        try {
-          const lastTarget = localStorage.getItem("ocv:last-target");
-          if (lastTarget && remoteHosts.some((h) => h.name === lastTarget)) {
-            store.remoteHostName = lastTarget;
-          }
-        } catch {
-          // localStorage access may fail in restricted contexts
+        const lastTarget = getLastTarget();
+        if (lastTarget && remoteHosts.some((h) => h.name === lastTarget)) {
+          store.remoteHostName = lastTarget;
         }
       }
       // Initialize per-session platform from global active
@@ -1839,18 +1894,55 @@
 
     try {
       if (!store.run) {
-        // First message: create run
-        let cwd =
-          typeof window !== "undefined"
-            ? localStorage.getItem("ocv:project-cwd") ||
+        // First message: create run.
+        //
+        // Validate the remote target up-front. The host could have been
+        // removed/renamed since the chat tab was opened (or since
+        // `ocv:last-target` was persisted). Without this check, every
+        // downstream path — `getStoredRemoteCwd`, the folder picker (which
+        // silently falls back to local UI when its `loadRemoteHosts` clears
+        // the unknown host), and `startSession` — would still run with the
+        // stale `store.remoteHostName`, and the backend `start_run` would
+        // fail with an opaque "Remote host '...' not found".
+        if (
+          store.remoteHostName &&
+          remoteHosts.length > 0 &&
+          !remoteHosts.some((h) => h.name === store.remoteHostName)
+        ) {
+          dbgWarn("chat", "remote host no longer in settings — clearing target", {
+            host: store.remoteHostName,
+          });
+          showChatToast(t("toast_remoteHostMissing"));
+          store.remoteHostName = null;
+          setLastTarget(null);
+          return;
+        }
+        const isRemote = !!store.remoteHostName;
+        let cwd = "";
+        if (typeof window !== "undefined") {
+          if (isRemote) {
+            cwd = getStoredRemoteCwd(store.remoteHostName!);
+          } else {
+            cwd =
+              localStorage.getItem("ocv:project-cwd") ||
               localStorage.getItem("ocv:settings-cwd") ||
-              ""
-            : "";
+              "";
+          }
+        }
 
         if (!cwd || cwd === "/") {
           const transport = getTransport();
-          if (transport.isDesktop()) {
-            // Desktop: native folder picker
+          if (isRemote) {
+            // Remote: open FolderPicker for the selected host
+            const result = await openFolderPicker({
+              initialHost: store.remoteHostName,
+              hideTargetSelector: true,
+            });
+            if (!result || !result.path) return; // cancelled
+            cwd = result.path;
+            if (result.hostName) setStoredRemoteCwd(result.hostName, cwd);
+          } else if (transport.isDesktop()) {
+            // Desktop local: native folder picker (fast path)
             const { open } = await import("@tauri-apps/plugin-dialog");
             const selected = await open({
               directory: true,
@@ -1861,8 +1953,18 @@
             localStorage.setItem("ocv:project-cwd", cwd);
             window.dispatchEvent(new Event("ocv:cwd-changed"));
           } else {
-            // Browser: use server-configured working_directory from settings
-            cwd = settings?.working_directory || "/";
+            // Browser local: open FolderPicker (allows manual path or switching to remote)
+            const result = await openFolderPicker({ initialHost: null });
+            if (!result || !result.path) return;
+            cwd = result.path;
+            if (result.hostName) {
+              store.remoteHostName = result.hostName;
+              setLastTarget(result.hostName);
+              setStoredRemoteCwd(result.hostName, cwd);
+            } else {
+              localStorage.setItem("ocv:project-cwd", cwd);
+              window.dispatchEvent(new Event("ocv:cwd-changed"));
+            }
           }
         }
 
@@ -3631,11 +3733,7 @@
               : 'text-foreground/70 hover:bg-accent'} transition-colors"
             onclick={() => {
               store.remoteHostName = null;
-              try {
-                localStorage.setItem("ocv:last-target", "");
-              } catch {
-                // localStorage may fail in restricted contexts
-              }
+              setLastTarget(null);
               dbg("chat", "target changed", "local");
               targetDropdownOpen = false;
             }}
@@ -3650,11 +3748,7 @@
                 : 'text-foreground/70 hover:bg-accent'} transition-colors"
               onclick={() => {
                 store.remoteHostName = host.name;
-                try {
-                  localStorage.setItem("ocv:last-target", host.name);
-                } catch {
-                  // localStorage may fail in restricted contexts
-                }
+                setLastTarget(host.name);
                 dbg("chat", "target changed", host.name);
                 targetDropdownOpen = false;
               }}
@@ -4884,6 +4978,23 @@
   />
 
   <ShortcutHelpPanel bind:open={shortcutHelpOpen} />
+
+  <FolderPicker
+    bind:open={folderPickerOpen}
+    initialHost={folderPickerInitialHost}
+    initialPath={folderPickerInitialPath}
+    hideTargetSelector={folderPickerHideTarget}
+    onConfirm={(result) => {
+      const fn = folderPickerResolve;
+      folderPickerResolve = null;
+      fn?.(result);
+    }}
+    onCancel={() => {
+      const fn = folderPickerResolve;
+      folderPickerResolve = null;
+      fn?.(null);
+    }}
+  />
 
   <!-- Chat toast (fixed bottom-center, auto-dismiss) -->
   {#if chatToast}
