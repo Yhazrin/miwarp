@@ -154,7 +154,7 @@
           {/if}
           <div class="flex gap-2">
             <button
-              class="rounded-md bg-emerald-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 transition-all disabled:opacity-50"
+              class="rounded-md bg-miwarp-status-success px-4 py-1.5 text-xs font-medium text-white hover:opacity-80 transition-all disabled:opacity-50"
               disabled={busy}
               onclick={() => respondSingle(item.requestId, "allow", undefined, item.tool.input)}
               >{t("common_allow")}</button
@@ -165,7 +165,7 @@
               onclick={() => respondSingle(item.requestId, "deny")}>{t("common_deny")}</button
             >
             <button
-              class="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-500/20 transition-all disabled:opacity-50"
+              class="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-miwarp-status-error hover:bg-miwarp-status-error/20 transition-all disabled:opacity-50"
               disabled={busy}
               onclick={() =>
                 respondSingle(item.requestId, "deny", undefined, undefined, undefined, true)}
@@ -180,7 +180,7 @@
                   t as (key: string, params?: Record<string, string>) => string,
                 )}
                 <button
-                  class="rounded-md border border-blue-500/30 bg-blue-500/5 px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 transition-all disabled:opacity-50"
+                  class="rounded-md border border-miwarp-status-info/30 bg-miwarp-status-info/10 px-3 py-1.5 text-xs font-medium text-miwarp-status-info hover:bg-miwarp-status-info/10 transition-all disabled:opacity-50"
                   disabled={busy}
                   onclick={() =>
                     respondSingle(item.requestId, "allow", [suggestion], item.tool.input)}
@@ -241,7 +241,7 @@
                 <!-- Per-row buttons -->
                 <div class="flex items-center gap-1 shrink-0">
                   <button
-                    class="rounded px-2 py-0.5 text-[10px] font-medium bg-emerald-600/80 text-white hover:bg-emerald-500 transition-all disabled:opacity-50"
+                    class="rounded px-2 py-0.5 text-[10px] font-medium bg-miwarp-status-success/80 text-white hover:opacity-80 transition-all disabled:opacity-50"
                     disabled={busy}
                     onclick={() =>
                       respondSingle(item.requestId, "allow", undefined, item.tool.input)}
@@ -264,7 +264,7 @@
                       t as (key: string, params?: Record<string, string>) => string,
                     )}
                     <button
-                      class="rounded border border-blue-500/30 bg-blue-500/5 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 transition-all disabled:opacity-50"
+                      class="rounded border border-miwarp-status-info/30 bg-miwarp-status-info/10 px-2 py-0.5 text-[10px] font-medium text-miwarp-status-info hover:bg-miwarp-status-info/10 transition-all disabled:opacity-50"
                       disabled={busy}
                       onclick={() =>
                         respondSingle(item.requestId, "allow", [suggestion], item.tool.input)}
@@ -279,7 +279,7 @@
           <!-- Batch buttons -->
           <div class="flex gap-2 pt-2 border-t border-amber-500/20">
             <button
-              class="rounded-md bg-emerald-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 transition-all disabled:opacity-50"
+              class="rounded-md bg-miwarp-status-success px-4 py-1.5 text-xs font-medium text-white hover:opacity-80 transition-all disabled:opacity-50"
               disabled={submittingAll || submittingIds.size > 0}
               onclick={allowAll}
               >{t("perm_allowAll", { count: String(pendingTools.length) })}</button

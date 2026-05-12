@@ -195,11 +195,11 @@
   let permissionBadge = $derived.by(() => {
     if (!permissionMode || permissionMode === "default") return null;
     const map: Record<string, { label: string; cls: string }> = {
-      acceptEdits: { label: "accept-edits", cls: "bg-blue-500/15 text-blue-400" },
-      bypassPermissions: { label: "bypass", cls: "bg-amber-500/15 text-amber-500" },
+      acceptEdits: { label: "accept-edits", cls: "bg-miwarp-status-info/15 text-miwarp-status-info" },
+      bypassPermissions: { label: "bypass", cls: "bg-miwarp-status-warning/15 text-miwarp-status-warning" },
       plan: { label: "plan", cls: "bg-purple-500/15 text-purple-400" },
       auto: { label: "auto", cls: "bg-teal-500/15 text-teal-400" },
-      dontAsk: { label: "no-ask", cls: "bg-red-500/15 text-red-400" },
+      dontAsk: { label: "no-ask", cls: "bg-red-500/15 text-miwarp-status-error" },
     };
     return (
       map[permissionMode] ?? { label: permissionMode, cls: "bg-foreground/10 text-foreground/60" }
@@ -403,7 +403,7 @@
         >
           <span
             class="inline-block h-2 w-2 rounded-full {running
-              ? 'bg-green-500 animate-pulse'
+              ? 'bg-miwarp-status-success animate-pulse'
               : 'bg-foreground/20'}"
           ></span>
           <span class="text-foreground font-medium">{agent}</span>
@@ -411,7 +411,7 @@
       {:else}
         <span
           class="inline-block h-2 w-2 rounded-full {running
-            ? 'bg-green-500 animate-pulse'
+            ? 'bg-miwarp-status-success animate-pulse'
             : 'bg-foreground/20'}"
         ></span>
       {/if}
@@ -453,7 +453,7 @@
           'API'
             ? 'bg-violet-500/10 text-violet-400'
             : mode === 'Stream'
-              ? 'bg-blue-500/10 text-blue-400'
+              ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
               : 'bg-emerald-500/10 text-emerald-400'}"
         >
           {mode}
@@ -498,11 +498,11 @@
                 : "bg-emerald-500"}
         {@const textColor =
           contextWarningLevel === "critical"
-            ? "text-orange-500"
+            ? "text-miwarp-status-warning"
             : contextWarningLevel === "high"
-              ? "text-orange-500"
+              ? "text-miwarp-status-warning"
               : contextWarningLevel === "moderate"
-                ? "text-amber-500"
+                ? "text-miwarp-status-warning"
                 : "text-foreground/60"}
         <span class="text-foreground/30">&middot;</span>
         <span
@@ -521,7 +521,7 @@
           <span class="hidden sm:inline">{t("statusbar_ctx", { pct: String(pct) })}</span>
           {#if compactVisible}
             <span
-              class="text-[10px] text-blue-500 font-medium animate-pulse"
+              class="text-[10px] text-miwarp-status-info font-medium animate-pulse"
               title={t("statusbar_compactDetail", {
                 full: String(compactCount),
                 micro: String(microcompactCount),
@@ -534,7 +534,7 @@
       {#if activeTaskCount && activeTaskCount > 0}
         <span class="text-foreground/30">&middot;</span>
         <span
-          class="flex items-center gap-1 text-blue-400"
+          class="flex items-center gap-1 text-miwarp-status-info"
           title={t("bgTask_activeTitle", { count: String(activeTaskCount) })}
         >
           <span class="inline-block h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse"></span>
@@ -636,7 +636,7 @@
       {#if running && onEndSession}
         {#if confirmingEnd}
           <div class="flex items-center gap-1">
-            <span class="text-xs text-amber-500">{t("statusbar_endConfirm")}</span>
+            <span class="text-xs text-miwarp-status-warning">{t("statusbar_endConfirm")}</span>
             <button
               class="rounded px-1.5 py-0.5 text-xs bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors"
               onclick={confirmEnd}>{t("statusbar_yes")}</button
@@ -713,7 +713,7 @@
         {#if parentRunId && onNavigateParent}
           <span class="text-foreground/30">&middot;</span>
           <button
-            class="flex items-center gap-1 text-blue-400/70 hover:text-blue-400 transition-colors"
+            class="flex items-center gap-1 text-miwarp-status-info/70 hover:text-miwarp-status-info transition-colors"
             onclick={onNavigateParent}
             title={t("statusbar_viewParent")}
           >
@@ -806,7 +806,7 @@
 
         {#if fastModeState === "on"}
           <span
-            class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/15 text-amber-500"
+            class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-miwarp-status-warning/15 text-miwarp-status-warning"
             title={t("statusbar_fastModeTitle")}>{t("statusbar_fastMode")}</span
           >
         {/if}
@@ -823,9 +823,9 @@
             authSourceCategory === "login"
               ? "bg-emerald-500/15 text-emerald-500"
               : authSourceCategory === "env_key"
-                ? "bg-blue-500/15 text-blue-400"
+                ? "bg-miwarp-status-info/15 text-miwarp-status-info"
                 : authSourceCategory === "none"
-                  ? "bg-amber-500/15 text-amber-500"
+                  ? "bg-miwarp-status-warning/15 text-miwarp-status-warning"
                   : "bg-foreground/10 text-foreground/60"}
           <span
             class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {authBadgeColor}"
@@ -835,7 +835,7 @@
 
         {#if remoteHostName}
           <span
-            class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-blue-500/15 text-blue-500"
+            class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-miwarp-status-info/15 text-miwarp-status-info"
             title={t("statusbar_sshTitle", { name: remoteHostName ?? "" })}
             >{t("statusbar_sshLabel", { name: remoteHostName ?? "" })}</span
           >

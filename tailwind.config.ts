@@ -70,6 +70,13 @@ export default {
           error: "hsl(var(--miwarp-status-error))",
           info: "hsl(var(--miwarp-status-info))",
         },
+        "miwarp-text-status": {
+          success: "hsl(var(--miwarp-status-success))",
+          warning: "hsl(var(--miwarp-status-warning))",
+          error: "hsl(var(--miwarp-status-error))",
+          info: "hsl(var(--miwarp-status-info))",
+        },
+        "miwarp-overlay": "hsl(var(--miwarp-overlay))",
       },
       borderRadius: {
         sm: "calc(var(--radius) - 4px)",

@@ -419,7 +419,7 @@
                 </div>
                 {#if isInstalled(server)}
                   <span
-                    class="rounded-md px-2 py-1 text-[10px] font-medium bg-green-500/10 text-green-600 dark:text-green-400 shrink-0"
+                    class="rounded-md px-2 py-1 text-[10px] font-medium bg-miwarp-status-success/10 text-miwarp-status-success shrink-0"
                     >{t("mcp_installed")}</span
                   >
                 {:else}
@@ -500,7 +500,7 @@
                       <div class="flex items-center gap-2">
                         <span class="font-mono text-foreground">{pkg.identifier}</span>
                         <span
-                          class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                          class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-miwarp-status-info/10 text-miwarp-status-info"
                         >
                           {pkg.registryType}
                         </span>
@@ -594,7 +594,7 @@
 
                 {#if isInstalled(detail)}
                   <div
-                    class="rounded-md bg-green-500/10 px-3 py-1.5 text-xs font-medium text-green-600 dark:text-green-400 text-center"
+                    class="rounded-md bg-miwarp-status-success/10 px-3 py-1.5 text-xs font-medium text-miwarp-status-success text-center"
                   >
                     {t("mcp_alreadyInstalled")}
                   </div>

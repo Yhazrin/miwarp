@@ -86,7 +86,7 @@
   }
 
   function deltaColor(d: number): string {
-    if (d > 0) return "text-amber-500";
+    if (d > 0) return "text-miwarp-status-warning";
     if (d < 0) return "text-emerald-500";
     return "text-muted-foreground/50";
   }
@@ -227,7 +227,7 @@
                   >{formatCost(sessionInfo.cost)}</span
                 >
                 {#if latestCostDelta > 0}
-                  <span class="text-[10px] text-amber-500 font-mono tabular-nums"
+                  <span class="text-[10px] text-miwarp-status-warning font-mono tabular-nums"
                     >{formatCostDelta(latestCostDelta)}</span
                   >
                 {/if}
@@ -243,7 +243,7 @@
                     >{/if}
                 </span>
                 {#if latestTurnUsage && latestTurnUsage.inputTokens > 0}
-                  <span class="text-[10px] text-amber-500 font-mono tabular-nums"
+                  <span class="text-[10px] text-miwarp-status-warning font-mono tabular-nums"
                     >{formatResourceDelta(latestTurnUsage.inputTokens)}</span
                   >
                 {/if}
@@ -259,7 +259,7 @@
                     >{/if}
                 </span>
                 {#if latestTurnUsage && latestTurnUsage.outputTokens > 0}
-                  <span class="text-[10px] text-amber-500 font-mono tabular-nums"
+                  <span class="text-[10px] text-miwarp-status-warning font-mono tabular-nums"
                     >{formatResourceDelta(latestTurnUsage.outputTokens)}</span
                   >
                 {/if}
@@ -273,7 +273,7 @@
                     >{formatTokenCount(sessionInfo.cacheReadTokens)}</span
                   >
                   {#if latestTurnUsage && latestTurnUsage.cacheReadTokens > 0}
-                    <span class="text-[10px] text-amber-500 font-mono tabular-nums"
+                    <span class="text-[10px] text-miwarp-status-warning font-mono tabular-nums"
                       >{formatResourceDelta(latestTurnUsage.cacheReadTokens)}</span
                     >
                   {/if}
@@ -286,7 +286,7 @@
                     >{formatTokenCount(sessionInfo.cacheWriteTokens)}</span
                   >
                   {#if latestTurnUsage && latestTurnUsage.cacheWriteTokens > 0}
-                    <span class="text-[10px] text-amber-500 font-mono tabular-nums"
+                    <span class="text-[10px] text-miwarp-status-warning font-mono tabular-nums"
                       >{formatResourceDelta(latestTurnUsage.cacheWriteTokens)}</span
                     >
                   {/if}
@@ -319,7 +319,7 @@
       <!-- CLI import usage incomplete hint (independent of Resources block) -->
       {#if sessionInfo?.cliUsageIncomplete && sessionInfo?.runSource === "cli_import"}
         <div class="px-3 py-1.5 border-b border-border/50">
-          <span class="text-[10px] text-yellow-600 dark:text-yellow-400"
+          <span class="text-[10px] text-miwarp-status-warning"
             >{t("cliSync_usageIncompleteHint")}</span
           >
         </div>

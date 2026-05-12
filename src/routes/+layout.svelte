@@ -58,6 +58,7 @@
   import { TeamStore } from "$lib/stores/team-store.svelte";
   import { KeybindingStore } from "$lib/stores/keybindings.svelte";
   import { getTransport } from "$lib/transport";
+  import { themeStore } from "$lib/stores/theme-store.svelte";
   import {
     t,
     LOCALE_REGISTRY,
@@ -591,6 +592,7 @@
     loadSettings();
     loadSidebarFavorites();
     loadAgentSettingsCache();
+    themeStore.init();
 
     // Load saved CWD and pinned folders from localStorage
     const saved = localStorage.getItem("ocv:project-cwd");
@@ -1135,7 +1137,24 @@
     const order: ThemeMode[] = ["dark", "light", "system"];
     const idx = order.indexOf(themeMode);
     themeMode = order[(idx + 1) % order.length];
+    _applyLayoutTheme();
     dbg("layout", "theme cycled", { themeMode, effectiveDark });
+  }
+
+  /** Sync layout themeMode to themeStore (called on init and cycleTheme) */
+  function _applyLayoutTheme() {
+    if (themeMode === "system") {
+      // System: resolve based on OS preference — themeStore stays on current theme
+      // but we update the dark class to match OS
+      if (typeof document !== "undefined") {
+        const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.classList.toggle("dark", sysDark);
+        document.documentElement.classList.toggle("light", !sysDark);
+      }
+    } else {
+      // Explicit dark/light: apply via themeStore so data-theme is also set
+      themeStore.setTheme(themeMode === "dark" ? "warp-dark" : "warp-light");
+    }
   }
 
   function cycleScheme() {
@@ -1143,10 +1162,14 @@
     dbg("layout", "color scheme cycled", { colorScheme });
   }
 
-  // Persist theme + apply class
+  // Persist theme + sync with themeStore
+  // Only apply dark class here once themeStore has loaded from localStorage,
+  // to avoid overriding a saved custom theme with the default warp-dark on first render.
   $effect(() => {
     localStorage.setItem("ocv:theme", themeMode);
-    document.documentElement.classList.toggle("dark", effectiveDark);
+    if (themeStore.initialized) {
+      _applyLayoutTheme();
+    }
   });
 
   // Persist color scheme + apply class
@@ -1535,7 +1558,9 @@
         style:width="{sidebarWidth}px"
       >
         <!-- Panel header: Project selector + new chat -->
-        <div class="flex h-14 items-center gap-1.5 border-b border-[hsl(var(--miwarp-glass-border)/0.1)] px-3">
+        <div
+          class="flex h-14 items-center gap-1.5 border-b border-[hsl(var(--miwarp-glass-border)/0.1)] px-3"
+        >
           <span class="flex-1 min-w-0 truncate text-sm font-medium text-sidebar-foreground"
             >{pageName}</span
           >
@@ -2295,41 +2320,7 @@
   <!-- Main content -->
   <div class="flex flex-1 flex-col overflow-hidden">
     <UpdateBanner />
-    <!-- Top bar (non-chat pages only — chat uses SessionStatusBar) -->
-    {#if !isChatPage}
-      <header class="flex h-14 items-center gap-3 border-b px-4">
-        <button
-          class="rounded-md p-1.5 hover:bg-accent transition-all duration-150"
-          onclick={toggleSidebar}
-          title={t("layout_toggleSidebar")}
-        >
-          <svg
-            class="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18" /></svg
-          >
-        </button>
-
-        <div class="flex items-center gap-2 text-sm">
-          <span class="text-muted-foreground">{t("layout_appName")}</span>
-          <svg
-            class="h-3.5 w-3.5 text-muted-foreground/50"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"><path d="m9 18 6-6-6-6" /></svg
-          >
-          <span class="font-medium">{pageName}</span>
-        </div>
-      </header>
-    {/if}
-
-    <!-- Page content -->
+    <!-- Page content — full-bleed, no top bar on non-chat pages -->
     <main class="flex-1 overflow-y-auto">
       {@render children()}
     </main>

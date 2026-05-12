@@ -82,7 +82,7 @@
   {#if recording}
     <button
       bind:this={buttonRef}
-      class="flex items-center gap-1.5 rounded-md border-2 border-blue-500 bg-blue-500/5 px-3 py-1 text-sm font-mono min-w-[120px] animate-pulse focus:outline-none"
+      class="flex items-center gap-1.5 rounded-md border-2 border-blue-500 bg-miwarp-status-info/10 px-3 py-1 text-sm font-mono min-w-[120px] animate-pulse focus:outline-none"
       onkeydown={handleKeydown}
     >
       {#if pendingKey}
@@ -124,7 +124,7 @@
           >
         </button>
       {:else if conflictWarning && pendingKey}
-        <span class="text-[11px] text-amber-500 max-w-[160px] truncate" title={conflictWarning}
+        <span class="text-[11px] text-miwarp-status-warning max-w-[160px] truncate" title={conflictWarning}
           >{conflictWarning}</span
         >
         <button

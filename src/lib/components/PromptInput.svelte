@@ -204,7 +204,7 @@
     { bg: "bg-orange-500/15", text: "text-orange-400" },
     { bg: "bg-yellow-500/15", text: "text-yellow-400" },
     { bg: "bg-green-500/15", text: "text-green-400" },
-    { bg: "bg-blue-500/15", text: "text-blue-400" },
+    { bg: "bg-miwarp-status-info/10", text: "text-miwarp-status-info" },
     { bg: "bg-indigo-500/15", text: "text-indigo-400" },
     { bg: "bg-purple-500/15", text: "text-purple-400" },
   ];
@@ -235,7 +235,7 @@
       label: () => t("prompt_permAutoReadLabel"),
       shortLabel: () => t("prompt_permAutoReadShort"),
       description: () => t("prompt_permAutoReadDesc"),
-      cls: "text-blue-400",
+      cls: "text-miwarp-status-info",
       dotCls: "bg-blue-400",
       borderCls:
         "border-blue-400/40 focus-within:border-blue-400/60 focus-within:shadow-[0_0_0_1px_rgba(96,165,250,0.15)]",
@@ -245,7 +245,7 @@
       label: () => t("prompt_permAutoAllLabel"),
       shortLabel: () => t("prompt_permAutoAllShort"),
       description: () => t("prompt_permAutoAllDesc"),
-      cls: "text-amber-500",
+      cls: "text-miwarp-status-warning",
       dotCls: "bg-amber-500",
       borderCls:
         "border-amber-500/40 focus-within:border-amber-500/60 focus-within:shadow-[0_0_0_1px_rgba(245,158,11,0.15)]",
@@ -1871,7 +1871,7 @@
             </svg>
           {/if}
           <span class="truncate max-w-[200px]">{block.preview}</span>
-          <span class="text-blue-400 dark:text-blue-500"
+          <span class="text-miwarp-status-info dark:text-miwarp-status-info"
             >{formatPasteSize(block.lineCount, block.charCount)}</span
           >
           <button
@@ -1953,7 +1953,7 @@
   <!-- Unified input container -->
   <div
     class="rounded-xl border bg-background shadow-sm transition-colors {btwMode
-      ? 'border-blue-500/50 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]'
+      ? 'border-miwarp-status-info/100 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]'
       : currentMode.borderCls ||
         'border-border focus-within:border-ring/50 focus-within:shadow-[0_0_0_1px_hsl(var(--ring)/0.15)]'}"
   >
@@ -1961,7 +1961,7 @@
       <div
         role="status"
         aria-live="polite"
-        class="flex items-center gap-2 px-4 pt-2.5 pb-0.5 text-xs text-amber-500"
+        class="flex items-center gap-2 px-4 pt-2.5 pb-0.5 text-xs text-miwarp-status-warning"
       >
         <svg
           class="h-3.5 w-3.5 shrink-0"
@@ -2213,7 +2213,7 @@
             {#if btwMode}
               <!-- BTW send: blue theme -->
               <button
-                class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors bg-blue-500 text-white hover:bg-blue-600"
+                class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors bg-miwarp-status-info text-white hover:opacity-80"
                 onclick={handleBtwSend}
                 title="Send side question"
               >
@@ -2256,7 +2256,7 @@
               onclick={() => (btwMode = !btwMode)}
               title="Side question (btw)"
               class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors {btwMode
-                ? 'text-blue-500 bg-blue-500/10'
+                ? 'text-miwarp-status-info bg-miwarp-status-info/10'
                 : 'text-muted-foreground/60 hover:text-foreground hover:bg-accent'}"
             >
               <svg

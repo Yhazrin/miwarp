@@ -21,32 +21,25 @@
         : status,
   );
 
-  const colors: Record<DisplayStatus, string> = {
-    pending: "bg-amber-500/20 text-amber-600 dark:text-amber-400",
-    running: "bg-blue-500/20 text-blue-600 dark:text-blue-400",
-    done: "bg-cyan-500/20 text-cyan-600 dark:text-cyan-400",
-    waiting: "bg-amber-500/20 text-amber-600 dark:text-amber-400",
-    completed: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-    failed: "bg-red-500/20 text-red-600 dark:text-red-400",
-    stopped: "bg-gray-500/20 text-gray-600 dark:text-gray-400",
-  };
-
-  const dots: Record<DisplayStatus, string> = {
-    pending: "bg-amber-500",
-    running: "bg-blue-500 animate-pulse",
-    done: "bg-cyan-500",
-    waiting: "bg-amber-500 animate-pulse",
-    completed: "bg-emerald-500",
-    failed: "bg-red-500",
-    stopped: "bg-gray-500",
+  // Map displayStatus to CSS variable-based styles (theme-adaptive via --miwarp-status-*)
+  const statusStyles: Record<DisplayStatus, { bg: string; text: string; dot: string }> = {
+    pending:   { bg: "hsl(var(--miwarp-status-warning) / 0.2)",  text: "hsl(var(--miwarp-status-warning) / 1)",  dot: "hsl(var(--miwarp-status-warning))" },
+    running:   { bg: "hsl(var(--miwarp-status-info) / 0.2)",      text: "hsl(var(--miwarp-status-info) / 1)",      dot: "hsl(var(--miwarp-status-info))" },
+    done:      { bg: "hsl(var(--miwarp-status-info) / 0.2)",      text: "hsl(var(--miwarp-status-info) / 1)",      dot: "hsl(var(--miwarp-status-info))" },
+    waiting:   { bg: "hsl(var(--miwarp-status-warning) / 0.2)",  text: "hsl(var(--miwarp-status-warning) / 1)",  dot: "hsl(var(--miwarp-status-warning))" },
+    completed: { bg: "hsl(var(--miwarp-status-success) / 0.2)",  text: "hsl(var(--miwarp-status-success) / 1)",  dot: "hsl(var(--miwarp-status-success))" },
+    failed:    { bg: "hsl(var(--miwarp-status-error) / 0.2)",    text: "hsl(var(--miwarp-status-error) / 1)",    dot: "hsl(var(--miwarp-status-error))" },
+    stopped:   { bg: "hsl(var(--miwarp-text-secondary) / 0.2)", text: "hsl(var(--miwarp-text-secondary) / 1)", dot: "hsl(var(--miwarp-text-secondary))" },
   };
 </script>
 
 <span
-  class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium {colors[
-    displayStatus
-  ]} {className}"
+  class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium {className}"
+  style="background-color: {statusStyles[displayStatus].bg}; color: {statusStyles[displayStatus].text}"
 >
-  <span class="h-1.5 w-1.5 rounded-full {dots[displayStatus]}"></span>
+  <span
+    class="h-1.5 w-1.5 rounded-full {displayStatus === 'running' || displayStatus === 'waiting' ? 'animate-pulse' : ''}"
+    style="background-color: {statusStyles[displayStatus].dot}"
+  ></span>
   {displayStatus}
 </span>

@@ -222,7 +222,7 @@
   <div
     class="fixed top-4 right-4 z-50 rounded-lg border px-4 py-2 text-sm shadow-lg transition-opacity {toastType ===
     'success'
-      ? 'border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400'
+      ? 'border-miwarp-status-success/30 bg-miwarp-status-success/10 text-miwarp-status-success'
       : 'border-destructive/30 bg-destructive/10 text-destructive'}"
   >
     {toastMessage}
@@ -232,7 +232,7 @@
 <!-- Confirm dialog -->
 {#if confirmAction}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay"
     onclick={() => (confirmAction = null)}
   >
     <div
@@ -326,7 +326,7 @@
         <!-- Edit warning -->
         {#if editorMode === "edit"}
           <div
-            class="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-600 dark:text-amber-400"
+            class="rounded-md border border-miwarp-status-warning/30 bg-miwarp-status-warning/10 px-3 py-1.5 text-[11px] text-miwarp-status-warning"
           >
             {t("hooks_editWarning")}
           </div>

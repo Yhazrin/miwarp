@@ -236,7 +236,7 @@
 <!-- Delete Confirmation -->
 {#if confirmDelete}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay"
     role="dialog"
     aria-modal="true"
     onclick={() => (confirmDelete = null)}
@@ -571,7 +571,7 @@
 <!-- Rename Dialog -->
 {#if renameState}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay"
     role="dialog"
     aria-modal="true"
     onclick={() => (renameState = null)}
@@ -624,7 +624,7 @@
 <!-- Editor Panel (slide-over) -->
 {#if editorState}
   <div
-    class="fixed inset-0 z-40 flex justify-end bg-black/30"
+    class="fixed inset-0 z-40 flex justify-end bg-miwarp-bg-deepest/60"
     onclick={() => (editorState = null)}
     onkeydown={(e) => e.key === "Escape" && (editorState = null)}
     role="dialog"

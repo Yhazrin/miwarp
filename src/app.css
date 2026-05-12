@@ -1,9 +1,9 @@
+/* Import MiWarp design tokens (must precede @tailwind) */
+@import "./lib/styles/design-tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import MiWarp design tokens (Warp-inspired visual language) */
-@import "./lib/styles/design-tokens.css";
 
 @layer base {
   /* ── Light mode (legacy fallback) ── */

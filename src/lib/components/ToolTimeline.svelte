@@ -7,7 +7,7 @@
   interface ToolCall {
     id: string;
     name: string;
-    status: 'running' | 'completed' | 'failed' | 'pending';
+    status: "running" | "completed" | "failed" | "pending";
     startTime?: string;
     duration?: number;
     summary?: string;
@@ -22,28 +22,36 @@
     onSelect?: (id: string) => void;
   }
 
-  let { tools, expandedId = '', onSelect }: Props = $props();
+  let { tools, expandedId = "", onSelect }: Props = $props();
 
-  function getStatusColor(status: ToolCall['status']): string {
+  function getStatusColor(status: ToolCall["status"]): string {
     switch (status) {
-      case 'running': return 'hsl(var(--miwarp-accent-blue))';
-      case 'completed': return 'hsl(var(--miwarp-status-success))';
-      case 'failed': return 'hsl(var(--miwarp-status-error))';
-      case 'pending': return 'hsl(var(--miwarp-text-tertiary))';
+      case "running":
+        return "hsl(var(--miwarp-accent-blue))";
+      case "completed":
+        return "hsl(var(--miwarp-status-success))";
+      case "failed":
+        return "hsl(var(--miwarp-status-error))";
+      case "pending":
+        return "hsl(var(--miwarp-text-tertiary))";
     }
   }
 
-  function getStatusIcon(status: ToolCall['status']): string {
+  function getStatusIcon(status: ToolCall["status"]): string {
     switch (status) {
-      case 'running': return '&#9679;'; // circle
-      case 'completed': return '&#10003;'; // checkmark
-      case 'failed': return '&#10007; // X
-      case 'pending': return '&#9675;'; // hollow circle
+      case "running":
+        return "&#9679;"; // circle
+      case "completed":
+        return "&#10003;"; // checkmark
+      case "failed":
+        return "&#10007;"; // X
+      case "pending":
+        return "&#9675;"; // hollow circle
     }
   }
 
   function formatDuration(ms?: number): string {
-    if (!ms) return '';
+    if (!ms) return "";
     if (ms < 1000) return `${ms}ms`;
     return `${(ms / 1000).toFixed(1)}s`;
   }
@@ -68,7 +76,7 @@
       role="button"
       tabindex="0"
       onclick={() => onSelect?.(tool.id)}
-      onkeydown={(e) => e.key === 'Enter' && onSelect?.(tool.id)}
+      onkeydown={(e) => e.key === "Enter" && onSelect?.(tool.id)}
     >
       <!-- Status node -->
       <div
@@ -88,11 +96,11 @@
         class="rounded-lg border px-3 py-2 transition-all duration-200"
         style="
           background: {isExpanded
-            ? 'hsl(var(--miwarp-bg-elevated))'
-            : 'hsl(var(--miwarp-bg-surface))'};
+          ? 'hsl(var(--miwarp-bg-elevated))'
+          : 'hsl(var(--miwarp-bg-surface))'};
           border-color: {isExpanded
-            ? 'hsl(var(--miwarp-accent-primary) / 0.3)'
-            : 'hsl(var(--border))'};
+          ? 'hsl(var(--miwarp-accent-primary) / 0.3)'
+          : 'hsl(var(--border))'};
           {isExpanded ? 'box-shadow: 0 0 12px hsla(239, 84%, 67%, 0.1);' : ''}
         "
       >

@@ -45,8 +45,8 @@
   // ── Badge colors based on auth source category ──
   const BADGE_COLORS: Record<string, string> = {
     login: "bg-emerald-500/15 text-emerald-500",
-    env_key: "bg-blue-500/15 text-blue-400",
-    none: "bg-amber-500/15 text-amber-500",
+    env_key: "bg-miwarp-status-info/10 text-miwarp-status-info",
+    none: "bg-miwarp-status-warning/15 text-miwarp-status-warning",
     other: "bg-foreground/10 text-foreground/60",
   };
 
@@ -321,7 +321,7 @@
                     {t("auth_loggedIn")}
                   </p>
                 {:else}
-                  <p class="text-[10px] text-amber-500">
+                  <p class="text-[10px] text-miwarp-status-warning">
                     <span class="inline-block h-1 w-1 rounded-full bg-amber-500 mr-0.5 align-middle"
                     ></span>
                     {t("prompt_noPlatformKey")}

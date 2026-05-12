@@ -80,7 +80,7 @@
             'completed'
               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
               : taskStatus === 'in_progress'
-                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
                 : 'bg-neutral-500/10 text-muted-foreground'}">{taskStatus}</span
           >
         {/if}
@@ -149,7 +149,7 @@
             'completed'
               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
               : statusChange.from === 'in_progress'
-                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
                 : 'bg-neutral-500/10 text-muted-foreground'}">{statusChange.from}</span
           >
           <span class="text-muted-foreground/60">&rarr;</span>
@@ -158,7 +158,7 @@
             'completed'
               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
               : statusChange.to === 'in_progress'
-                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
                 : 'bg-neutral-500/10 text-muted-foreground'}">{statusChange.to}</span
           >
         </div>
@@ -168,7 +168,7 @@
           'completed'
             ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
             : updatedStatus === 'in_progress'
-              ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+              ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
               : 'bg-neutral-500/10 text-muted-foreground'}">{updatedStatus}</span
         >
       {/if}
@@ -203,7 +203,7 @@
                     'completed'
                       ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                       : task.status === 'in_progress'
-                        ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                        ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
                         : 'bg-neutral-500/10 text-muted-foreground'}">{task.status}</span
                   >
                 </td>
@@ -255,7 +255,7 @@
                 'completed'
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                   : task.status === 'in_progress'
-                    ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                    ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
                     : 'bg-neutral-500/10 text-muted-foreground'}">{task.status}</span
               >
             {/if}
@@ -300,7 +300,7 @@
     {#if tool.status === "success"}
       <div class="rounded bg-muted p-2">
         <span
-          class="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:text-red-400"
+          class="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:text-miwarp-status-error"
         >
           <svg
             class="h-3 w-3"
@@ -330,7 +330,7 @@
               .input.type === 'broadcast'
               ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
               : tool.input.type === 'shutdown_request'
-                ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                ? 'bg-miwarp-status-error/10 text-miwarp-status-error'
                 : 'bg-violet-500/10 text-violet-600 dark:text-violet-400'}">{tool.input.type}</span
           >
         {/if}

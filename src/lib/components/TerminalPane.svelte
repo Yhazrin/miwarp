@@ -123,11 +123,11 @@
 
 <div class="flex flex-col {className}">
   <!-- Terminal title bar -->
-  <div class="flex items-center gap-2 border-b bg-muted/40 dark:bg-black/60 px-3 py-1.5">
+  <div class="flex items-center gap-2 border-b bg-muted/40 dark:bg-miwarp-bg-deepest px-3 py-1.5">
     <div class="flex items-center gap-1.5">
-      <span class="h-2.5 w-2.5 rounded-full bg-red-500/70"></span>
-      <span class="h-2.5 w-2.5 rounded-full bg-yellow-500/70"></span>
-      <span class="h-2.5 w-2.5 rounded-full bg-green-500/70"></span>
+      <span class="h-2.5 w-2.5 rounded-full hsl(var(--miwarp-status-error) / 0.7)"></span>
+      <span class="h-2.5 w-2.5 rounded-full hsl(var(--miwarp-status-warning) / 0.7)"></span>
+      <span class="h-2.5 w-2.5 rounded-full hsl(var(--miwarp-status-success) / 0.7)"></span>
     </div>
     <span class="ml-2 text-[11px] font-medium text-muted-foreground">{t("terminal_title")}</span>
   </div>
@@ -137,7 +137,7 @@
     <div
       bind:this={scrollEl}
       onscroll={handleScroll}
-      class="h-full overflow-y-auto bg-muted/60 dark:bg-black/95 p-3 font-mono text-xs"
+      class="h-full overflow-y-auto bg-muted/60 dark:bg-miwarp-bg-deepest p-3 font-mono text-xs"
     >
       {#each flatLines as line, i (i)}
         <div class="flex py-0.5 {line.colorClass}">

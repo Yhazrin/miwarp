@@ -33,6 +33,9 @@ class ThemeStore {
   /** Per-session theme overrides: sessionId → themeId */
   sessionThemes = $state<Map<ThemeId, ThemeId>>(new Map());
 
+  /** Whether init() has been called (used by layout to avoid premature theme override) */
+  initialized = false;
+
   /** Light or dark mode derived from current theme */
   get isDark(): boolean {
     const theme = this.themes.find(t => t.id === this.currentTheme);
@@ -136,6 +139,7 @@ class ThemeStore {
       // Use defaults
     }
     this._applyTheme(this.currentTheme);
+    this.initialized = true;
   }
 
   private _applyTheme(themeId: ThemeId) {

@@ -205,7 +205,7 @@
 </script>
 
 <div
-  class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay backdrop-blur-sm animate-fade-in"
   role="dialog"
   aria-modal="true"
   tabindex="-1"
@@ -447,7 +447,7 @@
         {#if error}
           <p class="text-xs text-destructive truncate max-w-[60%]">{error}</p>
         {:else if warning}
-          <p class="text-xs text-yellow-600 dark:text-yellow-400 truncate max-w-[60%]">{warning}</p>
+          <p class="text-xs text-miwarp-status-warning truncate max-w-[60%]">{warning}</p>
         {:else}
           <div></div>
         {/if}

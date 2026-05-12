@@ -125,14 +125,14 @@
 
 {#if current}
   <div
-    class="mx-4 mb-2 rounded-lg border border-blue-500/30 bg-blue-500/5 p-4 shadow-lg"
+    class="mx-4 mb-2 rounded-lg border border-miwarp-status-info/30 bg-miwarp-status-info/10 p-4 shadow-lg"
     role="dialog"
     aria-label={t("elicitation_title")}
   >
     <!-- Header -->
     <div class="mb-3 flex items-center gap-2">
       <div
-        class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20 text-xs text-blue-400"
+        class="flex h-6 w-6 items-center justify-center rounded-full bg-miwarp-status-info/20 text-xs text-miwarp-status-info"
       >
         ?
       </div>
@@ -160,7 +160,7 @@
     {#if current.url}
       <div class="mb-3">
         <button
-          class="text-sm text-blue-400 underline hover:text-blue-300"
+          class="text-sm text-miwarp-status-info underline hover:text-blue-300"
           onclick={() => current?.url && openElicitationUrl(current.url)}
         >
           {t("elicitation_open_url")}
@@ -241,7 +241,7 @@
         {t("elicitation_decline")}
       </button>
       <button
-        class="rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-500 disabled:opacity-50"
+        class="rounded bg-miwarp-status-info px-3 py-1.5 text-xs font-medium text-white hover:opacity-80 disabled:opacity-50"
         disabled={submitting || missingRequired.length > 0}
         onclick={handleAccept}
       >

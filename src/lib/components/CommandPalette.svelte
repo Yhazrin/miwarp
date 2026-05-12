@@ -248,7 +248,7 @@
     <!-- Backdrop -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm"
+      class="fixed inset-0 bg-miwarp-overlay backdrop-blur-sm"
       onclick={() => (open = false)}
       onkeydown={() => {}}
     ></div>
@@ -337,7 +337,7 @@
   >
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm"
+      class="fixed inset-0 bg-miwarp-overlay backdrop-blur-sm"
       onclick={() => (resultModalOpen = false)}
       onkeydown={(e) => e.key === "Escape" && (resultModalOpen = false)}
     ></div>

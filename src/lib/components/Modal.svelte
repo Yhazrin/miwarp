@@ -48,7 +48,7 @@
   >
     <!-- Backdrop -->
     <div
-      class="fixed inset-0 bg-black/50 backdrop-blur-md"
+      class="fixed inset-0 bg-miwarp-overlay backdrop-blur-md"
       onclick={handleBackdropClick}
       role="presentation"
     ></div>
@@ -67,7 +67,12 @@
           aria-label="Close"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path
+              d="M1 1l12 12M13 1L1 13"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
           </svg>
         </button>
       {/if}

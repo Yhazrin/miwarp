@@ -20,6 +20,9 @@
   --miwarp-glass-border-opacity: 0.12;
   --miwarp-glass-blur:     16px;
 
+  /* Overlay / scrim */
+  --miwarp-overlay:        0 0% 0% / 0.55;
+
   /* Accent colors — Warp's blue-purple gradient */
   --miwarp-accent-primary: 239 84% 67%;   /* #6366F1 indigo */
   --miwarp-accent-violet:  258 90% 66%;   /* #8B5CF6 */
@@ -81,6 +84,9 @@
   --miwarp-glass-border-opacity: 0.3;
   --miwarp-glass-blur:     12px;
 
+  /* Overlay / scrim */
+  --miwarp-overlay:        0 0% 0% / 0.4;
+
   --miwarp-accent-primary: 239 84% 57%;
   --miwarp-accent-violet:  258 90% 56%;
   --miwarp-accent-blue:    217 91% 50%;
@@ -135,6 +141,9 @@
   --miwarp-glass-border:   217 60% 50%;
   --miwarp-glass-border-opacity: 0.15;
   --miwarp-glass-blur:     20px;
+
+  /* Overlay / scrim */
+  --miwarp-overlay:        0 0% 0% / 0.55;
 
   --miwarp-accent-primary: 217 91% 60%;
   --miwarp-accent-violet:  239 84% 67%;
@@ -191,6 +200,9 @@
   --miwarp-glass-border-opacity: 0.15;
   --miwarp-glass-blur:     18px;
 
+  /* Overlay / scrim */
+  --miwarp-overlay:        0 0% 0% / 0.55;
+
   --miwarp-accent-primary: 187 70% 50%;
   --miwarp-accent-violet:  199 89% 48%;
   --miwarp-accent-blue:    200 80% 55%;
@@ -246,6 +258,9 @@
   --miwarp-glass-border-opacity: 0.12;
   --miwarp-glass-blur:     16px;
 
+  /* Overlay / scrim */
+  --miwarp-overlay:        0 0% 0% / 0.55;
+
   --miwarp-accent-primary: 265 80% 70%;
   --miwarp-accent-violet:  315 70% 70%;
   --miwarp-accent-blue:    197 80% 65%;
@@ -300,6 +315,9 @@
   --miwarp-glass-border:   213 40% 55%;
   --miwarp-glass-border-opacity: 0.12;
   --miwarp-glass-blur:     16px;
+
+  /* Overlay / scrim */
+  --miwarp-overlay:        0 0% 0% / 0.55;
 
   --miwarp-accent-primary: 213 80% 62%;
   --miwarp-accent-violet:  213 40% 55%;
