@@ -13,7 +13,7 @@
  */
 import { dbg, dbgWarn } from "$lib/utils/debug";
 
-const DB_NAME = "opencovibe-snapshot";
+const DB_NAME = "miwarp-snapshot";
 const DB_VERSION = 1;
 const STORE_NAME = "snapshots";
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# OpenCovibe Desktop — Development Environment Setup
+# MiWarp Desktop — Development Environment Setup
 #
 # Detects missing dependencies, installs them, and prepares the project.
 # Supports macOS and Linux. Run: chmod +x scripts/setup.sh && ./scripts/setup.sh
@@ -364,7 +364,7 @@ setup_linux_deps() {
 # Step 0: Platform & environment checks
 # ---------------------------------------------------------------------------
 
-printf "\n${BRAND}${BOLD}  OpenCovibe Desktop — Development Setup${NC}\n\n"
+printf "\n${BRAND}${BOLD}  MiWarp Desktop — Development Setup${NC}\n\n"
 
 OS=$(uname -s)
 case "$OS" in

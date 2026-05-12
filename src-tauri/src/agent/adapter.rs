@@ -35,7 +35,7 @@ pub struct AdapterSettings {
     pub agents_json: Option<String>,
 }
 
-/// Map OpenCovibe permission mode names to Claude CLI `--permission-mode` values.
+/// Map MiWarp permission mode names to Claude CLI `--permission-mode` values.
 fn map_permission_mode(mode: &str) -> String {
     match mode {
         "ask" => "default".to_string(),

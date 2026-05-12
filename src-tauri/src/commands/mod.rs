@@ -1,5 +1,6 @@
 pub mod agents;
 pub mod artifacts;
+pub mod background;
 pub mod chat;
 pub mod cli_config;
 pub mod cli_settings;

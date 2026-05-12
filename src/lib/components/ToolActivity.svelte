@@ -560,7 +560,7 @@
     </div>
   </button>
   {#if node.children.length > 0}
-    <div class="ml-5 border-l-2 border-cyan-500/25">
+    <div class="ml-5 border-l-2 border-[hsl(var(--miwarp-status-info)/0.25)]">
       {#each node.children as child (child.tool.tool_use_id)}
         {@render toolNodeView(child)}
       {/each}
@@ -654,7 +654,7 @@
               <polyline points="12 6 12 12 16 14" />
             </svg>
             {#if contextHistory.length > 0}
-              <span class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500"
+              <span class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-success))]"
               ></span>
             {/if}
           </button>
@@ -679,7 +679,7 @@
               <polyline points="14 2 14 8 20 8" />
             </svg>
             {#if fileEntries.length > 0}
-              <span class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+              <span class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-warning))]"></span>
             {/if}
           </button>
           <!-- Info icon -->
@@ -726,7 +726,7 @@
             </svg>
             {#if activeBackgroundTasks.length > 0}
               <span
-                class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse"
+                class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"
               ></span>
             {/if}
           </button>
@@ -786,7 +786,7 @@
                       ? 'text-foreground/40 hover:bg-accent/30'
                       : isFailed
                         ? 'bg-destructive/5 text-foreground/50 hover:bg-destructive/10'
-                        : 'bg-blue-500/5 text-foreground/70 hover:bg-blue-500/10'}"
+                        : 'bg-[hsl(var(--miwarp-status-info)/0.05)] text-foreground/70 hover:bg-[hsl(var(--miwarp-status-info)/0.1)]'}"
                     onclick={() => {
                       if (toolUseId) onScrollToTool?.(toolUseId);
                     }}
@@ -897,7 +897,7 @@
                       >
                       {#if sa.meta.model}
                         <span
-                          class="text-[10px] px-1 py-0.5 rounded bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 font-medium"
+                          class="text-[10px] px-1 py-0.5 rounded bg-[hsl(var(--miwarp-status-info)/0.15)] text-[hsl(var(--miwarp-status-info))] font-medium"
                           >{sa.meta.model}</span
                         >
                       {/if}
@@ -1105,7 +1105,7 @@
             <div class="border-t border-border px-3 py-1.5">
               <div class="flex items-center gap-3 text-[11px]">
                 {#if toolStats.doneCount > 0}
-                  <span class="flex items-center gap-1 text-emerald-500 dark:text-emerald-400">
+                  <span class="flex items-center gap-1 text-[hsl(var(--miwarp-status-success))]">
                     <StatusIcon status="done" size="sm" />
                     {toolStats.doneCount}
                   </span>
@@ -1270,7 +1270,7 @@
           <path d="M9 12l2 2 4-4" />
         </svg>
         {#if activeBackgroundTasks.length > 0}
-          <span class="absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse"
+          <span class="absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"
           ></span>
         {/if}
       </button>

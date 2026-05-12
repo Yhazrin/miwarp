@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ToolBurst } from "$lib/utils/tool-rendering";
   import { t } from "$lib/i18n/index.svelte";
+  import DualStatusIndicator from "./DualStatusIndicator.svelte";
 
   let {
     burst,
@@ -38,7 +39,7 @@
     <!-- Status indicator -->
     {#if allDone}
       <svg
-        class="h-3 w-3 text-emerald-500 shrink-0"
+        class="h-3 w-3 text-[hsl(var(--miwarp-status-success))] shrink-0"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -47,7 +48,7 @@
         stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
       >
     {:else if burst.stats.running > 0}
-      <span class="inline-block h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse shrink-0"></span>
+      <DualStatusIndicator state="running" processStatus="active" size="xs" />
     {/if}
 
     <!-- Summary -->
@@ -73,7 +74,7 @@
   <div class="mt-1.5 h-1.5 rounded-full bg-border/30 overflow-hidden flex">
     {#if burst.stats.completed > 0}
       <div
-        class="bg-emerald-500 transition-all duration-300"
+        class="bg-[hsl(var(--miwarp-status-success))] transition-all duration-300"
         style:width="{(burst.stats.completed / burst.stats.total) * 100}%"
       ></div>
     {/if}

@@ -59,8 +59,8 @@ pub async fn run_agent(
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .env("OPENCOVIBE_TASK_ID", &run_id)
-        .env("OPENCOVIBE_RUN_ID", &run_id)
+        .env("MIWARP_TASK_ID", &run_id)
+        .env("MIWARP_RUN_ID", &run_id)
         .env_remove("CLAUDECODE") // Allow running inside a Claude Code session
         .hide_console()
         .kill_on_drop(true)

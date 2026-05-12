@@ -59,7 +59,9 @@
 </script>
 
 <div
-  class="w-full {isUser ? 'bg-muted/50' : ''}"
+  class="w-full animate-fade-in {isUser
+    ? 'bg-[hsl(var(--miwarp-accent-primary)/0.04)] border-y border-[hsl(var(--miwarp-glass-border)/0.08)]'
+    : ''}"
   role="group"
   onmouseenter={() => (hovered = true)}
   onmouseleave={() => (hovered = false)}
@@ -68,7 +70,7 @@
     <!-- Header: icon + name + copy button + timestamp -->
     <div class="mb-1.5 flex items-center gap-2">
       {#if isUser}
-        <div class="flex h-5 w-5 items-center justify-center rounded-sm bg-primary/10 text-primary">
+        <div class="flex h-5 w-5 items-center justify-center rounded-full accent-gradient text-white">
           <svg
             class="h-3 w-3"
             viewBox="0 0 24 24"
@@ -85,7 +87,7 @@
         <span class="text-sm font-semibold text-foreground">{t("chat_roleYou")}</span>
       {:else}
         <div
-          class="flex h-5 w-5 items-center justify-center rounded-sm bg-orange-500/10 text-orange-500"
+          class="flex h-5 w-5 items-center justify-center rounded-full bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-[hsl(var(--miwarp-accent-violet))]"
         >
           <svg
             class="h-3 w-3"
@@ -105,7 +107,7 @@
       {/if}
       {#if onRewind}
         <button
-          class="ml-auto p-1 rounded-md text-muted-foreground/50 hover:bg-muted hover:text-foreground transition-all duration-150 {hovered
+          class="ml-auto p-1 rounded-md text-miwarp-text-tertiary hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary transition-all duration-150 {hovered
             ? 'opacity-100'
             : 'opacity-0'}"
           onclick={onRewind}
@@ -129,7 +131,7 @@
       <button
         class="{onRewind
           ? ''
-          : 'ml-auto'} p-1 rounded-md text-muted-foreground/50 hover:bg-muted hover:text-foreground transition-all duration-150 {hovered ||
+          : 'ml-auto'} p-1 rounded-md text-miwarp-text-tertiary hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary transition-all duration-150 {hovered ||
         copied
           ? 'opacity-100'
           : 'opacity-0'}"
@@ -207,7 +209,7 @@
       {:else}
         {#if thinkingText}
           <button
-            class="mb-2 flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-400 transition-colors"
+            class="mb-2 flex items-center gap-1.5 text-xs text-[hsl(var(--miwarp-status-info))] hover:text-[hsl(var(--miwarp-status-info)/0.8)] transition-colors"
             onclick={() => (thinkingCollapsed = !thinkingCollapsed)}
           >
             <svg
@@ -223,7 +225,7 @@
           </button>
           {#if !thinkingCollapsed}
             <div
-              class="mb-3 rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-xs text-blue-300/80 whitespace-pre-wrap leading-relaxed"
+              class="mb-3 rounded-md border border-dashed border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-3 py-2 text-xs text-[hsl(var(--miwarp-status-info)/0.8)] whitespace-pre-wrap leading-relaxed"
             >
               {thinkingText.trimEnd()}
             </div>

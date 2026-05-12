@@ -2,6 +2,7 @@
   import type { BusToolItem, TimelineEntry, PermissionSuggestion } from "$lib/types";
   import type { TaskNotificationItem } from "$lib/stores/session-store.svelte";
   import { getToolColor } from "$lib/utils/tool-colors";
+  import { getToolSummary } from "$lib/utils/tool-summaries";
   import {
     fileName as pathFileName,
     isAbsolutePath,
@@ -25,6 +26,9 @@
   import StatusIcon from "$lib/components/StatusIcon.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg } from "$lib/utils/debug";
+  import { viewModeStore } from "$lib/stores/view-mode-store.svelte";
+  import PhaseIndicator from "$lib/components/PhaseIndicator.svelte";
+  import { detectPhase } from "$lib/utils/phase-detection";
 
   let {
     tool,
@@ -70,6 +74,8 @@
     showPermissionInPanel?: boolean;
     /** Click on Edit/Write/Read tool card's file path → open preview in right panel. */
     onPreviewFile?: (path: string) => void;
+    /** Whether this is the last tool in the timeline (for reviewing phase detection). */
+    isLastTool?: boolean;
   } = $props();
 
   // Look up the task notification for this specific Task tool
@@ -145,6 +151,31 @@
   let isAgentLike = $derived(tool.tool_name === "Agent" || tool.tool_name === "Task");
   let isAsk = $derived(tool.tool_name === "AskUserQuestion");
 
+  // ── View mode: determine if this tool card should be visible ──
+  let shouldShowInMode = $derived.by(() => {
+    if (viewModeStore.isVerbose) return true;
+    if (viewModeStore.isSummary) {
+      // Only show significant tools in summary mode
+      const significantTools = [
+        "Bash",
+        "Edit",
+        "Write",
+        "MultiEdit",
+        "AskUserQuestion",
+        "ExitPlanMode",
+        "Task",
+        "Agent",
+      ];
+      return (
+        significantTools.includes(tool.tool_name) ||
+        tool.status === "running" ||
+        tool.status === "ask_pending" ||
+        tool.status === "permission_prompt"
+      );
+    }
+    return true; // normal mode shows everything
+  });
+
   // Auto-expand when input is streaming in (running + has input data)
   // Skip Agent/Task — their input (full prompt) is too large to auto-expand.
   let isInputStreaming = $derived(
@@ -158,7 +189,10 @@
   let renderLevel = $derived(getToolRenderLevel(tool.tool_name, tool.status));
   let isPlan = $derived(isPlanFilePath(String(tool.input?.file_path ?? tool.input?.path ?? "")));
   let expanded = $derived(
-    userExpanded ?? (renderLevel === 2 || (isPlan && latestPlanTool) || isInputStreaming),
+    userExpanded ??
+      (viewModeStore.isVerbose
+        ? true
+        : renderLevel === 2 || (isPlan && latestPlanTool) || isInputStreaming),
   );
 
   let hasSubTimeline = $derived((subTimeline?.length ?? 0) > 0);
@@ -198,11 +232,17 @@
 
   let style = $derived(getToolColor(tool.tool_name));
 
+  // Phase detection for PhaseIndicator display
+  let currentPhase = $derived(detectPhase(tool.tool_name, tool.status, isLastTool ?? false));
+
   // Extract a human-readable detail from tool input (file path, command, pattern, etc.)
   let detail = $derived(getToolDetail(tool.input));
 
   let planLabel = $derived(planFileName(detail));
   let displayDetail = $derived(planLabel ? t("inline_planLabel", { name: planLabel }) : detail);
+
+  // One-line summary for collapsed/normal view
+  let toolSummary = $derived(getToolSummary(tool.tool_name, tool.input || {}, enrichedTool.tool_use_result as Record<string, unknown> | undefined));
 
   // Detect if detail looks like an absolute file path (truncate from the front)
   // Plan labels are not paths — skip RTL and path truncation for them.
@@ -577,13 +617,14 @@
 </script>
 
 <!-- Inline tool card: three-level rendering -->
+{#if shouldShowInMode}
 <div class="animate-fade-in {renderLevel === 1 ? 'mb-0.5' : 'mb-2'}">
   {#if renderLevel === 3}
     <!-- Level 3: interactive card -->
     <div>
       {#if isAsk && (tool.status === "running" || tool.status === "ask_pending") && askQuestion}
         <!-- AskUserQuestion: show question + option buttons -->
-        <div class="rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3">
+        <div class="glass-card rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] px-4 py-3" style="border-left: 3px solid; border-image: linear-gradient(180deg, hsl(var(--miwarp-accent-primary)), hsl(var(--miwarp-accent-violet))) 1;">
           <div class="flex items-center gap-2 mb-2">
             <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded {style.bg}">
               <svg
@@ -599,9 +640,10 @@
               </svg>
             </div>
             <span class="text-xs font-medium text-foreground">{t("inline_question")}</span>
-            <div class="h-3 w-3 shrink-0">
+            <PhaseIndicator phase={currentPhase} elapsed={tool.elapsed_time_seconds} />
+            <div class="h-3 w-3 shrink-0 ml-auto">
               <div
-                class="h-2.5 w-2.5 rounded-full border-2 border-border border-t-yellow-500 animate-spin"
+                class="h-2.5 w-2.5 rounded-full border-2 border-border border-t-[hsl(var(--miwarp-status-warning))] animate-spin"
               ></div>
             </div>
           </div>
@@ -722,7 +764,7 @@
         </div>
       {:else if isAsk && tool.status !== "running" && tool.status !== "ask_pending" && tool.status !== "permission_prompt"}
         <!-- AskUserQuestion done: show question(s) + options with selected highlighted -->
-        <div class="rounded-lg border border-border/50 bg-muted/30 px-4 py-3">
+        <div class="glass-card rounded-lg px-4 py-3">
           <div class="flex items-center gap-2 mb-2">
             <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded {style.bg}">
               <svg
@@ -740,12 +782,12 @@
             <span class="text-xs font-medium text-muted-foreground">{t("inline_question")}</span>
             {#if isAskDenied}
               <span
-                class="ml-auto rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-500"
+                class="ml-auto rounded-full border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.1)] px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--miwarp-status-error))]"
                 >{t("common_denied")}</span
               >
             {:else}
               <svg
-                class="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400 shrink-0 ml-auto"
+                class="h-3.5 w-3.5 text-[hsl(var(--miwarp-status-success))] shrink-0 ml-auto"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -780,7 +822,7 @@
                           askAnswersMap[pq.question]?.split(", ").includes(option.label)}
                         <span
                           class="rounded-md border px-3 py-1 text-xs font-medium {isSelected
-                            ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                            ? 'border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
                             : 'border-border/50 bg-transparent text-muted-foreground/50'}"
                         >
                           {#if isSelected}
@@ -799,7 +841,7 @@
                       {/each}
                       {#if askAnnotationsMap[pq.question]}
                         <span
-                          class="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+                          class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
                         >
                           <svg
                             class="inline h-3 w-3 mr-0.5 -mt-0.5"
@@ -816,7 +858,7 @@
                     </div>
                   {:else if askAnnotationsMap[pq.question]}
                     <span
-                      class="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+                      class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
                     >
                       <svg
                         class="inline h-3 w-3 mr-0.5 -mt-0.5"
@@ -831,7 +873,7 @@
                     </span>
                   {:else if askAnswersMap[pq.question]}
                     <span
-                      class="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+                      class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
                     >
                       <svg
                         class="inline h-3 w-3 mr-0.5 -mt-0.5"
@@ -861,7 +903,7 @@
                     class="rounded-md border px-3 py-1.5 text-xs font-medium transition-all {askAnswerSet.has(
                       option,
                     )
-                      ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                      ? 'border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
                       : 'border-border/50 bg-transparent text-muted-foreground/50'}"
                   >
                     {#if askAnswerSet.has(option)}
@@ -882,7 +924,7 @@
                 {/each}
                 {#if askAnnotationsMap[askQuestion]}
                   <span
-                    class="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+                    class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
                   >
                     <svg
                       class="inline h-3 w-3 mr-1 -mt-0.5"
@@ -901,7 +943,7 @@
               </div>
             {:else if askAnnotationsMap[askQuestion]}
               <span
-                class="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+                class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
               >
                 <svg
                   class="inline h-3 w-3 mr-1 -mt-0.5"
@@ -918,7 +960,7 @@
               </span>
             {:else if askAnswer}
               <span
-                class="rounded-md border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400"
+                class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
               >
                 <svg
                   class="inline h-3 w-3 mr-1 -mt-0.5"
@@ -938,7 +980,7 @@
         </div>
       {:else if isAsk && tool.status === "permission_prompt" && askQuestion && tool.permission_request_id}
         <!-- AskUserQuestion permission prompt: show question(s) + options with Allow/Deny semantics -->
-        <div class="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+        <div class="glass-card rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] px-4 py-3">
           <div class="flex items-center gap-2 mb-2">
             <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded {style.bg}">
               <svg
@@ -964,7 +1006,7 @@
             {#if !submitting}
               <div class="h-3 w-3 shrink-0">
                 <div
-                  class="h-2.5 w-2.5 rounded-full border-2 border-border border-t-amber-500 animate-spin"
+                  class="h-2.5 w-2.5 rounded-full border-2 border-border border-t-[hsl(var(--miwarp-status-warning))] animate-spin"
                 ></div>
               </div>
             {/if}
@@ -1205,11 +1247,11 @@
         </div>
       {:else if tool.status === "permission_prompt" && tool.permission_request_id && tool.tool_name === "ExitPlanMode"}
         <!-- ExitPlanMode: 4-option plan approval card (indigo theme) -->
-        <div class="rounded-lg border border-indigo-500/30 bg-indigo-500/5 px-4 py-3">
+        <div class="glass-card rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.3)] bg-[hsl(var(--miwarp-accent-primary)/0.05)] px-4 py-3" style="border-left: 3px solid; border-image: linear-gradient(180deg, hsl(var(--miwarp-accent-primary)), hsl(var(--miwarp-accent-violet))) 1;">
           <div class="flex items-center gap-2 mb-2">
-            <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-indigo-500/10">
+            <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[hsl(var(--miwarp-accent-primary)/0.1)]">
               <svg
-                class="h-3 w-3 text-indigo-500"
+                class="h-3 w-3 text-[hsl(var(--miwarp-accent-primary))]"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -1221,9 +1263,10 @@
               </svg>
             </div>
             <span class="text-xs font-medium text-foreground">{t("plan_readyToCode")}</span>
-            <div class="h-3 w-3 shrink-0">
+            <PhaseIndicator phase={currentPhase} elapsed={tool.elapsed_time_seconds} />
+            <div class="h-3 w-3 shrink-0 ml-auto">
               <div
-                class="h-2.5 w-2.5 rounded-full border-2 border-border border-t-indigo-500 animate-spin"
+                class="h-2.5 w-2.5 rounded-full border-2 border-border border-t-[hsl(var(--miwarp-accent-primary))] animate-spin"
               ></div>
             </div>
           </div>
@@ -1232,13 +1275,13 @@
 
           {#if planContent}
             <div
-              class="mb-3 rounded-lg border border-indigo-500/15 bg-background/50 overflow-hidden"
+              class="mb-3 rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.15)] bg-background/50 overflow-hidden"
             >
               <div
-                class="flex items-center gap-1.5 px-3 py-1.5 border-b border-indigo-500/10 bg-indigo-500/5"
+                class="flex items-center gap-1.5 px-3 py-1.5 border-b border-[hsl(var(--miwarp-accent-primary)/0.1)] bg-[hsl(var(--miwarp-accent-primary)/0.05)]"
               >
                 <svg
-                  class="h-3 w-3 text-indigo-400"
+                  class="h-3 w-3 text-[hsl(var(--miwarp-accent-primary))]"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -1249,7 +1292,7 @@
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                   <polyline points="14 2 14 8 20 8" />
                 </svg>
-                <span class="text-[11px] font-medium text-indigo-300">{planContent.fileName}</span>
+                <span class="text-[11px] font-medium text-[hsl(var(--miwarp-accent-primary))]">{planContent.fileName}</span>
               </div>
               <div class="px-4 py-3 max-h-96 overflow-y-auto prose-chat">
                 <MarkdownContent text={planContent.content} />
@@ -1263,8 +1306,8 @@
 
           <!-- allowedPrompts (from tool.input, set during tool_start) -->
           {#if tool.input?.allowedPrompts && Array.isArray(tool.input.allowedPrompts) && tool.input.allowedPrompts.length > 0}
-            <div class="mb-3 rounded border border-indigo-500/10 bg-indigo-500/5 px-2.5 py-2">
-              <p class="text-[10px] font-medium text-indigo-400 mb-1.5">
+            <div class="mb-3 rounded border border-[hsl(var(--miwarp-accent-primary)/0.1)] bg-[hsl(var(--miwarp-accent-primary)/0.05)] px-2.5 py-2">
+              <p class="text-[10px] font-medium text-[hsl(var(--miwarp-accent-primary))] mb-1.5">
                 {t("plan_requestedPermissions")}
               </p>
               <ul class="space-y-0.5">
@@ -1272,9 +1315,9 @@
                   {@const toolName = String((ap as Record<string, unknown>).tool ?? "")}
                   {@const prompt = String((ap as Record<string, unknown>).prompt ?? "")}
                   <li class="flex items-start gap-1.5 text-[10px] text-muted-foreground/80">
-                    <span class="shrink-0 mt-0.5 text-indigo-400/60">&bull;</span>
+                    <span class="shrink-0 mt-0.5 text-[hsl(var(--miwarp-accent-primary)/0.6)]">&bull;</span>
                     <span
-                      ><span class="font-medium text-indigo-300">{friendlyToolName(toolName)}</span
+                      ><span class="font-medium text-[hsl(var(--miwarp-accent-primary))]">{friendlyToolName(toolName)}</span
                       >{#if prompt}: {prompt}{/if}</span
                     >
                   </li>
@@ -1289,7 +1332,7 @@
               href={String(tool.input.remoteSessionUrl)}
               target="_blank"
               rel="noopener noreferrer"
-              class="mb-3 flex items-center gap-1.5 rounded border border-blue-500/20 bg-blue-500/5 px-2.5 py-1.5 text-xs font-medium text-blue-400 hover:bg-blue-500/10 transition-colors w-fit"
+              class="mb-3 flex items-center gap-1.5 rounded border border-[hsl(var(--miwarp-status-info)/0.2)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-2.5 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-info))] hover:bg-[hsl(var(--miwarp-status-info)/0.1)] transition-colors w-fit"
             >
               <svg
                 class="h-3 w-3 shrink-0"
@@ -1312,7 +1355,7 @@
             <div class="flex flex-col gap-1.5">
               <!-- Option 1: Clear context + auto-accept -->
               <button
-                class="w-full rounded-md border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-left text-xs font-medium text-indigo-300 hover:bg-indigo-500/20 transition-all disabled:opacity-50"
+                class="w-full rounded-md border border-[hsl(var(--miwarp-accent-primary)/0.3)] bg-[hsl(var(--miwarp-accent-primary)/0.1)] px-3 py-1.5 text-left text-xs font-medium text-[hsl(var(--miwarp-accent-primary))] hover:bg-[hsl(var(--miwarp-accent-primary)/0.2)] transition-all disabled:opacity-50"
                 disabled={submitting}
                 onclick={() => {
                   submitting = true;
@@ -1323,7 +1366,7 @@
               </button>
               <!-- Option 2: Auto-accept (keep context) -->
               <button
-                class="w-full rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-left text-xs font-medium text-emerald-400 hover:bg-emerald-500/20 transition-all disabled:opacity-50"
+                class="w-full rounded-md border border-[hsl(var(--miwarp-status-success)/0.3)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-left text-xs font-medium text-[hsl(var(--miwarp-status-success))] hover:bg-[hsl(var(--miwarp-status-success)/0.2)] transition-all disabled:opacity-50"
                 disabled={submitting}
                 onclick={() => {
                   submitting = true;
@@ -1381,7 +1424,7 @@
                   }}
                 ></textarea>
                 <button
-                  class="shrink-0 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-400 hover:bg-amber-500/20 transition-all disabled:opacity-50"
+                  class="shrink-0 rounded-md border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-warning))] hover:bg-[hsl(var(--miwarp-status-warning)/0.2)] transition-all disabled:opacity-50"
                   disabled={submitting}
                   onclick={() => {
                     submitting = true;
@@ -1405,13 +1448,13 @@
         <!-- Permission handled by floating panel — show lightweight placeholder -->
         <div class="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground/60">
           <div
-            class="h-2 w-2 rounded-full border border-amber-500/40 border-t-amber-500 animate-spin"
+            class="h-2 w-2 rounded-full border border-[hsl(var(--miwarp-status-warning)/0.4)] border-t-[hsl(var(--miwarp-status-warning))] animate-spin"
           ></div>
           <span>{t("inline_permissionPending")}</span>
         </div>
       {:else if tool.status === "permission_prompt" && tool.permission_request_id}
         <!-- Inline permission prompt (--permission-prompt-tool stdio): amber card with Allow/Deny -->
-        <div class="rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3">
+        <div class="glass-card rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] px-4 py-3">
           <div class="flex items-center gap-2 mb-2">
             <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded {style.bg}">
               <svg
@@ -1426,9 +1469,10 @@
             </div>
             <span class="text-xs font-medium text-foreground">{t("inline_permissionRequired")}</span
             >
-            <div class="h-3 w-3 shrink-0">
+            <PhaseIndicator phase={currentPhase} elapsed={tool.elapsed_time_seconds} />
+            <div class="h-3 w-3 shrink-0 ml-auto">
               <div
-                class="h-2.5 w-2.5 rounded-full border-2 border-border border-t-amber-500 animate-spin"
+                class="h-2.5 w-2.5 rounded-full border-2 border-border border-t-[hsl(var(--miwarp-status-warning))] animate-spin"
               ></div>
             </div>
           </div>
@@ -1447,7 +1491,7 @@
           {#if onPermissionRespond}
             <div class="flex gap-2">
               <button
-                class="rounded-md bg-emerald-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-emerald-500 transition-all disabled:opacity-50"
+                class="rounded-md bg-[hsl(var(--miwarp-status-success))] px-4 py-1.5 text-xs font-medium text-white hover:bg-[hsl(var(--miwarp-status-success)/0.85)] transition-all disabled:opacity-50"
                 disabled={submitting}
                 onclick={() => {
                   submitting = true;
@@ -1468,7 +1512,7 @@
                 }}>{t("common_deny")}</button
               >
               <button
-                class="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-500/20 transition-all disabled:opacity-50"
+                class="rounded-md border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.1)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-error))] hover:bg-[hsl(var(--miwarp-status-error)/0.2)] transition-all disabled:opacity-50"
                 disabled={submitting}
                 onclick={() => {
                   submitting = true;
@@ -1484,11 +1528,11 @@
               >
             </div>
             {#if tool.suggestions && tool.suggestions.length > 0}
-              <div class="flex flex-wrap gap-2 mt-2 pt-2 border-t border-amber-500/20">
+              <div class="flex flex-wrap gap-2 mt-2 pt-2 border-t border-[hsl(var(--miwarp-status-warning)/0.2)]">
                 {#each tool.suggestions as suggestion}
                   {@const label = formatSuggestionLabel(suggestion)}
                   <button
-                    class="rounded-md border border-blue-500/30 bg-blue-500/5 px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 transition-all disabled:opacity-50"
+                    class="rounded-md border border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-info))] hover:bg-[hsl(var(--miwarp-status-info)/0.1)] transition-all disabled:opacity-50"
                     disabled={submitting}
                     onclick={() => {
                       submitting = true;
@@ -1540,56 +1584,72 @@
         </svg>
       </div>
 
-      <!-- Tool name + detail -->
-      <div class="flex-1 min-w-0 flex items-center gap-1.5">
+      <!-- Tool name + detail + summary -->
+      <div class="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
         {#if taskMeta}
           <!-- Task tool: show agent type + model badge -->
-          <span class="text-xs font-medium text-foreground">{taskMeta.subagentType}</span>
-          {#if taskMeta.model}
-            <span
-              class="text-[10px] px-1 py-0.5 rounded bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 font-medium"
-              >{taskMeta.model}</span
-            >
-          {/if}
-          {#if taskMeta.description}
-            <span class="text-xs text-muted-foreground truncate">{taskMeta.description}</span>
-          {/if}
-          {#if subToolCount > 0}
-            <span class="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground">
-              {#if tool.status === "running"}
-                {subToolCompleted}/{subToolCount} tools
-              {:else}
-                {t("inline_toolCount", { count: String(subToolCount) })}
-              {/if}
-            </span>
-          {/if}
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs font-medium text-foreground">{taskMeta.subagentType}</span>
+            {#if taskMeta.model}
+              <span
+                class="text-[10px] px-1 py-0.5 rounded bg-[hsl(var(--miwarp-status-info)/0.15)] text-[hsl(var(--miwarp-status-info))] font-medium"
+                >{taskMeta.model}</span
+              >
+            {/if}
+            {#if taskMeta.description}
+              <span class="text-xs text-muted-foreground truncate">{taskMeta.description}</span>
+            {/if}
+            {#if subToolCount > 0}
+              <span class="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground">
+                {#if tool.status === "running"}
+                  {subToolCompleted}/{subToolCount} tools
+                {:else}
+                  {t("inline_toolCount", { count: String(subToolCount) })}
+                {/if}
+              </span>
+            {/if}
+          </div>
         {:else}
-          <span class="text-xs font-medium text-foreground">{tool.tool_name}</span>
-          {#if displayDetail && !bashPreview}
-            <span
-              class="text-xs text-muted-foreground truncate"
-              style:direction={isPathLikeDetail ? "rtl" : undefined}
-              style:text-align={isPathLikeDetail ? "left" : undefined}
-              >{#if isPathLikeDetail}<bdi>{displayDetail}</bdi>{:else}{displayDetail}{/if}</span
-            >
-          {:else if bashDescription}
-            <span class="text-xs text-muted-foreground truncate">{bashDescription}</span>
-          {:else if bashPreview}
-            <span class="text-xs text-muted-foreground font-mono truncate">$ {bashPreview}</span>
-          {:else if tool.status === "running" && !isAgentLike}
-            <span class="text-xs text-muted-foreground italic">{t("inline_starting")}</span>
-          {/if}
-          {#if subToolCount > 0}
-            <span class="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground">
-              {#if tool.status === "running"}
-                {subToolCompleted}/{subToolCount} tools
-              {:else}
-                {t("inline_toolCount", { count: String(subToolCount) })}
+          <!-- Level 1 (minimal): show summary as primary text -->
+          {#if renderLevel === 1}
+            <span class="text-xs text-muted-foreground truncate">{toolSummary}</span>
+          {:else}
+            <!-- Level 2 (normal): tool name + summary subtitle -->
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-medium text-foreground">{tool.tool_name}</span>
+              {#if displayDetail && !bashPreview}
+                <span
+                  class="text-xs text-muted-foreground truncate"
+                  style:direction={isPathLikeDetail ? "rtl" : undefined}
+                  style:text-align={isPathLikeDetail ? "left" : undefined}
+                  >{#if isPathLikeDetail}<bdi>{displayDetail}</bdi>{:else}{displayDetail}{/if}</span
+                >
+              {:else if bashDescription}
+                <span class="text-xs text-muted-foreground truncate">{bashDescription}</span>
+              {:else if bashPreview}
+                <span class="text-xs text-muted-foreground font-mono truncate">$ {bashPreview}</span>
+              {:else if tool.status === "running" && !isAgentLike}
+                <span class="text-xs text-muted-foreground italic">{t("inline_starting")}</span>
               {/if}
-            </span>
+              {#if subToolCount > 0}
+                <span class="text-[10px] px-1 py-0.5 rounded bg-muted text-muted-foreground">
+                  {#if tool.status === "running"}
+                    {subToolCompleted}/{subToolCount} tools
+                  {:else}
+                    {t("inline_toolCount", { count: String(subToolCount) })}
+                  {/if}
+                </span>
+              {/if}
+            </div>
+            <span class="text-xs text-muted-foreground truncate">{toolSummary}</span>
           {/if}
         {/if}
       </div>
+
+      <!-- Phase indicator: compact dot for Level 2 only -->
+      {#if renderLevel === 2}
+        <PhaseIndicator phase={currentPhase} compact elapsed={tool.elapsed_time_seconds} />
+      {/if}
 
       <!-- Duration + output size -->
       <div class="flex items-center gap-1.5 shrink-0">
@@ -1640,7 +1700,7 @@
           <span>{taskNotification.summary || taskNotification.message}</span>
         {:else if taskNotification.status === "completed" || taskNotification.status === "done"}
           <svg
-            class="h-2.5 w-2.5 text-emerald-500 shrink-0"
+            class="h-2.5 w-2.5 text-[hsl(var(--miwarp-status-success))] shrink-0"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -1715,12 +1775,12 @@
   {/if}
   <!-- ExitPlanMode success: inline plan content below compact card -->
   {#if planContent && tool.tool_name === "ExitPlanMode" && tool.status === "success"}
-    <div class="mt-2 rounded-lg border border-indigo-500/15 bg-background/50 overflow-hidden">
+    <div class="mt-2 rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.15)] bg-background/50 overflow-hidden">
       <div
-        class="flex items-center gap-1.5 px-3 py-1.5 border-b border-indigo-500/10 bg-indigo-500/5"
+        class="flex items-center gap-1.5 px-3 py-1.5 border-b border-[hsl(var(--miwarp-accent-primary)/0.1)] bg-[hsl(var(--miwarp-accent-primary)/0.05)]"
       >
         <svg
-          class="h-3 w-3 text-indigo-400"
+          class="h-3 w-3 text-[hsl(var(--miwarp-accent-primary))]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -1731,7 +1791,7 @@
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
           <polyline points="14 2 14 8 20 8" />
         </svg>
-        <span class="text-[11px] font-medium text-indigo-300">{planContent.fileName}</span>
+        <span class="text-[11px] font-medium text-[hsl(var(--miwarp-accent-primary))]">{planContent.fileName}</span>
       </div>
       <div class="px-4 py-3 max-h-96 overflow-y-auto prose-chat">
         <MarkdownContent text={planContent.content} />
@@ -1740,13 +1800,13 @@
   {/if}
   <!-- Subagent subTimeline: nested entries from child agents -->
   {#if showSubTimeline}
-    <div class="mt-2 ml-4 pl-3 border-l-2 border-blue-500/30 space-y-1">
+    <div class="mt-2 ml-4 pl-3 border-l-2 border-[hsl(var(--miwarp-status-info)/0.3)] space-y-1">
       {#each subTimeline as subEntry (subEntry.id)}
         {#if subEntry.kind === "assistant"}
           <div class="text-sm text-muted-foreground py-1">
             {#if subEntry.thinkingText}
               <pre
-                class="text-xs font-mono whitespace-pre-wrap break-words text-blue-300/70 italic mb-1 leading-relaxed">{subEntry.thinkingText.trimEnd()}</pre>
+                class="text-xs font-mono whitespace-pre-wrap break-words text-[hsl(var(--miwarp-status-info)/0.7)] italic mb-1 leading-relaxed">{subEntry.thinkingText.trimEnd()}</pre>
             {/if}
             <MarkdownContent
               text={subEntry.content}
@@ -1771,3 +1831,4 @@
     </div>
   {/if}
 </div>
+{/if}

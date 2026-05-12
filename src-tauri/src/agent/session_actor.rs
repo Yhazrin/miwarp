@@ -2376,7 +2376,7 @@ fn att_extension(mime: &str) -> &str {
     }
 }
 
-/// Save an attachment to `~/.opencovibe/runs/{run_id}/attachments/` and return the path.
+/// Save an attachment to `~/.miwarp/runs/{run_id}/attachments/` and return the path.
 /// Returns `None` on failure (non-fatal, logged as warning).
 fn save_attachment_to_disk(run_id: &str, att: &AttachmentData) -> Option<String> {
     let att_dir = crate::storage::run_dir(run_id).join("attachments");

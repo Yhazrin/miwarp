@@ -1,18 +1,18 @@
 [package]
-name = "OpenCovibe"
+name = "MiWarp"
 version = "0.1.58"
 edition = "2021"
 description = "Local-first desktop app for AI-assisted vibe coding"
 license = "Apache-2.0"
-repository = "https://github.com/AnyiWang/OpenCovibe"
-homepage = "https://github.com/AnyiWang/OpenCovibe"
+repository = "https://github.com/AnyiWang/MiWarp"
+homepage = "https://github.com/AnyiWang/MiWarp"
 
 [lib]
-name = "opencovibe_desktop_lib"
+name = "miwarp_desktop_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [[bin]]
-name = "OpenCovibe"
+name = "MiWarp"
 path = "src/main.rs"
 
 [dependencies]

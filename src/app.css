@@ -2,106 +2,117 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import MiWarp design tokens (Warp-inspired visual language) */
+@import "./lib/styles/design-tokens.css";
+
 @layer base {
-  /* ── Light mode ── */
+  /* ── Light mode (legacy fallback) ── */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 26 24% 12%;
-    --primary: 38 86% 64%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 30 14% 93%;
-    --secondary-foreground: 26 24% 12%;
-    --muted: 30 14% 93%;
-    --muted-foreground: 0 0% 42%;
-    --accent: 30 14% 93%;
-    --accent-foreground: 26 24% 12%;
-    --destructive: 0 64% 57%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 30 8% 85%;
-    --input: 30 8% 85%;
-    --ring: 38 86% 64%;
-    --radius: 0.5rem;
-    --sidebar-background: 30 10% 96%;
-    --sidebar-foreground: 26 24% 12%;
-    --sidebar-primary: 38 86% 64%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 14% 90%;
-    --sidebar-accent-foreground: 26 24% 12%;
-    --sidebar-border: 30 8% 88%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 26 24% 12%;
-    --sidebar-ring: 38 86% 64%;
+    --radius: 0.625rem;
   }
 
-  /* ── Dark mode (primary) ── */
-  .dark {
-    --background: 0 0% 7.1%;
-    --foreground: 0 0% 93%;
-    --primary: 38 86% 64%;
-    --primary-foreground: 0 0% 7.1%;
-    --secondary: 0 0% 15.7%;
-    --secondary-foreground: 0 0% 93%;
-    --muted: 0 0% 15.7%;
-    --muted-foreground: 0 0% 54.5%;
-    --accent: 0 0% 15.7%;
-    --accent-foreground: 0 0% 93%;
-    --destructive: 0 64% 57%;
-    --destructive-foreground: 0 0% 93%;
-    --border: 0 0% 24.7%;
-    --input: 0 0% 24.7%;
-    --ring: 35 93% 77%;
-    --sidebar-background: 26 24% 12%;
-    --sidebar-foreground: 0 0% 93%;
-    --sidebar-primary: 38 86% 64%;
-    --sidebar-primary-foreground: 0 0% 7.1%;
-    --sidebar-accent: 26 15% 20%;
-    --sidebar-accent-foreground: 0 0% 93%;
-    --sidebar-border: 26 10% 18%;
-    --popover: 0 0% 12.9%;
-    --popover-foreground: 0 0% 93%;
-    --sidebar-ring: 38 86% 64%;
-  }
-
-  /* ── Neutral scheme: light ── */
+  /* ── Neutral scheme overrides ── */
   .scheme-neutral {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 9%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 38%;
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 9%;
-    --border: 0 0% 88%;
-    --input: 0 0% 88%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 0 0% 9%;
-    --sidebar-accent: 0 0% 93%;
-    --sidebar-accent-foreground: 0 0% 9%;
-    --sidebar-border: 0 0% 90%;
+    --primary: 0 0% 30%;
+    --primary-foreground: 0 0% 100%;
+    --ring: 0 0% 30%;
+    --sidebar-primary: 0 0% 30%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-ring: 0 0% 30%;
   }
 
-  /* ── Neutral scheme: dark ── */
   .dark.scheme-neutral {
-    --background: 0 0% 8%;
-    --foreground: 0 0% 95%;
-    --secondary: 0 0% 16%;
-    --secondary-foreground: 0 0% 95%;
-    --muted: 0 0% 16%;
-    --muted-foreground: 0 0% 62%;
-    --accent: 0 0% 16%;
-    --accent-foreground: 0 0% 95%;
-    --border: 0 0% 22%;
-    --input: 0 0% 22%;
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 95%;
-    --sidebar-background: 0 0% 11%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-accent: 0 0% 18%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 18%;
+    --primary: 0 0% 70%;
+    --primary-foreground: 0 0% 10%;
+    --ring: 0 0% 70%;
+    --sidebar-primary: 0 0% 70%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-ring: 0 0% 70%;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Glassmorphism Utility Classes
+   ═══════════════════════════════════════════════════════════ */
+@layer components {
+  .glass-panel {
+    background: hsla(
+      var(--miwarp-glass-bg),
+      var(--miwarp-glass-opacity, 0.72)
+    );
+    backdrop-filter: blur(var(--miwarp-glass-blur, 16px));
+    -webkit-backdrop-filter: blur(var(--miwarp-glass-blur, 16px));
+    border: 1px solid hsla(
+      var(--miwarp-glass-border),
+      var(--miwarp-glass-border-opacity, 0.12)
+    );
+    border-radius: var(--radius);
+  }
+
+  .glass-card {
+    background: hsla(
+      var(--miwarp-glass-bg),
+      var(--miwarp-glass-opacity, 0.72)
+    );
+    backdrop-filter: blur(var(--miwarp-glass-blur, 16px));
+    -webkit-backdrop-filter: blur(var(--miwarp-glass-blur, 16px));
+    border: 1px solid hsla(
+      var(--miwarp-glass-border),
+      var(--miwarp-glass-border-opacity, 0.12)
+    );
+    border-radius: calc(var(--radius) + 4px);
+    box-shadow: 0 4px 12px hsla(0, 0%, 0%, 0.35), 0 2px 4px hsla(0, 0%, 0%, 0.2);
+    transition: box-shadow 200ms ease-out, border-color 200ms ease-out;
+  }
+  .glass-card:hover {
+    box-shadow: 0 8px 24px hsla(0, 0%, 0%, 0.4), 0 4px 8px hsla(0, 0%, 0%, 0.25);
+    border-color: hsla(var(--miwarp-glass-border), 0.2);
+  }
+
+  .glass-sidebar {
+    background: hsla(var(--miwarp-bg-deepest), 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-right: 1px solid hsla(var(--miwarp-glass-border), 0.1);
+  }
+
+  /* Elevation system */
+  .elevation-1 {
+    box-shadow: 0 1px 3px hsla(0, 0%, 0%, 0.3), 0 1px 2px hsla(0, 0%, 0%, 0.2);
+  }
+  .elevation-2 {
+    box-shadow: 0 4px 12px hsla(0, 0%, 0%, 0.35), 0 2px 4px hsla(0, 0%, 0%, 0.2);
+  }
+  .elevation-3 {
+    box-shadow: 0 8px 24px hsla(0, 0%, 0%, 0.4), 0 4px 8px hsla(0, 0%, 0%, 0.25);
+  }
+
+  /* Accent gradient border (left accent for tool cards) */
+  .accent-border-left {
+    border-left: 4px solid transparent;
+    border-image: linear-gradient(
+      180deg,
+      hsl(var(--miwarp-accent-primary)),
+      hsl(var(--miwarp-accent-violet))
+    ) 1;
+  }
+
+  /* Accent gradient background */
+  .accent-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--miwarp-accent-primary)),
+      hsl(var(--miwarp-accent-violet))
+    );
+  }
+
+  /* Glow effect for active/running states */
+  .glow-active {
+    box-shadow: 0 0 16px hsla(239, 84%, 67%, 0.2);
+  }
+  .glow-active-strong {
+    box-shadow: 0 0 24px hsla(239, 84%, 67%, 0.35),
+                0 0 48px hsla(258, 90%, 66%, 0.15);
   }
 }
 
@@ -127,6 +138,20 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-modal-in {
+  animation: modal-in 0.2s ease-out both;
 }
 
 @keyframes slide-up {

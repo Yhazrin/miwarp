@@ -14,6 +14,8 @@
   import Button from "$lib/components/Button.svelte";
   import Input from "$lib/components/Input.svelte";
   import KeybindingEditor from "$lib/components/KeybindingEditor.svelte";
+  import BackgroundPicker from "$lib/components/BackgroundPicker.svelte";
+  import ThemeEditor from "$lib/components/ThemeEditor.svelte";
   import { formatKeyDisplay } from "$lib/stores/keybindings.svelte";
   import {
     PLATFORM_PRESETS,
@@ -39,7 +41,7 @@
   import { getTransport } from "$lib/transport";
 
   // ── Tab state ──
-  type SettingsTab = "general" | "connection" | "cli-config" | "shortcuts" | "remote" | "debug";
+  type SettingsTab = "general" | "connection" | "cli-config" | "shortcuts" | "remote" | "debug" | "background" | "theme";
   const VALID_TABS: SettingsTab[] = [
     "general",
     "connection",
@@ -47,6 +49,8 @@
     "shortcuts",
     "remote",
     "debug",
+    "background",
+    "theme",
   ];
   const urlTab = $page.url.searchParams.get("tab");
   const initialTab: SettingsTab = VALID_TABS.includes(urlTab as SettingsTab)
@@ -61,6 +65,8 @@
     shortcuts: () => t("settings_tab_shortcuts"),
     remote: () => t("settings_tab_remote"),
     debug: () => t("settings_tab_debug"),
+    background: () => t("settings_tab_background") || "Background",
+    theme: () => t("settings_tab_theme") || "Theme",
   };
 
   const tabs: { id: SettingsTab; icon: string }[] = [
@@ -85,6 +91,8 @@
       icon: "M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z",
     },
     { id: "debug", icon: "m18 16 4-4-4-4 M6 8l-4 4 4 4 M14.5 4l-5 16" },
+    { id: "background", icon: "M21 15l-5-5L5 21" },
+    { id: "theme", icon: "M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" },
   ];
 
   let settings = $state<UserSettings | null>(null);
@@ -3481,6 +3489,14 @@
           </p>
         {/if}
       </Card>
+
+      <!-- ═══ Background tab ═══ -->
+    {:else if activeTab === "background"}
+      <BackgroundPicker />
+
+      <!-- ═══ Theme tab ═══ -->
+    {:else if activeTab === "theme"}
+      <ThemeEditor />
     {/if}
   </div>
 {/key}

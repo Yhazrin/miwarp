@@ -18,7 +18,7 @@ use std::path::PathBuf;
 
 pub fn data_dir() -> PathBuf {
     let home = dirs_next().expect("Could not determine home directory");
-    home.join(".opencovibe")
+    home.join(".miwarp")
 }
 
 pub fn runs_dir() -> PathBuf {

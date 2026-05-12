@@ -4,7 +4,7 @@ use std::time::Duration;
 
 // ── Constants ──
 
-const GITHUB_API_URL: &str = "https://api.github.com/repos/AnyiWang/OpenCovibe/releases/latest";
+const GITHUB_API_URL: &str = "https://api.github.com/repos/AnyiWang/MiWarp/releases/latest";
 
 // ── HTTP client (reuse across requests) ──
 
@@ -12,7 +12,7 @@ static CLIENT: LazyLock<Client> = LazyLock::new(|| {
     Client::builder()
         .timeout(Duration::from_secs(15))
         .connect_timeout(Duration::from_secs(10))
-        .user_agent(format!("OpenCovibe/{}", env!("CARGO_PKG_VERSION")))
+        .user_agent(format!("MiWarp/{}", env!("CARGO_PKG_VERSION")))
         .build()
         .unwrap_or_default()
 });
@@ -244,10 +244,10 @@ mod tests {
     #[test]
     fn test_select_download_url_prefers_dmg() {
         let body = json!({
-            "html_url": "https://github.com/AnyiWang/OpenCovibe/releases/tag/v0.1.14",
+            "html_url": "https://github.com/AnyiWang/MiWarp/releases/tag/v0.1.14",
             "assets": [
-                { "name": "OpenCovibe-0.1.14.zip", "browser_download_url": "https://example.com/a.zip" },
-                { "name": "OpenCovibe_0.1.14_universal.dmg", "browser_download_url": "https://example.com/a.dmg" }
+                { "name": "MiWarp-0.1.14.zip", "browser_download_url": "https://example.com/a.zip" },
+                { "name": "MiWarp_0.1.14_universal.dmg", "browser_download_url": "https://example.com/a.dmg" }
             ]
         });
         assert_eq!(
@@ -259,11 +259,11 @@ mod tests {
     #[test]
     fn test_select_download_url_prefers_msi() {
         let body = json!({
-            "html_url": "https://github.com/AnyiWang/OpenCovibe/releases/tag/v0.1.14",
+            "html_url": "https://github.com/AnyiWang/MiWarp/releases/tag/v0.1.14",
             "assets": [
-                { "name": "OpenCovibe-0.1.14.zip", "browser_download_url": "https://example.com/a.zip" },
-                { "name": "OpenCovibe_0.1.14_x64-setup.msi", "browser_download_url": "https://example.com/a.msi" },
-                { "name": "OpenCovibe_0.1.14_x64.exe", "browser_download_url": "https://example.com/a.exe" }
+                { "name": "MiWarp-0.1.14.zip", "browser_download_url": "https://example.com/a.zip" },
+                { "name": "MiWarp_0.1.14_x64-setup.msi", "browser_download_url": "https://example.com/a.msi" },
+                { "name": "MiWarp_0.1.14_x64.exe", "browser_download_url": "https://example.com/a.exe" }
             ]
         });
         // .msi preferred over .exe
@@ -277,10 +277,10 @@ mod tests {
     fn test_select_download_url_exe_fallback() {
         // .msi not present → should fall back to .exe
         let body = json!({
-            "html_url": "https://github.com/AnyiWang/OpenCovibe/releases/tag/v0.1.14",
+            "html_url": "https://github.com/AnyiWang/MiWarp/releases/tag/v0.1.14",
             "assets": [
-                { "name": "OpenCovibe-0.1.14.zip", "browser_download_url": "https://example.com/a.zip" },
-                { "name": "OpenCovibe_0.1.14_x64.exe", "browser_download_url": "https://example.com/a.exe" }
+                { "name": "MiWarp-0.1.14.zip", "browser_download_url": "https://example.com/a.zip" },
+                { "name": "MiWarp_0.1.14_x64.exe", "browser_download_url": "https://example.com/a.exe" }
             ]
         });
         assert_eq!(
@@ -293,10 +293,10 @@ mod tests {
     fn test_select_download_url_zip_fallback_on_windows() {
         // No .msi or .exe → should fall back to .zip
         let body = json!({
-            "html_url": "https://github.com/AnyiWang/OpenCovibe/releases/tag/v0.1.31",
+            "html_url": "https://github.com/AnyiWang/MiWarp/releases/tag/v0.1.31",
             "assets": [
-                { "name": "OpenCovibe_0.1.31_universal.dmg", "browser_download_url": "https://example.com/a.dmg" },
-                { "name": "OpenCovibe_0.1.31_x64-setup.zip", "browser_download_url": "https://example.com/a.zip" }
+                { "name": "MiWarp_0.1.31_universal.dmg", "browser_download_url": "https://example.com/a.dmg" },
+                { "name": "MiWarp_0.1.31_x64-setup.zip", "browser_download_url": "https://example.com/a.zip" }
             ]
         });
         assert_eq!(
@@ -308,9 +308,9 @@ mod tests {
     #[test]
     fn test_select_download_url_prefers_appimage() {
         let body = json!({
-            "html_url": "https://github.com/AnyiWang/OpenCovibe/releases/tag/v0.1.14",
+            "html_url": "https://github.com/AnyiWang/MiWarp/releases/tag/v0.1.14",
             "assets": [
-                { "name": "OpenCovibe_0.1.14.AppImage", "browser_download_url": "https://example.com/a.AppImage" }
+                { "name": "MiWarp_0.1.14.AppImage", "browser_download_url": "https://example.com/a.AppImage" }
             ]
         });
         assert_eq!(
@@ -322,12 +322,12 @@ mod tests {
     #[test]
     fn test_select_download_url_falls_back_to_html() {
         let body = json!({
-            "html_url": "https://github.com/AnyiWang/OpenCovibe/releases/tag/v0.1.14",
+            "html_url": "https://github.com/AnyiWang/MiWarp/releases/tag/v0.1.14",
             "assets": []
         });
         assert_eq!(
             select_download_url_for_exts(&body, &[".dmg"]),
-            "https://github.com/AnyiWang/OpenCovibe/releases/tag/v0.1.14"
+            "https://github.com/AnyiWang/MiWarp/releases/tag/v0.1.14"
         );
     }
 }

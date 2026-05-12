@@ -1,5 +1,6 @@
 <script lang="ts">
   import "../app.css";
+  import "$lib/styles/sidebar-animations.css";
   import { escapeHtml } from "$lib/utils/ansi";
   import {
     listRuns,
@@ -1284,10 +1285,10 @@
 <div class="flex h-screen overflow-hidden">
   <!-- Sidebar: Icon Rail + Content Panel -->
   {#if sidebarOpen}
-    <aside class="flex shrink-0 bg-sidebar text-sidebar-foreground transition-all duration-200">
+    <aside class="flex shrink-0 glass-sidebar text-sidebar-foreground transition-all duration-200">
       <!-- A. Icon Rail -->
       <div
-        class="flex w-[44px] flex-col items-center border-r border-sidebar-border bg-black/[0.03] dark:bg-black/20"
+        class="flex w-[44px] flex-col items-center border-r border-[hsl(var(--miwarp-glass-border)/0.1)] bg-[hsl(var(--miwarp-bg-deepest)/0.95)]"
       >
         <!-- Rail logo (OC) -->
         <div class="flex h-14 w-full items-center justify-center border-b border-sidebar-border">
@@ -1401,7 +1402,7 @@
             <button
               class="text-xs text-muted-foreground hover:text-muted-foreground transition-colors cursor-pointer"
               onclick={() => (showAbout = true)}
-              title="About OpenCovibe">v0.1</button
+              title="About MiWarp">v0.1</button
             >
           </div>
           <div class="relative mx-auto mb-0.5">
@@ -1530,11 +1531,11 @@
 
       <!-- B. Content Panel -->
       <div
-        class="flex flex-none flex-col overflow-hidden border-r border-sidebar-border relative"
+        class="flex flex-none flex-col overflow-hidden border-r border-[hsl(var(--miwarp-glass-border)/0.1)] relative"
         style:width="{sidebarWidth}px"
       >
         <!-- Panel header: Project selector + new chat -->
-        <div class="flex h-14 items-center gap-1.5 border-b border-sidebar-border px-3">
+        <div class="flex h-14 items-center gap-1.5 border-b border-[hsl(var(--miwarp-glass-border)/0.1)] px-3">
           <span class="flex-1 min-w-0 truncate text-sm font-medium text-sidebar-foreground"
             >{pageName}</span
           >
@@ -2077,7 +2078,7 @@
           </div>
         {:else}
           <!-- Tab bar -->
-          <div class="flex shrink-0 border-b border-sidebar-border">
+          <div class="flex shrink-0 border-b border-[hsl(var(--miwarp-glass-border)/0.1)]">
             <button
               class="flex-1 py-1.5 text-xs font-medium text-center transition-colors
               {panelTab === 'chats'
@@ -2094,7 +2095,7 @@
               >{t("sidebar_teams")}
               {#if teamStore.teams.length > 0}
                 <span
-                  class="ml-0.5 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-teal-500/80 px-1 text-[10px] font-bold text-white"
+                  class="ml-0.5 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-[hsl(var(--miwarp-accent-primary)/0.8)] px-1 text-[10px] font-bold text-white"
                   >{teamStore.teams.length}</span
                 >
               {/if}
@@ -2274,7 +2275,7 @@
         <!-- Resize handle -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
         <div
-          class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/20 active:bg-primary/30 transition-colors z-10"
+          class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[hsl(var(--miwarp-accent-primary)/0.3)] active:bg-[hsl(var(--miwarp-accent-primary)/0.5)] transition-colors z-10"
           onpointerdown={startResize}
         ></div>
       </div>

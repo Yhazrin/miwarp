@@ -1,5 +1,5 @@
 /**
- * Self-built i18n runtime for OpenCovibe.
+ * Self-built i18n runtime for MiWarp.
  *
  * Supports: `{variable}` interpolation, fallback chain (locale -> en -> raw key),
  * reactive locale via Svelte 5 $state, localStorage persistence, async loading.

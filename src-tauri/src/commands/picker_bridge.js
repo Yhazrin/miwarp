@@ -1,7 +1,7 @@
 // picker_bridge.js — injected into preview window for element selection
-// Communicates back via navigation intercept (ocv-bridge://)
+// Communicates back via navigation intercept (mw-bridge://)
 (function() {
-  if (window.__ocvPicker) return;
+  if (window.__mwPicker) return;
 
   var STYLE_KEYS = [
     'display','position','width','height','padding','margin',
@@ -27,22 +27,22 @@
   function createToolbar() {
     if (toolbar) return;
     var bar = document.createElement('div');
-    bar.id = '__ocv_toolbar';
+    bar.id = '__mw_toolbar';
     bar.style.cssText = BAR + 'display:flex;align-items:center;padding:8px 16px;gap:10px;';
     bar.innerHTML =
-      '<span style="color:#a6adc8;flex:1;font-size:11px;">OpenCovibe Preview</span>' +
-      '<button id="__ocv_btn_pick" style="' + BTN + 'background:#3b82f6;color:#fff;">Pick Element</button>';
+      '<span style="color:#a6adc8;flex:1;font-size:11px;">MiWarp Preview</span>' +
+      '<button id="__mw_btn_pick" style="' + BTN + 'background:#3b82f6;color:#fff;">Pick Element</button>';
     document.body.appendChild(bar);
     document.body.style.paddingBottom = (bar.offsetHeight) + 'px';
     toolbar = bar;
 
-    document.getElementById('__ocv_btn_pick').onclick = function() {
+    document.getElementById('__mw_btn_pick').onclick = function() {
       activate();
     };
   }
 
   function setToolbarPicking(isPicking) {
-    var btn = document.getElementById('__ocv_btn_pick');
+    var btn = document.getElementById('__mw_btn_pick');
     if (!btn) return;
     if (isPicking) {
       btn.textContent = 'Cancel';
@@ -61,19 +61,19 @@
 
   function createOverlay() {
     // Guard against duplicate overlay elements
-    var existing = document.getElementById('__ocv_overlay');
+    var existing = document.getElementById('__mw_overlay');
     if (existing) existing.remove();
-    var existingLb = document.getElementById('__ocv_label');
+    var existingLb = document.getElementById('__mw_label');
     if (existingLb) existingLb.remove();
 
     var el = document.createElement('div');
-    el.id = '__ocv_overlay';
+    el.id = '__mw_overlay';
     el.style.cssText = 'position:fixed;pointer-events:none;border:2px solid #3b82f6;' +
       'background:rgba(59,130,246,0.08);z-index:999999;transition:all 0.1s ease;display:none;';
     document.body.appendChild(el);
 
     var lb = document.createElement('div');
-    lb.id = '__ocv_label';
+    lb.id = '__mw_label';
     lb.style.cssText = 'position:fixed;pointer-events:none;z-index:1000000;' +
       'background:#3b82f6;color:#fff;font:11px/1.4 monospace;padding:2px 6px;' +
       'border-radius:3px;display:none;white-space:nowrap;';
@@ -175,7 +175,7 @@
     var text = data.textContent ? esc(data.textContent.slice(0, 80)) : '';
 
     var p = document.createElement('div');
-    p.id = '__ocv_result';
+    p.id = '__mw_result';
     p.style.cssText = BAR + 'padding:10px 16px;';
     p.innerHTML =
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">' +
@@ -183,38 +183,38 @@
         (text ? '<span style="color:#a6adc8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">"' + text + '"</span>' : '') +
       '</div>' +
       '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
-        '<button id="__ocv_r_pick" style="' + BTN + 'background:#45475a;color:#cdd6f4;">Pick Again</button>' +
-        '<button id="__ocv_r_dismiss" style="' + BTN + 'background:#45475a;color:#cdd6f4;">Dismiss</button>' +
-        '<button id="__ocv_r_insert" style="' + BTN + 'background:#3b82f6;color:#fff;">Insert to Chat</button>' +
+        '<button id="__mw_r_pick" style="' + BTN + 'background:#45475a;color:#cdd6f4;">Pick Again</button>' +
+        '<button id="__mw_r_dismiss" style="' + BTN + 'background:#45475a;color:#cdd6f4;">Dismiss</button>' +
+        '<button id="__mw_r_insert" style="' + BTN + 'background:#3b82f6;color:#fff;">Insert to Chat</button>' +
       '</div>';
     document.body.appendChild(p);
     resultPanel = p;
 
-    document.getElementById('__ocv_r_insert').onclick = function() {
+    document.getElementById('__mw_r_insert').onclick = function() {
       if (!pendingData) return;
       var json = encodeURIComponent(JSON.stringify(pendingData));
       dismissResult();
-      window.location.href = 'ocv-bridge://element-selected#' + json;
+      window.location.href = 'mw-bridge://element-selected#' + json;
     };
-    document.getElementById('__ocv_r_pick').onclick = function() {
+    document.getElementById('__mw_r_pick').onclick = function() {
       dismissResult();
       activate();
     };
-    document.getElementById('__ocv_r_dismiss').onclick = dismissResult;
+    document.getElementById('__mw_r_dismiss').onclick = dismissResult;
   }
 
   function removeResult() {
-    var el = document.getElementById('__ocv_result');
+    var el = document.getElementById('__mw_result');
     if (el) el.remove();
     resultPanel = null;
   }
 
   // ── Picker logic ──
 
-  function isOcvEl(el) {
+  function isMwEl(el) {
     if (!el) return false;
-    return el.closest('#__ocv_toolbar') || el.closest('#__ocv_result') ||
-      el.id === '__ocv_overlay' || el.id === '__ocv_label';
+    return el.closest('#__mw_toolbar') || el.closest('#__mw_result') ||
+      el.id === '__mw_overlay' || el.id === '__mw_label';
   }
 
   function onMove(e) {
@@ -225,14 +225,14 @@
       rafPending = false;
       if (!active) return;
       var el = document.elementFromPoint(x, y);
-      if (el && !isOcvEl(el)) highlight(el);
+      if (el && !isMwEl(el)) highlight(el);
     });
   }
 
   function onClick(e) {
     if (!active) return;
     var el = document.elementFromPoint(e.clientX, e.clientY);
-    if (!el || isOcvEl(el)) return;
+    if (!el || isMwEl(el)) return;
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
@@ -262,9 +262,9 @@
     document.removeEventListener('mousemove', onMove, true);
     document.removeEventListener('click', onClick, true);
     hideOverlay();
-    var ov = document.getElementById('__ocv_overlay');
+    var ov = document.getElementById('__mw_overlay');
     if (ov) ov.remove();
-    var lb = document.getElementById('__ocv_label');
+    var lb = document.getElementById('__mw_label');
     if (lb) lb.remove();
     overlay = null;
     labelEl = null;
@@ -281,5 +281,5 @@
   }
   init();
 
-  window.__ocvPicker = { activate: activate, deactivate: deactivate };
+  window.__mwPicker = { activate: activate, deactivate: deactivate };
 })();

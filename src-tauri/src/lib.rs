@@ -71,12 +71,12 @@ pub fn run() {
     // Initialize logging — our crate at debug level by default
     // Override with RUST_LOG env var, e.g. RUST_LOG=warn cargo tauri dev
     env_logger::Builder::from_env(
-        env_logger::Env::default().default_filter_or("opencovibe_desktop_lib=debug,warn"),
+        env_logger::Env::default().default_filter_or("miwarp_desktop_lib=debug,warn"),
     )
     .format_timestamp_millis()
     .init();
 
-    log::info!("OpenCovibe Desktop starting");
+    log::info!("MiWarp Desktop starting");
 
     // Set up Windows Job Object so child processes are killed on crash/force-quit.
     // No-op on non-Windows.
@@ -277,6 +277,11 @@ pub fn run() {
             commands::web_server::get_local_ip,
             commands::preview::open_preview_window,
             commands::preview::close_preview_window,
+            commands::background::get_background_settings,
+            commands::background::set_background_global,
+            commands::background::set_background_session,
+            commands::background::clear_background_session,
+            commands::background::pick_background_image,
         ])
         .setup(move |app| {
             // Set up broadcast emitter (requires AppHandle, so must be in setup)

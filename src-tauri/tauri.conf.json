@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicegui/nicegui/main/.github/schemas/tauri-v2.json",
-  "productName": "OpenCovibe",
+  "productName": "MiWarp",
   "version": "0.1.58",
-  "identifier": "com.opencovibe.desktop",
+  "identifier": "com.miwarp.desktop",
   "build": {
     "frontendDist": "../build",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "OpenCovibe",
+        "title": "MiWarp",
         "width": 1280,
         "height": 800,
         "minWidth": 900,
@@ -39,7 +39,7 @@
     ],
     "category": "DeveloperTool",
     "shortDescription": "AI-assisted vibe coding desktop app",
-    "longDescription": "OpenCovibe wraps AI coding CLIs (Claude Code, Codex) with a visual chat interface, run management, and activity monitoring. Local-first, no cloud required.",
+    "longDescription": "MiWarp wraps AI coding CLIs (Claude Code, Codex) with a visual chat interface, run management, and activity monitoring. Local-first, no cloud required.",
     "macOS": {
       "entitlements": "entitlements.plist",
       "minimumSystemVersion": "13.0"

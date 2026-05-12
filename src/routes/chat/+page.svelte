@@ -58,6 +58,7 @@
   import type { PromptInputSnapshot } from "$lib/types";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
   import HookReviewCard from "$lib/components/HookReviewCard.svelte";
+  import ViewModeToggle from "$lib/components/ViewModeToggle.svelte";
   import ContextUsageGrid from "$lib/components/ContextUsageGrid.svelte";
   import CostSummaryView from "$lib/components/CostSummaryView.svelte";
   import { parseContextMarkdown } from "$lib/utils/context-parser";
@@ -4130,6 +4131,10 @@
                   </div>
                 </div>
               {/if}
+              <!-- View mode toggle (Normal / Verbose / Summary) -->
+              <div class="chat-content-width pb-1" data-export-exclude>
+                <ViewModeToggle />
+              </div>
               {#if filteredTimeline.length - renderLimit > 0}
                 <div bind:this={topSentinel} aria-hidden="true" class="h-px w-full"></div>
               {/if}

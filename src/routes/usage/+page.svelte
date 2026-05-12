@@ -18,7 +18,7 @@
   let heatmapDaily = $state<DailyAggregate[] | null>(null);
   let heatmapRequestId = 0;
 
-  /** "app" = OpenCovibe runs only, "global" = all Claude Code sessions */
+  /** "app" = MiWarp runs only, "global" = all Claude Code sessions */
   let scope = $state<"app" | "global">("global");
 
   /** Monotonic counter to discard stale responses on rapid tab switching. */
