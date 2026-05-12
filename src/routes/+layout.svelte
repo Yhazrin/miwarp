@@ -1153,7 +1153,7 @@
       }
     } else {
       // Explicit dark/light: apply via themeStore so data-theme is also set
-      themeStore.setTheme(themeMode === "dark" ? "warp-dark" : "warp-light");
+      themeStore.setTheme(themeMode === "dark" ? "codex" : "codex-light");
     }
   }
 
@@ -1164,7 +1164,7 @@
 
   // Persist theme + sync with themeStore
   // Only apply dark class here once themeStore has loaded from localStorage,
-  // to avoid overriding a saved custom theme with the default warp-dark on first render.
+  // to avoid overriding a saved custom theme with the default codex on first render.
   $effect(() => {
     localStorage.setItem("ocv:theme", themeMode);
     if (themeStore.initialized) {
@@ -1315,7 +1315,11 @@
       >
         <!-- Rail logo (OC) -->
         <div class="flex h-14 w-full items-center justify-center border-b border-sidebar-border">
-          <img src="/logo.png?v=2" alt="OC" class="h-8 w-8 rounded-lg" />
+          {#if effectiveDark}
+            <img src="/logo-dark.png?v=2" alt="OC" class="h-8 w-8 rounded-lg" />
+          {:else}
+            <img src="/logo-light.png?v=2" alt="OC" class="h-8 w-8 rounded-lg" />
+          {/if}
         </div>
 
         <!-- Rail nav icons -->

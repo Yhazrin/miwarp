@@ -808,3 +808,9 @@ code.hljs {
     max-width: 92rem; /* 1472px */
   }
 }
+
+/* Theme-aware logo — show dark icon in dark mode, light icon in light mode */
+html.dark img.logo-dark,
+html:not(.dark) img.logo-light {
+  display: none;
+}

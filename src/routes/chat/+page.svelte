@@ -3978,7 +3978,15 @@
             <div class="flex h-full items-center justify-center">
               <div class="flex flex-col items-center max-w-sm">
                 <div class="text-center animate-slide-up">
-                  <img src="/logo.png?v=2" alt="OC" class="mx-auto mb-4 h-12 w-12 rounded-2xl" />
+                  <img
+                    src="/logo-dark.png?v=2"
+                    alt="OC"
+                    class="logo-dark mx-auto mb-4 h-12 w-12 rounded-2xl"
+                  /><img
+                    src="/logo-light.png?v=2"
+                    alt="OC"
+                    class="logo-light mx-auto mb-4 h-12 w-12 rounded-2xl"
+                  />
                   <h2 class="text-lg font-semibold text-primary mb-1">{t("layout_appName")}</h2>
                   {#if !store.run}
                     {@const welcomeCwd =
@@ -4601,7 +4609,15 @@
         <!-- CLI mode: welcome state -->
         <div class="flex h-full items-center justify-center">
           <div class="text-center max-w-md animate-slide-up">
-            <img src="/logo.png?v=2" alt="OC" class="mx-auto mb-4 h-12 w-12 rounded-2xl" />
+            <img
+              src="/logo-dark.png?v=2"
+              alt="OC"
+              class="logo-dark mx-auto mb-4 h-12 w-12 rounded-2xl"
+            /><img
+              src="/logo-light.png?v=2"
+              alt="OC"
+              class="logo-light mx-auto mb-4 h-12 w-12 rounded-2xl"
+            />
             <h2 class="text-lg font-semibold text-primary mb-2">{t("layout_appName")}</h2>
             <p class="text-sm text-muted-foreground mb-4">
               {store.run ? t("chat_typeToStartSession") : t("chat_startSessionHint")}
