@@ -81,8 +81,8 @@ pub async fn run_agent(
     let pid = child.id().unwrap_or(0);
     log::debug!("[stream] spawned process: run_id={}, pid={}", run_id, pid);
 
-    let stdout = child.stdout.take().unwrap();
-    let stderr = child.stderr.take().unwrap();
+    let stdout = child.stdout.take().ok_or("stdout not piped")?;
+    let stderr = child.stderr.take().ok_or("stderr not piped")?;
 
     // Store child for stop_run
     {
