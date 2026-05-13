@@ -594,6 +594,14 @@
     loadAgentSettingsCache();
     themeStore.init();
 
+    // Wire up traffic light buttons (frameless window)
+    import("@tauri-apps/api/window").then(({ getCurrentWindow }) => {
+      const win = getCurrentWindow();
+      (window as unknown as Record<string, unknown>).__tauriClose = () => win.close();
+      (window as unknown as Record<string, unknown>).__tauriMinimize = () => win.minimize();
+      (window as unknown as Record<string, unknown>).__tauriMaximize = () => win.toggleMaximize();
+    });
+
     // Load saved CWD and pinned folders from localStorage
     const saved = localStorage.getItem("ocv:project-cwd");
     if (saved) projectCwd = normalizeCwd(saved) || "";

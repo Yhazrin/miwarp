@@ -2,9 +2,9 @@
  * Background customization types for MiWarp terminal/chat area.
  */
 
-export type SizingMode = 'stretch' | 'fill' | 'fit' | 'tile' | 'cover';
+export type SizingMode = "stretch" | "fill" | "fit" | "tile" | "cover";
 
-export type BackgroundScope = 'global' | 'session';
+export type BackgroundScope = "global" | "session";
 
 export interface BackgroundConfig {
   /** Image URL or local file path */
@@ -33,14 +33,14 @@ export interface BackgroundSettings {
 }
 
 export const DEFAULT_BACKGROUND: BackgroundConfig = {
-  imageUrl: '',
+  imageUrl: "",
   opacity: 30,
   blur: 0,
   positionX: 50,
   positionY: 50,
-  sizingMode: 'cover',
-  colorOverlay: '',
-  scope: 'global',
+  sizingMode: "cover",
+  colorOverlay: "",
+  scope: "global",
 };
 
 export const DEFAULT_BACKGROUND_SETTINGS: BackgroundSettings = {

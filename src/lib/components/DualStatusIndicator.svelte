@@ -1,29 +1,29 @@
 <script lang="ts">
   let {
-    state = 'idle',
-    processStatus = 'active',
-    size = 'sm',
+    state = "idle",
+    processStatus = "active",
+    size = "sm",
     label,
   }: {
-    state?: 'running' | 'needs-input' | 'idle' | 'completed' | 'failed' | 'stopped';
-    processStatus?: 'active' | 'exited' | 'sleeping';
-    size?: 'xs' | 'sm' | 'md';
+    state?: "running" | "needs-input" | "idle" | "completed" | "failed" | "stopped";
+    processStatus?: "active" | "exited" | "sleeping";
+    size?: "xs" | "sm" | "md";
     label?: string;
   } = $props();
 
   const stateColors: Record<string, string> = {
-    'running': 'hsl(var(--miwarp-status-info))',
-    'needs-input': 'hsl(var(--miwarp-status-warning))',
-    'idle': 'hsl(var(--muted-foreground))',
-    'completed': 'hsl(var(--miwarp-status-success))',
-    'failed': 'hsl(var(--miwarp-status-error))',
-    'stopped': 'hsl(var(--muted-foreground))',
+    running: "hsl(var(--miwarp-status-info))",
+    "needs-input": "hsl(var(--miwarp-status-warning))",
+    idle: "hsl(var(--muted-foreground))",
+    completed: "hsl(var(--miwarp-status-success))",
+    failed: "hsl(var(--miwarp-status-error))",
+    stopped: "hsl(var(--muted-foreground))",
   };
 
   const sizes: Record<string, number> = { xs: 10, sm: 12, md: 16 };
   const currentSize = $derived(sizes[size]);
   const color = $derived(stateColors[state]);
-  const isActive = $derived(state === 'running' || state === 'needs-input');
+  const isActive = $derived(state === "running" || state === "needs-input");
 </script>
 
 <span
@@ -34,7 +34,7 @@
   aria-label={label || `Status: ${state}, Process: ${processStatus}`}
   title={label || `${state} (${processStatus})`}
 >
-  {#if processStatus === 'exited'}
+  {#if processStatus === "exited"}
     <!-- Small dot for exited processes -->
     <span
       class="inline-block rounded-full"
@@ -43,7 +43,7 @@
       style:background={color}
       style:opacity="0.6"
     ></span>
-  {:else if processStatus === 'sleeping'}
+  {:else if processStatus === "sleeping"}
     <!-- Diamond for loop/sleeping -->
     <span
       class="inline-block"

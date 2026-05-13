@@ -6,12 +6,7 @@
     onClear?: () => void;
   }
 
-  let {
-    placeholder = 'Search sessions...',
-    value = '',
-    onSearch,
-    onClear,
-  }: Props = $props();
+  let { placeholder = "Search sessions...", value = "", onSearch, onClear }: Props = $props();
 
   let query = $state(value);
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -29,14 +24,14 @@
   }
 
   function clear() {
-    query = '';
-    onSearch?.('');
+    query = "";
+    onSearch?.("");
     onClear?.();
     inputEl?.focus();
   }
 
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape' && query) {
+    if (e.key === "Escape" && query) {
       e.preventDefault();
       clear();
     }

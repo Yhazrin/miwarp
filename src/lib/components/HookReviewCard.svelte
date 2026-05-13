@@ -35,7 +35,9 @@
 </script>
 
 {#if hookEvent.status === "hook_pending" && hookEvent.request_id}
-  <div class="rounded-lg border border-miwarp-status-warning/30 bg-miwarp-status-warning/10 p-3 my-2">
+  <div
+    class="rounded-lg border border-miwarp-status-warning/30 bg-miwarp-status-warning/10 p-3 my-2"
+  >
     <div class="flex items-center gap-2 mb-2">
       <div class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></div>
       <span class="text-sm font-medium text-miwarp-status-warning"

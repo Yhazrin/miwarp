@@ -8,24 +8,27 @@
 export interface ThemeDefinition {
   id: string;
   name: string;
-  type: 'dark' | 'light';
+  type: "dark" | "light";
   accent: string; // primary accent color for preview swatches
 }
 
 const BUILTIN_THEMES: ThemeDefinition[] = [
-  { id: 'warp-dark', name: 'Warp Dark', type: 'dark', accent: '#6366F1' },
-  { id: 'warp-light', name: 'Warp Light', type: 'light', accent: '#6366F1' },
-  { id: 'midnight', name: 'Midnight', type: 'dark', accent: '#3B82F6' },
-  { id: 'ocean', name: 'Ocean', type: 'dark', accent: '#0EA5E9' },
-  { id: 'dracula', name: 'Dracula', type: 'dark', accent: '#BD93F9' },
-  { id: 'nord', name: 'Nord', type: 'dark', accent: '#5E81AC' },
+  { id: "codex", name: "Codex Dark", type: "dark", accent: "#33A6FF" },
+  { id: "codex-light", name: "Codex Light", type: "light", accent: "#33A6FF" },
+  { id: "midnight", name: "Midnight", type: "dark", accent: "#3B82F6" },
+  { id: "ocean", name: "Ocean", type: "dark", accent: "#0EA5E9" },
+  { id: "dracula", name: "Dracula", type: "dark", accent: "#BD93F9" },
+  { id: "nord", name: "Nord", type: "dark", accent: "#5E81AC" },
+  { id: "morandi", name: "Morandi", type: "dark", accent: "#A67FA3" },
+  { id: "dev-preview", name: "Dev Preview", type: "dark", accent: "#26C2A3" },
+  { id: "dev-preview-light", name: "Dev Preview Light", type: "light", accent: "#26C2A3" },
 ];
 
 export type ThemeId = string;
 
 class ThemeStore {
   /** Currently active global theme ID */
-  currentTheme = $state<ThemeId>('warp-dark');
+  currentTheme = $state<ThemeId>("codex");
 
   /** All available themes (built-in + custom) */
   themes = $state<ThemeDefinition[]>([...BUILTIN_THEMES]);
@@ -38,8 +41,8 @@ class ThemeStore {
 
   /** Light or dark mode derived from current theme */
   get isDark(): boolean {
-    const theme = this.themes.find(t => t.id === this.currentTheme);
-    return theme?.type === 'dark';
+    const theme = this.themes.find((t) => t.id === this.currentTheme);
+    return theme?.type === "dark";
   }
 
   /** Get the effective theme for a given session */
@@ -78,10 +81,10 @@ class ThemeStore {
 
   /** Remove a custom theme (cannot remove built-in) */
   removeCustomTheme(themeId: ThemeId) {
-    if (BUILTIN_THEMES.some(t => t.id === themeId)) return;
-    this.themes = this.themes.filter(t => t.id !== themeId);
+    if (BUILTIN_THEMES.some((t) => t.id === themeId)) return;
+    this.themes = this.themes.filter((t) => t.id !== themeId);
     if (this.currentTheme === themeId) {
-      this.setTheme('warp-dark');
+      this.setTheme("codex");
     }
     this._persistSettings();
   }
@@ -92,12 +95,10 @@ class ThemeStore {
       {
         currentTheme: this.currentTheme,
         sessionThemes: Object.fromEntries(this.sessionThemes),
-        customThemes: this.themes.filter(
-          t => !BUILTIN_THEMES.some(b => b.id === t.id)
-        ),
+        customThemes: this.themes.filter((t) => !BUILTIN_THEMES.some((b) => b.id === t.id)),
       },
       null,
-      2
+      2,
     );
   }
 
@@ -117,14 +118,14 @@ class ThemeStore {
       }
       this._applyTheme(this.currentTheme);
     } catch {
-      console.warn('Failed to import theme config');
+      console.warn("Failed to import theme config");
     }
   }
 
   /** Initialize: load persisted settings and apply theme */
   async init() {
     try {
-      const stored = localStorage.getItem('miwarp-theme');
+      const stored = localStorage.getItem("miwarp-theme");
       if (stored) {
         const config = JSON.parse(stored);
         if (config.currentTheme) this.currentTheme = config.currentTheme;
@@ -143,33 +144,31 @@ class ThemeStore {
   }
 
   private _applyTheme(themeId: ThemeId) {
-    if (typeof document === 'undefined') return;
+    if (typeof document === "undefined") return;
     const root = document.documentElement;
-    const theme = this.themes.find(t => t.id === themeId);
+    const theme = this.themes.find((t) => t.id === themeId);
 
-    root.setAttribute('data-theme', themeId);
+    root.setAttribute("data-theme", themeId);
 
     // Also toggle dark class for legacy compatibility
-    if (theme?.type === 'dark') {
-      root.classList.add('dark');
-      root.classList.remove('light');
+    if (theme?.type === "dark") {
+      root.classList.add("dark");
+      root.classList.remove("light");
     } else {
-      root.classList.remove('dark');
-      root.classList.add('light');
+      root.classList.remove("dark");
+      root.classList.add("light");
     }
   }
 
   private _persistSettings() {
     try {
       localStorage.setItem(
-        'miwarp-theme',
+        "miwarp-theme",
         JSON.stringify({
           currentTheme: this.currentTheme,
           sessionThemes: Object.fromEntries(this.sessionThemes),
-          customThemes: this.themes.filter(
-            t => !BUILTIN_THEMES.some(b => b.id === t.id)
-          ),
-        })
+          customThemes: this.themes.filter((t) => !BUILTIN_THEMES.some((b) => b.id === t.id)),
+        }),
       );
     } catch {
       // localStorage may be unavailable

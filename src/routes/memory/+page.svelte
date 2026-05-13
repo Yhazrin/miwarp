@@ -8,6 +8,8 @@
   import CodeEditor from "$lib/components/CodeEditor.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbgWarn } from "$lib/utils/debug";
+  import { memoryStore } from "$lib/stores/memory-store.svelte";
+  import { getMemoryStats, parseFrontmatter } from "$lib/services/memory-service";
 
   let viewMode = $state<"edit" | "preview">("edit");
   let content = $state("");
@@ -32,6 +34,13 @@
     typeof window !== "undefined" ? (localStorage.getItem("ocv:project-cwd") ?? "") : "",
   );
 
+  // Memory stats display
+  let memoryStats = $state<{
+    wordCount: number;
+    lineCount: number;
+    hasFrontmatter: boolean;
+  } | null>(null);
+
   let currentPath = $derived(customFile || selectedFile);
 
   // Page title: show filename for custom file, otherwise file label
@@ -54,6 +63,20 @@
         detail: { path: currentPath, dirty: isDirty },
       }),
     );
+  });
+
+  // Update memory stats when content changes
+  $effect(() => {
+    if (content) {
+      const stats = getMemoryStats(content);
+      memoryStats = {
+        wordCount: stats.wordCount,
+        lineCount: stats.lineCount,
+        hasFrontmatter: stats.hasFrontmatter,
+      };
+    } else {
+      memoryStats = null;
+    }
   });
 
   // --- Sequence guards for race condition protection ---
@@ -110,12 +133,17 @@
     try {
       const candidates = await api.listMemoryFiles(projectCwd || undefined);
       if (seq !== autoSelectSeq) return; // stale — discard
+
+      // Update memory store with candidates
+      memoryStore["_candidates"] = candidates;
+
       // Prefer first existing project file
       const existing = candidates.find((f) => f.exists && f.scope === "project");
       const fallback = candidates.find((f) => f.exists) ?? candidates[0];
       const pick = existing ?? fallback;
       if (pick) {
         selectedFile = pick.path;
+        memoryStore.setSelectedPath(pick.path);
         // Sync sidebar highlight — but only when not in customFile mode,
         // otherwise the sidebar would highlight a file the editor isn't showing.
         if (!customFile) {
@@ -264,6 +292,7 @@
     try {
       await api.writeTextFile(path, content, saveCwd || undefined);
       savedContent = content;
+      memoryStore.setSavedContent(content);
       // Notify layout to refresh candidates (updates exists status in sidebar)
       window.dispatchEvent(new Event("ocv:memory-file-saved"));
       toastFading = false;
@@ -271,6 +300,55 @@
       setTimeout(() => {
         toastFading = true;
         setTimeout(() => (toastVisible = false), 250);
+      }, 2500);
+    } catch (e) {
+      error = String(e);
+    } finally {
+      saving = false;
+    }
+  }
+
+  /**
+   * Consolidate memory files: merge duplicates, fix stale entries, update index.
+   */
+  async function consolidateMemory() {
+    if (!confirm("Consolidate memory files? This will merge duplicates and update the index.")) {
+      return;
+    }
+    saving = true;
+    error = "";
+    try {
+      const result = await memoryStore.consolidateMemory();
+      if (result.errors.length > 0) {
+        error = result.errors.join(", ");
+      } else {
+        toastFading = false;
+        toastVisible = true;
+        setTimeout(() => {
+          toastFading = true;
+          setTimeout(() => (toastVisible = false), 2500);
+        }, 2500);
+      }
+    } catch (e) {
+      error = String(e);
+    } finally {
+      saving = false;
+    }
+  }
+
+  /**
+   * Sync memory state across sessions.
+   */
+  async function syncMemory() {
+    saving = true;
+    error = "";
+    try {
+      await memoryStore.syncMemory();
+      toastFading = false;
+      toastVisible = true;
+      setTimeout(() => {
+        toastFading = true;
+        setTimeout(() => (toastVisible = false), 2500);
       }, 2500);
     } catch (e) {
       error = String(e);
@@ -416,17 +494,49 @@
 
   <!-- Bottom action bar -->
   {#if currentPath && !loading}
-    <div class="flex items-center gap-3 border-t px-4 py-2 shrink-0">
-      <Button onclick={save} loading={saving}>
-        {#snippet children()}
-          {t("common_save")}
-        {/snippet}
-      </Button>
-      <Button variant="outline" onclick={loadContent}>
-        {#snippet children()}
-          {t("memory_reload")}
-        {/snippet}
-      </Button>
+    <div class="flex items-center justify-between border-t px-4 py-2 shrink-0">
+      <div class="flex items-center gap-2">
+        <Button onclick={save} loading={saving}>
+          {#snippet children()}
+            {t("common_save")}
+          {/snippet}
+        </Button>
+        <Button variant="outline" onclick={loadContent}>
+          {#snippet children()}
+            {t("memory_reload")}
+          {/snippet}
+        </Button>
+      </div>
+      <div class="flex items-center gap-2">
+        {#if memoryStats}
+          <span class="text-xs text-muted-foreground">
+            {memoryStats.wordCount} words, {memoryStats.lineCount} lines
+            {#if memoryStats.hasFrontmatter}
+              <span class="ml-1 text-primary" title="Has frontmatter">*</span>
+            {/if}
+          </span>
+        {/if}
+        <Button
+          variant="outline"
+          size="sm"
+          onclick={consolidateMemory}
+          loading={memoryStore.consolidating}
+        >
+          {#snippet children()}
+            Consolidate
+          {/snippet}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onclick={syncMemory}
+          loading={memoryStore.syncState.syncInProgress}
+        >
+          {#snippet children()}
+            Sync
+          {/snippet}
+        </Button>
+      </div>
     </div>
   {/if}
 </div>

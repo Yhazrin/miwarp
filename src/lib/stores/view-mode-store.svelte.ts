@@ -7,13 +7,13 @@
  * - summary: only significant tool calls visible (hides intermediate Read/Grep/Glob etc.)
  */
 
-export type ViewMode = 'normal' | 'verbose' | 'summary';
+export type ViewMode = "normal" | "verbose" | "summary";
 
 class ViewModeStore {
-  mode = $state<ViewMode>('normal');
+  mode = $state<ViewMode>("normal");
 
   cycle() {
-    const modes: ViewMode[] = ['normal', 'verbose', 'summary'];
+    const modes: ViewMode[] = ["normal", "verbose", "summary"];
     const idx = modes.indexOf(this.mode);
     this.mode = modes[(idx + 1) % modes.length];
   }
@@ -23,15 +23,15 @@ class ViewModeStore {
   }
 
   get isNormal() {
-    return this.mode === 'normal';
+    return this.mode === "normal";
   }
 
   get isVerbose() {
-    return this.mode === 'verbose';
+    return this.mode === "verbose";
   }
 
   get isSummary() {
-    return this.mode === 'summary';
+    return this.mode === "summary";
   }
 }
 

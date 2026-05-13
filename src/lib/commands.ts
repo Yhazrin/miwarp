@@ -286,3 +286,58 @@ export const categoryLabels: Record<CommandCategory, string> = {
   settings: "Settings",
   diagnostics: "Diagnostics",
 };
+
+// 多 Agent 命令
+export const multiAgentCommands: CommandDef[] = [
+  {
+    id: "multi",
+    name: "multi",
+    description: "多 Agent 并行执行",
+    category: "system",
+    keywords: ["multi", "parallel", "agent", "并行", "多"],
+    action: "panel:multi-agent",
+  },
+  {
+    id: "fullstack",
+    name: "fullstack",
+    description: "全栈开发模式（前端+后端+数据库）",
+    category: "system",
+    keywords: ["fullstack", "frontend", "backend", "全栈"],
+    action: "preset:fullstack",
+  },
+  {
+    id: "review-all",
+    name: "review-all",
+    description: "全面代码审查（安全+性能+风格）",
+    category: "system",
+    keywords: ["review", "code", "audit", "审查"],
+    action: "preset:review",
+  },
+  {
+    id: "implement-all",
+    name: "implement-all",
+    description: "实现多个功能模块",
+    category: "system",
+    keywords: ["implement", "feature", "develop", "实现"],
+    action: "preset:upgrade",
+  },
+  {
+    id: "test-all",
+    name: "test-all",
+    description: "全面测试（单元+集成+E2E）",
+    category: "system",
+    keywords: ["test", "unit", "e2e", "测试"],
+    action: "preset:test",
+  },
+  {
+    id: "docs-all",
+    name: "docs-all",
+    description: "生成所有文档（API+README+CHANGELOG）",
+    category: "system",
+    keywords: ["docs", "document", "readme", "文档"],
+    action: "preset:docs",
+  },
+];
+
+// 添加到所有命令
+allCommands.push(...multiAgentCommands);

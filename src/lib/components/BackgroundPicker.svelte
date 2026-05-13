@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { backgroundStore } from '../stores/background-store.svelte';
-  import type { SizingMode, BackgroundConfig } from '../types/background';
+  import { backgroundStore } from "../stores/background-store.svelte";
+  import type { SizingMode, BackgroundConfig } from "../types/background";
 
   interface Props {
     /** Session ID for per-session override, or empty for global */
@@ -9,21 +9,21 @@
     onChange?: () => void;
   }
 
-  let { sessionId = '', onChange }: Props = $props();
+  let { sessionId = "", onChange }: Props = $props();
 
   let config = $derived(
-    sessionId ? backgroundStore.getForSession(sessionId) : backgroundStore.global
+    sessionId ? backgroundStore.getForSession(sessionId) : backgroundStore.global,
   );
 
   let previewStyle = $derived(backgroundStore.getStyle(sessionId || undefined));
   let overlayStyle = $derived(backgroundStore.getOverlayStyle(sessionId || undefined));
 
   const sizingModes: { value: SizingMode; label: string }[] = [
-    { value: 'cover', label: 'Cover' },
-    { value: 'fill', label: 'Fill' },
-    { value: 'fit', label: 'Fit' },
-    { value: 'stretch', label: 'Stretch' },
-    { value: 'tile', label: 'Tile' },
+    { value: "cover", label: "Cover" },
+    { value: "fill", label: "Fill" },
+    { value: "fit", label: "Fit" },
+    { value: "stretch", label: "Stretch" },
+    { value: "tile", label: "Tile" },
   ];
 
   function update(partial: Partial<BackgroundConfig>) {
@@ -37,9 +37,9 @@
 
   function handleImagePick() {
     // Trigger native file dialog via Tauri if available
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
@@ -67,20 +67,14 @@
     style="background: hsl(var(--miwarp-bg-deepest));"
   >
     {#if config.imageUrl}
-      <div
-        class="absolute inset-0 z-0"
-        style={previewStyle}
-      ></div>
+      <div class="absolute inset-0 z-0" style={previewStyle}></div>
       {#if config.colorOverlay}
-        <div
-          class="absolute inset-0 z-[1]"
-          style={overlayStyle}
-        ></div>
+        <div class="absolute inset-0 z-[1]" style={overlayStyle}></div>
       {/if}
     {/if}
     <div class="absolute inset-0 z-[2] flex items-center justify-center">
       <span class="text-xs text-miwarp-text-secondary">
-        {config.imageUrl ? 'Preview' : 'No background set'}
+        {config.imageUrl ? "Preview" : "No background set"}
       </span>
     </div>
   </div>
@@ -133,9 +127,7 @@
   <!-- Blur -->
   <div class="space-y-1.5">
     <div class="flex items-center justify-between">
-      <label class="text-xs font-medium text-miwarp-text-secondary" for="bg-blur">
-        Blur
-      </label>
+      <label class="text-xs font-medium text-miwarp-text-secondary" for="bg-blur"> Blur </label>
       <span class="text-xs text-miwarp-text-tertiary">{config.blur}px</span>
     </div>
     <input
@@ -215,7 +207,7 @@
         id="bg-overlay"
         type="color"
         class="h-8 w-8 cursor-pointer rounded border border-border bg-transparent"
-        value={config.colorOverlay || '#000000'}
+        value={config.colorOverlay || "#000000"}
         oninput={(e) => update({ colorOverlay: (e.target as HTMLInputElement).value })}
       />
       <input
@@ -233,14 +225,14 @@
   <!-- Scope info + Reset -->
   <div class="flex items-center justify-between border-t border-border pt-3">
     <span class="text-xs text-miwarp-text-tertiary">
-      {sessionId ? 'Session override' : 'Global default'}
+      {sessionId ? "Session override" : "Global default"}
     </span>
     <button
       class="rounded-md px-3 py-1 text-xs text-miwarp-status-error
              transition-colors hover:bg-miwarp-status-error/10"
       onclick={handleReset}
     >
-      {sessionId ? 'Remove Override' : 'Reset to Default'}
+      {sessionId ? "Remove Override" : "Reset to Default"}
     </button>
   </div>
 </div>

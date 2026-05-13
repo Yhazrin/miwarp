@@ -70,7 +70,9 @@
     <!-- Header: icon + name + copy button + timestamp -->
     <div class="mb-1.5 flex items-center gap-2">
       {#if isUser}
-        <div class="flex h-5 w-5 items-center justify-center rounded-full accent-gradient text-white">
+        <div
+          class="flex h-5 w-5 items-center justify-center rounded-full accent-gradient text-white"
+        >
           <svg
             class="h-3 w-3"
             viewBox="0 0 24 24"

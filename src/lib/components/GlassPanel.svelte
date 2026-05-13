@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import type { Snippet } from "svelte";
 
   interface Props {
     /** Blur amount in pixels (default: 16) */
@@ -24,16 +24,16 @@
     opacity = 0.72,
     elevation = 1,
     bordered = true,
-    class: className = '',
+    class: className = "",
     accentLeft = false,
     glow = false,
     children,
   }: Props = $props();
 
   const shadowMap = {
-    1: '0 1px 3px hsla(0,0%,0%,0.3), 0 1px 2px hsla(0,0%,0%,0.2)',
-    2: '0 4px 12px hsla(0,0%,0%,0.35), 0 2px 4px hsla(0,0%,0%,0.2)',
-    3: '0 8px 24px hsla(0,0%,0%,0.4), 0 4px 8px hsla(0,0%,0%,0.25)',
+    1: "0 1px 3px hsla(0,0%,0%,0.3), 0 1px 2px hsla(0,0%,0%,0.2)",
+    2: "0 4px 12px hsla(0,0%,0%,0.35), 0 2px 4px hsla(0,0%,0%,0.2)",
+    3: "0 8px 24px hsla(0,0%,0%,0.4), 0 4px 8px hsla(0,0%,0%,0.25)",
   };
 </script>
 
@@ -46,8 +46,8 @@
     -webkit-backdrop-filter: blur({blur}px);
     background: hsla(var(--miwarp-glass-bg), {opacity});
     {bordered
-      ? 'border: 1px solid hsla(var(--miwarp-glass-border), var(--miwarp-glass-border-opacity, 0.12));'
-      : 'border: none;'}
+    ? 'border: 1px solid hsla(var(--miwarp-glass-border), var(--miwarp-glass-border-opacity, 0.12));'
+    : 'border: none;'}
     box-shadow: {shadowMap[elevation]};
     border-radius: var(--radius);
     transition: box-shadow 200ms ease-out, border-color 200ms ease-out;

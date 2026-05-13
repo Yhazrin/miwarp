@@ -565,7 +565,9 @@
             {/if}
           {/if}
           {#if bashResult.interrupted}
-            <div class="mt-1 text-[hsl(var(--miwarp-status-warning)/0.8)] text-[10px]">{t("tool_interrupted")}</div>
+            <div class="mt-1 text-[hsl(var(--miwarp-status-warning)/0.8)] text-[10px]">
+              {t("tool_interrupted")}
+            </div>
           {/if}
         {:else if outputText}
           {#if outputHtml}
@@ -575,7 +577,8 @@
           {/if}
         {/if}
         {#if isInputStreaming || tool.status === "running"}
-          <span class="inline-block w-1.5 h-3 ml-0.5 bg-[hsl(var(--miwarp-status-success)/0.5)] animate-pulse align-middle"
+          <span
+            class="inline-block w-1.5 h-3 ml-0.5 bg-[hsl(var(--miwarp-status-success)/0.5)] animate-pulse align-middle"
           ></span>
         {/if}
         <button
@@ -1076,7 +1079,9 @@
     <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
       <div class="text-xs text-muted-foreground">
         {#if tool.input?.subagent_type}
-          <span class="text-[hsl(var(--miwarp-status-info))] font-medium">{tool.input.subagent_type}</span>
+          <span class="text-[hsl(var(--miwarp-status-info))] font-medium"
+            >{tool.input.subagent_type}</span
+          >
         {/if}
         {#if tool.input?.prompt}
           <span class="ml-1 truncate">{tool.input.prompt}</span>

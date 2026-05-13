@@ -3,8 +3,8 @@
 version = 4
 
 [[package]]
-name = "OpenCovibe"
-version = "0.1.56"
+name = "MiWarp"
+version = "0.1.58"
 dependencies = [
  "axum",
  "base64 0.22.1",

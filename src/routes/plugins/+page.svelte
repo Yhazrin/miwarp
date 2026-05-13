@@ -30,6 +30,9 @@
   import McpConfiguredPanel from "$lib/components/McpConfiguredPanel.svelte";
   import HookManager from "$lib/components/HookManager.svelte";
   import AgentsPanel from "$lib/components/AgentsPanel.svelte";
+  import PluginCard from "$lib/components/PluginCard.svelte";
+  import PluginInstaller from "$lib/components/PluginInstaller.svelte";
+  import { pluginStore } from "$lib/stores/plugin-store.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import type {
     MarketplacePlugin,
@@ -112,6 +115,9 @@
   let communityDetailLoading = $state(false);
   let communityDetailError = $state<string | null>(null);
   let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Plugin installer modal
+  let showInstaller = $state(false);
 
   let communityDisplayResults = $derived(
     communityQuery.trim().length >= 2 ? communityResults : communityPopular,
@@ -1530,6 +1536,13 @@
               bind:value={searchQuery}
             />
           </div>
+          <!-- Guided Install Button -->
+          <button
+            class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
+            onclick={() => (showInstaller = true)}
+          >
+            {t("plugin_guidedInstall")}
+          </button>
           <select
             class="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             value={selectedCategory ?? ""}
@@ -1915,3 +1928,14 @@
     </div>
   {/if}
 </div>
+
+<!-- Plugin Installer Modal -->
+{#if showInstaller}
+  <PluginInstaller
+    {plugins}
+    {marketplaces}
+    {projectCwd}
+    onInstall={handleInstall}
+    onCancel={() => (showInstaller = false)}
+  />
+{/if}

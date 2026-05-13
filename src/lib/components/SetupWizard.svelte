@@ -410,7 +410,9 @@
         {/if}
 
         {#if error}
-          <div class="rounded-lg border border-miwarp-status-error/30 bg-miwarp-status-error/10 p-3 w-full max-w-sm">
+          <div
+            class="rounded-lg border border-miwarp-status-error/30 bg-miwarp-status-error/10 p-3 w-full max-w-sm"
+          >
             <p class="text-sm text-red-500">{error}</p>
           </div>
         {/if}
@@ -539,7 +541,9 @@
             </p>
 
             {#if error}
-              <div class="rounded-lg border border-miwarp-status-error/30 bg-miwarp-status-error/10 p-2">
+              <div
+                class="rounded-lg border border-miwarp-status-error/30 bg-miwarp-status-error/10 p-2"
+              >
                 <p class="text-xs text-red-500">{error}</p>
               </div>
             {/if}
@@ -566,7 +570,9 @@
     {:else if step === "done"}
       <!-- Done! -->
       <div class="flex flex-col items-center gap-4 py-16">
-        <div class="flex h-16 w-16 items-center justify-center rounded-full bg-miwarp-status-success/10">
+        <div
+          class="flex h-16 w-16 items-center justify-center rounded-full bg-miwarp-status-success/10"
+        >
           <svg
             class="h-8 w-8 text-green-500"
             viewBox="0 0 24 24"

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
-  import type { ProjectFolder, ConversationGroup } from '$lib/utils/sidebar-groups';
+  import type { Snippet } from "svelte";
+  import type { ProjectFolder, ConversationGroup } from "$lib/utils/sidebar-groups";
 
   interface Props {
     folder: ProjectFolder;
@@ -28,7 +28,7 @@
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.target !== e.currentTarget) return;
-    if (e.key === 'Enter' || e.key === ' ') {
+    if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onToggle?.();
     }
@@ -49,7 +49,9 @@
   >
     <!-- Chevron -->
     <svg
-      class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded ? 'rotate-90' : ''}"
+      class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded
+        ? 'rotate-90'
+        : ''}"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
@@ -96,7 +98,9 @@
     <!-- Count badge -->
     {#if showCount && folder.conversationCount > 0}
       <span
-        class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground {showRemove ? '' : 'ml-auto'}"
+        class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground {showRemove
+          ? ''
+          : 'ml-auto'}"
       >
         {folder.conversationCount}
       </span>
@@ -112,7 +116,7 @@
           onRemove?.();
         }}
         onkeydown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+          if (e.key === "Enter" || e.key === " ") {
             e.stopPropagation();
             e.preventDefault();
             onRemove?.();

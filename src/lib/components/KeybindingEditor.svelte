@@ -124,8 +124,9 @@
           >
         </button>
       {:else if conflictWarning && pendingKey}
-        <span class="text-[11px] text-miwarp-status-warning max-w-[160px] truncate" title={conflictWarning}
-          >{conflictWarning}</span
+        <span
+          class="text-[11px] text-miwarp-status-warning max-w-[160px] truncate"
+          title={conflictWarning}>{conflictWarning}</span
         >
         <button
           class="rounded p-1 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"

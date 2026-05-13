@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { themeStore, type ThemeId } from '../stores/theme-store.svelte';
+  import { themeStore, type ThemeId } from "../stores/theme-store.svelte";
 
   interface Props {
     /** Callback when theme changes */
@@ -8,58 +8,60 @@
 
   let { onChange }: Props = $props();
 
-  let customThemeName = $state('');
+  let customThemeName = $state("");
   let showImportExport = $state(false);
-  let importJson = $state('');
+  let importJson = $state("");
   let exportJson = $derived(themeStore.exportConfig());
 
   const colorGroups = [
     {
-      label: 'Backgrounds',
+      label: "Backgrounds",
       vars: [
-        { key: '--miwarp-bg-deepest', label: 'Deepest' },
-        { key: '--miwarp-bg-deep', label: 'Deep' },
-        { key: '--miwarp-bg-base', label: 'Base' },
-        { key: '--miwarp-bg-elevated', label: 'Elevated' },
-        { key: '--miwarp-bg-surface', label: 'Surface' },
-        { key: '--miwarp-bg-hover', label: 'Hover' },
+        { key: "--miwarp-bg-deepest", label: "Deepest" },
+        { key: "--miwarp-bg-deep", label: "Deep" },
+        { key: "--miwarp-bg-base", label: "Base" },
+        { key: "--miwarp-bg-elevated", label: "Elevated" },
+        { key: "--miwarp-bg-surface", label: "Surface" },
+        { key: "--miwarp-bg-hover", label: "Hover" },
       ],
     },
     {
-      label: 'Accent Colors',
+      label: "Accent Colors",
       vars: [
-        { key: '--miwarp-accent-primary', label: 'Primary' },
-        { key: '--miwarp-accent-violet', label: 'Violet' },
-        { key: '--miwarp-accent-blue', label: 'Blue' },
+        { key: "--miwarp-accent-primary", label: "Primary" },
+        { key: "--miwarp-accent-violet", label: "Violet" },
+        { key: "--miwarp-accent-blue", label: "Blue" },
       ],
     },
     {
-      label: 'Text',
+      label: "Text",
       vars: [
-        { key: '--miwarp-text-primary', label: 'Primary' },
-        { key: '--miwarp-text-secondary', label: 'Secondary' },
-        { key: '--miwarp-text-tertiary', label: 'Tertiary' },
+        { key: "--miwarp-text-primary", label: "Primary" },
+        { key: "--miwarp-text-secondary", label: "Secondary" },
+        { key: "--miwarp-text-tertiary", label: "Tertiary" },
       ],
     },
     {
-      label: 'Status',
+      label: "Status",
       vars: [
-        { key: '--miwarp-status-success', label: 'Success' },
-        { key: '--miwarp-status-warning', label: 'Warning' },
-        { key: '--miwarp-status-error', label: 'Error' },
-        { key: '--miwarp-status-info', label: 'Info' },
+        { key: "--miwarp-status-success", label: "Success" },
+        { key: "--miwarp-status-warning", label: "Warning" },
+        { key: "--miwarp-status-error", label: "Error" },
+        { key: "--miwarp-status-info", label: "Info" },
       ],
     },
   ];
 
   function getComputedHsl(varName: string): string {
-    if (typeof document === 'undefined') return '0 0% 50%';
-    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || '0 0% 50%';
+    if (typeof document === "undefined") return "0 0% 50%";
+    return (
+      getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || "0 0% 50%"
+    );
   }
 
   function hslToHex(hsl: string): string {
     const parts = hsl.match(/(\d+)\s+(\d+)%\s+(\d+)%/);
-    if (!parts) return '#888888';
+    if (!parts) return "#888888";
     const h = parseInt(parts[1]) / 360;
     const s = parseInt(parts[2]) / 100;
     const l = parseInt(parts[3]) / 100;
@@ -70,14 +72,14 @@
       const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
       return Math.round(255 * color)
         .toString(16)
-        .padStart(2, '0');
+        .padStart(2, "0");
     };
     return `#${f(0)}${f(8)}${f(4)}`;
   }
 
   function hexToHsl(hex: string): string {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    if (!result) return '0 0% 50%';
+    if (!result) return "0 0% 50%";
 
     let r = parseInt(result[1], 16) / 255;
     let g = parseInt(result[2], 16) / 255;
@@ -93,9 +95,15 @@
       const d = max - min;
       s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
       switch (max) {
-        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-        case g: h = ((b - r) / d + 2) / 6; break;
-        case b: h = ((r - g) / d + 4) / 6; break;
+        case r:
+          h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+          break;
+        case g:
+          h = ((b - r) / d + 2) / 6;
+          break;
+        case b:
+          h = ((r - g) / d + 4) / 6;
+          break;
       }
     }
 
@@ -154,7 +162,9 @@
       <div class="grid grid-cols-2 gap-2">
         {#each group.vars as colorVar}
           {@const currentValue = getComputedHsl(colorVar.key)}
-          <div class="flex items-center gap-2 rounded-md border border-border bg-miwarp-bg-elevated px-2 py-1.5">
+          <div
+            class="flex items-center gap-2 rounded-md border border-border bg-miwarp-bg-elevated px-2 py-1.5"
+          >
             <input
               type="color"
               class="h-5 w-5 cursor-pointer rounded border border-white/10 bg-transparent"
@@ -172,9 +182,9 @@
   <div class="border-t border-border pt-3 space-y-2">
     <button
       class="text-xs text-miwarp-accent-primary hover:underline"
-      onclick={() => showImportExport = !showImportExport}
+      onclick={() => (showImportExport = !showImportExport)}
     >
-      {showImportExport ? 'Hide' : 'Import / Export Theme'}
+      {showImportExport ? "Hide" : "Import / Export Theme"}
     </button>
 
     {#if showImportExport}

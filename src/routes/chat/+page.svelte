@@ -49,6 +49,7 @@
   import SessionStatusBar from "$lib/components/SessionStatusBar.svelte";
   import McpStatusPanel from "$lib/components/McpStatusPanel.svelte";
   import PromptInput from "$lib/components/PromptInput.svelte";
+  import CreatedFiles from "$lib/components/CreatedFiles.svelte";
   import PermissionPanel from "$lib/components/PermissionPanel.svelte";
   import ElicitationDialog from "$lib/components/ElicitationDialog.svelte";
   import AuthSourceBadge from "$lib/components/AuthSourceBadge.svelte";
@@ -112,6 +113,31 @@
   let settings = $state<UserSettings | null>(null);
   let xtermRef: XTerminal | undefined = $state();
   let promptRef: PromptInput | undefined = $state();
+  // Created files tracking
+  const createdFiles = $derived.by(() => {
+    const files: { path: string; name: string; tool: string; timestamp: number }[] = [];
+    const seen = new Set<string>();
+    for (const entry of store.timeline) {
+      if (entry.kind !== "tool") continue;
+      const tool = entry.tool;
+      if (tool.status !== "success" && tool.status !== "completed") continue;
+      const output = tool.output as Record<string, unknown> | undefined;
+      if (!output) continue;
+      const path =
+        (output.path as string) || (output.file_path as string) || (output.created_path as string);
+      if (path && !seen.has(path)) {
+        seen.add(path);
+        files.push({
+          path,
+          name: path.split("/").pop() ?? path,
+          tool: tool.tool_name,
+          timestamp: ((entry as Record<string, unknown>).seq as number) ?? Date.now(),
+        });
+      }
+    }
+    return files.sort((a, b) => a.timestamp - b.timestamp);
+  });
+  const hasCreatedFiles = $derived(createdFiles.length > 0);
   let sidebarCollapsed = $state(false);
   /** Reactive cwd override for new-chat-in-folder (cleared when a run is loaded) */
   let folderCwdOverride = $state("");
@@ -4849,6 +4875,13 @@
             {/if}
           </div>
         </div>
+      </div>
+    {/if}
+
+    <!-- Created Files Panel -->
+    {#if store.phase === "completed" && hasCreatedFiles}
+      <div class="chat-content-width pb-2">
+        <CreatedFiles files={createdFiles} onOpenFile={(path) => dbg("open", path)} />
       </div>
     {/if}
 

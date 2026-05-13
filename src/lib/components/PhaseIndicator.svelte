@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { type AgentPhase, getPhaseLabel, getPhaseColor } from '$lib/utils/phase-detection';
+  import { type AgentPhase, getPhaseLabel, getPhaseColor } from "$lib/utils/phase-detection";
 
   let {
     phase,
@@ -19,13 +19,17 @@
   }
 </script>
 
-<div class="flex items-center gap-1.5" role="status" aria-label="Agent phase: {getPhaseLabel(phase)}">
+<div
+  class="flex items-center gap-1.5"
+  role="status"
+  aria-label="Agent phase: {getPhaseLabel(phase)}"
+>
   <!-- Phase dot with glow for active phases -->
   <span
     class="inline-block h-2 w-2 rounded-full shrink-0"
-    class:animate-pulse={phase === 'executing'}
+    class:animate-pulse={phase === "executing"}
     style:background={getPhaseColor(phase)}
-    style:box-shadow={phase === 'executing' ? `0 0 8px ${getPhaseColor(phase)}40` : 'none'}
+    style:box-shadow={phase === "executing" ? `0 0 8px ${getPhaseColor(phase)}40` : "none"}
   ></span>
 
   {#if !compact}

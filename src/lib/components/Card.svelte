@@ -12,12 +12,10 @@
   } = $props();
 
   const variants: Record<Variant, string> = {
-    default:
-      "glass-card transition-all duration-200",
+    default: "glass-card transition-all duration-200",
     subtle:
       "rounded-lg border border-transparent bg-[hsl(var(--miwarp-bg-surface)/0.5)] hover:bg-[hsl(var(--miwarp-bg-surface)/0.7)] hover:border-[hsl(var(--miwarp-glass-border)/0.15)] transition-all duration-200",
-    highlighted:
-      "glass-card glow-active transition-all duration-200",
+    highlighted: "glass-card glow-active transition-all duration-200",
   };
 </script>
 

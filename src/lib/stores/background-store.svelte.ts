@@ -10,7 +10,7 @@ import {
   DEFAULT_BACKGROUND_SETTINGS,
   type BackgroundConfig,
   type BackgroundSettings,
-} from '../types/background';
+} from "../types/background";
 
 class BackgroundStore {
   /** Global background configuration */
@@ -20,7 +20,7 @@ class BackgroundStore {
   perSession = $state<Record<string, BackgroundConfig>>({});
 
   /** Current active session ID (set by the app) */
-  activeSessionId = $state<string>('');
+  activeSessionId = $state<string>("");
 
   /** Get the effective background for the current session */
   get current(): BackgroundConfig {
@@ -37,7 +37,7 @@ class BackgroundStore {
 
   /** Update global background */
   setGlobal(config: Partial<BackgroundConfig>) {
-    this.global = { ...this.global, ...config, scope: 'global' };
+    this.global = { ...this.global, ...config, scope: "global" };
     this._persist();
   }
 
@@ -45,7 +45,7 @@ class BackgroundStore {
   setSession(sessionId: string, config: Partial<BackgroundConfig>) {
     this.perSession = {
       ...this.perSession,
-      [sessionId]: { ...this.global, ...config, scope: 'session' },
+      [sessionId]: { ...this.global, ...config, scope: "session" },
     };
     this._persist();
   }
@@ -72,7 +72,7 @@ class BackgroundStore {
         perSession: this.perSession,
       } as BackgroundSettings,
       null,
-      2
+      2,
     );
   }
 
@@ -84,14 +84,14 @@ class BackgroundStore {
       if (settings.perSession) this.perSession = settings.perSession;
       this._persist();
     } catch {
-      console.warn('Failed to import background settings');
+      console.warn("Failed to import background settings");
     }
   }
 
   /** Generate CSS style string for the current background */
   getStyle(sessionId?: string): string {
     const bg = sessionId ? this.getForSession(sessionId) : this.current;
-    if (!bg.imageUrl) return '';
+    if (!bg.imageUrl) return "";
 
     const parts: string[] = [];
 
@@ -100,38 +100,38 @@ class BackgroundStore {
 
     // Sizing mode mapping
     const sizeMap: Record<string, string> = {
-      stretch: '100% 100%',
-      fill: 'cover',
-      fit: 'contain',
-      tile: 'auto',
-      cover: 'cover',
+      stretch: "100% 100%",
+      fill: "cover",
+      fit: "contain",
+      tile: "auto",
+      cover: "cover",
     };
-    parts.push(`background-size: ${sizeMap[bg.sizingMode] || 'cover'}`);
+    parts.push(`background-size: ${sizeMap[bg.sizingMode] || "cover"}`);
 
     // Position
     parts.push(`background-position: ${bg.positionX}% ${bg.positionY}%`);
 
     // Repeat for tile mode
-    if (bg.sizingMode === 'tile') {
-      parts.push('background-repeat: repeat');
+    if (bg.sizingMode === "tile") {
+      parts.push("background-repeat: repeat");
     } else {
-      parts.push('background-repeat: no-repeat');
+      parts.push("background-repeat: no-repeat");
     }
 
     // Opacity and blur via filter
     const filters: string[] = [];
     if (bg.blur > 0) filters.push(`blur(${bg.blur}px)`);
-    if (filters.length) parts.push(`filter: ${filters.join(' ')}`);
+    if (filters.length) parts.push(`filter: ${filters.join(" ")}`);
 
     parts.push(`opacity: ${bg.opacity / 100}`);
 
-    return parts.join('; ');
+    return parts.join("; ");
   }
 
   /** Get color overlay style */
   getOverlayStyle(sessionId?: string): string {
     const bg = sessionId ? this.getForSession(sessionId) : this.current;
-    if (!bg.colorOverlay) return '';
+    if (!bg.colorOverlay) return "";
     return `background: ${bg.colorOverlay}; opacity: 0.3;`;
   }
 
@@ -143,7 +143,7 @@ class BackgroundStore {
   /** Initialize from localStorage */
   async init() {
     try {
-      const stored = localStorage.getItem('miwarp-background');
+      const stored = localStorage.getItem("miwarp-background");
       if (stored) {
         const settings: BackgroundSettings = JSON.parse(stored);
         if (settings.global) this.global = settings.global;
@@ -157,11 +157,11 @@ class BackgroundStore {
   private _persist() {
     try {
       localStorage.setItem(
-        'miwarp-background',
+        "miwarp-background",
         JSON.stringify({
           global: this.global,
           perSession: this.perSession,
-        } as BackgroundSettings)
+        } as BackgroundSettings),
       );
     } catch {
       // localStorage may be unavailable

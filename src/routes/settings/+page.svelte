@@ -41,7 +41,15 @@
   import { getTransport } from "$lib/transport";
 
   // ── Tab state ──
-  type SettingsTab = "general" | "connection" | "cli-config" | "shortcuts" | "remote" | "debug" | "background" | "theme";
+  type SettingsTab =
+    | "general"
+    | "connection"
+    | "cli-config"
+    | "shortcuts"
+    | "remote"
+    | "debug"
+    | "background"
+    | "theme";
   const VALID_TABS: SettingsTab[] = [
     "general",
     "connection",
@@ -92,7 +100,10 @@
     },
     { id: "debug", icon: "m18 16 4-4-4-4 M6 8l-4 4 4 4 M14.5 4l-5 16" },
     { id: "background", icon: "M21 15l-5-5L5 21" },
-    { id: "theme", icon: "M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" },
+    {
+      id: "theme",
+      icon: "M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z",
+    },
   ];
 
   let settings = $state<UserSettings | null>(null);

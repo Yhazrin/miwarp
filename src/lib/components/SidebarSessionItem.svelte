@@ -1,11 +1,11 @@
 <script lang="ts">
-  import type { ConversationGroup } from '$lib/utils/sidebar-groups';
-  import { TERMINAL_PHASES, canResumeNow } from '$lib/stores';
-  import { getNoSessionPersistence } from '$lib/stores/agent-settings-cache.svelte';
-  import { relativeTime, truncate } from '$lib/utils/format';
-  import { PLATFORM_PRESETS } from '$lib/utils/platform-presets';
-  import { hasAttention } from '$lib/stores/attention-store.svelte';
-  import DualStatusIndicator from './DualStatusIndicator.svelte';
+  import type { ConversationGroup } from "$lib/utils/sidebar-groups";
+  import { TERMINAL_PHASES, canResumeNow } from "$lib/stores";
+  import { getNoSessionPersistence } from "$lib/stores/agent-settings-cache.svelte";
+  import { relativeTime, truncate } from "$lib/utils/format";
+  import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
+  import { hasAttention } from "$lib/stores/attention-store.svelte";
+  import DualStatusIndicator from "./DualStatusIndicator.svelte";
 
   function platformLabel(id: string): string {
     return PLATFORM_PRESETS.find((p) => p.id === id)?.name ?? id;
@@ -17,7 +17,7 @@
     pinned?: boolean;
     onclick?: () => void;
     onpin?: () => void;
-    onresume?: (runId: string, mode: 'resume') => void;
+    onresume?: (runId: string, mode: "resume") => void;
     ondelete?: (conversation: ConversationGroup) => void;
   }
 
@@ -46,25 +46,25 @@
   // Dual-signal status: color = state, shape = process status
   const indicatorState = $derived.by(() => {
     const s = run.status;
-    if (s === 'running') return 'running' as const;
-    if (s === 'waiting_input' || s === 'waiting_approval') return 'needs-input' as const;
-    if (s === 'completed') return 'completed' as const;
-    if (s === 'error') return 'failed' as const;
-    if (s === 'stopped') return 'stopped' as const;
-    return 'idle' as const;
+    if (s === "running") return "running" as const;
+    if (s === "waiting_input" || s === "waiting_approval") return "needs-input" as const;
+    if (s === "completed") return "completed" as const;
+    if (s === "error") return "failed" as const;
+    if (s === "stopped") return "stopped" as const;
+    return "idle" as const;
   });
 
   const indicatorProcess = $derived.by(() => {
     const s = run.status;
-    if (s === 'running') return 'active' as const;
-    if (s === 'waiting_input' || s === 'waiting_approval') return 'active' as const;
+    if (s === "running") return "active" as const;
+    if (s === "waiting_input" || s === "waiting_approval") return "active" as const;
     // Sessions with loop/sleeping behavior
-    if (run.loop_sleeping) return 'sleeping' as const;
-    return 'exited' as const;
+    if (run.loop_sleeping) return "sleeping" as const;
+    return "exited" as const;
   });
 
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter' || e.key === ' ') {
+    if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onclick?.();
     }
@@ -102,7 +102,9 @@
           stroke="currentColor"
           stroke-width="0"
         >
-          <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+          <path
+            d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
+          />
         </svg>
       {/if}
       {#if runCount > 1}
@@ -116,24 +118,28 @@
       <!-- Pin toggle (visible on hover) -->
       {#if onpin}
         <button
-          class="opacity-0 group-hover/item:opacity-100 p-0.5 rounded hover:bg-accent/30 transition-opacity {pinned ? 'text-primary' : 'text-muted-foreground'}"
+          class="opacity-0 group-hover/item:opacity-100 p-0.5 rounded hover:bg-accent/30 transition-opacity {pinned
+            ? 'text-primary'
+            : 'text-muted-foreground'}"
           onclick={(e) => {
             e.stopPropagation();
             onpin?.();
           }}
-          title={pinned ? 'Unpin' : 'Pin'}
-          aria-label={pinned ? 'Unpin session' : 'Pin session'}
+          title={pinned ? "Unpin" : "Pin"}
+          aria-label={pinned ? "Unpin session" : "Pin session"}
         >
           <svg
             class="h-3 w-3"
             viewBox="0 0 24 24"
-            fill={pinned ? 'currentColor' : 'none'}
+            fill={pinned ? "currentColor" : "none"}
             stroke="currentColor"
             stroke-width="2"
             stroke-linecap="round"
             stroke-linejoin="round"
           >
-            <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+            <path
+              d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
+            />
           </svg>
         </button>
       {/if}
@@ -142,7 +148,7 @@
           class="opacity-0 group-hover/item:opacity-100 p-0.5 rounded hover:bg-accent/30 transition-opacity text-muted-foreground"
           onclick={(e) => {
             e.stopPropagation();
-            onresume(run.id, 'resume');
+            onresume(run.id, "resume");
           }}
           title="Resume"
         >
@@ -189,7 +195,7 @@
   <div class="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground pl-[14px]">
     <div class="flex items-center gap-1.5 min-w-0">
       <span class="shrink-0">{run.agent}</span>
-      {#if run.platform_id && run.platform_id !== 'anthropic'}
+      {#if run.platform_id && run.platform_id !== "anthropic"}
         <span class="shrink-0">&middot;</span>
         <span class="truncate">{platformLabel(run.platform_id)}</span>
       {/if}

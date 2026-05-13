@@ -44,6 +44,7 @@
     latestPlanTool,
     showPermissionInPanel,
     onPreviewFile,
+    isLastTool,
   }: {
     tool: BusToolItem;
     subTimeline?: TimelineEntry[];
@@ -233,7 +234,7 @@
   let style = $derived(getToolColor(tool.tool_name));
 
   // Phase detection for PhaseIndicator display
-  let currentPhase = $derived(detectPhase(tool.tool_name, tool.status, isLastTool ?? false)); // eslint-disable-line no-undef
+  let currentPhase = $derived(detectPhase(tool.tool_name, tool.status, isLastTool ?? false));
 
   // Extract a human-readable detail from tool input (file path, command, pattern, etc.)
   let detail = $derived(getToolDetail(tool.input));

@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
-  import type { ConversationGroup, ProjectFolder } from '$lib/utils/sidebar-groups';
-  import SidebarSearch from './SidebarSearch.svelte';
-  import SidebarSessionItem from './SidebarSessionItem.svelte';
-  import SidebarProjectGroup from './SidebarProjectGroup.svelte';
+  import type { Snippet } from "svelte";
+  import type { ConversationGroup, ProjectFolder } from "$lib/utils/sidebar-groups";
+  import SidebarSearch from "./SidebarSearch.svelte";
+  import SidebarSessionItem from "./SidebarSessionItem.svelte";
+  import SidebarProjectGroup from "./SidebarProjectGroup.svelte";
 
   interface Props {
     /** Whether the sidebar is visible */
@@ -31,7 +31,7 @@
     onNewChat?: () => void;
     onToggleFolder?: (folderKey: string) => void;
     onSelectConversation?: (runId: string) => void;
-    onResume?: (runId: string, mode: 'resume') => void;
+    onResume?: (runId: string, mode: "resume") => void;
     onDeleteConversation?: (conversation: ConversationGroup) => void;
     onRemoveProject?: (cwd: string) => void;
     onNewChatInFolder?: (cwd: string) => void;
@@ -54,12 +54,12 @@
   let {
     open = true,
     width = 280,
-    pageLabel = 'Chat',
+    pageLabel = "Chat",
     projectFolders = [],
     expandedFolders = new Set(),
-    selectedRunId = '',
+    selectedRunId = "",
     pinnedSessionIds = new Set(),
-    searchQuery = '',
+    searchQuery = "",
     searching = false,
     searchResultCount = 0,
     onToggleSidebar,
@@ -84,9 +84,9 @@
   const isSearching = $derived(searchQuery.trim().length > 0);
 
   function defaultFolderLabel(folder: ProjectFolder): string {
-    if (folder.isUncategorized) return 'Uncategorized';
+    if (folder.isUncategorized) return "Uncategorized";
     // Extract last path segment
-    const parts = folder.cwd.replace(/\\/g, '/').split('/').filter(Boolean);
+    const parts = folder.cwd.replace(/\\/g, "/").split("/").filter(Boolean);
     return parts[parts.length - 1] ?? folder.cwd;
   }
 
@@ -139,7 +139,7 @@
     <!-- Search -->
     <div class="px-2 pt-2 pb-1 shrink-0">
       <SidebarSearch
-        placeholder={searchPlaceholder ?? 'Search sessions...'}
+        placeholder={searchPlaceholder ?? "Search sessions..."}
         value={searchQuery}
         {onSearch}
         onClear={onClearSearch}
@@ -148,8 +148,10 @@
         {#if searching}
           <p class="text-[11px] text-muted-foreground px-1 pt-0.5">Searching...</p>
         {:else if searchResultCount > 0}
-          <p class="flex items-center justify-between text-[11px] text-muted-foreground px-1 pt-0.5">
-            <span>{searchResultCount} result{searchResultCount !== 1 ? 's' : ''}</span>
+          <p
+            class="flex items-center justify-between text-[11px] text-muted-foreground px-1 pt-0.5"
+          >
+            <span>{searchResultCount} result{searchResultCount !== 1 ? "s" : ""}</span>
           </p>
         {/if}
       {/if}
@@ -161,7 +163,9 @@
         <!-- Searching indicator -->
         {#if searching && searchResultCount === 0}
           <div class="flex items-center justify-center py-10">
-            <div class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+            <div
+              class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
+            ></div>
           </div>
         {:else if !searching && searchResultCount === 0}
           <div class="flex flex-col items-center gap-2 px-3 py-10 text-center">

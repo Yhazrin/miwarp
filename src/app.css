@@ -814,3 +814,36 @@ html.dark img.logo-dark,
 html:not(.dark) img.logo-light {
   display: none;
 }
+
+/* ── Frameless window traffic lights (macOS) ── */
+.traffic-lights {
+  position: fixed;
+  top: 12px;
+  left: 14px;
+  z-index: 99999;
+  display: flex;
+  gap: 8px;
+  isolation: isolate;
+}
+
+.traffic-lights .tl-btn {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: filter 150ms;
+  pointer-events: auto;
+}
+.traffic-lights .tl-btn:hover {
+  filter: brightness(1.15);
+}
+.traffic-lights .tl-close {
+  background: #ff5f57;
+}
+.traffic-lights .tl-minimize {
+  background: #ffbd2e;
+}
+.traffic-lights .tl-maximize {
+  background: #28c840;
+}

@@ -654,7 +654,8 @@
               <polyline points="12 6 12 12 16 14" />
             </svg>
             {#if contextHistory.length > 0}
-              <span class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-success))]"
+              <span
+                class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-success))]"
               ></span>
             {/if}
           </button>
@@ -679,7 +680,9 @@
               <polyline points="14 2 14 8 20 8" />
             </svg>
             {#if fileEntries.length > 0}
-              <span class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-warning))]"></span>
+              <span
+                class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-warning))]"
+              ></span>
             {/if}
           </button>
           <!-- Info icon -->
@@ -1270,7 +1273,8 @@
           <path d="M9 12l2 2 4-4" />
         </svg>
         {#if activeBackgroundTasks.length > 0}
-          <span class="absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"
+          <span
+            class="absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"
           ></span>
         {/if}
       </button>

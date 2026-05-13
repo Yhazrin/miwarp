@@ -195,8 +195,14 @@
   let permissionBadge = $derived.by(() => {
     if (!permissionMode || permissionMode === "default") return null;
     const map: Record<string, { label: string; cls: string }> = {
-      acceptEdits: { label: "accept-edits", cls: "bg-miwarp-status-info/15 text-miwarp-status-info" },
-      bypassPermissions: { label: "bypass", cls: "bg-miwarp-status-warning/15 text-miwarp-status-warning" },
+      acceptEdits: {
+        label: "accept-edits",
+        cls: "bg-miwarp-status-info/15 text-miwarp-status-info",
+      },
+      bypassPermissions: {
+        label: "bypass",
+        cls: "bg-miwarp-status-warning/15 text-miwarp-status-warning",
+      },
       plan: { label: "plan", cls: "bg-purple-500/15 text-purple-400" },
       auto: { label: "auto", cls: "bg-teal-500/15 text-teal-400" },
       dontAsk: { label: "no-ask", cls: "bg-red-500/15 text-miwarp-status-error" },
