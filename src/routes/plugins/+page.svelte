@@ -592,7 +592,7 @@
   async function handleInstall(
     pluginName: string,
     scope: "user" | "project" | "local" = installScope,
-    autoEnable = true,
+    _autoEnable = true,
   ): Promise<boolean> {
     operationLoading = pluginName;
     dbg("plugins", "install", { name: pluginName, scope });

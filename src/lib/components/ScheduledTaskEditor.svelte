@@ -1,10 +1,7 @@
 <script lang="ts">
   import Button from "./Button.svelte";
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
-  import {
-    scheduledTasksService,
-    ScheduledTasksService,
-  } from "$lib/services/scheduled-tasks-service";
+  import { ScheduledTasksService } from "$lib/services/scheduled-tasks-service";
   import { CRON_PRESETS, type TaskScheduleType } from "$lib/types/scheduled-task";
 
   // Form state

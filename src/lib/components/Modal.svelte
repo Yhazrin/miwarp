@@ -3,9 +3,9 @@
     open = $bindable(false),
     title = "",
     closeable = true,
-    size = "default",
-    type = "default",
-    onClose,
+    size: _size = "default",
+    type: _type = "default",
+    onClose: _onClose,
     children,
   }: {
     open?: boolean;
