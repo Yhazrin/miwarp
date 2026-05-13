@@ -5,7 +5,16 @@ export interface MemoryFileCandidate {
   exists: boolean;
 }
 
-export type RunStatus = "pending" | "running" | "idle" | "completed" | "failed" | "stopped";
+export type RunStatus =
+  | "pending"
+  | "running"
+  | "idle"
+  | "completed"
+  | "failed"
+  | "stopped"
+  | "waiting_input"
+  | "waiting_approval"
+  | "error";
 
 export type RunEventType = "system" | "stdout" | "stderr" | "command" | "user" | "assistant";
 
@@ -45,6 +54,8 @@ export interface TaskRun {
   remote_cwd?: string;
   /** Snapshot of active_platform_id at run creation time. */
   platform_id?: string;
+  /** Whether the run is in a loop/sleeping state. */
+  loop_sleeping?: boolean;
   /** Snapshot of anthropic_base_url at run creation time. */
   platform_base_url?: string;
   /** Run source (native or cli_import). */

@@ -6,13 +6,13 @@
    */
   import { t } from "$lib/i18n/index.svelte";
   import { formatInstallCount } from "$lib/utils/format";
-  import type { MarketplacePlugin, InstalledPlugin } from "$lib/api";
+  import type { MarketplacePlugin, InstalledPlugin } from "$lib/types";
 
   interface Props {
     plugin: MarketplacePlugin;
     isInstalled?: boolean;
     installedPlugin?: InstalledPlugin;
-    operationLoading?: boolean;
+    operationLoading?: string | boolean;
     onInstall?: (name: string) => void;
     onUninstall?: (plugin: InstalledPlugin) => void;
     onToggle?: (plugin: InstalledPlugin, enabled: boolean) => void;
@@ -134,7 +134,7 @@
         {#each componentBadges as badge}
           {#if hasComponent(plugin.components, badge.key)}
             <span class="rounded-full px-1.5 py-0.5 text-[10px] font-medium {badge.color}">
-              {badge.label()}
+              {badge.label}
             </span>
           {/if}
         {/each}
@@ -249,7 +249,7 @@
       {#each componentBadges as badge}
         {#if hasComponent(plugin.components, badge.key)}
           <span class="rounded-full px-1.5 py-0.5 text-[10px] font-medium {badge.color}">
-            {badge.label()}{#if componentCount(plugin.components, badge.key) > 0}
+            {badge.label}{#if componentCount(plugin.components, badge.key) > 0}
               ({componentCount(plugin.components, badge.key)})
             {/if}
           </span>

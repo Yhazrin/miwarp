@@ -9,7 +9,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { dbgWarn } from "$lib/utils/debug";
   import { memoryStore } from "$lib/stores/memory-store.svelte";
-  import { getMemoryStats, parseFrontmatter } from "$lib/services/memory-service";
+  import { getMemoryStats } from "$lib/services/memory-service";
 
   let viewMode = $state<"edit" | "preview">("edit");
   let content = $state("");

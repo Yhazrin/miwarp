@@ -7,8 +7,6 @@ import type {
   WorkflowStep,
   WorkflowCheckpoint,
   WorkflowContext,
-  InterventionLevel,
-  ExecutionResult,
 } from "$lib/types/workflow";
 
 interface WorkflowState {
@@ -285,7 +283,7 @@ const defaultTemplates: WorkflowTemplate[] = [
 ];
 
 function createWorkflowStore() {
-  let state = $state<WorkflowState>({
+  const state = $state<WorkflowState>({
     templates: defaultTemplates,
     activeInstance: null,
     currentContext: {

@@ -1,5 +1,5 @@
 <script lang="ts">
-  type Variant = "default" | "destructive" | "outline" | "secondary" | "ghost";
+  type Variant = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
   type Size = "sm" | "default" | "lg" | "icon";
 
   let {
@@ -8,6 +8,8 @@
     disabled = false,
     loading = false,
     class: className = "",
+    title = "",
+    type: buttonType = "button",
     onclick,
     children,
   }: {
@@ -16,6 +18,8 @@
     disabled?: boolean;
     loading?: boolean;
     class?: string;
+    title?: string;
+    type?: "button" | "submit" | "reset";
     onclick?: (e: MouseEvent) => void;
     children?: import("svelte").Snippet;
   } = $props();
@@ -29,6 +33,7 @@
     outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
     secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
     ghost: "hover:bg-accent hover:text-accent-foreground",
+    link: "text-primary underline-offset-4 hover:underline",
   };
 
   const sizes: Record<Size, string> = {
@@ -42,6 +47,8 @@
 <button
   class="{base} {variants[variant]} {sizes[size]} {className}"
   disabled={disabled || loading}
+  type={buttonType}
+  {title}
   {onclick}
 >
   {#if loading}

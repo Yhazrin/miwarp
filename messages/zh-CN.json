@@ -6,6 +6,8 @@
   "settings_tab_shortcuts": "快捷键",
   "settings_tab_remote": "远程",
   "settings_tab_debug": "调试",
+  "settings_tab_background": "背景",
+  "settings_tab_theme": "主题",
   "settings_general_connection": "连接",
   "settings_general_saved": "已保存",
   "settings_general_connectionMode": "连接方式",

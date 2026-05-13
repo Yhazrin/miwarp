@@ -3,11 +3,17 @@
     open = $bindable(false),
     title = "",
     closeable = true,
+    size = "default",
+    type = "default",
+    onClose,
     children,
   }: {
     open?: boolean;
     title?: string;
     closeable?: boolean;
+    size?: "default" | "sm" | "lg" | "xl";
+    type?: "default" | "info" | "warning" | "error";
+    onClose?: () => void;
     children?: import("svelte").Snippet;
   } = $props();
 

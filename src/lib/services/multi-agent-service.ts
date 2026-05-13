@@ -3,8 +3,6 @@
  * 允许用户通过一条指令触发多个 Agent 并行工作
  */
 
-import type { AgentTask } from "$lib/types";
-
 export interface MultiAgentConfig {
   name: string;
   description: string;

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import type { ProjectFolder, ConversationGroup } from "$lib/utils/sidebar-groups";
+  import type { ProjectFolder } from "$lib/utils/sidebar-groups";
 
   interface Props {
     folder: ProjectFolder;

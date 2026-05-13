@@ -1,9 +1,5 @@
 <script lang="ts">
-  import {
-    multiAgentService,
-    type MultiAgentConfig,
-    type MultiAgentResult,
-  } from "$lib/services/multi-agent-service";
+  import { multiAgentService, type MultiAgentResult } from "$lib/services/multi-agent-service";
   import { t } from "$lib/i18n/index.svelte";
   import Button from "./Button.svelte";
   import Modal from "./Modal.svelte";

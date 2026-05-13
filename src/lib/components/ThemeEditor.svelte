@@ -8,7 +8,6 @@
 
   let { onChange }: Props = $props();
 
-  let customThemeName = $state("");
   let showImportExport = $state(false);
   let importJson = $state("");
   let exportJson = $derived(themeStore.exportConfig());

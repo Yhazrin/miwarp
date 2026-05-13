@@ -58,6 +58,21 @@
       text: "hsl(var(--miwarp-text-secondary) / 1)",
       dot: "hsl(var(--miwarp-text-secondary))",
     },
+    error: {
+      bg: "hsl(var(--miwarp-status-error) / 0.2)",
+      text: "hsl(var(--miwarp-status-error) / 1)",
+      dot: "hsl(var(--miwarp-status-error))",
+    },
+    waiting_input: {
+      bg: "hsl(var(--miwarp-status-warning) / 0.2)",
+      text: "hsl(var(--miwarp-status-warning) / 1)",
+      dot: "hsl(var(--miwarp-status-warning))",
+    },
+    waiting_approval: {
+      bg: "hsl(var(--miwarp-status-warning) / 0.2)",
+      text: "hsl(var(--miwarp-status-warning) / 1)",
+      dot: "hsl(var(--miwarp-status-warning))",
+    },
   };
 </script>
 

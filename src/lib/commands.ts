@@ -1,11 +1,23 @@
-export type CommandCategory = "chat" | "tools" | "navigation" | "settings" | "diagnostics";
+export type CommandCategory =
+  | "chat"
+  | "tools"
+  | "navigation"
+  | "settings"
+  | "diagnostics"
+  | "system";
 export type CommandAgent = "claude" | "codex" | "both";
 export type CommandAction =
   | "send_prompt"
   | "navigate"
   | "ipc_command"
   | "toggle_state"
-  | "open_modal";
+  | "open_modal"
+  | "panel:multi-agent"
+  | "preset:fullstack"
+  | "preset:review"
+  | "preset:upgrade"
+  | "preset:test"
+  | "preset:docs";
 
 export interface CommandDef {
   id: string;
@@ -272,6 +284,7 @@ export function groupByCategory(cmds: CommandDef[]): Record<CommandCategory, Com
     navigation: [],
     settings: [],
     diagnostics: [],
+    system: [],
   };
   for (const cmd of cmds) {
     groups[cmd.category].push(cmd);
@@ -285,6 +298,7 @@ export const categoryLabels: Record<CommandCategory, string> = {
   navigation: "Navigation",
   settings: "Settings",
   diagnostics: "Diagnostics",
+  system: "System",
 };
 
 // 多 Agent 命令
@@ -294,7 +308,7 @@ export const multiAgentCommands: CommandDef[] = [
     name: "multi",
     description: "多 Agent 并行执行",
     category: "system",
-    keywords: ["multi", "parallel", "agent", "并行", "多"],
+    agent: "claude",
     action: "panel:multi-agent",
   },
   {
@@ -302,7 +316,7 @@ export const multiAgentCommands: CommandDef[] = [
     name: "fullstack",
     description: "全栈开发模式（前端+后端+数据库）",
     category: "system",
-    keywords: ["fullstack", "frontend", "backend", "全栈"],
+    agent: "claude",
     action: "preset:fullstack",
   },
   {
@@ -310,7 +324,7 @@ export const multiAgentCommands: CommandDef[] = [
     name: "review-all",
     description: "全面代码审查（安全+性能+风格）",
     category: "system",
-    keywords: ["review", "code", "audit", "审查"],
+    agent: "claude",
     action: "preset:review",
   },
   {
@@ -318,7 +332,7 @@ export const multiAgentCommands: CommandDef[] = [
     name: "implement-all",
     description: "实现多个功能模块",
     category: "system",
-    keywords: ["implement", "feature", "develop", "实现"],
+    agent: "claude",
     action: "preset:upgrade",
   },
   {
@@ -326,7 +340,7 @@ export const multiAgentCommands: CommandDef[] = [
     name: "test-all",
     description: "全面测试（单元+集成+E2E）",
     category: "system",
-    keywords: ["test", "unit", "e2e", "测试"],
+    agent: "claude",
     action: "preset:test",
   },
   {
@@ -334,10 +348,10 @@ export const multiAgentCommands: CommandDef[] = [
     name: "docs-all",
     description: "生成所有文档（API+README+CHANGELOG）",
     category: "system",
-    keywords: ["docs", "document", "readme", "文档"],
+    agent: "claude",
     action: "preset:docs",
   },
 ];
 
 // 添加到所有命令
-allCommands.push(...multiAgentCommands);
+commands.push(...multiAgentCommands);

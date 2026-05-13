@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   filterVisibleCandidates,
   groupByLabel,
@@ -103,8 +103,8 @@ describe("getPrimaryFile", () => {
     const group = {
       label: "test.md",
       files: [
-        { path: "/global/test.md", label: "test.md", scope: "global", exists: true },
-        { path: "/project/test.md", label: "test.md", scope: "project", exists: true },
+        { path: "/global/test.md", label: "test.md", scope: "global" as const, exists: true },
+        { path: "/project/test.md", label: "test.md", scope: "project" as const, exists: true },
       ],
     };
     const result = getPrimaryFile(group);
@@ -115,8 +115,8 @@ describe("getPrimaryFile", () => {
     const group = {
       label: "test.md",
       files: [
-        { path: "/memory/test.md", label: "test.md", scope: "memory", exists: true },
-        { path: "/project/test.md", label: "test.md", scope: "project", exists: true },
+        { path: "/memory/test.md", label: "test.md", scope: "memory" as const, exists: true },
+        { path: "/project/test.md", label: "test.md", scope: "project" as const, exists: true },
       ],
     };
     const result = getPrimaryFile(group);
@@ -161,17 +161,27 @@ describe("calculateSimilarity", () => {
 
 describe("isStale", () => {
   it("considers non-existing files as stale", () => {
-    const file = { path: "/test.md", label: "test.md", scope: "project", exists: false };
+    const file = { path: "/test.md", label: "test.md", scope: "project" as const, exists: false };
     expect(isStale(file)).toBe(true);
   });
 
   it("considers memory scope as potentially stale", () => {
-    const file = { path: "/memory/test.md", label: "test.md", scope: "memory", exists: true };
+    const file = {
+      path: "/memory/test.md",
+      label: "test.md",
+      scope: "memory" as const,
+      exists: true,
+    };
     expect(isStale(file)).toBe(true);
   });
 
   it("considers existing project files as not stale", () => {
-    const file = { path: "/project/test.md", label: "test.md", scope: "project", exists: true };
+    const file = {
+      path: "/project/test.md",
+      label: "test.md",
+      scope: "project" as const,
+      exists: true,
+    };
     expect(isStale(file)).toBe(false);
   });
 });

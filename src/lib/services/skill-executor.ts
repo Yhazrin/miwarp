@@ -5,8 +5,7 @@
  * and invoking appropriate handlers for built-in skills.
  */
 import { dbg, dbgWarn } from "$lib/utils/debug";
-import type { Skill, SkillExecution } from "$lib/types/skill";
-import { skillStore } from "$lib/stores/skill-store.svelte";
+import type { Skill } from "$lib/types/skill";
 
 export interface ExecutionResult {
   success: boolean;

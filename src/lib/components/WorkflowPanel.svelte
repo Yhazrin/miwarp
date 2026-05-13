@@ -94,10 +94,6 @@
     workflowStore.pauseWorkflow();
   }
 
-  function handleResume() {
-    workflowStore.resumeWorkflow();
-  }
-
   function handleCancel() {
     workflowStore.cancelWorkflow();
     customPrompt = "";

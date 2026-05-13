@@ -1042,7 +1042,6 @@
   let isPluginsPage = $derived(currentPath.startsWith("/plugins"));
   let isExplorerPage = $derived(currentPath.startsWith("/explorer"));
   let isMemoryPage = $derived(currentPath.startsWith("/memory"));
-  let isWorkflowPage = $derived(currentPath === "/workflow");
 
   // Plugin sidebar navigation (shown when on /plugins route)
   const pluginSections = [

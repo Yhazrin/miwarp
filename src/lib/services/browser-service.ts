@@ -5,6 +5,25 @@
  * via the mcp__Claude_in_Chrome__ MCP tools.
  */
 
+// ── MCP Function Declarations ──
+/* eslint-disable @typescript-eslint/no-explicit-any */
+declare function mcp__Claude_in_Chrome__list_connected_browsers(): Promise<any[]>;
+declare function mcp__Claude_in_Chrome__select_browser(args: any): Promise<any>;
+declare function mcp__Claude_in_Chrome__switch_browser(): Promise<any>;
+declare function mcp__Claude_in_Chrome__tabs_context_mcp(args: any): Promise<any>;
+declare function mcp__Claude_in_Chrome__tabs_create_mcp(args: any): Promise<any>;
+declare function mcp__Claude_in_Chrome__tabs_close_mcp(args: any): Promise<any>;
+declare function mcp__Claude_in_Chrome__navigate(args: any): Promise<any>;
+declare function mcp__Claude_in_Chrome__find(args: any): Promise<any>;
+declare function mcp__Claude_in_Chrome__computer(args: any): Promise<any>;
+declare function mcp__Claude_in_Chrome__get_page_text(args: any): Promise<any>;
+declare function mcp__Claude_in_Chrome__read_page(args: any): Promise<any>;
+declare function mcp__Claude_in_Chrome__read_network_requests(args: any): Promise<any>;
+declare function mcp__Claude_in_Chrome__read_console_messages(args: any): Promise<any>;
+declare function mcp__Claude_in_Chrome__resize_window(args: any): Promise<any>;
+declare function mcp__Claude_in_Chrome__javascript_tool(args: any): Promise<any>;
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 // ── Types ──
 
 export interface BrowserInfo {
@@ -87,7 +106,7 @@ export async function switchToBrowser(): Promise<boolean> {
 export async function getTabs(): Promise<TabInfo[]> {
   try {
     const context = await mcp__Claude_in_Chrome__tabs_context_mcp({ createIfEmpty: true });
-    return context.tabs.map((t) => ({
+    return context.tabs.map((t: any) => ({
       id: t.id,
       url: t.url,
       title: t.title,
@@ -170,7 +189,7 @@ export async function goForward(tabId: number): Promise<boolean> {
 export async function findElement(query: string, tabId: number): Promise<PageElement[]> {
   try {
     const elements = await mcp__Claude_in_Chrome__find({ query, tabId });
-    return elements.map((el) => ({
+    return elements.map((el: any) => ({
       ref: el.ref,
       tag: el.tag ?? "unknown",
       text: el.text,
@@ -284,7 +303,7 @@ export async function getPageContent(tabId: number): Promise<PageContent> {
     const text = await mcp__Claude_in_Chrome__get_page_text({ tabId });
     const page = await mcp__Claude_in_Chrome__read_page({ tabId });
 
-    const elements: PageElement[] = page.map((el) => ({
+    const elements: PageElement[] = page.map((el: any) => ({
       ref: el.ref ?? "",
       tag: el.tag ?? "unknown",
       text: el.text ?? "",
@@ -377,7 +396,7 @@ export async function getNetworkRequests(
       urlPattern,
     });
 
-    return requests.map((req) => ({
+    return requests.map((req: any) => ({
       url: req.url ?? "",
       method: req.method ?? "GET",
       status: req.status ?? 0,

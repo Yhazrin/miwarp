@@ -6,6 +6,8 @@
   "settings_tab_shortcuts": "Shortcuts",
   "settings_tab_remote": "Remote",
   "settings_tab_debug": "Debug",
+  "settings_tab_background": "Background",
+  "settings_tab_theme": "Theme",
   "settings_general_connection": "Connection",
   "settings_general_saved": "Saved",
   "settings_general_connectionMode": "Connection Mode",

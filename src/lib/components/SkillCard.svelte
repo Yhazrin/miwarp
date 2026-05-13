@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { t } from "$lib/i18n/index.svelte";
   import type { Skill } from "$lib/types/skill";
   import { SKILL_CATEGORIES } from "$lib/types/skill";
   import { dbg } from "$lib/utils/debug";

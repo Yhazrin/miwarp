@@ -3,7 +3,6 @@
    * Workflow Page - Standalone guided workflows experience
    */
   import WorkflowPanel from "$lib/components/WorkflowPanel.svelte";
-  import { workflowStore } from "$lib/stores/workflow-store.svelte";
   import type { WorkflowStep } from "$lib/types/workflow";
 
   let notification = $state<string | null>(null);

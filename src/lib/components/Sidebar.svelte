@@ -62,7 +62,7 @@
     searchQuery = "",
     searching = false,
     searchResultCount = 0,
-    onToggleSidebar,
+    onToggleSidebar: _onToggleSidebar,
     onNewChat,
     onToggleFolder,
     onSelectConversation,

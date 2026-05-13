@@ -5,7 +5,6 @@
    * Provides UI for browser connection, navigation, and automation controls.
    */
   import { browserStore } from "$lib/stores/browser-store.svelte";
-  import { mcp__workspace__web_fetch } from "mcp__workspace__web_fetch";
 
   let urlInput = $state("");
   let searchQuery = $state("");
@@ -24,7 +23,6 @@
   // Tabs list
   let tabs = $derived(browserStore.state.tabs);
   let activeTabId = $derived(browserStore.state.activeTabId);
-  let currentUrl = $derived(browserStore.state.currentUrl);
   let pageContent = $derived(browserStore.state.pageContent);
   let isLoading = $derived(browserStore.state.isLoading);
   let error = $derived(browserStore.state.error);
@@ -187,13 +185,17 @@
             onclick={() => handleSelectTab(tab.id)}
           >
             <span class="tab-title">{tab.title || "New Tab"}</span>
-            <button
+            <span
               class="tab-close"
+              role="button"
+              tabindex="0"
               onclick={(e) => handleCloseTab(tab.id, e)}
-              disabled={tabs.length <= 1}
+              onkeydown={(e) => {
+                if (e.key === "Enter") handleCloseTab(tab.id, e);
+              }}
             >
               ×
-            </button>
+            </span>
           </button>
         {/each}
         <button class="btn btn-icon add-tab" onclick={handleCreateTab} title="New Tab"> + </button>

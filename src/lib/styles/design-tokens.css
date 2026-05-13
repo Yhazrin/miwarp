@@ -6,480 +6,480 @@
 [data-theme="codex"],
 .dark {
   /* Background hierarchy (deepest → lightest) */
-  --miwarp-bg-deepest:     220 18% 6%;
-  --miwarp-bg-deep:        220 16% 9%;
-  --miwarp-bg-base:        220 14% 12%;
-  --miwarp-bg-elevated:    220 12% 15%;
-  --miwarp-bg-surface:     220 10% 18%;
-  --miwarp-bg-hover:       220 10% 21%;
+  --miwarp-bg-deepest: 220 18% 6%;
+  --miwarp-bg-deep: 220 16% 9%;
+  --miwarp-bg-base: 220 14% 12%;
+  --miwarp-bg-elevated: 220 12% 15%;
+  --miwarp-bg-surface: 220 10% 18%;
+  --miwarp-bg-hover: 220 10% 21%;
 
   /* Glassmorphism layers */
-  --miwarp-glass-bg:       220 18% 11%;
-  --miwarp-glass-opacity:  0.72;
-  --miwarp-glass-border:   220 30% 50%;
+  --miwarp-glass-bg: 220 18% 11%;
+  --miwarp-glass-opacity: 0.72;
+  --miwarp-glass-border: 220 30% 50%;
   --miwarp-glass-border-opacity: 0.12;
-  --miwarp-glass-blur:     16px;
+  --miwarp-glass-blur: 16px;
 
   /* Overlay / scrim */
-  --miwarp-overlay:        0 0% 0% / 0.55;
+  --miwarp-overlay: 0 0% 0% / 0.55;
 
   /* Accent colors — 纯蓝青渐变，无紫色 */
-  --miwarp-accent-primary: 210 100% 60%;   /* #33A6FF */
-  --miwarp-accent-violet:  185 85% 55%;    /* #20B2D9 */
-  --miwarp-accent-blue:    199 89% 48%;    /* #2D9FD9 */
+  --miwarp-accent-primary: 210 100% 60%; /* #33A6FF */
+  --miwarp-accent-violet: 185 85% 55%; /* #20B2D9 */
+  --miwarp-accent-blue: 199 89% 48%; /* #2D9FD9 */
 
   /* Text hierarchy */
-  --miwarp-text-primary:   0 0% 94%;
+  --miwarp-text-primary: 0 0% 94%;
   --miwarp-text-secondary: 220 10% 62%;
-  --miwarp-text-tertiary:  220 10% 42%;
+  --miwarp-text-tertiary: 220 10% 42%;
 
   /* Status colors */
   --miwarp-status-success: 152 55% 55%;
   --miwarp-status-warning: 38 80% 55%;
-  --miwarp-status-error:   0 72% 60%;
-  --miwarp-status-info:    199 89% 55%;
+  --miwarp-status-error: 0 72% 60%;
+  --miwarp-status-info: 199 89% 55%;
 
   /* Map to shadcn CSS variables */
-  --background:            220 18% 6%;
-  --foreground:            0 0% 94%;
-  --primary:               210 100% 60%;
-  --primary-foreground:    0 0% 100%;
-  --secondary:             220 12% 15%;
-  --secondary-foreground:  0 0% 88%;
-  --muted:                 220 10% 18%;
-  --muted-foreground:      220 10% 52%;
-  --accent:                185 85% 55%;
-  --accent-foreground:     0 0% 100%;
-  --destructive:           0 72% 60%;
+  --background: 220 18% 6%;
+  --foreground: 0 0% 94%;
+  --primary: 210 100% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 12% 15%;
+  --secondary-foreground: 0 0% 88%;
+  --muted: 220 10% 18%;
+  --muted-foreground: 220 10% 52%;
+  --accent: 185 85% 55%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 72% 60%;
   --destructive-foreground: 0 0% 100%;
-  --border:                220 12% 20%;
-  --input:                 220 12% 15%;
-  --ring:                  210 100% 60%;
-  --radius:                0.625rem;
-  --sidebar-background:    220 18% 6%;
-  --sidebar-foreground:    0 0% 88%;
-  --sidebar-primary:       210 100% 60%;
+  --border: 220 12% 20%;
+  --input: 220 12% 15%;
+  --ring: 210 100% 60%;
+  --radius: 0.625rem;
+  --sidebar-background: 220 18% 6%;
+  --sidebar-foreground: 0 0% 88%;
+  --sidebar-primary: 210 100% 60%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent:        220 10% 22%;
+  --sidebar-accent: 220 10% 22%;
   --sidebar-accent-foreground: 0 0% 94%;
-  --sidebar-border:        220 12% 17%;
-  --sidebar-ring:          210 100% 60%;
-  --popover:               220 16% 9%;
-  --popover-foreground:    0 0% 94%;
+  --sidebar-border: 220 12% 17%;
+  --sidebar-ring: 210 100% 60%;
+  --popover: 220 16% 9%;
+  --popover-foreground: 0 0% 94%;
 }
 
 /* ── Codex Light Theme ── */
 [data-theme="codex-light"],
 .light {
-  --miwarp-bg-deepest:     0 0% 98%;
-  --miwarp-bg-deep:        0 0% 96%;
-  --miwarp-bg-base:        0 0% 100%;
-  --miwarp-bg-elevated:    0 0% 100%;
-  --miwarp-bg-surface:     210 20% 97%;
-  --miwarp-bg-hover:       210 14% 94%;
+  --miwarp-bg-deepest: 0 0% 98%;
+  --miwarp-bg-deep: 0 0% 96%;
+  --miwarp-bg-base: 0 0% 100%;
+  --miwarp-bg-elevated: 0 0% 100%;
+  --miwarp-bg-surface: 210 20% 97%;
+  --miwarp-bg-hover: 210 14% 94%;
 
-  --miwarp-glass-bg:       0 0% 100%;
-  --miwarp-glass-opacity:  0.85;
-  --miwarp-glass-border:   210 20% 75%;
+  --miwarp-glass-bg: 0 0% 100%;
+  --miwarp-glass-opacity: 0.85;
+  --miwarp-glass-border: 210 20% 75%;
   --miwarp-glass-border-opacity: 0.3;
-  --miwarp-glass-blur:     12px;
+  --miwarp-glass-blur: 12px;
 
   /* Overlay / scrim */
-  --miwarp-overlay:        0 0% 0% / 0.4;
+  --miwarp-overlay: 0 0% 0% / 0.4;
 
   --miwarp-accent-primary: 210 90% 48%;
-  --miwarp-accent-violet:  185 75% 45%;
-  --miwarp-accent-blue:    199 75% 42%;
+  --miwarp-accent-violet: 185 75% 45%;
+  --miwarp-accent-blue: 199 75% 42%;
 
-  --miwarp-text-primary:   220 18% 12%;
+  --miwarp-text-primary: 220 18% 12%;
   --miwarp-text-secondary: 220 10% 42%;
-  --miwarp-text-tertiary:  220 10% 55%;
+  --miwarp-text-tertiary: 220 10% 55%;
 
   --miwarp-status-success: 152 50% 38%;
   --miwarp-status-warning: 38 75% 38%;
-  --miwarp-status-error:   0 70% 48%;
-  --miwarp-status-info:    199 75% 42%;
+  --miwarp-status-error: 0 70% 48%;
+  --miwarp-status-info: 199 75% 42%;
 
-  --background:            0 0% 100%;
-  --foreground:            220 18% 12%;
-  --primary:               210 90% 48%;
-  --primary-foreground:    0 0% 100%;
-  --secondary:             210 20% 96%;
-  --secondary-foreground:  220 18% 12%;
-  --muted:                 210 14% 96%;
-  --muted-foreground:      220 10% 42%;
-  --accent:                185 75% 95%;
-  --accent-foreground:     185 75% 35%;
-  --destructive:           0 70% 48%;
+  --background: 0 0% 100%;
+  --foreground: 220 18% 12%;
+  --primary: 210 90% 48%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 20% 96%;
+  --secondary-foreground: 220 18% 12%;
+  --muted: 210 14% 96%;
+  --muted-foreground: 220 10% 42%;
+  --accent: 185 75% 95%;
+  --accent-foreground: 185 75% 35%;
+  --destructive: 0 70% 48%;
   --destructive-foreground: 0 0% 100%;
-  --border:                210 14% 88%;
-  --input:                 210 14% 90%;
-  --ring:                  210 90% 48%;
-  --sidebar-background:    210 20% 97%;
-  --sidebar-foreground:    220 18% 12%;
-  --sidebar-primary:       210 90% 48%;
+  --border: 210 14% 88%;
+  --input: 210 14% 90%;
+  --ring: 210 90% 48%;
+  --sidebar-background: 210 20% 97%;
+  --sidebar-foreground: 220 18% 12%;
+  --sidebar-primary: 210 90% 48%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent:        210 14% 94%;
+  --sidebar-accent: 210 14% 94%;
   --sidebar-accent-foreground: 220 18% 12%;
-  --sidebar-border:        210 14% 90%;
-  --sidebar-ring:          210 90% 48%;
-  --popover:               0 0% 100%;
-  --popover-foreground:    220 18% 12%;
+  --sidebar-border: 210 14% 90%;
+  --sidebar-ring: 210 90% 48%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 18% 12%;
 }
 
 /* ── Midnight Theme ── */
 [data-theme="midnight"] {
-  --miwarp-bg-deepest:     230 30% 5%;
-  --miwarp-bg-deep:        230 28% 8%;
-  --miwarp-bg-base:        230 25% 11%;
-  --miwarp-bg-elevated:    230 22% 14%;
-  --miwarp-bg-surface:     230 20% 17%;
-  --miwarp-bg-hover:       230 18% 20%;
+  --miwarp-bg-deepest: 230 30% 5%;
+  --miwarp-bg-deep: 230 28% 8%;
+  --miwarp-bg-base: 230 25% 11%;
+  --miwarp-bg-elevated: 230 22% 14%;
+  --miwarp-bg-surface: 230 20% 17%;
+  --miwarp-bg-hover: 230 18% 20%;
 
-  --miwarp-glass-bg:       230 30% 8%;
-  --miwarp-glass-opacity:  0.75;
-  --miwarp-glass-border:   217 60% 50%;
+  --miwarp-glass-bg: 230 30% 8%;
+  --miwarp-glass-opacity: 0.75;
+  --miwarp-glass-border: 217 60% 50%;
   --miwarp-glass-border-opacity: 0.15;
-  --miwarp-glass-blur:     20px;
+  --miwarp-glass-blur: 20px;
 
   /* Overlay / scrim */
-  --miwarp-overlay:        0 0% 0% / 0.55;
+  --miwarp-overlay: 0 0% 0% / 0.55;
 
   --miwarp-accent-primary: 217 91% 60%;
-  --miwarp-accent-violet:  239 84% 67%;
-  --miwarp-accent-blue:    199 89% 48%;
+  --miwarp-accent-violet: 239 84% 67%;
+  --miwarp-accent-blue: 199 89% 48%;
 
-  --miwarp-text-primary:   210 40% 95%;
+  --miwarp-text-primary: 210 40% 95%;
   --miwarp-text-secondary: 210 20% 60%;
-  --miwarp-text-tertiary:  210 15% 40%;
+  --miwarp-text-tertiary: 210 15% 40%;
 
   --miwarp-status-success: 160 84% 39%;
   --miwarp-status-warning: 43 96% 56%;
-  --miwarp-status-error:   0 72% 51%;
-  --miwarp-status-info:    199 89% 48%;
+  --miwarp-status-error: 0 72% 51%;
+  --miwarp-status-info: 199 89% 48%;
 
-  --background:            230 30% 5%;
-  --foreground:            210 40% 95%;
-  --primary:               217 91% 60%;
-  --primary-foreground:    0 0% 100%;
-  --secondary:             230 22% 14%;
-  --secondary-foreground:  210 40% 90%;
-  --muted:                 230 20% 17%;
-  --muted-foreground:      210 15% 50%;
-  --accent:                239 84% 67%;
-  --accent-foreground:     0 0% 100%;
-  --destructive:           0 72% 51%;
+  --background: 230 30% 5%;
+  --foreground: 210 40% 95%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 230 22% 14%;
+  --secondary-foreground: 210 40% 90%;
+  --muted: 230 20% 17%;
+  --muted-foreground: 210 15% 50%;
+  --accent: 239 84% 67%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  --border:                230 20% 18%;
-  --input:                 230 22% 14%;
-  --ring:                  217 91% 60%;
-  --sidebar-background:    230 30% 5%;
-  --sidebar-foreground:    210 40% 90%;
-  --sidebar-primary:       217 91% 60%;
+  --border: 230 20% 18%;
+  --input: 230 22% 14%;
+  --ring: 217 91% 60%;
+  --sidebar-background: 230 30% 5%;
+  --sidebar-foreground: 210 40% 90%;
+  --sidebar-primary: 217 91% 60%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent:        230 20% 20%;
+  --sidebar-accent: 230 20% 20%;
   --sidebar-accent-foreground: 210 40% 95%;
-  --sidebar-border:        230 20% 15%;
-  --sidebar-ring:          217 91% 60%;
-  --popover:               230 28% 8%;
-  --popover-foreground:    210 40% 95%;
+  --sidebar-border: 230 20% 15%;
+  --sidebar-ring: 217 91% 60%;
+  --popover: 230 28% 8%;
+  --popover-foreground: 210 40% 95%;
 }
 
 /* ── Ocean Theme ── */
 [data-theme="ocean"] {
-  --miwarp-bg-deepest:     200 30% 6%;
-  --miwarp-bg-deep:        200 28% 9%;
-  --miwarp-bg-base:        200 25% 12%;
-  --miwarp-bg-elevated:    200 22% 15%;
-  --miwarp-bg-surface:     200 20% 18%;
-  --miwarp-bg-hover:       200 18% 21%;
+  --miwarp-bg-deepest: 200 30% 6%;
+  --miwarp-bg-deep: 200 28% 9%;
+  --miwarp-bg-base: 200 25% 12%;
+  --miwarp-bg-elevated: 200 22% 15%;
+  --miwarp-bg-surface: 200 20% 18%;
+  --miwarp-bg-hover: 200 18% 21%;
 
-  --miwarp-glass-bg:       200 30% 10%;
-  --miwarp-glass-opacity:  0.7;
-  --miwarp-glass-border:   187 70% 45%;
+  --miwarp-glass-bg: 200 30% 10%;
+  --miwarp-glass-opacity: 0.7;
+  --miwarp-glass-border: 187 70% 45%;
   --miwarp-glass-border-opacity: 0.15;
-  --miwarp-glass-blur:     18px;
+  --miwarp-glass-blur: 18px;
 
   /* Overlay / scrim */
-  --miwarp-overlay:        0 0% 0% / 0.55;
+  --miwarp-overlay: 0 0% 0% / 0.55;
 
   --miwarp-accent-primary: 187 70% 50%;
-  --miwarp-accent-violet:  199 89% 48%;
-  --miwarp-accent-blue:    200 80% 55%;
+  --miwarp-accent-violet: 199 89% 48%;
+  --miwarp-accent-blue: 200 80% 55%;
 
-  --miwarp-text-primary:   190 30% 95%;
+  --miwarp-text-primary: 190 30% 95%;
   --miwarp-text-secondary: 190 15% 60%;
-  --miwarp-text-tertiary:  190 10% 42%;
+  --miwarp-text-tertiary: 190 10% 42%;
 
   --miwarp-status-success: 160 84% 39%;
   --miwarp-status-warning: 43 96% 56%;
-  --miwarp-status-error:   0 72% 51%;
-  --miwarp-status-info:    199 89% 48%;
+  --miwarp-status-error: 0 72% 51%;
+  --miwarp-status-info: 199 89% 48%;
 
-  --background:            200 30% 6%;
-  --foreground:            190 30% 95%;
-  --primary:               187 70% 50%;
-  --primary-foreground:    0 0% 100%;
-  --secondary:             200 22% 15%;
-  --secondary-foreground:  190 30% 90%;
-  --muted:                 200 20% 18%;
-  --muted-foreground:      190 10% 50%;
-  --accent:                199 89% 48%;
-  --accent-foreground:     0 0% 100%;
-  --destructive:           0 72% 51%;
+  --background: 200 30% 6%;
+  --foreground: 190 30% 95%;
+  --primary: 187 70% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 200 22% 15%;
+  --secondary-foreground: 190 30% 90%;
+  --muted: 200 20% 18%;
+  --muted-foreground: 190 10% 50%;
+  --accent: 199 89% 48%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
-  --border:                200 18% 20%;
-  --input:                 200 22% 15%;
-  --ring:                  187 70% 50%;
-  --sidebar-background:    200 30% 6%;
-  --sidebar-foreground:    190 30% 90%;
-  --sidebar-primary:       187 70% 50%;
+  --border: 200 18% 20%;
+  --input: 200 22% 15%;
+  --ring: 187 70% 50%;
+  --sidebar-background: 200 30% 6%;
+  --sidebar-foreground: 190 30% 90%;
+  --sidebar-primary: 187 70% 50%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent:        200 18% 22%;
+  --sidebar-accent: 200 18% 22%;
   --sidebar-accent-foreground: 190 30% 95%;
-  --sidebar-border:        200 18% 16%;
-  --sidebar-ring:          187 70% 50%;
-  --popover:               200 28% 9%;
-  --popover-foreground:    190 30% 95%;
+  --sidebar-border: 200 18% 16%;
+  --sidebar-ring: 187 70% 50%;
+  --popover: 200 28% 9%;
+  --popover-foreground: 190 30% 95%;
 }
 
 /* ── Dracula Theme ── */
 [data-theme="dracula"] {
-  --miwarp-bg-deepest:     231 15% 12%;
-  --miwarp-bg-deep:        231 15% 14%;
-  --miwarp-bg-base:        231 15% 16%;
-  --miwarp-bg-elevated:    231 13% 19%;
-  --miwarp-bg-surface:     231 12% 22%;
-  --miwarp-bg-hover:       231 10% 25%;
+  --miwarp-bg-deepest: 231 15% 12%;
+  --miwarp-bg-deep: 231 15% 14%;
+  --miwarp-bg-base: 231 15% 16%;
+  --miwarp-bg-elevated: 231 13% 19%;
+  --miwarp-bg-surface: 231 12% 22%;
+  --miwarp-bg-hover: 231 10% 25%;
 
-  --miwarp-glass-bg:       231 15% 14%;
-  --miwarp-glass-opacity:  0.75;
-  --miwarp-glass-border:   265 80% 70%;
+  --miwarp-glass-bg: 231 15% 14%;
+  --miwarp-glass-opacity: 0.75;
+  --miwarp-glass-border: 265 80% 70%;
   --miwarp-glass-border-opacity: 0.12;
-  --miwarp-glass-blur:     16px;
+  --miwarp-glass-blur: 16px;
 
   /* Overlay / scrim */
-  --miwarp-overlay:        0 0% 0% / 0.55;
+  --miwarp-overlay: 0 0% 0% / 0.55;
 
   --miwarp-accent-primary: 265 80% 70%;
-  --miwarp-accent-violet:  315 70% 70%;
-  --miwarp-accent-blue:    197 80% 65%;
+  --miwarp-accent-violet: 315 70% 70%;
+  --miwarp-accent-blue: 197 80% 65%;
 
-  --miwarp-text-primary:   60 30% 90%;
+  --miwarp-text-primary: 60 30% 90%;
   --miwarp-text-secondary: 60 10% 60%;
-  --miwarp-text-tertiary:  60 8% 42%;
+  --miwarp-text-tertiary: 60 8% 42%;
 
   --miwarp-status-success: 135 60% 65%;
   --miwarp-status-warning: 65 70% 65%;
-  --miwarp-status-error:   325 65% 65%;
-  --miwarp-status-info:    197 80% 65%;
+  --miwarp-status-error: 325 65% 65%;
+  --miwarp-status-info: 197 80% 65%;
 
-  --background:            231 15% 12%;
-  --foreground:            60 30% 90%;
-  --primary:               265 80% 70%;
-  --primary-foreground:    0 0% 100%;
-  --secondary:             231 13% 19%;
-  --secondary-foreground:  60 30% 85%;
-  --muted:                 231 12% 22%;
-  --muted-foreground:      60 8% 50%;
-  --accent:                315 70% 70%;
-  --accent-foreground:     0 0% 100%;
-  --destructive:           325 65% 65%;
+  --background: 231 15% 12%;
+  --foreground: 60 30% 90%;
+  --primary: 265 80% 70%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 231 13% 19%;
+  --secondary-foreground: 60 30% 85%;
+  --muted: 231 12% 22%;
+  --muted-foreground: 60 8% 50%;
+  --accent: 315 70% 70%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 325 65% 65%;
   --destructive-foreground: 0 0% 100%;
-  --border:                231 10% 25%;
-  --input:                 231 13% 19%;
-  --ring:                  265 80% 70%;
-  --sidebar-background:    231 15% 12%;
-  --sidebar-foreground:    60 30% 85%;
-  --sidebar-primary:       265 80% 70%;
+  --border: 231 10% 25%;
+  --input: 231 13% 19%;
+  --ring: 265 80% 70%;
+  --sidebar-background: 231 15% 12%;
+  --sidebar-foreground: 60 30% 85%;
+  --sidebar-primary: 265 80% 70%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent:        231 10% 25%;
+  --sidebar-accent: 231 10% 25%;
   --sidebar-accent-foreground: 60 30% 90%;
-  --sidebar-border:        231 10% 20%;
-  --sidebar-ring:          265 80% 70%;
-  --popover:               231 15% 14%;
-  --popover-foreground:    60 30% 90%;
+  --sidebar-border: 231 10% 20%;
+  --sidebar-ring: 265 80% 70%;
+  --popover: 231 15% 14%;
+  --popover-foreground: 60 30% 90%;
 }
 
 /* ── Nord Theme ── */
 [data-theme="nord"] {
-  --miwarp-bg-deepest:     220 16% 13%;
-  --miwarp-bg-deep:        220 16% 15%;
-  --miwarp-bg-base:        220 14% 18%;
-  --miwarp-bg-elevated:    220 12% 21%;
-  --miwarp-bg-surface:     220 10% 24%;
-  --miwarp-bg-hover:       220 10% 27%;
+  --miwarp-bg-deepest: 220 16% 13%;
+  --miwarp-bg-deep: 220 16% 15%;
+  --miwarp-bg-base: 220 14% 18%;
+  --miwarp-bg-elevated: 220 12% 21%;
+  --miwarp-bg-surface: 220 10% 24%;
+  --miwarp-bg-hover: 220 10% 27%;
 
-  --miwarp-glass-bg:       220 16% 15%;
-  --miwarp-glass-opacity:  0.72;
-  --miwarp-glass-border:   213 40% 55%;
+  --miwarp-glass-bg: 220 16% 15%;
+  --miwarp-glass-opacity: 0.72;
+  --miwarp-glass-border: 213 40% 55%;
   --miwarp-glass-border-opacity: 0.12;
-  --miwarp-glass-blur:     16px;
+  --miwarp-glass-blur: 16px;
 
   /* Overlay / scrim */
-  --miwarp-overlay:        0 0% 0% / 0.55;
+  --miwarp-overlay: 0 0% 0% / 0.55;
 
   --miwarp-accent-primary: 213 80% 62%;
-  --miwarp-accent-violet:  213 40% 55%;
-  --miwarp-accent-blue:    197 45% 55%;
+  --miwarp-accent-violet: 213 40% 55%;
+  --miwarp-accent-blue: 197 45% 55%;
 
-  --miwarp-text-primary:   218 28% 88%;
+  --miwarp-text-primary: 218 28% 88%;
   --miwarp-text-secondary: 218 12% 58%;
-  --miwarp-text-tertiary:  218 10% 42%;
+  --miwarp-text-tertiary: 218 10% 42%;
 
   --miwarp-status-success: 92 28% 55%;
   --miwarp-status-warning: 40 70% 60%;
-  --miwarp-status-error:   354 42% 56%;
-  --miwarp-status-info:    197 45% 55%;
+  --miwarp-status-error: 354 42% 56%;
+  --miwarp-status-info: 197 45% 55%;
 
-  --background:            220 16% 13%;
-  --foreground:            218 28% 88%;
-  --primary:               213 80% 62%;
-  --primary-foreground:    0 0% 100%;
-  --secondary:             220 12% 21%;
-  --secondary-foreground:  218 28% 82%;
-  --muted:                 220 10% 24%;
-  --muted-foreground:      218 10% 50%;
-  --accent:                197 45% 55%;
-  --accent-foreground:     0 0% 100%;
-  --destructive:           354 42% 56%;
+  --background: 220 16% 13%;
+  --foreground: 218 28% 88%;
+  --primary: 213 80% 62%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 12% 21%;
+  --secondary-foreground: 218 28% 82%;
+  --muted: 220 10% 24%;
+  --muted-foreground: 218 10% 50%;
+  --accent: 197 45% 55%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 354 42% 56%;
   --destructive-foreground: 0 0% 100%;
-  --border:                220 10% 28%;
-  --input:                 220 12% 21%;
-  --ring:                  213 80% 62%;
-  --sidebar-background:    220 16% 13%;
-  --sidebar-foreground:    218 28% 82%;
-  --sidebar-primary:       213 80% 62%;
+  --border: 220 10% 28%;
+  --input: 220 12% 21%;
+  --ring: 213 80% 62%;
+  --sidebar-background: 220 16% 13%;
+  --sidebar-foreground: 218 28% 82%;
+  --sidebar-primary: 213 80% 62%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent:        220 10% 28%;
+  --sidebar-accent: 220 10% 28%;
   --sidebar-accent-foreground: 218 28% 88%;
-  --sidebar-border:        220 10% 22%;
-  --sidebar-ring:          213 80% 62%;
-  --popover:               220 16% 15%;
-  --popover-foreground:    218 28% 88%;
+  --sidebar-border: 220 10% 22%;
+  --sidebar-ring: 213 80% 62%;
+  --popover: 220 16% 15%;
+  --popover-foreground: 218 28% 88%;
 }
 
 /* ── Morandi Theme — 莫兰迪色系，低饱和度柔和 ── */
 [data-theme="morandi"] {
   /* 背景层级 — 暖灰调，低饱和度 */
-  --miwarp-bg-deepest:     30 8% 12%;
-  --miwarp-bg-deep:        30 8% 16%;
-  --miwarp-bg-base:        30 8% 20%;
-  --miwarp-bg-elevated:    30 6% 24%;
-  --miwarp-bg-surface:     30 6% 28%;
-  --miwarp-bg-hover:       28 6% 32%;
+  --miwarp-bg-deepest: 30 8% 12%;
+  --miwarp-bg-deep: 30 8% 16%;
+  --miwarp-bg-base: 30 8% 20%;
+  --miwarp-bg-elevated: 30 6% 24%;
+  --miwarp-bg-surface: 30 6% 28%;
+  --miwarp-bg-hover: 28 6% 32%;
 
   /* 毛玻璃层 — 略带暖色调 */
-  --miwarp-glass-bg:       30 8% 18%;
-  --miwarp-glass-opacity:  0.75;
-  --miwarp-glass-border:   30 15% 55%;
+  --miwarp-glass-bg: 30 8% 18%;
+  --miwarp-glass-opacity: 0.75;
+  --miwarp-glass-border: 30 15% 55%;
   --miwarp-glass-border-opacity: 0.15;
-  --miwarp-glass-blur:     18px;
+  --miwarp-glass-blur: 18px;
 
   /* Overlay / scrim */
-  --miwarp-overlay:        30 10% 0% / 0.5;
+  --miwarp-overlay: 30 10% 0% / 0.5;
 
   /* 强调色 — 莫兰迪风格：灰粉、灰蓝、灰绿 */
-  --miwarp-accent-primary: 340 12% 62%;   /* 灰粉 */
-  --miwarp-accent-violet:  200 15% 58%;   /* 灰蓝 */
-  --miwarp-accent-blue:    160 12% 55%;   /* 灰绿 */
+  --miwarp-accent-primary: 340 12% 62%; /* 灰粉 */
+  --miwarp-accent-violet: 200 15% 58%; /* 灰蓝 */
+  --miwarp-accent-blue: 160 12% 55%; /* 灰绿 */
 
   /* 文字层次 — 暖白、米白 */
-  --miwarp-text-primary:   40 10% 92%;
-  --miwarp-text-secondary:  40 8% 60%;
-  --miwarp-text-tertiary:   40 6% 45%;
+  --miwarp-text-primary: 40 10% 92%;
+  --miwarp-text-secondary: 40 8% 60%;
+  --miwarp-text-tertiary: 40 6% 45%;
 
   /* 状态色 — 柔和的莫兰迪色调 */
-  --miwarp-status-success: 152 18% 52%;   /* 灰绿 */
-  --miwarp-status-warning: 38 20% 58%;    /* 灰黄 */
-  --miwarp-status-error:   15 18% 58%;     /* 灰橙红 */
-  --miwarp-status-info:    200 18% 55%;    /* 灰蓝 */
+  --miwarp-status-success: 152 18% 52%; /* 灰绿 */
+  --miwarp-status-warning: 38 20% 58%; /* 灰黄 */
+  --miwarp-status-error: 15 18% 58%; /* 灰橙红 */
+  --miwarp-status-info: 200 18% 55%; /* 灰蓝 */
 
   /* 映射到 shadcn CSS 变量 */
-  --background:            30 8% 12%;
-  --foreground:            40 10% 92%;
-  --primary:               340 12% 62%;
-  --primary-foreground:     30 8% 15%;
-  --secondary:             30 6% 24%;
-  --secondary-foreground:  40 10% 88%;
-  --muted:                 30 6% 28%;
-  --muted-foreground:      40 6% 50%;
-  --accent:                200 15% 58%;
-  --accent-foreground:      30 8% 15%;
-  --destructive:           15 18% 58%;
+  --background: 30 8% 12%;
+  --foreground: 40 10% 92%;
+  --primary: 340 12% 62%;
+  --primary-foreground: 30 8% 15%;
+  --secondary: 30 6% 24%;
+  --secondary-foreground: 40 10% 88%;
+  --muted: 30 6% 28%;
+  --muted-foreground: 40 6% 50%;
+  --accent: 200 15% 58%;
+  --accent-foreground: 30 8% 15%;
+  --destructive: 15 18% 58%;
   --destructive-foreground: 40 10% 95%;
-  --border:                30 6% 30%;
-  --input:                 30 6% 24%;
-  --ring:                  340 12% 62%;
-  --radius:                0.625rem;
-  --sidebar-background:    30 8% 12%;
-  --sidebar-foreground:    40 10% 88%;
-  --sidebar-primary:       340 12% 62%;
+  --border: 30 6% 30%;
+  --input: 30 6% 24%;
+  --ring: 340 12% 62%;
+  --radius: 0.625rem;
+  --sidebar-background: 30 8% 12%;
+  --sidebar-foreground: 40 10% 88%;
+  --sidebar-primary: 340 12% 62%;
   --sidebar-primary-foreground: 30 8% 15%;
-  --sidebar-accent:        28 6% 32%;
+  --sidebar-accent: 28 6% 32%;
   --sidebar-accent-foreground: 40 10% 92%;
-  --sidebar-border:        30 6% 25%;
-  --sidebar-ring:          340 12% 62%;
-  --popover:               30 8% 16%;
-  --popover-foreground:    40 10% 92%;
+  --sidebar-border: 30 6% 25%;
+  --sidebar-ring: 340 12% 62%;
+  --popover: 30 8% 16%;
+  --popover-foreground: 40 10% 92%;
 }
 
 /* ── Morandi Light Theme ── */
 [data-theme="morandi-light"] {
-  --miwarp-bg-deepest:     40 20% 96%;
-  --miwarp-bg-deep:        40 16% 94%;
-  --miwarp-bg-base:        0 0% 100%;
-  --miwarp-bg-elevated:    0 0% 100%;
-  --miwarp-bg-surface:     35 18% 96%;
-  --miwarp-bg-hover:       30 12% 92%;
+  --miwarp-bg-deepest: 40 20% 96%;
+  --miwarp-bg-deep: 40 16% 94%;
+  --miwarp-bg-base: 0 0% 100%;
+  --miwarp-bg-elevated: 0 0% 100%;
+  --miwarp-bg-surface: 35 18% 96%;
+  --miwarp-bg-hover: 30 12% 92%;
 
-  --miwarp-glass-bg:       0 0% 100%;
-  --miwarp-glass-opacity:  0.9;
-  --miwarp-glass-border:   30 15% 80%;
+  --miwarp-glass-bg: 0 0% 100%;
+  --miwarp-glass-opacity: 0.9;
+  --miwarp-glass-border: 30 15% 80%;
   --miwarp-glass-border-opacity: 0.35;
-  --miwarp-glass-blur:     14px;
+  --miwarp-glass-blur: 14px;
 
   /* Overlay / scrim */
-  --miwarp-overlay:        30 10% 0% / 0.3;
+  --miwarp-overlay: 30 10% 0% / 0.3;
 
   --miwarp-accent-primary: 340 15% 55%;
-  --miwarp-accent-violet:  200 18% 50%;
-  --miwarp-accent-blue:    160 15% 48%;
+  --miwarp-accent-violet: 200 18% 50%;
+  --miwarp-accent-blue: 160 15% 48%;
 
-  --miwarp-text-primary:   30 12% 18%;
+  --miwarp-text-primary: 30 12% 18%;
   --miwarp-text-secondary: 30 8% 42%;
-  --miwarp-text-tertiary:  30 6% 55%;
+  --miwarp-text-tertiary: 30 6% 55%;
 
   --miwarp-status-success: 152 15% 42%;
   --miwarp-status-warning: 38 18% 45%;
-  --miwarp-status-error:   15 15% 48%;
-  --miwarp-status-info:    200 15% 45%;
+  --miwarp-status-error: 15 15% 48%;
+  --miwarp-status-info: 200 15% 45%;
 
-  --background:            40 20% 96%;
-  --foreground:            30 12% 18%;
-  --primary:               340 15% 55%;
-  --primary-foreground:     40 8% 95%;
-  --secondary:             35 18% 94%;
-  --secondary-foreground:  30 12% 18%;
-  --muted:                 30 12% 92%;
-  --muted-foreground:      30 8% 42%;
-  --accent:                200 18% 94%;
-  --accent-foreground:     200 18% 38%;
-  --destructive:           15 15% 48%;
+  --background: 40 20% 96%;
+  --foreground: 30 12% 18%;
+  --primary: 340 15% 55%;
+  --primary-foreground: 40 8% 95%;
+  --secondary: 35 18% 94%;
+  --secondary-foreground: 30 12% 18%;
+  --muted: 30 12% 92%;
+  --muted-foreground: 30 8% 42%;
+  --accent: 200 18% 94%;
+  --accent-foreground: 200 18% 38%;
+  --destructive: 15 15% 48%;
   --destructive-foreground: 40 8% 95%;
-  --border:                30 10% 85%;
-  --input:                 30 10% 90%;
-  --ring:                  340 15% 55%;
-  --sidebar-background:    40 20% 96%;
-  --sidebar-foreground:    30 12% 18%;
-  --sidebar-primary:       340 15% 55%;
+  --border: 30 10% 85%;
+  --input: 30 10% 90%;
+  --ring: 340 15% 55%;
+  --sidebar-background: 40 20% 96%;
+  --sidebar-foreground: 30 12% 18%;
+  --sidebar-primary: 340 15% 55%;
   --sidebar-primary-foreground: 40 8% 95%;
-  --sidebar-accent:        30 12% 92%;
+  --sidebar-accent: 30 12% 92%;
   --sidebar-accent-foreground: 30 12% 18%;
-  --sidebar-border:        30 10% 88%;
-  --sidebar-ring:          340 15% 55%;
-  --popover:               0 0% 100%;
-  --popover-foreground:    30 12% 18%;
+  --sidebar-border: 30 10% 88%;
+  --sidebar-ring: 340 15% 55%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 30 12% 18%;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -489,132 +489,132 @@
 /* ── Dev Preview Dark — IDE 风格，深色编辑器感 ── */
 [data-theme="dev-preview"] {
   /* 背景层级 — 经典 IDE 配色 */
-  --miwarp-bg-deepest:     220 20% 5%;
-  --miwarp-bg-deep:        220 18% 8%;
-  --miwarp-bg-base:        220 16% 11%;
-  --miwarp-bg-elevated:    220 14% 14%;
-  --miwarp-bg-surface:     220 12% 17%;
-  --miwarp-bg-hover:       220 12% 20%;
+  --miwarp-bg-deepest: 220 20% 5%;
+  --miwarp-bg-deep: 220 18% 8%;
+  --miwarp-bg-base: 220 16% 11%;
+  --miwarp-bg-elevated: 220 14% 14%;
+  --miwarp-bg-surface: 220 12% 17%;
+  --miwarp-bg-hover: 220 12% 20%;
 
   /* 毛玻璃层 */
-  --miwarp-glass-bg:       220 20% 10%;
-  --miwarp-glass-opacity:  0.78;
-  --miwarp-glass-border:   210 20% 45%;
+  --miwarp-glass-bg: 220 20% 10%;
+  --miwarp-glass-opacity: 0.78;
+  --miwarp-glass-border: 210 20% 45%;
   --miwarp-glass-border-opacity: 0.15;
-  --miwarp-glass-blur:     14px;
+  --miwarp-glass-blur: 14px;
 
   /* Overlay / scrim */
-  --miwarp-overlay:        0 0% 0% / 0.6;
+  --miwarp-overlay: 0 0% 0% / 0.6;
 
   /* 强调色 — 科技蓝绿 + 暖色点缀 */
-  --miwarp-accent-primary: 174 70% 55%;   /* #26C2A3 青绿 */
-  --miwarp-accent-violet:  207 85% 65%;    /* #30A4E8 天蓝 */
-  --miwarp-accent-blue:    210 90% 60%;    /* #2DADE6 主蓝 */
+  --miwarp-accent-primary: 174 70% 55%; /* #26C2A3 青绿 */
+  --miwarp-accent-violet: 207 85% 65%; /* #30A4E8 天蓝 */
+  --miwarp-accent-blue: 210 90% 60%; /* #2DADE6 主蓝 */
 
   /* 文字层次 — 高对比度 */
-  --miwarp-text-primary:   0 0% 96%;
-  --miwarp-text-secondary:  220 8% 60%;
-  --miwarp-text-tertiary:   220 8% 40%;
+  --miwarp-text-primary: 0 0% 96%;
+  --miwarp-text-secondary: 220 8% 60%;
+  --miwarp-text-tertiary: 220 8% 40%;
 
   /* 状态色 — 调试友好 */
-  --miwarp-status-success: 152 55% 55%;     /* 青绿成功 */
-  --miwarp-status-warning: 45 90% 58%;      /* 琥珀警告 */
-  --miwarp-status-error:   0 75% 62%;      /* 亮红错误 */
-  --miwarp-status-info:     207 85% 65%;    /* 天蓝信息 */
+  --miwarp-status-success: 152 55% 55%; /* 青绿成功 */
+  --miwarp-status-warning: 45 90% 58%; /* 琥珀警告 */
+  --miwarp-status-error: 0 75% 62%; /* 亮红错误 */
+  --miwarp-status-info: 207 85% 65%; /* 天蓝信息 */
 
   /* 调试专用色 — 预览侧边栏特有 */
-  --miwarp-debug-trace:    270 60% 70%;     /* 紫色 trace */
-  --miwarp-debug-span:     45 80% 65%;      /* 橙色 span */
-  --miwarp-debug-meta:     220 50% 55%;     /* 蓝灰 meta */
-  --miwarp-debug-metric:   160 55% 55%;     /* 青绿 metric */
+  --miwarp-debug-trace: 270 60% 70%; /* 紫色 trace */
+  --miwarp-debug-span: 45 80% 65%; /* 橙色 span */
+  --miwarp-debug-meta: 220 50% 55%; /* 蓝灰 meta */
+  --miwarp-debug-metric: 160 55% 55%; /* 青绿 metric */
 
   /* 映射到 shadcn CSS 变量 */
-  --background:            220 20% 5%;
-  --foreground:            0 0% 96%;
-  --primary:               174 70% 55%;
-  --primary-foreground:    220 20% 8%;
-  --secondary:             220 14% 14%;
-  --secondary-foreground:  0 0% 90%;
-  --muted:                 220 12% 17%;
-  --muted-foreground:      220 8% 50%;
-  --accent:                207 85% 65%;
-  --accent-foreground:     220 20% 8%;
-  --destructive:           0 75% 62%;
+  --background: 220 20% 5%;
+  --foreground: 0 0% 96%;
+  --primary: 174 70% 55%;
+  --primary-foreground: 220 20% 8%;
+  --secondary: 220 14% 14%;
+  --secondary-foreground: 0 0% 90%;
+  --muted: 220 12% 17%;
+  --muted-foreground: 220 8% 50%;
+  --accent: 207 85% 65%;
+  --accent-foreground: 220 20% 8%;
+  --destructive: 0 75% 62%;
   --destructive-foreground: 0 0% 100%;
-  --border:                220 12% 18%;
-  --input:                 220 14% 14%;
-  --ring:                  174 70% 55%;
-  --radius:                0.5rem;
-  --sidebar-background:    220 20% 5%;
-  --sidebar-foreground:    0 0% 90%;
-  --sidebar-primary:       174 70% 55%;
+  --border: 220 12% 18%;
+  --input: 220 14% 14%;
+  --ring: 174 70% 55%;
+  --radius: 0.5rem;
+  --sidebar-background: 220 20% 5%;
+  --sidebar-foreground: 0 0% 90%;
+  --sidebar-primary: 174 70% 55%;
   --sidebar-primary-foreground: 220 20% 8%;
-  --sidebar-accent:        220 12% 20%;
+  --sidebar-accent: 220 12% 20%;
   --sidebar-accent-foreground: 0 0% 94%;
-  --sidebar-border:        220 12% 15%;
-  --sidebar-ring:          174 70% 55%;
-  --popover:               220 18% 8%;
-  --popover-foreground:    0 0% 96%;
+  --sidebar-border: 220 12% 15%;
+  --sidebar-ring: 174 70% 55%;
+  --popover: 220 18% 8%;
+  --popover-foreground: 0 0% 96%;
 }
 
 /* ── Dev Preview Light — 浅色 IDE 风格 ── */
 [data-theme="dev-preview-light"] {
-  --miwarp-bg-deepest:     0 0% 100%;
-  --miwarp-bg-deep:        220 12% 97%;
-  --miwarp-bg-base:        220 10% 95%;
-  --miwarp-bg-elevated:    0 0% 100%;
-  --miwarp-bg-surface:     220 14% 94%;
-  --miwarp-bg-hover:       220 10% 91%;
+  --miwarp-bg-deepest: 0 0% 100%;
+  --miwarp-bg-deep: 220 12% 97%;
+  --miwarp-bg-base: 220 10% 95%;
+  --miwarp-bg-elevated: 0 0% 100%;
+  --miwarp-bg-surface: 220 14% 94%;
+  --miwarp-bg-hover: 220 10% 91%;
 
-  --miwarp-glass-bg:       0 0% 100%;
-  --miwarp-glass-opacity:  0.9;
-  --miwarp-glass-border:   220 15% 70%;
+  --miwarp-glass-bg: 0 0% 100%;
+  --miwarp-glass-opacity: 0.9;
+  --miwarp-glass-border: 220 15% 70%;
   --miwarp-glass-border-opacity: 0.4;
-  --miwarp-glass-blur:     12px;
+  --miwarp-glass-blur: 12px;
 
-  --miwarp-overlay:        0 0% 0% / 0.35;
+  --miwarp-overlay: 0 0% 0% / 0.35;
 
   --miwarp-accent-primary: 174 60% 42%;
-  --miwarp-accent-violet:  207 70% 50%;
-  --miwarp-accent-blue:    210 75% 48%;
+  --miwarp-accent-violet: 207 70% 50%;
+  --miwarp-accent-blue: 210 75% 48%;
 
-  --miwarp-text-primary:   220 15% 12%;
+  --miwarp-text-primary: 220 15% 12%;
   --miwarp-text-secondary: 220 8% 40%;
-  --miwarp-text-tertiary:  220 6% 55%;
+  --miwarp-text-tertiary: 220 6% 55%;
 
   --miwarp-status-success: 152 50% 38%;
   --miwarp-status-warning: 45 75% 45%;
-  --miwarp-status-error:   0 70% 48%;
-  --miwarp-status-info:    207 70% 50%;
+  --miwarp-status-error: 0 70% 48%;
+  --miwarp-status-info: 207 70% 50%;
 
-  --miwarp-debug-trace:    270 50% 55%;
-  --miwarp-debug-span:     45 70% 50%;
-  --miwarp-debug-meta:     220 40% 45%;
-  --miwarp-debug-metric:   160 50% 42%;
+  --miwarp-debug-trace: 270 50% 55%;
+  --miwarp-debug-span: 45 70% 50%;
+  --miwarp-debug-meta: 220 40% 45%;
+  --miwarp-debug-metric: 160 50% 42%;
 
-  --background:            0 0% 100%;
-  --foreground:            220 15% 12%;
-  --primary:               174 60% 42%;
-  --primary-foreground:    0 0% 100%;
-  --secondary:             220 14% 94%;
-  --secondary-foreground:  220 15% 12%;
-  --muted:                 220 10% 93%;
-  --muted-foreground:      220 8% 40%;
-  --accent:                207 70% 94%;
-  --accent-foreground:     207 70% 35%;
-  --destructive:           0 70% 48%;
+  --background: 0 0% 100%;
+  --foreground: 220 15% 12%;
+  --primary: 174 60% 42%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 94%;
+  --secondary-foreground: 220 15% 12%;
+  --muted: 220 10% 93%;
+  --muted-foreground: 220 8% 40%;
+  --accent: 207 70% 94%;
+  --accent-foreground: 207 70% 35%;
+  --destructive: 0 70% 48%;
   --destructive-foreground: 0 0% 100%;
-  --border:                220 10% 85%;
-  --input:                 220 10% 88%;
-  --ring:                  174 60% 42%;
-  --sidebar-background:    220 12% 97%;
-  --sidebar-foreground:    220 15% 12%;
-  --sidebar-primary:       174 60% 42%;
+  --border: 220 10% 85%;
+  --input: 220 10% 88%;
+  --ring: 174 60% 42%;
+  --sidebar-background: 220 12% 97%;
+  --sidebar-foreground: 220 15% 12%;
+  --sidebar-primary: 174 60% 42%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent:        220 10% 91%;
+  --sidebar-accent: 220 10% 91%;
   --sidebar-accent-foreground: 220 15% 12%;
-  --sidebar-border:        220 10% 86%;
-  --sidebar-ring:          174 60% 42%;
-  --popover:               0 0% 100%;
-  --popover-foreground:    220 15% 12%;
+  --sidebar-border: 220 10% 86%;
+  --sidebar-ring: 174 60% 42%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 15% 12%;
 }
