@@ -37,9 +37,9 @@ export interface TurnUsage {
   durationMs?: number;
 }
 
-export const ACTIVE_PHASES: SessionPhase[] = ["spawning", "running"];
-export const TERMINAL_PHASES: SessionPhase[] = ["completed", "failed", "stopped"];
-export const SESSION_ALIVE_PHASES: SessionPhase[] = ["spawning", "running", "idle"];
+export const ACTIVE_PHASES: readonly string[] = ["spawning", "running"];
+export const TERMINAL_PHASES: readonly string[] = ["completed", "failed", "stopped"];
+export const SESSION_ALIVE_PHASES: readonly string[] = ["spawning", "running", "idle"];
 
 /**
  * Valid phase transitions. Used by assertTransition() in dev mode
@@ -198,7 +198,7 @@ export function canResumeStructurally(
     execution_path?: string;
     conversation_ref?: { kind: string; id: string };
   } | null,
-  phase: SessionPhase,
+  phase: string,
 ): boolean {
   const hasRef = run?.conversation_ref != null || !!run?.session_id;
   if (!hasRef) return false;
@@ -215,7 +215,7 @@ export function canResumeStructurally(
  */
 export function canResumeNow(
   run: Parameters<typeof canResumeStructurally>[0],
-  phase: SessionPhase,
+  phase: string,
   currentNoSessionPersistence: boolean,
 ): boolean {
   if (currentNoSessionPersistence) return false;

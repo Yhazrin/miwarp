@@ -1227,11 +1227,13 @@
   });
 
   // Persist expandedProjects + prune stale keys (only after first successful load)
+  // untrack expandedProjects to avoid self-referencing loop (we write it back)
   $effect(() => {
     if (!runsLoadSucceededOnce) return;
     const validKeys = new Set(projectFolders.map((f) => f.folderKey));
-    const pruned = [...expandedProjects].filter((k) => validKeys.has(k));
-    if (pruned.length !== expandedProjects.size) {
+    const current = untrack(() => expandedProjects);
+    const pruned = [...current].filter((k) => validKeys.has(k));
+    if (pruned.length !== current.size) {
       expandedProjects = new Set(pruned);
     }
     localStorage.setItem("ocv:expanded-projects", JSON.stringify(pruned));

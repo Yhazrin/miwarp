@@ -30,9 +30,7 @@
 
   const label = $derived(truncate(run.name || run.prompt, 28));
   const time = $derived(relativeTime(run.last_activity_at ?? run.started_at));
-  const canResume = $derived(
-    canResumeNow(run, run.status as any, getNoSessionPersistence(run.agent)),
-  );
+  const canResume = $derived(canResumeNow(run, run.status, getNoSessionPersistence(run.agent)));
   const needsAttention = $derived(hasAttention(run.id));
 
   let editing = $state(false);

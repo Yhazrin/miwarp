@@ -603,7 +603,15 @@
                 {#each sortedRuns as run}
                   <tr
                     class="border-b border-border/50 hover:bg-muted/30 cursor-pointer"
+                    role="button"
+                    tabindex="0"
                     onclick={() => goto(`/chat?run=${run.runId}`)}
+                    onkeydown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        goto(`/chat?run=${run.runId}`);
+                      }
+                    }}
                   >
                     <td class="py-2 text-xs text-muted-foreground whitespace-nowrap">
                       {formatDate(run.startedAt)}
