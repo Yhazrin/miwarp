@@ -1484,7 +1484,9 @@ export class SessionStore {
       }
       const body = this._buildSnapshot();
       dbg("snapshot", "save", { runId, runStatus, bytes: body.length });
-      snapshotCache.writeSnapshot(runId, runStatus, body).catch(() => {});
+      snapshotCache
+        .writeSnapshot(runId, runStatus, body)
+        .catch((e) => dbgWarn("snapshot", "write failed", e));
     }, 0);
   }
 
@@ -1529,7 +1531,7 @@ export class SessionStore {
             // Refresh run meta after sync (watermark/status may have updated)
             this.run = await api.getRun(id);
             // Sync appended events → IDB snapshot is stale
-            snapshotCache.deleteSnapshot(id).catch(() => {});
+            snapshotCache.deleteSnapshot(id).catch((e) => dbgWarn("snapshot", "delete failed", e));
           }
         } catch (e) {
           dbg("store", "loadRun: auto-sync failed (non-fatal)", String(e));
@@ -1588,7 +1590,9 @@ export class SessionStore {
             if (snapSeq === 0 && isIdleSnap) {
               // seq=0: skip snapshot, delete stale entry to prevent repeated hit-then-skip
               dbg("store", "idle snapshot seq=0, skipping for full replay");
-              snapshotCache.deleteSnapshot(id).catch(() => {});
+              snapshotCache
+                .deleteSnapshot(id)
+                .catch((e) => dbgWarn("snapshot", "delete failed", e));
               snapshotBody = null; // fall through to miss path
             } else if (this._tryApplySnapshot(parsed)) {
               snapshotHit = true;
@@ -1839,7 +1843,7 @@ export class SessionStore {
     if (!this.run) return;
     this.error = "";
     // Invalidate idle snapshot — user is sending a new message
-    snapshotCache.deleteSnapshot(this.run.id).catch(() => {});
+    snapshotCache.deleteSnapshot(this.run.id).catch((e) => dbgWarn("snapshot", "delete failed", e));
 
     try {
       if (this.useStreamSession && this.sessionAlive) {
@@ -2044,7 +2048,7 @@ export class SessionStore {
         }
 
         // Resume makes session go live → old snapshot is always stale
-        snapshotCache.deleteSnapshot(runId).catch(() => {});
+        snapshotCache.deleteSnapshot(runId).catch((e) => dbgWarn("snapshot", "delete failed", e));
       }
 
       dbg("store", "resumeSession", {
@@ -2952,7 +2956,9 @@ export class SessionStore {
             else this._setPhase(newPhase);
             // Invalidate idle snapshot — session is now active
             if (!ctx && this.run) {
-              snapshotCache.deleteSnapshot(this.run.id).catch(() => {});
+              snapshotCache
+                .deleteSnapshot(this.run.id)
+                .catch((e) => dbgWarn("snapshot", "delete failed", e));
             }
           } else if (ev.state === "idle") {
             if (ctx) ctx.phase = "idle";

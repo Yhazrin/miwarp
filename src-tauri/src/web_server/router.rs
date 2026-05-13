@@ -116,7 +116,12 @@ async fn serve_spa(
         .body(Body::from(
             "Not Found (no embedded assets, Vite dev server unreachable)",
         ))
-        .unwrap()
+        .unwrap_or_else(|_| {
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::empty())
+                .expect("fallback")
+        })
 }
 
 /// Proxy an HTTP request to the Vite dev server (debug builds only).

@@ -81,7 +81,8 @@ fn load() -> BackgroundSettings {
 fn save(settings: &BackgroundSettings) -> Result<(), String> {
     log::debug!("[storage/background] saving settings");
     let path = settings_path();
-    crate::storage::ensure_dir(path.parent().unwrap()).map_err(|e| e.to_string())?;
+    crate::storage::ensure_dir(path.parent().ok_or("settings path has no parent")?)
+        .map_err(|e| e.to_string())?;
     let json = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
     fs::write(&path, &json).map_err(|e| e.to_string())?;
     Ok(())
