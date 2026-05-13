@@ -1377,7 +1377,7 @@
               </p>
             </div>
             <div class="flex gap-1.5">
-              {#each LOCALE_REGISTRY as entry}
+              {#each LOCALE_REGISTRY as entry (entry.code)}
                 <button
                   class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
                   {currentLocale() === entry.code
@@ -2115,7 +2115,7 @@
                 >
                 <!-- Platform grid (always visible) -->
                 <div class="grid grid-cols-4 gap-1.5">
-                  {#each platformList.filter((p) => p.id !== "custom") as preset}
+                  {#each platformList.filter((p) => p.id !== "custom") as preset (preset.id)}
                     <button
                       class="flex flex-col gap-0 rounded-md p-2 text-left transition-colors relative group
                       {selectedPlatformId === preset.id

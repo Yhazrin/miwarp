@@ -163,7 +163,7 @@
         >
           All
         </button>
-        {#each SKILL_CATEGORIES as cat}
+        {#each SKILL_CATEGORIES as cat (cat.value)}
           <button
             class="rounded-md px-2 py-1 text-xs font-medium transition-colors
               {selectedCategory === cat.value
