@@ -3,8 +3,8 @@
    ═══════════════════════════════════════════════════════════ */
 
 /* ── Codex Dark Theme (default) — 纯蓝青色调 ── */
-[data-theme="codex"],
-.dark {
+html[data-theme="codex"],
+html.dark:not([data-theme]) {
   /* Background hierarchy (deepest → lightest) */
   --miwarp-bg-deepest: 220 18% 6%;
   --miwarp-bg-deep: 220 16% 9%;
@@ -69,8 +69,8 @@
 }
 
 /* ── Codex Light Theme ── */
-[data-theme="codex-light"],
-.light {
+html[data-theme="codex-light"],
+html.light:not([data-theme]) {
   --miwarp-bg-deepest: 0 0% 98%;
   --miwarp-bg-deep: 0 0% 96%;
   --miwarp-bg-base: 0 0% 100%;

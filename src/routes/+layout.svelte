@@ -100,30 +100,6 @@
   let settings = $state<UserSettings | null>(null);
   let sidebarOpen = $state(true);
   let projectCwd = $state("");
-  type ThemeMode = "light" | "dark" | "system";
-  type ColorScheme = "warm" | "neutral";
-
-  function getInitialTheme(): ThemeMode {
-    if (typeof window === "undefined") return "dark";
-    const saved = localStorage.getItem("ocv:theme");
-    if (saved === "light" || saved === "dark" || saved === "system") return saved;
-    return "dark";
-  }
-
-  function getInitialScheme(): ColorScheme {
-    if (typeof window === "undefined") return "warm";
-    const saved = localStorage.getItem("ocv:colorScheme");
-    return saved === "neutral" ? "neutral" : "warm";
-  }
-
-  let themeMode = $state<ThemeMode>(getInitialTheme());
-  let colorScheme = $state<ColorScheme>(getInitialScheme());
-  let systemDark = $state(
-    typeof window !== "undefined"
-      ? window.matchMedia("(prefers-color-scheme: dark)").matches
-      : true,
-  );
-  let effectiveDark = $derived(themeMode === "system" ? systemDark : themeMode === "dark");
   let pinnedCwds = $state<string[]>([]);
   let removedCwds = $state<string[]>([]);
 
@@ -594,14 +570,6 @@
     loadSidebarFavorites();
     loadAgentSettingsCache();
     themeStore.init();
-
-    // Wire up traffic light buttons (frameless window)
-    import("@tauri-apps/api/window").then(({ getCurrentWindow }) => {
-      const win = getCurrentWindow();
-      (window as unknown as Record<string, unknown>).__tauriClose = () => win.close();
-      (window as unknown as Record<string, unknown>).__tauriMinimize = () => win.minimize();
-      (window as unknown as Record<string, unknown>).__tauriMaximize = () => win.toggleMaximize();
-    });
 
     // Load saved CWD and pinned folders from localStorage
     const saved = localStorage.getItem("ocv:project-cwd");
@@ -1142,51 +1110,6 @@
 
   setContext("toggleSidebar", toggleSidebar);
 
-  function cycleTheme() {
-    const order: ThemeMode[] = ["dark", "light", "system"];
-    const idx = order.indexOf(themeMode);
-    themeMode = order[(idx + 1) % order.length];
-    _applyLayoutTheme();
-    dbg("layout", "theme cycled", { themeMode, effectiveDark });
-  }
-
-  /** Sync layout themeMode to themeStore (called on init and cycleTheme) */
-  function _applyLayoutTheme() {
-    if (themeMode === "system") {
-      // System: resolve based on OS preference — themeStore stays on current theme
-      // but we update the dark class to match OS
-      if (typeof document !== "undefined") {
-        const sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        document.documentElement.classList.toggle("dark", sysDark);
-        document.documentElement.classList.toggle("light", !sysDark);
-      }
-    } else {
-      // Explicit dark/light: apply via themeStore so data-theme is also set
-      themeStore.setTheme(themeMode === "dark" ? "codex" : "codex-light");
-    }
-  }
-
-  function cycleScheme() {
-    colorScheme = colorScheme === "warm" ? "neutral" : "warm";
-    dbg("layout", "color scheme cycled", { colorScheme });
-  }
-
-  // Persist theme + sync with themeStore
-  // Only apply dark class here once themeStore has loaded from localStorage,
-  // to avoid overriding a saved custom theme with the default codex on first render.
-  $effect(() => {
-    localStorage.setItem("ocv:theme", themeMode);
-    if (themeStore.initialized) {
-      _applyLayoutTheme();
-    }
-  });
-
-  // Persist color scheme + apply class
-  $effect(() => {
-    localStorage.setItem("ocv:colorScheme", colorScheme);
-    document.documentElement.classList.toggle("scheme-neutral", colorScheme === "neutral");
-  });
-
   // Auto-expand folder containing selected run (chats tab only)
   // Track runId + runs.length as change signals. runs.length is the most
   // reliable: it changes on any new run (including resume into existing
@@ -1235,20 +1158,6 @@
       expandedProjects = new Set(pruned);
     }
     localStorage.setItem("ocv:expanded-projects", JSON.stringify(pruned));
-  });
-
-  // Note: <html lang> is set by initLocale() and switchLocale() directly.
-
-  // Listen for system preference changes
-  onMount(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    function onSystemChange(e: MediaQueryListEvent) {
-      systemDark = e.matches;
-    }
-    mq.addEventListener("change", onSystemChange);
-    // Apply initial theme
-    document.documentElement.classList.toggle("dark", effectiveDark);
-    return () => mq.removeEventListener("change", onSystemChange);
   });
 
   function handleKeydown(e: KeyboardEvent) {
@@ -1314,19 +1223,15 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="flex h-screen overflow-hidden pt-[54px]">
+<div class="flex h-screen overflow-hidden">
   <!-- Sidebar: Icon Rail + Content Panel -->
   {#if sidebarOpen}
     <aside class="flex shrink-0 glass-sidebar text-sidebar-foreground transition-all duration-200">
       <!-- A. Icon Rail -->
       <div class="flex w-[44px] flex-col items-center bg-[hsl(var(--miwarp-bg-deepest)/0.88)]">
         <!-- Rail logo (OC) -->
-        <div class="flex h-14 w-full items-center justify-center">
-          {#if effectiveDark}
-            <img src="/logo-dark.png?v=2" alt="OC" class="h-8 w-8 rounded-lg" />
-          {:else}
-            <img src="/logo-light.png?v=2" alt="OC" class="h-8 w-8 rounded-lg" />
-          {/if}
+        <div class="flex h-14 w-full items-center justify-center pt-[42px]">
+          <img src="/light.png" alt="OC" class="h-8 w-8 rounded-lg" />
         </div>
 
         <!-- Rail nav icons -->
@@ -1482,14 +1387,10 @@
           </div>
           <button
             class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-            onclick={cycleTheme}
-            title={themeMode === "dark"
-              ? t("layout_themeTitle_dark")
-              : themeMode === "light"
-                ? t("layout_themeTitle_light")
-                : t("layout_themeTitle_system")}
+            onclick={() => themeStore.cycleTheme()}
+            title={themeStore.isDark ? t("layout_themeTitle_dark") : t("layout_themeTitle_light")}
           >
-            {#if themeMode === "dark"}
+            {#if themeStore.isDark}
               <!-- Moon icon (dark mode active) -->
               <svg
                 class="h-[18px] w-[18px]"
@@ -1498,7 +1399,7 @@
                 stroke="currentColor"
                 stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg
               >
-            {:else if themeMode === "light"}
+            {:else}
               <!-- Sun icon (light mode active) -->
               <svg
                 class="h-[18px] w-[18px]"
@@ -1510,29 +1411,13 @@
                   d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
                 /></svg
               >
-            {:else}
-              <!-- Monitor icon (system mode active) -->
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><rect width="20" height="14" x="2" y="3" rx="2" /><line
-                  x1="8"
-                  x2="16"
-                  y1="21"
-                  y2="21"
-                /><line x1="12" x2="12" y1="17" y2="21" /></svg
-              >
             {/if}
           </button>
           <button
             class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-            onclick={cycleScheme}
-            title={colorScheme === "warm"
+            onclick={() =>
+              themeStore.setColorScheme(themeStore.colorScheme === "warm" ? "neutral" : "warm")}
+            title={themeStore.colorScheme === "warm"
               ? t("layout_schemeTitle_warm")
               : t("layout_schemeTitle_neutral")}
           >
@@ -1566,7 +1451,7 @@
       <!-- B. Content Panel -->
       <div class="relative flex flex-none flex-col overflow-hidden" style:width="{sidebarWidth}px">
         <!-- Panel header: Project selector + new chat -->
-        <div class="flex h-14 items-center gap-1.5 px-3">
+        <div class="flex h-14 items-center gap-1.5 px-3 pt-[42px]">
           <span class="flex-1 min-w-0 truncate text-sm font-medium text-sidebar-foreground"
             >{pageName}</span
           >
