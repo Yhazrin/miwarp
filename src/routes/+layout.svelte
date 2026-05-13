@@ -1259,7 +1259,7 @@
 </script>
 
 {#snippet treeNodes(nodes: TreeNode[])}
-  {#each nodes as node}
+  {#each nodes as node (node.fullPath)}
     <button
       class="flex w-full items-center gap-1 py-0.5 text-[13px] transition-colors
         text-sidebar-foreground hover:bg-sidebar-accent/50
@@ -1335,7 +1335,7 @@
 
         <!-- Rail nav icons -->
         <nav class="flex flex-1 flex-col items-center gap-1 py-2">
-          {#each navItems as item}
+          {#each navItems as item (item.path)}
             {@const isActive = currentPath.startsWith(item.path)}
             <a
               href={item.path}
@@ -1463,7 +1463,7 @@
               <div
                 class="absolute bottom-0 left-full ml-1 z-50 min-w-[140px] rounded-md border border-sidebar-border bg-popover py-1 shadow-lg"
               >
-                {#each LOCALE_REGISTRY as entry}
+                {#each LOCALE_REGISTRY as entry (entry.code)}
                   <button
                     class="flex w-full items-center gap-2 px-3 py-1.5 text-xs transition-colors
                       {currentLocale() === entry.code
@@ -1617,7 +1617,7 @@
         {#if isPluginsPage}
           <!-- Plugin section navigation (replaces Chats/Files when on /plugins) -->
           <div class="flex-1 overflow-y-auto py-2">
-            {#each pluginSections as section}
+            {#each pluginSections as section (section.id)}
               {@const isActive = pluginActiveSection === section.id}
               <button
                 class="flex w-full items-center gap-2 py-2 px-3 text-xs font-medium transition-colors
@@ -1927,7 +1927,7 @@
                 </div>
                 <!-- Changed files list -->
                 <div class="flex-1 overflow-y-auto">
-                  {#each gitSummary.files as file}
+                  {#each gitSummary.files as file (file.path)}
                     <button
                       class="flex w-full items-center gap-1.5 px-3 py-1 text-[12px] hover:bg-sidebar-accent/50 transition-colors"
                       onclick={() => selectDiffFile(file.path)}
@@ -2190,7 +2190,7 @@
                     <p class="text-xs text-muted-foreground">{t("runs_noMatching")}</p>
                   </div>
                 {:else}
-                  {#each visibleSearchResults as result}
+                  {#each visibleSearchResults as result (result.runId + (result.matchedEventId ?? ""))}
                     <button
                       class="w-full text-left flex flex-col gap-0.5 px-3 py-2 hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground"
                       onclick={() => {

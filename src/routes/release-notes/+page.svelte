@@ -188,7 +188,7 @@
       </div>
     {:else}
       <div class="mx-auto max-w-3xl px-6 py-6 space-y-1">
-        {#each filteredEntries as entry}
+        {#each filteredEntries as entry (entry.version)}
           {@const isCurrent = currentVersion && entry.version === currentVersion}
           <div
             class="group relative rounded-lg border px-5 py-4 transition-colors

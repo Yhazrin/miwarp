@@ -46,7 +46,7 @@
   <div class="mb-8">
     <h2 class="text-lg font-medium mb-4">选择预设任务</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {#each presets as preset}
+      {#each presets as preset (preset.id)}
         {@const config = multiAgentService.getPreset(preset.id)}
         {#if config}
           <Card>
