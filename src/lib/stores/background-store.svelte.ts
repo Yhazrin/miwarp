@@ -7,7 +7,6 @@
 
 import {
   DEFAULT_BACKGROUND,
-  DEFAULT_BACKGROUND_SETTINGS,
   type BackgroundConfig,
   type BackgroundSettings,
 } from "../types/background";

@@ -4,7 +4,10 @@
    *
    * Provides UI for fetching web pages and extracting content.
    */
-  import { mcp__workspace__web_fetch } from "mcp__workspace__web_fetch";
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const mcp__workspace__web_fetch = (globalThis as any).mcp__workspace__web_fetch as (
+    args: any,
+  ) => Promise<any>;
 
   let url = $state("");
   let isLoading = $state(false);

@@ -2,8 +2,6 @@
  * Composable to extract files created during a session.
  */
 
-import { sessionStore } from "$lib/stores";
-
 export interface CreatedFile {
   path: string;
   name: string;
@@ -11,17 +9,25 @@ export interface CreatedFile {
   timestamp: number;
 }
 
-export function useCreatedFiles() {
+interface TimelineEntry {
+  kind: string;
+  tool: {
+    tool_name: string;
+    status: string;
+    output?: Record<string, unknown>;
+  };
+  seq?: number;
+}
+
+export function useCreatedFiles(timeline: TimelineEntry[]) {
   const createdFiles = $derived.by(() => {
     const files: CreatedFile[] = [];
     const seen = new Set<string>();
 
-    for (const entry of sessionStore.timeline) {
+    for (const entry of timeline) {
       if (entry.kind !== "tool") continue;
 
       const tool = entry.tool;
-      const isWriteTool =
-        tool.tool_name === "Write" || tool.tool_name === "Edit" || tool.tool_name === "Bash";
 
       if (tool.status !== "success" && tool.status !== "completed") continue;
 
@@ -40,7 +46,7 @@ export function useCreatedFiles() {
           path,
           name: path.split("/").pop() ?? path,
           tool: tool.tool_name,
-          timestamp: ((entry as Record<string, unknown>).seq as number) ?? Date.now(),
+          timestamp: entry.seq ?? Date.now(),
         });
       }
     }

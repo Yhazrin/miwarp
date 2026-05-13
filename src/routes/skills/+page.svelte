@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { t } from "$lib/i18n/index.svelte";
   import { dbg } from "$lib/utils/debug";
   import { skillStore } from "$lib/stores/skill-store.svelte";
   import { SKILL_CATEGORIES } from "$lib/types/skill";

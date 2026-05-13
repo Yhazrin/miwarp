@@ -5,7 +5,7 @@
    * A step-by-step wizard for plugin installation with progress tracking.
    */
   import { t } from "$lib/i18n/index.svelte";
-  import type { MarketplacePlugin, MarketplaceInfo } from "$lib/api";
+  import type { MarketplacePlugin, MarketplaceInfo } from "$lib/types";
 
   type InstallStep = "select" | "configure" | "installing" | "complete" | "error";
 
@@ -21,7 +21,7 @@
     onCancel?: () => void;
   }
 
-  let { plugins, marketplaces, projectCwd, onInstall, onCancel }: Props = $props();
+  let { plugins, marketplaces: _marketplaces, projectCwd, onInstall, onCancel }: Props = $props();
 
   // State
   let currentStep = $state<InstallStep>("select");
@@ -39,7 +39,6 @@
 
   // Derived
   const canInstallProject = $derived(!!projectCwd);
-  const isInstalling = $derived(currentStep === "installing");
 
   // Filter plugins based on search
   $effect(() => {

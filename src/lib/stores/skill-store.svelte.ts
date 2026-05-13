@@ -5,14 +5,7 @@
  * Handles skill registry, execution state, and CRUD operations.
  */
 import { dbg, dbgWarn } from "$lib/utils/debug";
-import type {
-  Skill,
-  SkillExecution,
-  SkillCategory,
-  ExecutionStatus,
-  SkillMetadata,
-  SkillManifest,
-} from "$lib/types/skill";
+import type { Skill, SkillExecution, SkillCategory, SkillMetadata } from "$lib/types/skill";
 
 export class SkillStore {
   // Skill registry

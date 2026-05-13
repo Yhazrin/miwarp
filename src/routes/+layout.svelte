@@ -447,6 +447,7 @@
     { path: "/explorer", label: () => t("nav_explorer"), icon: "folder" },
     { path: "/plugins", label: () => t("nav_extend"), icon: "zap" },
     { path: "/memory", label: () => t("nav_memory"), icon: "book" },
+    { path: "/workflow", label: () => "Workflows", icon: "workflow" },
     { path: "/usage", label: () => t("nav_usage"), icon: "chart" },
     { path: "/history", label: () => t("nav_history"), icon: "clock" },
     { path: "/settings", label: () => t("nav_settings"), icon: "settings" },

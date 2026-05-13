@@ -264,7 +264,7 @@ export class MemoryService {
     }
 
     // Find and process duplicates
-    for (const [label, files] of byLabel) {
+    for (const [_label, files] of byLabel) {
       if (files.length > 1) {
         const existing = files.filter((f) => f.exists);
         if (existing.length > 1 && options.mergeDuplicates) {

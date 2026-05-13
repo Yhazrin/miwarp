@@ -30,9 +30,7 @@
   import McpConfiguredPanel from "$lib/components/McpConfiguredPanel.svelte";
   import HookManager from "$lib/components/HookManager.svelte";
   import AgentsPanel from "$lib/components/AgentsPanel.svelte";
-  import PluginCard from "$lib/components/PluginCard.svelte";
   import PluginInstaller from "$lib/components/PluginInstaller.svelte";
-  import { pluginStore } from "$lib/stores/plugin-store.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import type {
     MarketplacePlugin,
@@ -591,14 +589,18 @@
     return plugin.projectPath || projectCwd || undefined;
   }
 
-  async function handleInstall(pluginName: string) {
+  async function handleInstall(
+    pluginName: string,
+    scope: "user" | "project" | "local" = installScope,
+    autoEnable = true,
+  ): Promise<boolean> {
     operationLoading = pluginName;
-    dbg("plugins", "install", { name: pluginName, scope: installScope });
+    dbg("plugins", "install", { name: pluginName, scope });
     try {
       const result = await installPlugin(
         pluginName,
-        installScope,
-        needsCwd(installScope) ? projectCwd : undefined,
+        scope,
+        needsCwd(scope) ? projectCwd : undefined,
       );
       dbg("plugins", "install result", result);
       showToast(
@@ -608,8 +610,10 @@
         result.success ? "success" : "error",
       );
       if (result.success) await refreshPluginData();
+      return result.success;
     } catch (e) {
       showToast(t("plugin_errorInstalling", { name: pluginName, error: String(e) }), "error");
+      return false;
     } finally {
       operationLoading = null;
     }

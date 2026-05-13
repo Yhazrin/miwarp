@@ -24,14 +24,16 @@ import {
   checkCommunityHealth,
   getCommunitySkillDetail,
   installCommunitySkill,
-  type MarketplacePlugin,
-  type InstalledPlugin,
-  type MarketplaceInfo,
-  type CommunitySkillResult,
-  type CommunitySkillDetail,
-  type ProviderHealth,
-  type PluginOperationResult,
 } from "$lib/api";
+import type {
+  MarketplacePlugin,
+  InstalledPlugin,
+  MarketplaceInfo,
+  CommunitySkillResult,
+  CommunitySkillDetail,
+  ProviderHealth,
+  PluginOperationResult,
+} from "$lib/types";
 
 // Filter options for plugin search
 export interface PluginFilters {

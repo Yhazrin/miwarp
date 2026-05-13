@@ -9,13 +9,13 @@
   import Card from "$lib/components/Card.svelte";
 
   const presets = multiAgentService.getPresets();
-  let selectedConfig = $state<MultiAgentConfig | null>(null);
+  let _selectedConfig = $state<MultiAgentConfig | null>(null);
   let results = $state<MultiAgentResult[]>([]);
   let isRunning = $state(false);
   let customPrompt = $state("");
 
   async function executePreset(config: MultiAgentConfig) {
-    selectedConfig = config;
+    _selectedConfig = config;
     isRunning = true;
     results = [];
 

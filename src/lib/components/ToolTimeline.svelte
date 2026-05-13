@@ -68,7 +68,7 @@
     );"
   ></div>
 
-  {#each tools as tool, i (tool.id)}
+  {#each tools as tool, _i (tool.id)}
     {@const isExpanded = expandedId === tool.id}
     {@const statusColor = getStatusColor(tool.status)}
     <div

@@ -14,10 +14,6 @@
     onOpenFile?: (path: string) => void;
   } = $props();
 
-  function getFileName(path: string): string {
-    return path.split("/").pop() ?? path;
-  }
-
   function getDirPath(path: string): string {
     const parts = path.split("/");
     parts.pop();

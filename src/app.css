@@ -36,36 +36,30 @@
    ═══════════════════════════════════════════════════════════ */
 @layer components {
   .glass-panel {
-    background: hsla(
-      var(--miwarp-glass-bg),
-      var(--miwarp-glass-opacity, 0.72)
-    );
+    background: hsla(var(--miwarp-glass-bg), var(--miwarp-glass-opacity, 0.72));
     backdrop-filter: blur(var(--miwarp-glass-blur, 16px));
     -webkit-backdrop-filter: blur(var(--miwarp-glass-blur, 16px));
-    border: 1px solid hsla(
-      var(--miwarp-glass-border),
-      var(--miwarp-glass-border-opacity, 0.12)
-    );
+    border: 1px solid hsla(var(--miwarp-glass-border), var(--miwarp-glass-border-opacity, 0.12));
     border-radius: var(--radius);
   }
 
   .glass-card {
-    background: hsla(
-      var(--miwarp-glass-bg),
-      var(--miwarp-glass-opacity, 0.72)
-    );
+    background: hsla(var(--miwarp-glass-bg), var(--miwarp-glass-opacity, 0.72));
     backdrop-filter: blur(var(--miwarp-glass-blur, 16px));
     -webkit-backdrop-filter: blur(var(--miwarp-glass-blur, 16px));
-    border: 1px solid hsla(
-      var(--miwarp-glass-border),
-      var(--miwarp-glass-border-opacity, 0.12)
-    );
+    border: 1px solid hsla(var(--miwarp-glass-border), var(--miwarp-glass-border-opacity, 0.12));
     border-radius: calc(var(--radius) + 4px);
-    box-shadow: 0 4px 12px hsla(0, 0%, 0%, 0.35), 0 2px 4px hsla(0, 0%, 0%, 0.2);
-    transition: box-shadow 200ms ease-out, border-color 200ms ease-out;
+    box-shadow:
+      0 4px 12px hsla(0, 0%, 0%, 0.35),
+      0 2px 4px hsla(0, 0%, 0%, 0.2);
+    transition:
+      box-shadow 200ms ease-out,
+      border-color 200ms ease-out;
   }
   .glass-card:hover {
-    box-shadow: 0 8px 24px hsla(0, 0%, 0%, 0.4), 0 4px 8px hsla(0, 0%, 0%, 0.25);
+    box-shadow:
+      0 8px 24px hsla(0, 0%, 0%, 0.4),
+      0 4px 8px hsla(0, 0%, 0%, 0.25);
     border-color: hsla(var(--miwarp-glass-border), 0.2);
   }
 
@@ -78,23 +72,30 @@
 
   /* Elevation system */
   .elevation-1 {
-    box-shadow: 0 1px 3px hsla(0, 0%, 0%, 0.3), 0 1px 2px hsla(0, 0%, 0%, 0.2);
+    box-shadow:
+      0 1px 3px hsla(0, 0%, 0%, 0.3),
+      0 1px 2px hsla(0, 0%, 0%, 0.2);
   }
   .elevation-2 {
-    box-shadow: 0 4px 12px hsla(0, 0%, 0%, 0.35), 0 2px 4px hsla(0, 0%, 0%, 0.2);
+    box-shadow:
+      0 4px 12px hsla(0, 0%, 0%, 0.35),
+      0 2px 4px hsla(0, 0%, 0%, 0.2);
   }
   .elevation-3 {
-    box-shadow: 0 8px 24px hsla(0, 0%, 0%, 0.4), 0 4px 8px hsla(0, 0%, 0%, 0.25);
+    box-shadow:
+      0 8px 24px hsla(0, 0%, 0%, 0.4),
+      0 4px 8px hsla(0, 0%, 0%, 0.25);
   }
 
   /* Accent gradient border (left accent for tool cards) */
   .accent-border-left {
     border-left: 4px solid transparent;
     border-image: linear-gradient(
-      180deg,
-      hsl(var(--miwarp-accent-primary)),
-      hsl(var(--miwarp-accent-violet))
-    ) 1;
+        180deg,
+        hsl(var(--miwarp-accent-primary)),
+        hsl(var(--miwarp-accent-violet))
+      )
+      1;
   }
 
   /* Accent gradient background */
@@ -111,8 +112,9 @@
     box-shadow: 0 0 16px hsla(239, 84%, 67%, 0.2);
   }
   .glow-active-strong {
-    box-shadow: 0 0 24px hsla(239, 84%, 67%, 0.35),
-                0 0 48px hsla(258, 90%, 66%, 0.15);
+    box-shadow:
+      0 0 24px hsla(239, 84%, 67%, 0.35),
+      0 0 48px hsla(258, 90%, 66%, 0.15);
   }
 }
 

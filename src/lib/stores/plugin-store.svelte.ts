@@ -18,7 +18,7 @@ import type {
   CommunitySkillResult,
   CommunitySkillDetail,
   ProviderHealth,
-} from "$lib/api";
+} from "$lib/types";
 
 // ── Plugin Section Types ──
 
@@ -155,7 +155,7 @@ function createPluginStore() {
 
       state.loadWarnings = warnings;
       state.loadError = warnings.length === 3;
-    } catch (e) {
+    } catch {
       state.loadError = true;
     } finally {
       state.loading = false;
@@ -189,7 +189,7 @@ function createPluginStore() {
   async function loadCommunityPopular(): Promise<void> {
     try {
       state.communityPopular = await pluginMarketplaceService.searchCommunitySkills("skill", 20);
-    } catch (e) {
+    } catch {
       // Silently fail for popular list
     }
   }
@@ -220,7 +220,7 @@ function createPluginStore() {
         skill.source,
         skill.skill_id,
       );
-    } catch (e) {
+    } catch {
       // Silently fail
     } finally {
       state.communityDetailLoading = false;
@@ -489,7 +489,7 @@ function createPluginStore() {
       : state.communityPopular;
   }
 
-  function isSkillInstalled(skillId: string, scope: InstallScope): boolean {
+  function isSkillInstalled(_skillId: string, _scope: InstallScope): boolean {
     // Check against installed skills (would need to track installed skill IDs)
     return false; // Placeholder - would need integration with skills store
   }

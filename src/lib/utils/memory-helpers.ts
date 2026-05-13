@@ -1,5 +1,4 @@
 import type { MemoryFileCandidate } from "$lib/types";
-import { dbg, dbgWarn } from "./debug";
 
 /**
  * Filter memory file candidates for sidebar display.
@@ -132,7 +131,7 @@ export function calculateSimilarity(contentA: string, contentB: string): number 
  * Check if a memory file is stale (not accessed in a while).
  * Returns true if the file hasn't been modified in `maxAgeDays` days.
  */
-export function isStale(file: MemoryFileCandidate, maxAgeDays = 90): boolean {
+export function isStale(file: MemoryFileCandidate, _maxAgeDays = 90): boolean {
   if (!file.exists) return true;
 
   // We don't have modification time in MemoryFileCandidate

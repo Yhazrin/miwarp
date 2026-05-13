@@ -1,7 +1,10 @@
 <script lang="ts">
   import Button from "./Button.svelte";
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
-  import { scheduledTasksService } from "$lib/services/scheduled-tasks-service";
+  import {
+    scheduledTasksService,
+    ScheduledTasksService,
+  } from "$lib/services/scheduled-tasks-service";
   import type { ScheduledTask } from "$lib/types/scheduled-task";
 
   let {
@@ -16,7 +19,7 @@
 
   const scheduleDescription = $derived(
     task.cronExpression
-      ? scheduledTasksService.describeCronExpression(task.cronExpression)
+      ? ScheduledTasksService.describeCronExpression(task.cronExpression)
       : task.fireAt
         ? `One-time: ${new Date(task.fireAt).toLocaleString()}`
         : "No schedule",
