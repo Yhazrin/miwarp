@@ -572,7 +572,7 @@ impl SessionActor {
                 .iter()
                 .position(|j| j.for_turn_index == barrier_turn)
             {
-                let job = self.queued_internal.remove(pos).unwrap();
+                let job = self.queued_internal.remove(pos);
                 self.start_internal_turn(job).await;
                 return;
             }
@@ -1579,7 +1579,7 @@ impl SessionActor {
                     if (emit_state == "idle" || emit_state == "failed")
                         && self.active_turn.is_some()
                     {
-                        let turn = self.active_turn.take().unwrap();
+                        let turn = self.active_turn.take().expect("active_turn checked above");
                         self.on_user_turn_finished(&turn);
                         self.active_extractor = None;
                         self.protocol.set_pending_slash_command(None);

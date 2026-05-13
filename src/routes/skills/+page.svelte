@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { dbg } from "$lib/utils/debug";
+  import { dbg, dbgWarn } from "$lib/utils/debug";
   import { skillStore } from "$lib/stores/skill-store.svelte";
   import { SKILL_CATEGORIES } from "$lib/types/skill";
   import type { Skill, SkillCategory, SkillMetadata } from "$lib/types/skill";
@@ -38,7 +38,11 @@
 
   onMount(async () => {
     dbg("skills-page", "mount");
-    await skillStore.loadSkills();
+    try {
+      await skillStore.loadSkills();
+    } catch (e) {
+      dbgWarn("skills-page", "loadSkills failed", e);
+    }
   });
 
   function handleSkillSelect(skill: Skill) {

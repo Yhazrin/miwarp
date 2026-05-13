@@ -113,7 +113,7 @@ pub fn update_cli_config(patch: Value) -> Result<Value, String> {
 
     log::debug!(
         "[cli_config] updated {} keys total",
-        config.as_object().unwrap().len()
+        config.as_object().map(|o| o.len()).unwrap_or(0)
     );
     Ok(config)
 }

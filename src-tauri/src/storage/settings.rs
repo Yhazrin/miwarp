@@ -379,7 +379,8 @@ fn migrate_platform_credentials(settings: &mut AllSettings) -> bool {
 pub fn save(settings: &AllSettings) -> Result<(), String> {
     log::debug!("[storage/settings] saving settings");
     let path = settings_path();
-    super::ensure_dir(path.parent().unwrap()).map_err(|e| e.to_string())?;
+    super::ensure_dir(path.parent().expect("settings path has parent"))
+        .map_err(|e| e.to_string())?;
     let json = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
     fs::write(&path, &json).map_err(|e| e.to_string())?;
 
