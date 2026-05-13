@@ -73,7 +73,7 @@ pub fn update_cli_config(patch: Value) -> Result<Value, String> {
     let mut config = load_cli_config();
     let map = config
         .as_object_mut()
-        .expect("load_cli_config always returns object");
+        .ok_or("cli config is not a JSON object")?;
 
     const SENSITIVE_KEYS: &[&str] = &["apiKey", "primaryApiKey"];
 

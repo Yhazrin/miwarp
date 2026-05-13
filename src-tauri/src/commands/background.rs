@@ -7,13 +7,13 @@ use std::path::PathBuf;
 #[serde(rename_all = "camelCase")]
 pub struct BackgroundConfig {
     pub image_url: String,
-    pub opacity: u8,        // 0-100
-    pub blur: u8,           // 0-50
-    pub position_x: u8,     // 0-100 percentage
-    pub position_y: u8,     // 0-100 percentage
-    pub sizing_mode: String, // stretch|fill|fit|tile|cover
+    pub opacity: u8,           // 0-100
+    pub blur: u8,              // 0-50
+    pub position_x: u8,        // 0-100 percentage
+    pub position_y: u8,        // 0-100 percentage
+    pub sizing_mode: String,   // stretch|fill|fit|tile|cover
     pub color_overlay: String, // hex color
-    pub scope: String,       // global|session
+    pub scope: String,         // global|session
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,11 +102,11 @@ pub fn set_background_global(config: BackgroundConfig) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn set_background_session(
-    session_id: String,
-    config: BackgroundConfig,
-) -> Result<(), String> {
-    log::debug!("[background] set_background_session: session_id={}", session_id);
+pub fn set_background_session(session_id: String, config: BackgroundConfig) -> Result<(), String> {
+    log::debug!(
+        "[background] set_background_session: session_id={}",
+        session_id
+    );
     let mut settings = load();
     settings.per_session.insert(session_id, config);
     save(&settings)
@@ -114,7 +114,10 @@ pub fn set_background_session(
 
 #[tauri::command]
 pub fn clear_background_session(session_id: String) -> Result<(), String> {
-    log::debug!("[background] clear_background_session: session_id={}", session_id);
+    log::debug!(
+        "[background] clear_background_session: session_id={}",
+        session_id
+    );
     let mut settings = load();
     settings.per_session.remove(&session_id);
     save(&settings)
@@ -129,7 +132,10 @@ pub async fn pick_background_image(app: tauri::AppHandle) -> Result<String, Stri
 
     app.dialog()
         .file()
-        .add_filter("Images", &["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"])
+        .add_filter(
+            "Images",
+            &["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"],
+        )
         .pick_file(move |file_path| {
             let _ = tx.send(file_path);
         });

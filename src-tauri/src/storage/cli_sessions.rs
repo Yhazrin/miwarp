@@ -714,7 +714,7 @@ static IMPORTED_CACHE: Lazy<Mutex<Option<CacheEntry>>> = Lazy::new(|| Mutex::new
 fn build_imported_index_cached(max_age: Duration) -> ImportedIndex {
     // Short lock: check cache hit
     {
-        let cache = IMPORTED_CACHE.lock().unwrap();
+        let cache = IMPORTED_CACHE.lock().unwrap_or_else(|e| e.into_inner());
         if let Some((ref index, ref ts)) = *cache {
             if ts.elapsed() < max_age {
                 log::debug!(
@@ -733,7 +733,7 @@ fn build_imported_index_cached(max_age: Duration) -> ImportedIndex {
 
     // Short lock: write back
     {
-        let mut cache = IMPORTED_CACHE.lock().unwrap();
+        let mut cache = IMPORTED_CACHE.lock().unwrap_or_else(|e| e.into_inner());
         *cache = Some((index.clone(), Instant::now()));
     }
     log::debug!(
@@ -746,7 +746,7 @@ fn build_imported_index_cached(max_age: Duration) -> ImportedIndex {
 /// Invalidate the imported-index cache. Call after successful import.
 pub fn invalidate_imported_cache() {
     log::debug!("[cli_sessions] imported-index cache invalidated");
-    *IMPORTED_CACHE.lock().unwrap() = None;
+    *IMPORTED_CACHE.lock().unwrap_or_else(|e| e.into_inner()) = None;
 }
 
 // ── Discovery ────────────────────────────────────────────────────────

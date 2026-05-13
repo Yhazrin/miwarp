@@ -174,7 +174,7 @@ impl EventWriter {
 
         // Get or create the per-run lock (brief global lock, then release)
         let run_lock = {
-            let mut map = self.inner.lock().unwrap();
+            let mut map = self.inner.lock().unwrap_or_else(|e| e.into_inner());
             // GC: drop entries whose per-run Arc has no other holders (session ended)
             if map.len() > 50 {
                 map.retain(|_, v| Arc::strong_count(v) > 1);
@@ -186,7 +186,7 @@ impl EventWriter {
         // Global lock released here — other runs proceed in parallel
 
         // Per-run lock: seq allocation + file write are atomic
-        let mut seq_guard = run_lock.lock().unwrap();
+        let mut seq_guard = run_lock.lock().unwrap_or_else(|e| e.into_inner());
         let current = *seq_guard;
         *seq_guard = current + 1;
 
@@ -227,7 +227,7 @@ impl EventWriter {
         );
 
         let run_lock = {
-            let mut map = self.inner.lock().unwrap();
+            let mut map = self.inner.lock().unwrap_or_else(|e| e.into_inner());
             if map.len() > 50 {
                 map.retain(|_, v| Arc::strong_count(v) > 1);
             }
@@ -236,7 +236,7 @@ impl EventWriter {
                 .clone()
         };
 
-        let mut seq_guard = run_lock.lock().unwrap();
+        let mut seq_guard = run_lock.lock().unwrap_or_else(|e| e.into_inner());
         let current = *seq_guard;
         *seq_guard = current + 1;
 
