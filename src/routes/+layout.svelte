@@ -1314,16 +1314,14 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="flex h-screen overflow-hidden">
+<div class="flex h-screen overflow-hidden pt-[54px]">
   <!-- Sidebar: Icon Rail + Content Panel -->
   {#if sidebarOpen}
     <aside class="flex shrink-0 glass-sidebar text-sidebar-foreground transition-all duration-200">
       <!-- A. Icon Rail -->
-      <div
-        class="flex w-[44px] flex-col items-center border-r border-[hsl(var(--miwarp-glass-border)/0.1)] bg-[hsl(var(--miwarp-bg-deepest)/0.95)]"
-      >
+      <div class="flex w-[44px] flex-col items-center bg-[hsl(var(--miwarp-bg-deepest)/0.88)]">
         <!-- Rail logo (OC) -->
-        <div class="flex h-14 w-full items-center justify-center border-b border-sidebar-border">
+        <div class="flex h-14 w-full items-center justify-center">
           {#if effectiveDark}
             <img src="/logo-dark.png?v=2" alt="OC" class="h-8 w-8 rounded-lg" />
           {:else}
@@ -1433,7 +1431,7 @@
         </nav>
 
         <!-- Rail version + locale + dark mode toggle -->
-        <div class="border-t border-sidebar-border py-2">
+        <div class="py-2">
           <div class="flex items-center justify-center pb-1">
             <button
               class="text-xs text-muted-foreground hover:text-muted-foreground transition-colors cursor-pointer"
@@ -1566,14 +1564,9 @@
       </div>
 
       <!-- B. Content Panel -->
-      <div
-        class="flex flex-none flex-col overflow-hidden border-r border-[hsl(var(--miwarp-glass-border)/0.1)] relative"
-        style:width="{sidebarWidth}px"
-      >
+      <div class="relative flex flex-none flex-col overflow-hidden" style:width="{sidebarWidth}px">
         <!-- Panel header: Project selector + new chat -->
-        <div
-          class="flex h-14 items-center gap-1.5 border-b border-[hsl(var(--miwarp-glass-border)/0.1)] px-3"
-        >
+        <div class="flex h-14 items-center gap-1.5 px-3">
           <span class="flex-1 min-w-0 truncate text-sm font-medium text-sidebar-foreground"
             >{pageName}</span
           >

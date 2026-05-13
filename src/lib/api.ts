@@ -1227,18 +1227,6 @@ export async function deleteAgentFile(
   });
 }
 
-// ── Preview ──
-
-export async function openPreviewWindow(url: string, instanceId: string): Promise<void> {
-  dbg("api", "openPreviewWindow", { url, instanceId });
-  return invoke("open_preview_window", { url, instanceId });
-}
-
-export async function closePreviewWindow(): Promise<void> {
-  dbg("api", "closePreviewWindow");
-  return invoke("close_preview_window");
-}
-
 // ── Ralph Loop ──
 
 export async function startRalphLoop(

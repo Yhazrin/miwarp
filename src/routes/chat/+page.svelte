@@ -93,10 +93,9 @@
   import { truncate, cwdDisplayLabel, formatTokenCount } from "$lib/utils/format";
   import { mapSettled } from "$lib/utils/async-utils";
   import { uuid } from "$lib/utils/uuid";
+  import type { WorkflowStep } from "$lib/types/workflow";
   import RewindModal from "$lib/components/RewindModal.svelte";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
-  import type { ElementSelection } from "$lib/types";
-  import { isElementSelection } from "$lib/types";
 
   // ── Helpers ──
 
@@ -190,12 +189,6 @@
   let preloadGen = 0;
   /** Local proxy running statuses for AuthSourceBadge. */
   let localProxyStatuses = $state<Record<string, { running: boolean; needsAuth: boolean }>>({});
-
-  // ── Preview state ──
-  let previewInstanceId = $state("");
-  let previewOpen = $derived(previewInstanceId !== "");
-  let previewUrlBarOpen = $state(false);
-  let previewUrlInput = $state(localStorage.getItem("ocv:preview-url") ?? "http://localhost:");
 
   // ── Model contamination helpers ──
 
@@ -301,8 +294,11 @@
   let shortcutHelpOpen = $state(false);
   let statusBarRef: SessionStatusBar | undefined = $state();
   let stashedInput: PromptInputSnapshot | null = $state(null);
-  let sidebarRequestedTab = $state<"tools" | "context" | "files" | "info" | "tasks" | null>(null);
+  let sidebarRequestedTab = $state<
+    "tools" | "context" | "files" | "info" | "tasks" | "preview" | "workflow" | null
+  >(null);
   let requestedPreviewPath = $state<string | null>(null);
+  let requestedPreviewUrl = $state<string | null>(null);
 
   function openPreviewForPath(path: string) {
     if (!path) return;
@@ -606,10 +602,6 @@
       ? store.timeline.filter((e) => e.kind === "tool").length
       : store.tools.filter((e) => e.tool_name).length,
   );
-  let hasSidebarData = $derived(
-    !!(store.run || store.tools.length > 0 || store.timeline.some((e) => e.kind === "tool")),
-  );
-
   // ── CLI version info (reactive — ensures heroMetaFooter re-renders after async load) ──
   let cliVersionInfo = $derived(getCliVersionInfo_cached());
 
@@ -1608,39 +1600,6 @@
       handleTauriDrop,
     );
 
-    // Preview window event listeners
-    const previewSelectionUnlisten = chatTransport.listen<{
-      instanceId: string;
-      data: unknown;
-    }>("preview-element-selected", (payload) => {
-      if (payload.instanceId !== previewInstanceId) {
-        dbgWarn("preview", "ignoring selection from stale instance", payload.instanceId);
-        return;
-      }
-      if (!isElementSelection(payload.data)) {
-        dbgWarn("preview", "invalid element payload", payload.data);
-        return;
-      }
-      dbg("preview", "elementSelected", {
-        domPath: payload.data.domPath,
-        tagName: payload.data.tagName,
-      });
-      // Insert directly to chat and bring main window to front
-      promptRef?.appendText(formatElementContext(payload.data));
-      import("@tauri-apps/api/window").then(({ getCurrentWindow }) => {
-        getCurrentWindow().setFocus();
-      });
-    });
-
-    const previewClosedUnlisten = chatTransport.listen<{ instanceId: string }>(
-      "preview-window-closed",
-      (payload) => {
-        if (payload.instanceId !== previewInstanceId) return;
-        dbg("preview", "windowClosed", { instanceId: payload.instanceId });
-        resetPreviewState();
-      },
-    );
-
     return () => {
       window.removeEventListener("ocv:statusbar-toggle", onStatusBarToggle);
       keybindingStore.unregisterCallback("chat:interrupt");
@@ -1659,8 +1618,6 @@
       dragEnterUnlisten.then((fn) => fn());
       dragLeaveUnlisten.then((fn) => fn());
       dragDropUnlisten.then((fn) => fn());
-      previewSelectionUnlisten.then((fn) => fn());
-      previewClosedUnlisten.then((fn) => fn());
       // Clean up verbose retry timer
       if (verboseRetryTimer) clearTimeout(verboseRetryTimer);
       // Clean up progressive rendering timer
@@ -2508,79 +2465,16 @@
 
   // ── Preview helpers ──
 
-  function isLocalhostUrl(url: string): boolean {
-    try {
-      const u = new URL(url);
-      return (
-        ["localhost", "127.0.0.1", "0.0.0.0", "[::1]"].includes(u.hostname) &&
-        ["http:", "https:"].includes(u.protocol)
-      );
-    } catch {
-      return false;
+  function openPreviewInSidebar(url?: string) {
+    const targetUrl = url?.trim() || localStorage.getItem("ocv:preview-url") || "";
+    if (!targetUrl) {
+      appendCommandOutput(t("preview_usage"));
+      return;
     }
-  }
-
-  async function openPreview(url: string): Promise<"ok" | "invalid_url" | "open_failed"> {
-    dbg("preview", "openPreview", { url });
-    if (!isLocalhostUrl(url)) return "invalid_url";
-
-    const instanceId = uuid();
-    resetPreviewState();
-    previewInstanceId = instanceId;
-
-    try {
-      await api.openPreviewWindow(url, instanceId);
-      localStorage.setItem("ocv:preview-url", url);
-      return "ok";
-    } catch (e) {
-      dbgWarn("preview", "openPreview failed", e);
-      resetPreviewState();
-      const msg = String(e);
-      if (msg.startsWith("preview_invalid_url:")) return "invalid_url";
-      return "open_failed";
-    }
-  }
-
-  async function closePreview() {
-    dbg("preview", "closePreview");
-    resetPreviewState();
-    await api.closePreviewWindow();
-  }
-
-  function resetPreviewState() {
-    previewInstanceId = "";
-  }
-
-  /** Open preview + show result as command output. Returns true on success. */
-  async function openPreviewAndNotify(url: string): Promise<boolean> {
-    const result = await openPreview(url);
-    if (result === "ok") {
-      appendCommandOutput(t("preview_opened"));
-      return true;
-    }
-    appendCommandOutput(t(result === "invalid_url" ? "preview_invalidUrl" : "preview_openFailed"));
-    return false;
-  }
-
-  function formatElementContext(sel: ElementSelection): string {
-    const lines = [
-      `[Page Element]`,
-      `URL: ${sel.url}`,
-      `Path: ${sel.domPath}`,
-      `Tag: ${sel.tagName}`,
-    ];
-    if (sel.textContent) lines.push(`Text: "${sel.textContent.slice(0, 200)}"`);
-    const attrs = Object.entries(sel.attributes)
-      .filter(([, v]) => v)
-      .map(([k, v]) => `${k}="${v}"`)
-      .join(", ");
-    if (attrs) lines.push(`Attributes: ${attrs}`);
-    const styles = Object.entries(sel.styleSummary)
-      .map(([k, v]) => `${k}=${v}`)
-      .join(", ");
-    if (styles) lines.push(`Styles: ${styles}`);
-    lines.push(`HTML: ${sel.outerHtmlSnippet.slice(0, 500)}`);
-    return lines.join("\n");
+    requestedPreviewUrl = targetUrl;
+    sidebarRequestedTab = "preview";
+    if (sidebarCollapsed) sidebarCollapsed = false;
+    appendCommandOutput(t("preview_opened"));
   }
 
   async function handleRalphCancel() {
@@ -2670,10 +2564,6 @@
         );
       }
     } else if (action === "show-status") {
-      if (!hasSidebarData) {
-        appendCommandOutput(t("statusPanel_noSession"));
-        return;
-      }
       if (sidebarCollapsed) sidebarCollapsed = false;
       sidebarRequestedTab = "info";
     } else if (action === "list-todos") {
@@ -3012,19 +2902,7 @@
     } else if (action === "cancel-ralph-loop") {
       await handleRalphCancel();
     } else if (action === "toggle-preview") {
-      if (args) {
-        await openPreviewAndNotify(args);
-      } else if (previewOpen) {
-        await closePreview();
-        appendCommandOutput(t("preview_closed"));
-      } else {
-        const lastUrl = localStorage.getItem("ocv:preview-url");
-        if (lastUrl) {
-          await openPreviewAndNotify(lastUrl);
-        } else {
-          appendCommandOutput(t("preview_usage"));
-        }
-      }
+      openPreviewInSidebar(args);
     }
   }
 
@@ -3146,6 +3024,17 @@
     chatToastTimeout = setTimeout(() => {
       chatToast = null;
     }, 2500);
+  }
+
+  async function handleWorkflowExecute(step: WorkflowStep) {
+    const prompt = step.prompt?.trim() || step.instruction?.trim() || step.title?.trim();
+    if (!prompt) {
+      throw new Error(t("workflow_emptyStepPrompt"));
+    }
+    if (store.isRunning) {
+      throw new Error(t("workflow_busy"));
+    }
+    await sendMessage(prompt, []);
   }
 
   async function toggleCliConfigBool(key: string) {
@@ -3795,7 +3684,7 @@
   </div>
 {/snippet}
 
-<div class="flex h-full overflow-hidden bg-background relative">
+<div class="relative flex h-full overflow-hidden bg-background">
   <!-- Page-level drag overlay (drag-hover or processing spinner) -->
   {#if pageDragActive || dragProcessing}
     <div
@@ -3889,23 +3778,7 @@
       authSourceLabel={store.authSourceLabel}
       authSourceCategory={store.authSourceCategory}
       apiKeySource={store.apiKeySource}
-      {previewOpen}
-      onPreviewToggle={() => {
-        if (previewOpen && !previewUrlBarOpen) {
-          closePreview();
-        } else {
-          previewUrlBarOpen = !previewUrlBarOpen;
-          if (previewUrlBarOpen) {
-            requestAnimationFrame(() => {
-              const el = document.querySelector<HTMLInputElement>("#__preview-url-input");
-              el?.focus();
-              el?.select();
-            });
-          }
-        }
-      }}
       onStatusClick={() => {
-        if (!hasSidebarData) return;
         if (sidebarCollapsed) sidebarCollapsed = false;
         sidebarRequestedTab = "info";
       }}
@@ -3927,74 +3800,12 @@
       </div>
     {/if}
 
-    <!-- Preview URL input bar -->
-    {#if previewUrlBarOpen}
-      <div class="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-muted/30 text-xs">
-        <svg
-          class="w-3.5 h-3.5 shrink-0 text-muted-foreground"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <circle cx="12" cy="12" r="10" /><path
-            d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
-          />
-        </svg>
-        <input
-          id="__preview-url-input"
-          type="text"
-          bind:value={previewUrlInput}
-          placeholder="http://localhost:3000"
-          class="flex-1 bg-transparent border-none outline-none text-xs text-foreground placeholder:text-muted-foreground/50 font-mono"
-          onkeydown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              const url = previewUrlInput.trim();
-              if (url) {
-                openPreviewAndNotify(url).then((ok) => {
-                  if (ok) previewUrlBarOpen = false;
-                });
-              }
-            } else if (e.key === "Escape") {
-              previewUrlBarOpen = false;
-            }
-          }}
-        />
-        {#if previewOpen}
-          <button
-            onclick={() => {
-              closePreview();
-              previewUrlBarOpen = false;
-            }}
-            class="px-2 py-0.5 rounded text-xs bg-muted hover:bg-accent text-foreground transition-colors"
-          >
-            {t("preview_close")}
-          </button>
-        {/if}
-        <button
-          onclick={() => {
-            previewUrlBarOpen = false;
-          }}
-          class="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <svg
-            class="w-3.5 h-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"><path d="M18 6 6 18M6 6l12 12" /></svg
-          >
-        </button>
-      </div>
-    {/if}
-
     <!-- Main area -->
     <div class="flex-1 overflow-hidden relative">
       {#if store.useStreamSession}
         <!-- API mode: chat messages -->
         <div
-          class="h-full overflow-y-auto"
+          class="h-full overflow-y-auto pb-40"
           style="overflow-anchor:auto"
           bind:this={chatAreaRef}
           onscroll={handleChatScroll}
@@ -4915,91 +4726,98 @@
     {/if}
 
     {#if store.sessionAlive || !store.run || store.phase === "empty" || store.phase === "ready" || TERMINAL_PHASES.includes(store.phase)}
-      <PromptInput
-        bind:this={promptRef}
-        agent={store.agent}
-        running={store.isActivelyRunning}
-        disabled={inputBlockedByPermission}
-        pendingPermission={store.hasInlinePermission}
-        hasRun={!!store.run}
-        sessionAlive={store.sessionAlive}
-        canResume={!store.sessionAlive &&
-          canResumeNow(store.run, store.phase, agentSettings?.no_session_persistence ?? false)}
-        useStreamSession={store.useStreamSession}
-        isRemote={store.isRemote}
-        cliCommands={store.sessionInitReceived && store.sessionCommands.length > 0
-          ? store.sessionCommands
-          : mergeProjectCommands(getCliCommands(), projectCommands)}
-        models={effectiveModels}
-        currentModel={store.model}
-        permissionMode={store.permissionMode}
-        cwd={store.effectiveCwd ||
-          folderCwdOverride ||
-          localStorage.getItem("ocv:project-cwd") ||
-          ""}
-        authMode={store.authMode}
-        platformId={store.platformId ?? "anthropic"}
-        platformCredentials={settings?.platform_credentials ?? []}
-        onSend={sendMessage}
-        onBtwSend={handleBtwSend}
-        onAgentChange={undefined}
-        onInterrupt={() => store.interrupt()}
-        onModelSwitch={handleModelChange}
-        onPermissionModeChange={store.features.permissionModeSwitch
-          ? handlePermissionModeChange
-          : undefined}
-        onVirtualCommand={handleVirtualCommand}
-        fastModeState={store.fastModeState}
-        onFastModeSwitch={handleFastModeSwitch}
-        onPlatformChange={handlePlatformChange}
-        {authOverview}
-        authSourceLabel={store.authSourceLabel}
-        authSourceCategory={store.authSourceCategory}
-        apiKeySource={store.apiKeySource}
-        onAuthModeChange={handleAuthModeChange}
-        {localProxyStatuses}
-        showAuthBadge={!welcomeVisible}
-        onShortcutHelp={() => (shortcutHelpOpen = !shortcutHelpOpen)}
-        availableSkills={store.availableSkills}
-        {skillItems}
-        agents={preloadedAgents.map((a) => ({ name: a.name, description: a.description }))}
-        hasStash={!!stashedInput}
-        {userHistory}
-        runId={store.run?.id ?? ""}
-        onRestoreStash={() => {
-          if (stashedInput) {
-            promptRef?.restoreSnapshot(stashedInput);
-            stashedInput = null;
-            showChatToast(t("toast_stashRestored"));
-            dbg("chat", "stash restored via badge click");
-          }
-        }}
-      />
+      <div
+        class="pointer-events-none sticky bottom-0 z-20 bg-gradient-to-t from-background via-background/94 to-transparent px-2 pb-5 pt-3"
+      >
+        <div class="pointer-events-auto">
+          <PromptInput
+            bind:this={promptRef}
+            agent={store.agent}
+            running={store.isActivelyRunning}
+            disabled={inputBlockedByPermission}
+            pendingPermission={store.hasInlinePermission}
+            hasRun={!!store.run}
+            sessionAlive={store.sessionAlive}
+            canResume={!store.sessionAlive &&
+              canResumeNow(store.run, store.phase, agentSettings?.no_session_persistence ?? false)}
+            useStreamSession={store.useStreamSession}
+            isRemote={store.isRemote}
+            cliCommands={store.sessionInitReceived && store.sessionCommands.length > 0
+              ? store.sessionCommands
+              : mergeProjectCommands(getCliCommands(), projectCommands)}
+            models={effectiveModels}
+            currentModel={store.model}
+            permissionMode={store.permissionMode}
+            cwd={store.effectiveCwd ||
+              folderCwdOverride ||
+              localStorage.getItem("ocv:project-cwd") ||
+              ""}
+            authMode={store.authMode}
+            platformId={store.platformId ?? "anthropic"}
+            platformCredentials={settings?.platform_credentials ?? []}
+            onSend={sendMessage}
+            onBtwSend={handleBtwSend}
+            onAgentChange={undefined}
+            onInterrupt={() => store.interrupt()}
+            onModelSwitch={handleModelChange}
+            onPermissionModeChange={store.features.permissionModeSwitch
+              ? handlePermissionModeChange
+              : undefined}
+            onVirtualCommand={handleVirtualCommand}
+            fastModeState={store.fastModeState}
+            onFastModeSwitch={handleFastModeSwitch}
+            onPlatformChange={handlePlatformChange}
+            {authOverview}
+            authSourceLabel={store.authSourceLabel}
+            authSourceCategory={store.authSourceCategory}
+            apiKeySource={store.apiKeySource}
+            onAuthModeChange={handleAuthModeChange}
+            {localProxyStatuses}
+            showAuthBadge={!welcomeVisible}
+            onShortcutHelp={() => (shortcutHelpOpen = !shortcutHelpOpen)}
+            availableSkills={store.availableSkills}
+            {skillItems}
+            agents={preloadedAgents.map((a) => ({ name: a.name, description: a.description }))}
+            hasStash={!!stashedInput}
+            {userHistory}
+            runId={store.run?.id ?? ""}
+            onRestoreStash={() => {
+              if (stashedInput) {
+                promptRef?.restoreSnapshot(stashedInput);
+                stashedInput = null;
+                showChatToast(t("toast_stashRestored"));
+                dbg("chat", "stash restored via badge click");
+              }
+            }}
+          />
+        </div>
+      </div>
     {/if}
   </div>
 
   <!-- Tool Activity sidebar -->
-  {#if hasSidebarData}
-    <ToolActivity
-      timeline={store.timeline}
-      tools={store.tools}
-      turnUsages={store.turnUsages}
-      {contextHistory}
-      persistedFiles={store.persistedFiles}
-      sessionInfo={currentSessionInfo}
-      collapsed={sidebarCollapsed}
-      onToggle={toggleSidebar}
-      onScrollToTool={scrollToTool}
-      onScrollToTurn={(anchorId) => scrollToMessage(anchorId)}
-      bind:requestedTab={sidebarRequestedTab}
-      backgroundTasks={store.taskNotifications}
-      activeBackgroundTasks={store.activeBackgroundTasks}
-      cwd={store.effectiveCwd}
-      runId={store.run?.id ?? ""}
-      isRemote={store.isRemote}
-      bind:requestedPreviewPath
-    />
-  {/if}
+  <ToolActivity
+    timeline={store.timeline}
+    tools={store.tools}
+    turnUsages={store.turnUsages}
+    {contextHistory}
+    persistedFiles={store.persistedFiles}
+    sessionInfo={currentSessionInfo}
+    collapsed={sidebarCollapsed}
+    onToggle={toggleSidebar}
+    onScrollToTool={scrollToTool}
+    onScrollToTurn={(anchorId) => scrollToMessage(anchorId)}
+    bind:requestedTab={sidebarRequestedTab}
+    backgroundTasks={store.taskNotifications}
+    activeBackgroundTasks={store.activeBackgroundTasks}
+    cwd={store.effectiveCwd}
+    runId={store.run?.id ?? ""}
+    isRemote={store.isRemote}
+    bind:requestedPreviewPath
+    bind:requestedPreviewUrl
+    onExecuteWorkflowStep={handleWorkflowExecute}
+    onWorkflowNotify={showChatToast}
+  />
 
   <RewindModal
     bind:open={rewindModalOpen}

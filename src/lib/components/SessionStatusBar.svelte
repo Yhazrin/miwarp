@@ -55,8 +55,6 @@
     apiKeySource,
     effort,
     onEffortChange,
-    onPreviewToggle,
-    previewOpen = false,
     onStatusClick,
     onExportHtml,
   }: {
@@ -105,8 +103,6 @@
     apiKeySource?: string;
     effort?: string;
     onEffortChange?: (effort: string) => void;
-    onPreviewToggle?: () => void;
-    previewOpen?: boolean;
     onStatusClick?: () => void;
     onExportHtml?: () => void;
   } = $props();
@@ -376,7 +372,9 @@
   });
 </script>
 
-<div class="border-b border-border bg-muted/50 font-mono text-xs text-foreground/70">
+<div
+  class="mx-4 mt-3 rounded-2xl border border-border/35 bg-background/46 font-mono text-xs text-foreground/70 backdrop-blur-xl"
+>
   <!-- Tier 1: Always visible (h-9) -->
   <div class="flex h-9 items-center justify-between px-3">
     <!-- Left: core info -->
@@ -573,28 +571,6 @@
           Export
         </button>
       {/if}
-      {#if onPreviewToggle}
-        <button
-          class="flex items-center gap-1 rounded px-2 py-0.5 transition-colors
-            {previewOpen
-            ? 'text-primary hover:bg-primary/10'
-            : 'text-foreground/50 hover:text-foreground hover:bg-accent'}"
-          onclick={onPreviewToggle}
-          title="Preview"
-        >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg
-          >
-          Preview
-        </button>
-      {/if}
       {#if !running && onRewind && persistedFiles && persistedFiles.length > 0}
         <button
           class="flex items-center gap-1 rounded px-2 py-0.5 text-foreground/50 hover:text-foreground hover:bg-accent transition-colors"
@@ -696,7 +672,7 @@
 
   <!-- Tier 2: Collapsible details (h-7) -->
   {#if expanded}
-    <div class="flex h-7 items-center justify-between px-3 border-t border-border/50">
+    <div class="flex h-7 items-center justify-between border-t border-border/20 px-3">
       <!-- Left: details -->
       <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
         {#if cwdShort}

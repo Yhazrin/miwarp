@@ -17,7 +17,6 @@ pub mod history;
 pub mod mcp;
 pub mod onboarding;
 pub mod plugins;
-pub mod preview;
 pub mod remote_fs;
 pub mod runs;
 pub mod screenshot;

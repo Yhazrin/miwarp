@@ -59,184 +59,254 @@
 </script>
 
 <div
-  class="w-full animate-fade-in {isUser
-    ? 'bg-[hsl(var(--miwarp-accent-primary)/0.04)] border-y border-[hsl(var(--miwarp-glass-border)/0.08)]'
-    : ''}"
+  class="w-full animate-fade-in"
   role="group"
   onmouseenter={() => (hovered = true)}
   onmouseleave={() => (hovered = false)}
 >
   <div class="chat-content-width py-4">
-    <!-- Header: icon + name + copy button + timestamp -->
-    <div class="mb-1.5 flex items-center gap-2">
-      {#if isUser}
-        <div
-          class="flex h-5 w-5 items-center justify-center rounded-full accent-gradient text-white"
-        >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-        </div>
-        <span class="text-sm font-semibold text-foreground">{t("chat_roleYou")}</span>
-      {:else}
-        <div
-          class="flex h-5 w-5 items-center justify-center rounded-full bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-[hsl(var(--miwarp-accent-violet))]"
-        >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path
-              d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"
-            />
-          </svg>
-        </div>
-        <span class="text-sm font-semibold text-foreground">{t("chat_roleClaude")}</span>
-      {/if}
-      {#if onRewind}
-        <button
-          class="ml-auto p-1 rounded-md text-miwarp-text-tertiary hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary transition-all duration-150 {hovered
-            ? 'opacity-100'
-            : 'opacity-0'}"
-          onclick={onRewind}
-          title={t("rewind_toHere")}
-          data-export-exclude
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-            <path d="M3 3v5h5" />
-          </svg>
-        </button>
-      {/if}
-      <button
-        class="{onRewind
-          ? ''
-          : 'ml-auto'} p-1 rounded-md text-miwarp-text-tertiary hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary transition-all duration-150 {hovered ||
-        copied
-          ? 'opacity-100'
-          : 'opacity-0'}"
-        onclick={copyContent}
-        title={t("chat_copyMessage")}
-        data-export-exclude
-      >
-        {#if copied}
-          <svg
-            class="h-3.5 w-3.5 text-emerald-500"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-          >
-        {:else}
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><rect width="14" height="14" x="8" y="8" rx="2" /><path
-              d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
-            /></svg
-          >
-        {/if}
-      </button>
-      <span class="text-[10px] text-muted-foreground" title={formatFullTime(message.timestamp)}>
-        {formatTime(message.timestamp)}
-      </span>
-    </div>
-    <!-- Content: indented to align with text after icon -->
-    <div class="pl-7 text-sm text-foreground leading-relaxed">
-      {#if isUser}
-        {#if attachments && attachments.length > 0}
-          <div class="flex flex-wrap gap-2 mb-2">
-            {#each attachments as att}
-              {#if isImage(att) && att.contentBase64}
-                <img
-                  src="data:{att.type};base64,{att.contentBase64}"
-                  alt={att.name}
-                  class="max-h-48 max-w-xs rounded-md border border-border object-contain"
-                />
+    <div class={`flex ${isUser ? "justify-end" : ""}`}>
+      <div class={`w-full ${isUser ? "max-w-3xl" : ""}`}>
+        <!-- Header -->
+        <div class={`mb-1.5 flex items-center gap-2 ${isUser ? "justify-end" : ""}`}>
+          {#if isUser}
+            <span
+              class="text-[10px] text-muted-foreground"
+              title={formatFullTime(message.timestamp)}
+            >
+              {formatTime(message.timestamp)}
+            </span>
+            <button
+              class="rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered ||
+              copied
+                ? 'opacity-100'
+                : 'opacity-0'}"
+              onclick={copyContent}
+              title={t("chat_copyMessage")}
+              data-export-exclude
+            >
+              {#if copied}
+                <svg
+                  class="h-3.5 w-3.5 text-emerald-500"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
+                >
               {:else}
-                <FileAttachment name={att.name} size={att.size} mimeType={att.type} />
+                <svg
+                  class="h-3.5 w-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><rect width="14" height="14" x="8" y="8" rx="2" /><path
+                    d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
+                  /></svg
+                >
               {/if}
-            {/each}
-          </div>
-        {/if}
-        {#if isLong}
-          <p
-            class="whitespace-pre-wrap {collapsed ? 'max-h-24 overflow-hidden' : ''}"
-            style={collapsed
-              ? "mask-image: linear-gradient(to bottom, black 70%, transparent);"
-              : ""}
-          >
-            {message.content}
-          </p>
-          <button
-            class="mt-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            onclick={() => (collapsed = !collapsed)}
-          >
-            {collapsed
-              ? t("common_showAllLines", { count: String(lineCount) })
-              : t("common_collapse")}
-          </button>
-        {:else}
-          <p class="whitespace-pre-wrap">{message.content}</p>
-        {/if}
-      {:else}
-        {#if thinkingText}
-          <button
-            class="mb-2 flex items-center gap-1.5 text-xs text-[hsl(var(--miwarp-status-info))] hover:text-[hsl(var(--miwarp-status-info)/0.8)] transition-colors"
-            onclick={() => (thinkingCollapsed = !thinkingCollapsed)}
-          >
-            <svg
-              class="h-3 w-3 transition-transform {thinkingCollapsed ? '' : 'rotate-90'}"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg
-            >
-            {t("chat_thoughtProcess")}
-          </button>
-          {#if !thinkingCollapsed}
+            </button>
+            {#if onRewind}
+              <button
+                class="rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered
+                  ? 'opacity-100'
+                  : 'opacity-0'}"
+                onclick={onRewind}
+                title={t("rewind_toHere")}
+                data-export-exclude
+              >
+                <svg
+                  class="h-3.5 w-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" />
+                </svg>
+              </button>
+            {/if}
+            <span class="text-sm font-semibold text-foreground">{t("chat_roleYou")}</span>
             <div
-              class="mb-3 rounded-md border border-dashed border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-3 py-2 text-xs text-[hsl(var(--miwarp-status-info)/0.8)] whitespace-pre-wrap leading-relaxed"
+              class="flex h-5 w-5 items-center justify-center rounded-full accent-gradient text-white"
             >
-              {thinkingText.trimEnd()}
+              <svg
+                class="h-3 w-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
+          {:else}
+            <div
+              class="flex h-5 w-5 items-center justify-center rounded-full bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-[hsl(var(--miwarp-accent-violet))]"
+            >
+              <svg
+                class="h-3 w-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"
+                />
+              </svg>
+            </div>
+            <span class="text-sm font-semibold text-foreground">{t("chat_roleClaude")}</span>
+            {#if onRewind}
+              <button
+                class="ml-auto rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered
+                  ? 'opacity-100'
+                  : 'opacity-0'}"
+                onclick={onRewind}
+                title={t("rewind_toHere")}
+                data-export-exclude
+              >
+                <svg
+                  class="h-3.5 w-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" />
+                </svg>
+              </button>
+            {/if}
+            <button
+              class="{onRewind
+                ? ''
+                : 'ml-auto'} rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered ||
+              copied
+                ? 'opacity-100'
+                : 'opacity-0'}"
+              onclick={copyContent}
+              title={t("chat_copyMessage")}
+              data-export-exclude
+            >
+              {#if copied}
+                <svg
+                  class="h-3.5 w-3.5 text-emerald-500"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
+                >
+              {:else}
+                <svg
+                  class="h-3.5 w-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><rect width="14" height="14" x="8" y="8" rx="2" /><path
+                    d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
+                  /></svg
+                >
+              {/if}
+            </button>
+            <span
+              class="text-[10px] text-muted-foreground"
+              title={formatFullTime(message.timestamp)}
+            >
+              {formatTime(message.timestamp)}
+            </span>
+          {/if}
+        </div>
+        <!-- Content -->
+        <div
+          class={`${isUser ? "pr-7 text-right" : "pl-7"} text-sm leading-relaxed text-foreground`}
+        >
+          {#if isUser}
+            {#if attachments && attachments.length > 0}
+              <div class={`mb-2 flex flex-wrap gap-2 ${isUser ? "justify-end" : ""}`}>
+                {#each attachments as att}
+                  {#if isImage(att) && att.contentBase64}
+                    <img
+                      src="data:{att.type};base64,{att.contentBase64}"
+                      alt={att.name}
+                      class="max-h-48 max-w-xs rounded-md border border-border object-contain"
+                    />
+                  {:else}
+                    <FileAttachment name={att.name} size={att.size} mimeType={att.type} />
+                  {/if}
+                {/each}
+              </div>
+            {/if}
+            {#if isLong}
+              <p
+                class="whitespace-pre-wrap {collapsed ? 'max-h-24 overflow-hidden' : ''}"
+                style={collapsed
+                  ? "mask-image: linear-gradient(to bottom, black 70%, transparent);"
+                  : ""}
+              >
+                {message.content}
+              </p>
+              <button
+                class="mt-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onclick={() => (collapsed = !collapsed)}
+              >
+                {collapsed
+                  ? t("common_showAllLines", { count: String(lineCount) })
+                  : t("common_collapse")}
+              </button>
+            {:else}
+              <p class="whitespace-pre-wrap">{message.content}</p>
+            {/if}
+          {:else}
+            {#if thinkingText}
+              <button
+                class="mb-2 flex items-center gap-1.5 text-xs text-[hsl(var(--miwarp-status-info))] hover:text-[hsl(var(--miwarp-status-info)/0.8)] transition-colors"
+                onclick={() => (thinkingCollapsed = !thinkingCollapsed)}
+              >
+                <svg
+                  class="h-3 w-3 transition-transform {thinkingCollapsed ? '' : 'rotate-90'}"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg
+                >
+                {t("chat_thoughtProcess")}
+              </button>
+              {#if !thinkingCollapsed}
+                <div
+                  class="mb-3 rounded-md border border-dashed border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-3 py-2 text-xs text-[hsl(var(--miwarp-status-info)/0.8)] whitespace-pre-wrap leading-relaxed"
+                >
+                  {thinkingText.trimEnd()}
+                </div>
+              {/if}
+            {/if}
+            <div class="prose-chat">
+              <MarkdownContent text={message.content} />
             </div>
           {/if}
-        {/if}
-        <div class="prose-chat">
-          <MarkdownContent text={message.content} />
         </div>
-      {/if}
+      </div>
     </div>
   </div>
 </div>
