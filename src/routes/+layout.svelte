@@ -2217,6 +2217,8 @@
 
   <!-- Main content -->
   <div class="app-main-shell flex flex-col overflow-hidden">
+    <!-- macOS drag region for title bar -->
+    <div class="macos-drag-region" data-tauri-drag-region></div>
     <UpdateBanner />
     <!-- Page content — full-bleed, no top bar on non-chat pages -->
     <main class="flex-1 overflow-y-auto">

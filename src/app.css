@@ -867,6 +867,29 @@ html:not(.dark) img.logo-light {
 .traffic-lights .tl-close {
   background: #ff5f57;
 }
+
+/* ── macOS drag region for title bar ── */
+.macos-drag-region {
+  position: fixed;
+  top: 0;
+  left: 80px;
+  right: 0;
+  height: 36px;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+/* Ensure interactive elements are above the drag region */
+.macos-drag-region button,
+.macos-drag-region input,
+.macos-drag-region select,
+.macos-drag-region textarea,
+.macos-drag-region a,
+[role="button"] {
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
+}
 .traffic-lights .tl-minimize {
   background: #ffbd2e;
 }
