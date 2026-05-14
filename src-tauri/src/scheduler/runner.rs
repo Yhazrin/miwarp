@@ -80,7 +80,7 @@ pub async fn execute_task(
         Ok(mut meta) => {
             meta.execution_path = Some(execution_path);
             // Tag as scheduled task
-            meta.source = crate::models::RunSource::Native;
+            meta.source = Some(crate::models::RunSource::Native);
             if let Err(e) = storage::runs::save_meta(&meta) {
                 log::error!("[scheduler] failed to save run meta: {e}");
             }
