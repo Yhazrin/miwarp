@@ -22,7 +22,7 @@
 ---
 
 <p align="center">
-  <img src="static/screenshot.png" width="800" alt="MiWarp Screenshot">
+  <img src="appshot.png" width="800" alt="MiWarp Screenshot">
 </p>
 
 ## What is MiWarp?
