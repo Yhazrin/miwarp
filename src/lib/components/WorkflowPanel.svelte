@@ -160,10 +160,8 @@
         stroke-linecap="round"
         stroke-linejoin="round"
       >
-        <rect x="3" y="3" width="7" height="7" />
-        <rect x="14" y="3" width="7" height="7" />
-        <rect x="3" y="14" width="7" height="7" />
-        <rect x="14" y="14" width="7" height="7" />
+        <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
+        <rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
       </svg>
     </button>
   </div>
@@ -288,7 +286,7 @@
         <div class="step-header">
           <div class="step-title-area">
             <h4 class="step-title">
-              Step {activeInstance?.currentStepIndex ?? 0 + 1}: {currentStep.title}
+              Step {(activeInstance?.currentStepIndex ?? 0) + 1}: {currentStep.title}
             </h4>
             <span
               class="intervention-badge"
@@ -514,69 +512,83 @@
   .workflow-panel {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
-    background: var(--color-surface, #1a1a1a);
-    border-radius: 8px;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: transparent;
     max-height: 100%;
     overflow-y: auto;
+    color: hsl(var(--foreground));
   }
 
   .panel-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--color-border, #333);
+    padding: 0.75rem 0.85rem;
+    border: 1px solid hsl(var(--border) / 0.42);
+    border-radius: 1rem;
+    background: hsl(var(--background) / 0.42);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
   }
 
   .panel-header h3 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 0.92rem;
     font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   /* Template Selector */
   .template-selector {
-    background: var(--color-background, #0a0a0a);
-    border-radius: 8px;
-    padding: 1rem;
+    border: 1px solid hsl(var(--border) / 0.42);
+    border-radius: 1.1rem;
+    padding: 0.75rem;
+    background: hsl(var(--background) / 0.38);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
   }
 
   .selector-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
+    margin-bottom: 0.65rem;
   }
 
   .selector-header h4 {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.82rem;
+    font-weight: 600;
   }
 
   .template-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 0.55rem;
   }
 
   .template-card {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    padding: 1rem;
-    background: var(--color-surface, #1a1a1a);
-    border: 1px solid var(--color-border, #333);
-    border-radius: 6px;
+    gap: 0.45rem;
+    padding: 0.75rem;
+    background: hsl(var(--muted) / 0.28);
+    border: 1px solid hsl(var(--border) / 0.42);
+    border-radius: 1rem;
     cursor: pointer;
     text-align: left;
-    transition: all 0.2s;
+    color: hsl(var(--foreground));
+    transition:
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      transform 0.18s ease;
   }
 
   .template-card:hover {
-    border-color: var(--color-primary, #6366f1);
-    background: var(--color-hover, #222);
+    border-color: hsl(var(--primary) / 0.42);
+    background: hsl(var(--accent) / 0.14);
+    transform: translateY(-1px);
   }
 
   .template-icon {
@@ -585,17 +597,17 @@
     justify-content: center;
     width: 32px;
     height: 32px;
-    color: var(--color-primary, #6366f1);
+    color: hsl(var(--primary));
   }
 
   .template-name {
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 0.82rem;
   }
 
   .template-desc {
     font-size: 0.75rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--muted-foreground));
     line-height: 1.4;
   }
 
@@ -608,7 +620,7 @@
 
   .category-badge {
     padding: 0.125rem 0.5rem;
-    border-radius: 4px;
+    border-radius: 999px;
     font-size: 0.625rem;
     color: white;
     text-transform: uppercase;
@@ -616,7 +628,7 @@
 
   .template-time {
     font-size: 0.75rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--muted-foreground));
   }
 
   /* Empty State */
@@ -625,9 +637,14 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
-    padding: 3rem 1rem;
+    gap: 0.85rem;
+    padding: 2.5rem 1rem;
     text-align: center;
+    border: 1px solid hsl(var(--border) / 0.36);
+    border-radius: 1.35rem;
+    background: hsl(var(--background) / 0.32);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
   }
 
   .empty-icon {
@@ -635,19 +652,23 @@
     align-items: center;
     justify-content: center;
     opacity: 0.5;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--muted-foreground));
   }
 
   .empty-state p {
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--muted-foreground));
     margin: 0;
+    font-size: 0.8rem;
   }
 
   /* Progress */
   .progress-section {
     padding: 0.75rem;
-    background: var(--color-background, #0a0a0a);
-    border-radius: 6px;
+    background: hsl(var(--background) / 0.38);
+    border: 1px solid hsl(var(--border) / 0.42);
+    border-radius: 1rem;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
   }
 
   .progress-info {
@@ -658,23 +679,25 @@
 
   .workflow-name {
     font-weight: 500;
+    font-size: 0.78rem;
   }
 
   .progress-percent {
-    color: var(--color-primary, #6366f1);
+    color: hsl(var(--primary));
     font-weight: 600;
+    font-size: 0.75rem;
   }
 
   .progress-bar {
     height: 4px;
-    background: var(--color-border, #333);
-    border-radius: 2px;
+    background: hsl(var(--muted) / 0.65);
+    border-radius: 999px;
     overflow: hidden;
   }
 
   .progress-fill {
     height: 100%;
-    background: var(--color-primary, #6366f1);
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--miwarp-accent-violet)));
     transition: width 0.3s ease;
   }
 
@@ -682,9 +705,14 @@
   .step-indicator {
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 1rem 0.5rem;
+    justify-content: flex-start;
+    padding: 0.75rem;
     overflow-x: auto;
+    border: 1px solid hsl(var(--border) / 0.32);
+    border-radius: 1rem;
+    background: hsl(var(--background) / 0.28);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
   }
 
   .step-dot {
@@ -692,7 +720,7 @@
     flex-direction: column;
     align-items: center;
     gap: 0.25rem;
-    padding: 0.5rem;
+    padding: 0.35rem;
     background: transparent;
     border: none;
     cursor: pointer;
@@ -701,40 +729,39 @@
   }
 
   .step-icon {
-    font-size: 1rem;
+    font-size: 0.78rem;
     width: 28px;
     height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background: var(--color-border, #333);
-    color: var(--color-text-secondary, #888);
+    background: hsl(var(--muted) / 0.62);
+    color: hsl(var(--muted-foreground));
   }
 
   .step-number {
     font-size: 0.625rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--muted-foreground));
   }
 
   .step-dot.completed .step-icon {
-    background: var(--color-success, #22c55e);
+    background: hsl(var(--miwarp-status-success));
     color: white;
   }
 
   .step-dot.active .step-icon {
-    background: var(--color-primary, #6366f1);
+    background: hsl(var(--primary));
     color: white;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
   }
 
   .step-dot.skipped .step-icon {
-    background: var(--color-text-secondary, #888);
+    background: hsl(var(--muted-foreground));
     color: white;
   }
 
   .step-dot.failed .step-icon {
-    background: var(--color-error, #ef4444);
+    background: hsl(var(--destructive));
     color: white;
   }
 
@@ -742,20 +769,23 @@
     flex: 1;
     height: 2px;
     min-width: 20px;
-    background: var(--color-border, #333);
+    background: hsl(var(--border) / 0.55);
     margin: 0 0.25rem;
     margin-bottom: 1.25rem;
   }
 
   .step-connector.completed {
-    background: var(--color-success, #22c55e);
+    background: hsl(var(--miwarp-status-success));
   }
 
   /* Step Details */
   .step-details {
-    padding: 1rem;
-    background: var(--color-background, #0a0a0a);
-    border-radius: 6px;
+    padding: 0.85rem;
+    background: hsl(var(--background) / 0.38);
+    border: 1px solid hsl(var(--border) / 0.42);
+    border-radius: 1.15rem;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
   }
 
   .step-header {
@@ -768,41 +798,42 @@
   .step-title-area {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
   }
 
   .step-title {
     margin: 0;
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   .intervention-badge {
-    padding: 0.125rem 0.5rem;
-    border-radius: 4px;
+    padding: 0.18rem 0.55rem;
+    border-radius: 999px;
     font-size: 0.625rem;
-    text-transform: uppercase;
+    border: 1px solid hsl(var(--border) / 0.28);
   }
 
   .intervention-badge.level-0 {
-    background: #22c55e;
-    color: white;
+    background: hsl(var(--miwarp-status-success) / 0.14);
+    color: hsl(var(--miwarp-status-success));
   }
 
   .intervention-badge.level-1 {
-    background: #3b82f6;
-    color: white;
+    background: hsl(var(--miwarp-status-info) / 0.14);
+    color: hsl(var(--miwarp-status-info));
   }
 
   .intervention-badge.level-2 {
-    background: #f59e0b;
-    color: black;
+    background: hsl(var(--miwarp-status-warning) / 0.14);
+    color: hsl(var(--miwarp-status-warning));
   }
 
   .intervention-badge.level-3 {
-    background: #ef4444;
-    color: white;
+    background: hsl(var(--destructive) / 0.14);
+    color: hsl(var(--destructive));
   }
 
   .step-time {
@@ -810,14 +841,14 @@
     align-items: center;
     gap: 0.35rem;
     font-size: 0.75rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--muted-foreground));
   }
 
   .step-instruction {
     margin: 0 0 1rem 0;
     font-size: 0.875rem;
     line-height: 1.5;
-    color: var(--color-text, #e5e5e5);
+    color: hsl(var(--foreground) / 0.82);
   }
 
   /* Prompt Sections */
@@ -832,28 +863,29 @@
   .tools-section h5 {
     margin: 0 0 0.5rem 0;
     font-size: 0.75rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--muted-foreground));
     text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   .prompt-preview {
     margin: 0;
     padding: 0.75rem;
-    background: var(--color-surface, #1a1a1a);
-    border-radius: 4px;
+    background: hsl(var(--muted) / 0.34);
+    border-radius: 0.9rem;
     font-size: 0.75rem;
     white-space: pre-wrap;
-    color: var(--color-text, #e5e5e5);
-    border: 1px solid var(--color-border, #333);
+    color: hsl(var(--foreground) / 0.86);
+    border: 1px solid hsl(var(--border) / 0.42);
   }
 
   .prompt-input {
     width: 100%;
     padding: 0.75rem;
-    background: var(--color-surface, #1a1a1a);
-    border: 1px solid var(--color-border, #333);
-    border-radius: 4px;
-    color: var(--color-text, #e5e5e5);
+    background: hsl(var(--background) / 0.42);
+    border: 1px solid hsl(var(--border) / 0.48);
+    border-radius: 0.95rem;
+    color: hsl(var(--foreground));
     font-size: 0.875rem;
     font-family: inherit;
     resize: vertical;
@@ -861,7 +893,7 @@
 
   .prompt-input:focus {
     outline: none;
-    border-color: var(--color-primary, #6366f1);
+    border-color: hsl(var(--primary) / 0.55);
   }
 
   /* Tools */
@@ -873,11 +905,11 @@
 
   .tool-badge {
     padding: 0.25rem 0.75rem;
-    background: var(--color-surface, #1a1a1a);
-    border: 1px solid var(--color-border, #333);
-    border-radius: 4px;
+    background: hsl(var(--muted) / 0.36);
+    border: 1px solid hsl(var(--border) / 0.4);
+    border-radius: 999px;
     font-size: 0.75rem;
-    color: var(--color-primary, #6366f1);
+    color: hsl(var(--primary));
   }
 
   /* Status Messages */
@@ -886,20 +918,20 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem;
-    border-radius: 4px;
+    border-radius: 1rem;
     font-size: 0.875rem;
   }
 
   .status-message.waiting {
-    background: rgba(245, 158, 11, 0.1);
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    color: #f59e0b;
+    background: hsl(var(--miwarp-status-warning) / 0.1);
+    border: 1px solid hsl(var(--miwarp-status-warning) / 0.28);
+    color: hsl(var(--miwarp-status-warning));
   }
 
   .status-message.error {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: #ef4444;
+    background: hsl(var(--destructive) / 0.1);
+    border: 1px solid hsl(var(--destructive) / 0.28);
+    color: hsl(var(--destructive));
   }
 
   .status-icon {
@@ -911,21 +943,23 @@
     display: flex;
     gap: 0.5rem;
     justify-content: center;
+    flex-wrap: wrap;
   }
 
   .workflow-actions {
     display: flex;
     gap: 0.5rem;
     justify-content: center;
+    flex-wrap: wrap;
     padding-top: 0.5rem;
-    border-top: 1px solid var(--color-border, #333);
   }
 
   /* Context Panel */
   .context-toggle {
-    background: transparent;
-    border: none;
-    color: var(--color-text-secondary, #888);
+    background: hsl(var(--background) / 0.28);
+    border: 1px solid hsl(var(--border) / 0.36);
+    border-radius: 999px;
+    color: hsl(var(--muted-foreground));
     font-size: 0.75rem;
     cursor: pointer;
     padding: 0.5rem;
@@ -933,19 +967,23 @@
   }
 
   .context-toggle:hover {
-    color: var(--color-text, #e5e5e5);
+    color: hsl(var(--foreground));
+    background: hsl(var(--accent) / 0.12);
   }
 
   .context-panel {
-    padding: 1rem;
-    background: var(--color-background, #0a0a0a);
-    border-radius: 6px;
+    padding: 0.85rem;
+    background: hsl(var(--background) / 0.38);
+    border: 1px solid hsl(var(--border) / 0.42);
+    border-radius: 1.15rem;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
   }
 
   .context-panel h5 {
     margin: 0 0 0.75rem 0;
     font-size: 0.75rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--muted-foreground));
     text-transform: uppercase;
   }
 
@@ -956,7 +994,7 @@
   .context-field label {
     display: block;
     font-size: 0.75rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--muted-foreground));
     margin-bottom: 0.25rem;
   }
 
@@ -964,10 +1002,10 @@
   .context-field textarea {
     width: 100%;
     padding: 0.5rem;
-    background: var(--color-surface, #1a1a1a);
-    border: 1px solid var(--color-border, #333);
-    border-radius: 4px;
-    color: var(--color-text, #e5e5e5);
+    background: hsl(var(--background) / 0.42);
+    border: 1px solid hsl(var(--border) / 0.48);
+    border-radius: 0.85rem;
+    color: hsl(var(--foreground));
     font-size: 0.875rem;
     font-family: inherit;
   }
@@ -975,20 +1013,23 @@
   .context-field input:focus,
   .context-field textarea:focus {
     outline: none;
-    border-color: var(--color-primary, #6366f1);
+    border-color: hsl(var(--primary) / 0.55);
   }
 
   /* Checkpoints */
   .checkpoint-section {
     padding: 0.75rem;
-    background: var(--color-background, #0a0a0a);
-    border-radius: 6px;
+    background: hsl(var(--background) / 0.38);
+    border: 1px solid hsl(var(--border) / 0.42);
+    border-radius: 1.15rem;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
   }
 
   .checkpoint-section h5 {
     margin: 0 0 0.5rem 0;
     font-size: 0.75rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--muted-foreground));
     text-transform: uppercase;
   }
 
@@ -1002,9 +1043,9 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.25rem 0;
+    padding: 0.45rem 0.25rem;
     font-size: 0.75rem;
-    border-bottom: 1px solid var(--color-border, #333);
+    border-bottom: 1px solid hsl(var(--border) / 0.28);
   }
 
   .checkpoint-item:last-child {
@@ -1012,29 +1053,34 @@
   }
 
   .checkpoint-time {
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--muted-foreground));
   }
 
   .checkpoint-step {
-    color: var(--color-text, #e5e5e5);
+    color: hsl(var(--foreground));
   }
 
   .checkpoint-status {
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--muted-foreground));
   }
 
   .checkpoint-status.completed {
-    color: var(--color-success, #22c55e);
+    color: hsl(var(--miwarp-status-success));
   }
 
   /* Buttons */
   .btn {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
+    padding: 0.48rem 0.82rem;
+    border: 1px solid hsl(var(--border) / 0.42);
+    border-radius: 999px;
     cursor: pointer;
-    font-size: 0.875rem;
-    transition: all 0.2s;
+    font-size: 0.78rem;
+    background: hsl(var(--background) / 0.36);
+    color: hsl(var(--foreground));
+    transition:
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      color 0.18s ease;
   }
 
   .btn:disabled {
@@ -1043,41 +1089,43 @@
   }
 
   .btn-primary {
-    background: var(--color-primary, #6366f1);
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--miwarp-accent-violet)));
+    border-color: hsl(var(--primary) / 0.42);
     color: white;
   }
 
   .btn-primary:hover:not(:disabled) {
-    background: var(--color-primary-hover, #4f46e5);
+    border-color: hsl(var(--primary) / 0.7);
   }
 
   .btn-secondary {
-    background: var(--color-secondary, #333);
-    color: white;
+    background: hsl(var(--muted) / 0.34);
+    color: hsl(var(--foreground) / 0.86);
   }
 
   .btn-secondary:hover:not(:disabled) {
-    background: var(--color-secondary-hover, #444);
+    background: hsl(var(--accent) / 0.12);
   }
 
   .btn-danger {
-    background: var(--color-error, #ef4444);
-    color: white;
+    background: hsl(var(--destructive) / 0.13);
+    border-color: hsl(var(--destructive) / 0.32);
+    color: hsl(var(--destructive));
   }
 
   .btn-danger:hover:not(:disabled) {
-    background: #dc2626;
+    background: hsl(var(--destructive) / 0.18);
   }
 
   .btn-icon {
-    padding: 0.5rem;
+    padding: 0.45rem;
     background: transparent;
-    border: 1px solid var(--color-border, #333);
-    color: var(--color-text-secondary, #888);
+    border: 1px solid hsl(var(--border) / 0.42);
+    color: hsl(var(--muted-foreground));
   }
 
   .btn-icon:hover:not(:disabled) {
-    background: var(--color-hover, #222);
-    color: var(--color-text, #e5e5e5);
+    background: hsl(var(--accent) / 0.12);
+    color: hsl(var(--foreground));
   }
 </style>

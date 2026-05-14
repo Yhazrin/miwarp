@@ -45,13 +45,18 @@
 <style>
   .workflow-page {
     min-height: 100vh;
-    padding: 1rem;
-    background: var(--color-background, #0a0a0a);
+    padding: 1.5rem;
+    background: transparent;
   }
 
   .workflow-container {
     max-width: 900px;
     margin: 0 auto;
+    border: 1px solid hsl(var(--border) / 0.38);
+    border-radius: 1.5rem;
+    background: hsl(var(--background) / 0.28);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
   }
 
   .notification {
@@ -60,11 +65,11 @@
     left: 50%;
     transform: translateX(-50%);
     padding: 0.75rem 1.5rem;
-    background: var(--color-primary, #6366f1);
+    background: hsl(var(--primary));
     color: white;
-    border-radius: 8px;
+    border: 1px solid hsl(var(--primary) / 0.36);
+    border-radius: 999px;
     font-size: 0.875rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     animation: slideUp 0.3s ease;
   }
 

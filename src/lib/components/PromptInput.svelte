@@ -1776,7 +1776,7 @@
 <!-- Web drag handlers — only fire when Tauri dragDropEnabled is false (non-Tauri builds).
      When dragDropEnabled: true, Tauri intercepts OS drag events and Web drag events do not fire. -->
 <div
-  class="border-t border-border bg-muted/30 px-4 py-3 relative"
+  class="relative mx-auto w-full max-w-5xl px-4 py-0"
   ondragenter={handleDragEnter}
   ondragleave={handleDragLeave}
   ondragover={handleDragOver}
@@ -1785,7 +1785,7 @@
   <!-- Drag overlay -->
   {#if dragActive}
     <div
-      class="absolute inset-0 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 backdrop-blur-[1px]"
+      class="absolute inset-0 z-10 flex items-center justify-center rounded-[28px] border-2 border-dashed border-primary/40 bg-primary/6 backdrop-blur-[2px]"
     >
       <span class="text-sm font-medium text-primary/70">{t("prompt_dropFiles")}</span>
     </div>
@@ -1898,13 +1898,13 @@
 
   <!-- L3: Quick action pills + git branch (above input container) -->
   {#if (slashEnabled && quickActions.length > 0) || gitBranch}
-    <div class="flex items-center gap-1 px-1 pb-1.5">
+    <div class="flex items-center gap-1 px-2 pb-2">
       {#if slashEnabled && quickActions.length > 0}
         <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide">
           {#each quickActions as cmd (cmd.name)}
             <button
               class="shrink-0 rounded-md border border-border/50 px-2 py-0.5 text-[11px]
-                text-muted-foreground/70 hover:text-foreground hover:bg-accent
+                bg-background/30 text-muted-foreground/70 hover:text-foreground hover:bg-accent/20
                 hover:border-border transition-colors whitespace-nowrap"
               onclick={() => handleQuickAction(cmd)}
               title={cmd.description}
@@ -1914,7 +1914,7 @@
           {/each}
           <button
             class="shrink-0 rounded-md border border-border/50 px-2 py-0.5 text-[11px]
-              text-muted-foreground/70 hover:text-foreground hover:bg-accent
+              bg-background/30 text-muted-foreground/70 hover:text-foreground hover:bg-accent/20
               hover:border-border transition-colors whitespace-nowrap"
             onclick={openSlashMenuFromButton}
             title={t("quickAction_moreTitle")}
@@ -1952,10 +1952,9 @@
 
   <!-- Unified input container -->
   <div
-    class="rounded-xl border bg-background shadow-sm transition-colors {btwMode
-      ? 'border-miwarp-status-info/100 shadow-[0_0_0_1px_rgba(59,130,246,0.15)]'
-      : currentMode.borderCls ||
-        'border-border focus-within:border-ring/50 focus-within:shadow-[0_0_0_1px_hsl(var(--ring)/0.15)]'}"
+    class="rounded-[28px] border bg-background/66 backdrop-blur-xl transition-colors {btwMode
+      ? 'border-miwarp-status-info/80'
+      : currentMode.borderCls || 'border-border/35 focus-within:border-ring/40'}"
   >
     {#if pendingPermission}
       <div
@@ -2032,7 +2031,7 @@
     {/if}
 
     <!-- Bottom action bar -->
-    <div class="flex items-center justify-between px-2 pb-2">
+    <div class="flex items-center justify-between px-3 pb-3">
       <!-- Left: agent selector + permission mode -->
       <div class="flex items-center gap-1">
         {#if !hasRun && onAgentChange}
@@ -2041,7 +2040,7 @@
         {#if onPermissionModeChange}
           <button
             bind:this={modeBtnEl}
-            class="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium transition-colors {currentMode.cls} hover:bg-accent border border-transparent hover:border-border"
+            class="flex items-center gap-1 rounded-full border border-transparent px-1.5 py-0.5 text-[11px] font-medium transition-colors {currentMode.cls} hover:border-border/40 hover:bg-accent/15"
             onclick={toggleModeDropdown}
             title={t("prompt_permissionModeTitle", { mode: currentMode.label() })}
           >
@@ -2071,7 +2070,7 @@
           <div class="w-1"></div>
         {/if}
         <button
-          class="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground border border-transparent hover:border-border"
+          class="flex items-center gap-1 rounded-full border border-transparent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-border/40 hover:bg-accent/15 hover:text-foreground"
           onclick={() => window.dispatchEvent(new CustomEvent("ocv:open-permissions"))}
           title={t("permissions_title")}
         >
@@ -2137,8 +2136,8 @@
         {#if slashEnabled}
           <button
             bind:this={slashBtnEl}
-            class="flex h-7 w-7 items-center justify-center rounded-lg
-              text-muted-foreground/60 hover:text-foreground hover:bg-accent transition-colors"
+            class="flex h-7 w-7 items-center justify-center rounded-full
+              text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors"
             onclick={openSlashMenuFromButton}
             title={t("prompt_slashCommands")}
           >
@@ -2164,7 +2163,7 @@
           onchange={handleFileSelect}
         />
         <button
-          class="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-accent transition-colors disabled:opacity-30"
+          class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
           onclick={() => fileInput?.click()}
           disabled={pendingAttachments.length >= 8}
           title={t("prompt_attachFiles")}
@@ -2186,7 +2185,7 @@
         {#if IS_MAC}
           <!-- Screenshot capture button (macOS only) -->
           <button
-            class="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-accent transition-colors disabled:opacity-30"
+            class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
             onclick={() => api.captureScreenshot()}
             disabled={pendingAttachments.length >= 8}
             title={t("prompt_screenshot")}
@@ -2213,7 +2212,7 @@
             {#if btwMode}
               <!-- BTW send: blue theme -->
               <button
-                class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors bg-miwarp-status-info text-white hover:opacity-80"
+                class="flex h-7 w-7 items-center justify-center rounded-full bg-miwarp-status-info text-white transition-colors hover:opacity-80"
                 onclick={handleBtwSend}
                 title="Send side question"
               >
@@ -2232,7 +2231,7 @@
             {:else}
               <!-- Mid-turn send: allow injecting a message while agent is running -->
               <button
-                class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors bg-primary text-primary-foreground hover:bg-primary/90"
+                class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
                 onclick={handleSend}
                 title={t("prompt_send")}
               >
@@ -2255,9 +2254,9 @@
             <button
               onclick={() => (btwMode = !btwMode)}
               title="Side question (btw)"
-              class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors {btwMode
+              class="flex h-7 w-7 items-center justify-center rounded-full transition-colors {btwMode
                 ? 'text-miwarp-status-info bg-miwarp-status-info/10'
-                : 'text-muted-foreground/60 hover:text-foreground hover:bg-accent'}"
+                : 'text-muted-foreground/60 hover:text-foreground hover:bg-accent/15'}"
             >
               <svg
                 class="h-4 w-4"
@@ -2273,7 +2272,7 @@
             </button>
           {/if}
           <button
-            class="flex h-7 w-7 items-center justify-center rounded-lg text-destructive hover:bg-destructive/10 transition-colors"
+            class="flex h-7 w-7 items-center justify-center rounded-full text-destructive transition-colors hover:bg-destructive/10"
             onclick={onInterrupt}
             title={t("prompt_stop")}
           >
@@ -2283,7 +2282,7 @@
           </button>
         {:else}
           <button
-            class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors {canSend
+            class="flex h-7 w-7 items-center justify-center rounded-full transition-colors {canSend
               ? 'bg-primary text-primary-foreground hover:bg-primary/90'
               : 'text-muted-foreground/40'}"
             onclick={handleSend}
@@ -2310,14 +2309,14 @@
   {#if modeDropdownOpen}
     <div
       bind:this={modeDropdownEl}
-      class="min-w-[220px] w-max rounded-md border bg-background shadow-lg animate-fade-in"
+      class="min-w-[220px] w-max rounded-2xl border border-border/35 bg-background/86 backdrop-blur-xl animate-fade-in"
       style={modeDropdownStyle}
     >
       <div class="p-1">
         {#each PERMISSION_MODES as mode}
           <button
-            class="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-xs hover:bg-accent transition-colors
-              {permissionMode === mode.value ? 'bg-accent font-medium' : ''}"
+            class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs transition-colors hover:bg-accent/20
+              {permissionMode === mode.value ? 'bg-accent/20 font-medium' : ''}"
             onclick={() => selectMode(mode.value)}
           >
             {#if permissionMode === mode.value}

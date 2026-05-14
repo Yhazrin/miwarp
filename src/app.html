@@ -56,27 +56,13 @@
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">
-    <!-- Traffic lights for frameless macOS window -->
-    <div class="traffic-lights">
-      <button
-        class="tl-btn tl-close"
-        title="Close"
-        onclick="javascript: window.__tauriClose && window.__tauriClose();"
-      ></button>
-      <button
-        class="tl-btn tl-minimize"
-        title="Minimize"
-        onclick="javascript: window.__tauriMinimize && window.__tauriMinimize();"
-      ></button>
-      <button
-        class="tl-btn tl-maximize"
-        title="Maximize"
-        onclick="javascript: window.__tauriMaximize && window.__tauriMaximize();"
-      ></button>
-    </div>
+    <!-- macOS overlay titlebar drag region -->
+    <div
+      style="position:fixed;top:0;left:84px;right:0;height:36px;z-index:30;pointer-events:none;"
+      data-tauri-drag-region
+    ></div>
     <div id="app-splash">
-      <img src="/logo-dark.png" alt="MiWarp" class="logo-dark" />
-      <img src="/logo-light.png" alt="MiWarp" class="logo-light" />
+      <img src="/light.png" alt="MiWarp" />
       <div class="spinner"></div>
       <div class="hint">Initializing...</div>
     </div>

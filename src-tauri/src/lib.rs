@@ -275,8 +275,6 @@ pub fn run() {
             commands::web_server::regenerate_web_server_token,
             commands::web_server::restart_web_server,
             commands::web_server::get_local_ip,
-            commands::preview::open_preview_window,
-            commands::preview::close_preview_window,
             commands::background::get_background_settings,
             commands::background::set_background_global,
             commands::background::set_background_session,
