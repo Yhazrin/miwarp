@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Release script — bump version across all config files, commit, and tag.
+ * Release script — bump version in package.json, sync to other files, commit, and tag.
  *
  * Usage:
  *   npm run release 0.2.0        # set explicit version
@@ -12,15 +12,8 @@
 import { readFileSync, writeFileSync } from "fs";
 import { execSync } from "child_process";
 
-// ── Paths ────────────────────────────────────────────────────────────
-const FILES = {
-  pkg: "package.json",
-  tauri: "src-tauri/tauri.conf.json",
-  cargo: "src-tauri/Cargo.toml",
-};
-
 // ── Read current version ─────────────────────────────────────────────
-const pkg = JSON.parse(readFileSync(FILES.pkg, "utf-8"));
+const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
 const current = pkg.version;
 
 // ── Resolve next version ─────────────────────────────────────────────
@@ -59,33 +52,21 @@ if (next === current) {
 
 console.log(`  ${current} → ${next}\n`);
 
-// ── Update files ─────────────────────────────────────────────────────
-// package.json
+// ── Update package.json (single source of truth) ─────────────────────
 pkg.version = next;
-writeFileSync(FILES.pkg, JSON.stringify(pkg, null, 2) + "\n");
-console.log(`  ✓ ${FILES.pkg}`);
+writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+console.log(`  ✓ package.json`);
 
-// tauri.conf.json
-const tauri = JSON.parse(readFileSync(FILES.tauri, "utf-8"));
-tauri.version = next;
-writeFileSync(FILES.tauri, JSON.stringify(tauri, null, 2) + "\n");
-console.log(`  ✓ ${FILES.tauri}`);
-
-// Cargo.toml (replace first occurrence of version = "x.y.z")
-let cargo = readFileSync(FILES.cargo, "utf-8");
-cargo = cargo.replace(
-  /^version = ".*"$/m,
-  `version = "${next}"`,
-);
-writeFileSync(FILES.cargo, cargo);
-console.log(`  ✓ ${FILES.cargo}`);
+// ── Sync to tauri.conf.json + Cargo.toml ─────────────────────────────
+execSync("node scripts/sync-version.mjs", { stdio: "inherit" });
 
 // ── Git commit & tag ─────────────────────────────────────────────────
 const tag = `v${next}`;
 
-execSync(`git add ${FILES.pkg} ${FILES.tauri} ${FILES.cargo}`, {
-  stdio: "inherit",
-});
+execSync(
+  "git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock",
+  { stdio: "inherit" },
+);
 execSync(`git commit -m "chore: release ${tag}"`, { stdio: "inherit" });
 execSync(`git tag ${tag}`, { stdio: "inherit" });
 
@@ -93,7 +74,7 @@ console.log(`\n  ✓ Committed and tagged ${tag}`);
 
 // Auto-push commit and tag to trigger Release workflow
 console.log(`\n  Pushing to remote...`);
-execSync(`git push`, { stdio: "inherit" });
+execSync("git push", { stdio: "inherit" });
 execSync(`git push origin ${tag}`, { stdio: "inherit" });
 
 console.log(`\n  ✓ Pushed ${tag} — Release workflow triggered`);
