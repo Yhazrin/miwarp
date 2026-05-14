@@ -4,7 +4,8 @@
   import ScheduledTaskCard from "$lib/components/ScheduledTaskCard.svelte";
   import ScheduledTaskEditor from "$lib/components/ScheduledTaskEditor.svelte";
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
-  import type { ScheduledTaskLog } from "$lib/types/scheduled-task";
+  import { ScheduledTasksService } from "$lib/services/scheduled-tasks-service";
+  import type { ScheduledTaskRun } from "$lib/types/scheduled-task";
 
   let activeTab = $state<"all" | "active" | "paused">("all");
 
@@ -21,25 +22,28 @@
 
   onMount(() => {
     scheduledTasksStore.loadTasks();
+    scheduledTasksStore.loadAllRuns();
   });
 
-  function getLogStatusIcon(status: ScheduledTaskLog["status"]) {
+  function runStatusIcon(status: ScheduledTaskRun["status"]) {
     switch (status) {
       case "running":
-        return { icon: "animate-spin", color: "text-blue-500", label: "Running" };
+        return { icon: "⏳", color: "text-blue-500", label: "Running" };
       case "completed":
         return { icon: "✓", color: "text-green-500", label: "Completed" };
       case "failed":
         return { icon: "✗", color: "text-red-500", label: "Failed" };
       case "cancelled":
         return { icon: "○", color: "text-yellow-500", label: "Cancelled" };
+      case "queued":
+        return { icon: "○", color: "text-muted-foreground", label: "Queued" };
     }
   }
 
-  function formatDuration(startAt: string, endAt?: string): string {
-    if (!endAt) return "In progress";
-    const start = new Date(startAt).getTime();
-    const end = new Date(endAt).getTime();
+  function formatDuration(startedAt: string, endedAt?: string): string {
+    if (!endedAt) return "In progress";
+    const start = new Date(startedAt).getTime();
+    const end = new Date(endedAt).getTime();
     const seconds = Math.round((end - start) / 1000);
     if (seconds < 60) return `${seconds}s`;
     const minutes = Math.floor(seconds / 60);
@@ -142,11 +146,8 @@
             </Button>
           </div>
         {:else}
-          {#each filteredTasks() as task (task.taskId)}
-            <ScheduledTaskCard
-              {task}
-              selected={scheduledTasksStore.selectedTaskId === task.taskId}
-            />
+          {#each filteredTasks() as task (task.id)}
+            <ScheduledTaskCard {task} selected={scheduledTasksStore.selectedTaskId === task.id} />
           {/each}
         {/if}
       </div>
@@ -160,53 +161,63 @@
           <!-- Task Info -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <h2 class="text-xl font-semibold">{task.taskId}</h2>
-              <span
-                class="px-2 py-1 text-xs rounded-full {task.enabled
-                  ? 'bg-green-500/10 text-green-500'
-                  : 'bg-muted text-muted-foreground'}"
-              >
-                {task.enabled ? "Active" : "Paused"}
-              </span>
+              <h2 class="text-xl font-semibold">{task.name}</h2>
+              <div class="flex items-center gap-2">
+                <span
+                  class="px-2 py-1 text-xs rounded-full {task.enabled
+                    ? 'bg-green-500/10 text-green-500'
+                    : 'bg-muted text-muted-foreground'}"
+                >
+                  {task.enabled ? "Active" : "Paused"}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onclick={() => scheduledTasksStore.runTaskNow(task.id)}
+                >
+                  Run Now
+                </Button>
+              </div>
             </div>
             {#if task.description}
               <p class="text-muted-foreground">{task.description}</p>
             {/if}
           </div>
 
+          <!-- Meta -->
+          <div class="grid grid-cols-3 gap-4">
+            <div class="p-3 rounded-lg bg-muted/30">
+              <span class="text-xs text-muted-foreground">Agent</span>
+              <p class="text-sm font-medium uppercase">{task.agent}</p>
+            </div>
+            <div class="p-3 rounded-lg bg-muted/30">
+              <span class="text-xs text-muted-foreground">Workspace</span>
+              <p class="text-sm font-mono truncate" title={task.workspace.cwd}>
+                {task.workspace.cwd.split(/[/\\]/).pop() || task.workspace.cwd}
+              </p>
+            </div>
+            {#if task.model}
+              <div class="p-3 rounded-lg bg-muted/30">
+                <span class="text-xs text-muted-foreground">Model</span>
+                <p class="text-sm">{task.model}</p>
+              </div>
+            {/if}
+          </div>
+
           <!-- Schedule Info -->
           <div class="p-4 rounded-lg bg-muted/30 space-y-2">
             <h3 class="text-sm font-medium text-muted-foreground">Schedule</h3>
-            {#if task.cronExpression}
+            {#if task.schedule.type === "cron" && task.schedule.cronExpression}
               <div class="flex items-center gap-2">
-                <svg
-                  class="w-4 h-4 text-muted-foreground"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12,6 12,12 16,14" />
-                </svg>
-                <span class="font-mono text-sm">{task.cronExpression}</span>
+                <span class="font-mono text-sm">{task.schedule.cronExpression}</span>
+                <span class="text-xs text-muted-foreground">
+                  ({ScheduledTasksService.describeCronExpression(task.schedule.cronExpression)})
+                </span>
               </div>
-            {:else if task.fireAt}
-              <div class="flex items-center gap-2">
-                <svg
-                  class="w-4 h-4 text-muted-foreground"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <rect x="3" y="4" width="18" height="18" rx="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-                <span>{new Date(task.fireAt).toLocaleString()}</span>
-              </div>
+            {:else if task.schedule.type === "interval"}
+              <p class="text-sm">Every {task.schedule.intervalMinutes ?? 60} minutes</p>
+            {:else if task.schedule.type === "one-time" && task.schedule.fireAt}
+              <p class="text-sm">{new Date(task.schedule.fireAt).toLocaleString()}</p>
             {/if}
 
             <div class="grid grid-cols-2 gap-4 pt-2">
@@ -233,47 +244,47 @@
             </div>
           </div>
 
-          <!-- Execution Logs -->
+          <!-- Execution Runs -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <h3 class="text-sm font-medium text-muted-foreground">Execution Logs</h3>
+              <h3 class="text-sm font-medium text-muted-foreground">Execution History</h3>
               <Button
                 variant="ghost"
                 size="sm"
-                onclick={() => scheduledTasksStore.loadTaskLogs(task.taskId)}
+                onclick={() => scheduledTasksStore.loadTaskRuns(task.id)}
               >
                 Refresh
               </Button>
             </div>
 
-            {#if scheduledTasksStore.selectedTaskLogs.length === 0}
+            {#if scheduledTasksStore.selectedTaskRuns.length === 0}
               <div
                 class="p-8 text-center text-muted-foreground text-sm rounded-lg border border-dashed"
               >
-                No execution logs yet
+                No executions yet
               </div>
             {:else}
               <div class="space-y-2">
-                {#each scheduledTasksStore.selectedTaskLogs as log (log.id)}
-                  {@const statusInfo = getLogStatusIcon(log.status)}
+                {#each scheduledTasksStore.selectedTaskRuns as run (run.id)}
+                  {@const statusInfo = runStatusIcon(run.status)}
                   <div class="p-3 rounded-lg bg-muted/30 flex items-center gap-3">
                     <span class={statusInfo.color}>{statusInfo.icon}</span>
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2 text-sm">
                         <span>{statusInfo.label}</span>
                         <span class="text-muted-foreground">
-                          {new Date(log.startAt).toLocaleString()}
+                          {new Date(run.startedAt).toLocaleString()}
                         </span>
-                        {#if log.endAt}
+                        {#if run.endedAt}
                           <span class="text-muted-foreground/50">
-                            ({formatDuration(log.startAt, log.endAt)})
+                            ({formatDuration(run.startedAt, run.endedAt)})
                           </span>
                         {/if}
                       </div>
-                      {#if log.error}
-                        <p class="text-xs text-destructive mt-1 truncate">{log.error}</p>
-                      {:else if log.result}
-                        <p class="text-xs text-muted-foreground mt-1 truncate">{log.result}</p>
+                      {#if run.error}
+                        <p class="text-xs text-destructive mt-1 truncate">{run.error}</p>
+                      {:else if run.summary}
+                        <p class="text-xs text-muted-foreground mt-1 truncate">{run.summary}</p>
                       {/if}
                     </div>
                   </div>
@@ -307,7 +318,7 @@
 <!-- Error Toast -->
 {#if scheduledTasksStore.error}
   <div
-    class="fixed bottom-4 right-4 p-4 rounded-lg bg-destructive text-destructive-foreground shadow-lg flex items-center gap-3"
+    class="fixed bottom-4 right-4 p-4 rounded-lg bg-destructive text-destructive-foreground shadow-lg flex items-center gap-3 z-50"
   >
     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <circle cx="12" cy="12" r="10" />

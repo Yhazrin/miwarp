@@ -4,6 +4,7 @@ pub mod hooks;
 pub mod models;
 pub mod pricing;
 pub mod process_ext;
+pub mod scheduler;
 pub mod storage;
 pub mod web_server;
 
@@ -280,6 +281,13 @@ pub fn run() {
             commands::background::set_background_session,
             commands::background::clear_background_session,
             commands::background::pick_background_image,
+            scheduler::list_scheduled_tasks,
+            scheduler::create_scheduled_task,
+            scheduler::update_scheduled_task,
+            scheduler::delete_scheduled_task,
+            scheduler::set_scheduled_task_enabled,
+            scheduler::run_scheduled_task_now,
+            scheduler::list_scheduled_task_runs,
         ])
         .setup(move |app| {
             // Set up broadcast emitter (requires AppHandle, so must be in setup)
@@ -305,7 +313,10 @@ pub fn run() {
 
             // Start team file watcher for ~/.claude/teams/ and ~/.claude/tasks/
             let cancel = app.state::<CancellationToken>().inner().clone();
-            hooks::team_watcher::start_team_watcher(app.handle().clone(), cancel);
+            hooks::team_watcher::start_team_watcher(app.handle().clone(), cancel.clone());
+
+            // Start background scheduler for scheduled tasks
+            scheduler::start_scheduler_loop(app.handle().clone(), cancel);
 
             // System tray — hide-to-tray on close, left-click to show
             // Non-fatal: if tray library is unavailable (e.g. some Linux desktops),
