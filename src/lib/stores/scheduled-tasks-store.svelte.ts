@@ -1,21 +1,20 @@
 /**
  * Scheduled Tasks Store
  *
- * Reactive state management for scheduled tasks.
- * Handles CRUD operations and state updates.
+ * Reactive state management for scheduled tasks using Tauri IPC.
  */
 import { dbg, dbgWarn } from "$lib/utils/debug";
-import type { ScheduledTask, ScheduledTaskLog } from "$lib/types/scheduled-task";
-import {
-  scheduledTasksService,
-  type CreateTaskParams,
-  type UpdateTaskParams,
-} from "$lib/services/scheduled-tasks-service";
+import type {
+  ScheduledTask,
+  ScheduledTaskRun,
+  ScheduledTaskInput,
+  ScheduledTaskPatch,
+} from "$lib/types/scheduled-task";
+import { scheduledTasksService } from "$lib/services/scheduled-tasks-service";
 
 export class ScheduledTasksStore {
-  // State
   tasks = $state<ScheduledTask[]>([]);
-  logs = $state<Record<string, ScheduledTaskLog[]>>({});
+  runs = $state<ScheduledTaskRun[]>([]);
   loading = $state(false);
   error = $state<string | null>(null);
 
@@ -27,7 +26,6 @@ export class ScheduledTasksStore {
   // Selected task for details view
   selectedTaskId = $state<string | null>(null);
 
-  // Computed properties
   get activeTasks(): ScheduledTask[] {
     return this.tasks.filter((t) => t.enabled);
   }
@@ -37,25 +35,20 @@ export class ScheduledTasksStore {
   }
 
   get selectedTask(): ScheduledTask | null {
-    return this.tasks.find((t) => t.taskId === this.selectedTaskId) || null;
+    return this.tasks.find((t) => t.id === this.selectedTaskId) || null;
   }
 
-  get selectedTaskLogs(): ScheduledTaskLog[] {
+  get selectedTaskRuns(): ScheduledTaskRun[] {
     if (!this.selectedTaskId) return [];
-    return this.logs[this.selectedTaskId] || [];
+    return this.runs.filter((r) => r.taskId === this.selectedTaskId);
   }
 
-  /**
-   * Load all tasks from the service
-   */
   async loadTasks(): Promise<void> {
     this.loading = true;
     this.error = null;
-
     try {
-      const tasks = await scheduledTasksService.listTasks();
-      this.tasks = tasks;
-      dbg("scheduled-tasks-store", "loadTasks", { count: tasks.length });
+      this.tasks = await scheduledTasksService.listTasks();
+      dbg("scheduled-tasks-store", "loadTasks", { count: this.tasks.length });
     } catch (e) {
       dbgWarn("scheduled-tasks-store", "loadTasks error", e);
       this.error = e instanceof Error ? e.message : "Failed to load tasks";
@@ -64,18 +57,14 @@ export class ScheduledTasksStore {
     }
   }
 
-  /**
-   * Create a new task
-   */
-  async createTask(params: CreateTaskParams): Promise<boolean> {
+  async createTask(input: ScheduledTaskInput): Promise<boolean> {
     this.error = null;
-
     try {
-      const task = await scheduledTasksService.createTask(params);
+      const task = await scheduledTasksService.createTask(input);
       if (task) {
         this.tasks = [...this.tasks, task];
-        dbg("scheduled-tasks-store", "createTask", task);
         this.showEditor = false;
+        dbg("scheduled-tasks-store", "createTask", task.name);
         return true;
       }
       return false;
@@ -86,24 +75,15 @@ export class ScheduledTasksStore {
     }
   }
 
-  /**
-   * Update an existing task
-   */
-  async updateTask(params: UpdateTaskParams): Promise<boolean> {
+  async updateTask(id: string, patch: ScheduledTaskPatch): Promise<boolean> {
     this.error = null;
-
     try {
-      const success = await scheduledTasksService.updateTask(params);
-      if (success) {
-        const index = this.tasks.findIndex((t) => t.taskId === params.taskId);
-        if (index >= 0) {
-          // Refresh the task from the list
-          const updatedTasks = await scheduledTasksService.listTasks();
-          this.tasks = updatedTasks;
-        }
+      const task = await scheduledTasksService.updateTask(id, patch);
+      if (task) {
+        this.tasks = this.tasks.map((t) => (t.id === id ? task : t));
         this.showEditor = false;
         this.editingTask = null;
-        dbg("scheduled-tasks-store", "updateTask", params.taskId);
+        dbg("scheduled-tasks-store", "updateTask", task.name);
         return true;
       }
       return false;
@@ -114,23 +94,14 @@ export class ScheduledTasksStore {
     }
   }
 
-  /**
-   * Delete a task
-   */
-  async deleteTask(taskId: string): Promise<boolean> {
+  async deleteTask(id: string): Promise<boolean> {
     this.error = null;
-
     try {
-      const success = await scheduledTasksService.deleteTask(taskId);
-      if (success) {
-        this.tasks = this.tasks.filter((t) => t.taskId !== taskId);
-        delete this.logs[taskId];
-
-        if (this.selectedTaskId === taskId) {
-          this.selectedTaskId = null;
-        }
-
-        dbg("scheduled-tasks-store", "deleteTask", taskId);
+      const ok = await scheduledTasksService.deleteTask(id);
+      if (ok) {
+        this.tasks = this.tasks.filter((t) => t.id !== id);
+        if (this.selectedTaskId === id) this.selectedTaskId = null;
+        dbg("scheduled-tasks-store", "deleteTask", id);
         return true;
       }
       return false;
@@ -141,94 +112,77 @@ export class ScheduledTasksStore {
     }
   }
 
-  /**
-   * Toggle task enabled state
-   */
-  async toggleTaskEnabled(taskId: string): Promise<void> {
-    const task = this.tasks.find((t) => t.taskId === taskId);
+  async toggleTaskEnabled(id: string): Promise<void> {
+    const task = this.tasks.find((t) => t.id === id);
     if (!task) return;
-
-    await this.updateTask({ taskId, enabled: !task.enabled });
+    await this.updateTask(id, { enabled: !task.enabled });
   }
 
-  /**
-   * Trigger a task manually
-   */
-  async triggerTask(taskId: string): Promise<boolean> {
+  async runTaskNow(id: string): Promise<boolean> {
     this.error = null;
-
     try {
-      const success = await scheduledTasksService.triggerTask(taskId);
-      if (success) {
-        // Refresh task to get updated lastRunAt
-        const updatedTasks = await scheduledTasksService.listTasks();
-        this.tasks = updatedTasks;
-        dbg("scheduled-tasks-store", "triggerTask", taskId);
+      const run = await scheduledTasksService.runTaskNow(id);
+      if (run) {
+        // Refresh runs for this task
+        await this.loadTaskRuns(id);
+        // Refresh task to update lastRunAt
+        await this.loadTasks();
+        dbg("scheduled-tasks-store", "runTaskNow", { id, status: run.status });
+        return true;
       }
-      return success;
+      return false;
     } catch (e) {
-      dbgWarn("scheduled-tasks-store", "triggerTask error", e);
-      this.error = e instanceof Error ? e.message : "Failed to trigger task";
+      dbgWarn("scheduled-tasks-store", "runTaskNow error", e);
+      this.error = e instanceof Error ? e.message : "Failed to run task";
       return false;
     }
   }
 
-  /**
-   * Load logs for a specific task
-   */
-  async loadTaskLogs(taskId: string): Promise<void> {
+  async loadTaskRuns(taskId: string): Promise<void> {
     try {
-      const logs = await scheduledTasksService.getTaskLogs(taskId);
-      this.logs = { ...this.logs, [taskId]: logs };
-      dbg("scheduled-tasks-store", "loadTaskLogs", { taskId, count: logs.length });
+      const runs = await scheduledTasksService.listTaskRuns(taskId, 20);
+      // Merge into global runs array, replacing runs for this task
+      this.runs = [...this.runs.filter((r) => r.taskId !== taskId), ...runs];
+      dbg("scheduled-tasks-store", "loadTaskRuns", { taskId, count: runs.length });
     } catch (e) {
-      dbgWarn("scheduled-tasks-store", "loadTaskLogs error", e);
+      dbgWarn("scheduled-tasks-store", "loadTaskRuns error", e);
     }
   }
 
-  /**
-   * Open the editor for creating a new task
-   */
+  async loadAllRuns(): Promise<void> {
+    try {
+      this.runs = await scheduledTasksService.listTaskRuns(undefined, 50);
+      dbg("scheduled-tasks-store", "loadAllRuns", { count: this.runs.length });
+    } catch (e) {
+      dbgWarn("scheduled-tasks-store", "loadAllRuns error", e);
+    }
+  }
+
   openCreateEditor(): void {
     this.editingTask = null;
     this.editorMode = "create";
     this.showEditor = true;
   }
 
-  /**
-   * Open the editor for editing an existing task
-   */
   openEditEditor(task: ScheduledTask): void {
     this.editingTask = task;
     this.editorMode = "edit";
     this.showEditor = true;
   }
 
-  /**
-   * Close the editor
-   */
   closeEditor(): void {
     this.showEditor = false;
     this.editingTask = null;
   }
 
-  /**
-   * Select a task for details view
-   */
-  selectTask(taskId: string | null): void {
-    this.selectedTaskId = taskId;
-    if (taskId) {
-      this.loadTaskLogs(taskId);
-    }
+  selectTask(id: string | null): void {
+    this.selectedTaskId = id;
+    if (id) this.loadTaskRuns(id);
   }
 
-  /**
-   * Clear any error state
-   */
   clearError(): void {
     this.error = null;
   }
 }
 
-// Create singleton instance
 export const scheduledTasksStore = new ScheduledTasksStore();

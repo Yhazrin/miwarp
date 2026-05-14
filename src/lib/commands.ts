@@ -150,6 +150,15 @@ export const commands: CommandDef[] = [
 
   // Navigation
   {
+    id: "go-scheduled-tasks",
+    name: "Scheduled Tasks",
+    description: "Manage automated scheduled tasks",
+    category: "navigation",
+    agent: "both",
+    action: "navigate",
+    payload: "/scheduled-tasks",
+  },
+  {
     id: "go-chat",
     name: "Go to Chat",
     description: "Navigate to the chat page",

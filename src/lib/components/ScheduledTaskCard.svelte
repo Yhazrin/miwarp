@@ -14,20 +14,28 @@
 
   let triggering = $state(false);
 
-  const scheduleDescription = $derived(
-    task.cronExpression
-      ? ScheduledTasksService.describeCronExpression(task.cronExpression)
-      : task.fireAt
-        ? `One-time: ${new Date(task.fireAt).toLocaleString()}`
-        : "No schedule",
-  );
+  const scheduleDescription = $derived(() => {
+    const s = task.schedule;
+    switch (s.type) {
+      case "cron":
+        return s.cronExpression
+          ? ScheduledTasksService.describeCronExpression(s.cronExpression)
+          : "No cron expression";
+      case "interval":
+        return `Every ${s.intervalMinutes ?? 60} minutes`;
+      case "one-time":
+        return s.fireAt ? `One-time: ${new Date(s.fireAt).toLocaleString()}` : "No time set";
+      default:
+        return "Unknown schedule";
+    }
+  });
 
   const statusColor = $derived(task.enabled ? "text-green-500" : "text-muted-foreground");
 
   async function handleTrigger() {
     triggering = true;
     try {
-      await scheduledTasksStore.triggerTask(task.taskId);
+      await scheduledTasksStore.runTaskNow(task.id);
     } finally {
       triggering = false;
     }
@@ -38,17 +46,17 @@
   }
 
   function handleToggle() {
-    scheduledTasksStore.toggleTaskEnabled(task.taskId);
+    scheduledTasksStore.toggleTaskEnabled(task.id);
   }
 
   function handleDelete() {
-    if (confirm(`Delete task "${task.taskId}"?`)) {
-      scheduledTasksStore.deleteTask(task.taskId);
+    if (confirm(`Delete task "${task.name}"?`)) {
+      scheduledTasksStore.deleteTask(task.id);
     }
   }
 
   function handleSelect() {
-    scheduledTasksStore.selectTask(task.taskId);
+    scheduledTasksStore.selectTask(task.id);
   }
 </script>
 
@@ -64,27 +72,38 @@
 >
   <div class="flex items-start justify-between gap-3">
     <div class="flex-1 min-w-0">
-      <!-- Task ID and Status -->
+      <!-- Name and Status -->
       <div class="flex items-center gap-2 mb-1">
-        <span class="font-mono text-sm font-medium truncate">{task.taskId}</span>
+        <span class="text-sm font-medium truncate">{task.name}</span>
         <span class="flex items-center gap-1 {statusColor}">
           <span class="w-2 h-2 rounded-full {task.enabled ? 'bg-green-500' : 'bg-muted'}"></span>
           <span class="text-xs">{task.enabled ? "Active" : "Paused"}</span>
         </span>
       </div>
 
+      <!-- Agent + Workspace -->
+      <div class="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+        <span class="px-1.5 py-0.5 rounded bg-muted text-xs uppercase">{task.agent}</span>
+        <span class="truncate" title={task.workspace.cwd}>
+          {task.workspace.cwd.split(/[/\\]/).pop() || task.workspace.cwd}
+        </span>
+        {#if task.workspace.remoteHostName}
+          <span class="text-xs opacity-60">@ {task.workspace.remoteHostName}</span>
+        {/if}
+      </div>
+
       <!-- Description -->
-      <p class="text-sm text-muted-foreground truncate mb-1">
-        {task.description || "No description"}
+      <p class="text-xs text-muted-foreground/70 truncate mb-1">
+        {task.description || task.prompt.slice(0, 80)}
       </p>
 
       <!-- Schedule -->
-      <p class="text-xs text-muted-foreground/70">
-        {scheduleDescription}
+      <p class="text-xs text-muted-foreground/50">
+        {scheduleDescription()}
       </p>
 
       <!-- Timing info -->
-      <div class="flex items-center gap-4 mt-2 text-xs text-muted-foreground/50">
+      <div class="flex items-center gap-4 mt-2 text-xs text-muted-foreground/40">
         {#if task.nextRunAt}
           <span>Next: {new Date(task.nextRunAt).toLocaleString()}</span>
         {/if}

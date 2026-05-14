@@ -48,6 +48,7 @@ const KNOWN_COMMAND_DESCRIPTIONS: Record<string, string> = {
   "add-dir": "Add a directory to the workspace",
   btw: "Ask a side question without interrupting the current task",
   loop: "Run a prompt or slash command on a recurring interval",
+  schedule: "Manage scheduled tasks — list, create, run, or edit",
   "team-onboarding": "Help teammates ramp on Claude Code with a guide from your usage",
 };
 
@@ -240,6 +241,14 @@ export const VIRTUAL_COMMANDS: CliCommand[] = [
     aliases: ["stop-ralph"],
     _virtual: true,
     _action: "cancel-ralph-loop",
+  },
+  {
+    name: "schedule",
+    description: "Manage scheduled tasks — list, create, run, or edit",
+    aliases: ["scheduled", "tasks-scheduled"],
+    _virtual: true,
+    _navigate: "/scheduled-tasks",
+    argumentHint: "[list|create|run <id>]",
   },
 ];
 
@@ -471,6 +480,7 @@ const COMMAND_CATEGORY_MAP: Record<string, SlashCategory> = {
   fork: "session",
   btw: "session",
   loop: "session",
+  schedule: "session",
   copy: "session",
   fast: "session",
   files: "session",
