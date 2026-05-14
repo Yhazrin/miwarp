@@ -112,19 +112,17 @@
     workflowStore.restoreFromCheckpoint(index);
   }
 
+  // SVG path data for icons (consistent with phase-detection.ts pattern)
+  const stepIconPaths: Record<string, string> = {
+    completed: "M20 6 9 17l-5-5",
+    active: "M5 3l14 9-14 9V3z",
+    skipped: "M5 4l10 8-10 8V4zM19 5v14",
+    failed: "M18 6 6 18M6 6l12 12",
+    pending: "M12 12m-9 0a9 9 0 1 0 18 0 9 9 0 1 0-18 0",
+  };
+
   function getStepIcon(step: WorkflowStep): string {
-    switch (step.status) {
-      case "completed":
-        return "✓";
-      case "active":
-        return "▶";
-      case "skipped":
-        return "⏭";
-      case "failed":
-        return "✗";
-      default:
-        return "○";
-    }
+    return stepIconPaths[step.status] ?? stepIconPaths.pending;
   }
 
   function getInterventionLabel(level: number): string {
@@ -152,7 +150,21 @@
       onclick={() => (showTemplateSelector = !showTemplateSelector)}
       title="Templates"
     >
-      📋
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <rect x="3" y="3" width="7" height="7" />
+        <rect x="14" y="3" width="7" height="7" />
+        <rect x="3" y="14" width="7" height="7" />
+        <rect x="14" y="14" width="7" height="7" />
+      </svg>
     </button>
   </div>
 
@@ -166,7 +178,20 @@
       <div class="template-grid">
         {#each templates as template}
           <button class="template-card" onclick={() => handleSelectTemplate(template)}>
-            <span class="template-icon">{template.icon}</span>
+            <span class="template-icon">
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d={template.icon} />
+              </svg>
+            </span>
             <span class="template-name">{template.name}</span>
             <span class="template-desc">{template.description}</span>
             <span class="template-meta">
@@ -187,7 +212,23 @@
   <!-- No Active Workflow -->
   {#if !activeTemplate}
     <div class="empty-state">
-      <span class="empty-icon">🚀</span>
+      <span class="empty-icon">
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09zM12 15l-3-3M22 2l-7.5 7.5"
+          />
+          <path d="M11.5 12.5 9.5 10.5 14 2l8 8-8.5 4.5zM14 8l-2 2" />
+        </svg>
+      </span>
       <p>选择一个模板开始工作流</p>
       <button class="btn btn-primary" onclick={() => (showTemplateSelector = true)}>
         浏览模板
@@ -219,7 +260,20 @@
           onclick={() => handleJumpToStep(index)}
           title={step.title}
         >
-          <span class="step-icon">{getStepIcon(step)}</span>
+          <span class="step-icon">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d={getStepIcon(step)} />
+            </svg>
+          </span>
           <span class="step-number">{index + 1}</span>
         </button>
         {#if index < activeTemplate.steps.length - 1}
@@ -247,7 +301,21 @@
             </span>
           </div>
           {#if currentStep.estimatedTime}
-            <span class="step-time">⏱ {currentStep.estimatedTime}</span>
+            <span class="step-time">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" /><polyline points="12,6 12,12 16,14" />
+              </svg>
+              {currentStep.estimatedTime}
+            </span>
           {/if}
         </div>
 
@@ -287,14 +355,43 @@
     <!-- Status Messages -->
     {#if isWaiting}
       <div class="status-message waiting">
-        <span class="status-icon">⏸</span>
+        <span class="status-icon">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" />
+          </svg>
+        </span>
         <span>等待确认...</span>
       </div>
     {/if}
 
     {#if error}
       <div class="status-message error">
-        <span class="status-icon">⚠</span>
+        <span class="status-icon">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+            />
+            <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </span>
         <span>{error}</span>
         <button class="btn btn-icon" onclick={() => workflowStore.clearError()}>×</button>
       </div>
@@ -392,7 +489,18 @@
                 onclick={() => handleRestoreCheckpoint(index)}
                 title="恢复到此点"
               >
-                ↩
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="1,4 1,10 7,10" /><path d="M3.51 15a9 9 0 105.64-11.36L1 10" />
+                </svg>
               </button>
             </div>
           {/each}
@@ -472,7 +580,12 @@
   }
 
   .template-icon {
-    font-size: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: var(--color-primary, #6366f1);
   }
 
   .template-name {
@@ -518,8 +631,11 @@
   }
 
   .empty-icon {
-    font-size: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     opacity: 0.5;
+    color: var(--color-text-secondary, #888);
   }
 
   .empty-state p {
@@ -690,6 +806,9 @@
   }
 
   .step-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
     font-size: 0.75rem;
     color: var(--color-text-secondary, #888);
   }
