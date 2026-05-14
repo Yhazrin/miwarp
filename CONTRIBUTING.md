@@ -4,8 +4,8 @@ Welcome! We're glad you're interested in contributing to MiWarp. Whether it's a 
 
 ## Ways to Contribute
 
-- **Bug reports** — [Open a bug report](https://github.com/AnyiWang/MiWarp/issues/new?template=bug_report.yml)
-- **Feature requests** — [Open a feature request](https://github.com/AnyiWang/MiWarp/issues/new?template=feature_request.yml)
+- **Bug reports** — [Open a bug report](https://github.com/Yhazrin/miwarp/issues/new?template=bug_report.yml)
+- **Feature requests** — [Open a feature request](https://github.com/Yhazrin/miwarp/issues/new?template=feature_request.yml)
 - **Code** — Fix bugs or implement features via pull requests
 - **Translations** — Help translate the UI into more languages
 - **Documentation** — Improve README, guides, or inline docs
@@ -13,7 +13,7 @@ Welcome! We're glad you're interested in contributing to MiWarp. Whether it's a 
 ## Development Setup
 
 ```bash
-git clone https://github.com/AnyiWang/MiWarp.git
+git clone https://github.com/Yhazrin/miwarp.git
 cd MiWarp
 npm install
 npm run tauri dev

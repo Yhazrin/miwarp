@@ -4,7 +4,7 @@ use std::time::Duration;
 
 // ── Constants ──
 
-const GITHUB_API_URL: &str = "https://api.github.com/repos/AnyiWang/MiWarp/releases/latest";
+const GITHUB_API_URL: &str = "https://api.github.com/repos/Yhazrin/miwarp/releases/latest";
 
 // ── HTTP client (reuse across requests) ──
 
@@ -244,7 +244,7 @@ mod tests {
     #[test]
     fn test_select_download_url_prefers_dmg() {
         let body = json!({
-            "html_url": "https://github.com/AnyiWang/MiWarp/releases/tag/v0.1.14",
+            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v0.1.14",
             "assets": [
                 { "name": "MiWarp-0.1.14.zip", "browser_download_url": "https://example.com/a.zip" },
                 { "name": "MiWarp_0.1.14_universal.dmg", "browser_download_url": "https://example.com/a.dmg" }
@@ -259,7 +259,7 @@ mod tests {
     #[test]
     fn test_select_download_url_prefers_msi() {
         let body = json!({
-            "html_url": "https://github.com/AnyiWang/MiWarp/releases/tag/v0.1.14",
+            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v0.1.14",
             "assets": [
                 { "name": "MiWarp-0.1.14.zip", "browser_download_url": "https://example.com/a.zip" },
                 { "name": "MiWarp_0.1.14_x64-setup.msi", "browser_download_url": "https://example.com/a.msi" },
@@ -277,7 +277,7 @@ mod tests {
     fn test_select_download_url_exe_fallback() {
         // .msi not present → should fall back to .exe
         let body = json!({
-            "html_url": "https://github.com/AnyiWang/MiWarp/releases/tag/v0.1.14",
+            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v0.1.14",
             "assets": [
                 { "name": "MiWarp-0.1.14.zip", "browser_download_url": "https://example.com/a.zip" },
                 { "name": "MiWarp_0.1.14_x64.exe", "browser_download_url": "https://example.com/a.exe" }
@@ -293,7 +293,7 @@ mod tests {
     fn test_select_download_url_zip_fallback_on_windows() {
         // No .msi or .exe → should fall back to .zip
         let body = json!({
-            "html_url": "https://github.com/AnyiWang/MiWarp/releases/tag/v0.1.31",
+            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v0.1.31",
             "assets": [
                 { "name": "MiWarp_0.1.31_universal.dmg", "browser_download_url": "https://example.com/a.dmg" },
                 { "name": "MiWarp_0.1.31_x64-setup.zip", "browser_download_url": "https://example.com/a.zip" }
@@ -308,7 +308,7 @@ mod tests {
     #[test]
     fn test_select_download_url_prefers_appimage() {
         let body = json!({
-            "html_url": "https://github.com/AnyiWang/MiWarp/releases/tag/v0.1.14",
+            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v0.1.14",
             "assets": [
                 { "name": "MiWarp_0.1.14.AppImage", "browser_download_url": "https://example.com/a.AppImage" }
             ]
@@ -322,12 +322,12 @@ mod tests {
     #[test]
     fn test_select_download_url_falls_back_to_html() {
         let body = json!({
-            "html_url": "https://github.com/AnyiWang/MiWarp/releases/tag/v0.1.14",
+            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v0.1.14",
             "assets": []
         });
         assert_eq!(
             select_download_url_for_exts(&body, &[".dmg"]),
-            "https://github.com/AnyiWang/MiWarp/releases/tag/v0.1.14"
+            "https://github.com/Yhazrin/miwarp/releases/tag/v0.1.14"
         );
     }
 }

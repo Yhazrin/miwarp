@@ -15,7 +15,7 @@
 
 Report via GitHub's built-in private reporting:
 
-https://github.com/AnyiWang/MiWarp/security/advisories/new
+https://github.com/Yhazrin/miwarp/security/advisories/new
 
 ### Backup: Email
 

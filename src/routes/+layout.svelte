@@ -80,6 +80,7 @@
   let showSetupWizard = $state(false);
   let showAbout = $state(false);
   let showCliBrowser = $state(false);
+  let sidebarVersion = $state("v...");
   let permissionsModalOpen = $state(false);
 
   // Team store (shared via context with /teams page)
@@ -569,6 +570,14 @@
     loadSidebarFavorites();
     loadAgentSettingsCache();
     themeStore.init();
+
+    // Fetch app version for sidebar display
+    import("@tauri-apps/api/app")
+      .then(({ getVersion }) => getVersion())
+      .then((v) => {
+        sidebarVersion = `v${v}`;
+      })
+      .catch(() => {});
 
     // Load saved CWD and pinned folders from localStorage
     const saved = localStorage.getItem("ocv:project-cwd");
@@ -1374,7 +1383,7 @@
           <button
             class="text-xs text-muted-foreground hover:text-muted-foreground transition-colors cursor-pointer"
             onclick={() => (showAbout = true)}
-            title="About MiWarp">v0.1</button
+            title="About MiWarp">{sidebarVersion}</button
           >
         </div>
         <div class="mx-auto mb-0.5">

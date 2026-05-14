@@ -4,13 +4,13 @@
   "description": "Local-first desktop app for AI-assisted vibe coding",
   "type": "module",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/AnyiWang/MiWarp",
+  "homepage": "https://github.com/Yhazrin/miwarp",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AnyiWang/MiWarp.git"
+    "url": "https://github.com/Yhazrin/miwarp.git"
   },
   "bugs": {
-    "url": "https://github.com/AnyiWang/MiWarp/issues"
+    "url": "https://github.com/Yhazrin/miwarp/issues"
   },
   "engines": {
     "node": ">=20"
