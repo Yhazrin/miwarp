@@ -572,8 +572,9 @@ impl SessionActor {
                 .iter()
                 .position(|j| j.for_turn_index == barrier_turn)
             {
-                let job = self.queued_internal.remove(pos);
-                self.start_internal_turn(job).await;
+                if let Some(job) = self.queued_internal.remove(pos) {
+                    self.start_internal_turn(job).await;
+                }
                 return;
             }
         }
