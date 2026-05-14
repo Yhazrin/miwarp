@@ -217,7 +217,7 @@ fn scan_events_file(run_id: &str, events_path: &Path) -> Vec<PromptEntry> {
 pub fn build_or_update_index() -> Result<Vec<PromptEntry>, String> {
     // Fast path: check cache TTL
     {
-        let cache = CACHE.lock().unwrap();
+        let cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(ref cached) = *cache {
             if cached.computed_at.elapsed().as_secs() < CACHE_TTL_SECS {
                 log::debug!(
@@ -230,11 +230,11 @@ pub fn build_or_update_index() -> Result<Vec<PromptEntry>, String> {
     }
 
     // Acquire compute lock (prevents concurrent rebuilds)
-    let _lock = COMPUTE_LOCK.lock().unwrap();
+    let _lock = COMPUTE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
 
     // Double-check cache after acquiring lock
     {
-        let cache = CACHE.lock().unwrap();
+        let cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(ref cached) = *cache {
             if cached.computed_at.elapsed().as_secs() < CACHE_TTL_SECS {
                 return Ok(cached.entries.clone());
@@ -399,7 +399,7 @@ fn load_index_file() -> Vec<PromptEntry> {
 }
 
 fn update_cache(entries: Vec<PromptEntry>) {
-    let mut cache = CACHE.lock().unwrap();
+    let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
     *cache = Some(CachedIndex {
         computed_at: Instant::now(),
         entries,

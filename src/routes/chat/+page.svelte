@@ -119,7 +119,7 @@
     for (const entry of store.timeline) {
       if (entry.kind !== "tool") continue;
       const tool = entry.tool;
-      if (tool.status !== "success" && tool.status !== ("completed" as any)) continue;
+      if (tool.status !== "success") continue;
       const output = tool.output as Record<string, unknown> | undefined;
       if (!output) continue;
       const path =

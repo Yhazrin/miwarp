@@ -4,8 +4,9 @@ use std::path::{Path, PathBuf};
 
 /// Root of Claude Code data: ~/.claude/
 pub fn claude_home_dir() -> PathBuf {
-    crate::storage::dirs_next()
-        .expect("home dir")
+    crate::storage::home_dir()
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::path::PathBuf::from("/tmp"))
         .join(".claude")
 }
 

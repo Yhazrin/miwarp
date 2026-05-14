@@ -71,11 +71,9 @@
   // Wire reactive locale before any t() usage
   initLocale();
 
-  let localePopupOpen = $state(false);
-
-  function handleLocaleSelect(code: string) {
-    switchLocale(code);
-    localePopupOpen = false;
+  function toggleLocale() {
+    const next = LOCALE_REGISTRY.find((e) => e.code !== currentLocale());
+    if (next) switchLocale(next.code);
   }
 
   let commandPaletteOpen = $state(false);
@@ -1225,231 +1223,209 @@
 
 <div class="flex h-screen overflow-hidden">
   <!-- Sidebar: Icon Rail + Content Panel -->
-  {#if sidebarOpen}
-    <aside class="flex shrink-0 glass-sidebar text-sidebar-foreground transition-all duration-200">
-      <!-- A. Icon Rail -->
-      <div class="flex w-[44px] flex-col items-center bg-[hsl(var(--miwarp-bg-deepest)/0.88)]">
-        <!-- Rail logo (OC) -->
-        <div class="flex h-14 w-full items-center justify-center pt-[42px]">
-          <img src="/light.png" alt="OC" class="h-8 w-8 rounded-lg" />
-        </div>
+  <aside
+    class="sidebar-container shrink-0 glass-sidebar text-sidebar-foreground"
+    class:sidebar-collapsed={!sidebarOpen}
+    class:sidebar-no-transition={sidebarResizing}
+    style="width: {sidebarOpen ? 44 + sidebarWidth : 44}px; --sidebar-inner-width: {sidebarWidth}px"
+  >
+    <!-- A. Icon Rail -->
+    <div class="flex w-[44px] flex-col items-center bg-[hsl(var(--miwarp-bg-deepest)/0.88)]">
+      <!-- Rail logo (OC) -->
+      <div class="flex h-14 w-full items-center justify-center pt-[42px]">
+        <img src="/light.png" alt="OC" class="h-8 w-8 rounded-lg" />
+      </div>
 
-        <!-- Rail nav icons -->
-        <nav class="flex flex-1 flex-col items-center gap-1 py-2">
-          {#each navItems as item}
-            {@const isActive = currentPath.startsWith(item.path)}
-            <a
-              href={item.path}
-              class="relative flex h-9 w-9 items-center justify-center rounded-md transition-colors duration-150 no-underline
+      <!-- Rail nav icons -->
+      <nav class="flex flex-1 flex-col items-center gap-1 py-2">
+        {#each navItems as item}
+          {@const isActive = currentPath.startsWith(item.path)}
+          <a
+            href={item.path}
+            class="relative flex h-9 w-9 items-center justify-center rounded-md transition-colors duration-150 no-underline
                 {isActive
-                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"
-              title={item.label()}
-            >
-              <!-- Active indicator bar -->
-              {#if isActive}
-                <span class="absolute left-0 top-1.5 h-5 w-[3px] rounded-r-full bg-primary"></span>
-              {/if}
-              {#if item.icon === "message"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg
-                >
-              {:else if item.icon === "folder"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><path
-                    d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
-                  /></svg
-                >
-              {:else if item.icon === "zap"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg
-                >
-              {:else if item.icon === "book"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg
-                >
-              {:else if item.icon === "chart"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg
-                >
-              {:else if item.icon === "clock"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg
-                >
-              {:else if item.icon === "settings"}
-                <svg
-                  class="h-[18px] w-[18px]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><path
-                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-                  /><circle cx="12" cy="12" r="3" /></svg
-                >
-              {/if}
-              <span class="sr-only">{item.label()}</span>
-            </a>
-          {/each}
-        </nav>
-
-        <!-- Rail version + locale + dark mode toggle -->
-        <div class="py-2">
-          <div class="flex items-center justify-center pb-1">
-            <button
-              class="text-xs text-muted-foreground hover:text-muted-foreground transition-colors cursor-pointer"
-              onclick={() => (showAbout = true)}
-              title="About MiWarp">v0.1</button
-            >
-          </div>
-          <div class="relative mx-auto mb-0.5">
-            <button
-              class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-              onclick={() => (localePopupOpen = !localePopupOpen)}
-              title={currentLocale()}
-            >
-              <span class="text-xs font-medium"
-                >{getEntry(currentLocale())?.shortLabel ?? currentLocale()}</span
-              >
-            </button>
-            {#if localePopupOpen}
-              <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <div
-                class="fixed inset-0 z-40"
-                onclick={() => (localePopupOpen = false)}
-                onkeydown={(e) => e.key === "Escape" && (localePopupOpen = false)}
-              ></div>
-              <div
-                class="absolute bottom-0 left-full ml-1 z-50 min-w-[140px] rounded-md border border-sidebar-border bg-popover py-1 shadow-lg"
-              >
-                {#each LOCALE_REGISTRY as entry}
-                  <button
-                    class="flex w-full items-center gap-2 px-3 py-1.5 text-xs transition-colors
-                      {currentLocale() === entry.code
-                      ? 'bg-accent text-accent-foreground'
-                      : 'text-popover-foreground hover:bg-accent/50'}"
-                    onclick={() => handleLocaleSelect(entry.code)}
-                  >
-                    <span class="w-5 text-center font-medium">{entry.shortLabel}</span>
-                    <span>{entry.nativeName}</span>
-                    {#if (entry.status as string) === "beta"}
-                      <span
-                        class="ml-auto text-[10px] text-muted-foreground/60 border border-muted-foreground/20 rounded px-1"
-                        >Beta</span
-                      >
-                    {/if}
-                  </button>
-                {/each}
-              </div>
-            {/if}
-          </div>
-          <button
-            class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-            onclick={() => themeStore.cycleTheme()}
-            title={themeStore.isDark ? t("layout_themeTitle_dark") : t("layout_themeTitle_light")}
+              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+              : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"
+            title={item.label()}
           >
-            {#if themeStore.isDark}
-              <!-- Moon icon (dark mode active) -->
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg
-              >
-            {:else}
-              <!-- Sun icon (light mode active) -->
+            <!-- Active indicator bar -->
+            {#if isActive}
+              <span class="absolute left-0 top-1.5 h-5 w-[3px] rounded-r-full bg-primary"></span>
+            {/if}
+            {#if item.icon === "message"}
               <svg
                 class="h-[18px] w-[18px]"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="2"
-                ><circle cx="12" cy="12" r="4" /><path
-                  d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
+                stroke-linecap="round"
+                stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg
+              >
+            {:else if item.icon === "folder"}
+              <svg
+                class="h-[18px] w-[18px]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><path
+                  d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
                 /></svg
               >
+            {:else if item.icon === "zap"}
+              <svg
+                class="h-[18px] w-[18px]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg
+              >
+            {:else if item.icon === "book"}
+              <svg
+                class="h-[18px] w-[18px]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg
+              >
+            {:else if item.icon === "chart"}
+              <svg
+                class="h-[18px] w-[18px]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg
+              >
+            {:else if item.icon === "clock"}
+              <svg
+                class="h-[18px] w-[18px]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg
+              >
+            {:else if item.icon === "settings"}
+              <svg
+                class="h-[18px] w-[18px]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><path
+                  d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+                /><circle cx="12" cy="12" r="3" /></svg
+              >
             {/if}
-          </button>
+            <span class="sr-only">{item.label()}</span>
+          </a>
+        {/each}
+      </nav>
+
+      <!-- Rail version + locale + dark mode toggle -->
+      <div class="py-2">
+        <div class="flex items-center justify-center pb-1">
+          <button
+            class="text-xs text-muted-foreground hover:text-muted-foreground transition-colors cursor-pointer"
+            onclick={() => (showAbout = true)}
+            title="About MiWarp">v0.1</button
+          >
+        </div>
+        <div class="mx-auto mb-0.5">
           <button
             class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-            onclick={() =>
-              themeStore.setColorScheme(themeStore.colorScheme === "warm" ? "neutral" : "warm")}
-            title={themeStore.colorScheme === "warm"
-              ? t("layout_schemeTitle_warm")
-              : t("layout_schemeTitle_neutral")}
+            onclick={toggleLocale}
+            title={getEntry(currentLocale())?.nativeName ?? currentLocale()}
           >
-            <!-- Palette icon -->
+            <span class="text-xs font-medium"
+              >{getEntry(currentLocale())?.shortLabel ?? currentLocale()}</span
+            >
+          </button>
+        </div>
+        <button
+          class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
+          onclick={() => themeStore.cycleTheme()}
+          title={themeStore.isDark ? t("layout_themeTitle_dark") : t("layout_themeTitle_light")}
+        >
+          {#if themeStore.isDark}
+            <!-- Moon icon (dark mode active) -->
+            <svg
+              class="h-[18px] w-[18px]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg
+            >
+          {:else}
+            <!-- Sun icon (light mode active) -->
             <svg
               class="h-[18px] w-[18px]"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              ><circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /><circle
-                cx="17.5"
-                cy="10.5"
-                r=".5"
-                fill="currentColor"
-              /><circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /><circle
-                cx="6.5"
-                cy="12"
-                r=".5"
-                fill="currentColor"
-              /><path
-                d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"
+              ><circle cx="12" cy="12" r="4" /><path
+                d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
               /></svg
             >
-          </button>
-        </div>
+          {/if}
+        </button>
+        <button
+          class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
+          onclick={() =>
+            themeStore.setColorScheme(themeStore.colorScheme === "warm" ? "neutral" : "warm")}
+          title={themeStore.colorScheme === "warm"
+            ? t("layout_schemeTitle_warm")
+            : t("layout_schemeTitle_neutral")}
+        >
+          <!-- Palette icon -->
+          <svg
+            class="h-[18px] w-[18px]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /><circle
+              cx="17.5"
+              cy="10.5"
+              r=".5"
+              fill="currentColor"
+            /><circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /><circle
+              cx="6.5"
+              cy="12"
+              r=".5"
+              fill="currentColor"
+            /><path
+              d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"
+            /></svg
+          >
+        </button>
       </div>
+    </div>
 
-      <!-- B. Content Panel -->
-      <div class="relative flex flex-none flex-col overflow-hidden" style:width="{sidebarWidth}px">
+    <!-- B. Content Panel -->
+    <div class="sidebar-content-panel">
+      <div
+        class="sidebar-inner flex flex-col h-full relative"
+        class:sidebar-inner-collapsed={!sidebarOpen}
+      >
         <!-- Panel header: Project selector + new chat -->
         <div class="flex h-14 items-center gap-1.5 px-3 pt-[42px]">
           <span class="flex-1 min-w-0 truncate text-sm font-medium text-sidebar-foreground"
@@ -2188,15 +2164,15 @@
             </div>
           {/if}
         {/if}
-        <!-- Resize handle -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div
-          class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[hsl(var(--miwarp-accent-primary)/0.3)] active:bg-[hsl(var(--miwarp-accent-primary)/0.5)] transition-colors z-10"
-          onpointerdown={startResize}
-        ></div>
       </div>
-    </aside>
-  {/if}
+      <!-- Resize handle -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[hsl(var(--miwarp-accent-primary)/0.3)] active:bg-[hsl(var(--miwarp-accent-primary)/0.5)] transition-colors z-10"
+        onpointerdown={startResize}
+      ></div>
+    </div>
+  </aside>
 
   <!-- Ghost line during sidebar drag (zero-reflow preview) -->
   {#if sidebarResizing}
@@ -2209,7 +2185,7 @@
   {/if}
 
   <!-- Main content -->
-  <div class="flex flex-1 flex-col overflow-hidden">
+  <div class="app-main-shell flex flex-col overflow-hidden">
     <UpdateBanner />
     <!-- Page content — full-bleed, no top bar on non-chat pages -->
     <main class="flex-1 overflow-y-auto">

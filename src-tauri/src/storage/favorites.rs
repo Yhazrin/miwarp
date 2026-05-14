@@ -56,7 +56,8 @@ fn load() -> FavoritesFile {
 
 fn save(file: &FavoritesFile) -> Result<(), String> {
     let path = favorites_path();
-    super::ensure_dir(path.parent().unwrap()).map_err(|e| e.to_string())?;
+    super::ensure_dir(path.parent().expect("favorites path has parent"))
+        .map_err(|e| e.to_string())?;
     write_atomic_json(&path, file)
 }
 

@@ -333,13 +333,13 @@
             <!-- Platform sublist (expanded when api mode is active) -->
             {#if authOverview.auth_mode === "api"}
               <div class="pl-8 pb-2 space-y-0.5">
-                {#each groupedPlatforms as group}
+                {#each groupedPlatforms as group (group.label)}
                   <p
                     class="px-1 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
                   >
                     {group.label}
                   </p>
-                  {#each group.items as platform}
+                  {#each group.items as platform (platform.id)}
                     {@const isLocal = platform.category === "local"}
                     {@const lps = isLocal ? localProxyStatuses?.[platform.id] : undefined}
                     {@const hasCred = !!findCredential(platformCredentials, platform.id)?.api_key}

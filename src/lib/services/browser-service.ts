@@ -6,7 +6,6 @@
  */
 
 // ── MCP Function Declarations ──
-/* eslint-disable @typescript-eslint/no-explicit-any */
 declare function mcp__Claude_in_Chrome__list_connected_browsers(): Promise<any[]>;
 declare function mcp__Claude_in_Chrome__select_browser(args: any): Promise<any>;
 declare function mcp__Claude_in_Chrome__switch_browser(): Promise<any>;
@@ -22,7 +21,6 @@ declare function mcp__Claude_in_Chrome__read_network_requests(args: any): Promis
 declare function mcp__Claude_in_Chrome__read_console_messages(args: any): Promise<any>;
 declare function mcp__Claude_in_Chrome__resize_window(args: any): Promise<any>;
 declare function mcp__Claude_in_Chrome__javascript_tool(args: any): Promise<any>;
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // ── Types ──
 

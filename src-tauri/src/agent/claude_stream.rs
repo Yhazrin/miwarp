@@ -445,7 +445,7 @@ static CLAUDE_PATH_CACHE: std::sync::Mutex<Option<String>> = std::sync::Mutex::n
 /// Cached after first resolution. Use `invalidate_claude_path_cache()` to clear
 /// (e.g. after installing the CLI) so the next call re-scans.
 pub(crate) fn resolve_claude_path() -> String {
-    let mut cached = CLAUDE_PATH_CACHE.lock().unwrap();
+    let mut cached = CLAUDE_PATH_CACHE.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(ref path) = *cached {
         return path.clone();
     }
@@ -512,6 +512,6 @@ pub(crate) fn resolve_claude_path() -> String {
 
 /// Clear the cached claude binary path so the next `resolve_claude_path()` re-scans.
 pub fn invalidate_claude_path_cache() {
-    *CLAUDE_PATH_CACHE.lock().unwrap() = None;
+    *CLAUDE_PATH_CACHE.lock().unwrap_or_else(|e| e.into_inner()) = None;
     log::debug!("[claude_stream] claude path cache invalidated");
 }

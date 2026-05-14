@@ -229,10 +229,14 @@
 
   // Initial load
   onMount(async () => {
-    if (!customFile) {
-      await autoSelectFirst();
+    try {
+      if (!customFile) {
+        await autoSelectFirst();
+      }
+      await loadContent();
+    } catch (e) {
+      dbgWarn("memory-page", "initial load failed", e);
     }
-    await loadContent();
   });
 
   // Listen for sidebar file selection

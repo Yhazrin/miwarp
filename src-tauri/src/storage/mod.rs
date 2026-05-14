@@ -17,8 +17,10 @@ pub mod teams;
 use std::path::PathBuf;
 
 pub fn data_dir() -> PathBuf {
-    let home = dirs_next().expect("Could not determine home directory");
-    home.join(".miwarp")
+    home_dir()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("/tmp"))
+        .join(".miwarp")
 }
 
 pub fn runs_dir() -> PathBuf {

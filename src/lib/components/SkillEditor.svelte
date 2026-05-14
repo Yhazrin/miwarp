@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Skill, SkillMetadata, SkillCategory } from "$lib/types/skill";
   import { SKILL_CATEGORIES, DEFAULT_SKILL_ICON } from "$lib/types/skill";
+  import { renderMarkdown } from "$lib/utils/markdown";
   import { dbg, dbgWarn } from "$lib/utils/debug";
 
   interface Props {
@@ -291,7 +292,7 @@ Provide some examples..."
           </div>
 
           <div class="markdown-preview">
-            {@html content.replace(/\n/g, "<br/>").replace(/`([^`]+)`/g, "<code>$1</code>")}
+            {@html renderMarkdown(content)}
           </div>
         </div>
       </div>

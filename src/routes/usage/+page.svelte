@@ -454,7 +454,7 @@
                 <div
                   class="absolute inset-x-0 top-1/2 border-t border-border/30 pointer-events-none"
                 ></div>
-                {#each data.daily.slice(-30) as day}
+                {#each data.daily.slice(-30) as day (day.date)}
                   {@const value = getDailyValue(day)}
                   {@const pct = Math.max((value / maxDailyValue) * 100, 2)}
                   <div
@@ -514,7 +514,7 @@
               </tr>
             </thead>
             <tbody>
-              {#each data.byModel as modelRow}
+              {#each data.byModel as modelRow (modelRow.model)}
                 <tr class="border-b border-border/50 hover:bg-muted/30">
                   <td class="py-2 font-mono text-xs truncate max-w-[180px]" title={modelRow.model}>
                     {modelRow.model}
@@ -603,7 +603,15 @@
                 {#each sortedRuns as run}
                   <tr
                     class="border-b border-border/50 hover:bg-muted/30 cursor-pointer"
+                    role="button"
+                    tabindex="0"
                     onclick={() => goto(`/chat?run=${run.runId}`)}
+                    onkeydown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        goto(`/chat?run=${run.runId}`);
+                      }
+                    }}
                   >
                     <td class="py-2 text-xs text-muted-foreground whitespace-nowrap">
                       {formatDate(run.startedAt)}

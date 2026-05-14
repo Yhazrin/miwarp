@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, getContext } from "svelte";
+  import { onMount, onDestroy, getContext } from "svelte";
   import { goto } from "$app/navigation";
   import {
     listMarketplacePlugins,
@@ -324,6 +324,11 @@
     return () => window.removeEventListener("ocv:project-changed", onProjectChanged);
   });
 
+  onDestroy(() => {
+    if (toastTimeout) clearTimeout(toastTimeout);
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+  });
+
   // ── Helpers ──
 
   function hasComponent(
@@ -592,7 +597,7 @@
   async function handleInstall(
     pluginName: string,
     scope: "user" | "project" | "local" = installScope,
-    autoEnable = true,
+    _autoEnable = true,
   ): Promise<boolean> {
     operationLoading = pluginName;
     dbg("plugins", "install", { name: pluginName, scope });

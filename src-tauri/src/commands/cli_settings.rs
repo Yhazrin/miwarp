@@ -121,7 +121,9 @@ fn write_permissions(path: &Path, category: &str, rules: &[String]) -> Result<()
     let mut settings = read_settings_local(path)?;
 
     // 2. Ensure "permissions" key is an object
-    let map = settings.as_object_mut().expect("always object");
+    let map = settings
+        .as_object_mut()
+        .ok_or("settings file is not a JSON object")?;
     if !map.contains_key("permissions") || !map["permissions"].is_object() {
         map.insert(
             "permissions".to_string(),

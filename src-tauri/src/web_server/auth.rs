@@ -99,7 +99,12 @@ pub async fn auth_handler(
             .status(StatusCode::FORBIDDEN)
             .header("content-type", "application/json")
             .body(Body::from(json!({"error": "invalid token"}).to_string()))
-            .unwrap();
+            .unwrap_or_else(|_| {
+                Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Body::empty())
+                    .expect("fallback")
+            });
     }
 
     let (_session_id, cookie) = create_session_cookie(&state).await;
@@ -109,7 +114,12 @@ pub async fn auth_handler(
         .header("set-cookie", cookie)
         .header("content-type", "application/json")
         .body(Body::from(json!({"ok": true}).to_string()))
-        .unwrap()
+        .unwrap_or_else(|_| {
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::empty())
+                .expect("fallback")
+        })
 }
 
 /// Query params for GET /login
@@ -135,7 +145,12 @@ pub async fn login_page(
                 .header("location", "/")
                 .header("set-cookie", cookie)
                 .body(Body::empty())
-                .unwrap();
+                .unwrap_or_else(|_| {
+                    Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Body::empty())
+                        .expect("fallback")
+                });
         }
         log::debug!("[auth] GET /login: invalid query token (masked)");
         // Fall through to show login form (token invalid)
@@ -145,7 +160,12 @@ pub async fn login_page(
         .status(StatusCode::OK)
         .header("content-type", "text/html; charset=utf-8")
         .body(Body::from(LOGIN_HTML))
-        .unwrap()
+        .unwrap_or_else(|_| {
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::empty())
+                .expect("fallback")
+        })
 }
 
 /// Session cookie middleware for protected routes.
@@ -299,7 +319,12 @@ fn redirect_to_login_with_clear_cookie() -> Response<Body> {
             "session=; Max-Age=0; HttpOnly; SameSite=Lax; Path=/",
         )
         .body(Body::empty())
-        .unwrap()
+        .unwrap_or_else(|_| {
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::empty())
+                .expect("fallback")
+        })
 }
 
 /// Minimal login page HTML

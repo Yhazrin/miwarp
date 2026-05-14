@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
   import type { TaskRun, McpServerInfo, CliModelInfo } from "$lib/types";
   import type { TurnUsage } from "$lib/stores/types";
@@ -300,6 +300,11 @@
       document.removeEventListener("mousedown", onDocClick, true);
       document.removeEventListener("keydown", onDocKeydown);
     };
+  });
+
+  onDestroy(() => {
+    clearTimeout(compactTimer);
+    clearTimeout(confirmTimer);
   });
 
   // ── End Session confirmation ──

@@ -175,7 +175,7 @@ export class TeamStore {
       .then((t) => {
         this.teams = t;
       })
-      .catch(() => {});
+      .catch((e) => dbgWarn("team", "listTeams failed", e));
   }
 
   /** Handle task-update watcher event (primary refresh path). */

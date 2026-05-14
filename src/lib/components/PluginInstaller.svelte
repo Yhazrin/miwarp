@@ -160,7 +160,15 @@
   };
 </script>
 
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onclick={handleClose}>
+<div
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+  role="button"
+  tabindex="0"
+  onclick={handleClose}
+  onkeydown={(e) => {
+    if (e.key === "Escape") handleClose();
+  }}
+>
   <div
     class="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl"
     onclick={(e) => e.stopPropagation()}

@@ -491,8 +491,9 @@ fn normalize_origins(origins: &Option<Vec<String>>) -> Result<Option<Vec<String>
             return Err(format!("Origin must use http or https: '{}'", o));
         }
         // Must have a host
-        if parsed.host_str().is_none() || parsed.host_str().unwrap().is_empty() {
-            return Err(format!("Origin must have a host: '{}'", o));
+        match parsed.host_str() {
+            None | Some("") => return Err(format!("Origin must have a host: '{}'", o)),
+            _ => {}
         }
 
         let origin = parsed.origin();

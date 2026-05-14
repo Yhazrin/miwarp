@@ -91,7 +91,7 @@ fn process_team_file_change(
     // Dedup by modification timestamp
     if let Ok(meta) = std::fs::metadata(path) {
         if let Ok(modified) = meta.modified() {
-            let mut map = timestamps.lock().unwrap();
+            let mut map = timestamps.lock().unwrap_or_else(|e| e.into_inner());
             if let Some(prev) = map.get(path) {
                 if *prev == modified {
                     return; // Same modification time — skip duplicate

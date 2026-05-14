@@ -10,10 +10,10 @@ static META_LOCKS: Lazy<Mutex<HashMap<String, Arc<Mutex<()>>>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
 fn meta_lock(id: &str) -> Arc<Mutex<()>> {
-    META_LOCKS
-        .lock()
-        .unwrap()
-        .entry(id.to_string())
+    let mut map = META_LOCKS.lock().unwrap_or_else(|e| e.into_inner());
+    // GC: remove entries where strong_count == 1 (only the map holds a ref).
+    map.retain(|_, v| Arc::strong_count(v) > 1);
+    map.entry(id.to_string())
         .or_insert_with(|| Arc::new(Mutex::new(())))
         .clone()
 }

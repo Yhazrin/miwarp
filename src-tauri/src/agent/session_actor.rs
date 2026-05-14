@@ -417,34 +417,30 @@ impl SessionActor {
                             }
                         }
                         Some(ActorCommand::CancelRalphLoop { reply }) => {
-                            match &self.ralph_loop {
-                                None => {
-                                    let _ = reply.send(Err("No active ralph loop".into()));
-                                }
-                                Some(ralph) => {
-                                    let iteration = ralph.iteration;
-                                    let has_active_ralph_turn = self
-                                        .active_turn
-                                        .as_ref()
-                                        .map(|t| matches!(t.origin, TurnOrigin::Ralph))
-                                        .unwrap_or(false);
+                            if let Some(ref mut ralph) = self.ralph_loop {
+                                let iteration = ralph.iteration;
+                                let has_active_ralph_turn = self
+                                    .active_turn
+                                    .as_ref()
+                                    .map(|t| matches!(t.origin, TurnOrigin::Ralph))
+                                    .unwrap_or(false);
 
-                                    if has_active_ralph_turn {
-                                        self.ralph_loop.as_mut().unwrap().phase =
-                                            RalphPhase::CancelPending;
-                                        log::info!("[ralph] cancel pending (active turn running)");
-                                        let _ = reply.send(Ok(RalphCancelResult {
-                                            iteration,
-                                            immediate: false,
-                                        }));
-                                    } else {
-                                        let _ = reply.send(Ok(RalphCancelResult {
-                                            iteration,
-                                            immediate: true,
-                                        }));
-                                        self.emit_ralph_complete(RalphCompleteReason::Cancelled);
-                                    }
+                                if has_active_ralph_turn {
+                                    ralph.phase = RalphPhase::CancelPending;
+                                    log::info!("[ralph] cancel pending (active turn running)");
+                                    let _ = reply.send(Ok(RalphCancelResult {
+                                        iteration,
+                                        immediate: false,
+                                    }));
+                                } else {
+                                    let _ = reply.send(Ok(RalphCancelResult {
+                                        iteration,
+                                        immediate: true,
+                                    }));
+                                    self.emit_ralph_complete(RalphCompleteReason::Cancelled);
                                 }
+                            } else {
+                                let _ = reply.send(Err("No active ralph loop".into()));
                             }
                         }
                         None => {
@@ -576,7 +572,7 @@ impl SessionActor {
                 .iter()
                 .position(|j| j.for_turn_index == barrier_turn)
             {
-                let job = self.queued_internal.remove(pos).unwrap();
+                let job = self.queued_internal.remove(pos);
                 self.start_internal_turn(job).await;
                 return;
             }
@@ -609,7 +605,7 @@ impl SessionActor {
         }
 
         // Ralph loop: dispatch ralph prompt when user queue is empty and phase is Running
-        if let Some(ref ralph) = self.ralph_loop {
+        if let Some(ref mut ralph) = self.ralph_loop {
             match ralph.phase {
                 RalphPhase::Running => {
                     let prompt = ralph.prompt.clone();
@@ -620,9 +616,9 @@ impl SessionActor {
                     if let Some(deadline) = ralph.retry_after {
                         if Instant::now() >= deadline {
                             // Backoff expired — transition to Running and dispatch
-                            self.ralph_loop.as_mut().unwrap().phase = RalphPhase::Running;
-                            self.ralph_loop.as_mut().unwrap().retry_after = None;
-                            let prompt = self.ralph_loop.as_ref().unwrap().prompt.clone();
+                            ralph.phase = RalphPhase::Running;
+                            ralph.retry_after = None;
+                            let prompt = ralph.prompt.clone();
                             self.start_ralph_turn(prompt).await;
                             return;
                         }
@@ -880,10 +876,6 @@ impl SessionActor {
 
     /// Ralph state transition on turn end. Uses action-first pattern to avoid borrow conflicts.
     fn ralph_on_turn_end(&mut self, turn: &ActiveTurn, state: &str) {
-        if self.ralph_loop.is_none() {
-            return;
-        }
-
         // ── Step 1: compute action (borrows ralph_loop mutably, then drops) ──
         enum RalphAction {
             Complete(RalphCompleteReason),
@@ -894,7 +886,9 @@ impl SessionActor {
         }
 
         let action = {
-            let ralph = self.ralph_loop.as_mut().unwrap();
+            let Some(ref mut ralph) = self.ralph_loop else {
+                return;
+            };
 
             match turn.origin {
                 TurnOrigin::Ralph => {
@@ -1585,7 +1579,7 @@ impl SessionActor {
                     if (emit_state == "idle" || emit_state == "failed")
                         && self.active_turn.is_some()
                     {
-                        let turn = self.active_turn.take().unwrap();
+                        let turn = self.active_turn.take().expect("active_turn checked above");
                         self.on_user_turn_finished(&turn);
                         self.active_extractor = None;
                         self.protocol.set_pending_slash_command(None);

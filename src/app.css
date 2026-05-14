@@ -814,6 +814,23 @@ html:not(.dark) img.logo-light {
   display: none;
 }
 
+/* Main content shell — flex:1 so it expands/shrinks with sidebar animation */
+.app-main-shell {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+}
+
+/* Respect reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-container,
+  .sidebar-inner,
+  .app-main-shell {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
 /* ── Frameless window traffic lights (macOS) ── */
 .traffic-lights {
   position: fixed;

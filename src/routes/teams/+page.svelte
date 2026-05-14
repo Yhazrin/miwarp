@@ -332,7 +332,7 @@
 
           <!-- Row 2: member chips horizontal scroll -->
           <div class="flex items-center gap-1.5 px-4 py-1.5 overflow-x-auto">
-            {#each teamStore.teamConfig.members as member}
+            {#each teamStore.teamConfig.members as member (member.name)}
               {@const isLead = member.agentId === teamStore.teamConfig.leadAgentId}
               <button
                 class="shrink-0 flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors {expandedMemberName ===
@@ -445,7 +445,7 @@
                   : 'text-muted-foreground hover:text-foreground border-transparent'}"
                 onclick={handleAllInboxClick}>{t("team_inboxAll")}</button
               >
-              {#each teamStore.teamConfig.members as member}
+              {#each teamStore.teamConfig.members as member (member.name)}
                 <button
                   class="shrink-0 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 {inboxTab ===
                   member.name
@@ -469,7 +469,7 @@
                   <p class="text-xs text-muted-foreground">{t("team_noMessages")}</p>
                 </div>
               {:else}
-                {#each displayedMessages as msg}
+                {#each displayedMessages as msg (msg.timestamp)}
                   {@const parsed = parseMessageType(msg.text)}
                   {@const isExpMsg = expandedMsgKey === msgKey(msg)}
                   <button
@@ -766,7 +766,7 @@
                 </button>
                 {#if expandInProgress}
                   <div class="space-y-1">
-                    {#each teamStore.inProgressTasks as task}
+                    {#each teamStore.inProgressTasks as task (task.id)}
                       {@const isExpanded = teamStore.expandedTaskId === task.id}
                       <button
                         class="w-full text-left rounded-lg border border-blue-500/20 bg-blue-500/5 px-2.5 py-2 hover:bg-blue-500/10 transition-colors"
@@ -882,7 +882,7 @@
                 </button>
                 {#if expandPending}
                   <div class="space-y-1">
-                    {#each teamStore.pendingTasks as task}
+                    {#each teamStore.pendingTasks as task (task.id)}
                       {@const isExpanded = teamStore.expandedTaskId === task.id}
                       <button
                         class="w-full text-left rounded-lg border border-border/30 bg-muted/20 px-2.5 py-2 hover:bg-muted/40 transition-colors"
@@ -999,7 +999,7 @@
                 </button>
                 {#if expandCompleted}
                   <div class="space-y-1">
-                    {#each teamStore.completedTasks as task}
+                    {#each teamStore.completedTasks as task (task.id)}
                       {@const isExpanded = teamStore.expandedTaskId === task.id}
                       <button
                         class="w-full text-left rounded-lg border border-emerald-500/15 bg-emerald-500/5 px-2.5 py-2 hover:bg-emerald-500/10 transition-colors"
