@@ -877,18 +877,20 @@ html:not(.dark) img.logo-light {
   height: 36px;
   z-index: 1;
   pointer-events: auto;
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 
-/* Ensure interactive elements are above the drag region */
+/* Ensure interactive elements are NOT draggable */
 .macos-drag-region button,
 .macos-drag-region input,
 .macos-drag-region select,
 .macos-drag-region textarea,
 .macos-drag-region a,
-[role="button"] {
-  position: relative;
-  z-index: 10;
-  pointer-events: auto;
+[role="button"],
+.traffic-lights {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
 }
 .traffic-lights .tl-minimize {
   background: #ffbd2e;
