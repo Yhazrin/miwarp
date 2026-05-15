@@ -61,6 +61,7 @@
   import { KeybindingStore } from "$lib/stores/keybindings.svelte";
   import { getTransport } from "$lib/transport";
   import { themeStore } from "$lib/stores/theme-store.svelte";
+  import ToastHost from "$lib/components/ToastHost.svelte";
   import {
     t,
     LOCALE_REGISTRY,
@@ -104,8 +105,17 @@
   let pinnedCwds = $state<string[]>([]);
   let removedCwds = $state<string[]>([]);
 
-  let panelTab = $state<"chats" | "teams">("chats");
   let runSearchQuery = $state("");
+  let teamStoreSearchQuery = $state("");
+  let filteredTeams = $derived(
+    teamStoreSearchQuery.trim()
+      ? teamStore.teams.filter(
+          (team) =>
+            team.name.toLowerCase().includes(teamStoreSearchQuery.toLowerCase()) ||
+            team.description?.toLowerCase().includes(teamStoreSearchQuery.toLowerCase()),
+        )
+      : teamStore.teams,
+  );
 
   // ── Folder tree state ──
   let expandedProjects = $state<Set<string>>(new Set());
@@ -422,6 +432,7 @@
   const navItems = [
     // Core
     { path: "/chat", label: () => t("nav_chat"), icon: "message", group: "core" },
+    { path: "/teams", label: () => t("nav_teams"), icon: "users", group: "core" },
     { path: "/workflow", label: () => t("nav_workflows"), icon: "workflow", group: "core" },
     {
       path: "/scheduled-tasks",
@@ -869,8 +880,6 @@
 
   afterNavigate(({ to }) => {
     dbg("layout", "navigated to:", to?.url.pathname);
-    // Auto-switch sidebar tab when navigating to /teams
-    if (to?.url.pathname === "/teams") panelTab = "teams";
     // Sync plugin section from URL when navigating to /plugins
     if (to?.url.pathname.startsWith("/plugins")) {
       const section = to.url.searchParams.get("section");
@@ -1033,6 +1042,7 @@
   let isPluginsPage = $derived(currentPath.startsWith("/plugins"));
   let isExplorerPage = $derived(currentPath.startsWith("/explorer"));
   let isMemoryPage = $derived(currentPath.startsWith("/memory"));
+  let isTeamsPage = $derived(currentPath.startsWith("/teams"));
 
   // Plugin sidebar navigation (shown when on /plugins route)
   const pluginSections = [
@@ -1141,7 +1151,7 @@
   let _prevAutoExpandRunId = "";
   let _prevAutoExpandRunsLen = 0;
   $effect(() => {
-    if (!isChatPage || panelTab !== "chats") return;
+    if (!isChatPage) return;
     const runId = selectedRunId;
     const runsLen = runs.length;
     const runChanged = runId !== _prevAutoExpandRunId;
@@ -1393,6 +1403,27 @@
                 stroke-linecap="round"
                 stroke-linejoin="round"
                 ><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg
+              >
+            {:else if item.icon === "users"}
+              <svg
+                class="h-[18px] w-[18px]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle
+                  cx="9"
+                  cy="7"
+                  r="4"
+                /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg
+              >
+            {/if}
+            {#if item.icon === "users" && teamStore.teams.length > 0}
+              <span
+                class="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-[hsl(var(--miwarp-accent-primary)/0.8)] px-0.5 text-[9px] font-bold text-white"
+                >{teamStore.teams.length}</span
               >
             {/if}
             <span class="sr-only">{item.label()}</span>
@@ -2038,198 +2069,177 @@
               <span>+ {t("project_openFolder")}</span>
             </button>
           </div>
-        {:else}
-          <!-- Tab bar -->
-          <div class="flex shrink-0 border-b border-[hsl(var(--miwarp-glass-border)/0.1)]">
-            <button
-              class="flex-1 py-1.5 text-xs font-medium text-center transition-colors
-              {panelTab === 'chats'
-                ? 'text-sidebar-foreground border-b-2 border-primary'
-                : 'text-muted-foreground hover:text-sidebar-foreground'}"
-              onclick={() => (panelTab = "chats")}>{t("sidebar_chats")}</button
-            >
-            <button
-              class="relative flex-1 py-1.5 text-xs font-medium text-center transition-colors
-              {panelTab === 'teams'
-                ? 'text-sidebar-foreground border-b-2 border-primary'
-                : 'text-muted-foreground hover:text-sidebar-foreground'}"
-              onclick={() => (panelTab = "teams")}
-              >{t("sidebar_teams")}
-              {#if teamStore.teams.length > 0}
-                <span
-                  class="ml-0.5 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-[hsl(var(--miwarp-accent-primary)/0.8)] px-1 text-[10px] font-bold text-white"
-                  >{teamStore.teams.length}</span
-                >
-              {/if}
-            </button>
+        {:else if isTeamsPage}
+          <!-- Teams sidebar -->
+          <div class="px-2 pt-2 pb-1 shrink-0">
+            <p class="px-1 pb-1.5 text-xs font-semibold text-sidebar-foreground">
+              {t("sidebar_teams")}
+            </p>
+            <input
+              type="text"
+              bind:value={teamStoreSearchQuery}
+              placeholder={t("sidebar_searchTeams")}
+              class="w-full rounded-md border border-sidebar-border bg-sidebar px-2 py-1 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
+            />
           </div>
-
-          <!-- Tab content -->
-          {#if panelTab === "chats"}
-            <div class="px-2 pt-2 pb-1 shrink-0">
-              <input
-                type="text"
-                bind:value={runSearchQuery}
-                oninput={onDeepQueryInput}
-                placeholder={t("sidebar_searchChats")}
-                class="w-full rounded-md border border-sidebar-border bg-sidebar px-2 py-1 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
-              />
-              {#if runSearchQuery.trim()}
-                {#if searching}
-                  <p class="text-xs text-muted-foreground px-1 pt-0.5">
-                    {t("runs_searching")}
-                  </p>
-                {:else if visibleSearchResults.length > 0}
-                  <p
-                    class="flex items-center justify-between text-xs text-muted-foreground px-1 pt-0.5"
-                  >
-                    <span
-                      >{t("runs_resultsCount", {
-                        count: String(visibleSearchResults.length),
-                      })}</span
-                    >
-                    <a
-                      href="/history?q={encodeURIComponent(runSearchQuery)}"
-                      class="text-primary/70 hover:text-primary transition-colors"
-                      >{t("history_advancedSearch")}</a
-                    >
-                  </p>
-                {/if}
-              {/if}
-            </div>
-
-            {#if runSearchQuery.trim()}
-              <!-- Search results -->
-              <div class="flex-1 overflow-y-auto">
-                {#if searching && visibleSearchResults.length === 0}
-                  <div class="flex items-center justify-center py-10">
-                    <div
-                      class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                    ></div>
-                  </div>
-                {:else if !searching && visibleSearchResults.length === 0}
-                  <div class="flex items-center justify-center px-3 py-10 text-center">
-                    <p class="text-xs text-muted-foreground">{t("runs_noMatching")}</p>
-                  </div>
-                {:else}
-                  {#each visibleSearchResults as result}
-                    <button
-                      class="w-full text-left flex flex-col gap-0.5 px-3 py-2 hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground"
-                      onclick={() => {
-                        runSearchQuery = "";
-                        searchResults = [];
-                        goto(
-                          `/chat?run=${result.runId}&scrollTo=${encodeURIComponent(result.matchedEventId || result.matchedTs)}`,
-                        );
-                      }}
-                    >
-                      <p class="text-[12px] min-w-0 line-clamp-2 break-all">
-                        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                        {@html highlightMatch(
-                          snippetAround(result.matchedText, runSearchQuery, 80),
-                          runSearchQuery,
-                        )}
-                      </p>
-                      <div class="flex items-center gap-1 text-xs text-muted-foreground min-w-0">
-                        <span class="flex-1 min-w-0 truncate"
-                          >{result.runName || truncate(result.runPrompt, 30)}</span
-                        >
-                        <span class="ml-auto shrink-0">{relativeTime(result.matchedTs)}</span>
-                      </div>
-                    </button>
-                  {/each}
-                {/if}
+          <div class="flex-1 overflow-y-auto px-2 py-1">
+            {#if teamStore.loading}
+              <div class="flex items-center justify-center py-6">
+                <div
+                  class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
+                ></div>
+              </div>
+            {:else if filteredTeams.length === 0}
+              <div class="flex flex-col items-center gap-1 px-3 py-6 text-center">
+                <p class="text-xs text-muted-foreground">{t("sidebar_noActiveTeams")}</p>
+                <p class="text-[10px] text-muted-foreground/60">{t("sidebar_startTeamHint")}</p>
               </div>
             {:else}
-              <!-- Project folder tree -->
-              <div class="flex-1 overflow-y-auto px-2 py-1">
-                {#each projectFolders as folder (folder.folderKey)}
-                  <ProjectFolderItem
-                    {folder}
-                    label={folder.isUncategorized
-                      ? t("sidebar_uncategorized")
-                      : cwdDisplayLabel(folder.cwd)}
-                    expanded={expandedProjects.has(folder.folderKey)}
-                    {selectedRunId}
-                    onToggle={() => toggleProject(folder.folderKey)}
-                    onSelectConversation={(runId) => goto(`/chat?run=${runId}`)}
-                    onResume={(runId, mode) => goto(`/chat?run=${runId}&resume=${mode}`)}
-                    onDelete={requestDeleteConversation}
-                    onRemove={folder.isUncategorized
-                      ? undefined
-                      : () => requestRemoveProject(folder.cwd)}
-                    onNewChat={folder.isUncategorized
-                      ? undefined
-                      : () => newChatInFolder(folder.cwd)}
-                  />
-                {/each}
-                <!-- Open folder... -->
+              {#each filteredTeams as team}
                 <button
-                  class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-                  onclick={pickFolder}
+                  class="flex w-full flex-col gap-0.5 rounded-md px-2.5 py-2 text-left transition-colors mb-0.5
+                      {teamStore.selectedTeam === team.name
+                    ? 'bg-sidebar-accent text-sidebar-foreground'
+                    : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"
+                  onclick={() => teamStore.selectTeam(team.name)}
                 >
-                  <svg
-                    class="h-3.5 w-3.5 shrink-0"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg
-                  >
-                  <span>{t("project_openFolder")}</span>
-                </button>
-
-                {#if projectFolders.length === 0}
-                  <div class="flex flex-col items-center gap-2 px-3 py-6 text-center">
-                    <p class="text-xs text-muted-foreground">
-                      {t("sidebar_noConversationsYet")}<br />{t("sidebar_startNewChat")}
-                    </p>
+                  <div class="flex items-center gap-1.5">
+                    <span class="h-2 w-2 rounded-full bg-teal-500 shrink-0"></span>
+                    <span class="text-[13px] font-medium min-w-0 truncate">{team.name}</span>
                   </div>
-                {/if}
-              </div>
+                  {#if team.description}
+                    <p class="text-xs text-muted-foreground truncate pl-3.5">
+                      {team.description}
+                    </p>
+                  {/if}
+                  <div class="flex items-center gap-2 pl-3.5 text-xs text-muted-foreground">
+                    <span>{t("sidebar_members", { count: String(team.member_count) })}</span>
+                    <span>{t("sidebar_tasks", { count: String(team.task_count) })}</span>
+                  </div>
+                </button>
+              {/each}
             {/if}
-          {:else if panelTab === "teams"}
-            <!-- Teams list in sidebar -->
-            <div class="flex-1 overflow-y-auto px-2 py-1">
-              {#if teamStore.loading}
-                <div class="flex items-center justify-center py-6">
+          </div>
+        {:else}
+          <!-- Chats sidebar -->
+          <div class="px-2 pt-2 pb-1 shrink-0">
+            <input
+              type="text"
+              bind:value={runSearchQuery}
+              oninput={onDeepQueryInput}
+              placeholder={t("sidebar_searchChats")}
+              class="w-full rounded-md border border-sidebar-border bg-sidebar px-2 py-1 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
+            />
+            {#if runSearchQuery.trim()}
+              {#if searching}
+                <p class="text-xs text-muted-foreground px-1 pt-0.5">
+                  {t("runs_searching")}
+                </p>
+              {:else if visibleSearchResults.length > 0}
+                <p
+                  class="flex items-center justify-between text-xs text-muted-foreground px-1 pt-0.5"
+                >
+                  <span
+                    >{t("runs_resultsCount", {
+                      count: String(visibleSearchResults.length),
+                    })}</span
+                  >
+                  <a
+                    href="/history?q={encodeURIComponent(runSearchQuery)}"
+                    class="text-primary/70 hover:text-primary transition-colors"
+                    >{t("history_advancedSearch")}</a
+                  >
+                </p>
+              {/if}
+            {/if}
+          </div>
+
+          {#if runSearchQuery.trim()}
+            <!-- Search results -->
+            <div class="flex-1 overflow-y-auto">
+              {#if searching && visibleSearchResults.length === 0}
+                <div class="flex items-center justify-center py-10">
                   <div
                     class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
                   ></div>
                 </div>
-              {:else if teamStore.teams.length === 0}
-                <div class="flex flex-col items-center gap-1 px-3 py-6 text-center">
-                  <p class="text-xs text-muted-foreground">{t("sidebar_noActiveTeams")}</p>
-                  <p class="text-[10px] text-muted-foreground/60">{t("sidebar_startTeamHint")}</p>
+              {:else if !searching && visibleSearchResults.length === 0}
+                <div class="flex items-center justify-center px-3 py-10 text-center">
+                  <p class="text-xs text-muted-foreground">{t("runs_noMatching")}</p>
                 </div>
               {:else}
-                {#each teamStore.teams as team}
+                {#each visibleSearchResults as result}
                   <button
-                    class="flex w-full flex-col gap-0.5 rounded-md px-2.5 py-2 text-left transition-colors mb-0.5
-                        {teamStore.selectedTeam === team.name
-                      ? 'bg-sidebar-accent text-sidebar-foreground'
-                      : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"
+                    class="w-full text-left flex flex-col gap-0.5 px-3 py-2 hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground"
                     onclick={() => {
-                      teamStore.selectTeam(team.name);
-                      goto("/teams");
+                      runSearchQuery = "";
+                      searchResults = [];
+                      goto(
+                        `/chat?run=${result.runId}&scrollTo=${encodeURIComponent(result.matchedEventId || result.matchedTs)}`,
+                      );
                     }}
                   >
-                    <div class="flex items-center gap-1.5">
-                      <span class="h-2 w-2 rounded-full bg-teal-500 shrink-0"></span>
-                      <span class="text-[13px] font-medium min-w-0 truncate">{team.name}</span>
-                    </div>
-                    {#if team.description}
-                      <p class="text-xs text-muted-foreground truncate pl-3.5">
-                        {team.description}
-                      </p>
-                    {/if}
-                    <div class="flex items-center gap-2 pl-3.5 text-xs text-muted-foreground">
-                      <span>{t("sidebar_members", { count: String(team.member_count) })}</span>
-                      <span>{t("sidebar_tasks", { count: String(team.task_count) })}</span>
+                    <p class="text-[12px] min-w-0 line-clamp-2 break-all">
+                      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                      {@html highlightMatch(
+                        snippetAround(result.matchedText, runSearchQuery, 80),
+                        runSearchQuery,
+                      )}
+                    </p>
+                    <div class="flex items-center gap-1 text-xs text-muted-foreground min-w-0">
+                      <span class="flex-1 min-w-0 truncate"
+                        >{result.runName || truncate(result.runPrompt, 30)}</span
+                      >
+                      <span class="ml-auto shrink-0">{relativeTime(result.matchedTs)}</span>
                     </div>
                   </button>
                 {/each}
+              {/if}
+            </div>
+          {:else}
+            <!-- Project folder tree -->
+            <div class="flex-1 overflow-y-auto px-2 py-1">
+              {#each projectFolders as folder (folder.folderKey)}
+                <ProjectFolderItem
+                  {folder}
+                  label={folder.isUncategorized
+                    ? t("sidebar_uncategorized")
+                    : cwdDisplayLabel(folder.cwd)}
+                  expanded={expandedProjects.has(folder.folderKey)}
+                  {selectedRunId}
+                  onToggle={() => toggleProject(folder.folderKey)}
+                  onSelectConversation={(runId) => goto(`/chat?run=${runId}`)}
+                  onResume={(runId, mode) => goto(`/chat?run=${runId}&resume=${mode}`)}
+                  onDelete={requestDeleteConversation}
+                  onRemove={folder.isUncategorized
+                    ? undefined
+                    : () => requestRemoveProject(folder.cwd)}
+                  onNewChat={folder.isUncategorized ? undefined : () => newChatInFolder(folder.cwd)}
+                />
+              {/each}
+              <!-- Open folder... -->
+              <button
+                class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+                onclick={pickFolder}
+              >
+                <svg
+                  class="h-3.5 w-3.5 shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg
+                >
+                <span>{t("project_openFolder")}</span>
+              </button>
+
+              {#if projectFolders.length === 0}
+                <div class="flex flex-col items-center gap-2 px-3 py-6 text-center">
+                  <p class="text-xs text-muted-foreground">
+                    {t("sidebar_noConversationsYet")}<br />{t("sidebar_startNewChat")}
+                  </p>
+                </div>
               {/if}
             </div>
           {/if}
@@ -2334,3 +2344,5 @@
     </button>
   </div>
 </Modal>
+
+<ToastHost />

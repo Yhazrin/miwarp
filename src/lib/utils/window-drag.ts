@@ -1,4 +1,4 @@
-import { getCurrentWindow } from "@tauri-apps/api/window";
+// Dynamic import — desktop-only feature, breaks in browser (WS) mode
 
 const INTERACTIVE_SELECTOR = [
   "button",
@@ -26,6 +26,7 @@ export async function startWindowDragFromEvent(event: PointerEvent | MouseEvent)
   event.preventDefault();
 
   try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
     await getCurrentWindow().startDragging();
   } catch (error) {
     console.warn("[window-drag] startDragging failed", error);
