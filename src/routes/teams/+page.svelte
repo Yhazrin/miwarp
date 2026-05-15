@@ -51,13 +51,18 @@
     }
   }
 
+  let loadingRunId = $state<string | null>(null);
+
   async function selectRun(id: string) {
     selectedRunId = id;
+    loadingRunId = id;
     try {
       selectedRun = await getTeamRun(id);
     } catch (e) {
       console.error("Failed to load team run:", e);
       selectedRun = null;
+    } finally {
+      loadingRunId = null;
     }
   }
 
@@ -433,7 +438,14 @@
 
       <!-- Right: TeamRun detail -->
       <div class="flex-1 flex flex-col min-w-0 h-full">
-        {#if !selectedRun}
+        {#if loadingRunId}
+          <div class="flex flex-col items-center justify-center h-full text-center px-6">
+            <div
+              class="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-primary mb-3"
+            ></div>
+            <p class="text-sm text-muted-foreground">{t("common_loading")}</p>
+          </div>
+        {:else if !selectedRun}
           <div class="flex flex-col items-center justify-center h-full text-center px-6">
             <svg
               class="h-8 w-8 text-muted-foreground/30 mb-3"

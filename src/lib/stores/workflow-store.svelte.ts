@@ -316,8 +316,10 @@ function createWorkflowStore() {
     },
 
     get progress(): number {
-      const template = this.activeTemplate;
-      if (!template || !state.activeInstance) return 0;
+      if (!state.activeInstance) return 0;
+      const template =
+        state.templates.find((t) => t.id === state.activeInstance!.templateId) ?? null;
+      if (!template) return 0;
       const completed = template.steps.filter(
         (s) => s.status === "completed" || s.status === "skipped",
       ).length;

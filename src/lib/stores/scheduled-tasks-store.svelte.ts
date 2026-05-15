@@ -26,22 +26,16 @@ export class ScheduledTasksStore {
   // Selected task for details view
   selectedTaskId = $state<string | null>(null);
 
-  get activeTasks(): ScheduledTask[] {
-    return this.tasks.filter((t) => t.enabled);
-  }
+  activeTasks = $derived.by(() => this.tasks.filter((t) => t.enabled));
 
-  get inactiveTasks(): ScheduledTask[] {
-    return this.tasks.filter((t) => !t.enabled);
-  }
+  inactiveTasks = $derived.by(() => this.tasks.filter((t) => !t.enabled));
 
-  get selectedTask(): ScheduledTask | null {
-    return this.tasks.find((t) => t.id === this.selectedTaskId) || null;
-  }
+  selectedTask = $derived.by(() => this.tasks.find((t) => t.id === this.selectedTaskId) || null);
 
-  get selectedTaskRuns(): ScheduledTaskRun[] {
+  selectedTaskRuns = $derived.by(() => {
     if (!this.selectedTaskId) return [];
     return this.runs.filter((r) => r.taskId === this.selectedTaskId);
-  }
+  });
 
   async loadTasks(): Promise<void> {
     this.loading = true;

@@ -24,17 +24,11 @@ export class TeamStore {
   private _lastWatcherRefresh = 0;
   private static readonly _WATCHER_COOLDOWN_MS = 10_000;
 
-  get pendingTasks(): TeamTask[] {
-    return this.tasks.filter((t) => t.status === "pending");
-  }
+  pendingTasks = $derived.by(() => this.tasks.filter((t) => t.status === "pending"));
 
-  get inProgressTasks(): TeamTask[] {
-    return this.tasks.filter((t) => t.status === "in_progress");
-  }
+  inProgressTasks = $derived.by(() => this.tasks.filter((t) => t.status === "in_progress"));
 
-  get completedTasks(): TeamTask[] {
-    return this.tasks.filter((t) => t.status === "completed");
-  }
+  completedTasks = $derived.by(() => this.tasks.filter((t) => t.status === "completed"));
 
   /** Load team list. Skipped if watcher refreshed recently (poll is fallback only). */
   async loadTeams(): Promise<void> {

@@ -76,6 +76,7 @@
           status={run.status}
           attention={needsAttention}
           compact={false}
+          shortLabel={true}
           class="shrink-0"
         />
       {:else}
@@ -187,14 +188,14 @@
     </div>
   </div>
   <!-- Preview / meta row -->
-  <div class="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground/60 pl-[14px]">
+  <div class="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground/50 pl-[14px]">
     <div class="flex items-center gap-1 min-w-0">
-      <span class="shrink-0 opacity-70">{run.agent}</span>
+      <span class="shrink-0">{run.agent}</span>
       {#if run.platform_id && run.platform_id !== "anthropic"}
-        <span class="shrink-0 opacity-50">&middot;</span>
-        <span class="truncate opacity-70">{platformLabel(run.platform_id)}</span>
+        <span class="shrink-0">&middot;</span>
+        <span class="truncate">{platformLabel(run.platform_id)}</span>
       {/if}
     </div>
-    <span class="ml-auto shrink-0 opacity-60">{time}</span>
+    <span class="ml-auto shrink-0">{time}</span>
   </div>
 </div>

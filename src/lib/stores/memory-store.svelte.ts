@@ -131,21 +131,13 @@ class MemoryStore {
     return this._error;
   }
 
-  get projectFiles(): MemoryFileCandidate[] {
-    return this._candidates.filter((f) => f.scope === "project");
-  }
+  projectFiles = $derived.by(() => this._candidates.filter((f) => f.scope === "project"));
 
-  get globalFiles(): MemoryFileCandidate[] {
-    return this._candidates.filter((f) => f.scope === "global");
-  }
+  globalFiles = $derived.by(() => this._candidates.filter((f) => f.scope === "global"));
 
-  get memoryFiles(): MemoryFileCandidate[] {
-    return this._candidates.filter((f) => f.scope === "memory");
-  }
+  memoryFiles = $derived.by(() => this._candidates.filter((f) => f.scope === "memory"));
 
-  get existingFiles(): MemoryFileCandidate[] {
-    return this._candidates.filter((f) => f.exists);
-  }
+  existingFiles = $derived.by(() => this._candidates.filter((f) => f.exists));
 
   // ── Setters ─────────────────────────────────────────────────────────────
 

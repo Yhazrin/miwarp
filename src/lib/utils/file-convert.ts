@@ -6,10 +6,6 @@
  * in the frontend.
  */
 
-import mammoth from "mammoth";
-import TurndownService from "turndown";
-import ExcelJS from "exceljs";
-
 /** Maximum characters in converted output. Prevents context explosion from huge spreadsheets. */
 export const MAX_CONVERTED_CHARS = 200_000;
 
@@ -44,6 +40,10 @@ export async function convertFile(file: File): Promise<{ text: string; format: s
 /** Convert a docx ArrayBuffer to markdown via mammoth → turndown. */
 async function convertDocx(arrayBuffer: ArrayBuffer): Promise<string> {
   try {
+    const [{ default: mammoth }, { default: TurndownService }] = await Promise.all([
+      import("mammoth"),
+      import("turndown"),
+    ]);
     const result = await mammoth.convertToHtml({ arrayBuffer });
     const html = result.value;
     if (!html || html.trim().length === 0) {
@@ -60,6 +60,7 @@ async function convertDocx(arrayBuffer: ArrayBuffer): Promise<string> {
 /** Convert an xlsx ArrayBuffer to markdown tables (one section per sheet). */
 async function convertXlsx(arrayBuffer: ArrayBuffer): Promise<string> {
   try {
+    const { default: ExcelJS } = await import("exceljs");
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(arrayBuffer);
 

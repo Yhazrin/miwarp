@@ -24,7 +24,7 @@ export class SkillStore {
   selectedCategory = $state<SkillCategory | null>(null);
 
   // Computed properties
-  get filteredSkills(): Skill[] {
+  filteredSkills = $derived.by(() => {
     let result = this.skills;
 
     if (this.selectedCategory) {
@@ -42,21 +42,17 @@ export class SkillStore {
     }
 
     return result;
-  }
+  });
 
-  get builtInSkills(): Skill[] {
-    return this.skills.filter((s) => s.isBuiltIn);
-  }
+  builtInSkills = $derived.by(() => this.skills.filter((s) => s.isBuiltIn));
 
-  get customSkills(): Skill[] {
-    return this.skills.filter((s) => !s.isBuiltIn);
-  }
+  customSkills = $derived.by(() => this.skills.filter((s) => !s.isBuiltIn));
 
-  get recentExecutions(): SkillExecution[] {
-    return [...this.executions]
+  recentExecutions = $derived.by(() =>
+    [...this.executions]
       .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
-      .slice(0, 10);
-  }
+      .slice(0, 10),
+  );
 
   /**
    * Load all skills from storage

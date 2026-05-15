@@ -19,16 +19,20 @@
     isRunning = true;
     results = [];
 
-    const execResults = await multiAgentService.execute(
-      config,
-      { cwd: "", projectPath: "" },
-      (agentId, status) => {
-        console.log(`[${agentId}] ${status}`);
-      },
-    );
-
-    results = execResults;
-    isRunning = false;
+    try {
+      const execResults = await multiAgentService.execute(
+        config,
+        { cwd: "", projectPath: "" },
+        (agentId, status) => {
+          console.log(`[${agentId}] ${status}`);
+        },
+      );
+      results = execResults;
+    } catch (e) {
+      console.error("executePreset failed", e);
+    } finally {
+      isRunning = false;
+    }
   }
 
   function executeCustom() {

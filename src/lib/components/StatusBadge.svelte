@@ -7,11 +7,14 @@
     status,
     attention = false,
     compact = false,
+    shortLabel = false,
     class: className = "",
   }: {
     status: RunStatus;
     attention?: boolean;
     compact?: boolean;
+    /** Use abbreviated status text for constrained widths (e.g. sidebar) */
+    shortLabel?: boolean;
     class?: string;
   } = $props();
 
@@ -77,8 +80,18 @@
     },
   };
 
+  const shortLabels: Partial<Record<DisplayStatus, string>> = {
+    waiting: "wait",
+    waiting_input: "input",
+    waiting_approval: "approve",
+    completed: "done",
+  };
+
   const style = $derived(statusStyles[displayStatus]);
   const isAnimated = $derived(displayStatus === "running" || displayStatus === "waiting");
+  const displayText = $derived(
+    shortLabel ? (shortLabels[displayStatus] ?? displayStatus) : displayStatus,
+  );
 </script>
 
 {#if compact}
@@ -106,6 +119,6 @@
         : ''}"
       style="background-color: {style.dot}"
     ></span>
-    {displayStatus}
+    {displayText}
   </span>
 {/if}

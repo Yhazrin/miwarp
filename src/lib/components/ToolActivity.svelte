@@ -460,6 +460,35 @@
     return result;
   });
 
+  // ── Tool category grouping ──
+
+  const READ_TOOLS = new Set(["Read", "read_file"]);
+  const SEARCH_TOOLS = new Set([
+    "Grep",
+    "Glob",
+    "search_files",
+    "list_directory",
+    "WebFetch",
+    "WebSearch",
+  ]);
+  const BASH_TOOLS = new Set(["Bash", "bash", "PowerShell"]);
+  const WRITE_TOOLS = new Set([
+    "Write",
+    "Edit",
+    "write_file",
+    "edit_file",
+    "MultiEdit",
+    "NotebookEdit",
+  ]);
+
+  function categorizeTool(name: string): "read" | "search" | "bash" | "write" | "other" {
+    if (READ_TOOLS.has(name)) return "read";
+    if (SEARCH_TOOLS.has(name)) return "search";
+    if (BASH_TOOLS.has(name)) return "bash";
+    if (WRITE_TOOLS.has(name)) return "write";
+    return "other";
+  }
+
   // ── Summary + status counts (single-pass) ──
 
   let toolStats = $derived.by(() => {
@@ -468,6 +497,10 @@
       running = 0,
       errors = 0,
       total = 0;
+    let reads = 0,
+      searches = 0,
+      bashCmds = 0,
+      writes = 0;
     if (useTimeline) {
       for (const turn of turns) {
         for (const t of flattenNodes(turn.tools)) {
@@ -477,6 +510,11 @@
           if (cat === "done") done++;
           else if (cat === "running") running++;
           else if (cat === "error") errors++;
+          const group = categorizeTool(t.tool_name);
+          if (group === "read") reads++;
+          else if (group === "search") searches++;
+          else if (group === "bash") bashCmds++;
+          else if (group === "write") writes++;
         }
       }
     } else {
@@ -488,6 +526,11 @@
         if (cat === "done") done++;
         else if (cat === "running") running++;
         else if (cat === "error") errors++;
+        const group = categorizeTool(name);
+        if (group === "read") reads++;
+        else if (group === "search") searches++;
+        else if (group === "bash") bashCmds++;
+        else if (group === "write") writes++;
       }
     }
     return {
@@ -496,8 +539,39 @@
       runningCount: running,
       errorCount: errors,
       totalToolCount: total,
+      reads,
+      searches,
+      bash: bashCmds,
+      writes,
     };
   });
+
+  // ── Per-turn category breakdown ──
+  interface TurnCategoryBreakdown {
+    reads: number;
+    searches: number;
+    bash: number;
+    writes: number;
+    errors: number;
+  }
+
+  function getTurnBreakdown(turn: ToolTurn): TurnCategoryBreakdown {
+    let reads = 0,
+      searches = 0,
+      bashCmds = 0,
+      writes = 0,
+      errs = 0;
+    for (const t of flattenNodes(turn.tools)) {
+      const group = categorizeTool(t.tool_name);
+      if (group === "read") reads++;
+      else if (group === "search") searches++;
+      else if (group === "bash") bashCmds++;
+      else if (group === "write") writes++;
+      if (categorizeBusStatus(t.status) === "error") errs++;
+    }
+    return { reads, searches, bash: bashCmds, writes, errors: errs };
+  }
+
   // ── Per-turn usage lookup ──
 
   let usageByTurn = $derived(new Map(turnUsages.map((tu) => [tu.turnIndex, tu])));
@@ -553,12 +627,29 @@
   <StatusIcon status={category} size="sm" />
 {/snippet}
 
+{#snippet categoryIcon(color: string, iconPath: string)}
+  <span class="flex h-3 w-3 shrink-0 items-center justify-center rounded {color}">
+    <svg
+      class="h-1.5 w-1.5 text-white"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"><path d={iconPath} /></svg
+    >
+  </span>
+{/snippet}
+
 {#snippet toolNodeView(node: ToolNode)}
   {@const style = getToolColor(node.tool.tool_name)}
   {@const detail = getToolDetail(node.tool)}
   {@const cat = categorizeBusStatus(node.tool.status)}
   <button
-    class="w-full text-left px-2.5 py-1 hover:bg-accent/50 rounded-sm transition-colors group"
+    class="w-full text-left px-2.5 py-1 hover:bg-accent/50 rounded-sm transition-colors group {cat ===
+    'error'
+      ? 'border-l-2 border-l-[hsl(var(--miwarp-status-error)/0.4)] bg-[hsl(var(--miwarp-status-error)/0.03)]'
+      : ''}"
     onclick={() => onScrollToTool?.(node.tool.tool_use_id)}
     title={t("toolActivity_scrollToTool")}
   >
@@ -1233,36 +1324,58 @@
             : 'hidden'}; pointer-events: {activeTab === 'tools' ? 'auto' : 'none'};"
         >
           <!-- Tools panel -->
-          <!-- Overview: session-level stats -->
+          <!-- Overview: compact single-line session stats -->
           {#if toolStats.totalToolCount > 0}
-            <div class="px-2.5 py-1.5 border-b border-border/50">
-              <div class="flex items-center gap-2 text-[11px]">
-                <span class="font-medium text-foreground"
-                  >{toolStats.totalToolCount} {t("toolActivity_toolsLabel")}</span
-                >
+            <div
+              class="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border/50 text-[10px]"
+            >
+              <span class="font-medium text-foreground"
+                >{t("toolActivity_totalTools", { count: String(toolStats.totalToolCount) })}</span
+              >
+              {#if toolStats.reads > 0}
                 <span class="text-muted-foreground/40">&middot;</span>
-                {#if toolStats.doneCount > 0}
-                  <span class="flex items-center gap-0.5 text-[hsl(var(--miwarp-status-success))]">
-                    <StatusIcon status="done" size="sm" />
-                    {toolStats.doneCount}
-                  </span>
-                {/if}
-                {#if toolStats.runningCount > 0}
-                  <span class="flex items-center gap-0.5 text-muted-foreground">
-                    <StatusIcon status="running" size="sm" />
-                    {toolStats.runningCount}
-                  </span>
-                {/if}
-                {#if toolStats.errorCount > 0}
-                  <span class="flex items-center gap-0.5 text-destructive">
-                    <StatusIcon status="error" size="sm" />
-                    {toolStats.errorCount}
-                  </span>
-                {/if}
-                <span class="ml-auto text-muted-foreground/60"
-                  >{turns.length} {t("toolActivity_turnsLabel")}</span
-                >
-              </div>
+                <span class="flex items-center gap-0.5 text-blue-500 dark:text-blue-400">
+                  {@render categoryIcon(
+                    "bg-blue-500",
+                    "M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z",
+                  )}
+                  {toolStats.reads}
+                </span>
+              {/if}
+              {#if toolStats.searches > 0}
+                <span class="text-muted-foreground/40">&middot;</span>
+                <span class="flex items-center gap-0.5 text-purple-500 dark:text-purple-400">
+                  {@render categoryIcon(
+                    "bg-purple-500",
+                    "M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM21 21l-4.35-4.35",
+                  )}
+                  {toolStats.searches}
+                </span>
+              {/if}
+              {#if toolStats.bash > 0}
+                <span class="text-muted-foreground/40">&middot;</span>
+                <span class="flex items-center gap-0.5 text-emerald-500 dark:text-emerald-400">
+                  {@render categoryIcon("bg-emerald-500", "M4 17l6-6-6-6M12 19h8")}
+                  {toolStats.bash}
+                </span>
+              {/if}
+              {#if toolStats.writes > 0}
+                <span class="text-muted-foreground/40">&middot;</span>
+                <span class="flex items-center gap-0.5 text-amber-500 dark:text-amber-400">
+                  {@render categoryIcon(
+                    "bg-amber-500",
+                    "M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z",
+                  )}
+                  {toolStats.writes}
+                </span>
+              {/if}
+              {#if toolStats.errorCount > 0}
+                <span class="text-muted-foreground/40">&middot;</span>
+                <span class="flex items-center gap-0.5 text-[hsl(var(--miwarp-status-error))]">
+                  <StatusIcon status="error" size="xs" />
+                  {toolStats.errorCount}
+                </span>
+              {/if}
             </div>
           {/if}
 
@@ -1284,8 +1397,24 @@
           <!-- Tool list -->
           <div class="flex-1 overflow-y-auto py-0.5">
             {#if toolStats.totalToolCount === 0}
-              <div class="flex items-center justify-center h-32 text-xs text-muted-foreground/50">
-                {t("toolActivity_noToolCalls")}
+              <div class="flex flex-col items-center justify-center h-32 px-4 text-center">
+                <svg
+                  class="h-8 w-8 text-muted-foreground/20 mb-2"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
+                  />
+                </svg>
+                <p class="text-xs text-muted-foreground/50">{t("toolActivity_noToolCalls")}</p>
+                <p class="text-[10px] text-muted-foreground/30 mt-1">
+                  {t("toolActivity_emptyHint")}
+                </p>
               </div>
             {:else if useTimeline}
               <!-- Timeline mode: grouped by turn -->
@@ -1293,9 +1422,14 @@
                 {@const isCollapsed = collapsedTurns.has(turn.turnIndex)}
                 {@const tu = usageByTurn.get(turn.turnIndex)}
                 {@const hasTools = turn.tools.length > 0}
+                {@const turnHasError =
+                  hasTools &&
+                  flattenNodes(turn.tools).some((t) => categorizeBusStatus(t.status) === "error")}
                 <!-- Turn header: div with two sibling buttons (no nesting) -->
                 <div
-                  class="flex items-center w-full px-2.5 py-1.5 hover:bg-accent/50 transition-colors border-b border-border/30"
+                  class="flex items-center w-full px-2.5 py-1.5 hover:bg-accent/50 transition-colors border-b border-border/30 {turnHasError
+                    ? 'border-l-2 border-l-[hsl(var(--miwarp-status-error)/0.5)]'
+                    : ''}"
                 >
                   <button
                     class="flex-1 flex items-center gap-1.5 text-left min-w-0"
@@ -1343,10 +1477,31 @@
                         >
                       {/if}
                       {#if hasTools}
-                        <span
-                          class="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium"
-                          >{countToolNodes(turn.tools)}</span
-                        >
+                        {@const bk = getTurnBreakdown(turn)}
+                        <span class="flex items-center gap-1 text-[10px]">
+                          {#if bk.reads > 0}<span class="text-blue-500/70 dark:text-blue-400/70"
+                              >{bk.reads}R</span
+                            >{/if}
+                          {#if bk.searches > 0}<span
+                              class="text-purple-500/70 dark:text-purple-400/70"
+                              >{bk.searches}S</span
+                            >{/if}
+                          {#if bk.bash > 0}<span
+                              class="text-emerald-500/70 dark:text-emerald-400/70">{bk.bash}B</span
+                            >{/if}
+                          {#if bk.writes > 0}<span class="text-amber-500/70 dark:text-amber-400/70"
+                              >{bk.writes}W</span
+                            >{/if}
+                          <span
+                            class="px-1 py-0.5 rounded-full bg-muted text-muted-foreground font-medium"
+                            >{countToolNodes(turn.tools)}</span
+                          >
+                        </span>
+                      {/if}
+                      {#if turnHasError}
+                        <span class="text-[hsl(var(--miwarp-status-error)/0.7)]">
+                          <StatusIcon status="error" size="xs" />
+                        </span>
                       {/if}
                     </span>
                   </button>
@@ -1424,6 +1579,32 @@
               {/each}
             {/if}
           </div>
+
+          <!-- Stats footer -->
+          {#if toolStats.totalToolCount > 0}
+            <div class="border-t border-border px-3 py-1.5">
+              <div class="flex items-center gap-3 text-[11px]">
+                {#if toolStats.doneCount > 0}
+                  <span class="flex items-center gap-1 text-[hsl(var(--miwarp-status-success))]">
+                    <StatusIcon status="done" size="sm" />
+                    {toolStats.doneCount}
+                  </span>
+                {/if}
+                {#if toolStats.runningCount > 0}
+                  <span class="flex items-center gap-1 text-muted-foreground">
+                    <StatusIcon status="running" size="sm" />
+                    {toolStats.runningCount}
+                  </span>
+                {/if}
+                {#if toolStats.errorCount > 0}
+                  <span class="flex items-center gap-1 text-destructive">
+                    <StatusIcon status="error" size="sm" />
+                    {toolStats.errorCount}
+                  </span>
+                {/if}
+              </div>
+            </div>
+          {/if}
         </div>
       {/if}
     </div>

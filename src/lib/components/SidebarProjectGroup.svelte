@@ -36,10 +36,10 @@
   }
 </script>
 
-<div class="group/folder mb-0.5">
+<div class="group/folder mb-1">
   <!-- Folder header -->
   <div
-    class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors cursor-pointer"
+    class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/30 transition-colors cursor-pointer"
     role="button"
     tabindex="0"
     onclick={() => onToggle?.()}
@@ -99,7 +99,7 @@
     <!-- Count badge -->
     {#if showCount && folder.conversationCount > 0}
       <span
-        class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground {showRemove
+        class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted/60 px-1 text-[10px] font-normal text-muted-foreground/60 {showRemove
           ? ''
           : 'ml-auto'}"
       >
@@ -145,7 +145,7 @@
     <div class="pl-3">
       {#if onNewChat}
         <button
-          class="flex w-full items-center gap-1.5 px-2.5 py-1 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md transition-colors"
+          class="flex w-full items-center gap-1.5 px-2.5 py-0.5 text-[11px] text-muted-foreground/60 hover:text-muted-foreground hover:bg-sidebar-accent/20 rounded-md transition-colors"
           onclick={(e) => {
             e.stopPropagation();
             onNewChat?.();

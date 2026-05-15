@@ -13,6 +13,15 @@ export default defineConfig({
   },
   build: {
     target: ["safari16", "chrome105", "edge105"],
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes("node_modules/@codemirror") || id.includes("node_modules/@lezer"))
+            return "codemirror-vendor";
+          if (id.includes("node_modules/@xterm")) return "xterm-vendor";
+        },
+      },
+    },
   },
   clearScreen: false,
   server: {

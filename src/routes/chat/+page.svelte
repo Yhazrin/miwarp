@@ -1213,6 +1213,7 @@
 
   // Load settings
   onMount(async () => {
+    // Phase 1: load settings (required by everything else)
     try {
       settings = await api.getUserSettings();
       store.authMode = settings.auth_mode ?? "cli";
@@ -1248,7 +1249,7 @@
           store.model = settings.default_model;
         }
       }
-      // Load auth overview for AuthSourceBadge
+      // Load auth overview for AuthSourceBadge (fire-and-forget)
       api
         .getAuthOverview()
         .then((ov) => (authOverview = ov))
@@ -1258,8 +1259,15 @@
     } catch (e) {
       dbgWarn("chat", "failed to load settings:", e);
     }
-    try {
-      agentSettings = await api.getAgentSettings("claude");
+
+    // Phase 2: parallel fetch of independent data
+    const [agentResult, runsResult] = await Promise.allSettled([
+      api.getAgentSettings("claude"),
+      api.listRuns(),
+    ]);
+
+    if (agentResult.status === "fulfilled") {
+      agentSettings = agentResult.value;
       // Read effort from CLI config (~/.claude/settings.json) — the authoritative source.
       // NOT from agentSettings.effort (that would cause --effort flag at spawn, which
       // locks effort in memory and prevents live switching via settings.json).
@@ -1274,9 +1282,22 @@
       if (agentSettings?.effort) {
         api.updateAgentSettings("claude", { effort: "" }).catch(() => {});
       }
-    } catch (e) {
-      dbgWarn("chat", "failed to load agent settings:", e);
+    } else {
+      dbgWarn("chat", "failed to load agent settings:", agentResult.reason);
     }
+
+    if (runsResult.status === "fulfilled") {
+      lastContinuableRun =
+        runsResult.value.find(
+          (r) =>
+            r.session_id &&
+            (r.status === "completed" || r.status === "stopped" || r.status === "failed"),
+        ) ?? null;
+    } else {
+      dbgWarn("chat", "failed to load runs for continue:", runsResult.reason);
+    }
+
+    // Phase 3: permission mode init (depends on settings + agentSettings)
     // Initialize permission mode from saved settings (before session_init arrives)
     // Agent plan_mode=true overrides user permission_mode (legacy compat)
     if (!store.permissionModeSetByUser) {
@@ -1288,18 +1309,6 @@
         store.permissionMode = cliName;
         store.permissionModeSetByUser = true;
       }
-    }
-    // Find most recent run with session_id for "Continue last session"
-    try {
-      const runs = await api.listRuns();
-      lastContinuableRun =
-        runs.find(
-          (r) =>
-            r.session_id &&
-            (r.status === "completed" || r.status === "stopped" || r.status === "failed"),
-        ) ?? null;
-    } catch (e) {
-      dbgWarn("chat", "failed to load runs for continue:", e);
     }
     let selfHealDone = false;
     let selfHealInFlight = false;

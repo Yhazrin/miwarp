@@ -1983,7 +1983,6 @@
   "sidebar_searching": "搜索中...",
   "sidebar_noSessions": "未找到匹配的会话",
   "sidebar_newChat": "新建对话",
-  "sidebar_removeProject": "移除项目",
   "sidebar_runs": "{count} 次运行",
   "sidebar_resume": "恢复",
   "sidebar_delete": "删除",
@@ -1999,7 +1998,6 @@
   "inlineTool_retry": "重试",
   "inlineTool_copyPath": "复制路径: {path}",
 
-  "common_close": "关闭",
   "common_noMatches": "无匹配",
   "common_searching": "搜索中...",
 

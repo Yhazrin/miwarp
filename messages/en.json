@@ -1983,7 +1983,6 @@
   "sidebar_searching": "Searching...",
   "sidebar_noSessions": "No matching sessions found",
   "sidebar_newChat": "New chat",
-  "sidebar_removeProject": "Remove project",
   "sidebar_runs": "{count} runs",
   "sidebar_resume": "Resume",
   "sidebar_delete": "Delete",
@@ -1999,7 +1998,6 @@
   "inlineTool_retry": "Retry",
   "inlineTool_copyPath": "Copy path: {path}",
 
-  "common_close": "Close",
   "common_noMatches": "No matches",
   "common_searching": "Searching...",
 
