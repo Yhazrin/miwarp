@@ -1,5 +1,6 @@
 <script lang="ts">
   import { themeStore, type ThemeId } from "../stores/theme-store.svelte";
+  import { t } from "$lib/i18n/index.svelte";
 
   interface Props {
     /** Callback when theme changes */
@@ -133,7 +134,7 @@
 <div class="theme-editor space-y-4 p-4">
   <!-- Theme selector -->
   <div class="space-y-2">
-    <h3 class="text-sm font-semibold text-miwarp-text-primary">Theme</h3>
+    <h3 class="text-sm font-semibold text-miwarp-text-primary">{t("theme_title")}</h3>
     <div class="grid grid-cols-3 gap-2">
       {#each themeStore.themes as theme}
         <button
@@ -183,7 +184,7 @@
       class="text-xs text-miwarp-accent-primary hover:underline"
       onclick={() => (showImportExport = !showImportExport)}
     >
-      {showImportExport ? "Hide" : "Import / Export Theme"}
+      {showImportExport ? t("theme_hide") : t("theme_importExport")}
     </button>
 
     {#if showImportExport}
@@ -194,14 +195,14 @@
                    text-xs text-miwarp-text-secondary hover:bg-miwarp-bg-hover"
             onclick={handleExport}
           >
-            Copy Export
+            {t("theme_copyExport")}
           </button>
         </div>
         <textarea
           class="h-24 w-full rounded-md border border-border bg-miwarp-bg-elevated
                  p-2 font-mono text-xs text-foreground
                  focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
-          placeholder="Paste theme JSON here to import..."
+          placeholder={t("theme_importPlaceholder")}
           bind:value={importJson}
         ></textarea>
         <button

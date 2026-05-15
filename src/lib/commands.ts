@@ -34,8 +34,8 @@ export const commands: CommandDef[] = [
   // Chat
   {
     id: "switch-model",
-    name: "Switch Model",
-    description: "Change the AI model for the next message",
+    name: "cmd_name_switchModel",
+    description: "cmd_desc_switchModel",
     category: "chat",
     agent: "both",
     action: "open_modal",
@@ -43,8 +43,8 @@ export const commands: CommandDef[] = [
   },
   {
     id: "compact",
-    name: "Compact Conversation",
-    description: "Compress the conversation to free up context",
+    name: "cmd_name_compact",
+    description: "cmd_desc_compact",
     category: "chat",
     agent: "claude",
     action: "send_prompt",
@@ -52,8 +52,8 @@ export const commands: CommandDef[] = [
   },
   {
     id: "toggle-plan",
-    name: "Toggle Plan Mode",
-    description: "Switch between plan mode (read-only) and normal mode",
+    name: "cmd_name_togglePlan",
+    description: "cmd_desc_togglePlan",
     category: "chat",
     agent: "claude",
     action: "toggle_state",
@@ -61,8 +61,8 @@ export const commands: CommandDef[] = [
   },
   {
     id: "review",
-    name: "Review Changes",
-    description: "Ask the agent to review recent code changes",
+    name: "cmd_name_review",
+    description: "cmd_desc_review",
     category: "chat",
     agent: "claude",
     action: "send_prompt",
@@ -71,8 +71,8 @@ export const commands: CommandDef[] = [
   },
   {
     id: "export-chat",
-    name: "Export Chat (Markdown)",
-    description: "Export the conversation as a Markdown file",
+    name: "cmd_name_exportChat",
+    description: "cmd_desc_exportChat",
     category: "chat",
     agent: "both",
     shortcut: "Cmd+Shift+E",
@@ -81,8 +81,8 @@ export const commands: CommandDef[] = [
   },
   {
     id: "export-chat-html",
-    name: "Export Chat as HTML",
-    description: "Export the conversation as a self-contained HTML file with full visual fidelity",
+    name: "cmd_name_exportChatHtml",
+    description: "cmd_desc_exportChatHtml",
     category: "chat",
     agent: "both",
     shortcut: "Cmd+Shift+H",
@@ -91,8 +91,8 @@ export const commands: CommandDef[] = [
   },
   {
     id: "new-claude",
-    name: "New Claude Chat",
-    description: "Start a new Claude Code conversation",
+    name: "cmd_name_newClaude",
+    description: "cmd_desc_newClaude",
     category: "chat",
     agent: "both",
     action: "navigate",
@@ -110,8 +110,8 @@ export const commands: CommandDef[] = [
   // },
   {
     id: "stop-run",
-    name: "Stop Run",
-    description: "Stop the currently running agent process",
+    name: "cmd_name_stopRun",
+    description: "cmd_desc_stopRun",
     category: "chat",
     agent: "both",
     action: "ipc_command",
@@ -121,8 +121,8 @@ export const commands: CommandDef[] = [
   // Tools
   {
     id: "git-diff",
-    name: "Git Diff",
-    description: "View current git changes",
+    name: "cmd_name_gitDiff",
+    description: "cmd_desc_gitDiff",
     category: "tools",
     agent: "both",
     shortcut: "Cmd+Shift+D",
@@ -131,8 +131,8 @@ export const commands: CommandDef[] = [
   },
   {
     id: "git-status",
-    name: "Git Status",
-    description: "View git status summary",
+    name: "cmd_name_gitStatus",
+    description: "cmd_desc_gitStatus",
     category: "tools",
     agent: "both",
     action: "ipc_command",
@@ -140,8 +140,8 @@ export const commands: CommandDef[] = [
   },
   {
     id: "token-cost",
-    name: "Token Cost",
-    description: "View token usage and cost for current run",
+    name: "cmd_name_tokenCost",
+    description: "cmd_desc_tokenCost",
     category: "tools",
     agent: "both",
     action: "ipc_command",
@@ -151,8 +151,8 @@ export const commands: CommandDef[] = [
   // Navigation
   {
     id: "go-scheduled-tasks",
-    name: "Scheduled Tasks",
-    description: "Manage automated scheduled tasks",
+    name: "cmd_name_scheduledTasks",
+    description: "cmd_desc_scheduledTasks",
     category: "navigation",
     agent: "both",
     action: "navigate",
@@ -302,12 +302,12 @@ export function groupByCategory(cmds: CommandDef[]): Record<CommandCategory, Com
 }
 
 export const categoryLabels: Record<CommandCategory, string> = {
-  chat: "Chat",
-  tools: "Tools",
-  navigation: "Navigation",
-  settings: "Settings",
-  diagnostics: "Diagnostics",
-  system: "System",
+  chat: "cmd_cat_chat",
+  tools: "cmd_cat_tools",
+  navigation: "cmd_cat_navigation",
+  settings: "cmd_cat_settings",
+  diagnostics: "cmd_cat_diagnostics",
+  system: "cmd_cat_system",
 };
 
 // 多 Agent 命令
@@ -315,7 +315,7 @@ export const multiAgentCommands: CommandDef[] = [
   {
     id: "multi",
     name: "multi",
-    description: "多 Agent 并行执行",
+    description: "cmd_multi_desc",
     category: "system",
     agent: "claude",
     action: "panel:multi-agent",
@@ -323,7 +323,7 @@ export const multiAgentCommands: CommandDef[] = [
   {
     id: "fullstack",
     name: "fullstack",
-    description: "全栈开发模式（前端+后端+数据库）",
+    description: "cmd_fullstack_desc",
     category: "system",
     agent: "claude",
     action: "preset:fullstack",
@@ -331,7 +331,7 @@ export const multiAgentCommands: CommandDef[] = [
   {
     id: "review-all",
     name: "review-all",
-    description: "全面代码审查（安全+性能+风格）",
+    description: "cmd_reviewAll_desc",
     category: "system",
     agent: "claude",
     action: "preset:review",
@@ -339,7 +339,7 @@ export const multiAgentCommands: CommandDef[] = [
   {
     id: "implement-all",
     name: "implement-all",
-    description: "实现多个功能模块",
+    description: "cmd_implementAll_desc",
     category: "system",
     agent: "claude",
     action: "preset:upgrade",
@@ -347,7 +347,7 @@ export const multiAgentCommands: CommandDef[] = [
   {
     id: "test-all",
     name: "test-all",
-    description: "全面测试（单元+集成+E2E）",
+    description: "cmd_testAll_desc",
     category: "system",
     agent: "claude",
     action: "preset:test",
@@ -355,7 +355,7 @@ export const multiAgentCommands: CommandDef[] = [
   {
     id: "docs-all",
     name: "docs-all",
-    description: "生成所有文档（API+README+CHANGELOG）",
+    description: "cmd_docsAll_desc",
     category: "system",
     agent: "claude",
     action: "preset:docs",

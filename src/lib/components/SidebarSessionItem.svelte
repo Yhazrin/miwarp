@@ -6,6 +6,7 @@
   import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
   import { hasAttention } from "$lib/stores/attention-store.svelte";
   import DualStatusIndicator from "./DualStatusIndicator.svelte";
+  import { t } from "$lib/i18n/index.svelte";
 
   function platformLabel(id: string): string {
     return PLATFORM_PRESETS.find((p) => p.id === id)?.name ?? id;
@@ -106,7 +107,7 @@
       {#if runCount > 1}
         <span
           class="inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground"
-          title="{runCount} runs"
+          title={t("sidebar_runs", { count: String(runCount) })}
         >
           {runCount}
         </span>
@@ -121,8 +122,8 @@
             e.stopPropagation();
             onpin?.();
           }}
-          title={pinned ? "Unpin" : "Pin"}
-          aria-label={pinned ? "Unpin session" : "Pin session"}
+          title={pinned ? t("sidebar_unpin") : t("sidebar_pin")}
+          aria-label={pinned ? t("sidebar_unpinSession") : t("sidebar_pinSession")}
         >
           <svg
             class="h-3 w-3"
@@ -146,7 +147,7 @@
             e.stopPropagation();
             onresume(run.id, "resume");
           }}
-          title="Resume"
+          title={t("sidebar_resume")}
         >
           <svg
             class="h-3 w-3"
@@ -168,7 +169,7 @@
             e.stopPropagation();
             ondelete?.(conversation);
           }}
-          title="Delete"
+          title={t("sidebar_delete")}
         >
           <svg
             class="h-3 w-3"

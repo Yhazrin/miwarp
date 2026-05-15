@@ -292,13 +292,16 @@ pub async fn run_scheduled_task_now(
     )
     .await;
 
-    // Update lastRunAt
+    // Update lastRunAt and recompute nextRunAt
     let mut all_tasks = store::load_tasks();
     if let Some(t) = all_tasks.iter_mut().find(|t| t.id == id) {
         t.last_run_at = Some(task_run.started_at.clone());
+        t.next_run_at = compute_next_run(&t.schedule);
         t.updated_at = Utc::now().to_rfc3339();
     }
-    let _ = store::save_tasks(&all_tasks);
+    if let Err(e) = store::save_tasks(&all_tasks) {
+        log::error!("[scheduler] failed to update task after manual run: {e}");
+    }
 
     Ok(task_run)
 }

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/index.svelte";
+
   interface Props {
     placeholder?: string;
     value?: string;
@@ -65,7 +67,7 @@
     <button
       class="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded text-muted-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
       onclick={clear}
-      aria-label="Clear search"
+      aria-label={t("sidebarSearch_clear")}
     >
       <svg
         class="h-3 w-3"

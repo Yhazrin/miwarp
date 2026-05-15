@@ -38,32 +38,32 @@
   }[] = [
     {
       key: "skills",
-      label: "Skills",
+      label: t("pluginCard_skills"),
       color: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
     },
     {
       key: "commands",
-      label: "Commands",
+      label: t("pluginCard_commands"),
       color: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
     },
     {
       key: "agents",
-      label: "Agents",
+      label: t("pluginCard_agents"),
       color: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
     },
     {
       key: "hooks",
-      label: "Hooks",
+      label: t("pluginCard_hooks"),
       color: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
     },
     {
       key: "mcp_servers",
-      label: "MCP",
+      label: t("pluginCard_mcp"),
       color: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
     },
     {
       key: "lsp_servers",
-      label: "LSP",
+      label: t("pluginCard_lsp"),
       color: "bg-green-500/10 text-green-600 dark:text-green-400",
     },
   ];

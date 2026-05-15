@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import type { ProjectFolder } from "$lib/utils/sidebar-groups";
+  import { t } from "$lib/i18n/index.svelte";
 
   interface Props {
     folder: ProjectFolder;
@@ -110,7 +111,7 @@
     {#if showRemove && onRemove}
       <button
         class="ml-auto shrink-0 flex h-4 w-4 items-center justify-center rounded opacity-0 text-muted-foreground hover:text-destructive hover:opacity-100 focus-visible:opacity-100 group-hover/folder:opacity-100 transition-opacity"
-        aria-label="Remove project"
+        aria-label={t("sidebar_removeProject")}
         onclick={(e) => {
           e.stopPropagation();
           onRemove?.();
@@ -162,7 +163,7 @@
             <path d="M12 5v14" />
             <path d="M5 12h14" />
           </svg>
-          <span>New chat</span>
+          <span>{t("sidebar_newChat")}</span>
         </button>
       {/if}
       {@render children?.()}

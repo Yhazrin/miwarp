@@ -6,6 +6,7 @@
  *
  * Single source of truth: all theme state lives here.
  */
+import { t } from "$lib/i18n/index.svelte";
 
 export interface ThemeDefinition {
   id: string;
@@ -15,15 +16,15 @@ export interface ThemeDefinition {
 }
 
 const BUILTIN_THEMES: ThemeDefinition[] = [
-  { id: "codex", name: "Codex Dark", type: "dark", accent: "#33A6FF" },
-  { id: "codex-light", name: "Codex Light", type: "light", accent: "#33A6FF" },
-  { id: "midnight", name: "Midnight", type: "dark", accent: "#3B82F6" },
-  { id: "ocean", name: "Ocean", type: "dark", accent: "#0EA5E9" },
-  { id: "dracula", name: "Dracula", type: "dark", accent: "#BD93F9" },
-  { id: "nord", name: "Nord", type: "dark", accent: "#5E81AC" },
-  { id: "morandi", name: "Morandi", type: "dark", accent: "#A67FA3" },
-  { id: "dev-preview", name: "Dev Preview", type: "dark", accent: "#26C2A3" },
-  { id: "dev-preview-light", name: "Dev Preview Light", type: "light", accent: "#26C2A3" },
+  { id: "codex", name: t("theme_codexDark"), type: "dark", accent: "#33A6FF" },
+  { id: "codex-light", name: t("theme_codexLight"), type: "light", accent: "#33A6FF" },
+  { id: "midnight", name: t("theme_midnight"), type: "dark", accent: "#3B82F6" },
+  { id: "ocean", name: t("theme_ocean"), type: "dark", accent: "#0EA5E9" },
+  { id: "dracula", name: t("theme_dracula"), type: "dark", accent: "#BD93F9" },
+  { id: "nord", name: t("theme_nord"), type: "dark", accent: "#5E81AC" },
+  { id: "morandi", name: t("theme_morandi"), type: "dark", accent: "#A67FA3" },
+  { id: "dev-preview", name: t("theme_devPreview"), type: "dark", accent: "#26C2A3" },
+  { id: "dev-preview-light", name: t("theme_devPreviewLight"), type: "light", accent: "#26C2A3" },
 ];
 
 export type ThemeId = string;

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { viewModeStore, type ViewMode } from "$lib/stores/view-mode-store.svelte";
+  import { t } from "$lib/i18n/index.svelte";
 
   const modeLabels: Record<ViewMode, string> = {
     normal: "Normal",
@@ -26,7 +27,7 @@
 <button
   class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs font-medium transition-colors hover:bg-accent"
   onclick={() => viewModeStore.cycle()}
-  title="View mode: {modeLabels[viewModeStore.mode]} (Ctrl+O to cycle)"
+  title={t("viewMode_label", { mode: modeLabels[viewModeStore.mode] })}
 >
   <svg
     class="h-3.5 w-3.5"

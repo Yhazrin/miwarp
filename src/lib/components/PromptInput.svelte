@@ -2214,7 +2214,7 @@
               <button
                 class="flex h-7 w-7 items-center justify-center rounded-full bg-miwarp-status-info text-white transition-colors hover:opacity-80"
                 onclick={handleBtwSend}
-                title="Send side question"
+                title={t("promptInput_sendSideQuestion")}
               >
                 <svg
                   class="h-4 w-4"
@@ -2253,7 +2253,7 @@
           {#if onBtwSend}
             <button
               onclick={() => (btwMode = !btwMode)}
-              title="Side question (btw)"
+              title={t("promptInput_sideQuestion")}
               class="flex h-7 w-7 items-center justify-center rounded-full transition-colors {btwMode
                 ? 'text-miwarp-status-info bg-miwarp-status-info/10'
                 : 'text-muted-foreground/60 hover:text-foreground hover:bg-accent/15'}"

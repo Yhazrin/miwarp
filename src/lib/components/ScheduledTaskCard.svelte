@@ -15,7 +15,7 @@
 
   let triggering = $state(false);
 
-  const scheduleDescription = $derived(() => {
+  const scheduleDescription = $derived.by(() => {
     const s = task.schedule;
     switch (s.type) {
       case "cron":
@@ -32,6 +32,21 @@
         return t("schedCard_unknownSchedule");
     }
   });
+
+  function formatRelativeTime(isoStr: string): string {
+    const date = new Date(isoStr);
+    const now = Date.now();
+    const diffMs = date.getTime() - now;
+    const absDiff = Math.abs(diffMs);
+    const future = diffMs > 0;
+
+    if (absDiff < 60_000) return future ? t("sched_inProgress") : t("sched_never");
+    const minutes = Math.round(absDiff / 60_000);
+    if (minutes < 60) return future ? `in ${minutes}m` : `${minutes}m ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return future ? `in ${hours}h` : `${hours}h ago`;
+    return date.toLocaleString();
+  }
 
   const statusColor = $derived(task.enabled ? "text-green-500" : "text-muted-foreground");
 
@@ -103,16 +118,20 @@
 
       <!-- Schedule -->
       <p class="text-xs text-muted-foreground/50">
-        {scheduleDescription()}
+        {scheduleDescription}
       </p>
 
       <!-- Timing info -->
       <div class="flex items-center gap-4 mt-2 text-xs text-muted-foreground/40">
         {#if task.nextRunAt}
-          <span>{t("schedCard_next")}: {new Date(task.nextRunAt).toLocaleString()}</span>
+          <span>{t("schedCard_next")}: {formatRelativeTime(task.nextRunAt)}</span>
+        {:else if task.enabled}
+          <span>{t("schedCard_next")}: {t("sched_never")}</span>
         {/if}
         {#if task.lastRunAt}
-          <span>{t("schedCard_last")}: {new Date(task.lastRunAt).toLocaleString()}</span>
+          <span>{t("schedCard_last")}: {formatRelativeTime(task.lastRunAt)}</span>
+        {:else}
+          <span>{t("schedCard_last")}: {t("sched_never")}</span>
         {/if}
       </div>
     </div>

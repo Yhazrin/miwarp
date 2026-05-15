@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Skill } from "$lib/types/skill";
+  import { t } from "$lib/i18n/index.svelte";
   import { SKILL_CATEGORIES } from "$lib/types/skill";
   import { dbg } from "$lib/utils/debug";
 
@@ -86,7 +87,7 @@
         <button
           class="opacity-0 group-hover:opacity-100 rounded-md p-1 hover:bg-accent transition-all"
           onclick={toggleMenu}
-          aria-label="Skill options"
+          aria-label={t("skillCard_options")}
         >
           <svg class="h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="currentColor">
             <circle cx="12" cy="6" r="1.5" />

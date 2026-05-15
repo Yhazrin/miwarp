@@ -4,6 +4,7 @@
    */
   import WorkflowPanel from "$lib/components/WorkflowPanel.svelte";
   import type { WorkflowStep } from "$lib/types/workflow";
+  import { t } from "$lib/i18n/index.svelte";
 
   let notification = $state<string | null>(null);
 
@@ -27,7 +28,7 @@
 </script>
 
 <svelte:head>
-  <title>Guided Workflows - MiWarp</title>
+  <title>{t("workflow_pageTitle")}</title>
 </svelte:head>
 
 <div class="workflow-page">

@@ -2283,7 +2283,7 @@
                               });
                               saveGeneralPatch({ platform_credentials: platformCredentials });
                             }
-                          }}>Bearer</button
+                          }}>{t("settings_bearer")}</button
                         >
                         <button
                           class="px-3 py-1.5 text-xs font-medium transition-colors border-l border-input {(findCredential(
@@ -3403,7 +3403,7 @@
             </p>
           </div>
           <button
-            aria-label="Debug mode"
+            aria-label={t("settings_debugMode")}
             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 {debugOn
               ? 'bg-primary'
               : 'bg-neutral-700'}"

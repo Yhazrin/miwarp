@@ -34,9 +34,9 @@
       dot: "hsl(var(--miwarp-status-info))",
     },
     done: {
-      bg: "hsl(var(--miwarp-status-info) / 0.2)",
-      text: "hsl(var(--miwarp-status-info) / 1)",
-      dot: "hsl(var(--miwarp-status-info))",
+      bg: "hsl(var(--miwarp-status-success) / 0.2)",
+      text: "hsl(var(--miwarp-status-success) / 1)",
+      dot: "hsl(var(--miwarp-status-success))",
     },
     waiting: {
       bg: "hsl(var(--miwarp-status-warning) / 0.2)",
@@ -82,9 +82,11 @@
     .text}"
 >
   <span
-    class="h-1.5 w-1.5 rounded-full {displayStatus === 'running' || displayStatus === 'waiting'
-      ? 'animate-pulse'
-      : ''}"
+    class="h-1.5 w-1.5 rounded-full {displayStatus === 'running'
+      ? 'animate-slow-pulse'
+      : displayStatus === 'waiting'
+        ? 'animate-pulse'
+        : ''}"
     style="background-color: {statusStyles[displayStatus].dot}"
   ></span>
   {displayStatus}

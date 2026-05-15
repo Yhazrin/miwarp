@@ -1,5 +1,6 @@
 <script lang="ts">
   import { type AgentPhase, getPhaseLabel, getPhaseColor } from "$lib/utils/phase-detection";
+  import { t } from "$lib/i18n/index.svelte";
 
   let {
     phase,
@@ -22,7 +23,7 @@
 <div
   class="flex items-center gap-1.5"
   role="status"
-  aria-label="Agent phase: {getPhaseLabel(phase)}"
+  aria-label={t("phaseIndicator_agentPhase", { phase: getPhaseLabel(phase) })}
 >
   <!-- Phase dot with glow for active phases -->
   <span

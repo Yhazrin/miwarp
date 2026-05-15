@@ -7,6 +7,7 @@
   import SkillCard from "$lib/components/SkillCard.svelte";
   import SkillEditor from "$lib/components/SkillEditor.svelte";
   import Modal from "$lib/components/Modal.svelte";
+  import { t } from "$lib/i18n/index.svelte";
 
   // Local state
   let searchQuery = $state("");
@@ -116,7 +117,7 @@
   <!-- Header -->
   <div class="flex items-center justify-between border-b px-4 py-3">
     <div>
-      <h1 class="text-xl font-semibold">Skills</h1>
+      <h1 class="text-xl font-semibold">{t("skills_title")}</h1>
       <p class="text-sm text-muted-foreground">
         {skillStore.skills.length} skills available
       </p>
@@ -150,7 +151,7 @@
         <input
           type="text"
           bind:value={searchQuery}
-          placeholder="Search skills..."
+          placeholder={t("skills_searchPlaceholder")}
           class="h-9 w-full rounded-md border bg-background pl-10 pr-4 text-sm
             focus:outline-none focus:ring-2 focus:ring-primary/50 border-input"
         />
@@ -267,7 +268,7 @@
             <circle cx="12" cy="12" r="10" />
             <polyline points="12 6 12 12 16 14" />
           </svg>
-          <p class="text-sm text-muted-foreground">No execution history yet</p>
+          <p class="text-sm text-muted-foreground">{t("skills_noHistory")}</p>
         </div>
       {:else}
         <div class="space-y-3">
@@ -343,8 +344,8 @@
           </svg>
         </div>
         <div>
-          <h3 class="text-lg font-semibold">Delete Skill</h3>
-          <p class="text-sm text-muted-foreground">This action cannot be undone</p>
+          <h3 class="text-lg font-semibold">{t("skills_deleteTitle")}</h3>
+          <p class="text-sm text-muted-foreground">{t("skills_cannotUndo")}</p>
         </div>
       </div>
 

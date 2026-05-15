@@ -19,6 +19,7 @@ import type {
   SessionMode,
 } from "$lib/types";
 import { dbg, dbgWarn } from "$lib/utils/debug";
+import { t } from "$lib/i18n/index.svelte";
 import { yieldToMain } from "$lib/utils/yield";
 import { IMAGE_TYPES } from "$lib/utils/file-types";
 import { uuid } from "$lib/utils/uuid";
@@ -1984,12 +1985,12 @@ export class SessionStore {
         }
         if (metaActive) {
           // Still running after stop attempt — genuinely active, can't resume
-          throw new Error("Session is still running");
+          throw new Error(t("session_stillRunning"));
         }
       }
       // Fork validates session_id internally; resume/continue need it here.
       if (mode !== "continue" && mode !== "fork" && !run.session_id) {
-        throw new Error("No session_id available for resume");
+        throw new Error(t("session_noId"));
       }
 
       // Invalidate any concurrent loadRun, then snapshot the gen for our own

@@ -905,7 +905,7 @@
             >
             <input
               type="text"
-              placeholder="my-skill-name"
+              placeholder={t("plugins_skillNamePlaceholder")}
               class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               bind:value={editorName}
             />
@@ -917,7 +917,7 @@
             >
             <input
               type="text"
-              placeholder="Brief description of what this skill does"
+              placeholder={t("plugins_skillDescPlaceholder")}
               class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               bind:value={editorDescription}
             />
@@ -946,7 +946,7 @@
             <textarea
               class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
               rows="16"
-              placeholder="# Skill Title&#10;&#10;Instructions for Claude..."
+              placeholder={t("plugins_skillContentPlaceholder")}
               bind:value={editorContent}
             ></textarea>
           </div>
@@ -985,7 +985,7 @@
             </div>
             <button
               class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
-              title="Refresh"
+              title={t("plugins_refresh")}
               disabled={communityRefreshing}
               onclick={refreshCommunity}
             >
@@ -1394,7 +1394,7 @@
                     <textarea
                       class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
                       rows="16"
-                      placeholder="# Skill Title&#10;&#10;Instructions for Claude..."
+                      placeholder={t("plugins_skillContentPlaceholder")}
                       bind:value={editorContent}
                     ></textarea>
                   </div>
@@ -1814,7 +1814,7 @@
                     class="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
                     onclick={() => handleUpdate(plugin)}
                     disabled={operationLoading === plugin.name}
-                    title="Update plugin"
+                    title={t("plugins_updatePlugin")}
                   >
                     {t("plugin_update")}
                   </button>

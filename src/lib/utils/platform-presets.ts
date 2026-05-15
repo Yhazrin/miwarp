@@ -256,10 +256,10 @@ export const PLATFORM_PRESETS: PlatformPreset[] = [
 ];
 
 export const PRESET_CATEGORIES = [
-  { id: "provider", label: "LLM Providers" },
-  { id: "proxy", label: "API Proxy" },
-  { id: "local", label: "Local" },
-  { id: "custom", label: "Custom" },
+  { id: "provider", label: "platform_catProvider" },
+  { id: "proxy", label: "platform_catProxy" },
+  { id: "local", label: "platform_catLocal" },
+  { id: "custom", label: "platform_catCustom" },
 ] as const;
 
 /**
@@ -274,10 +274,10 @@ export function buildPlatformList(
     .filter((c) => c.platform_id.startsWith("custom-"))
     .map((c) => ({
       id: c.platform_id,
-      name: c.name ?? "Custom",
+      name: c.name ?? "platform_custom",
       base_url: c.base_url ?? "",
       auth_env_var: (c.auth_env_var ?? "ANTHROPIC_AUTH_TOKEN") as PlatformPreset["auth_env_var"],
-      description: "Custom endpoint",
+      description: "platform_customEndpoint",
       key_placeholder: "your-api-key",
       category: "custom" as const,
       models: c.models,

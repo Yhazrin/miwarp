@@ -2,6 +2,7 @@ import * as api from "$lib/api";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import type { KeyBinding, KeyBindingOverride } from "$lib/types";
 import { IS_MAC } from "$lib/utils/platform";
+import { t } from "$lib/i18n/index.svelte";
 
 // ── Platform detection ──
 
@@ -34,7 +35,7 @@ export const RESERVED_KEYS = new Set([
 export const APP_DEFAULTS: KeyBinding[] = [
   {
     command: "app:toggleSidebar",
-    label: "Toggle Sidebar",
+    label: t("keybind_toggleSidebar"),
     key: "Cmd+B",
     context: "global",
     editable: true,
@@ -42,7 +43,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "app:commandPalette",
-    label: "Command Palette",
+    label: t("keybind_commandPalette"),
     key: "Cmd+K",
     context: "global",
     editable: true,
@@ -50,7 +51,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "app:newChat",
-    label: "New Chat",
+    label: t("keybind_newChat"),
     key: "Cmd+N",
     context: "global",
     editable: true,
@@ -61,7 +62,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
     ? [
         {
           command: "app:screenshot" as const,
-          label: "Capture Screenshot",
+          label: t("keybind_captureScreenshot"),
           // SYNC: default also in src-tauri/src/commands/screenshot.rs init_screenshot_hotkey
           key: "Cmd+Ctrl+S",
           context: "global" as const,
@@ -73,7 +74,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
     : []),
   {
     command: "chat:interrupt",
-    label: "Interrupt Session",
+    label: t("keybind_interruptSession"),
     key: "Escape",
     context: "chat",
     editable: true,
@@ -81,7 +82,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "chat:sendGlobal",
-    label: "Send Message",
+    label: t("keybind_sendMessage"),
     key: "Cmd+Enter",
     context: "chat",
     editable: true,
@@ -89,7 +90,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "prompt:send",
-    label: "Send Message",
+    label: t("keybind_sendMessage"),
     key: "Enter",
     context: "prompt",
     editable: false,
@@ -97,7 +98,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "prompt:newline",
-    label: "New Line",
+    label: t("keybind_newLine"),
     key: "Shift+Enter",
     context: "prompt",
     editable: false,
@@ -105,7 +106,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "app:shortcutHelp",
-    label: "Shortcut Help",
+    label: t("keybind_shortcutHelp"),
     key: "?",
     context: "chat",
     editable: true,
@@ -113,7 +114,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "app:modelPicker",
-    label: "Switch Model",
+    label: t("keybind_switchModel"),
     key: "Cmd+P",
     context: "global",
     editable: true,
@@ -121,7 +122,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "chat:cyclePermission",
-    label: "Cycle Permission Mode",
+    label: t("keybind_cyclePermMode"),
     key: "Shift+Tab",
     context: "chat",
     editable: true,
@@ -129,7 +130,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "chat:stashPrompt",
-    label: "Stash / Restore Prompt",
+    label: t("keybind_stashPrompt"),
     key: `${CTRL}+S`,
     context: "global",
     editable: true,
@@ -137,7 +138,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "app:toggleFastMode",
-    label: "Toggle Fast Mode",
+    label: t("keybind_toggleFast"),
     key: "Cmd+O",
     context: "global",
     editable: true,
@@ -145,7 +146,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "chat:toggleVerbose",
-    label: "Toggle Verbose Output",
+    label: t("keybind_toggleVerbose"),
     key: IS_MAC ? "Ctrl+O" : "Alt+O",
     context: "chat",
     editable: true,
@@ -153,7 +154,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "chat:toggleTasks",
-    label: "Toggle Task Panel",
+    label: t("keybind_toggleTaskPanel"),
     key: `${CTRL}+T`,
     context: "chat",
     editable: true,
@@ -161,7 +162,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "chat:undoLastTurn",
-    label: "Undo (Rewind Files)",
+    label: t("keybind_undoRewind"),
     key: `${CTRL}+Shift+_`,
     context: "chat",
     editable: true,
@@ -169,7 +170,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "app:exportChatHtml",
-    label: "Export Chat as HTML",
+    label: t("keybind_exportHtml"),
     key: "Cmd+Shift+H",
     context: "global",
     editable: true,
@@ -182,7 +183,7 @@ export const APP_DEFAULTS: KeyBinding[] = [
 export const CLI_DEFAULTS: KeyBinding[] = [
   {
     command: "cli:interrupt",
-    label: "Interrupt",
+    label: t("keybind_interrupt"),
     key: "Ctrl+C",
     context: "cli",
     editable: false,
@@ -190,7 +191,7 @@ export const CLI_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "cli:cycleMode",
-    label: "Cycle Mode",
+    label: t("keybind_cycleMode"),
     key: "Shift+Tab",
     context: "cli",
     editable: false,
@@ -198,7 +199,7 @@ export const CLI_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "cli:modelPicker",
-    label: "Model Picker",
+    label: t("keybind_modelPicker"),
     key: "Alt+P",
     context: "cli",
     editable: false,
@@ -206,7 +207,7 @@ export const CLI_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "cli:themeToggle",
-    label: "Theme Toggle",
+    label: t("keybind_themeToggle"),
     key: "Alt+T",
     context: "cli",
     editable: false,
@@ -214,7 +215,7 @@ export const CLI_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "cli:verboseToggle",
-    label: "Verbose Toggle",
+    label: t("keybind_verboseToggle"),
     key: "Alt+V",
     context: "cli",
     editable: false,
@@ -222,7 +223,7 @@ export const CLI_DEFAULTS: KeyBinding[] = [
   },
   {
     command: "cli:debugPanel",
-    label: "Debug Panel",
+    label: t("keybind_debugPanel"),
     key: "Alt+D",
     context: "cli",
     editable: false,

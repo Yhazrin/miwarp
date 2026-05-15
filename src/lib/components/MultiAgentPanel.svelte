@@ -64,7 +64,7 @@
           <div class="font-medium text-foreground">{preset.name}</div>
           <div class="text-xs text-muted-foreground mt-1">{preset.description}</div>
           <div class="text-xs text-muted-foreground mt-2">
-            {preset.agentCount} 个 Agent 并行
+            {t("multiAgent_agentsParallel", { count: String(preset.agentCount) })}
           </div>
         </button>
       {/each}
@@ -78,7 +78,7 @@
           <div class="font-medium mb-2">{config.name}</div>
           <div class="text-sm text-muted-foreground mb-3">{config.description}</div>
           <div class="text-sm">
-            <div class="font-medium mb-2">执行计划：</div>
+            <div class="font-medium mb-2">{t("multiAgent_executionPlan")}：</div>
             <ul class="space-y-1">
               {#each config.agents as agent, i}
                 <li class="flex items-center gap-2">
@@ -90,7 +90,7 @@
                   <span>{agent.name}</span>
                   {#if agent.dependsOn?.length}
                     <span class="text-xs text-muted-foreground">
-                      (依赖: {agent.dependsOn.join(", ")})
+                      ({t("multiAgent_dependsOn", { deps: agent.dependsOn.join(", ") })})
                     </span>
                   {/if}
                 </li>
@@ -111,7 +111,7 @@
     <!-- 进度显示 -->
     {#if isRunning && progress.size > 0}
       <div class="p-4 rounded-lg bg-muted/30 border border-border">
-        <div class="font-medium mb-3">执行进度</div>
+        <div class="font-medium mb-3">{t("multiAgent_progress")}</div>
         <div class="space-y-2">
           {#each [...progress.entries()] as [agentId, status]}
             <div class="flex items-center gap-3">
@@ -129,7 +129,7 @@
     <!-- 结果显示 -->
     {#if results.length > 0 && !isRunning}
       <div class="p-4 rounded-lg bg-muted/30 border border-border">
-        <div class="font-medium mb-3">执行结果</div>
+        <div class="font-medium mb-3">{t("multiAgent_results")}</div>
         <div class="space-y-2">
           {#each results as result}
             <div

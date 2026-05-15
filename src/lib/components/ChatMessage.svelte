@@ -295,7 +295,7 @@
               </button>
               {#if !thinkingCollapsed}
                 <div
-                  class="mb-3 rounded-md border border-dashed border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-3 py-2 text-xs text-[hsl(var(--miwarp-status-info)/0.8)] whitespace-pre-wrap leading-relaxed"
+                  class="glass-card mb-3 px-3 py-2 text-xs text-[hsl(var(--miwarp-status-info)/0.8)] whitespace-pre-wrap leading-relaxed"
                 >
                   {thinkingText.trimEnd()}
                 </div>

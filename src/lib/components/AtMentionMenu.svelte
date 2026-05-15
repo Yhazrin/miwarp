@@ -2,6 +2,7 @@
   import type { DirEntry } from "$lib/types";
   import { onMount } from "svelte";
   import { formatBytes } from "$lib/utils/format";
+  import { t } from "$lib/i18n/index.svelte";
 
   let {
     entries,
@@ -138,11 +139,11 @@
     </div>
   {:else if !loading}
     <div class="flex items-center justify-center py-4">
-      <span class="text-xs text-muted-foreground/50">No matches</span>
+      <span class="text-xs text-muted-foreground/50">{t("atMention_noMatches")}</span>
     </div>
   {:else}
     <div class="flex items-center justify-center py-4">
-      <span class="text-xs text-muted-foreground/50">Searching...</span>
+      <span class="text-xs text-muted-foreground/50">{t("atMention_searching")}</span>
     </div>
   {/if}
 </div>

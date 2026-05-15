@@ -189,7 +189,7 @@
       </div>
     {:else}
       <div class="flex items-center justify-center py-6">
-        <span class="text-xs text-muted-foreground/50">No matching commands</span>
+        <span class="text-xs text-muted-foreground/50">{t("slashMenu_noCommands")}</span>
       </div>
     {/if}
   {:else if phase === "sub-model"}
@@ -241,7 +241,7 @@
       </div>
     {:else}
       <div class="flex items-center justify-center py-6">
-        <span class="text-xs text-muted-foreground/50">No models available</span>
+        <span class="text-xs text-muted-foreground/50">{t("slashMenu_noModels")}</span>
       </div>
     {/if}
   {:else if phase === "sub-fast"}

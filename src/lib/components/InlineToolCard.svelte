@@ -1764,7 +1764,7 @@
           {#if taskNotification.output_file}
             <button
               class="font-mono text-muted-foreground/60 truncate max-w-[150px] hover:text-foreground transition-colors underline decoration-dotted"
-              title="Copy path: {taskNotification.output_file}"
+              title={t("inlineTool_copyPath", { path: taskNotification.output_file })}
               onclick={(e) => {
                 e.stopPropagation();
                 navigator.clipboard.writeText(taskNotification!.output_file!);
@@ -1788,7 +1788,7 @@
               <div class="px-4 py-3 text-center text-xs text-muted-foreground">
                 Failed to load details
                 <button class="ml-2 underline hover:text-foreground" onclick={retryLazyLoad}
-                  >Retry</button
+                  >{t("inlineTool_retry")}</button
                 >
               </div>
             {:else}

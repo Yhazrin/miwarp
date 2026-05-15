@@ -196,11 +196,11 @@
         cls: "bg-miwarp-status-info/15 text-miwarp-status-info",
       },
       bypassPermissions: {
-        label: "bypass",
+        label: t("sessionStatus_bypass"),
         cls: "bg-miwarp-status-warning/15 text-miwarp-status-warning",
       },
-      plan: { label: "plan", cls: "bg-purple-500/15 text-purple-400" },
-      auto: { label: "auto", cls: "bg-teal-500/15 text-teal-400" },
+      plan: { label: t("sessionStatus_plan"), cls: "bg-purple-500/15 text-purple-400" },
+      auto: { label: t("sessionStatus_auto"), cls: "bg-teal-500/15 text-teal-400" },
       dontAsk: { label: "no-ask", cls: "bg-red-500/15 text-miwarp-status-error" },
     };
     return (
@@ -412,7 +412,7 @@
         >
           <span
             class="inline-block h-2 w-2 rounded-full {running
-              ? 'bg-miwarp-status-success animate-pulse'
+              ? 'bg-miwarp-status-success animate-slow-pulse'
               : 'bg-foreground/20'}"
           ></span>
           <span class="text-foreground font-medium">{agent}</span>

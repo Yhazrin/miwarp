@@ -37,8 +37,8 @@ class MultiAgentService {
   private initPresets() {
     // 全栈开发预设
     this.presets.set("fullstack", {
-      name: "全栈开发",
-      description: "同时进行前端、后端、数据库开发",
+      name: "multiAgent_preset_fullstack",
+      description: "multiAgent_desc_fullstack",
       agents: [
         {
           id: "frontend",
@@ -64,8 +64,8 @@ class MultiAgentService {
 
     // 代码审查预设
     this.presets.set("review", {
-      name: "代码审查",
-      description: "多角度代码审查",
+      name: "multiAgent_preset_review",
+      description: "multiAgent_desc_review",
       agents: [
         {
           id: "security",
@@ -87,8 +87,8 @@ class MultiAgentService {
 
     // 大升级预设
     this.presets.set("upgrade", {
-      name: "功能升级",
-      description: "并行实现多个功能模块",
+      name: "multiAgent_preset_upgrade",
+      description: "multiAgent_desc_upgrade",
       agents: [
         {
           id: "feature1",
@@ -120,8 +120,8 @@ class MultiAgentService {
 
     // 测试预设
     this.presets.set("test", {
-      name: "全面测试",
-      description: "单元测试、集成测试、E2E测试",
+      name: "multiAgent_preset_test",
+      description: "multiAgent_desc_test",
       agents: [
         {
           id: "unit",
@@ -143,8 +143,8 @@ class MultiAgentService {
 
     // 文档预设
     this.presets.set("docs", {
-      name: "文档生成",
-      description: "生成 API 文档、README、CHANGELOG",
+      name: "multiAgent_preset_docs",
+      description: "multiAgent_desc_docs",
       agents: [
         {
           id: "api",

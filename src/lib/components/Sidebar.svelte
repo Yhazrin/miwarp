@@ -4,6 +4,7 @@
   import SidebarSearch from "./SidebarSearch.svelte";
   import SidebarSessionItem from "./SidebarSessionItem.svelte";
   import SidebarProjectGroup from "./SidebarProjectGroup.svelte";
+  import { t } from "$lib/i18n/index.svelte";
 
   interface Props {
     /** Whether the sidebar is visible */
@@ -84,7 +85,7 @@
   const isSearching = $derived(searchQuery.trim().length > 0);
 
   function defaultFolderLabel(folder: ProjectFolder): string {
-    if (folder.isUncategorized) return "Uncategorized";
+    if (folder.isUncategorized) return t("sidebar_uncategorized");
     // Extract last path segment
     const parts = folder.cwd.replace(/\\/g, "/").split("/").filter(Boolean);
     return parts[parts.length - 1] ?? folder.cwd;
@@ -112,8 +113,8 @@
         <button
           class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
           onclick={() => onNewChat?.()}
-          title="New conversation"
-          aria-label="New conversation"
+          title={t("sidebar_newConversation")}
+          aria-label={t("sidebar_newConversation")}
         >
           <svg
             class="h-4 w-4"
@@ -139,14 +140,14 @@
     <!-- Search -->
     <div class="px-2 pt-2 pb-1 shrink-0">
       <SidebarSearch
-        placeholder={searchPlaceholder ?? "Search sessions..."}
+        placeholder={searchPlaceholder ?? t("sidebar_searchChats")}
         value={searchQuery}
         {onSearch}
         onClear={onClearSearch}
       />
       {#if isSearching}
         {#if searching}
-          <p class="text-[11px] text-muted-foreground px-1 pt-0.5">Searching...</p>
+          <p class="text-[11px] text-muted-foreground px-1 pt-0.5">{t("sidebar_searching")}</p>
         {:else if searchResultCount > 0}
           <p
             class="flex items-center justify-between text-[11px] text-muted-foreground px-1 pt-0.5"
@@ -181,7 +182,7 @@
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
-            <p class="text-xs text-muted-foreground">No matching sessions found</p>
+            <p class="text-xs text-muted-foreground">{t("sidebar_noSessions")}</p>
           </div>
         {:else}
           <!-- Search results rendered via snippet -->

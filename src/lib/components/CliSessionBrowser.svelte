@@ -239,7 +239,7 @@
         <button
           class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           onclick={onclose}
-          aria-label="Close"
+          aria-label={t("common_close")}
         >
           <svg
             class="h-5 w-5"

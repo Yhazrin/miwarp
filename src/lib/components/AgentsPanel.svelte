@@ -61,7 +61,7 @@
     {
       file_name: "statusline-setup",
       name: "statusline-setup",
-      description: "Agent to configure the user's Claude Code status line setting.",
+      description: t("agents_statuslineDesc"),
       model: "sonnet",
       source: "built-in",
       scope: "user",
@@ -492,7 +492,7 @@
                 >
                   {t("agent_background")}
                 </p>
-                <p class="text-xs text-foreground">Yes</p>
+                <p class="text-xs text-foreground">{t("agents_yes")}</p>
               </div>
             {/if}
 

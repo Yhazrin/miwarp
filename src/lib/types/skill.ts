@@ -68,13 +68,13 @@ export interface SkillManifest {
 }
 
 export const SKILL_CATEGORIES: { value: SkillCategory; label: string; icon: string }[] = [
-  { value: "productivity", label: "Productivity", icon: "⚡" },
-  { value: "development", label: "Development", icon: "🔧" },
-  { value: "automation", label: "Automation", icon: "🤖" },
-  { value: "memory", label: "Memory", icon: "🧠" },
-  { value: "organization", label: "Organization", icon: "📁" },
-  { value: "integrations", label: "Integrations", icon: "🔗" },
-  { value: "custom", label: "Custom", icon: "✨" },
+  { value: "productivity", label: "skillCat_productivity", icon: "⚡" },
+  { value: "development", label: "skillCat_development", icon: "🔧" },
+  { value: "automation", label: "skillCat_automation", icon: "🤖" },
+  { value: "memory", label: "skillCat_memory", icon: "🧠" },
+  { value: "organization", label: "skillCat_organization", icon: "📁" },
+  { value: "integrations", label: "skillCat_integrations", icon: "🔗" },
+  { value: "custom", label: "skillCat_custom", icon: "✨" },
 ];
 
 export const DEFAULT_SKILL_ICON = "✨";

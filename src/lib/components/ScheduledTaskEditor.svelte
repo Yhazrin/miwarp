@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { t } from "$lib/i18n/index.svelte";
   import Button from "./Button.svelte";
   import FolderPicker from "./FolderPicker.svelte";
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
@@ -94,20 +95,20 @@
 
   function validate(): boolean {
     const e: Record<string, string> = {};
-    if (!name.trim()) e.name = "Name is required";
-    if (!prompt.trim()) e.prompt = "Prompt is required";
-    if (!workspaceCwd.trim()) e.workspace = "Workspace path is required";
+    if (!name.trim()) e.name = t("schedEditor_errorName");
+    if (!prompt.trim()) e.prompt = t("schedEditor_errorPrompt");
+    if (!workspaceCwd.trim()) e.workspace = t("schedEditor_errorWorkspace");
 
     if (scheduleType === "cron") {
       if (!ScheduledTasksService.validateCronExpression(cronExpression)) {
-        e.cronExpression = "Invalid cron expression";
+        e.cronExpression = t("schedEditor_errorCron");
       }
     } else if (scheduleType === "one-time") {
-      if (!fireAtDate) e.fireAtDate = "Date is required";
-      if (!fireAtTime) e.fireAtTime = "Time is required";
+      if (!fireAtDate) e.fireAtDate = t("schedEditor_errorDate");
+      if (!fireAtTime) e.fireAtTime = t("schedEditor_errorTime");
     } else if (scheduleType === "interval") {
       if (!intervalMinutes || intervalMinutes < 1) {
-        e.intervalMinutes = "Interval must be at least 1 minute";
+        e.intervalMinutes = t("schedEditor_errorInterval");
       }
     }
 
@@ -201,8 +202,8 @@
       <div class="flex items-center justify-between p-4 border-b">
         <h2 class="text-lg font-semibold">
           {scheduledTasksStore.editorMode === "create"
-            ? "Create Scheduled Task"
-            : "Edit Scheduled Task"}
+            ? t("schedEditor_createTitle")
+            : t("schedEditor_editTitle")}
         </h2>
         <Button variant="ghost" size="icon" onclick={handleCancel}>
           <svg
@@ -221,7 +222,7 @@
       <!-- Templates (create mode only) -->
       {#if scheduledTasksStore.editorMode === "create"}
         <div class="px-4 pt-3 pb-1">
-          <p class="text-xs text-muted-foreground mb-2">Quick start templates:</p>
+          <p class="text-xs text-muted-foreground mb-2">{t("schedEditor_quickStart")}</p>
           <div class="flex flex-wrap gap-1.5">
             {#each DEFAULT_TASK_TEMPLATES as tpl}
               <button
@@ -246,12 +247,12 @@
       >
         <!-- Name -->
         <div class="space-y-1">
-          <label for="taskName" class="text-sm font-medium">Name</label>
+          <label for="taskName" class="text-sm font-medium">{t("schedEditor_name")}</label>
           <input
             id="taskName"
             type="text"
             bind:value={name}
-            placeholder="Daily Project Check"
+            placeholder={t("schedEditor_namePlaceholder")}
             class="w-full px-3 py-2 rounded-md border bg-background text-sm
               {errors.name ? 'border-destructive' : 'border-input'}"
           />
@@ -262,29 +263,29 @@
 
         <!-- Description -->
         <div class="space-y-1">
-          <label for="taskDesc" class="text-sm font-medium">Description</label>
+          <label for="taskDesc" class="text-sm font-medium">{t("schedEditor_description")}</label>
           <input
             id="taskDesc"
             type="text"
             bind:value={description}
-            placeholder="What does this task do?"
+            placeholder={t("schedEditor_descPlaceholder")}
             class="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
           />
         </div>
 
         <!-- Workspace -->
         <div class="space-y-1">
-          <label class="text-sm font-medium">Workspace</label>
+          <label class="text-sm font-medium">{t("schedEditor_workspace")}</label>
           <div class="flex gap-2">
             <input
               type="text"
               bind:value={workspaceCwd}
-              placeholder="/path/to/project"
+              placeholder={t("schedEditor_workspacePlaceholder")}
               class="flex-1 px-3 py-2 rounded-md border bg-background text-sm font-mono
                 {errors.workspace ? 'border-destructive' : 'border-input'}"
             />
             <Button variant="outline" size="sm" onclick={() => (folderPickerOpen = true)}>
-              Browse
+              {t("schedEditor_browse")}
             </Button>
           </div>
           {#if errors.workspace}
@@ -303,14 +304,15 @@
         {#if remoteHosts.length > 0}
           <div class="space-y-1">
             <label for="remoteHost" class="text-sm font-medium">
-              Remote Host <span class="text-muted-foreground">(optional)</span>
+              {t("schedEditor_remoteHost")}
+              <span class="text-muted-foreground">{t("schedEditor_remoteHostOptional")}</span>
             </label>
             <select
               id="remoteHost"
               bind:value={remoteHostName}
               class="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
             >
-              <option value="">Local</option>
+              <option value="">{t("schedEditor_local")}</option>
               {#each remoteHosts as host}
                 <option value={host.name}>{host.name}</option>
               {/each}
@@ -320,7 +322,7 @@
 
         <!-- Agent -->
         <div class="space-y-1">
-          <label class="text-sm font-medium">Agent</label>
+          <label class="text-sm font-medium">{t("schedEditor_agent")}</label>
           <div class="flex gap-3">
             <label class="flex items-center gap-2 cursor-pointer">
               <input
@@ -330,7 +332,7 @@
                 bind:group={agent}
                 class="text-primary"
               />
-              <span class="text-sm">Claude</span>
+              <span class="text-sm">{t("schedEditor_claude")}</span>
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
               <input
@@ -340,18 +342,18 @@
                 bind:group={agent}
                 class="text-primary"
               />
-              <span class="text-sm">Codex</span>
+              <span class="text-sm">{t("schedEditor_codex")}</span>
             </label>
           </div>
         </div>
 
         <!-- Prompt -->
         <div class="space-y-1">
-          <label for="taskPrompt" class="text-sm font-medium">Prompt</label>
+          <label for="taskPrompt" class="text-sm font-medium">{t("schedEditor_prompt")}</label>
           <textarea
             id="taskPrompt"
             bind:value={prompt}
-            placeholder="Describe what the agent should do when this task runs..."
+            placeholder={t("schedEditor_promptPlaceholder")}
             rows="4"
             class="w-full px-3 py-2 rounded-md border bg-background text-sm resize-y
               {errors.prompt ? 'border-destructive' : 'border-input'}"
@@ -363,7 +365,7 @@
 
         <!-- Schedule Type -->
         <div class="space-y-2">
-          <label class="text-sm font-medium">Schedule</label>
+          <label class="text-sm font-medium">{t("schedEditor_schedule")}</label>
           <div class="flex gap-3">
             <label class="flex items-center gap-2 cursor-pointer">
               <input
@@ -373,7 +375,7 @@
                 bind:group={scheduleType}
                 class="text-primary"
               />
-              <span class="text-sm">Cron</span>
+              <span class="text-sm">{t("schedEditor_cron")}</span>
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
               <input
@@ -383,7 +385,7 @@
                 bind:group={scheduleType}
                 class="text-primary"
               />
-              <span class="text-sm">Interval</span>
+              <span class="text-sm">{t("schedEditor_interval")}</span>
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
               <input
@@ -393,7 +395,7 @@
                 bind:group={scheduleType}
                 class="text-primary"
               />
-              <span class="text-sm">One-time</span>
+              <span class="text-sm">{t("schedEditor_oneTime")}</span>
             </label>
           </div>
         </div>
@@ -439,7 +441,7 @@
                 max="10080"
                 class="w-24 px-3 py-2 rounded-md border border-input bg-background text-sm"
               />
-              <span class="text-sm text-muted-foreground">minutes</span>
+              <span class="text-sm text-muted-foreground">{t("schedEditor_minutes")}</span>
             </div>
             {#if errors.intervalMinutes}
               <p class="text-xs text-destructive">{errors.intervalMinutes}</p>
@@ -462,7 +464,7 @@
         {#if scheduleType === "one-time"}
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-1">
-              <label for="fireAtDate" class="text-sm font-medium">Date</label>
+              <label for="fireAtDate" class="text-sm font-medium">{t("schedEditor_date")}</label>
               <input
                 id="fireAtDate"
                 type="date"
@@ -475,7 +477,7 @@
               {/if}
             </div>
             <div class="space-y-1">
-              <label for="fireAtTime" class="text-sm font-medium">Time</label>
+              <label for="fireAtTime" class="text-sm font-medium">{t("schedEditor_time")}</label>
               <input
                 id="fireAtTime"
                 type="time"
@@ -492,13 +494,13 @@
         <!-- Model (optional) -->
         <div class="space-y-1">
           <label for="taskModel" class="text-sm font-medium">
-            Model <span class="text-muted-foreground">(optional)</span>
+            {t("schedEditor_model")}
           </label>
           <input
             id="taskModel"
             type="text"
             bind:value={model}
-            placeholder="Leave empty for default"
+            placeholder={t("schedEditor_modelPlaceholder")}
             class="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
           />
         </div>
@@ -506,24 +508,26 @@
         <!-- Permission Mode -->
         <div class="space-y-1">
           <label for="permissionMode" class="text-sm font-medium">
-            Permission Mode <span class="text-muted-foreground">(optional)</span>
+            {t("schedEditor_permissionMode")}
           </label>
           <select
             id="permissionMode"
             bind:value={permissionMode}
             class="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
           >
-            <option value="">Default</option>
-            <option value="auto-accept-all">Auto-accept all</option>
-            <option value="plan">Plan mode</option>
+            <option value="">{t("schedEditor_default")}</option>
+            <option value="auto-accept-all">{t("schedEditor_autoAccept")}</option>
+            <option value="plan">{t("schedEditor_planMode")}</option>
           </select>
         </div>
 
         <!-- Actions -->
         <div class="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onclick={handleCancel}>Cancel</Button>
+          <Button variant="outline" onclick={handleCancel}>{t("schedEditor_cancel")}</Button>
           <Button variant="default" loading={saving} type="submit">
-            {scheduledTasksStore.editorMode === "create" ? "Create Task" : "Save Changes"}
+            {scheduledTasksStore.editorMode === "create"
+              ? t("schedEditor_create")
+              : t("schedEditor_save")}
           </Button>
         </div>
       </form>

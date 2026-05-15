@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/index.svelte";
+
   let {
     open = $bindable(false),
     title = "",
@@ -70,7 +72,7 @@
                  text-miwarp-text-tertiary transition-colors
                  hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary"
           onclick={() => (open = false)}
-          aria-label="Close"
+          aria-label={t("common_close")}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path

@@ -54,6 +54,32 @@ pub fn validate_cron(expr: &str) -> bool {
         .all(|(f, &(min, max))| parse_field(f, min, max).is_some())
 }
 
+/// Format a time from hour and minute values.
+fn format_time(h: u32, m: u32) -> String {
+    let period = if h >= 12 { "PM" } else { "AM" };
+    let display_h = if h > 12 {
+        h - 12
+    } else if h == 0 {
+        12
+    } else {
+        h
+    };
+    format!("{}:{:02} {}", display_h, m, period)
+}
+
+/// Format weekday numbers into names.
+fn format_weekdays(weekday: &str) -> Vec<String> {
+    let day_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    weekday
+        .split(',')
+        .filter_map(|d| {
+            d.parse::<usize>()
+                .ok()
+                .and_then(|i| day_names.get(i).map(|s| s.to_string()))
+        })
+        .collect()
+}
+
 /// Generate a human-readable description of a cron expression.
 pub fn describe_cron(expr: &str) -> String {
     let fields: Vec<&str> = expr.trim().split_whitespace().collect();
@@ -74,41 +100,54 @@ pub fn describe_cron(expr: &str) -> String {
         return format!("Every {} hours", &hour[2..]);
     }
 
+    // Single specific time
     if minute != "*" && hour != "*" {
-        let h: u32 = hour.parse().unwrap_or(0);
-        let m: u32 = minute.parse().unwrap_or(0);
-        let period = if h >= 12 { "PM" } else { "AM" };
-        let display_h = if h > 12 {
-            h - 12
-        } else if h == 0 {
-            12
-        } else {
-            h
-        };
-        let display_m = format!("{:02}", m);
+        if let (Ok(h), Ok(m)) = (hour.parse::<u32>(), minute.parse::<u32>()) {
+            let time_str = format_time(h, m);
 
-        if weekday != "*" {
-            let day_names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-            let day_list: Vec<&str> = weekday
-                .split(',')
-                .filter_map(|d| {
-                    d.parse::<usize>()
-                        .ok()
-                        .and_then(|i| day_names.get(i).copied())
-                })
-                .collect();
-            return format!(
-                "Every {} at {}:{} {}",
-                day_list.join(", "),
-                display_h,
-                display_m,
-                period
-            );
+            if weekday != "*" {
+                let day_list = format_weekdays(weekday);
+                if !day_list.is_empty() {
+                    return format!("Every {} at {}", day_list.join(", "), time_str);
+                }
+            }
+            if day == "*" && month == "*" {
+                return format!("Every day at {}", time_str);
+            }
+            return format!("At {}", time_str);
         }
-        if day == "*" && month == "*" {
-            return format!("Every day at {}:{} {}", display_h, display_m, period);
+
+        // Comma-separated minutes with single hour: "15,45 8 * * 1"
+        if minute.contains(',') && !hour.contains(',') {
+            if let Ok(h) = hour.parse::<u32>() {
+                let mins: Vec<String> = minute
+                    .split(',')
+                    .filter_map(|m| m.parse::<u32>().ok())
+                    .map(|m| format!("{:02}", m))
+                    .collect();
+                if !mins.is_empty() {
+                    let period = if h >= 12 { "PM" } else { "AM" };
+                    let display_h = if h > 12 {
+                        h - 12
+                    } else if h == 0 {
+                        12
+                    } else {
+                        h
+                    };
+                    let times: Vec<String> = mins
+                        .iter()
+                        .map(|m| format!("{}:{} {}", display_h, m, period))
+                        .collect();
+                    let prefix = if weekday != "*" {
+                        let day_list = format_weekdays(weekday);
+                        format!("Every {} at ", day_list.join(", "))
+                    } else {
+                        "At ".to_string()
+                    };
+                    return format!("{}{}", prefix, times.join(" and "));
+                }
+            }
         }
-        return format!("At {}:{} {}", display_h, display_m, period);
     }
 
     format!("Schedule: {}", expr)
@@ -203,5 +242,51 @@ mod tests {
         assert!(validate_cron("*/5 * * * *"));
         assert!(!validate_cron("invalid"));
         assert!(!validate_cron("60 * * * *"));
+    }
+
+    #[test]
+    fn test_describe_every_minute() {
+        assert_eq!(describe_cron("* * * * *"), "Every minute");
+    }
+
+    #[test]
+    fn test_describe_every_n_minutes() {
+        assert_eq!(describe_cron("*/15 * * * *"), "Every 15 minutes");
+    }
+
+    #[test]
+    fn test_describe_every_n_hours() {
+        assert_eq!(describe_cron("0 */2 * * *"), "Every 2 hours");
+    }
+
+    #[test]
+    fn test_describe_specific_time_every_day() {
+        assert_eq!(describe_cron("0 9 * * *"), "Every day at 9:00 AM");
+    }
+
+    #[test]
+    fn test_describe_specific_time_weekday() {
+        assert_eq!(
+            describe_cron("30 8 * * 1,3,5"),
+            "Every Mon, Wed, Fri at 8:30 AM"
+        );
+    }
+
+    #[test]
+    fn test_describe_specific_time_single_weekday() {
+        assert_eq!(describe_cron("0 9 * * 1"), "Every Mon at 9:00 AM");
+    }
+
+    #[test]
+    fn test_describe_comma_minutes_with_weekday() {
+        assert_eq!(
+            describe_cron("15,45 8 * * 1"),
+            "Every Mon at 8:15 AM and 8:45 AM"
+        );
+    }
+
+    #[test]
+    fn test_describe_pm_time() {
+        assert_eq!(describe_cron("0 14 * * *"), "Every day at 2:00 PM");
     }
 }

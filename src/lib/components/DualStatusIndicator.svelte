@@ -51,7 +51,7 @@
       style:height="{currentSize * 0.65}px"
       style:background={color}
       style:transform="rotate(45deg)"
-      class:animate-pulse={isActive}
+      class:animate-slow-pulse={isActive}
     ></span>
   {:else}
     <!-- Star/burst for active processes -->
@@ -59,7 +59,7 @@
       width={currentSize}
       height={currentSize}
       viewBox="0 0 16 16"
-      class:animate-pulse={isActive}
+      class:animate-slow-pulse={isActive}
     >
       <path
         d="M8 1l1.5 3.5L13 6l-3.5 1.5L8 11 6.5 7.5 3 6l3.5-1.5z"

@@ -281,22 +281,22 @@ export function validateAgentForm(data: AgentFormData): ValidationError[] {
   const errors: ValidationError[] = [];
 
   if (!data.name) {
-    errors.push({ field: "name", message: "Name is required" });
+    errors.push({ field: "name", message: "agentEditor_nameRequired" });
   } else if (!NAME_REGEX.test(data.name)) {
     errors.push({
       field: "name",
-      message: "Must match [a-z0-9][a-z0-9-]{0,63}",
+      message: "agentEditor_nameFormat",
     });
   } else if (BUILTIN_AGENT_NAMES.includes(data.name.toLowerCase())) {
-    errors.push({ field: "name", message: "Conflicts with a built-in agent" });
+    errors.push({ field: "name", message: "agentEditor_nameConflict" });
   }
 
   if (!data.description) {
-    errors.push({ field: "description", message: "Description is required" });
+    errors.push({ field: "description", message: "agentEditor_descRequired" });
   } else if (data.description.length > 500) {
     errors.push({
       field: "description",
-      message: "Description too long (max 500 characters)",
+      message: "agentEditor_descTooLong",
     });
   }
 
@@ -318,7 +318,7 @@ export function validateAgentForm(data: AgentFormData): ValidationError[] {
     if (!Number.isInteger(data.maxTurns) || data.maxTurns <= 0) {
       errors.push({
         field: "maxTurns",
-        message: "Must be a positive integer",
+        message: "agentEditor_positiveInteger",
       });
     }
   }
@@ -326,13 +326,13 @@ export function validateAgentForm(data: AgentFormData): ValidationError[] {
   if (data.effort && !["low", "medium", "high"].includes(data.effort)) {
     errors.push({
       field: "effort",
-      message: "Must be low, medium, or high",
+      message: "agentEditor_lowMedHigh",
     });
   }
 
   for (const tool of data.tools) {
     if (!tool.trim()) {
-      errors.push({ field: "tools", message: "Tool name cannot be empty" });
+      errors.push({ field: "tools", message: "agentEditor_toolNameEmpty" });
       break;
     }
   }

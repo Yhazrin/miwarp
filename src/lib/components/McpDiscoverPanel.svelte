@@ -263,7 +263,7 @@
             ? 'bg-green-500'
             : 'bg-red-500'}"
       ></span>
-      <span class="text-[10px] text-muted-foreground">registry</span>
+      <span class="text-[10px] text-muted-foreground">{t("mcp_registry")}</span>
     </div>
     <button
       class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
@@ -464,7 +464,7 @@
                         target="_blank"
                         rel="noopener noreferrer"
                         class="text-[10px] text-muted-foreground hover:text-foreground underline"
-                        >Repository</a
+                        >{t("mcp_repository")}</a
                       >
                     {/if}
                   </div>

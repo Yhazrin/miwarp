@@ -3,6 +3,7 @@
    * ToolTimeline - Alternative timeline view for tool calls.
    * Shows tool calls as nodes on a vertical timeline with status colors.
    */
+  import { t } from "$lib/i18n/index.svelte";
 
   interface ToolCall {
     id: string;
@@ -138,7 +139,7 @@
   <!-- Empty state -->
   {#if tools.length === 0}
     <div class="py-8 text-center">
-      <p class="text-sm text-miwarp-text-tertiary">No tool calls yet</p>
+      <p class="text-sm text-miwarp-text-tertiary">{t("toolTimeline_noToolCalls")}</p>
     </div>
   {/if}
 </div>

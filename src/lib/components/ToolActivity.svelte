@@ -1181,7 +1181,7 @@
                   <button
                     class="w-full text-left rounded-md border border-border/50 bg-background/50 px-2.5 py-1.5 hover:bg-accent/30 transition-colors"
                     onclick={() => onScrollToTool?.(sa.toolUseId)}
-                    title="Scroll to tool"
+                    title={t("toolActivity_scrollTo")}
                   >
                     <div class="flex items-center gap-1.5">
                       <span class="text-[11px] font-medium text-foreground"

@@ -103,7 +103,7 @@
         await new Promise((r) => setTimeout(r, 500));
         currentStep = "complete";
       } else {
-        throw new Error("Installation failed");
+        throw new Error(t("pluginInstaller_failed"));
       }
     } catch (e) {
       installError = e instanceof Error ? e.message : String(e);
@@ -131,31 +131,31 @@
   const stageInfo: Record<string, { icon: string; description: string }> = {
     preparing: {
       icon: "⏳",
-      description: "Preparing installation...",
+      description: t("pluginInstaller_preparing"),
     },
     validating: {
       icon: "✓",
-      description: "Validating plugin...",
+      description: t("pluginInstaller_validating"),
     },
     downloading: {
       icon: "⬇",
-      description: "Downloading plugin package...",
+      description: t("pluginInstaller_downloading"),
     },
     installing: {
       icon: "⚙",
-      description: "Installing plugin files...",
+      description: t("pluginInstaller_installing"),
     },
     enabling: {
       icon: "▶",
-      description: "Enabling plugin...",
+      description: t("pluginInstaller_enabling"),
     },
     complete: {
       icon: "✓",
-      description: "Installation complete!",
+      description: t("pluginInstaller_complete"),
     },
     error: {
       icon: "✗",
-      description: "Installation failed",
+      description: t("pluginInstaller_failed"),
     },
   };
 </script>

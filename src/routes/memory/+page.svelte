@@ -316,7 +316,7 @@
    * Consolidate memory files: merge duplicates, fix stale entries, update index.
    */
   async function consolidateMemory() {
-    if (!confirm("Consolidate memory files? This will merge duplicates and update the index.")) {
+    if (!confirm(t("memory_consolidateConfirm"))) {
       return;
     }
     saving = true;
@@ -516,7 +516,7 @@
           <span class="text-xs text-muted-foreground">
             {memoryStats.wordCount} words, {memoryStats.lineCount} lines
             {#if memoryStats.hasFrontmatter}
-              <span class="ml-1 text-primary" title="Has frontmatter">*</span>
+              <span class="ml-1 text-primary" title={t("memory_hasFrontmatter")}>*</span>
             {/if}
           </span>
         {/if}
