@@ -2,25 +2,61 @@
  * Team Dispatcher Service
  *
  * Orchestrates TeamRun creation and execution.
- * Handles @team detection, preset selection, and member run dispatch.
+ * Handles @team / /team detection, preset selection, and member run dispatch.
  */
 import * as api from "$lib/api";
 import type { TeamPreset, TeamRun, TeamMemberRun } from "$lib/types";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 
-/** Detect @team or @团队 prefix in user input. Returns the prompt text after the tag, or null. */
-export function detectTeamTag(input: string): string | null {
-  const trimmed = input.trim();
-  // Match @team or @团队 at the start (case-insensitive for @team)
-  const match = trimmed.match(/^@(team|团队)\s*/i);
-  if (!match) return null;
-  const rest = trimmed.slice(match[0].length).trim();
-  return rest.length > 0 ? rest : null;
+// ── Trigger detection ──
+
+export type TeamTrigger = "@team" | "@团队" | "/team" | "/团队";
+
+export interface TeamTriggerResult {
+  prompt: string;
+  trigger: TeamTrigger;
 }
 
-/** Strip the @team tag from input, returning the clean prompt. */
+/** Detect @team / @团队 / /team / /团队 prefix in user input. Returns the prompt and trigger type. */
+export function detectTeamTrigger(input: string): TeamTriggerResult | null {
+  const trimmed = input.trim();
+  const match = trimmed.match(/^(@team|@团队|\/team|\/团队)\s*/i);
+  if (!match) return null;
+  const prompt = trimmed.slice(match[0].length).trim();
+  if (!prompt) return null;
+  return { prompt, trigger: match[1] as TeamTrigger };
+}
+
+/** Detect @team or @团队 prefix (legacy compat). Returns the prompt text, or null. */
+export function detectTeamTag(input: string): string | null {
+  const result = detectTeamTrigger(input);
+  if (!result) return null;
+  // Only match @-prefixed triggers for legacy compat
+  return result.trigger.startsWith("@") ? result.prompt : null;
+}
+
+/** Strip team trigger prefix from input, returning the clean prompt. */
 export function stripTeamTag(input: string): string {
-  return input.replace(/^@(team|团队)\s*/i, "").trim();
+  return input.replace(/^(@team|@团队|\/team|\/团队)\s*/i, "").trim();
+}
+
+// ── Natural language hint detection ──
+
+const TEAM_HINT_PATTERNS = [
+  /团队处理/,
+  /交给团队/,
+  /让团队/,
+  /team\s+handle/i,
+  /dispatch\s+to\s+team/i,
+  /ask\s+the\s+team/i,
+];
+
+/** Check if input looks like it wants team dispatch but lacks explicit trigger. Returns true if hint should show. */
+export function shouldShowTeamHint(input: string): boolean {
+  const trimmed = input.trim();
+  // Don't hint if already has explicit trigger
+  if (detectTeamTrigger(trimmed)) return false;
+  return TEAM_HINT_PATTERNS.some((p) => p.test(trimmed));
 }
 
 /** Get built-in presets. */

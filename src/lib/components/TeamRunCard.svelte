@@ -50,7 +50,10 @@
 /** * TeamRunCard — inline card shown in chat to display TeamRun status. * Shows preset, progress,
 member status, and summary. */
 <div
-  class="rounded-lg border border-border bg-card/80 backdrop-blur-sm overflow-hidden my-2 max-w-lg"
+  class="rounded-lg border border-border bg-card/80 backdrop-blur-sm overflow-hidden my-2 max-w-lg
+    {teamRun.status === 'running' || teamRun.status === 'planning' ? 'motion-running-pulse' : ''}
+    {teamRun.status === 'completed' ? 'motion-status-success' : ''}
+    {teamRun.status === 'failed' ? 'motion-status-error' : ''}"
 >
   <!-- Header -->
   <div class="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border/50">

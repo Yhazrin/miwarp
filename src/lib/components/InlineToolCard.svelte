@@ -625,7 +625,15 @@
 
 <!-- Inline tool card: three-level rendering -->
 {#if shouldShowInMode}
-  <div class="animate-fade-in {renderLevel === 1 ? 'mb-0.5' : 'mb-2'}">
+  <div
+    class="motion-slide-up {renderLevel === 1 ? 'mb-0.5' : 'mb-2'} {tool.status === 'running'
+      ? 'motion-sweep'
+      : ''} {tool.status === 'error' ||
+    tool.status === 'denied' ||
+    tool.status === 'permission_denied'
+      ? 'motion-status-error'
+      : ''} {tool.status === 'success' ? 'motion-status-success' : ''}"
+  >
     {#if renderLevel === 3}
       <!-- Level 3: interactive card -->
       <div>

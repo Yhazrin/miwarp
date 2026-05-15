@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { getTransport } from "$lib/transport";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
@@ -77,6 +77,19 @@
     ]);
   }
 
+  async function waitForStableViewportRect(): Promise<DOMRect> {
+    for (let i = 0; i < 12; i++) {
+      await tick();
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const rect = viewportEl?.getBoundingClientRect();
+      if (rect && rect.width >= 20 && rect.height >= 20) {
+        return rect;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    throw new Error("Preview viewport is not ready or has zero size");
+  }
+
   async function waitForCreate(instance: TauriWebview): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       let settled = false;
@@ -119,16 +132,21 @@
     }
   }
 
-  async function syncBounds() {
-    if (!active || !webview || !viewportEl) return;
+  async function syncBounds(options: { force?: boolean } = {}) {
+    const { force = false } = options;
+    if (!force && !active) return;
+    if (!webview || !viewportEl) return;
     if (syncing) return;
+
     syncing = true;
     try {
       await ensureApis();
       const rect = viewportEl.getBoundingClientRect();
-      const width = Math.max(1, Math.round(rect.width));
-      const height = Math.max(1, Math.round(rect.height));
-      if (width < 2 || height < 2) return;
+      const width = Math.round(rect.width);
+      const height = Math.round(rect.height);
+      if (width < 20 || height < 20) {
+        throw new Error(`Invalid preview bounds: ${width}x${height}`);
+      }
       const x = Math.round(rect.left);
       const y = Math.round(rect.top);
       await Promise.all([
@@ -143,7 +161,7 @@
   }
 
   async function ensureWebview(url: string) {
-    if (!desktopAvailable || !viewportEl) return;
+    if (!desktopAvailable) return;
     const normalized = normalizeUrl(url);
     if (!normalized) {
       lastError = t("preview_invalidUrl");
@@ -165,13 +183,14 @@
         webview = existing;
       }
       if (!webview) {
+        const rect = await waitForStableViewportRect();
         const currentWindow = windowApi!.getCurrentWindow();
         const instance = new webviewApi!.Webview(currentWindow, WEBVIEW_LABEL, {
           url: normalized,
-          x: 0,
-          y: 0,
-          width: 16,
-          height: 16,
+          x: Math.round(rect.left),
+          y: Math.round(rect.top),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
           focus: false,
           zoomHotkeysEnabled: true,
           devtools: import.meta.env.DEV,
@@ -181,12 +200,12 @@
       }
       persistUrl(normalized);
       hasLoaded = true;
-      await syncBounds();
+      await syncBounds({ force: true });
       await webview.show();
-      await webview.setFocus().catch(() => {});
       dbg("preview-pane", "webview ready", { url: normalized });
     } catch (error) {
-      lastError = t("preview_openFailed");
+      const message = error instanceof Error ? error.message : String(error);
+      lastError = `${t("preview_openFailed")}: ${message}`;
       dbgWarn("preview-pane", "ensure webview failed", error);
     } finally {
       creating = false;
@@ -222,7 +241,9 @@
     try {
       const existing = webview ?? (await getExistingWebview());
       if (existing) {
-        await existing.clearAllBrowsingData();
+        if (typeof existing.clearAllBrowsingData === "function") {
+          await existing.clearAllBrowsingData();
+        }
       }
       await closeWebview();
       if (currentUrl) {
@@ -249,11 +270,28 @@
   $effect(() => {
     if (!desktopAvailable) return;
     if (active && webview) {
-      void syncBounds();
-      void webview.show();
+      requestAnimationFrame(() => {
+        void syncBounds({ force: true }).then(() => webview?.show());
+      });
     } else if (!active && webview) {
       void hideWebview();
     }
+  });
+
+  $effect(() => {
+    if (!desktopAvailable || !viewportEl) return;
+
+    const observer = new ResizeObserver(() => {
+      if (webview) {
+        requestAnimationFrame(() => {
+          void syncBounds({ force: true });
+        });
+      }
+    });
+
+    observer.observe(viewportEl);
+
+    return () => observer.disconnect();
   });
 
   onMount(() => {
@@ -269,7 +307,6 @@
 
     resizeObserver = new ResizeObserver(scheduleSync);
     if (shellRoot) resizeObserver.observe(shellRoot);
-    if (viewportEl) resizeObserver.observe(viewportEl);
     window.addEventListener("resize", scheduleSync);
     window.addEventListener("scroll", scheduleSync, true);
 
@@ -332,47 +369,49 @@
     >
       {t("preview_desktopOnly")}
     </div>
-  {:else if !hasLoaded}
-    <!-- Empty state: no preview loaded yet -->
-    <div
-      class="flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl border border-border/30 bg-background/20 px-6 backdrop-blur-xl"
-    >
-      <div class="text-center">
-        <svg
-          class="mx-auto mb-3 h-10 w-10 text-muted-foreground/30"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <rect x="2" y="3" width="20" height="14" rx="2" />
-          <line x1="8" y1="21" x2="16" y2="21" />
-          <line x1="12" y1="17" x2="12" y2="21" />
-        </svg>
-        <p class="text-sm text-muted-foreground">{t("preview_emptyTitle")}</p>
-        <p class="mt-1 text-xs text-muted-foreground/70">{t("preview_emptyHint")}</p>
-      </div>
-      <div class="flex flex-wrap items-center justify-center gap-2">
-        {#each QUICK_PORTS as qp}
-          <button
-            class="rounded-lg border border-border/50 bg-background/40 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent/20 hover:text-foreground"
-            onclick={() => handleQuickPort(qp.port)}
-          >
-            {qp.label}
-          </button>
-        {/each}
-      </div>
-    </div>
   {:else}
     <div
       class="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/30 bg-background/20 backdrop-blur-xl"
     >
       <div bind:this={viewportEl} class="absolute inset-1 rounded-xl"></div>
-      {#if !active}
+
+      {#if !hasLoaded}
         <div
-          class="absolute inset-0 flex items-center justify-center rounded-2xl bg-background/70 text-sm text-muted-foreground"
+          class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-2xl bg-background/70 px-6 backdrop-blur-xl"
+        >
+          <div class="text-center">
+            <svg
+              class="mx-auto mb-3 h-10 w-10 text-muted-foreground/30"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="2" y="3" width="20" height="14" rx="2" />
+              <line x1="8" y1="21" x2="16" y2="21" />
+              <line x1="12" y1="17" x2="12" y2="21" />
+            </svg>
+            <p class="text-sm text-muted-foreground">{t("preview_emptyTitle")}</p>
+            <p class="mt-1 text-xs text-muted-foreground/70">{t("preview_emptyHint")}</p>
+          </div>
+          <div class="flex flex-wrap items-center justify-center gap-2">
+            {#each QUICK_PORTS as qp}
+              <button
+                class="rounded-lg border border-border/50 bg-background/40 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent/20 hover:text-foreground"
+                onclick={() => handleQuickPort(qp.port)}
+              >
+                {qp.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+      {/if}
+
+      {#if hasLoaded && !active}
+        <div
+          class="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-background/70 text-sm text-muted-foreground"
         >
           {t("preview_switchHint")}
         </div>

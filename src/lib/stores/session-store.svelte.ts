@@ -1520,6 +1520,10 @@ export class SessionStore {
         dbg("store", "stale after getRun, gen=", gen);
         return;
       }
+      // Cache for notification title lookup
+      import("$lib/services/notification-listener")
+        .then((m) => m.cacheRun(this.run!))
+        .catch(() => {});
 
       // Auto-sync CLI imports to pick up events written after the initial import
       if (this.run.source === "cli_import") {
@@ -2977,6 +2981,10 @@ export class SessionStore {
                   .then((r) => {
                     // Guard: only update if we're still viewing the same run
                     if (this.run?.id === snapId) this.run = r;
+                    // Cache for notification title lookup
+                    import("$lib/services/notification-listener")
+                      .then((m) => m.cacheRun(r))
+                      .catch(() => {});
                   })
                   .catch((e) => dbgWarn("store", "getRun after terminal state failed:", e));
               }

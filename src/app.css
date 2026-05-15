@@ -1,5 +1,6 @@
 /* Import MiWarp design tokens (must precede @tailwind) */
 @import "./lib/styles/design-tokens.css";
+@import "./lib/styles/motion.css";
 
 @tailwind base;
 @tailwind components;
@@ -847,13 +848,15 @@ code.hljs {
   height: 100%;
 }
 
-/* Respect reduced-motion preference */
+/* Respect reduced-motion preference — comprehensive */
 @media (prefers-reduced-motion: reduce) {
-  .sidebar-container,
-  .sidebar-inner,
-  .app-main-shell {
-    transition: none !important;
-    animation: none !important;
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

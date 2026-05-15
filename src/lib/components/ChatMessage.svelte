@@ -70,7 +70,7 @@
 </script>
 
 <div
-  class="w-full animate-fade-in"
+  class="w-full {animated ? 'motion-slide-up' : ''}"
   role="group"
   onmouseenter={() => (hovered = true)}
   onmouseleave={() => (hovered = false)}

@@ -1,0 +1,215 @@
+/*
+ * MiWarp Global Motion System
+ * ────────────────────────────────
+ * Restraint-first. Subtle feedback, never spectacle.
+ * All durations use design tokens. prefers-reduced-motion kills everything.
+ */
+
+:root {
+  --motion-fast: 120ms;
+  --motion-normal: 180ms;
+  --motion-slow: 280ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Utility classes ── */
+
+.motion-fade-in {
+  animation: m-fade-in var(--motion-normal) var(--ease-standard) both;
+}
+
+.motion-slide-up {
+  animation: m-slide-up var(--motion-slow) var(--ease-emphasized) both;
+}
+
+.motion-soft-pop {
+  animation: m-soft-pop var(--motion-normal) var(--ease-emphasized) both;
+}
+
+.motion-running-pulse {
+  animation: m-running-pulse 2s ease-in-out infinite;
+}
+
+.motion-sweep {
+  position: relative;
+  overflow: hidden;
+}
+.motion-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--miwarp-status-info) / 0.06) 50%,
+    transparent 100%
+  );
+  animation: m-sweep 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.motion-status-success {
+  animation: m-success-flash var(--motion-slow) var(--ease-standard) both;
+}
+
+.motion-status-error {
+  animation: m-error-shake 0.4s var(--ease-standard) both;
+}
+
+.motion-attention-pulse {
+  animation: m-attention-pulse 2s ease-in-out infinite;
+}
+
+/* ── Border highlight variants (for input / cards) ── */
+
+.motion-border-info {
+  animation: m-border-flash-info var(--motion-slow) var(--ease-standard) both;
+}
+.motion-border-warn {
+  animation: m-border-flash-warn var(--motion-slow) var(--ease-standard) both;
+}
+.motion-border-accent {
+  animation: m-border-flash-accent var(--motion-slow) var(--ease-standard) both;
+}
+
+/* ── Keyframes ── */
+
+@keyframes m-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes m-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes m-soft-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes m-running-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes m-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes m-success-flash {
+  0% {
+    box-shadow: 0 0 0 0 hsl(var(--miwarp-status-success) / 0);
+  }
+  30% {
+    box-shadow: 0 0 0 2px hsl(var(--miwarp-status-success) / 0.25);
+  }
+  100% {
+    box-shadow: 0 0 0 0 hsl(var(--miwarp-status-success) / 0);
+  }
+}
+
+@keyframes m-error-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-1px);
+  }
+  40% {
+    transform: translateX(1px);
+  }
+  60% {
+    transform: translateX(-1px);
+  }
+  80% {
+    transform: translateX(1px);
+  }
+}
+
+@keyframes m-attention-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 hsl(var(--miwarp-status-warning) / 0);
+  }
+  50% {
+    box-shadow: 0 0 0 3px hsl(var(--miwarp-status-warning) / 0.15);
+  }
+}
+
+@keyframes m-border-flash-info {
+  0% {
+    border-color: hsl(var(--miwarp-status-info) / 0.5);
+  }
+  100% {
+    border-color: hsl(var(--border));
+  }
+}
+
+@keyframes m-border-flash-warn {
+  0% {
+    border-color: hsl(var(--miwarp-status-warning) / 0.5);
+  }
+  100% {
+    border-color: hsl(var(--border));
+  }
+}
+
+@keyframes m-border-flash-accent {
+  0% {
+    border-color: hsl(var(--miwarp-accent-primary) / 0.5);
+  }
+  100% {
+    border-color: hsl(var(--border));
+  }
+}
+
+/* ── Reduced motion: kill all animations ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-fade-in,
+  .motion-slide-up,
+  .motion-soft-pop,
+  .motion-running-pulse,
+  .motion-sweep,
+  .motion-status-success,
+  .motion-status-error,
+  .motion-attention-pulse,
+  .motion-border-info,
+  .motion-border-warn,
+  .motion-border-accent {
+    animation: none !important;
+  }
+  .motion-sweep::after {
+    display: none !important;
+  }
+}

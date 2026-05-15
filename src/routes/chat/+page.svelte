@@ -1445,6 +1445,13 @@
         console.error("[chat] middleware.start() failed:", e);
         store.error = t("chat_eventSystemFailed");
       }
+      // Start notification listener (piggybacks on same transport)
+      try {
+        const { startNotificationListener } = await import("$lib/services/notification-listener");
+        await startNotificationListener();
+      } catch {
+        // Non-critical: notifications are best-effort
+      }
       if (!destroyed) middlewareReady = true;
     })();
 

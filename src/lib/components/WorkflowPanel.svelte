@@ -32,13 +32,13 @@
   let isExecuting = $derived(workflowStore.state.isExecuting);
 
   // Category colors
-  const categoryColors: Record<string, string> = {
-    development: "#6366f1",
-    review: "#f59e0b",
-    testing: "#10b981",
-    documentation: "#3b82f6",
-    deployment: "#ef4444",
-    custom: "#8b5cf6",
+  const categoryColors: Record<string, { bg: string; text: string }> = {
+    development: { bg: "bg-indigo-500/10", text: "text-indigo-500" },
+    review: { bg: "bg-amber-500/10", text: "text-amber-500" },
+    testing: { bg: "bg-emerald-500/10", text: "text-emerald-500" },
+    documentation: { bg: "bg-blue-500/10", text: "text-blue-500" },
+    deployment: { bg: "bg-red-500/10", text: "text-red-500" },
+    custom: { bg: "bg-violet-500/10", text: "text-violet-500" },
   };
 
   function handleSelectTemplate(template: WorkflowTemplate) {
@@ -113,17 +113,17 @@
     workflowStore.restoreFromCheckpoint(index);
   }
 
-  // SVG path data for icons (consistent with phase-detection.ts pattern)
+  // SVG path data for step status icons
   const stepIconPaths: Record<string, string> = {
     completed: "M20 6 9 17l-5-5",
     active: "M5 3l14 9-14 9V3z",
     skipped: "M5 4l10 8-10 8V4zM19 5v14",
     failed: "M18 6 6 18M6 6l12 12",
-    pending: "M12 12m-9 0a9 9 0 1 0 18 0 9 9 0 1 0-18 0",
+    pending: "",
   };
 
   function getStepIcon(step: WorkflowStep): string {
-    return stepIconPaths[step.status] ?? stepIconPaths.pending;
+    return stepIconPaths[step.status] ?? "";
   }
 
   function getInterventionLabel(level: number): string {
@@ -140,20 +140,26 @@
         return t("workflow_intervention_unknown");
     }
   }
+
+  const interventionClasses: Record<number, string> = {
+    0: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    1: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    2: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    3: "bg-red-500/10 text-red-600 dark:text-red-400",
+  };
 </script>
 
-<div class="workflow-panel">
+<div class="flex flex-col gap-3 p-3 text-foreground">
   <!-- Header -->
-  <div class="panel-header">
-    <h3>Guided Workflows</h3>
+  <div class="flex items-center justify-between px-3 py-2">
+    <h3 class="text-sm font-semibold text-foreground">{t("workflow_pageTitle")}</h3>
     <button
-      class="btn btn-icon"
+      class="rounded-md border border-border p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       onclick={() => (showTemplateSelector = !showTemplateSelector)}
       title={t("workflow_templates")}
     >
       <svg
-        width="16"
-        height="16"
+        class="h-4 w-4"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -167,20 +173,40 @@
     </button>
   </div>
 
-  <!-- Template Selector Dropdown -->
+  <!-- Template Selector -->
   {#if showTemplateSelector}
-    <div class="template-selector">
-      <div class="selector-header">
-        <h4>{t("workflow_selectTemplate")}</h4>
-        <button class="btn btn-icon" onclick={() => (showTemplateSelector = false)}> × </button>
+    <div class="rounded-lg border border-border bg-card p-3">
+      <div class="mb-3 flex items-center justify-between">
+        <h4 class="text-xs font-semibold text-foreground">{t("workflow_selectTemplate")}</h4>
+        <button
+          class="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+          onclick={() => (showTemplateSelector = false)}
+        >
+          <svg
+            class="h-3.5 w-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
       </div>
-      <div class="template-grid">
-        {#each templates as template}
-          <button class="template-card" onclick={() => handleSelectTemplate(template)}>
-            <span class="template-icon">
+      <div class="grid grid-cols-1 gap-2">
+        {#each templates as template (template.id)}
+          {@const cat = categoryColors[template.category] ?? categoryColors.custom}
+          <button
+            class="flex items-start gap-3 rounded-lg border border-border/50 bg-muted/30 p-3 text-left transition-colors hover:border-primary/30 hover:bg-accent/30"
+            onclick={() => handleSelectTemplate(template)}
+          >
+            <div
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg {cat.bg} {cat.text}"
+            >
               <svg
-                width="32"
-                height="32"
+                class="h-4.5 w-4.5"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -190,31 +216,33 @@
               >
                 <path d={template.icon} />
               </svg>
-            </span>
-            <span class="template-name">{template.name}</span>
-            <span class="template-desc">{template.description}</span>
-            <span class="template-meta">
-              <span
-                class="category-badge"
-                style="background: {categoryColors[template.category] ?? '#666'}"
-              >
-                {template.category}
-              </span>
-              <span class="template-time">{template.estimatedTime}</span>
-            </span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="text-xs font-medium text-foreground">{template.name}</div>
+              <div class="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                {template.description}
+              </div>
+              <div class="mt-1.5 flex items-center gap-2">
+                <span class="rounded-full {cat.bg} px-2 py-0.5 text-[10px] font-medium {cat.text}">
+                  {template.category}
+                </span>
+                <span class="text-[10px] text-muted-foreground/60">{template.estimatedTime}</span>
+              </div>
+            </div>
           </button>
         {/each}
       </div>
     </div>
   {/if}
 
-  <!-- No Active Workflow -->
+  <!-- Empty State -->
   {#if !activeTemplate}
-    <div class="empty-state">
-      <span class="empty-icon">
+    <div class="flex flex-col items-center justify-center py-16 text-center">
+      <div
+        class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-muted"
+      >
         <svg
-          width="48"
-          height="48"
+          class="h-6 w-6 text-muted-foreground"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -227,84 +255,149 @@
           />
           <path d="M11.5 12.5 9.5 10.5 14 2l8 8-8.5 4.5zM14 8l-2 2" />
         </svg>
-      </span>
-      <p>{t("workflow_startFromTemplate")}</p>
-      <button class="btn btn-primary" onclick={() => (showTemplateSelector = true)}>
+      </div>
+      <h3 class="text-sm font-medium text-foreground mb-1">{t("workflow_startFromTemplate")}</h3>
+      <p class="text-xs text-muted-foreground max-w-xs mb-4">
+        {t("workflow_selectTemplate")}
+      </p>
+      <button
+        class="rounded-md bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        onclick={() => (showTemplateSelector = true)}
+      >
         {t("workflow_browseTemplates")}
       </button>
     </div>
   {:else}
-    <!-- Workflow Active -->
-
     <!-- Progress Bar -->
-    <div class="progress-section">
-      <div class="progress-info">
-        <span class="workflow-name">{activeTemplate.name}</span>
-        <span class="progress-percent">{progress}%</span>
+    <div class="rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5">
+      <div class="mb-1.5 flex items-center justify-between">
+        <span class="text-xs font-medium text-foreground">{activeTemplate.name}</span>
+        <span class="text-[11px] font-semibold text-primary">{progress}%</span>
       </div>
-      <div class="progress-bar">
-        <div class="progress-fill" style="width: {progress}%"></div>
+      <div class="h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          class="h-full rounded-full bg-primary transition-all duration-300"
+          style="width: {progress}%"
+        ></div>
       </div>
     </div>
 
     <!-- Step Indicator -->
-    <div class="step-indicator">
-      {#each activeTemplate.steps as step, index}
+    <div
+      class="flex items-center gap-1 overflow-x-auto rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5"
+    >
+      {#each activeTemplate.steps as step, index (step.id)}
         <button
-          class="step-dot"
-          class:completed={step.status === "completed"}
-          class:active={step.status === "active"}
-          class:skipped={step.status === "skipped"}
-          class:failed={step.status === "failed"}
+          class="flex shrink-0 flex-col items-center gap-1 rounded-md p-1.5 transition-colors {step.status ===
+          'active'
+            ? 'bg-primary/10'
+            : 'hover:bg-accent/30'}"
           onclick={() => handleJumpToStep(index)}
           title={step.title}
         >
-          <span class="step-icon">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
+          {#if step.status === "completed"}
+            <span
+              class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white"
             >
-              <path d={getStepIcon(step)} />
-            </svg>
-          </span>
-          <span class="step-number">{index + 1}</span>
+              <svg
+                class="h-3 w-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d={getStepIcon(step)} />
+              </svg>
+            </span>
+          {:else if step.status === "active"}
+            <span
+              class="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground"
+            >
+              <svg
+                class="h-3 w-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d={getStepIcon(step)} />
+              </svg>
+            </span>
+          {:else if step.status === "failed"}
+            <span
+              class="flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground"
+            >
+              <svg
+                class="h-3 w-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d={getStepIcon(step)} />
+              </svg>
+            </span>
+          {:else if step.status === "skipped"}
+            <span
+              class="flex h-6 w-6 items-center justify-center rounded-full bg-muted-foreground/40 text-background"
+            >
+              <svg
+                class="h-3 w-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d={getStepIcon(step)} />
+              </svg>
+            </span>
+          {:else}
+            <span
+              class="flex h-6 w-6 items-center justify-center rounded-full border-2 border-border text-[10px] font-medium text-muted-foreground"
+            >
+              {index + 1}
+            </span>
+          {/if}
         </button>
         {#if index < activeTemplate.steps.length - 1}
-          <div class="step-connector" class:completed={step.status === "completed"}></div>
+          <div
+            class="h-0.5 min-w-[12px] flex-1 rounded-full {step.status === 'completed'
+              ? 'bg-emerald-500'
+              : 'bg-border'}"
+          ></div>
         {/if}
       {/each}
     </div>
 
     <!-- Current Step Details -->
     {#if currentStep}
-      <div class="step-details">
-        <div class="step-header">
-          <div class="step-title-area">
-            <h4 class="step-title">
+      <div class="rounded-lg border border-border bg-card p-3.5">
+        <div class="mb-2 flex items-start justify-between gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h4 class="text-sm font-semibold text-foreground">
               {t("workflow_stepLabel")}
               {(activeInstance?.currentStepIndex ?? 0) + 1}: {currentStep.title}
             </h4>
             <span
-              class="intervention-badge"
-              class:level-0={currentStep.interventionLevel === 0}
-              class:level-1={currentStep.interventionLevel === 1}
-              class:level-2={currentStep.interventionLevel === 2}
-              class:level-3={currentStep.interventionLevel === 3}
+              class="rounded-full px-2 py-0.5 text-[10px] font-medium {interventionClasses[
+                currentStep.interventionLevel
+              ] ?? interventionClasses[0]}"
             >
               {getInterventionLabel(currentStep.interventionLevel)}
             </span>
           </div>
           {#if currentStep.estimatedTime}
-            <span class="step-time">
+            <span class="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
               <svg
-                width="12"
-                height="12"
+                class="h-3 w-3"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -319,66 +412,100 @@
           {/if}
         </div>
 
-        <p class="step-instruction">{currentStep.instruction}</p>
+        <p class="mb-3 text-xs leading-relaxed text-muted-foreground">{currentStep.instruction}</p>
 
         <!-- Auto-generated Prompt -->
         {#if currentStep.prompt}
-          <div class="prompt-section">
-            <h5>{t("workflow_autoPrompt")}</h5>
-            <pre class="prompt-preview">{currentStep.prompt}</pre>
+          <div class="mb-3">
+            <h5
+              class="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+            >
+              {t("workflow_autoPrompt")}
+            </h5>
+            <pre
+              class="whitespace-pre-wrap rounded-md border border-border/50 bg-muted/30 p-2.5 text-[11px] leading-relaxed text-foreground/80">{currentStep.prompt}</pre>
           </div>
         {/if}
 
         <!-- Custom Prompt Input -->
-        <div class="custom-prompt">
-          <h5>{t("workflow_customPrompt")}</h5>
+        <div class="mb-3">
+          <h5 class="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            {t("workflow_customPrompt")}
+          </h5>
           <textarea
             bind:value={customPrompt}
             placeholder={t("workflow_promptPlaceholder")}
-            rows="4"
-            class="prompt-input"
+            rows="3"
+            class="w-full resize-none rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
           ></textarea>
         </div>
 
         <!-- Tools -->
-        <div class="tools-section">
-          <h5>{t("workflow_requiredTools")}</h5>
-          <div class="tools-list">
-            {#each currentStep.tools as tool}
-              <span class="tool-badge">{tool}</span>
-            {/each}
+        {#if currentStep.tools.length > 0}
+          <div>
+            <h5
+              class="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+            >
+              {t("workflow_requiredTools")}
+            </h5>
+            <div class="flex flex-wrap gap-1.5">
+              {#each currentStep.tools as tool (tool)}
+                <span
+                  class="rounded-md border border-border/50 bg-muted/30 px-2 py-0.5 text-[11px] font-medium text-primary"
+                  >{tool}</span
+                >
+              {/each}
+            </div>
           </div>
-        </div>
+        {/if}
       </div>
     {/if}
 
     <!-- Status Messages -->
     {#if isWaiting}
-      <div class="status-message waiting">
-        <span class="status-icon">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" />
-          </svg>
-        </span>
+      <div
+        class="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-600 dark:text-amber-400"
+      >
+        <svg
+          class="h-3.5 w-3.5 shrink-0"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" />
+        </svg>
         <span>{t("workflow_waitingConfirm")}</span>
       </div>
     {/if}
 
     {#if error}
-      <div class="status-message error">
-        <span class="status-icon">
+      <div
+        class="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-500"
+      >
+        <svg
+          class="h-3.5 w-3.5 shrink-0"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+          />
+          <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+        <span class="flex-1">{error}</span>
+        <button
+          class="rounded p-0.5 hover:bg-red-500/10"
+          onclick={() => workflowStore.clearError()}
+        >
           <svg
-            width="16"
-            height="16"
+            class="h-3 w-3"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -386,79 +513,130 @@
             stroke-linecap="round"
             stroke-linejoin="round"
           >
-            <path
-              d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
-            />
-            <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+            <path d="M18 6 6 18M6 6l12 12" />
           </svg>
-        </span>
-        <span>{error}</span>
-        <button class="btn btn-icon" onclick={() => workflowStore.clearError()}>×</button>
+        </button>
       </div>
     {/if}
 
     <!-- Control Buttons -->
-    <div class="control-buttons">
+    <div class="flex flex-wrap items-center justify-center gap-2">
       {#if !isRunning && !isWaiting}
         <button
-          class="btn btn-secondary"
+          class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
           onclick={handlePrev}
           disabled={!activeInstance || (activeInstance?.currentStepIndex ?? 0) === 0}
         >
           {t("workflow_prevStep")}
         </button>
-        <button class="btn btn-secondary" onclick={handleSkip}>{t("workflow_skip")}</button>
-        <button class="btn btn-primary" onclick={handleStart} disabled={isExecuting}>
+        <button
+          class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          onclick={handleSkip}
+        >
+          {t("workflow_skip")}
+        </button>
+        <button
+          class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          onclick={handleStart}
+          disabled={isExecuting}
+        >
           {currentStep?.interventionLevel === 0
             ? t("workflow_startExecute")
             : t("workflow_confirmExecute")}
         </button>
       {:else if isRunning}
-        <button class="btn btn-secondary" onclick={handlePause}>{t("workflow_pause")}</button>
-        <button class="btn btn-primary" onclick={handleNext} disabled={isExecuting}>
+        <button
+          class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          onclick={handlePause}
+        >
+          {t("workflow_pause")}
+        </button>
+        <button
+          class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          onclick={handleNext}
+          disabled={isExecuting}
+        >
           {isExecuting ? t("workflow_executing") : t("workflow_nextStep")}
         </button>
       {:else if isWaiting}
-        <button class="btn btn-secondary" onclick={handlePrev}>{t("workflow_prevStep")}</button>
-        <button class="btn btn-secondary" onclick={handleSkip}>{t("workflow_skip")}</button>
-        <button class="btn btn-primary" onclick={handleNext} disabled={isExecuting}>
+        <button
+          class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          onclick={handlePrev}
+        >
+          {t("workflow_prevStep")}
+        </button>
+        <button
+          class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          onclick={handleSkip}
+        >
+          {t("workflow_skip")}
+        </button>
+        <button
+          class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          onclick={handleNext}
+          disabled={isExecuting}
+        >
           {t("workflow_confirmExecute")}
         </button>
       {/if}
     </div>
 
     <!-- Workflow Actions -->
-    <div class="workflow-actions">
+    <div class="flex flex-wrap items-center justify-center gap-2">
       {#if (activeInstance?.status ?? "") === "completed"}
-        <button class="btn btn-secondary" onclick={handleReset}>{t("workflow_restart")}</button>
-        <button class="btn btn-primary" onclick={() => (showTemplateSelector = true)}>
+        <button
+          class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          onclick={handleReset}
+        >
+          {t("workflow_restart")}
+        </button>
+        <button
+          class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          onclick={() => (showTemplateSelector = true)}
+        >
           {t("workflow_newWorkflow")}
         </button>
       {:else if activeInstance && activeInstance.status !== "completed" && activeInstance.status !== "cancelled"}
-        <button class="btn btn-danger" onclick={handleCancel}>{t("workflow_cancel")}</button>
+        <button
+          class="rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground transition-colors hover:bg-destructive/90"
+          onclick={handleCancel}
+        >
+          {t("workflow_cancel")}
+        </button>
       {/if}
     </div>
 
     <!-- Context Panel Toggle -->
-    <button class="context-toggle" onclick={() => (showContextPanel = !showContextPanel)}>
-      {showContextPanel ? t("workflow_hide") : t("workflow_show")}{t("workflow_contextLabel")}
+    <button
+      class="rounded-md border border-border/50 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent/30 hover:text-foreground"
+      onclick={() => (showContextPanel = !showContextPanel)}
+    >
+      {showContextPanel ? t("workflow_hide") : t("workflow_show")}
+      {t("workflow_contextLabel")}
     </button>
 
     <!-- Context Panel -->
     {#if showContextPanel}
-      <div class="context-panel">
-        <h5>{t("workflow_contextInfo")}</h5>
-        <div class="context-field">
-          <label>{t("workflow_projectPath")}</label>
+      <div class="rounded-lg border border-border/50 bg-muted/20 p-3">
+        <h5 class="mb-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          {t("workflow_contextInfo")}
+        </h5>
+        <div class="mb-2.5">
+          <label class="mb-1 block text-[11px] text-muted-foreground"
+            >{t("workflow_projectPath")}</label
+          >
           <input
             type="text"
             value={workflowStore.state.currentContext.projectPath ?? ""}
             onchange={(e) => workflowStore.updateContext({ projectPath: e.currentTarget.value })}
             placeholder="/path/to/project"
+            class="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
           />
         </div>
-        <div class="context-field">
-          <label>{t("workflow_relevantFiles")}</label>
+        <div>
+          <label class="mb-1 block text-[11px] text-muted-foreground"
+            >{t("workflow_relevantFiles")}</label
+          >
           <textarea
             value={workflowStore.state.currentContext.relevantFiles.join("\n")}
             onchange={(e) =>
@@ -466,7 +644,8 @@
                 relevantFiles: e.currentTarget.value.split("\n").filter(Boolean),
               })}
             placeholder={t("workflow_oneFilePerLine")}
-            rows="3"
+            rows="2"
+            class="w-full resize-none rounded-md border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
           ></textarea>
         </div>
       </div>
@@ -474,26 +653,32 @@
 
     <!-- Checkpoint History -->
     {#if (activeInstance?.checkpoints.length ?? 0) > 0}
-      <div class="checkpoint-section">
-        <h5>{t("workflow_execHistory")}</h5>
-        <div class="checkpoint-list">
-          {#each activeInstance?.checkpoints ?? [] as cp, index}
-            <div class="checkpoint-item">
-              <span class="checkpoint-time">
-                {new Date(cp.timestamp).toLocaleTimeString()}
-              </span>
-              <span class="checkpoint-step">Step {cp.stepIndex + 1}</span>
-              <span class="checkpoint-status" class:completed={cp.completed}>
+      <div class="rounded-lg border border-border/50 bg-muted/20 p-3">
+        <h5 class="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          {t("workflow_execHistory")}
+        </h5>
+        <div class="space-y-1">
+          {#each activeInstance?.checkpoints ?? [] as cp, index (cp.timestamp)}
+            <div
+              class="flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] {index <
+              (activeInstance?.checkpoints.length ?? 0) - 1
+                ? 'border-b border-border/20'
+                : ''}"
+            >
+              <span class="text-muted-foreground"
+                >{new Date(cp.timestamp).toLocaleTimeString()}</span
+              >
+              <span class="text-foreground">Step {cp.stepIndex + 1}</span>
+              <span class={cp.completed ? "text-emerald-500" : "text-muted-foreground"}>
                 {cp.completed ? t("workflow_completed") : t("workflow_skipped")}
               </span>
               <button
-                class="btn btn-icon"
+                class="ml-auto rounded p-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 onclick={() => handleRestoreCheckpoint(index)}
                 title={t("workflow_restoreToPoint")}
               >
                 <svg
-                  width="14"
-                  height="14"
+                  class="h-3.5 w-3.5"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -511,625 +696,3 @@
     {/if}
   {/if}
 </div>
-
-<style>
-  .workflow-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    background: transparent;
-    max-height: 100%;
-    overflow-y: auto;
-    color: hsl(var(--foreground));
-  }
-
-  .panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 0.85rem;
-    border: 1px solid hsl(var(--border) / 0.42);
-    border-radius: 1rem;
-    background: hsl(var(--background) / 0.42);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-  }
-
-  .panel-header h3 {
-    margin: 0;
-    font-size: 0.92rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-  }
-
-  /* Template Selector */
-  .template-selector {
-    border: 1px solid hsl(var(--border) / 0.42);
-    border-radius: 1.1rem;
-    padding: 0.75rem;
-    background: hsl(var(--background) / 0.38);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-  }
-
-  .selector-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.65rem;
-  }
-
-  .selector-header h4 {
-    margin: 0;
-    font-size: 0.82rem;
-    font-weight: 600;
-  }
-
-  .template-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-    gap: 0.55rem;
-  }
-
-  .template-card {
-    display: flex;
-    flex-direction: column;
-    gap: 0.45rem;
-    padding: 0.75rem;
-    background: hsl(var(--muted) / 0.28);
-    border: 1px solid hsl(var(--border) / 0.42);
-    border-radius: 1rem;
-    cursor: pointer;
-    text-align: left;
-    color: hsl(var(--foreground));
-    transition:
-      background-color 0.18s ease,
-      border-color 0.18s ease,
-      transform 0.18s ease;
-  }
-
-  .template-card:hover {
-    border-color: hsl(var(--primary) / 0.42);
-    background: hsl(var(--accent) / 0.14);
-    transform: translateY(-1px);
-  }
-
-  .template-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    color: hsl(var(--primary));
-  }
-
-  .template-name {
-    font-weight: 600;
-    font-size: 0.82rem;
-  }
-
-  .template-desc {
-    font-size: 0.75rem;
-    color: hsl(var(--muted-foreground));
-    line-height: 1.4;
-  }
-
-  .template-meta {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    margin-top: 0.25rem;
-  }
-
-  .category-badge {
-    padding: 0.125rem 0.5rem;
-    border-radius: 999px;
-    font-size: 0.625rem;
-    color: white;
-    text-transform: uppercase;
-  }
-
-  .template-time {
-    font-size: 0.75rem;
-    color: hsl(var(--muted-foreground));
-  }
-
-  /* Empty State */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.85rem;
-    padding: 2.5rem 1rem;
-    text-align: center;
-    border: 1px solid hsl(var(--border) / 0.36);
-    border-radius: 1.35rem;
-    background: hsl(var(--background) / 0.32);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-  }
-
-  .empty-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0.5;
-    color: hsl(var(--muted-foreground));
-  }
-
-  .empty-state p {
-    color: hsl(var(--muted-foreground));
-    margin: 0;
-    font-size: 0.8rem;
-  }
-
-  /* Progress */
-  .progress-section {
-    padding: 0.75rem;
-    background: hsl(var(--background) / 0.38);
-    border: 1px solid hsl(var(--border) / 0.42);
-    border-radius: 1rem;
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-  }
-
-  .progress-info {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-  }
-
-  .workflow-name {
-    font-weight: 500;
-    font-size: 0.78rem;
-  }
-
-  .progress-percent {
-    color: hsl(var(--primary));
-    font-weight: 600;
-    font-size: 0.75rem;
-  }
-
-  .progress-bar {
-    height: 4px;
-    background: hsl(var(--muted) / 0.65);
-    border-radius: 999px;
-    overflow: hidden;
-  }
-
-  .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--miwarp-accent-violet)));
-    transition: width 0.3s ease;
-  }
-
-  /* Step Indicator */
-  .step-indicator {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 0.75rem;
-    overflow-x: auto;
-    border: 1px solid hsl(var(--border) / 0.32);
-    border-radius: 1rem;
-    background: hsl(var(--background) / 0.28);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
-
-  .step-dot {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.35rem;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    border-radius: 50%;
-    transition: all 0.2s;
-  }
-
-  .step-icon {
-    font-size: 0.78rem;
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: hsl(var(--muted) / 0.62);
-    color: hsl(var(--muted-foreground));
-  }
-
-  .step-number {
-    font-size: 0.625rem;
-    color: hsl(var(--muted-foreground));
-  }
-
-  .step-dot.completed .step-icon {
-    background: hsl(var(--miwarp-status-success));
-    color: white;
-  }
-
-  .step-dot.active .step-icon {
-    background: hsl(var(--primary));
-    color: white;
-  }
-
-  .step-dot.skipped .step-icon {
-    background: hsl(var(--muted-foreground));
-    color: white;
-  }
-
-  .step-dot.failed .step-icon {
-    background: hsl(var(--destructive));
-    color: white;
-  }
-
-  .step-connector {
-    flex: 1;
-    height: 2px;
-    min-width: 20px;
-    background: hsl(var(--border) / 0.55);
-    margin: 0 0.25rem;
-    margin-bottom: 1.25rem;
-  }
-
-  .step-connector.completed {
-    background: hsl(var(--miwarp-status-success));
-  }
-
-  /* Step Details */
-  .step-details {
-    padding: 0.85rem;
-    background: hsl(var(--background) / 0.38);
-    border: 1px solid hsl(var(--border) / 0.42);
-    border-radius: 1.15rem;
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-  }
-
-  .step-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 0.75rem;
-  }
-
-  .step-title-area {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
-  .step-title {
-    margin: 0;
-    font-size: 0.9rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-  }
-
-  .intervention-badge {
-    padding: 0.18rem 0.55rem;
-    border-radius: 999px;
-    font-size: 0.625rem;
-    border: 1px solid hsl(var(--border) / 0.28);
-  }
-
-  .intervention-badge.level-0 {
-    background: hsl(var(--miwarp-status-success) / 0.14);
-    color: hsl(var(--miwarp-status-success));
-  }
-
-  .intervention-badge.level-1 {
-    background: hsl(var(--miwarp-status-info) / 0.14);
-    color: hsl(var(--miwarp-status-info));
-  }
-
-  .intervention-badge.level-2 {
-    background: hsl(var(--miwarp-status-warning) / 0.14);
-    color: hsl(var(--miwarp-status-warning));
-  }
-
-  .intervention-badge.level-3 {
-    background: hsl(var(--destructive) / 0.14);
-    color: hsl(var(--destructive));
-  }
-
-  .step-time {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.75rem;
-    color: hsl(var(--muted-foreground));
-  }
-
-  .step-instruction {
-    margin: 0 0 1rem 0;
-    font-size: 0.875rem;
-    line-height: 1.5;
-    color: hsl(var(--foreground) / 0.82);
-  }
-
-  /* Prompt Sections */
-  .prompt-section,
-  .custom-prompt,
-  .tools-section {
-    margin-bottom: 1rem;
-  }
-
-  .prompt-section h5,
-  .custom-prompt h5,
-  .tools-section h5 {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.75rem;
-    color: hsl(var(--muted-foreground));
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .prompt-preview {
-    margin: 0;
-    padding: 0.75rem;
-    background: hsl(var(--muted) / 0.34);
-    border-radius: 0.9rem;
-    font-size: 0.75rem;
-    white-space: pre-wrap;
-    color: hsl(var(--foreground) / 0.86);
-    border: 1px solid hsl(var(--border) / 0.42);
-  }
-
-  .prompt-input {
-    width: 100%;
-    padding: 0.75rem;
-    background: hsl(var(--background) / 0.42);
-    border: 1px solid hsl(var(--border) / 0.48);
-    border-radius: 0.95rem;
-    color: hsl(var(--foreground));
-    font-size: 0.875rem;
-    font-family: inherit;
-    resize: vertical;
-  }
-
-  .prompt-input:focus {
-    outline: none;
-    border-color: hsl(var(--primary) / 0.55);
-  }
-
-  /* Tools */
-  .tools-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .tool-badge {
-    padding: 0.25rem 0.75rem;
-    background: hsl(var(--muted) / 0.36);
-    border: 1px solid hsl(var(--border) / 0.4);
-    border-radius: 999px;
-    font-size: 0.75rem;
-    color: hsl(var(--primary));
-  }
-
-  /* Status Messages */
-  .status-message {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    border-radius: 1rem;
-    font-size: 0.875rem;
-  }
-
-  .status-message.waiting {
-    background: hsl(var(--miwarp-status-warning) / 0.1);
-    border: 1px solid hsl(var(--miwarp-status-warning) / 0.28);
-    color: hsl(var(--miwarp-status-warning));
-  }
-
-  .status-message.error {
-    background: hsl(var(--destructive) / 0.1);
-    border: 1px solid hsl(var(--destructive) / 0.28);
-    color: hsl(var(--destructive));
-  }
-
-  .status-icon {
-    font-size: 1rem;
-  }
-
-  /* Control Buttons */
-  .control-buttons {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .workflow-actions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-    flex-wrap: wrap;
-    padding-top: 0.5rem;
-  }
-
-  /* Context Panel */
-  .context-toggle {
-    background: hsl(var(--background) / 0.28);
-    border: 1px solid hsl(var(--border) / 0.36);
-    border-radius: 999px;
-    color: hsl(var(--muted-foreground));
-    font-size: 0.75rem;
-    cursor: pointer;
-    padding: 0.5rem;
-    text-align: center;
-  }
-
-  .context-toggle:hover {
-    color: hsl(var(--foreground));
-    background: hsl(var(--accent) / 0.12);
-  }
-
-  .context-panel {
-    padding: 0.85rem;
-    background: hsl(var(--background) / 0.38);
-    border: 1px solid hsl(var(--border) / 0.42);
-    border-radius: 1.15rem;
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-  }
-
-  .context-panel h5 {
-    margin: 0 0 0.75rem 0;
-    font-size: 0.75rem;
-    color: hsl(var(--muted-foreground));
-    text-transform: uppercase;
-  }
-
-  .context-field {
-    margin-bottom: 0.75rem;
-  }
-
-  .context-field label {
-    display: block;
-    font-size: 0.75rem;
-    color: hsl(var(--muted-foreground));
-    margin-bottom: 0.25rem;
-  }
-
-  .context-field input,
-  .context-field textarea {
-    width: 100%;
-    padding: 0.5rem;
-    background: hsl(var(--background) / 0.42);
-    border: 1px solid hsl(var(--border) / 0.48);
-    border-radius: 0.85rem;
-    color: hsl(var(--foreground));
-    font-size: 0.875rem;
-    font-family: inherit;
-  }
-
-  .context-field input:focus,
-  .context-field textarea:focus {
-    outline: none;
-    border-color: hsl(var(--primary) / 0.55);
-  }
-
-  /* Checkpoints */
-  .checkpoint-section {
-    padding: 0.75rem;
-    background: hsl(var(--background) / 0.38);
-    border: 1px solid hsl(var(--border) / 0.42);
-    border-radius: 1.15rem;
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-  }
-
-  .checkpoint-section h5 {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.75rem;
-    color: hsl(var(--muted-foreground));
-    text-transform: uppercase;
-  }
-
-  .checkpoint-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .checkpoint-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.45rem 0.25rem;
-    font-size: 0.75rem;
-    border-bottom: 1px solid hsl(var(--border) / 0.28);
-  }
-
-  .checkpoint-item:last-child {
-    border-bottom: none;
-  }
-
-  .checkpoint-time {
-    color: hsl(var(--muted-foreground));
-  }
-
-  .checkpoint-step {
-    color: hsl(var(--foreground));
-  }
-
-  .checkpoint-status {
-    color: hsl(var(--muted-foreground));
-  }
-
-  .checkpoint-status.completed {
-    color: hsl(var(--miwarp-status-success));
-  }
-
-  /* Buttons */
-  .btn {
-    padding: 0.48rem 0.82rem;
-    border: 1px solid hsl(var(--border) / 0.42);
-    border-radius: 999px;
-    cursor: pointer;
-    font-size: 0.78rem;
-    background: hsl(var(--background) / 0.36);
-    color: hsl(var(--foreground));
-    transition:
-      background-color 0.18s ease,
-      border-color 0.18s ease,
-      color 0.18s ease;
-  }
-
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .btn-primary {
-    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--miwarp-accent-violet)));
-    border-color: hsl(var(--primary) / 0.42);
-    color: white;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    border-color: hsl(var(--primary) / 0.7);
-  }
-
-  .btn-secondary {
-    background: hsl(var(--muted) / 0.34);
-    color: hsl(var(--foreground) / 0.86);
-  }
-
-  .btn-secondary:hover:not(:disabled) {
-    background: hsl(var(--accent) / 0.12);
-  }
-
-  .btn-danger {
-    background: hsl(var(--destructive) / 0.13);
-    border-color: hsl(var(--destructive) / 0.32);
-    color: hsl(var(--destructive));
-  }
-
-  .btn-danger:hover:not(:disabled) {
-    background: hsl(var(--destructive) / 0.18);
-  }
-
-  .btn-icon {
-    padding: 0.45rem;
-    background: transparent;
-    border: 1px solid hsl(var(--border) / 0.42);
-    color: hsl(var(--muted-foreground));
-  }
-
-  .btn-icon:hover:not(:disabled) {
-    background: hsl(var(--accent) / 0.12);
-    color: hsl(var(--foreground));
-  }
-</style>

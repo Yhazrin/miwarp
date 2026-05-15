@@ -110,6 +110,7 @@
     onShortcutHelp,
     userHistory = [] as string[],
     runId = "",
+    onValueChange,
   }: {
     agent?: string;
     disabled?: boolean;
@@ -153,6 +154,7 @@
     onShortcutHelp?: () => void;
     userHistory?: string[];
     runId?: string;
+    onValueChange?: (value: string) => void;
   } = $props();
 
   // ── BTW mode (side question) ──
@@ -751,6 +753,7 @@
 
   function handleInput() {
     autoResize();
+    onValueChange?.(inputText);
 
     // Exit history mode if user edits the recalled text
     if (histState.index >= 0 && inputText !== userHistory[histState.index]) {
@@ -1954,7 +1957,9 @@
   <div
     class="rounded-[28px] border bg-background/66 backdrop-blur-xl transition-colors {btwMode
       ? 'border-miwarp-status-info/80'
-      : currentMode.borderCls || 'border-border/35 focus-within:border-ring/40'}"
+      : currentMode.borderCls || 'border-border/35 focus-within:border-ring/40'} {pendingPermission
+      ? 'motion-attention-pulse'
+      : ''}"
   >
     {#if pendingPermission}
       <div

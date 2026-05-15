@@ -1,10 +1,8 @@
 function isScrollable(el: HTMLElement | null): boolean {
   while (el && el !== document.body && el !== document.documentElement) {
     const style = getComputedStyle(el);
-    const canScrollY =
-      /(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight;
-    const canScrollX =
-      /(auto|scroll)/.test(style.overflowX) && el.scrollWidth > el.clientWidth;
+    const canScrollY = /(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight;
+    const canScrollX = /(auto|scroll)/.test(style.overflowX) && el.scrollWidth > el.clientWidth;
 
     if (canScrollY || canScrollX) return true;
     el = el.parentElement;

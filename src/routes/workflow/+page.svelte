@@ -1,7 +1,4 @@
 <script lang="ts">
-  /**
-   * Workflow Page - Standalone guided workflows experience
-   */
   import WorkflowPanel from "$lib/components/WorkflowPanel.svelte";
   import type { WorkflowStep } from "$lib/types/workflow";
   import { t } from "$lib/i18n/index.svelte";
@@ -9,13 +6,9 @@
   let notification = $state<string | null>(null);
 
   async function handleExecute(step: WorkflowStep) {
-    // This would connect to the actual execution engine
-    // For now, simulate execution
     console.log("Executing step:", step.title);
     console.log("Prompt:", step.prompt);
     console.log("Tools:", step.tools);
-
-    // Simulate some work
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
@@ -31,57 +24,26 @@
   <title>{t("workflow_pageTitle")}</title>
 </svelte:head>
 
-<div class="workflow-page">
-  <div class="workflow-container">
-    <WorkflowPanel onExecute={handleExecute} onNotify={handleNotify} />
+<div class="flex h-full flex-col overflow-hidden">
+  <!-- Page header -->
+  <div class="shrink-0 border-b border-border px-6 py-4">
+    <h1 class="text-xl font-semibold text-foreground">{t("workflow_pageTitle")}</h1>
+    <p class="mt-1 text-sm text-muted-foreground">{t("workflow_startFromTemplate")}</p>
   </div>
 
+  <!-- Content -->
+  <div class="flex-1 overflow-y-auto">
+    <div class="mx-auto max-w-3xl px-6 py-5">
+      <WorkflowPanel onExecute={handleExecute} onNotify={handleNotify} />
+    </div>
+  </div>
+
+  <!-- Toast notification -->
   {#if notification}
-    <div class="notification">
-      <span>{notification}</span>
+    <div
+      class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-bottom-2 rounded-lg border border-primary/20 bg-background/95 px-4 py-2 text-sm text-foreground shadow-lg backdrop-blur-sm duration-200"
+    >
+      {notification}
     </div>
   {/if}
 </div>
-
-<style>
-  .workflow-page {
-    min-height: 100vh;
-    padding: 1.5rem;
-    background: transparent;
-  }
-
-  .workflow-container {
-    max-width: 900px;
-    margin: 0 auto;
-    border: 1px solid hsl(var(--border) / 0.38);
-    border-radius: 1.5rem;
-    background: hsl(var(--background) / 0.28);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-  }
-
-  .notification {
-    position: fixed;
-    bottom: 2rem;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 0.75rem 1.5rem;
-    background: hsl(var(--primary));
-    color: white;
-    border: 1px solid hsl(var(--primary) / 0.36);
-    border-radius: 999px;
-    font-size: 0.875rem;
-    animation: slideUp 0.3s ease;
-  }
-
-  @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateX(-50%) translateY(1rem);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-  }
-</style>

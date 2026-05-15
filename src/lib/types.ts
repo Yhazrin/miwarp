@@ -161,6 +161,13 @@ export interface UserSettings {
   web_server_bind?: string;
   web_server_allowed_origins?: string[];
   web_server_tunnel_url?: string;
+  notifications_enabled?: boolean;
+  notify_on_run_completed?: boolean;
+  notify_on_run_failed?: boolean;
+  notify_on_approval_required?: boolean;
+  notify_on_schedule_completed?: boolean;
+  notify_on_team_completed?: boolean;
+  notification_min_duration_sec?: number;
   updated_at: string;
 }
 

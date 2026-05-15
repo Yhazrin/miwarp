@@ -9,8 +9,18 @@
 
   const teamStore = getContext<TeamStore>("teamStore");
 
-  // ── Page mode: "runs" (TeamRun history) or "monitor" (legacy Team Monitor) ──
-  let pageMode = $state<"runs" | "monitor">("runs");
+  // ── Page mode: "chat" (Team Room), "runs" (TeamRun history), or "monitor" (legacy Team Monitor) ──
+  let pageMode = $state<"chat" | "runs" | "monitor">(
+    (typeof localStorage !== "undefined" &&
+      (localStorage.getItem("ocv:teams-tab") as "chat" | "runs" | "monitor")) ||
+      "chat",
+  );
+
+  $effect(() => {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("ocv:teams-tab", pageMode);
+    }
+  });
 
   // ── TeamRun state ──
   let teamRuns = $state<TeamRun[]>([]);
@@ -18,6 +28,31 @@
   let selectedRun = $state<TeamRun | null>(null);
   let runsLoading = $state(true);
   let runsError = $state("");
+
+  // ── Team Chat state ──
+  let chatInput = $state("");
+  let chatMessages = $state<
+    Array<{ id: string; role: string; content: string; createdAt: string }>
+  >([]);
+
+  function handleChatSend() {
+    if (!chatInput.trim() || !teamStore.selectedTeam) return;
+    const msg = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: chatInput.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    chatMessages = [...chatMessages, msg];
+    chatInput = "";
+  }
+
+  function handleChatKeydown(e: KeyboardEvent) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleChatSend();
+    }
+  }
 
   // ── Monitor state (existing) ──
   let expandPending = $state(true);
@@ -294,6 +329,14 @@
   <!-- Tab bar -->
   <div class="shrink-0 flex items-center gap-1 border-b border-border px-4 h-10">
     <button
+      class="px-3 py-1.5 text-xs font-medium transition-colors border-b-2 {pageMode === 'chat'
+        ? 'text-foreground border-primary'
+        : 'text-muted-foreground hover:text-foreground border-transparent'}"
+      onclick={() => (pageMode = "chat")}
+    >
+      {t("teamRun_tabChat")}
+    </button>
+    <button
       class="px-3 py-1.5 text-xs font-medium transition-colors border-b-2 {pageMode === 'runs'
         ? 'text-foreground border-primary'
         : 'text-muted-foreground hover:text-foreground border-transparent'}"
@@ -311,7 +354,125 @@
     </button>
   </div>
 
-  {#if pageMode === "runs"}
+  <!-- Tab description -->
+  <div class="shrink-0 px-4 py-1.5 border-b border-border/40 bg-muted/20">
+    <p class="text-[11px] text-muted-foreground">
+      {pageMode === "chat"
+        ? t("teamRun_chatDesc")
+        : pageMode === "runs"
+          ? t("teamRun_runsDesc")
+          : t("teamRun_monitorDesc")}
+    </p>
+  </div>
+
+  {#if pageMode === "chat"}
+    <!-- ═══ Team Chat Mode ═══ -->
+    <div class="flex flex-1 min-h-0 flex-col">
+      {#if !teamStore.selectedTeam}
+        <div class="flex flex-col items-center justify-center h-full text-center px-6">
+          <div
+            class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-muted"
+          >
+            <svg
+              class="h-6 w-6 text-muted-foreground"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+          </div>
+          <h2 class="text-sm font-medium text-foreground mb-1">{t("team_selectTeam")}</h2>
+          <p class="text-xs text-muted-foreground max-w-sm">{t("teamRun_chatDesc")}</p>
+        </div>
+      {:else}
+        <!-- Team header -->
+        <div class="shrink-0 border-b border-border px-4 py-2.5">
+          <div class="flex items-center gap-2">
+            <h2 class="text-sm font-semibold text-foreground">{teamStore.selectedTeam}</h2>
+            {#if teamStore.teamConfig}
+              <span
+                class="rounded-full bg-teal-500/10 px-2 py-0.5 text-[10px] font-medium text-teal-600 dark:text-teal-400"
+                >{t("team_membersCount", {
+                  count: String(teamStore.teamConfig.members.length),
+                })}</span
+              >
+            {/if}
+          </div>
+          <p class="text-[11px] text-muted-foreground mt-0.5">{t("teamRun_chatDesc")}</p>
+        </div>
+
+        <!-- Messages area -->
+        <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+          {#if chatMessages.length === 0}
+            <div class="flex flex-col items-center justify-center h-full text-center">
+              <div
+                class="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted"
+              >
+                <svg
+                  class="h-5 w-5 text-muted-foreground"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </div>
+              <p class="text-xs text-muted-foreground max-w-sm mb-2">
+                {t("teamRun_chatEngineNotReady")}
+              </p>
+            </div>
+          {:else}
+            {#each chatMessages as msg (msg.id)}
+              <div class="flex {msg.role === 'user' ? 'justify-end' : 'justify-start'}">
+                <div
+                  class="max-w-[80%] rounded-lg px-3 py-2 text-xs {msg.role === 'user'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-foreground'}"
+                >
+                  {#if msg.role !== "user"}
+                    <span class="text-[10px] font-medium text-muted-foreground block mb-0.5"
+                      >{msg.role}</span
+                    >
+                  {/if}
+                  <p class="whitespace-pre-wrap">{msg.content}</p>
+                  <span class="text-[9px] opacity-60 block mt-1 text-right"
+                    >{new Date(msg.createdAt).toLocaleTimeString()}</span
+                  >
+                </div>
+              </div>
+            {/each}
+          {/if}
+        </div>
+
+        <!-- Input area -->
+        <div class="shrink-0 border-t border-border px-4 py-3">
+          <div class="flex gap-2">
+            <textarea
+              class="flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30 min-h-[36px] max-h-[100px]"
+              rows="1"
+              placeholder={t("teamRun_chatPlaceholder")}
+              bind:value={chatInput}
+              onkeydown={handleChatKeydown}
+            ></textarea>
+            <button
+              class="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              disabled={!chatInput.trim()}
+              onclick={handleChatSend}
+            >
+              {t("chat_send")}
+            </button>
+          </div>
+        </div>
+      {/if}
+    </div>
+  {:else if pageMode === "runs"}
     <!-- ═══ TeamRun History Mode ═══ -->
     <div class="flex flex-1 min-h-0">
       <!-- Left: TeamRun list -->

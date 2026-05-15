@@ -47,6 +47,7 @@
     | "cli-config"
     | "shortcuts"
     | "remote"
+    | "notifications"
     | "debug"
     | "theme";
   const VALID_TABS: SettingsTab[] = [
@@ -55,6 +56,7 @@
     "cli-config",
     "shortcuts",
     "remote",
+    "notifications",
     "debug",
     "theme",
   ];
@@ -70,6 +72,7 @@
     "cli-config": () => t("settings_tab_cliConfig"),
     shortcuts: () => t("settings_tab_shortcuts"),
     remote: () => t("settings_tab_remote"),
+    notifications: () => t("settings_tab_notifications") || "Notifications",
     debug: () => t("settings_tab_debug"),
     theme: () => t("settings_tab_theme") || "Theme",
   };
@@ -94,6 +97,10 @@
     {
       id: "remote",
       icon: "M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z",
+    },
+    {
+      id: "notifications",
+      icon: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 0 1-3.46 0",
     },
     { id: "debug", icon: "m18 16 4-4-4-4 M6 8l-4 4 4 4 M14.5 4l-5 16" },
     {
@@ -143,6 +150,16 @@
   let apiTestLoading = $state(false);
   let apiTestResult = $state<import("$lib/types").ApiTestResult | null>(null);
   let apiTestRequestId = $state(0);
+
+  // ── Notification settings ──
+  let notifEnabled = $state(true);
+  let notifRunCompleted = $state(true);
+  let notifRunFailed = $state(true);
+  let notifApprovalRequired = $state(true);
+  let notifScheduleCompleted = $state(true);
+  let notifTeamCompleted = $state(true);
+  let notifMinDuration = $state(10);
+  let notifSaved = $state(false);
   // Derive effective auth env var (tracks platformCredentials + selectedPlatformId)
   let effectiveAuthEnvVar = $derived(
     findCredential(platformCredentials, selectedPlatformId ?? "")?.auth_env_var ||
@@ -1120,6 +1137,14 @@
       authMode = settings.auth_mode ?? "cli";
       remoteHosts = settings.remote_hosts ?? [];
       platformCredentials = settings.platform_credentials ?? [];
+      // Notification settings
+      notifEnabled = settings.notifications_enabled ?? true;
+      notifRunCompleted = settings.notify_on_run_completed ?? true;
+      notifRunFailed = settings.notify_on_run_failed ?? true;
+      notifApprovalRequired = settings.notify_on_approval_required ?? true;
+      notifScheduleCompleted = settings.notify_on_schedule_completed ?? true;
+      notifTeamCompleted = settings.notify_on_team_completed ?? true;
+      notifMinDuration = settings.notification_min_duration_sec ?? 10;
       // Load display fields from credentials (not global fields)
       if (authMode === "api") {
         selectedPlatformId = detectPlatformFromUrl(
@@ -1194,6 +1219,24 @@
       setTimeout(() => (generalSaved = false), 1500);
     } catch (e) {
       dbgWarn("settings", "saveGeneralPatch error", e);
+    }
+  }
+
+  async function saveNotificationSettings() {
+    try {
+      settings = await api.updateUserSettings({
+        notifications_enabled: notifEnabled,
+        notify_on_run_completed: notifRunCompleted,
+        notify_on_run_failed: notifRunFailed,
+        notify_on_approval_required: notifApprovalRequired,
+        notify_on_schedule_completed: notifScheduleCompleted,
+        notify_on_team_completed: notifTeamCompleted,
+        notification_min_duration_sec: notifMinDuration,
+      } as Partial<UserSettings>);
+      notifSaved = true;
+      setTimeout(() => (notifSaved = false), 1500);
+    } catch (e) {
+      dbgWarn("settings", "saveNotificationSettings error", e);
     }
   }
 
@@ -3494,6 +3537,196 @@
           <p class="text-[10px] text-muted-foreground">
             {t("settings_debug_maxEntries")}
           </p>
+        {/if}
+      </Card>
+
+      <!-- ═══ Notifications tab ═══ -->
+    {:else if activeTab === "notifications"}
+      <Card class="p-6 space-y-5">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            {t("settings_notif_title") || "System Notifications"}
+          </h2>
+          {#if notifSaved}
+            <span class="text-xs text-emerald-500 flex items-center gap-1 animate-fade-in">
+              <svg
+                class="h-3 w-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              {t("settings_general_saved")}
+            </span>
+          {/if}
+        </div>
+
+        <p class="text-xs text-muted-foreground">
+          {t("settings_notif_desc") ||
+            "Get notified when tasks complete, fail, or need your attention."}
+        </p>
+
+        <!-- Master toggle -->
+        <label class="flex items-center justify-between py-2 cursor-pointer">
+          <div>
+            <span class="text-sm font-medium"
+              >{t("settings_notif_enabled") || "Enable notifications"}</span
+            >
+            <p class="text-xs text-muted-foreground mt-0.5">
+              {t("settings_notif_enabledDesc") || "Allow MiWarp to send system notifications"}
+            </p>
+          </div>
+          <button
+            role="switch"
+            aria-checked={notifEnabled}
+            class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+              {notifEnabled ? 'bg-primary' : 'bg-muted'}"
+            onclick={() => {
+              notifEnabled = !notifEnabled;
+              saveNotificationSettings();
+            }}
+          >
+            <span
+              class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+              {notifEnabled ? 'translate-x-4' : 'translate-x-0.5'}"
+            ></span>
+          </button>
+        </label>
+
+        {#if notifEnabled}
+          <div class="space-y-3 pl-1 border-l-2 border-muted/50 ml-1">
+            <!-- Run completed -->
+            <label class="flex items-center justify-between py-1.5 cursor-pointer">
+              <span class="text-sm">{t("settings_notif_runCompleted") || "Run completed"}</span>
+              <button
+                role="switch"
+                aria-checked={notifRunCompleted}
+                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                  {notifRunCompleted ? 'bg-primary' : 'bg-muted'}"
+                onclick={() => {
+                  notifRunCompleted = !notifRunCompleted;
+                  saveNotificationSettings();
+                }}
+              >
+                <span
+                  class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+                  {notifRunCompleted ? 'translate-x-4' : 'translate-x-0.5'}"
+                ></span>
+              </button>
+            </label>
+
+            <!-- Run failed -->
+            <label class="flex items-center justify-between py-1.5 cursor-pointer">
+              <span class="text-sm">{t("settings_notif_runFailed") || "Run failed"}</span>
+              <button
+                role="switch"
+                aria-checked={notifRunFailed}
+                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                  {notifRunFailed ? 'bg-primary' : 'bg-muted'}"
+                onclick={() => {
+                  notifRunFailed = !notifRunFailed;
+                  saveNotificationSettings();
+                }}
+              >
+                <span
+                  class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+                  {notifRunFailed ? 'translate-x-4' : 'translate-x-0.5'}"
+                ></span>
+              </button>
+            </label>
+
+            <!-- Approval required -->
+            <label class="flex items-center justify-between py-1.5 cursor-pointer">
+              <span class="text-sm"
+                >{t("settings_notif_approvalRequired") || "Waiting for approval"}</span
+              >
+              <button
+                role="switch"
+                aria-checked={notifApprovalRequired}
+                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                  {notifApprovalRequired ? 'bg-primary' : 'bg-muted'}"
+                onclick={() => {
+                  notifApprovalRequired = !notifApprovalRequired;
+                  saveNotificationSettings();
+                }}
+              >
+                <span
+                  class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+                  {notifApprovalRequired ? 'translate-x-4' : 'translate-x-0.5'}"
+                ></span>
+              </button>
+            </label>
+
+            <!-- Schedule completed -->
+            <label class="flex items-center justify-between py-1.5 cursor-pointer">
+              <span class="text-sm"
+                >{t("settings_notif_scheduleCompleted") || "Scheduled task completed"}</span
+              >
+              <button
+                role="switch"
+                aria-checked={notifScheduleCompleted}
+                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                  {notifScheduleCompleted ? 'bg-primary' : 'bg-muted'}"
+                onclick={() => {
+                  notifScheduleCompleted = !notifScheduleCompleted;
+                  saveNotificationSettings();
+                }}
+              >
+                <span
+                  class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+                  {notifScheduleCompleted ? 'translate-x-4' : 'translate-x-0.5'}"
+                ></span>
+              </button>
+            </label>
+
+            <!-- Team completed -->
+            <label class="flex items-center justify-between py-1.5 cursor-pointer">
+              <span class="text-sm"
+                >{t("settings_notif_teamCompleted") || "Team run completed"}</span
+              >
+              <button
+                role="switch"
+                aria-checked={notifTeamCompleted}
+                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                  {notifTeamCompleted ? 'bg-primary' : 'bg-muted'}"
+                onclick={() => {
+                  notifTeamCompleted = !notifTeamCompleted;
+                  saveNotificationSettings();
+                }}
+              >
+                <span
+                  class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+                  {notifTeamCompleted ? 'translate-x-4' : 'translate-x-0.5'}"
+                ></span>
+              </button>
+            </label>
+
+            <!-- Min duration -->
+            <div class="flex items-center justify-between py-1.5">
+              <div>
+                <span class="text-sm">{t("settings_notif_minDuration") || "Min task duration"}</span
+                >
+                <p class="text-xs text-muted-foreground mt-0.5">
+                  {t("settings_notif_minDurationDesc") || "Only notify for tasks longer than this"}
+                </p>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min="0"
+                  max="300"
+                  step="5"
+                  bind:value={notifMinDuration}
+                  onchange={saveNotificationSettings}
+                  class="w-16 rounded-md border border-border bg-transparent px-2 py-1 text-sm text-right
+                    focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+                <span class="text-xs text-muted-foreground">s</span>
+              </div>
+            </div>
+          </div>
         {/if}
       </Card>
 
