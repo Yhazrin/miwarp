@@ -7,26 +7,27 @@
    */
   import BrowserPanel from "$lib/components/BrowserPanel.svelte";
   import WebFetch from "$lib/components/WebFetch.svelte";
+  import { t } from "$lib/i18n/index.svelte";
 
   let activeTab = $state<"browser" | "webfetch">("browser");
   let showSettings = $state(false);
 
   let tabs = [
-    { id: "browser", label: "Browser Automation", icon: "🌐" },
-    { id: "webfetch", label: "Web Fetch", icon: "📡" },
+    { id: "browser", label: t("browser_automation"), icon: "🌐" },
+    { id: "webfetch", label: t("webfetch_title"), icon: "📡" },
   ];
 </script>
 
 <svelte:head>
-  <title>Browser - MiWarp</title>
+  <title>{t("browser_title")}</title>
 </svelte:head>
 
 <div class="browser-page">
   <!-- Header -->
   <div class="page-header">
     <div class="header-left">
-      <h1>Browser Automation</h1>
-      <p class="description">Control browsers, automate web tasks, and extract data</p>
+      <h1>{t("browser_automation")}</h1>
+      <p class="description">{t("browser_description")}</p>
     </div>
     <div class="header-actions">
       <button class="btn btn-icon" onclick={() => (showSettings = !showSettings)}> ⚙️ </button>
@@ -61,43 +62,43 @@
     <div class="settings-overlay" onclick={() => (showSettings = false)}>
       <div class="settings-panel" onclick={(e) => e.stopPropagation()}>
         <div class="settings-header">
-          <h2>Settings</h2>
+          <h2>{t("browser_settings")}</h2>
           <button class="btn btn-icon" onclick={() => (showSettings = false)}> × </button>
         </div>
         <div class="settings-content">
           <div class="settings-section">
-            <h3>MCP Integration</h3>
+            <h3>{t("browser_mcp")}</h3>
             <div class="setting-item">
               <label>
                 <input type="checkbox" checked />
-                <span>Auto-connect on startup</span>
+                <span>{t("browser_autoConnect")}</span>
               </label>
             </div>
             <div class="setting-item">
               <label>
-                <span>Default viewport width</span>
+                <span>{t("browser_viewportWidth")}</span>
                 <input type="number" value="1920" class="setting-input" />
               </label>
             </div>
             <div class="setting-item">
               <label>
-                <span>Default viewport height</span>
+                <span>{t("browser_viewportHeight")}</span>
                 <input type="number" value="1080" class="setting-input" />
               </label>
             </div>
           </div>
 
           <div class="settings-section">
-            <h3>Screenshot Options</h3>
+            <h3>{t("browser_screenshot")}</h3>
             <div class="setting-item">
               <label>
                 <input type="checkbox" checked />
-                <span>Auto-save screenshots</span>
+                <span>{t("browser_autoSave")}</span>
               </label>
             </div>
             <div class="setting-item">
               <label>
-                <span>Screenshot format</span>
+                <span>{t("browser_format")}</span>
                 <select class="setting-input">
                   <option value="png">PNG</option>
                   <option value="jpeg">JPEG</option>
@@ -108,24 +109,26 @@
           </div>
 
           <div class="settings-section">
-            <h3>Web Fetch</h3>
+            <h3>{t("browser_webfetch")}</h3>
             <div class="setting-item">
               <label>
-                <span>Request timeout (ms)</span>
+                <span>{t("browser_timeout")}</span>
                 <input type="number" value="30000" class="setting-input" />
               </label>
             </div>
             <div class="setting-item">
               <label>
                 <input type="checkbox" />
-                <span>Follow redirects</span>
+                <span>{t("browser_followRedirects")}</span>
               </label>
             </div>
           </div>
         </div>
         <div class="settings-footer">
-          <button class="btn btn-secondary" onclick={() => (showSettings = false)}> Cancel </button>
-          <button class="btn btn-primary"> Save Settings </button>
+          <button class="btn btn-secondary" onclick={() => (showSettings = false)}>
+            {t("browser_cancel")}
+          </button>
+          <button class="btn btn-primary"> {t("browser_saveSettings")} </button>
         </div>
       </div>
     </div>

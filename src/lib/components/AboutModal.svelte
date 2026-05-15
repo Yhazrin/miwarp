@@ -50,8 +50,8 @@
     checkingUpdate = true;
     try {
       const info = await checkForUpdates();
-      if (!info.latestVersion) {
-        window.alert(t("appUpdate_checkFailed"));
+      if (info.error) {
+        window.alert(`${t("appUpdate_checkFailed")}\n\n${info.error}`);
         return;
       }
       if (!info.hasUpdate) {
@@ -106,7 +106,7 @@
         <button
           class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           onclick={() => (open = false)}
-          aria-label="Close"
+          aria-label={t("common_close")}
         >
           <svg
             class="h-5 w-5"

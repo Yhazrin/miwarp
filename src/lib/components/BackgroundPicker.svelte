@@ -1,5 +1,6 @@
 <script lang="ts">
   import { backgroundStore } from "../stores/background-store.svelte";
+  import { t } from "$lib/i18n/index.svelte";
   import type { SizingMode, BackgroundConfig } from "../types/background";
 
   interface Props {
@@ -19,11 +20,11 @@
   let overlayStyle = $derived(backgroundStore.getOverlayStyle(sessionId || undefined));
 
   const sizingModes: { value: SizingMode; label: string }[] = [
-    { value: "cover", label: "Cover" },
-    { value: "fill", label: "Fill" },
-    { value: "fit", label: "Fit" },
-    { value: "stretch", label: "Stretch" },
-    { value: "tile", label: "Tile" },
+    { value: "cover", label: t("background_cover") },
+    { value: "fill", label: t("background_fill") },
+    { value: "fit", label: t("background_fit") },
+    { value: "stretch", label: t("background_stretch") },
+    { value: "tile", label: t("background_tile") },
   ];
 
   function update(partial: Partial<BackgroundConfig>) {
@@ -91,7 +92,7 @@
         class="flex-1 rounded-md border border-border bg-miwarp-bg-elevated px-3 py-1.5
                text-sm text-foreground placeholder:text-muted-foreground
                focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
-        placeholder="https://... or /path/to/image.png"
+        placeholder={t("background_urlPlaceholder")}
         value={config.imageUrl}
         oninput={(e) => update({ imageUrl: (e.target as HTMLInputElement).value })}
       />
@@ -127,7 +128,9 @@
   <!-- Blur -->
   <div class="space-y-1.5">
     <div class="flex items-center justify-between">
-      <label class="text-xs font-medium text-miwarp-text-secondary" for="bg-blur"> Blur </label>
+      <label class="text-xs font-medium text-miwarp-text-secondary" for="bg-blur">
+        {t("background_blur")}
+      </label>
       <span class="text-xs text-miwarp-text-tertiary">{config.blur}px</span>
     </div>
     <input

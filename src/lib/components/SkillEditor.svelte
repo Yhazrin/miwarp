@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Skill, SkillMetadata, SkillCategory } from "$lib/types/skill";
+  import { t } from "$lib/i18n/index.svelte";
   import { SKILL_CATEGORIES, DEFAULT_SKILL_ICON } from "$lib/types/skill";
   import { renderMarkdown } from "$lib/utils/markdown";
   import { dbg, dbgWarn } from "$lib/utils/debug";
@@ -158,14 +159,14 @@
       <div class="space-y-6 max-w-xl">
         <!-- Name -->
         <div class="space-y-2">
-          <label for="name" class="text-sm font-medium">Name</label>
+          <label for="name" class="text-sm font-medium">{t("skillEditor_name")}</label>
           <div class="flex items-center gap-2">
             <span class="text-muted-foreground">/</span>
             <input
               id="name"
               type="text"
               bind:value={name}
-              placeholder="my-skill"
+              placeholder={t("skillEditor_namePlaceholder")}
               class="flex-1 rounded-md border bg-background px-3 py-2 text-sm
                 focus:outline-none focus:ring-2 focus:ring-primary/50
                 {nameError ? 'border-destructive' : 'border-input'}"
@@ -174,16 +175,17 @@
           {#if nameError}
             <p class="text-xs text-destructive">{nameError}</p>
           {/if}
-          <p class="text-xs text-muted-foreground">Lowercase letters, numbers, and hyphens only</p>
+          <p class="text-xs text-muted-foreground">{t("skillEditor_nameHelp")}</p>
         </div>
 
         <!-- Description -->
         <div class="space-y-2">
-          <label for="description" class="text-sm font-medium">Description</label>
+          <label for="description" class="text-sm font-medium">{t("skillEditor_description")}</label
+          >
           <textarea
             id="description"
             bind:value={description}
-            placeholder="What does this skill do?"
+            placeholder={t("skillEditor_descPlaceholder")}
             rows={3}
             class="w-full rounded-md border bg-background px-3 py-2 text-sm
               focus:outline-none focus:ring-2 focus:ring-primary/50
@@ -193,7 +195,7 @@
 
         <!-- Category -->
         <div class="space-y-2">
-          <label class="text-sm font-medium">Category</label>
+          <label class="text-sm font-medium">{t("skillEditor_category")}</label>
           <div class="grid grid-cols-2 gap-2">
             {#each SKILL_CATEGORIES as cat}
               <button
@@ -212,7 +214,7 @@
 
         <!-- Icon -->
         <div class="space-y-2">
-          <label class="text-sm font-medium">Icon</label>
+          <label class="text-sm font-medium">{t("skillEditor_icon")}</label>
           <div class="flex flex-wrap gap-2">
             {#each iconOptions as iconOption}
               <button
@@ -230,12 +232,12 @@
 
         <!-- Author -->
         <div class="space-y-2">
-          <label for="author" class="text-sm font-medium">Author (optional)</label>
+          <label for="author" class="text-sm font-medium">{t("skillEditor_author")}</label>
           <input
             id="author"
             type="text"
             bind:value={author}
-            placeholder="Your name"
+            placeholder={t("skillEditor_authorPlaceholder")}
             class="w-full rounded-md border bg-background px-3 py-2 text-sm
               focus:outline-none focus:ring-2 focus:ring-primary/50 border-input"
           />
@@ -244,7 +246,7 @@
         <!-- Errors -->
         {#if errors.length > 0}
           <div class="rounded-md border border-destructive/50 bg-destructive/10 p-3">
-            <p class="text-sm font-medium text-destructive">Please fix the following errors:</p>
+            <p class="text-sm font-medium text-destructive">{t("skillEditor_fixErrors")}</p>
             <ul class="mt-1 list-inside list-disc text-sm text-destructive/80">
               {#each errors as error}
                 <li>{error}</li>
@@ -256,9 +258,9 @@
     {:else if activeTab === "content"}
       <div class="space-y-4">
         <div class="flex items-center justify-between">
-          <p class="text-sm text-muted-foreground">Write your skill content in Markdown format</p>
+          <p class="text-sm text-muted-foreground">{t("skillEditor_markdownHint")}</p>
           <div class="text-xs text-muted-foreground">
-            {content.length} characters
+            {t("skillEditor_charCount", { count: String(content.length) })}
           </div>
         </div>
 

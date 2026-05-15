@@ -5,6 +5,7 @@
  */
 import { getTransport } from "$lib/transport";
 import { dbg, dbgWarn } from "$lib/utils/debug";
+import { t } from "$lib/i18n/index.svelte";
 import type {
   ScheduledTask,
   ScheduledTaskRun,
@@ -145,38 +146,46 @@ export class ScheduledTasksService {
    */
   static describeCronExpression(expr: string): string {
     const parts = expr.trim().split(/\s+/);
-    if (parts.length !== 5) return "Invalid expression";
+    if (parts.length !== 5) return t("cron_invalid");
 
     const [minute, hour, day, month, weekday] = parts;
 
-    if (expr === "* * * * *") return "Every minute";
-    if (minute.startsWith("*/")) return `Every ${minute.slice(2)} minutes`;
-    if (hour.startsWith("*/")) return `Every ${hour.slice(2)} hours`;
+    if (expr === "* * * * *") return t("cron_everyMinute");
+    if (minute.startsWith("*/")) return t("cron_everyMinutes", { n: minute.slice(2) });
+    if (hour.startsWith("*/")) return t("cron_everyHours", { n: hour.slice(2) });
 
     if (minute !== "*" && hour !== "*") {
       const h = parseInt(hour);
       const m = parseInt(minute);
-      const period = h >= 12 ? "PM" : "AM";
+      const period = h >= 12 ? t("cron_pm") : t("cron_am");
       const displayHour = h > 12 ? h - 12 : h === 0 ? 12 : h;
       const displayMin = m.toString().padStart(2, "0");
 
       if (weekday !== "*") {
-        const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const days = [
+          t("cron_sun"),
+          t("cron_mon"),
+          t("cron_tue"),
+          t("cron_wed"),
+          t("cron_thu"),
+          t("cron_fri"),
+          t("cron_sat"),
+        ];
         const dayList = weekday
           .split(",")
           .map((d) => days[parseInt(d)] ?? d)
           .join(", ");
-        return `Every ${dayList} at ${displayHour}:${displayMin} ${period}`;
+        return t("cron_everyAt", { days: dayList, time: `${displayHour}:${displayMin} ${period}` });
       }
 
       if (day === "*" && month === "*") {
-        return `Every day at ${displayHour}:${displayMin} ${period}`;
+        return t("cron_everyDayAt", { time: `${displayHour}:${displayMin} ${period}` });
       }
 
-      return `At ${displayHour}:${displayMin} ${period}`;
+      return t("cron_at", { time: `${displayHour}:${displayMin} ${period}` });
     }
 
-    return `Schedule: ${expr}`;
+    return t("cron_schedule", { expr });
   }
 }
 

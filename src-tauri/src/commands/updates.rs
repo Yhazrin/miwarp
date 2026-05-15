@@ -26,14 +26,11 @@ pub struct UpdateInfo {
     pub latest_version: String,
     pub current_version: String,
     pub download_url: String,
+    pub error: String,
 }
 
 // ── Version comparison ──
 
-/// Compare two semver-like version strings. Returns true if `latest` is newer than `current`.
-/// Strips leading 'v' prefix. Pre-release versions (e.g. "1.0.0-beta.1") are considered
-/// older than the same version without pre-release suffix.
-/// Returns false on any parse failure (safe degradation).
 fn parse_version(s: &str) -> Option<([u64; 3], bool)> {
     let s = s.strip_prefix('v').unwrap_or(s);
     let (main, has_pre) = if let Some(idx) = s.find('-') {
@@ -61,7 +58,6 @@ fn is_newer(current: &str, latest: &str) -> bool {
         None => return false,
     };
 
-    // Compare major.minor.patch
     if lat_ver > cur_ver {
         return true;
     }
@@ -69,15 +65,12 @@ fn is_newer(current: &str, latest: &str) -> bool {
         return false;
     }
 
-    // Same version number: pre-release < release
-    // If latest has pre-release suffix, it's not newer than current release
     match (cur_pre, lat_pre) {
-        (true, false) => true, // current is pre-release, latest is release → upgrade
-        _ => false,            // equal release, or latest is pre-release → no upgrade
+        (true, false) => true,
+        _ => false,
     }
 }
 
-/// Platform-independent: select download URL given preferred extensions.
 fn select_download_url_for_exts(body: &serde_json::Value, preferred_exts: &[&str]) -> String {
     let html_url = body["html_url"].as_str().unwrap_or("").to_string();
     let Some(assets) = body["assets"].as_array() else {
@@ -95,7 +88,6 @@ fn select_download_url_for_exts(body: &serde_json::Value, preferred_exts: &[&str
         }
     }
 
-    // Fallback: any downloadable asset, then release page.
     for asset in assets {
         if let Some(url) = asset["browser_download_url"].as_str() {
             return url.to_string();
@@ -116,6 +108,29 @@ fn select_download_url(body: &serde_json::Value) -> String {
     select_download_url_for_exts(body, exts)
 }
 
+// ── Helpers ──
+
+fn no_update(current_version: String) -> UpdateInfo {
+    UpdateInfo {
+        has_update: false,
+        latest_version: String::new(),
+        current_version,
+        download_url: String::new(),
+        error: String::new(),
+    }
+}
+
+fn error_info(current_version: String, error: String) -> UpdateInfo {
+    log::warn!("[updates] {}", error);
+    UpdateInfo {
+        has_update: false,
+        latest_version: String::new(),
+        current_version,
+        download_url: String::new(),
+        error,
+    }
+}
+
 // ── Tauri command ──
 
 #[tauri::command]
@@ -134,37 +149,37 @@ pub async fn check_for_updates(app: tauri::AppHandle) -> Result<UpdateInfo, Stri
     {
         Ok(r) => r,
         Err(e) => {
-            log::warn!("[updates] network error (offline/timeout): {}", e);
-            return Ok(UpdateInfo {
-                has_update: false,
-                latest_version: String::new(),
-                current_version,
-                download_url: String::new(),
-            });
+            return Ok(error_info(current_version, format!("Network error: {}", e)));
         }
     };
 
     let status = resp.status();
-    if !status.is_success() {
-        log::warn!("[updates] GitHub API returned HTTP {}", status);
-        return Ok(UpdateInfo {
-            has_update: false,
-            latest_version: String::new(),
+    if status == reqwest::StatusCode::NOT_FOUND {
+        return Ok(error_info(
             current_version,
-            download_url: String::new(),
-        });
+            "No releases found for this repository".to_string(),
+        ));
+    }
+    if status == reqwest::StatusCode::FORBIDDEN {
+        return Ok(error_info(
+            current_version,
+            "GitHub API rate limit exceeded, try again later".to_string(),
+        ));
+    }
+    if !status.is_success() {
+        return Ok(error_info(
+            current_version,
+            format!("GitHub API error: HTTP {}", status),
+        ));
     }
 
     let body: serde_json::Value = match resp.json().await {
         Ok(v) => v,
         Err(e) => {
-            log::warn!("[updates] failed to parse response: {}", e);
-            return Ok(UpdateInfo {
-                has_update: false,
-                latest_version: String::new(),
+            return Ok(error_info(
                 current_version,
-                download_url: String::new(),
-            });
+                format!("Failed to parse response: {}", e),
+            ));
         }
     };
 
@@ -172,13 +187,10 @@ pub async fn check_for_updates(app: tauri::AppHandle) -> Result<UpdateInfo, Stri
     let download_url = select_download_url(&body);
 
     if tag.is_empty() {
-        log::warn!("[updates] empty tag_name in response");
-        return Ok(UpdateInfo {
-            has_update: false,
-            latest_version: String::new(),
+        return Ok(error_info(
             current_version,
-            download_url: String::new(),
-        });
+            "Invalid release data (missing tag)".to_string(),
+        ));
     }
 
     let latest_version = tag.strip_prefix('v').unwrap_or(tag).to_string();
@@ -196,6 +208,7 @@ pub async fn check_for_updates(app: tauri::AppHandle) -> Result<UpdateInfo, Stri
         latest_version,
         current_version,
         download_url,
+        error: String::new(),
     })
 }
 
@@ -244,10 +257,10 @@ mod tests {
     #[test]
     fn test_select_download_url_prefers_dmg() {
         let body = json!({
-            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v0.1.14",
+            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v1.0.0",
             "assets": [
-                { "name": "MiWarp-0.1.14.zip", "browser_download_url": "https://example.com/a.zip" },
-                { "name": "MiWarp_0.1.14_universal.dmg", "browser_download_url": "https://example.com/a.dmg" }
+                { "name": "MiWarp-1.0.0.zip", "browser_download_url": "https://example.com/a.zip" },
+                { "name": "MiWarp_1.0.0_universal.dmg", "browser_download_url": "https://example.com/a.dmg" }
             ]
         });
         assert_eq!(
@@ -259,14 +272,13 @@ mod tests {
     #[test]
     fn test_select_download_url_prefers_msi() {
         let body = json!({
-            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v0.1.14",
+            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v1.0.0",
             "assets": [
-                { "name": "MiWarp-0.1.14.zip", "browser_download_url": "https://example.com/a.zip" },
-                { "name": "MiWarp_0.1.14_x64-setup.msi", "browser_download_url": "https://example.com/a.msi" },
-                { "name": "MiWarp_0.1.14_x64.exe", "browser_download_url": "https://example.com/a.exe" }
+                { "name": "MiWarp-1.0.0.zip", "browser_download_url": "https://example.com/a.zip" },
+                { "name": "MiWarp_1.0.0_x64-setup.msi", "browser_download_url": "https://example.com/a.msi" },
+                { "name": "MiWarp_1.0.0_x64.exe", "browser_download_url": "https://example.com/a.exe" }
             ]
         });
-        // .msi preferred over .exe
         assert_eq!(
             select_download_url_for_exts(&body, &[".msi", ".exe"]),
             "https://example.com/a.msi"
@@ -275,12 +287,11 @@ mod tests {
 
     #[test]
     fn test_select_download_url_exe_fallback() {
-        // .msi not present → should fall back to .exe
         let body = json!({
-            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v0.1.14",
+            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v1.0.0",
             "assets": [
-                { "name": "MiWarp-0.1.14.zip", "browser_download_url": "https://example.com/a.zip" },
-                { "name": "MiWarp_0.1.14_x64.exe", "browser_download_url": "https://example.com/a.exe" }
+                { "name": "MiWarp-1.0.0.zip", "browser_download_url": "https://example.com/a.zip" },
+                { "name": "MiWarp_1.0.0_x64.exe", "browser_download_url": "https://example.com/a.exe" }
             ]
         });
         assert_eq!(
@@ -291,12 +302,11 @@ mod tests {
 
     #[test]
     fn test_select_download_url_zip_fallback_on_windows() {
-        // No .msi or .exe → should fall back to .zip
         let body = json!({
-            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v0.1.31",
+            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v1.0.0",
             "assets": [
-                { "name": "MiWarp_0.1.31_universal.dmg", "browser_download_url": "https://example.com/a.dmg" },
-                { "name": "MiWarp_0.1.31_x64-setup.zip", "browser_download_url": "https://example.com/a.zip" }
+                { "name": "MiWarp_1.0.0_universal.dmg", "browser_download_url": "https://example.com/a.dmg" },
+                { "name": "MiWarp_1.0.0_x64-setup.zip", "browser_download_url": "https://example.com/a.zip" }
             ]
         });
         assert_eq!(
@@ -308,9 +318,9 @@ mod tests {
     #[test]
     fn test_select_download_url_prefers_appimage() {
         let body = json!({
-            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v0.1.14",
+            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v1.0.0",
             "assets": [
-                { "name": "MiWarp_0.1.14.AppImage", "browser_download_url": "https://example.com/a.AppImage" }
+                { "name": "MiWarp_1.0.0.AppImage", "browser_download_url": "https://example.com/a.AppImage" }
             ]
         });
         assert_eq!(
@@ -322,12 +332,12 @@ mod tests {
     #[test]
     fn test_select_download_url_falls_back_to_html() {
         let body = json!({
-            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v0.1.14",
+            "html_url": "https://github.com/Yhazrin/miwarp/releases/tag/v1.0.0",
             "assets": []
         });
         assert_eq!(
             select_download_url_for_exts(&body, &[".dmg"]),
-            "https://github.com/Yhazrin/miwarp/releases/tag/v0.1.14"
+            "https://github.com/Yhazrin/miwarp/releases/tag/v1.0.0"
         );
     }
 }

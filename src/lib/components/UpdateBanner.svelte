@@ -33,6 +33,9 @@
       try {
         const info = await checkForUpdates();
         dbg("update-banner", "check result", info);
+        if (info.error) {
+          dbgWarn("update-banner", "check error:", info.error);
+        }
         if (info.hasUpdate && !isDismissed(info.latestVersion)) {
           hasUpdate = true;
           latestVersion = info.latestVersion;

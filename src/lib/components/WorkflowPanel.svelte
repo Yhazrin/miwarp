@@ -6,6 +6,7 @@
    */
   import { workflowStore } from "$lib/stores/workflow-store.svelte";
   import type { WorkflowTemplate, WorkflowStep } from "$lib/types/workflow";
+  import { t } from "$lib/i18n/index.svelte";
 
   interface Props {
     onExecute?: (step: WorkflowStep) => Promise<void>;
@@ -60,7 +61,7 @@
 
     if (currentStep.interventionLevel >= 1 && !customPrompt.trim()) {
       workflowStore.waitForIntervention();
-      onNotify?.("请先填写 Prompt 或确认操作");
+      onNotify?.(t("workflow_fillPromptFirst"));
       return;
     }
 
@@ -128,15 +129,15 @@
   function getInterventionLabel(level: number): string {
     switch (level) {
       case 0:
-        return "自主执行";
+        return t("workflow_intervention_auto");
       case 1:
-        return "执行前确认";
+        return t("workflow_intervention_confirm");
       case 2:
-        return "方案审批";
+        return t("workflow_intervention_approval");
       case 3:
-        return "人工介入";
+        return t("workflow_intervention_manual");
       default:
-        return "未知";
+        return t("workflow_intervention_unknown");
     }
   }
 </script>
@@ -148,7 +149,7 @@
     <button
       class="btn btn-icon"
       onclick={() => (showTemplateSelector = !showTemplateSelector)}
-      title="Templates"
+      title={t("workflow_templates")}
     >
       <svg
         width="16"
@@ -170,7 +171,7 @@
   {#if showTemplateSelector}
     <div class="template-selector">
       <div class="selector-header">
-        <h4>选择工作流模板</h4>
+        <h4>{t("workflow_selectTemplate")}</h4>
         <button class="btn btn-icon" onclick={() => (showTemplateSelector = false)}> × </button>
       </div>
       <div class="template-grid">
@@ -227,9 +228,9 @@
           <path d="M11.5 12.5 9.5 10.5 14 2l8 8-8.5 4.5zM14 8l-2 2" />
         </svg>
       </span>
-      <p>选择一个模板开始工作流</p>
+      <p>{t("workflow_startFromTemplate")}</p>
       <button class="btn btn-primary" onclick={() => (showTemplateSelector = true)}>
-        浏览模板
+        {t("workflow_browseTemplates")}
       </button>
     </div>
   {:else}
@@ -286,7 +287,8 @@
         <div class="step-header">
           <div class="step-title-area">
             <h4 class="step-title">
-              Step {(activeInstance?.currentStepIndex ?? 0) + 1}: {currentStep.title}
+              {t("workflow_stepLabel")}
+              {(activeInstance?.currentStepIndex ?? 0) + 1}: {currentStep.title}
             </h4>
             <span
               class="intervention-badge"
@@ -322,17 +324,17 @@
         <!-- Auto-generated Prompt -->
         {#if currentStep.prompt}
           <div class="prompt-section">
-            <h5>自动 Prompt</h5>
+            <h5>{t("workflow_autoPrompt")}</h5>
             <pre class="prompt-preview">{currentStep.prompt}</pre>
           </div>
         {/if}
 
         <!-- Custom Prompt Input -->
         <div class="custom-prompt">
-          <h5>自定义 Prompt</h5>
+          <h5>{t("workflow_customPrompt")}</h5>
           <textarea
             bind:value={customPrompt}
-            placeholder="在此输入或修改 Prompt..."
+            placeholder={t("workflow_promptPlaceholder")}
             rows="4"
             class="prompt-input"
           ></textarea>
@@ -340,7 +342,7 @@
 
         <!-- Tools -->
         <div class="tools-section">
-          <h5>所需工具</h5>
+          <h5>{t("workflow_requiredTools")}</h5>
           <div class="tools-list">
             {#each currentStep.tools as tool}
               <span class="tool-badge">{tool}</span>
@@ -367,7 +369,7 @@
             <rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" />
           </svg>
         </span>
-        <span>等待确认...</span>
+        <span>{t("workflow_waitingConfirm")}</span>
       </div>
     {/if}
 
@@ -403,22 +405,24 @@
           onclick={handlePrev}
           disabled={!activeInstance || (activeInstance?.currentStepIndex ?? 0) === 0}
         >
-          ← 上一步
+          {t("workflow_prevStep")}
         </button>
-        <button class="btn btn-secondary" onclick={handleSkip}>跳过</button>
+        <button class="btn btn-secondary" onclick={handleSkip}>{t("workflow_skip")}</button>
         <button class="btn btn-primary" onclick={handleStart} disabled={isExecuting}>
-          {currentStep?.interventionLevel === 0 ? "开始执行" : "确认执行"}
+          {currentStep?.interventionLevel === 0
+            ? t("workflow_startExecute")
+            : t("workflow_confirmExecute")}
         </button>
       {:else if isRunning}
-        <button class="btn btn-secondary" onclick={handlePause}>暂停</button>
+        <button class="btn btn-secondary" onclick={handlePause}>{t("workflow_pause")}</button>
         <button class="btn btn-primary" onclick={handleNext} disabled={isExecuting}>
-          {isExecuting ? "执行中..." : "下一步 →"}
+          {isExecuting ? t("workflow_executing") : t("workflow_nextStep")}
         </button>
       {:else if isWaiting}
-        <button class="btn btn-secondary" onclick={handlePrev}>← 上一步</button>
-        <button class="btn btn-secondary" onclick={handleSkip}>跳过</button>
+        <button class="btn btn-secondary" onclick={handlePrev}>{t("workflow_prevStep")}</button>
+        <button class="btn btn-secondary" onclick={handleSkip}>{t("workflow_skip")}</button>
         <button class="btn btn-primary" onclick={handleNext} disabled={isExecuting}>
-          确认执行
+          {t("workflow_confirmExecute")}
         </button>
       {/if}
     </div>
@@ -426,26 +430,26 @@
     <!-- Workflow Actions -->
     <div class="workflow-actions">
       {#if (activeInstance?.status ?? "") === "completed"}
-        <button class="btn btn-secondary" onclick={handleReset}>重新开始</button>
+        <button class="btn btn-secondary" onclick={handleReset}>{t("workflow_restart")}</button>
         <button class="btn btn-primary" onclick={() => (showTemplateSelector = true)}>
-          新工作流
+          {t("workflow_newWorkflow")}
         </button>
       {:else if activeInstance && activeInstance.status !== "completed" && activeInstance.status !== "cancelled"}
-        <button class="btn btn-danger" onclick={handleCancel}>取消</button>
+        <button class="btn btn-danger" onclick={handleCancel}>{t("workflow_cancel")}</button>
       {/if}
     </div>
 
     <!-- Context Panel Toggle -->
     <button class="context-toggle" onclick={() => (showContextPanel = !showContextPanel)}>
-      {showContextPanel ? "隐藏" : "显示"}上下文
+      {showContextPanel ? t("workflow_hide") : t("workflow_show")}{t("workflow_contextLabel")}
     </button>
 
     <!-- Context Panel -->
     {#if showContextPanel}
       <div class="context-panel">
-        <h5>上下文信息</h5>
+        <h5>{t("workflow_contextInfo")}</h5>
         <div class="context-field">
-          <label>项目路径</label>
+          <label>{t("workflow_projectPath")}</label>
           <input
             type="text"
             value={workflowStore.state.currentContext.projectPath ?? ""}
@@ -454,14 +458,14 @@
           />
         </div>
         <div class="context-field">
-          <label>相关文件</label>
+          <label>{t("workflow_relevantFiles")}</label>
           <textarea
             value={workflowStore.state.currentContext.relevantFiles.join("\n")}
             onchange={(e) =>
               workflowStore.updateContext({
                 relevantFiles: e.currentTarget.value.split("\n").filter(Boolean),
               })}
-            placeholder="每行一个文件路径"
+            placeholder={t("workflow_oneFilePerLine")}
             rows="3"
           ></textarea>
         </div>
@@ -471,7 +475,7 @@
     <!-- Checkpoint History -->
     {#if (activeInstance?.checkpoints.length ?? 0) > 0}
       <div class="checkpoint-section">
-        <h5>执行历史</h5>
+        <h5>{t("workflow_execHistory")}</h5>
         <div class="checkpoint-list">
           {#each activeInstance?.checkpoints ?? [] as cp, index}
             <div class="checkpoint-item">
@@ -480,12 +484,12 @@
               </span>
               <span class="checkpoint-step">Step {cp.stepIndex + 1}</span>
               <span class="checkpoint-status" class:completed={cp.completed}>
-                {cp.completed ? "完成" : "跳过"}
+                {cp.completed ? t("workflow_completed") : t("workflow_skipped")}
               </span>
               <button
                 class="btn btn-icon"
                 onclick={() => handleRestoreCheckpoint(index)}
-                title="恢复到此点"
+                title={t("workflow_restoreToPoint")}
               >
                 <svg
                   width="14"

@@ -4238,15 +4238,15 @@
                 <div class="w-full animate-fade-in">
                   <div class="chat-content-width py-2">
                     <button
-                      class="w-full text-left rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2 transition-colors group"
+                      class="glass-card w-full text-left px-3 py-2 transition-colors group"
                       onclick={() => (thinkingExpanded = !thinkingExpanded)}
                     >
                       <div class="flex items-center gap-2">
                         <div
-                          class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-blue-500/10"
+                          class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[hsl(var(--miwarp-status-info)/0.15)]"
                         >
                           <svg
-                            class="h-3 w-3 text-blue-400"
+                            class="h-3 w-3 text-[hsl(var(--miwarp-status-info))]"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -4260,10 +4260,12 @@
                             <path d="M10 22h4" />
                           </svg>
                         </div>
-                        <span class="text-xs font-medium text-blue-400">{t("chat_thinking")}</span>
+                        <span class="text-xs font-medium text-[hsl(var(--miwarp-status-info))]"
+                          >{t("chat_thinking")}</span
+                        >
                         {#if store.isRunning && !store.streamingText}
                           <div
-                            class="h-2.5 w-2.5 rounded-full border-2 border-blue-500/30 border-t-blue-400 animate-spin"
+                            class="h-2.5 w-2.5 rounded-full border-2 border-[hsl(var(--miwarp-status-info)/0.3)] border-t-[hsl(var(--miwarp-status-info))] animate-spin"
                             data-export-exclude
                           ></div>
                         {/if}
@@ -4284,7 +4286,7 @@
                       {#if thinkingExpanded}
                         <div class="mt-2 pl-7 max-h-60 overflow-y-auto">
                           <pre
-                            class="text-xs font-mono whitespace-pre-wrap break-words text-blue-300/70 leading-relaxed">{store.thinkingText.trimEnd()}</pre>
+                            class="text-xs font-mono whitespace-pre-wrap break-words text-[hsl(var(--miwarp-status-info)/0.7)] leading-relaxed">{store.thinkingText.trimEnd()}</pre>
                         </div>
                       {/if}
                     </button>
@@ -4654,7 +4656,7 @@
         style="max-height: 40vh; overflow-y: auto;"
       >
         <div class="flex items-center justify-between px-4 py-2 border-b border-border/50">
-          <span class="text-xs font-medium text-blue-400">BTW</span>
+          <span class="text-xs font-medium text-blue-400">{t("chat_btw")}</span>
           <button
             onclick={() => (btwState = { ...btwState, active: false })}
             title="Close side question"
@@ -4705,7 +4707,7 @@
         >
           <div class="flex items-center gap-2 text-blue-400">
             <span class="animate-pulse">🔄</span>
-            <span class="font-medium">Ralph Loop</span>
+            <span class="font-medium">{t("chat_ralphLoop")}</span>
             <span class="text-blue-400/70">
               iteration {store.ralphLoop.iteration}/{store.ralphLoop.maxIterations || "∞"}
             </span>

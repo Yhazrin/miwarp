@@ -1,3 +1,5 @@
+import { t } from "$lib/i18n/index.svelte";
+
 /**
  * Generate a one-line summary for a tool call.
  * Used in normal view mode to collapse tool calls into readable descriptions.
@@ -13,20 +15,24 @@ export function getToolSummary(
       const short = cmd.length > 60 ? cmd.slice(0, 57) + "..." : cmd;
       const exitCode = (result?.exit_code as number) ?? undefined;
       if (exitCode !== undefined) {
-        return exitCode === 0 ? `Ran: ${short}` : `Failed (exit ${exitCode}): ${short}`;
+        return exitCode === 0
+          ? t("tool_ran", { cmd: short })
+          : t("tool_failed", { code: String(exitCode), cmd: short });
       }
-      return `Running: ${short}`;
+      return t("tool_running", { cmd: short });
     }
     case "Read": {
       const path = (input.file_path as string) || "";
       const fileName = path.split(/[/\\]/).pop() || path;
       const lines = (result?.content as string)?.split("\n").length;
-      return lines ? `Read ${fileName} (${lines} lines)` : `Reading ${fileName}`;
+      return lines
+        ? t("tool_read", { file: fileName, lines: String(lines) })
+        : t("tool_reading", { file: fileName });
     }
     case "Write": {
       const path = (input.file_path as string) || "";
       const fileName = path.split(/[/\\]/).pop() || path;
-      return `Wrote ${fileName}`;
+      return t("tool_wrote", { file: fileName });
     }
     case "Edit": {
       const path = (input.file_path as string) || "";
@@ -35,60 +41,61 @@ export function getToolSummary(
       const newStr = (input.new_string as string) || "";
       const linesChanged = Math.abs(newStr.split("\n").length - oldStr.split("\n").length);
       return linesChanged > 0
-        ? `Edited ${fileName} (±${linesChanged} lines)`
-        : `Edited ${fileName}`;
+        ? t("tool_editedLines", { file: fileName, lines: String(linesChanged) })
+        : t("tool_edited", { file: fileName });
     }
     case "MultiEdit": {
       const path = (input.file_path as string) || "";
       const fileName = path.split(/[/\\]/).pop() || path;
       const edits = (input.edits as unknown[])?.length || 0;
-      return `Edited ${fileName} (${edits} changes)`;
+      return t("tool_editedChanges", { file: fileName, edits: String(edits) });
     }
     case "Grep": {
       const pattern = (input.pattern as string) || "";
       const count = (result?.count as number) ?? undefined;
-      const matches = count !== undefined ? ` — ${count} matches` : "";
-      return `Searched: "${pattern}"${matches}`;
+      return count !== undefined
+        ? t("tool_searchedMatches", { pattern, count: String(count) })
+        : t("tool_searched", { pattern });
     }
     case "Glob": {
       const pattern = (input.pattern as string) || "";
       const files = (result?.files as string[])?.length;
       return files !== undefined
-        ? `Found ${files} files matching ${pattern}`
-        : `Searching ${pattern}`;
+        ? t("tool_found", { count: String(files), pattern })
+        : t("tool_searching", { pattern });
     }
     case "WebFetch": {
       const url = (input.url as string) || "";
       try {
         const host = new URL(url).hostname;
-        return `Fetched ${host}`;
+        return t("tool_fetched", { host });
       } catch {
-        return `Fetched ${url.slice(0, 40)}`;
+        return t("tool_fetched", { host: url.slice(0, 40) });
       }
     }
     case "WebSearch": {
       const query = (input.query as string) || "";
-      return `Searched web: "${query}"`;
+      return t("tool_searchedWeb", { query });
     }
     case "Agent": {
       const desc = (input.description as string) || "";
-      return `Launched agent: ${desc}`;
+      return t("tool_launchedAgent", { desc });
     }
     case "AskUserQuestion": {
-      return "Waiting for your response";
+      return t("tool_waitingResponse");
     }
     case "ExitPlanMode": {
-      return "Proposing a plan";
+      return t("tool_proposingPlan");
     }
     case "Task": {
       const action = (input.action as string) || "";
       const subject = (input.subject as string) || "";
-      return `Task ${action}: ${subject}`;
+      return t("tool_task", { action, subject });
     }
     case "NotebookEdit": {
       const path = (input.notebook_path as string) || "";
       const fileName = path.split(/[/\\]/).pop() || path;
-      return `Edited notebook ${fileName}`;
+      return t("tool_editedNotebook", { file: fileName });
     }
     default:
       return `${toolName}`;
@@ -111,15 +118,15 @@ export function formatElapsed(seconds: number): string {
 export function getStatusLabel(status: string): string {
   switch (status) {
     case "running":
-      return "Running";
+      return t("tool_status_running");
     case "completed":
-      return "Done";
+      return t("tool_status_done");
     case "failed":
-      return "Failed";
+      return t("tool_status_failed");
     case "ask_pending":
-      return "Waiting";
+      return t("tool_status_waiting");
     case "permission_prompt":
-      return "Needs approval";
+      return t("tool_status_approval");
     default:
       return "";
   }

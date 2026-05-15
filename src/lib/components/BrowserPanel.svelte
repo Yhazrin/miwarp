@@ -5,6 +5,7 @@
    * Provides UI for browser connection, navigation, and automation controls.
    */
   import { browserStore } from "$lib/stores/browser-store.svelte";
+  import { t } from "$lib/i18n/index.svelte";
 
   let urlInput = $state("");
   let searchQuery = $state("");
@@ -14,10 +15,10 @@
 
   // Quick actions
   let quickActions = [
-    { label: "Screenshot", icon: "📷", action: "screenshot" },
-    { label: "Find Elements", icon: "🔍", action: "find" },
-    { label: "Network", icon: "🌐", action: "network" },
-    { label: "Console", icon: "💻", action: "console" },
+    { label: t("browser_quickScreenshot"), icon: "📷", action: "screenshot" },
+    { label: t("browser_quickFindElements"), icon: "🔍", action: "find" },
+    { label: t("browser_quickNetwork"), icon: "🌐", action: "network" },
+    { label: t("browser_quickConsole"), icon: "💻", action: "console" },
   ];
 
   // Tabs list
@@ -118,19 +119,19 @@
 <div class="browser-panel">
   <!-- Header -->
   <div class="panel-header">
-    <h3>Browser Automation</h3>
+    <h3>{t("browser_automation")}</h3>
     <div class="connection-status" class:connected>
       <span class="status-dot"></span>
-      {connected ? "Connected" : "Disconnected"}
+      {connected ? t("browser_connected") : t("browser_disconnected")}
     </div>
   </div>
 
   <!-- Connection Section -->
   {#if !connected}
     <div class="section">
-      <h4>Connect Browser</h4>
+      <h4>{t("browser_connect")}</h4>
       <button class="btn btn-primary" onclick={handleConnectBrowser}>
-        List Available Browsers
+        {t("browser_listBrowsers")}
       </button>
 
       {#if browsers.length > 0}
@@ -143,7 +144,7 @@
                 <span class="browser-platform">{browser.platform}</span>
               </div>
               {#if browser.isThisComputer}
-                <span class="badge">This Device</span>
+                <span class="badge">{t("browser_thisDevice")}</span>
               {/if}
             </button>
           {/each}
@@ -155,9 +156,13 @@
     <div class="section navigation-section">
       <!-- Back/Forward/Refresh -->
       <div class="nav-controls">
-        <button class="btn btn-icon" onclick={handleGoBack} title="Go Back"> ← </button>
-        <button class="btn btn-icon" onclick={handleGoForward} title="Go Forward"> → </button>
-        <button class="btn btn-icon" onclick={handleRefresh} title="Refresh"> ↻ </button>
+        <button class="btn btn-icon" onclick={handleGoBack} title={t("browser_goBack")}> ← </button>
+        <button class="btn btn-icon" onclick={handleGoForward} title={t("browser_goForward")}>
+          →
+        </button>
+        <button class="btn btn-icon" onclick={handleRefresh} title={t("browser_refresh")}>
+          ↻
+        </button>
       </div>
 
       <!-- URL Bar -->
@@ -165,12 +170,12 @@
         <input
           type="text"
           bind:value={urlInput}
-          placeholder="Enter URL..."
+          placeholder={t("browser_enterUrl")}
           onkeydown={handleKeyDown}
           class="url-input"
         />
         <button class="btn btn-primary" onclick={handleNavigate} disabled={isNavigating}>
-          {isNavigating ? "..." : "Go"}
+          {isNavigating ? "..." : t("browser_go")}
         </button>
       </div>
     </div>
@@ -184,7 +189,7 @@
             class:active={tab.id === activeTabId}
             onclick={() => handleSelectTab(tab.id)}
           >
-            <span class="tab-title">{tab.title || "New Tab"}</span>
+            <span class="tab-title">{tab.title || t("browser_newTab")}</span>
             <span
               class="tab-close"
               role="button"
@@ -198,7 +203,9 @@
             </span>
           </button>
         {/each}
-        <button class="btn btn-icon add-tab" onclick={handleCreateTab} title="New Tab"> + </button>
+        <button class="btn btn-icon add-tab" onclick={handleCreateTab} title={t("browser_newTab")}>
+          +
+        </button>
       </div>
     </div>
 
@@ -218,16 +225,16 @@
         id="search-input"
         type="text"
         bind:value={searchQuery}
-        placeholder="Find elements on page..."
+        placeholder={t("browser_findElements")}
         class="search-input"
       />
       <button class="btn btn-secondary" onclick={handleFind} disabled={isFinding}>
-        {isFinding ? "..." : "Find"}
+        {isFinding ? "..." : t("browser_find")}
       </button>
 
       {#if foundElements.length > 0}
         <div class="found-elements">
-          <h5>Found {foundElements.length} elements:</h5>
+          <h5>{t("browser_foundElements", { count: String(foundElements.length) })}</h5>
           {#each foundElements as element}
             <div class="element-item">
               <span class="element-ref">{element.ref}</span>
@@ -243,14 +250,14 @@
     <!-- Page Content Preview -->
     {#if pageContent}
       <div class="section content-section">
-        <h4>Page Content</h4>
+        <h4>{t("browser_pageContent")}</h4>
         <div class="content-preview">
           <pre class="content-text">{pageContent.text.slice(0, 500)}{pageContent.text.length > 500
               ? "..."
               : ""}</pre>
         </div>
         <div class="element-count">
-          {pageContent.elements.length} elements detected
+          {t("browser_elementsDetected", { count: String(pageContent.elements.length) })}
         </div>
       </div>
     {/if}
@@ -258,11 +265,11 @@
     <!-- Last Screenshot -->
     {#if browserStore.state.lastScreenshot}
       <div class="section screenshot-section">
-        <h4>Last Screenshot</h4>
+        <h4>{t("browser_lastScreenshot")}</h4>
         <div class="screenshot-preview">
           <img
             src={browserStore.state.lastScreenshot.imageUrl}
-            alt="Page screenshot"
+            alt={t("browser_pageScreenshot")}
             class="screenshot-image"
           />
         </div>
@@ -288,7 +295,7 @@
   {#if isLoading}
     <div class="loading-overlay">
       <span class="loading-spinner">⏳</span>
-      <span>Loading...</span>
+      <span>{t("browser_loading")}</span>
     </div>
   {/if}
 </div>

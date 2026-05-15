@@ -1130,6 +1130,7 @@ export interface UpdateInfo {
   latestVersion: string;
   currentVersion: string;
   downloadUrl: string;
+  error: string;
 }
 
 // ── Changelog ──

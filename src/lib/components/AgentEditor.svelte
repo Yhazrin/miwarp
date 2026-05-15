@@ -277,7 +277,9 @@
       <!-- Scope (create only) -->
       {#if mode === "create"}
         <div>
-          <label class="text-[11px] font-medium text-foreground block mb-1">Scope</label>
+          <label class="text-[11px] font-medium text-foreground block mb-1"
+            >{t("agentEditor_scope")}</label
+          >
           <div class="flex gap-2">
             <button
               class="px-3 py-1 text-xs rounded-md border transition-colors
@@ -466,7 +468,9 @@
     <div>
       {#if mode === "create"}
         <div class="mb-2">
-          <label class="text-[11px] font-medium text-foreground block mb-1">Scope</label>
+          <label class="text-[11px] font-medium text-foreground block mb-1"
+            >{t("agentEditor_scope")}</label
+          >
           <div class="flex gap-2">
             <button
               class="px-3 py-1 text-xs rounded-md border transition-colors

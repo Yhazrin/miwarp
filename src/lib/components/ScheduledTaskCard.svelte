@@ -3,6 +3,7 @@
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
   import { ScheduledTasksService } from "$lib/services/scheduled-tasks-service";
   import type { ScheduledTask } from "$lib/types/scheduled-task";
+  import { t } from "$lib/i18n/index.svelte";
 
   let {
     task,
@@ -20,13 +21,15 @@
       case "cron":
         return s.cronExpression
           ? ScheduledTasksService.describeCronExpression(s.cronExpression)
-          : "No cron expression";
+          : t("schedCard_noCron");
       case "interval":
-        return `Every ${s.intervalMinutes ?? 60} minutes`;
+        return t("schedCard_interval", { minutes: String(s.intervalMinutes ?? 60) });
       case "one-time":
-        return s.fireAt ? `One-time: ${new Date(s.fireAt).toLocaleString()}` : "No time set";
+        return s.fireAt
+          ? t("schedCard_oneTime", { time: new Date(s.fireAt).toLocaleString() })
+          : t("schedCard_noTimeSet");
       default:
-        return "Unknown schedule";
+        return t("schedCard_unknownSchedule");
     }
   });
 
@@ -50,7 +53,7 @@
   }
 
   function handleDelete() {
-    if (confirm(`Delete task "${task.name}"?`)) {
+    if (confirm(t("schedCard_deleteConfirm", { name: task.name }))) {
       scheduledTasksStore.deleteTask(task.id);
     }
   }
@@ -77,7 +80,8 @@
         <span class="text-sm font-medium truncate">{task.name}</span>
         <span class="flex items-center gap-1 {statusColor}">
           <span class="w-2 h-2 rounded-full {task.enabled ? 'bg-green-500' : 'bg-muted'}"></span>
-          <span class="text-xs">{task.enabled ? "Active" : "Paused"}</span>
+          <span class="text-xs">{task.enabled ? t("schedCard_active") : t("schedCard_paused")}</span
+          >
         </span>
       </div>
 
@@ -105,10 +109,10 @@
       <!-- Timing info -->
       <div class="flex items-center gap-4 mt-2 text-xs text-muted-foreground/40">
         {#if task.nextRunAt}
-          <span>Next: {new Date(task.nextRunAt).toLocaleString()}</span>
+          <span>{t("schedCard_next")}: {new Date(task.nextRunAt).toLocaleString()}</span>
         {/if}
         {#if task.lastRunAt}
-          <span>Last: {new Date(task.lastRunAt).toLocaleString()}</span>
+          <span>{t("schedCard_last")}: {new Date(task.lastRunAt).toLocaleString()}</span>
         {/if}
       </div>
     </div>
@@ -118,7 +122,7 @@
       <Button
         variant="ghost"
         size="icon"
-        title="Run now"
+        title={t("schedCard_runNow")}
         loading={triggering}
         onclick={(e) => {
           e.stopPropagation();
@@ -133,7 +137,7 @@
       <Button
         variant="ghost"
         size="icon"
-        title="Edit"
+        title={t("schedCard_edit")}
         onclick={(e) => {
           e.stopPropagation();
           handleEdit();
@@ -148,7 +152,7 @@
       <Button
         variant="ghost"
         size="icon"
-        title={task.enabled ? "Pause" : "Resume"}
+        title={task.enabled ? t("schedCard_pause") : t("schedCard_resume")}
         onclick={(e) => {
           e.stopPropagation();
           handleToggle();
@@ -181,7 +185,7 @@
       <Button
         variant="ghost"
         size="icon"
-        title="Delete"
+        title={t("schedCard_delete")}
         onclick={(e) => {
           e.stopPropagation();
           handleDelete();

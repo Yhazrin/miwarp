@@ -4,6 +4,8 @@
    *
    * Provides UI for fetching web pages and extracting content.
    */
+  import { t } from "$lib/i18n/index.svelte";
+
   const mcp__workspace__web_fetch = (globalThis as any).mcp__workspace__web_fetch as (
     args: any,
   ) => Promise<any>;
@@ -50,10 +52,10 @@
           fetchHistory = [targetUrl, ...fetchHistory].slice(0, 10);
         }
       } else {
-        error = "Failed to fetch URL";
+        error = t("webfetch_failed");
       }
     } catch (e) {
-      error = e instanceof Error ? e.message : "Unknown error occurred";
+      error = e instanceof Error ? e.message : t("webfetch_unknownError");
     } finally {
       isLoading = false;
     }
@@ -102,8 +104,8 @@
 <div class="webfetch-panel">
   <!-- Header -->
   <div class="panel-header">
-    <h3>Web Fetch</h3>
-    <span class="subtitle">Fetch and analyze web content</span>
+    <h3>{t("webfetch_title")}</h3>
+    <span class="subtitle">{t("webfetch_subtitle")}</span>
   </div>
 
   <!-- URL Input -->
@@ -112,12 +114,12 @@
       <input
         type="text"
         bind:value={url}
-        placeholder="Enter URL to fetch..."
+        placeholder={t("webfetch_enterUrl")}
         onkeydown={handleKeyDown}
         class="url-input"
       />
       <button class="btn btn-primary" onclick={fetchUrl} disabled={isLoading || !url}>
-        {isLoading ? "Fetching..." : "Fetch"}
+        {isLoading ? t("webfetch_fetching") : t("webfetch_fetch")}
       </button>
     </div>
   </div>
@@ -126,8 +128,10 @@
   {#if fetchHistory.length > 0}
     <div class="history-section">
       <div class="history-header">
-        <span class="history-label">Recent URLs</span>
-        <button class="btn btn-text" onclick={() => (fetchHistory = [])}> Clear </button>
+        <span class="history-label">{t("webfetch_recentUrls")}</span>
+        <button class="btn btn-text" onclick={() => (fetchHistory = [])}>
+          {t("webfetch_clear")}
+        </button>
       </div>
       <div class="history-list">
         {#each fetchHistory as historyUrl}
@@ -143,7 +147,7 @@
   {#if statusCode !== null}
     <div class="results-section">
       <div class="results-header">
-        <h4>Response</h4>
+        <h4>{t("webfetch_response")}</h4>
         <div class="results-meta">
           <span
             class="status-badge"
@@ -160,7 +164,7 @@
 
       <!-- Toggle Headers -->
       <button class="btn btn-secondary toggle-headers" onclick={() => (showHeaders = !showHeaders)}>
-        {showHeaders ? "Hide" : "Show"} Headers
+        {showHeaders ? t("webfetch_hideHeaders") : t("webfetch_showHeaders")}
       </button>
 
       <!-- Headers -->
@@ -181,10 +185,10 @@
   {#if content}
     <div class="content-section">
       <div class="content-header">
-        <h4>Content</h4>
+        <h4>{t("webfetch_content")}</h4>
         <div class="content-actions">
-          <button class="btn btn-text" onclick={copyContent}> Copy </button>
-          <button class="btn btn-text" onclick={clearContent}> Clear </button>
+          <button class="btn btn-text" onclick={copyContent}> {t("webfetch_copy")} </button>
+          <button class="btn btn-text" onclick={clearContent}> {t("webfetch_clear")} </button>
         </div>
       </div>
       <div class="content-display">
@@ -206,7 +210,7 @@
   {#if isLoading}
     <div class="loading-section">
       <span class="loading-spinner">⏳</span>
-      <span>Fetching content...</span>
+      <span>{t("webfetch_fetchingContent")}</span>
     </div>
   {/if}
 </div>
