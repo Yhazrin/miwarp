@@ -5,17 +5,28 @@
   import FileAttachment from "./FileAttachment.svelte";
   import { IMAGE_TYPES } from "$lib/utils/file-types";
   import type { ChatMessage, Attachment } from "$lib/types";
+  import AgentIdentity from "./AgentIdentity.svelte";
 
   let {
     message,
     attachments,
     thinkingText,
     onRewind,
+    onDispatchToTeam,
+    agent,
+    platformId,
+    model,
+    animated = false,
   }: {
     message: ChatMessage;
     attachments?: Attachment[];
     thinkingText?: string;
     onRewind?: () => void;
+    onDispatchToTeam?: () => void;
+    agent?: string;
+    platformId?: string;
+    model?: string;
+    animated?: boolean;
   } = $props();
 
   function isImage(att: Attachment): boolean {
@@ -133,6 +144,31 @@
                 </svg>
               </button>
             {/if}
+            {#if onDispatchToTeam}
+              <button
+                class="rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered
+                  ? 'opacity-100'
+                  : 'opacity-0'}"
+                onclick={onDispatchToTeam}
+                title={t("teamRun_dispatchToTeam")}
+                data-export-exclude
+              >
+                <svg
+                  class="h-3.5 w-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </button>
+            {/if}
             <span class="text-sm font-semibold text-foreground">{t("chat_roleYou")}</span>
             <div
               class="flex h-5 w-5 items-center justify-center rounded-full accent-gradient text-white"
@@ -151,24 +187,15 @@
               </svg>
             </div>
           {:else}
-            <div
-              class="flex h-5 w-5 items-center justify-center rounded-full bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-[hsl(var(--miwarp-accent-violet))]"
-            >
-              <svg
-                class="h-3 w-3"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path
-                  d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"
-                />
-              </svg>
-            </div>
-            <span class="text-sm font-semibold text-foreground">{t("chat_roleClaude")}</span>
+            <AgentIdentity
+              {agent}
+              {platformId}
+              {model}
+              size="md"
+              {animated}
+              showName={true}
+              showModel={false}
+            />
             {#if onRewind}
               <button
                 class="ml-auto rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered

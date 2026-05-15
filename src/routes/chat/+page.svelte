@@ -43,6 +43,7 @@
   const EMPTY_BURST_MAP = new Map() as Map<number, ToolBurst>;
   import XTerminal from "$lib/components/XTerminal.svelte";
   import ChatMessage from "$lib/components/ChatMessage.svelte";
+  import AgentIdentity from "$lib/components/AgentIdentity.svelte";
   import InlineToolCard from "$lib/components/InlineToolCard.svelte";
   import BatchProgressBar from "$lib/components/BatchProgressBar.svelte";
   import ToolBurstHeader from "$lib/components/ToolBurstHeader.svelte";
@@ -99,11 +100,12 @@
   import TeamDispatchConfirm from "$lib/components/TeamDispatchConfirm.svelte";
   import TeamRunCard from "$lib/components/TeamRunCard.svelte";
   import {
-    detectTeamTag,
+    detectTeamTrigger,
     stripTeamTag,
     dispatchTeamRun,
     executeTeamRun,
     getPresets,
+    shouldShowTeamHint,
   } from "$lib/services/team-dispatcher";
   import type { TeamRun, TeamPreset } from "$lib/types";
 
@@ -248,6 +250,11 @@
   let teamDispatchOpen = $state(false);
   let teamDispatchPrompt = $state("");
   let activeTeamRuns = $state<TeamRun[]>([]);
+  let teamHintVisible = $state(false);
+
+  function handleInputValueChange(value: string) {
+    teamHintVisible = shouldShowTeamHint(value);
+  }
   let teamPresets = $state<TeamPreset[]>([]);
 
   // Load presets on mount
@@ -258,10 +265,9 @@
   });
 
   async function handleTeamDispatch(presetId: string) {
-    const rawPrompt = teamDispatchPrompt;
+    const prompt = teamDispatchPrompt;
     teamDispatchOpen = false;
-    const stripped = stripTeamTag(rawPrompt);
-    if (!stripped) return;
+    if (!prompt) return;
 
     const preset = teamPresets.find((p) => p.id === presetId);
     if (!preset) return;
@@ -270,7 +276,7 @@
 
     // Create TeamRun record
     const teamRun = await dispatchTeamRun({
-      prompt: stripped,
+      prompt,
       presetId,
       cwd,
     });
@@ -506,6 +512,13 @@
     const ft = filteredTimeline;
     if (renderLimit >= ft.length) return ft;
     return ft.slice(ft.length - renderLimit);
+  });
+
+  let lastAssistantIdx = $derived.by(() => {
+    for (let j = visibleTimeline.length - 1; j >= 0; j--) {
+      if (visibleTimeline[j].kind === "assistant") return j;
+    }
+    return -1;
   });
 
   // ── Batch groups (consecutive ≥3 Task tools) ──
@@ -1955,11 +1968,11 @@
     const isSlash = store.isKnownSlashCommand(text);
     const slashCmd = isSlash ? (text.match(/^\/\S+/)?.[0] ?? null) : null;
 
-    // ── @team detection: intercept before creating a run ──
+    // ── @team / /team detection: intercept before creating a run ──
     if (!store.run && !slashCmd) {
-      const teamPrompt = detectTeamTag(text);
-      if (teamPrompt) {
-        teamDispatchPrompt = text;
+      const teamResult = detectTeamTrigger(text);
+      if (teamResult) {
+        teamDispatchPrompt = teamResult.prompt;
         teamDispatchOpen = true;
         return;
       }
@@ -4203,6 +4216,10 @@
                                 ts: entry.ts,
                               })
                           : undefined}
+                        onDispatchToTeam={() => {
+                          teamDispatchPrompt = entry.content;
+                          teamDispatchOpen = true;
+                        }}
                       />
                     {:else if entry.kind === "assistant"}
                       <ChatMessage
@@ -4213,6 +4230,10 @@
                           timestamp: entry.ts,
                         }}
                         thinkingText={entry.thinkingText}
+                        agent={store.agent}
+                        platformId={store.platformId ?? undefined}
+                        model={store.run?.model ?? store.model}
+                        animated={i === lastAssistantIdx && store.isRunning}
                       />
                     {:else if entry.kind === "tool"}
                       {#if claudeTurnStarts.has(i)}
@@ -4452,24 +4473,15 @@
                 <div class="w-full animate-fade-in">
                   <div class="chat-content-width py-4">
                     <div class="mb-1.5 flex items-center gap-2">
-                      <div
-                        class="flex h-5 w-5 items-center justify-center rounded-sm bg-orange-500/10 text-orange-500"
-                      >
-                        <svg
-                          class="h-3 w-3"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        >
-                          <path
-                            d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"
-                          />
-                        </svg>
-                      </div>
-                      <span class="text-sm font-semibold text-foreground">{t("chat_claude")}</span>
+                      <AgentIdentity
+                        agent={store.agent}
+                        platformId={store.platformId ?? undefined}
+                        model={store.run?.model ?? store.model}
+                        size="md"
+                        animated={true}
+                        showName={true}
+                        showModel={false}
+                      />
                     </div>
                     <div class="pl-7 prose-chat">
                       <MarkdownContent text={store.streamingText} streaming={true} />
@@ -4936,7 +4948,29 @@
                 dbg("chat", "stash restored via badge click");
               }
             }}
+            onValueChange={handleInputValueChange}
           />
+          {#if teamHintVisible}
+            <div
+              class="mx-2 mb-1 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-muted-foreground animate-in fade-in slide-in-from-bottom-1 duration-150"
+            >
+              <svg
+                class="h-3.5 w-3.5 shrink-0 text-primary"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+              <span>{t("teamRun_teamHint")}</span>
+            </div>
+          {/if}
         </div>
       </div>
     {/if}
