@@ -8,6 +8,7 @@
   import { dbg } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
   import ContextHistoryPanel from "$lib/components/ContextHistoryPanel.svelte";
+  import WorkspaceContextPanel from "$lib/components/WorkspaceContextPanel.svelte";
   import FilesPanel from "$lib/components/FilesPanel.svelte";
   import FilePreviewPane from "$lib/components/FilePreviewPane.svelte";
   import PreviewPanel from "$lib/components/PreviewPanel.svelte";
@@ -38,7 +39,16 @@
     onScrollToTool,
     onScrollToTurn,
     requestedTab = $bindable(
-      null as "tools" | "context" | "files" | "info" | "tasks" | "preview" | "workflow" | null,
+      null as
+        | "workspace"
+        | "tools"
+        | "context"
+        | "files"
+        | "info"
+        | "tasks"
+        | "preview"
+        | "workflow"
+        | null,
     ),
     backgroundTasks = new Map(),
     activeBackgroundTasks = [],
@@ -60,7 +70,16 @@
     onToggle: () => void;
     onScrollToTool?: (toolUseId: string) => void;
     onScrollToTurn?: (anchorId: string) => void;
-    requestedTab?: "tools" | "context" | "files" | "info" | "tasks" | "preview" | "workflow" | null;
+    requestedTab?:
+      | "workspace"
+      | "tools"
+      | "context"
+      | "files"
+      | "info"
+      | "tasks"
+      | "preview"
+      | "workflow"
+      | null;
     backgroundTasks?: Map<string, TaskNotificationItem>;
     activeBackgroundTasks?: TaskNotificationItem[];
     /** Working directory for file preview (typically store.effectiveCwd). */
@@ -78,14 +97,22 @@
   } = $props();
 
   // ── Tab state ──
-  type SidebarPanel = "tools" | "context" | "files" | "info" | "tasks" | "preview" | "workflow";
-  let activeTab: SidebarPanel = $state("tools");
+  type SidebarPanel =
+    | "workspace"
+    | "tools"
+    | "context"
+    | "files"
+    | "info"
+    | "tasks"
+    | "preview"
+    | "workflow";
+  let activeTab: SidebarPanel = $state("workspace");
 
   // Lazy keep-alive: a tab is mounted on first activation and stays mounted thereafter.
   // Switching back to a previously-opened tab is then visibility-only (no remount).
   // Svelte 5: $state(Set) requires reassignment to trigger reactivity (mutation methods
   // alone won't), mirroring the existing collapsedTurns pattern below.
-  let mountedTabs = $state(new Set<SidebarPanel>(["tools"]));
+  let mountedTabs = $state(new Set<SidebarPanel>(["workspace"]));
   $effect(() => {
     if (!mountedTabs.has(activeTab)) {
       mountedTabs = new Set(mountedTabs).add(activeTab);
@@ -712,11 +739,32 @@
     >
       <button
         class="relative flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
+        'workspace'
+          ? 'bg-accent/30 text-foreground'
+          : 'text-muted-foreground hover:bg-accent/20 hover:text-foreground'}"
+        onclick={() => openCollapsedTab("workspace")}
+        title={t("toolActivity_tabWorkspace")}
+      >
+        <svg
+          class="h-3.5 w-3.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </svg>
+      </button>
+      <button
+        class="relative flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
         'tools'
           ? 'bg-accent/30 text-foreground'
           : 'text-muted-foreground hover:bg-accent/20 hover:text-foreground'}"
         onclick={() => openCollapsedTab("tools")}
-        title={t("toolActivity_tabTools")}
+        title={t("toolActivity_tabActivity")}
       >
         <svg
           class="h-3.5 w-3.5"
@@ -922,13 +970,34 @@
     >
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-0.5 overflow-x-auto pr-1">
-          <!-- Tools icon -->
+          <!-- Workspace icon -->
+          <button
+            class="p-1.5 rounded-xl transition-colors {activeTab === 'workspace'
+              ? 'bg-accent/30 text-foreground'
+              : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
+            onclick={() => (activeTab = "workspace")}
+            title={t("toolActivity_tabWorkspace")}
+          >
+            <svg
+              class="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </button>
+          <!-- Activity (tools) icon -->
           <button
             class="p-1.5 rounded-xl transition-colors {activeTab === 'tools'
               ? 'bg-accent/30 text-foreground'
               : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
             onclick={() => (activeTab = "tools")}
-            title={t("toolActivity_tabTools")}
+            title={t("toolActivity_tabActivity")}
           >
             <svg
               class="h-3.5 w-3.5"
@@ -1115,6 +1184,25 @@
     <div
       class="relative mx-1.5 mb-1.5 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/30 bg-background/30 backdrop-blur-xl"
     >
+      {#if mountedTabs.has("workspace")}
+        <div
+          class="absolute inset-0 flex flex-col"
+          style="visibility: {activeTab === 'workspace'
+            ? 'visible'
+            : 'hidden'}; pointer-events: {activeTab === 'workspace' ? 'auto' : 'none'};"
+        >
+          <WorkspaceContextPanel
+            {cwd}
+            {runId}
+            {sessionInfo}
+            {contextHistory}
+            {turnUsages}
+            {toolStats}
+            onSwitchToActivity={() => (activeTab = "tools")}
+            onSwitchToFiles={() => (activeTab = "files")}
+          />
+        </div>
+      {/if}
       {#if mountedTabs.has("tasks")}
         <div
           class="absolute inset-0 flex flex-col"
@@ -1634,6 +1722,29 @@
       </button>
       <!-- Collapsed icon buttons -->
       <button
+        class="p-1 rounded transition-colors {activeTab === 'workspace'
+          ? 'text-foreground bg-accent'
+          : 'text-muted-foreground/50 hover:text-muted-foreground'}"
+        onclick={() => {
+          activeTab = "workspace";
+          onToggle();
+        }}
+        title={t("toolActivity_tabWorkspace")}
+      >
+        <svg
+          class="h-3.5 w-3.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </svg>
+      </button>
+      <button
         class="p-1 rounded transition-colors {activeTab === 'tools'
           ? 'text-foreground bg-accent'
           : 'text-muted-foreground/50 hover:text-muted-foreground'}"
@@ -1641,7 +1752,7 @@
           activeTab = "tools";
           onToggle();
         }}
-        title={t("toolActivity_tabTools")}
+        title={t("toolActivity_tabActivity")}
       >
         <svg
           class="h-3.5 w-3.5"

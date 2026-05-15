@@ -371,7 +371,7 @@
   let statusBarRef: SessionStatusBar | undefined = $state();
   let stashedInput: PromptInputSnapshot | null = $state(null);
   let sidebarRequestedTab = $state<
-    "tools" | "context" | "files" | "info" | "tasks" | "preview" | "workflow" | null
+    "workspace" | "tools" | "context" | "files" | "info" | "tasks" | "preview" | "workflow" | null
   >(null);
   let requestedPreviewPath = $state<string | null>(null);
   let requestedPreviewUrl = $state<string | null>(null);
