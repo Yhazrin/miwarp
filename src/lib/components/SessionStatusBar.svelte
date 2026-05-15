@@ -8,6 +8,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { fmtNumber } from "$lib/i18n/format";
   import { truncate, formatTokenCount, formatDuration, formatCostDisplay } from "$lib/utils/format";
+  import WindowDragArea from "$lib/components/WindowDragArea.svelte";
 
   let {
     run = null,
@@ -399,10 +400,14 @@
 </script>
 
 <div
-  class="mx-4 mt-3 rounded-2xl border border-border/35 bg-background/46 font-mono text-xs text-foreground/70 backdrop-blur-xl"
+  class="relative mx-4 mt-3 rounded-2xl border border-border/35 bg-background/46 font-mono text-xs text-foreground/70 backdrop-blur-xl"
 >
+  <!-- Left drag spacer -->
+  <WindowDragArea class="absolute left-0 top-0 bottom-0 w-24 rounded-l-2xl" />
+  <!-- Right drag spacer -->
+  <WindowDragArea class="absolute right-0 top-0 bottom-0 w-24 rounded-r-2xl" />
   <!-- Tier 1: Always visible (h-9) -->
-  <div class="flex h-9 items-center justify-between px-3">
+  <div class="relative z-10 flex h-9 items-center justify-between px-3">
     <!-- Left: core info -->
     <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
       {#if onToggleSidebar}

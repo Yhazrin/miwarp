@@ -62,8 +62,6 @@
   };
 </script>
 
-/** * TeamDispatchConfirm — modal shown when user types @team in chat. * Lets user select a Team
-Preset and confirm dispatch. */
 {#if open}
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div

@@ -22,6 +22,7 @@
   import CliSessionBrowser from "$lib/components/CliSessionBrowser.svelte";
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
+  import WindowDragArea from "$lib/components/WindowDragArea.svelte";
   import type {
     TaskRun,
     UserSettings,
@@ -50,6 +51,7 @@
   import { page } from "$app/stores";
   import { goto, afterNavigate } from "$app/navigation";
   import { onMount, setContext, untrack } from "svelte";
+  import { installPreventRootOverscroll } from "$lib/utils/prevent-root-overscroll";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { fpsCounter } from "$lib/utils/perf";
   import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
@@ -567,6 +569,9 @@
 
   // Use onMount for initialization (not $effect - avoids accidental reactive tracking)
   onMount(() => {
+    // Prevent root overscroll / rubber-band on macOS
+    const cleanupOverscroll = installPreventRootOverscroll();
+
     // Remove splash screen
     const splash = document.getElementById("app-splash");
     if (splash) {
@@ -839,6 +844,7 @@
       window.removeEventListener("ocv:open-permissions", onOpenPermissions);
       document.removeEventListener("click", handleExternalLink, true);
       window.removeEventListener("ocv:explorer-file-selected", onExplorerFileSelected);
+      cleanupOverscroll();
     };
   });
 
@@ -1240,7 +1246,7 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="flex h-screen overflow-hidden">
+<div class="flex h-screen w-screen overflow-hidden">
   <!-- Sidebar: Icon Rail + Content Panel -->
   <aside
     class="sidebar-container shrink-0 glass-sidebar text-sidebar-foreground"
@@ -1251,8 +1257,13 @@
     <!-- A. Icon Rail -->
     <div class="flex w-[44px] flex-col items-center bg-[hsl(var(--miwarp-bg-deepest)/0.88)]">
       <!-- Rail logo (OC) -->
-      <div class="flex h-14 w-full items-center justify-center pt-[42px]">
-        <img src="/light.png" alt="MiWarp" class="h-8 w-8 rounded-lg" />
+      <div class="relative flex h-14 w-full items-center justify-center pt-[42px]">
+        <!-- Left drag area -->
+        <WindowDragArea class="absolute left-0 top-0 bottom-0 w-8" />
+        <!-- Logo (not draggable) -->
+        <img src="/light.png" alt="MiWarp" class="no-drag relative z-10 h-8 w-8 rounded-lg" />
+        <!-- Right drag area -->
+        <WindowDragArea class="absolute right-0 top-0 bottom-0 w-8" />
       </div>
 
       <!-- Rail nav icons -->
@@ -1479,43 +1490,50 @@
         class:sidebar-inner-collapsed={!sidebarOpen}
       >
         <!-- Panel header: Project selector + new chat -->
-        <div class="flex h-14 items-center gap-1.5 px-3 pt-[42px]">
-          <span class="flex-1 min-w-0 truncate text-sm font-medium text-sidebar-foreground"
-            >{pageName}</span
-          >
-          <button
-            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-            onclick={() => (showCliBrowser = true)}
-            title={t("cliSync_title")}
-          >
-            <svg
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              ><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path
-                d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"
-              /></svg
+        <div class="relative flex h-14 items-center gap-1.5 px-3 pt-[42px]">
+          <!-- Left drag spacer -->
+          <WindowDragArea class="absolute left-0 top-0 bottom-0 w-16" />
+          <!-- Right drag spacer -->
+          <WindowDragArea class="absolute right-0 top-0 bottom-0 w-16" />
+          <!-- Clickable content -->
+          <div class="no-drag relative z-10 flex items-center gap-1.5 flex-1 min-w-0">
+            <span class="flex-1 min-w-0 truncate text-sm font-medium text-sidebar-foreground"
+              >{pageName}</span
             >
-          </button>
-          <button
-            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-            onclick={newChat}
-            title={t("layout_newConversation")}
-          >
-            <svg
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg
+            <button
+              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
+              onclick={() => (showCliBrowser = true)}
+              title={t("cliSync_title")}
             >
-          </button>
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path
+                  d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"
+                /></svg
+              >
+            </button>
+            <button
+              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
+              onclick={newChat}
+              title={t("layout_newConversation")}
+            >
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg
+              >
+            </button>
+          </div>
         </div>
 
         {#if isPluginsPage}
@@ -2237,17 +2255,9 @@
   {/if}
 
   <!-- Main content -->
-  <div class="app-main-shell flex flex-col overflow-hidden">
-    <!-- macOS drag region for title bar -->
-    <div
-      class="macos-drag-region"
-      data-tauri-drag-region
-      onmousedown={() => {
-        import("@tauri-apps/api/webviewWindow").then(({ getCurrentWebviewWindow }) => {
-          getCurrentWebviewWindow().startDragging();
-        });
-      }}
-    ></div>
+  <div class="app-main-shell flex flex-col overflow-hidden relative">
+    <!-- macOS drag region: positioned at top, after traffic lights (left: 80px) -->
+    <WindowDragArea class="absolute top-0 left-80 right-0 h-12 z-[1]" />
     <UpdateBanner />
     <!-- Page content — full-bleed, no top bar on non-chat pages -->
     <main class="flex-1 overflow-y-auto">

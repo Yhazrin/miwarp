@@ -115,15 +115,34 @@
 @layer base {
   * {
     @apply border-border;
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: none;
   }
   body {
     @apply bg-background text-foreground;
+    position: fixed;
+    inset: 0;
+    margin: 0;
+    touch-action: manipulation;
     font-family:
       -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB",
       "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "WenQuanYi Micro Hei", sans-serif;
     min-height: 100vh;
     background-color: hsl(var(--background));
     background-image: none;
+  }
+  #app-root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
 }
 
@@ -839,25 +858,45 @@ code.hljs {
 }
 
 /* ── macOS drag region for overlay title bar ── */
-.macos-drag-region {
-  position: fixed;
-  top: 0;
-  left: 80px;
-  right: 0;
-  height: 36px;
-  z-index: 1;
-  pointer-events: auto;
+.window-drag-area {
   -webkit-app-region: drag;
-  app-region: drag;
+  pointer-events: auto;
 }
 
-/* Ensure interactive elements inside drag region are NOT draggable */
-.macos-drag-region button,
-.macos-drag-region input,
-.macos-drag-region select,
-.macos-drag-region textarea,
-.macos-drag-region a,
-[role="button"] {
+/* Ensure interactive elements are NOT draggable */
+.no-drag,
+.no-drag button,
+.no-drag input,
+.no-drag select,
+.no-drag textarea,
+.no-drag a,
+.no-drag [role="button"],
+.no-drag [data-no-drag],
+button,
+a,
+input,
+select,
+textarea,
+[role="button"],
+[data-no-drag],
+[contenteditable="true"] {
   -webkit-app-region: no-drag;
   app-region: no-drag;
+}
+
+/* Scrollable regions - only these should scroll */
+.scrollable,
+[data-scrollable="true"] {
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Code blocks can scroll horizontally */
+pre,
+.code-block {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior: contain;
 }
