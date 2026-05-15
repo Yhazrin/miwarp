@@ -2136,5 +2136,15 @@
   "sidebar_pin": "Pin",
   "sidebar_unpin": "Unpin",
   "sidebar_pinSession": "Pin session",
-  "sidebar_unpinSession": "Unpin session"
+  "sidebar_unpinSession": "Unpin session",
+
+  "skillMarketplace_title": "Marketplace",
+  "skillMarketplace_description": "Discover and install community skills",
+  "skillMarketplace_search": "Search skills...",
+  "skillMarketplace_all": "All",
+  "skillMarketplace_retry": "Retry",
+  "skillMarketplace_noResults": "No skills match your search",
+  "skillMarketplace_noSkills": "No skills available",
+  "skillMarketplace_preview": "Preview",
+  "skillMarketplace_install": "Install"
 }

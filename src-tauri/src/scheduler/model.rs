@@ -35,7 +35,7 @@ pub struct WorkspaceInfo {
     pub remote_host_name: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ScheduleConfig {
     #[serde(rename = "type", default)]

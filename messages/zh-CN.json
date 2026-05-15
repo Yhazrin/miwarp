@@ -2136,5 +2136,15 @@
   "sidebar_pin": "置顶",
   "sidebar_unpin": "取消置顶",
   "sidebar_pinSession": "置顶会话",
-  "sidebar_unpinSession": "取消置顶会话"
+  "sidebar_unpinSession": "取消置顶会话",
+
+  "skillMarketplace_title": "技能市场",
+  "skillMarketplace_description": "发现并安装社区技能",
+  "skillMarketplace_search": "搜索技能...",
+  "skillMarketplace_all": "全部",
+  "skillMarketplace_retry": "重试",
+  "skillMarketplace_noResults": "没有匹配的技能",
+  "skillMarketplace_noSkills": "暂无可用技能",
+  "skillMarketplace_preview": "预览",
+  "skillMarketplace_install": "安装"
 }

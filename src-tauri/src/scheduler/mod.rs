@@ -6,7 +6,7 @@ pub mod store;
 use chrono::Utc;
 use model::*;
 use std::sync::Arc;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 use tokio_util::sync::CancellationToken;
 
 /// Start the background scheduler loop.
