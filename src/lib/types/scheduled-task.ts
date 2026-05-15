@@ -1,6 +1,7 @@
 /**
  * Scheduled Task types — mirrors src-tauri/src/scheduler/model.rs
  */
+import { t } from "$lib/i18n/index.svelte";
 
 export type Agent = "claude" | "codex";
 export type ScheduleType = "cron" | "one-time" | "interval";
@@ -122,31 +123,27 @@ export const DEFAULT_TASK_TEMPLATES: {
   schedule: ScheduleConfig;
 }[] = [
   {
-    name: "Daily Project Check",
-    description: "Review git status, recent commits, and outstanding issues",
-    prompt:
-      "Review the current project state: check git status, recent commits from the past 24 hours, any failing tests, and outstanding TODO comments. Provide a brief summary of what changed and what needs attention.",
+    name: t("schedTpl_dailyCheck_name"),
+    description: t("schedTpl_dailyCheck_desc"),
+    prompt: t("schedTpl_dailyCheck_prompt"),
     schedule: { type: "cron", cronExpression: "0 9 * * *" },
   },
   {
-    name: "Weekly Code Review",
-    description: "Analyze code quality and suggest improvements",
-    prompt:
-      "Perform a code quality review: analyze recent changes for potential bugs, security issues, and style inconsistencies. Check for proper error handling, unused imports, and suggest refactoring opportunities.",
+    name: t("schedTpl_weeklyReview_name"),
+    description: t("schedTpl_weeklyReview_desc"),
+    prompt: t("schedTpl_weeklyReview_prompt"),
     schedule: { type: "cron", cronExpression: "0 10 * * 1" },
   },
   {
-    name: "Dependency Check",
-    description: "Check for outdated or vulnerable dependencies",
-    prompt:
-      "Check project dependencies for outdated packages and known security vulnerabilities. Run npm audit or equivalent, check for major version updates, and report any critical issues that need immediate attention.",
+    name: t("schedTpl_depCheck_name"),
+    description: t("schedTpl_depCheck_desc"),
+    prompt: t("schedTpl_depCheck_prompt"),
     schedule: { type: "cron", cronExpression: "0 8 1 * *" },
   },
   {
-    name: "Memory Refresh",
-    description: "Update project memory files with recent changes",
-    prompt:
-      "Review recent project changes and update the CLAUDE.md memory files if needed. Ensure project conventions, architecture decisions, and recent patterns are documented for future reference.",
+    name: t("schedTpl_memoryRefresh_name"),
+    description: t("schedTpl_memoryRefresh_desc"),
+    prompt: t("schedTpl_memoryRefresh_prompt"),
     schedule: { type: "cron", cronExpression: "0 18 * * 5" },
   },
 ];

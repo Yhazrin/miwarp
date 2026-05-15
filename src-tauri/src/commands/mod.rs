@@ -23,6 +23,7 @@ pub mod screenshot;
 pub mod session;
 pub mod settings;
 pub mod stats;
+pub mod team_runs;
 pub mod teams;
 pub mod updates;
 pub mod web_server;

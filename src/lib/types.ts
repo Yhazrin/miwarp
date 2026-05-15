@@ -629,6 +629,64 @@ export interface TeamSummary {
   created_at: number;
 }
 
+// ── Team Run types ──
+// MiWarp's own team orchestration (stored in ~/.miwarp/team-runs/)
+
+export type TeamRunStatus =
+  | "created"
+  | "planning"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export type TeamMemberRunStatus = "pending" | "running" | "completed" | "failed";
+
+export interface TeamPresetMember {
+  id: string;
+  name: string;
+  role: string;
+  systemPrompt: string;
+  defaultModel?: string;
+}
+
+export interface TeamPreset {
+  id: string;
+  name: string;
+  description: string;
+  members: TeamPresetMember[];
+}
+
+export interface TeamMemberRun {
+  id: string;
+  memberId: string;
+  memberName: string;
+  role: string;
+  task: string;
+  status: TeamMemberRunStatus;
+  runId?: string;
+  summary?: string;
+  error?: string;
+}
+
+export interface TeamRun {
+  id: string;
+  teamName: string;
+  presetId: string;
+  cwd: string;
+  sourceRunId?: string;
+  prompt: string;
+  mode: string;
+  status: TeamRunStatus;
+  memberRuns: TeamMemberRun[];
+  summary?: string;
+  error?: string;
+  leadRunId?: string;
+  leadPlan?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ── Plugin types ──
 
 export interface PluginAuthor {

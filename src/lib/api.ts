@@ -750,6 +750,105 @@ export async function deleteTeam(name: string): Promise<void> {
   return invoke<void>("delete_team", { name });
 }
 
+// ── Team Runs (MiWarp orchestration) ──
+
+export async function listTeamPresets(): Promise<import("./types").TeamPreset[]> {
+  dbg("api", "listTeamPresets");
+  return invoke<import("./types").TeamPreset[]>("list_team_presets");
+}
+
+export async function createTeamRun(
+  presetId: string,
+  prompt: string,
+  cwd: string,
+  sourceRunId?: string,
+  mode?: string,
+): Promise<import("./types").TeamRun> {
+  dbg("api", "createTeamRun", { presetId, prompt: prompt.slice(0, 60), cwd, mode });
+  return invoke<import("./types").TeamRun>("create_team_run", {
+    presetId,
+    prompt,
+    cwd,
+    sourceRunId: sourceRunId ?? null,
+    mode: mode ?? null,
+  });
+}
+
+export async function listTeamRuns(): Promise<import("./types").TeamRun[]> {
+  dbg("api", "listTeamRuns");
+  return invoke<import("./types").TeamRun[]>("list_team_runs");
+}
+
+export async function getTeamRun(id: string): Promise<import("./types").TeamRun> {
+  dbg("api", "getTeamRun", id);
+  return invoke<import("./types").TeamRun>("get_team_run", { id });
+}
+
+export async function cancelTeamRun(id: string): Promise<import("./types").TeamRun> {
+  dbg("api", "cancelTeamRun", id);
+  return invoke<import("./types").TeamRun>("cancel_team_run", { id });
+}
+
+export async function updateTeamRunStatus(
+  id: string,
+  status: string,
+  summary?: string,
+  error?: string,
+): Promise<import("./types").TeamRun> {
+  dbg("api", "updateTeamRunStatus", { id, status });
+  return invoke<import("./types").TeamRun>("update_team_run_status", {
+    id,
+    status,
+    summary: summary ?? null,
+    error: error ?? null,
+  });
+}
+
+export async function updateTeamMemberRun(
+  teamRunId: string,
+  memberId: string,
+  status: string,
+  runId?: string,
+  summary?: string,
+  error?: string,
+): Promise<import("./types").TeamRun> {
+  dbg("api", "updateTeamMemberRun", { teamRunId, memberId, status });
+  return invoke<import("./types").TeamRun>("update_team_member_run", {
+    teamRunId,
+    memberId,
+    status,
+    runId: runId ?? null,
+    summary: summary ?? null,
+    error: error ?? null,
+  });
+}
+
+export async function setTeamRunLead(
+  id: string,
+  leadRunId: string,
+  leadPlan?: string,
+): Promise<import("./types").TeamRun> {
+  dbg("api", "setTeamRunLead", { id, leadRunId });
+  return invoke<import("./types").TeamRun>("set_team_run_lead", {
+    id,
+    leadRunId,
+    leadPlan: leadPlan ?? null,
+  });
+}
+
+export async function setTeamMemberTask(
+  teamRunId: string,
+  memberId: string,
+  task: string,
+): Promise<import("./types").TeamRun> {
+  dbg("api", "setTeamMemberTask", { teamRunId, memberId });
+  return invoke<import("./types").TeamRun>("set_team_member_task", {
+    teamRunId,
+    memberId,
+    task,
+  });
+}
+
 // ── Clipboard ──
 
 export interface ClipboardFileInfo {

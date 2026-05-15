@@ -90,12 +90,22 @@
   import { executeAddDir } from "$lib/utils/add-dir";
   import { buildDoctorReport } from "$lib/utils/doctor";
   import type { RewindCandidate, RewindMarker } from "$lib/utils/rewind";
-  import { truncate, cwdDisplayLabel, formatTokenCount } from "$lib/utils/format";
+  import { truncate, formatTokenCount, relativeTime } from "$lib/utils/format";
   import { mapSettled } from "$lib/utils/async-utils";
   import { uuid } from "$lib/utils/uuid";
   import type { WorkflowStep } from "$lib/types/workflow";
   import RewindModal from "$lib/components/RewindModal.svelte";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
+  import TeamDispatchConfirm from "$lib/components/TeamDispatchConfirm.svelte";
+  import TeamRunCard from "$lib/components/TeamRunCard.svelte";
+  import {
+    detectTeamTag,
+    stripTeamTag,
+    dispatchTeamRun,
+    executeTeamRun,
+    getPresets,
+  } from "$lib/services/team-dispatcher";
+  import type { TeamRun, TeamPreset } from "$lib/types";
 
   // ── Helpers ──
 
@@ -233,6 +243,66 @@
   $effect(() => {
     if (!rewindModalOpen) rewindDirectTarget = null;
   });
+
+  // ── Team dispatch ──
+  let teamDispatchOpen = $state(false);
+  let teamDispatchPrompt = $state("");
+  let activeTeamRuns = $state<TeamRun[]>([]);
+  let teamPresets = $state<TeamPreset[]>([]);
+
+  // Load presets on mount
+  onMount(() => {
+    getPresets()
+      .then((p) => (teamPresets = p))
+      .catch(() => {});
+  });
+
+  async function handleTeamDispatch(presetId: string) {
+    const rawPrompt = teamDispatchPrompt;
+    teamDispatchOpen = false;
+    const stripped = stripTeamTag(rawPrompt);
+    if (!stripped) return;
+
+    const preset = teamPresets.find((p) => p.id === presetId);
+    if (!preset) return;
+
+    const cwd = store.effectiveCwd || "";
+
+    // Create TeamRun record
+    const teamRun = await dispatchTeamRun({
+      prompt: stripped,
+      presetId,
+      cwd,
+    });
+
+    // Add to active list so TeamRunCard renders in chat
+    activeTeamRuns = [...activeTeamRuns, teamRun];
+
+    // Execute in background — uses existing startRun infrastructure
+    executeTeamRun(
+      teamRun,
+      preset,
+      (prompt: string, runCwd: string, agent: string) => api.startRun(prompt, runCwd, agent),
+      (updated: TeamRun) => {
+        activeTeamRuns = activeTeamRuns.map((r) => (r.id === updated.id ? updated : r));
+      },
+    ).catch((err) => {
+      console.error("Team run failed:", err);
+    });
+  }
+
+  function handleUseSingleClaude() {
+    const stripped = stripTeamTag(teamDispatchPrompt);
+    teamDispatchOpen = false;
+    if (stripped) {
+      sendMessage(stripped, []);
+    }
+  }
+
+  function handleCancelTeamDispatch() {
+    teamDispatchOpen = false;
+    teamDispatchPrompt = "";
+  }
 
   // Auto-name one-shot latch: reset only on actual run ID change
   let prevAutoNameRunId = "";
@@ -1875,6 +1945,16 @@
     // Detect slash command (same check as store timeout skip)
     const isSlash = store.isKnownSlashCommand(text);
     const slashCmd = isSlash ? (text.match(/^\/\S+/)?.[0] ?? null) : null;
+
+    // ── @team detection: intercept before creating a run ──
+    if (!store.run && !slashCmd) {
+      const teamPrompt = detectTeamTag(text);
+      if (teamPrompt) {
+        teamDispatchPrompt = text;
+        teamDispatchOpen = true;
+        return;
+      }
+    }
 
     try {
       if (!store.run) {
@@ -3813,64 +3893,119 @@
           {#if welcomeVisible}
             <!-- Welcome state -->
             <div class="flex h-full items-center justify-center">
-              <div class="flex flex-col items-center max-w-sm">
-                <div class="text-center animate-slide-up">
-                  <img
-                    src="/logo-dark.png?v=2"
-                    alt="OC"
-                    class="logo-dark mx-auto mb-4 h-12 w-12 rounded-2xl"
-                  /><img
-                    src="/logo-light.png?v=2"
-                    alt="OC"
-                    class="logo-light mx-auto mb-4 h-12 w-12 rounded-2xl"
-                  />
-                  <h2 class="text-lg font-semibold text-primary mb-1">{t("layout_appName")}</h2>
-                  {#if !store.run}
-                    {@const welcomeCwd =
-                      store.effectiveCwd ||
-                      folderCwdOverride ||
-                      localStorage.getItem("ocv:project-cwd") ||
-                      ""}
-                    {#if welcomeCwd}
-                      <p
-                        class="mb-3 text-xs text-muted-foreground/60 truncate max-w-[280px]"
-                        title={welcomeCwd}
-                      >
-                        {cwdDisplayLabel(welcomeCwd)}
-                      </p>
-                    {:else}
-                      <div class="mb-3"></div>
-                    {/if}
-                  {:else}
-                    <div class="mb-3"></div>
-                  {/if}
+              <div class="flex flex-col items-center max-w-lg w-full px-4 animate-slide-up">
+                <!-- Logo + title -->
+                <img src="/light.png" alt="MiWarp" class="mx-auto mb-3 h-8 w-8 rounded-lg" />
+                <h2 class="text-base font-medium text-foreground mb-1">{t("chat_welcomeTitle")}</h2>
+                <p class="text-xs text-muted-foreground mb-5">{t("chat_welcomeSubtitle")}</p>
+
+                <!-- Quick actions -->
+                <div class="w-full max-w-sm space-y-2">
                   {#if lastContinuableRun}
                     <button
-                      class="w-full flex items-center justify-center gap-2 rounded-lg border border-border bg-muted/50 px-4 py-3 text-sm text-foreground hover:bg-accent hover:border-ring/30 transition-all duration-150"
+                      class="w-full flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 px-3.5 py-2.5 text-sm text-foreground hover:bg-muted/50 hover:border-border transition-all duration-150 text-left"
                       onclick={() => goto(`/chat?run=${lastContinuableRun!.id}&resume=continue`)}
                     >
                       <svg
-                        class="h-4 w-4 text-muted-foreground"
+                        class="h-4 w-4 shrink-0 text-primary/70"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
                         stroke-width="2"
                         stroke-linecap="round"
-                        stroke-linejoin="round"><path d="m5 12 7-7 7 7" /><path d="M12 19V5" /></svg
+                        stroke-linejoin="round"
+                        ><polyline points="9 17 4 12 9 7" /><path
+                          d="M20 18v-2a4 4 0 0 0-4-4H4"
+                        /></svg
                       >
-                      {t("chat_continueLastSession")}
+                      <span class="truncate">{t("chat_continueLastSession")}</span>
+                      <span class="ml-auto text-[11px] text-muted-foreground/60 shrink-0"
+                        >{relativeTime(
+                          lastContinuableRun.last_activity_at || lastContinuableRun.started_at,
+                        )}</span
+                      >
                     </button>
-                    <p class="mt-2 text-xs text-muted-foreground">
-                      {t("chat_orTypeToStart")}
-                    </p>
-                  {:else}
-                    <p class="text-sm text-muted-foreground">{t("chat_typeToStart")}</p>
                   {/if}
-                  {@render initHintCard()}
+                  <button
+                    class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
+                    onclick={() => sendMessage(t("chat_quickAnalyze"), [])}
+                  >
+                    <svg
+                      class="h-4 w-4 shrink-0 text-blue-400/70"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      ><path d="M21 12a9 9 0 1 1-6.219-8.56" /><circle cx="12" cy="12" r="1" /></svg
+                    >
+                    <span>{t("chat_quickAnalyze")}</span>
+                  </button>
+                  <button
+                    class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
+                    onclick={() => sendMessage(t("chat_quickFix"), [])}
+                  >
+                    <svg
+                      class="h-4 w-4 shrink-0 text-amber-400/70"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      ><path
+                        d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
+                      /></svg
+                    >
+                    <span>{t("chat_quickFix")}</span>
+                  </button>
+                  <button
+                    class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
+                    onclick={() => sendMessage(t("chat_quickDaily"), [])}
+                  >
+                    <svg
+                      class="h-4 w-4 shrink-0 text-green-400/70"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      ><path
+                        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                      /><polyline points="14 2 14 8 20 8" /><line
+                        x1="16"
+                        y1="13"
+                        x2="8"
+                        y2="13"
+                      /><line x1="16" y1="17" x2="8" y2="17" /></svg
+                    >
+                    <span>{t("chat_quickDaily")}</span>
+                  </button>
+                  <button
+                    class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
+                    onclick={() => goto("/scheduled-tasks")}
+                  >
+                    <svg
+                      class="h-4 w-4 shrink-0 text-violet-400/70"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      ><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg
+                    >
+                    <span>{t("chat_quickSchedule")}</span>
+                  </button>
                 </div>
-                <!-- Footer outside animate-slide-up: AuthSourceBadge needs transform-free ancestor for fixed dropdown -->
+
+                {@render initHintCard()}
+
+                <!-- Footer meta -->
                 <div
-                  class="mt-4 flex items-center justify-center gap-1.5 text-xs text-muted-foreground"
+                  class="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/50"
                 >
                   <AuthSourceBadge
                     {authOverview}
@@ -3886,7 +4021,7 @@
                     {localProxyStatuses}
                     variant="hero"
                   />
-                  <span class="text-muted-foreground">·</span>
+                  <span class="text-muted-foreground/30">·</span>
                   {@render heroMetaItems()}
                 </div>
               </div>
@@ -4226,6 +4361,15 @@
                 </div>
               {/if}
 
+              <!-- Active team runs -->
+              {#each activeTeamRuns as teamRun (teamRun.id)}
+                <div class="w-full py-2">
+                  <div class="chat-content-width pl-7">
+                    <TeamRunCard {teamRun} />
+                  </div>
+                </div>
+              {/each}
+
               <!-- Pending hook callbacks (runtime UI — excluded from export) -->
               {#each store.hookEvents.filter((h) => h.status === "hook_pending") as hookEvent (hookEvent.request_id)}
                 <div class="chat-content-width pl-7" data-export-exclude>
@@ -4448,15 +4592,7 @@
         <!-- CLI mode: welcome state -->
         <div class="flex h-full items-center justify-center">
           <div class="text-center max-w-md animate-slide-up">
-            <img
-              src="/logo-dark.png?v=2"
-              alt="OC"
-              class="logo-dark mx-auto mb-4 h-12 w-12 rounded-2xl"
-            /><img
-              src="/logo-light.png?v=2"
-              alt="OC"
-              class="logo-light mx-auto mb-4 h-12 w-12 rounded-2xl"
-            />
+            <img src="/light.png" alt="MiWarp" class="mx-auto mb-4 h-10 w-10 rounded-xl" />
             <h2 class="text-lg font-semibold text-primary mb-2">{t("layout_appName")}</h2>
             <p class="text-sm text-muted-foreground mb-4">
               {store.run ? t("chat_typeToStartSession") : t("chat_startSessionHint")}
@@ -4868,6 +5004,15 @@
       folderPickerResolve = null;
       fn?.(null);
     }}
+  />
+
+  <TeamDispatchConfirm
+    bind:open={teamDispatchOpen}
+    prompt={teamDispatchPrompt}
+    cwd={store.effectiveCwd || ""}
+    onDispatch={handleTeamDispatch}
+    onUseSingleClaude={handleUseSingleClaude}
+    onCancel={handleCancelTeamDispatch}
   />
 
   <!-- Chat toast (fixed bottom-center, auto-dismiss) -->

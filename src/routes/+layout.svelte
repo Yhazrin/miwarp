@@ -416,17 +416,26 @@
     }
   });
 
-  // Navigation items (declared before pageName derivation)
+  // Navigation items grouped by function (declared before pageName derivation)
   const navItems = [
-    { path: "/chat", label: () => t("nav_chat"), icon: "message" },
-    { path: "/explorer", label: () => t("nav_explorer"), icon: "folder" },
-    { path: "/plugins", label: () => t("nav_extend"), icon: "zap" },
-    { path: "/memory", label: () => t("nav_memory"), icon: "book" },
-    { path: "/workflow", label: () => "Workflows", icon: "workflow" },
-    { path: "/scheduled-tasks", label: () => t("nav_scheduledTasks"), icon: "schedule" },
-    { path: "/usage", label: () => t("nav_usage"), icon: "chart" },
-    { path: "/history", label: () => t("nav_history"), icon: "clock" },
-    { path: "/settings", label: () => t("nav_settings"), icon: "settings" },
+    // Core
+    { path: "/chat", label: () => t("nav_chat"), icon: "message", group: "core" },
+    { path: "/workflow", label: () => t("nav_workflows"), icon: "workflow", group: "core" },
+    {
+      path: "/scheduled-tasks",
+      label: () => t("nav_scheduledTasks"),
+      icon: "schedule",
+      group: "core",
+    },
+    // Workspace
+    { path: "/explorer", label: () => t("nav_explorer"), icon: "folder", group: "workspace" },
+    { path: "/memory", label: () => t("nav_memory"), icon: "book", group: "workspace" },
+    { path: "/history", label: () => t("nav_history"), icon: "clock", group: "workspace" },
+    // Extensions
+    { path: "/plugins", label: () => t("nav_extend"), icon: "zap", group: "extensions" },
+    // System
+    { path: "/usage", label: () => t("nav_usage"), icon: "chart", group: "system" },
+    { path: "/settings", label: () => t("nav_settings"), icon: "settings", group: "system" },
   ];
 
   // Load initial data
@@ -1243,12 +1252,15 @@
     <div class="flex w-[44px] flex-col items-center bg-[hsl(var(--miwarp-bg-deepest)/0.88)]">
       <!-- Rail logo (OC) -->
       <div class="flex h-14 w-full items-center justify-center pt-[42px]">
-        <img src="/light.png" alt="OC" class="h-8 w-8 rounded-lg" />
+        <img src="/light.png" alt="MiWarp" class="h-8 w-8 rounded-lg" />
       </div>
 
       <!-- Rail nav icons -->
       <nav class="flex flex-1 flex-col items-center gap-1 py-2">
-        {#each navItems as item}
+        {#each navItems as item, idx}
+          {#if idx > 0 && item.group !== navItems[idx - 1].group}
+            <div class="my-1 h-px w-5 bg-border/40"></div>
+          {/if}
           {@const isActive = currentPath.startsWith(item.path)}
           <a
             href={item.path}
@@ -2230,7 +2242,7 @@
     <div
       class="macos-drag-region"
       data-tauri-drag-region
-      onmousedown={(e) => {
+      onmousedown={() => {
         import("@tauri-apps/api/webviewWindow").then(({ getCurrentWebviewWindow }) => {
           getCurrentWebviewWindow().startDragging();
         });

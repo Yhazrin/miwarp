@@ -23,6 +23,7 @@ const BUILTIN_THEMES: ThemeDefinition[] = [
   { id: "dracula", name: t("theme_dracula"), type: "dark", accent: "#BD93F9" },
   { id: "nord", name: t("theme_nord"), type: "dark", accent: "#5E81AC" },
   { id: "morandi", name: t("theme_morandi"), type: "dark", accent: "#A67FA3" },
+  { id: "morandi-light", name: t("theme_morandiLight"), type: "light", accent: "#A67FA3" },
   { id: "dev-preview", name: t("theme_devPreview"), type: "dark", accent: "#26C2A3" },
   { id: "dev-preview-light", name: t("theme_devPreviewLight"), type: "light", accent: "#26C2A3" },
 ];

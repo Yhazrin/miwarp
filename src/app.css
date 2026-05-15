@@ -816,12 +816,6 @@ code.hljs {
   }
 }
 
-/* Theme-aware logo — show dark icon in dark mode, light icon in light mode */
-html.dark img.logo-dark,
-html:not(.dark) img.logo-light {
-  display: none;
-}
-
 /* Main content shell — flex:1 so it expands/shrinks with sidebar animation */
 .app-main-shell {
   flex: 1 1 auto;
@@ -839,44 +833,7 @@ html:not(.dark) img.logo-light {
   }
 }
 
-/* ── Frameless window traffic lights (macOS) ── */
-.traffic-lights {
-  position: fixed;
-  top: 15px;
-  left: 16px;
-  z-index: 100001;
-  display: flex;
-  gap: 8px;
-  isolation: isolate;
-}
-
-.window-titlebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 54px;
-  z-index: 100000;
-  background: transparent;
-}
-
-.traffic-lights .tl-btn {
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  transition: filter 150ms;
-  pointer-events: auto;
-}
-.traffic-lights .tl-btn:hover {
-  filter: brightness(1.15);
-}
-.traffic-lights .tl-close {
-  background: #ff5f57;
-}
-
-/* ── macOS drag region for title bar ── */
+/* ── macOS drag region for overlay title bar ── */
 .macos-drag-region {
   position: fixed;
   top: 0;
@@ -889,20 +846,13 @@ html:not(.dark) img.logo-light {
   app-region: drag;
 }
 
-/* Ensure interactive elements are NOT draggable */
+/* Ensure interactive elements inside drag region are NOT draggable */
 .macos-drag-region button,
 .macos-drag-region input,
 .macos-drag-region select,
 .macos-drag-region textarea,
 .macos-drag-region a,
-[role="button"],
-.traffic-lights {
+[role="button"] {
   -webkit-app-region: no-drag;
   app-region: no-drag;
-}
-.traffic-lights .tl-minimize {
-  background: #ffbd2e;
-}
-.traffic-lights .tl-maximize {
-  background: #28c840;
 }

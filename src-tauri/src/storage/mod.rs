@@ -12,6 +12,7 @@ pub mod prompt_index;
 pub mod run_index;
 pub mod runs;
 pub mod settings;
+pub mod team_runs;
 pub mod teams;
 
 use std::path::PathBuf;

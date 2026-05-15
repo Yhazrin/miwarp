@@ -6,7 +6,12 @@
 
   const WEBVIEW_LABEL = "chat-preview-pane";
   const PREVIEW_URL_KEY = "ocv:preview-url";
-  const DEFAULT_URL = "http://localhost:3000";
+  const QUICK_PORTS = [
+    { port: 3000, label: "localhost:3000" },
+    { port: 5173, label: "localhost:5173" },
+    { port: 1420, label: "localhost:1420" },
+    { port: 4173, label: "localhost:4173" },
+  ];
 
   let {
     active = false,
@@ -21,10 +26,11 @@
   let shellRoot: HTMLDivElement | undefined = $state();
   let viewportEl: HTMLDivElement | undefined = $state();
   let desktopAvailable = $state(false);
-  let currentUrl = $state(loadStoredUrl());
+  let currentUrl = $state("");
   let urlInput = $state(loadStoredUrl());
   let lastError = $state("");
   let creating = $state(false);
+  let hasLoaded = $state(false);
   let syncing = false;
   let resizeObserver: ResizeObserver | null = null;
   let webviewApi: typeof import("@tauri-apps/api/webview") | null = null;
@@ -33,8 +39,8 @@
   let webview: TauriWebview | null = null;
 
   function loadStoredUrl(): string {
-    if (typeof window === "undefined") return DEFAULT_URL;
-    return window.localStorage.getItem(PREVIEW_URL_KEY) ?? DEFAULT_URL;
+    if (typeof window === "undefined") return "";
+    return window.localStorage.getItem(PREVIEW_URL_KEY) ?? "";
   }
 
   function normalizeUrl(raw: string): string | null {
@@ -74,14 +80,23 @@
   async function waitForCreate(instance: TauriWebview): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       let settled = false;
+      const timeout = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          reject(new Error("Webview creation timed out"));
+        }
+      }, 10000);
+
       void instance.once("tauri://created", () => {
         if (settled) return;
         settled = true;
+        clearTimeout(timeout);
         resolve();
       });
       void instance.once("tauri://error", (event) => {
         if (settled) return;
         settled = true;
+        clearTimeout(timeout);
         reject(event.payload);
       });
     });
@@ -113,6 +128,7 @@
       const rect = viewportEl.getBoundingClientRect();
       const width = Math.max(1, Math.round(rect.width));
       const height = Math.max(1, Math.round(rect.height));
+      if (width < 2 || height < 2) return;
       const x = Math.round(rect.left);
       const y = Math.round(rect.top);
       await Promise.all([
@@ -126,7 +142,7 @@
     }
   }
 
-  async function ensureWebview(url = currentUrl) {
+  async function ensureWebview(url: string) {
     if (!desktopAvailable || !viewportEl) return;
     const normalized = normalizeUrl(url);
     if (!normalized) {
@@ -164,6 +180,7 @@
         webview = instance;
       }
       persistUrl(normalized);
+      hasLoaded = true;
       await syncBounds();
       await webview.show();
       await webview.setFocus().catch(() => {});
@@ -195,6 +212,11 @@
     await ensureWebview(normalized);
   }
 
+  function handleQuickPort(port: number) {
+    urlInput = `http://localhost:${port}`;
+    void handleGo();
+  }
+
   async function handleResetSession() {
     if (!desktopAvailable) return;
     try {
@@ -203,7 +225,9 @@
         await existing.clearAllBrowsingData();
       }
       await closeWebview();
-      await ensureWebview(currentUrl);
+      if (currentUrl) {
+        await ensureWebview(currentUrl);
+      }
       lastError = "";
     } catch (error) {
       lastError = t("preview_resetFailed");
@@ -221,11 +245,13 @@
     }
   });
 
+  // Only show/hide an already-created webview; do NOT auto-create on activation
   $effect(() => {
     if (!desktopAvailable) return;
-    if (active) {
-      void ensureWebview(currentUrl);
-    } else {
+    if (active && webview) {
+      void syncBounds();
+      void webview.show();
+    } else if (!active && webview) {
       void hideWebview();
     }
   });
@@ -285,13 +311,15 @@
       >
         {creating ? t("preview_loading") : t("preview_go")}
       </button>
-      <button
-        class="rounded-xl border border-border/50 bg-background/30 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent/20 hover:text-foreground"
-        onclick={() => void handleResetSession()}
-        title={t("preview_resetSession")}
-      >
-        {t("preview_resetShort")}
-      </button>
+      {#if hasLoaded}
+        <button
+          class="rounded-xl border border-border/50 bg-background/30 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent/20 hover:text-foreground"
+          onclick={() => void handleResetSession()}
+          title={t("preview_resetSession")}
+        >
+          {t("preview_resetShort")}
+        </button>
+      {/if}
     </div>
     {#if lastError}
       <p class="mt-2 text-[11px] text-destructive">{lastError}</p>
@@ -303,6 +331,39 @@
       class="flex flex-1 items-center justify-center rounded-2xl border border-border/30 bg-background/30 px-6 text-center text-sm text-muted-foreground backdrop-blur-xl"
     >
       {t("preview_desktopOnly")}
+    </div>
+  {:else if !hasLoaded}
+    <!-- Empty state: no preview loaded yet -->
+    <div
+      class="flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl border border-border/30 bg-background/20 px-6 backdrop-blur-xl"
+    >
+      <div class="text-center">
+        <svg
+          class="mx-auto mb-3 h-10 w-10 text-muted-foreground/30"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <rect x="2" y="3" width="20" height="14" rx="2" />
+          <line x1="8" y1="21" x2="16" y2="21" />
+          <line x1="12" y1="17" x2="12" y2="21" />
+        </svg>
+        <p class="text-sm text-muted-foreground">{t("preview_emptyTitle")}</p>
+        <p class="mt-1 text-xs text-muted-foreground/70">{t("preview_emptyHint")}</p>
+      </div>
+      <div class="flex flex-wrap items-center justify-center gap-2">
+        {#each QUICK_PORTS as qp}
+          <button
+            class="rounded-lg border border-border/50 bg-background/40 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent/20 hover:text-foreground"
+            onclick={() => handleQuickPort(qp.port)}
+          >
+            {qp.label}
+          </button>
+        {/each}
+      </div>
     </div>
   {:else}
     <div

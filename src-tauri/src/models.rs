@@ -1818,3 +1818,106 @@ pub struct RunSearchResponse {
     pub facets: RunSearchFacets,
     pub total_matching: usize,
 }
+
+// ── Team Run types ──
+// MiWarp's own team orchestration system (stored in ~/.miwarp/team-runs/)
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum TeamRunStatus {
+    Created,
+    Planning,
+    Running,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
+impl std::fmt::Display for TeamRunStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TeamRunStatus::Created => write!(f, "created"),
+            TeamRunStatus::Planning => write!(f, "planning"),
+            TeamRunStatus::Running => write!(f, "running"),
+            TeamRunStatus::Completed => write!(f, "completed"),
+            TeamRunStatus::Failed => write!(f, "failed"),
+            TeamRunStatus::Cancelled => write!(f, "cancelled"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum TeamMemberStatus {
+    Pending,
+    Running,
+    Completed,
+    Failed,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamPresetMember {
+    pub id: String,
+    pub name: String,
+    pub role: String,
+    pub system_prompt: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_model: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamPreset {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub members: Vec<TeamPresetMember>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamMemberRun {
+    pub id: String,
+    pub member_id: String,
+    pub member_name: String,
+    pub role: String,
+    pub task: String,
+    pub status: TeamMemberStatus,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamRun {
+    pub id: String,
+    pub team_name: String,
+    pub preset_id: String,
+    pub cwd: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_run_id: Option<String>,
+    pub prompt: String,
+    #[serde(default = "default_team_mode")]
+    pub mode: String,
+    pub status: TeamRunStatus,
+    pub member_runs: Vec<TeamMemberRun>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summary: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lead_run_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lead_plan: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+fn default_team_mode() -> String {
+    "plan_first".to_string()
+}

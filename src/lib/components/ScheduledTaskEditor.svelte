@@ -93,6 +93,20 @@
     errors = {};
   });
 
+  // Detect context-dependent phrases in prompt
+  const CONTEXT_PATTERNS = [
+    /\b(上面|刚才|当前对话|如前所述|之前提到)\b/i,
+    /\b(the above|current conversation|as mentioned|earlier|previous (?:chat|message|context))\b/i,
+    /\b(this (?:code|file|project|component))(?!\s+(?:has|is|needs|uses|in))/i,
+  ];
+  const promptContextWarning = $derived(() => {
+    if (!prompt.trim()) return null;
+    for (const pattern of CONTEXT_PATTERNS) {
+      if (pattern.test(prompt)) return t("schedEditor_contextWarning");
+    }
+    return null;
+  });
+
   function validate(): boolean {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = t("schedEditor_errorName");
@@ -360,6 +374,24 @@
           ></textarea>
           {#if errors.prompt}
             <p class="text-xs text-destructive">{errors.prompt}</p>
+          {:else if promptContextWarning()}
+            <p class="text-xs text-amber-500 flex items-center gap-1">
+              <svg
+                class="h-3 w-3 shrink-0"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><path d="M12 9v4" /><path d="M12 17h.01" /><path
+                  d="M3.6 15.4 10.2 4a2 2 0 0 1 3.6 0l6.6 11.4a2 2 0 0 1-1.8 3H5.4a2 2 0 0 1-1.8-3Z"
+                /></svg
+              >
+              {promptContextWarning()}
+            </p>
+          {:else}
+            <p class="text-xs text-muted-foreground/60">{t("schedEditor_promptHint")}</p>
           {/if}
         </div>
 
