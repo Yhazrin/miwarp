@@ -66,6 +66,13 @@
     : "general";
   let activeTab = $state<SettingsTab>(initialTab);
 
+  function setActiveTab(tabId: SettingsTab) {
+    activeTab = tabId;
+    const url = new URL($page.url);
+    url.searchParams.set("tab", tabId);
+    history.replaceState(null, "", url.toString());
+  }
+
   const tabLabels: Record<SettingsTab, () => string> = {
     general: () => t("settings_tab_general"),
     connection: () => t("settings_tab_connection"),
@@ -1368,1255 +1375,213 @@
 </script>
 
 {#key currentLocale()}
-  <div class="max-w-4xl mx-auto p-6 animate-slide-up">
-    <h1 class="text-2xl font-bold mb-5">{t("settings_title")}</h1>
-
-    <!-- Tab bar -->
-    <div class="flex gap-1 border-b border-border mb-6">
-      {#each tabs as tab (tab.id)}
-        <button
-          class="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors relative
-          {activeTab === tab.id
-            ? 'text-foreground'
-            : 'text-muted-foreground hover:text-foreground/80'}"
-          onclick={() => (activeTab = tab.id)}
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d={tab.icon} />
-          </svg>
-          {tabLabels[tab.id]()}
-          {#if activeTab === tab.id}
-            <span class="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-full"></span>
-          {/if}
-        </button>
-      {/each}
-    </div>
-
-    <!-- ═══ General tab ═══ -->
-    {#if activeTab === "general"}
-      <div class="space-y-6">
-        <!-- Language Card -->
-        <Card class="p-6 space-y-4">
-          <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            {t("settings_general_language")}
-          </h2>
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium">{t("settings_general_displayLanguage")}</p>
-              <p class="text-xs text-muted-foreground">
-                {t("settings_general_displayLanguageDesc")}
-              </p>
-            </div>
-            <div class="flex gap-1.5">
-              {#each LOCALE_REGISTRY as entry (entry.code)}
-                <button
-                  class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
-                  {currentLocale() === entry.code
-                    ? 'bg-primary text-primary-foreground'
-                    : (entry.status as string) === 'beta'
-                      ? 'border-muted-foreground/30 text-muted-foreground hover:bg-accent'
-                      : 'hover:bg-accent'}"
-                  onclick={() => switchLocale(entry.code)}
-                >
-                  {entry.nativeName}{#if (entry.status as string) === "beta"}<span
-                      class="ml-1 text-[10px] opacity-60">(Beta)</span
-                    >{/if}
-                </button>
-              {/each}
-            </div>
-          </div>
-        </Card>
-
-        <!-- Display Card -->
-        <Card class="p-6 space-y-4">
-          <div class="flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              {t("settings_general_display")}
-            </h2>
-            {#if displaySaved}
-              <span class="text-xs text-emerald-500 flex items-center gap-1 animate-fade-in">
-                <svg
-                  class="h-3 w-3"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-                >
-                {t("settings_general_saved")}
-              </span>
-            {/if}
-          </div>
-          <div class="flex items-center justify-between gap-4">
-            <div>
-              <p class="text-sm font-medium">{t("settings_general_uiZoom")}</p>
-              <p class="text-xs text-muted-foreground">{t("settings_general_uiZoomDesc")}</p>
-            </div>
-            <div class="flex items-center gap-3">
-              <input
-                type="range"
-                min="0.75"
-                max="1.5"
-                step="0.05"
-                value={zoomPreview}
-                class="w-28 accent-primary"
-                oninput={(e) => previewZoom(parseFloat((e.target as HTMLInputElement).value))}
-                onchange={(e) => commitZoom(parseFloat((e.target as HTMLInputElement).value))}
-              />
-              <span class="text-xs text-muted-foreground w-10 text-right">
-                {Math.round(zoomPreview * 100)}%
-              </span>
-            </div>
-          </div>
-        </Card>
-
-        <!-- Web Server Card (desktop only) -->
-        {#if getTransport().isDesktop()}
-          <Card class="p-6 space-y-4">
-            <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              {t("settings_general_webServer")}
-            </h2>
-
-            <!-- Enabled toggle -->
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-medium">{t("settings_general_webEnabled")}</p>
-                <p class="text-xs text-muted-foreground">{t("settings_general_webEnabledDesc")}</p>
-              </div>
-              <button
-                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {webStatus?.enabled
-                  ? 'bg-primary'
-                  : 'bg-muted'}"
-                disabled={webRestarting}
-                onclick={async () => {
-                  const newEnabled = !webStatus?.enabled;
-                  webRestarting = true;
-                  webRestartError = null;
-                  webRestartWarning = null;
-                  try {
-                    if (newEnabled) {
-                      const portNum = parseInt(webPortInput, 10);
-                      if (isNaN(portNum) || portNum < 1024 || portNum > 65535) {
-                        throw new Error(t("settings_general_webPortInvalid"));
-                      }
-                      const result = await api.restartWebServer({
-                        enabled: true,
-                        port: portNum,
-                        bind: webBindValue,
-                        allowed_origins: webOrigins.length > 0 ? webOrigins : null,
-                        tunnel_url: webTunnelUrl.trim() || null,
-                      });
-                      if (!result.config_saved) {
-                        webRestartWarning = t("settings_general_webSaveWarning");
-                      }
-                    } else {
-                      await api.restartWebServer({
-                        enabled: false,
-                        port: 0,
-                        bind: "",
-                        allowed_origins: null,
-                        tunnel_url: null,
-                      });
-                    }
-                    webStatus = await api.getWebServerStatus();
-                    settings = await api.getUserSettings();
-                    dbg("settings", "webServer toggled", { enabled: newEnabled });
-                    if (webStatus?.running) await refreshLanIp(webStatus.bind);
-                  } catch (e) {
-                    webRestartError = (e as Error)?.message ?? String(e);
-                    webStatus = await api.getWebServerStatus();
-                    dbgWarn("settings", "webServer toggle failed", e);
-                  } finally {
-                    webRestarting = false;
-                  }
-                }}
-              >
-                <span
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {webStatus?.enabled
-                    ? 'translate-x-6'
-                    : 'translate-x-1'}"
-                ></span>
-              </button>
-            </div>
-
-            <!-- Config area (show when enabled OR running) -->
-            {#if webStatus?.enabled || webStatus?.running}
-              <!-- Startup warning banner -->
-              {#if webStatus?.warning}
-                <div class="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
-                  <p class="text-xs text-amber-400 whitespace-pre-line">
-                    {t("settings_general_webStartupWarning", { warning: webStatus.warning })}
-                  </p>
-                </div>
-              {/if}
-
-              <!-- Access link + token (only when running) -->
-              {#if webStatus?.running && webToken}
-                {@const isAllInterfaces =
-                  webStatus.bind === "0.0.0.0" ||
-                  webStatus.bind === "::" ||
-                  webStatus.bind === "[::]"}
-                {@const rawHost = isAllInterfaces ? webLanIp : webStatus.bind}
-                {@const displayHost = rawHost
-                  ? rawHost.includes(":")
-                    ? `[${rawHost}]`
-                    : rawHost
-                  : null}
-                {@const tunnelUrl = buildTunnelAccessUrl()}
-                {@const localUrl = buildLocalAccessUrl()}
-                <div class="space-y-2">
-                  {#if tunnelUrl}
-                    <!-- Tunnel link (primary) -->
-                    <div class="flex items-center gap-2">
-                      <span class="text-xs text-muted-foreground shrink-0"
-                        >{t("settings_general_webTunnelLink")}</span
-                      >
-                      <code
-                        class="flex-1 rounded-md border bg-muted/50 px-3 py-1.5 font-mono text-xs overflow-hidden text-ellipsis whitespace-nowrap"
-                        >{tunnelUrl.replace(/[?#]token=.*$/, "?token=...")}</code
-                      >
-                      <button
-                        class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
-                        onclick={async () => {
-                          await navigator.clipboard.writeText(tunnelUrl);
-                          webTunnelLinkCopied = true;
-                          dbg("settings", "tunnelLink copied");
-                          setTimeout(() => (webTunnelLinkCopied = false), 1500);
-                        }}
-                      >
-                        {webTunnelLinkCopied
-                          ? t("settings_general_webCopied")
-                          : t("settings_general_webCopyLink")}
-                      </button>
-                      <button
-                        class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
-                        onclick={async () => {
-                          try {
-                            const { open } = await import("@tauri-apps/plugin-shell");
-                            await open(tunnelUrl);
-                            dbg("settings", "tunnelLink opened in browser");
-                          } catch (e) {
-                            dbgWarn("settings", "failed to open browser", e);
-                          }
-                        }}
-                      >
-                        {t("settings_general_webOpenBrowser")}
-                      </button>
-                    </div>
-                    <!-- Local link (secondary, muted) -->
-                    {#if displayHost && localUrl}
-                      <div class="flex items-center gap-2">
-                        <span class="text-xs text-muted-foreground shrink-0"
-                          >{t("settings_general_webLocalLink")}</span
-                        >
-                        <code
-                          class="flex-1 rounded-md border bg-muted/30 px-3 py-1.5 font-mono text-xs text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap"
-                          >{localUrl.replace(/#token=.*$/, "#token=...")}</code
-                        >
-                        <button
-                          class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
-                          onclick={async () => {
-                            if (localUrl) {
-                              await navigator.clipboard.writeText(localUrl);
-                              webLinkCopied = true;
-                              dbg("settings", "localLink copied");
-                              setTimeout(() => (webLinkCopied = false), 1500);
-                            }
-                          }}
-                        >
-                          {webLinkCopied
-                            ? t("settings_general_webCopied")
-                            : t("settings_general_webCopyLink")}
-                        </button>
-                      </div>
-                    {/if}
-                  {:else if displayHost}
-                    <div class="flex items-center gap-2">
-                      <code
-                        class="flex-1 rounded-md border bg-muted/50 px-3 py-1.5 font-mono text-xs overflow-hidden text-ellipsis whitespace-nowrap"
-                        >{`http://${displayHost}:${webStatus.port}/login#token=...`}</code
-                      >
-                      <button
-                        class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
-                        onclick={copyAccessLink}
-                      >
-                        {webLinkCopied
-                          ? t("settings_general_webCopied")
-                          : t("settings_general_webCopyLink")}
-                      </button>
-                      <button
-                        class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
-                        onclick={openAccessLink}
-                      >
-                        {t("settings_general_webOpenBrowser")}
-                      </button>
-                    </div>
-                  {:else if isAllInterfaces}
-                    <p class="text-xs text-amber-400">
-                      {t("settings_general_webLanIpFailed")}
-                    </p>
-                  {/if}
-                  <!-- Token reveal + regenerate -->
-                  <div class="flex items-center gap-3 text-xs text-muted-foreground">
-                    {#if showWebToken}
-                      <code class="font-mono text-[11px] select-all">{webToken}</code>
-                      <button
-                        class="hover:text-foreground transition-colors shrink-0"
-                        onclick={() => (showWebToken = false)}
-                      >
-                        {t("settings_general_hide")}
-                      </button>
-                      <button
-                        class="hover:text-foreground transition-colors shrink-0"
-                        onclick={async () => {
-                          if (webToken) {
-                            await navigator.clipboard.writeText(webToken);
-                            webTokenCopied = true;
-                            dbg("settings", "webToken copied");
-                            setTimeout(() => (webTokenCopied = false), 1500);
-                          }
-                        }}
-                      >
-                        {webTokenCopied
-                          ? t("settings_general_webCopied")
-                          : t("settings_general_webCopy")}
-                      </button>
-                    {:else}
-                      <button
-                        class="hover:text-foreground transition-colors"
-                        onclick={() => (showWebToken = true)}
-                      >
-                        {t("settings_general_webShowToken")}
-                      </button>
-                    {/if}
-                    <span class="text-border">|</span>
-                    <button
-                      class="text-amber-400/70 hover:text-amber-400 transition-colors"
-                      onclick={async () => {
-                        try {
-                          const newToken = await api.regenerateWebServerToken();
-                          webToken = newToken;
-                          showWebToken = false;
-                          webTokenCopied = false;
-                          webLinkCopied = false;
-                          dbg("settings", "webToken regenerated");
-                        } catch (e) {
-                          dbgWarn("settings", "webToken regenerate failed", e);
-                        }
-                      }}
-                    >
-                      {t("settings_general_webRegenerate")}
-                    </button>
-                    <span class="text-muted-foreground">—</span>
-                    <span class="text-muted-foreground"
-                      >{t("settings_general_webRegenerateDesc")}</span
-                    >
-                  </div>
-                </div>
-              {/if}
-
-              <!-- HTTP Tunnel -->
-              <div>
-                <p class="text-sm font-medium mb-1.5">{t("settings_general_webTunnel")}</p>
-                <input
-                  type="text"
-                  class="w-full rounded-md border bg-background px-3 py-1.5 text-sm"
-                  placeholder={t("settings_general_webTunnelPlaceholder")}
-                  bind:value={webTunnelUrl}
-                  onblur={() => {
-                    const v = webTunnelUrl.trim();
-                    if (v) {
-                      try {
-                        const u = new URL(v);
-                        if (u.protocol !== "http:" && u.protocol !== "https:") {
-                          webTunnelError = t("settings_general_webTunnelInvalid");
-                        } else {
-                          webTunnelError = null;
-                        }
-                      } catch {
-                        webTunnelError = t("settings_general_webTunnelInvalid");
-                      }
-                    } else {
-                      webTunnelError = null;
-                    }
-                  }}
-                />
-                {#if webTunnelError}
-                  <p class="text-xs text-red-400 mt-1">{webTunnelError}</p>
-                {:else}
-                  <p class="text-xs text-muted-foreground mt-1">
-                    {t("settings_general_webTunnelDesc")}
-                  </p>
-                {/if}
-              </div>
-
-              <!-- Access + Port — side by side -->
-              <div class="grid grid-cols-[1fr_auto] gap-4 items-start">
-                <div>
-                  <p class="text-sm font-medium mb-1.5">{t("settings_general_webAccess")}</p>
-                  <div class="flex gap-2">
-                    <button
-                      class="flex-1 rounded-md border px-3 py-2 text-[13px] transition-colors {webBindValue ===
-                      '127.0.0.1'
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-accent'}"
-                      onclick={() => (webBindValue = "127.0.0.1")}
-                    >
-                      {t("settings_general_webAccessLocal")}
-                    </button>
-                    <button
-                      class="flex-1 rounded-md border px-3 py-2 text-[13px] transition-colors {webBindValue ===
-                      '0.0.0.0'
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-accent'}"
-                      onclick={() => (webBindValue = "0.0.0.0")}
-                    >
-                      {t("settings_general_webAccessLan")}
-                    </button>
-                  </div>
-                  <p class="text-xs text-muted-foreground mt-1">
-                    {t("settings_general_webAccessDesc")}
-                  </p>
-                </div>
-                <div>
-                  <p class="text-sm font-medium mb-1.5">{t("settings_general_webPort")}</p>
-                  <input
-                    type="number"
-                    class="w-24 rounded-md border bg-background px-3 py-1.5 text-sm"
-                    bind:value={webPortInput}
-                    min="1024"
-                    max="65535"
-                    onblur={() => {
-                      const n = parseInt(webPortInput, 10);
-                      if (isNaN(n) || n < 1024 || n > 65535) {
-                        webRestartError = t("settings_general_webPortInvalid");
-                      } else {
-                        if (webRestartError === t("settings_general_webPortInvalid")) {
-                          webRestartError = null;
-                        }
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-
-              <!-- Advanced (collapsible) -->
-              <div>
-                <button
-                  class="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  onclick={() => (webAdvancedOpen = !webAdvancedOpen)}
-                >
-                  <svg
-                    class="h-3 w-3 transition-transform {webAdvancedOpen ? 'rotate-90' : ''}"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"><path d="m9 18 6-6-6-6" /></svg
-                  >
-                  {t("settings_general_webAdvanced")}
-                </button>
-
-                {#if webAdvancedOpen}
-                  <div class="mt-3 space-y-2">
-                    <p class="text-sm font-medium">{t("settings_general_webAllowedOrigins")}</p>
-                    {#if webOrigins.length > 0}
-                      <div class="flex flex-wrap gap-1.5">
-                        {#each webOrigins as origin, i}
-                          <span
-                            class="inline-flex items-center gap-1 rounded-full border bg-muted/50 px-2.5 py-0.5 text-xs"
-                          >
-                            {origin}
-                            <button
-                              class="text-muted-foreground hover:text-foreground"
-                              onclick={() => {
-                                webOrigins = webOrigins.filter((_, idx) => idx !== i);
-                              }}
-                            >
-                              <svg
-                                class="h-3 w-3"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg
-                              >
-                            </button>
-                          </span>
-                        {/each}
-                      </div>
-                    {/if}
-                    <div class="flex gap-2">
-                      <input
-                        type="text"
-                        class="flex-1 rounded-md border bg-background px-3 py-1.5 text-sm"
-                        placeholder={t("settings_general_webAllowedOriginsPlaceholder")}
-                        bind:value={webOriginInput}
-                        onkeydown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            addWebOrigin();
-                          }
-                        }}
-                      />
-                      <button
-                        class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
-                        onclick={addWebOrigin}
-                      >
-                        {t("settings_general_webAddOrigin")}
-                      </button>
-                    </div>
-                    {#if webOriginError}
-                      <p class="text-xs text-red-400">{webOriginError}</p>
-                    {/if}
-                    <p class="text-xs text-muted-foreground">
-                      {t("settings_general_webAllowedOriginsDesc")}
-                    </p>
-                  </div>
-                {/if}
-              </div>
-
-              <!-- Apply + feedback -->
-              <div class="space-y-2 pt-2 border-t border-border">
-                {#if webRestartError}
-                  <p class="text-xs text-red-400">
-                    {t("settings_general_webRestartFailed", { error: webRestartError })}
-                  </p>
-                {/if}
-                {#if webRestartWarning}
-                  <p class="text-xs text-amber-400">{webRestartWarning}</p>
-                {/if}
-                <button
-                  class="rounded-md border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
-                  disabled={webRestarting}
-                  onclick={applyWebServerSettings}
-                >
-                  {#if webRestarting}
-                    <span class="inline-flex items-center gap-2">
-                      <span
-                        class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"
-                      ></span>
-                      {t("settings_general_webApplying")}
-                    </span>
-                  {:else}
-                    {t("settings_general_webApply")}
-                  {/if}
-                </button>
-              </div>
-            {:else}
-              <p class="text-sm text-muted-foreground">
-                {t("settings_general_webDisabled")}
-              </p>
-            {/if}
-          </Card>
-        {/if}
+  <div class="flex h-full animate-slide-up">
+    <!-- ═══ Left Sidebar Navigation ═══ -->
+    <aside
+      class="w-56 shrink-0 border-r border-border/50 overflow-y-auto flex flex-col bg-background/50"
+    >
+      <div class="p-4 pb-2">
+        <h1 class="text-base font-bold">{t("settings_title")}</h1>
       </div>
-
-      <!-- ═══ Connection tab ═══ -->
-    {:else if activeTab === "connection"}
-      <div class="space-y-6">
-        <!-- Authentication -->
-        <Card class="p-6 space-y-5">
-          <div class="flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              {t("settings_general_connection")}
-            </h2>
-            {#if generalSaved}
-              <span class="text-xs text-emerald-500 flex items-center gap-1 animate-fade-in">
-                <svg
-                  class="h-3 w-3"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-                >
-                {t("settings_general_saved")}
-              </span>
-            {/if}
-          </div>
-
-          <!-- Auth Mode selector: 2-way radio -->
-          <div>
-            <span class="text-sm font-medium mb-2 block">{t("settings_auth_modeLabel")}</span>
-            <div class="mt-1 grid grid-cols-2 gap-3">
-              <button
-                class="flex flex-col items-center gap-2 rounded-lg border p-4 text-sm transition-all duration-150
-                {authMode === 'cli'
-                  ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                  : 'hover:bg-accent hover:border-ring/30'}"
-                onclick={() => {
-                  authMode = "cli";
-                  saveGeneralPatch({
-                    auth_mode: "cli",
-                    anthropic_base_url: null,
-                    active_platform_id: null,
-                    auth_env_var: null,
-                  });
-                  api.removeCliApiKey().catch(() => {});
-                  api
-                    .getAuthOverview()
-                    .then((ov) => (authOverview = ov))
-                    .catch(() => {});
-                }}
+      <nav class="flex-1 px-2 pb-4 space-y-0.5">
+        <!-- General -->
+        <p
+          class="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-2 pt-3 pb-1"
+        >
+          {t("settings_nav_general") || "General"}
+        </p>
+        {#each ["general"] as tabId (tabId)}
+          {@const tab = tabs.find((t) => t.id === tabId)}
+          {#if tab}
+            <button
+              class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] transition-colors text-left
+              {activeTab === tab.id
+                ? 'bg-accent text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
+              onclick={() => setActiveTab(tab.id)}
+            >
+              <svg
+                class="h-3.5 w-3.5 shrink-0"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"><path d={tab.icon} /></svg
               >
-                <div
-                  class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10"
-                >
-                  <svg
-                    class="h-5 w-5 text-emerald-400"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path
-                      d="M7 11V7a5 5 0 0 1 10 0v4"
-                    />
-                  </svg>
-                </div>
-                <span class="font-medium">{t("auth_cliAuth")}</span>
-                <span class="text-[10px] text-muted-foreground text-center"
-                  >{t("settings_auth_modeCliDesc")}</span
-                >
-              </button>
-              <button
-                class="flex flex-col items-center gap-2 rounded-lg border p-4 text-sm transition-all duration-150
-                {authMode === 'api'
-                  ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                  : 'hover:bg-accent hover:border-ring/30'}"
-                onclick={() => {
-                  authMode = "api";
-                  saveGeneralPatch({ auth_mode: "api" });
-                  api
-                    .getAuthOverview()
-                    .then((ov) => (authOverview = ov))
-                    .catch(() => {});
-                }}
-              >
-                <div
-                  class="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10"
-                >
-                  <svg
-                    class="h-5 w-5 text-violet-400"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path
-                      d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"
-                    />
-                  </svg>
-                </div>
-                <span class="font-medium">{t("auth_appApiKey")}</span>
-                <span class="text-[10px] text-muted-foreground text-center"
-                  >{t("settings_auth_modeAppDesc")}</span
-                >
-              </button>
-            </div>
-          </div>
-
-          <!-- CLI Auth details (expanded when auth_mode = cli) -->
-          {#if authMode === "cli"}
-            <div class="space-y-4 rounded-lg border border-border/50 p-4">
-              <!-- CLI Login status -->
-              <div>
-                <h3 class="text-sm font-medium mb-1">{t("settings_auth_cliLoginTitle")}</h3>
-                <p class="text-xs text-muted-foreground mb-2">{t("settings_auth_cliLoginDesc")}</p>
-                {#if authOverview?.cli_login_available}
-                  <div class="flex items-center gap-2">
-                    <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                    <span class="text-xs text-emerald-500">
-                      {t("auth_loggedIn")}{authOverview.cli_login_account
-                        ? `: ${authOverview.cli_login_account}`
-                        : ""}
-                    </span>
-                  </div>
-                {:else}
-                  <div class="flex flex-col gap-2">
-                    <div class="flex items-center gap-2">
-                      <span class="h-2 w-2 rounded-full bg-muted-foreground/40"></span>
-                      <span class="text-xs text-muted-foreground">{t("auth_notLoggedIn")}</span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={cliLoginLoading}
-                        onclick={() => {
-                          cliLoginLoading = true;
-                          cliLoginError = "";
-                          api
-                            .runClaudeLogin()
-                            .then((success) => {
-                              if (success) {
-                                api
-                                  .getAuthOverview()
-                                  .then((ov) => (authOverview = ov))
-                                  .catch(() => {});
-                              } else {
-                                cliLoginError = t("setup_loginFailed");
-                              }
-                            })
-                            .catch((e) => {
-                              cliLoginError = String(e);
-                            })
-                            .finally(() => {
-                              cliLoginLoading = false;
-                            });
-                        }}
-                      >
-                        {#if cliLoginLoading}
-                          <span class="flex items-center gap-1.5">
-                            <span
-                              class="h-3 w-3 border border-foreground/30 border-t-foreground rounded-full animate-spin"
-                            ></span>
-                            {t("settings_auth_cliLoginBtn")}
-                          </span>
-                        {:else}
-                          {t("settings_auth_cliLoginBtn")}
-                        {/if}
-                      </Button>
-                    </div>
-                    {#if cliLoginError}
-                      <div class="rounded border border-red-500/30 bg-red-500/5 px-2 py-1">
-                        <p class="text-xs text-red-500">{cliLoginError}</p>
-                      </div>
-                    {/if}
-                  </div>
-                {/if}
-              </div>
-
-              <!-- CLI API Key (read-only) -->
-              <div>
-                <h3 class="text-sm font-medium mb-1">{t("settings_auth_cliApiKeyTitle")}</h3>
-                {#if authOverview?.cli_has_api_key}
-                  <div class="flex items-center gap-2">
-                    <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                    <span class="text-xs text-emerald-500"
-                      >{t("auth_cliKeyHint", { hint: authOverview.cli_api_key_hint ?? "" })}</span
-                    >
-                  </div>
-                  <p class="mt-1 text-[10px] text-muted-foreground/70 italic">
-                    {#if authOverview.cli_api_key_source === "settings"}
-                      {t("settings_auth_cliApiKeySourceSettings")}
-                    {:else if authOverview.cli_api_key_source === "env"}
-                      {t("settings_auth_cliApiKeySourceEnv")}
-                    {:else if authOverview.cli_api_key_source?.startsWith("shell_config:")}
-                      {t("settings_auth_cliApiKeySourceShell", {
-                        path: authOverview.cli_api_key_source.slice(13),
-                      })}
-                    {/if}
-                  </p>
-                {:else}
-                  <div class="flex items-center gap-2">
-                    <span class="h-2 w-2 rounded-full bg-muted-foreground/40"></span>
-                    <span class="text-xs text-muted-foreground"
-                      >{t("settings_auth_cliApiKeyNotSet")}</span
-                    >
-                  </div>
-                  <p class="mt-1 text-[10px] text-muted-foreground/70 italic">
-                    {t("settings_auth_cliApiKeyEditHint")}
-                  </p>
-                {/if}
-              </div>
-
-              <!-- Priority hint -->
-              {#if authOverview?.cli_login_available && authOverview?.cli_has_api_key}
-                <p class="text-[10px] text-muted-foreground/70 italic">
-                  {t("auth_cliPriorityHint")}
-                </p>
-              {/if}
-            </div>
+              {tabLabels[tab.id]()}
+            </button>
           {/if}
+        {/each}
 
-          {#if authMode === "api"}
-            <div class="space-y-4 rounded-lg border border-border/50 p-4">
-              <div>
-                <h3 class="text-sm font-medium mb-1">{t("settings_auth_appApiKeyTitle")}</h3>
-                <p class="text-xs text-muted-foreground mb-3">{t("settings_auth_appApiKeyDesc")}</p>
-              </div>
-              <!-- Platform selector -->
-              <div>
-                <span class="text-sm font-medium mb-1.5 block"
-                  >{t("settings_general_platform")}</span
-                >
-                <!-- Platform grid (always visible) -->
-                <div class="grid grid-cols-4 gap-1.5">
-                  {#each platformList.filter((p) => p.id !== "custom") as preset (preset.id)}
-                    <button
-                      class="flex flex-col gap-0 rounded-md p-2 text-left transition-colors relative group
-                      {selectedPlatformId === preset.id
-                        ? 'bg-primary/10 ring-1 ring-primary'
-                        : 'bg-muted/40 hover:bg-muted/70'}"
-                      onclick={() => applyPlatformPreset(preset)}
-                    >
-                      <span class="text-xs font-medium truncate">{preset.name}</span>
-                      <span class="text-[10px] text-muted-foreground truncate"
-                        >{preset.description}</span
-                      >
-                      {#if isCustomPlatform(preset.id)}
-                        <span
-                          role="button"
-                          tabindex="0"
-                          class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-0.5 cursor-pointer"
-                          onclick={(e: MouseEvent) => {
-                            e.stopPropagation();
-                            deleteCustomEndpoint(preset.id);
-                          }}
-                          onkeydown={(e: KeyboardEvent) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.stopPropagation();
-                              deleteCustomEndpoint(preset.id);
-                            }
-                          }}
-                          title={t("settings_general_deleteCustom")}
-                        >
-                          <svg
-                            class="h-3 w-3"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
-                          >
-                        </span>
-                      {/if}
-                      {#if preset.category === "local"}
-                        {@const ps = localProxyStatuses[preset.id]}
-                        <span
-                          class="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full {ps?.running &&
-                          !ps.needsAuth
-                            ? 'bg-green-500'
-                            : ps?.running && ps.needsAuth
-                              ? 'bg-amber-500'
-                              : 'bg-muted-foreground/30'}"
-                          title={ps?.running && !ps.needsAuth
-                            ? t("settings_local_running")
-                            : ps?.running && ps.needsAuth
-                              ? t("settings_local_needsAuth")
-                              : t("settings_local_notDetected")}
-                        ></span>
-                      {:else if findCredential(platformCredentials, preset.id)?.api_key}
-                        <span
-                          class="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-green-500"
-                          title="Key saved"
-                        ></span>
-                      {/if}
-                    </button>
-                  {/each}
-                  <!-- Add Custom -->
-                  <button
-                    class="flex flex-col items-center justify-center gap-1 rounded-md border border-dashed border-muted-foreground/30 p-2 text-muted-foreground hover:border-primary/50 hover:text-foreground hover:bg-muted/40 transition-colors"
-                    onclick={() => addCustomEndpoint()}
-                  >
-                    <svg
-                      class="h-4 w-4"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"><path d="M12 5v14" /><path d="M5 12h14" /></svg
-                    >
-                    <span class="text-[10px]">{t("settings_general_addCustom")}</span>
-                  </button>
-                </div>
-              </div>
+        <!-- Models & Providers -->
+        <p
+          class="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-2 pt-3 pb-1"
+        >
+          {t("settings_nav_providers") || "Providers"}
+        </p>
+        {#each ["connection"] as tabId (tabId)}
+          {@const tab = tabs.find((t) => t.id === tabId)}
+          {#if tab}
+            <button
+              class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] transition-colors text-left
+              {activeTab === tab.id
+                ? 'bg-accent text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
+              onclick={() => setActiveTab(tab.id)}
+            >
+              <svg
+                class="h-3.5 w-3.5 shrink-0"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"><path d={tab.icon} /></svg
+              >
+              {tabLabels[tab.id]()}
+            </button>
+          {/if}
+        {/each}
 
-              {#if selectedPlatform?.category === "local"}
-                <!-- Local proxy status card -->
-                <div class="rounded-lg border p-4 space-y-3">
-                  <div class="flex items-center gap-2">
-                    {#if localProxyChecking}
-                      <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
-                      <span class="text-sm">{t("settings_local_checking")}</span>
-                    {:else if localProxyStatus?.running && !localProxyStatus.needsAuth}
-                      <span class="h-2 w-2 rounded-full bg-green-500"></span>
-                      <span class="text-sm font-medium">{t("settings_local_running")}</span>
-                    {:else if localProxyStatus?.running && localProxyStatus.needsAuth}
-                      <span class="h-2 w-2 rounded-full bg-amber-500"></span>
-                      <span class="text-sm font-medium">{t("settings_local_needsAuth")}</span>
-                    {:else}
-                      <span class="h-2 w-2 rounded-full bg-muted-foreground/30"></span>
-                      <span class="text-sm">{t("settings_local_notDetected")}</span>
-                    {/if}
-                    <button
-                      class="ml-auto rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                      onclick={checkLocalProxy}>{t("settings_local_refresh")}</button
-                    >
-                  </div>
-                  <p class="text-xs text-muted-foreground font-mono">{anthropicBaseUrl}</p>
-                  {#if localProxyStatus && !localProxyStatus.running}
-                    <p class="text-xs text-amber-500">
-                      {selectedPlatform.setup_hint
-                        ? t(selectedPlatform.setup_hint as Parameters<typeof t>[0])
-                        : t("settings_local_startHint", { name: selectedPlatform.name })}
-                    </p>
-                  {/if}
-                  {#if selectedPlatform.docs_url}
-                    <a
-                      href={selectedPlatform.docs_url}
-                      target="_blank"
-                      class="text-xs text-primary hover:underline"
-                    >
-                      {t("settings_local_viewDocs")} →
-                    </a>
-                  {/if}
-                </div>
+        <!-- CLI -->
+        <p
+          class="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-2 pt-3 pb-1"
+        >
+          {t("settings_nav_cli") || "CLI"}
+        </p>
+        {#each ["cli-config"] as tabId (tabId)}
+          {@const tab = tabs.find((t) => t.id === tabId)}
+          {#if tab}
+            <button
+              class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] transition-colors text-left
+              {activeTab === tab.id
+                ? 'bg-accent text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
+              onclick={() => setActiveTab(tab.id)}
+            >
+              <svg
+                class="h-3.5 w-3.5 shrink-0"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"><path d={tab.icon} /></svg
+              >
+              {tabLabels[tab.id]()}
+            </button>
+          {/if}
+        {/each}
 
-                <!-- Advanced settings toggle -->
-                <button
-                  class="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  onclick={() => (localAdvancedOpen = !localAdvancedOpen)}
-                >
-                  {localAdvancedOpen ? "▾" : "▸"}
-                  {t("settings_local_advanced")}
-                </button>
-              {/if}
+        <!-- Workspace -->
+        <p
+          class="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-2 pt-3 pb-1"
+        >
+          {t("settings_nav_workspace") || "Workspace"}
+        </p>
+        {#each ["shortcuts", "remote"] as tabId (tabId)}
+          {@const tab = tabs.find((t) => t.id === tabId)}
+          {#if tab}
+            <button
+              class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] transition-colors text-left
+              {activeTab === tab.id
+                ? 'bg-accent text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
+              onclick={() => setActiveTab(tab.id)}
+            >
+              <svg
+                class="h-3.5 w-3.5 shrink-0"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"><path d={tab.icon} /></svg
+              >
+              {tabLabels[tab.id]()}
+            </button>
+          {/if}
+        {/each}
 
-              {#if selectedPlatform?.category !== "local" || localAdvancedOpen}
-                <!-- Custom endpoint: Name + Auth Type -->
-                {#if isCustomPlatform(selectedPlatformId ?? "")}
-                  <div class="flex gap-3">
-                    <div class="flex-1">
-                      <label class="text-sm font-medium mb-1.5 block"
-                        >{t("settings_general_customNameLabel")}</label
-                      >
-                      <Input
-                        value={findCredential(platformCredentials, selectedPlatformId ?? "")
-                          ?.name ?? ""}
-                        placeholder={t("settings_general_customNamePlaceholder")}
-                        class="mt-1 text-xs"
-                        onblur={(e) => {
-                          const target = e.currentTarget as HTMLInputElement | null;
-                          if (!target) return;
-                          const val = target.value.trim();
-                          if (selectedPlatformId) {
-                            _upsertCredential(selectedPlatformId, { name: val || "Custom" });
-                            saveGeneralPatch({ platform_credentials: platformCredentials });
-                          }
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label class="text-sm font-medium mb-1.5 block"
-                        >{t("settings_general_authType")}</label
-                      >
-                      <div class="mt-1 flex rounded-md border border-input overflow-hidden">
-                        <button
-                          class="px-3 py-1.5 text-xs font-medium transition-colors {(findCredential(
-                            platformCredentials,
-                            selectedPlatformId ?? '',
-                          )?.auth_env_var ?? 'ANTHROPIC_AUTH_TOKEN') === 'ANTHROPIC_AUTH_TOKEN'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'}"
-                          onclick={() => {
-                            if (selectedPlatformId) {
-                              _upsertCredential(selectedPlatformId, {
-                                auth_env_var: "ANTHROPIC_AUTH_TOKEN",
-                              });
-                              saveGeneralPatch({ platform_credentials: platformCredentials });
-                            }
-                          }}>{t("settings_bearer")}</button
-                        >
-                        <button
-                          class="px-3 py-1.5 text-xs font-medium transition-colors border-l border-input {(findCredential(
-                            platformCredentials,
-                            selectedPlatformId ?? '',
-                          )?.auth_env_var ?? 'ANTHROPIC_AUTH_TOKEN') === 'ANTHROPIC_API_KEY'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-accent'}"
-                          onclick={() => {
-                            if (selectedPlatformId) {
-                              _upsertCredential(selectedPlatformId, {
-                                auth_env_var: "ANTHROPIC_API_KEY",
-                              });
-                              saveGeneralPatch({ platform_credentials: platformCredentials });
-                            }
-                          }}>x-api-key</button
-                        >
-                      </div>
-                    </div>
-                  </div>
-                {/if}
+        <!-- System -->
+        <p
+          class="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-2 pt-3 pb-1"
+        >
+          {t("settings_nav_system") || "System"}
+        </p>
+        {#each ["notifications", "theme", "debug"] as tabId (tabId)}
+          {@const tab = tabs.find((t) => t.id === tabId)}
+          {#if tab}
+            <button
+              class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] transition-colors text-left
+              {activeTab === tab.id
+                ? 'bg-accent text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
+              onclick={() => setActiveTab(tab.id)}
+            >
+              <svg
+                class="h-3.5 w-3.5 shrink-0"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"><path d={tab.icon} /></svg
+              >
+              {tabLabels[tab.id]()}
+            </button>
+          {/if}
+        {/each}
+      </nav>
+    </aside>
 
-                <!-- API Key input -->
+    <!-- ═══ Content Area ═══ -->
+    <main class="flex-1 overflow-y-auto">
+      <div class="max-w-3xl mx-auto p-6">
+        <!-- ═══ General tab ═══ -->
+        {#if activeTab === "general"}
+          <div class="space-y-6">
+            <!-- Language Card -->
+            <Card class="p-6 space-y-4">
+              <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                {t("settings_general_language")}
+              </h2>
+              <div class="flex items-center justify-between">
                 <div>
-                  <label class="text-sm font-medium mb-1.5 block" for="api-key"
-                    >{t("settings_general_apiKey")}</label
-                  >
-                  <div class="mt-1 flex gap-2">
-                    <div class="flex-1 relative">
-                      <Input
-                        bind:value={anthropicApiKey}
-                        placeholder={selectedPlatform?.key_placeholder ?? "<your-api-key>"}
-                        type={showApiKey ? "text" : "password"}
-                        class="font-mono text-xs"
-                        onblur={() => persistCurrentPlatform()}
-                      />
-                    </div>
-                    <button
-                      class="rounded-md border px-3 py-2 text-xs text-muted-foreground hover:bg-accent transition-colors"
-                      onclick={() => (showApiKey = !showApiKey)}
-                    >
-                      {showApiKey ? t("settings_general_hide") : t("settings_general_show")}
-                    </button>
-                    {#if selectedPlatform?.category !== "local"}
-                      {@const cred = findCredential(platformCredentials, selectedPlatformId ?? "")}
-                      {@const authEnvVar =
-                        cred?.auth_env_var || selectedPlatform?.auth_env_var || "ANTHROPIC_API_KEY"}
-                      {@const [presetOpusTest, presetSonnetTest] = expandModelsToTiers(
-                        selectedPlatform?.models,
-                      )}
-                      {@const testModel =
-                        modelSonnet.trim() ||
-                        modelOpus.trim() ||
-                        presetSonnetTest ||
-                        presetOpusTest ||
-                        ""}
-                      {@const isCustom = isCustomPlatform(selectedPlatformId ?? "")}
-                      {@const noKey = !anthropicApiKey}
-                      {@const noUrl = isCustom && !anthropicBaseUrl.trim()}
-                      {@const disableReason = noKey
-                        ? t("settings_apiTest_noKey")
-                        : noUrl
-                          ? t("settings_apiTest_noUrl")
-                          : ""}
-                      <button
-                        class="rounded-md border px-3 py-2 text-xs transition-colors {disableReason ||
-                        apiTestLoading
-                          ? 'text-muted-foreground/50 cursor-not-allowed'
-                          : 'text-muted-foreground hover:bg-accent hover:text-foreground'}"
-                        disabled={!!disableReason || apiTestLoading}
-                        title={disableReason || ""}
-                        onclick={async () => {
-                          const myRequestId = ++apiTestRequestId;
-                          const myPlatformId = selectedPlatformId;
-                          apiTestLoading = true;
-                          apiTestResult = null;
-                          dbg("settings", "testApi start", {
-                            platform: myPlatformId,
-                            model: testModel,
-                            authEnvVar,
-                            reqId: myRequestId,
-                          });
-                          try {
-                            const result = await api.testApiConnectivity(
-                              anthropicApiKey,
-                              anthropicBaseUrl,
-                              authEnvVar,
-                              testModel,
-                            );
-                            if (myRequestId !== apiTestRequestId) return;
-                            if (myPlatformId !== selectedPlatformId) return;
-                            apiTestResult = result;
-                            if (result.success) {
-                              dbg("settings", "testApi success", { latencyMs: result.latencyMs });
-                            } else {
-                              dbgWarn("settings", "testApi error", result.error);
-                            }
-                          } catch (e) {
-                            if (
-                              myRequestId !== apiTestRequestId ||
-                              myPlatformId !== selectedPlatformId
-                            )
-                              return;
-                            apiTestResult = {
-                              success: false,
-                              latencyMs: 0,
-                              error: String(e),
-                              partial: false,
-                            };
-                            dbgWarn("settings", "testApi error", e);
-                          } finally {
-                            if (myRequestId === apiTestRequestId) apiTestLoading = false;
-                          }
-                        }}
-                      >
-                        {t("settings_apiTest")}
-                      </button>
-                    {/if}
-                  </div>
-                  <!-- API test result -->
-                  {#if apiTestLoading}
-                    <div class="mt-1.5 flex items-center gap-1.5">
-                      <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
-                      <span class="text-xs text-muted-foreground"
-                        >{t("settings_apiTest_testing")}</span
-                      >
-                    </div>
-                  {:else if apiTestResult?.success && apiTestResult.partial}
-                    <div class="mt-1.5 flex items-center gap-1.5">
-                      <span class="h-2 w-2 rounded-full bg-green-500"></span>
-                      <span class="text-xs text-green-600 dark:text-green-400"
-                        >{t("settings_apiTest_partial", {
-                          latency: String(apiTestResult.latencyMs),
-                        })}</span
-                      >
-                    </div>
-                  {:else if apiTestResult?.success}
-                    <div class="mt-1.5 flex items-center gap-1.5">
-                      <span class="h-2 w-2 rounded-full bg-green-500"></span>
-                      <span class="text-xs text-green-600 dark:text-green-400"
-                        >{t("settings_apiTest_success", {
-                          latency: String(apiTestResult.latencyMs),
-                        })}</span
-                      >
-                    </div>
-                  {:else if apiTestResult && !apiTestResult.success}
-                    <div class="mt-1.5 flex items-center gap-1.5">
-                      <span class="h-2 w-2 rounded-full bg-red-500"></span>
-                      <span class="text-xs text-red-600 dark:text-red-400"
-                        >{apiTestResult.error ?? t("settings_apiTest_failed")}</span
-                      >
-                    </div>
-                  {:else if selectedPlatform?.id === "ollama"}
-                    <p class="mt-1 text-xs text-muted-foreground">{t("setup_noKeyNeeded")}</p>
-                  {:else}
-                    <p class="mt-1 text-xs text-muted-foreground">
-                      {t("settings_general_apiKeyStored")}
-                    </p>
-                  {/if}
-                </div>
-
-                <!-- Base URL (only show for custom or direct editing) -->
-                <div>
-                  <label class="text-sm font-medium mb-1.5 block" for="base-url"
-                    >{t("settings_general_baseUrl")}</label
-                  >
-                  <Input
-                    bind:value={anthropicBaseUrl}
-                    placeholder="https://api.anthropic.com"
-                    class="mt-1 font-mono text-xs"
-                    disabled={selectedPlatformId !== null &&
-                      selectedPlatformId !== "anthropic" &&
-                      selectedPlatform?.category !== "local" &&
-                      !isCustomPlatform(selectedPlatformId ?? "")}
-                    onblur={() => persistCurrentPlatform()}
-                  />
-                  <p class="mt-1 text-xs text-muted-foreground">
-                    {#if selectedPlatform && selectedPlatform.auth_env_var === "ANTHROPIC_AUTH_TOKEN"}
-                      {t("setup_authTypeBearer")}
-                    {:else if selectedPlatform && selectedPlatform.auth_env_var === "ANTHROPIC_API_KEY"}
-                      {t("setup_authTypeApiKey")}
-                    {:else}
-                      {t("settings_general_baseUrlHelp")}
-                    {/if}
+                  <p class="text-sm font-medium">{t("settings_general_displayLanguage")}</p>
+                  <p class="text-xs text-muted-foreground">
+                    {t("settings_general_displayLanguageDesc")}
                   </p>
                 </div>
-
-                <!-- Models (3-tier: Opus / Sonnet / Haiku) -->
-                {@const [presetOpus, presetSonnet, presetHaiku] = expandModelsToTiers(
-                  selectedPlatform?.models,
-                )}
-                {@const phOpus = presetOpus || t("settings_general_modelsPlaceholder")}
-                {@const phSonnet = presetSonnet || t("settings_general_modelsPlaceholder")}
-                {@const phHaiku = presetHaiku || t("settings_general_modelsPlaceholder")}
-                <div>
-                  <label class="text-sm font-medium mb-1.5 block"
-                    >{t("settings_general_models")}</label
-                  >
-                  <div class="mt-1 space-y-1.5">
-                    <div class="flex items-center gap-2">
-                      <span class="text-xs text-muted-foreground w-24 shrink-0 text-right"
-                        >{t("settings_general_modelOpus")}</span
-                      >
-                      <Input
-                        bind:value={modelOpus}
-                        placeholder={phOpus}
-                        class="flex-1 font-mono text-xs"
-                        onblur={() => persistCurrentPlatform()}
-                      />
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span
-                        class="text-xs text-muted-foreground w-24 shrink-0 text-right font-medium"
-                        >{t("settings_general_modelSonnet")}</span
-                      >
-                      <Input
-                        bind:value={modelSonnet}
-                        placeholder={phSonnet}
-                        class="flex-1 font-mono text-xs"
-                        onblur={() => persistCurrentPlatform()}
-                      />
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <span class="text-xs text-muted-foreground w-24 shrink-0 text-right"
-                        >{t("settings_general_modelHaiku")}</span
-                      >
-                      <Input
-                        bind:value={modelHaiku}
-                        placeholder={phHaiku}
-                        class="flex-1 font-mono text-xs"
-                        onblur={() => persistCurrentPlatform()}
-                      />
-                    </div>
-                  </div>
-                  <p class="mt-1 text-xs text-muted-foreground">
-                    {t("settings_general_modelsHelp")}
-                  </p>
-                </div>
-
-                <!-- Extra Environment Variables -->
-                <div>
-                  <label class="text-sm font-medium mb-1.5 block" for="extra-env-section">
-                    {t("settings_general_extraEnv")}
-                  </label>
-                  {#each platformExtraEnv as envVar, i}
-                    <div class="flex gap-1.5 mt-1.5">
-                      <Input
-                        bind:value={envVar.key}
-                        placeholder={t("settings_general_envKeyPlaceholder")}
-                        class="flex-1 font-mono text-xs"
-                        oninput={() => markExtraEnvTouched()}
-                        onblur={() => persistCurrentPlatform()}
-                        onpaste={(e: ClipboardEvent) => handleEnvKeyPaste(e, i)}
-                      />
-                      <Input
-                        bind:value={envVar.value}
-                        placeholder={t("settings_general_envValuePlaceholder")}
-                        class="flex-1 font-mono text-xs"
-                        oninput={() => markExtraEnvTouched()}
-                        onblur={() => persistCurrentPlatform()}
-                      />
-                      <button
-                        class="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                        aria-label={t("settings_remote_delete")}
-                        onclick={() => {
-                          platformExtraEnv = platformExtraEnv.filter((_, idx) => idx !== i);
-                          markExtraEnvTouched();
-                          persistCurrentPlatform();
-                        }}
-                      >
-                        <svg
-                          class="h-3.5 w-3.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        >
-                          <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-                        </svg>
-                      </button>
-                    </div>
+                <div class="flex gap-1.5">
+                  {#each LOCALE_REGISTRY as entry (entry.code)}
+                    <button
+                      class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
+                  {currentLocale() === entry.code
+                        ? 'bg-primary text-primary-foreground'
+                        : (entry.status as string) === 'beta'
+                          ? 'border-muted-foreground/30 text-muted-foreground hover:bg-accent'
+                          : 'hover:bg-accent'}"
+                      onclick={() => switchLocale(entry.code)}
+                    >
+                      {entry.nativeName}{#if (entry.status as string) === "beta"}<span
+                          class="ml-1 text-[10px] opacity-60">(Beta)</span
+                        >{/if}
+                    </button>
                   {/each}
-                  <button
-                    class="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    onclick={() => {
-                      platformExtraEnv = [...platformExtraEnv, { key: "", value: "" }];
-                    }}
-                  >
+                </div>
+              </div>
+            </Card>
+
+            <!-- Display Card -->
+            <Card class="p-6 space-y-4">
+              <div class="flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t("settings_general_display")}
+                </h2>
+                {#if displaySaved}
+                  <span class="text-xs text-emerald-500 flex items-center gap-1 animate-fade-in">
                     <svg
                       class="h-3 w-3"
                       viewBox="0 0 24 24"
@@ -2624,1116 +1589,2322 @@
                       stroke="currentColor"
                       stroke-width="2"
                       stroke-linecap="round"
-                      stroke-linejoin="round"
+                      stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
                     >
-                      <path d="M12 5v14" /><path d="M5 12h14" />
-                    </svg>
-                    {t("settings_general_addEnvVar")}
-                  </button>
-                  <p class="mt-1 text-xs text-muted-foreground">
-                    {t("settings_general_extraEnvHelp")}
-                  </p>
-                </div>
-              {/if}
-            </div>
-          {/if}
-        </Card>
-
-        <!-- Setup Wizard button -->
-        <div class="flex items-center justify-between rounded-lg border border-border p-4">
-          <div>
-            <p class="text-sm font-medium">{t("settings_general_setupWizard")}</p>
-            <p class="text-xs text-muted-foreground">{t("settings_general_setupWizardDesc")}</p>
-          </div>
-          <button
-            class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            onclick={openSetupWizard}>{t("settings_general_runWizard")}</button
-          >
-        </div>
-      </div>
-
-      <!-- ═══ CLI Config tab ═══ -->
-    {:else if activeTab === "cli-config"}
-      {#if cliConfigLoading && !cliConfigLoaded}
-        <div class="flex items-center justify-center py-12">
-          <div
-            class="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent"
-          ></div>
-          <span class="ml-3 text-sm text-muted-foreground">{t("settings_cliConfig_loading")}</span>
-        </div>
-      {:else if cliConfigError}
-        <Card class="p-6">
-          <p class="text-sm text-red-400">
-            {t("settings_cliConfig_loadFailed", { error: cliConfigError })}
-          </p>
-          <button
-            class="mt-3 rounded-md border px-3 py-1.5 text-xs hover:bg-accent transition-colors"
-            onclick={() => {
-              cliConfigLoaded = false;
-              loadCliConfig();
-            }}
-          >
-            {t("settings_cliConfig_retry")}
-          </button>
-        </Card>
-      {:else}
-        <div class="space-y-6">
-          <!-- Behavior -->
-          <Card class="p-6 space-y-4">
-            <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              {t("settings_cliConfig_behavior")}
-            </h2>
-            {#each behaviorSettings as def (def.key)}
-              <div class="flex items-center justify-between gap-4 py-1">
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2">
-                    <p class="text-sm font-medium">{def.label}</p>
-                    {#if isProjectOverride(def.key)}
-                      <span
-                        class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/15 text-amber-400 border border-amber-500/20"
-                      >
-                        {t("settings_cliConfig_projectOverride")}
-                      </span>
-                    {/if}
-                  </div>
-                  <p class="text-xs text-muted-foreground mt-0.5">{def.description}</p>
-                </div>
-                {#if def.type === "boolean"}
-                  <button
-                    aria-label={def.label}
-                    class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 {getCliConfigValue(
-                      def.key,
-                      def,
-                    ) === true
-                      ? 'bg-primary'
-                      : 'bg-neutral-700'}"
-                    onclick={() => {
-                      const current = getCliConfigValue(def.key, def);
-                      const next = current === true ? false : true;
-                      saveCliConfigPatch(def.key, next);
-                      cliConfig = { ...cliConfig, [def.key]: next };
-                    }}
-                  >
-                    <span
-                      class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 {getCliConfigValue(
-                        def.key,
-                        def,
-                      ) === true
-                        ? 'translate-x-6'
-                        : 'translate-x-1'}"
-                    ></span>
-                  </button>
-                {:else if def.type === "enum" && def.options}
-                  <div class="flex gap-1.5 shrink-0">
-                    {#each def.options as opt (opt.value)}
-                      <button
-                        class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
-                        {getCliConfigValue(def.key, def) === opt.value
-                          ? 'bg-primary text-primary-foreground'
-                          : 'hover:bg-accent hover:border-ring/30'}"
-                        onclick={() => {
-                          saveCliConfigPatch(def.key, opt.value);
-                          cliConfig = { ...cliConfig, [def.key]: opt.value };
-                        }}
-                      >
-                        {opt.label}
-                      </button>
-                    {/each}
-                  </div>
+                    {t("settings_general_saved")}
+                  </span>
                 {/if}
               </div>
-            {/each}
-          </Card>
-
-          <!-- Appearance -->
-          <Card class="p-6 space-y-4">
-            <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              {t("settings_cliConfig_appearance")}
-            </h2>
-            {#each appearanceSettings as def (def.key)}
-              <div class="flex items-center justify-between gap-4 py-1">
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2">
-                    <p class="text-sm font-medium">{def.label}</p>
-                    {#if isProjectOverride(def.key)}
-                      <span
-                        class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/15 text-amber-400 border border-amber-500/20"
-                      >
-                        {t("settings_cliConfig_projectOverride")}
-                      </span>
-                    {/if}
-                  </div>
-                  <p class="text-xs text-muted-foreground mt-0.5">{def.description}</p>
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <p class="text-sm font-medium">{t("settings_general_uiZoom")}</p>
+                  <p class="text-xs text-muted-foreground">{t("settings_general_uiZoomDesc")}</p>
                 </div>
-                {#if def.type === "boolean"}
-                  <button
-                    aria-label={def.label}
-                    class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 {getCliConfigValue(
-                      def.key,
-                      def,
-                    ) === true
-                      ? 'bg-primary'
-                      : 'bg-neutral-700'}"
-                    onclick={() => {
-                      const current = getCliConfigValue(def.key, def);
-                      const next = current === true ? false : true;
-                      saveCliConfigPatch(def.key, next);
-                      cliConfig = { ...cliConfig, [def.key]: next };
-                    }}
-                  >
-                    <span
-                      class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 {getCliConfigValue(
-                        def.key,
-                        def,
-                      ) === true
-                        ? 'translate-x-6'
-                        : 'translate-x-1'}"
-                    ></span>
-                  </button>
-                {:else if def.type === "enum" && def.options}
-                  <div class="flex gap-1.5 shrink-0">
-                    {#each def.options as opt (opt.value)}
-                      <button
-                        class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
-                        {getCliConfigValue(def.key, def) === opt.value
-                          ? 'bg-primary text-primary-foreground'
-                          : 'hover:bg-accent hover:border-ring/30'}"
-                        onclick={() => {
-                          saveCliConfigPatch(def.key, opt.value);
-                          cliConfig = { ...cliConfig, [def.key]: opt.value };
-                        }}
-                      >
-                        {opt.label}
-                      </button>
-                    {/each}
-                  </div>
-                {:else if def.type === "string"}
+                <div class="flex items-center gap-3">
                   <input
-                    class="w-40 shrink-0 rounded-md border bg-transparent px-3 py-1.5 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none"
-                    value={getCliConfigValue(def.key, def) ?? ""}
-                    placeholder={def.label}
-                    onblur={(e) => {
-                      const val = (e.target as HTMLInputElement).value.trim();
-                      if (val) {
-                        saveCliConfigPatch(def.key, val);
-                        cliConfig = { ...cliConfig, [def.key]: val };
-                      } else {
-                        // Empty string → delete key (restore default)
-                        saveCliConfigPatch(def.key, null);
-                        const next = { ...cliConfig };
-                        delete next[def.key];
-                        cliConfig = next;
-                      }
-                    }}
+                    type="range"
+                    min="0.75"
+                    max="1.5"
+                    step="0.05"
+                    value={zoomPreview}
+                    class="w-28 accent-primary"
+                    oninput={(e) => previewZoom(parseFloat((e.target as HTMLInputElement).value))}
+                    onchange={(e) => commitZoom(parseFloat((e.target as HTMLInputElement).value))}
                   />
-                {/if}
-              </div>
-            {/each}
-          </Card>
-
-          <!-- Advanced -->
-          <Card class="p-6 space-y-4">
-            <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              {t("settings_cliConfig_advanced")}
-            </h2>
-            {#each advancedSettings as def (def.key)}
-              <div class="flex items-center justify-between gap-4 py-1">
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2">
-                    <p class="text-sm font-medium">{def.label}</p>
-                    {#if isProjectOverride(def.key)}
-                      <span
-                        class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/15 text-amber-400 border border-amber-500/20"
-                      >
-                        {t("settings_cliConfig_projectOverride")}
-                      </span>
-                    {/if}
-                  </div>
-                  <p class="text-xs text-muted-foreground mt-0.5">{def.description}</p>
-                </div>
-                {#if def.type === "boolean"}
-                  <button
-                    aria-label={def.label}
-                    class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 {getCliConfigValue(
-                      def.key,
-                      def,
-                    ) === true
-                      ? 'bg-primary'
-                      : 'bg-neutral-700'}"
-                    onclick={() => {
-                      const current = getCliConfigValue(def.key, def);
-                      const next = current === true ? false : true;
-                      saveCliConfigPatch(def.key, next);
-                      cliConfig = { ...cliConfig, [def.key]: next };
-                    }}
-                  >
-                    <span
-                      class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 {getCliConfigValue(
-                        def.key,
-                        def,
-                      ) === true
-                        ? 'translate-x-6'
-                        : 'translate-x-1'}"
-                    ></span>
-                  </button>
-                {:else if def.type === "enum" && def.options}
-                  <div class="flex gap-1.5 shrink-0">
-                    {#each def.options as opt (opt.value)}
-                      <button
-                        class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
-                        {getCliConfigValue(def.key, def) === opt.value
-                          ? 'bg-primary text-primary-foreground'
-                          : 'hover:bg-accent hover:border-ring/30'}"
-                        onclick={() => {
-                          saveCliConfigPatch(def.key, opt.value);
-                          cliConfig = { ...cliConfig, [def.key]: opt.value };
-                        }}
-                      >
-                        {opt.label}
-                      </button>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
-            {/each}
-          </Card>
-
-          <!-- Footer note -->
-          <p class="text-[10px] text-muted-foreground px-1">
-            {t("settings_cliConfig_footer")}
-          </p>
-        </div>
-      {/if}
-
-      <!-- ═══ Shortcuts tab ═══ -->
-    {:else if activeTab === "shortcuts"}
-      <div class="space-y-6">
-        <!-- App shortcuts (editable) -->
-        <Card class="p-6 space-y-5">
-          <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            {t("settings_shortcuts_appShortcuts")}
-          </h2>
-          <div class="divide-y divide-border/50">
-            {#each appBindings as binding (binding.command)}
-              <KeybindingEditor
-                {binding}
-                isOverridden={isOverridden(binding.command)}
-                conflictWarning={recordingConflict}
-                onSave={(key) => {
-                  const conflict = getConflictWarning(key, binding.context, binding.command);
-                  if (conflict) {
-                    recordingConflict = conflict;
-                  }
-                  keybindingStore.setOverride(binding.command, key);
-                  recordingConflict = "";
-                }}
-                onReset={isOverridden(binding.command)
-                  ? () => keybindingStore.resetBinding(binding.command)
-                  : undefined}
-              />
-            {/each}
-          </div>
-        </Card>
-
-        <!-- Fixed shortcuts -->
-        <Card class="p-6 space-y-5">
-          <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            {t("settings_shortcuts_inputFixed")}
-          </h2>
-          <div class="divide-y divide-border/50">
-            {#each fixedBindings as binding (binding.command)}
-              <div class="flex items-center gap-3 py-1.5">
-                <span class="text-sm text-foreground/60 min-w-[140px]">{binding.label}</span>
-                <span
-                  class="inline-flex items-center rounded-md border bg-muted/30 px-2.5 py-1 text-xs font-mono text-muted-foreground min-w-[60px] justify-center"
-                >
-                  {formatKeyDisplay(binding.key)}
-                </span>
-              </div>
-            {/each}
-          </div>
-        </Card>
-
-        <!-- CLI shortcuts (collapsible) -->
-        <Card class="p-6 space-y-4">
-          <button
-            class="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors w-full"
-            onclick={() => (cliSectionOpen = !cliSectionOpen)}
-          >
-            <svg
-              class="h-3 w-3 transition-transform {cliSectionOpen ? 'rotate-90' : ''}"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg
-            >
-            {t("settings_shortcuts_cliShortcuts")}
-            <span class="text-[10px] font-normal normal-case tracking-normal text-muted-foreground"
-              >{t("settings_shortcuts_readOnly")}</span
-            >
-          </button>
-          {#if cliSectionOpen}
-            <div class="divide-y divide-border/50">
-              {#each cliBindings as binding (binding.command)}
-                <div class="flex items-center gap-3 py-1.5">
-                  <span class="text-sm text-foreground/60 min-w-[140px]">{binding.label}</span>
-                  <span
-                    class="inline-flex items-center rounded-md border bg-muted/30 px-2.5 py-1 text-xs font-mono text-muted-foreground min-w-[60px] justify-center"
-                  >
-                    {formatKeyDisplay(binding.key)}
+                  <span class="text-xs text-muted-foreground w-10 text-right">
+                    {Math.round(zoomPreview * 100)}%
                   </span>
                 </div>
-              {/each}
-            </div>
-            <p class="text-[10px] text-muted-foreground">
-              {t("settings_shortcuts_source", {
-                source:
-                  cliSource === "file"
-                    ? IS_WINDOWS
-                      ? "%USERPROFILE%\\.claude\\keybindings.json"
-                      : "~/.claude/keybindings.json"
-                    : t("settings_shortcuts_cliDefaults"),
-              })}
-            </p>
-          {/if}
-        </Card>
-
-        <!-- Reset all -->
-        {#if hasOverrides}
-          <div class="flex justify-end">
-            <button
-              class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              onclick={() => keybindingStore.resetAll()}
-            >
-              {t("settings_shortcuts_resetAll")}
-            </button>
-          </div>
-        {/if}
-      </div>
-
-      <!-- ═══ Remote tab ═══ -->
-    {:else if activeTab === "remote"}
-      <Card class="p-6 space-y-5">
-        <div class="flex items-start justify-between">
-          <div>
-            <p class="text-sm font-medium">{t("settings_remote_title")}</p>
-            <p class="text-xs text-muted-foreground mt-0.5">
-              {t("settings_remote_desc")}
-            </p>
-          </div>
-          {#if remoteSaved}
-            <span class="text-xs text-emerald-500 flex items-center gap-1 animate-fade-in">
-              <svg
-                class="h-3 w-3"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-              >
-              {t("settings_general_saved")}
-            </span>
-          {/if}
-        </div>
-
-        <!-- Existing hosts list -->
-        {#if remoteHosts.length > 0}
-          <div class="space-y-2">
-            {#each remoteHosts as host (host.name)}
-              <div
-                class="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border"
-              >
-                <div>
-                  <p class="text-sm font-medium">{host.name}</p>
-                  <p class="text-xs text-muted-foreground">
-                    {host.user}@{host.host}{host.port !== 22 ? `:${host.port}` : ""}
-                  </p>
-                  {#if host.remote_cwd}
-                    <p class="text-xs text-muted-foreground">cwd: {host.remote_cwd}</p>
-                  {/if}
-                </div>
-                <div class="flex gap-2">
-                  <button
-                    class="text-xs px-2 py-1 rounded hover:bg-accent text-muted-foreground"
-                    onclick={() => editRemoteHost(host)}>{t("settings_remote_edit")}</button
-                  >
-                  <button
-                    class="text-xs px-2 py-1 rounded hover:bg-destructive/10 text-destructive"
-                    onclick={() => deleteRemoteHost(host.name)}
-                    >{t("settings_remote_delete")}</button
-                  >
-                </div>
               </div>
-            {/each}
-          </div>
-        {:else}
-          <p class="text-xs text-muted-foreground italic">{t("settings_remote_noHosts")}</p>
-        {/if}
+            </Card>
 
-        <!-- Add / Edit form -->
-        <div class="border border-border rounded-lg p-4 space-y-3">
-          <p class="text-sm font-medium">
-            {editingRemote
-              ? t("settings_remote_editHost", { name: editingRemote.name })
-              : t("settings_remote_addHost")}
-          </p>
+            <!-- Web Server Card (desktop only) -->
+            {#if getTransport().isDesktop()}
+              <Card class="p-6 space-y-4">
+                <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t("settings_general_webServer")}
+                </h2>
 
-          <div class="grid grid-cols-2 gap-3">
-            <label class="block">
-              <span class="text-xs text-muted-foreground block mb-1"
-                >{t("settings_remote_name")} *</span
-              >
-              <input
-                type="text"
-                bind:value={remoteFormName}
-                placeholder="mac-mini"
-                class="w-full text-sm px-2 py-1.5 rounded border bg-background {remoteFormTouched &&
-                !remoteFormName.trim()
-                  ? 'border-red-500'
-                  : 'border-input'}"
-              />
-            </label>
-            <label class="block">
-              <span class="text-xs text-muted-foreground block mb-1"
-                >{t("settings_remote_host")} *</span
-              >
-              <input
-                type="text"
-                bind:value={remoteFormHost}
-                placeholder="macmini.local"
-                class="w-full text-sm px-2 py-1.5 rounded border bg-background {remoteFormTouched &&
-                !remoteFormHost.trim()
-                  ? 'border-red-500'
-                  : 'border-input'}"
-              />
-            </label>
-            <label class="block">
-              <span class="text-xs text-muted-foreground block mb-1"
-                >{t("settings_remote_user")} *</span
-              >
-              <input
-                type="text"
-                bind:value={remoteFormUser}
-                placeholder={currentUsername || "username"}
-                class="w-full text-sm px-2 py-1.5 rounded border bg-background {remoteFormTouched &&
-                !remoteFormUser.trim()
-                  ? 'border-red-500'
-                  : 'border-input'}"
-              />
-            </label>
-            <label class="block">
-              <span class="text-xs text-muted-foreground block mb-1"
-                >{t("settings_remote_port")}</span
-              >
-              <input
-                type="number"
-                bind:value={remoteFormPort}
-                placeholder="22"
-                class="w-full text-sm px-2 py-1.5 rounded border border-input bg-background"
-              />
-            </label>
-            <div class="col-span-2">
-              <span class="text-xs text-muted-foreground block mb-1"
-                >{t("settings_remote_keyPath")}</span
-              >
-              <div class="flex gap-2">
-                <input
-                  type="text"
-                  aria-label={t("settings_remote_keyPath")}
-                  bind:value={remoteFormKeyPath}
-                  placeholder="~/.ssh/id_ed25519"
-                  class="flex-1 text-sm px-2 py-1.5 rounded border border-input bg-background"
-                />
-                {#if sshKeyStep === "idle"}
+                <!-- Enabled toggle -->
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm font-medium">{t("settings_general_webEnabled")}</p>
+                    <p class="text-xs text-muted-foreground">
+                      {t("settings_general_webEnabledDesc")}
+                    </p>
+                  </div>
                   <button
-                    class="shrink-0 text-xs px-2 py-1.5 rounded border border-input hover:bg-accent transition-colors text-muted-foreground"
-                    onclick={startSshKeyWizard}
+                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {webStatus?.enabled
+                      ? 'bg-primary'
+                      : 'bg-muted'}"
+                    disabled={webRestarting}
+                    onclick={async () => {
+                      const newEnabled = !webStatus?.enabled;
+                      webRestarting = true;
+                      webRestartError = null;
+                      webRestartWarning = null;
+                      try {
+                        if (newEnabled) {
+                          const portNum = parseInt(webPortInput, 10);
+                          if (isNaN(portNum) || portNum < 1024 || portNum > 65535) {
+                            throw new Error(t("settings_general_webPortInvalid"));
+                          }
+                          const result = await api.restartWebServer({
+                            enabled: true,
+                            port: portNum,
+                            bind: webBindValue,
+                            allowed_origins: webOrigins.length > 0 ? webOrigins : null,
+                            tunnel_url: webTunnelUrl.trim() || null,
+                          });
+                          if (!result.config_saved) {
+                            webRestartWarning = t("settings_general_webSaveWarning");
+                          }
+                        } else {
+                          await api.restartWebServer({
+                            enabled: false,
+                            port: 0,
+                            bind: "",
+                            allowed_origins: null,
+                            tunnel_url: null,
+                          });
+                        }
+                        webStatus = await api.getWebServerStatus();
+                        settings = await api.getUserSettings();
+                        dbg("settings", "webServer toggled", { enabled: newEnabled });
+                        if (webStatus?.running) await refreshLanIp(webStatus.bind);
+                      } catch (e) {
+                        webRestartError = (e as Error)?.message ?? String(e);
+                        webStatus = await api.getWebServerStatus();
+                        dbgWarn("settings", "webServer toggle failed", e);
+                      } finally {
+                        webRestarting = false;
+                      }
+                    }}
                   >
-                    {t("settings_remote_setupSshKey")}
+                    <span
+                      class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {webStatus?.enabled
+                        ? 'translate-x-6'
+                        : 'translate-x-1'}"
+                    ></span>
                   </button>
+                </div>
+
+                <!-- Config area (show when enabled OR running) -->
+                {#if webStatus?.enabled || webStatus?.running}
+                  <!-- Startup warning banner -->
+                  {#if webStatus?.warning}
+                    <div class="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
+                      <p class="text-xs text-amber-400 whitespace-pre-line">
+                        {t("settings_general_webStartupWarning", { warning: webStatus.warning })}
+                      </p>
+                    </div>
+                  {/if}
+
+                  <!-- Access link + token (only when running) -->
+                  {#if webStatus?.running && webToken}
+                    {@const isAllInterfaces =
+                      webStatus.bind === "0.0.0.0" ||
+                      webStatus.bind === "::" ||
+                      webStatus.bind === "[::]"}
+                    {@const rawHost = isAllInterfaces ? webLanIp : webStatus.bind}
+                    {@const displayHost = rawHost
+                      ? rawHost.includes(":")
+                        ? `[${rawHost}]`
+                        : rawHost
+                      : null}
+                    {@const tunnelUrl = buildTunnelAccessUrl()}
+                    {@const localUrl = buildLocalAccessUrl()}
+                    <div class="space-y-2">
+                      {#if tunnelUrl}
+                        <!-- Tunnel link (primary) -->
+                        <div class="flex items-center gap-2">
+                          <span class="text-xs text-muted-foreground shrink-0"
+                            >{t("settings_general_webTunnelLink")}</span
+                          >
+                          <code
+                            class="flex-1 rounded-md border bg-muted/50 px-3 py-1.5 font-mono text-xs overflow-hidden text-ellipsis whitespace-nowrap"
+                            >{tunnelUrl.replace(/[?#]token=.*$/, "?token=...")}</code
+                          >
+                          <button
+                            class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
+                            onclick={async () => {
+                              await navigator.clipboard.writeText(tunnelUrl);
+                              webTunnelLinkCopied = true;
+                              dbg("settings", "tunnelLink copied");
+                              setTimeout(() => (webTunnelLinkCopied = false), 1500);
+                            }}
+                          >
+                            {webTunnelLinkCopied
+                              ? t("settings_general_webCopied")
+                              : t("settings_general_webCopyLink")}
+                          </button>
+                          <button
+                            class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
+                            onclick={async () => {
+                              try {
+                                const { open } = await import("@tauri-apps/plugin-shell");
+                                await open(tunnelUrl);
+                                dbg("settings", "tunnelLink opened in browser");
+                              } catch (e) {
+                                dbgWarn("settings", "failed to open browser", e);
+                              }
+                            }}
+                          >
+                            {t("settings_general_webOpenBrowser")}
+                          </button>
+                        </div>
+                        <!-- Local link (secondary, muted) -->
+                        {#if displayHost && localUrl}
+                          <div class="flex items-center gap-2">
+                            <span class="text-xs text-muted-foreground shrink-0"
+                              >{t("settings_general_webLocalLink")}</span
+                            >
+                            <code
+                              class="flex-1 rounded-md border bg-muted/30 px-3 py-1.5 font-mono text-xs text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap"
+                              >{localUrl.replace(/#token=.*$/, "#token=...")}</code
+                            >
+                            <button
+                              class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
+                              onclick={async () => {
+                                if (localUrl) {
+                                  await navigator.clipboard.writeText(localUrl);
+                                  webLinkCopied = true;
+                                  dbg("settings", "localLink copied");
+                                  setTimeout(() => (webLinkCopied = false), 1500);
+                                }
+                              }}
+                            >
+                              {webLinkCopied
+                                ? t("settings_general_webCopied")
+                                : t("settings_general_webCopyLink")}
+                            </button>
+                          </div>
+                        {/if}
+                      {:else if displayHost}
+                        <div class="flex items-center gap-2">
+                          <code
+                            class="flex-1 rounded-md border bg-muted/50 px-3 py-1.5 font-mono text-xs overflow-hidden text-ellipsis whitespace-nowrap"
+                            >{`http://${displayHost}:${webStatus.port}/login#token=...`}</code
+                          >
+                          <button
+                            class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
+                            onclick={copyAccessLink}
+                          >
+                            {webLinkCopied
+                              ? t("settings_general_webCopied")
+                              : t("settings_general_webCopyLink")}
+                          </button>
+                          <button
+                            class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
+                            onclick={openAccessLink}
+                          >
+                            {t("settings_general_webOpenBrowser")}
+                          </button>
+                        </div>
+                      {:else if isAllInterfaces}
+                        <p class="text-xs text-amber-400">
+                          {t("settings_general_webLanIpFailed")}
+                        </p>
+                      {/if}
+                      <!-- Token reveal + regenerate -->
+                      <div class="flex items-center gap-3 text-xs text-muted-foreground">
+                        {#if showWebToken}
+                          <code class="font-mono text-[11px] select-all">{webToken}</code>
+                          <button
+                            class="hover:text-foreground transition-colors shrink-0"
+                            onclick={() => (showWebToken = false)}
+                          >
+                            {t("settings_general_hide")}
+                          </button>
+                          <button
+                            class="hover:text-foreground transition-colors shrink-0"
+                            onclick={async () => {
+                              if (webToken) {
+                                await navigator.clipboard.writeText(webToken);
+                                webTokenCopied = true;
+                                dbg("settings", "webToken copied");
+                                setTimeout(() => (webTokenCopied = false), 1500);
+                              }
+                            }}
+                          >
+                            {webTokenCopied
+                              ? t("settings_general_webCopied")
+                              : t("settings_general_webCopy")}
+                          </button>
+                        {:else}
+                          <button
+                            class="hover:text-foreground transition-colors"
+                            onclick={() => (showWebToken = true)}
+                          >
+                            {t("settings_general_webShowToken")}
+                          </button>
+                        {/if}
+                        <span class="text-border">|</span>
+                        <button
+                          class="text-amber-400/70 hover:text-amber-400 transition-colors"
+                          onclick={async () => {
+                            try {
+                              const newToken = await api.regenerateWebServerToken();
+                              webToken = newToken;
+                              showWebToken = false;
+                              webTokenCopied = false;
+                              webLinkCopied = false;
+                              dbg("settings", "webToken regenerated");
+                            } catch (e) {
+                              dbgWarn("settings", "webToken regenerate failed", e);
+                            }
+                          }}
+                        >
+                          {t("settings_general_webRegenerate")}
+                        </button>
+                        <span class="text-muted-foreground">—</span>
+                        <span class="text-muted-foreground"
+                          >{t("settings_general_webRegenerateDesc")}</span
+                        >
+                      </div>
+                    </div>
+                  {/if}
+
+                  <!-- HTTP Tunnel -->
+                  <div>
+                    <p class="text-sm font-medium mb-1.5">{t("settings_general_webTunnel")}</p>
+                    <input
+                      type="text"
+                      class="w-full rounded-md border bg-background px-3 py-1.5 text-sm"
+                      placeholder={t("settings_general_webTunnelPlaceholder")}
+                      bind:value={webTunnelUrl}
+                      onblur={() => {
+                        const v = webTunnelUrl.trim();
+                        if (v) {
+                          try {
+                            const u = new URL(v);
+                            if (u.protocol !== "http:" && u.protocol !== "https:") {
+                              webTunnelError = t("settings_general_webTunnelInvalid");
+                            } else {
+                              webTunnelError = null;
+                            }
+                          } catch {
+                            webTunnelError = t("settings_general_webTunnelInvalid");
+                          }
+                        } else {
+                          webTunnelError = null;
+                        }
+                      }}
+                    />
+                    {#if webTunnelError}
+                      <p class="text-xs text-red-400 mt-1">{webTunnelError}</p>
+                    {:else}
+                      <p class="text-xs text-muted-foreground mt-1">
+                        {t("settings_general_webTunnelDesc")}
+                      </p>
+                    {/if}
+                  </div>
+
+                  <!-- Access + Port — side by side -->
+                  <div class="grid grid-cols-[1fr_auto] gap-4 items-start">
+                    <div>
+                      <p class="text-sm font-medium mb-1.5">{t("settings_general_webAccess")}</p>
+                      <div class="flex gap-2">
+                        <button
+                          class="flex-1 rounded-md border px-3 py-2 text-[13px] transition-colors {webBindValue ===
+                          '127.0.0.1'
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:bg-accent'}"
+                          onclick={() => (webBindValue = "127.0.0.1")}
+                        >
+                          {t("settings_general_webAccessLocal")}
+                        </button>
+                        <button
+                          class="flex-1 rounded-md border px-3 py-2 text-[13px] transition-colors {webBindValue ===
+                          '0.0.0.0'
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:bg-accent'}"
+                          onclick={() => (webBindValue = "0.0.0.0")}
+                        >
+                          {t("settings_general_webAccessLan")}
+                        </button>
+                      </div>
+                      <p class="text-xs text-muted-foreground mt-1">
+                        {t("settings_general_webAccessDesc")}
+                      </p>
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium mb-1.5">{t("settings_general_webPort")}</p>
+                      <input
+                        type="number"
+                        class="w-24 rounded-md border bg-background px-3 py-1.5 text-sm"
+                        bind:value={webPortInput}
+                        min="1024"
+                        max="65535"
+                        onblur={() => {
+                          const n = parseInt(webPortInput, 10);
+                          if (isNaN(n) || n < 1024 || n > 65535) {
+                            webRestartError = t("settings_general_webPortInvalid");
+                          } else {
+                            if (webRestartError === t("settings_general_webPortInvalid")) {
+                              webRestartError = null;
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Advanced (collapsible) -->
+                  <div>
+                    <button
+                      class="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      onclick={() => (webAdvancedOpen = !webAdvancedOpen)}
+                    >
+                      <svg
+                        class="h-3 w-3 transition-transform {webAdvancedOpen ? 'rotate-90' : ''}"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"><path d="m9 18 6-6-6-6" /></svg
+                      >
+                      {t("settings_general_webAdvanced")}
+                    </button>
+
+                    {#if webAdvancedOpen}
+                      <div class="mt-3 space-y-2">
+                        <p class="text-sm font-medium">{t("settings_general_webAllowedOrigins")}</p>
+                        {#if webOrigins.length > 0}
+                          <div class="flex flex-wrap gap-1.5">
+                            {#each webOrigins as origin, i}
+                              <span
+                                class="inline-flex items-center gap-1 rounded-full border bg-muted/50 px-2.5 py-0.5 text-xs"
+                              >
+                                {origin}
+                                <button
+                                  class="text-muted-foreground hover:text-foreground"
+                                  onclick={() => {
+                                    webOrigins = webOrigins.filter((_, idx) => idx !== i);
+                                  }}
+                                >
+                                  <svg
+                                    class="h-3 w-3"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"><path d="M18 6L6 18M6 6l12 12" /></svg
+                                  >
+                                </button>
+                              </span>
+                            {/each}
+                          </div>
+                        {/if}
+                        <div class="flex gap-2">
+                          <input
+                            type="text"
+                            class="flex-1 rounded-md border bg-background px-3 py-1.5 text-sm"
+                            placeholder={t("settings_general_webAllowedOriginsPlaceholder")}
+                            bind:value={webOriginInput}
+                            onkeydown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                addWebOrigin();
+                              }
+                            }}
+                          />
+                          <button
+                            class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
+                            onclick={addWebOrigin}
+                          >
+                            {t("settings_general_webAddOrigin")}
+                          </button>
+                        </div>
+                        {#if webOriginError}
+                          <p class="text-xs text-red-400">{webOriginError}</p>
+                        {/if}
+                        <p class="text-xs text-muted-foreground">
+                          {t("settings_general_webAllowedOriginsDesc")}
+                        </p>
+                      </div>
+                    {/if}
+                  </div>
+
+                  <!-- Apply + feedback -->
+                  <div class="space-y-2 pt-2 border-t border-border">
+                    {#if webRestartError}
+                      <p class="text-xs text-red-400">
+                        {t("settings_general_webRestartFailed", { error: webRestartError })}
+                      </p>
+                    {/if}
+                    {#if webRestartWarning}
+                      <p class="text-xs text-amber-400">{webRestartWarning}</p>
+                    {/if}
+                    <button
+                      class="rounded-md border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+                      disabled={webRestarting}
+                      onclick={applyWebServerSettings}
+                    >
+                      {#if webRestarting}
+                        <span class="inline-flex items-center gap-2">
+                          <span
+                            class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"
+                          ></span>
+                          {t("settings_general_webApplying")}
+                        </span>
+                      {:else}
+                        {t("settings_general_webApply")}
+                      {/if}
+                    </button>
+                  </div>
+                {:else}
+                  <p class="text-sm text-muted-foreground">
+                    {t("settings_general_webDisabled")}
+                  </p>
+                {/if}
+              </Card>
+            {/if}
+          </div>
+
+          <!-- ═══ Connection tab ═══ -->
+        {:else if activeTab === "connection"}
+          <div class="space-y-6">
+            <!-- Authentication -->
+            <Card class="p-6 space-y-5">
+              <div class="flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t("settings_general_connection")}
+                </h2>
+                {#if generalSaved}
+                  <span class="text-xs text-emerald-500 flex items-center gap-1 animate-fade-in">
+                    <svg
+                      class="h-3 w-3"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
+                    >
+                    {t("settings_general_saved")}
+                  </span>
                 {/if}
               </div>
 
-              <!-- SSH Key Wizard inline panel -->
-              {#if sshKeyStep !== "idle"}
-                <div class="mt-2 rounded-lg border border-border p-3 space-y-2 text-xs bg-muted/30">
-                  {#if sshKeyStep === "checking"}
-                    <div class="flex items-center gap-2 text-muted-foreground">
-                      <div
-                        class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"
-                      ></div>
-                      {t("settings_remote_sshKeyChecking")}
-                    </div>
-                  {:else if sshKeyStep === "no_key"}
-                    <p class="text-muted-foreground">{t("settings_remote_sshKeyNotFound")}</p>
-                    <button
-                      class="rounded border px-3 py-1.5 text-xs hover:bg-accent transition-colors"
-                      onclick={generateSshKey}
+              <!-- Auth Mode selector: 2-way radio -->
+              <div>
+                <span class="text-sm font-medium mb-2 block">{t("settings_auth_modeLabel")}</span>
+                <div class="mt-1 grid grid-cols-2 gap-3">
+                  <button
+                    class="flex flex-col items-center gap-2 rounded-lg border p-4 text-sm transition-all duration-150
+                {authMode === 'cli'
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                      : 'hover:bg-accent hover:border-ring/30'}"
+                    onclick={() => {
+                      authMode = "cli";
+                      saveGeneralPatch({
+                        auth_mode: "cli",
+                        anthropic_base_url: null,
+                        active_platform_id: null,
+                        auth_env_var: null,
+                      });
+                      api.removeCliApiKey().catch(() => {});
+                      api
+                        .getAuthOverview()
+                        .then((ov) => (authOverview = ov))
+                        .catch(() => {});
+                    }}
+                  >
+                    <div
+                      class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10"
                     >
-                      {t("settings_remote_sshKeyGenerate")}
-                    </button>
-                  {:else if sshKeyStep === "generating"}
-                    <div class="flex items-center gap-2 text-muted-foreground">
-                      <div
-                        class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"
-                      ></div>
-                      {t("settings_remote_sshKeyGenerating")}
+                      <svg
+                        class="h-5 w-5 text-emerald-400"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path
+                          d="M7 11V7a5 5 0 0 1 10 0v4"
+                        />
+                      </svg>
                     </div>
-                  {:else if sshKeyStep === "pub_missing" && sshKeyInfo}
-                    <p class="text-amber-400">
-                      {t(
-                        IS_WINDOWS
-                          ? "settings_remote_sshKeyPubMissing_win"
-                          : "settings_remote_sshKeyPubMissing",
-                      )}
+                    <span class="font-medium">{t("auth_cliAuth")}</span>
+                    <span class="text-[10px] text-muted-foreground text-center"
+                      >{t("settings_auth_modeCliDesc")}</span
+                    >
+                  </button>
+                  <button
+                    class="flex flex-col items-center gap-2 rounded-lg border p-4 text-sm transition-all duration-150
+                {authMode === 'api'
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                      : 'hover:bg-accent hover:border-ring/30'}"
+                    onclick={() => {
+                      authMode = "api";
+                      saveGeneralPatch({ auth_mode: "api" });
+                      api
+                        .getAuthOverview()
+                        .then((ov) => (authOverview = ov))
+                        .catch(() => {});
+                    }}
+                  >
+                    <div
+                      class="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10"
+                    >
+                      <svg
+                        class="h-5 w-5 text-violet-400"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path
+                          d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"
+                        />
+                      </svg>
+                    </div>
+                    <span class="font-medium">{t("auth_appApiKey")}</span>
+                    <span class="text-[10px] text-muted-foreground text-center"
+                      >{t("settings_auth_modeAppDesc")}</span
+                    >
+                  </button>
+                </div>
+              </div>
+
+              <!-- CLI Auth details (expanded when auth_mode = cli) -->
+              {#if authMode === "cli"}
+                <div class="space-y-4 rounded-lg border border-border/50 p-4">
+                  <!-- CLI Login status -->
+                  <div>
+                    <h3 class="text-sm font-medium mb-1">{t("settings_auth_cliLoginTitle")}</h3>
+                    <p class="text-xs text-muted-foreground mb-2">
+                      {t("settings_auth_cliLoginDesc")}
                     </p>
-                    <div class="flex items-center gap-2">
-                      <code
-                        class="flex-1 rounded bg-muted px-2 py-1.5 font-mono text-[11px] break-all select-all"
-                      >
-                        {buildRebuildPubKeyCommand(sshKeyInfo)}
-                      </code>
+                    {#if authOverview?.cli_login_available}
+                      <div class="flex items-center gap-2">
+                        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                        <span class="text-xs text-emerald-500">
+                          {t("auth_loggedIn")}{authOverview.cli_login_account
+                            ? `: ${authOverview.cli_login_account}`
+                            : ""}
+                        </span>
+                      </div>
+                    {:else}
+                      <div class="flex flex-col gap-2">
+                        <div class="flex items-center gap-2">
+                          <span class="h-2 w-2 rounded-full bg-muted-foreground/40"></span>
+                          <span class="text-xs text-muted-foreground">{t("auth_notLoggedIn")}</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={cliLoginLoading}
+                            onclick={() => {
+                              cliLoginLoading = true;
+                              cliLoginError = "";
+                              api
+                                .runClaudeLogin()
+                                .then((success) => {
+                                  if (success) {
+                                    api
+                                      .getAuthOverview()
+                                      .then((ov) => (authOverview = ov))
+                                      .catch(() => {});
+                                  } else {
+                                    cliLoginError = t("setup_loginFailed");
+                                  }
+                                })
+                                .catch((e) => {
+                                  cliLoginError = String(e);
+                                })
+                                .finally(() => {
+                                  cliLoginLoading = false;
+                                });
+                            }}
+                          >
+                            {#if cliLoginLoading}
+                              <span class="flex items-center gap-1.5">
+                                <span
+                                  class="h-3 w-3 border border-foreground/30 border-t-foreground rounded-full animate-spin"
+                                ></span>
+                                {t("settings_auth_cliLoginBtn")}
+                              </span>
+                            {:else}
+                              {t("settings_auth_cliLoginBtn")}
+                            {/if}
+                          </Button>
+                        </div>
+                        {#if cliLoginError}
+                          <div class="rounded border border-red-500/30 bg-red-500/5 px-2 py-1">
+                            <p class="text-xs text-red-500">{cliLoginError}</p>
+                          </div>
+                        {/if}
+                      </div>
+                    {/if}
+                  </div>
+
+                  <!-- CLI API Key (read-only) -->
+                  <div>
+                    <h3 class="text-sm font-medium mb-1">{t("settings_auth_cliApiKeyTitle")}</h3>
+                    {#if authOverview?.cli_has_api_key}
+                      <div class="flex items-center gap-2">
+                        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                        <span class="text-xs text-emerald-500"
+                          >{t("auth_cliKeyHint", {
+                            hint: authOverview.cli_api_key_hint ?? "",
+                          })}</span
+                        >
+                      </div>
+                      <p class="mt-1 text-[10px] text-muted-foreground/70 italic">
+                        {#if authOverview.cli_api_key_source === "settings"}
+                          {t("settings_auth_cliApiKeySourceSettings")}
+                        {:else if authOverview.cli_api_key_source === "env"}
+                          {t("settings_auth_cliApiKeySourceEnv")}
+                        {:else if authOverview.cli_api_key_source?.startsWith("shell_config:")}
+                          {t("settings_auth_cliApiKeySourceShell", {
+                            path: authOverview.cli_api_key_source.slice(13),
+                          })}
+                        {/if}
+                      </p>
+                    {:else}
+                      <div class="flex items-center gap-2">
+                        <span class="h-2 w-2 rounded-full bg-muted-foreground/40"></span>
+                        <span class="text-xs text-muted-foreground"
+                          >{t("settings_auth_cliApiKeyNotSet")}</span
+                        >
+                      </div>
+                      <p class="mt-1 text-[10px] text-muted-foreground/70 italic">
+                        {t("settings_auth_cliApiKeyEditHint")}
+                      </p>
+                    {/if}
+                  </div>
+
+                  <!-- Priority hint -->
+                  {#if authOverview?.cli_login_available && authOverview?.cli_has_api_key}
+                    <p class="text-[10px] text-muted-foreground/70 italic">
+                      {t("auth_cliPriorityHint")}
+                    </p>
+                  {/if}
+                </div>
+              {/if}
+
+              {#if authMode === "api"}
+                <div class="space-y-4 rounded-lg border border-border/50 p-4">
+                  <div>
+                    <h3 class="text-sm font-medium mb-1">{t("settings_auth_appApiKeyTitle")}</h3>
+                    <p class="text-xs text-muted-foreground mb-3">
+                      {t("settings_auth_appApiKeyDesc")}
+                    </p>
+                  </div>
+                  <!-- Platform selector -->
+                  <div>
+                    <span class="text-sm font-medium mb-1.5 block"
+                      >{t("settings_general_platform")}</span
+                    >
+                    <!-- Platform grid (always visible) -->
+                    <div class="grid grid-cols-4 gap-1.5">
+                      {#each platformList.filter((p) => p.id !== "custom") as preset (preset.id)}
+                        <button
+                          class="flex flex-col gap-0 rounded-md p-2 text-left transition-colors relative group
+                      {selectedPlatformId === preset.id
+                            ? 'bg-primary/10 ring-1 ring-primary'
+                            : 'bg-muted/40 hover:bg-muted/70'}"
+                          onclick={() => applyPlatformPreset(preset)}
+                        >
+                          <span class="text-xs font-medium truncate">{preset.name}</span>
+                          <span class="text-[10px] text-muted-foreground truncate"
+                            >{preset.description}</span
+                          >
+                          {#if isCustomPlatform(preset.id)}
+                            <span
+                              role="button"
+                              tabindex="0"
+                              class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-0.5 cursor-pointer"
+                              onclick={(e: MouseEvent) => {
+                                e.stopPropagation();
+                                deleteCustomEndpoint(preset.id);
+                              }}
+                              onkeydown={(e: KeyboardEvent) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.stopPropagation();
+                                  deleteCustomEndpoint(preset.id);
+                                }
+                              }}
+                              title={t("settings_general_deleteCustom")}
+                            >
+                              <svg
+                                class="h-3 w-3"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
+                              >
+                            </span>
+                          {/if}
+                          {#if preset.category === "local"}
+                            {@const ps = localProxyStatuses[preset.id]}
+                            <span
+                              class="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full {ps?.running &&
+                              !ps.needsAuth
+                                ? 'bg-green-500'
+                                : ps?.running && ps.needsAuth
+                                  ? 'bg-amber-500'
+                                  : 'bg-muted-foreground/30'}"
+                              title={ps?.running && !ps.needsAuth
+                                ? t("settings_local_running")
+                                : ps?.running && ps.needsAuth
+                                  ? t("settings_local_needsAuth")
+                                  : t("settings_local_notDetected")}
+                            ></span>
+                          {:else if findCredential(platformCredentials, preset.id)?.api_key}
+                            <span
+                              class="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-green-500"
+                              title="Key saved"
+                            ></span>
+                          {/if}
+                        </button>
+                      {/each}
+                      <!-- Add Custom -->
                       <button
-                        class="shrink-0 rounded border px-2 py-1 text-[10px] hover:bg-accent transition-colors"
-                        onclick={async () => {
-                          await navigator.clipboard.writeText(
-                            buildRebuildPubKeyCommand(sshKeyInfo!),
-                          );
-                          sshCopied = true;
-                          setTimeout(() => (sshCopied = false), 2000);
-                        }}
+                        class="flex flex-col items-center justify-center gap-1 rounded-md border border-dashed border-muted-foreground/30 p-2 text-muted-foreground hover:border-primary/50 hover:text-foreground hover:bg-muted/40 transition-colors"
+                        onclick={() => addCustomEndpoint()}
                       >
-                        {sshCopied ? t("settings_remote_sshKeyCopied") : t("common_copy")}
+                        <svg
+                          class="h-4 w-4"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"><path d="M12 5v14" /><path d="M5 12h14" /></svg
+                        >
+                        <span class="text-[10px]">{t("settings_general_addCustom")}</span>
                       </button>
                     </div>
-                    <p class="text-muted-foreground text-[10px]">
-                      After running the command, click "Setup SSH Key" again.
-                    </p>
-                    <button
-                      class="text-[10px] text-muted-foreground hover:underline"
-                      onclick={closeSshWizard}
-                    >
-                      {t("settings_remote_sshKeyClose")}
-                    </button>
-                  {:else if sshKeyStep === "has_key" && sshKeyInfo}
-                    <p class="text-emerald-500">
-                      {t("settings_remote_sshKeyFound", { keyType: sshKeyInfo.key_type })}
-                      <span class="text-muted-foreground ml-1 font-mono">{sshKeyInfo.key_path}</span
-                      >
-                    </p>
+                  </div>
 
-                    {#if remoteFormHost && remoteFormUser}
-                      <p class="text-muted-foreground">
-                        {t(
-                          IS_WINDOWS
-                            ? "settings_remote_sshKeyCopyCmd_win"
-                            : "settings_remote_sshKeyCopyCmd",
-                        )}
-                      </p>
+                  {#if selectedPlatform?.category === "local"}
+                    <!-- Local proxy status card -->
+                    <div class="rounded-lg border p-4 space-y-3">
                       <div class="flex items-center gap-2">
-                        <code
-                          class="flex-1 rounded bg-muted px-2 py-1.5 font-mono text-[11px] break-all select-all"
-                        >
-                          {buildCopyCommand(
-                            sshKeyInfo,
-                            remoteFormHost.trim(),
-                            remoteFormUser.trim(),
-                            remoteFormPort || 22,
-                          )}
-                        </code>
+                        {#if localProxyChecking}
+                          <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
+                          <span class="text-sm">{t("settings_local_checking")}</span>
+                        {:else if localProxyStatus?.running && !localProxyStatus.needsAuth}
+                          <span class="h-2 w-2 rounded-full bg-green-500"></span>
+                          <span class="text-sm font-medium">{t("settings_local_running")}</span>
+                        {:else if localProxyStatus?.running && localProxyStatus.needsAuth}
+                          <span class="h-2 w-2 rounded-full bg-amber-500"></span>
+                          <span class="text-sm font-medium">{t("settings_local_needsAuth")}</span>
+                        {:else}
+                          <span class="h-2 w-2 rounded-full bg-muted-foreground/30"></span>
+                          <span class="text-sm">{t("settings_local_notDetected")}</span>
+                        {/if}
                         <button
-                          class="shrink-0 rounded border px-2 py-1 text-[10px] hover:bg-accent transition-colors"
-                          onclick={async () => {
-                            await navigator.clipboard.writeText(
-                              buildCopyCommand(
-                                sshKeyInfo!,
-                                remoteFormHost.trim(),
-                                remoteFormUser.trim(),
-                                remoteFormPort || 22,
-                              ),
-                            );
-                            sshCopied = true;
-                            setTimeout(() => (sshCopied = false), 2000);
-                          }}
+                          class="ml-auto rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                          onclick={checkLocalProxy}>{t("settings_local_refresh")}</button
                         >
-                          {sshCopied ? t("settings_remote_sshKeyCopied") : t("common_copy")}
-                        </button>
                       </div>
+                      <p class="text-xs text-muted-foreground font-mono">{anthropicBaseUrl}</p>
+                      {#if localProxyStatus && !localProxyStatus.running}
+                        <p class="text-xs text-amber-500">
+                          {selectedPlatform.setup_hint
+                            ? t(selectedPlatform.setup_hint as Parameters<typeof t>[0])
+                            : t("settings_local_startHint", { name: selectedPlatform.name })}
+                        </p>
+                      {/if}
+                      {#if selectedPlatform.docs_url}
+                        <a
+                          href={selectedPlatform.docs_url}
+                          target="_blank"
+                          class="text-xs text-primary hover:underline"
+                        >
+                          {t("settings_local_viewDocs")} →
+                        </a>
+                      {/if}
+                    </div>
 
-                      <div class="flex items-center gap-2 mt-1">
+                    <!-- Advanced settings toggle -->
+                    <button
+                      class="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      onclick={() => (localAdvancedOpen = !localAdvancedOpen)}
+                    >
+                      {localAdvancedOpen ? "▾" : "▸"}
+                      {t("settings_local_advanced")}
+                    </button>
+                  {/if}
+
+                  {#if selectedPlatform?.category !== "local" || localAdvancedOpen}
+                    <!-- Custom endpoint: Name + Auth Type -->
+                    {#if isCustomPlatform(selectedPlatformId ?? "")}
+                      <div class="flex gap-3">
+                        <div class="flex-1">
+                          <label class="text-sm font-medium mb-1.5 block"
+                            >{t("settings_general_customNameLabel")}</label
+                          >
+                          <Input
+                            value={findCredential(platformCredentials, selectedPlatformId ?? "")
+                              ?.name ?? ""}
+                            placeholder={t("settings_general_customNamePlaceholder")}
+                            class="mt-1 text-xs"
+                            onblur={(e) => {
+                              const target = e.currentTarget as HTMLInputElement | null;
+                              if (!target) return;
+                              const val = target.value.trim();
+                              if (selectedPlatformId) {
+                                _upsertCredential(selectedPlatformId, { name: val || "Custom" });
+                                saveGeneralPatch({ platform_credentials: platformCredentials });
+                              }
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label class="text-sm font-medium mb-1.5 block"
+                            >{t("settings_general_authType")}</label
+                          >
+                          <div class="mt-1 flex rounded-md border border-input overflow-hidden">
+                            <button
+                              class="px-3 py-1.5 text-xs font-medium transition-colors {(findCredential(
+                                platformCredentials,
+                                selectedPlatformId ?? '',
+                              )?.auth_env_var ?? 'ANTHROPIC_AUTH_TOKEN') === 'ANTHROPIC_AUTH_TOKEN'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-accent'}"
+                              onclick={() => {
+                                if (selectedPlatformId) {
+                                  _upsertCredential(selectedPlatformId, {
+                                    auth_env_var: "ANTHROPIC_AUTH_TOKEN",
+                                  });
+                                  saveGeneralPatch({ platform_credentials: platformCredentials });
+                                }
+                              }}>{t("settings_bearer")}</button
+                            >
+                            <button
+                              class="px-3 py-1.5 text-xs font-medium transition-colors border-l border-input {(findCredential(
+                                platformCredentials,
+                                selectedPlatformId ?? '',
+                              )?.auth_env_var ?? 'ANTHROPIC_AUTH_TOKEN') === 'ANTHROPIC_API_KEY'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-accent'}"
+                              onclick={() => {
+                                if (selectedPlatformId) {
+                                  _upsertCredential(selectedPlatformId, {
+                                    auth_env_var: "ANTHROPIC_API_KEY",
+                                  });
+                                  saveGeneralPatch({ platform_credentials: platformCredentials });
+                                }
+                              }}>x-api-key</button
+                            >
+                          </div>
+                        </div>
+                      </div>
+                    {/if}
+
+                    <!-- API Key input -->
+                    <div>
+                      <label class="text-sm font-medium mb-1.5 block" for="api-key"
+                        >{t("settings_general_apiKey")}</label
+                      >
+                      <div class="mt-1 flex gap-2">
+                        <div class="flex-1 relative">
+                          <Input
+                            bind:value={anthropicApiKey}
+                            placeholder={selectedPlatform?.key_placeholder ?? "<your-api-key>"}
+                            type={showApiKey ? "text" : "password"}
+                            class="font-mono text-xs"
+                            onblur={() => persistCurrentPlatform()}
+                          />
+                        </div>
+                        <button
+                          class="rounded-md border px-3 py-2 text-xs text-muted-foreground hover:bg-accent transition-colors"
+                          onclick={() => (showApiKey = !showApiKey)}
+                        >
+                          {showApiKey ? t("settings_general_hide") : t("settings_general_show")}
+                        </button>
+                        {#if selectedPlatform?.category !== "local"}
+                          {@const cred = findCredential(
+                            platformCredentials,
+                            selectedPlatformId ?? "",
+                          )}
+                          {@const authEnvVar =
+                            cred?.auth_env_var ||
+                            selectedPlatform?.auth_env_var ||
+                            "ANTHROPIC_API_KEY"}
+                          {@const [presetOpusTest, presetSonnetTest] = expandModelsToTiers(
+                            selectedPlatform?.models,
+                          )}
+                          {@const testModel =
+                            modelSonnet.trim() ||
+                            modelOpus.trim() ||
+                            presetSonnetTest ||
+                            presetOpusTest ||
+                            ""}
+                          {@const isCustom = isCustomPlatform(selectedPlatformId ?? "")}
+                          {@const noKey = !anthropicApiKey}
+                          {@const noUrl = isCustom && !anthropicBaseUrl.trim()}
+                          {@const disableReason = noKey
+                            ? t("settings_apiTest_noKey")
+                            : noUrl
+                              ? t("settings_apiTest_noUrl")
+                              : ""}
+                          <button
+                            class="rounded-md border px-3 py-2 text-xs transition-colors {disableReason ||
+                            apiTestLoading
+                              ? 'text-muted-foreground/50 cursor-not-allowed'
+                              : 'text-muted-foreground hover:bg-accent hover:text-foreground'}"
+                            disabled={!!disableReason || apiTestLoading}
+                            title={disableReason || ""}
+                            onclick={async () => {
+                              const myRequestId = ++apiTestRequestId;
+                              const myPlatformId = selectedPlatformId;
+                              apiTestLoading = true;
+                              apiTestResult = null;
+                              dbg("settings", "testApi start", {
+                                platform: myPlatformId,
+                                model: testModel,
+                                authEnvVar,
+                                reqId: myRequestId,
+                              });
+                              try {
+                                const result = await api.testApiConnectivity(
+                                  anthropicApiKey,
+                                  anthropicBaseUrl,
+                                  authEnvVar,
+                                  testModel,
+                                );
+                                if (myRequestId !== apiTestRequestId) return;
+                                if (myPlatformId !== selectedPlatformId) return;
+                                apiTestResult = result;
+                                if (result.success) {
+                                  dbg("settings", "testApi success", {
+                                    latencyMs: result.latencyMs,
+                                  });
+                                } else {
+                                  dbgWarn("settings", "testApi error", result.error);
+                                }
+                              } catch (e) {
+                                if (
+                                  myRequestId !== apiTestRequestId ||
+                                  myPlatformId !== selectedPlatformId
+                                )
+                                  return;
+                                apiTestResult = {
+                                  success: false,
+                                  latencyMs: 0,
+                                  error: String(e),
+                                  partial: false,
+                                };
+                                dbgWarn("settings", "testApi error", e);
+                              } finally {
+                                if (myRequestId === apiTestRequestId) apiTestLoading = false;
+                              }
+                            }}
+                          >
+                            {t("settings_apiTest")}
+                          </button>
+                        {/if}
+                      </div>
+                      <!-- API test result -->
+                      {#if apiTestLoading}
+                        <div class="mt-1.5 flex items-center gap-1.5">
+                          <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
+                          <span class="text-xs text-muted-foreground"
+                            >{t("settings_apiTest_testing")}</span
+                          >
+                        </div>
+                      {:else if apiTestResult?.success && apiTestResult.partial}
+                        <div class="mt-1.5 flex items-center gap-1.5">
+                          <span class="h-2 w-2 rounded-full bg-green-500"></span>
+                          <span class="text-xs text-green-600 dark:text-green-400"
+                            >{t("settings_apiTest_partial", {
+                              latency: String(apiTestResult.latencyMs),
+                            })}</span
+                          >
+                        </div>
+                      {:else if apiTestResult?.success}
+                        <div class="mt-1.5 flex items-center gap-1.5">
+                          <span class="h-2 w-2 rounded-full bg-green-500"></span>
+                          <span class="text-xs text-green-600 dark:text-green-400"
+                            >{t("settings_apiTest_success", {
+                              latency: String(apiTestResult.latencyMs),
+                            })}</span
+                          >
+                        </div>
+                      {:else if apiTestResult && !apiTestResult.success}
+                        <div class="mt-1.5 flex items-center gap-1.5">
+                          <span class="h-2 w-2 rounded-full bg-red-500"></span>
+                          <span class="text-xs text-red-600 dark:text-red-400"
+                            >{apiTestResult.error ?? t("settings_apiTest_failed")}</span
+                          >
+                        </div>
+                      {:else if selectedPlatform?.id === "ollama"}
+                        <p class="mt-1 text-xs text-muted-foreground">{t("setup_noKeyNeeded")}</p>
+                      {:else}
+                        <p class="mt-1 text-xs text-muted-foreground">
+                          {t("settings_general_apiKeyStored")}
+                        </p>
+                      {/if}
+                    </div>
+
+                    <!-- Base URL (only show for custom or direct editing) -->
+                    <div>
+                      <label class="text-sm font-medium mb-1.5 block" for="base-url"
+                        >{t("settings_general_baseUrl")}</label
+                      >
+                      <Input
+                        bind:value={anthropicBaseUrl}
+                        placeholder="https://api.anthropic.com"
+                        class="mt-1 font-mono text-xs"
+                        disabled={selectedPlatformId !== null &&
+                          selectedPlatformId !== "anthropic" &&
+                          selectedPlatform?.category !== "local" &&
+                          !isCustomPlatform(selectedPlatformId ?? "")}
+                        onblur={() => persistCurrentPlatform()}
+                      />
+                      <p class="mt-1 text-xs text-muted-foreground">
+                        {#if selectedPlatform && selectedPlatform.auth_env_var === "ANTHROPIC_AUTH_TOKEN"}
+                          {t("setup_authTypeBearer")}
+                        {:else if selectedPlatform && selectedPlatform.auth_env_var === "ANTHROPIC_API_KEY"}
+                          {t("setup_authTypeApiKey")}
+                        {:else}
+                          {t("settings_general_baseUrlHelp")}
+                        {/if}
+                      </p>
+                    </div>
+
+                    <!-- Models (3-tier: Opus / Sonnet / Haiku) -->
+                    {@const [presetOpus, presetSonnet, presetHaiku] = expandModelsToTiers(
+                      selectedPlatform?.models,
+                    )}
+                    {@const phOpus = presetOpus || t("settings_general_modelsPlaceholder")}
+                    {@const phSonnet = presetSonnet || t("settings_general_modelsPlaceholder")}
+                    {@const phHaiku = presetHaiku || t("settings_general_modelsPlaceholder")}
+                    <div>
+                      <label class="text-sm font-medium mb-1.5 block"
+                        >{t("settings_general_models")}</label
+                      >
+                      <div class="mt-1 space-y-1.5">
+                        <div class="flex items-center gap-2">
+                          <span class="text-xs text-muted-foreground w-24 shrink-0 text-right"
+                            >{t("settings_general_modelOpus")}</span
+                          >
+                          <Input
+                            bind:value={modelOpus}
+                            placeholder={phOpus}
+                            class="flex-1 font-mono text-xs"
+                            onblur={() => persistCurrentPlatform()}
+                          />
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <span
+                            class="text-xs text-muted-foreground w-24 shrink-0 text-right font-medium"
+                            >{t("settings_general_modelSonnet")}</span
+                          >
+                          <Input
+                            bind:value={modelSonnet}
+                            placeholder={phSonnet}
+                            class="flex-1 font-mono text-xs"
+                            onblur={() => persistCurrentPlatform()}
+                          />
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <span class="text-xs text-muted-foreground w-24 shrink-0 text-right"
+                            >{t("settings_general_modelHaiku")}</span
+                          >
+                          <Input
+                            bind:value={modelHaiku}
+                            placeholder={phHaiku}
+                            class="flex-1 font-mono text-xs"
+                            onblur={() => persistCurrentPlatform()}
+                          />
+                        </div>
+                      </div>
+                      <p class="mt-1 text-xs text-muted-foreground">
+                        {t("settings_general_modelsHelp")}
+                      </p>
+                    </div>
+
+                    <!-- Extra Environment Variables -->
+                    <div>
+                      <label class="text-sm font-medium mb-1.5 block" for="extra-env-section">
+                        {t("settings_general_extraEnv")}
+                      </label>
+                      {#each platformExtraEnv as envVar, i}
+                        <div class="flex gap-1.5 mt-1.5">
+                          <Input
+                            bind:value={envVar.key}
+                            placeholder={t("settings_general_envKeyPlaceholder")}
+                            class="flex-1 font-mono text-xs"
+                            oninput={() => markExtraEnvTouched()}
+                            onblur={() => persistCurrentPlatform()}
+                            onpaste={(e: ClipboardEvent) => handleEnvKeyPaste(e, i)}
+                          />
+                          <Input
+                            bind:value={envVar.value}
+                            placeholder={t("settings_general_envValuePlaceholder")}
+                            class="flex-1 font-mono text-xs"
+                            oninput={() => markExtraEnvTouched()}
+                            onblur={() => persistCurrentPlatform()}
+                          />
+                          <button
+                            class="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            aria-label={t("settings_remote_delete")}
+                            onclick={() => {
+                              platformExtraEnv = platformExtraEnv.filter((_, idx) => idx !== i);
+                              markExtraEnvTouched();
+                              persistCurrentPlatform();
+                            }}
+                          >
+                            <svg
+                              class="h-3.5 w-3.5"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      {/each}
+                      <button
+                        class="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        onclick={() => {
+                          platformExtraEnv = [...platformExtraEnv, { key: "", value: "" }];
+                        }}
+                      >
+                        <svg
+                          class="h-3 w-3"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        >
+                          <path d="M12 5v14" /><path d="M5 12h14" />
+                        </svg>
+                        {t("settings_general_addEnvVar")}
+                      </button>
+                      <p class="mt-1 text-xs text-muted-foreground">
+                        {t("settings_general_extraEnvHelp")}
+                      </p>
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+            </Card>
+
+            <!-- Setup Wizard button -->
+            <div class="flex items-center justify-between rounded-lg border border-border p-4">
+              <div>
+                <p class="text-sm font-medium">{t("settings_general_setupWizard")}</p>
+                <p class="text-xs text-muted-foreground">{t("settings_general_setupWizardDesc")}</p>
+              </div>
+              <button
+                class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                onclick={openSetupWizard}>{t("settings_general_runWizard")}</button
+              >
+            </div>
+          </div>
+
+          <!-- ═══ CLI Config tab ═══ -->
+        {:else if activeTab === "cli-config"}
+          {#if cliConfigLoading && !cliConfigLoaded}
+            <div class="flex items-center justify-center py-12">
+              <div
+                class="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent"
+              ></div>
+              <span class="ml-3 text-sm text-muted-foreground"
+                >{t("settings_cliConfig_loading")}</span
+              >
+            </div>
+          {:else if cliConfigError}
+            <Card class="p-6">
+              <p class="text-sm text-red-400">
+                {t("settings_cliConfig_loadFailed", { error: cliConfigError })}
+              </p>
+              <button
+                class="mt-3 rounded-md border px-3 py-1.5 text-xs hover:bg-accent transition-colors"
+                onclick={() => {
+                  cliConfigLoaded = false;
+                  loadCliConfig();
+                }}
+              >
+                {t("settings_cliConfig_retry")}
+              </button>
+            </Card>
+          {:else}
+            <div class="space-y-6">
+              <!-- Behavior -->
+              <Card class="p-6 space-y-4">
+                <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t("settings_cliConfig_behavior")}
+                </h2>
+                {#each behaviorSettings as def (def.key)}
+                  <div class="flex items-center justify-between gap-4 py-1">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <p class="text-sm font-medium">{def.label}</p>
+                        {#if isProjectOverride(def.key)}
+                          <span
+                            class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/15 text-amber-400 border border-amber-500/20"
+                          >
+                            {t("settings_cliConfig_projectOverride")}
+                          </span>
+                        {/if}
+                      </div>
+                      <p class="text-xs text-muted-foreground mt-0.5">{def.description}</p>
+                    </div>
+                    {#if def.type === "boolean"}
+                      <button
+                        aria-label={def.label}
+                        class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 {getCliConfigValue(
+                          def.key,
+                          def,
+                        ) === true
+                          ? 'bg-primary'
+                          : 'bg-neutral-700'}"
+                        onclick={() => {
+                          const current = getCliConfigValue(def.key, def);
+                          const next = current === true ? false : true;
+                          saveCliConfigPatch(def.key, next);
+                          cliConfig = { ...cliConfig, [def.key]: next };
+                        }}
+                      >
+                        <span
+                          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 {getCliConfigValue(
+                            def.key,
+                            def,
+                          ) === true
+                            ? 'translate-x-6'
+                            : 'translate-x-1'}"
+                        ></span>
+                      </button>
+                    {:else if def.type === "enum" && def.options}
+                      <div class="flex gap-1.5 shrink-0">
+                        {#each def.options as opt (opt.value)}
+                          <button
+                            class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
+                        {getCliConfigValue(def.key, def) === opt.value
+                              ? 'bg-primary text-primary-foreground'
+                              : 'hover:bg-accent hover:border-ring/30'}"
+                            onclick={() => {
+                              saveCliConfigPatch(def.key, opt.value);
+                              cliConfig = { ...cliConfig, [def.key]: opt.value };
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+                {/each}
+              </Card>
+
+              <!-- Appearance -->
+              <Card class="p-6 space-y-4">
+                <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t("settings_cliConfig_appearance")}
+                </h2>
+                {#each appearanceSettings as def (def.key)}
+                  <div class="flex items-center justify-between gap-4 py-1">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <p class="text-sm font-medium">{def.label}</p>
+                        {#if isProjectOverride(def.key)}
+                          <span
+                            class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/15 text-amber-400 border border-amber-500/20"
+                          >
+                            {t("settings_cliConfig_projectOverride")}
+                          </span>
+                        {/if}
+                      </div>
+                      <p class="text-xs text-muted-foreground mt-0.5">{def.description}</p>
+                    </div>
+                    {#if def.type === "boolean"}
+                      <button
+                        aria-label={def.label}
+                        class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 {getCliConfigValue(
+                          def.key,
+                          def,
+                        ) === true
+                          ? 'bg-primary'
+                          : 'bg-neutral-700'}"
+                        onclick={() => {
+                          const current = getCliConfigValue(def.key, def);
+                          const next = current === true ? false : true;
+                          saveCliConfigPatch(def.key, next);
+                          cliConfig = { ...cliConfig, [def.key]: next };
+                        }}
+                      >
+                        <span
+                          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 {getCliConfigValue(
+                            def.key,
+                            def,
+                          ) === true
+                            ? 'translate-x-6'
+                            : 'translate-x-1'}"
+                        ></span>
+                      </button>
+                    {:else if def.type === "enum" && def.options}
+                      <div class="flex gap-1.5 shrink-0">
+                        {#each def.options as opt (opt.value)}
+                          <button
+                            class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
+                        {getCliConfigValue(def.key, def) === opt.value
+                              ? 'bg-primary text-primary-foreground'
+                              : 'hover:bg-accent hover:border-ring/30'}"
+                            onclick={() => {
+                              saveCliConfigPatch(def.key, opt.value);
+                              cliConfig = { ...cliConfig, [def.key]: opt.value };
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        {/each}
+                      </div>
+                    {:else if def.type === "string"}
+                      <input
+                        class="w-40 shrink-0 rounded-md border bg-transparent px-3 py-1.5 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none"
+                        value={getCliConfigValue(def.key, def) ?? ""}
+                        placeholder={def.label}
+                        onblur={(e) => {
+                          const val = (e.target as HTMLInputElement).value.trim();
+                          if (val) {
+                            saveCliConfigPatch(def.key, val);
+                            cliConfig = { ...cliConfig, [def.key]: val };
+                          } else {
+                            // Empty string → delete key (restore default)
+                            saveCliConfigPatch(def.key, null);
+                            const next = { ...cliConfig };
+                            delete next[def.key];
+                            cliConfig = next;
+                          }
+                        }}
+                      />
+                    {/if}
+                  </div>
+                {/each}
+              </Card>
+
+              <!-- Advanced -->
+              <Card class="p-6 space-y-4">
+                <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t("settings_cliConfig_advanced")}
+                </h2>
+                {#each advancedSettings as def (def.key)}
+                  <div class="flex items-center justify-between gap-4 py-1">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2">
+                        <p class="text-sm font-medium">{def.label}</p>
+                        {#if isProjectOverride(def.key)}
+                          <span
+                            class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/15 text-amber-400 border border-amber-500/20"
+                          >
+                            {t("settings_cliConfig_projectOverride")}
+                          </span>
+                        {/if}
+                      </div>
+                      <p class="text-xs text-muted-foreground mt-0.5">{def.description}</p>
+                    </div>
+                    {#if def.type === "boolean"}
+                      <button
+                        aria-label={def.label}
+                        class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 {getCliConfigValue(
+                          def.key,
+                          def,
+                        ) === true
+                          ? 'bg-primary'
+                          : 'bg-neutral-700'}"
+                        onclick={() => {
+                          const current = getCliConfigValue(def.key, def);
+                          const next = current === true ? false : true;
+                          saveCliConfigPatch(def.key, next);
+                          cliConfig = { ...cliConfig, [def.key]: next };
+                        }}
+                      >
+                        <span
+                          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 {getCliConfigValue(
+                            def.key,
+                            def,
+                          ) === true
+                            ? 'translate-x-6'
+                            : 'translate-x-1'}"
+                        ></span>
+                      </button>
+                    {:else if def.type === "enum" && def.options}
+                      <div class="flex gap-1.5 shrink-0">
+                        {#each def.options as opt (opt.value)}
+                          <button
+                            class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
+                        {getCliConfigValue(def.key, def) === opt.value
+                              ? 'bg-primary text-primary-foreground'
+                              : 'hover:bg-accent hover:border-ring/30'}"
+                            onclick={() => {
+                              saveCliConfigPatch(def.key, opt.value);
+                              cliConfig = { ...cliConfig, [def.key]: opt.value };
+                            }}
+                          >
+                            {opt.label}
+                          </button>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+                {/each}
+              </Card>
+
+              <!-- Footer note -->
+              <p class="text-[10px] text-muted-foreground px-1">
+                {t("settings_cliConfig_footer")}
+              </p>
+            </div>
+          {/if}
+
+          <!-- ═══ Shortcuts tab ═══ -->
+        {:else if activeTab === "shortcuts"}
+          <div class="space-y-6">
+            <!-- App shortcuts (editable) -->
+            <Card class="p-6 space-y-5">
+              <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                {t("settings_shortcuts_appShortcuts")}
+              </h2>
+              <div class="divide-y divide-border/50">
+                {#each appBindings as binding (binding.command)}
+                  <KeybindingEditor
+                    {binding}
+                    isOverridden={isOverridden(binding.command)}
+                    conflictWarning={recordingConflict}
+                    onSave={(key) => {
+                      const conflict = getConflictWarning(key, binding.context, binding.command);
+                      if (conflict) {
+                        recordingConflict = conflict;
+                      }
+                      keybindingStore.setOverride(binding.command, key);
+                      recordingConflict = "";
+                    }}
+                    onReset={isOverridden(binding.command)
+                      ? () => keybindingStore.resetBinding(binding.command)
+                      : undefined}
+                  />
+                {/each}
+              </div>
+            </Card>
+
+            <!-- Fixed shortcuts -->
+            <Card class="p-6 space-y-5">
+              <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                {t("settings_shortcuts_inputFixed")}
+              </h2>
+              <div class="divide-y divide-border/50">
+                {#each fixedBindings as binding (binding.command)}
+                  <div class="flex items-center gap-3 py-1.5">
+                    <span class="text-sm text-foreground/60 min-w-[140px]">{binding.label}</span>
+                    <span
+                      class="inline-flex items-center rounded-md border bg-muted/30 px-2.5 py-1 text-xs font-mono text-muted-foreground min-w-[60px] justify-center"
+                    >
+                      {formatKeyDisplay(binding.key)}
+                    </span>
+                  </div>
+                {/each}
+              </div>
+            </Card>
+
+            <!-- CLI shortcuts (collapsible) -->
+            <Card class="p-6 space-y-4">
+              <button
+                class="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors w-full"
+                onclick={() => (cliSectionOpen = !cliSectionOpen)}
+              >
+                <svg
+                  class="h-3 w-3 transition-transform {cliSectionOpen ? 'rotate-90' : ''}"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg
+                >
+                {t("settings_shortcuts_cliShortcuts")}
+                <span
+                  class="text-[10px] font-normal normal-case tracking-normal text-muted-foreground"
+                  >{t("settings_shortcuts_readOnly")}</span
+                >
+              </button>
+              {#if cliSectionOpen}
+                <div class="divide-y divide-border/50">
+                  {#each cliBindings as binding (binding.command)}
+                    <div class="flex items-center gap-3 py-1.5">
+                      <span class="text-sm text-foreground/60 min-w-[140px]">{binding.label}</span>
+                      <span
+                        class="inline-flex items-center rounded-md border bg-muted/30 px-2.5 py-1 text-xs font-mono text-muted-foreground min-w-[60px] justify-center"
+                      >
+                        {formatKeyDisplay(binding.key)}
+                      </span>
+                    </div>
+                  {/each}
+                </div>
+                <p class="text-[10px] text-muted-foreground">
+                  {t("settings_shortcuts_source", {
+                    source:
+                      cliSource === "file"
+                        ? IS_WINDOWS
+                          ? "%USERPROFILE%\\.claude\\keybindings.json"
+                          : "~/.claude/keybindings.json"
+                        : t("settings_shortcuts_cliDefaults"),
+                  })}
+                </p>
+              {/if}
+            </Card>
+
+            <!-- Reset all -->
+            {#if hasOverrides}
+              <div class="flex justify-end">
+                <button
+                  class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  onclick={() => keybindingStore.resetAll()}
+                >
+                  {t("settings_shortcuts_resetAll")}
+                </button>
+              </div>
+            {/if}
+          </div>
+
+          <!-- ═══ Remote tab ═══ -->
+        {:else if activeTab === "remote"}
+          <Card class="p-6 space-y-5">
+            <div class="flex items-start justify-between">
+              <div>
+                <p class="text-sm font-medium">{t("settings_remote_title")}</p>
+                <p class="text-xs text-muted-foreground mt-0.5">
+                  {t("settings_remote_desc")}
+                </p>
+              </div>
+              {#if remoteSaved}
+                <span class="text-xs text-emerald-500 flex items-center gap-1 animate-fade-in">
+                  <svg
+                    class="h-3 w-3"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
+                  >
+                  {t("settings_general_saved")}
+                </span>
+              {/if}
+            </div>
+
+            <!-- Existing hosts list -->
+            {#if remoteHosts.length > 0}
+              <div class="space-y-2">
+                {#each remoteHosts as host (host.name)}
+                  <div
+                    class="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border"
+                  >
+                    <div>
+                      <p class="text-sm font-medium">{host.name}</p>
+                      <p class="text-xs text-muted-foreground">
+                        {host.user}@{host.host}{host.port !== 22 ? `:${host.port}` : ""}
+                      </p>
+                      {#if host.remote_cwd}
+                        <p class="text-xs text-muted-foreground">cwd: {host.remote_cwd}</p>
+                      {/if}
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        class="text-xs px-2 py-1 rounded hover:bg-accent text-muted-foreground"
+                        onclick={() => editRemoteHost(host)}>{t("settings_remote_edit")}</button
+                      >
+                      <button
+                        class="text-xs px-2 py-1 rounded hover:bg-destructive/10 text-destructive"
+                        onclick={() => deleteRemoteHost(host.name)}
+                        >{t("settings_remote_delete")}</button
+                      >
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {:else}
+              <p class="text-xs text-muted-foreground italic">{t("settings_remote_noHosts")}</p>
+            {/if}
+
+            <!-- Add / Edit form -->
+            <div class="border border-border rounded-lg p-4 space-y-3">
+              <p class="text-sm font-medium">
+                {editingRemote
+                  ? t("settings_remote_editHost", { name: editingRemote.name })
+                  : t("settings_remote_addHost")}
+              </p>
+
+              <div class="grid grid-cols-2 gap-3">
+                <label class="block">
+                  <span class="text-xs text-muted-foreground block mb-1"
+                    >{t("settings_remote_name")} *</span
+                  >
+                  <input
+                    type="text"
+                    bind:value={remoteFormName}
+                    placeholder="mac-mini"
+                    class="w-full text-sm px-2 py-1.5 rounded border bg-background {remoteFormTouched &&
+                    !remoteFormName.trim()
+                      ? 'border-red-500'
+                      : 'border-input'}"
+                  />
+                </label>
+                <label class="block">
+                  <span class="text-xs text-muted-foreground block mb-1"
+                    >{t("settings_remote_host")} *</span
+                  >
+                  <input
+                    type="text"
+                    bind:value={remoteFormHost}
+                    placeholder="macmini.local"
+                    class="w-full text-sm px-2 py-1.5 rounded border bg-background {remoteFormTouched &&
+                    !remoteFormHost.trim()
+                      ? 'border-red-500'
+                      : 'border-input'}"
+                  />
+                </label>
+                <label class="block">
+                  <span class="text-xs text-muted-foreground block mb-1"
+                    >{t("settings_remote_user")} *</span
+                  >
+                  <input
+                    type="text"
+                    bind:value={remoteFormUser}
+                    placeholder={currentUsername || "username"}
+                    class="w-full text-sm px-2 py-1.5 rounded border bg-background {remoteFormTouched &&
+                    !remoteFormUser.trim()
+                      ? 'border-red-500'
+                      : 'border-input'}"
+                  />
+                </label>
+                <label class="block">
+                  <span class="text-xs text-muted-foreground block mb-1"
+                    >{t("settings_remote_port")}</span
+                  >
+                  <input
+                    type="number"
+                    bind:value={remoteFormPort}
+                    placeholder="22"
+                    class="w-full text-sm px-2 py-1.5 rounded border border-input bg-background"
+                  />
+                </label>
+                <div class="col-span-2">
+                  <span class="text-xs text-muted-foreground block mb-1"
+                    >{t("settings_remote_keyPath")}</span
+                  >
+                  <div class="flex gap-2">
+                    <input
+                      type="text"
+                      aria-label={t("settings_remote_keyPath")}
+                      bind:value={remoteFormKeyPath}
+                      placeholder="~/.ssh/id_ed25519"
+                      class="flex-1 text-sm px-2 py-1.5 rounded border border-input bg-background"
+                    />
+                    {#if sshKeyStep === "idle"}
+                      <button
+                        class="shrink-0 text-xs px-2 py-1.5 rounded border border-input hover:bg-accent transition-colors text-muted-foreground"
+                        onclick={startSshKeyWizard}
+                      >
+                        {t("settings_remote_setupSshKey")}
+                      </button>
+                    {/if}
+                  </div>
+
+                  <!-- SSH Key Wizard inline panel -->
+                  {#if sshKeyStep !== "idle"}
+                    <div
+                      class="mt-2 rounded-lg border border-border p-3 space-y-2 text-xs bg-muted/30"
+                    >
+                      {#if sshKeyStep === "checking"}
+                        <div class="flex items-center gap-2 text-muted-foreground">
+                          <div
+                            class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"
+                          ></div>
+                          {t("settings_remote_sshKeyChecking")}
+                        </div>
+                      {:else if sshKeyStep === "no_key"}
+                        <p class="text-muted-foreground">{t("settings_remote_sshKeyNotFound")}</p>
                         <button
                           class="rounded border px-3 py-1.5 text-xs hover:bg-accent transition-colors"
-                          disabled={sshVerifying}
-                          onclick={verifySshConnection}
+                          onclick={generateSshKey}
                         >
-                          {sshVerifying
-                            ? t("settings_remote_sshKeyVerifying")
-                            : t("settings_remote_sshKeyVerify")}
+                          {t("settings_remote_sshKeyGenerate")}
                         </button>
+                      {:else if sshKeyStep === "generating"}
+                        <div class="flex items-center gap-2 text-muted-foreground">
+                          <div
+                            class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"
+                          ></div>
+                          {t("settings_remote_sshKeyGenerating")}
+                        </div>
+                      {:else if sshKeyStep === "pub_missing" && sshKeyInfo}
+                        <p class="text-amber-400">
+                          {t(
+                            IS_WINDOWS
+                              ? "settings_remote_sshKeyPubMissing_win"
+                              : "settings_remote_sshKeyPubMissing",
+                          )}
+                        </p>
+                        <div class="flex items-center gap-2">
+                          <code
+                            class="flex-1 rounded bg-muted px-2 py-1.5 font-mono text-[11px] break-all select-all"
+                          >
+                            {buildRebuildPubKeyCommand(sshKeyInfo)}
+                          </code>
+                          <button
+                            class="shrink-0 rounded border px-2 py-1 text-[10px] hover:bg-accent transition-colors"
+                            onclick={async () => {
+                              await navigator.clipboard.writeText(
+                                buildRebuildPubKeyCommand(sshKeyInfo!),
+                              );
+                              sshCopied = true;
+                              setTimeout(() => (sshCopied = false), 2000);
+                            }}
+                          >
+                            {sshCopied ? t("settings_remote_sshKeyCopied") : t("common_copy")}
+                          </button>
+                        </div>
+                        <p class="text-muted-foreground text-[10px]">
+                          After running the command, click "Setup SSH Key" again.
+                        </p>
                         <button
                           class="text-[10px] text-muted-foreground hover:underline"
                           onclick={closeSshWizard}
                         >
                           {t("settings_remote_sshKeyClose")}
                         </button>
-                      </div>
-
-                      {#if sshKeyError && sshKeyStep === "has_key"}
-                        <p class="text-red-400 text-[11px]">
-                          {t(
-                            IS_WINDOWS
-                              ? "settings_remote_sshKeyFailed_win"
-                              : "settings_remote_sshKeyFailed",
-                          )}
+                      {:else if sshKeyStep === "has_key" && sshKeyInfo}
+                        <p class="text-emerald-500">
+                          {t("settings_remote_sshKeyFound", { keyType: sshKeyInfo.key_type })}
+                          <span class="text-muted-foreground ml-1 font-mono"
+                            >{sshKeyInfo.key_path}</span
+                          >
                         </p>
+
+                        {#if remoteFormHost && remoteFormUser}
+                          <p class="text-muted-foreground">
+                            {t(
+                              IS_WINDOWS
+                                ? "settings_remote_sshKeyCopyCmd_win"
+                                : "settings_remote_sshKeyCopyCmd",
+                            )}
+                          </p>
+                          <div class="flex items-center gap-2">
+                            <code
+                              class="flex-1 rounded bg-muted px-2 py-1.5 font-mono text-[11px] break-all select-all"
+                            >
+                              {buildCopyCommand(
+                                sshKeyInfo,
+                                remoteFormHost.trim(),
+                                remoteFormUser.trim(),
+                                remoteFormPort || 22,
+                              )}
+                            </code>
+                            <button
+                              class="shrink-0 rounded border px-2 py-1 text-[10px] hover:bg-accent transition-colors"
+                              onclick={async () => {
+                                await navigator.clipboard.writeText(
+                                  buildCopyCommand(
+                                    sshKeyInfo!,
+                                    remoteFormHost.trim(),
+                                    remoteFormUser.trim(),
+                                    remoteFormPort || 22,
+                                  ),
+                                );
+                                sshCopied = true;
+                                setTimeout(() => (sshCopied = false), 2000);
+                              }}
+                            >
+                              {sshCopied ? t("settings_remote_sshKeyCopied") : t("common_copy")}
+                            </button>
+                          </div>
+
+                          <div class="flex items-center gap-2 mt-1">
+                            <button
+                              class="rounded border px-3 py-1.5 text-xs hover:bg-accent transition-colors"
+                              disabled={sshVerifying}
+                              onclick={verifySshConnection}
+                            >
+                              {sshVerifying
+                                ? t("settings_remote_sshKeyVerifying")
+                                : t("settings_remote_sshKeyVerify")}
+                            </button>
+                            <button
+                              class="text-[10px] text-muted-foreground hover:underline"
+                              onclick={closeSshWizard}
+                            >
+                              {t("settings_remote_sshKeyClose")}
+                            </button>
+                          </div>
+
+                          {#if sshKeyError && sshKeyStep === "has_key"}
+                            <p class="text-red-400 text-[11px]">
+                              {t(
+                                IS_WINDOWS
+                                  ? "settings_remote_sshKeyFailed_win"
+                                  : "settings_remote_sshKeyFailed",
+                              )}
+                            </p>
+                          {/if}
+                        {:else}
+                          <p class="text-muted-foreground text-[10px]">
+                            Fill in Host and User above, then come back to copy the install command.
+                          </p>
+                          <button
+                            class="text-[10px] text-muted-foreground hover:underline"
+                            onclick={closeSshWizard}
+                          >
+                            {t("settings_remote_sshKeyClose")}
+                          </button>
+                        {/if}
+                      {:else if sshKeyStep === "done"}
+                        <p class="text-emerald-500">{t("settings_remote_sshKeySuccess")}</p>
+                        <button
+                          class="text-[10px] text-muted-foreground hover:underline"
+                          onclick={closeSshWizard}
+                        >
+                          {t("settings_remote_sshKeyClose")}
+                        </button>
+                      {:else if sshKeyStep === "error"}
+                        <p class="text-red-400">
+                          {t("settings_remote_sshKeyGenError", { error: sshKeyError })}
+                        </p>
+                        <button
+                          class="text-[10px] text-muted-foreground hover:underline"
+                          onclick={closeSshWizard}
+                        >
+                          {t("settings_remote_sshKeyClose")}
+                        </button>
                       {/if}
-                    {:else}
-                      <p class="text-muted-foreground text-[10px]">
-                        Fill in Host and User above, then come back to copy the install command.
-                      </p>
-                      <button
-                        class="text-[10px] text-muted-foreground hover:underline"
-                        onclick={closeSshWizard}
-                      >
-                        {t("settings_remote_sshKeyClose")}
-                      </button>
-                    {/if}
-                  {:else if sshKeyStep === "done"}
-                    <p class="text-emerald-500">{t("settings_remote_sshKeySuccess")}</p>
-                    <button
-                      class="text-[10px] text-muted-foreground hover:underline"
-                      onclick={closeSshWizard}
-                    >
-                      {t("settings_remote_sshKeyClose")}
-                    </button>
-                  {:else if sshKeyStep === "error"}
-                    <p class="text-red-400">
-                      {t("settings_remote_sshKeyGenError", { error: sshKeyError })}
+                    </div>
+                  {/if}
+                </div>
+                <label class="block">
+                  <span class="text-xs text-muted-foreground block mb-1"
+                    >{t("settings_remote_remoteCwd")}</span
+                  >
+                  <input
+                    type="text"
+                    bind:value={remoteFormRemoteCwd}
+                    placeholder={currentUsername ? "~/projects" : "~/projects"}
+                    class="w-full text-sm px-2 py-1.5 rounded border border-input bg-background"
+                  />
+                </label>
+                <label class="block">
+                  <span class="text-xs text-muted-foreground block mb-1"
+                    >{t("settings_remote_claudePath")}</span
+                  >
+                  <input
+                    type="text"
+                    bind:value={remoteFormClaudePath}
+                    placeholder="claude (default)"
+                    class="w-full text-sm px-2 py-1.5 rounded border border-input bg-background"
+                  />
+                </label>
+                <div class="flex items-end">
+                  <label class="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" bind:checked={remoteFormForwardKey} class="rounded" />
+                    {t("settings_remote_forwardKey")}
+                  </label>
+                </div>
+              </div>
+
+              {#if remoteFormForwardKey}
+                <div
+                  class="flex items-start gap-2 p-2 rounded bg-yellow-500/10 border border-yellow-500/20 text-xs text-yellow-600 dark:text-yellow-400"
+                >
+                  <span class="shrink-0 mt-0.5">&#9888;</span>
+                  <span>{t("settings_remote_forwardKeyWarning")}</span>
+                </div>
+              {/if}
+
+              <!-- Test + Save buttons -->
+              <div class="flex gap-2 items-center">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={remoteTesting}
+                  onclick={testRemoteConnection}
+                >
+                  {remoteTesting
+                    ? t("settings_remote_testing")
+                    : t("settings_remote_testConnection")}
+                </Button>
+                <Button size="sm" disabled={remoteSaving} onclick={() => saveRemoteHost()}>
+                  {remoteSaving
+                    ? t("settings_remote_saving")
+                    : editingRemote
+                      ? t("settings_remote_update")
+                      : t("settings_remote_add")}
+                </Button>
+                {#if editingRemote}
+                  <button
+                    class="text-xs text-muted-foreground hover:underline"
+                    onclick={resetRemoteForm}>{t("settings_remote_cancel")}</button
+                  >
+                {/if}
+              </div>
+
+              <!-- Test result -->
+              {#if remoteTestResult}
+                <div
+                  class="text-xs space-y-1 p-2 rounded border {remoteTestResult.ssh_ok
+                    ? 'border-green-500/30 bg-green-500/5'
+                    : 'border-red-500/30 bg-red-500/5'}"
+                >
+                  <p>
+                    {t("settings_remote_sshLabel")}
+                    {remoteTestResult.ssh_ok
+                      ? t("settings_remote_connected")
+                      : t("settings_remote_failed")}
+                  </p>
+                  {#if remoteTestResult.ssh_ok}
+                    <p>
+                      {t("settings_remote_cliLabel")}
+                      {remoteTestResult.cli_found
+                        ? t("settings_remote_found")
+                        : t("settings_remote_notFound")}
                     </p>
-                    <button
-                      class="text-[10px] text-muted-foreground hover:underline"
-                      onclick={closeSshWizard}
-                    >
-                      {t("settings_remote_sshKeyClose")}
-                    </button>
+                    {#if remoteTestResult.cli_version}
+                      <p>
+                        {t("settings_remote_version", { version: remoteTestResult.cli_version })}
+                      </p>
+                    {/if}
+                    {#if remoteTestResult.cli_path}
+                      <p>{t("settings_remote_path", { path: remoteTestResult.cli_path })}</p>
+                    {/if}
+                    {#if remoteTestResult.ssh_ok && !remoteTestResult.cli_found}
+                      <div
+                        class="mt-1.5 p-2 rounded bg-amber-500/10 border border-amber-500/20 space-y-1"
+                      >
+                        <p class="text-amber-400">{t("settings_remote_cliNotFoundHint")}</p>
+                        <code
+                          class="block rounded bg-muted px-2 py-1 font-mono text-[11px] select-all"
+                          >which claude</code
+                        >
+                        <p class="text-muted-foreground">{t("settings_remote_cliNotFoundHint2")}</p>
+                      </div>
+                    {/if}
+                  {/if}
+                  {#if remoteTestResult.error}
+                    <p class="text-red-500">{remoteTestResult.error}</p>
                   {/if}
                 </div>
               {/if}
             </div>
-            <label class="block">
-              <span class="text-xs text-muted-foreground block mb-1"
-                >{t("settings_remote_remoteCwd")}</span
-              >
-              <input
-                type="text"
-                bind:value={remoteFormRemoteCwd}
-                placeholder={currentUsername ? "~/projects" : "~/projects"}
-                class="w-full text-sm px-2 py-1.5 rounded border border-input bg-background"
-              />
-            </label>
-            <label class="block">
-              <span class="text-xs text-muted-foreground block mb-1"
-                >{t("settings_remote_claudePath")}</span
-              >
-              <input
-                type="text"
-                bind:value={remoteFormClaudePath}
-                placeholder="claude (default)"
-                class="w-full text-sm px-2 py-1.5 rounded border border-input bg-background"
-              />
-            </label>
-            <div class="flex items-end">
-              <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="checkbox" bind:checked={remoteFormForwardKey} class="rounded" />
-                {t("settings_remote_forwardKey")}
-              </label>
-            </div>
-          </div>
+          </Card>
 
-          {#if remoteFormForwardKey}
-            <div
-              class="flex items-start gap-2 p-2 rounded bg-yellow-500/10 border border-yellow-500/20 text-xs text-yellow-600 dark:text-yellow-400"
-            >
-              <span class="shrink-0 mt-0.5">&#9888;</span>
-              <span>{t("settings_remote_forwardKeyWarning")}</span>
-            </div>
-          {/if}
-
-          <!-- Test + Save buttons -->
-          <div class="flex gap-2 items-center">
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={remoteTesting}
-              onclick={testRemoteConnection}
-            >
-              {remoteTesting ? t("settings_remote_testing") : t("settings_remote_testConnection")}
-            </Button>
-            <Button size="sm" disabled={remoteSaving} onclick={() => saveRemoteHost()}>
-              {remoteSaving
-                ? t("settings_remote_saving")
-                : editingRemote
-                  ? t("settings_remote_update")
-                  : t("settings_remote_add")}
-            </Button>
-            {#if editingRemote}
-              <button
-                class="text-xs text-muted-foreground hover:underline"
-                onclick={resetRemoteForm}>{t("settings_remote_cancel")}</button
-              >
-            {/if}
-          </div>
-
-          <!-- Test result -->
-          {#if remoteTestResult}
-            <div
-              class="text-xs space-y-1 p-2 rounded border {remoteTestResult.ssh_ok
-                ? 'border-green-500/30 bg-green-500/5'
-                : 'border-red-500/30 bg-red-500/5'}"
-            >
-              <p>
-                {t("settings_remote_sshLabel")}
-                {remoteTestResult.ssh_ok
-                  ? t("settings_remote_connected")
-                  : t("settings_remote_failed")}
-              </p>
-              {#if remoteTestResult.ssh_ok}
-                <p>
-                  {t("settings_remote_cliLabel")}
-                  {remoteTestResult.cli_found
-                    ? t("settings_remote_found")
-                    : t("settings_remote_notFound")}
-                </p>
-                {#if remoteTestResult.cli_version}
-                  <p>{t("settings_remote_version", { version: remoteTestResult.cli_version })}</p>
-                {/if}
-                {#if remoteTestResult.cli_path}
-                  <p>{t("settings_remote_path", { path: remoteTestResult.cli_path })}</p>
-                {/if}
-                {#if remoteTestResult.ssh_ok && !remoteTestResult.cli_found}
-                  <div
-                    class="mt-1.5 p-2 rounded bg-amber-500/10 border border-amber-500/20 space-y-1"
-                  >
-                    <p class="text-amber-400">{t("settings_remote_cliNotFoundHint")}</p>
-                    <code class="block rounded bg-muted px-2 py-1 font-mono text-[11px] select-all"
-                      >which claude</code
-                    >
-                    <p class="text-muted-foreground">{t("settings_remote_cliNotFoundHint2")}</p>
-                  </div>
-                {/if}
-              {/if}
-              {#if remoteTestResult.error}
-                <p class="text-red-500">{remoteTestResult.error}</p>
-              {/if}
-            </div>
-          {/if}
-        </div>
-      </Card>
-
-      <!-- ═══ Debug tab ═══ -->
-    {:else if activeTab === "debug"}
-      <Card class="p-6 space-y-5">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium">{t("settings_debug_title")}</p>
-            <p class="text-xs text-muted-foreground mt-0.5">
-              {t("settings_debug_desc")}
-              {t("settings_debug_rustHint")}
-              <code class="text-xs">RUST_LOG=debug cargo tauri dev</code>
-            </p>
-          </div>
-          <button
-            aria-label={t("settings_debugMode")}
-            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 {debugOn
-              ? 'bg-primary'
-              : 'bg-neutral-700'}"
-            onclick={() => {
-              debugOn = !debugOn;
-              setDebugMode(debugOn);
-            }}
-          >
-            <span
-              class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 {debugOn
-                ? 'translate-x-6'
-                : 'translate-x-1'}"
-            ></span>
-          </button>
-        </div>
-
-        {#if debugOn}
-          <!-- Tag filter -->
-          <div>
-            <label class="text-sm font-medium mb-1 block" for="debug-filter"
-              >{t("settings_debug_tagFilter")}</label
-            >
-            <input
-              id="debug-filter"
-              class="w-full rounded-md border bg-transparent px-3 py-1.5 text-sm font-mono placeholder:text-muted-foreground focus:border-ring focus:outline-none"
-              value={debugFilter}
-              placeholder="1 = all, api,bus = only those, -replay = exclude"
-              oninput={(e) => {
-                const val = (e.target as HTMLInputElement).value.trim();
-                debugFilter = val;
-                setDebugMode(val || "1");
-              }}
-            />
-            <p class="mt-1 text-[10px] text-muted-foreground">
-              <code class="text-xs">1</code> = {t("settings_debug_filterHelp_all")} &nbsp;|&nbsp;
-              <code class="text-xs">api,bus</code> = {t("settings_debug_filterHelp_only")} &nbsp;|&nbsp;
-              <code class="text-xs">-replay</code> = {t("settings_debug_filterHelp_exclude")}
-            </p>
-          </div>
-
-          <!-- Log actions -->
-          <div class="flex items-center gap-3">
-            <button
-              class="rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent"
-              onclick={async () => {
-                logCopied = await copyDebugLogs();
-                if (logCopied) setTimeout(() => (logCopied = false), 2000);
-              }}
-            >
-              {logCopied
-                ? t("settings_debug_copied")
-                : t("settings_debug_copyLogs", { count: String(logCount) })}
-            </button>
-            <button
-              class="rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent text-muted-foreground"
-              onclick={() => {
-                clearDebugLogs();
-                logCount = 0;
-              }}
-            >
-              {t("settings_debug_clear")}
-            </button>
-            <span class="text-[10px] text-muted-foreground ml-auto"
-              >{t("settings_debug_entriesBuffered", { count: String(logCount) })}</span
-            >
-          </div>
-
-          <!-- Rust log hint -->
-          <div class="rounded-md bg-muted/50 p-3">
-            <p class="text-xs text-muted-foreground mb-1.5">
-              {t("settings_debug_rustBackendLogs")}
-            </p>
-            <div class="flex items-center gap-2">
-              <code class="flex-1 text-xs font-mono break-all">RUST_LOG=debug cargo tauri dev</code>
-              <button
-                class="shrink-0 rounded border px-2 py-1 text-[10px] transition-colors hover:bg-accent"
-                onclick={async () => {
-                  await navigator.clipboard.writeText("RUST_LOG=debug cargo tauri dev");
-                  rustCmdCopied = true;
-                  setTimeout(() => (rustCmdCopied = false), 2000);
-                }}
-              >
-                {rustCmdCopied ? t("settings_debug_copied") : t("settings_debug_copy")}
-              </button>
-            </div>
-          </div>
-
-          <p class="text-[10px] text-muted-foreground">
-            {t("settings_debug_maxEntries")}
-          </p>
-        {/if}
-      </Card>
-
-      <!-- ═══ Notifications tab ═══ -->
-    {:else if activeTab === "notifications"}
-      <Card class="p-6 space-y-5">
-        <div class="flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            {t("settings_notif_title") || "System Notifications"}
-          </h2>
-          {#if notifSaved}
-            <span class="text-xs text-emerald-500 flex items-center gap-1 animate-fade-in">
-              <svg
-                class="h-3 w-3"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              {t("settings_general_saved")}
-            </span>
-          {/if}
-        </div>
-
-        <p class="text-xs text-muted-foreground">
-          {t("settings_notif_desc") ||
-            "Get notified when tasks complete, fail, or need your attention."}
-        </p>
-
-        <!-- Master toggle -->
-        <label class="flex items-center justify-between py-2 cursor-pointer">
-          <div>
-            <span class="text-sm font-medium"
-              >{t("settings_notif_enabled") || "Enable notifications"}</span
-            >
-            <p class="text-xs text-muted-foreground mt-0.5">
-              {t("settings_notif_enabledDesc") || "Allow MiWarp to send system notifications"}
-            </p>
-          </div>
-          <button
-            role="switch"
-            aria-checked={notifEnabled}
-            class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-              {notifEnabled ? 'bg-primary' : 'bg-muted'}"
-            onclick={() => {
-              notifEnabled = !notifEnabled;
-              saveNotificationSettings();
-            }}
-          >
-            <span
-              class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
-              {notifEnabled ? 'translate-x-4' : 'translate-x-0.5'}"
-            ></span>
-          </button>
-        </label>
-
-        {#if notifEnabled}
-          <div class="space-y-3 pl-1 border-l-2 border-muted/50 ml-1">
-            <!-- Run completed -->
-            <label class="flex items-center justify-between py-1.5 cursor-pointer">
-              <span class="text-sm">{t("settings_notif_runCompleted") || "Run completed"}</span>
-              <button
-                role="switch"
-                aria-checked={notifRunCompleted}
-                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-                  {notifRunCompleted ? 'bg-primary' : 'bg-muted'}"
-                onclick={() => {
-                  notifRunCompleted = !notifRunCompleted;
-                  saveNotificationSettings();
-                }}
-              >
-                <span
-                  class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
-                  {notifRunCompleted ? 'translate-x-4' : 'translate-x-0.5'}"
-                ></span>
-              </button>
-            </label>
-
-            <!-- Run failed -->
-            <label class="flex items-center justify-between py-1.5 cursor-pointer">
-              <span class="text-sm">{t("settings_notif_runFailed") || "Run failed"}</span>
-              <button
-                role="switch"
-                aria-checked={notifRunFailed}
-                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-                  {notifRunFailed ? 'bg-primary' : 'bg-muted'}"
-                onclick={() => {
-                  notifRunFailed = !notifRunFailed;
-                  saveNotificationSettings();
-                }}
-              >
-                <span
-                  class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
-                  {notifRunFailed ? 'translate-x-4' : 'translate-x-0.5'}"
-                ></span>
-              </button>
-            </label>
-
-            <!-- Approval required -->
-            <label class="flex items-center justify-between py-1.5 cursor-pointer">
-              <span class="text-sm"
-                >{t("settings_notif_approvalRequired") || "Waiting for approval"}</span
-              >
-              <button
-                role="switch"
-                aria-checked={notifApprovalRequired}
-                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-                  {notifApprovalRequired ? 'bg-primary' : 'bg-muted'}"
-                onclick={() => {
-                  notifApprovalRequired = !notifApprovalRequired;
-                  saveNotificationSettings();
-                }}
-              >
-                <span
-                  class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
-                  {notifApprovalRequired ? 'translate-x-4' : 'translate-x-0.5'}"
-                ></span>
-              </button>
-            </label>
-
-            <!-- Schedule completed -->
-            <label class="flex items-center justify-between py-1.5 cursor-pointer">
-              <span class="text-sm"
-                >{t("settings_notif_scheduleCompleted") || "Scheduled task completed"}</span
-              >
-              <button
-                role="switch"
-                aria-checked={notifScheduleCompleted}
-                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-                  {notifScheduleCompleted ? 'bg-primary' : 'bg-muted'}"
-                onclick={() => {
-                  notifScheduleCompleted = !notifScheduleCompleted;
-                  saveNotificationSettings();
-                }}
-              >
-                <span
-                  class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
-                  {notifScheduleCompleted ? 'translate-x-4' : 'translate-x-0.5'}"
-                ></span>
-              </button>
-            </label>
-
-            <!-- Team completed -->
-            <label class="flex items-center justify-between py-1.5 cursor-pointer">
-              <span class="text-sm"
-                >{t("settings_notif_teamCompleted") || "Team run completed"}</span
-              >
-              <button
-                role="switch"
-                aria-checked={notifTeamCompleted}
-                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-                  {notifTeamCompleted ? 'bg-primary' : 'bg-muted'}"
-                onclick={() => {
-                  notifTeamCompleted = !notifTeamCompleted;
-                  saveNotificationSettings();
-                }}
-              >
-                <span
-                  class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
-                  {notifTeamCompleted ? 'translate-x-4' : 'translate-x-0.5'}"
-                ></span>
-              </button>
-            </label>
-
-            <!-- Min duration -->
-            <div class="flex items-center justify-between py-1.5">
+          <!-- ═══ Debug tab ═══ -->
+        {:else if activeTab === "debug"}
+          <Card class="p-6 space-y-5">
+            <div class="flex items-center justify-between">
               <div>
-                <span class="text-sm">{t("settings_notif_minDuration") || "Min task duration"}</span
+                <p class="text-sm font-medium">{t("settings_debug_title")}</p>
+                <p class="text-xs text-muted-foreground mt-0.5">
+                  {t("settings_debug_desc")}
+                  {t("settings_debug_rustHint")}
+                  <code class="text-xs">RUST_LOG=debug cargo tauri dev</code>
+                </p>
+              </div>
+              <button
+                aria-label={t("settings_debugMode")}
+                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 {debugOn
+                  ? 'bg-primary'
+                  : 'bg-neutral-700'}"
+                onclick={() => {
+                  debugOn = !debugOn;
+                  setDebugMode(debugOn);
+                }}
+              >
+                <span
+                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 {debugOn
+                    ? 'translate-x-6'
+                    : 'translate-x-1'}"
+                ></span>
+              </button>
+            </div>
+
+            {#if debugOn}
+              <!-- Tag filter -->
+              <div>
+                <label class="text-sm font-medium mb-1 block" for="debug-filter"
+                  >{t("settings_debug_tagFilter")}</label
+                >
+                <input
+                  id="debug-filter"
+                  class="w-full rounded-md border bg-transparent px-3 py-1.5 text-sm font-mono placeholder:text-muted-foreground focus:border-ring focus:outline-none"
+                  value={debugFilter}
+                  placeholder="1 = all, api,bus = only those, -replay = exclude"
+                  oninput={(e) => {
+                    const val = (e.target as HTMLInputElement).value.trim();
+                    debugFilter = val;
+                    setDebugMode(val || "1");
+                  }}
+                />
+                <p class="mt-1 text-[10px] text-muted-foreground">
+                  <code class="text-xs">1</code> = {t("settings_debug_filterHelp_all")} &nbsp;|&nbsp;
+                  <code class="text-xs">api,bus</code> = {t("settings_debug_filterHelp_only")} &nbsp;|&nbsp;
+                  <code class="text-xs">-replay</code> = {t("settings_debug_filterHelp_exclude")}
+                </p>
+              </div>
+
+              <!-- Log actions -->
+              <div class="flex items-center gap-3">
+                <button
+                  class="rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent"
+                  onclick={async () => {
+                    logCopied = await copyDebugLogs();
+                    if (logCopied) setTimeout(() => (logCopied = false), 2000);
+                  }}
+                >
+                  {logCopied
+                    ? t("settings_debug_copied")
+                    : t("settings_debug_copyLogs", { count: String(logCount) })}
+                </button>
+                <button
+                  class="rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent text-muted-foreground"
+                  onclick={() => {
+                    clearDebugLogs();
+                    logCount = 0;
+                  }}
+                >
+                  {t("settings_debug_clear")}
+                </button>
+                <span class="text-[10px] text-muted-foreground ml-auto"
+                  >{t("settings_debug_entriesBuffered", { count: String(logCount) })}</span
+                >
+              </div>
+
+              <!-- Rust log hint -->
+              <div class="rounded-md bg-muted/50 p-3">
+                <p class="text-xs text-muted-foreground mb-1.5">
+                  {t("settings_debug_rustBackendLogs")}
+                </p>
+                <div class="flex items-center gap-2">
+                  <code class="flex-1 text-xs font-mono break-all"
+                    >RUST_LOG=debug cargo tauri dev</code
+                  >
+                  <button
+                    class="shrink-0 rounded border px-2 py-1 text-[10px] transition-colors hover:bg-accent"
+                    onclick={async () => {
+                      await navigator.clipboard.writeText("RUST_LOG=debug cargo tauri dev");
+                      rustCmdCopied = true;
+                      setTimeout(() => (rustCmdCopied = false), 2000);
+                    }}
+                  >
+                    {rustCmdCopied ? t("settings_debug_copied") : t("settings_debug_copy")}
+                  </button>
+                </div>
+              </div>
+
+              <p class="text-[10px] text-muted-foreground">
+                {t("settings_debug_maxEntries")}
+              </p>
+            {/if}
+          </Card>
+
+          <!-- ═══ Notifications tab ═══ -->
+        {:else if activeTab === "notifications"}
+          <Card class="p-6 space-y-5">
+            <div class="flex items-center justify-between">
+              <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                {t("settings_notif_title") || "System Notifications"}
+              </h2>
+              {#if notifSaved}
+                <span class="text-xs text-emerald-500 flex items-center gap-1 animate-fade-in">
+                  <svg
+                    class="h-3 w-3"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  {t("settings_general_saved")}
+                </span>
+              {/if}
+            </div>
+
+            <p class="text-xs text-muted-foreground">
+              {t("settings_notif_desc") ||
+                "Get notified when tasks complete, fail, or need your attention."}
+            </p>
+
+            <!-- Master toggle -->
+            <label class="flex items-center justify-between py-2 cursor-pointer">
+              <div>
+                <span class="text-sm font-medium"
+                  >{t("settings_notif_enabled") || "Enable notifications"}</span
                 >
                 <p class="text-xs text-muted-foreground mt-0.5">
-                  {t("settings_notif_minDurationDesc") || "Only notify for tasks longer than this"}
+                  {t("settings_notif_enabledDesc") || "Allow MiWarp to send system notifications"}
                 </p>
               </div>
-              <div class="flex items-center gap-1.5">
-                <input
-                  type="number"
-                  min="0"
-                  max="300"
-                  step="5"
-                  bind:value={notifMinDuration}
-                  onchange={saveNotificationSettings}
-                  class="w-16 rounded-md border border-border bg-transparent px-2 py-1 text-sm text-right
-                    focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-                <span class="text-xs text-muted-foreground">s</span>
-              </div>
-            </div>
-          </div>
-        {/if}
-      </Card>
+              <button
+                role="switch"
+                aria-checked={notifEnabled}
+                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+              {notifEnabled ? 'bg-primary' : 'bg-muted'}"
+                onclick={() => {
+                  notifEnabled = !notifEnabled;
+                  saveNotificationSettings();
+                }}
+              >
+                <span
+                  class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+              {notifEnabled ? 'translate-x-4' : 'translate-x-0.5'}"
+                ></span>
+              </button>
+            </label>
 
-      <!-- ═══ Theme tab ═══ -->
-    {:else if activeTab === "theme"}
-      <ThemeEditor />
-      <BackgroundPicker />
-    {/if}
+            {#if notifEnabled}
+              <div class="space-y-3 pl-1 border-l-2 border-muted/50 ml-1">
+                <!-- Run completed -->
+                <label class="flex items-center justify-between py-1.5 cursor-pointer">
+                  <span class="text-sm">{t("settings_notif_runCompleted") || "Run completed"}</span>
+                  <button
+                    role="switch"
+                    aria-checked={notifRunCompleted}
+                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                  {notifRunCompleted ? 'bg-primary' : 'bg-muted'}"
+                    onclick={() => {
+                      notifRunCompleted = !notifRunCompleted;
+                      saveNotificationSettings();
+                    }}
+                  >
+                    <span
+                      class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+                  {notifRunCompleted ? 'translate-x-4' : 'translate-x-0.5'}"
+                    ></span>
+                  </button>
+                </label>
+
+                <!-- Run failed -->
+                <label class="flex items-center justify-between py-1.5 cursor-pointer">
+                  <span class="text-sm">{t("settings_notif_runFailed") || "Run failed"}</span>
+                  <button
+                    role="switch"
+                    aria-checked={notifRunFailed}
+                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                  {notifRunFailed ? 'bg-primary' : 'bg-muted'}"
+                    onclick={() => {
+                      notifRunFailed = !notifRunFailed;
+                      saveNotificationSettings();
+                    }}
+                  >
+                    <span
+                      class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+                  {notifRunFailed ? 'translate-x-4' : 'translate-x-0.5'}"
+                    ></span>
+                  </button>
+                </label>
+
+                <!-- Approval required -->
+                <label class="flex items-center justify-between py-1.5 cursor-pointer">
+                  <span class="text-sm"
+                    >{t("settings_notif_approvalRequired") || "Waiting for approval"}</span
+                  >
+                  <button
+                    role="switch"
+                    aria-checked={notifApprovalRequired}
+                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                  {notifApprovalRequired ? 'bg-primary' : 'bg-muted'}"
+                    onclick={() => {
+                      notifApprovalRequired = !notifApprovalRequired;
+                      saveNotificationSettings();
+                    }}
+                  >
+                    <span
+                      class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+                  {notifApprovalRequired ? 'translate-x-4' : 'translate-x-0.5'}"
+                    ></span>
+                  </button>
+                </label>
+
+                <!-- Schedule completed -->
+                <label class="flex items-center justify-between py-1.5 cursor-pointer">
+                  <span class="text-sm"
+                    >{t("settings_notif_scheduleCompleted") || "Scheduled task completed"}</span
+                  >
+                  <button
+                    role="switch"
+                    aria-checked={notifScheduleCompleted}
+                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                  {notifScheduleCompleted ? 'bg-primary' : 'bg-muted'}"
+                    onclick={() => {
+                      notifScheduleCompleted = !notifScheduleCompleted;
+                      saveNotificationSettings();
+                    }}
+                  >
+                    <span
+                      class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+                  {notifScheduleCompleted ? 'translate-x-4' : 'translate-x-0.5'}"
+                    ></span>
+                  </button>
+                </label>
+
+                <!-- Team completed -->
+                <label class="flex items-center justify-between py-1.5 cursor-pointer">
+                  <span class="text-sm"
+                    >{t("settings_notif_teamCompleted") || "Team run completed"}</span
+                  >
+                  <button
+                    role="switch"
+                    aria-checked={notifTeamCompleted}
+                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+                  {notifTeamCompleted ? 'bg-primary' : 'bg-muted'}"
+                    onclick={() => {
+                      notifTeamCompleted = !notifTeamCompleted;
+                      saveNotificationSettings();
+                    }}
+                  >
+                    <span
+                      class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+                  {notifTeamCompleted ? 'translate-x-4' : 'translate-x-0.5'}"
+                    ></span>
+                  </button>
+                </label>
+
+                <!-- Min duration -->
+                <div class="flex items-center justify-between py-1.5">
+                  <div>
+                    <span class="text-sm"
+                      >{t("settings_notif_minDuration") || "Min task duration"}</span
+                    >
+                    <p class="text-xs text-muted-foreground mt-0.5">
+                      {t("settings_notif_minDurationDesc") ||
+                        "Only notify for tasks longer than this"}
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min="0"
+                      max="300"
+                      step="5"
+                      bind:value={notifMinDuration}
+                      onchange={saveNotificationSettings}
+                      class="w-16 rounded-md border border-border bg-transparent px-2 py-1 text-sm text-right
+                    focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <span class="text-xs text-muted-foreground">s</span>
+                  </div>
+                </div>
+              </div>
+            {/if}
+          </Card>
+
+          <!-- ═══ Theme tab ═══ -->
+        {:else if activeTab === "theme"}
+          <ThemeEditor />
+          <BackgroundPicker />
+        {/if}
+      </div>
+    </main>
   </div>
 {/key}
