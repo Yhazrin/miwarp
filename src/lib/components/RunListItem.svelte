@@ -169,7 +169,12 @@
           >
         </button>
       {/if}
-      <StatusBadge status={run.status} attention={needsAttention} class="shrink-0" />
+      <StatusBadge
+        status={run.status}
+        attention={needsAttention}
+        compact={!selected}
+        class="shrink-0"
+      />
     </div>
   </div>
   <div class="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">

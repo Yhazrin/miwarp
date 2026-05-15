@@ -5,7 +5,7 @@
   import { relativeTime, truncate } from "$lib/utils/format";
   import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
   import { hasAttention } from "$lib/stores/attention-store.svelte";
-  import DualStatusIndicator from "./DualStatusIndicator.svelte";
+  import StatusBadge from "./StatusBadge.svelte";
   import { t } from "$lib/i18n/index.svelte";
 
   function platformLabel(id: string): string {
@@ -40,24 +40,15 @@
   const runCount = $derived(conversation.runs.length);
   const needsAttention = $derived(hasAttention(run.id));
 
-  // Dual-signal status: color = state, shape = process status
-  const indicatorState = $derived.by(() => {
+  // Compact status dot for non-selected items
+  const statusDot = $derived.by(() => {
     const s = run.status;
-    if (s === "running") return "running" as const;
-    if (s === "waiting_input" || s === "waiting_approval") return "needs-input" as const;
-    if (s === "completed") return "completed" as const;
-    if (s === "error") return "failed" as const;
-    if (s === "stopped") return "stopped" as const;
-    return "idle" as const;
-  });
-
-  const indicatorProcess = $derived.by(() => {
-    const s = run.status;
-    if (s === "running") return "active" as const;
-    if (s === "waiting_input" || s === "waiting_approval") return "active" as const;
-    // Sessions with loop/sleeping behavior
-    if (run.loop_sleeping) return "sleeping" as const;
-    return "exited" as const;
+    if (s === "running" || s === "waiting_input" || s === "waiting_approval")
+      return { color: "hsl(var(--miwarp-status-info))", animated: true };
+    if (s === "completed") return { color: "hsl(var(--miwarp-status-success))", animated: false };
+    if (s === "error") return { color: "hsl(var(--miwarp-status-error))", animated: false };
+    if (s === "stopped") return { color: "hsl(var(--muted-foreground))", animated: false };
+    return { color: "hsl(var(--muted-foreground))", animated: false };
   });
 
   function handleKeydown(e: KeyboardEvent) {
@@ -69,10 +60,10 @@
 </script>
 
 <div
-  class="group/item w-full text-left px-2.5 py-2 rounded-md transition-colors cursor-pointer
+  class="group/item w-full text-left px-2.5 py-1.5 rounded-md transition-colors cursor-pointer
     {selected
-    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-    : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"
+    ? 'bg-sidebar-accent/70 text-sidebar-accent-foreground'
+    : 'hover:bg-sidebar-accent/30 text-sidebar-foreground'}"
   role="button"
   tabindex="0"
   onclick={() => onclick?.()}
@@ -80,20 +71,28 @@
 >
   <div class="flex items-center justify-between gap-1.5">
     <div class="flex items-center gap-1.5 min-w-0">
-      <!-- Dual-signal status indicator (color = state, shape = process) -->
-      <DualStatusIndicator
-        state={indicatorState}
-        processStatus={indicatorProcess}
-        size="xs"
-        label={needsAttention ? `Needs attention: ${indicatorState}` : undefined}
-      />
-      <span class="truncate text-xs font-medium">{label}</span>
+      {#if selected}
+        <StatusBadge
+          status={run.status}
+          attention={needsAttention}
+          compact={false}
+          class="shrink-0"
+        />
+      {:else}
+        <span
+          class="inline-block h-[5px] w-[5px] rounded-full shrink-0 {statusDot.animated
+            ? 'animate-slow-pulse'
+            : ''}"
+          style:background-color={statusDot.color}
+          title={run.status}
+        ></span>
+      {/if}
+      <span class="truncate text-[13px] leading-tight font-medium">{label}</span>
     </div>
-    <div class="flex items-center gap-1 shrink-0">
+    <div class="flex items-center gap-0.5 shrink-0">
       {#if pinned}
-        <!-- Pin icon -->
         <svg
-          class="h-3 w-3 shrink-0 text-primary/70"
+          class="h-3 w-3 shrink-0 text-primary/60"
           viewBox="0 0 24 24"
           fill="currentColor"
           stroke="currentColor"
@@ -106,16 +105,15 @@
       {/if}
       {#if runCount > 1}
         <span
-          class="inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground"
+          class="inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted/70 px-1 text-[10px] font-normal text-muted-foreground/70"
           title={t("sidebar_runs", { count: String(runCount) })}
         >
           {runCount}
         </span>
       {/if}
-      <!-- Pin toggle (visible on hover) -->
       {#if onpin}
         <button
-          class="opacity-0 group-hover/item:opacity-100 p-0.5 rounded hover:bg-accent/30 transition-opacity {pinned
+          class="opacity-0 group-hover/item:opacity-100 p-0.5 rounded hover:bg-accent/20 transition-opacity {pinned
             ? 'text-primary'
             : 'text-muted-foreground'}"
           onclick={(e) => {
@@ -142,7 +140,7 @@
       {/if}
       {#if canResume && onresume}
         <button
-          class="opacity-0 group-hover/item:opacity-100 p-0.5 rounded hover:bg-accent/30 transition-opacity text-muted-foreground"
+          class="opacity-0 group-hover/item:opacity-100 p-0.5 rounded hover:bg-accent/20 transition-opacity text-muted-foreground"
           onclick={(e) => {
             e.stopPropagation();
             onresume(run.id, "resume");
@@ -189,14 +187,14 @@
     </div>
   </div>
   <!-- Preview / meta row -->
-  <div class="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground pl-[14px]">
-    <div class="flex items-center gap-1.5 min-w-0">
-      <span class="shrink-0">{run.agent}</span>
+  <div class="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground/60 pl-[14px]">
+    <div class="flex items-center gap-1 min-w-0">
+      <span class="shrink-0 opacity-70">{run.agent}</span>
       {#if run.platform_id && run.platform_id !== "anthropic"}
-        <span class="shrink-0">&middot;</span>
-        <span class="truncate">{platformLabel(run.platform_id)}</span>
+        <span class="shrink-0 opacity-50">&middot;</span>
+        <span class="truncate opacity-70">{platformLabel(run.platform_id)}</span>
       {/if}
     </div>
-    <span class="ml-auto shrink-0">{time}</span>
+    <span class="ml-auto shrink-0 opacity-60">{time}</span>
   </div>
 </div>

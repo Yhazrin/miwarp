@@ -35,6 +35,17 @@
   const runCount = $derived(conversation.runs.length);
   const needsAttention = $derived(hasAttention(run.id));
 
+  // Compact status dot for non-selected items
+  const statusDot = $derived.by(() => {
+    const s = run.status;
+    if (s === "running" || s === "waiting_input" || s === "waiting_approval")
+      return { color: "hsl(var(--miwarp-status-info))", animated: true };
+    if (s === "completed") return { color: "hsl(var(--miwarp-status-success))", animated: false };
+    if (s === "error") return { color: "hsl(var(--miwarp-status-error))", animated: false };
+    if (s === "stopped") return { color: "hsl(var(--muted-foreground))", animated: false };
+    return { color: "hsl(var(--muted-foreground))", animated: false };
+  });
+
   // ── Inline rename (self-contained, mirrors RunListItem) ──
 
   let editing = $state(false);
@@ -87,10 +98,10 @@
 </script>
 
 <div
-  class="group w-full text-left px-3 py-2 rounded-md transition-colors text-xs cursor-pointer
+  class="group w-full text-left px-3 py-1.5 rounded-md transition-colors text-xs cursor-pointer
     {selected
-    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-    : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"
+    ? 'bg-sidebar-accent/70 text-sidebar-accent-foreground'
+    : 'hover:bg-sidebar-accent/30 text-sidebar-foreground'}"
   role="button"
   tabindex="0"
   onclick={handleClick}
@@ -100,7 +111,7 @@
     <div class="flex items-center gap-1.5 min-w-0">
       {#if conversation.isFavorite}
         <svg
-          class="h-3 w-3 shrink-0 text-yellow-500"
+          class="h-3 w-3 shrink-0 text-yellow-500/70"
           viewBox="0 0 24 24"
           fill="currentColor"
           stroke="currentColor"
@@ -134,7 +145,7 @@
         />
       {:else}
         <span
-          class="truncate"
+          class="truncate text-[13px] leading-tight font-medium"
           ondblclick={(e) => {
             e.stopPropagation();
             startRename();
@@ -142,16 +153,16 @@
         >
       {/if}
     </div>
-    <div class="flex items-center gap-1 shrink-0">
+    <div class="flex items-center gap-0.5 shrink-0">
       {#if runCount > 1}
         <span
-          class="inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground"
+          class="inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted/70 px-1 text-[10px] font-normal text-muted-foreground/70"
           title={t("sidebar_conversations", { count: String(runCount) })}>{runCount}</span
         >
       {/if}
       {#if canResume && onresume}
         <button
-          class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-accent transition-opacity"
+          class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-accent/20 transition-opacity"
           onclick={(e) => {
             e.stopPropagation();
             onresume(run.id, "resume");
@@ -159,7 +170,7 @@
           title={t("runItem_resumeTitle")}
         >
           <svg
-            class="h-3.5 w-3.5"
+            class="h-3 w-3"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -174,7 +185,7 @@
       {/if}
       {#if canDelete && ondelete}
         <button
-          class="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-opacity"
+          class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-opacity"
           onclick={(e) => {
             e.stopPropagation();
             ondelete(conversation);
@@ -182,7 +193,7 @@
           title={t("sidebar_deleteConfirm")}
         >
           <svg
-            class="h-3.5 w-3.5"
+            class="h-3 w-3"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -195,15 +206,30 @@
           >
         </button>
       {/if}
-      <StatusBadge status={run.status} attention={needsAttention} class="shrink-0" />
+      {#if selected}
+        <StatusBadge
+          status={run.status}
+          attention={needsAttention}
+          compact={false}
+          class="shrink-0"
+        />
+      {:else}
+        <span
+          class="inline-block h-[5px] w-[5px] rounded-full shrink-0 {statusDot.animated
+            ? 'animate-slow-pulse'
+            : ''}"
+          style:background-color={statusDot.color}
+          title={run.status}
+        ></span>
+      {/if}
     </div>
   </div>
-  <div class="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-    <div class="flex items-center gap-1.5 min-w-0">
-      <span class="shrink-0">{run.agent}</span>
+  <div class="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground/60">
+    <div class="flex items-center gap-1 min-w-0">
+      <span class="shrink-0 opacity-70">{run.agent}</span>
       {#if run.remote_host_name}
         <svg
-          class="h-3 w-3 shrink-0 text-blue-400"
+          class="h-3 w-3 shrink-0 text-blue-400/60"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -218,10 +244,10 @@
         >
       {/if}
       {#if run.platform_id && run.platform_id !== "anthropic"}
-        <span class="shrink-0">&middot;</span>
-        <span class="truncate">{platformLabel(run.platform_id)}</span>
+        <span class="shrink-0 opacity-50">&middot;</span>
+        <span class="truncate opacity-70">{platformLabel(run.platform_id)}</span>
       {/if}
     </div>
-    <span class="ml-auto shrink-0">{time}</span>
+    <span class="ml-auto shrink-0 opacity-60">{time}</span>
   </div>
 </div>

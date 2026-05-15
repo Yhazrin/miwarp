@@ -1233,6 +1233,39 @@
             : 'hidden'}; pointer-events: {activeTab === 'tools' ? 'auto' : 'none'};"
         >
           <!-- Tools panel -->
+          <!-- Overview: session-level stats -->
+          {#if toolStats.totalToolCount > 0}
+            <div class="px-2.5 py-1.5 border-b border-border/50">
+              <div class="flex items-center gap-2 text-[11px]">
+                <span class="font-medium text-foreground"
+                  >{toolStats.totalToolCount} {t("toolActivity_toolsLabel")}</span
+                >
+                <span class="text-muted-foreground/40">&middot;</span>
+                {#if toolStats.doneCount > 0}
+                  <span class="flex items-center gap-0.5 text-[hsl(var(--miwarp-status-success))]">
+                    <StatusIcon status="done" size="sm" />
+                    {toolStats.doneCount}
+                  </span>
+                {/if}
+                {#if toolStats.runningCount > 0}
+                  <span class="flex items-center gap-0.5 text-muted-foreground">
+                    <StatusIcon status="running" size="sm" />
+                    {toolStats.runningCount}
+                  </span>
+                {/if}
+                {#if toolStats.errorCount > 0}
+                  <span class="flex items-center gap-0.5 text-destructive">
+                    <StatusIcon status="error" size="sm" />
+                    {toolStats.errorCount}
+                  </span>
+                {/if}
+                <span class="ml-auto text-muted-foreground/60"
+                  >{turns.length} {t("toolActivity_turnsLabel")}</span
+                >
+              </div>
+            </div>
+          {/if}
+
           <!-- Summary chips -->
           {#if toolStats.summary.length > 1}
             <div class="flex flex-wrap gap-1 px-2.5 py-1.5 border-b border-border/50">
@@ -1391,32 +1424,6 @@
               {/each}
             {/if}
           </div>
-
-          <!-- Stats footer (status counts only, tools tab only) -->
-          {#if toolStats.totalToolCount > 0}
-            <div class="border-t border-border px-3 py-1.5">
-              <div class="flex items-center gap-3 text-[11px]">
-                {#if toolStats.doneCount > 0}
-                  <span class="flex items-center gap-1 text-[hsl(var(--miwarp-status-success))]">
-                    <StatusIcon status="done" size="sm" />
-                    {toolStats.doneCount}
-                  </span>
-                {/if}
-                {#if toolStats.runningCount > 0}
-                  <span class="flex items-center gap-1 text-muted-foreground">
-                    <StatusIcon status="running" size="sm" />
-                    {toolStats.runningCount}
-                  </span>
-                {/if}
-                {#if toolStats.errorCount > 0}
-                  <span class="flex items-center gap-1 text-destructive">
-                    <StatusIcon status="error" size="sm" />
-                    {toolStats.errorCount}
-                  </span>
-                {/if}
-              </div>
-            </div>
-          {/if}
         </div>
       {/if}
     </div>

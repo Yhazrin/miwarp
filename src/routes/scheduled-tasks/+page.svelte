@@ -9,6 +9,17 @@
   import type { ScheduledTaskRun } from "$lib/types/scheduled-task";
 
   let activeTab = $state<"all" | "active" | "paused">("all");
+  let runningNow = $state(false);
+
+  async function handleRunNow(taskId: string) {
+    if (runningNow) return;
+    runningNow = true;
+    try {
+      await scheduledTasksStore.runTaskNow(taskId);
+    } finally {
+      runningNow = false;
+    }
+  }
 
   const filteredTasks = $derived.by(() => {
     switch (activeTab) {
@@ -174,7 +185,9 @@
                 <Button
                   variant="outline"
                   size="sm"
-                  onclick={() => scheduledTasksStore.runTaskNow(task.id)}
+                  loading={runningNow}
+                  disabled={runningNow}
+                  onclick={() => handleRunNow(task.id)}
                 >
                   {t("sched_runNow")}
                 </Button>

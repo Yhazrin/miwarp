@@ -3759,7 +3759,7 @@
 {/snippet}
 
 {#snippet heroMetaFooter()}
-  <div class="mt-4 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+  <div class="mt-4 flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/40">
     {@render heroMetaItems()}
   </div>
 {/snippet}
@@ -3928,7 +3928,7 @@
                   {/if}
                   <button
                     class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                    onclick={() => sendMessage(t("chat_quickAnalyze"), [])}
+                    onclick={() => sendMessage(t("chat_quickAnalyzePrompt"), [])}
                   >
                     <svg
                       class="h-4 w-4 shrink-0 text-blue-400/70"
@@ -3944,7 +3944,7 @@
                   </button>
                   <button
                     class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                    onclick={() => sendMessage(t("chat_quickFix"), [])}
+                    onclick={() => fillPrompt(t("chat_quickFixPrompt"))}
                   >
                     <svg
                       class="h-4 w-4 shrink-0 text-amber-400/70"
@@ -3962,7 +3962,7 @@
                   </button>
                   <button
                     class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                    onclick={() => sendMessage(t("chat_quickDaily"), [])}
+                    onclick={() => sendMessage(t("chat_quickDailyPrompt"), [])}
                   >
                     <svg
                       class="h-4 w-4 shrink-0 text-green-400/70"
@@ -4005,7 +4005,7 @@
 
                 <!-- Footer meta -->
                 <div
-                  class="mt-5 flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground/50"
+                  class="mt-5 flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/30"
                 >
                   <AuthSourceBadge
                     {authOverview}

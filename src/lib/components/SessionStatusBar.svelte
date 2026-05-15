@@ -217,6 +217,11 @@
   let dropdownEl: HTMLDivElement | undefined = $state();
   let dropdownStyle = $state("");
 
+  // More menu state
+  let moreMenuOpen = $state(false);
+  let moreMenuBtnEl: HTMLButtonElement | undefined = $state();
+  let moreMenuEl: HTMLDivElement | undefined = $state();
+
   function toggleModelDropdown() {
     dropdownOpen = !dropdownOpen;
     if (dropdownOpen && modelBtnEl) {
@@ -286,6 +291,15 @@
       ) {
         dropdownOpen = false;
       }
+      if (
+        moreMenuOpen &&
+        moreMenuBtnEl &&
+        !moreMenuBtnEl.contains(e.target as Node) &&
+        moreMenuEl &&
+        !moreMenuEl.contains(e.target as Node)
+      ) {
+        moreMenuOpen = false;
+      }
     }
     function onDocKeydown(e: KeyboardEvent) {
       if (dropdownOpen && e.key === "Escape") {
@@ -328,6 +342,13 @@
     clearTimeout(confirmTimer);
     confirmingEnd = false;
   }
+
+  const hasMoreActions = $derived(
+    onExportHtml ||
+      (!running && onRewind && persistedFiles && persistedFiles.length > 0) ||
+      (onFork && run?.session_id) ||
+      (running && onEndSession),
+  );
 
   let mcpAggregateStatus = $derived.by(() => {
     if (!mcpServers || mcpServers.length === 0) return "none";
@@ -552,98 +573,8 @@
       {/if}
     </div>
 
-    <!-- Right: actions + chevron -->
+    <!-- Right: tools count + More menu + chevron -->
     <div class="flex items-center gap-2">
-      {#if onExportHtml}
-        <button
-          class="flex items-center gap-1 rounded px-2 py-0.5 text-foreground/50 hover:text-foreground hover:bg-accent transition-colors"
-          onclick={onExportHtml}
-          title={t("export_htmlButton")}
-          data-export-exclude
-        >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline
-              points="16 6 12 2 8 6"
-            /><line x1="12" x2="12" y1="2" y2="15" /></svg
-          >
-          Export
-        </button>
-      {/if}
-      {#if !running && onRewind && persistedFiles && persistedFiles.length > 0}
-        <button
-          class="flex items-center gap-1 rounded px-2 py-0.5 text-foreground/50 hover:text-foreground hover:bg-accent transition-colors"
-          onclick={onRewind}
-          title={t("statusbar_rewindTitle")}
-        >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path
-              d="M3 3v5h5"
-            /></svg
-          >
-          {t("statusbar_rewind")}
-        </button>
-      {/if}
-      {#if onFork && run?.session_id}
-        <button
-          class="flex items-center gap-1 rounded px-2 py-0.5 text-foreground/50 hover:text-foreground hover:bg-accent transition-colors"
-          onclick={onFork}
-          title={t("statusbar_forkTitle")}
-        >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><circle cx="12" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><circle
-              cx="18"
-              cy="6"
-              r="3"
-            /><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9" /><path d="M12 12v3" /></svg
-          >
-          {t("statusbar_fork")}
-        </button>
-      {/if}
-      {#if running && onEndSession}
-        {#if confirmingEnd}
-          <div class="flex items-center gap-1">
-            <span class="text-xs text-miwarp-status-warning">{t("statusbar_endConfirm")}</span>
-            <button
-              class="rounded px-1.5 py-0.5 text-xs bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors"
-              onclick={confirmEnd}>{t("statusbar_yes")}</button
-            >
-            <button
-              class="rounded px-1.5 py-0.5 text-xs text-foreground/50 hover:text-foreground hover:bg-accent transition-colors"
-              onclick={cancelEnd}>{t("statusbar_no")}</button
-            >
-          </div>
-        {:else}
-          <button
-            class="flex items-center gap-1 rounded px-2 py-0.5 text-foreground/40 hover:text-foreground/60 transition-colors"
-            onclick={requestEnd}
-            title={t("statusbar_endTitle")}
-          >
-            {t("statusbar_endSession")}
-          </button>
-        {/if}
-      {/if}
-
       {#if toolsCount && toolsCount > 0 && onToolsClick}
         <button
           class="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -652,6 +583,149 @@
         >
           {t("statusbar_tools", { count: String(toolsCount) })}
         </button>
+      {/if}
+
+      <!-- More menu -->
+      {#if hasMoreActions}
+        <div class="relative">
+          <button
+            bind:this={moreMenuBtnEl}
+            class="rounded p-0.5 text-foreground/40 hover:text-foreground/70 hover:bg-accent transition-colors"
+            onclick={() => (moreMenuOpen = !moreMenuOpen)}
+            title={t("statusbar_moreMenu")}
+          >
+            <svg
+              class="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle
+                cx="5"
+                cy="12"
+                r="1"
+              />
+            </svg>
+          </button>
+          {#if moreMenuOpen}
+            <div
+              bind:this={moreMenuEl}
+              class="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-md border border-border/40 bg-popover p-1 text-xs shadow-lg"
+            >
+              {#if onExportHtml}
+                <button
+                  class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-accent transition-colors"
+                  onclick={() => {
+                    moreMenuOpen = false;
+                    onExportHtml();
+                  }}
+                >
+                  <svg
+                    class="h-3 w-3"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    ><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline
+                      points="16 6 12 2 8 6"
+                    /><line x1="12" x2="12" y1="2" y2="15" /></svg
+                  >
+                  {t("statusbar_exportHtml")}
+                </button>
+              {/if}
+              {#if !running && onRewind && persistedFiles && persistedFiles.length > 0}
+                <button
+                  class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-accent transition-colors"
+                  onclick={() => {
+                    moreMenuOpen = false;
+                    onRewind();
+                  }}
+                >
+                  <svg
+                    class="h-3 w-3"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    ><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path
+                      d="M3 3v5h5"
+                    /></svg
+                  >
+                  {t("statusbar_rewind")}
+                </button>
+              {/if}
+              {#if onFork && run?.session_id}
+                <button
+                  class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-accent transition-colors"
+                  onclick={() => {
+                    moreMenuOpen = false;
+                    onFork();
+                  }}
+                >
+                  <svg
+                    class="h-3 w-3"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    ><circle cx="12" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><circle
+                      cx="18"
+                      cy="6"
+                      r="3"
+                    /><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9" /><path
+                      d="M12 12v3"
+                    /></svg
+                  >
+                  {t("statusbar_fork")}
+                </button>
+              {/if}
+              {#if running && onEndSession}
+                {#if confirmingEnd}
+                  <div class="flex items-center gap-1 px-2 py-1.5">
+                    <span class="text-miwarp-status-warning">{t("statusbar_endConfirm")}</span>
+                    <button
+                      class="ml-auto rounded px-1.5 py-0.5 bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors"
+                      onclick={confirmEnd}>{t("statusbar_yes")}</button
+                    >
+                    <button
+                      class="rounded px-1.5 py-0.5 text-foreground/50 hover:text-foreground hover:bg-accent transition-colors"
+                      onclick={cancelEnd}>{t("statusbar_no")}</button
+                    >
+                  </div>
+                {:else}
+                  <button
+                    class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-destructive hover:bg-destructive/10 transition-colors"
+                    onclick={() => {
+                      moreMenuOpen = false;
+                      requestEnd();
+                    }}
+                  >
+                    <svg
+                      class="h-3 w-3"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      ><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /></svg
+                    >
+                    {t("statusbar_endSession")}
+                  </button>
+                {/if}
+              {/if}
+            </div>
+          {/if}
+        </div>
       {/if}
 
       <!-- Expand/collapse chevron -->

@@ -6,10 +6,12 @@
   let {
     status,
     attention = false,
+    compact = false,
     class: className = "",
   }: {
     status: RunStatus;
     attention?: boolean;
+    compact?: boolean;
     class?: string;
   } = $props();
 
@@ -74,20 +76,36 @@
       dot: "hsl(var(--miwarp-status-warning))",
     },
   };
+
+  const style = $derived(statusStyles[displayStatus]);
+  const isAnimated = $derived(displayStatus === "running" || displayStatus === "waiting");
 </script>
 
-<span
-  class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium {className}"
-  style="background-color: {statusStyles[displayStatus].bg}; color: {statusStyles[displayStatus]
-    .text}"
->
+{#if compact}
+  <!-- Compact mode: dot only, with tooltip -->
   <span
-    class="h-1.5 w-1.5 rounded-full {displayStatus === 'running'
-      ? 'animate-slow-pulse'
-      : displayStatus === 'waiting'
-        ? 'animate-pulse'
-        : ''}"
-    style="background-color: {statusStyles[displayStatus].dot}"
+    class="inline-block h-2 w-2 rounded-full shrink-0 {isAnimated
+      ? displayStatus === 'running'
+        ? 'animate-slow-pulse'
+        : 'animate-pulse'
+      : ''} {className}"
+    style="background-color: {style.dot}"
+    title={displayStatus}
   ></span>
-  {displayStatus}
-</span>
+{:else}
+  <!-- Full pill mode -->
+  <span
+    class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium {className}"
+    style="background-color: {style.bg}; color: {style.text}"
+  >
+    <span
+      class="h-1.5 w-1.5 rounded-full {isAnimated
+        ? displayStatus === 'running'
+          ? 'animate-slow-pulse'
+          : 'animate-pulse'
+        : ''}"
+      style="background-color: {style.dot}"
+    ></span>
+    {displayStatus}
+  </span>
+{/if}
