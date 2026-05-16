@@ -68,7 +68,6 @@
   import ReleaseNotesCard from "$lib/components/ReleaseNotesCard.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
-  import { yieldToMain } from "$lib/utils/yield";
   import {
     getLastTarget,
     setLastTarget,
@@ -98,15 +97,13 @@
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import TeamDispatchConfirm from "$lib/components/TeamDispatchConfirm.svelte";
   import TeamRunCard from "$lib/components/TeamRunCard.svelte";
-  import {
-    detectTeamTrigger,
-    stripTeamTag,
-    dispatchTeamRun,
-    executeTeamRun,
-    getPresets,
-    shouldShowTeamHint,
-  } from "$lib/services/team-dispatcher";
-  import type { TeamRun, TeamPreset } from "$lib/types";
+  import { detectTeamTrigger } from "$lib/services/team-dispatcher";
+
+  // ── Composables ──
+  import { useProgressiveTimeline } from "$lib/chat/use-progressive-timeline.svelte";
+  import { useChatScroll } from "$lib/chat/use-chat-scroll.svelte";
+  import { useTeamDispatch } from "$lib/chat/use-team-dispatch.svelte";
+  import { useProjectPreload } from "$lib/chat/use-project-preload.svelte";
 
   // ── Helpers ──
 
@@ -152,10 +149,8 @@
   /** Reactive cwd override for new-chat-in-folder (cleared when a run is loaded) */
   let folderCwdOverride = $state("");
   let chatAreaRef: HTMLDivElement | undefined = $state();
-  let isChatAutoScroll = $state(true);
   /** Non-reactive flag: suppresses auto-scroll reset during search scroll-to navigation. */
   let _scrollToInFlight = false;
-  let showChatScrollHint = $state(false);
   let agentSettings = $state<AgentSettings | null>(null);
   let resuming = $state(false);
   /** Suppress "Session ended" flash during tool approval restart cycle. */
@@ -190,14 +185,12 @@
       folderPickerResolve = resolve;
     });
   }
-  /** Preloaded skill details from filesystem (has descriptions). */
-  let preloadedSkills = $state<import("$lib/types").StandaloneSkill[]>([]);
-  /** Preloaded agent definitions from filesystem. */
-  let preloadedAgents = $state<import("$lib/types").AgentDefinitionSummary[]>([]);
-  /** Project-level commands from {cwd}/.claude/commands/ + ~/.claude/commands/. */
-  let projectCommands = $state<import("$lib/types").CliCommand[]>([]);
-  /** Generation counter for reloadProjectData race guard. */
-  let preloadGen = 0;
+  // ── Project preload (composable) ──
+  const preload = useProjectPreload({
+    store,
+    availableSkills: () => store.availableSkills,
+  });
+  const { preloadedSkills, preloadedAgents, projectCommands, reloadProjectData } = preload;
   /** Local proxy running statuses for AuthSourceBadge. */
   let localProxyStatuses = $state<Record<string, { running: boolean; needsAuth: boolean }>>({});
 
@@ -245,69 +238,18 @@
     if (!rewindModalOpen) rewindDirectTarget = null;
   });
 
-  // ── Team dispatch ──
-  let teamDispatchOpen = $state(false);
-  let teamDispatchPrompt = $state("");
-  let activeTeamRuns = $state<TeamRun[]>([]);
-  let teamHintVisible = $state(false);
-
-  function handleInputValueChange(value: string) {
-    teamHintVisible = shouldShowTeamHint(value);
-  }
-  let teamPresets = $state<TeamPreset[]>([]);
-
-  // Load presets on mount
-  onMount(() => {
-    getPresets()
-      .then((p) => (teamPresets = p))
-      .catch(() => {});
+  // ── Team dispatch (composable) ──
+  const team = useTeamDispatch({
+    effectiveCwd: () => store.effectiveCwd || "",
+    onSendMessage: (text) => sendMessage(text, []),
   });
-
-  async function handleTeamDispatch(presetId: string) {
-    const prompt = teamDispatchPrompt;
-    teamDispatchOpen = false;
-    if (!prompt) return;
-
-    const preset = teamPresets.find((p) => p.id === presetId);
-    if (!preset) return;
-
-    const cwd = store.effectiveCwd || "";
-
-    // Create TeamRun record
-    const teamRun = await dispatchTeamRun({
-      prompt,
-      presetId,
-      cwd,
-    });
-
-    // Add to active list so TeamRunCard renders in chat
-    activeTeamRuns = [...activeTeamRuns, teamRun];
-
-    // Execute in background — uses existing startRun infrastructure
-    executeTeamRun(
-      teamRun,
-      preset,
-      (prompt: string, runCwd: string, agent: string) => api.startRun(prompt, runCwd, agent),
-      (updated: TeamRun) => {
-        activeTeamRuns = activeTeamRuns.map((r) => (r.id === updated.id ? updated : r));
-      },
-    ).catch((err) => {
-      console.error("Team run failed:", err);
-    });
-  }
-
-  function handleUseSingleClaude() {
-    const stripped = stripTeamTag(teamDispatchPrompt);
-    teamDispatchOpen = false;
-    if (stripped) {
-      sendMessage(stripped, []);
-    }
-  }
-
-  function handleCancelTeamDispatch() {
-    teamDispatchOpen = false;
-    teamDispatchPrompt = "";
-  }
+  // Non-reactive exports only — reactive values accessed via team.xxx
+  const {
+    handleInputValueChange,
+    handleTeamDispatch,
+    handleUseSingleClaude,
+    handleCancelTeamDispatch,
+  } = team;
 
   // Auto-name one-shot latch: reset only on actual run ID change
   let prevAutoNameRunId = "";
@@ -435,18 +377,6 @@
     }
   }
 
-  // ── Timeline rendering ──
-  // Progressive render: start with the most recent N entries, grow on upward scroll.
-  // Switching to a multi-thousand-entry run with `Infinity` would mount thousands of
-  // ChatMessage components in one frame and freeze the WebView (issue #119).
-  const INITIAL_RENDER_LIMIT = 100;
-  const RENDER_GROWTH_STEP = 100;
-  let renderLimit = $state(INITIAL_RENDER_LIMIT);
-  let progressiveGen = 0; // generation counter for stale-callback protection
-  let loadingMore = $state(false);
-  let loadMoreArmed = $state(true); // throttle: re-armed by handleChatScroll
-  let _suppressLoadMoreRearm = false; // raised during programmatic scrollTop adjustment
-
   async function syncVerboseState(runId: string | undefined) {
     const key = runId ?? "__no_run__";
     if (key === lastSyncedRunId) return; // same run — skip
@@ -507,11 +437,27 @@
     return store.timeline.filter((e) => e.kind !== "tool" || e.tool.tool_name === toolFilter);
   });
 
-  let visibleTimeline = $derived.by(() => {
-    const ft = filteredTimeline;
-    if (renderLimit >= ft.length) return ft;
-    return ft.slice(ft.length - renderLimit);
+  // ── Progressive timeline (composable) ──
+  const progressive = useProgressiveTimeline({
+    filteredTimeline: () => filteredTimeline,
+    chatAreaRef: () => chatAreaRef,
+    burstHiddenIndices: () => burstHiddenIndices,
+    toolBursts: () => toolBursts,
+    manualOverrides: () => manualOverrides,
+    onManualOverridesChange: (next) => {
+      manualOverrides = next;
+    },
   });
+  // Non-reactive exports only — reactive values accessed via progressive.xxx
+  const {
+    cancelProgressive,
+    expandRenderLimitTo,
+    ensureBurstExpandedFor,
+    rearmLoadMore,
+    resetForNewRun,
+  } = progressive;
+
+  const visibleTimeline = $derived(progressive.visibleTimeline);
 
   let lastAssistantIdx = $derived.by(() => {
     for (let j = visibleTimeline.length - 1; j >= 0; j--) {
@@ -520,13 +466,27 @@
     return -1;
   });
 
+  // ── Chat scroll (composable) ──
+  const chatScroll = useChatScroll({
+    chatAreaRef: () => chatAreaRef,
+    isStreamSession: () => store.useStreamSession,
+    timelineLength: () => store.timeline.length,
+    streamingTextLength: () => store.streamingText.length,
+    runId: () => store.run?.id ?? "",
+    hasInlinePermission: () => store.hasInlinePermission,
+    scrollToInFlight: () => _scrollToInFlight,
+    rearmLoadMore,
+  });
+  // Non-reactive exports only — reactive values accessed via chatScroll.xxx
+  const { handleChatScroll, scrollChatToBottom } = chatScroll;
+
   // ── Batch groups (consecutive ≥3 Task tools) ──
   // Skip batch detection when tool filter is active — filtering removes non-Task
   // entries, causing originally non-consecutive Tasks to merge into false batches.
   let batchGroups = $derived(
     toolFilter
       ? (EMPTY_BATCH_MAP as Map<number, BusToolItem[]>)
-      : detectBatchGroups(visibleTimeline),
+      : detectBatchGroups(progressive.visibleTimeline),
   );
 
   let _lastBatchSig = "";
@@ -541,7 +501,9 @@
   });
 
   // ── Tool burst groups (excludes Task — handled by BatchProgressBar) ──
-  let toolBursts = $derived(toolFilter ? EMPTY_BURST_MAP : detectToolBursts(visibleTimeline));
+  let toolBursts = $derived(
+    toolFilter ? EMPTY_BURST_MAP : detectToolBursts(progressive.visibleTimeline),
+  );
 
   // Layer 1: Auto-collapse — completed + no interaction needed → collapsed (derived, pure)
   let autoCollapsed = $derived.by(() => {
@@ -764,128 +726,6 @@
     syncVerboseState(store.run?.id);
   });
 
-  // ── Progressive timeline rendering ── helpers
-
-  /** Invalidate any in-flight async load so its post-await side effects bail out. */
-  function cancelProgressive() {
-    progressiveGen++;
-  }
-
-  /** Bump the load generation and return it — caller compares against `progressiveGen`. */
-  function nextProgressiveGen(): number {
-    return ++progressiveGen;
-  }
-
-  /**
-   * Expand `renderLimit` enough that `targetIndex` (in `filteredTimeline`) is mounted,
-   * with `margin` extra entries above for context. No-op if already covered.
-   */
-  function expandRenderLimitTo(targetIndex: number, margin = 50) {
-    const ft = filteredTimeline;
-    if (targetIndex < 0 || targetIndex >= ft.length) return;
-    if (renderLimit === Infinity) return;
-    const needed = ft.length - targetIndex + margin;
-    if (renderLimit < needed) renderLimit = Math.min(needed, ft.length);
-  }
-
-  /**
-   * If `visibleIdx` (visibleTimeline-local) sits inside a collapsed tool burst,
-   * force-expand that burst via `manualOverrides` so the entry's DOM mounts.
-   * Caller must pass an index in the visibleTimeline namespace, not filteredTimeline.
-   */
-  async function ensureBurstExpandedFor(visibleIdx: number) {
-    if (!burstHiddenIndices.has(visibleIdx)) return;
-    for (const [, burst] of toolBursts) {
-      if (visibleIdx >= burst.startIndex && visibleIdx <= burst.endIndex) {
-        const next = new Map(manualOverrides);
-        next.set(burst.key, true);
-        manualOverrides = next;
-        await tick();
-        return;
-      }
-    }
-  }
-
-  // Sentinel above the visible list — when it intersects the chat viewport, grow renderLimit.
-  let topSentinel = $state<HTMLDivElement | null>(null);
-  let _topObserver: IntersectionObserver | null = null;
-
-  $effect(() => {
-    if (!topSentinel || !chatAreaRef) {
-      _topObserver?.disconnect();
-      _topObserver = null;
-      return;
-    }
-    _topObserver?.disconnect();
-    _topObserver = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (!entry?.isIntersecting) return;
-        if (!loadMoreArmed || loadingMore) return;
-        const hidden = filteredTimeline.length - renderLimit;
-        if (hidden <= 0) return;
-        dbg("chat", "progressive-load-more", { renderLimit, hidden });
-        void loadMoreEarlier();
-      },
-      { root: chatAreaRef, rootMargin: "200px 0px 0px 0px", threshold: 0 },
-    );
-    _topObserver.observe(topSentinel);
-    return () => {
-      _topObserver?.disconnect();
-      _topObserver = null;
-    };
-  });
-
-  /**
-   * Grow `renderLimit` by `RENDER_GROWTH_STEP` and preserve the user's scroll position.
-   * Browser-native scroll anchoring is unreliable on WKWebView with content-visibility,
-   * so we measure the first rendered entry's offset before/after and adjust scrollTop
-   * by the delta.
-   */
-  async function loadMoreEarlier() {
-    if (loadingMore || !loadMoreArmed) return;
-    loadingMore = true;
-    loadMoreArmed = false; // re-armed by handleChatScroll on next user scroll
-    try {
-      const anchor = chatAreaRef?.querySelector<HTMLElement>("[data-entry-id]") ?? null;
-      const anchorId = anchor?.dataset.entryId ?? null;
-      const beforeTop = anchor?.getBoundingClientRect().top ?? 0;
-      const beforeScroll = chatAreaRef?.scrollTop ?? 0;
-
-      renderLimit = Math.min(renderLimit + RENDER_GROWTH_STEP, filteredTimeline.length);
-      await tick();
-      await yieldToMain();
-
-      if (anchorId && chatAreaRef) {
-        let after: HTMLElement | null = null;
-        try {
-          after = chatAreaRef.querySelector<HTMLElement>(
-            `[data-entry-id="${CSS.escape(anchorId)}"]`,
-          );
-        } catch {
-          after =
-            Array.from(chatAreaRef.querySelectorAll<HTMLElement>("[data-entry-id]")).find(
-              (el) => el.dataset.entryId === anchorId,
-            ) ?? null;
-        }
-        if (after) {
-          const afterTop = after.getBoundingClientRect().top;
-          // Suppress re-arm so the programmatic scrollTop write doesn't immediately
-          // rearm the observer — the sentinel may still be in view post-prepend.
-          _suppressLoadMoreRearm = true;
-          chatAreaRef.scrollTop = beforeScroll + (afterTop - beforeTop);
-          // Clear suppression after the scroll event has dispatched + been handled.
-          // yieldToMain has a 50ms timeout fallback so a backgrounded WebView with
-          // throttled rAF can't strand the suppression flag.
-          await yieldToMain();
-          _suppressLoadMoreRearm = false;
-        }
-      }
-    } finally {
-      loadingMore = false;
-    }
-  }
-
   /**
    * Load a run and render its timeline progressively.
    * Starts with the most recent `INITIAL_RENDER_LIMIT` entries; the top sentinel
@@ -898,10 +738,7 @@
     toolFilter = null;
     // Reset progressive state so a previous run's expanded renderLimit (e.g. after
     // an anchor jump) doesn't leak into the new run.
-    renderLimit = INITIAL_RENDER_LIMIT;
-    loadingMore = false;
-    loadMoreArmed = true;
-    const gen = nextProgressiveGen();
+    const gen = resetForNewRun();
 
     // Capture scrollTo BEFORE loadRun — URL may change during async load
     const scrollTo = $page.url.searchParams.get("scrollTo");
@@ -937,10 +774,10 @@
       }
     }
 
-    if (gen !== progressiveGen) return;
+    if (gen !== progressive.progressiveGen) return;
     dbg("chat", "loadRun complete", {
       timeline: filteredTimeline.length,
-      renderLimit,
+      renderLimit: progressive.renderLimit,
       gen,
     });
 
@@ -1793,40 +1630,6 @@
     };
   });
 
-  // Auto-scroll chat (only when user is near bottom)
-  let prevTl = 0;
-  let prevSt = 0;
-
-  $effect(() => {
-    if (store.useStreamSession && chatAreaRef) {
-      const tl = store.timeline.length;
-      const st = store.streamingText.length;
-      const _rid = store.run?.id;
-      const changed = tl !== prevTl || st !== prevSt;
-      prevTl = tl;
-      prevSt = st;
-      if (isChatAutoScroll) {
-        requestAnimationFrame(() => {
-          if (chatAreaRef) chatAreaRef.scrollTop = chatAreaRef.scrollHeight;
-        });
-      } else if (changed) {
-        showChatScrollHint = true;
-      }
-    }
-  });
-
-  // Reset scroll state on run change
-  $effect(() => {
-    void store.run?.id;
-    // _scrollToInFlight is non-reactive (plain let): reading it doesn't create a dependency.
-    // When a search scroll-to navigation is in progress, suppress auto-scroll so
-    // scrollToMessage isn't overridden by the auto-scroll $effect.
-    isChatAutoScroll = !_scrollToInFlight;
-    showChatScrollHint = false;
-    prevTl = 0;
-    prevSt = 0;
-  });
-
   // Restore model when store.model is empty (e.g. after reset/loadRun):
   // For third-party platforms, use the platform's default model.
   // For Anthropic, prefer CC's current active model, fall back to our saved default_model
@@ -1893,56 +1696,6 @@
     // Codex pipe mode doesn't need resize — terminal is output-only
   }
 
-  // ── Chat scroll ──
-
-  /** Threshold (px) for "near bottom" detection. Shared concept with TerminalPane. */
-  const SCROLL_BOTTOM_THRESHOLD = 40;
-
-  function handleChatScroll() {
-    if (!chatAreaRef) return;
-    const dist = chatAreaRef.scrollHeight - chatAreaRef.scrollTop - chatAreaRef.clientHeight;
-    isChatAutoScroll = dist < SCROLL_BOTTOM_THRESHOLD;
-    if (isChatAutoScroll) showChatScrollHint = false;
-    // Re-arm progressive load-more after a user-initiated scroll. The IntersectionObserver
-    // fires once per arm; this prevents short timelines from runaway-expanding while the
-    // sentinel remains in view after a prepend. Programmatic scrollTop adjustments
-    // (loadMoreEarlier's anchor compensation) raise `_suppressLoadMoreRearm` so the
-    // anchor-correction scroll doesn't immediately re-arm the observer.
-    if (!loadMoreArmed && !_suppressLoadMoreRearm) loadMoreArmed = true;
-  }
-
-  function scrollChatToBottom() {
-    if (chatAreaRef) {
-      chatAreaRef.scrollTop = chatAreaRef.scrollHeight;
-      showChatScrollHint = false;
-      isChatAutoScroll = true;
-    }
-  }
-
-  // ── Permission pending auto-scroll (only for inline AskUserQuestion/ExitPlanMode) ──
-  let prevPermissionRunId = "";
-  let prevHadPermission = false;
-
-  $effect(() => {
-    const runId = store.run?.id ?? "";
-    const hasInline = store.hasInlinePermission;
-
-    if (runId !== prevPermissionRunId) {
-      prevPermissionRunId = runId;
-      prevHadPermission = false;
-    }
-
-    if (hasInline && !prevHadPermission) {
-      if (!chatAreaRef) return;
-      requestAnimationFrame(() => {
-        scrollChatToBottom();
-      });
-      dbg("chat", "inline permission pending -> autoscroll", { runId });
-    }
-
-    prevHadPermission = hasInline;
-  });
-
   // ── Permission panel visibility log ──
   let _prevPanelCount = 0;
   $effect(() => {
@@ -1966,8 +1719,8 @@
 
     store.error = "";
     // Follow to new reply when sending a message
-    isChatAutoScroll = true;
-    showChatScrollHint = false;
+    chatScroll.isChatAutoScroll = true;
+    chatScroll.showChatScrollHint = false;
 
     // Detect slash command (same check as store timeout skip)
     const isSlash = store.isKnownSlashCommand(text);
@@ -1977,8 +1730,8 @@
     if (!store.run && !slashCmd) {
       const teamResult = detectTeamTrigger(text);
       if (teamResult) {
-        teamDispatchPrompt = teamResult.prompt;
-        teamDispatchOpen = true;
+        team.teamDispatchPrompt = teamResult.prompt;
+        team.teamDispatchOpen = true;
         return;
       }
     }
@@ -2104,42 +1857,6 @@
   let showInitHint = $derived(
     projectInitStatus !== null && !projectInitStatus.has_claude_md && !store.run,
   );
-
-  /** Reload project-level data (skills, agents, commands) with race guard. */
-  function reloadProjectData(cwd: string) {
-    const gen = ++preloadGen;
-    preloadedSkills = [];
-    preloadedAgents = [];
-    projectCommands = [];
-    if (!cwd) return;
-    api
-      .listStandaloneSkills(cwd)
-      .then((skills) => {
-        if (gen !== preloadGen) return;
-        preloadedSkills = skills;
-        if (skills.length > 0 && store.availableSkills.length === 0) {
-          store.availableSkills = skills.map((s) => s.name);
-        }
-        dbg("chat", "preloaded skills", { count: skills.length });
-      })
-      .catch((e) => dbgWarn("chat", "failed to preload skills", e));
-    api
-      .listAgents(cwd)
-      .then((agents) => {
-        if (gen !== preloadGen) return;
-        preloadedAgents = agents;
-        dbg("chat", "preloaded agents", { count: agents.length });
-      })
-      .catch((e) => dbgWarn("chat", "failed to preload agents", e));
-    api
-      .listProjectCommands(cwd)
-      .then((cmds) => {
-        if (gen !== preloadGen) return;
-        projectCommands = cmds;
-        dbg("chat", "preloaded project commands", { count: cmds.length });
-      })
-      .catch((e) => dbgWarn("chat", "failed to preload project commands", e));
-  }
 
   async function checkProjectInit() {
     const cwd = localStorage.getItem("ocv:project-cwd") || "";
@@ -2319,11 +2036,11 @@
     let html: string;
     let title: string;
     const prevFilter = toolFilter;
-    const prevLimit = renderLimit;
+    const prevLimit = progressive.renderLimit;
     try {
       // Force full render (clear filter + unlimited)
       toolFilter = null;
-      renderLimit = Infinity;
+      progressive.renderLimit = Infinity;
       await tick();
       await new Promise((r) => requestAnimationFrame(() => r(undefined)));
 
@@ -2351,7 +2068,7 @@
 
       // Restore UI immediately (HTML already captured, no need to keep filter cleared)
       toolFilter = prevFilter;
-      renderLimit = prevLimit;
+      progressive.renderLimit = prevLimit;
 
       const { save } = await import("@tauri-apps/plugin-dialog");
       const path = await save({
@@ -2372,7 +2089,7 @@
     } finally {
       // Ensure restore even on early return paths
       toolFilter = prevFilter;
-      renderLimit = prevLimit;
+      progressive.renderLimit = prevLimit;
     }
   }
 
@@ -4131,8 +3848,12 @@
               <div class="chat-content-width pb-1" data-export-exclude>
                 <ViewModeToggle />
               </div>
-              {#if filteredTimeline.length - renderLimit > 0}
-                <div bind:this={topSentinel} aria-hidden="true" class="h-px w-full"></div>
+              {#if filteredTimeline.length - progressive.renderLimit > 0}
+                <div
+                  bind:this={progressive.topSentinel}
+                  aria-hidden="true"
+                  class="h-px w-full"
+                ></div>
               {/if}
               {#each visibleTimeline as entry, i (entry.id)}
                 {#if !(burstHiddenIndices.has(i) && !toolBursts.has(i))}
@@ -4211,8 +3932,8 @@
                               })
                           : undefined}
                         onDispatchToTeam={() => {
-                          teamDispatchPrompt = entry.content;
-                          teamDispatchOpen = true;
+                          team.teamDispatchPrompt = entry.content;
+                          team.teamDispatchOpen = true;
                         }}
                       />
                     {:else if entry.kind === "assistant"}
@@ -4386,7 +4107,7 @@
               {/if}
 
               <!-- Active team runs -->
-              {#each activeTeamRuns as teamRun (teamRun.id)}
+              {#each team.activeTeamRuns as teamRun (teamRun.id)}
                 <div class="w-full py-2">
                   <div class="chat-content-width pl-7">
                     <TeamRunCard {teamRun} />
@@ -4576,7 +4297,7 @@
             </div>
           {/if}
         </div>
-        {#if showChatScrollHint}
+        {#if chatScroll.showChatScrollHint}
           <button
             class="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-lg transition-all duration-200 hover:bg-primary/90 animate-fade-in"
             onclick={scrollChatToBottom}
@@ -4929,7 +4650,7 @@
             onValueChange={handleInputValueChange}
             contextWindow={store.contextWindow}
           />
-          {#if teamHintVisible}
+          {#if team.teamHintVisible}
             <div
               class="mx-2 mb-1 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-muted-foreground animate-in fade-in slide-in-from-bottom-1 duration-150"
             >
@@ -5027,8 +4748,8 @@
   />
 
   <TeamDispatchConfirm
-    bind:open={teamDispatchOpen}
-    prompt={teamDispatchPrompt}
+    bind:open={team.teamDispatchOpen}
+    prompt={team.teamDispatchPrompt}
     cwd={store.effectiveCwd || ""}
     onDispatch={handleTeamDispatch}
     onUseSingleClaude={handleUseSingleClaude}
