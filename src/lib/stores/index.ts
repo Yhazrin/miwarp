@@ -25,3 +25,5 @@ export {
   updateInstalledVersion,
 } from "./cli-info.svelte";
 export type { CliVersionInfo } from "./cli-info.svelte";
+export { PromptInputStore } from "./prompt-input-store.svelte";
+export type { PendingAttachment, PastedBlock, PathRef } from "./prompt-input-store.svelte";

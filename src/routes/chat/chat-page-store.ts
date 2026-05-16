@@ -1,11 +1,59 @@
 /**
- * Shared derived state for the chat page.
+ * Shared derived state and UI store for the chat page.
  *
  * Extracts commonly-used timeline computations out of +page.svelte
  * so they can be tested independently and reused by child components.
+ *
+ * ChatPageStore holds UI-level reactive state that sub-components
+ * (ChatTopBar, ChatToolLayer, ChatMessageStream) need to read/write.
  */
 import type { TimelineEntry } from "$lib/types";
 import type { TurnUsage } from "$lib/stores/types";
+import type { PromptInputSnapshot } from "$lib/types";
+
+// ── ChatPageStore: shared UI state ──
+
+export type SidebarTab =
+  | "workspace"
+  | "tools"
+  | "context"
+  | "files"
+  | "info"
+  | "tasks"
+  | "preview"
+  | "workflow"
+  | null;
+
+export class ChatPageStore {
+  // ── Sidebar ──
+  sidebarCollapsed: boolean = $state(false);
+  sidebarRequestedTab: SidebarTab = $state(null);
+  requestedPreviewPath: string | null = $state(null);
+  requestedPreviewUrl: string | null = $state(null);
+
+  // ── Input stash (session switch) ──
+  stashedInput: PromptInputSnapshot | null = $state(null);
+
+  // ── Shortcut help ──
+  shortcutHelpOpen: boolean = $state(false);
+
+  // ── Notification banner ──
+  notificationVisible: boolean = $state(false);
+  latestNotification: { task_id: string; status: string } | null = $state(null);
+
+  // ── Helpers ──
+
+  openPreviewForPath(path: string): void {
+    if (!path) return;
+    this.requestedPreviewPath = path;
+    this.sidebarRequestedTab = "files";
+    if (this.sidebarCollapsed) this.sidebarCollapsed = false;
+  }
+
+  toggleSidebar(): void {
+    this.sidebarCollapsed = !this.sidebarCollapsed;
+  }
+}
 
 /** Compute the visible (progressive-render) slice of the filtered timeline. */
 export function computeVisibleTimeline(

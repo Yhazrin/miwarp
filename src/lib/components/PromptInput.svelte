@@ -56,6 +56,8 @@
   import { uuid } from "$lib/utils/uuid";
   import type { ClipboardFileInfo } from "$lib/api";
   import type { PromptInputSnapshot } from "$lib/types";
+  import { PromptInputStore } from "$lib/stores";
+  import type { PendingAttachment, PastedBlock, PathRef } from "$lib/stores";
   import {
     type HistoryState,
     type HistoryAction,
@@ -112,6 +114,7 @@
     runId = "",
     onValueChange,
     contextWindow = 0,
+    inputStore,
   }: {
     agent?: string;
     disabled?: boolean;
@@ -157,7 +160,16 @@
     runId?: string;
     onValueChange?: (value: string) => void;
     contextWindow?: number;
+    inputStore?: PromptInputStore;
   } = $props();
+
+  // ── Store ──
+  const store = inputStore ?? new PromptInputStore();
+
+  // Sync permissionMode prop → store
+  $effect(() => {
+    store.permissionMode = permissionMode;
+  });
 
   // ── BTW mode (side question) ──
   let btwMode = $state(false);
@@ -317,39 +329,9 @@
     onPermissionModeChange?.(mode);
   }
 
-  interface PastedBlock {
-    id: string;
-    text: string;
-    lineCount: number;
-    charCount: number;
-    preview: string;
-    ext?: string;
-  }
-
-  interface PathRef {
-    id: string;
-    name: string;
-    path: string;
-    isDir: boolean;
-  }
-
-  let inputText = $state("");
-  let pendingAttachments = $state<
-    Array<{
-      id: string;
-      name: string;
-      type: string;
-      size: number;
-      contentBase64?: string;
-      /** Filesystem path for >20MB clipboard PDFs (path-reference mode). */
-      filePath?: string;
-    }>
-  >([]);
-  let pastedBlocks = $state<PastedBlock[]>([]);
-  let pendingPathRefs = $state<PathRef[]>([]);
+  // Store-provided reactive state (store.inputText, store.pendingAttachments, store.pastedBlocks, store.pendingPathRefs, store.textareaEl)
 
   let fileInput: HTMLInputElement | undefined = $state();
-  let textareaEl: HTMLTextAreaElement | undefined = $state();
   let lastEscTime = 0;
   let histState: HistoryState = createHistoryState();
 
@@ -401,7 +383,7 @@
 
   let slashQuery = $derived.by(() => {
     if (!slashMenuOpen || slashPhase !== "commands") return null;
-    const m = inputText.match(/^\/([a-zA-Z0-9_-]*)$/);
+    const m = store.inputText.match(/^\/([a-zA-Z0-9_-]*)$/);
     return m?.[1] ?? "";
   });
 
@@ -435,7 +417,7 @@
   let atResults = $state<DirEntry[]>([]);
   let atSelectedIndex = $state(0);
   let atLoading = $state(false);
-  /** Position in inputText where the `@` trigger starts. */
+  /** Position in store.inputText where the `@` trigger starts. */
   let atStartPos = $state(-1);
   let atDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -510,10 +492,10 @@
     // Scan backwards from cursor for nearest @ preceded by whitespace or at position 0
     let atPos = -1;
     for (let i = cursorPos - 1; i >= 0; i--) {
-      const ch = inputText[i];
+      const ch = store.inputText[i];
       if (ch === "@") {
         // Valid if at start or preceded by whitespace
-        if (i === 0 || /\s/.test(inputText[i - 1])) {
+        if (i === 0 || /\s/.test(store.inputText[i - 1])) {
           atPos = i;
         }
         break;
@@ -522,7 +504,7 @@
     }
 
     if (atPos >= 0) {
-      const query = inputText.slice(atPos + 1, cursorPos);
+      const query = store.inputText.slice(atPos + 1, cursorPos);
       if (!atMenuOpen) openAtMenu(atPos);
       atQuery = query;
 
@@ -537,10 +519,10 @@
   }
 
   function selectAtEntry(entry: DirEntry) {
-    if (atStartPos < 0 || !textareaEl) return;
-    const cursorPos = textareaEl.selectionStart ?? inputText.length;
-    const prefix = inputText.slice(0, atStartPos + 1); // keeps the @
-    const suffix = inputText.slice(cursorPos);
+    if (atStartPos < 0 || !store.textareaEl) return;
+    const cursorPos = store.textareaEl.selectionStart ?? store.inputText.length;
+    const prefix = store.inputText.slice(0, atStartPos + 1); // keeps the @
+    const suffix = store.inputText.slice(cursorPos);
 
     // Build the path relative to what was already typed
     const lastSlash = atQuery.lastIndexOf("/");
@@ -549,25 +531,25 @@
 
     if (entry.is_dir) {
       // Append / and keep menu open for deeper navigation
-      inputText = prefix + relativePath + "/" + suffix;
+      store.inputText = prefix + relativePath + "/" + suffix;
       requestAnimationFrame(() => {
-        if (textareaEl) {
+        if (store.textareaEl) {
           const newPos = atStartPos + 1 + relativePath.length + 1;
-          textareaEl.selectionStart = textareaEl.selectionEnd = newPos;
-          textareaEl.focus();
+          store.textareaEl.selectionStart = store.textareaEl.selectionEnd = newPos;
+          store.textareaEl.focus();
         }
         // Trigger new fetch for subdirectory contents
         handleAtInput(atStartPos + 1 + relativePath.length + 1);
       });
     } else {
       // Insert file path and close menu
-      inputText = prefix + relativePath + suffix;
+      store.inputText = prefix + relativePath + suffix;
       closeAtMenu("select");
       requestAnimationFrame(() => {
-        if (textareaEl) {
+        if (store.textareaEl) {
           const newPos = atStartPos + 1 + relativePath.length;
-          textareaEl.selectionStart = textareaEl.selectionEnd = newPos;
-          textareaEl.focus();
+          store.textareaEl.selectionStart = store.textareaEl.selectionEnd = newPos;
+          store.textareaEl.focus();
         }
       });
     }
@@ -584,7 +566,7 @@
   /** Restore saved input text and clear the saved value to prevent stale restores. */
   function restoreSavedInput() {
     if (savedInputForSlash !== "") {
-      inputText = savedInputForSlash;
+      store.inputText = savedInputForSlash;
       savedInputForSlash = "";
     }
   }
@@ -616,24 +598,24 @@
     switch (interaction) {
       case "immediate":
         if (trigger === "enter") {
-          inputText = `/${cmd.name}`;
+          store.inputText = `/${cmd.name}`;
           closeSlashMenu("execute");
           handleSend();
         } else {
           // Tab: fill only, don't execute
           closeSlashMenu("fill");
-          inputText = `/${cmd.name} `;
+          store.inputText = `/${cmd.name} `;
           moveCursorToEnd();
         }
         break;
       case "free-text":
         closeSlashMenu("fill");
-        inputText = `/${cmd.name} `;
+        store.inputText = `/${cmd.name} `;
         moveCursorToEnd();
         break;
       case "enum":
         activeSlashCmd = cmd;
-        inputText = `/${cmd.name} `;
+        store.inputText = `/${cmd.name} `;
         if (cmd.name === "fast") {
           slashPhase = "sub-fast";
           slashSubSelectedIndex = fastModeState === "on" ? 1 : 0;
@@ -652,7 +634,7 @@
     activeSlashCmd = null;
     slashPhase = "commands";
     slashSubSelectedIndex = 0;
-    if (cmdName) inputText = `/${cmdName}`;
+    if (cmdName) store.inputText = `/${cmdName}`;
     slashSelectedIndex = 0;
     moveCursorToEnd();
   }
@@ -661,8 +643,8 @@
     dbg("slash", "sub-model-select", { value: model.value });
     const restoreText = savedInputForSlash;
     closeSlashMenu("sub-select"); // clears savedInputForSlash
-    inputText = restoreText; // restore user draft
-    if (textareaEl) textareaEl.style.height = "auto";
+    store.inputText = restoreText; // restore user draft
+    if (store.textareaEl) store.textareaEl.style.height = "auto";
     onModelSwitch?.(model.value);
   }
 
@@ -670,16 +652,16 @@
     dbg("slash", "fast-select", { mode });
     const restoreText = savedInputForSlash;
     closeSlashMenu("sub-select");
-    inputText = restoreText;
-    if (textareaEl) textareaEl.style.height = "auto";
+    store.inputText = restoreText;
+    if (store.textareaEl) store.textareaEl.style.height = "auto";
     onFastModeSwitch?.(mode);
   }
 
   function moveCursorToEnd() {
     requestAnimationFrame(() => {
-      if (textareaEl) {
-        textareaEl.selectionStart = textareaEl.selectionEnd = inputText.length;
-        textareaEl.focus();
+      if (store.textareaEl) {
+        store.textareaEl.selectionStart = store.textareaEl.selectionEnd = store.inputText.length;
+        store.textareaEl.focus();
       }
     });
   }
@@ -694,8 +676,8 @@
     if (atMenuOpen) closeAtMenu("slash-button");
     if (modeDropdownOpen) modeDropdownOpen = false;
 
-    savedInputForSlash = inputText;
-    inputText = "/";
+    savedInputForSlash = store.inputText;
+    store.inputText = "/";
     slashMenuOpen = true;
     slashPhase = "commands";
     slashSelectedIndex = 0;
@@ -713,8 +695,8 @@
       // e.g., model/fast: close other menus → save input → open sub-view
       if (atMenuOpen) closeAtMenu("quick-action");
       if (modeDropdownOpen) modeDropdownOpen = false;
-      savedInputForSlash = inputText;
-      inputText = `/${cmd.name} `;
+      savedInputForSlash = store.inputText;
+      store.inputText = `/${cmd.name} `;
       activeSlashCmd = cmd;
       if (cmd.name === "fast") {
         slashPhase = "sub-fast";
@@ -732,12 +714,12 @@
       // Fill "/cmd " and focus — don't send, don't clear draft
       if (atMenuOpen) closeAtMenu("quick-action");
       if (modeDropdownOpen) modeDropdownOpen = false;
-      inputText = `/${cmd.name} `;
+      store.inputText = `/${cmd.name} `;
       moveCursorToEnd();
       return;
     }
 
-    // immediate: execute directly without touching inputText/pastedBlocks/attachments
+    // immediate: execute directly without touching store.inputText/store.pastedBlocks/attachments
     const vDef = VIRTUAL_COMMANDS.find((v) => v.name === cmd.name);
     if (vDef) {
       if (typeof vDef["_action"] === "string" && onVirtualCommand) {
@@ -755,33 +737,39 @@
 
   function handleInput() {
     autoResize();
-    onValueChange?.(inputText);
+    onValueChange?.(store.inputText);
 
     // Exit history mode if user edits the recalled text
-    if (histState.index >= 0 && inputText !== userHistory[histState.index]) {
+    if (histState.index >= 0 && store.inputText !== userHistory[histState.index]) {
       dbg("prompt-history", "exit: user edited", { index: histState.index });
       resetHistory(histState);
     }
 
     // @-mention detection: runs BEFORE slashEnabled guard so it works pre-session
-    const cursorPos = textareaEl?.selectionStart ?? inputText.length;
+    const cursorPos = store.textareaEl?.selectionStart ?? store.inputText.length;
     handleAtInput(cursorPos);
 
     if (!slashEnabled) {
-      dbg("slash", "disabled", { agent, useStreamSession, sessionAlive, canResume, inputText });
+      dbg("slash", "disabled", {
+        agent,
+        useStreamSession,
+        sessionAlive,
+        canResume,
+        inputText: store.inputText,
+      });
       return;
     }
 
     if (slashPhase === "sub-model" || slashPhase === "sub-fast") {
       // Close sub-view if input no longer matches /activeCmdName
-      if (activeSlashCmd && !isSubViewInputValid(inputText, activeSlashCmd.name)) {
+      if (activeSlashCmd && !isSubViewInputValid(store.inputText, activeSlashCmd.name)) {
         closeSlashMenu("sub-invalid-input");
       }
       return;
     }
 
     // Commands phase
-    const match = inputText.match(/^\/([a-zA-Z0-9_-]*)$/);
+    const match = store.inputText.match(/^\/([a-zA-Z0-9_-]*)$/);
     if (match) {
       slashSelectedIndex = 0;
       if (!slashMenuOpen) {
@@ -824,9 +812,9 @@
         histState.draft = null;
         return; // restoreSnapshot handles autoResize + focus
       }
-      inputText = "";
-      pendingAttachments = [];
-      pastedBlocks = [];
+      store.inputText = "";
+      store.pendingAttachments = [];
+      store.pastedBlocks = [];
     }
 
     if (action.type !== "restore-draft") {
@@ -839,15 +827,16 @@
         resetHistory(histState);
         return;
       }
-      inputText = userHistory[histState.index];
-      pendingAttachments = [];
-      pastedBlocks = [];
+      store.inputText = userHistory[histState.index];
+      store.pendingAttachments = [];
+      store.pastedBlocks = [];
     }
 
     requestAnimationFrame(() => {
       autoResize();
-      if (textareaEl) {
-        textareaEl.selectionStart = textareaEl.selectionEnd = textareaEl.value.length;
+      if (store.textareaEl) {
+        store.textareaEl.selectionStart = store.textareaEl.selectionEnd =
+          store.textareaEl.value.length;
       }
     });
   }
@@ -892,7 +881,11 @@
       }
       if (e.key === "Backspace") {
         if (
-          shouldBackFromSubView(inputText, textareaEl?.selectionStart ?? 0, activeSlashCmd?.name)
+          shouldBackFromSubView(
+            store.inputText,
+            store.textareaEl?.selectionStart ?? 0,
+            activeSlashCmd?.name,
+          )
         ) {
           e.preventDefault();
           goBackToCommands();
@@ -931,7 +924,11 @@
       }
       if (e.key === "Backspace") {
         if (
-          shouldBackFromSubView(inputText, textareaEl?.selectionStart ?? 0, activeSlashCmd?.name)
+          shouldBackFromSubView(
+            store.inputText,
+            store.textareaEl?.selectionStart ?? 0,
+            activeSlashCmd?.name,
+          )
         ) {
           e.preventDefault();
           goBackToCommands();
@@ -997,29 +994,29 @@
         e.key,
         e,
         { atMenuOpen, slashMenuOpen, modeDropdownOpen },
-        textareaEl?.selectionStart ?? 0,
-        textareaEl?.selectionEnd ?? 0,
+        store.textareaEl?.selectionStart ?? 0,
+        store.textareaEl?.selectionEnd ?? 0,
         userHistory.length,
       ) &&
-      textareaEl
+      store.textareaEl
     ) {
       // Multi-line or visually wrapped text: defer to next frame to let the
       // browser move the cursor first. Only trigger history if cursor didn't
       // move (meaning we're at the visual top/bottom edge).
-      if (hasMultipleVisualLines(textareaEl)) {
-        const posBefore = textareaEl.selectionStart;
+      if (hasMultipleVisualLines(store.textareaEl)) {
+        const posBefore = store.textareaEl.selectionStart;
         const key = e.key;
         // Immediate path: cursor at absolute start (Up) or end (Down)
         // — guaranteed to be at the visual edge, no need to defer.
         const atAbsoluteEdge =
           (key === "ArrowUp" && posBefore === 0) ||
-          (key === "ArrowDown" && posBefore === textareaEl.value.length);
+          (key === "ArrowDown" && posBefore === store.textareaEl.value.length);
         if (atAbsoluteEdge) {
           const action = getHistoryAction(
             key,
             histState,
             userHistory.length,
-            textareaEl.value,
+            store.textareaEl.value,
             posBefore,
           );
           if (action) {
@@ -1030,14 +1027,14 @@
         }
         // Let browser handle cursor movement, check on next frame
         requestAnimationFrame(() => {
-          if (!textareaEl) return;
-          if (textareaEl.selectionStart !== posBefore) return; // cursor moved — normal nav
+          if (!store.textareaEl) return;
+          if (store.textareaEl.selectionStart !== posBefore) return; // cursor moved — normal nav
           const action = getHistoryAction(
             key,
             histState,
             userHistory.length,
-            textareaEl.value,
-            textareaEl.selectionStart,
+            store.textareaEl.value,
+            store.textareaEl.selectionStart,
           );
           if (action) {
             applyHistoryAction(action);
@@ -1051,8 +1048,8 @@
         e.key,
         histState,
         userHistory.length,
-        textareaEl.value,
-        textareaEl.selectionStart,
+        store.textareaEl.value,
+        store.textareaEl.selectionStart,
       );
       if (action) {
         e.preventDefault();
@@ -1106,7 +1103,7 @@
   }
 
   function handleSend() {
-    const typed = inputText.trim();
+    const typed = store.inputText.trim();
 
     // Virtual slash command check — based on raw textarea, not paste blocks
     if (typed) {
@@ -1114,32 +1111,32 @@
       if (virtual) {
         dbg("slash", `virtual:${virtual.name}`, { args: virtual.args });
         if (virtual.name === "model" && virtual.args && onModelSwitch) {
-          inputText = "";
-          if (textareaEl) textareaEl.style.height = "auto";
+          store.inputText = "";
+          if (store.textareaEl) store.textareaEl.style.height = "auto";
           onModelSwitch(virtual.args);
-          return; // pastedBlocks preserved
+          return; // store.pastedBlocks preserved
         }
         // Navigation virtual commands (e.g. /config → /settings?tab=cli-config)
         const vDef = VIRTUAL_COMMANDS.find((v) => v.name === virtual.name);
         if (vDef && typeof vDef["_navigate"] === "string") {
-          inputText = "";
-          if (textareaEl) textareaEl.style.height = "auto";
+          store.inputText = "";
+          if (store.textareaEl) store.textareaEl.style.height = "auto";
           goto(vDef["_navigate"] as string);
           return;
         }
         // Side question virtual command (/btw <question>)
         if (vDef && vDef["_action"] === "side-question" && onBtwSend) {
           if (virtual.args) {
-            inputText = "";
-            if (textareaEl) textareaEl.style.height = "auto";
+            store.inputText = "";
+            if (store.textareaEl) store.textareaEl.style.height = "auto";
             onBtwSend(virtual.args);
           }
           return;
         }
         // Action virtual commands (e.g. /copy → copy-last)
         if (vDef && typeof vDef["_action"] === "string" && onVirtualCommand) {
-          inputText = "";
-          if (textareaEl) textareaEl.style.height = "auto";
+          store.inputText = "";
+          if (store.textareaEl) store.textareaEl.style.height = "auto";
           onVirtualCommand(vDef["_action"] as string, virtual.args);
           return;
         }
@@ -1147,18 +1144,18 @@
     }
 
     // Separate regular (binary) and path-reference attachments
-    const regularAtts = pendingAttachments.filter((a) => a.contentBase64);
-    const pathRefAtts = pendingAttachments.filter((a) => a.filePath && !a.contentBase64);
+    const regularAtts = store.pendingAttachments.filter((a) => a.contentBase64);
+    const pathRefAtts = store.pendingAttachments.filter((a) => a.filePath && !a.contentBase64);
 
     // Combine paste blocks + typed text + path-reference file paths
-    const parts: string[] = pastedBlocks.map((b) => b.text);
+    const parts: string[] = store.pastedBlocks.map((b) => b.text);
     if (pathRefAtts.length > 0) {
       const refs = pathRefAtts.map((a) => `[PDF: ${a.filePath}]`).join("\n");
       parts.push(refs);
     }
-    // pendingPathRefs (directories, large files from drag-drop)
-    if (pendingPathRefs.length > 0) {
-      parts.push(pendingPathRefs.map((r) => wrapPathInBackticks(r.path)).join("\n"));
+    // store.pendingPathRefs (directories, large files from drag-drop)
+    if (store.pendingPathRefs.length > 0) {
+      parts.push(store.pendingPathRefs.map((r) => wrapPathInBackticks(r.path)).join("\n"));
     }
 
     if (typed) parts.push(typed);
@@ -1167,10 +1164,10 @@
 
     dbg("prompt", "send", {
       len: text.length,
-      pasteBlocks: pastedBlocks.length,
+      pasteBlocks: store.pastedBlocks.length,
       attachments: regularAtts.length,
       pathRefs: pathRefAtts.length,
-      dragPathRefs: pendingPathRefs.length,
+      dragPathRefs: store.pendingPathRefs.length,
       agent,
     });
 
@@ -1181,29 +1178,29 @@
       contentBase64: a.contentBase64!,
     }));
 
-    inputText = "";
-    pendingAttachments = [];
-    pastedBlocks = [];
-    pendingPathRefs = [];
+    store.inputText = "";
+    store.pendingAttachments = [];
+    store.pastedBlocks = [];
+    store.pendingPathRefs = [];
     resetHistory(histState);
     onSend(text, attachments);
 
     // Reset textarea height
-    if (textareaEl) textareaEl.style.height = "auto";
+    if (store.textareaEl) store.textareaEl.style.height = "auto";
   }
 
   function handleBtwSend() {
-    const question = inputText.trim();
+    const question = store.inputText.trim();
     if (!question || !onBtwSend) return;
     dbg("prompt", "btwSend", { len: question.length });
-    inputText = "";
-    if (textareaEl) textareaEl.style.height = "auto";
+    store.inputText = "";
+    if (store.textareaEl) store.textareaEl.style.height = "auto";
     onBtwSend(question);
   }
 
   async function processFiles(files: FileList | File[]) {
-    let binaryRemaining = MAX_ATTACHMENTS - pendingAttachments.length;
-    let textRemaining = MAX_PASTE_BLOCKS - pastedBlocks.length;
+    let binaryRemaining = MAX_ATTACHMENTS - store.pendingAttachments.length;
+    let textRemaining = MAX_PASTE_BLOCKS - store.pastedBlocks.length;
     const rejected: string[] = [];
 
     for (const file of Array.from(files)) {
@@ -1227,8 +1224,8 @@
           const buffer = await file.arrayBuffer();
           const base64 = arrayBufferToBase64(buffer);
           const tempPath = await api.saveTempAttachment(file.name, base64);
-          pendingAttachments = [
-            ...pendingAttachments,
+          store.pendingAttachments = [
+            ...store.pendingAttachments,
             {
               id: uuid().slice(0, 8),
               name: file.name,
@@ -1265,8 +1262,8 @@
         reader.onload = () => {
           const dataUrl = reader.result as string;
           const base64 = dataUrl.split(",")[1] ?? "";
-          pendingAttachments = [
-            ...pendingAttachments,
+          store.pendingAttachments = [
+            ...store.pendingAttachments,
             {
               id: uuid().slice(0, 8),
               name: file.name || `attachment.${file.type.split("/")[1] || "bin"}`,
@@ -1296,8 +1293,8 @@
           const ext = getFileExtension(file.name);
           const preview = file.name || `file.${ext}`;
 
-          pastedBlocks = [
-            ...pastedBlocks,
+          store.pastedBlocks = [
+            ...store.pastedBlocks,
             {
               id: uuid().slice(0, 8),
               text,
@@ -1326,8 +1323,8 @@
         try {
           const { text } = await convertFile(file);
           const lineCount = text.split("\n").length;
-          pastedBlocks = [
-            ...pastedBlocks,
+          store.pastedBlocks = [
+            ...store.pastedBlocks,
             {
               id: uuid().slice(0, 8),
               text,
@@ -1362,7 +1359,7 @@
   }
 
   function removeAttachment(id: string) {
-    pendingAttachments = pendingAttachments.filter((a) => a.id !== id);
+    store.pendingAttachments = store.pendingAttachments.filter((a) => a.id !== id);
   }
 
   function handlePaste(e: ClipboardEvent) {
@@ -1410,8 +1407,8 @@
     if (lineCount < 5 && charCount < 500) {
       // Short text — could be Finder filename or normal short text
       // Don't preventDefault → let browser insert text normally
-      const snapshot = inputText;
-      const cursorPos = textareaEl?.selectionStart ?? inputText.length;
+      const snapshot = store.inputText;
+      const cursorPos = store.textareaEl?.selectionStart ?? store.inputText.length;
       // Async check: if native clipboard has files, roll back the inserted text
       tryNativeClipboardPaste(snapshot, cursorPos);
       return;
@@ -1419,7 +1416,7 @@
 
     // Long text → intercept, compress into chip
     e.preventDefault();
-    if (pastedBlocks.length >= MAX_PASTE_BLOCKS) {
+    if (store.pastedBlocks.length >= MAX_PASTE_BLOCKS) {
       showFileToast(t("prompt_maxPasteBlocks", { count: String(MAX_PASTE_BLOCKS) }));
       return;
     }
@@ -1427,8 +1424,8 @@
     const firstLine = lines[0].trim();
     const preview = firstLine.length > 40 ? firstLine.slice(0, 40) + "..." : firstLine;
 
-    pastedBlocks = [
-      ...pastedBlocks,
+    store.pastedBlocks = [
+      ...store.pastedBlocks,
       {
         id: uuid().slice(0, 8),
         text,
@@ -1438,7 +1435,7 @@
       },
     ];
 
-    dbg("prompt", "paste-compressed", { lineCount, charCount, blocks: pastedBlocks.length });
+    dbg("prompt", "paste-compressed", { lineCount, charCount, blocks: store.pastedBlocks.length });
   }
 
   function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -1457,10 +1454,10 @@
 
       // Roll back browser-inserted text if we have a snapshot
       if (snapshot !== undefined) {
-        inputText = snapshot;
-        if (textareaEl && cursorPos !== undefined) {
+        store.inputText = snapshot;
+        if (store.textareaEl && cursorPos !== undefined) {
           requestAnimationFrame(() => {
-            textareaEl!.selectionStart = textareaEl!.selectionEnd = cursorPos;
+            store.textareaEl!.selectionStart = store.textareaEl!.selectionEnd = cursorPos;
           });
         }
       }
@@ -1476,8 +1473,8 @@
   }
 
   async function processClipboardPaths(files: ClipboardFileInfo[]) {
-    let binaryRemaining = MAX_ATTACHMENTS - pendingAttachments.length;
-    let textRemaining = MAX_PASTE_BLOCKS - pastedBlocks.length;
+    let binaryRemaining = MAX_ATTACHMENTS - store.pendingAttachments.length;
+    let textRemaining = MAX_PASTE_BLOCKS - store.pastedBlocks.length;
     const rejected: string[] = [];
 
     for (const file of files) {
@@ -1498,8 +1495,8 @@
           break;
         }
         binaryRemaining--;
-        pendingAttachments = [
-          ...pendingAttachments,
+        store.pendingAttachments = [
+          ...store.pendingAttachments,
           {
             id: uuid().slice(0, 8),
             name: file.name,
@@ -1532,8 +1529,8 @@
         binaryRemaining--;
         try {
           const content = await api.readClipboardFile(file.path, false);
-          pendingAttachments = [
-            ...pendingAttachments,
+          store.pendingAttachments = [
+            ...store.pendingAttachments,
             {
               id: uuid().slice(0, 8),
               name: file.name,
@@ -1556,8 +1553,8 @@
           const content = await api.readClipboardFile(file.path, true);
           const text = content.content_text ?? "";
           const lineCount = text.split("\n").length;
-          pastedBlocks = [
-            ...pastedBlocks,
+          store.pastedBlocks = [
+            ...store.pastedBlocks,
             {
               id: uuid().slice(0, 8),
               text,
@@ -1585,8 +1582,8 @@
           const blob = new File([bytes], file.name, { type: file.mime_type });
           const { text } = await convertFile(blob);
           const lineCount = text.split("\n").length;
-          pastedBlocks = [
-            ...pastedBlocks,
+          store.pastedBlocks = [
+            ...store.pastedBlocks,
             {
               id: uuid().slice(0, 8),
               text,
@@ -1612,23 +1609,23 @@
   }
 
   function removePastedBlock(id: string) {
-    pastedBlocks = pastedBlocks.filter((b) => b.id !== id);
+    store.pastedBlocks = store.pastedBlocks.filter((b) => b.id !== id);
   }
 
   function handleSkillSelect(skillName: string) {
     dbg("prompt", "skill-select fill", { skillName });
-    inputText = `/${skillName} `;
+    store.inputText = `/${skillName} `;
     requestAnimationFrame(() => {
       autoResize();
-      textareaEl?.focus();
+      store.textareaEl?.focus();
     });
   }
 
   function autoResize() {
-    if (!textareaEl) return;
-    textareaEl.style.height = "auto";
+    if (!store.textareaEl) return;
+    store.textareaEl.style.height = "auto";
     const maxHeight = 4 * 24; // ~4 lines
-    textareaEl.style.height = Math.min(textareaEl.scrollHeight, maxHeight) + "px";
+    store.textareaEl.style.height = Math.min(store.textareaEl.scrollHeight, maxHeight) + "px";
   }
 
   // ── Drag-drop state ──
@@ -1659,10 +1656,10 @@
 
   let canSend = $derived(
     !disabled &&
-      (!!inputText.trim() ||
-        pastedBlocks.length > 0 ||
-        pendingAttachments.some((a) => a.filePath) ||
-        pendingPathRefs.length > 0),
+      (!!store.inputText.trim() ||
+        store.pastedBlocks.length > 0 ||
+        store.pendingAttachments.some((a) => a.filePath) ||
+        store.pendingPathRefs.length > 0),
   );
 
   // ── Token estimation (chars/4 heuristic, CJK-aware) ──
@@ -1677,7 +1674,7 @@
   let tokenEstimate = $state(0);
   let tokenDebounce: ReturnType<typeof setTimeout> | null = null;
   $effect(() => {
-    const allText = [inputText, ...pastedBlocks.map((b) => b.text)].join("\n");
+    const allText = [store.inputText, ...store.pastedBlocks.map((b) => b.text)].join("\n");
     if (tokenDebounce) clearTimeout(tokenDebounce);
     tokenDebounce = setTimeout(() => {
       tokenEstimate = allText ? estimateTokens(allText) : 0;
@@ -1716,22 +1713,22 @@
   });
 
   export function focus() {
-    textareaEl?.focus();
+    store.textareaEl?.focus();
   }
 
   export function setValue(text: string) {
-    inputText = text;
+    store.inputText = text;
     requestAnimationFrame(() => {
       autoResize();
-      textareaEl?.focus();
+      store.textareaEl?.focus();
     });
   }
 
   export function appendText(text: string) {
-    inputText = inputText ? inputText + "\n" + text : text;
+    store.inputText = store.inputText ? store.inputText + "\n" + text : text;
     requestAnimationFrame(() => {
       autoResize();
-      textareaEl?.focus();
+      store.textareaEl?.focus();
     });
   }
 
@@ -1750,12 +1747,12 @@
       path: ref.path,
       isDir: ref.isDir,
     }));
-    pendingPathRefs = [...pendingPathRefs, ...newRefs];
+    store.pendingPathRefs = [...store.pendingPathRefs, ...newRefs];
     dbg("prompt", "add-path-refs", { count: refs.length });
   }
 
   function removePathRef(id: string) {
-    pendingPathRefs = pendingPathRefs.filter((r) => r.id !== id);
+    store.pendingPathRefs = store.pendingPathRefs.filter((r) => r.id !== id);
   }
 
   export function showToast(message: string, variant: "error" | "info" = "info") {
@@ -1763,42 +1760,26 @@
   }
 
   export function getInputSnapshot(): PromptInputSnapshot {
-    return {
-      text: inputText,
-      attachments: [...pendingAttachments],
-      pastedBlocks: [...pastedBlocks],
-      pathRefs: [...pendingPathRefs],
-    };
+    return store.getSnapshot();
   }
 
   export function restoreSnapshot(snapshot: PromptInputSnapshot): void {
-    inputText = snapshot.text;
-    pendingAttachments = snapshot.attachments;
-    pastedBlocks = snapshot.pastedBlocks as PastedBlock[];
-    pendingPathRefs = snapshot.pathRefs ?? [];
+    store.restoreSnapshot(snapshot);
     resetHistory(histState);
     requestAnimationFrame(() => {
       autoResize();
-      textareaEl?.focus();
+      store.textareaEl?.focus();
     });
   }
 
   export function clearAll(): void {
-    inputText = "";
-    pendingAttachments = [];
-    pendingPathRefs = [];
-    pastedBlocks = [];
+    store.clearAll();
     resetHistory(histState);
     requestAnimationFrame(() => autoResize());
   }
 
   function hasContent(): boolean {
-    return !!(
-      inputText.trim() ||
-      pendingAttachments.length ||
-      pastedBlocks.length ||
-      pendingPathRefs.length
-    );
+    return store.hasContent;
   }
 </script>
 
@@ -1844,9 +1825,9 @@
   {/if}
 
   <!-- Attachment & paste block previews -->
-  {#if pendingAttachments.length > 0 || pastedBlocks.length > 0 || pendingPathRefs.length > 0}
+  {#if store.pendingAttachments.length > 0 || store.pastedBlocks.length > 0 || store.pendingPathRefs.length > 0}
     <div class="mb-2 flex flex-wrap gap-1.5">
-      {#each pendingAttachments as att (att.id)}
+      {#each store.pendingAttachments as att (att.id)}
         <FileAttachment
           name={att.name}
           size={att.size}
@@ -1855,7 +1836,7 @@
           onremove={() => removeAttachment(att.id)}
         />
       {/each}
-      {#each pendingPathRefs as ref (ref.id)}
+      {#each store.pendingPathRefs as ref (ref.id)}
         <FileAttachment
           name={ref.name}
           size={0}
@@ -1864,7 +1845,7 @@
           onremove={() => removePathRef(ref.id)}
         />
       {/each}
-      {#each pastedBlocks as block (block.id)}
+      {#each store.pastedBlocks as block (block.id)}
         {@const isSpreadsheet = block.ext ? isSpreadsheetExt(block.ext) : false}
         <span
           class="inline-flex items-center gap-1.5 rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 px-2 py-1 text-xs"
@@ -2012,8 +1993,8 @@
 
     <!-- Textarea -->
     <textarea
-      bind:this={textareaEl}
-      bind:value={inputText}
+      bind:this={store.textareaEl}
+      bind:value={store.inputText}
       onkeydown={handleKeydown}
       oninput={handleInput}
       onpaste={handlePaste}
@@ -2030,7 +2011,7 @@
         selectedIndex={atSelectedIndex}
         loading={atLoading}
         query={atQuery}
-        anchorEl={textareaEl}
+        anchorEl={store.textareaEl}
         onSelect={selectAtEntry}
         onHover={(i) => (atSelectedIndex = i)}
         onDismiss={() => closeAtMenu("click-outside")}
@@ -2042,14 +2023,14 @@
         commands={filteredCommands}
         {slashGroups}
         selectedIndex={slashSelectedIndex}
-        anchorEl={textareaEl}
+        anchorEl={store.textareaEl}
         triggerEl={slashBtnEl}
         phase={slashPhase}
         {models}
         {currentModel}
         subSelectedIndex={slashSubSelectedIndex}
         {hintText}
-        inputDisplay={inputText}
+        inputDisplay={store.inputText}
         {fastModeState}
         onSelect={(cmd) => selectSlashCommand(cmd, "enter")}
         onHover={(i) => (slashSelectedIndex = i)}
@@ -2210,7 +2191,7 @@
         <button
           class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
           onclick={() => fileInput?.click()}
-          disabled={pendingAttachments.length >= 8}
+          disabled={store.pendingAttachments.length >= 8}
           title={t("prompt_attachFiles")}
         >
           <svg
@@ -2232,7 +2213,7 @@
           <button
             class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
             onclick={() => api.captureScreenshot()}
-            disabled={pendingAttachments.length >= 8}
+            disabled={store.pendingAttachments.length >= 8}
             title={t("prompt_screenshot")}
           >
             <svg
