@@ -1366,6 +1366,7 @@
 
   // Plugin sidebar navigation (shown when on /plugins route)
   const pluginSections = [
+    { id: "overview", label: () => t("sidebar_overview"), icon: "overview" },
     { id: "skills", label: () => t("sidebar_skills"), icon: "sparkles" },
     { id: "mcp", label: () => t("sidebar_mcpServers"), icon: "server" },
     { id: "hooks", label: () => t("sidebar_hooks"), icon: "webhook" },
@@ -1373,7 +1374,7 @@
     { id: "agents", label: () => t("sidebar_agents"), icon: "agents" },
   ];
 
-  let pluginActiveSection = $state<string>("skills");
+  let pluginActiveSection = $state<string>("overview");
   setContext("pluginSection", {
     get active() {
       return pluginActiveSection;
@@ -1894,7 +1895,10 @@
         {#if isPluginsPage}
           <!-- Plugin section navigation (replaces Chats/Files when on /plugins) -->
           <div class="flex-1 overflow-y-auto py-2">
-            {#each pluginSections as section}
+            {#each pluginSections as section, i}
+              {#if i === 1}
+                <div class="mx-3 my-1 border-t border-sidebar-border"></div>
+              {/if}
               {@const isActive = pluginActiveSection === section.id}
               <button
                 class="flex w-full items-center gap-2 py-2 px-3 text-xs font-medium transition-colors
@@ -1906,7 +1910,30 @@
                   goto(`/plugins?section=${section.id}`, { replaceState: true, noScroll: true });
                 }}
               >
-                {#if section.icon === "sparkles"}
+                {#if section.icon === "overview"}
+                  <svg
+                    class="h-3.5 w-3.5 shrink-0"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    ><rect width="7" height="7" x="3" y="3" rx="1" /><rect
+                      width="7"
+                      height="7"
+                      x="14"
+                      y="3"
+                      rx="1"
+                    /><rect width="7" height="7" x="14" y="14" rx="1" /><rect
+                      width="7"
+                      height="7"
+                      x="3"
+                      y="14"
+                      rx="1"
+                    /></svg
+                  >
+                {:else if section.icon === "sparkles"}
                   <svg
                     class="h-3.5 w-3.5 shrink-0"
                     viewBox="0 0 24 24"
