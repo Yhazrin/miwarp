@@ -6,7 +6,6 @@
     AuthOverview,
     CliCommand,
     CliModelInfo,
-    DirEntry,
     PlatformCredential,
   } from "$lib/types";
   import * as api from "$lib/api";
@@ -24,11 +23,11 @@
     shouldBackFromSubView,
   } from "$lib/utils/slash-commands";
   import type { MessageKey } from "$lib/i18n/types";
-  import { dbg, dbgWarn } from "$lib/utils/debug";
+  import { dbg } from "$lib/utils/debug";
   import { IS_MAC } from "$lib/utils/platform";
   import { t } from "$lib/i18n/index.svelte";
   import { formatPasteSize } from "$lib/utils/format";
-  import { isSpreadsheetExt, getFileExtension } from "$lib/utils/file-types";
+  import { isSpreadsheetExt } from "$lib/utils/file-types";
   import type { PromptInputSnapshot } from "$lib/types";
   import { PromptInputStore } from "$lib/stores";
   import {
