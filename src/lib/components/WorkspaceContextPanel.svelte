@@ -98,9 +98,13 @@
     const sorted = sortByDisplayPriority(existing);
     const results: Array<{ label: string; content: string; path: string }> = [];
 
-    // Load up to 5 files (memory scope auto-memory files)
+    // Load memory-scope files (auto-memory files, up to 5)
     const memoryScopeFiles = sorted.filter((f) => f.scope === "memory").slice(0, 5);
-    for (const file of memoryScopeFiles) {
+    // Also include project-scope files (e.g. CLAUDE.md) that have memory-like content
+    const projectScopeFiles = sorted.filter((f) => f.scope === "project" && f.exists).slice(0, 3);
+    const allFiles = [...memoryScopeFiles, ...projectScopeFiles];
+
+    for (const file of allFiles) {
       try {
         const content = await api.readTextFile(file.path, dir);
         if (content.trim()) {

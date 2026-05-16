@@ -121,8 +121,21 @@ pub fn list_scheduled_tasks() -> Result<Vec<ScheduledTask>, String> {
     Ok(store::load_tasks())
 }
 
+/// Expand `~` to the user's home directory in a path string.
+fn expand_tilde(path: &str) -> String {
+    if path.starts_with("~/") || path == "~" {
+        if let Some(home) = crate::storage::home_dir() {
+            return path.replacen("~", &home, 1);
+        }
+    }
+    path.to_string()
+}
+
 #[tauri::command]
-pub fn create_scheduled_task(input: ScheduledTaskInput) -> Result<ScheduledTask, String> {
+pub fn create_scheduled_task(mut input: ScheduledTaskInput) -> Result<ScheduledTask, String> {
+    // Expand tilde in workspace path
+    input.workspace.cwd = expand_tilde(&input.workspace.cwd);
+
     // Validate workspace exists
     if !std::path::Path::new(&input.workspace.cwd).exists() {
         return Err(format!(
@@ -136,6 +149,11 @@ pub fn create_scheduled_task(input: ScheduledTaskInput) -> Result<ScheduledTask,
         if !cron::validate_cron(expr) {
             return Err(format!("Invalid cron expression: {}", expr));
         }
+    }
+
+    // Default to auto-accept-all for unattended scheduled execution
+    if input.permission_mode.is_none() {
+        input.permission_mode = Some("auto-accept-all".to_string());
     }
 
     let now = Utc::now().to_rfc3339();
@@ -187,7 +205,8 @@ pub fn update_scheduled_task(
     if let Some(prompt) = patch.prompt {
         task.prompt = prompt;
     }
-    if let Some(workspace) = patch.workspace {
+    if let Some(mut workspace) = patch.workspace {
+        workspace.cwd = expand_tilde(&workspace.cwd);
         if !std::path::Path::new(&workspace.cwd).exists() {
             return Err(format!("Workspace path does not exist: {}", workspace.cwd));
         }

@@ -1,5 +1,6 @@
 /**
- * Skill types
+ * Skill types - enhanced with version management and dependency support.
+ * Based on Claude Code/Cowork design patterns.
  */
 export interface Skill {
   id: string;
@@ -14,6 +15,30 @@ export interface Skill {
   author?: string;
   tags?: string[];
   icon?: string;
+
+  // Enhanced fields from Claude Code design
+  version?: string; // Semantic version (e.g., "1.2.0")
+  minAppVersion?: string; // Minimum required app version
+  changelog?: string; // Version changelog
+  dependencies?: SkillDependency[]; // Skill dependencies
+  downloadCount?: number; // Marketplace download count
+  rating?: number; // Marketplace rating (0-5)
+  publishedAt?: string; // When published to marketplace
+}
+
+export interface SkillDependency {
+  skillId: string;
+  version?: string; // Semver constraint (e.g., ">=1.0.0")
+}
+
+/**
+ * Skill version info for update checking.
+ */
+export interface SkillVersion {
+  version: string;
+  minAppVersion: string;
+  changelog?: string;
+  publishedAt: string;
 }
 
 export type SkillCategory =
@@ -78,3 +103,35 @@ export const SKILL_CATEGORIES: { value: SkillCategory; label: string; icon: stri
 ];
 
 export const DEFAULT_SKILL_ICON = "✨";
+
+/**
+ * Check if a skill version satisfies a constraint.
+ * Supports semver-like matching.
+ */
+export function satisfiesVersion(installedVersion: string, constraint: string): boolean {
+  if (!constraint) return true;
+
+  // Simple version comparison (major.minor.patch)
+  const parse = (v: string) => v.split(".").map(Number);
+  const [a, b, c] = parse(installedVersion);
+  const [ca, cb, cc] = parse(constraint.replace(/[^0-9.]/g, ""));
+
+  if (constraint.startsWith(">=")) {
+    return a > ca || (a === ca && (b > cb || (b === cb && c >= cc)));
+  }
+  if (constraint.startsWith(">")) {
+    return a > ca || (a === ca && (b > cb || (b === cb && c > cc)));
+  }
+  if (constraint.startsWith("<=")) {
+    return a < ca || (a === ca && (b < cb || (b === cb && c <= cc)));
+  }
+  if (constraint.startsWith("<")) {
+    return a < ca || (a === ca && (b < cb || (b === cb && c < cc)));
+  }
+  if (constraint.startsWith("=")) {
+    return installedVersion === constraint.slice(1).trim();
+  }
+
+  // Default: exact match
+  return installedVersion === constraint;
+}

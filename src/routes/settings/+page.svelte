@@ -16,6 +16,7 @@
   import KeybindingEditor from "$lib/components/KeybindingEditor.svelte";
   import BackgroundPicker from "$lib/components/BackgroundPicker.svelte";
   import ThemeEditor from "$lib/components/ThemeEditor.svelte";
+  import SettingsToggle from "$lib/components/settings/SettingsToggle.svelte";
   import { formatKeyDisplay } from "$lib/stores/keybindings.svelte";
   import {
     PLATFORM_PRESETS,
@@ -1609,15 +1610,14 @@
                     {t("settings_general_displayLanguageDesc")}
                   </p>
                 </div>
-                <div class="flex gap-1.5">
+                <div class="flex rounded-full border border-border bg-muted/40 p-0.5 gap-0.5">
                   {#each LOCALE_REGISTRY as entry (entry.code)}
                     <button
-                      class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
-                  {currentLocale() === entry.code
-                        ? 'bg-primary text-primary-foreground'
-                        : (entry.status as string) === 'beta'
-                          ? 'border-muted-foreground/30 text-muted-foreground hover:bg-accent'
-                          : 'hover:bg-accent'}"
+                      type="button"
+                      class="rounded-full px-3.5 py-1.5 text-xs font-medium transition-all duration-150 select-none
+                        {currentLocale() === entry.code
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'}"
                       onclick={() => switchLocale(entry.code)}
                     >
                       {entry.nativeName}{#if (entry.status as string) === "beta"}<span
@@ -2120,39 +2120,77 @@
                 {t("settings_sessionMode")}
               </h2>
 
-              <div class="flex items-center justify-between">
+              <div class="space-y-2">
                 <div>
                   <p class="text-sm font-medium">{t("settings_defaultSessionMode")}</p>
-                  <p class="text-xs text-muted-foreground">
+                  <p class="text-xs text-muted-foreground mt-0.5">
                     {t("settings_defaultSessionModeDesc")}
                   </p>
                 </div>
-                <div class="flex gap-1.5">
+                <!-- Capsule toggle group — full width, equal columns -->
+                <div
+                  class="grid grid-cols-3 rounded-lg border border-border bg-muted/40 p-0.5 gap-0.5"
+                >
                   <button
-                    class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
+                    type="button"
+                    class="rounded-md px-2 py-1.5 text-xs font-medium transition-all duration-150 select-none whitespace-nowrap text-center
                       {(settings?.default_session_mode ?? 'worktree') === 'single'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'border-muted-foreground/30 text-muted-foreground hover:bg-accent'}"
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'}"
                     onclick={async () => {
-                      settings = await api.updateUserSettings({
-                        default_session_mode: "single",
-                      } as Partial<UserSettings>);
+                      const prev = settings;
+                      if (settings) settings = { ...settings, default_session_mode: "single" };
+                      try {
+                        settings = await api.updateUserSettings({
+                          default_session_mode: "single",
+                        } as Partial<UserSettings>);
+                      } catch {
+                        settings = prev;
+                      }
                     }}
                   >
                     {t("settings_sessionModeSingle")}
                   </button>
                   <button
-                    class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
+                    type="button"
+                    class="rounded-md px-2 py-1.5 text-xs font-medium transition-all duration-150 select-none whitespace-nowrap text-center
                       {(settings?.default_session_mode ?? 'worktree') === 'worktree'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'border-muted-foreground/30 text-muted-foreground hover:bg-accent'}"
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'}"
                     onclick={async () => {
-                      settings = await api.updateUserSettings({
-                        default_session_mode: "worktree",
-                      } as Partial<UserSettings>);
+                      const prev = settings;
+                      if (settings) settings = { ...settings, default_session_mode: "worktree" };
+                      try {
+                        settings = await api.updateUserSettings({
+                          default_session_mode: "worktree",
+                        } as Partial<UserSettings>);
+                      } catch {
+                        settings = prev;
+                      }
                     }}
                   >
                     {t("settings_sessionModeWorktree")}
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-md px-2 py-1.5 text-xs font-medium transition-all duration-150 select-none whitespace-nowrap text-center
+                      {(settings?.default_session_mode ?? 'worktree') === 'ask_on_new_branch'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'}"
+                    onclick={async () => {
+                      const prev = settings;
+                      if (settings)
+                        settings = { ...settings, default_session_mode: "ask_on_new_branch" };
+                      try {
+                        settings = await api.updateUserSettings({
+                          default_session_mode: "ask_on_new_branch",
+                        } as Partial<UserSettings>);
+                      } catch {
+                        settings = prev;
+                      }
+                    }}
+                  >
+                    {t("settings_sessionModeAsk")}
                   </button>
                 </div>
               </div>
@@ -2233,6 +2271,24 @@
                   </button>
                 </div>
               {/if}
+            </Card>
+
+            <!-- Chat Display Card -->
+            <Card class="p-6 space-y-4">
+              <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                {t("settings_chatDisplay") || "对话显示"}
+              </h2>
+              <SettingsToggle
+                checked={settings?.show_token_usage_report !== false}
+                onchange={async (v) => {
+                  settings = await api.updateUserSettings({
+                    show_token_usage_report: v,
+                  } as Partial<UserSettings>);
+                }}
+                label={t("settings_showTokenReport") || "显示Token用量报告"}
+                description={t("settings_showTokenReportDesc") ||
+                  "每次问答结束后在对话底部显示输入/输出/缓存Token统计"}
+              />
             </Card>
           </div>
 
@@ -3056,13 +3112,16 @@
                         ></span>
                       </button>
                     {:else if def.type === "enum" && def.options}
-                      <div class="flex gap-1.5 shrink-0">
+                      <div
+                        class="flex rounded-full border border-border bg-muted/40 p-0.5 gap-0.5 shrink-0"
+                      >
                         {#each def.options as opt (opt.value)}
                           <button
-                            class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
-                        {getCliConfigValue(def.key, def) === opt.value
-                              ? 'bg-primary text-primary-foreground'
-                              : 'hover:bg-accent hover:border-ring/30'}"
+                            type="button"
+                            class="rounded-full px-3.5 py-1.5 text-xs font-medium transition-all duration-150 select-none
+                              {getCliConfigValue(def.key, def) === opt.value
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'}"
                             onclick={() => {
                               saveCliConfigPatch(def.key, opt.value);
                               cliConfig = { ...cliConfig, [def.key]: opt.value };
@@ -3123,13 +3182,16 @@
                         ></span>
                       </button>
                     {:else if def.type === "enum" && def.options}
-                      <div class="flex gap-1.5 shrink-0">
+                      <div
+                        class="flex rounded-full border border-border bg-muted/40 p-0.5 gap-0.5 shrink-0"
+                      >
                         {#each def.options as opt (opt.value)}
                           <button
-                            class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
-                        {getCliConfigValue(def.key, def) === opt.value
-                              ? 'bg-primary text-primary-foreground'
-                              : 'hover:bg-accent hover:border-ring/30'}"
+                            type="button"
+                            class="rounded-full px-3.5 py-1.5 text-xs font-medium transition-all duration-150 select-none
+                              {getCliConfigValue(def.key, def) === opt.value
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'}"
                             onclick={() => {
                               saveCliConfigPatch(def.key, opt.value);
                               cliConfig = { ...cliConfig, [def.key]: opt.value };
@@ -3209,13 +3271,16 @@
                         ></span>
                       </button>
                     {:else if def.type === "enum" && def.options}
-                      <div class="flex gap-1.5 shrink-0">
+                      <div
+                        class="flex rounded-full border border-border bg-muted/40 p-0.5 gap-0.5 shrink-0"
+                      >
                         {#each def.options as opt (opt.value)}
                           <button
-                            class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
-                        {getCliConfigValue(def.key, def) === opt.value
-                              ? 'bg-primary text-primary-foreground'
-                              : 'hover:bg-accent hover:border-ring/30'}"
+                            type="button"
+                            class="rounded-full px-3.5 py-1.5 text-xs font-medium transition-all duration-150 select-none
+                              {getCliConfigValue(def.key, def) === opt.value
+                              ? 'bg-primary text-primary-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'}"
                             onclick={() => {
                               saveCliConfigPatch(def.key, opt.value);
                               cliConfig = { ...cliConfig, [def.key]: opt.value };
@@ -3912,139 +3977,68 @@
             </p>
 
             <!-- Master toggle -->
-            <label class="flex items-center justify-between py-2 cursor-pointer">
-              <div>
-                <span class="text-sm font-medium"
-                  >{t("settings_notif_enabled") || "Enable notifications"}</span
-                >
-                <p class="text-xs text-muted-foreground mt-0.5">
-                  {t("settings_notif_enabledDesc") || "Allow MiWarp to send system notifications"}
-                </p>
-              </div>
-              <button
-                role="switch"
-                aria-checked={notifEnabled}
-                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-              {notifEnabled ? 'bg-primary' : 'bg-muted'}"
-                onclick={() => {
-                  notifEnabled = !notifEnabled;
-                  saveNotificationSettings();
-                }}
-              >
-                <span
-                  class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
-              {notifEnabled ? 'translate-x-4' : 'translate-x-0.5'}"
-                ></span>
-              </button>
-            </label>
+            <SettingsToggle
+              checked={notifEnabled}
+              onchange={(v) => {
+                notifEnabled = v;
+                saveNotificationSettings();
+              }}
+              label={t("settings_notif_enabled") || "Enable notifications"}
+              description={t("settings_notif_enabledDesc") ||
+                "Allow MiWarp to send system notifications"}
+            />
 
             {#if notifEnabled}
               <div class="space-y-3 pl-1 border-l-2 border-muted/50 ml-1">
                 <!-- Run completed -->
-                <label class="flex items-center justify-between py-1.5 cursor-pointer">
-                  <span class="text-sm">{t("settings_notif_runCompleted") || "Run completed"}</span>
-                  <button
-                    role="switch"
-                    aria-checked={notifRunCompleted}
-                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-                  {notifRunCompleted ? 'bg-primary' : 'bg-muted'}"
-                    onclick={() => {
-                      notifRunCompleted = !notifRunCompleted;
-                      saveNotificationSettings();
-                    }}
-                  >
-                    <span
-                      class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
-                  {notifRunCompleted ? 'translate-x-4' : 'translate-x-0.5'}"
-                    ></span>
-                  </button>
-                </label>
+                <SettingsToggle
+                  checked={notifRunCompleted}
+                  onchange={(v) => {
+                    notifRunCompleted = v;
+                    saveNotificationSettings();
+                  }}
+                  label={t("settings_notif_runCompleted") || "Run completed"}
+                />
 
                 <!-- Run failed -->
-                <label class="flex items-center justify-between py-1.5 cursor-pointer">
-                  <span class="text-sm">{t("settings_notif_runFailed") || "Run failed"}</span>
-                  <button
-                    role="switch"
-                    aria-checked={notifRunFailed}
-                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-                  {notifRunFailed ? 'bg-primary' : 'bg-muted'}"
-                    onclick={() => {
-                      notifRunFailed = !notifRunFailed;
-                      saveNotificationSettings();
-                    }}
-                  >
-                    <span
-                      class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
-                  {notifRunFailed ? 'translate-x-4' : 'translate-x-0.5'}"
-                    ></span>
-                  </button>
-                </label>
+                <SettingsToggle
+                  checked={notifRunFailed}
+                  onchange={(v) => {
+                    notifRunFailed = v;
+                    saveNotificationSettings();
+                  }}
+                  label={t("settings_notif_runFailed") || "Run failed"}
+                />
 
                 <!-- Approval required -->
-                <label class="flex items-center justify-between py-1.5 cursor-pointer">
-                  <span class="text-sm"
-                    >{t("settings_notif_approvalRequired") || "Waiting for approval"}</span
-                  >
-                  <button
-                    role="switch"
-                    aria-checked={notifApprovalRequired}
-                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-                  {notifApprovalRequired ? 'bg-primary' : 'bg-muted'}"
-                    onclick={() => {
-                      notifApprovalRequired = !notifApprovalRequired;
-                      saveNotificationSettings();
-                    }}
-                  >
-                    <span
-                      class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
-                  {notifApprovalRequired ? 'translate-x-4' : 'translate-x-0.5'}"
-                    ></span>
-                  </button>
-                </label>
+                <SettingsToggle
+                  checked={notifApprovalRequired}
+                  onchange={(v) => {
+                    notifApprovalRequired = v;
+                    saveNotificationSettings();
+                  }}
+                  label={t("settings_notif_approvalRequired") || "Waiting for approval"}
+                />
 
                 <!-- Schedule completed -->
-                <label class="flex items-center justify-between py-1.5 cursor-pointer">
-                  <span class="text-sm"
-                    >{t("settings_notif_scheduleCompleted") || "Scheduled task completed"}</span
-                  >
-                  <button
-                    role="switch"
-                    aria-checked={notifScheduleCompleted}
-                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-                  {notifScheduleCompleted ? 'bg-primary' : 'bg-muted'}"
-                    onclick={() => {
-                      notifScheduleCompleted = !notifScheduleCompleted;
-                      saveNotificationSettings();
-                    }}
-                  >
-                    <span
-                      class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
-                  {notifScheduleCompleted ? 'translate-x-4' : 'translate-x-0.5'}"
-                    ></span>
-                  </button>
-                </label>
+                <SettingsToggle
+                  checked={notifScheduleCompleted}
+                  onchange={(v) => {
+                    notifScheduleCompleted = v;
+                    saveNotificationSettings();
+                  }}
+                  label={t("settings_notif_scheduleCompleted") || "Scheduled task completed"}
+                />
 
                 <!-- Team completed -->
-                <label class="flex items-center justify-between py-1.5 cursor-pointer">
-                  <span class="text-sm"
-                    >{t("settings_notif_teamCompleted") || "Team run completed"}</span
-                  >
-                  <button
-                    role="switch"
-                    aria-checked={notifTeamCompleted}
-                    class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-                  {notifTeamCompleted ? 'bg-primary' : 'bg-muted'}"
-                    onclick={() => {
-                      notifTeamCompleted = !notifTeamCompleted;
-                      saveNotificationSettings();
-                    }}
-                  >
-                    <span
-                      class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
-                  {notifTeamCompleted ? 'translate-x-4' : 'translate-x-0.5'}"
-                    ></span>
-                  </button>
-                </label>
+                <SettingsToggle
+                  checked={notifTeamCompleted}
+                  onchange={(v) => {
+                    notifTeamCompleted = v;
+                    saveNotificationSettings();
+                  }}
+                  label={t("settings_notif_teamCompleted") || "Team run completed"}
+                />
 
                 <!-- Min duration -->
                 <div class="flex items-center justify-between py-1.5">
@@ -4103,32 +4097,16 @@
             </p>
 
             <!-- Enable toggle -->
-            <label class="flex items-center justify-between py-2 cursor-pointer">
-              <div>
-                <span class="text-sm font-medium"
-                  >{t("settings_notif_feishuEnabled") || "Enable Feishu notifications"}</span
-                >
-                <p class="text-xs text-muted-foreground mt-0.5">
-                  {t("settings_notif_feishuEnabledDesc") ||
-                    "Post to Feishu webhook when tasks or scheduled jobs complete"}
-                </p>
-              </div>
-              <button
-                role="switch"
-                aria-checked={feishuWebhookEnabled}
-                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
-              {feishuWebhookEnabled ? 'bg-primary' : 'bg-muted'}"
-                onclick={() => {
-                  feishuWebhookEnabled = !feishuWebhookEnabled;
-                  saveFeishuSettings();
-                }}
-              >
-                <span
-                  class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
-              {feishuWebhookEnabled ? 'translate-x-4' : 'translate-x-0.5'}"
-                ></span>
-              </button>
-            </label>
+            <SettingsToggle
+              checked={feishuWebhookEnabled}
+              onchange={(v) => {
+                feishuWebhookEnabled = v;
+                saveFeishuSettings();
+              }}
+              label={t("settings_notif_feishuEnabled") || "Enable Feishu notifications"}
+              description={t("settings_notif_feishuEnabledDesc") ||
+                "Post to Feishu webhook when tasks or scheduled jobs complete"}
+            />
 
             <!-- URL input -->
             <div class="space-y-1.5">

@@ -4,20 +4,170 @@
   import Button from "$lib/components/Button.svelte";
   import ScheduledTaskCard from "$lib/components/ScheduledTaskCard.svelte";
   import ScheduledTaskEditor from "$lib/components/ScheduledTaskEditor.svelte";
+  import TaskExecutionMonitor from "$lib/components/TaskExecutionMonitor.svelte";
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
   import { ScheduledTasksService } from "$lib/services/scheduled-tasks-service";
   import type { ScheduledTaskRun } from "$lib/types/scheduled-task";
+  import type {
+    TaskExecutionMonitor as MonitorType,
+    ExecutionLog,
+  } from "$lib/types/task-execution-monitor";
+  import { dbg } from "$lib/utils/debug";
 
   let activeTab = $state<"all" | "active" | "paused">("all");
   let runningNow = $state(false);
 
+  // Execution monitoring state
+  let activeMonitor = $state<MonitorType | null>(null);
+  let monitorLogs = $state<ExecutionLog[]>([]);
+  let monitorStatus = $state<"queued" | "running" | "paused" | "completed" | "failed">("queued");
+  let monitorProgress = $state(0);
+  let monitorStep = $state(0);
+  let monitorTotalSteps = $state(3);
+
+  function createMonitor(taskId: string, taskName: string, totalSteps: number): MonitorType {
+    return {
+      taskId,
+      taskName,
+      status: "running",
+      progress: 0,
+      currentStep: 0,
+      totalSteps,
+      logs: [],
+      startedAt: new Date().toISOString(),
+      estimatedDuration: "1-2 min",
+    };
+  }
+
+  function addLog(level: ExecutionLog["level"], message: string, stepId?: string) {
+    const log: ExecutionLog = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      stepId,
+    };
+    monitorLogs = [...monitorLogs, log];
+    dbg("scheduled-task-monitor", level, { message, stepId });
+  }
+
+  function updateMonitorStatus(status: typeof monitorStatus) {
+    monitorStatus = status;
+    if (activeMonitor) {
+      activeMonitor.status = status;
+    }
+  }
+
+  function updateProgress(step: number, progress: number) {
+    monitorStep = step;
+    monitorProgress = progress;
+    if (activeMonitor) {
+      activeMonitor.currentStep = step;
+      activeMonitor.progress = progress;
+    }
+  }
+
+  const TERMINAL_STATUSES = new Set(["completed", "failed", "cancelled"]);
+
+  /** Poll task runs every `intervalMs` until a terminal status is reached or timeout. */
+  async function pollUntilDone(
+    taskId: string,
+    runId: string,
+    intervalMs = 3000,
+    timeoutMs = 10 * 60 * 1000, // 10 min
+  ): Promise<import("$lib/types/scheduled-task").ScheduledTaskRun | null> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      await scheduledTasksStore.loadTaskRuns(taskId);
+      const run = scheduledTasksStore.runs.find((r) => r.id === runId);
+      if (run && TERMINAL_STATUSES.has(run.status)) return run;
+      await new Promise<void>((res) => setTimeout(res, intervalMs));
+    }
+    return null; // timeout
+  }
+
   async function handleRunNow(taskId: string) {
     if (runningNow) return;
+
+    const task = scheduledTasksStore.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
     runningNow = true;
+    monitorTotalSteps = 3;
+
+    activeMonitor = createMonitor(taskId, task.name, monitorTotalSteps);
+    monitorLogs = [];
+    monitorStatus = "running";
+    monitorProgress = 0;
+    monitorStep = 0;
+
     try {
-      await scheduledTasksStore.runTaskNow(taskId);
+      // Step 1: Initialising
+      addLog("info", `Starting task: ${task.name}`, "init");
+      updateProgress(1, 15);
+
+      // Step 2: Trigger execution on Rust side
+      addLog("info", `Loading workspace: ${task.workspace.cwd}`, "workspace");
+      updateProgress(1, 30);
+      addLog("info", "Launching Claude session…", "execute");
+      updateProgress(2, 45);
+
+      const taskRun = await scheduledTasksStore.runTaskNow(taskId);
+      // runTaskNow may return undefined on error (store catches and sets store.error)
+      if (!taskRun) {
+        throw new Error(scheduledTasksStore.error ?? "Failed to start task");
+      }
+
+      addLog("info", `Session started (run: ${taskRun.runId ?? taskRun.id})`, "session");
+      updateProgress(2, 55);
+
+      // Step 3: Poll until Claude finishes (session is async)
+      addLog("info", "Waiting for task to complete…", "poll");
+      const finalRun = await pollUntilDone(taskId, taskRun.id);
+
+      updateProgress(3, 100);
+
+      if (!finalRun) {
+        // Timed out — still show running in real list
+        updateMonitorStatus("failed");
+        addLog(
+          "warn",
+          "Timed out waiting for result — task may still be running in background",
+          "timeout",
+        );
+      } else if (finalRun.status === "failed") {
+        updateMonitorStatus("failed");
+        addLog("error", finalRun.error || "Task execution failed", "error");
+      } else if (finalRun.status === "cancelled") {
+        updateMonitorStatus("failed");
+        addLog("warn", "Task was cancelled", "cancel");
+      } else {
+        updateMonitorStatus("completed");
+        addLog("info", "Task completed successfully", "done");
+      }
+    } catch (err) {
+      updateMonitorStatus("failed");
+      addLog("error", `Execution error: ${err}`, "error");
+      monitorProgress = 100;
     } finally {
       runningNow = false;
+      if (activeMonitor) {
+        activeMonitor.endedAt = new Date().toISOString();
+      }
+    }
+  }
+
+  function closeMonitor() {
+    activeMonitor = null;
+    monitorLogs = [];
+    monitorStatus = "queued";
+    monitorProgress = 0;
+    monitorStep = 0;
+  }
+
+  function retryTask() {
+    if (activeMonitor) {
+      handleRunNow(activeMonitor.taskId);
     }
   }
 
@@ -96,7 +246,7 @@
   <!-- Content -->
   <div class="flex flex-1 overflow-hidden">
     <!-- Task List -->
-    <div class="flex flex-col w-1/2 border-r overflow-hidden">
+    <div class="flex flex-col w-[40%] border-r overflow-hidden">
       <!-- Tabs -->
       <div class="flex items-center gap-1 px-4 py-2 border-b bg-muted/20">
         <button
@@ -165,8 +315,33 @@
       </div>
     </div>
 
+    <!-- Execution Monitor Panel -->
+    {#if activeMonitor}
+      <div class="w-[35%] border-r overflow-hidden p-4">
+        <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
+          <span class="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+          Execution Monitor
+        </h3>
+        <TaskExecutionMonitor
+          taskId={activeMonitor.taskId}
+          taskName={activeMonitor.taskName}
+          status={monitorStatus}
+          progress={monitorProgress}
+          currentStep={monitorStep}
+          totalSteps={monitorTotalSteps}
+          logs={monitorLogs}
+          onClose={closeMonitor}
+          onCancel={() => {
+            addLog("warn", "Task cancelled by user", "cancel");
+            closeMonitor();
+          }}
+          onRetry={retryTask}
+        />
+      </div>
+    {/if}
+
     <!-- Task Details Panel -->
-    <div class="flex-1 overflow-y-auto">
+    <div class="flex-1 overflow-y-auto {activeMonitor ? 'w-[25%]' : ''}">
       {#if scheduledTasksStore.selectedTask}
         {@const task = scheduledTasksStore.selectedTask}
         <div class="p-6 space-y-6">

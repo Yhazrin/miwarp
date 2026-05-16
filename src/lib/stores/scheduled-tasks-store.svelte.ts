@@ -112,23 +112,25 @@ export class ScheduledTasksStore {
     await this.updateTask(id, { enabled: !task.enabled });
   }
 
-  async runTaskNow(id: string): Promise<boolean> {
+  async runTaskNow(
+    id: string,
+  ): Promise<import("$lib/types/scheduled-task").ScheduledTaskRun | null> {
     this.error = null;
     try {
       const run = await scheduledTasksService.runTaskNow(id);
       if (run) {
-        // Refresh runs for this task
-        await this.loadTaskRuns(id);
+        // Merge the new run record immediately so callers can poll by id
+        this.runs = [run, ...this.runs.filter((r) => r.id !== run.id)];
         // Refresh task to update lastRunAt
         await this.loadTasks();
         dbg("scheduled-tasks-store", "runTaskNow", { id, status: run.status });
-        return true;
+        return run;
       }
-      return false;
+      return null;
     } catch (e) {
       dbgWarn("scheduled-tasks-store", "runTaskNow error", e);
       this.error = e instanceof Error ? e.message : "Failed to run task";
-      return false;
+      return null;
     }
   }
 

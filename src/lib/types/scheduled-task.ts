@@ -1,11 +1,35 @@
 /**
  * Scheduled Task types — mirrors src-tauri/src/scheduler/model.rs
+ * Enhanced with dependency and retry support from Claude Code/Cowork design.
  */
 import { t } from "$lib/i18n/index.svelte";
 
 export type Agent = "claude" | "codex";
 export type ScheduleType = "cron" | "one-time" | "interval";
 export type RunStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
+
+// Enhanced retry configuration
+export type RetryBackoff = "linear" | "exponential" | "fixed";
+
+export interface RetryConfig {
+  maxRetries: number;
+  backoff: RetryBackoff;
+  initialDelayMs?: number; // Default: 1000
+  maxDelayMs?: number; // Default: 60000
+}
+
+// Task dependency configuration
+export interface TaskDependency {
+  taskId: string;
+  type: "complete" | "failed" | "any";
+}
+
+// Event trigger configuration
+export interface TaskEventTrigger {
+  type: "file_change" | "task_complete" | "schedule";
+  pattern?: string; // File pattern for file_change
+  sourceTaskId?: string; // For task_complete
+}
 
 export interface WorkspaceInfo {
   cwd: string;
@@ -36,6 +60,30 @@ export interface ScheduledTask {
   lastRunAt?: string;
   createdAt: string;
   updatedAt: string;
+
+  // Enhanced from Claude Code/Cowork design
+  dependencies?: TaskDependency[]; // Task dependencies
+  triggerOnEvent?: TaskEventTrigger; // Event-based triggers
+  retryConfig?: RetryConfig; // Retry configuration
+  timeout?: number; // Task timeout in ms
+  tags?: string[]; // Task categorization
+  notifications?: {
+    onStart?: boolean;
+    onComplete?: boolean;
+    onFailure?: boolean;
+  };
+}
+
+// Execution statistics for monitoring
+export interface TaskExecutionStats {
+  taskId: string;
+  totalRuns: number;
+  successfulRuns: number;
+  failedRuns: number;
+  averageDuration: number; // ms
+  successRate: number; // 0-1
+  lastSuccessAt?: string;
+  lastFailureAt?: string;
 }
 
 export interface ScheduledTaskRun {
@@ -48,6 +96,8 @@ export interface ScheduledTaskRun {
   status: RunStatus;
   error?: string;
   summary?: string;
+  retryAttempt?: number; // Current retry attempt number
+  executionDuration?: number; // ms
 }
 
 export interface ScheduledTaskInput {
@@ -61,6 +111,12 @@ export interface ScheduledTaskInput {
   permissionMode?: string;
   model?: string;
   provider?: string;
+  // New fields
+  dependencies?: TaskDependency[];
+  triggerOnEvent?: TaskEventTrigger;
+  retryConfig?: RetryConfig;
+  timeout?: number;
+  tags?: string[];
 }
 
 export interface ScheduledTaskPatch {
@@ -74,6 +130,13 @@ export interface ScheduledTaskPatch {
   permissionMode?: string | null;
   model?: string | null;
   provider?: string | null;
+  // New fields
+  dependencies?: TaskDependency[] | null;
+  triggerOnEvent?: TaskEventTrigger | null;
+  retryConfig?: RetryConfig | null;
+  timeout?: number | null;
+  tags?: string[] | null;
+  notifications?: ScheduledTask["notifications"] | null;
 }
 
 export interface CronPreset {
@@ -116,6 +179,59 @@ export const INTERVAL_PRESETS: { label: string; minutes: number }[] = [
   { label: "Every 24 hours", minutes: 1440 },
 ];
 
+/**
+ * Calculate delay for retry with backoff.
+ */
+export function calculateRetryDelay(attempt: number, config: RetryConfig): number {
+  const initialDelay = config.initialDelayMs || 1000;
+  const maxDelay = config.maxDelayMs || 60000;
+
+  switch (config.backoff) {
+    case "linear":
+      return Math.min(initialDelay * attempt, maxDelay);
+    case "exponential":
+      return Math.min(initialDelay * Math.pow(2, attempt - 1), maxDelay);
+    case "fixed":
+    default:
+      return initialDelay;
+  }
+}
+
+/**
+ * Calculate execution statistics from runs.
+ */
+export function calculateTaskStats(runs: ScheduledTaskRun[]): TaskExecutionStats | null {
+  if (runs.length === 0) return null;
+
+  const taskId = runs[0].taskId;
+  const completedRuns = runs.filter((r) => r.status === "completed");
+  const failedRuns = runs.filter((r) => r.status === "failed");
+  const durations = runs
+    .filter((r) => r.executionDuration != null)
+    .map((r) => r.executionDuration!);
+
+  const avgDuration =
+    durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
+
+  const lastSuccess = runs
+    .filter((r) => r.status === "completed" && r.endedAt)
+    .sort((a, b) => (b.endedAt! > a.endedAt! ? 1 : -1))[0];
+  const lastFailure = runs
+    .filter((r) => r.status === "failed" && r.endedAt)
+    .sort((a, b) => (b.endedAt! > a.endedAt! ? 1 : -1))[0];
+
+  return {
+    taskId,
+    totalRuns: runs.length,
+    successfulRuns: completedRuns.length,
+    failedRuns: failedRuns.length,
+    averageDuration: avgDuration,
+    successRate: runs.length > 0 ? completedRuns.length / runs.length : 0,
+    lastSuccessAt: lastSuccess?.endedAt,
+    lastFailureAt: lastFailure?.endedAt,
+  };
+}
+
 export const DEFAULT_TASK_TEMPLATES: {
   name: string;
   description: string;
@@ -147,3 +263,13 @@ export const DEFAULT_TASK_TEMPLATES: {
     schedule: { type: "cron", cronExpression: "0 18 * * 5" },
   },
 ];
+
+/**
+ * Create default retry config.
+ */
+export const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxRetries: 3,
+  backoff: "exponential",
+  initialDelayMs: 1000,
+  maxDelayMs: 60000,
+};

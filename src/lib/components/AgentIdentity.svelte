@@ -26,7 +26,8 @@
   const sizeMap = { sm: 20, md: 28, lg: 40 };
   const px = $derived(sizeMap[size]);
 
-  const imgSrc = $derived(animated && asset.mascot ? asset.mascot : (asset.icon ?? asset.fallback));
+  // Always use mascot (GIF) when available — GIFs display correctly both animated and static
+  const imgSrc = $derived(asset.mascot ? asset.mascot : (asset.icon ?? asset.fallback));
 
   let imgFailed = $state(false);
   const displaySrc = $derived(imgFailed ? asset.fallback : imgSrc);
@@ -51,7 +52,7 @@
       src={displaySrc}
       alt={asset.displayName}
       class="h-full w-full object-contain"
-      style="image-rendering: {asset.mascot && animated ? 'auto' : 'pixelated'};"
+      style="image-rendering: {asset.mascot ? 'auto' : 'pixelated'};"
       onerror={handleError}
     />
   </div>

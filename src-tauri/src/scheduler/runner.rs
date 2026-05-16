@@ -40,7 +40,19 @@ pub async fn execute_task(
     }
 
     // Create a MiWarp run record (same as start_run command)
-    let cwd = task.workspace.cwd.clone();
+    // Expand tilde in cwd so sessions work with paths like ~/Downloads
+    let cwd = {
+        let raw = task.workspace.cwd.clone();
+        if raw.starts_with("~/") || raw == "~" {
+            if let Some(home) = crate::storage::home_dir() {
+                raw.replacen("~", &home, 1)
+            } else {
+                raw
+            }
+        } else {
+            raw
+        }
+    };
     let agent = match task.agent {
         super::model::Agent::Claude => "claude",
         super::model::Agent::Codex => "codex",
@@ -101,7 +113,16 @@ pub async fn execute_task(
     let mut task_run = task_run;
     task_run.run_id = Some(run_uuid.clone());
 
-    // Start the session using existing infrastructure
+    // Start the session using existing infrastructure.
+    // Scheduled tasks run unattended, so default to "auto-accept-all" if not set.
+    // The "auto-accept-all" string is mapped to "bypassPermissions" by map_permission_mode.
+    let permission_mode = task
+        .permission_mode
+        .clone()
+        .or_else(|| Some("auto-accept-all".to_string()));
+    // Normalize through the shared mapping so CLI always gets a valid value.
+    let permission_mode = permission_mode.map(|m| crate::agent::adapter::map_permission_mode(&m));
+
     let session_result = start_session_impl(
         emitter,
         sessions,
@@ -113,7 +134,7 @@ pub async fn execute_task(
         Some(task.prompt.clone()), // initial_message
         None,                      // attachments
         None,                      // platform_id
-        task.permission_mode.clone(),
+        permission_mode,
     )
     .await;
 

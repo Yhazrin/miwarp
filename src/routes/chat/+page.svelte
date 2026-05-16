@@ -94,7 +94,6 @@
   import { truncate, formatTokenCount, relativeTime } from "$lib/utils/format";
   import { mapSettled } from "$lib/utils/async-utils";
   import { uuid } from "$lib/utils/uuid";
-  import type { WorkflowStep } from "$lib/types/workflow";
   import RewindModal from "$lib/components/RewindModal.svelte";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import TeamDispatchConfirm from "$lib/components/TeamDispatchConfirm.svelte";
@@ -371,7 +370,7 @@
   let statusBarRef: SessionStatusBar | undefined = $state();
   let stashedInput: PromptInputSnapshot | null = $state(null);
   let sidebarRequestedTab = $state<
-    "workspace" | "tools" | "context" | "files" | "info" | "tasks" | "preview" | "workflow" | null
+    "workspace" | "tools" | "context" | "files" | "info" | "tasks" | "preview" | null
   >(null);
   let requestedPreviewPath = $state<string | null>(null);
   let requestedPreviewUrl = $state<string | null>(null);
@@ -1215,13 +1214,6 @@
   // ── Computed (thin wrappers for template convenience) ──
   let sending = $derived(store.phase === "spawning");
 
-  // Example prompts for empty state
-  const examplePrompts = [
-    () => t("chat_examplePrompt1"),
-    () => t("chat_examplePrompt2"),
-    () => t("chat_examplePrompt3"),
-  ];
-
   // ── Lifecycle ──
 
   // Load settings
@@ -1306,6 +1298,12 @@
             r.session_id &&
             (r.status === "completed" || r.status === "stopped" || r.status === "failed"),
         ) ?? null;
+
+      // Auto-load last session if no runId is specified, instead of showing welcome screen
+      if (!runId && lastContinuableRun) {
+        goto(`/chat?run=${lastContinuableRun.id}&resume=continue`, { replaceState: true });
+        return;
+      }
     } else {
       dbgWarn("chat", "failed to load runs for continue:", runsResult.reason);
     }
@@ -3135,17 +3133,6 @@
     }, 2500);
   }
 
-  async function handleWorkflowExecute(step: WorkflowStep) {
-    const prompt = step.prompt?.trim() || step.instruction?.trim() || step.title?.trim();
-    if (!prompt) {
-      throw new Error(t("workflow_emptyStepPrompt"));
-    }
-    if (store.isRunning) {
-      throw new Error(t("workflow_busy"));
-    }
-    await sendMessage(prompt, []);
-  }
-
   async function toggleCliConfigBool(key: string) {
     try {
       const config = await api.getCliConfig();
@@ -4184,7 +4171,7 @@
                     {/if}
                     {#if usageAnnotations.has(i)}
                       {@const tu = usageAnnotations.get(i)}
-                      {#if tu}
+                      {#if tu && settings?.show_token_usage_report !== false}
                         <div class="w-full py-1.5">
                           <div class="chat-content-width">
                             <div class="flex items-center gap-3">
@@ -4376,7 +4363,7 @@
               {/each}
 
               <!-- Last turn usage annotation (after all entries) -->
-              {#if lastTurnUsage && !store.isRunning}
+              {#if lastTurnUsage && !store.isRunning && settings?.show_token_usage_report !== false}
                 <div class="w-full py-1.5">
                   <div class="chat-content-width">
                     <div class="flex items-center gap-3">
@@ -4625,22 +4612,6 @@
             <p class="text-sm text-muted-foreground mb-4">
               {store.run ? t("chat_typeToStartSession") : t("chat_startSessionHint")}
             </p>
-            {#if !store.run}
-              <div class="flex flex-col gap-2">
-                {#each examplePrompts as prompt}
-                  <button
-                    class="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-neutral-300 hover:bg-white/10 hover:border-white/20 transition-all duration-150 group"
-                    onclick={() => fillPrompt(prompt())}
-                  >
-                    <span
-                      class="text-muted-foreground/50 mr-2 group-hover:text-muted-foreground transition-colors"
-                      >&rarr;</span
-                    >
-                    {prompt()}
-                  </button>
-                {/each}
-              </div>
-            {/if}
             {@render initHintCard()}
             {@render heroMetaFooter()}
           </div>
@@ -4893,7 +4864,7 @@
 
     {#if store.sessionAlive || !store.run || store.phase === "empty" || store.phase === "ready" || TERMINAL_PHASES.includes(store.phase)}
       <div
-        class="pointer-events-none sticky bottom-0 z-20 bg-gradient-to-t from-background via-background/94 to-transparent px-2 pb-5 pt-3"
+        class="pointer-events-none sticky bottom-0 z-20 bg-gradient-to-t from-background/95 via-background/70 to-transparent px-2 pb-5 pt-6 backdrop-blur-md [mask-image:linear-gradient(to_top,black_60%,transparent)]"
       >
         <div class="pointer-events-auto">
           <PromptInput
@@ -5004,8 +4975,6 @@
     isRemote={store.isRemote}
     bind:requestedPreviewPath
     bind:requestedPreviewUrl
-    onExecuteWorkflowStep={handleWorkflowExecute}
-    onWorkflowNotify={showChatToast}
   />
 
   <RewindModal

@@ -22,6 +22,8 @@
     ondelete,
     onmovetofolder,
     onBatchClick,
+    ondragstart,
+    ondragend,
   }: {
     conversation: ConversationGroup;
     selected?: boolean;
@@ -31,6 +33,8 @@
     ondelete?: (conversation: ConversationGroup) => void;
     onmovetofolder?: (runIds: string[]) => void;
     onBatchClick?: (groupKey: string, e: MouseEvent) => void;
+    ondragstart?: (e: DragEvent, runId: string) => void;
+    ondragend?: () => void;
   } = $props();
 
   const run = $derived(conversation.latestRun);
@@ -116,8 +120,11 @@
     : ''}"
   role="button"
   tabindex="0"
+  draggable={!!ondragstart}
   onclick={handleClick}
   onkeydown={handleKeydown}
+  ondragstart={ondragstart ? (e) => ondragstart!(e, conversation.latestRun.id) : undefined}
+  {ondragend}
 >
   <div class="flex items-center justify-between gap-2">
     <div class="flex items-center gap-1.5 min-w-0">
@@ -260,52 +267,53 @@
       {/if}
     </div>
   </div>
-  <div class="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground/50">
-    <div class="flex items-center gap-1 min-w-0">
-      <span class="shrink-0">{run.agent}</span>
+  <!-- Meta row: branch / platform / remote / time — no agent CLI name -->
+  <div class="mt-0.5 flex items-center gap-1 text-[10.5px] text-muted-foreground/45 leading-none">
+    <!-- Left: branch + remote + platform -->
+    <div class="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
       {#if run.worktree_branch}
         <span
-          class="shrink-0 inline-flex items-center gap-0.5 px-1 py-0 rounded bg-blue-500/10 text-blue-400/70 font-mono text-[10px] max-w-[80px] truncate"
+          class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-violet-500/10 text-violet-400/80 font-mono text-[10px] max-w-[110px] truncate"
           title={run.worktree_branch}
         >
           <svg
-            class="h-2.5 w-2.5 shrink-0"
+            class="h-2.5 w-2.5 shrink-0 opacity-80"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
             stroke-width="2"
             stroke-linecap="round"
             stroke-linejoin="round"
-            ><line x1="6" y1="3" x2="6" y2="15" /><circle cx="18" cy="6" r="3" /><circle
-              cx="6"
-              cy="18"
-              r="3"
-            /><path d="M18 9a9 9 0 0 1-9 9" /></svg
           >
+            <line x1="6" y1="3" x2="6" y2="15" />
+            <circle cx="18" cy="6" r="3" />
+            <circle cx="6" cy="18" r="3" />
+            <path d="M18 9a9 9 0 0 1-9 9" />
+          </svg>
           {run.worktree_branch}
         </span>
       {/if}
       {#if run.remote_host_name}
         <svg
-          class="h-3 w-3 shrink-0 text-blue-400/50"
+          class="h-2.5 w-2.5 shrink-0 text-sky-400/60"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
           stroke-width="2"
           stroke-linecap="round"
           stroke-linejoin="round"
-          ><title>{t("statusbar_sshTitle", { name: run.remote_host_name })}</title><circle
-            cx="12"
-            cy="12"
-            r="10"
-          /><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" /><path d="M2 12h20" /></svg
         >
+          <title>{t("statusbar_sshTitle", { name: run.remote_host_name })}</title>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+          <path d="M2 12h20" />
+        </svg>
       {/if}
       {#if run.platform_id && run.platform_id !== "anthropic"}
-        <span class="shrink-0">&middot;</span>
-        <span class="truncate">{platformLabel(run.platform_id)}</span>
+        <span class="truncate opacity-70">{platformLabel(run.platform_id)}</span>
       {/if}
     </div>
-    <span class="ml-auto shrink-0">{time}</span>
+    <!-- Right: time -->
+    <span class="shrink-0 tabular-nums">{time}</span>
   </div>
 </div>

@@ -153,7 +153,7 @@ pub fn start_run(
         RunStatus::Pending,
         model,
         None,
-        remote_host_name,
+        remote_host_name.clone(),
         remote_cwd,
         remote_host_snapshot,
         platform_id,

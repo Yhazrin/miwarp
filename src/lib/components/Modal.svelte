@@ -62,7 +62,10 @@
     ></div>
 
     <!-- Content -->
-    <div class="glass-panel elevation-3 relative z-50 w-full max-w-lg p-6 animate-modal-in">
+    <div
+      class="elevation-3 relative z-50 w-full max-w-lg p-6 animate-modal-in rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] backdrop-blur-2xl"
+      style="background: hsl(var(--miwarp-bg-deep) / 0.94);"
+    >
       {#if title}
         <h2 class="mb-4 text-lg font-semibold text-foreground">{title}</h2>
       {/if}

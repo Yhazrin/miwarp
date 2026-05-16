@@ -16,6 +16,7 @@
   );
   let totalCount = $derived(teamRun.memberRuns.length);
   let progressPct = $derived(totalCount > 0 ? (doneCount / totalCount) * 100 : 0);
+  let expanded = $state<Set<string>>(new Set());
 
   const STATUS_COLORS: Record<TeamRunStatus, string> = {
     created: "bg-gray-400",
@@ -35,29 +36,44 @@
     cancelled: () => t("teamRun_statusCancelled"),
   };
 
-  const MEMBER_STATUS_COLORS: Record<string, string> = {
-    pending: "bg-muted-foreground/30",
-    running: "bg-blue-500",
-    completed: "bg-emerald-500",
-    failed: "bg-red-500",
+  const MEMBER_STATUS_MAP: Record<
+    string,
+    { dot: string; ring: string; label: string; pulse: boolean }
+  > = {
+    pending: {
+      dot: "bg-muted-foreground/30",
+      ring: "ring-muted-foreground/20",
+      label: "待命",
+      pulse: false,
+    },
+    running: { dot: "bg-blue-500", ring: "ring-blue-500/30", label: "运行中", pulse: true },
+    completed: { dot: "bg-emerald-500", ring: "ring-emerald-500/30", label: "完成", pulse: false },
+    failed: { dot: "bg-red-500", ring: "ring-red-500/30", label: "失败", pulse: false },
   };
+
+  function toggleExpand(id: string) {
+    const next = new Set(expanded);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    expanded = next;
+  }
 
   function handleViewTeams() {
     goto("/teams");
   }
 </script>
 
-/** * TeamRunCard — inline card shown in chat to display TeamRun status. * Shows preset, progress,
-member status, and summary. */
 <div
-  class="rounded-lg border border-border bg-card/80 backdrop-blur-sm overflow-hidden my-2 max-w-lg
+  class="rounded-xl border border-border/60 bg-card/90 backdrop-blur-sm overflow-hidden my-2 w-full
     {teamRun.status === 'running' || teamRun.status === 'planning' ? 'motion-running-pulse' : ''}
     {teamRun.status === 'completed' ? 'motion-status-success' : ''}
     {teamRun.status === 'failed' ? 'motion-status-error' : ''}"
 >
   <!-- Header -->
-  <div class="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border/50">
-    <div class="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary">
+  <div class="flex items-center gap-2.5 px-3.5 py-2.5 border-b border-border/40">
+    <div
+      class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
+    >
       <svg
         class="h-3.5 w-3.5"
         viewBox="0 0 24 24"
@@ -92,65 +108,106 @@ member status, and summary. */
           ></span>
           {STATUS_TEXT[teamRun.status]()}
         </span>
+        <span class="text-[10px] text-muted-foreground/50 ml-auto"
+          >{doneCount}/{totalCount} 完成</span
+        >
       </div>
-      <p class="text-[11px] text-muted-foreground line-clamp-1">{teamRun.prompt}</p>
+      <p class="text-[11px] text-muted-foreground/70 line-clamp-1 mt-0.5">{teamRun.prompt}</p>
     </div>
   </div>
 
-  <!-- Progress bar (when running) -->
+  <!-- Progress bar (when running or planning) -->
   {#if teamRun.status === "running" || teamRun.status === "planning"}
-    <div class="px-3.5 py-2">
-      <div class="flex items-center justify-between mb-1">
-        <span class="text-[10px] text-muted-foreground">
-          {teamRun.status === "planning" ? t("teamRun_planning") : t("teamRun_executing")}
-        </span>
-        {#if teamRun.status === "running"}
-          <span class="text-[10px] text-muted-foreground tabular-nums">
-            {t("teamRun_memberProgress", { done: String(doneCount), total: String(totalCount) })}
-          </span>
-        {/if}
-      </div>
-      {#if teamRun.status === "running"}
-        <div class="h-1 w-full rounded-full bg-muted overflow-hidden">
+    <div class="px-3.5 pt-2 pb-1">
+      <div class="h-1 w-full rounded-full bg-muted overflow-hidden">
+        {#if teamRun.status === "planning"}
+          <div class="h-full rounded-full bg-violet-500 animate-pulse" style="width: 30%"></div>
+        {:else}
           <div
             class="h-full rounded-full bg-primary transition-all duration-500"
             style="width: {progressPct}%"
           ></div>
-        </div>
-      {:else}
-        <div class="h-1 w-full rounded-full bg-muted overflow-hidden">
-          <div class="h-full rounded-full bg-violet-500 animate-pulse" style="width: 30%"></div>
-        </div>
-      {/if}
+        {/if}
+      </div>
     </div>
   {/if}
 
-  <!-- Members -->
-  <div class="px-3.5 py-2 space-y-1">
-    {#each teamRun.memberRuns as member (member.id)}
-      <div class="flex items-center gap-2">
-        <span
-          class="h-2 w-2 shrink-0 rounded-full {MEMBER_STATUS_COLORS[member.status] || 'bg-muted'}"
-        ></span>
-        <span class="text-[11px] font-medium text-foreground/80 min-w-0 truncate"
-          >{member.memberName}</span
+  <!-- Agent Cards Grid (parallel layout) -->
+  {#if teamRun.memberRuns.length > 0}
+    <div
+      class="px-3 py-2.5 grid gap-2"
+      style="grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr));"
+    >
+      {#each teamRun.memberRuns as member (member.id)}
+        {@const st = MEMBER_STATUS_MAP[member.status] ?? MEMBER_STATUS_MAP.pending}
+        {@const isExpanded = expanded.has(member.id)}
+        <div
+          class="rounded-lg border bg-background/60 overflow-hidden ring-1 {st.ring} transition-all duration-200"
         >
-        <span class="text-[10px] text-muted-foreground/60">{member.role}</span>
-        {#if member.status === "running"}
-          <span class="ml-auto text-[10px] text-blue-500 animate-pulse">...</span>
-        {:else if member.status === "completed"}
-          <span class="ml-auto text-[10px] text-emerald-500">done</span>
-        {:else if member.status === "failed"}
-          <span class="ml-auto text-[10px] text-red-500">fail</span>
-        {/if}
-      </div>
-    {/each}
-  </div>
+          <!-- Agent card header -->
+          <button
+            class="w-full flex items-center gap-2 px-2.5 py-2 text-left hover:bg-accent/20 transition-colors"
+            onclick={() => toggleExpand(member.id)}
+          >
+            <span class="relative flex h-2 w-2 shrink-0">
+              <span
+                class="h-2 w-2 rounded-full {st.dot} {st.pulse
+                  ? 'animate-ping absolute opacity-60'
+                  : ''}"
+              ></span>
+              {#if st.pulse}
+                <span class="relative h-2 w-2 rounded-full {st.dot}"></span>
+              {/if}
+            </span>
+            <div class="flex-1 min-w-0">
+              <p class="text-[11px] font-semibold text-foreground truncate">{member.memberName}</p>
+              <p class="text-[10px] text-muted-foreground/60 truncate">{member.role}</p>
+            </div>
+            <svg
+              class="h-3 w-3 shrink-0 text-muted-foreground/50 transition-transform duration-200 {isExpanded
+                ? 'rotate-90'
+                : ''}"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </button>
 
-  <!-- Summary preview (when completed) -->
+          <!-- Expanded content -->
+          {#if isExpanded}
+            <div class="border-t border-border/30 px-2.5 py-2 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] text-muted-foreground">状态</span>
+                <span class="text-[10px] font-medium {st.dot.replace('bg-', 'text-')}"
+                  >{st.label}</span
+                >
+              </div>
+              {#if member.summary}
+                <p
+                  class="text-[10px] text-muted-foreground/70 leading-relaxed whitespace-pre-wrap line-clamp-4"
+                >
+                  {member.summary}
+                </p>
+              {/if}
+              {#if member.error}
+                <p class="text-[10px] text-red-500 leading-relaxed">{member.error}</p>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      {/each}
+    </div>
+  {/if}
+
+  <!-- Summary preview (when completed/failed) -->
   {#if teamRun.summary && (teamRun.status === "completed" || teamRun.status === "failed")}
-    <div class="border-t border-border/50 px-3.5 py-2">
-      <p class="text-[11px] text-muted-foreground line-clamp-4 whitespace-pre-wrap">
+    <div class="border-t border-border/40 px-3.5 py-2.5">
+      <p class="text-[11px] text-muted-foreground leading-relaxed line-clamp-4 whitespace-pre-wrap">
         {teamRun.summary}
       </p>
     </div>
@@ -163,8 +220,8 @@ member status, and summary. */
     </div>
   {/if}
 
-  <!-- Footer actions -->
-  <div class="flex items-center gap-2 border-t border-border/50 px-3.5 py-2">
+  <!-- Footer -->
+  <div class="flex items-center gap-3 border-t border-border/40 px-3.5 py-2">
     <button
       class="text-[11px] text-primary hover:text-primary/80 transition-colors font-medium"
       onclick={handleViewTeams}

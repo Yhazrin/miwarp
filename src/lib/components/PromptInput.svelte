@@ -1961,9 +1961,9 @@
 
   <!-- Unified input container -->
   <div
-    class="rounded-[28px] border bg-background/66 backdrop-blur-xl transition-colors {btwMode
+    class="rounded-[28px] border bg-background/72 backdrop-blur-2xl transition-colors shadow-[0_4px_24px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.07)] {btwMode
       ? 'border-miwarp-status-info/80'
-      : currentMode.borderCls || 'border-border/35 focus-within:border-ring/40'} {pendingPermission
+      : currentMode.borderCls || 'border-white/10 focus-within:border-white/20'} {pendingPermission
       ? 'motion-attention-pulse'
       : ''}"
   >

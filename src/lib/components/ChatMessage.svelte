@@ -305,28 +305,52 @@
             {/if}
           {:else}
             {#if thinkingText}
-              <button
-                class="mb-2 flex items-center gap-1.5 text-xs text-[hsl(var(--miwarp-status-info))] hover:text-[hsl(var(--miwarp-status-info)/0.8)] transition-colors"
-                onclick={() => (thinkingCollapsed = !thinkingCollapsed)}
+              <div
+                class="mb-3 rounded-xl border border-[hsl(var(--miwarp-accent-primary)/0.18)] overflow-hidden"
+                style="background: hsl(var(--miwarp-bg-deep) / 0.72); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);"
               >
-                <svg
-                  class="h-3 w-3 transition-transform {thinkingCollapsed ? '' : 'rotate-90'}"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg
+                <button
+                  class="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-[hsl(var(--miwarp-status-info))] hover:bg-[hsl(var(--miwarp-accent-primary)/0.06)] transition-colors"
+                  onclick={() => (thinkingCollapsed = !thinkingCollapsed)}
                 >
-                {t("chat_thoughtProcess")}
-              </button>
-              {#if !thinkingCollapsed}
-                <div
-                  class="glass-card mb-3 px-3 py-2 text-xs text-[hsl(var(--miwarp-status-info)/0.8)] whitespace-pre-wrap leading-relaxed"
-                >
-                  {thinkingText.trimEnd()}
-                </div>
-              {/if}
+                  <svg
+                    class="h-3 w-3 shrink-0 transition-transform duration-200 {thinkingCollapsed
+                      ? ''
+                      : 'rotate-90'}"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg
+                  >
+                  <svg
+                    class="h-3.5 w-3.5 shrink-0 opacity-70"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M12 2a8 8 0 0 1 8 8c0 5-8 13-8 13S4 15 4 10a8 8 0 0 1 8-8z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                  <span>{t("chat_thoughtProcess")}</span>
+                  <span class="ml-auto text-[10px] opacity-50"
+                    >{thinkingCollapsed
+                      ? t("common_expand") || "展开"
+                      : t("common_collapse") || "收起"}</span
+                  >
+                </button>
+                {#if !thinkingCollapsed}
+                  <div
+                    class="border-t border-[hsl(var(--miwarp-accent-primary)/0.12)] px-3 py-2.5 text-xs text-[hsl(var(--miwarp-text-secondary))] whitespace-pre-wrap leading-relaxed"
+                  >
+                    {thinkingText.trimEnd()}
+                  </div>
+                {/if}
+              </div>
             {/if}
             <div class="prose-chat">
               <MarkdownContent text={message.content} />

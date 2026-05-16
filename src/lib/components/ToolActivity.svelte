@@ -12,7 +12,6 @@
   import FilesPanel from "$lib/components/FilesPanel.svelte";
   import FilePreviewPane from "$lib/components/FilePreviewPane.svelte";
   import PreviewPanel from "$lib/components/PreviewPanel.svelte";
-  import WorkflowPanel from "$lib/components/WorkflowPanel.svelte";
   import { onMount } from "svelte";
   import { fpsCounter, isPerfEnabled } from "$lib/utils/perf";
   import SessionInfoPanel from "$lib/components/SessionInfoPanel.svelte";
@@ -25,7 +24,6 @@
   } from "$lib/utils/file-entries";
   import { extractTaskToolMeta, type TaskToolMeta } from "$lib/utils/tool-rendering";
   import type { TaskNotificationItem } from "$lib/stores/session-store.svelte";
-  import type { WorkflowStep } from "$lib/types/workflow";
 
   let {
     timeline = [],
@@ -39,16 +37,7 @@
     onScrollToTool,
     onScrollToTurn,
     requestedTab = $bindable(
-      null as
-        | "workspace"
-        | "tools"
-        | "context"
-        | "files"
-        | "info"
-        | "tasks"
-        | "preview"
-        | "workflow"
-        | null,
+      null as "workspace" | "tools" | "context" | "files" | "info" | "tasks" | "preview" | null,
     ),
     backgroundTasks = new Map(),
     activeBackgroundTasks = [],
@@ -57,8 +46,6 @@
     isRemote = false,
     requestedPreviewPath = $bindable(null as string | null),
     requestedPreviewUrl = $bindable(null as string | null),
-    onExecuteWorkflowStep,
-    onWorkflowNotify,
   }: {
     timeline: TimelineEntry[];
     tools: HookEvent[];
@@ -78,34 +65,18 @@
       | "info"
       | "tasks"
       | "preview"
-      | "workflow"
       | null;
     backgroundTasks?: Map<string, TaskNotificationItem>;
     activeBackgroundTasks?: TaskNotificationItem[];
-    /** Working directory for file preview (typically store.effectiveCwd). */
     cwd?: string;
-    /** Run id — when it changes the preview is cleared. */
     runId?: string;
-    /** Remote run flag — disables file preview (file APIs are local-only). */
     isRemote?: boolean;
-    /** External request to open preview for a path (auto-switches to files tab). */
     requestedPreviewPath?: string | null;
-    /** External request to open browser preview for a URL. */
     requestedPreviewUrl?: string | null;
-    onExecuteWorkflowStep?: (step: WorkflowStep) => Promise<void>;
-    onWorkflowNotify?: (message: string) => void;
   } = $props();
 
   // ── Tab state ──
-  type SidebarPanel =
-    | "workspace"
-    | "tools"
-    | "context"
-    | "files"
-    | "info"
-    | "tasks"
-    | "preview"
-    | "workflow";
+  type SidebarPanel = "workspace" | "tools" | "context" | "files" | "info" | "tasks" | "preview";
   let activeTab: SidebarPanel = $state("workspace");
 
   // Lazy keep-alive: a tab is mounted on first activation and stays mounted thereafter.
@@ -728,14 +699,16 @@
 {/if}
 <aside
   bind:this={asideEl}
-  class="relative h-full overflow-hidden bg-background/30 backdrop-blur-2xl"
+  class="relative h-full overflow-hidden {collapsed
+    ? 'bg-transparent'
+    : 'bg-background/40 backdrop-blur-[28px] [backdrop-filter:blur(28px)_saturate(180%)] [-webkit-backdrop-filter:blur(28px)_saturate(180%)]'}"
   style="width: {collapsed
     ? WIDTH_COLLAPSED + 'px'
-    : effectiveWidth + 'px'}; contain: layout style;"
+    : effectiveWidth + 'px'}; contain: layout style; clip-path: inset(0);"
 >
   {#if collapsed}
     <div
-      class="absolute inset-1 z-30 flex flex-col items-center gap-1 rounded-2xl border border-border/40 bg-background/40 px-1 py-1.5 backdrop-blur-xl"
+      class="absolute inset-1 z-30 flex flex-col items-center gap-1 rounded-2xl border border-white/10 bg-background/55 px-1 py-1.5 backdrop-blur-2xl shadow-[0_4px_20px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.07)]"
     >
       <button
         class="relative flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
@@ -855,29 +828,6 @@
       </button>
       <button
         class="flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
-        'workflow'
-          ? 'bg-accent/30 text-foreground'
-          : 'text-muted-foreground hover:bg-accent/20 hover:text-foreground'}"
-        onclick={() => openCollapsedTab("workflow")}
-        title={t("toolActivity_tabWorkflow")}
-      >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M5 6h14" />
-          <path d="M5 12h8" />
-          <path d="M5 18h14" />
-          <path d="m15 10 2 2 4-4" />
-        </svg>
-      </button>
-      <button
-        class="flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
         'info'
           ? 'bg-accent/30 text-foreground'
           : 'text-muted-foreground hover:bg-accent/20 hover:text-foreground'}"
@@ -943,12 +893,14 @@
       </button>
     </div>
   {/if}
-  <!-- Always-mounted expanded panel (visibility-hidden when collapsed) -->
+  <!-- Always-mounted expanded panel (hidden + translated off-canvas when collapsed) -->
   <div
-    class="absolute top-0 left-0 h-full flex flex-col"
-    style="width: {effectiveWidth}px; visibility: {collapsed
-      ? 'hidden'
-      : 'visible'}; pointer-events: {collapsed ? 'none' : 'auto'};"
+    class="absolute top-0 left-0 h-full flex flex-col transition-transform duration-200"
+    style="width: {effectiveWidth}px; transform: translateX({collapsed
+      ? '100%'
+      : '0'}); visibility: {collapsed ? 'hidden' : 'visible'}; pointer-events: {collapsed
+      ? 'none'
+      : 'auto'};"
     aria-hidden={collapsed}
   >
     <!-- Resize handle on the left edge -->
@@ -1084,29 +1036,6 @@
             >
               <rect x="2" y="3" width="20" height="14" rx="2" />
               <path d="M8 21h8M12 17v4" />
-            </svg>
-          </button>
-          <!-- Workflow icon -->
-          <button
-            class="p-1.5 rounded-xl transition-colors {activeTab === 'workflow'
-              ? 'bg-accent/30 text-foreground'
-              : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
-            onclick={() => (activeTab = "workflow")}
-            title={t("toolActivity_tabWorkflow")}
-          >
-            <svg
-              class="h-3.5 w-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M5 6h14" />
-              <path d="M5 12h8" />
-              <path d="M5 18h14" />
-              <path d="m15 10 2 2 4-4" />
             </svg>
           </button>
           <!-- Info icon -->
@@ -1325,16 +1254,6 @@
             active={activeTab === "preview" && !collapsed}
             bind:requestedUrl={previewUrl}
           />
-        </div>
-      {/if}
-      {#if mountedTabs.has("workflow")}
-        <div
-          class="absolute inset-0 flex flex-col overflow-y-auto"
-          style="visibility: {activeTab === 'workflow'
-            ? 'visible'
-            : 'hidden'}; pointer-events: {activeTab === 'workflow' ? 'auto' : 'none'};"
-        >
-          <WorkflowPanel onExecute={onExecuteWorkflowStep} onNotify={onWorkflowNotify} />
         </div>
       {/if}
       {#if mountedTabs.has("info")}

@@ -19,6 +19,9 @@ export type CommandAction =
   | "preset:test"
   | "preset:docs";
 
+/**
+ * Enhanced command definition with fuzzy search support.
+ */
 export interface CommandDef {
   id: string;
   name: string;
@@ -28,6 +31,48 @@ export interface CommandDef {
   shortcut?: string;
   action: CommandAction;
   payload?: string;
+  // Enhanced fields from Claude Code design
+  fuzzyKeywords?: string[]; // Additional keywords for fuzzy matching
+  usageCount?: number; // Track usage for sorting
+  icon?: string; // Command icon
+  preview?: (payload?: string) => Promise<string>; // Preview function
+}
+
+// Command usage statistics storage key
+const USAGE_STATS_KEY = "miwarp:command-usage-stats";
+
+/**
+ * Get command usage statistics from localStorage.
+ */
+export function getCommandUsageStats(): Record<string, number> {
+  if (typeof localStorage === "undefined") return {};
+  try {
+    const stored = localStorage.getItem(USAGE_STATS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Increment command usage count.
+ */
+export function recordCommandUsage(commandId: string): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    const stats = getCommandUsageStats();
+    stats[commandId] = (stats[commandId] || 0) + 1;
+    localStorage.setItem(USAGE_STATS_KEY, JSON.stringify(stats));
+  } catch {
+    // Silently fail if localStorage is not available
+  }
+}
+
+/**
+ * Get usage count for a specific command.
+ */
+export function getCommandUsageCount(commandId: string): number {
+  return getCommandUsageStats()[commandId] || 0;
 }
 
 export const commands: CommandDef[] = [
@@ -40,6 +85,8 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "open_modal",
     payload: "model-selector",
+    icon: "🎯",
+    fuzzyKeywords: ["model", "ai", "provider", "claude", "anthropic"],
   },
   {
     id: "compact",
@@ -49,6 +96,8 @@ export const commands: CommandDef[] = [
     agent: "claude",
     action: "send_prompt",
     payload: "/compact",
+    icon: "📦",
+    fuzzyKeywords: ["compact", "compress", "reduce", "context"],
   },
   {
     id: "toggle-plan",
@@ -58,6 +107,8 @@ export const commands: CommandDef[] = [
     agent: "claude",
     action: "toggle_state",
     payload: "plan_mode",
+    icon: "📋",
+    fuzzyKeywords: ["plan", "mode", "thinking"],
   },
   {
     id: "review",
@@ -68,6 +119,8 @@ export const commands: CommandDef[] = [
     action: "send_prompt",
     payload:
       "Review my recent changes. Look at the git diff and provide feedback on code quality, potential bugs, and improvements.",
+    icon: "🔍",
+    fuzzyKeywords: ["review", "code review", "pr", "pull request", "feedback"],
   },
   {
     id: "export-chat",
@@ -78,6 +131,8 @@ export const commands: CommandDef[] = [
     shortcut: "Cmd+Shift+E",
     action: "ipc_command",
     payload: "export_conversation",
+    icon: "📤",
+    fuzzyKeywords: ["export", "save", "download", "chat history"],
   },
   {
     id: "export-chat-html",
@@ -88,6 +143,8 @@ export const commands: CommandDef[] = [
     shortcut: "Cmd+Shift+H",
     action: "ipc_command",
     payload: "export_conversation_html",
+    icon: "🌐",
+    fuzzyKeywords: ["export", "html", "web", "save"],
   },
   {
     id: "new-claude",
@@ -97,17 +154,9 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/chat?agent=claude",
+    icon: "💬",
+    fuzzyKeywords: ["new", "chat", "conversation", "claude"],
   },
-  // Codex disabled
-  // {
-  //   id: "new-codex",
-  //   name: "New Codex Chat",
-  //   description: "Start a new Codex conversation",
-  //   category: "chat",
-  //   agent: "both",
-  //   action: "navigate",
-  //   payload: "/chat?agent=codex",
-  // },
   {
     id: "stop-run",
     name: "cmd_name_stopRun",
@@ -116,6 +165,8 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "ipc_command",
     payload: "stop_run",
+    icon: "⏹",
+    fuzzyKeywords: ["stop", "cancel", "abort", "interrupt"],
   },
 
   // Tools
@@ -128,6 +179,8 @@ export const commands: CommandDef[] = [
     shortcut: "Cmd+Shift+D",
     action: "ipc_command",
     payload: "get_git_diff",
+    icon: "📊",
+    fuzzyKeywords: ["git", "diff", "changes", "modifications"],
   },
   {
     id: "git-status",
@@ -137,6 +190,8 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "ipc_command",
     payload: "get_git_status",
+    icon: "📁",
+    fuzzyKeywords: ["git", "status", "files", "staged", "untracked"],
   },
   {
     id: "token-cost",
@@ -146,6 +201,8 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "ipc_command",
     payload: "get_run_artifacts",
+    icon: "💰",
+    fuzzyKeywords: ["token", "cost", "usage", "billing", "price"],
   },
 
   // Navigation
@@ -157,6 +214,8 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/scheduled-tasks",
+    icon: "⏰",
+    fuzzyKeywords: ["schedule", "tasks", "automated", "cron", "jobs"],
   },
   {
     id: "go-chat",
@@ -166,6 +225,8 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/chat",
+    icon: "💬",
+    fuzzyKeywords: ["chat", "conversation", "message"],
   },
   {
     id: "go-settings",
@@ -175,6 +236,8 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/settings",
+    icon: "⚙️",
+    fuzzyKeywords: ["settings", "preferences", "config", "options"],
   },
   {
     id: "go-memory",
@@ -184,6 +247,8 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/memory",
+    icon: "🧠",
+    fuzzyKeywords: ["memory", "context", "notes", "knowledge"],
   },
   {
     id: "go-usage",
@@ -193,17 +258,9 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/usage",
+    icon: "📈",
+    fuzzyKeywords: ["usage", "statistics", "stats", "analytics", "billing"],
   },
-  // Codex disabled
-  // {
-  //   id: "go-codex-config",
-  //   name: "Go to Codex Config",
-  //   description: "Navigate to Codex agent configuration",
-  //   category: "navigation",
-  //   agent: "both",
-  //   action: "navigate",
-  //   payload: "/config/codex",
-  // },
   {
     id: "go-plugins",
     name: "Go to Plugins",
@@ -212,6 +269,8 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/plugins",
+    icon: "🧩",
+    fuzzyKeywords: ["plugins", "extensions", "skills", "addons", "marketplace"],
   },
 
   // Settings
@@ -223,6 +282,8 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "open_modal",
     payload: "model-selector",
+    icon: "🤖",
+    fuzzyKeywords: ["default", "model", "ai", "change"],
   },
   {
     id: "set-cwd",
@@ -232,6 +293,8 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "open_modal",
     payload: "folder-browser",
+    icon: "📂",
+    fuzzyKeywords: ["directory", "folder", "workspace", "path", "cwd"],
   },
   {
     id: "configure-tools",
@@ -241,6 +304,8 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/settings",
+    icon: "🔧",
+    fuzzyKeywords: ["tools", "configure", "permissions", "allowed"],
   },
   {
     id: "permissions",
@@ -250,6 +315,8 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "open_modal",
     payload: "permissions",
+    icon: "🔐",
+    fuzzyKeywords: ["permissions", "security", "rules", "allow", "deny"],
   },
 
   // Diagnostics
@@ -261,6 +328,8 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "ipc_command",
     payload: "check_agent_cli",
+    icon: "🩺",
+    fuzzyKeywords: ["doctor", "check", "diagnose", "health", "status"],
   },
   {
     id: "version",
@@ -270,20 +339,124 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "open_modal",
     payload: "version-info",
+    icon: "ℹ️",
+    fuzzyKeywords: ["version", "info", "about", "miwarp"],
   },
 ];
 
+/**
+ * Basic filter - uses substring matching only (synchronous).
+ */
 export function filterCommands(query: string, agent?: string): CommandDef[] {
-  const q = query.toLowerCase();
-  return commands.filter((cmd) => {
-    if (agent && cmd.agent !== "both" && cmd.agent !== agent) return false;
-    if (!q) return true;
-    return (
-      cmd.name.toLowerCase().includes(q) ||
-      cmd.description.toLowerCase().includes(q) ||
-      cmd.id.includes(q)
-    );
+  const q = query.toLowerCase().trim();
+  const usageStats = getCommandUsageStats();
+
+  const filtered = commands.filter((cmd) => {
+    // Agent filter
+    if (agent && cmd.agent !== "both" && cmd.agent !== agent) {
+      return false;
+    }
+
+    // Empty query returns all commands
+    if (!q) {
+      return true;
+    }
+
+    // Build searchable fields
+    const searchable = [
+      cmd.name.toLowerCase(),
+      cmd.description.toLowerCase(),
+      cmd.id,
+      ...(cmd.fuzzyKeywords || []).map((k) => k.toLowerCase()),
+    ];
+
+    // Exact substring match
+    return searchable.some((str) => str.includes(q));
   });
+
+  // Sort by: usage count (desc), then by name (asc)
+  return filtered.sort((a, b) => {
+    const aUsage = usageStats[a.id] || a.usageCount || 0;
+    const bUsage = usageStats[b.id] || b.usageCount || 0;
+    if (bUsage !== aUsage) {
+      return bUsage - aUsage;
+    }
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/**
+ * Advanced fuzzy filter - uses Levenshtein distance for better matching (async).
+ */
+export async function filterCommandsFuzzy(query: string, agent?: string): Promise<CommandDef[]> {
+  const { multiFieldFuzzyMatch } = await import("./utils/fuzzy");
+  const usageStats = getCommandUsageStats();
+
+  const filtered = commands.filter((cmd) => {
+    // Agent filter
+    if (agent && cmd.agent !== "both" && cmd.agent !== agent) {
+      return false;
+    }
+
+    // Empty query returns all commands
+    if (!query.trim()) {
+      return true;
+    }
+
+    // Build searchable fields with weights
+    const fields: Record<string, string> = {
+      name: cmd.name,
+      description: cmd.description,
+      id: cmd.id,
+    };
+
+    // Add keywords
+    (cmd.fuzzyKeywords || []).forEach((kw, i) => {
+      fields[`keyword_${i}`] = kw;
+    });
+
+    const weights: Record<string, number> = {
+      name: 1.5, // Name has higher weight
+      description: 1.0,
+      id: 0.5, // ID has lower weight
+    };
+
+    // Add lower weights to keywords
+    Object.keys(fields).forEach((key) => {
+      if (key.startsWith("keyword_") && weights[key] === undefined) {
+        weights[key] = 0.8;
+      }
+    });
+
+    const result = multiFieldFuzzyMatch(query, fields, { weights });
+    return result.matched;
+  });
+
+  // Sort by: usage count (desc), then by fuzzy score, then by name
+  const scored = await Promise.all(
+    filtered.map(async (cmd) => {
+      const usageCount = usageStats[cmd.id] || cmd.usageCount || 0;
+      const { multiFieldFuzzyMatch: fuzzy } = await import("./utils/fuzzy");
+      const fields = {
+        name: cmd.name,
+        description: cmd.description,
+      };
+      const result = fuzzy(query, fields);
+      return { cmd, usageCount, fuzzyScore: result.score };
+    }),
+  );
+
+  return scored
+    .sort((a, b) => {
+      if (b.usageCount !== a.usageCount) {
+        return b.usageCount - a.usageCount;
+      }
+      if (b.fuzzyScore !== a.fuzzyScore) {
+        return b.fuzzyScore - a.fuzzyScore;
+      }
+      return a.cmd.name.localeCompare(b.cmd.name);
+    })
+    .map((s) => s.cmd);
 }
 
 export function groupByCategory(cmds: CommandDef[]): Record<CommandCategory, CommandDef[]> {
@@ -319,6 +492,8 @@ export const multiAgentCommands: CommandDef[] = [
     category: "system",
     agent: "claude",
     action: "panel:multi-agent",
+    icon: "👥",
+    fuzzyKeywords: ["multi", "agent", "team", "collaborate"],
   },
   {
     id: "fullstack",
@@ -327,6 +502,8 @@ export const multiAgentCommands: CommandDef[] = [
     category: "system",
     agent: "claude",
     action: "preset:fullstack",
+    icon: "🚀",
+    fuzzyKeywords: ["fullstack", "frontend", "backend", "full"],
   },
   {
     id: "review-all",
@@ -335,6 +512,8 @@ export const multiAgentCommands: CommandDef[] = [
     category: "system",
     agent: "claude",
     action: "preset:review",
+    icon: "🔍",
+    fuzzyKeywords: ["review", "all", "code", "pr"],
   },
   {
     id: "implement-all",
@@ -343,6 +522,8 @@ export const multiAgentCommands: CommandDef[] = [
     category: "system",
     agent: "claude",
     action: "preset:upgrade",
+    icon: "⚡",
+    fuzzyKeywords: ["implement", "upgrade", "improve", "all"],
   },
   {
     id: "test-all",
@@ -351,6 +532,8 @@ export const multiAgentCommands: CommandDef[] = [
     category: "system",
     agent: "claude",
     action: "preset:test",
+    icon: "🧪",
+    fuzzyKeywords: ["test", "testing", "all", "run"],
   },
   {
     id: "docs-all",
@@ -359,6 +542,8 @@ export const multiAgentCommands: CommandDef[] = [
     category: "system",
     agent: "claude",
     action: "preset:docs",
+    icon: "📝",
+    fuzzyKeywords: ["docs", "documentation", "all", "generate"],
   },
 ];
 

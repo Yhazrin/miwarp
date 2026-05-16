@@ -533,12 +533,15 @@ pub(crate) async fn start_session_impl(
     //     Session-scoped: does not touch persisted user settings. Must run BEFORE spawn
     //     so the CLI's --permission-mode arg reflects the override for the first turn.
     if let Some(ref override_mode) = permission_mode_override {
+        // Normalize the override through the same mapping as user settings
+        let mapped = adapter::map_permission_mode(override_mode);
         log::debug!(
-            "[session] permission_mode override: {:?} → {:?}",
+            "[session] permission_mode override: {:?} → {:?} (mapped from {:?})",
             adapter_settings.permission_mode,
+            mapped,
             override_mode
         );
-        adapter_settings.permission_mode = Some(override_mode.clone());
+        adapter_settings.permission_mode = Some(mapped);
     }
 
     // 2b. Resolve remote host from RunMeta (audit #2: single truth source)

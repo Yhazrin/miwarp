@@ -60,9 +60,11 @@
   }
 
   .glass-sidebar {
-    background: hsla(var(--miwarp-bg-deepest), 0.72);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: hsla(var(--miwarp-bg-deepest), 0.78);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.08);
   }
 
   /* Elevation system */
@@ -861,9 +863,30 @@ code.hljs {
 }
 
 /* ── macOS drag region for overlay title bar ── */
+/*
+ * .window-drag-area is the original spacer-style drag region. It must keep
+ * pointer-events: auto so the JS onpointerdown handler in WindowDragArea.svelte
+ * can fire startDragging() on Linux/Windows (where -webkit-app-region is a
+ * no-op). On macOS the CSS rule alone is enough — WebKit handles drag before
+ * pointer events run. Z-index is intentionally NOT raised here; the handler
+ * already bails when the pointerdown target is interactive.
+ */
 .window-drag-area {
   -webkit-app-region: drag;
+  app-region: drag;
   pointer-events: auto;
+}
+
+/*
+ * .session-status-drag turns the whole SessionStatusBar shell into a drag
+ * region without breaking the buttons inside (those are excluded by the
+ * global no-drag rule below). No JS handler is attached on the shell itself,
+ * because the children include the real interactive widgets — relying on
+ * the OS-level drag region keeps the markup simple.
+ */
+.session-status-drag {
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 
 /* Ensure interactive elements are NOT draggable */

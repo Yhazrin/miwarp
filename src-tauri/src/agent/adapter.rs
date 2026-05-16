@@ -36,14 +36,16 @@ pub struct AdapterSettings {
 }
 
 /// Map MiWarp permission mode names to Claude CLI `--permission-mode` values.
-fn map_permission_mode(mode: &str) -> String {
+pub fn map_permission_mode(mode: &str) -> String {
     match mode {
         "ask" => "default".to_string(),
         "auto_read" => "acceptEdits".to_string(),
-        "auto_all" => "bypassPermissions".to_string(),
+        "auto_all" | "auto-accept-all" => "bypassPermissions".to_string(),
         "auto" => "auto".to_string(),
         "delegate" => "acceptEdits".to_string(), // CLI v2.1.81+ alias for acceptEdits
-        "dont_ask" => "dontAsk".to_string(),
+        "dont_ask" | "dontAsk" => "dontAsk".to_string(),
+        // Already-mapped CLI values — pass through unchanged
+        "bypassPermissions" | "acceptEdits" | "default" => mode.to_string(),
         other => {
             log::warn!(
                 "[adapter] unknown permission_mode '{}', passing through to CLI",

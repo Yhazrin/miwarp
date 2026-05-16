@@ -281,6 +281,164 @@ function buildConversationsForRuns(
   return conversations;
 }
 
+// ── Enriched project folders (logical sub-folders nested inside project paths) ──
+
+export interface EnrichedProjectFolder extends ProjectFolder {
+  /** Logical sub-folders that contain sessions from this project path. */
+  subFolders: SessionFolderGroup[];
+  /** Only sessions NOT assigned to any sub-folder. */
+  conversations: ConversationGroup[];
+}
+
+/**
+ * Builds project folders enriched with nested logical sub-folders.
+ * - Sessions assigned to a SessionFolder are excluded from `conversations` (they appear in `subFolders`).
+ * - Each SessionFolderGroup is assigned to the project path that its sessions belong to.
+ * - Empty SessionFolders go to the uncategorized bucket.
+ */
+export function buildEnrichedProjectFolders(
+  runs: TaskRun[],
+  sessionFolders: SessionFolder[],
+  favoriteRunIds: Set<string>,
+  pinnedCwds: string[],
+  removedCwds: string[] = [],
+): EnrichedProjectFolder[] {
+  // 1. Partition runs: foldered vs unfoldered
+  const folderRunMap = new Map<string, TaskRun[]>();
+  const unfoldered: TaskRun[] = [];
+  for (const run of runs) {
+    if (run.folder_id) {
+      let bucket = folderRunMap.get(run.folder_id);
+      if (!bucket) {
+        bucket = [];
+        folderRunMap.set(run.folder_id, bucket);
+      }
+      bucket.push(run);
+    } else {
+      unfoldered.push(run);
+    }
+  }
+
+  // 2. Determine which cwd each SessionFolder belongs to (majority vote from its sessions)
+  const folderCwdMap = new Map<string, string>();
+  for (const folder of sessionFolders) {
+    const bucketRuns = folderRunMap.get(folder.id) ?? [];
+    if (bucketRuns.length === 0) {
+      folderCwdMap.set(folder.id, ""); // empty → uncategorized
+      continue;
+    }
+    // Count cwd occurrences
+    const cwdCounts = new Map<string, number>();
+    for (const r of bucketRuns) {
+      const cwd = normalizeCwd(r.parent_cwd ?? r.cwd);
+      cwdCounts.set(cwd, (cwdCounts.get(cwd) ?? 0) + 1);
+    }
+    // Pick majority cwd
+    let bestCwd = "";
+    let bestCount = 0;
+    for (const [cwd, count] of cwdCounts) {
+      if (count > bestCount) {
+        bestCwd = cwd;
+        bestCount = count;
+      }
+    }
+    folderCwdMap.set(folder.id, bestCwd);
+  }
+
+  // 3. Build project folder buckets from UNFOLDERED runs
+  const removedSet = new Set(removedCwds.map(normalizeCwd));
+  removedSet.delete("");
+  const cleanPinned = pinnedCwds.map(normalizeCwd).filter((c) => c !== "" && !removedSet.has(c));
+
+  const cwdBuckets = new Map<string, TaskRun[]>();
+  for (const run of unfoldered) {
+    const cwd = normalizeCwd(run.parent_cwd ?? run.cwd);
+    if (removedSet.has(cwd)) continue;
+    let bucket = cwdBuckets.get(cwd);
+    if (!bucket) {
+      bucket = [];
+      cwdBuckets.set(cwd, bucket);
+    }
+    bucket.push(run);
+  }
+  // Ensure pinned cwds exist
+  for (const cwd of cleanPinned) {
+    if (!cwdBuckets.has(cwd)) cwdBuckets.set(cwd, []);
+  }
+  // Also ensure any cwd that has session folders appears
+  for (const [folderId, cwd] of folderCwdMap) {
+    if (cwd !== "" && !removedSet.has(cwd) && !cwdBuckets.has(cwd)) {
+      cwdBuckets.set(cwd, []);
+    }
+  }
+
+  // 4. Build sub-folder groups map: cwd → SessionFolderGroup[]
+  const cwdSubFolders = new Map<string, SessionFolderGroup[]>();
+  for (const folder of sessionFolders) {
+    const cwd = folderCwdMap.get(folder.id) ?? "";
+    const bucketRuns = folderRunMap.get(folder.id) ?? [];
+    const conversations = buildConversationsForRuns(bucketRuns, favoriteRunIds);
+    const latestActivityAt =
+      conversations.length > 0 ? sortKey(conversations[0].latestRun) : folder.updatedAt;
+    const sfg: SessionFolderGroup = {
+      folderId: folder.id,
+      folderKey: `sf:${folder.id}`,
+      name: folder.name,
+      conversations,
+      conversationCount: conversations.length,
+      latestActivityAt,
+    };
+    let arr = cwdSubFolders.get(cwd);
+    if (!arr) {
+      arr = [];
+      cwdSubFolders.set(cwd, arr);
+    }
+    arr.push(sfg);
+    // Ensure uncategorized cwd bucket exists for folders with no project
+    if (cwd === "" && !cwdBuckets.has("")) cwdBuckets.set("", []);
+  }
+  // Sort sub-folder lists
+  for (const arr of cwdSubFolders.values()) {
+    arr.sort((a, b) => b.latestActivityAt.localeCompare(a.latestActivityAt));
+  }
+
+  // 5. Build EnrichedProjectFolders
+  const folders: EnrichedProjectFolder[] = [];
+  for (const [cwd, bucketRuns] of cwdBuckets) {
+    const isUncategorized = cwd === "";
+    const folderKey = isUncategorized ? "uncategorized" : `cwd:${cwd}`;
+    const conversations = buildConversationsForRuns(bucketRuns, favoriteRunIds);
+    const subFolders = cwdSubFolders.get(cwd) ?? [];
+    const allLatest = [
+      ...conversations.map((c) => sortKey(c.latestRun)),
+      ...subFolders.map((sf) => sf.latestActivityAt),
+    ]
+      .sort()
+      .reverse();
+    const latestActivityAt = allLatest[0] ?? "";
+    const totalCount =
+      conversations.length + subFolders.reduce((s, sf) => s + sf.conversationCount, 0);
+
+    folders.push({
+      cwd,
+      folderKey,
+      isUncategorized,
+      conversations,
+      conversationCount: totalCount,
+      latestActivityAt,
+      subFolders,
+    });
+  }
+
+  folders.sort((a, b) => {
+    if (a.isUncategorized && !b.isUncategorized) return 1;
+    if (!a.isUncategorized && b.isUncategorized) return -1;
+    return b.latestActivityAt.localeCompare(a.latestActivityAt);
+  });
+
+  return folders;
+}
+
 // ── Session folder groups ──
 
 export function buildSessionFolderGroups(

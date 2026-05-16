@@ -3,6 +3,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { SKILL_CATEGORIES } from "$lib/types/skill";
   import { dbg } from "$lib/utils/debug";
+  import SkillPreviewDialog from "./SkillPreviewDialog.svelte";
 
   interface Props {
     skill: Skill;
@@ -16,6 +17,8 @@
 
   let showMenu = $state(false);
   let menuEl: HTMLDivElement | undefined = $state();
+  let showPreview = $state(false);
+  let previewArgs = $state("");
 
   const categoryInfo = $derived(
     SKILL_CATEGORIES.find((c) => c.value === skill.category) ||
@@ -40,6 +43,16 @@
   function toggleMenu(e: Event) {
     e.stopPropagation();
     showMenu = !showMenu;
+  }
+
+  function handlePreview(e: Event) {
+    e.stopPropagation();
+    showPreview = true;
+  }
+
+  function handleConfirm(skill: Skill, args: string) {
+    showPreview = false;
+    onSelect?.(skill);
   }
 
   function formatDate(dateStr: string): string {
@@ -148,12 +161,43 @@
         <span class="text-xs text-muted-foreground">{categoryInfo.label}</span>
       </div>
 
-      <!-- Metadata -->
-      <div class="flex items-center gap-3 text-xs text-muted-foreground">
-        {#if skill.author}
-          <span>{skill.author}</span>
-        {/if}
-        <span>{formatDate(skill.updatedAt)}</span>
+      <!-- Action buttons -->
+      <div class="flex items-center gap-2">
+        <button
+          class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium
+            bg-secondary/50 hover:bg-secondary text-secondary-foreground transition-colors
+            opacity-0 group-hover:opacity-100"
+          onclick={handlePreview}
+          title="Preview skill execution"
+        >
+          <svg
+            class="h-3.5 w-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          Preview
+        </button>
+        <button
+          class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium
+            bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+          onclick={handleSelect}
+        >
+          <svg
+            class="h-3.5 w-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polygon points="5 3 19 12 5 21 5 3" />
+          </svg>
+          Execute
+        </button>
       </div>
     </div>
 
@@ -174,6 +218,15 @@
     {/if}
   {/if}
 </div>
+
+<!-- Preview Dialog -->
+<SkillPreviewDialog
+  bind:open={showPreview}
+  {skill}
+  args={previewArgs}
+  onConfirm={handleConfirm}
+  onCancel={() => (showPreview = false)}
+/>
 
 <style>
   .line-clamp-2 {

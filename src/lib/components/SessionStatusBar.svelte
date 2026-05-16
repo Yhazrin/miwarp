@@ -452,7 +452,7 @@
   spacers below are kept for Linux/Windows where the JS handler is needed.
 -->
 <div
-  class="session-status-drag relative mx-4 mt-3 rounded-full border border-border/35 bg-background/46 font-mono text-xs text-foreground/70 backdrop-blur-xl"
+  class="session-status-drag relative mx-4 mt-3 rounded-full border border-white/10 bg-background/55 font-mono text-xs text-foreground/70 backdrop-blur-2xl shadow-[0_2px_16px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.08)]"
   data-tauri-drag-region
 >
   <!-- Left drag spacer (Linux/Windows JS fallback) -->

@@ -7,10 +7,11 @@
   const WEBVIEW_LABEL = "chat-preview-pane";
   const PREVIEW_URL_KEY = "ocv:preview-url";
   const QUICK_PORTS = [
-    { port: 3000, label: "localhost:3000" },
-    { port: 5173, label: "localhost:5173" },
-    { port: 1420, label: "localhost:1420" },
-    { port: 4173, label: "localhost:4173" },
+    { label: ":3000", url: "http://localhost:3000" },
+    { label: ":5173", url: "http://localhost:5173" },
+    { label: ":4173", url: "http://localhost:4173" },
+    { label: ":8080", url: "http://localhost:8080" },
+    { label: ":1420", url: "http://localhost:1420" },
   ];
 
   let {
@@ -194,6 +195,8 @@
           focus: false,
           zoomHotkeysEnabled: true,
           devtools: import.meta.env.DEV,
+          userAgent:
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         });
         await waitForCreate(instance);
         webview = instance;
@@ -231,8 +234,8 @@
     await ensureWebview(normalized);
   }
 
-  function handleQuickPort(port: number) {
-    urlInput = `http://localhost:${port}`;
+  function handleQuickPort(url: string) {
+    urlInput = url;
     void handleGo();
   }
 
@@ -322,17 +325,27 @@
 
 <div bind:this={shellRoot} class="flex h-full min-h-0 flex-col gap-2 bg-transparent p-2">
   <div class="rounded-2xl border border-border/40 bg-background/40 px-3 py-2 backdrop-blur-xl">
-    <div class="mb-2 flex items-center gap-2">
-      <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
-        >{t("preview_nativeBadge")}</span
-      >
-      <span class="text-[10px] text-muted-foreground">{t("preview_cookieHint")}</span>
-    </div>
+    <!-- URL bar -->
     <div class="flex items-center gap-2">
+      <!-- Globe icon -->
+      <svg
+        class="h-3.5 w-3.5 shrink-0 text-muted-foreground/60"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" />
+        <path
+          d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
+        />
+      </svg>
       <input
         type="text"
         bind:value={urlInput}
-        placeholder="http://localhost:3000"
+        placeholder="输入网址或 localhost:3000"
         class="min-w-0 flex-1 rounded-xl border border-border/50 bg-background/40 px-3 py-1.5 text-xs text-foreground outline-none transition-colors focus:border-primary/50"
         onkeydown={(event) => {
           if (event.key === "Enter") {
@@ -346,7 +359,7 @@
         onclick={handleGo}
         disabled={creating}
       >
-        {creating ? t("preview_loading") : t("preview_go")}
+        {creating ? "..." : "前往"}
       </button>
       {#if hasLoaded}
         <button
@@ -354,13 +367,21 @@
           onclick={() => void handleResetSession()}
           title={t("preview_resetSession")}
         >
-          {t("preview_resetShort")}
+          重置
         </button>
       {/if}
     </div>
     {#if lastError}
-      <p class="mt-2 text-[11px] text-destructive">{lastError}</p>
+      <p class="mt-1.5 text-[11px] text-destructive">{lastError}</p>
     {/if}
+    <!-- Native webview hint -->
+    <div class="mt-1.5 flex items-center gap-2">
+      <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
+        >原生预览</span
+      >
+      <span class="text-[10px] text-muted-foreground/60">支持任意网址 · 保持 Cookie 和登录状态</span
+      >
+    </div>
   </div>
 
   {#if !desktopAvailable}
@@ -397,10 +418,11 @@
             <p class="mt-1 text-xs text-muted-foreground/70">{t("preview_emptyHint")}</p>
           </div>
           <div class="flex flex-wrap items-center justify-center gap-2">
+            <span class="text-[10px] text-muted-foreground/50">本地端口：</span>
             {#each QUICK_PORTS as qp}
               <button
-                class="rounded-lg border border-border/50 bg-background/40 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent/20 hover:text-foreground"
-                onclick={() => handleQuickPort(qp.port)}
+                class="rounded-lg border border-border/50 bg-background/40 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent/20 hover:text-foreground font-mono"
+                onclick={() => handleQuickPort(qp.url)}
               >
                 {qp.label}
               </button>

@@ -6,7 +6,6 @@
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
   import { ScheduledTasksService } from "$lib/services/scheduled-tasks-service";
   import {
-    CRON_PRESETS,
     INTERVAL_PRESETS,
     DEFAULT_TASK_TEMPLATES,
     type Agent,
@@ -19,13 +18,55 @@
   import { getUserSettings } from "$lib/api";
   import type { UserSettings } from "$lib/types";
 
+  // Friendly schedule builder state
+  type FrequencyType =
+    | "minutely"
+    | "interval_min"
+    | "hourly"
+    | "daily"
+    | "weekly"
+    | "monthly"
+    | "custom_cron";
+  let frequency = $state<FrequencyType>("daily");
+  let schedHour = $state(9);
+  let schedMinute = $state(0);
+  let schedIntervalMin = $state(30); // for interval_min mode
+  let schedWeekdays = $state<number[]>([1, 2, 3, 4, 5]); // 0=Sun … 6=Sat
+  let schedMonthDay = $state(1);
+  let customCronExpr = $state(""); // only used when frequency === "custom_cron"
+
+  // Derived cron expression from friendly inputs
+  const cronExpression = $derived.by(() => {
+    const h = schedHour.toString();
+    const m = schedMinute.toString();
+    switch (frequency) {
+      case "minutely":
+        return "* * * * *";
+      case "interval_min":
+        return `*/${schedIntervalMin} * * * *`;
+      case "hourly":
+        return `${m} * * * *`;
+      case "daily":
+        return `${m} ${h} * * *`;
+      case "weekly": {
+        const days = schedWeekdays.length > 0 ? schedWeekdays.join(",") : "*";
+        return `${m} ${h} * * ${days}`;
+      }
+      case "monthly":
+        return `${m} ${h} ${schedMonthDay} * *`;
+      case "custom_cron":
+        return customCronExpr.trim();
+      default:
+        return "0 9 * * *";
+    }
+  });
+
   // Form state
   let name = $state("");
   let description = $state("");
   let prompt = $state("");
   let agent = $state<Agent>("claude");
   let scheduleType = $state<ScheduleType>("cron");
-  let cronExpression = $state("0 9 * * *");
   let intervalMinutes = $state(60);
   let fireAtDate = $state("");
   let fireAtTime = $state("09:00");
@@ -33,6 +74,69 @@
   let model = $state("");
   let workspaceCwd = $state("");
   let remoteHostName = $state<string>("");
+
+  const WEEKDAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
+  const FREQUENCY_OPTIONS: { value: FrequencyType; label: string }[] = [
+    { value: "minutely", label: "每分钟" },
+    { value: "interval_min", label: "每隔N分钟" },
+    { value: "hourly", label: "每小时" },
+    { value: "daily", label: "每天" },
+    { value: "weekly", label: "每周" },
+    { value: "monthly", label: "每月" },
+    { value: "custom_cron", label: "自定义" },
+  ];
+
+  function toggleWeekday(day: number) {
+    if (schedWeekdays.includes(day)) {
+      schedWeekdays = schedWeekdays.filter((d) => d !== day);
+    } else {
+      schedWeekdays = [...schedWeekdays, day].sort();
+    }
+  }
+
+  /** Parse an existing cron expression back into friendly fields (best-effort). */
+  function parseCronToFriendly(expr: string) {
+    const parts = expr.trim().split(/\s+/);
+    if (parts.length !== 5) {
+      frequency = "custom_cron";
+      customCronExpr = expr;
+      return;
+    }
+    const [min, hour, day, _month, weekday] = parts;
+    if (expr === "* * * * *") {
+      frequency = "minutely";
+      return;
+    }
+    if (min.startsWith("*/")) {
+      frequency = "interval_min";
+      schedIntervalMin = parseInt(min.slice(2)) || 30;
+      return;
+    }
+    if (min !== "*" && hour === "*") {
+      frequency = "hourly";
+      schedMinute = parseInt(min) || 0;
+      return;
+    }
+    if (min !== "*" && hour !== "*") {
+      schedHour = parseInt(hour) || 9;
+      schedMinute = parseInt(min) || 0;
+      if (weekday !== "*") {
+        frequency = "weekly";
+        schedWeekdays = weekday
+          .split(",")
+          .map(Number)
+          .filter((n) => !isNaN(n));
+      } else if (day !== "*") {
+        frequency = "monthly";
+        schedMonthDay = parseInt(day) || 1;
+      } else {
+        frequency = "daily";
+      }
+      return;
+    }
+    frequency = "custom_cron";
+    customCronExpr = expr;
+  }
 
   // Settings for remote hosts
   let settings = $state<UserSettings | null>(null);
@@ -59,7 +163,9 @@
       prompt = task.prompt;
       agent = task.agent;
       scheduleType = task.schedule.type;
-      cronExpression = task.schedule.cronExpression ?? "0 9 * * *";
+      if (task.schedule.cronExpression) {
+        parseCronToFriendly(task.schedule.cronExpression);
+      }
       intervalMinutes = task.schedule.intervalMinutes ?? 60;
       permissionMode = task.permissionMode ?? "";
       model = task.model ?? "";
@@ -81,7 +187,13 @@
       prompt = "";
       agent = "claude";
       scheduleType = "cron";
-      cronExpression = "0 9 * * *";
+      frequency = "daily";
+      schedHour = 9;
+      schedMinute = 0;
+      schedWeekdays = [1, 2, 3, 4, 5];
+      schedMonthDay = 1;
+      schedIntervalMin = 30;
+      customCronExpr = "";
       intervalMinutes = 60;
       fireAtDate = "";
       fireAtTime = "09:00";
@@ -187,16 +299,14 @@
     }
   }
 
-  function applyPreset(preset: (typeof CRON_PRESETS)[number]) {
-    cronExpression = preset.expression;
-  }
-
   function applyTemplate(template: (typeof DEFAULT_TASK_TEMPLATES)[number]) {
     name = template.name;
     description = template.description;
     prompt = template.prompt;
     scheduleType = template.schedule.type;
-    if (template.schedule.cronExpression) cronExpression = template.schedule.cronExpression;
+    if (template.schedule.cronExpression) {
+      parseCronToFriendly(template.schedule.cronExpression);
+    }
     if (template.schedule.intervalMinutes) intervalMinutes = template.schedule.intervalMinutes;
   }
 
@@ -432,32 +542,130 @@
           </div>
         </div>
 
-        <!-- Cron -->
+        <!-- Cron — friendly builder -->
         {#if scheduleType === "cron"}
-          <div class="space-y-2">
-            <input
-              id="cronExpression"
-              type="text"
-              bind:value={cronExpression}
-              placeholder="0 9 * * *"
-              class="w-full px-3 py-2 rounded-md border border-input bg-background text-sm font-mono"
-            />
-            {#if errors.cronExpression}
-              <p class="text-xs text-destructive">{errors.cronExpression}</p>
-            {/if}
-            <div class="flex flex-wrap gap-1.5">
-              {#each CRON_PRESETS as preset}
-                <button
-                  type="button"
-                  onclick={() => applyPreset(preset)}
-                  class="px-2 py-1 text-xs rounded-md border border-border hover:bg-muted transition-colors"
-                >
-                  {preset.label}
-                </button>
-              {/each}
+          <div class="space-y-3 rounded-lg border border-border bg-muted/20 p-3">
+            <!-- Frequency selector -->
+            <div class="space-y-1.5">
+              <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                >执行频率</label
+              >
+              <div class="flex flex-wrap gap-1.5">
+                {#each FREQUENCY_OPTIONS as opt}
+                  <button
+                    type="button"
+                    onclick={() => (frequency = opt.value)}
+                    class="px-3 py-1 text-xs rounded-full border transition-colors {frequency ===
+                    opt.value
+                      ? 'bg-background text-foreground shadow-sm border-border'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}"
+                  >
+                    {opt.label}
+                  </button>
+                {/each}
+              </div>
             </div>
-            <p class="text-xs text-muted-foreground">
-              {ScheduledTasksService.describeCronExpression(cronExpression)}
+
+            <!-- Interval minutes -->
+            {#if frequency === "interval_min"}
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-muted-foreground">每隔</span>
+                <select
+                  bind:value={schedIntervalMin}
+                  class="px-2 py-1 rounded-md border border-input bg-background text-sm"
+                >
+                  {#each [5, 10, 15, 20, 30, 45] as m}
+                    <option value={m}>{m} 分钟</option>
+                  {/each}
+                </select>
+                <span class="text-sm text-muted-foreground">执行一次</span>
+              </div>
+            {/if}
+
+            <!-- Weekday picker -->
+            {#if frequency === "weekly"}
+              <div class="space-y-1.5">
+                <label class="text-xs font-medium text-muted-foreground">执行日</label>
+                <div class="flex gap-1.5">
+                  {#each [0, 1, 2, 3, 4, 5, 6] as day}
+                    <button
+                      type="button"
+                      onclick={() => toggleWeekday(day)}
+                      class="h-8 w-8 rounded-full text-xs font-medium border transition-colors {schedWeekdays.includes(
+                        day,
+                      )
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'border-border text-muted-foreground hover:border-foreground'}"
+                    >
+                      {WEEKDAY_LABELS[day]}
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+
+            <!-- Month day picker -->
+            {#if frequency === "monthly"}
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-muted-foreground">每月第</span>
+                <select
+                  bind:value={schedMonthDay}
+                  class="px-2 py-1 rounded-md border border-input bg-background text-sm"
+                >
+                  {#each Array.from({ length: 28 }, (_, i) => i + 1) as d}
+                    <option value={d}>{d}</option>
+                  {/each}
+                </select>
+                <span class="text-sm text-muted-foreground">日</span>
+              </div>
+            {/if}
+
+            <!-- Time picker (for modes that need it) -->
+            {#if frequency === "daily" || frequency === "weekly" || frequency === "monthly" || frequency === "hourly"}
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-muted-foreground"
+                  >{frequency === "hourly" ? "整点后" : "时间"}</span
+                >
+                {#if frequency !== "hourly"}
+                  <select
+                    bind:value={schedHour}
+                    class="px-2 py-1 rounded-md border border-input bg-background text-sm"
+                  >
+                    {#each Array.from({ length: 24 }, (_, i) => i) as h}
+                      <option value={h}>{h.toString().padStart(2, "0")} 时</option>
+                    {/each}
+                  </select>
+                {/if}
+                <select
+                  bind:value={schedMinute}
+                  class="px-2 py-1 rounded-md border border-input bg-background text-sm"
+                >
+                  {#each [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55] as m}
+                    <option value={m}>{m.toString().padStart(2, "0")} 分</option>
+                  {/each}
+                </select>
+              </div>
+            {/if}
+
+            <!-- Custom cron input -->
+            {#if frequency === "custom_cron"}
+              <div class="space-y-1">
+                <input
+                  type="text"
+                  bind:value={customCronExpr}
+                  placeholder="0 9 * * *（分 时 日 月 周）"
+                  class="w-full px-3 py-2 rounded-md border border-input bg-background text-sm font-mono"
+                />
+                {#if errors.cronExpression}
+                  <p class="text-xs text-destructive">{errors.cronExpression}</p>
+                {/if}
+              </div>
+            {/if}
+
+            <!-- Preview -->
+            <p class="text-xs text-muted-foreground/70 border-t border-border/50 pt-2">
+              {ScheduledTasksService.describeCronExpression(cronExpression)} ·
+              <span class="font-mono opacity-60">{cronExpression}</span>
             </p>
           </div>
         {/if}

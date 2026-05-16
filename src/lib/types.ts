@@ -200,6 +200,8 @@ export interface UserSettings {
   auto_pr_on_complete?: boolean;
   /** Cleanup worktree directory when session is deleted. */
   auto_cleanup_worktree?: boolean;
+  /** Show per-turn token usage report below each AI response. Default true. */
+  show_token_usage_report?: boolean;
   updated_at: string;
 }
 
