@@ -58,6 +58,18 @@ export async function listRuns(): Promise<TaskRun[]> {
   }
 }
 
+export async function listRunsSince(since: string): Promise<TaskRun[]> {
+  dbg("api", "listRunsSince", since);
+  try {
+    const runs = await invoke<TaskRun[]>("list_runs_since", { since });
+    dbg("api", "listRunsSince →", runs.length);
+    return runs;
+  } catch (e) {
+    dbgWarn("api", "listRunsSince error, falling back to full list", e);
+    return listRuns();
+  }
+}
+
 export async function getRun(id: string): Promise<TaskRun> {
   dbg("api", "getRun", id);
   return invoke<TaskRun>("get_run", { id });
@@ -237,6 +249,17 @@ export async function updateAgentSettings(
   // Sync sidebar resume-gate cache with updated settings
   import("$lib/stores/agent-settings-cache.svelte").then((m) => m.refreshAgentSettingsCache(agent));
   return result;
+}
+
+// Feishu webhook notification
+export async function sendFeishuNotification(
+  title: string,
+  body: string,
+  status?: string,
+  link?: string,
+): Promise<void> {
+  dbg("api", "sendFeishuNotification", { title, status });
+  return invoke<void>("send_feishu_notification", { title, body, status, link });
 }
 
 // Filesystem

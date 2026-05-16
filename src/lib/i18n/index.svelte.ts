@@ -3,6 +3,10 @@
  *
  * Supports: `{variable}` interpolation, fallback chain (locale -> en -> raw key),
  * reactive locale via Svelte 5 $state, localStorage persistence, async loading.
+ *
+ * Core locales (en, zh-CN) are statically imported for zero-flicker switching.
+ * Future locales use dynamic import for code splitting — add a loader in the
+ * `loaders` map below and an entry in registry.ts.
  */
 import en from "$messages/en.json";
 import zhCN from "$messages/zh-CN.json";
@@ -24,8 +28,7 @@ const LOCAL_STORAGE_KEY = "ocv:locale";
 const LEGACY_STORAGE_KEY = "PARAGLIDE_LOCALE";
 
 // ── Message cache ───────────────────────────────────────────────
-// en + zh-CN are pre-cached (zero flicker for initial locales).
-// Future locales use async loaders for code splitting.
+// Core locales pre-cached (zero flicker). Future locales async-load via loaders.
 const messageCache: Record<string, Record<string, string>> = {
   en: en as Record<string, string>,
   "zh-CN": zhCN as Record<string, string>,

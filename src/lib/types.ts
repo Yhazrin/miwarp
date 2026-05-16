@@ -72,6 +72,8 @@ export interface TaskRun {
   execution_path: ExecutionPath;
   /** Unified resume identity. Undefined = not resumable. */
   conversation_ref?: ConversationRef;
+  /** Soft-delete timestamp. Populated by incremental sync. */
+  deleted_at?: string;
 }
 
 export interface ImportWatermark {
@@ -168,6 +170,10 @@ export interface UserSettings {
   notify_on_schedule_completed?: boolean;
   notify_on_team_completed?: boolean;
   notification_min_duration_sec?: number;
+  feishu_webhook_url?: string;
+  feishu_webhook_enabled?: boolean;
+  feishu_webhook_triggers?: string[];
+  feishu_webhook_template?: string;
   updated_at: string;
 }
 

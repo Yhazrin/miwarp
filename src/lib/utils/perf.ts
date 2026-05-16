@@ -1,6 +1,13 @@
 import { dbg } from "./debug";
 
 /**
+ * Compile-time guard: in production builds, the bundler dead-code-eliminates
+ * every branch gated by this constant, so zero `performance.now()` overhead
+ * remains at runtime.
+ */
+const PROD = import.meta.env.PROD;
+
+/**
  * Runtime perf-mode check. Read on every call so toggling localStorage doesn't require a refresh.
  * localStorage hits short-circuit; URL fallback uses cheap string includes.
  *
@@ -9,6 +16,7 @@ import { dbg } from "./debug";
  * Exported for ad-hoc gates (e.g., manual `performance.now()` blocks that don't fit perfMark).
  */
 export function isPerfEnabled(): boolean {
+  if (PROD) return false;
   if (typeof window === "undefined") return false;
   if (localStorage.getItem("ocv:debug")) return true;
   return window.location.search.includes("debug");
@@ -16,6 +24,7 @@ export function isPerfEnabled(): boolean {
 
 /** Wrap a synchronous fn; logs duration via `dbg("perf", label, ...)` when enabled and >1ms. */
 export function perfMark<T>(label: string, fn: () => T, meta?: Record<string, unknown>): T {
+  if (PROD) return fn();
   if (!isPerfEnabled()) return fn();
   const t0 = performance.now();
   const result = fn();
@@ -30,6 +39,7 @@ export async function perfMarkAsync<T>(
   fn: () => Promise<T>,
   meta?: Record<string, unknown>,
 ): Promise<T> {
+  if (PROD) return fn();
   if (!isPerfEnabled()) return fn();
   const t0 = performance.now();
   const result = await fn();
@@ -42,12 +52,10 @@ export async function perfMarkAsync<T>(
  * rAF-based fps counter. Returns a stop fn that emits average fps over the measurement window.
  * Use for diagnosing drag/scroll smoothness.
  *
- * Example:
- *   const stop = fpsCounter("aside-drag");
- *   // ... user dragging ...
- *   stop();  // emits "[ocv:perf] aside-drag fps { fps: 58.3, frames: 233, ms: 4000 }"
+ * In production builds, returns a no-op immediately (zero overhead).
  */
 export function fpsCounter(label: string): () => void {
+  if (PROD) return () => {};
   if (!isPerfEnabled()) return () => {};
   let frames = 0;
   let rafId = 0;

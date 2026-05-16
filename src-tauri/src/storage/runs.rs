@@ -324,6 +324,57 @@ pub fn list_runs() -> Vec<TaskRun> {
     runs
 }
 
+/// Incremental list: only returns runs whose `meta.json` was modified after `since`.
+/// Includes soft-deleted runs so the frontend can remove them from its local cache.
+/// Falls back to full `list_runs()` if `since` cannot be parsed.
+pub fn list_runs_since(since: &str) -> Vec<TaskRun> {
+    let since_dt = match chrono::DateTime::parse_from_rfc3339(since) {
+        Ok(dt) => dt.with_timezone(&chrono::Utc),
+        Err(_) => return list_runs(),
+    };
+
+    let runs_dir = super::runs_dir();
+    if !runs_dir.exists() {
+        return vec![];
+    }
+
+    let mut runs: Vec<TaskRun> = vec![];
+    if let Ok(entries) = fs::read_dir(&runs_dir) {
+        for entry in entries.flatten() {
+            if !entry.path().is_dir() {
+                continue;
+            }
+            let meta_path = entry.path().join("meta.json");
+            if !meta_path.exists() {
+                continue;
+            }
+
+            // Check mtime — skip runs unchanged since the last sync
+            if let Ok(meta_mtime) = meta_path.metadata().and_then(|m| m.modified()) {
+                let mtime_secs = meta_mtime
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs() as i64;
+                if mtime_secs <= since_dt.timestamp() {
+                    continue;
+                }
+            }
+
+            if let Ok(content) = fs::read_to_string(&meta_path) {
+                if let Ok(meta) = serde_json::from_str::<RunMeta>(&content) {
+                    // Include deleted runs so frontend can sync removals
+                    let events_path = entry.path().join("events.jsonl");
+                    let (last_activity, msg_count, last_preview) = summarize_events(&events_path);
+                    runs.push(meta.to_task_run(last_activity, Some(msg_count), last_preview));
+                }
+            }
+        }
+    }
+
+    runs.sort_by(|a, b| b.started_at.cmp(&a.started_at));
+    runs
+}
+
 fn summarize_events(events_path: &std::path::Path) -> (Option<String>, u32, Option<String>) {
     if !events_path.exists() {
         return (None, 0, None);

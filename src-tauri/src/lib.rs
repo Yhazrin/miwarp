@@ -143,6 +143,7 @@ pub fn run() {
         // into Tauri command modules or using a single dispatch command with typed payloads.
         .invoke_handler(tauri::generate_handler![
             commands::runs::list_runs,
+            commands::runs::list_runs_since,
             commands::runs::get_run,
             commands::runs::start_run,
             commands::runs::stop_run,
@@ -262,6 +263,7 @@ pub fn run() {
             commands::mcp::toggle_mcp_server_config,
             commands::mcp::get_disabled_mcp_servers,
             commands::mcp::check_mcp_registry_health,
+            commands::notification::send_feishu_notification,
             commands::mcp::search_mcp_registry,
             commands::cli_config::get_cli_config,
             commands::cli_config::get_project_cli_config,

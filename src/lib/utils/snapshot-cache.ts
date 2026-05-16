@@ -14,11 +14,14 @@
 import { dbg, dbgWarn } from "$lib/utils/debug";
 
 const DB_NAME = "miwarp-snapshot";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "snapshots";
 
 /** Bump when reducer logic changes to invalidate all cached snapshots. */
 const SNAPSHOT_VERSION = 2;
+
+/** Max cached snapshots. Evicts least-recently-accessed when exceeded. */
+const MAX_ENTRIES = 200;
 
 interface SnapshotRecord {
   runId: string; // primary key
@@ -39,7 +42,15 @@ function getDb(): Promise<IDBDatabase> {
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "runId" });
+        const store = db.createObjectStore(STORE_NAME, { keyPath: "runId" });
+        store.createIndex("savedAt", "savedAt", { unique: false });
+      } else {
+        // v2: add savedAt index if upgrading from v1
+        const tx = req.transaction!;
+        const store = tx.objectStore(STORE_NAME);
+        if (!store.indexNames.contains("savedAt")) {
+          store.createIndex("savedAt", "savedAt", { unique: false });
+        }
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -104,25 +115,59 @@ export async function readSnapshot(runId: string, expectedStatus: string): Promi
   }
 }
 
-/** Write a snapshot. */
+/** Write a snapshot. Evicts oldest entries if cache exceeds MAX_ENTRIES. */
 export async function writeSnapshot(runId: string, runStatus: string, body: string): Promise<void> {
   try {
     const db = await getDb();
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
-    const record: SnapshotRecord = {
-      runId,
-      version: SNAPSHOT_VERSION,
-      runStatus,
-      body,
-      savedAt: Date.now(),
-    };
+
+    // Write the new record
     await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      const store = tx.objectStore(STORE_NAME);
+      const record: SnapshotRecord = {
+        runId,
+        version: SNAPSHOT_VERSION,
+        runStatus,
+        body,
+        savedAt: Date.now(),
+      };
       const req = store.put(record);
       req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
     });
     dbg("snapshot", "write", { runId, runStatus, bytes: body.length });
+
+    // LRU eviction in a separate transaction (IDB auto-commits after each await)
+    const count = await new Promise<number>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.count();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+
+    if (count > MAX_ENTRIES) {
+      const toEvict = count - MAX_ENTRIES;
+      let evicted = 0;
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        const cursorReq = store.index("savedAt").openCursor();
+        cursorReq.onsuccess = () => {
+          const cursor = cursorReq.result;
+          if (cursor && evicted < toEvict) {
+            cursor.delete();
+            evicted++;
+            cursor.continue();
+          }
+        };
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+      if (evicted > 0) dbg("snapshot", "evict", { count, evicted });
+    }
   } catch (err) {
     dbgWarn("snapshot", "write:error", err);
   }

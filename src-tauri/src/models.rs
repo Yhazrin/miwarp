@@ -188,6 +188,9 @@ pub struct TaskRun {
     /// Resolved conversation identity (None = not resumable).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conversation_ref: Option<ConversationRef>,
+    /// Soft-delete timestamp. Populated by incremental sync so frontend can remove deleted runs.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub deleted_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -261,6 +264,29 @@ pub struct UserSettings {
     pub web_server_allowed_origins: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub web_server_tunnel_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub feishu_webhook_url: Option<String>,
+    #[serde(default)]
+    pub feishu_webhook_enabled: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub feishu_webhook_triggers: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub feishu_webhook_template: Option<String>,
+    // Notification settings (OS-level + feishu)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notifications_enabled: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notify_on_run_completed: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notify_on_run_failed: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notify_on_approval_required: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notify_on_schedule_completed: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notify_on_team_completed: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub notification_min_duration_sec: Option<u32>,
     pub updated_at: String,
 }
 
@@ -576,6 +602,7 @@ impl RunMeta {
             no_session_persistence: self.no_session_persistence,
             execution_path: self.resolved_execution_path(),
             conversation_ref: self.resolved_conversation_ref(),
+            deleted_at: self.deleted_at.clone(),
         }
     }
 }
