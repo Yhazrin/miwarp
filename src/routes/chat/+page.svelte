@@ -68,12 +68,7 @@
   import ReleaseNotesCard from "$lib/components/ReleaseNotesCard.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
-  import {
-    getLastTarget,
-    setLastTarget,
-    getStoredRemoteCwd,
-    setStoredRemoteCwd,
-  } from "$lib/utils/remote-cwd";
+  import { getLastTarget, setLastTarget, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
   import { shouldAutoName } from "$lib/utils/auto-name";
   import { resolvePermissionOptimistic } from "$lib/utils/resolve-permission";
   import { getToolColor } from "$lib/utils/tool-colors";
@@ -97,13 +92,13 @@
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import TeamDispatchConfirm from "$lib/components/TeamDispatchConfirm.svelte";
   import TeamRunCard from "$lib/components/TeamRunCard.svelte";
-  import { detectTeamTrigger } from "$lib/services/team-dispatcher";
 
   // ── Composables ──
   import { useProgressiveTimeline } from "$lib/chat/use-progressive-timeline.svelte";
   import { useChatScroll } from "$lib/chat/use-chat-scroll.svelte";
   import { useTeamDispatch } from "$lib/chat/use-team-dispatch.svelte";
   import { useProjectPreload } from "$lib/chat/use-project-preload.svelte";
+  import { useChatController } from "$lib/chat/use-chat-controller.svelte";
 
   // ── Helpers ──
 
@@ -241,7 +236,7 @@
   // ── Team dispatch (composable) ──
   const team = useTeamDispatch({
     effectiveCwd: () => store.effectiveCwd || "",
-    onSendMessage: (text) => sendMessage(text, []),
+    onSendMessage: (text) => ctrl.sendMessage(text, []),
   });
   // Non-reactive exports only — reactive values accessed via team.xxx
   const {
@@ -449,13 +444,8 @@
     },
   });
   // Non-reactive exports only — reactive values accessed via progressive.xxx
-  const {
-    cancelProgressive,
-    expandRenderLimitTo,
-    ensureBurstExpandedFor,
-    rearmLoadMore,
-    resetForNewRun,
-  } = progressive;
+  const { cancelProgressive, expandRenderLimitTo, ensureBurstExpandedFor, rearmLoadMore } =
+    progressive;
 
   const visibleTimeline = $derived(progressive.visibleTimeline);
 
@@ -479,6 +469,35 @@
   });
   // Non-reactive exports only — reactive values accessed via chatScroll.xxx
   const { handleChatScroll, scrollChatToBottom } = chatScroll;
+
+  // ── Chat controller (composable) ──
+  const ctrl = useChatController({
+    store,
+    progressive,
+    preload,
+    chatScroll,
+    team,
+    getSearchParam: (key) => {
+      const p = new URLSearchParams(window.location.search);
+      return p.get(key);
+    },
+    getChatAreaRef: () => chatAreaRef,
+    scrollToMessage,
+    handleResume,
+    showChatToast,
+    openFolderPicker,
+    promptRef: () => promptRef,
+    getRemoteHosts: () => remoteHosts,
+    getSettings: () => settings,
+    onBeforeLoadRun: () => {
+      toolFilter = null;
+      folderCwdOverride = "";
+    },
+    getScrollToInFlight: () => _scrollToInFlight,
+    setScrollToInFlight: (v) => {
+      _scrollToInFlight = v;
+    },
+  });
 
   // ── Batch groups (consecutive ≥3 Task tools) ──
   // Skip batch detection when tool filter is active — filtering removes non-Task
@@ -726,79 +745,6 @@
     syncVerboseState(store.run?.id);
   });
 
-  /**
-   * Load a run and render its timeline progressively.
-   * Starts with the most recent `INITIAL_RENDER_LIMIT` entries; the top sentinel
-   * grows `renderLimit` as the user scrolls up.
-   */
-  async function loadRunProgressive(
-    id: string,
-    xtermRef?: { clear(): void; writeText(s: string): void },
-  ) {
-    toolFilter = null;
-    // Reset progressive state so a previous run's expanded renderLimit (e.g. after
-    // an anchor jump) doesn't leak into the new run.
-    const gen = resetForNewRun();
-
-    // Capture scrollTo BEFORE loadRun — URL may change during async load
-    const scrollTo = $page.url.searchParams.get("scrollTo");
-
-    // Flag suppresses auto-scroll reset during loadRun (non-reactive, won't trigger effects)
-    if (scrollTo) _scrollToInFlight = true;
-
-    await store.loadRun(id, xtermRef);
-    if (id) folderCwdOverride = ""; // clear folder override when a real run loads
-
-    // Reload project data with the run's cwd
-    if (id && store.effectiveCwd) {
-      reloadProjectData(store.effectiveCwd);
-    }
-
-    // Cross-reference MCP servers with config disabled state
-    // (session_init event carries stale status from session start time)
-    if (store.mcpServers.length > 0) {
-      try {
-        const disabledNames = await api.getDisabledMcpServers();
-        if (disabledNames.length > 0) {
-          const disabledSet = new Set(disabledNames);
-          const patched = store.mcpServers.map((s) =>
-            disabledSet.has(s.name) && s.status !== "disabled" ? { ...s, status: "disabled" } : s,
-          );
-          if (patched.some((s, i) => s !== store.mcpServers[i])) {
-            store.updateMcpServers(patched);
-            dbg("chat", "patched MCP disabled state", { disabledNames });
-          }
-        }
-      } catch {
-        // non-critical, ignore
-      }
-    }
-
-    if (gen !== progressive.progressiveGen) return;
-    dbg("chat", "loadRun complete", {
-      timeline: filteredTimeline.length,
-      renderLimit: progressive.renderLimit,
-      gen,
-    });
-
-    if (scrollTo) {
-      await tick();
-      scrollToMessage(scrollTo);
-      _scrollToInFlight = false;
-      // Clean scrollTo from URL — safe because $effect depends on
-      // runId and hasResumeParam (primitives), not the full $page.url.
-      const clean = new URL($page.url);
-      clean.searchParams.delete("scrollTo");
-      replaceState(clean, {});
-    } else {
-      // Scroll to bottom after DOM update — ensures content-visibility triggers re-layout
-      await tick();
-      requestAnimationFrame(() => {
-        if (chatAreaRef) chatAreaRef.scrollTop = chatAreaRef.scrollHeight;
-      });
-    }
-  }
-
   let welcomeVisible = $derived(
     store.timeline.length === 0 && !store.streamingText && !store.run && store.phase !== "loading",
   );
@@ -898,29 +844,6 @@
   let thinkingVerbPicked = false;
   /** Debounced visibility — prevents spinner flash on fast CLI commands (/context, /cost). */
   let thinkingVisible = $state(false);
-
-  /** Slash command processing indicator — shown before thinkingVisible kicks in. */
-  let processingSlashCmd = $state<string | null>(null);
-  let slashCmdSeenRunning = $state(false);
-
-  $effect(() => {
-    if (!processingSlashCmd) return;
-    // Track: phase was "running" at some point since flag was set
-    if (store.isRunning) slashCmdSeenRunning = true;
-    // Clear when content arrives, error set, or turn completed (idle after running)
-    if (
-      store.streamingText ||
-      store.thinkingText ||
-      store.error ||
-      store.phase === "failed" ||
-      store.phase === "completed" ||
-      store.phase === "stopped" ||
-      (slashCmdSeenRunning && store.phase === "idle")
-    ) {
-      processingSlashCmd = null;
-      slashCmdSeenRunning = false;
-    }
-  });
 
   $effect(() => {
     if (store.isThinking) {
@@ -1365,7 +1288,7 @@
         return;
       }
 
-      loadRunProgressive(id, xtermRef);
+      ctrl.loadRunProgressive(id, xtermRef);
     });
   });
 
@@ -1711,143 +1634,6 @@
       _prevPanelCount = count;
     }
   });
-
-  // ── Send message ──
-
-  async function sendMessage(text: string, attachments: Attachment[]) {
-    if (!text.trim()) return;
-
-    store.error = "";
-    // Follow to new reply when sending a message
-    chatScroll.isChatAutoScroll = true;
-    chatScroll.showChatScrollHint = false;
-
-    // Detect slash command (same check as store timeout skip)
-    const isSlash = store.isKnownSlashCommand(text);
-    const slashCmd = isSlash ? (text.match(/^\/\S+/)?.[0] ?? null) : null;
-
-    // ── @team / /team detection: intercept before creating a run ──
-    if (!store.run && !slashCmd) {
-      const teamResult = detectTeamTrigger(text);
-      if (teamResult) {
-        team.teamDispatchPrompt = teamResult.prompt;
-        team.teamDispatchOpen = true;
-        return;
-      }
-    }
-
-    try {
-      if (!store.run) {
-        // First message: create run.
-        //
-        // Validate the remote target up-front. The host could have been
-        // removed/renamed since the chat tab was opened (or since
-        // `ocv:last-target` was persisted). Without this check, every
-        // downstream path — `getStoredRemoteCwd`, the folder picker (which
-        // silently falls back to local UI when its `loadRemoteHosts` clears
-        // the unknown host), and `startSession` — would still run with the
-        // stale `store.remoteHostName`, and the backend `start_run` would
-        // fail with an opaque "Remote host '...' not found".
-        if (
-          store.remoteHostName &&
-          remoteHosts.length > 0 &&
-          !remoteHosts.some((h) => h.name === store.remoteHostName)
-        ) {
-          dbgWarn("chat", "remote host no longer in settings — clearing target", {
-            host: store.remoteHostName,
-          });
-          showChatToast(t("toast_remoteHostMissing"));
-          store.remoteHostName = null;
-          setLastTarget(null);
-          return;
-        }
-        const isRemote = !!store.remoteHostName;
-        let cwd = "";
-        if (typeof window !== "undefined") {
-          if (isRemote) {
-            cwd = getStoredRemoteCwd(store.remoteHostName!);
-          } else {
-            cwd =
-              localStorage.getItem("ocv:project-cwd") ||
-              localStorage.getItem("ocv:settings-cwd") ||
-              "";
-          }
-        }
-
-        if (!cwd || cwd === "/") {
-          const transport = getTransport();
-          if (isRemote) {
-            // Remote: open FolderPicker for the selected host
-            const result = await openFolderPicker({
-              initialHost: store.remoteHostName,
-              hideTargetSelector: true,
-            });
-            if (!result || !result.path) return; // cancelled
-            cwd = result.path;
-            if (result.hostName) setStoredRemoteCwd(result.hostName, cwd);
-          } else if (transport.isDesktop()) {
-            // Desktop local: native folder picker (fast path)
-            const { open } = await import("@tauri-apps/plugin-dialog");
-            const selected = await open({
-              directory: true,
-              title: t("layout_selectProjectFolder"),
-            });
-            if (!selected) return; // user cancelled → don't send
-            cwd = selected as string;
-            localStorage.setItem("ocv:project-cwd", cwd);
-            window.dispatchEvent(new Event("ocv:cwd-changed"));
-          } else {
-            // Browser local: open FolderPicker (allows manual path or switching to remote)
-            const result = await openFolderPicker({ initialHost: null });
-            if (!result || !result.path) return;
-            cwd = result.path;
-            if (result.hostName) {
-              store.remoteHostName = result.hostName;
-              setLastTarget(result.hostName);
-              setStoredRemoteCwd(result.hostName, cwd);
-            } else {
-              localStorage.setItem("ocv:project-cwd", cwd);
-              window.dispatchEvent(new Event("ocv:cwd-changed"));
-            }
-          }
-        }
-
-        // Set indicator AFTER all early-return points
-        if (slashCmd) {
-          processingSlashCmd = slashCmd;
-          slashCmdSeenRunning = false;
-        }
-
-        const runId = await store.startSession(text, cwd, attachments);
-        goto(`/chat?run=${runId}`, { replaceState: true });
-        window.dispatchEvent(new Event("ocv:runs-changed"));
-        // Re-detect CLI version on new session (picks up external updates)
-        loadCliVersionInfo();
-      } else if (store.useStreamSession && !store.sessionAlive && store.run.session_id) {
-        // Stopped stream session: atomic resume + send (message written to CLI stdin at spawn)
-        dbg("chat", "auto-resume on send", {
-          runId: store.run.id,
-          sessionId: store.run.session_id,
-        });
-        if (slashCmd) {
-          processingSlashCmd = slashCmd;
-          slashCmdSeenRunning = false;
-        }
-        await handleResume("resume", undefined, text, attachments);
-      } else {
-        // Subsequent message
-        if (slashCmd) {
-          processingSlashCmd = slashCmd;
-          slashCmdSeenRunning = false;
-        }
-        await store.sendMessage(text, attachments);
-        requestAnimationFrame(() => promptRef?.focus());
-      }
-    } catch (e) {
-      store.error = String(e);
-      processingSlashCmd = null;
-    }
-  }
 
   function fillPrompt(text: string) {
     promptRef?.setValue(text);
@@ -2350,7 +2136,7 @@
         appendCommandOutput(t("chat_sessionRenamed", { name: args }));
       } else if (store.sessionAlive) {
         // No args + session alive: send /rename to CLI (AI-generated name)
-        await sendMessage("/rename", []);
+        await ctrl.sendMessage("/rename", []);
       } else {
         appendCommandOutput("Usage: /rename <name>");
       }
@@ -2362,7 +2148,7 @@
         appendCommandOutput(entering ? "Plan mode enabled" : "Plan mode disabled");
         // If instructions provided, send them as a message
         if (args && entering) {
-          await sendMessage(args, []);
+          await ctrl.sendMessage(args, []);
         }
       }
       // On failure, handlePermissionModeChange already sets store.error
@@ -2625,7 +2411,7 @@
               const result = await open({ directory: true, title });
               return typeof result === "string" ? result : null;
             },
-            sendMessage: (text) => sendMessage(text, []),
+            sendMessage: (text) => ctrl.sendMessage(text, []),
             getAgentSettings: api.getAgentSettings,
             updateAgentSettings: api.updateAgentSettings,
             appendOutput: appendCommandOutput,
@@ -2697,7 +2483,7 @@
       try {
         // If no active session, send the prompt as a normal message first to bootstrap
         if (!store.run?.id || !store.sessionAlive) {
-          await sendMessage(parsed.prompt, []);
+          await ctrl.sendMessage(parsed.prompt, []);
           // Wait briefly for session to be alive (actor created)
           let retries = 0;
           while (!store.sessionAlive && retries < 20) {
@@ -2826,7 +2612,7 @@
     store.error = "";
     goto(`/chat?run=${sourceRunId}`, { replaceState: true });
     // Explicit reload — URL may not change if we're returning to the same run
-    await loadRunProgressive(sourceRunId);
+    await ctrl.loadRunProgressive(sourceRunId);
     window.dispatchEvent(new Event("ocv:runs-changed"));
   }
 
@@ -3363,7 +3149,7 @@
         Run
         <button
           class="font-mono text-amber-300 hover:text-amber-200 underline underline-offset-2 transition-colors"
-          onclick={() => sendMessage("/init", [])}>{t("chat_initHintAction")}</button
+          onclick={() => ctrl.sendMessage("/init", [])}>{t("chat_initHintAction")}</button
         >
         to create CLAUDE.md
       </span>
@@ -3661,7 +3447,7 @@
                   {/if}
                   <button
                     class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                    onclick={() => sendMessage(t("chat_quickAnalyzePrompt"), [])}
+                    onclick={() => ctrl.sendMessage(t("chat_quickAnalyzePrompt"), [])}
                   >
                     <svg
                       class="h-4 w-4 shrink-0 text-blue-400/70"
@@ -3695,7 +3481,7 @@
                   </button>
                   <button
                     class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                    onclick={() => sendMessage(t("chat_quickDailyPrompt"), [])}
+                    onclick={() => ctrl.sendMessage(t("chat_quickDailyPrompt"), [])}
                   >
                     <svg
                       class="h-4 w-4 shrink-0 text-green-400/70"
@@ -4206,14 +3992,16 @@
               {/if}
 
               <!-- Slash command processing indicator (before thinking kicks in) -->
-              {#if processingSlashCmd && !thinkingVisible && !store.streamingText && !store.thinkingText}
+              {#if ctrl.processingSlashCmd && !thinkingVisible && !store.streamingText && !store.thinkingText}
                 <div class="w-full animate-fade-in" data-export-exclude>
                   <div class="chat-content-width py-2">
                     <div class="flex items-center gap-2 text-sm text-muted-foreground">
                       <div
                         class="h-3.5 w-3.5 rounded-full border-2 border-border border-t-muted-foreground animate-spin"
                       ></div>
-                      <span>{t("chat_processingCommand", { command: processingSlashCmd })}</span>
+                      <span
+                        >{t("chat_processingCommand", { command: ctrl.processingSlashCmd })}</span
+                      >
                     </div>
                   </div>
                 </div>
@@ -4613,7 +4401,7 @@
             authMode={store.authMode}
             platformId={store.platformId ?? "anthropic"}
             platformCredentials={settings?.platform_credentials ?? []}
-            onSend={sendMessage}
+            onSend={ctrl.sendMessage}
             onBtwSend={handleBtwSend}
             onAgentChange={undefined}
             onInterrupt={() => store.interrupt()}
