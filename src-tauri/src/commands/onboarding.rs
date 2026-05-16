@@ -2,8 +2,10 @@ use crate::agent::claude_stream;
 use crate::models::{AuthCheckResult, AuthOverview, InstallMethod};
 use crate::process_ext::HideConsole;
 use crate::storage;
+use std::process::Stdio;
 use tauri::{AppHandle, Emitter};
 use tokio::process::Command;
+use tokio::time::{timeout, Duration};
 
 /// Check whether the user has an active OAuth session or API key configured.
 #[tauri::command]
@@ -204,6 +206,50 @@ pub async fn run_claude_login(app: AppHandle) -> Result<bool, String> {
     );
 
     Ok(success)
+}
+
+/// Run `claude update` to upgrade the Claude Code CLI using the official self-update path.
+#[tauri::command]
+pub async fn run_claude_self_update() -> Result<String, String> {
+    log::debug!("[onboarding] run_claude_self_update");
+    let claude_bin = claude_stream::resolve_claude_path();
+    let path_env = claude_stream::augmented_path();
+
+    let run = async {
+        Command::new(&claude_bin)
+            .arg("update")
+            .env("PATH", &path_env)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .hide_console()
+            .output()
+            .await
+    };
+
+    let output = match timeout(Duration::from_secs(180), run).await {
+        Ok(Ok(o)) => o,
+        Ok(Err(e)) => return Err(format!("Failed to run claude update: {e}")),
+        Err(_) => return Err("claude update timed out after 3 minutes".to_string()),
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let combined = format!("{stdout}{stderr}").trim().to_string();
+
+    if output.status.success() {
+        Ok(if combined.is_empty() {
+            "OK".to_string()
+        } else {
+            combined
+        })
+    } else if combined.is_empty() {
+        Err(format!(
+            "claude update exited with status {}",
+            output.status
+        ))
+    } else {
+        Err(combined)
+    }
 }
 
 /// Get an overview of all authentication sources (configuration state only).

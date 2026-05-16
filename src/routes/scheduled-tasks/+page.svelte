@@ -255,6 +255,59 @@
     scheduledTasksStore.loadTasks();
     scheduledTasksStore.loadAllRuns();
   });
+
+  // ── Split Resize ────────────────────────────────────────────────────────────
+  let splitWidth = $state(
+    (() => {
+      if (typeof window !== "undefined") {
+        const raw = parseInt(localStorage.getItem("ocv:sched-split-width") ?? "", 10);
+        return Number.isFinite(raw) ? Math.min(600, Math.max(280, raw)) : 400;
+      }
+      return 400;
+    })(),
+  );
+  let splitResizing = $state(false);
+  let splitGhostX = $state(0);
+  let splitGhostEl: HTMLElement | null = $state(null);
+
+  function startSplitResize(e: PointerEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = splitWidth;
+    let pendingWidth = startWidth;
+    splitResizing = true;
+    splitGhostX = e.clientX;
+    const handle = e.currentTarget as HTMLElement;
+    handle.setPointerCapture?.(e.pointerId);
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+
+    function onMove(ev: PointerEvent) {
+      pendingWidth = Math.min(600, Math.max(280, startWidth + (ev.clientX - startX)));
+      // Use fixed positioning relative to viewport so there's no offset confusion
+      if (splitGhostEl) {
+        splitGhostEl.style.left = ev.clientX + "px";
+      }
+    }
+    function cleanup() {
+      handle.removeEventListener("pointermove", onMove);
+      handle.removeEventListener("pointerup", onUp);
+      handle.removeEventListener("pointercancel", onUp);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      splitWidth = pendingWidth;
+      splitResizing = false;
+      splitGhostEl = null;
+      localStorage.setItem("ocv:sched-split-width", String(splitWidth));
+    }
+    function onUp() {
+      cleanup();
+    }
+
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", onUp);
+    handle.addEventListener("pointercancel", onUp);
+  }
 </script>
 
 <svelte:head>
@@ -282,10 +335,11 @@
   </div>
 
   <!-- Content -->
-  <div class="flex flex-1 overflow-hidden px-8 pb-6 gap-5">
+  <div class="relative flex flex-1 overflow-hidden px-8 pb-6 gap-5">
     <!-- Left: Task List Panel -->
     <div
-      class="flex flex-col w-[400px] shrink-0 rounded-2xl border border-border bg-card/50 overflow-hidden"
+      class="flex flex-col shrink-0 rounded-2xl border border-border bg-card/50 overflow-hidden"
+      style="width: {splitWidth}px"
     >
       <!-- Tabs + Search -->
       <div class="px-4 pt-3 pb-2 space-y-2 border-b border-border/60">
@@ -395,6 +449,23 @@
           {/each}
         {/if}
       </div>
+    </div>
+
+    <!-- Resize Handle -->
+    <div
+      class="relative shrink-0 w-3 z-10"
+      style="margin-left: -6px; margin-right: -6px;"
+      role="separator"
+      aria-orientation="vertical"
+      onpointerdown={startSplitResize}
+    >
+      {#if splitResizing}
+        <div
+          bind:this={splitGhostEl}
+          class="fixed top-0 bottom-0 w-0.5 bg-primary/60 pointer-events-none z-[9999]"
+          style="left: {splitGhostX}px"
+        ></div>
+      {/if}
     </div>
 
     <!-- Right: Task Detail Panel -->

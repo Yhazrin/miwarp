@@ -1,6 +1,6 @@
 use reqwest::Client;
-use std::sync::LazyLock;
-use std::time::Duration;
+use std::sync::{LazyLock, Mutex};
+use std::time::{Duration, Instant};
 
 // ── Constants ──
 
@@ -16,6 +16,11 @@ static CLIENT: LazyLock<Client> = LazyLock::new(|| {
         .build()
         .unwrap_or_default()
 });
+
+/// Single-flight cache so root layout, update banner, and About don't hammer GitHub separately.
+static UPDATE_CHECK_CACHE: LazyLock<Mutex<Option<(Instant, UpdateInfo)>>> =
+    LazyLock::new(|| Mutex::new(None));
+const UPDATE_CHECK_CACHE_TTL: Duration = Duration::from_secs(30 * 60);
 
 // ── Types ──
 
@@ -121,7 +126,11 @@ fn no_update(current_version: String) -> UpdateInfo {
 }
 
 fn error_info(current_version: String, error: String) -> UpdateInfo {
-    log::warn!("[updates] {}", error);
+    if error.to_lowercase().contains("rate limit") {
+        log::debug!("[updates] {}", error);
+    } else {
+        log::warn!("[updates] {}", error);
+    }
     UpdateInfo {
         has_update: false,
         latest_version: String::new(),
@@ -131,10 +140,29 @@ fn error_info(current_version: String, error: String) -> UpdateInfo {
     }
 }
 
+fn cache_and_ok(info: UpdateInfo) -> Result<UpdateInfo, String> {
+    *UPDATE_CHECK_CACHE.lock().unwrap() = Some((Instant::now(), info.clone()));
+    Ok(info)
+}
+
 // ── Tauri command ──
 
 #[tauri::command]
 pub async fn check_for_updates(app: tauri::AppHandle) -> Result<UpdateInfo, String> {
+    let now = Instant::now();
+    {
+        let cache = UPDATE_CHECK_CACHE.lock().unwrap();
+        if let Some((t, info)) = cache.as_ref() {
+            if now.duration_since(*t) < UPDATE_CHECK_CACHE_TTL {
+                log::debug!(
+                    "[updates] cache hit (age {:?}), skipping HTTP",
+                    now.duration_since(*t)
+                );
+                return Ok(info.clone());
+            }
+        }
+    }
+
     let current_version = app.package_info().version.to_string();
     log::debug!(
         "[updates] checking for updates, current={}",
@@ -149,25 +177,26 @@ pub async fn check_for_updates(app: tauri::AppHandle) -> Result<UpdateInfo, Stri
     {
         Ok(r) => r,
         Err(e) => {
-            return Ok(error_info(current_version, format!("Network error: {}", e)));
+            return cache_and_ok(error_info(current_version, format!("Network error: {}", e)));
         }
     };
 
     let status = resp.status();
     if status == reqwest::StatusCode::NOT_FOUND {
-        return Ok(error_info(
+        return cache_and_ok(error_info(
             current_version,
             "No releases found for this repository".to_string(),
         ));
     }
-    if status == reqwest::StatusCode::FORBIDDEN {
-        return Ok(error_info(
+    if status == reqwest::StatusCode::FORBIDDEN || status == reqwest::StatusCode::TOO_MANY_REQUESTS
+    {
+        return cache_and_ok(error_info(
             current_version,
             "GitHub API rate limit exceeded, try again later".to_string(),
         ));
     }
     if !status.is_success() {
-        return Ok(error_info(
+        return cache_and_ok(error_info(
             current_version,
             format!("GitHub API error: HTTP {}", status),
         ));
@@ -176,7 +205,7 @@ pub async fn check_for_updates(app: tauri::AppHandle) -> Result<UpdateInfo, Stri
     let body: serde_json::Value = match resp.json().await {
         Ok(v) => v,
         Err(e) => {
-            return Ok(error_info(
+            return cache_and_ok(error_info(
                 current_version,
                 format!("Failed to parse response: {}", e),
             ));
@@ -187,7 +216,7 @@ pub async fn check_for_updates(app: tauri::AppHandle) -> Result<UpdateInfo, Stri
     let download_url = select_download_url(&body);
 
     if tag.is_empty() {
-        return Ok(error_info(
+        return cache_and_ok(error_info(
             current_version,
             "Invalid release data (missing tag)".to_string(),
         ));
@@ -203,13 +232,14 @@ pub async fn check_for_updates(app: tauri::AppHandle) -> Result<UpdateInfo, Stri
         has_update
     );
 
-    Ok(UpdateInfo {
+    let info = UpdateInfo {
         has_update,
         latest_version,
         current_version,
         download_url,
         error: String::new(),
-    })
+    };
+    cache_and_ok(info)
 }
 
 // ── Tests ──

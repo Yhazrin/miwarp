@@ -1,15 +1,35 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { getChangelog } from "$lib/api";
-  import { getCliVersionInfo_cached } from "$lib/stores";
+  import { getChangelog, runClaudeSelfUpdate } from "$lib/api";
+  import {
+    loadCliVersionInfo,
+    getCliVersionInfo_cached,
+    isCliVersionLoading,
+  } from "$lib/stores/cli-info.svelte";
   import type { ChangelogEntry } from "$lib/types";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
+  import { showToast } from "$lib/stores/toast-store.svelte";
+
+  const CLAUDE_CODE_UPDATE_DOCS = "https://code.claude.com/docs/en/setup#updating-claude-code";
 
   let entries = $state<ChangelogEntry[]>([]);
   let loading = $state(true);
   let error = $state("");
   let searchQuery = $state("");
+  let updateRunning = $state(false);
+
+  let cliVersionInfo = $derived(getCliVersionInfo_cached());
+  let channelLatest = $derived.by(() => {
+    if (!cliVersionInfo?.installed) return undefined;
+    return cliVersionInfo.channel === "stable" ? cliVersionInfo.stable : cliVersionInfo.latest;
+  });
+  let cliUpdateAvailable = $derived(
+    Boolean(
+      cliVersionInfo?.installed && channelLatest && cliVersionInfo.installed !== channelLatest,
+    ),
+  );
+  let versionLoading = $derived(isCliVersionLoading());
 
   let filteredEntries = $derived.by(() => {
     if (!searchQuery.trim()) return entries;
@@ -21,7 +41,7 @@
 
   // Current CLI version: prefer cli-info cache (updated by session), fall back to localStorage
   let currentVersion = $derived(
-    getCliVersionInfo_cached()?.installed ??
+    cliVersionInfo?.installed ??
       (() => {
         try {
           return localStorage.getItem("ocv:cli-version") ?? "";
@@ -31,18 +51,72 @@
       })(),
   );
 
-  onMount(async () => {
+  async function openUpdateDocs() {
     try {
-      dbg("release-notes", "loading changelog");
-      entries = await getChangelog();
-      dbg("release-notes", "loaded", { count: entries.length });
+      const { open } = await import("@tauri-apps/plugin-shell");
+      await open(CLAUDE_CODE_UPDATE_DOCS);
+    } catch {
+      window.open(CLAUDE_CODE_UPDATE_DOCS, "_blank", "noopener,noreferrer");
+    }
+  }
+
+  async function oneClickUpdate() {
+    if (updateRunning || !cliVersionInfo?.installed) return;
+    updateRunning = true;
+    try {
+      const out = await runClaudeSelfUpdate();
+      const detail = out && out !== "OK" ? (out.length > 200 ? `${out.slice(0, 200)}…` : out) : "";
+      showToast(
+        detail ? `${t("release_updateSuccessShort")}\n${detail}` : t("release_updateSuccessShort"),
+        "success",
+        5500,
+      );
+      await loadCliVersionInfo();
+      const v = getCliVersionInfo_cached()?.installed;
+      if (v) {
+        try {
+          localStorage.setItem("ocv:cli-version", v);
+        } catch {
+          /* ignore */
+        }
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      dbgWarn("release-notes", "failed to load", msg);
-      error = msg;
+      const staleBackend =
+        /run_claude_self_update/.test(msg) &&
+        (/not\s+found/i.test(msg) || /unknown method/i.test(msg));
+      const errText = msg.length > 220 ? `${msg.slice(0, 220)}…` : msg;
+      showToast(
+        staleBackend
+          ? `${t("release_updateFailed", { error: errText })}\n${t("release_updateBackendStaleHint")}`
+          : t("release_updateFailed", { error: errText }),
+        "error",
+        staleBackend ? 12_000 : 8000,
+      );
     } finally {
-      loading = false;
+      updateRunning = false;
     }
+  }
+
+  onMount(async () => {
+    const changelogPromise = getChangelog()
+      .then((e) => ({ ok: true as const, entries: e }))
+      .catch((err) => ({
+        ok: false as const,
+        msg: err instanceof Error ? err.message : String(err),
+      }));
+
+    await loadCliVersionInfo();
+
+    const result = await changelogPromise;
+    if (result.ok) {
+      entries = result.entries;
+      dbg("release-notes", "loaded", { count: entries.length });
+    } else {
+      dbgWarn("release-notes", "failed to load", result.msg);
+      error = result.msg;
+    }
+    loading = false;
   });
 </script>
 
@@ -132,6 +206,56 @@
     </a>
   </div>
 
+  {#if !loading && !error}
+    <div
+      class="shrink-0 border-b border-border bg-muted/15 px-6 py-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
+    >
+      {#if versionLoading}
+        <div
+          class="h-8 w-56 max-w-full rounded-md bg-muted/60 animate-pulse"
+          aria-hidden="true"
+        ></div>
+      {:else if !cliVersionInfo?.installed}
+        <p class="text-xs text-muted-foreground">{t("release_cliNotDetected")}</p>
+        <button
+          type="button"
+          class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors w-fit"
+          onclick={() => void openUpdateDocs()}
+        >
+          {t("release_updateDocsLink")}
+        </button>
+      {:else}
+        {#if cliUpdateAvailable && channelLatest}
+          <span
+            class="inline-flex items-center rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400"
+          >
+            {t("release_newVersionAvailable", { version: channelLatest })}
+          </span>
+        {/if}
+        <button
+          type="button"
+          class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none transition-colors w-fit"
+          disabled={updateRunning}
+          onclick={() => void oneClickUpdate()}
+        >
+          {updateRunning ? t("release_updateRunning") : t("release_updateCliOneClick")}
+        </button>
+        <button
+          type="button"
+          class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors w-fit"
+          onclick={() => void openUpdateDocs()}
+        >
+          {t("release_updateDocsLink")}
+        </button>
+        <p
+          class="w-full text-[11px] text-muted-foreground leading-snug sm:w-auto sm:flex-1 basis-full sm:basis-auto sm:min-w-[10rem]"
+        >
+          {t("release_updateCliHint")}
+        </p>
+      {/if}
+    </div>
+  {/if}
+
   <!-- Content -->
   <div class="flex-1 overflow-y-auto">
     {#if loading}
@@ -165,6 +289,7 @@
             loading = true;
             error = "";
             try {
+              await loadCliVersionInfo();
               entries = await getChangelog();
             } catch (e) {
               error = e instanceof Error ? e.message : String(e);

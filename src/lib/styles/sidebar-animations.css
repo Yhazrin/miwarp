@@ -12,6 +12,9 @@
   will-change: width;
 }
 /* Content panel tracks grid column width */
+/* Content panel: grid child uses min-width:0 so narrow --sidebar-inner-width
+   layouts truncate (see .truncate on labels) instead of spilling under the rail.
+   Icon rail stays 44px; collapsing hides .sidebar-inner via opacity. */
 .sidebar-content-panel {
   min-width: 0;
   height: 100%;

@@ -229,7 +229,7 @@
       cls: "text-miwarp-status-info",
       dotCls: "bg-blue-400",
       borderCls:
-        "border-blue-400/40 focus-within:border-blue-400/60 focus-within:shadow-[0_0_0_1px_rgba(96,165,250,0.15)]",
+        "border-blue-400/30 focus-within:border-blue-500/55 focus-within:ring-2 focus-within:ring-blue-400/14 focus-within:shadow-[0_4px_22px_rgba(0,0,0,0.07)]",
     },
     {
       value: "bypassPermissions",
@@ -239,7 +239,7 @@
       cls: "text-miwarp-status-warning",
       dotCls: "bg-amber-500",
       borderCls:
-        "border-amber-500/40 focus-within:border-amber-500/60 focus-within:shadow-[0_0_0_1px_rgba(245,158,11,0.15)]",
+        "border-amber-500/28 focus-within:border-amber-500/55 focus-within:ring-2 focus-within:ring-amber-400/14 focus-within:shadow-[0_4px_22px_rgba(0,0,0,0.07)]",
     },
     {
       value: "plan",
@@ -249,7 +249,7 @@
       cls: "text-purple-400",
       dotCls: "bg-purple-400",
       borderCls:
-        "border-purple-400/40 focus-within:border-purple-400/60 focus-within:shadow-[0_0_0_1px_rgba(192,132,252,0.15)]",
+        "border-purple-400/30 focus-within:border-purple-400/58 focus-within:ring-2 focus-within:ring-purple-400/14 focus-within:shadow-[0_4px_22px_rgba(0,0,0,0.07)]",
     },
     {
       value: "auto",
@@ -259,7 +259,7 @@
       cls: "text-teal-400",
       dotCls: "bg-teal-400",
       borderCls:
-        "border-teal-400/40 focus-within:border-teal-400/60 focus-within:shadow-[0_0_0_1px_rgba(45,212,191,0.15)]",
+        "border-teal-400/30 focus-within:border-teal-400/58 focus-within:ring-2 focus-within:ring-teal-400/14 focus-within:shadow-[0_4px_22px_rgba(0,0,0,0.07)]",
     },
     {
       value: "dontAsk",
@@ -269,7 +269,7 @@
       cls: "text-red-400",
       dotCls: "bg-red-400",
       borderCls:
-        "border-red-400/40 focus-within:border-red-400/60 focus-within:shadow-[0_0_0_1px_rgba(248,113,113,0.15)]",
+        "border-red-400/30 focus-within:border-red-400/58 focus-within:ring-2 focus-within:ring-red-400/14 focus-within:shadow-[0_4px_22px_rgba(0,0,0,0.07)]",
     },
   ];
 
@@ -1087,9 +1087,10 @@
 
   <!-- Unified input container -->
   <div
-    class="rounded-[28px] border bg-background/72 backdrop-blur-2xl transition-colors shadow-[0_4px_24px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.07)] {btwMode
-      ? 'border-miwarp-status-info/80'
-      : currentMode.borderCls || 'border-white/10 focus-within:border-white/20'} {pendingPermission
+    class="rounded-[28px] border bg-background/72 backdrop-blur-2xl transition-[border-color,box-shadow] duration-200 shadow-[0_2px_14px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.06)] {btwMode
+      ? 'border-miwarp-status-info/70'
+      : currentMode.borderCls ||
+        'border-border/45 focus-within:border-primary/40 focus-within:shadow-[0_4px_22px_rgba(0,0,0,0.075),inset_0_1px_0_rgba(255,255,255,0.07)] focus-within:ring-2 focus-within:ring-primary/12'} {pendingPermission
       ? 'motion-attention-pulse'
       : ''}"
   >
@@ -1168,21 +1169,21 @@
     {/if}
 
     <!-- Bottom action bar -->
-    <div class="flex items-center justify-between px-3 pb-3">
+    <div class="flex items-center justify-between gap-1 px-3 pb-2.5">
       <!-- Left: agent selector + permission mode -->
-      <div class="flex items-center gap-1">
+      <div class="flex min-w-0 flex-wrap items-center gap-0.5">
         {#if !hasRun && onAgentChange}
           <AgentSelector value={agent} onchange={(a) => onAgentChange?.(a)} />
         {/if}
         {#if onPermissionModeChange}
           <button
             bind:this={modeBtnEl}
-            class="flex items-center gap-1 rounded-full border border-transparent px-1.5 py-0.5 text-[11px] font-medium transition-colors {currentMode.cls} hover:border-border/40 hover:bg-accent/15"
+            class="flex h-7 items-center gap-0.5 rounded-md border border-transparent px-1.5 py-0 text-[10px] font-medium transition-colors {currentMode.cls} hover:border-border/35 hover:bg-accent/12"
             onclick={toggleModeDropdown}
             title={t("prompt_permissionModeTitle", { mode: currentMode.label() })}
           >
             <svg
-              class="h-3 w-3"
+              class="h-3 w-3 shrink-0 opacity-85"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -1206,6 +1207,25 @@
         {:else if !hasRun}
           <div class="w-1"></div>
         {/if}
+        <button
+          class="flex h-7 items-center gap-0.5 rounded-md border border-transparent px-1.5 py-0 text-[10px] font-medium text-muted-foreground/80 transition-colors hover:border-border/35 hover:bg-accent/12 hover:text-foreground"
+          onclick={() => window.dispatchEvent(new CustomEvent("ocv:open-permissions"))}
+          title={t("permissions_title")}
+        >
+          <svg
+            class="h-3 w-3 shrink-0 opacity-80"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          {t("permissions_rules")}
+        </button>
         {#if showAuthBadge && !hasRun}
           <AuthSourceBadge
             {authOverview}
@@ -1253,9 +1273,9 @@
       <div class="flex items-center gap-0.5">
         {#if file.showTokenEstimate}
           <span
-            class="text-[10px] tabular-nums px-1.5 shrink-0 {file.tokenWarning
+            class="text-[9px] tabular-nums px-1 shrink-0 opacity-80 {file.tokenWarning
               ? 'text-miwarp-status-warning'
-              : 'text-muted-foreground/50'}"
+              : 'text-muted-foreground/45'}"
             title={contextWindow > 0
               ? t("prompt_tokenPercent", { pct: String(file.tokenPercent) })
               : ""}
@@ -1268,65 +1288,46 @@
               >{/if}
           </span>
         {/if}
-        {#if slash.slashEnabled}
-          <button
-            bind:this={slash.slashBtnEl}
-            class="flex h-7 w-7 items-center justify-center rounded-full
-              text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors"
-            onclick={slash.openSlashMenuFromButton}
-            title={t("prompt_slashCommands")}
-          >
-            <svg
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M17 3 7 21" />
-            </svg>
-          </button>
-        {/if}
-        <input
-          bind:this={file.fileInput}
-          type="file"
-          multiple
-          accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.txt,.md,.json,.ts,.tsx,.js,.jsx,.py,.rs,.svelte,.html,.css,.yaml,.yml,.toml,.xml,.sh,.sql,.go,.java,.c,.cpp,.h,.rb,.php,.swift,.csv,.log,.docx,.xlsx"
-          class="hidden"
-          onchange={file.handleFileSelect}
-        />
-        <button
-          class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
-          onclick={() => file.fileInput?.click()}
-          disabled={store.pendingAttachments.length >= 8}
-          title={t("prompt_attachFiles")}
+        <div
+          class="flex items-center gap-px text-muted-foreground/65 [&_button]:h-6 [&_button]:w-6 [&_button]:rounded-full [&_svg]:h-3.5 [&_svg]:w-3.5"
         >
-          <svg
-            class="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path
-              d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"
-            />
-          </svg>
-        </button>
-        {#if IS_MAC}
-          <!-- Screenshot capture button (macOS only) -->
+          {#if slash.slashEnabled}
+            <button
+              bind:this={slash.slashBtnEl}
+              class="flex items-center justify-center
+              text-muted-foreground/55 hover:text-foreground hover:bg-accent/12 transition-colors"
+              onclick={slash.openSlashMenuFromButton}
+              title={t("prompt_slashCommands")}
+            >
+              <svg
+                class="h-3.5 w-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M17 3 7 21" />
+              </svg>
+            </button>
+          {/if}
+          <input
+            bind:this={file.fileInput}
+            type="file"
+            multiple
+            accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.txt,.md,.json,.ts,.tsx,.js,.jsx,.py,.rs,.svelte,.html,.css,.yaml,.yml,.toml,.xml,.sh,.sql,.go,.java,.c,.cpp,.h,.rb,.php,.swift,.csv,.log,.docx,.xlsx"
+            class="hidden"
+            onchange={file.handleFileSelect}
+          />
           <button
-            class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
-            onclick={() => api.captureScreenshot()}
+            class="flex items-center justify-center text-muted-foreground/55 hover:text-foreground hover:bg-accent/12 transition-colors disabled:opacity-30"
+            onclick={() => file.fileInput?.click()}
             disabled={store.pendingAttachments.length >= 8}
-            title={t("prompt_screenshot")}
+            title={t("prompt_attachFiles")}
           >
             <svg
-              class="h-4 w-4"
+              class="h-3.5 w-3.5"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -1335,12 +1336,35 @@
               stroke-linejoin="round"
             >
               <path
-                d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"
+                d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"
               />
-              <circle cx="12" cy="13" r="3" />
             </svg>
           </button>
-        {/if}
+          {#if IS_MAC}
+            <!-- Screenshot capture button (macOS only) -->
+            <button
+              class="flex items-center justify-center text-muted-foreground/55 hover:text-foreground hover:bg-accent/12 transition-colors disabled:opacity-30"
+              onclick={() => api.captureScreenshot()}
+              disabled={store.pendingAttachments.length >= 8}
+              title={t("prompt_screenshot")}
+            >
+              <svg
+                class="h-3.5 w-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"
+                />
+                <circle cx="12" cy="13" r="3" />
+              </svg>
+            </button>
+          {/if}
+        </div>
 
         {#if running && onInterrupt}
           {#if file.canSend}

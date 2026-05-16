@@ -1738,6 +1738,8 @@ export class SessionStore {
     this.error = "";
     this._setPhase("spawning");
 
+    let useWorktreeOverride: boolean | null = null;
+
     try {
       // Refresh platformId and permissionMode from latest settings for new sessions.
       // Both may be stale (carried over from a previous run / earlier user selection)
@@ -1753,6 +1755,9 @@ export class SessionStore {
             });
             this.platformId = freshPid;
           }
+        }
+        if (!this.remoteHostName && freshSettings.default_session_mode === "ask_on_new_branch") {
+          useWorktreeOverride = confirm(t("settings_newSessionWorktreeConfirm"));
         }
         // Settings stores app-internal names (auto_all, auto_read, etc.)
         // Store uses CLI names (bypassPermissions, acceptEdits, etc.)
@@ -1796,6 +1801,7 @@ export class SessionStore {
         this.remoteHostName || undefined,
         this.platformId || undefined,
         executionPath,
+        useWorktreeOverride,
       );
       this.run = run;
 

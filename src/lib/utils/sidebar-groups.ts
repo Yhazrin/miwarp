@@ -36,6 +36,20 @@ export interface SessionFolderGroup {
   latestActivityAt: string;
 }
 
+// ── Logical session folders (workspace binding) ──
+
+/**
+ * Parent project path for a logical session folder: uses `workspaceId` from when the folder was created.
+ * Empty / placeholder values (legacy `"default"`, normalized empty) → uncategorized (`""`).
+ * This is the user's explicit "which project this folder belongs to", not inferred from runs.
+ */
+export function logicalFolderParentCwd(folder: SessionFolder): string {
+  const w = normalizeCwd(folder.workspaceId);
+  if (!w) return "";
+  if (w.toLowerCase() === "default") return "";
+  return w;
+}
+
 // ── normalizeCwd ──
 
 /** Normalize cwd: unify separators + strip trailing + uppercase drive; empty/"/"/"\" → "" */
@@ -293,8 +307,9 @@ export interface EnrichedProjectFolder extends ProjectFolder {
 /**
  * Builds project folders enriched with nested logical sub-folders.
  * - Sessions assigned to a SessionFolder are excluded from `conversations` (they appear in `subFolders`).
- * - Each SessionFolderGroup is assigned to the project path that its sessions belong to.
- * - Empty SessionFolders go to the uncategorized bucket.
+ * - Each SessionFolderGroup is placed under the project from `SessionFolder.workspaceId` (set when the folder is created).
+ * - If `workspaceId` is empty/placeholder and the folder has sessions, parent path falls back to majority cwd of those runs.
+ * - Empty folders with no usable `workspaceId` stay in the uncategorized bucket.
  */
 export function buildEnrichedProjectFolders(
   runs: TaskRun[],
@@ -319,12 +334,17 @@ export function buildEnrichedProjectFolders(
     }
   }
 
-  // 2. Determine which cwd each SessionFolder belongs to (majority vote from its sessions)
+  // 2. Map each SessionFolder → parent project cwd (explicit workspace first, else infer from runs)
   const folderCwdMap = new Map<string, string>();
   for (const folder of sessionFolders) {
     const bucketRuns = folderRunMap.get(folder.id) ?? [];
+    const fromWorkspace = logicalFolderParentCwd(folder);
+    if (fromWorkspace !== "") {
+      folderCwdMap.set(folder.id, fromWorkspace);
+      continue;
+    }
     if (bucketRuns.length === 0) {
-      folderCwdMap.set(folder.id, ""); // empty → uncategorized
+      folderCwdMap.set(folder.id, "");
       continue;
     }
     // Count cwd occurrences

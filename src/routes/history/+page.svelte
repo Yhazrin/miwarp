@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { goto } from "$app/navigation";
+  import { goto, afterNavigate } from "$app/navigation";
   import { page } from "$app/stores";
   import { searchRuns } from "$lib/api";
   import type { RunSearchFilters, RunSearchResponse } from "$lib/types";
@@ -211,13 +211,26 @@
     goto(`/chat?run=${runId}`);
   }
 
-  onMount(() => {
-    // Read initial query from URL
+  function readUrlHints() {
     const q = $page.url.searchParams.get("q");
-    if (q) {
+    const advanced = $page.url.searchParams.get("advanced");
+    if (q != null) {
       searchInput = q;
-      filters = { query: q };
+      filters = { ...filters, query: q || undefined };
     }
+    if (advanced === "1" || advanced === "true") {
+      showAdvancedFilters = true;
+    }
+  }
+
+  onMount(() => {
+    readUrlHints();
+    loadData();
+  });
+
+  afterNavigate((n) => {
+    if (n.to?.url.pathname !== "/history" || !n.from) return;
+    readUrlHints();
     loadData();
   });
 </script>

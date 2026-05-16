@@ -75,12 +75,41 @@ pub struct ScheduledTask {
     pub next_run_at: Option<String>,
     #[serde(default)]
     pub last_run_at: Option<String>,
+    #[serde(default = "default_true")]
+    pub notify_on_completion: bool,
+    #[serde(default)]
+    pub max_retries: Option<u32>,
+    #[serde(default)]
+    pub retry_backoff_secs: Option<u32>,
     pub created_at: String,
     pub updated_at: String,
 }
 
 fn default_true() -> bool {
     true
+}
+
+/// Retry configuration for task execution
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct RetryConfig {
+    #[serde(default)]
+    pub max_retries: Option<u32>,
+    #[serde(default)]
+    pub initial_delay_secs: Option<u32>,
+    #[serde(default)]
+    pub max_delay_secs: Option<u32>,
+    #[serde(default)]
+    pub backoff: RetryBackoff,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum RetryBackoff {
+    #[default]
+    Exponential,
+    Linear,
+    Fixed,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -132,6 +161,12 @@ pub struct ScheduledTaskInput {
     pub model: Option<String>,
     #[serde(default)]
     pub provider: Option<String>,
+    #[serde(default)]
+    pub notify_on_completion: Option<bool>,
+    #[serde(default)]
+    pub max_retries: Option<u32>,
+    #[serde(default)]
+    pub retry_backoff_secs: Option<u32>,
 }
 
 /// Partial update for an existing scheduled task.
@@ -158,4 +193,10 @@ pub struct ScheduledTaskPatch {
     pub model: Option<Option<String>>,
     #[serde(default)]
     pub provider: Option<Option<String>>,
+    #[serde(default)]
+    pub retry_backoff_secs: Option<u32>,
+    #[serde(default)]
+    pub notify_on_completion: Option<bool>,
+    #[serde(default)]
+    pub max_retries: Option<u32>,
 }

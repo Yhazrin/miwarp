@@ -177,6 +177,11 @@
     return items;
   });
 
+  /** Instructions + memory both empty: single compact "setup" card */
+  let showMergedWorkspaceSetup = $derived(
+    !claudeMdLoading && !memoryLoading && !claudeMdExists && memoryItems.length === 0,
+  );
+
   // ── Copy single memory item ──
   function copyItem(text: string) {
     navigator.clipboard.writeText(text).catch(() => {});
@@ -207,179 +212,14 @@
       <p class="text-xs text-muted-foreground/60">{t("workspaceContext_noWorkspace")}</p>
     </div>
   {:else}
-    <div class="p-3 space-y-3">
-      <!-- Instructions / CLAUDE.md card -->
-      <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
-        <div class="flex items-center gap-2 px-3 py-2">
-          <svg
-            class="h-3.5 w-3.5 text-muted-foreground shrink-0"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-            <polyline points="10 9 9 9 8 9" />
-          </svg>
-          <span class="text-[11px] font-semibold text-foreground">
-            {t("workspaceContext_claudeMd")}
-          </span>
-          {#if claudeMdExists}
-            <span
-              class="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-[hsl(var(--miwarp-status-success)/0.15)] text-[hsl(var(--miwarp-status-success))] font-medium"
-            >
-              {t("workspaceContext_active")}
-            </span>
-          {/if}
-        </div>
-
-        {#if claudeMdLoading}
-          <div class="px-3 pb-2">
-            <div class="h-3 w-3/4 rounded bg-muted/50 animate-pulse"></div>
-            <div class="h-3 w-1/2 rounded bg-muted/50 animate-pulse mt-1.5"></div>
-          </div>
-        {:else if claudeMdExists && claudeMdSummary.length > 0}
-          <div class="px-3 pb-2 space-y-1">
-            {#each claudeMdSummary.slice(0, claudeMdExpanded ? undefined : 3) as rule, i (i)}
-              <p class="text-[11px] text-foreground/70 leading-relaxed line-clamp-2">{rule}</p>
-            {/each}
-            {#if claudeMdSummary.length > 3}
-              <button
-                class="text-[10px] text-primary/70 hover:text-primary transition-colors mt-0.5"
-                onclick={() => (claudeMdExpanded = !claudeMdExpanded)}
-              >
-                {claudeMdExpanded
-                  ? t("workspaceContext_collapse")
-                  : t("workspaceContext_expandAll", { count: String(claudeMdSummary.length) })}
-              </button>
-            {/if}
-          </div>
-          <div class="flex items-center gap-2 px-3 py-1.5 border-t border-border/30">
-            <span class="text-[10px] text-muted-foreground/50 truncate flex-1"
-              >{claudeMdPath.split("/").pop()}</span
-            >
-            <button
-              class="text-[10px] text-primary/60 hover:text-primary transition-colors shrink-0"
-              onclick={openClaudeMd}
-            >
-              {t("workspaceContext_openFile")}
-            </button>
-          </div>
-        {:else}
-          <div class="px-3 pb-2">
-            <p class="text-[11px] text-muted-foreground/50">{t("workspaceContext_noClaudeMd")}</p>
-            <button
-              class="text-[10px] text-primary/60 hover:text-primary transition-colors mt-1"
-              onclick={onSwitchToFiles}
-            >
-              {t("workspaceContext_createClaudeMd")}
-            </button>
-          </div>
-        {/if}
-      </div>
-
-      <!-- Memory card -->
-      <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
-        <div class="flex items-center gap-2 px-3 py-2">
-          <svg
-            class="h-3.5 w-3.5 text-muted-foreground shrink-0"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M12 2a10 10 0 1 0 10 10H12V2z" />
-            <path d="M12 2a10 10 0 0 1 10 10" />
-            <circle cx="12" cy="12" r="6" />
-          </svg>
-          <span class="text-[11px] font-semibold text-foreground">
-            {t("workspaceContext_memory")}
-          </span>
-          {#if memoryItems.length > 0}
-            <span class="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-              {memoryItems.length}
-            </span>
-          {/if}
-        </div>
-
-        {#if memoryLoading}
-          <div class="px-3 pb-2 space-y-1.5">
-            <div class="h-3 w-full rounded bg-muted/50 animate-pulse"></div>
-            <div class="h-3 w-2/3 rounded bg-muted/50 animate-pulse"></div>
-          </div>
-        {:else if memoryItems.length > 0}
-          <div class="px-2.5 pb-2 space-y-1 max-h-60 overflow-y-auto">
-            {#each memoryItems as item (item.id)}
-              <div
-                class="group flex items-start gap-1.5 rounded-lg px-2 py-1.5 hover:bg-accent/30 transition-colors"
-              >
-                <span class="text-[10px] text-muted-foreground/40 mt-0.5 shrink-0">&#x2022;</span>
-                <p
-                  class="text-[11px] text-foreground/70 leading-relaxed flex-1 min-w-0 {expandedMemory.has(
-                    item.id,
-                  )
-                    ? ''
-                    : 'line-clamp-2'}"
-                >
-                  {item.text}
-                </p>
-                <div
-                  class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  {#if item.text.length > 80}
-                    <button
-                      class="text-[9px] text-muted-foreground/50 hover:text-foreground transition-colors"
-                      onclick={() => {
-                        if (expandedMemory.has(item.id)) {
-                          expandedMemory.delete(item.id);
-                        } else {
-                          expandedMemory = new Set(expandedMemory).add(item.id);
-                        }
-                      }}
-                    >
-                      {expandedMemory.has(item.id) ? "Less" : "More"}
-                    </button>
-                  {/if}
-                  <button
-                    class="text-[9px] text-muted-foreground/50 hover:text-foreground transition-colors"
-                    onclick={() => copyItem(item.text)}
-                    title={t("workspaceContext_copyMemory")}
-                  >
-                    <svg
-                      class="h-3 w-3"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            {/each}
-          </div>
-        {:else}
-          <div class="px-3 pb-2">
-            <p class="text-[11px] text-muted-foreground/40">{t("workspaceContext_noMemory")}</p>
-          </div>
-        {/if}
-      </div>
-
-      <!-- Session Context card -->
+    {@const card =
+      "rounded-xl border border-border/50 bg-background/45 overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"}
+    {@const cardHd = "flex items-center gap-2 px-3 py-2 border-b border-border/25 bg-muted/10"}
+    <div class="p-3 space-y-2.5">
+      <!-- Session context (primary) -->
       {#if sessionContextItems.length > 0}
-        <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
-          <div class="flex items-center gap-2 px-3 py-2">
+        <div class={card}>
+          <div class={cardHd}>
             <svg
               class="h-3.5 w-3.5 text-muted-foreground shrink-0"
               viewBox="0 0 24 24"
@@ -393,24 +233,230 @@
               <line x1="12" y1="16" x2="12" y2="12" />
               <line x1="12" y1="8" x2="12.01" y2="8" />
             </svg>
-            <span class="text-[11px] font-semibold text-foreground">
+            <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               {t("workspaceContext_sessionContext")}
             </span>
           </div>
-          <div class="px-3 pb-2 space-y-1">
+          <div class="px-3 py-2 space-y-1">
             {#each sessionContextItems as ctx (ctx.label)}
-              <div class="flex items-center gap-2 text-[11px]">
-                <span class="text-muted-foreground/50 shrink-0 w-12 text-right">{ctx.label}</span>
-                <span class="text-foreground/70 truncate">{ctx.value}</span>
+              <div class="flex items-center gap-2 text-[11px] leading-tight">
+                <span class="text-muted-foreground/45 shrink-0 w-12 text-right">{ctx.label}</span>
+                <span
+                  class="text-foreground/75 min-w-0 truncate font-mono text-[10px] sm:text-[11px]"
+                  >{ctx.value}</span
+                >
               </div>
             {/each}
           </div>
         </div>
       {/if}
 
+      {#if showMergedWorkspaceSetup}
+        <div class="{card} border-dashed border-border/35 bg-muted/10">
+          <div class="px-3 py-2 border-b border-border/20">
+            <span
+              class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/90"
+            >
+              {t("workspaceContext_setupMergedTitle")}
+            </span>
+          </div>
+          <div class="px-3 py-2 space-y-1.5">
+            <p class="text-[10px] text-muted-foreground/55 leading-snug">
+              {t("workspaceContext_noClaudeMd")}
+            </p>
+            <p class="text-[10px] text-muted-foreground/45 leading-snug">
+              {t("workspaceContext_noMemory")}
+            </p>
+            {#if onSwitchToFiles}
+              <button
+                type="button"
+                class="text-[10px] font-medium text-primary/55 hover:text-primary transition-colors pt-0.5"
+                onclick={onSwitchToFiles}
+              >
+                {t("workspaceContext_createClaudeMd")}
+              </button>
+            {/if}
+          </div>
+        </div>
+      {:else}
+        <!-- Instructions / CLAUDE.md card -->
+        <div class={card}>
+          <div class={cardHd}>
+            <svg
+              class="h-3.5 w-3.5 text-muted-foreground shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+            <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("workspaceContext_claudeMd")}
+            </span>
+            {#if claudeMdExists}
+              <span
+                class="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-[hsl(var(--miwarp-status-success)/0.12)] text-[hsl(var(--miwarp-status-success)/0.95)] font-medium"
+              >
+                {t("workspaceContext_active")}
+              </span>
+            {/if}
+          </div>
+
+          {#if claudeMdLoading}
+            <div class="px-3 pb-2 pt-1">
+              <div class="h-3 w-3/4 rounded bg-muted/50 animate-pulse"></div>
+              <div class="h-3 w-1/2 rounded bg-muted/50 animate-pulse mt-1.5"></div>
+            </div>
+          {:else if claudeMdExists && claudeMdSummary.length > 0}
+            <div class="px-3 pb-2 pt-1 space-y-1">
+              {#each claudeMdSummary.slice(0, claudeMdExpanded ? undefined : 3) as rule, i (i)}
+                <p class="text-[11px] text-foreground/70 leading-relaxed line-clamp-2">{rule}</p>
+              {/each}
+              {#if claudeMdSummary.length > 3}
+                <button
+                  class="text-[10px] text-primary/65 hover:text-primary transition-colors mt-0.5"
+                  onclick={() => (claudeMdExpanded = !claudeMdExpanded)}
+                >
+                  {claudeMdExpanded
+                    ? t("workspaceContext_collapse")
+                    : t("workspaceContext_expandAll", { count: String(claudeMdSummary.length) })}
+                </button>
+              {/if}
+            </div>
+            <div class="flex items-center gap-2 px-3 py-1.5 border-t border-border/25">
+              <span class="text-[10px] text-muted-foreground/50 truncate flex-1"
+                >{claudeMdPath.split("/").pop()}</span
+              >
+              <button
+                class="text-[10px] text-primary/55 hover:text-primary transition-colors shrink-0"
+                onclick={openClaudeMd}
+              >
+                {t("workspaceContext_openFile")}
+              </button>
+            </div>
+          {:else}
+            <div class="px-3 py-2">
+              <p class="text-[10px] text-muted-foreground/50 leading-relaxed">
+                {t("workspaceContext_noClaudeMd")}
+              </p>
+              <button
+                class="text-[10px] text-primary/55 hover:text-primary transition-colors mt-1.5"
+                onclick={onSwitchToFiles}
+              >
+                {t("workspaceContext_createClaudeMd")}
+              </button>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Memory card -->
+        <div class={card}>
+          <div class={cardHd}>
+            <svg
+              class="h-3.5 w-3.5 text-muted-foreground shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M12 2a10 10 0 1 0 10 10H12V2z" />
+              <path d="M12 2a10 10 0 0 1 10 10" />
+              <circle cx="12" cy="12" r="6" />
+            </svg>
+            <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("workspaceContext_memory")}
+            </span>
+            {#if memoryItems.length > 0}
+              <span
+                class="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-muted/80 text-muted-foreground"
+              >
+                {memoryItems.length}
+              </span>
+            {/if}
+          </div>
+
+          {#if memoryLoading}
+            <div class="px-3 pb-2 pt-1 space-y-1.5">
+              <div class="h-3 w-full rounded bg-muted/50 animate-pulse"></div>
+              <div class="h-3 w-2/3 rounded bg-muted/50 animate-pulse"></div>
+            </div>
+          {:else if memoryItems.length > 0}
+            <div class="px-2.5 pb-2 pt-1 space-y-1 max-h-60 overflow-y-auto">
+              {#each memoryItems as item (item.id)}
+                <div
+                  class="group flex items-start gap-1.5 rounded-lg px-2 py-1.5 hover:bg-accent/25 transition-colors"
+                >
+                  <span class="text-[10px] text-muted-foreground/35 mt-0.5 shrink-0">&#x2022;</span>
+                  <p
+                    class="text-[11px] text-foreground/70 leading-relaxed flex-1 min-w-0 {expandedMemory.has(
+                      item.id,
+                    )
+                      ? ''
+                      : 'line-clamp-2'}"
+                  >
+                    {item.text}
+                  </p>
+                  <div
+                    class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    {#if item.text.length > 80}
+                      <button
+                        class="text-[9px] text-muted-foreground/50 hover:text-foreground transition-colors"
+                        onclick={() => {
+                          if (expandedMemory.has(item.id)) {
+                            expandedMemory.delete(item.id);
+                          } else {
+                            expandedMemory = new Set(expandedMemory).add(item.id);
+                          }
+                        }}
+                      >
+                        {expandedMemory.has(item.id) ? "Less" : "More"}
+                      </button>
+                    {/if}
+                    <button
+                      class="text-[9px] text-muted-foreground/50 hover:text-foreground transition-colors"
+                      onclick={() => copyItem(item.text)}
+                      title={t("workspaceContext_copyMemory")}
+                    >
+                      <svg
+                        class="h-3 w-3"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {:else}
+            <div class="px-3 py-2">
+              <p class="text-[10px] text-muted-foreground/40 leading-relaxed">
+                {t("workspaceContext_noMemory")}
+              </p>
+            </div>
+          {/if}
+        </div>
+      {/if}
+
       <!-- Recent Activity summary -->
-      <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
-        <div class="flex items-center gap-2 px-3 py-2">
+      <div class={card}>
+        <div class="{cardHd} py-1.5">
           <svg
             class="h-3.5 w-3.5 text-muted-foreground shrink-0"
             viewBox="0 0 24 24"
@@ -424,12 +470,12 @@
               d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
             />
           </svg>
-          <span class="text-[11px] font-semibold text-foreground">
+          <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             {t("workspaceContext_recentActivity")}
           </span>
           {#if toolStats.totalToolCount > 0}
             <button
-              class="ml-auto text-[10px] text-primary/60 hover:text-primary transition-colors"
+              class="ml-auto text-[10px] text-primary/55 hover:text-primary transition-colors"
               onclick={() => onSwitchToActivity?.()}
             >
               {t("workspaceContext_viewActivity")}
@@ -437,8 +483,8 @@
           {/if}
         </div>
         {#if toolStats.totalToolCount > 0}
-          <div class="px-3 pb-2">
-            <p class="text-[11px] text-foreground/60">
+          <div class="px-3 pb-2 pt-0.5">
+            <p class="text-[10px] text-foreground/58 leading-relaxed">
               {t("workspaceContext_toolSummary", {
                 total: String(toolStats.totalToolCount),
                 reads: String(toolStats.reads),
@@ -448,19 +494,32 @@
             </p>
           </div>
         {:else}
-          <div class="px-3 pb-2">
-            <p class="text-[11px] text-muted-foreground/40">{t("workspaceContext_noActivity")}</p>
+          <div class="px-3 pb-2 pt-0.5">
+            <p class="text-[10px] text-muted-foreground/38 leading-relaxed">
+              {t("workspaceContext_noActivity")}
+            </p>
           </div>
         {/if}
       </div>
 
-      <!-- Context Usage (reuse ContextHistoryPanel for detailed view) -->
+      <!-- Context Usage (collapsed by default) -->
       {#if contextHistory.length > 0 || (turnUsages && turnUsages.length > 0)}
-        <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
-          <details>
+        <div class={card}>
+          <details class="group/details">
             <summary
-              class="flex items-center gap-2 px-3 py-2 cursor-pointer select-none hover:bg-accent/20 transition-colors"
+              class="flex list-none cursor-pointer items-center gap-2 px-3 py-2 select-none hover:bg-accent/15 transition-colors [&::-webkit-details-marker]:hidden"
             >
+              <svg
+                class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform group-open/details:rotate-90"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="m9 18 6-6-6-6" />
+              </svg>
               <svg
                 class="h-3.5 w-3.5 text-muted-foreground shrink-0"
                 viewBox="0 0 24 24"
@@ -473,11 +532,11 @@
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
-              <span class="text-[11px] font-semibold text-foreground">
+              <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t("workspaceContext_contextUsage")}
               </span>
             </summary>
-            <div class="border-t border-border/30">
+            <div class="border-t border-border/25">
               <ContextHistoryPanel history={contextHistory} {turnUsages} {sessionInfo} />
             </div>
           </details>

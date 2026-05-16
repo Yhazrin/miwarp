@@ -8,6 +8,7 @@
     attention = false,
     compact = false,
     shortLabel = false,
+    subtle = false,
     class: className = "",
   }: {
     status: RunStatus;
@@ -15,6 +16,8 @@
     compact?: boolean;
     /** Use abbreviated status text for constrained widths (e.g. sidebar) */
     shortLabel?: boolean;
+    /** Smaller, lower-contrast pill for list selection chrome */
+    subtle?: boolean;
     class?: string;
   } = $props();
 
@@ -87,7 +90,15 @@
     completed: "done",
   };
 
-  const style = $derived(statusStyles[displayStatus]);
+  const style = $derived.by(() => {
+    const base = statusStyles[displayStatus];
+    if (!subtle) return base;
+    return {
+      bg: base.bg.replace("/ 0.2)", "/ 0.08)"),
+      text: base.text.replace("/ 1)", "/ 0.62)"),
+      dot: base.dot,
+    };
+  });
   const isAnimated = $derived(displayStatus === "running" || displayStatus === "waiting");
   const displayText = $derived(
     shortLabel ? (shortLabels[displayStatus] ?? displayStatus) : displayStatus,
@@ -108,11 +119,13 @@
 {:else}
   <!-- Full pill mode -->
   <span
-    class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium {className}"
+    class="inline-flex items-center {subtle
+      ? 'gap-1 rounded-md px-1.5 py-px text-[10px] font-medium'
+      : 'gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium'} {className}"
     style="background-color: {style.bg}; color: {style.text}"
   >
     <span
-      class="h-1.5 w-1.5 rounded-full {isAnimated
+      class="{subtle ? 'h-1 w-1' : 'h-1.5 w-1.5'} rounded-full {isAnimated
         ? displayStatus === 'running'
           ? 'animate-slow-pulse'
           : 'animate-pulse'

@@ -31,6 +31,10 @@ pub fn list_folders(workspace_id: &str) -> Vec<SessionFolder> {
         .collect()
 }
 
+pub fn list_all_folders() -> Vec<SessionFolder> {
+    load_all()
+}
+
 pub fn create_folder(name: &str, workspace_id: &str) -> Result<SessionFolder, String> {
     if name.trim().is_empty() {
         return Err("Folder name cannot be empty".to_string());

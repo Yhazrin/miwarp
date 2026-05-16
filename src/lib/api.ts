@@ -84,6 +84,8 @@ export async function startRun(
   remoteHostName?: string,
   platformId?: string,
   executionPath?: string,
+  /** When set, forces worktree for this run; omit to follow default_session_mode. */
+  useWorktree?: boolean | null,
 ): Promise<TaskRun> {
   dbg("api", "startRun", {
     prompt: prompt.slice(0, 80),
@@ -92,16 +94,21 @@ export async function startRun(
     remoteHostName,
     platformId,
     executionPath,
+    useWorktree,
   });
-  const result = await invoke<TaskRun>("start_run", {
+  const args: Record<string, unknown> = {
     prompt,
     cwd,
     agent,
-    model,
+    model: model ?? null,
     remoteHostName: remoteHostName ?? null,
     platformId: platformId ?? null,
     executionPath: executionPath ?? null,
-  });
+  };
+  if (typeof useWorktree === "boolean") {
+    args.useWorktreeOverride = useWorktree;
+  }
+  const result = await invoke<TaskRun>("start_run", args);
   dbg("api", "startRun →", result.id);
   return result;
 }
@@ -136,6 +143,12 @@ export async function hardDeleteRuns(ids: string[]): Promise<number> {
 export async function listSessionFolders(workspaceId: string): Promise<SessionFolder[]> {
   dbg("api", "listSessionFolders", { workspaceId });
   return invoke<SessionFolder[]>("list_session_folders", { workspaceId });
+}
+
+/** All logical session folders across workspaces (sidebar + move dialog). */
+export async function listAllSessionFolders(): Promise<SessionFolder[]> {
+  dbg("api", "listAllSessionFolders");
+  return invoke<SessionFolder[]>("list_all_session_folders");
 }
 
 export async function createSessionFolder(
@@ -458,6 +471,12 @@ export async function checkProjectInit(cwd: string): Promise<ProjectInitStatus> 
 export async function getCliDistTags(): Promise<CliDistTags> {
   dbg("api", "getCliDistTags");
   return invoke<CliDistTags>("get_cli_dist_tags");
+}
+
+/** Run official `claude update` (desktop only). Returns CLI stdout+stderr on success. */
+export async function runClaudeSelfUpdate(): Promise<string> {
+  dbg("api", "runClaudeSelfUpdate");
+  return invoke<string>("run_claude_self_update");
 }
 
 export async function checkSshKey(): Promise<SshKeyInfo> {

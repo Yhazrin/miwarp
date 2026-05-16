@@ -141,7 +141,7 @@
   {#if !latest && !hasResourceData}
     <!-- Empty state -->
     <div
-      class="flex items-center justify-center h-32 text-xs text-muted-foreground/50 px-4 text-center"
+      class="flex flex-col items-center justify-center py-4 px-4 text-center text-[11px] text-muted-foreground/45"
     >
       {t("contextPanel_noData")}
     </div>

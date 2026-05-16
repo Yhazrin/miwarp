@@ -553,15 +553,16 @@
         {#if onModelChange}
           <button
             bind:this={modelBtnEl}
-            class="flex items-center gap-1 shrink-0 rounded border border-transparent px-1.5 py-0.5 -my-0.5 text-foreground/80 hover:text-foreground hover:bg-accent hover:border-border transition-colors"
+            class="flex items-center gap-1 max-w-[min(11rem,32vw)] min-w-0 shrink rounded border border-transparent px-1.5 py-0.5 -my-0.5 text-foreground/80 hover:text-foreground hover:bg-accent hover:border-border transition-colors"
             onclick={toggleModelDropdown}
+            title={modelLabel}
           >
-            {modelLabel}
+            <span class="truncate">{modelLabel}</span>
             {#if !effortDisabled && effort}
-              <span class="text-foreground/60 text-[10px]">{effort}</span>
+              <span class="text-foreground/60 text-[10px] shrink-0">{effort}</span>
             {/if}
             <svg
-              class="h-3 w-3 text-foreground/40"
+              class="h-3 w-3 text-foreground/40 shrink-0"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -569,7 +570,9 @@
             >
           </button>
         {:else}
-          <span class="truncate text-foreground/80">{model}</span>
+          <span class="truncate max-w-[min(11rem,32vw)] text-foreground/80" title={model}
+            >{model}</span
+          >
         {/if}
       {/if}
 
@@ -578,38 +581,38 @@
         {@const pct = Math.round(contextUtilization * 100)}
         {@const barColor =
           contextWarningLevel === "critical"
-            ? "bg-orange-500"
+            ? "bg-amber-600/85"
             : contextWarningLevel === "high"
-              ? "bg-orange-500"
+              ? "bg-amber-500/70"
               : contextWarningLevel === "moderate"
-                ? "bg-amber-500"
-                : "bg-emerald-500"}
+                ? "bg-amber-400/55"
+                : "bg-emerald-500/45"}
         {@const textColor =
-          contextWarningLevel === "critical"
-            ? "text-miwarp-status-warning"
-            : contextWarningLevel === "high"
-              ? "text-miwarp-status-warning"
-              : contextWarningLevel === "moderate"
-                ? "text-miwarp-status-warning"
-                : "text-foreground/60"}
+          contextWarningLevel === "critical" || contextWarningLevel === "high"
+            ? "text-amber-800/80 dark:text-amber-200/75"
+            : contextWarningLevel === "moderate"
+              ? "text-amber-900/55 dark:text-amber-100/55"
+              : "text-muted-foreground/55"}
         <span class="text-foreground/30">&middot;</span>
         <span
-          class="flex items-center gap-1.5 shrink-0 {textColor}"
+          class="inline-flex items-center gap-1.5 shrink-0 rounded-full border border-border/30 bg-muted/25 px-2 py-0.5 {textColor}"
           title={t("statusbar_contextTitle", {
             pct: String(pct),
             tokens: contextWindow ? fmtNumber(contextWindow) : "",
           })}
         >
-          <span class="inline-flex h-1.5 w-12 rounded-full bg-foreground/10 overflow-hidden">
+          <span class="inline-flex h-1 w-[2.75rem] rounded-full bg-foreground/8 overflow-hidden">
             <span
               class="h-full rounded-full transition-all duration-700 ease-out {barColor}"
               style="width: {pct}%"
             ></span>
           </span>
-          <span class="hidden sm:inline">{t("statusbar_ctx", { pct: String(pct) })}</span>
+          <span class="hidden sm:inline text-[10px] tabular-nums text-muted-foreground/70"
+            >{t("statusbar_ctx", { pct: String(pct) })}</span
+          >
           {#if compactVisible}
             <span
-              class="text-[10px] text-miwarp-status-info font-medium animate-pulse"
+              class="text-[10px] text-miwarp-status-info/80 font-medium animate-pulse"
               title={t("statusbar_compactDetail", {
                 full: String(compactCount),
                 micro: String(microcompactCount),

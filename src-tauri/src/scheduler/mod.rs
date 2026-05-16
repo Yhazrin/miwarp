@@ -69,6 +69,7 @@ async fn tick(app: &AppHandle) {
         let cancel_token = app.state::<CancellationToken>();
 
         let task_run = runner::execute_task(
+            app,
             task,
             emitter.inner(),
             sessions.inner(),
@@ -81,6 +82,15 @@ async fn tick(app: &AppHandle) {
         let mut updated_task = task.clone();
         updated_task.last_run_at = Some(task_run.started_at.clone());
         updated_task.next_run_at = compute_next_run(&updated_task.schedule);
+
+        // Auto-disable one-time tasks after execution completes (mimics Cowork behavior)
+        if updated_task.schedule.schedule_type == ScheduleType::OneTime {
+            updated_task.enabled = false;
+            log::info!(
+                "[scheduler] auto-disabled one-time task '{}' after execution",
+                task.name
+            );
+        }
 
         // Persist updated task
         let mut all_tasks = store::load_tasks();
@@ -173,6 +183,9 @@ pub fn create_scheduled_task(mut input: ScheduledTaskInput) -> Result<ScheduledT
         provider: input.provider,
         next_run_at: next_run,
         last_run_at: None,
+        notify_on_completion: input.notify_on_completion.unwrap_or(true),
+        max_retries: input.max_retries,
+        retry_backoff_secs: input.retry_backoff_secs,
         created_at: now.clone(),
         updated_at: now,
     };
@@ -240,6 +253,15 @@ pub fn update_scheduled_task(
     if let Some(provider) = patch.provider {
         task.provider = provider;
     }
+    if let Some(notify) = patch.notify_on_completion {
+        task.notify_on_completion = notify;
+    }
+    if let Some(max_retries) = patch.max_retries {
+        task.max_retries = Some(max_retries);
+    }
+    if let Some(retry_backoff) = patch.retry_backoff_secs {
+        task.retry_backoff_secs = Some(retry_backoff);
+    }
 
     task.updated_at = Utc::now().to_rfc3339();
     let updated = task.clone();
@@ -277,6 +299,9 @@ pub fn set_scheduled_task_enabled(id: String, enabled: bool) -> Result<Scheduled
             permission_mode: None,
             model: None,
             provider: None,
+            retry_backoff_secs: None,
+            notify_on_completion: None,
+            max_retries: None,
         },
     )
 }
@@ -303,6 +328,7 @@ pub async fn run_scheduled_task_now(
     let cancel_token = app.state::<CancellationToken>();
 
     let task_run = runner::execute_task(
+        &app,
         &task,
         emitter.inner(),
         sessions.inner(),
@@ -311,12 +337,16 @@ pub async fn run_scheduled_task_now(
     )
     .await;
 
-    // Update lastRunAt and recompute nextRunAt
+    // Update lastRunAt, recompute nextRunAt, and auto-disable one-time tasks
     let mut all_tasks = store::load_tasks();
     if let Some(t) = all_tasks.iter_mut().find(|t| t.id == id) {
         t.last_run_at = Some(task_run.started_at.clone());
         t.next_run_at = compute_next_run(&t.schedule);
         t.updated_at = Utc::now().to_rfc3339();
+        // Auto-disable one-time tasks after manual run completes
+        if t.schedule.schedule_type == ScheduleType::OneTime {
+            t.enabled = false;
+        }
     }
     if let Err(e) = store::save_tasks(&all_tasks) {
         log::error!("[scheduler] failed to update task after manual run: {e}");

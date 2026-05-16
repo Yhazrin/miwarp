@@ -140,6 +140,10 @@ export class EventMiddleware {
     dbg("middleware", "all listeners registered:", ul.length);
   }
 
+  get isStarted(): boolean {
+    return this._started;
+  }
+
   destroy(): void {
     dbg("middleware", "destroying, unregistering", this._unlisteners.length, "listeners");
     // Unsubscribe all runs from transport before cleanup

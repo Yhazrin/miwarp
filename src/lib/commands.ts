@@ -272,6 +272,28 @@ export const commands: CommandDef[] = [
     icon: "🧩",
     fuzzyKeywords: ["plugins", "extensions", "skills", "addons", "marketplace"],
   },
+  {
+    id: "open-project-folder",
+    name: "Open Project Folder",
+    description: "Add or switch the active project folder",
+    category: "navigation",
+    agent: "both",
+    action: "open_modal",
+    payload: "folder-browser",
+    icon: "📂",
+    fuzzyKeywords: ["open", "folder", "project", "workspace", "directory", "cwd", "add", "browse"],
+  },
+  {
+    id: "go-history-advanced",
+    name: "History — Advanced Search",
+    description: "Open run history with advanced filters",
+    category: "navigation",
+    agent: "both",
+    action: "navigate",
+    payload: "/history?advanced=1",
+    icon: "🔎",
+    fuzzyKeywords: ["history", "search", "advanced", "filters", "runs", "find"],
+  },
 
   // Settings
   {

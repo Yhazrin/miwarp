@@ -12,23 +12,41 @@ const INTERACTIVE_SELECTOR = [
   ".no-drag",
 ].join(",");
 
+let currentWindowPromise: Promise<import("@tauri-apps/api/window").Window> | null = null;
+
+function currentWindow() {
+  currentWindowPromise ??= import("@tauri-apps/api/window").then(({ getCurrentWindow }) =>
+    getCurrentWindow(),
+  );
+  return currentWindowPromise;
+}
+
+export function preloadWindowDrag() {
+  const maybeTauriWindow = window as Window & { __TAURI_INTERNALS__?: unknown };
+  if (!maybeTauriWindow.__TAURI_INTERNALS__) return;
+
+  void currentWindow().catch(() => {
+    currentWindowPromise = null;
+  });
+}
+
+export function isWindowDragInteractiveTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && !!target.closest(INTERACTIVE_SELECTOR);
+}
+
 export async function startWindowDragFromEvent(event: PointerEvent | MouseEvent) {
   if (event.button !== 0) return;
 
-  const target = event.target as HTMLElement | null;
-  if (!target) return;
-
-  // Don't drag if clicking on interactive elements
-  if (target.closest(INTERACTIVE_SELECTOR)) {
+  if (isWindowDragInteractiveTarget(event.target)) {
     return;
   }
 
   event.preventDefault();
 
   try {
-    const { getCurrentWindow } = await import("@tauri-apps/api/window");
-    await getCurrentWindow().startDragging();
+    await (await currentWindow()).startDragging();
   } catch (error) {
+    currentWindowPromise = null;
     console.warn("[window-drag] startDragging failed", error);
   }
 }

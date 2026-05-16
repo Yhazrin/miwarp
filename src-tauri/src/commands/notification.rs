@@ -1,5 +1,33 @@
 use crate::storage;
 
+// Feishu interactive cards (custom bot webhook):
+// - Wide "cover-style" image: use an `elements[]` item with tag `img`, `img_key`, and
+//   `mode: "fit_horizontal"` (width fills the card). See:
+//   https://open.feishu.cn/document/ukTMukTMukTM/uUjNwUjL1YDM14SN2ATN
+// - Small icon beside the title (not a full-width cover): `header.icon.img_key`. See:
+//   https://open.feishu.cn/document/ukTMukTMukTM/ukTNwUjL5UDM14SO1ATN
+// - `img_key` values come from the image upload API, e.g.:
+//   https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/image/create
+
+/// Public HTTPS URL for a CodeIsland mascot GIF (same files as MiWarp `static/vendor/...`).
+fn feishu_mascot_image_url(mascot: &str) -> Option<String> {
+    const BASE: &str =
+        "https://raw.githubusercontent.com/wxtsky/CodeIsland/main/docs/images/mascots";
+    let file = match mascot.trim() {
+        "claude" => "claude.gif",
+        "codex" => "codex.gif",
+        "gemini" => "gemini.gif",
+        "cursor" => "cursor.gif",
+        "qoder" => "qoder.gif",
+        "factory" => "factory.gif",
+        "codebuddy" => "codebuddy.gif",
+        "opencode" => "opencode.gif",
+        "cline" => "cline.gif",
+        _ => return None,
+    };
+    Some(format!("{BASE}/{file}"))
+}
+
 /// Color template for the card header based on status.
 fn status_template(status: &str) -> &'static str {
     match status {
@@ -28,8 +56,30 @@ fn build_card_payload(
     status: &str,
     link: Option<&str>,
     time: &str,
+    card_img_key: Option<&str>,
+    card_image_url: Option<&str>,
 ) -> serde_json::Value {
     let mut elements = Vec::new();
+
+    if let Some(key) = card_img_key.map(str::trim).filter(|k| !k.is_empty()) {
+        elements.push(serde_json::json!({
+            "tag": "img",
+            "img_key": key,
+            "alt": { "tag": "plain_text", "content": "MiWarp" },
+            "mode": "fit_horizontal"
+        }));
+    } else if let Some(url) = card_image_url
+        .map(str::trim)
+        .filter(|u| u.starts_with("https://"))
+    {
+        elements.push(serde_json::json!({
+            "tag": "div",
+            "text": {
+                "tag": "lark_md",
+                "content": format!("![]({})", url)
+            }
+        }));
+    }
 
     // Main content block
     let mut content = format!(
@@ -129,7 +179,27 @@ pub fn dispatch_feishu_card(title: &str, body: &str, status: &str, link: Option<
             "content": { "text": message_text }
         })
     } else {
-        build_card_payload(&header_title, body, status, link, &time)
+        let resolved_image_url = settings
+            .feishu_webhook_card_image_url
+            .as_deref()
+            .map(str::trim)
+            .filter(|u| u.starts_with("https://"))
+            .map(ToString::to_string)
+            .or_else(|| {
+                settings
+                    .feishu_webhook_card_mascot
+                    .as_deref()
+                    .and_then(feishu_mascot_image_url)
+            });
+        build_card_payload(
+            &header_title,
+            body,
+            status,
+            link,
+            &time,
+            settings.feishu_webhook_card_img_key.as_deref(),
+            resolved_image_url.as_deref(),
+        )
     };
 
     fire_webhook(webhook_url, payload);

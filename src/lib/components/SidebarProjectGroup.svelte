@@ -7,7 +7,6 @@
     folder: ProjectFolder;
     label: string;
     expanded?: boolean;
-    showCount?: boolean;
     showRemove?: boolean;
     onToggle?: () => void;
     onRemove?: () => void;
@@ -19,7 +18,6 @@
     folder,
     label,
     expanded = false,
-    showCount = true,
     showRemove = false,
     onToggle,
     onRemove,
@@ -39,7 +37,7 @@
 <div class="group/folder mb-1">
   <!-- Folder header -->
   <div
-    class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/30 transition-colors cursor-pointer"
+    class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] font-semibold tracking-tight text-sidebar-foreground hover:bg-sidebar-accent/30 transition-colors cursor-pointer"
     role="button"
     tabindex="0"
     onclick={() => onToggle?.()}
@@ -50,7 +48,7 @@
   >
     <!-- Chevron -->
     <svg
-      class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded
+      class="h-3.5 w-3.5 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded
         ? 'rotate-90'
         : ''}"
       viewBox="0 0 24 24"
@@ -94,18 +92,7 @@
     {/if}
 
     <!-- Label -->
-    <span class="truncate">{label}</span>
-
-    <!-- Count badge -->
-    {#if showCount && folder.conversationCount > 0}
-      <span
-        class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted/60 px-1 text-[10px] font-normal text-muted-foreground/60 {showRemove
-          ? ''
-          : 'ml-auto'}"
-      >
-        {folder.conversationCount}
-      </span>
-    {/if}
+    <span class="truncate min-w-0 flex-1">{label}</span>
 
     <!-- Remove button -->
     {#if showRemove && onRemove}

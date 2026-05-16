@@ -192,6 +192,12 @@ export interface UserSettings {
   feishu_webhook_enabled?: boolean;
   feishu_webhook_triggers?: string[];
   feishu_webhook_template?: string;
+  /** Feishu card image from upload API (`img_key`); takes precedence over image URL. */
+  feishu_webhook_card_img_key?: string | null;
+  /** Optional HTTPS image URL in card (Markdown img); used when img_key is unset. */
+  feishu_webhook_card_image_url?: string | null;
+  /** Preset CLI mascot for card image (resolved to CodeIsland GIF on GitHub). */
+  feishu_webhook_card_mascot?: string | null;
   /** Default session mode: "single" or "worktree". */
   default_session_mode?: string;
   /** Auto-commit worktree changes when session completes. */
@@ -202,6 +208,8 @@ export interface UserSettings {
   auto_cleanup_worktree?: boolean;
   /** Show per-turn token usage report below each AI response. Default true. */
   show_token_usage_report?: boolean;
+  /** Per-agent mascot overrides. Maps agent kind → image URL or data URI. */
+  mascot_overrides?: Record<string, string>;
   updated_at: string;
 }
 

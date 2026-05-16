@@ -232,7 +232,7 @@
               <path d="M12 5v14" />
               <path d="M5 12h14" />
             </svg>
-            <span>Open folder...</span>
+            <span>{t("project_openFolder")}</span>
           </button>
         {/if}
 
@@ -251,7 +251,7 @@
               <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
             </svg>
             <p class="text-xs text-muted-foreground">
-              No conversations yet.<br />Start a new chat to get going.
+              {t("sidebar_noConversationsYet")}<br />{t("sidebar_startNewChat")}
             </p>
           </div>
         {/if}

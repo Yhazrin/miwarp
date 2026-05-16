@@ -17,6 +17,7 @@
   import BackgroundPicker from "$lib/components/BackgroundPicker.svelte";
   import ThemeEditor from "$lib/components/ThemeEditor.svelte";
   import SettingsToggle from "$lib/components/settings/SettingsToggle.svelte";
+  import AgentAppearanceSettings from "$lib/components/settings/AgentAppearanceSettings.svelte";
   import { formatKeyDisplay } from "$lib/stores/keybindings.svelte";
   import {
     PLATFORM_PRESETS,
@@ -40,6 +41,7 @@
   import { IS_WINDOWS } from "$lib/utils/platform";
   import { t, LOCALE_REGISTRY, currentLocale, switchLocale } from "$lib/i18n/index.svelte";
   import { getTransport } from "$lib/transport";
+  import { FEISHU_CARD_MASCOT_OPTIONS } from "$lib/utils/feishu-card-mascots";
 
   // ── Tab state ──
   type SettingsTab =
@@ -173,6 +175,8 @@
   let feishuWebhookUrl = $state("");
   let feishuWebhookEnabled = $state(false);
   let feishuWebhookTriggers = $state<string[]>([]);
+  let feishuWebhookCardMascot = $state("");
+  let feishuCardImgKey = $state("");
   let feishuSaved = $state(false);
   let feishuTesting = $state(false);
   let feishuTestResult = $state<string | null>(null);
@@ -582,9 +586,16 @@
   // Keybinding conflict warning for recording editor
   let recordingConflict = $state("");
 
-  // Derived keybinding groups
-  let appBindings = $derived(
-    keybindingStore.resolved.filter((b) => b.source === "app" && b.editable),
+  // Derived keybinding groups (editable app shortcuts split by context, aligned with shortcut help)
+  let appBindingsGlobal = $derived(
+    keybindingStore.resolved.filter(
+      (b) => b.source === "app" && b.editable && b.context === "global",
+    ),
+  );
+  let appBindingsChat = $derived(
+    keybindingStore.resolved.filter(
+      (b) => b.source === "app" && b.editable && b.context === "chat",
+    ),
   );
   let fixedBindings = $derived(
     keybindingStore.resolved.filter((b) => b.source === "app" && !b.editable),
@@ -1166,6 +1177,8 @@
       feishuWebhookUrl = settings.feishu_webhook_url ?? "";
       feishuWebhookEnabled = settings.feishu_webhook_enabled ?? false;
       feishuWebhookTriggers = settings.feishu_webhook_triggers ?? [];
+      feishuWebhookCardMascot = settings.feishu_webhook_card_mascot ?? "";
+      feishuCardImgKey = settings.feishu_webhook_card_img_key ?? "";
       // Load display fields from credentials (not global fields)
       if (authMode === "api") {
         selectedPlatformId = detectPlatformFromUrl(
@@ -1272,29 +1285,42 @@
     return t("settings_notif_feishuUrlInvalid") || "Invalid Feishu webhook URL";
   }
 
-  async function saveFeishuSettings() {
+  async function saveFeishuSettings(): Promise<boolean> {
     feishuUrlError = validateFeishuUrl(feishuWebhookUrl);
-    if (feishuUrlError && feishuWebhookEnabled) return;
+    if (feishuUrlError && feishuWebhookEnabled) return false;
     try {
       settings = await api.updateUserSettings({
         feishu_webhook_url: feishuWebhookUrl || null,
         feishu_webhook_enabled: feishuWebhookEnabled,
         feishu_webhook_triggers: feishuWebhookTriggers,
+        feishu_webhook_card_img_key: feishuCardImgKey.trim() || null,
+        feishu_webhook_card_mascot: feishuWebhookCardMascot.trim() || null,
+        feishu_webhook_card_image_url: null,
       } as Partial<UserSettings>);
       feishuSaved = true;
       setTimeout(() => (feishuSaved = false), 1500);
+      return true;
     } catch (e) {
       dbgWarn("settings", "saveFeishuSettings error", e);
+      return false;
     }
   }
 
   async function testFeishuWebhook() {
     feishuUrlError = validateFeishuUrl(feishuWebhookUrl);
     if (feishuUrlError) return;
+    const saved = await saveFeishuSettings();
+    if (!saved) return;
     feishuTesting = true;
     feishuTestResult = null;
     try {
-      await api.sendFeishuNotification("Test", "Feishu webhook test from MiWarp", "test");
+      const mascotLabel = FEISHU_CARD_MASCOT_OPTIONS.find(
+        (o) => o.value === feishuWebhookCardMascot,
+      )?.label;
+      const body = mascotLabel
+        ? t("settings_notif_feishuTestBodyWithMascot", { mascot: mascotLabel })
+        : t("settings_notif_feishuTestBody");
+      await api.sendFeishuNotification("Test", body, "test");
       feishuTestResult = t("settings_notif_feishuTestOk") || "Test notification sent";
     } catch (e: unknown) {
       feishuTestResult = (e as Error)?.message || "Failed to send";
@@ -3304,45 +3330,121 @@
 
           <!-- ═══ Shortcuts tab ═══ -->
         {:else if activeTab === "shortcuts"}
-          <div class="space-y-6">
-            <!-- App shortcuts (editable) -->
-            <Card class="p-6 space-y-5">
-              <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                {t("settings_shortcuts_appShortcuts")}
-              </h2>
-              <div class="divide-y divide-border/50">
-                {#each appBindings as binding (binding.command)}
-                  <KeybindingEditor
-                    {binding}
-                    isOverridden={isOverridden(binding.command)}
-                    conflictWarning={recordingConflict}
-                    onSave={(key) => {
-                      const conflict = getConflictWarning(key, binding.context, binding.command);
-                      if (conflict) {
-                        recordingConflict = conflict;
-                      }
-                      keybindingStore.setOverride(binding.command, key);
-                      recordingConflict = "";
-                    }}
-                    onReset={isOverridden(binding.command)
-                      ? () => keybindingStore.resetBinding(binding.command)
-                      : undefined}
-                  />
-                {/each}
+          <div class="space-y-5 max-w-3xl">
+            <!-- App shortcuts (editable), grouped by context -->
+            <Card class="p-6 space-y-6">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t("settings_shortcuts_appShortcuts")}
+                </h2>
+                {#if hasOverrides}
+                  <button
+                    type="button"
+                    class="shrink-0 rounded-md border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                    onclick={() => keybindingStore.resetAll()}
+                  >
+                    {t("settings_shortcuts_resetAll")}
+                  </button>
+                {/if}
+              </div>
+
+              <div class="space-y-5">
+                {#if appBindingsGlobal.length > 0}
+                  <section class="space-y-2">
+                    <h3
+                      class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+                    >
+                      {t("shortcutHelp_global")}
+                    </h3>
+                    <div
+                      class="rounded-lg border border-border/70 bg-muted/10 divide-y divide-border/60 overflow-hidden"
+                    >
+                      {#each appBindingsGlobal as binding (binding.command)}
+                        <div class="px-3 sm:px-4">
+                          <KeybindingEditor
+                            {binding}
+                            isOverridden={isOverridden(binding.command)}
+                            conflictWarning={recordingConflict}
+                            onSave={(key) => {
+                              const conflict = getConflictWarning(
+                                key,
+                                binding.context,
+                                binding.command,
+                              );
+                              if (conflict) {
+                                recordingConflict = conflict;
+                              }
+                              keybindingStore.setOverride(binding.command, key);
+                              recordingConflict = "";
+                            }}
+                            onReset={isOverridden(binding.command)
+                              ? () => keybindingStore.resetBinding(binding.command)
+                              : undefined}
+                          />
+                        </div>
+                      {/each}
+                    </div>
+                  </section>
+                {/if}
+
+                {#if appBindingsChat.length > 0}
+                  <section class="space-y-2">
+                    <h3
+                      class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+                    >
+                      {t("shortcutHelp_chat")}
+                    </h3>
+                    <div
+                      class="rounded-lg border border-border/70 bg-muted/10 divide-y divide-border/60 overflow-hidden"
+                    >
+                      {#each appBindingsChat as binding (binding.command)}
+                        <div class="px-3 sm:px-4">
+                          <KeybindingEditor
+                            {binding}
+                            isOverridden={isOverridden(binding.command)}
+                            conflictWarning={recordingConflict}
+                            onSave={(key) => {
+                              const conflict = getConflictWarning(
+                                key,
+                                binding.context,
+                                binding.command,
+                              );
+                              if (conflict) {
+                                recordingConflict = conflict;
+                              }
+                              keybindingStore.setOverride(binding.command, key);
+                              recordingConflict = "";
+                            }}
+                            onReset={isOverridden(binding.command)
+                              ? () => keybindingStore.resetBinding(binding.command)
+                              : undefined}
+                          />
+                        </div>
+                      {/each}
+                    </div>
+                  </section>
+                {/if}
               </div>
             </Card>
 
-            <!-- Fixed shortcuts -->
-            <Card class="p-6 space-y-5">
+            <!-- Fixed shortcuts (prompt context) -->
+            <Card class="p-6 space-y-4">
               <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                 {t("settings_shortcuts_inputFixed")}
               </h2>
-              <div class="divide-y divide-border/50">
+              <div
+                class="rounded-lg border border-border/70 bg-muted/10 divide-y divide-border/60 overflow-hidden"
+              >
                 {#each fixedBindings as binding (binding.command)}
-                  <div class="flex items-center gap-3 py-1.5">
-                    <span class="text-sm text-foreground/60 min-w-[140px]">{binding.label}</span>
+                  <div
+                    class="grid grid-cols-1 min-[520px]:grid-cols-[minmax(0,1fr)_auto] gap-2 min-[520px]:gap-x-5 min-[520px]:items-center px-3 sm:px-4 py-2.5"
+                  >
                     <span
-                      class="inline-flex items-center rounded-md border bg-muted/30 px-2.5 py-1 text-xs font-mono text-muted-foreground min-w-[60px] justify-center"
+                      class="text-sm text-foreground/70 min-w-0 leading-snug"
+                      title={binding.label}>{binding.label}</span
+                    >
+                    <span
+                      class="inline-flex items-center rounded-md border bg-muted/40 px-2.5 py-1 text-xs font-mono text-muted-foreground min-w-[3.25rem] justify-center shrink-0 min-[520px]:justify-self-end"
                     >
                       {formatKeyDisplay(binding.key)}
                     </span>
@@ -3352,63 +3454,71 @@
             </Card>
 
             <!-- CLI shortcuts (collapsible) -->
-            <Card class="p-6 space-y-4">
+            <Card class="p-0 overflow-hidden">
               <button
-                class="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors w-full"
+                type="button"
+                class="flex w-full items-center justify-between gap-3 px-6 py-4 text-left transition-colors hover:bg-muted/30"
                 onclick={() => (cliSectionOpen = !cliSectionOpen)}
               >
+                <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <span
+                    class="text-sm font-semibold text-muted-foreground uppercase tracking-wider"
+                  >
+                    {t("settings_shortcuts_cliShortcuts")}
+                  </span>
+                  <span
+                    class="text-[10px] font-normal normal-case tracking-normal text-muted-foreground"
+                    >{t("settings_shortcuts_readOnly")}</span
+                  >
+                </span>
                 <svg
-                  class="h-3 w-3 transition-transform {cliSectionOpen ? 'rotate-90' : ''}"
+                  class="h-4 w-4 shrink-0 text-muted-foreground transition-transform {cliSectionOpen
+                    ? 'rotate-180'
+                    : ''}"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
                   stroke-linecap="round"
-                  stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg
+                  stroke-linejoin="round"
                 >
-                {t("settings_shortcuts_cliShortcuts")}
-                <span
-                  class="text-[10px] font-normal normal-case tracking-normal text-muted-foreground"
-                  >{t("settings_shortcuts_readOnly")}</span
-                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
               </button>
               {#if cliSectionOpen}
-                <div class="divide-y divide-border/50">
-                  {#each cliBindings as binding (binding.command)}
-                    <div class="flex items-center gap-3 py-1.5">
-                      <span class="text-sm text-foreground/60 min-w-[140px]">{binding.label}</span>
-                      <span
-                        class="inline-flex items-center rounded-md border bg-muted/30 px-2.5 py-1 text-xs font-mono text-muted-foreground min-w-[60px] justify-center"
+                <div class="border-t border-border/60 px-6 pb-5 pt-1 space-y-3">
+                  <div
+                    class="rounded-lg border border-border/70 bg-muted/10 divide-y divide-border/60 overflow-hidden"
+                  >
+                    {#each cliBindings as binding (binding.command)}
+                      <div
+                        class="grid grid-cols-1 min-[520px]:grid-cols-[minmax(0,1fr)_auto] gap-2 min-[520px]:gap-x-5 min-[520px]:items-center px-3 sm:px-4 py-2.5"
                       >
-                        {formatKeyDisplay(binding.key)}
-                      </span>
-                    </div>
-                  {/each}
+                        <span
+                          class="text-sm text-foreground/60 min-w-0 leading-snug"
+                          title={binding.label}>{binding.label}</span
+                        >
+                        <span
+                          class="inline-flex items-center rounded-md border bg-muted/30 px-2.5 py-1 text-xs font-mono text-muted-foreground min-w-[3.25rem] justify-center shrink-0 min-[520px]:justify-self-end"
+                        >
+                          {formatKeyDisplay(binding.key)}
+                        </span>
+                      </div>
+                    {/each}
+                  </div>
+                  <p class="text-[10px] text-muted-foreground px-0.5">
+                    {t("settings_shortcuts_source", {
+                      source:
+                        cliSource === "file"
+                          ? IS_WINDOWS
+                            ? "%USERPROFILE%\\.claude\\keybindings.json"
+                            : "~/.claude/keybindings.json"
+                          : t("settings_shortcuts_cliDefaults"),
+                    })}
+                  </p>
                 </div>
-                <p class="text-[10px] text-muted-foreground">
-                  {t("settings_shortcuts_source", {
-                    source:
-                      cliSource === "file"
-                        ? IS_WINDOWS
-                          ? "%USERPROFILE%\\.claude\\keybindings.json"
-                          : "~/.claude/keybindings.json"
-                        : t("settings_shortcuts_cliDefaults"),
-                  })}
-                </p>
               {/if}
             </Card>
-
-            <!-- Reset all -->
-            {#if hasOverrides}
-              <div class="flex justify-end">
-                <button
-                  class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                  onclick={() => keybindingStore.resetAll()}
-                >
-                  {t("settings_shortcuts_resetAll")}
-                </button>
-              </div>
-            {/if}
           </div>
 
           <!-- ═══ Remote tab ═══ -->
@@ -4133,6 +4243,48 @@
               {/if}
             </div>
 
+            <!-- Card cover image: Feishu img_key (official) — see Feishu docs on `img` + fit_horizontal -->
+            <div class="space-y-2">
+              <label class="text-sm font-medium" for="feishu-card-img-key">
+                {t("settings_notif_feishuCardImgKey")}
+              </label>
+              <input
+                id="feishu-card-img-key"
+                type="text"
+                bind:value={feishuCardImgKey}
+                onchange={saveFeishuSettings}
+                placeholder={t("settings_notif_feishuCardImgKeyPh")}
+                class="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm
+                font-mono placeholder:text-muted-foreground/50
+                focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <p class="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
+                {t("settings_notif_feishuCardImgKeyHint")}
+              </p>
+            </div>
+
+            <!-- Fallback mascot presets (Markdown image URL; used only if img_key is empty) -->
+            <div class="space-y-2">
+              <label class="text-sm font-medium" for="feishu-card-mascot">
+                {t("settings_notif_feishuCardMascot")}
+              </label>
+              <select
+                id="feishu-card-mascot"
+                class="w-full max-w-md rounded-md border border-border bg-transparent px-3 py-2 text-sm
+                focus:outline-none focus:ring-1 focus:ring-ring"
+                bind:value={feishuWebhookCardMascot}
+                onchange={saveFeishuSettings}
+              >
+                <option value="">{t("settings_notif_feishuCardMascotNone")}</option>
+                {#each FEISHU_CARD_MASCOT_OPTIONS as opt}
+                  <option value={opt.value}>{opt.label}</option>
+                {/each}
+              </select>
+              <p class="text-xs text-muted-foreground leading-relaxed">
+                {t("settings_notif_feishuCardMascotHint")}
+              </p>
+            </div>
+
             <!-- Test button -->
             <div class="flex items-center gap-2">
               <button
@@ -4203,6 +4355,11 @@
         {:else if activeTab === "theme"}
           <ThemeEditor />
           <BackgroundPicker />
+          {#if settings}
+            <Card class="p-6">
+              <AgentAppearanceSettings {settings} />
+            </Card>
+          {/if}
         {/if}
       </div>
     </main>

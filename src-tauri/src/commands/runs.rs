@@ -76,6 +76,8 @@ pub fn get_run(id: String) -> Result<TaskRun, String> {
     Ok(meta.to_task_run(last_ts, Some(msg_count), last_preview))
 }
 
+/// Start a new run. `use_worktree_override`: when `Some`, forces worktree on/off for this run;
+/// when `None`, follows `default_session_mode` (`worktree` vs not).
 #[tauri::command]
 pub fn start_run(
     prompt: String,
@@ -85,14 +87,16 @@ pub fn start_run(
     remote_host_name: Option<String>,
     platform_id: Option<String>,
     execution_path: Option<String>,
+    use_worktree_override: Option<bool>,
 ) -> Result<TaskRun, String> {
     log::debug!(
-        "[runs] start_run: agent={}, model={:?}, remote={:?}, platform={:?}, path={:?}, prompt_len={}, cwd={}",
+        "[runs] start_run: agent={}, model={:?}, remote={:?}, platform={:?}, path={:?}, use_worktree_override={:?}, prompt_len={}, cwd={}",
         agent,
         model,
         remote_host_name,
         platform_id,
         execution_path,
+        use_worktree_override,
         prompt.len(),
         cwd
     );
@@ -162,7 +166,11 @@ pub fn start_run(
 
     // ── Worktree mode: auto-create isolated branch + worktree ──
     let settings = storage::settings::get_user_settings();
-    let use_worktree = remote_host_name.is_none() && settings.default_session_mode == "worktree";
+    let use_worktree = remote_host_name.is_none()
+        && match use_worktree_override {
+            Some(explicit) => explicit,
+            None => settings.default_session_mode == "worktree",
+        };
 
     if use_worktree {
         let is_repo = super::worktree::is_git_repo_internal(&cwd).unwrap_or(false);

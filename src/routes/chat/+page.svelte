@@ -100,6 +100,15 @@
   import { useProjectPreload } from "$lib/chat/use-project-preload.svelte";
   import { useChatController } from "$lib/chat/use-chat-controller.svelte";
 
+  // ── Page-level singletons (survive navigation) ──
+  import {
+    getChatSessionStore,
+    getCachedUserSettings,
+    setCachedUserSettings,
+    getCachedAgentSettings,
+    setCachedAgentSettings,
+  } from "$lib/stores/chat-page-singletons";
+
   // ── Helpers ──
 
   // ── Layout context ──
@@ -107,7 +116,9 @@
   const keybindingStore = getContext<KeybindingStore>("keybindings");
 
   // ── Store + Middleware ──
-  const store = new SessionStore();
+  // getChatSessionStore() returns a module-level singleton so conversation
+  // state (timeline, run, phase) survives navigation away from /chat.
+  const store = getChatSessionStore();
   const middleware = getEventMiddleware();
 
   // ── UI-only state (not in store) ──
@@ -153,6 +164,13 @@
   // (pendingResumeText removed — auto-resume uses atomic resume+send via initialMessage)
   /** Most recent run with a session_id — for "Continue last session" on welcome screen. */
   let lastContinuableRun = $state<import("$lib/types").TaskRun | null>(null);
+  /**
+   * False until onMount Phase 2 finishes `listRuns` (success or failure). The welcome screen
+   * can paint before that while `middlewareReady` + empty `loadRun` are fast; showing quick
+   * actions early and then inserting "Continue last session" causes a layout jump (often
+   * mistaken for "Analyze project" loading late).
+   */
+  let welcomeQuickActionsReady = $state(false);
   /** Available remote hosts from settings. */
   let remoteHosts = $state<import("$lib/types").RemoteHost[]>([]);
   /** Target host dropdown in hero meta. */
@@ -979,8 +997,21 @@
   // Load settings
   onMount(async () => {
     // Phase 1: load settings (required by everything else)
+    // Fast-path: serve from module-level cache on re-visits (30 s TTL).
+    // The cache is populated after every successful fetch below.
     try {
-      settings = await api.getUserSettings();
+      const cached = getCachedUserSettings();
+      if (cached) {
+        settings = cached;
+        // Refresh in background so a long-running session picks up changes
+        api
+          .getUserSettings()
+          .then(setCachedUserSettings)
+          .catch(() => {});
+      } else {
+        settings = await api.getUserSettings();
+        setCachedUserSettings(settings);
+      }
       store.authMode = settings.auth_mode ?? "cli";
       remoteHosts = settings.remote_hosts ?? [];
       // Restore last target selection (must validate against current settings — a
@@ -1026,13 +1057,17 @@
     }
 
     // Phase 2: parallel fetch of independent data
+    // agentSettings is served from cache on re-visits; listRuns is still
+    // needed to detect the last continuable run for auto-resume.
+    const cachedAgent = getCachedAgentSettings();
     const [agentResult, runsResult] = await Promise.allSettled([
-      api.getAgentSettings("claude"),
+      cachedAgent ? Promise.resolve(cachedAgent) : api.getAgentSettings("claude"),
       api.listRuns(),
     ]);
 
     if (agentResult.status === "fulfilled") {
       agentSettings = agentResult.value;
+      setCachedAgentSettings(agentSettings);
       // Read effort from CLI config (~/.claude/settings.json) — the authoritative source.
       // NOT from agentSettings.effort (that would cause --effort flag at spawn, which
       // locks effort in memory and prevents live switching via settings.json).
@@ -1061,12 +1096,14 @@
 
       // Auto-load last session if no runId is specified, instead of showing welcome screen
       if (!runId && lastContinuableRun) {
+        welcomeQuickActionsReady = true;
         goto(`/chat?run=${lastContinuableRun.id}&resume=continue`, { replaceState: true });
         return;
       }
     } else {
       dbgWarn("chat", "failed to load runs for continue:", runsResult.reason);
     }
+    welcomeQuickActionsReady = true;
 
     // Phase 3: permission mode init (depends on settings + agentSettings)
     // Initialize permission mode from saved settings (before session_init arrives)
@@ -1195,15 +1232,21 @@
 
   // Start middleware + register handlers
   onMount(() => {
+    // Fast-path: if the singleton middleware is already started (re-visit to /chat),
+    // set middlewareReady synchronously so the run-load $effect fires immediately
+    // in the next microtask instead of waiting for async IPC round-trips.
+    if (middleware.isStarted) middlewareReady = true;
+
     let destroyed = false;
     (async () => {
       try {
+        // start() is idempotent — returns immediately if already started.
         await middleware.start();
       } catch (e) {
         console.error("[chat] middleware.start() failed:", e);
         store.error = t("chat_eventSystemFailed");
       }
-      // Start notification listener (piggybacks on same transport)
+      // Start notification listener (piggybacks on same transport, idempotent)
       try {
         const { startNotificationListener } = await import("$lib/services/notification-listener");
         await startNotificationListener();
@@ -1246,7 +1289,12 @@
         api.stopSession(store.run.id).catch(() => {});
       }
       store.unmountGuards();
-      middleware.destroy();
+      // Do NOT call middleware.destroy() — the singleton must stay started so
+      // that re-entering /chat doesn't pay the cost of re-registering Tauri
+      // event listeners.  Just clear the DOM-bound callbacks so stale closures
+      // (over xtermRef etc.) can't fire while the page is unmounted.
+      middleware.setPipeHandler(null);
+      middleware.setRunEventHandler(null);
     };
   });
 
@@ -1275,9 +1323,14 @@
         return;
       }
 
-      // If store already holds an active session for this run, skip redundant loadRun
-      if (store.run?.id === id && store.sessionAlive) {
-        dbg("effect", "skip loadRun — session already alive for", id);
+      // Skip redundant loadRun when the singleton store already has this run's
+      // data.  Two cases:
+      //   • sessionAlive (spawning/running/idle) — live session, never reload.
+      //   • phase is not "empty"/"loading" — run was fully loaded on a previous
+      //     mount (completed/stopped/failed/ready); data in the singleton is
+      //     immutable, safe to reuse without an IPC round-trip.
+      if (store.run?.id === id && store.phase !== "empty" && store.phase !== "loading") {
+        dbg("effect", "skip loadRun — run already in singleton store", id, store.phase);
         const scrollTo = $page.url.searchParams.get("scrollTo");
         if (scrollTo) {
           const clean = new URL($page.url);
@@ -3283,7 +3336,7 @@
   </div>
 {/snippet}
 
-<div class="relative flex h-full overflow-hidden bg-background">
+<div class="miwarp-immersive-page-root relative flex h-full overflow-hidden bg-background">
   <!-- Page-level drag overlay (drag-hover or processing spinner) -->
   {#if pageDragActive || dragProcessing}
     <div
@@ -3404,7 +3457,7 @@
       {#if store.useStreamSession}
         <!-- API mode: chat messages -->
         <div
-          class="h-full overflow-y-auto pb-40"
+          class="h-full overflow-y-auto pb-32"
           style="overflow-anchor:auto"
           bind:this={chatAreaRef}
           onscroll={handleChatScroll}
@@ -3418,106 +3471,126 @@
                 <h2 class="text-base font-medium text-foreground mb-1">{t("chat_welcomeTitle")}</h2>
                 <p class="text-xs text-muted-foreground mb-5">{t("chat_welcomeSubtitle")}</p>
 
-                <!-- Quick actions -->
-                <div class="w-full max-w-sm space-y-2">
-                  {#if lastContinuableRun}
+                <!-- Quick actions (gate on listRuns — avoids layout jump when "Continue" inserts) -->
+                <div
+                  class="w-full max-w-sm space-y-2"
+                  aria-busy={welcomeVisible && !welcomeQuickActionsReady}
+                >
+                  {#if !welcomeQuickActionsReady}
+                    <span class="sr-only">{t("chat_welcomeQuickActionsLoading")}</span>
+                    <div class="space-y-2" aria-hidden="true">
+                      {#each [1, 2, 3, 4, 5] as _}
+                        <div
+                          class="h-11 w-full rounded-lg bg-muted/40 animate-pulse border border-border/20"
+                        ></div>
+                      {/each}
+                    </div>
+                  {:else}
+                    {#if lastContinuableRun}
+                      <button
+                        class="w-full flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 px-3.5 py-2.5 text-sm text-foreground hover:bg-muted/50 hover:border-border transition-all duration-150 text-left"
+                        onclick={() => goto(`/chat?run=${lastContinuableRun!.id}&resume=continue`)}
+                      >
+                        <svg
+                          class="h-4 w-4 shrink-0 text-primary/70"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          ><polyline points="9 17 4 12 9 7" /><path
+                            d="M20 18v-2a4 4 0 0 0-4-4H4"
+                          /></svg
+                        >
+                        <span class="truncate">{t("chat_continueLastSession")}</span>
+                        <span class="ml-auto text-[11px] text-muted-foreground/60 shrink-0"
+                          >{relativeTime(
+                            lastContinuableRun.last_activity_at || lastContinuableRun.started_at,
+                          )}</span
+                        >
+                      </button>
+                    {/if}
                     <button
-                      class="w-full flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 px-3.5 py-2.5 text-sm text-foreground hover:bg-muted/50 hover:border-border transition-all duration-150 text-left"
-                      onclick={() => goto(`/chat?run=${lastContinuableRun!.id}&resume=continue`)}
+                      class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
+                      onclick={() => ctrl.sendMessage(t("chat_quickAnalyzePrompt"), [])}
                     >
                       <svg
-                        class="h-4 w-4 shrink-0 text-primary/70"
+                        class="h-4 w-4 shrink-0 text-blue-400/70"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
                         stroke-width="2"
                         stroke-linecap="round"
                         stroke-linejoin="round"
-                        ><polyline points="9 17 4 12 9 7" /><path
-                          d="M20 18v-2a4 4 0 0 0-4-4H4"
+                        ><path d="M21 12a9 9 0 1 1-6.219-8.56" /><circle
+                          cx="12"
+                          cy="12"
+                          r="1"
                         /></svg
                       >
-                      <span class="truncate">{t("chat_continueLastSession")}</span>
-                      <span class="ml-auto text-[11px] text-muted-foreground/60 shrink-0"
-                        >{relativeTime(
-                          lastContinuableRun.last_activity_at || lastContinuableRun.started_at,
-                        )}</span
+                      <span>{t("chat_quickAnalyze")}</span>
+                    </button>
+                    <button
+                      class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
+                      onclick={() => fillPrompt(t("chat_quickFixPrompt"))}
+                    >
+                      <svg
+                        class="h-4 w-4 shrink-0 text-amber-400/70"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><path
+                          d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
+                        /></svg
                       >
+                      <span>{t("chat_quickFix")}</span>
+                    </button>
+                    <button
+                      class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
+                      onclick={() => ctrl.sendMessage(t("chat_quickDailyPrompt"), [])}
+                    >
+                      <svg
+                        class="h-4 w-4 shrink-0 text-green-400/70"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><path
+                          d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                        /><polyline points="14 2 14 8 20 8" /><line
+                          x1="16"
+                          y1="13"
+                          x2="8"
+                          y2="13"
+                        /><line x1="16" y1="17" x2="8" y2="17" /></svg
+                      >
+                      <span>{t("chat_quickDaily")}</span>
+                    </button>
+                    <button
+                      class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
+                      onclick={() => goto("/scheduled-tasks")}
+                    >
+                      <svg
+                        class="h-4 w-4 shrink-0 text-violet-400/70"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><circle cx="12" cy="12" r="10" /><polyline
+                          points="12 6 12 12 16 14"
+                        /></svg
+                      >
+                      <span>{t("chat_quickSchedule")}</span>
                     </button>
                   {/if}
-                  <button
-                    class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                    onclick={() => ctrl.sendMessage(t("chat_quickAnalyzePrompt"), [])}
-                  >
-                    <svg
-                      class="h-4 w-4 shrink-0 text-blue-400/70"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><path d="M21 12a9 9 0 1 1-6.219-8.56" /><circle cx="12" cy="12" r="1" /></svg
-                    >
-                    <span>{t("chat_quickAnalyze")}</span>
-                  </button>
-                  <button
-                    class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                    onclick={() => fillPrompt(t("chat_quickFixPrompt"))}
-                  >
-                    <svg
-                      class="h-4 w-4 shrink-0 text-amber-400/70"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><path
-                        d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
-                      /></svg
-                    >
-                    <span>{t("chat_quickFix")}</span>
-                  </button>
-                  <button
-                    class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                    onclick={() => ctrl.sendMessage(t("chat_quickDailyPrompt"), [])}
-                  >
-                    <svg
-                      class="h-4 w-4 shrink-0 text-green-400/70"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><path
-                        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-                      /><polyline points="14 2 14 8 20 8" /><line
-                        x1="16"
-                        y1="13"
-                        x2="8"
-                        y2="13"
-                      /><line x1="16" y1="17" x2="8" y2="17" /></svg
-                    >
-                    <span>{t("chat_quickDaily")}</span>
-                  </button>
-                  <button
-                    class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                    onclick={() => goto("/scheduled-tasks")}
-                  >
-                    <svg
-                      class="h-4 w-4 shrink-0 text-violet-400/70"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg
-                    >
-                    <span>{t("chat_quickSchedule")}</span>
-                  </button>
                 </div>
 
                 {@render initHintCard()}
@@ -4373,7 +4446,7 @@
 
     {#if store.sessionAlive || !store.run || store.phase === "empty" || store.phase === "ready" || TERMINAL_PHASES.includes(store.phase)}
       <div
-        class="pointer-events-none sticky bottom-0 z-20 bg-gradient-to-t from-background/95 via-background/70 to-transparent px-2 pb-5 pt-6 backdrop-blur-md [mask-image:linear-gradient(to_top,black_60%,transparent)]"
+        class="pointer-events-none sticky bottom-0 z-20 bg-gradient-to-t from-background/95 via-background/70 to-transparent px-2 pb-5 pt-4 backdrop-blur-md [mask-image:linear-gradient(to_top,black_60%,transparent)]"
       >
         <div class="pointer-events-auto">
           <PromptInput
