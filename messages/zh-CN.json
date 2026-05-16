@@ -1588,7 +1588,6 @@
   "drag_processing": "正在处理文件…",
   "common_listSeparator": "；",
   "permissions_title": "权限管理",
-  "permissions_rules": "规则",
   "permissions_allow": "允许",
   "permissions_deny": "拒绝",
   "permissions_projectAllow": "项目允许",

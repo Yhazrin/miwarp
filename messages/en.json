@@ -1588,7 +1588,6 @@
   "drag_processing": "Processing files...",
   "common_listSeparator": "; ",
   "permissions_title": "Permissions",
-  "permissions_rules": "Rules",
   "permissions_allow": "Allow",
   "permissions_deny": "Deny",
   "permissions_projectAllow": "Project Allow",
