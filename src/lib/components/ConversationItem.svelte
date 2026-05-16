@@ -263,6 +263,28 @@
   <div class="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground/50">
     <div class="flex items-center gap-1 min-w-0">
       <span class="shrink-0">{run.agent}</span>
+      {#if run.worktree_branch}
+        <span
+          class="shrink-0 inline-flex items-center gap-0.5 px-1 py-0 rounded bg-blue-500/10 text-blue-400/70 font-mono text-[10px] max-w-[80px] truncate"
+          title={run.worktree_branch}
+        >
+          <svg
+            class="h-2.5 w-2.5 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><line x1="6" y1="3" x2="6" y2="15" /><circle cx="18" cy="6" r="3" /><circle
+              cx="6"
+              cy="18"
+              r="3"
+            /><path d="M18 9a9 9 0 0 1-9 9" /></svg
+          >
+          {run.worktree_branch}
+        </span>
+      {/if}
       {#if run.remote_host_name}
         <svg
           class="h-3 w-3 shrink-0 text-blue-400/50"

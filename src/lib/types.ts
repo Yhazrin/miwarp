@@ -76,6 +76,14 @@ export interface TaskRun {
   folder_id?: string;
   /** Soft-delete timestamp. Populated by incremental sync. */
   deleted_at?: string;
+  /** Session creation mode. */
+  creation_mode?: "single" | "worktree";
+  /** Path to git worktree directory. */
+  worktree_path?: string;
+  /** Auto-generated branch name for worktree sessions. */
+  worktree_branch?: string;
+  /** Original project cwd (for sidebar grouping of worktree sessions). */
+  parent_cwd?: string;
 }
 
 export interface ImportWatermark {
@@ -184,6 +192,14 @@ export interface UserSettings {
   feishu_webhook_enabled?: boolean;
   feishu_webhook_triggers?: string[];
   feishu_webhook_template?: string;
+  /** Default session mode: "single" or "worktree". */
+  default_session_mode?: string;
+  /** Auto-commit worktree changes when session completes. */
+  auto_commit_on_complete?: boolean;
+  /** Auto-create PR after auto-commit. */
+  auto_pr_on_complete?: boolean;
+  /** Cleanup worktree directory when session is deleted. */
+  auto_cleanup_worktree?: boolean;
   updated_at: string;
 }
 

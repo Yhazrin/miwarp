@@ -1416,3 +1416,63 @@ export async function cancelRalphLoop(
   dbg("api", "cancelRalphLoop", { runId });
   return invoke<{ iteration: number; immediate: boolean }>("cancel_ralph_loop", { runId });
 }
+
+// ── Worktree ──
+
+export interface WorktreeInfo {
+  path: string;
+  branch: string;
+}
+
+export interface AutoCommitResult {
+  committed: boolean;
+  sha?: string;
+  message: string;
+}
+
+export interface WorktreeEntry {
+  path: string;
+  branch: string;
+  head: string;
+}
+
+export async function createWorktree(
+  parentCwd: string,
+  sessionIdShort: string,
+  branchName: string,
+): Promise<WorktreeInfo> {
+  dbg("api", "createWorktree", { parentCwd, sessionIdShort, branchName });
+  return invoke<WorktreeInfo>("create_worktree", { parentCwd, sessionIdShort, branchName });
+}
+
+export async function autoCommit(cwd: string, message: string): Promise<AutoCommitResult> {
+  dbg("api", "autoCommit", { cwd, message });
+  return invoke<AutoCommitResult>("auto_commit", { cwd, message });
+}
+
+export async function createPullRequest(
+  cwd: string,
+  branch: string,
+  baseBranch: string,
+): Promise<string> {
+  dbg("api", "createPullRequest", { cwd, branch, baseBranch });
+  return invoke<string>("create_pull_request", { cwd, branch, baseBranch });
+}
+
+export async function removeWorktree(
+  worktreePath: string,
+  parentCwd: string,
+  branchName?: string,
+): Promise<void> {
+  dbg("api", "removeWorktree", { worktreePath, parentCwd, branchName });
+  return invoke<void>("remove_worktree", {
+    worktreePath,
+    parentCwd,
+    branchName: branchName ?? null,
+  });
+}
+
+export async function listWorktrees(parentCwd: string): Promise<WorktreeEntry[]> {
+  dbg("api", "listWorktrees", { parentCwd });
+  return invoke<WorktreeEntry[]>("list_worktrees", { parentCwd });
+}

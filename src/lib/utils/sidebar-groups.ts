@@ -77,10 +77,10 @@ export function buildProjectFolders(
   // 2. Clean pinnedCwds — normalize + filter empty + filter removed
   const cleanPinned = pinnedCwds.map(normalizeCwd).filter((c) => c !== "" && !removedSet.has(c));
 
-  // 3. Bucket runs by normalized cwd
+  // 3. Bucket runs by normalized cwd (use parent_cwd for worktree sessions)
   const cwdBuckets = new Map<string, TaskRun[]>();
   for (const run of runs) {
-    const cwd = normalizeCwd(run.cwd);
+    const cwd = normalizeCwd(run.parent_cwd ?? run.cwd);
     let bucket = cwdBuckets.get(cwd);
     if (!bucket) {
       bucket = [];

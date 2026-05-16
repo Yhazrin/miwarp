@@ -64,6 +64,14 @@ pub enum RunSource {
     CliImport, // imported from CLI transcript
 }
 
+/// Session creation mode — single-branch or isolated worktree.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum SessionCreationMode {
+    Single,
+    Worktree,
+}
+
 /// Import watermark for incremental CLI session sync.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -194,6 +202,18 @@ pub struct TaskRun {
     /// Soft-delete timestamp. Populated by incremental sync so frontend can remove deleted runs.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deleted_at: Option<String>,
+    /// Session creation mode (single-branch or worktree).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub creation_mode: Option<SessionCreationMode>,
+    /// Path to the git worktree directory (only when creation_mode = Worktree).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub worktree_path: Option<String>,
+    /// Auto-generated branch name for worktree sessions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub worktree_branch: Option<String>,
+    /// Original project cwd before worktree redirection (for sidebar grouping).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_cwd: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -290,6 +310,18 @@ pub struct UserSettings {
     pub notify_on_team_completed: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notification_min_duration_sec: Option<u32>,
+    /// Default session mode: "single" or "worktree". Default: "worktree".
+    #[serde(default = "default_session_mode")]
+    pub default_session_mode: String,
+    /// Auto-commit worktree changes when session completes.
+    #[serde(default)]
+    pub auto_commit_on_complete: bool,
+    /// Auto-create PR after auto-commit.
+    #[serde(default)]
+    pub auto_pr_on_complete: bool,
+    /// Cleanup worktree directory when session is deleted.
+    #[serde(default = "default_true")]
+    pub auto_cleanup_worktree: bool,
     pub updated_at: String,
 }
 
@@ -332,6 +364,14 @@ pub struct RemoteTestResult {
 
 fn default_permission_mode() -> String {
     "auto_read".to_string()
+}
+
+fn default_session_mode() -> String {
+    "worktree".to_string()
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -389,6 +429,10 @@ impl Default for UserSettings {
             notify_on_schedule_completed: None,
             notify_on_team_completed: None,
             notification_min_duration_sec: None,
+            default_session_mode: "worktree".to_string(),
+            auto_commit_on_complete: false,
+            auto_pr_on_complete: false,
+            auto_cleanup_worktree: true,
             updated_at: now_iso(),
         }
     }
@@ -559,6 +603,18 @@ pub struct RunMeta {
     /// Soft-delete timestamp (ISO 8601). When set, run is hidden from all read paths.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deleted_at: Option<String>,
+    /// Session creation mode (single-branch or worktree).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub creation_mode: Option<SessionCreationMode>,
+    /// Path to the git worktree directory (only when creation_mode = Worktree).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub worktree_path: Option<String>,
+    /// Auto-generated branch name for worktree sessions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub worktree_branch: Option<String>,
+    /// Original project cwd before worktree redirection (for sidebar grouping).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_cwd: Option<String>,
     /// Snapshot of no_session_persistence at run creation time (metadata only — runtime
     /// resume gate uses current agent settings, not this snapshot).
     #[serde(default)]
@@ -632,6 +688,10 @@ impl RunMeta {
             conversation_ref: self.resolved_conversation_ref(),
             folder_id: self.folder_id.clone(),
             deleted_at: self.deleted_at.clone(),
+            creation_mode: self.creation_mode.clone(),
+            worktree_path: self.worktree_path.clone(),
+            worktree_branch: self.worktree_branch.clone(),
+            parent_cwd: self.parent_cwd.clone(),
         }
     }
 }

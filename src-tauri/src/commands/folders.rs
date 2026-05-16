@@ -66,5 +66,6 @@ pub fn batch_move_to_folder(
 #[tauri::command]
 pub fn hard_delete_runs(ids: Vec<String>) -> Result<u32, String> {
     log::debug!("[cmd/folders] hard_delete_runs: ids={:?}", ids);
+    super::runs::cleanup_worktrees_for_runs(&ids);
     storage::runs::hard_delete_runs(&ids)
 }
