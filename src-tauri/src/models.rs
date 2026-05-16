@@ -188,6 +188,9 @@ pub struct TaskRun {
     /// Resolved conversation identity (None = not resumable).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conversation_ref: Option<ConversationRef>,
+    /// User-created folder ID for organizing sessions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub folder_id: Option<String>,
     /// Soft-delete timestamp. Populated by incremental sync so frontend can remove deleted runs.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deleted_at: Option<String>,
@@ -481,6 +484,17 @@ impl Default for AllSettings {
     }
 }
 
+/// User-created session folder for organizing conversations.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionFolder {
+    pub id: String,
+    pub name: String,
+    pub workspace_id: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunMeta {
     pub id: String,
@@ -539,6 +553,9 @@ pub struct RunMeta {
     /// True when CLI import couldn't reconstruct complete usage data.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cli_usage_incomplete: Option<bool>,
+    /// User-created folder ID for organizing sessions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub folder_id: Option<String>,
     /// Soft-delete timestamp (ISO 8601). When set, run is hidden from all read paths.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deleted_at: Option<String>,
@@ -613,6 +630,7 @@ impl RunMeta {
             no_session_persistence: self.no_session_persistence,
             execution_path: self.resolved_execution_path(),
             conversation_ref: self.resolved_conversation_ref(),
+            folder_id: self.folder_id.clone(),
             deleted_at: self.deleted_at.clone(),
         }
     }

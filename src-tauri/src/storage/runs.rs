@@ -108,6 +108,7 @@ pub fn create_run(
         cli_import_watermark: None,
         cli_session_path: None,
         cli_usage_incomplete: None,
+        folder_id: None,
         deleted_at: None,
         no_session_persistence,
         execution_path: None,   // Caller sets after create_run
@@ -582,5 +583,82 @@ pub fn soft_delete_runs(ids: &[String]) -> Result<u32, String> {
     }
 
     log::debug!("[storage/runs] soft_delete_runs: deleted {} runs", count);
+    Ok(count)
+}
+
+/// Permanently delete runs by removing all data files from disk.
+/// Pre-checks all IDs, rejects active runs. Removes meta.json, events.jsonl,
+/// and any other files in the run directory, then removes the directory itself.
+pub fn hard_delete_runs(ids: &[String]) -> Result<u32, String> {
+    let unique_ids: Vec<&String> = {
+        let mut seen = std::collections::HashSet::new();
+        ids.iter().filter(|id| seen.insert(id.as_str())).collect()
+    };
+
+    // Phase 1: pre-check — all must exist, none active
+    let mut metas: Vec<RunMeta> = Vec::with_capacity(unique_ids.len());
+    for id in &unique_ids {
+        let meta = get_run_raw(id).ok_or_else(|| format!("Run {} not found", id))?;
+        if matches!(
+            meta.status,
+            RunStatus::Running | RunStatus::Pending | RunStatus::Idle
+        ) {
+            return Err(format!(
+                "Cannot permanently delete: run {} is still active",
+                id
+            ));
+        }
+        metas.push(meta);
+    }
+
+    // Phase 2: remove directories
+    let mut count = 0u32;
+    for meta in &metas {
+        let dir = super::run_dir(&meta.id);
+        if dir.exists() {
+            if let Err(e) = fs::remove_dir_all(&dir) {
+                log::warn!(
+                    "[storage/runs] hard_delete: failed to remove dir for {}: {}",
+                    meta.id,
+                    e
+                );
+                // Continue with other deletions rather than aborting
+            }
+        }
+        count += 1;
+    }
+
+    log::debug!(
+        "[storage/runs] hard_delete_runs: permanently deleted {} runs",
+        count
+    );
+    Ok(count)
+}
+
+/// Move a run to a folder (or remove from folder if folder_id is None).
+pub fn update_run_folder(id: &str, folder_id: Option<String>) -> Result<(), String> {
+    log::debug!(
+        "[storage/runs] update_run_folder: id={}, folder_id={:?}",
+        id,
+        folder_id
+    );
+    with_meta(id, |meta| {
+        meta.folder_id = folder_id;
+        Ok(())
+    })
+}
+
+/// Batch move runs to a folder (or remove from folder if folder_id is None).
+pub fn batch_update_run_folder(ids: &[String], folder_id: Option<String>) -> Result<u32, String> {
+    let mut count = 0u32;
+    for id in ids {
+        update_run_folder(id, folder_id.clone())?;
+        count += 1;
+    }
+    log::debug!(
+        "[storage/runs] batch_update_run_folder: moved {} runs to folder {:?}",
+        count,
+        folder_id
+    );
     Ok(count)
 }

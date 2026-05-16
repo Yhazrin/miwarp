@@ -72,6 +72,8 @@ export interface TaskRun {
   execution_path: ExecutionPath;
   /** Unified resume identity. Undefined = not resumable. */
   conversation_ref?: ConversationRef;
+  /** User-created folder ID for organizing sessions. */
+  folder_id?: string;
   /** Soft-delete timestamp. Populated by incremental sync. */
   deleted_at?: string;
 }
@@ -81,6 +83,14 @@ export interface ImportWatermark {
   mtimeNs: number;
   fileSize: number;
   lastUuid?: string;
+}
+
+export interface SessionFolder {
+  id: string;
+  name: string;
+  workspaceId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CliSessionSummary {

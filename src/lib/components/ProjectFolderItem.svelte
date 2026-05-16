@@ -25,6 +25,7 @@
     onSelectConversation: (runId: string) => void;
     onResume: (runId: string, mode: "resume") => void;
     onDelete?: (conversation: ConversationGroup) => void;
+    onMoveToFolder?: (runIds: string[]) => void;
     onNewChat?: () => void;
     selectedGroupKeys?: Set<string>;
     onBatchClick?: (groupKey: string, e: MouseEvent) => void;
@@ -36,6 +37,7 @@
     onSelectConversation?: never;
     onResume?: never;
     onDelete?: never;
+    onMoveToFolder?: never;
     onNewChat?: never;
     selectedGroupKeys?: never;
     onBatchClick?: never;
@@ -53,6 +55,7 @@
     onSelectConversation,
     onResume,
     onDelete,
+    onMoveToFolder,
     onNewChat,
     selectedGroupKeys,
     onBatchClick,
@@ -249,6 +252,7 @@
                 onclick={() => onSelectConversation?.(conv.latestRun.id)}
                 onresume={onResume}
                 ondelete={onDelete}
+                onmovetofolder={onMoveToFolder}
                 {onBatchClick}
               />
             {/snippet}
@@ -262,6 +266,7 @@
               onclick={() => onSelectConversation?.(conv.latestRun.id)}
               onresume={onResume}
               ondelete={onDelete}
+              onmovetofolder={onMoveToFolder}
               {onBatchClick}
             />
           {/each}

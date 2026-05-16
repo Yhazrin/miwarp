@@ -20,6 +20,7 @@ import type {
   BusEvent,
   CliInfo,
   SessionMode,
+  SessionFolder,
   TeamSummary,
   TeamConfig,
   TeamTask,
@@ -123,6 +124,49 @@ export async function updateRunModel(id: string, model: string): Promise<void> {
 export async function softDeleteRuns(ids: string[]): Promise<number> {
   dbg("api", "softDeleteRuns", { ids });
   return invoke<number>("soft_delete_runs", { ids });
+}
+
+export async function hardDeleteRuns(ids: string[]): Promise<number> {
+  dbg("api", "hardDeleteRuns", { ids });
+  return invoke<number>("hard_delete_runs", { ids });
+}
+
+// Session Folders
+
+export async function listSessionFolders(workspaceId: string): Promise<SessionFolder[]> {
+  dbg("api", "listSessionFolders", { workspaceId });
+  return invoke<SessionFolder[]>("list_session_folders", { workspaceId });
+}
+
+export async function createSessionFolder(
+  name: string,
+  workspaceId: string,
+): Promise<SessionFolder> {
+  dbg("api", "createSessionFolder", { name, workspaceId });
+  return invoke<SessionFolder>("create_session_folder", { name, workspaceId });
+}
+
+export async function renameSessionFolder(folderId: string, newName: string): Promise<void> {
+  dbg("api", "renameSessionFolder", { folderId, newName });
+  return invoke<void>("rename_session_folder", { folderId, newName });
+}
+
+export async function deleteSessionFolder(folderId: string, cascade: boolean): Promise<number> {
+  dbg("api", "deleteSessionFolder", { folderId, cascade });
+  return invoke<number>("delete_session_folder", { folderId, cascade });
+}
+
+export async function moveRunToFolder(runId: string, folderId: string | null): Promise<void> {
+  dbg("api", "moveRunToFolder", { runId, folderId });
+  return invoke<void>("move_run_to_folder", { runId, folderId });
+}
+
+export async function batchMoveToFolder(
+  runIds: string[],
+  folderId: string | null,
+): Promise<number> {
+  dbg("api", "batchMoveToFolder", { runIds, folderId });
+  return invoke<number>("batch_move_to_folder", { runIds, folderId });
 }
 
 // Prompt search & favorites

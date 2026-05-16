@@ -6,6 +6,7 @@ pub mod cli_sessions;
 pub mod community_skills;
 pub mod events;
 pub mod favorites;
+pub mod folders;
 pub mod mcp_registry;
 pub mod plugins;
 pub mod prompt_index;

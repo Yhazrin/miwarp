@@ -20,6 +20,7 @@
     onclick,
     onresume,
     ondelete,
+    onmovetofolder,
     onBatchClick,
   }: {
     conversation: ConversationGroup;
@@ -28,6 +29,7 @@
     onclick?: () => void;
     onresume?: (runId: string, mode: "resume") => void;
     ondelete?: (conversation: ConversationGroup) => void;
+    onmovetofolder?: (runIds: string[]) => void;
     onBatchClick?: (groupKey: string, e: MouseEvent) => void;
   } = $props();
 
@@ -213,6 +215,29 @@
             ><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path
               d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"
             /></svg
+          >
+        </button>
+      {/if}
+      {#if onmovetofolder}
+        <button
+          class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-accent/20 text-muted-foreground hover:text-sidebar-foreground transition-opacity"
+          onclick={(e) => {
+            e.stopPropagation();
+            onmovetofolder(conversation.runs.map((r) => r.id));
+          }}
+          title={t("sidebar_moveToFolder")}
+        >
+          <svg
+            class="h-3 w-3"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><path
+              d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+            /><path d="m9 13 2 2 4-4" /></svg
           >
         </button>
       {/if}

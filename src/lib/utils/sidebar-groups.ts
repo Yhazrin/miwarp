@@ -5,7 +5,7 @@
  * contains ConversationGroup[] (runs grouped by session_id).
  */
 
-import type { TaskRun } from "$lib/types";
+import type { TaskRun, SessionFolder } from "$lib/types";
 
 // ── Public types ──
 
@@ -25,6 +25,15 @@ export interface ProjectFolder {
   conversations: ConversationGroup[];
   conversationCount: number;
   latestActivityAt: string; // last_activity_at ?? started_at (safe)
+}
+
+export interface SessionFolderGroup {
+  folderId: string;
+  folderKey: string; // "sf:<folderId>"
+  name: string;
+  conversations: ConversationGroup[];
+  conversationCount: number;
+  latestActivityAt: string;
 }
 
 // ── normalizeCwd ──
@@ -212,4 +221,110 @@ export function expandForProjectChange(
   const next = new Set(expandedProjects);
   next.add(folderKey);
   return next;
+}
+
+// ── Build conversation group from a set of runs ──
+
+function buildConversationsForRuns(
+  bucketRuns: TaskRun[],
+  favoriteRunIds: Set<string>,
+): ConversationGroup[] {
+  const sessionMap = new Map<string, TaskRun[]>();
+  const standalone: TaskRun[] = [];
+
+  for (const run of bucketRuns) {
+    if (run.session_id) {
+      let group = sessionMap.get(run.session_id);
+      if (!group) {
+        group = [];
+        sessionMap.set(run.session_id, group);
+      }
+      group.push(run);
+    } else {
+      standalone.push(run);
+    }
+  }
+
+  const conversations: ConversationGroup[] = [];
+
+  for (const [sessionId, sessionRuns] of sessionMap) {
+    sessionRuns.sort((a, b) => b.started_at.localeCompare(a.started_at));
+    const latestRun = sessionRuns[0];
+    const earliestRun = sessionRuns[sessionRuns.length - 1];
+    const title = latestRun.name?.trim() || earliestRun.prompt?.trim() || "Untitled";
+    const isFavorite = sessionRuns.some((r) => favoriteRunIds.has(r.id));
+    const totalMessages = sessionRuns.reduce((sum, r) => sum + (r.message_count ?? 0), 0);
+
+    conversations.push({
+      groupKey: `s:${sessionId}`,
+      runs: sessionRuns,
+      title,
+      latestRun,
+      isFavorite,
+      totalMessages,
+    });
+  }
+
+  for (const run of standalone) {
+    const title = run.name?.trim() || run.prompt?.trim() || "Untitled";
+    conversations.push({
+      groupKey: `r:${run.id}`,
+      runs: [run],
+      title,
+      latestRun: run,
+      isFavorite: favoriteRunIds.has(run.id),
+      totalMessages: run.message_count ?? 0,
+    });
+  }
+
+  conversations.sort((a, b) => sortKey(b.latestRun).localeCompare(sortKey(a.latestRun)));
+  return conversations;
+}
+
+// ── Session folder groups ──
+
+export function buildSessionFolderGroups(
+  runs: TaskRun[],
+  sessionFolders: SessionFolder[],
+  favoriteRunIds: Set<string>,
+): { folderGroups: SessionFolderGroup[]; unassignedRuns: TaskRun[] } {
+  // Partition runs: those with folder_id vs those without
+  const folderRunMap = new Map<string, TaskRun[]>();
+  const unassigned: TaskRun[] = [];
+
+  for (const run of runs) {
+    if (run.folder_id) {
+      let bucket = folderRunMap.get(run.folder_id);
+      if (!bucket) {
+        bucket = [];
+        folderRunMap.set(run.folder_id, bucket);
+      }
+      bucket.push(run);
+    } else {
+      unassigned.push(run);
+    }
+  }
+
+  const folderGroups: SessionFolderGroup[] = [];
+
+  for (const folder of sessionFolders) {
+    const bucketRuns = folderRunMap.get(folder.id) ?? [];
+    const conversations = buildConversationsForRuns(bucketRuns, favoriteRunIds);
+    const latestActivityAt =
+      conversations.length > 0 ? sortKey(conversations[0].latestRun) : folder.updatedAt;
+
+    folderGroups.push({
+      folderId: folder.id,
+      folderKey: `sf:${folder.id}`,
+      name: folder.name,
+      conversations,
+      conversationCount: conversations.length,
+      latestActivityAt,
+    });
+  }
+
+  // Sort by latest activity desc
+  folderGroups.sort((a, b) => b.latestActivityAt.localeCompare(a.latestActivityAt));
+
+  return { folderGroups, unassignedRuns: unassigned };
 }

@@ -11,6 +11,7 @@ pub mod diagnostics;
 pub mod events;
 pub mod export;
 pub mod files;
+pub mod folders;
 pub mod fs;
 pub mod git;
 pub mod history;

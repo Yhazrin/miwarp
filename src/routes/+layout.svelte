@@ -13,6 +13,13 @@
     searchPrompts,
     listMemoryFiles,
     softDeleteRuns,
+    hardDeleteRuns,
+    listSessionFolders,
+    createSessionFolder,
+    renameSessionFolder,
+    deleteSessionFolder,
+    moveRunToFolder,
+    batchMoveToFolder,
   } from "$lib/api";
   import ProjectFolderItem from "$lib/components/ProjectFolderItem.svelte";
   import CommandPalette from "$lib/components/CommandPalette.svelte";
@@ -32,15 +39,18 @@
     PromptFavorite,
     PromptSearchResult,
     MemoryFileCandidate,
+    SessionFolder,
   } from "$lib/types";
   import { cwdDisplayLabel, truncate, snippetAround, relativeTime } from "$lib/utils/format";
   import { filterVisibleCandidates } from "$lib/utils/memory-helpers";
   import {
     buildProjectFolders,
+    buildSessionFolderGroups,
     autoExpandForRun,
     expandForProjectChange,
     normalizeCwd,
     type ConversationGroup,
+    type SessionFolderGroup,
   } from "$lib/utils/sidebar-groups";
   import { loadRemovedCwds } from "$lib/utils/removed-cwds";
   import {
@@ -105,6 +115,126 @@
   let projectCwd = $state("");
   let pinnedCwds = $state<string[]>([]);
   let removedCwds = $state<string[]>([]);
+
+  // ── Session folders ──
+  let sessionFolders = $state<SessionFolder[]>([]);
+  let sessionFolderGroups = $state<SessionFolderGroup[]>([]);
+  let unassignedRuns = $state<TaskRun[]>([]);
+
+  // Folder CRUD dialogs
+  let folderCreateOpen = $state(false);
+  let folderCreateName = $state("");
+  let folderRenameOpen = $state(false);
+  let folderRenameTarget = $state<SessionFolder | null>(null);
+  let folderRenameName = $state("");
+  let folderDeleteOpen = $state(false);
+  let folderDeleteTarget = $state<SessionFolder | null>(null);
+
+  // Move-to-folder dialog
+  let moveToFolderOpen = $state(false);
+  let moveToFolderRunIds = $state<string[]>([]);
+  let moveToFolderSelectedId = $state<string | null>(null);
+
+  async function loadSessionFolders() {
+    try {
+      sessionFolders = await listSessionFolders(projectCwd || "default");
+    } catch {
+      // silently fail
+    }
+  }
+
+  function refreshFolderGroups() {
+    const result = buildSessionFolderGroups(runs, sessionFolders, favoriteRunIds);
+    sessionFolderGroups = result.folderGroups;
+    unassignedRuns = result.unassignedRuns;
+  }
+
+  async function doCreateFolder() {
+    const name = folderCreateName.trim();
+    if (!name) return;
+    folderCreateOpen = false;
+    folderCreateName = "";
+    try {
+      const folder = await createSessionFolder(name, projectCwd || "default");
+      sessionFolders = [...sessionFolders, folder];
+      dbg("layout", "createFolder success", { id: folder.id, name });
+    } catch (e) {
+      dbgWarn("layout", "createFolder failed", e);
+    }
+  }
+
+  function requestRenameFolder(folder: SessionFolder) {
+    folderRenameTarget = folder;
+    folderRenameName = folder.name;
+    folderRenameOpen = true;
+  }
+
+  async function doRenameFolder() {
+    const target = folderRenameTarget;
+    const newName = folderRenameName.trim();
+    if (!target || !newName) return;
+    folderRenameOpen = false;
+    folderRenameTarget = null;
+    try {
+      await renameSessionFolder(target.id, newName);
+      sessionFolders = sessionFolders.map((f) =>
+        f.id === target.id ? { ...f, name: newName } : f,
+      );
+      dbg("layout", "renameFolder success", { id: target.id, newName });
+    } catch (e) {
+      dbgWarn("layout", "renameFolder failed", e);
+    }
+  }
+
+  function requestDeleteFolder(folder: SessionFolder) {
+    folderDeleteTarget = folder;
+    folderDeleteOpen = true;
+  }
+
+  async function doDeleteFolder(cascade: boolean) {
+    const target = folderDeleteTarget;
+    folderDeleteOpen = false;
+    folderDeleteTarget = null;
+    if (!target) return;
+    try {
+      await deleteSessionFolder(target.id, cascade);
+      sessionFolders = sessionFolders.filter((f) => f.id !== target.id);
+      if (cascade) {
+        // Reload runs to reflect folder_id changes
+        await loadRuns();
+      }
+      dbg("layout", "deleteFolder success", { id: target.id, cascade });
+    } catch (e) {
+      dbgWarn("layout", "deleteFolder failed", e);
+    }
+  }
+
+  function requestMoveToFolder(runIds: string[]) {
+    moveToFolderRunIds = runIds;
+    moveToFolderSelectedId = null;
+    moveToFolderOpen = true;
+  }
+
+  async function doMoveToFolder() {
+    const ids = moveToFolderRunIds;
+    const folderId = moveToFolderSelectedId;
+    moveToFolderOpen = false;
+    moveToFolderRunIds = [];
+    if (ids.length === 0) return;
+    try {
+      if (ids.length === 1) {
+        await moveRunToFolder(ids[0], folderId);
+      } else {
+        await batchMoveToFolder(ids, folderId);
+      }
+      // Optimistic update
+      runs = runs.map((r) => (ids.includes(r.id) ? { ...r, folder_id: folderId ?? undefined } : r));
+      window.dispatchEvent(new Event("ocv:runs-changed"));
+      dbg("layout", "moveToFolder success", { count: ids.length, folderId });
+    } catch (e) {
+      dbgWarn("layout", "moveToFolder failed", e);
+    }
+  }
 
   let runSearchQuery = $state("");
   let teamStoreSearchQuery = $state("");
@@ -632,6 +762,7 @@
     loadRuns();
     loadSettings();
     loadSidebarFavorites();
+    loadSessionFolders();
     loadAgentSettingsCache();
     themeStore.init();
 
@@ -759,6 +890,7 @@
     // Immediate refresh when chat page signals a status change
     function onRunsChanged() {
       loadRuns();
+      loadSessionFolders();
       // Invalidate git cache unconditionally; if currently viewing Git tab on Explorer,
       // reload immediately — otherwise lazy $effect picks it up on next visit.
       ++_gitSeq; // cancel in-flight request so it can't backfill _gitLoadedCwd
@@ -978,6 +1110,27 @@
     }
   }
 
+  async function confirmHardDeleteConversation() {
+    const conv = deleteTarget;
+    deleteConfirmOpen = false;
+    deleteTarget = null;
+    if (!conv) return;
+    try {
+      const ids = conv.runs.map((r) => r.id);
+      await hardDeleteRuns(ids);
+      // Remove from local state immediately
+      const idSet = new Set(ids);
+      runs = runs.filter((r) => !idSet.has(r.id));
+      dbg("layout", "hardDeleteConversation success", { ids });
+      window.dispatchEvent(new Event("ocv:runs-changed"));
+      if (ids.some((id) => id === selectedRunId)) {
+        goto("/chat");
+      }
+    } catch (e) {
+      dbgWarn("layout", "hardDeleteConversation failed", e);
+    }
+  }
+
   function cancelDeleteConversation() {
     deleteConfirmOpen = false;
     deleteTarget = null;
@@ -1029,11 +1182,18 @@
 
   let batchDeleteConfirmOpen = $state(false);
 
-  async function batchDelete() {
+  function collectSelectedRunIds(): string[] {
     const keys = new Set(selectedGroupKeys);
-    batchDeleteConfirmOpen = false;
-    clearBatchSelection();
     const ids: string[] = [];
+    // Check session folder groups
+    for (const folder of sessionFolderGroups) {
+      for (const conv of folder.conversations) {
+        if (keys.has(conv.groupKey)) {
+          ids.push(...conv.runs.map((r) => r.id));
+        }
+      }
+    }
+    // Check project folders (uncategorized)
     for (const folder of projectFolders) {
       for (const conv of folder.conversations) {
         if (keys.has(conv.groupKey)) {
@@ -1041,6 +1201,14 @@
         }
       }
     }
+    return ids;
+  }
+
+  async function batchDelete() {
+    const keys = new Set(selectedGroupKeys);
+    batchDeleteConfirmOpen = false;
+    clearBatchSelection();
+    const ids = collectSelectedRunIds();
     if (ids.length === 0) return;
     try {
       await softDeleteRuns(ids);
@@ -1049,6 +1217,23 @@
       if (ids.includes(selectedRunId)) goto("/chat");
     } catch (e) {
       dbgWarn("layout", "batchDelete failed", e);
+    }
+  }
+
+  async function batchHardDelete() {
+    const ids = collectSelectedRunIds();
+    batchDeleteConfirmOpen = false;
+    clearBatchSelection();
+    if (ids.length === 0) return;
+    try {
+      await hardDeleteRuns(ids);
+      const idSet = new Set(ids);
+      runs = runs.filter((r) => !idSet.has(r.id));
+      dbg("layout", "batchHardDelete success", { count: ids.length });
+      window.dispatchEvent(new Event("ocv:runs-changed"));
+      if (ids.includes(selectedRunId)) goto("/chat");
+    } catch (e) {
+      dbgWarn("layout", "batchHardDelete failed", e);
     }
   }
 
@@ -1101,6 +1286,33 @@
   let projectFolders = $derived.by(() =>
     buildProjectFolders(runs, favoriteRunIds, pinnedCwds, removedCwds),
   );
+
+  // Build session folder groups
+  $effect(() => {
+    const result = buildSessionFolderGroups(runs, sessionFolders, favoriteRunIds);
+    sessionFolderGroups = result.folderGroups;
+    unassignedRuns = result.unassignedRuns;
+  });
+
+  // Reload session folders when project context changes
+  $effect(() => {
+    const _cwd = projectCwd;
+    loadSessionFolders();
+  });
+
+  // Convert SessionFolderGroup to ProjectFolder-compatible shape for ProjectFolderItem
+  function sessionFolderToProjectFolder(
+    sfg: SessionFolderGroup,
+  ): import("$lib/utils/sidebar-groups").ProjectFolder {
+    return {
+      cwd: "",
+      folderKey: sfg.folderKey,
+      isUncategorized: false,
+      conversations: sfg.conversations,
+      conversationCount: sfg.conversationCount,
+      latestActivityAt: sfg.latestActivityAt,
+    };
+  }
 
   // Selectable folders: real project folders (exclude Uncategorized)
   const selectableFolders = $derived(projectFolders.filter((f) => !f.isUncategorized));
@@ -2311,6 +2523,91 @@
           {:else}
             <!-- Project folder tree -->
             <div class="flex-1 overflow-y-auto px-2 py-1">
+              <!-- Session folders -->
+              {#if sessionFolderGroups.length > 0 || sessionFolders.length > 0}
+                <div class="mb-1">
+                  <div class="flex items-center justify-between px-2 py-1">
+                    <span
+                      class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+                    >
+                      {t("sidebar_sessionFolders")}
+                    </span>
+                    <button
+                      class="p-0.5 rounded hover:bg-sidebar-accent/50 text-muted-foreground hover:text-sidebar-foreground transition-colors"
+                      title={t("sidebar_createFolder")}
+                      onclick={() => {
+                        folderCreateOpen = true;
+                        folderCreateName = "";
+                      }}
+                    >
+                      <svg
+                        class="h-3.5 w-3.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg
+                      >
+                    </button>
+                  </div>
+                  {#each sessionFolderGroups as sfg (sfg.folderKey)}
+                    <div class="group relative">
+                      <ProjectFolderItem
+                        folder={sessionFolderToProjectFolder(sfg)}
+                        label={sfg.name}
+                        expanded={expandedProjects.has(sfg.folderKey)}
+                        {selectedRunId}
+                        onToggle={() => toggleProject(sfg.folderKey)}
+                        onSelectConversation={(runId) => goto(`/chat?run=${runId}`)}
+                        onResume={(runId, mode) => goto(`/chat?run=${runId}&resume=${mode}`)}
+                        onDelete={requestDeleteConversation}
+                        onMoveToFolder={requestMoveToFolder}
+                        {selectedGroupKeys}
+                        onBatchClick={toggleSelectConversation}
+                        onRemove={() =>
+                          requestDeleteFolder(sessionFolders.find((f) => f.id === sfg.folderId)!)}
+                      />
+                      <!-- Folder context menu trigger -->
+                      <div
+                        class="absolute right-8 top-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex gap-0.5"
+                      >
+                        <button
+                          class="p-0.5 rounded hover:bg-sidebar-accent/80 text-muted-foreground hover:text-sidebar-foreground"
+                          title={t("sidebar_renameFolder")}
+                          onclick={(e) => {
+                            e.stopPropagation();
+                            const f = sessionFolders.find((f) => f.id === sfg.folderId);
+                            if (f) requestRenameFolder(f);
+                          }}
+                        >
+                          <svg
+                            class="h-3 w-3"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            ><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg
+                          >
+                        </button>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+
+              <!-- Uncategorized / project folders -->
+              {#if sessionFolderGroups.length > 0}
+                <div class="flex items-center px-2 py-1 mt-1">
+                  <span
+                    class="text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+                  >
+                    {t("sidebar_byProject")}
+                  </span>
+                </div>
+              {/if}
               {#each projectFolders as folder (folder.folderKey)}
                 <ProjectFolderItem
                   {folder}
@@ -2323,6 +2620,7 @@
                   onSelectConversation={(runId) => goto(`/chat?run=${runId}`)}
                   onResume={(runId, mode) => goto(`/chat?run=${runId}&resume=${mode}`)}
                   onDelete={requestDeleteConversation}
+                  onMoveToFolder={requestMoveToFolder}
                   {selectedGroupKeys}
                   onBatchClick={toggleSelectConversation}
                   onRemove={folder.isUncategorized
@@ -2454,10 +2752,16 @@
       {t("sidebar_deleteCancel")}
     </button>
     <button
-      class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+      class="px-3 py-1.5 text-sm rounded-md border border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors"
       onclick={confirmDeleteConversation}
     >
-      {t("sidebar_deleteOk")}
+      {t("sidebar_softDelete")}
+    </button>
+    <button
+      class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+      onclick={confirmHardDeleteConversation}
+    >
+      {t("sidebar_hardDelete")}
     </button>
   </div>
 </Modal>
@@ -2474,10 +2778,16 @@
       {t("sidebar_deleteCancel")}
     </button>
     <button
-      class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+      class="px-3 py-1.5 text-sm rounded-md border border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors"
       onclick={batchDelete}
     >
-      {t("sidebar_deleteOk")}
+      {t("sidebar_softDelete")}
+    </button>
+    <button
+      class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+      onclick={batchHardDelete}
+    >
+      {t("sidebar_hardDelete")}
     </button>
   </div>
 </Modal>
@@ -2496,6 +2806,140 @@
       onclick={confirmRemoveProject}
     >
       {t("sidebar_deleteOk")}
+    </button>
+  </div>
+</Modal>
+
+<!-- Create folder dialog -->
+<Modal bind:open={folderCreateOpen} title={t("sidebar_createFolder")}>
+  <p class="text-sm text-muted-foreground mb-3">{t("sidebar_createFolderDesc")}</p>
+  <input
+    type="text"
+    class="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring mb-4"
+    placeholder={t("sidebar_folderNamePlaceholder")}
+    bind:value={folderCreateName}
+    onkeydown={(e) => e.key === "Enter" && doCreateFolder()}
+    autofocus
+  />
+  <div class="flex justify-end gap-2">
+    <button
+      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
+      onclick={() => {
+        folderCreateOpen = false;
+        folderCreateName = "";
+      }}
+    >
+      {t("sidebar_deleteCancel")}
+    </button>
+    <button
+      class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+      onclick={doCreateFolder}
+    >
+      {t("sidebar_createFolderOk")}
+    </button>
+  </div>
+</Modal>
+
+<!-- Rename folder dialog -->
+<Modal bind:open={folderRenameOpen} title={t("sidebar_renameFolder")}>
+  <input
+    type="text"
+    class="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring mb-4"
+    bind:value={folderRenameName}
+    onkeydown={(e) => e.key === "Enter" && doRenameFolder()}
+    autofocus
+  />
+  <div class="flex justify-end gap-2">
+    <button
+      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
+      onclick={() => {
+        folderRenameOpen = false;
+        folderRenameTarget = null;
+      }}
+    >
+      {t("sidebar_deleteCancel")}
+    </button>
+    <button
+      class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+      onclick={doRenameFolder}
+    >
+      {t("sidebar_renameFolderOk")}
+    </button>
+  </div>
+</Modal>
+
+<!-- Delete folder dialog -->
+<Modal bind:open={folderDeleteOpen} title={t("sidebar_deleteFolder")}>
+  <p class="text-sm text-muted-foreground mb-4">
+    {t("sidebar_deleteFolderDesc", { name: folderDeleteTarget?.name ?? "" })}
+  </p>
+  <div class="flex justify-end gap-2">
+    <button
+      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
+      onclick={() => {
+        folderDeleteOpen = false;
+        folderDeleteTarget = null;
+      }}
+    >
+      {t("sidebar_deleteCancel")}
+    </button>
+    <button
+      class="px-3 py-1.5 text-sm rounded-md border border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors"
+      onclick={() => doDeleteFolder(false)}
+    >
+      {t("sidebar_deleteFolderKeep")}
+    </button>
+    <button
+      class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+      onclick={() => doDeleteFolder(true)}
+    >
+      {t("sidebar_deleteFolderCascade")}
+    </button>
+  </div>
+</Modal>
+
+<!-- Move to folder dialog -->
+<Modal bind:open={moveToFolderOpen} title={t("sidebar_moveToFolder")}>
+  <p class="text-sm text-muted-foreground mb-3">
+    {t("sidebar_moveToFolderDesc", { count: String(moveToFolderRunIds.length) })}
+  </p>
+  <div class="flex flex-col gap-1.5 mb-4 max-h-48 overflow-y-auto">
+    <button
+      class="text-left px-3 py-2 text-sm rounded-md transition-colors"
+      class:bg-primary={moveToFolderSelectedId === null}
+      class:text-primary-foreground={moveToFolderSelectedId === null}
+      class:hover:bg-accent={moveToFolderSelectedId !== null}
+      onclick={() => (moveToFolderSelectedId = null)}
+    >
+      {t("sidebar_uncategorized")}
+    </button>
+    {#each sessionFolders as folder}
+      <button
+        class="text-left px-3 py-2 text-sm rounded-md transition-colors"
+        class:bg-primary={moveToFolderSelectedId === folder.id}
+        class:text-primary-foreground={moveToFolderSelectedId === folder.id}
+        class:hover:bg-accent={moveToFolderSelectedId !== folder.id}
+        onclick={() => (moveToFolderSelectedId = folder.id)}
+      >
+        {folder.name}
+      </button>
+    {/each}
+  </div>
+  <div class="flex justify-end gap-2">
+    <button
+      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
+      onclick={() => {
+        moveToFolderOpen = false;
+        moveToFolderRunIds = [];
+      }}
+    >
+      {t("sidebar_deleteCancel")}
+    </button>
+    <button
+      class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+      onclick={doMoveToFolder}
+    >
+      {t("sidebar_moveToFolderOk")}
     </button>
   </div>
 </Modal>
