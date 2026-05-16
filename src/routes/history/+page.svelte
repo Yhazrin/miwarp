@@ -15,6 +15,7 @@
   let showAdvancedFilters = $state(false);
   let requestId = 0;
   let searchInput = $state("");
+  let searchMode = $state<"keyword" | "semantic">("keyword");
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   // Active status filter (quick pills)
@@ -245,9 +246,35 @@
           type="text"
           bind:value={searchInput}
           oninput={onSearchInput}
-          placeholder={t("history_searchPlaceholder")}
+          placeholder={searchMode === "semantic"
+            ? t("history_searchPlaceholderSemantic")
+            : t("history_searchPlaceholder")}
           class="w-full rounded-lg border border-border bg-background py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         />
+      </div>
+      <div class="flex items-center rounded-lg border border-border text-xs overflow-hidden">
+        <button
+          onclick={() => {
+            searchMode = "keyword";
+          }}
+          class="px-2.5 py-1.5 transition-colors {searchMode === 'keyword'
+            ? 'bg-primary text-primary-foreground'
+            : 'text-muted-foreground hover:bg-muted/50'}"
+        >
+          {t("history_searchKeyword")}
+        </button>
+        <button
+          onclick={() => {
+            searchMode = "semantic";
+          }}
+          class="px-2.5 py-1.5 transition-colors {searchMode === 'semantic'
+            ? 'bg-primary text-primary-foreground'
+            : 'text-muted-foreground hover:bg-muted/50'}"
+          title={t("history_searchSemanticTooltip")}
+        >
+          {t("history_searchSemantic")}
+          <span class="ml-0.5 text-[9px] opacity-70">&#946;</span>
+        </button>
       </div>
       <button
         onclick={() => (showAdvancedFilters = !showAdvancedFilters)}

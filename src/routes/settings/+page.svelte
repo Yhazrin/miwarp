@@ -167,6 +167,15 @@
   let notifTeamCompleted = $state(true);
   let notifMinDuration = $state(10);
   let notifSaved = $state(false);
+
+  // ── Feishu webhook settings ──
+  let feishuWebhookUrl = $state("");
+  let feishuWebhookEnabled = $state(false);
+  let feishuWebhookTriggers = $state<string[]>([]);
+  let feishuSaved = $state(false);
+  let feishuTesting = $state(false);
+  let feishuTestResult = $state<string | null>(null);
+  let feishuUrlError = $state<string | null>(null);
   // Derive effective auth env var (tracks platformCredentials + selectedPlatformId)
   let effectiveAuthEnvVar = $derived(
     findCredential(platformCredentials, selectedPlatformId ?? "")?.auth_env_var ||
@@ -1152,6 +1161,10 @@
       notifScheduleCompleted = settings.notify_on_schedule_completed ?? true;
       notifTeamCompleted = settings.notify_on_team_completed ?? true;
       notifMinDuration = settings.notification_min_duration_sec ?? 10;
+      // Feishu webhook settings
+      feishuWebhookUrl = settings.feishu_webhook_url ?? "";
+      feishuWebhookEnabled = settings.feishu_webhook_enabled ?? false;
+      feishuWebhookTriggers = settings.feishu_webhook_triggers ?? [];
       // Load display fields from credentials (not global fields)
       if (authMode === "api") {
         selectedPlatformId = detectPlatformFromUrl(
@@ -1244,6 +1257,48 @@
       setTimeout(() => (notifSaved = false), 1500);
     } catch (e) {
       dbgWarn("settings", "saveNotificationSettings error", e);
+    }
+  }
+
+  function validateFeishuUrl(url: string): string | null {
+    if (!url) return null;
+    if (
+      url.startsWith("https://open.feishu.cn/open-apis/bot/v2/hook/") ||
+      url.startsWith("https://open.larksuite.com/open-apis/bot/v2/hook/")
+    ) {
+      return null;
+    }
+    return t("settings_notif_feishuUrlInvalid") || "Invalid Feishu webhook URL";
+  }
+
+  async function saveFeishuSettings() {
+    feishuUrlError = validateFeishuUrl(feishuWebhookUrl);
+    if (feishuUrlError && feishuWebhookEnabled) return;
+    try {
+      settings = await api.updateUserSettings({
+        feishu_webhook_url: feishuWebhookUrl || null,
+        feishu_webhook_enabled: feishuWebhookEnabled,
+        feishu_webhook_triggers: feishuWebhookTriggers,
+      } as Partial<UserSettings>);
+      feishuSaved = true;
+      setTimeout(() => (feishuSaved = false), 1500);
+    } catch (e) {
+      dbgWarn("settings", "saveFeishuSettings error", e);
+    }
+  }
+
+  async function testFeishuWebhook() {
+    feishuUrlError = validateFeishuUrl(feishuWebhookUrl);
+    if (feishuUrlError) return;
+    feishuTesting = true;
+    feishuTestResult = null;
+    try {
+      await api.sendFeishuNotification("Test", "Feishu webhook test from MiWarp", "test");
+      feishuTestResult = t("settings_notif_feishuTestOk") || "Test notification sent";
+    } catch (e: unknown) {
+      feishuTestResult = (e as Error)?.message || "Failed to send";
+    } finally {
+      feishuTesting = false;
     }
   }
 
@@ -3894,6 +3949,152 @@
                     />
                     <span class="text-xs text-muted-foreground">s</span>
                   </div>
+                </div>
+              </div>
+            {/if}
+          </Card>
+
+          <!-- ═══ Feishu Webhook card ═══ -->
+          <Card class="p-6 space-y-5">
+            <div class="flex items-center justify-between">
+              <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                {t("settings_notif_feishuTitle") || "Feishu Webhook"}
+              </h2>
+              {#if feishuSaved}
+                <span class="text-xs text-emerald-500 flex items-center gap-1 animate-fade-in">
+                  <svg
+                    class="h-3 w-3"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  {t("settings_general_saved")}
+                </span>
+              {/if}
+            </div>
+
+            <p class="text-xs text-muted-foreground">
+              {t("settings_notif_feishuDesc") ||
+                "Send task completion notifications to a Feishu group chat via webhook."}
+            </p>
+
+            <!-- Enable toggle -->
+            <label class="flex items-center justify-between py-2 cursor-pointer">
+              <div>
+                <span class="text-sm font-medium"
+                  >{t("settings_notif_feishuEnabled") || "Enable Feishu notifications"}</span
+                >
+                <p class="text-xs text-muted-foreground mt-0.5">
+                  {t("settings_notif_feishuEnabledDesc") ||
+                    "Post to Feishu webhook when tasks or scheduled jobs complete"}
+                </p>
+              </div>
+              <button
+                role="switch"
+                aria-checked={feishuWebhookEnabled}
+                class="relative inline-flex h-5 w-9 items-center rounded-full transition-colors
+              {feishuWebhookEnabled ? 'bg-primary' : 'bg-muted'}"
+                onclick={() => {
+                  feishuWebhookEnabled = !feishuWebhookEnabled;
+                  saveFeishuSettings();
+                }}
+              >
+                <span
+                  class="inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+              {feishuWebhookEnabled ? 'translate-x-4' : 'translate-x-0.5'}"
+                ></span>
+              </button>
+            </label>
+
+            <!-- URL input -->
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium" for="feishu-webhook-url">
+                {t("settings_notif_feishuUrl") || "Webhook URL"}
+              </label>
+              <input
+                id="feishu-webhook-url"
+                type="url"
+                bind:value={feishuWebhookUrl}
+                oninput={() => {
+                  feishuUrlError = validateFeishuUrl(feishuWebhookUrl);
+                }}
+                onchange={saveFeishuSettings}
+                placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..."
+                class="w-full rounded-md border {feishuUrlError
+                  ? 'border-destructive'
+                  : 'border-border'} bg-transparent px-3 py-2 text-sm
+                font-mono placeholder:text-muted-foreground/50
+                focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              {#if feishuUrlError}
+                <p class="text-xs text-destructive">{feishuUrlError}</p>
+              {/if}
+            </div>
+
+            <!-- Test button -->
+            <div class="flex items-center gap-2">
+              <button
+                class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs
+                font-medium hover:bg-muted transition-colors disabled:opacity-50"
+                disabled={feishuTesting || !feishuWebhookUrl}
+                onclick={testFeishuWebhook}
+              >
+                {#if feishuTesting}
+                  <svg
+                    class="h-3 w-3 animate-spin"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83" />
+                  </svg>
+                {/if}
+                {t("settings_notif_feishuTest") || "Send test"}
+              </button>
+              {#if feishuTestResult}
+                <span
+                  class="text-xs {feishuTestResult.includes('Failed') ||
+                  feishuTestResult.includes('Error')
+                    ? 'text-destructive'
+                    : 'text-emerald-500'}"
+                >
+                  {feishuTestResult}
+                </span>
+              {/if}
+            </div>
+
+            <!-- Trigger scope -->
+            {#if feishuWebhookEnabled}
+              <div class="space-y-2 pt-2 border-t border-muted/50">
+                <p class="text-xs text-muted-foreground">
+                  {t("settings_notif_feishuTriggersDesc") ||
+                    "Choose which events trigger Feishu notifications. Leave unchecked to notify on all events."}
+                </p>
+                <div class="grid grid-cols-2 gap-2">
+                  {#each [["run_completed", t("settings_notif_feishuTriggerRun") || "Run completed"], ["run_failed", t("settings_notif_feishuTriggerFailed") || "Run failed"], ["schedule_completed", t("settings_notif_feishuTriggerSchedule") || "Schedule completed"], ["team_completed", t("settings_notif_feishuTriggerTeam") || "Team completed"]] as [trigger, label]}
+                    <label class="flex items-center gap-2 cursor-pointer text-sm">
+                      <input
+                        type="checkbox"
+                        checked={feishuWebhookTriggers.includes(trigger)}
+                        onchange={() => {
+                          if (feishuWebhookTriggers.includes(trigger)) {
+                            feishuWebhookTriggers = feishuWebhookTriggers.filter(
+                              (t) => t !== trigger,
+                            );
+                          } else {
+                            feishuWebhookTriggers = [...feishuWebhookTriggers, trigger];
+                          }
+                          saveFeishuSettings();
+                        }}
+                        class="rounded border-border"
+                      />
+                      {label}
+                    </label>
+                  {/each}
                 </div>
               </div>
             {/if}

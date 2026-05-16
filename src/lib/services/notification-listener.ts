@@ -4,7 +4,7 @@
  * for run completions, failures, and approval requests.
  */
 import { getTransport } from "$lib/transport";
-import { getUserSettings } from "$lib/api";
+import { getUserSettings, sendFeishuNotification } from "$lib/api";
 import { showToast } from "$lib/stores/toast-store.svelte";
 import {
   notifyUser,
@@ -19,6 +19,8 @@ import { dbg, dbgWarn } from "$lib/utils/debug";
 let _started = false;
 const _unlisteners: Array<() => void> = [];
 let _settings: NotificationSettings = { ...DEFAULT_NOTIFICATION_SETTINGS };
+let _feishuEnabled = false;
+let _feishuTriggers: string[] = [];
 const _runs: Map<string, TaskRun> = new Map();
 
 // Cache settings refresh — don't hit API on every event
@@ -46,8 +48,30 @@ async function refreshSettings(): Promise<void> {
       notificationMinDurationSec:
         s.notification_min_duration_sec ?? DEFAULT_NOTIFICATION_SETTINGS.notificationMinDurationSec,
     };
+    _feishuEnabled = s.feishu_webhook_enabled ?? false;
+    _feishuTriggers = s.feishu_webhook_triggers ?? [];
   } catch {
     // Use defaults on error
+  }
+}
+
+function shouldSendFeishu(trigger: string): boolean {
+  if (!_feishuEnabled) return false;
+  // If triggers list is empty, send for all events (default behavior)
+  if (_feishuTriggers.length === 0) return true;
+  return _feishuTriggers.includes(trigger);
+}
+
+async function trySendFeishu(
+  title: string,
+  body: string,
+  status?: string,
+  link?: string,
+): Promise<void> {
+  try {
+    await sendFeishuNotification(title, body, status, link);
+  } catch (e) {
+    dbg("notif", "feishu webhook failed (non-blocking)", e);
   }
 }
 
@@ -78,6 +102,11 @@ async function handleBusEvent(ev: BusEvent): Promise<void> {
         body: `Task completed: ${title}`,
       });
     }
+
+    // Feishu webhook
+    if (shouldSendFeishu("run_completed")) {
+      trySendFeishu("Task completed", title, "completed");
+    }
   } else if (state === "failed" || state === "stopped" || state === "error") {
     if (state === "stopped") return; // User-initiated stop, not a failure
 
@@ -92,6 +121,11 @@ async function handleBusEvent(ev: BusEvent): Promise<void> {
         title: "MiWarp",
         body: `Task failed: ${title}`,
       });
+    }
+
+    // Feishu webhook
+    if (shouldSendFeishu("run_failed")) {
+      trySendFeishu("Task failed", title, "failed");
     }
   } else if (state === "running" || state === "spawning") {
     // Track run for later use (title lookup)

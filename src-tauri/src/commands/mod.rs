@@ -15,6 +15,7 @@ pub mod fs;
 pub mod git;
 pub mod history;
 pub mod mcp;
+pub mod notification;
 pub mod onboarding;
 pub mod plugins;
 pub mod remote_fs;

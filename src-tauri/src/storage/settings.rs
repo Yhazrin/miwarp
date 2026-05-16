@@ -552,6 +552,54 @@ pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, St
     if let Some(v) = patch.get("onboarding_completed") {
         all.user.onboarding_completed = v.as_bool().unwrap_or(false);
     }
+    // Notification settings
+    if let Some(v) = patch.get("notifications_enabled") {
+        all.user.notifications_enabled = v.as_bool();
+    }
+    if let Some(v) = patch.get("notify_on_run_completed") {
+        all.user.notify_on_run_completed = v.as_bool();
+    }
+    if let Some(v) = patch.get("notify_on_run_failed") {
+        all.user.notify_on_run_failed = v.as_bool();
+    }
+    if let Some(v) = patch.get("notify_on_approval_required") {
+        all.user.notify_on_approval_required = v.as_bool();
+    }
+    if let Some(v) = patch.get("notify_on_schedule_completed") {
+        all.user.notify_on_schedule_completed = v.as_bool();
+    }
+    if let Some(v) = patch.get("notify_on_team_completed") {
+        all.user.notify_on_team_completed = v.as_bool();
+    }
+    if let Some(v) = patch.get("notification_min_duration_sec") {
+        all.user.notification_min_duration_sec = v.as_u64().map(|n| n as u32);
+    }
+    // Feishu webhook settings
+    if let Some(v) = patch.get("feishu_webhook_url") {
+        all.user.feishu_webhook_url = if v.is_null() {
+            None
+        } else {
+            v.as_str().filter(|s| !s.is_empty()).map(|s| s.to_string())
+        };
+    }
+    if let Some(v) = patch.get("feishu_webhook_enabled") {
+        all.user.feishu_webhook_enabled = v.as_bool().unwrap_or(false);
+    }
+    if let Some(v) = patch.get("feishu_webhook_triggers") {
+        if v.is_null() {
+            all.user.feishu_webhook_triggers = vec![];
+        } else {
+            all.user.feishu_webhook_triggers = serde_json::from_value(v.clone())
+                .map_err(|e| format!("Invalid feishu_webhook_triggers: {}", e))?;
+        }
+    }
+    if let Some(v) = patch.get("feishu_webhook_template") {
+        all.user.feishu_webhook_template = if v.is_null() {
+            None
+        } else {
+            v.as_str().filter(|s| !s.is_empty()).map(|s| s.to_string())
+        };
+    }
     all.user.updated_at = crate::models::now_iso();
     save(&all)?;
     Ok(all.user)

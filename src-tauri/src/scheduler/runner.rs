@@ -188,6 +188,9 @@ async fn monitor_run_completion(task_run_id: &str, run_id: &str) {
                 task_run.error = error;
                 task_run.ended_at = Some(Utc::now().to_rfc3339());
                 let _ = store::save_run(&task_run);
+
+                // Send Feishu webhook notification for scheduled task completion
+                send_feishu_schedule_notification(task_run_id, status);
             }
             return;
         }
@@ -201,4 +204,26 @@ pub fn has_running_run(task_id: &str) -> bool {
     let runs = store::load_runs_for_task(task_id, Some(5));
     runs.iter()
         .any(|r| r.status == RunStatus::Running || r.status == RunStatus::Queued)
+}
+
+/// Send a Feishu webhook notification when a scheduled task finishes.
+fn send_feishu_schedule_notification(task_run_id: &str, status: RunStatus) {
+    let task_name = store::load_run(task_run_id)
+        .and_then(|tr| store::load_tasks().into_iter().find(|t| t.id == tr.task_id))
+        .map(|t| t.name)
+        .unwrap_or_else(|| "Scheduled Task".to_string());
+
+    let status_str = match status {
+        RunStatus::Completed => "completed",
+        RunStatus::Failed => "failed",
+        RunStatus::Cancelled => "cancelled",
+        _ => "unknown",
+    };
+
+    crate::commands::notification::dispatch_feishu_card(
+        "定时任务完成",
+        &task_name,
+        status_str,
+        None,
+    );
 }
