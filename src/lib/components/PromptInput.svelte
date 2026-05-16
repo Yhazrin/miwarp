@@ -18,43 +18,17 @@
   import SlashMenu from "./SlashMenu.svelte";
   import AtMentionMenu from "./AtMentionMenu.svelte";
   import {
-    filterSlashCommands,
-    mergeWithVirtual,
     parseVirtualAction,
-    getCommandInteraction,
-    getArgumentHint,
-    shouldBackFromSubView,
-    isSubViewInputValid,
-    getQuickActions,
-    classifyCloseReason,
-    groupSlashCommands,
     VIRTUAL_COMMANDS,
+    isSubViewInputValid,
+    shouldBackFromSubView,
   } from "$lib/utils/slash-commands";
-  import type { SlashCommandGroups } from "$lib/utils/slash-commands";
   import type { MessageKey } from "$lib/i18n/types";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { IS_MAC } from "$lib/utils/platform";
   import { t } from "$lib/i18n/index.svelte";
   import { formatPasteSize } from "$lib/utils/format";
-  import {
-    BINARY_ATTACHMENT_TYPES,
-    MAX_ATTACHMENTS,
-    MAX_PASTE_BLOCKS,
-    PDF_MAX_BINARY_SIZE,
-    PDF_MAX_PATH_SIZE,
-    isTextFile,
-    isPdf,
-    isConvertibleFile,
-    isConvertibleByExt,
-    isSpreadsheetExt,
-    getFileExtension,
-    classifyByMime,
-    getFileSizeLimit,
-    getSizeLimitByMime,
-  } from "$lib/utils/file-types";
-  import { convertFile } from "$lib/utils/file-convert";
-  import { uuid } from "$lib/utils/uuid";
-  import type { ClipboardFileInfo } from "$lib/api";
+  import { isSpreadsheetExt, getFileExtension } from "$lib/utils/file-types";
   import type { PromptInputSnapshot } from "$lib/types";
   import { PromptInputStore } from "$lib/stores";
   import {
@@ -67,6 +41,9 @@
     getHistoryAction,
     hasMultipleVisualLines,
   } from "$lib/utils/input-history";
+  import { useFileHandling } from "$lib/prompt/use-file-handling.svelte";
+  import { useSlashMenu } from "$lib/prompt/use-slash-menu.svelte";
+  import { useAtMention } from "$lib/prompt/use-at-mention.svelte";
 
   let {
     agent = "claude",
@@ -306,31 +283,8 @@
     PERMISSION_MODES.find((m) => m.value === permissionMode) ?? PERMISSION_MODES[0],
   );
 
-  function toggleModeDropdown() {
-    if (modeDropdownOpen) {
-      modeDropdownOpen = false;
-      return;
-    }
-    // Close other menus
-    if (slashMenuOpen) closeSlashMenu("mode-open");
-    if (atMenuOpen) closeAtMenu("mode-open");
-
-    modeDropdownOpen = true;
-    if (modeBtnEl) {
-      const rect = modeBtnEl.getBoundingClientRect();
-      // Open upward (input is at bottom of screen)
-      modeDropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:50;`;
-    }
-  }
-
-  function selectMode(mode: string) {
-    modeDropdownOpen = false;
-    onPermissionModeChange?.(mode);
-  }
-
   // Store-provided reactive state (store.inputText, store.pendingAttachments, store.pastedBlocks, store.pendingPathRefs, store.textareaEl)
 
-  let fileInput: HTMLInputElement | undefined = $state();
   let lastEscTime = 0;
   let histState: HistoryState = createHistoryState();
 
@@ -340,398 +294,67 @@
     }
   });
 
-  /** Chunked ArrayBuffer→base64 (32KB chunks — safe for large files, avoids stack overflow). */
-  function arrayBufferToBase64(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    const CHUNK = 0x8000;
-    let binary = "";
-    for (let i = 0; i < bytes.length; i += CHUNK) {
-      const slice = bytes.subarray(i, Math.min(i + CHUNK, bytes.length));
-      binary += String.fromCharCode.apply(null, slice as unknown as number[]);
-    }
-    return btoa(binary);
-  }
-
-  // ── File toast ──
-  let toastMessage = $state<string | null>(null);
-  let toastVariant = $state<"error" | "info">("error");
-  let toastTimeout: ReturnType<typeof setTimeout> | null = null;
-  function showFileToast(msg: string, variant: "error" | "info" = "error") {
-    toastMessage = msg;
-    toastVariant = variant;
-    if (toastTimeout) clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => {
-      toastMessage = null;
-    }, 3500);
-  }
-
-  // ── Slash menu state ──
-  let slashMenuOpen = $state(false);
-  let slashSelectedIndex = $state(0);
-  let slashPhase: "commands" | "sub-model" | "sub-fast" = $state("commands");
-  let slashSubSelectedIndex = $state(0);
-  let activeSlashCmd: CliCommand | null = $state(null);
-
-  let slashEnabled = $derived(agent === "claude" && !!useStreamSession);
-  let slashBtnEl: HTMLButtonElement | undefined = $state();
-  let savedInputForSlash = $state("");
-
-  let allCommands = $derived(mergeWithVirtual(cliCommands ?? []));
-  let quickActions = $derived(getQuickActions(allCommands));
-  let skillNameSet = $derived(new Set(availableSkills));
-
-  let slashQuery = $derived.by(() => {
-    if (!slashMenuOpen || slashPhase !== "commands") return null;
-    const m = store.inputText.match(/^\/([a-zA-Z0-9_-]*)$/);
-    return m?.[1] ?? "";
+  // ── Composables ──
+  const file = useFileHandling({
+    store,
+    disabled: () => disabled,
+    contextWindow: () => contextWindow,
   });
 
-  let filteredCommands = $derived.by(() => {
-    if (slashQuery === null) return [];
-    return filterSlashCommands(allCommands, slashQuery);
+  function closeModeDropdown() {
+    modeDropdownOpen = false;
+  }
+
+  const slash = useSlashMenu({
+    store,
+    agent: () => agent,
+    useStreamSession: () => useStreamSession,
+    cliCommands: () => cliCommands,
+    models: () => models,
+    fastModeState: () => fastModeState,
+    availableSkills: () => availableSkills,
+    onModelSwitch,
+    onFastModeSwitch,
+    onVirtualCommand,
+    onSend: (text: string) => {
+      store.inputText = "";
+      if (store.textareaEl) store.textareaEl.style.height = "auto";
+      store.pendingAttachments = [];
+      store.pastedBlocks = [];
+      store.pendingPathRefs = [];
+      resetHistory(histState);
+      onSend(text, []);
+    },
+    closeAtMenu: (reason: string) => at.closeAtMenu(reason),
+    closeModeDropdown,
   });
 
-  let slashGroups = $derived.by((): SlashCommandGroups | null => {
-    if (slashQuery !== "") return null; // non-empty query or menu closed → flat mode
-    if (filteredCommands.length === 0) return null;
-    return groupSlashCommands(filteredCommands, skillNameSet);
+  const at = useAtMention({
+    store,
+    isRemote: () => isRemote,
+    cwd: () => cwd,
+    closeSlashMenu: (reason: string) => slash.closeSlashMenu(reason),
+    closeModeDropdown,
   });
 
-  let effectiveCommands = $derived(slashGroups ? slashGroups.flatOrder : filteredCommands);
-
-  let hintText = $derived.by(() => {
-    if (slashPhase !== "commands" || effectiveCommands.length === 0) return "";
-    const idx = Math.min(slashSelectedIndex, effectiveCommands.length - 1);
-    return getArgumentHint(effectiveCommands[idx]);
-  });
-
-  $effect(() => {
-    if (slashMenuOpen)
-      dbg("slash", slashGroups ? "grouped" : "flat", { count: effectiveCommands.length });
-  });
-
-  // ── @-mention state ──
-  let atMenuOpen = $state(false);
-  let atQuery = $state("");
-  let atResults = $state<DirEntry[]>([]);
-  let atSelectedIndex = $state(0);
-  let atLoading = $state(false);
-  /** Position in store.inputText where the `@` trigger starts. */
-  let atStartPos = $state(-1);
-  let atDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-  function closeAtMenu(reason: string) {
-    if (!atMenuOpen) return;
-    dbg("at-mention", `close:${reason}`);
-    atMenuOpen = false;
-    atQuery = "";
-    atResults = [];
-    atSelectedIndex = 0;
-    atStartPos = -1;
-    atLoading = false;
-    if (atDebounceTimer) {
-      clearTimeout(atDebounceTimer);
-      atDebounceTimer = null;
-    }
-  }
-
-  function openAtMenu(pos: number) {
-    // Audit #6: disable @ completion in remote mode (local listDirectory not applicable)
-    if (isRemote) return;
-    if (slashMenuOpen) closeSlashMenu("at-open");
-    if (modeDropdownOpen) modeDropdownOpen = false;
-    atMenuOpen = true;
-    atStartPos = pos;
-    atQuery = "";
-    atResults = [];
-    atSelectedIndex = 0;
-    dbg("at-mention", "open", { pos });
-  }
-
-  function resolveAtPath(query: string): string {
-    // Resolve relative query against cwd to get absolute path for listDirectory
-    if (!query) return cwd;
-    if (query.startsWith("/")) return query;
-    const base = cwd.endsWith("/") ? cwd : cwd + "/";
-    return base + query;
-  }
-
-  async function fetchAtResults(query: string) {
-    atLoading = true;
-    try {
-      // Split into directory path + filename prefix
-      const lastSlash = query.lastIndexOf("/");
-      let dirQuery: string;
-      let prefix: string;
-      if (lastSlash >= 0) {
-        dirQuery = query.slice(0, lastSlash + 1);
-        prefix = query.slice(lastSlash + 1).toLowerCase();
-      } else {
-        dirQuery = "";
-        prefix = query.toLowerCase();
-      }
-      const absPath = resolveAtPath(dirQuery);
-      dbg("at-mention", "fetch", { absPath, prefix });
-      const listing = await api.listDirectory(absPath, true);
-      // Filter by prefix and limit to 10
-      const filtered = listing.entries
-        .filter((e) => e.name.toLowerCase().startsWith(prefix))
-        .slice(0, 10);
-      atResults = filtered;
-      atSelectedIndex = 0;
-    } catch (e) {
-      dbg("at-mention", "fetch error", e);
-      atResults = [];
-    } finally {
-      atLoading = false;
-    }
-  }
-
-  function handleAtInput(cursorPos: number) {
-    // Scan backwards from cursor for nearest @ preceded by whitespace or at position 0
-    let atPos = -1;
-    for (let i = cursorPos - 1; i >= 0; i--) {
-      const ch = store.inputText[i];
-      if (ch === "@") {
-        // Valid if at start or preceded by whitespace
-        if (i === 0 || /\s/.test(store.inputText[i - 1])) {
-          atPos = i;
-        }
-        break;
-      }
-      if (/\s/.test(ch)) break; // whitespace before finding @ means no active @-mention
-    }
-
-    if (atPos >= 0) {
-      const query = store.inputText.slice(atPos + 1, cursorPos);
-      if (!atMenuOpen) openAtMenu(atPos);
-      atQuery = query;
-
-      // Debounce directory listing
-      if (atDebounceTimer) clearTimeout(atDebounceTimer);
-      atDebounceTimer = setTimeout(() => {
-        fetchAtResults(query);
-      }, 150);
-    } else if (atMenuOpen) {
-      closeAtMenu("no-at");
-    }
-  }
-
-  function selectAtEntry(entry: DirEntry) {
-    if (atStartPos < 0 || !store.textareaEl) return;
-    const cursorPos = store.textareaEl.selectionStart ?? store.inputText.length;
-    const prefix = store.inputText.slice(0, atStartPos + 1); // keeps the @
-    const suffix = store.inputText.slice(cursorPos);
-
-    // Build the path relative to what was already typed
-    const lastSlash = atQuery.lastIndexOf("/");
-    const dirPrefix = lastSlash >= 0 ? atQuery.slice(0, lastSlash + 1) : "";
-    const relativePath = dirPrefix + entry.name;
-
-    if (entry.is_dir) {
-      // Append / and keep menu open for deeper navigation
-      store.inputText = prefix + relativePath + "/" + suffix;
-      requestAnimationFrame(() => {
-        if (store.textareaEl) {
-          const newPos = atStartPos + 1 + relativePath.length + 1;
-          store.textareaEl.selectionStart = store.textareaEl.selectionEnd = newPos;
-          store.textareaEl.focus();
-        }
-        // Trigger new fetch for subdirectory contents
-        handleAtInput(atStartPos + 1 + relativePath.length + 1);
-      });
-    } else {
-      // Insert file path and close menu
-      store.inputText = prefix + relativePath + suffix;
-      closeAtMenu("select");
-      requestAnimationFrame(() => {
-        if (store.textareaEl) {
-          const newPos = atStartPos + 1 + relativePath.length;
-          store.textareaEl.selectionStart = store.textareaEl.selectionEnd = newPos;
-          store.textareaEl.focus();
-        }
-      });
-    }
-    dbg("at-mention", "select", { name: entry.name, isDir: entry.is_dir });
-  }
-
-  // Force close when conditions no longer met
-  $effect(() => {
-    if (!slashEnabled && slashMenuOpen) {
-      closeSlashMenu("disabled");
-    }
-  });
-
-  /** Restore saved input text and clear the saved value to prevent stale restores. */
-  function restoreSavedInput() {
-    if (savedInputForSlash !== "") {
-      store.inputText = savedInputForSlash;
-      savedInputForSlash = "";
-    }
-  }
-
-  function clearSavedInput() {
-    savedInputForSlash = "";
-  }
-
-  function closeSlashMenu(reason: string) {
-    if (!slashMenuOpen) return;
-    dbg("slash", `close:${reason}`);
-    slashMenuOpen = false;
-    slashPhase = "commands";
-    activeSlashCmd = null;
-    slashSelectedIndex = 0;
-    slashSubSelectedIndex = 0;
-
-    if (classifyCloseReason(reason) === "clear") {
-      clearSavedInput();
-    } else {
-      restoreSavedInput();
-    }
-  }
-
-  function selectSlashCommand(cmd: CliCommand, trigger: "enter" | "tab") {
-    const interaction = getCommandInteraction(cmd);
-    dbg("slash", `select:${interaction}:${trigger}`, { name: cmd.name });
-
-    switch (interaction) {
-      case "immediate":
-        if (trigger === "enter") {
-          store.inputText = `/${cmd.name}`;
-          closeSlashMenu("execute");
-          handleSend();
-        } else {
-          // Tab: fill only, don't execute
-          closeSlashMenu("fill");
-          store.inputText = `/${cmd.name} `;
-          moveCursorToEnd();
-        }
-        break;
-      case "free-text":
-        closeSlashMenu("fill");
-        store.inputText = `/${cmd.name} `;
-        moveCursorToEnd();
-        break;
-      case "enum":
-        activeSlashCmd = cmd;
-        store.inputText = `/${cmd.name} `;
-        if (cmd.name === "fast") {
-          slashPhase = "sub-fast";
-          slashSubSelectedIndex = fastModeState === "on" ? 1 : 0;
-        } else {
-          slashPhase = "sub-model";
-          slashSubSelectedIndex = 0;
-        }
-        moveCursorToEnd();
-        break;
-    }
-  }
-
-  function goBackToCommands() {
-    const cmdName = activeSlashCmd?.name;
-    dbg("slash", "back-to-commands", { from: cmdName });
-    activeSlashCmd = null;
-    slashPhase = "commands";
-    slashSubSelectedIndex = 0;
-    if (cmdName) store.inputText = `/${cmdName}`;
-    slashSelectedIndex = 0;
-    moveCursorToEnd();
-  }
-
-  function handleSubModelSelect(model: CliModelInfo) {
-    dbg("slash", "sub-model-select", { value: model.value });
-    const restoreText = savedInputForSlash;
-    closeSlashMenu("sub-select"); // clears savedInputForSlash
-    store.inputText = restoreText; // restore user draft
-    if (store.textareaEl) store.textareaEl.style.height = "auto";
-    onModelSwitch?.(model.value);
-  }
-
-  function handleFastModeSelect(mode: "on" | "off") {
-    dbg("slash", "fast-select", { mode });
-    const restoreText = savedInputForSlash;
-    closeSlashMenu("sub-select");
-    store.inputText = restoreText;
-    if (store.textareaEl) store.textareaEl.style.height = "auto";
-    onFastModeSwitch?.(mode);
-  }
-
-  function moveCursorToEnd() {
-    requestAnimationFrame(() => {
-      if (store.textareaEl) {
-        store.textareaEl.selectionStart = store.textareaEl.selectionEnd = store.inputText.length;
-        store.textareaEl.focus();
-      }
-    });
-  }
-
-  /** Open slash menu from the L2 button or "More..." pill. */
-  function openSlashMenuFromButton() {
-    if (!slashEnabled) return;
-    if (slashMenuOpen) {
-      closeSlashMenu("button-toggle");
+  function toggleModeDropdown() {
+    if (modeDropdownOpen) {
+      modeDropdownOpen = false;
       return;
     }
-    if (atMenuOpen) closeAtMenu("slash-button");
-    if (modeDropdownOpen) modeDropdownOpen = false;
+    if (slash.slashMenuOpen) slash.closeSlashMenu("mode-open");
+    if (at.atMenuOpen) at.closeAtMenu("mode-open");
 
-    savedInputForSlash = store.inputText;
-    store.inputText = "/";
-    slashMenuOpen = true;
-    slashPhase = "commands";
-    slashSelectedIndex = 0;
-    moveCursorToEnd();
-    dbg("slash", "open:button", { saved: savedInputForSlash.length });
+    modeDropdownOpen = true;
+    if (modeBtnEl) {
+      const rect = modeBtnEl.getBoundingClientRect();
+      modeDropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:50;`;
+    }
   }
 
-  /** Handle L3 quick-action pill click. Three branches: enum, free-text, immediate. */
-  function handleQuickAction(cmd: CliCommand) {
-    if (!slashEnabled) return;
-    dbg("slash", "quick-action", { name: cmd.name });
-    const interaction = getCommandInteraction(cmd);
-
-    if (interaction === "enum") {
-      // e.g., model/fast: close other menus → save input → open sub-view
-      if (atMenuOpen) closeAtMenu("quick-action");
-      if (modeDropdownOpen) modeDropdownOpen = false;
-      savedInputForSlash = store.inputText;
-      store.inputText = `/${cmd.name} `;
-      activeSlashCmd = cmd;
-      if (cmd.name === "fast") {
-        slashPhase = "sub-fast";
-        slashSubSelectedIndex = fastModeState === "on" ? 1 : 0;
-      } else {
-        slashPhase = "sub-model";
-        slashSubSelectedIndex = 0;
-      }
-      slashMenuOpen = true;
-      moveCursorToEnd();
-      return;
-    }
-
-    if (interaction === "free-text") {
-      // Fill "/cmd " and focus — don't send, don't clear draft
-      if (atMenuOpen) closeAtMenu("quick-action");
-      if (modeDropdownOpen) modeDropdownOpen = false;
-      store.inputText = `/${cmd.name} `;
-      moveCursorToEnd();
-      return;
-    }
-
-    // immediate: execute directly without touching store.inputText/store.pastedBlocks/attachments
-    const vDef = VIRTUAL_COMMANDS.find((v) => v.name === cmd.name);
-    if (vDef) {
-      if (typeof vDef["_action"] === "string" && onVirtualCommand) {
-        onVirtualCommand(vDef["_action"] as string, "");
-        return;
-      }
-      if (typeof vDef["_navigate"] === "string") {
-        goto(vDef["_navigate"] as string);
-        return;
-      }
-    }
-    // Regular CLI command: send "/cmd" directly without draft/attachments
-    onSend(`/${cmd.name}`, []);
+  function selectMode(mode: string) {
+    modeDropdownOpen = false;
+    onPermissionModeChange?.(mode);
   }
 
   function handleInput() {
@@ -746,9 +369,9 @@
 
     // @-mention detection: runs BEFORE slashEnabled guard so it works pre-session
     const cursorPos = store.textareaEl?.selectionStart ?? store.inputText.length;
-    handleAtInput(cursorPos);
+    at.handleAtInput(cursorPos);
 
-    if (!slashEnabled) {
+    if (!slash.slashEnabled) {
       dbg("slash", "disabled", {
         agent,
         useStreamSession,
@@ -759,10 +382,13 @@
       return;
     }
 
-    if (slashPhase === "sub-model" || slashPhase === "sub-fast") {
+    if (slash.slashPhase === "sub-model" || slash.slashPhase === "sub-fast") {
       // Close sub-view if input no longer matches /activeCmdName
-      if (activeSlashCmd && !isSubViewInputValid(store.inputText, activeSlashCmd.name)) {
-        closeSlashMenu("sub-invalid-input");
+      if (
+        slash.activeSlashCmd &&
+        !isSubViewInputValid(store.inputText, slash.activeSlashCmd.name)
+      ) {
+        slash.closeSlashMenu("sub-invalid-input");
       }
       return;
     }
@@ -770,15 +396,13 @@
     // Commands phase
     const match = store.inputText.match(/^\/([a-zA-Z0-9_-]*)$/);
     if (match) {
-      slashSelectedIndex = 0;
-      if (!slashMenuOpen) {
+      if (!slash.slashMenuOpen) {
         dbg("slash", "open", { query: match[1] });
         if (modeDropdownOpen) modeDropdownOpen = false;
-        slashMenuOpen = true;
-        slashPhase = "commands";
+        slash.openSlashMenu();
       }
-    } else if (slashMenuOpen) {
-      closeSlashMenu("no-match");
+    } else if (slash.slashMenuOpen) {
+      slash.closeSlashMenu("no-match");
     }
   }
 
@@ -845,26 +469,26 @@
     if (e.isComposing || e.keyCode === 229) return;
 
     // ── @-mention menu ──
-    if (atMenuOpen) {
+    if (at.atMenuOpen) {
       if (e.key === "Escape") {
         e.preventDefault();
-        closeAtMenu("escape");
+        at.closeAtMenu("escape");
         return;
       }
-      if (atResults.length > 0) {
+      if (at.atResults.length > 0) {
         if (e.key === "ArrowDown") {
           e.preventDefault();
-          atSelectedIndex = Math.min(atSelectedIndex + 1, atResults.length - 1);
+          at.atSelectedIndex = Math.min(at.atSelectedIndex + 1, at.atResults.length - 1);
           return;
         }
         if (e.key === "ArrowUp") {
           e.preventDefault();
-          atSelectedIndex = Math.max(atSelectedIndex - 1, 0);
+          at.atSelectedIndex = Math.max(at.atSelectedIndex - 1, 0);
           return;
         }
         if (e.key === "Enter" || e.key === "Tab") {
           e.preventDefault();
-          selectAtEntry(atResults[atSelectedIndex]);
+          at.selectAtEntry(at.atResults[at.atSelectedIndex]);
           return;
         }
       }
@@ -872,10 +496,10 @@
     }
 
     // ── Sub-model phase ──
-    if (slashMenuOpen && slashPhase === "sub-model") {
+    if (slash.slashMenuOpen && slash.slashPhase === "sub-model") {
       if (e.key === "Escape") {
         e.preventDefault();
-        goBackToCommands();
+        slash.goBackToCommands();
         return;
       }
       if (e.key === "Backspace") {
@@ -883,11 +507,11 @@
           shouldBackFromSubView(
             store.inputText,
             store.textareaEl?.selectionStart ?? 0,
-            activeSlashCmd?.name,
+            slash.activeSlashCmd?.name,
           )
         ) {
           e.preventDefault();
-          goBackToCommands();
+          slash.goBackToCommands();
           return;
         }
         // else: normal backspace (let it through)
@@ -896,17 +520,20 @@
       if (models.length > 0) {
         if (e.key === "ArrowDown") {
           e.preventDefault();
-          slashSubSelectedIndex = Math.min(slashSubSelectedIndex + 1, models.length - 1);
+          slash.slashSubSelectedIndex = Math.min(
+            slash.slashSubSelectedIndex + 1,
+            models.length - 1,
+          );
           return;
         }
         if (e.key === "ArrowUp") {
           e.preventDefault();
-          slashSubSelectedIndex = Math.max(slashSubSelectedIndex - 1, 0);
+          slash.slashSubSelectedIndex = Math.max(slash.slashSubSelectedIndex - 1, 0);
           return;
         }
         if (e.key === "Enter" || e.key === "Tab") {
           e.preventDefault();
-          handleSubModelSelect(models[slashSubSelectedIndex]);
+          slash.handleSubModelSelect(models[slash.slashSubSelectedIndex]);
           return;
         }
       }
@@ -915,10 +542,10 @@
     }
 
     // ── Sub-fast phase ──
-    if (slashMenuOpen && slashPhase === "sub-fast") {
+    if (slash.slashMenuOpen && slash.slashPhase === "sub-fast") {
       if (e.key === "Escape") {
         e.preventDefault();
-        goBackToCommands();
+        slash.goBackToCommands();
         return;
       }
       if (e.key === "Backspace") {
@@ -926,11 +553,11 @@
           shouldBackFromSubView(
             store.inputText,
             store.textareaEl?.selectionStart ?? 0,
-            activeSlashCmd?.name,
+            slash.activeSlashCmd?.name,
           )
         ) {
           e.preventDefault();
-          goBackToCommands();
+          slash.goBackToCommands();
           return;
         }
         return;
@@ -938,48 +565,51 @@
       const FAST_OPTIONS = 2;
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        slashSubSelectedIndex = Math.min(slashSubSelectedIndex + 1, FAST_OPTIONS - 1);
+        slash.slashSubSelectedIndex = Math.min(slash.slashSubSelectedIndex + 1, FAST_OPTIONS - 1);
         return;
       }
       if (e.key === "ArrowUp") {
         e.preventDefault();
-        slashSubSelectedIndex = Math.max(slashSubSelectedIndex - 1, 0);
+        slash.slashSubSelectedIndex = Math.max(slash.slashSubSelectedIndex - 1, 0);
         return;
       }
       if (e.key === "Enter" || e.key === "Tab") {
         e.preventDefault();
-        handleFastModeSelect(slashSubSelectedIndex === 0 ? "off" : "on");
+        slash.handleFastModeSelect(slash.slashSubSelectedIndex === 0 ? "off" : "on");
         return;
       }
       return;
     }
 
     // ── Commands phase ──
-    if (slashMenuOpen && slashPhase === "commands") {
+    if (slash.slashMenuOpen && slash.slashPhase === "commands") {
       if (e.key === "Escape") {
         e.preventDefault();
-        closeSlashMenu("escape");
+        slash.closeSlashMenu("escape");
         return;
       }
-      if (effectiveCommands.length > 0) {
+      if (slash.effectiveCommands.length > 0) {
         if (e.key === "ArrowDown") {
           e.preventDefault();
-          slashSelectedIndex = Math.min(slashSelectedIndex + 1, effectiveCommands.length - 1);
+          slash.slashSelectedIndex = Math.min(
+            slash.slashSelectedIndex + 1,
+            slash.effectiveCommands.length - 1,
+          );
           return;
         }
         if (e.key === "ArrowUp") {
           e.preventDefault();
-          slashSelectedIndex = Math.max(slashSelectedIndex - 1, 0);
+          slash.slashSelectedIndex = Math.max(slash.slashSelectedIndex - 1, 0);
           return;
         }
         if (e.key === "Enter") {
           e.preventDefault();
-          selectSlashCommand(effectiveCommands[slashSelectedIndex], "enter");
+          slash.selectSlashCommand(slash.effectiveCommands[slash.slashSelectedIndex], "enter");
           return;
         }
         if (e.key === "Tab") {
           e.preventDefault();
-          selectSlashCommand(effectiveCommands[slashSelectedIndex], "tab");
+          slash.selectSlashCommand(slash.effectiveCommands[slash.slashSelectedIndex], "tab");
           return;
         }
       }
@@ -992,7 +622,7 @@
       shouldIntercept(
         e.key,
         e,
-        { atMenuOpen, slashMenuOpen, modeDropdownOpen },
+        { atMenuOpen: at.atMenuOpen, slashMenuOpen: slash.slashMenuOpen, modeDropdownOpen },
         store.textareaEl?.selectionStart ?? 0,
         store.textareaEl?.selectionEnd ?? 0,
         userHistory.length,
@@ -1084,23 +714,6 @@
     }
   }
 
-  /** Wrap path in backtick fence that won't conflict with path content. */
-  function wrapPathInBackticks(p: string): string {
-    let maxRun = 0;
-    let currentRun = 0;
-    for (const ch of p) {
-      if (ch === "`") {
-        currentRun++;
-        maxRun = Math.max(maxRun, currentRun);
-      } else {
-        currentRun = 0;
-      }
-    }
-    const fence = "`".repeat(maxRun + 1);
-    const needsPadding = p.startsWith("`") || p.endsWith("`");
-    return needsPadding ? `${fence} ${p} ${fence}` : `${fence}${p}${fence}`;
-  }
-
   function handleSend() {
     const typed = store.inputText.trim();
 
@@ -1142,19 +755,16 @@
       }
     }
 
-    // Separate regular (binary) and path-reference attachments
-    const regularAtts = store.pendingAttachments.filter((a) => a.contentBase64);
-    const pathRefAtts = store.pendingAttachments.filter((a) => a.filePath && !a.contentBase64);
+    // Get attachments from file composable
+    const { regularAtts, pathRefParts, pathRefAttParts } = file.getAttachmentsForSend();
 
     // Combine paste blocks + typed text + path-reference file paths
     const parts: string[] = store.pastedBlocks.map((b) => b.text);
-    if (pathRefAtts.length > 0) {
-      const refs = pathRefAtts.map((a) => `[PDF: ${a.filePath}]`).join("\n");
-      parts.push(refs);
+    if (pathRefAttParts.length > 0) {
+      parts.push(pathRefAttParts.join("\n"));
     }
-    // store.pendingPathRefs (directories, large files from drag-drop)
-    if (store.pendingPathRefs.length > 0) {
-      parts.push(store.pendingPathRefs.map((r) => wrapPathInBackticks(r.path)).join("\n"));
+    if (pathRefParts.length > 0) {
+      parts.push(pathRefParts.join("\n"));
     }
 
     if (typed) parts.push(typed);
@@ -1165,8 +775,8 @@
       len: text.length,
       pasteBlocks: store.pastedBlocks.length,
       attachments: regularAtts.length,
-      pathRefs: pathRefAtts.length,
-      dragPathRefs: store.pendingPathRefs.length,
+      pathRefs: pathRefAttParts.length,
+      dragPathRefs: pathRefParts.length,
       agent,
     });
 
@@ -1174,7 +784,7 @@
       name: a.name,
       type: a.type,
       size: a.size,
-      contentBase64: a.contentBase64!,
+      contentBase64: a.contentBase64,
     }));
 
     store.inputText = "";
@@ -1197,420 +807,6 @@
     onBtwSend(question);
   }
 
-  async function processFiles(files: FileList | File[]) {
-    let binaryRemaining = MAX_ATTACHMENTS - store.pendingAttachments.length;
-    let textRemaining = MAX_PASTE_BLOCKS - store.pastedBlocks.length;
-    const rejected: string[] = [];
-
-    for (const file of Array.from(files)) {
-      // MIME normalization: force application/pdf when detected by extension
-      // (backend silently skips attachments with unrecognized MIME types)
-      const detectedPdf = !isPdf(file.type) && getFileExtension(file.name) === "pdf";
-      const effectivePdf = isPdf(file.type) || detectedPdf;
-
-      // PDF >20MB ≤100MB: save to temp, use path-reference (CLI handles via pdftoppm)
-      if (effectivePdf && file.size > PDF_MAX_BINARY_SIZE) {
-        if (file.size > PDF_MAX_PATH_SIZE) {
-          showFileToast(t("prompt_fileTooLarge", { limit: "100", name: file.name }));
-          continue;
-        }
-        if (binaryRemaining <= 0) {
-          showFileToast(t("prompt_maxAttachments", { count: String(MAX_ATTACHMENTS) }));
-          break;
-        }
-        binaryRemaining--;
-        try {
-          const buffer = await file.arrayBuffer();
-          const base64 = arrayBufferToBase64(buffer);
-          const tempPath = await api.saveTempAttachment(file.name, base64);
-          store.pendingAttachments = [
-            ...store.pendingAttachments,
-            {
-              id: uuid().slice(0, 8),
-              name: file.name,
-              type: "application/pdf",
-              size: file.size,
-              filePath: tempPath,
-            },
-          ];
-          dbg("prompt", "pdf-temp-path-ref", { name: file.name, size: file.size, path: tempPath });
-        } catch (e) {
-          binaryRemaining++;
-          dbgWarn("prompt", "pdf-temp-save-failed", { name: file.name, error: e });
-          showFileToast(t("prompt_fileTooLarge", { limit: "20", name: file.name }));
-        }
-        continue;
-      }
-
-      // 1) Size check — per type (images: no limit, PDF: 20MB, text: 10MB)
-      const sizeLimit = getFileSizeLimit(file);
-      if (file.size > sizeLimit) {
-        const limitMB = sizeLimit / (1024 * 1024);
-        showFileToast(t("prompt_fileTooLarge", { limit: String(limitMB), name: file.name }));
-        continue;
-      }
-
-      // 2) Binary attachment: images + PDF (≤20MB)
-      if (BINARY_ATTACHMENT_TYPES.includes(file.type) || detectedPdf) {
-        if (binaryRemaining <= 0) {
-          showFileToast(t("prompt_maxAttachments", { count: String(MAX_ATTACHMENTS) }));
-          break;
-        }
-        binaryRemaining--;
-        const reader = new FileReader();
-        reader.onload = () => {
-          const dataUrl = reader.result as string;
-          const base64 = dataUrl.split(",")[1] ?? "";
-          store.pendingAttachments = [
-            ...store.pendingAttachments,
-            {
-              id: uuid().slice(0, 8),
-              name: file.name || `attachment.${file.type.split("/")[1] || "bin"}`,
-              type: detectedPdf ? "application/pdf" : file.type,
-              size: file.size,
-              contentBase64: base64,
-            },
-          ];
-          dbg("prompt", "add-binary-file", { name: file.name, type: file.type, size: file.size });
-        };
-        reader.readAsDataURL(file);
-        continue;
-      }
-      // 3) Text file → pastedBlock
-      if (isTextFile(file)) {
-        if (textRemaining <= 0) {
-          showFileToast(t("prompt_maxTextFiles", { count: String(MAX_PASTE_BLOCKS) }));
-          break;
-        }
-        textRemaining--; // Pre-decrement before async read to prevent race
-        const reader = new FileReader();
-        reader.onload = () => {
-          const text = reader.result as string;
-          const lines = text.split("\n");
-          const lineCount = lines.length;
-          const charCount = text.length;
-          const ext = getFileExtension(file.name);
-          const preview = file.name || `file.${ext}`;
-
-          store.pastedBlocks = [
-            ...store.pastedBlocks,
-            {
-              id: uuid().slice(0, 8),
-              text,
-              lineCount,
-              charCount,
-              preview,
-              ext,
-            },
-          ];
-          dbg("prompt", "add-text-file", {
-            name: file.name,
-            lines: lineCount,
-            chars: charCount,
-          });
-        };
-        reader.readAsText(file);
-        continue;
-      }
-      // 3.5) Convertible → await conversion, then add as pastedBlock
-      if (isConvertibleFile(file)) {
-        if (textRemaining <= 0) {
-          showFileToast(t("prompt_maxTextFiles", { count: String(MAX_PASTE_BLOCKS) }));
-          break;
-        }
-        textRemaining--;
-        try {
-          const { text } = await convertFile(file);
-          const lineCount = text.split("\n").length;
-          store.pastedBlocks = [
-            ...store.pastedBlocks,
-            {
-              id: uuid().slice(0, 8),
-              text,
-              lineCount,
-              charCount: text.length,
-              preview: file.name,
-              ext: getFileExtension(file.name),
-            },
-          ];
-          dbg("prompt", "converted-file", { name: file.name, lines: lineCount });
-        } catch (e) {
-          textRemaining++; // Roll back quota on failure
-          showFileToast(t("prompt_conversionFailed", { name: file.name }));
-          dbgWarn("prompt", "conversion-failed", { name: file.name, error: e });
-        }
-        continue;
-      }
-      // 4) Unsupported
-      rejected.push(getFileExtension(file.name) || file.type || "unknown");
-    }
-    if (rejected.length > 0) {
-      showFileToast(t("prompt_unsupportedFile", { ext: rejected[0] }));
-    }
-  }
-
-  function handleFileSelect(e: Event) {
-    const input = e.target as HTMLInputElement;
-    const files = input.files;
-    if (!files) return;
-    processFiles(files);
-    input.value = "";
-  }
-
-  function removeAttachment(id: string) {
-    store.pendingAttachments = store.pendingAttachments.filter((a) => a.id !== id);
-  }
-
-  function handlePaste(e: ClipboardEvent) {
-    // Step 1: Check for clipboard binary files (images, PDF) BEFORE text
-    const items = e.clipboardData?.items;
-    if (items) {
-      const binaryItems: DataTransferItem[] = [];
-      for (let i = 0; i < items.length; i++) {
-        if (BINARY_ATTACHMENT_TYPES.includes(items[i].type)) {
-          binaryItems.push(items[i]);
-        } else if (items[i].kind === "file") {
-          // Extension fallback: browser may give wrong/empty MIME for PDF
-          const file = items[i].getAsFile();
-          if (file && getFileExtension(file.name) === "pdf") {
-            binaryItems.push(items[i]);
-          }
-        }
-      }
-      if (binaryItems.length > 0) {
-        e.preventDefault();
-        const filesToProcess: File[] = [];
-        for (const item of binaryItems) {
-          const file = item.getAsFile();
-          if (file) filesToProcess.push(file);
-        }
-        if (filesToProcess.length > 0) processFiles(filesToProcess);
-        return;
-      }
-    }
-
-    // Step 2: Text paste handling
-    const text = e.clipboardData?.getData("text/plain");
-
-    if (!text) {
-      // Empty text — likely Finder file paste (macOS puts file URLs, not text)
-      e.preventDefault();
-      tryNativeClipboardPaste();
-      return;
-    }
-
-    const lines = text.split("\n");
-    const lineCount = lines.length;
-    const charCount = text.length;
-
-    if (lineCount < 5 && charCount < 500) {
-      // Short text — could be Finder filename or normal short text
-      // Don't preventDefault → let browser insert text normally
-      const snapshot = store.inputText;
-      const cursorPos = store.textareaEl?.selectionStart ?? store.inputText.length;
-      // Async check: if native clipboard has files, roll back the inserted text
-      tryNativeClipboardPaste(snapshot, cursorPos);
-      return;
-    }
-
-    // Long text → intercept, compress into chip
-    e.preventDefault();
-    if (store.pastedBlocks.length >= MAX_PASTE_BLOCKS) {
-      showFileToast(t("prompt_maxPasteBlocks", { count: String(MAX_PASTE_BLOCKS) }));
-      return;
-    }
-
-    const firstLine = lines[0].trim();
-    const preview = firstLine.length > 40 ? firstLine.slice(0, 40) + "..." : firstLine;
-
-    store.pastedBlocks = [
-      ...store.pastedBlocks,
-      {
-        id: uuid().slice(0, 8),
-        text,
-        lineCount,
-        charCount,
-        preview,
-      },
-    ];
-
-    dbg("prompt", "paste-compressed", { lineCount, charCount, blocks: store.pastedBlocks.length });
-  }
-
-  function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-    return Promise.race([
-      promise,
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
-    ]);
-  }
-
-  async function tryNativeClipboardPaste(snapshot?: string, cursorPos?: number) {
-    try {
-      const files = await withTimeout(api.getClipboardFiles(), 250);
-      if (files.length === 0) return; // No files — text already inserted (or empty paste)
-
-      dbg("prompt", "native-clipboard-files", { count: files.length });
-
-      // Roll back browser-inserted text if we have a snapshot
-      if (snapshot !== undefined) {
-        store.inputText = snapshot;
-        if (store.textareaEl && cursorPos !== undefined) {
-          requestAnimationFrame(() => {
-            store.textareaEl!.selectionStart = store.textareaEl!.selectionEnd = cursorPos;
-          });
-        }
-      }
-      await processClipboardPaths(files);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      // Only show toast when user explicitly pasted files (no text in clipboard)
-      if (snapshot === undefined && msg.includes("not yet supported")) {
-        showFileToast(t("prompt_clipboardUnsupported"));
-      }
-      dbg("prompt", "native clipboard failed/timeout", e);
-    }
-  }
-
-  async function processClipboardPaths(files: ClipboardFileInfo[]) {
-    let binaryRemaining = MAX_ATTACHMENTS - store.pendingAttachments.length;
-    let textRemaining = MAX_PASTE_BLOCKS - store.pastedBlocks.length;
-    const rejected: string[] = [];
-
-    for (const file of files) {
-      // MIME normalization: force application/pdf for extension-detected PDFs
-      // (backend silently skips attachments with unrecognized MIME types)
-      const clipboardPdf =
-        file.mime_type !== "application/pdf" && getFileExtension(file.name).toLowerCase() === "pdf";
-      const effectiveMime = clipboardPdf ? "application/pdf" : file.mime_type;
-
-      // PDF path-reference: >20MB ≤100MB → store path only, CLI handles via pdftoppm
-      if (isPdf(effectiveMime) && file.size > PDF_MAX_BINARY_SIZE) {
-        if (file.size > PDF_MAX_PATH_SIZE) {
-          showFileToast(t("prompt_fileTooLarge", { limit: "100", name: file.name }));
-          continue;
-        }
-        if (binaryRemaining <= 0) {
-          showFileToast(t("prompt_maxAttachments", { count: String(MAX_ATTACHMENTS) }));
-          break;
-        }
-        binaryRemaining--;
-        store.pendingAttachments = [
-          ...store.pendingAttachments,
-          {
-            id: uuid().slice(0, 8),
-            name: file.name,
-            type: effectiveMime,
-            size: file.size,
-            filePath: file.path,
-          },
-        ];
-        dbg("prompt", "clipboard-pdf-path-ref", {
-          name: file.name,
-          size: file.size,
-          path: file.path,
-        });
-        continue;
-      }
-
-      const sizeLimit = getSizeLimitByMime(effectiveMime);
-      if (file.size > sizeLimit) {
-        const limitMB = sizeLimit / (1024 * 1024);
-        showFileToast(t("prompt_fileTooLarge", { limit: String(limitMB), name: file.name }));
-        continue;
-      }
-      const cls = classifyByMime(effectiveMime);
-
-      if (cls === "binary") {
-        if (binaryRemaining <= 0) {
-          showFileToast(t("prompt_maxAttachments", { count: String(MAX_ATTACHMENTS) }));
-          break;
-        }
-        binaryRemaining--;
-        try {
-          const content = await api.readClipboardFile(file.path, false);
-          store.pendingAttachments = [
-            ...store.pendingAttachments,
-            {
-              id: uuid().slice(0, 8),
-              name: file.name,
-              type: effectiveMime,
-              size: file.size,
-              contentBase64: content.content_base64,
-            },
-          ];
-          dbg("prompt", "clipboard-binary", { name: file.name, type: effectiveMime });
-        } catch (e) {
-          dbg("prompt", "clipboard-read-error", { name: file.name, error: e });
-        }
-      } else if (cls === "text") {
-        if (textRemaining <= 0) {
-          showFileToast(t("prompt_maxTextFiles", { count: String(MAX_PASTE_BLOCKS) }));
-          break;
-        }
-        textRemaining--;
-        try {
-          const content = await api.readClipboardFile(file.path, true);
-          const text = content.content_text ?? "";
-          const lineCount = text.split("\n").length;
-          store.pastedBlocks = [
-            ...store.pastedBlocks,
-            {
-              id: uuid().slice(0, 8),
-              text,
-              lineCount,
-              charCount: text.length,
-              preview: file.name,
-              ext: getFileExtension(file.name),
-            },
-          ];
-          dbg("prompt", "clipboard-text", { name: file.name, lines: lineCount });
-        } catch (e) {
-          dbg("prompt", "clipboard-read-error", { name: file.name, error: e });
-        }
-      } else if (cls === "convertible" || isConvertibleByExt(getFileExtension(file.name))) {
-        if (textRemaining <= 0) {
-          showFileToast(t("prompt_maxTextFiles", { count: String(MAX_PASTE_BLOCKS) }));
-          break;
-        }
-        textRemaining--;
-        try {
-          const content = await api.readClipboardFile(file.path, false);
-          const binary = atob(content.content_base64);
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-          const blob = new File([bytes], file.name, { type: file.mime_type });
-          const { text } = await convertFile(blob);
-          const lineCount = text.split("\n").length;
-          store.pastedBlocks = [
-            ...store.pastedBlocks,
-            {
-              id: uuid().slice(0, 8),
-              text,
-              lineCount,
-              charCount: text.length,
-              preview: file.name,
-              ext: getFileExtension(file.name),
-            },
-          ];
-          dbg("prompt", "clipboard-converted", { name: file.name, lines: lineCount });
-        } catch (e) {
-          textRemaining++;
-          showFileToast(t("prompt_conversionFailed", { name: file.name }));
-          dbgWarn("prompt", "clipboard-convert-error", { name: file.name, error: e });
-        }
-      } else {
-        rejected.push(getFileExtension(file.name) || "unknown");
-      }
-    }
-    if (rejected.length > 0) {
-      showFileToast(t("prompt_unsupportedFile", { ext: rejected[0] }));
-    }
-  }
-
-  function removePastedBlock(id: string) {
-    store.pastedBlocks = store.pastedBlocks.filter((b) => b.id !== id);
-  }
-
   function handleSkillSelect(skillName: string) {
     dbg("prompt", "skill-select fill", { skillName });
     store.inputText = `/${skillName} `;
@@ -1626,64 +822,6 @@
     const maxHeight = 4 * 24; // ~4 lines
     store.textareaEl.style.height = Math.min(store.textareaEl.scrollHeight, maxHeight) + "px";
   }
-
-  // ── Drag-drop state ──
-  let dragCounter = $state(0);
-  let dragActive = $derived(dragCounter > 0);
-
-  function handleDragEnter(e: DragEvent) {
-    e.preventDefault();
-    dragCounter++;
-  }
-
-  function handleDragLeave(e: DragEvent) {
-    e.preventDefault();
-    dragCounter--;
-  }
-
-  function handleDragOver(e: DragEvent) {
-    e.preventDefault();
-  }
-
-  function handleDrop(e: DragEvent) {
-    e.preventDefault();
-    dragCounter = 0;
-    const files = e.dataTransfer?.files;
-    if (!files || files.length === 0) return;
-    processFiles(files);
-  }
-
-  let canSend = $derived(
-    !disabled &&
-      (!!store.inputText.trim() ||
-        store.pastedBlocks.length > 0 ||
-        store.pendingAttachments.some((a) => a.filePath) ||
-        store.pendingPathRefs.length > 0),
-  );
-
-  // ── Token estimation (chars/4 heuristic, CJK-aware) ──
-  function estimateTokens(text: string): number {
-    let chars = 0;
-    for (let i = 0; i < text.length; i++) {
-      const code = text.charCodeAt(i);
-      chars += code >= 0x4e00 && code <= 0x9fff ? 2 : 1;
-    }
-    return Math.ceil(chars / 4);
-  }
-  let tokenEstimate = $state(0);
-  let tokenDebounce: ReturnType<typeof setTimeout> | null = null;
-  $effect(() => {
-    const allText = [store.inputText, ...store.pastedBlocks.map((b) => b.text)].join("\n");
-    if (tokenDebounce) clearTimeout(tokenDebounce);
-    tokenDebounce = setTimeout(() => {
-      tokenEstimate = allText ? estimateTokens(allText) : 0;
-    }, 300);
-  });
-  const tokenPercent = $derived(
-    contextWindow > 0 && tokenEstimate > 0 ? Math.round((tokenEstimate / contextWindow) * 100) : 0,
-  );
-  const tokenWarning = $derived(tokenPercent > 80);
-  const showTokenEstimate = $derived(tokenEstimate > 0);
 
   // ── Mode dropdown outside-click + Escape ──
   onMount(() => {
@@ -1736,26 +874,15 @@
   }
 
   export function addFiles(files: FileList | File[]) {
-    return processFiles(files);
+    return file.addFiles(files);
   }
 
   export function addPathRefs(refs: Array<{ path: string; name: string; isDir: boolean }>) {
-    const newRefs = refs.map((ref) => ({
-      id: uuid().slice(0, 8),
-      name: ref.name,
-      path: ref.path,
-      isDir: ref.isDir,
-    }));
-    store.pendingPathRefs = [...store.pendingPathRefs, ...newRefs];
-    dbg("prompt", "add-path-refs", { count: refs.length });
-  }
-
-  function removePathRef(id: string) {
-    store.pendingPathRefs = store.pendingPathRefs.filter((r) => r.id !== id);
+    file.addPathRefs(refs);
   }
 
   export function showToast(message: string, variant: "error" | "info" = "info") {
-    showFileToast(message, variant);
+    file.showToast(message, variant);
   }
 
   export function getInputSnapshot(): PromptInputSnapshot {
@@ -1786,13 +913,13 @@
      When dragDropEnabled: true, Tauri intercepts OS drag events and Web drag events do not fire. -->
 <div
   class="relative mx-auto w-full max-w-5xl px-4 py-0"
-  ondragenter={handleDragEnter}
-  ondragleave={handleDragLeave}
-  ondragover={handleDragOver}
-  ondrop={handleDrop}
+  ondragenter={file.handleDragEnter}
+  ondragleave={file.handleDragLeave}
+  ondragover={file.handleDragOver}
+  ondrop={file.handleDrop}
 >
   <!-- Drag overlay -->
-  {#if dragActive}
+  {#if file.dragActive}
     <div
       class="absolute inset-0 z-10 flex items-center justify-center rounded-[28px] border-2 border-dashed border-primary/40 bg-primary/6 backdrop-blur-[2px]"
     >
@@ -1801,9 +928,9 @@
   {/if}
 
   <!-- File toast -->
-  {#if toastMessage}
+  {#if file.toastMessage}
     <div
-      class="absolute -top-10 left-4 right-4 z-20 flex items-center gap-2 rounded-md px-3 py-1.5 text-xs shadow-lg animate-fade-in {toastVariant ===
+      class="absolute -top-10 left-4 right-4 z-20 flex items-center gap-2 rounded-md px-3 py-1.5 text-xs shadow-lg animate-fade-in {file.toastVariant ===
       'error'
         ? 'bg-destructive/90 text-destructive-foreground'
         : 'bg-muted text-foreground'}"
@@ -1819,7 +946,7 @@
       >
         <circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" />
       </svg>
-      <span>{toastMessage}</span>
+      <span>{file.toastMessage}</span>
     </div>
   {/if}
 
@@ -1832,7 +959,7 @@
           size={att.size}
           mimeType={att.type}
           isPathRef={!!att.filePath && !att.contentBase64}
-          onremove={() => removeAttachment(att.id)}
+          onremove={() => file.removeAttachment(att.id)}
         />
       {/each}
       {#each store.pendingPathRefs as ref (ref.id)}
@@ -1841,7 +968,7 @@
           size={0}
           mimeType={ref.isDir ? "inode/directory" : "application/octet-stream"}
           isPathRef={true}
-          onremove={() => removePathRef(ref.id)}
+          onremove={() => file.removePathRef(ref.id)}
         />
       {/each}
       {#each store.pastedBlocks as block (block.id)}
@@ -1884,7 +1011,7 @@
             >{formatPasteSize(block.lineCount, block.charCount)}</span
           >
           <button
-            onclick={() => removePastedBlock(block.id)}
+            onclick={() => file.removePastedBlock(block.id)}
             class="ml-0.5 rounded p-0.5 transition-colors hover:bg-blue-200/50 dark:hover:bg-blue-800/50"
             title={t("prompt_removePaste")}
           >
@@ -1906,16 +1033,16 @@
   {/if}
 
   <!-- L3: Quick action pills + git branch (above input container) -->
-  {#if (slashEnabled && quickActions.length > 0) || gitBranch}
+  {#if (slash.slashEnabled && slash.quickActions.length > 0) || gitBranch}
     <div class="flex items-center gap-1 px-2 pb-2">
-      {#if slashEnabled && quickActions.length > 0}
+      {#if slash.slashEnabled && slash.quickActions.length > 0}
         <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          {#each quickActions as cmd (cmd.name)}
+          {#each slash.quickActions as cmd (cmd.name)}
             <button
               class="shrink-0 rounded-md border border-border/50 px-2 py-0.5 text-[11px]
                 bg-background/30 text-muted-foreground/70 hover:text-foreground hover:bg-accent/20
                 hover:border-border transition-colors whitespace-nowrap"
-              onclick={() => handleQuickAction(cmd)}
+              onclick={() => slash.handleQuickAction(cmd)}
               title={cmd.description}
             >
               {t(`quickAction_${cmd.name}` as MessageKey)}
@@ -1925,7 +1052,7 @@
             class="shrink-0 rounded-md border border-border/50 px-2 py-0.5 text-[11px]
               bg-background/30 text-muted-foreground/70 hover:text-foreground hover:bg-accent/20
               hover:border-border transition-colors whitespace-nowrap"
-            onclick={openSlashMenuFromButton}
+            onclick={slash.openSlashMenuFromButton}
             title={t("quickAction_moreTitle")}
           >
             {t("quickAction_more")}
@@ -1996,7 +1123,7 @@
       bind:value={store.inputText}
       onkeydown={handleKeydown}
       oninput={handleInput}
-      onpaste={handlePaste}
+      onpaste={file.handlePaste}
       placeholder={effectivePlaceholder}
       rows={1}
       {disabled}
@@ -2004,40 +1131,40 @@
       style="min-height: 36px;"
     ></textarea>
 
-    {#if atMenuOpen}
+    {#if at.atMenuOpen}
       <AtMentionMenu
-        entries={atResults}
-        selectedIndex={atSelectedIndex}
-        loading={atLoading}
-        query={atQuery}
+        entries={at.atResults}
+        selectedIndex={at.atSelectedIndex}
+        loading={at.atLoading}
+        query={at.atQuery}
         anchorEl={store.textareaEl}
-        onSelect={selectAtEntry}
-        onHover={(i) => (atSelectedIndex = i)}
-        onDismiss={() => closeAtMenu("click-outside")}
+        onSelect={at.selectAtEntry}
+        onHover={(i) => (at.atSelectedIndex = i)}
+        onDismiss={() => at.closeAtMenu("click-outside")}
       />
     {/if}
 
-    {#if slashMenuOpen}
+    {#if slash.slashMenuOpen}
       <SlashMenu
-        commands={filteredCommands}
-        {slashGroups}
-        selectedIndex={slashSelectedIndex}
+        commands={slash.filteredCommands}
+        slashGroups={slash.slashGroups}
+        selectedIndex={slash.slashSelectedIndex}
         anchorEl={store.textareaEl}
-        triggerEl={slashBtnEl}
-        phase={slashPhase}
+        triggerEl={slash.slashBtnEl}
+        phase={slash.slashPhase}
         {models}
         {currentModel}
-        subSelectedIndex={slashSubSelectedIndex}
-        {hintText}
+        subSelectedIndex={slash.slashSubSelectedIndex}
+        hintText={slash.hintText}
         inputDisplay={store.inputText}
         {fastModeState}
-        onSelect={(cmd) => selectSlashCommand(cmd, "enter")}
-        onHover={(i) => (slashSelectedIndex = i)}
-        onSubHover={(i) => (slashSubSelectedIndex = i)}
-        onSubSelect={handleSubModelSelect}
-        onFastSelect={handleFastModeSelect}
-        onBack={goBackToCommands}
-        onDismiss={() => closeSlashMenu("click-outside")}
+        onSelect={(cmd) => slash.selectSlashCommand(cmd, "enter")}
+        onHover={(i) => (slash.slashSelectedIndex = i)}
+        onSubHover={(i) => (slash.slashSubSelectedIndex = i)}
+        onSubSelect={slash.handleSubModelSelect}
+        onFastSelect={slash.handleFastModeSelect}
+        onBack={slash.goBackToCommands}
+        onDismiss={() => slash.closeSlashMenu("click-outside")}
       />
     {/if}
 
@@ -2144,26 +1271,29 @@
 
       <!-- Right: actions -->
       <div class="flex items-center gap-0.5">
-        {#if showTokenEstimate}
+        {#if file.showTokenEstimate}
           <span
-            class="text-[10px] tabular-nums px-1.5 shrink-0 {tokenWarning
+            class="text-[10px] tabular-nums px-1.5 shrink-0 {file.tokenWarning
               ? 'text-miwarp-status-warning'
               : 'text-muted-foreground/50'}"
-            title={contextWindow > 0 ? t("prompt_tokenPercent", { pct: String(tokenPercent) }) : ""}
+            title={contextWindow > 0
+              ? t("prompt_tokenPercent", { pct: String(file.tokenPercent) })
+              : ""}
           >
-            {t("prompt_tokenEstimate", { tokens: String(tokenEstimate) })}
+            {t("prompt_tokenEstimate", { tokens: String(file.tokenEstimate) })}
             {#if contextWindow > 0}<span class="ml-0.5"
-                >{t("prompt_tokenPercent", { pct: String(tokenPercent) })}</span
+                >{t("prompt_tokenPercent", { pct: String(file.tokenPercent) })}</span
               >{/if}
-            {#if tokenWarning}<span class="ml-0.5" title={t("prompt_tokenWarning")}>⚠</span>{/if}
+            {#if file.tokenWarning}<span class="ml-0.5" title={t("prompt_tokenWarning")}>⚠</span
+              >{/if}
           </span>
         {/if}
-        {#if slashEnabled}
+        {#if slash.slashEnabled}
           <button
-            bind:this={slashBtnEl}
+            bind:this={slash.slashBtnEl}
             class="flex h-7 w-7 items-center justify-center rounded-full
               text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors"
-            onclick={openSlashMenuFromButton}
+            onclick={slash.openSlashMenuFromButton}
             title={t("prompt_slashCommands")}
           >
             <svg
@@ -2180,16 +1310,16 @@
           </button>
         {/if}
         <input
-          bind:this={fileInput}
+          bind:this={file.fileInput}
           type="file"
           multiple
           accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.txt,.md,.json,.ts,.tsx,.js,.jsx,.py,.rs,.svelte,.html,.css,.yaml,.yml,.toml,.xml,.sh,.sql,.go,.java,.c,.cpp,.h,.rb,.php,.swift,.csv,.log,.docx,.xlsx"
           class="hidden"
-          onchange={handleFileSelect}
+          onchange={file.handleFileSelect}
         />
         <button
           class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
-          onclick={() => fileInput?.click()}
+          onclick={() => file.fileInput?.click()}
           disabled={store.pendingAttachments.length >= 8}
           title={t("prompt_attachFiles")}
         >
@@ -2233,7 +1363,7 @@
         {/if}
 
         {#if running && onInterrupt}
-          {#if canSend}
+          {#if file.canSend}
             {#if btwMode}
               <!-- BTW send: blue theme -->
               <button
@@ -2307,11 +1437,11 @@
           </button>
         {:else}
           <button
-            class="flex h-7 w-7 items-center justify-center rounded-full transition-colors {canSend
+            class="flex h-7 w-7 items-center justify-center rounded-full transition-colors {file.canSend
               ? 'bg-primary text-primary-foreground hover:bg-primary/90'
               : 'text-muted-foreground/40'}"
             onclick={handleSend}
-            disabled={!canSend}
+            disabled={!file.canSend}
             title={t("prompt_send")}
           >
             <svg
