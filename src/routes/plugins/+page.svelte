@@ -827,7 +827,7 @@
     aria-modal="true"
   >
     <div
-      class="rounded-2xl border border-border/40 bg-background/95 backdrop-blur-md p-6 shadow-2xl max-w-sm w-full mx-4"
+      class="rounded-2xl border border-border bg-background/95 backdrop-blur-md p-6 shadow-2xl max-w-sm w-full mx-4"
       onclick={(e) => e.stopPropagation()}
     >
       <h3 class="text-sm font-semibold text-foreground mb-2">{confirmAction.title}</h3>
@@ -849,7 +849,7 @@
   </div>
 {/if}
 
-<div class="px-6 py-5 h-full overflow-y-auto">
+<div class="px-8 pt-6 pb-6 h-full overflow-y-auto">
   {#if loading}
     <div class="flex items-center justify-center py-16">
       <div
@@ -866,7 +866,7 @@
     <!-- Partial load warning -->
     {#if loadWarnings.length > 0}
       <div
-        class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-600 dark:text-amber-400 mb-4"
+        class="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-600 dark:text-amber-400 mb-4"
       >
         {t("plugin_couldNotLoad", { items: loadWarnings.join(", ") })}
       </div>
@@ -875,8 +875,10 @@
     <!-- Page header (visible on overview) -->
     {#if activeTab === "overview"}
       <div class="mb-6">
-        <h1 class="text-lg font-semibold text-foreground">{t("extensions_title")}</h1>
-        <p class="text-xs text-muted-foreground mt-0.5">{t("extensions_subtitle")}</p>
+        <h1 class="text-[26px] font-bold tracking-tight text-foreground">
+          {t("extensions_title")}
+        </h1>
+        <p class="text-sm text-muted-foreground mt-0.5">{t("extensions_subtitle")}</p>
       </div>
     {/if}
 
@@ -886,138 +888,128 @@
     <div class="space-y-6" class:hidden={activeTab !== "overview"}>
       <!-- Installed Summary cards -->
       <div>
-        <h3 class="text-xs font-medium text-muted-foreground mb-3">
+        <h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
           {t("extensions_installedSummary")}
         </h3>
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <button
-            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-rose-500/30 hover:bg-rose-500/5 transition-all"
+            class="group rounded-2xl border border-border/60 bg-card/50 p-4 text-left hover:border-rose-500/30 hover:bg-rose-500/[0.03] hover:shadow-sm transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "skills";
             }}
           >
-            <div class="flex items-center gap-2 mb-1.5">
-              <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-rose-500/10 text-rose-500"
+            <div
+              class="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/10 text-rose-500 mb-3"
+            >
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                ><path
+                  d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"
+                /></svg
               >
-                <svg
-                  class="h-3 w-3"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  ><path
-                    d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"
-                  /></svg
-                >
-              </div>
             </div>
-            <div class="text-xl font-bold text-foreground">{installedSkillCount}</div>
+            <div class="text-2xl font-bold text-foreground">{installedSkillCount}</div>
             <div class="text-[11px] text-muted-foreground mt-0.5">{t("sidebar_skills")}</div>
           </button>
           <button
-            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-green-500/30 hover:bg-green-500/5 transition-all"
+            class="group rounded-2xl border border-border/60 bg-card/50 p-4 text-left hover:border-green-500/30 hover:bg-green-500/[0.03] hover:shadow-sm transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "plugins";
             }}
           >
-            <div class="flex items-center gap-2 mb-1.5">
-              <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-green-500/10 text-green-500"
+            <div
+              class="flex h-8 w-8 items-center justify-center rounded-xl bg-green-500/10 text-green-500 mb-3"
+            >
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                ><path d="m7.5 4.27 9 5.15" /><path
+                  d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+                /></svg
               >
-                <svg
-                  class="h-3 w-3"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  ><path d="m7.5 4.27 9 5.15" /><path
-                    d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
-                  /></svg
-                >
-              </div>
             </div>
-            <div class="text-xl font-bold text-foreground">{installedPluginCount}</div>
+            <div class="text-2xl font-bold text-foreground">{installedPluginCount}</div>
             <div class="text-[11px] text-muted-foreground mt-0.5">{t("sidebar_plugins")}</div>
           </button>
           <button
-            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-teal-500/30 hover:bg-teal-500/5 transition-all"
+            class="group rounded-2xl border border-border/60 bg-card/50 p-4 text-left hover:border-teal-500/30 hover:bg-teal-500/[0.03] hover:shadow-sm transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "mcp";
             }}
           >
-            <div class="flex items-center gap-2 mb-1.5">
-              <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-teal-500/10 text-teal-500"
+            <div
+              class="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-500/10 text-teal-500 mb-3"
+            >
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                ><rect width="20" height="8" x="2" y="2" rx="2" ry="2" /><rect
+                  width="20"
+                  height="8"
+                  x="2"
+                  y="14"
+                  rx="2"
+                  ry="2"
+                /></svg
               >
-                <svg
-                  class="h-3 w-3"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  ><rect width="20" height="8" x="2" y="2" rx="2" ry="2" /><rect
-                    width="20"
-                    height="8"
-                    x="2"
-                    y="14"
-                    rx="2"
-                    ry="2"
-                  /></svg
-                >
-              </div>
             </div>
-            <div class="text-xl font-bold text-foreground">{mcpConfiguredCount}</div>
+            <div class="text-2xl font-bold text-foreground">{mcpConfiguredCount}</div>
             <div class="text-[11px] text-muted-foreground mt-0.5">{t("sidebar_mcpServers")}</div>
           </button>
           <button
-            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-amber-500/30 hover:bg-amber-500/5 transition-all"
+            class="group rounded-2xl border border-border/60 bg-card/50 p-4 text-left hover:border-amber-500/30 hover:bg-amber-500/[0.03] hover:shadow-sm transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "hooks";
             }}
           >
-            <div class="flex items-center gap-2 mb-1.5">
-              <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500/10 text-amber-500"
+            <div
+              class="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500 mb-3"
+            >
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                ><path
+                  d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"
+                /><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06" /></svg
               >
-                <svg
-                  class="h-3 w-3"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  ><path
-                    d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"
-                  /><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06" /></svg
-                >
-              </div>
             </div>
-            <div class="text-xl font-bold text-foreground">{hooksCount}</div>
+            <div class="text-2xl font-bold text-foreground">{hooksCount}</div>
             <div class="text-[11px] text-muted-foreground mt-0.5">{t("sidebar_hooks")}</div>
           </button>
           <button
-            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-purple-500/30 hover:bg-purple-500/5 transition-all"
+            class="group rounded-2xl border border-border/60 bg-card/50 p-4 text-left hover:border-purple-500/30 hover:bg-purple-500/[0.03] hover:shadow-sm transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "agents";
             }}
           >
-            <div class="flex items-center gap-2 mb-1.5">
-              <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-purple-500/10 text-purple-500"
+            <div
+              class="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-500/10 text-purple-500 mb-3"
+            >
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                ><path d="M12 8V4H8" /><rect width="16" height="12" x="4" y="8" rx="2" /><path
+                  d="M2 14h2"
+                /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" /></svg
               >
-                <svg
-                  class="h-3 w-3"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  ><path d="M12 8V4H8" /><rect width="16" height="12" x="4" y="8" rx="2" /><path
-                    d="M2 14h2"
-                  /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" /></svg
-                >
-              </div>
             </div>
-            <div class="text-xl font-bold text-foreground">{agentsCount}</div>
+            <div class="text-2xl font-bold text-foreground">{agentsCount}</div>
             <div class="text-[11px] text-muted-foreground mt-0.5">{t("sidebar_agents")}</div>
           </button>
         </div>
@@ -1025,24 +1017,26 @@
 
       <!-- Current Workspace -->
       <div>
-        <h3 class="text-xs font-medium text-muted-foreground mb-3">
+        <h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
           {t("extensions_currentWorkspace")}
         </h3>
-        <div class="rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-4">
+        <div class="rounded-2xl border border-border/60 bg-card/50 p-4">
           {#if projectCwd}
-            <div class="flex items-center gap-2 mb-2">
-              <svg
-                class="h-3.5 w-3.5 text-muted-foreground"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><path
-                  d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
-                /></svg
-              >
+            <div class="flex items-center gap-2.5 mb-2">
+              <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-muted/50">
+                <svg
+                  class="h-3.5 w-3.5 text-muted-foreground"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><path
+                    d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+                  /></svg
+                >
+              </div>
               <span class="text-xs font-mono text-foreground truncate">{projectCwd}</span>
             </div>
             <div class="flex items-center gap-4 text-[11px] text-muted-foreground">
@@ -1057,20 +1051,22 @@
               >
             </div>
           {:else}
-            <div class="flex items-center gap-2">
-              <svg
-                class="h-3.5 w-3.5 text-muted-foreground/50"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><circle cx="12" cy="12" r="10" /><path d="m4.93 4.93 14.14 14.14" /></svg
-              >
+            <div class="flex items-center gap-2.5">
+              <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-muted/30">
+                <svg
+                  class="h-3.5 w-3.5 text-muted-foreground/50"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><circle cx="12" cy="12" r="10" /><path d="m4.93 4.93 14.14 14.14" /></svg
+                >
+              </div>
               <span class="text-xs text-muted-foreground">{t("extensions_noWorkspace")}</span>
             </div>
-            <p class="text-[11px] text-muted-foreground/70 mt-1">
+            <p class="text-[11px] text-muted-foreground/70 mt-1.5">
               {t("extensions_noWorkspaceDesc")}
             </p>
           {/if}
@@ -1087,19 +1083,19 @@
 
       <!-- Recommended Actions -->
       <div>
-        <h3 class="text-xs font-medium text-muted-foreground mb-3">
+        <h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
           {t("extensions_recommendedActions")}
         </h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <button
-            class="flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
+            class="group flex items-center gap-3.5 rounded-2xl border border-border/60 bg-card/50 p-3.5 text-left hover:border-primary/30 hover:bg-primary/[0.02] hover:shadow-sm transition-all"
             onclick={() => {
               startNewSkill();
               if (sectionCtx) sectionCtx.active = "skills";
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/10"
             >
               <svg
                 class="h-4 w-4 text-rose-500"
@@ -1109,19 +1105,30 @@
                 stroke-width="2"><path d="M12 5v14" /><path d="M5 12h14" /></svg
               >
             </div>
-            <span class="text-xs font-medium text-foreground"
-              >{t("extensions_createProjectSkill")}</span
+            <div class="flex-1 min-w-0">
+              <span class="text-xs font-medium text-foreground block"
+                >{t("extensions_createProjectSkill")}</span
+              >
+            </div>
+            <svg
+              class="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
             >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
           </button>
           <button
-            class="flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
+            class="group flex items-center gap-3.5 rounded-2xl border border-border/60 bg-card/50 p-3.5 text-left hover:border-primary/30 hover:bg-primary/[0.02] hover:shadow-sm transition-all"
             onclick={() => {
               skillsSource = "discover";
               if (sectionCtx) sectionCtx.active = "skills";
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10"
             >
               <svg
                 class="h-4 w-4 text-blue-500"
@@ -1131,19 +1138,30 @@
                 stroke-width="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg
               >
             </div>
-            <span class="text-xs font-medium text-foreground"
-              >{t("extensions_installCommunitySkill")}</span
+            <div class="flex-1 min-w-0">
+              <span class="text-xs font-medium text-foreground block"
+                >{t("extensions_installCommunitySkill")}</span
+              >
+            </div>
+            <svg
+              class="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
             >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
           </button>
           <button
-            class="flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
+            class="group flex items-center gap-3.5 rounded-2xl border border-border/60 bg-card/50 p-3.5 text-left hover:border-primary/30 hover:bg-primary/[0.02] hover:shadow-sm transition-all"
             onclick={() => {
               mcpSource = "discover";
               if (sectionCtx) sectionCtx.active = "mcp";
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-500/10"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-500/10"
             >
               <svg
                 class="h-4 w-4 text-teal-500"
@@ -1161,18 +1179,29 @@
                 /></svg
               >
             </div>
-            <span class="text-xs font-medium text-foreground"
-              >{t("extensions_configureMcpServer")}</span
+            <div class="flex-1 min-w-0">
+              <span class="text-xs font-medium text-foreground block"
+                >{t("extensions_configureMcpServer")}</span
+              >
+            </div>
+            <svg
+              class="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
             >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
           </button>
           <button
-            class="flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
+            class="group flex items-center gap-3.5 rounded-2xl border border-border/60 bg-card/50 p-3.5 text-left hover:border-primary/30 hover:bg-primary/[0.02] hover:shadow-sm transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "hooks";
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10"
             >
               <svg
                 class="h-4 w-4 text-amber-500"
@@ -1185,17 +1214,30 @@
                 /><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06" /></svg
               >
             </div>
-            <span class="text-xs font-medium text-foreground">{t("extensions_reviewHooks")}</span>
+            <div class="flex-1 min-w-0">
+              <span class="text-xs font-medium text-foreground block"
+                >{t("extensions_reviewHooks")}</span
+              >
+            </div>
+            <svg
+              class="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
           </button>
           <button
-            class="flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all sm:col-span-2"
+            class="group flex items-center gap-3.5 rounded-2xl border border-border/60 bg-card/50 p-3.5 text-left hover:border-primary/30 hover:bg-primary/[0.02] hover:shadow-sm transition-all sm:col-span-2"
             onclick={() => {
               pluginsSource = "marketplace";
               if (sectionCtx) sectionCtx.active = "plugins";
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-500/10"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-green-500/10"
             >
               <svg
                 class="h-4 w-4 text-green-500"
@@ -1208,25 +1250,38 @@
                 /></svg
               >
             </div>
-            <span class="text-xs font-medium text-foreground"
-              >{t("extensions_installPluginPackage")}</span
+            <div class="flex-1 min-w-0">
+              <span class="text-xs font-medium text-foreground block"
+                >{t("extensions_installPluginPackage")}</span
+              >
+            </div>
+            <svg
+              class="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
             >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
           </button>
         </div>
       </div>
 
       <!-- Extension type guide -->
       <div>
-        <h3 class="text-xs font-medium text-muted-foreground mb-3">{t("extensions_typeGuide")}</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        <h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+          {t("extensions_typeGuide")}
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <button
-            class="flex items-start gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
+            class="group flex items-start gap-3.5 rounded-2xl border border-border/60 bg-card/50 p-3.5 text-left hover:border-primary/20 hover:bg-primary/[0.02] hover:shadow-sm transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "skills";
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400"
             >
               <svg
                 class="h-4 w-4"
@@ -1247,13 +1302,13 @@
             </div>
           </button>
           <button
-            class="flex items-start gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
+            class="group flex items-start gap-3.5 rounded-2xl border border-border/60 bg-card/50 p-3.5 text-left hover:border-primary/20 hover:bg-primary/[0.02] hover:shadow-sm transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "agents";
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400"
             >
               <svg
                 class="h-4 w-4"
@@ -1274,13 +1329,13 @@
             </div>
           </button>
           <button
-            class="flex items-start gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
+            class="group flex items-start gap-3.5 rounded-2xl border border-border/60 bg-card/50 p-3.5 text-left hover:border-primary/20 hover:bg-primary/[0.02] hover:shadow-sm transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "mcp";
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400"
             >
               <svg
                 class="h-4 w-4"
@@ -1311,13 +1366,13 @@
             </div>
           </button>
           <button
-            class="flex items-start gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
+            class="group flex items-start gap-3.5 rounded-2xl border border-border/60 bg-card/50 p-3.5 text-left hover:border-primary/20 hover:bg-primary/[0.02] hover:shadow-sm transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "hooks";
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400"
             >
               <svg
                 class="h-4 w-4"
@@ -1340,13 +1395,13 @@
             </div>
           </button>
           <button
-            class="flex items-start gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
+            class="group flex items-start gap-3.5 rounded-2xl border border-border/60 bg-card/50 p-3.5 text-left hover:border-primary/20 hover:bg-primary/[0.02] hover:shadow-sm transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "plugins";
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-500/10 text-green-600 dark:text-green-400"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-green-500/10 text-green-600 dark:text-green-400"
             >
               <svg
                 class="h-4 w-4"
@@ -1373,10 +1428,10 @@
     <!-- ═══════════════════════════════════════════════════════ -->
     <!-- Skills Section                                         -->
     <!-- ═══════════════════════════════════════════════════════ -->
-    <div class="space-y-4" class:hidden={activeTab !== "skills"}>
+    <div class="space-y-5" class:hidden={activeTab !== "skills"}>
       <div>
-        <h2 class="text-sm font-semibold text-foreground">{t("sidebar_skills")}</h2>
-        <p class="text-xs text-muted-foreground">
+        <h1 class="text-[26px] font-bold tracking-tight text-foreground">{t("sidebar_skills")}</h1>
+        <p class="text-sm text-muted-foreground mt-0.5">
           {t("extensions_typeGuide_skills")}
         </p>
       </div>
@@ -1864,7 +1919,7 @@
       <!-- Installed sub-view (standalone skills) -->
       <div class:hidden={skillsSource !== "installed"}>
         <div class="mb-4">
-          <h3 class="text-xs font-medium text-muted-foreground">
+          <h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             {t("plugin_standaloneSkills")}
           </h3>
         </div>
@@ -1872,7 +1927,7 @@
         {#if skills.length === 0}
           <div class="flex flex-col items-center justify-center py-16 text-center">
             <div
-              class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-muted"
+              class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-muted/30"
             >
               <svg
                 class="h-6 w-6 text-muted-foreground"
@@ -1899,10 +1954,10 @@
             </button>
           </div>
         {:else}
-          <div class="space-y-1.5">
+          <div class="space-y-2">
             {#each skills as skill}
               <div
-                class="w-full rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm px-4 py-3 transition-all hover:bg-accent/10 hover:shadow-sm"
+                class="w-full rounded-2xl border border-border/60 bg-card/50 px-4 py-3 transition-all hover:bg-muted/20 hover:shadow-sm"
               >
                 <div class="flex items-center justify-between gap-2">
                   <div
@@ -1984,10 +2039,12 @@
     <!-- ═══════════════════════════════════════════════════════ -->
     <!-- MCP Servers Section                                    -->
     <!-- ═══════════════════════════════════════════════════════ -->
-    <div class="space-y-4" class:hidden={activeTab !== "mcp"}>
+    <div class="space-y-5" class:hidden={activeTab !== "mcp"}>
       <div>
-        <h2 class="text-sm font-semibold text-foreground">{t("sidebar_mcpServers")}</h2>
-        <p class="text-xs text-muted-foreground">
+        <h1 class="text-[26px] font-bold tracking-tight text-foreground">
+          {t("sidebar_mcpServers")}
+        </h1>
+        <p class="text-sm text-muted-foreground mt-0.5">
           {t("extensions_typeGuide_mcp")}
         </p>
       </div>
@@ -2041,10 +2098,10 @@
     <!-- ═══════════════════════════════════════════════════════ -->
     <!-- Hooks Section                                           -->
     <!-- ═══════════════════════════════════════════════════════ -->
-    <div class="space-y-4" class:hidden={activeTab !== "hooks"}>
+    <div class="space-y-5" class:hidden={activeTab !== "hooks"}>
       <div>
-        <h2 class="text-sm font-semibold text-foreground">{t("sidebar_hooks")}</h2>
-        <p class="text-xs text-muted-foreground">
+        <h1 class="text-[26px] font-bold tracking-tight text-foreground">{t("sidebar_hooks")}</h1>
+        <p class="text-sm text-muted-foreground mt-0.5">
           {t("extensions_typeGuide_hooks")}
         </p>
       </div>
@@ -2054,10 +2111,10 @@
     <!-- ═══════════════════════════════════════════════════════ -->
     <!-- Plugins Section                                        -->
     <!-- ═══════════════════════════════════════════════════════ -->
-    <div class="space-y-4" class:hidden={activeTab !== "plugins"}>
+    <div class="space-y-5" class:hidden={activeTab !== "plugins"}>
       <div>
-        <h2 class="text-sm font-semibold text-foreground">{t("sidebar_plugins")}</h2>
-        <p class="text-xs text-muted-foreground">{t("extensions_typeGuide_plugins")}</p>
+        <h1 class="text-[26px] font-bold tracking-tight text-foreground">{t("sidebar_plugins")}</h1>
+        <p class="text-sm text-muted-foreground mt-0.5">{t("extensions_typeGuide_plugins")}</p>
       </div>
 
       <!-- Source toggle -->
@@ -2187,7 +2244,7 @@
         {#if filteredPlugins.length === 0}
           <div class="flex flex-col items-center justify-center py-16 text-center">
             <div
-              class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-muted"
+              class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-muted/30"
             >
               <svg
                 class="h-6 w-6 text-muted-foreground"
@@ -2213,7 +2270,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {#each filteredPlugins as plugin}
               <div
-                class="rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm px-4 py-3 space-y-2 hover:bg-accent/10 hover:shadow-sm transition-all"
+                class="rounded-2xl border border-border/60 bg-card/50 px-4 py-3 space-y-2 hover:bg-muted/20 hover:shadow-sm transition-all"
               >
                 <!-- Name + version + homepage -->
                 <div class="flex items-start gap-2">
@@ -2322,7 +2379,7 @@
         {#if installedPlugins.length === 0}
           <div class="flex flex-col items-center justify-center py-16 text-center">
             <div
-              class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-muted"
+              class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-border/60 bg-muted/30"
             >
               <svg
                 class="h-6 w-6 text-muted-foreground"
@@ -2348,7 +2405,7 @@
           <div class="space-y-2">
             {#each installedPlugins as plugin}
               <div
-                class="rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm px-4 py-3 flex items-center justify-between gap-4 hover:bg-accent/10 hover:shadow-sm transition-all"
+                class="rounded-2xl border border-border/60 bg-card/50 px-4 py-3 flex items-center justify-between gap-4 hover:bg-muted/20 hover:shadow-sm transition-all"
               >
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2">
@@ -2471,9 +2528,7 @@
             {:else}
               <div class="space-y-2">
                 {#each marketplaces as mp}
-                  <div
-                    class="rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm px-4 py-3"
-                  >
+                  <div class="rounded-2xl border border-border/60 bg-card/50 px-4 py-3">
                     <div class="flex items-center justify-between">
                       <div>
                         <span class="text-sm font-medium text-foreground">{mp.name}</span>
@@ -2523,10 +2578,10 @@
     <!-- ═══════════════════════════════════════════════════════ -->
     <!-- Agents Section                                        -->
     <!-- ═══════════════════════════════════════════════════════ -->
-    <div class="space-y-4" class:hidden={activeTab !== "agents"}>
+    <div class="space-y-5" class:hidden={activeTab !== "agents"}>
       <div>
-        <h2 class="text-sm font-semibold text-foreground">{t("sidebar_agents")}</h2>
-        <p class="text-xs text-muted-foreground">
+        <h1 class="text-[26px] font-bold tracking-tight text-foreground">{t("sidebar_agents")}</h1>
+        <p class="text-sm text-muted-foreground mt-0.5">
           {t("extensions_typeGuide_agents")}
         </p>
       </div>

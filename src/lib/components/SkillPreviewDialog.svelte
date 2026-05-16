@@ -17,7 +17,7 @@
     onCancel?: () => void;
   }
 
-  let { open = false, skill = null, args = "", onConfirm, onCancel }: Props = $props();
+  let { open = $bindable(false), skill = null, args = "", onConfirm, onCancel }: Props = $props();
 
   // Generate preview when skill changes
   let preview = $state<SkillPreview | null>(null);
