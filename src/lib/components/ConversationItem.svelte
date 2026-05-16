@@ -16,15 +16,19 @@
   let {
     conversation,
     selected = false,
+    batchSelected = false,
     onclick,
     onresume,
     ondelete,
+    onBatchClick,
   }: {
     conversation: ConversationGroup;
     selected?: boolean;
+    batchSelected?: boolean;
     onclick?: () => void;
     onresume?: (runId: string, mode: "resume") => void;
     ondelete?: (conversation: ConversationGroup) => void;
+    onBatchClick?: (groupKey: string, e: MouseEvent) => void;
   } = $props();
 
   const run = $derived(conversation.latestRun);
@@ -91,8 +95,12 @@
     }
   }
 
-  function handleClick() {
+  function handleClick(e: MouseEvent) {
     if (editing) return;
+    if ((e.shiftKey || e.metaKey || e.ctrlKey) && onBatchClick) {
+      onBatchClick(conversation.groupKey, e);
+      return;
+    }
     onclick?.();
   }
 </script>
@@ -101,7 +109,9 @@
   class="group w-full text-left px-3 py-1.5 rounded-md transition-colors text-xs cursor-pointer
     {selected
     ? 'bg-sidebar-accent/70 text-sidebar-accent-foreground'
-    : 'hover:bg-sidebar-accent/30 text-sidebar-foreground'}"
+    : 'hover:bg-sidebar-accent/30 text-sidebar-foreground'} {batchSelected
+    ? 'ring-1 ring-primary/50'
+    : ''}"
   role="button"
   tabindex="0"
   onclick={handleClick}

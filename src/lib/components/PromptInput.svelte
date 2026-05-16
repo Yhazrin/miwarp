@@ -111,6 +111,7 @@
     userHistory = [] as string[],
     runId = "",
     onValueChange,
+    contextWindow = 0,
   }: {
     agent?: string;
     disabled?: boolean;
@@ -155,6 +156,7 @@
     userHistory?: string[];
     runId?: string;
     onValueChange?: (value: string) => void;
+    contextWindow?: number;
   } = $props();
 
   // ── BTW mode (side question) ──
@@ -1663,6 +1665,30 @@
         pendingPathRefs.length > 0),
   );
 
+  // ── Token estimation (chars/4 heuristic, CJK-aware) ──
+  function estimateTokens(text: string): number {
+    let chars = 0;
+    for (let i = 0; i < text.length; i++) {
+      const code = text.charCodeAt(i);
+      chars += code >= 0x4e00 && code <= 0x9fff ? 2 : 1;
+    }
+    return Math.ceil(chars / 4);
+  }
+  let tokenEstimate = $state(0);
+  let tokenDebounce: ReturnType<typeof setTimeout> | null = null;
+  $effect(() => {
+    const allText = [inputText, ...pastedBlocks.map((b) => b.text)].join("\n");
+    if (tokenDebounce) clearTimeout(tokenDebounce);
+    tokenDebounce = setTimeout(() => {
+      tokenEstimate = allText ? estimateTokens(allText) : 0;
+    }, 300);
+  });
+  const tokenPercent = $derived(
+    contextWindow > 0 && tokenEstimate > 0 ? Math.round((tokenEstimate / contextWindow) * 100) : 0,
+  );
+  const tokenWarning = $derived(tokenPercent > 80);
+  const showTokenEstimate = $derived(tokenEstimate > 0);
+
   // ── Mode dropdown outside-click + Escape ──
   onMount(() => {
     function onDocClick(e: MouseEvent) {
@@ -2138,6 +2164,20 @@
 
       <!-- Right: actions -->
       <div class="flex items-center gap-0.5">
+        {#if showTokenEstimate}
+          <span
+            class="text-[10px] tabular-nums px-1.5 shrink-0 {tokenWarning
+              ? 'text-miwarp-status-warning'
+              : 'text-muted-foreground/50'}"
+            title={contextWindow > 0 ? t("prompt_tokenPercent", { pct: String(tokenPercent) }) : ""}
+          >
+            {t("prompt_tokenEstimate", { tokens: String(tokenEstimate) })}
+            {#if contextWindow > 0}<span class="ml-0.5"
+                >{t("prompt_tokenPercent", { pct: String(tokenPercent) })}</span
+              >{/if}
+            {#if tokenWarning}<span class="ml-0.5" title={t("prompt_tokenWarning")}>⚠</span>{/if}
+          </span>
+        {/if}
         {#if slashEnabled}
           <button
             bind:this={slashBtnEl}

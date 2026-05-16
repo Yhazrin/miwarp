@@ -4,6 +4,7 @@
   import { escapeHtml } from "$lib/utils/ansi";
   import {
     listRuns,
+    listRunsSince,
     getUserSettings,
     updateUserSettings,
     listDirectory,
@@ -120,6 +121,7 @@
   // ── Folder tree state ──
   let expandedProjects = $state<Set<string>>(new Set());
   let runsLoadSucceededOnce = $state(false);
+  let lastRunsSync: string | null = null; // ISO timestamp for incremental sync
 
   // ── Deep search (backend full-text) ──
   let searchResults = $state<PromptSearchResult[]>([]);
@@ -131,9 +133,28 @@
   // chat-main reflow during drag is still expensive even with cv-auto: visible tool cards
   // contain markdown / hljs code blocks that re-measure on every width change. Ghost line
   // gives zero-reflow drag preview and commits once on release.
+  function screenKey(): string {
+    try {
+      if (typeof window !== "undefined" && window.screen) {
+        return `${window.screen.width}x${window.screen.height}`;
+      }
+    } catch {
+      /* SSR or restricted environment */
+    }
+    return "default";
+  }
   function loadSidebarWidth(): number {
     if (typeof window === "undefined") return 280;
-    const raw = parseInt(localStorage.getItem("ocv:sidebar-width") ?? "", 10);
+    const key = `ocv:sidebar-width:${screenKey()}`;
+    let raw = parseInt(localStorage.getItem(key) ?? "", 10);
+    // Lazy migration: read legacy key once
+    if (!Number.isFinite(raw)) {
+      const legacy = parseInt(localStorage.getItem("ocv:sidebar-width") ?? "", 10);
+      if (Number.isFinite(legacy)) {
+        raw = legacy;
+        localStorage.setItem(key, String(legacy));
+      }
+    }
     return Number.isFinite(raw) ? Math.min(500, Math.max(180, raw)) : 280;
   }
   let sidebarWidth = $state(loadSidebarWidth());
@@ -180,7 +201,7 @@
       sidebarResizing = false;
       sidebarGhostEl = null;
       resizeCleanup = null;
-      localStorage.setItem("ocv:sidebar-width", String(sidebarWidth));
+      localStorage.setItem(`ocv:sidebar-width:${screenKey()}`, String(sidebarWidth));
       dbg("layout", "sidebar resize end", { width: sidebarWidth });
       stopFps();
     }
@@ -454,10 +475,28 @@
   // Load initial data
   async function loadRuns() {
     try {
-      runs = await listRuns();
+      if (lastRunsSync && runsLoadSucceededOnce) {
+        // Incremental: only fetch runs changed since last sync
+        const changed = await listRunsSince(lastRunsSync);
+        if (changed.length > 0) {
+          const map = new Map(runs.map((r) => [r.id, r]));
+          for (const r of changed) {
+            if (r.deleted_at) {
+              map.delete(r.id);
+            } else {
+              map.set(r.id, r);
+            }
+          }
+          runs = [...map.values()].sort((a, b) => b.started_at.localeCompare(a.started_at));
+        }
+      } else {
+        // Full load on first call or after failure
+        runs = await listRuns();
+      }
+      lastRunsSync = new Date().toISOString();
       runsLoadSucceededOnce = true;
     } catch {
-      // Silently fail
+      // Silently fail — keep existing data
     }
   }
 
@@ -944,6 +983,75 @@
     deleteTarget = null;
   }
 
+  // ── Batch selection for conversations ──
+  let selectedGroupKeys = $state(new Set<string>());
+  let lastSelectedKey = $state("");
+
+  function toggleSelectConversation(groupKey: string, e: MouseEvent) {
+    if (e.shiftKey && lastSelectedKey) {
+      // Range select: find all conversations between lastSelected and current
+      const allKeys: string[] = [];
+      for (const folder of projectFolders) {
+        for (const conv of folder.conversations) {
+          allKeys.push(conv.groupKey);
+        }
+      }
+      const fromIdx = allKeys.indexOf(lastSelectedKey);
+      const toIdx = allKeys.indexOf(groupKey);
+      if (fromIdx >= 0 && toIdx >= 0) {
+        const start = Math.min(fromIdx, toIdx);
+        const end = Math.max(fromIdx, toIdx);
+        const newSet = new Set(selectedGroupKeys);
+        for (let i = start; i <= end; i++) {
+          newSet.add(allKeys[i]);
+        }
+        selectedGroupKeys = newSet;
+      }
+    } else if (e.metaKey || e.ctrlKey) {
+      // Toggle individual
+      const newSet = new Set(selectedGroupKeys);
+      if (newSet.has(groupKey)) newSet.delete(groupKey);
+      else newSet.add(groupKey);
+      selectedGroupKeys = newSet;
+    } else {
+      // Plain click: clear batch and navigate
+      selectedGroupKeys = new Set();
+      lastSelectedKey = groupKey;
+      return;
+    }
+    lastSelectedKey = groupKey;
+  }
+
+  function clearBatchSelection() {
+    selectedGroupKeys = new Set();
+    lastSelectedKey = "";
+  }
+
+  let batchDeleteConfirmOpen = $state(false);
+
+  async function batchDelete() {
+    const keys = new Set(selectedGroupKeys);
+    batchDeleteConfirmOpen = false;
+    clearBatchSelection();
+    const ids: string[] = [];
+    for (const folder of projectFolders) {
+      for (const conv of folder.conversations) {
+        if (keys.has(conv.groupKey)) {
+          ids.push(...conv.runs.map((r) => r.id));
+        }
+      }
+    }
+    if (ids.length === 0) return;
+    try {
+      await softDeleteRuns(ids);
+      dbg("layout", "batchDelete success", { count: ids.length });
+      window.dispatchEvent(new Event("ocv:runs-changed"));
+      if (ids.includes(selectedRunId)) goto("/chat");
+    } catch (e) {
+      dbgWarn("layout", "batchDelete failed", e);
+    }
+  }
+
   // ── Remove project folder confirm flow ──
   let removeProjectConfirmOpen = $state(false);
   let removeProjectTarget = $state("");
@@ -1194,6 +1302,10 @@
   });
 
   function handleKeydown(e: KeyboardEvent) {
+    if (e.key === "Escape" && selectedGroupKeys.size > 0) {
+      clearBatchSelection();
+      return;
+    }
     keybindingStore.dispatch(e);
   }
 </script>
@@ -2211,6 +2323,8 @@
                   onSelectConversation={(runId) => goto(`/chat?run=${runId}`)}
                   onResume={(runId, mode) => goto(`/chat?run=${runId}&resume=${mode}`)}
                   onDelete={requestDeleteConversation}
+                  {selectedGroupKeys}
+                  onBatchClick={toggleSelectConversation}
                   onRemove={folder.isUncategorized
                     ? undefined
                     : () => requestRemoveProject(folder.cwd)}
@@ -2242,6 +2356,27 @@
                 </div>
               {/if}
             </div>
+            {#if selectedGroupKeys.size > 0}
+              <div class="flex items-center gap-1 border-t px-2 py-1.5 bg-sidebar-accent/30">
+                <span class="text-[11px] text-muted-foreground px-1">
+                  {t("sidebar_batchSelected", { count: String(selectedGroupKeys.size) })}
+                </span>
+                <button
+                  class="ml-auto rounded px-1.5 py-0.5 text-[11px] text-destructive hover:bg-destructive/10 transition-colors"
+                  onclick={() => (batchDeleteConfirmOpen = true)}
+                  title={t("sidebar_batchDelete")}
+                >
+                  {t("sidebar_batchDelete")}
+                </button>
+                <button
+                  class="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent transition-colors"
+                  onclick={clearBatchSelection}
+                  title={t("sidebar_batchClear")}
+                >
+                  {t("sidebar_batchClear")}
+                </button>
+              </div>
+            {/if}
           {/if}
         {/if}
       </div>
@@ -2321,6 +2456,26 @@
     <button
       class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
       onclick={confirmDeleteConversation}
+    >
+      {t("sidebar_deleteOk")}
+    </button>
+  </div>
+</Modal>
+
+<Modal bind:open={batchDeleteConfirmOpen} title={t("sidebar_batchDelete")}>
+  <p class="text-sm text-muted-foreground mb-4">
+    {t("sidebar_batchDeleteConfirm", { count: String(selectedGroupKeys.size) })}
+  </p>
+  <div class="flex justify-end gap-2">
+    <button
+      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
+      onclick={() => (batchDeleteConfirmOpen = false)}
+    >
+      {t("sidebar_deleteCancel")}
+    </button>
+    <button
+      class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+      onclick={batchDelete}
     >
       {t("sidebar_deleteOk")}
     </button>

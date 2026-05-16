@@ -2,10 +2,13 @@
   import type { Snippet } from "svelte";
   import type { ProjectFolder, ConversationGroup } from "$lib/utils/sidebar-groups";
   import ConversationItem from "./ConversationItem.svelte";
+  import VirtualList from "./VirtualList.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbgWarn } from "$lib/utils/debug";
 
-  const PAGE_SIZE = 5;
+  const PAGE_SIZE = 20;
+  const VIRTUAL_THRESHOLD = 40;
+  const ITEM_HEIGHT = 52;
 
   type BaseProps = {
     folder: ProjectFolder;
@@ -23,6 +26,8 @@
     onResume: (runId: string, mode: "resume") => void;
     onDelete?: (conversation: ConversationGroup) => void;
     onNewChat?: () => void;
+    selectedGroupKeys?: Set<string>;
+    onBatchClick?: (groupKey: string, e: MouseEvent) => void;
   };
 
   type CustomProps = BaseProps & {
@@ -32,6 +37,8 @@
     onResume?: never;
     onDelete?: never;
     onNewChat?: never;
+    selectedGroupKeys?: never;
+    onBatchClick?: never;
   };
 
   let {
@@ -47,6 +54,8 @@
     onResume,
     onDelete,
     onNewChat,
+    selectedGroupKeys,
+    onBatchClick,
   }: ChatProps | CustomProps = $props();
 
   let visibleCount = $state(PAGE_SIZE);
@@ -230,15 +239,33 @@
             <span>{t("sidebar_newChatInFolder")}</span>
           </button>
         {/if}
-        {#each visibleConversations as conv (conv.groupKey)}
-          <ConversationItem
-            conversation={conv}
-            selected={isConvSelected(conv)}
-            onclick={() => onSelectConversation?.(conv.latestRun.id)}
-            onresume={onResume}
-            ondelete={onDelete}
-          />
-        {/each}
+        {#if visibleConversations.length >= VIRTUAL_THRESHOLD}
+          <VirtualList items={visibleConversations} itemHeight={ITEM_HEIGHT} class="max-h-[60vh]">
+            {#snippet item(conv)}
+              <ConversationItem
+                conversation={conv}
+                selected={isConvSelected(conv)}
+                batchSelected={selectedGroupKeys?.has(conv.groupKey) ?? false}
+                onclick={() => onSelectConversation?.(conv.latestRun.id)}
+                onresume={onResume}
+                ondelete={onDelete}
+                {onBatchClick}
+              />
+            {/snippet}
+          </VirtualList>
+        {:else}
+          {#each visibleConversations as conv (conv.groupKey)}
+            <ConversationItem
+              conversation={conv}
+              selected={isConvSelected(conv)}
+              batchSelected={selectedGroupKeys?.has(conv.groupKey) ?? false}
+              onclick={() => onSelectConversation?.(conv.latestRun.id)}
+              onresume={onResume}
+              ondelete={onDelete}
+              {onBatchClick}
+            />
+          {/each}
+        {/if}
         {#if hasMore}
           <button
             class="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md transition-colors"

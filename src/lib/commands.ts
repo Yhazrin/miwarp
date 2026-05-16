@@ -364,3 +364,44 @@ export const multiAgentCommands: CommandDef[] = [
 
 // 添加到所有命令
 commands.push(...multiAgentCommands);
+
+// ── Recent commands (persisted in localStorage) ──
+
+const RECENT_KEY = "ocv:recent-commands";
+const RECENT_MAX = 8;
+
+export function loadRecentCommandIds(): string[] {
+  try {
+    if (typeof window === "undefined") return [];
+    const raw = localStorage.getItem(RECENT_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // Validate: only keep IDs that still exist in the command list
+    return parsed.filter(
+      (id: unknown) => typeof id === "string" && commands.some((c) => c.id === id),
+    );
+  } catch {
+    return [];
+  }
+}
+
+export function recordRecentCommand(id: string): void {
+  try {
+    if (typeof window === "undefined") return;
+    const recent = loadRecentCommandIds().filter((r) => r !== id);
+    recent.unshift(id);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, RECENT_MAX)));
+  } catch {
+    // localStorage unavailable — silently ignore
+  }
+}
+
+export function getRecentCommands(agent?: string): CommandDef[] {
+  const ids = loadRecentCommandIds();
+  return ids
+    .map((id) =>
+      commands.find((c) => c.id === id && (!agent || c.agent === "both" || c.agent === agent)),
+    )
+    .filter((c): c is CommandDef => !!c);
+}

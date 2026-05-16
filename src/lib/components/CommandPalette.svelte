@@ -4,6 +4,8 @@
     filterCommands,
     groupByCategory,
     categoryLabels,
+    getRecentCommands,
+    recordRecentCommand,
     type CommandDef,
     type CommandCategory,
   } from "$lib/commands";
@@ -37,7 +39,9 @@
 
   let filtered = $derived(filterCommands(query, agent));
   let grouped = $derived(groupByCategory(filtered));
-  let flatList = $derived(filtered);
+  let recentCommands = $derived(getRecentCommands(agent));
+  let showRecent = $derived(!query && recentCommands.length > 0);
+  let flatList = $derived(showRecent ? [...recentCommands, ...filtered] : filtered);
 
   // Reset on open
   $effect(() => {
@@ -80,6 +84,7 @@
 
   async function executeCommand(cmd: CommandDef) {
     open = false;
+    recordRecentCommand(cmd.id);
 
     switch (cmd.action) {
       case "navigate":
@@ -223,6 +228,12 @@
   let indexMap = $derived.by(() => {
     const map = new Map<string, number>();
     let idx = 0;
+    // Recent commands first
+    if (showRecent) {
+      for (const cmd of recentCommands) {
+        map.set(cmd.id, idx++);
+      }
+    }
     const categoryOrder: CommandCategory[] = [
       "chat",
       "tools",
@@ -232,7 +243,7 @@
     ];
     for (const cat of categoryOrder) {
       for (const cmd of grouped[cat]) {
-        map.set(cmd.id, idx++);
+        if (!map.has(cmd.id)) map.set(cmd.id, idx++);
       }
     }
     return map;
@@ -282,6 +293,35 @@
 
       <!-- Results -->
       <div class="max-h-[40vh] overflow-y-auto p-2">
+        {#if showRecent}
+          <div class="mb-1">
+            <p
+              class="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider"
+            >
+              {t("cmd_cat_recent")}
+            </p>
+            {#each recentCommands as cmd}
+              {@const idx = indexMap.get(cmd.id) ?? 0}
+              <button
+                data-cmd-idx={idx}
+                class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors
+                  {idx === selectedIndex
+                  ? 'bg-accent text-accent-foreground'
+                  : 'hover:bg-accent/50'}"
+                onclick={() => executeCommand(cmd)}
+                onmouseenter={() => (selectedIndex = idx)}
+              >
+                <span class="flex-1 text-left">{cmd.name}</span>
+                <span class="text-xs text-muted-foreground">{cmd.description}</span>
+                {#if cmd.shortcut}
+                  <kbd class="text-[10px] text-muted-foreground bg-muted rounded px-1 py-0.5"
+                    >{cmd.shortcut}</kbd
+                  >
+                {/if}
+              </button>
+            {/each}
+          </div>
+        {/if}
         {#each ["chat", "tools", "navigation", "settings", "diagnostics"] as cat}
           {#if grouped[cat as CommandCategory].length > 0}
             <div class="mb-1">

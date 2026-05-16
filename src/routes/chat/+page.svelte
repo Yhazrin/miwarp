@@ -4956,6 +4956,7 @@
               }
             }}
             onValueChange={handleInputValueChange}
+            contextWindow={store.contextWindow}
           />
           {#if teamHintVisible}
             <div

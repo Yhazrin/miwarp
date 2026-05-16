@@ -217,42 +217,60 @@
   let modelBtnEl: HTMLButtonElement | undefined = $state();
   let dropdownEl: HTMLDivElement | undefined = $state();
   let dropdownStyle = $state("");
+  let modelFilter = $state("");
+  let modelFilterEl: HTMLInputElement | undefined = $state();
+  const showModelFilter = $derived(models.length >= 10);
+  const filteredModels = $derived.by(() => {
+    if (!modelFilter) return models;
+    const q = modelFilter.toLowerCase();
+    return models.filter(
+      (m) =>
+        m.value.toLowerCase().includes(q) ||
+        m.displayName.toLowerCase().includes(q) ||
+        (m.description && m.description.toLowerCase().includes(q)),
+    );
+  });
 
   // More menu state
   let moreMenuOpen = $state(false);
   let moreMenuBtnEl: HTMLButtonElement | undefined = $state();
   let moreMenuEl: HTMLDivElement | undefined = $state();
 
+  function positionDropdown() {
+    if (!modelBtnEl) return;
+    const rect = modelBtnEl.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow < 200) {
+      dropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:50;`;
+    } else {
+      dropdownStyle = `position:fixed; top:${rect.bottom + 4}px; left:${rect.left}px; z-index:50;`;
+    }
+  }
+
   function toggleModelDropdown() {
     dropdownOpen = !dropdownOpen;
-    if (dropdownOpen && modelBtnEl) {
-      const rect = modelBtnEl.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      if (spaceBelow < 200) {
-        dropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:50;`;
-      } else {
-        dropdownStyle = `position:fixed; top:${rect.bottom + 4}px; left:${rect.left}px; z-index:50;`;
-      }
-      focusedModelIdx = models.findIndex((m) => m.value === model);
+    if (dropdownOpen) {
+      modelFilter = "";
+      positionDropdown();
+      focusedModelIdx = filteredModels.findIndex((m) => m.value === model);
       if (focusedModelIdx < 0) focusedModelIdx = 0;
-      requestAnimationFrame(() => dropdownEl?.focus());
+      requestAnimationFrame(() => {
+        if (showModelFilter && modelFilterEl) modelFilterEl.focus();
+        else dropdownEl?.focus();
+      });
     }
   }
 
   export function openModelDropdown() {
     dropdownOpen = true;
-    if (modelBtnEl) {
-      const rect = modelBtnEl.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      if (spaceBelow < 200) {
-        dropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:50;`;
-      } else {
-        dropdownStyle = `position:fixed; top:${rect.bottom + 4}px; left:${rect.left}px; z-index:50;`;
-      }
-    }
-    focusedModelIdx = models.findIndex((m) => m.value === model);
+    modelFilter = "";
+    positionDropdown();
+    focusedModelIdx = filteredModels.findIndex((m) => m.value === model);
     if (focusedModelIdx < 0) focusedModelIdx = 0;
-    requestAnimationFrame(() => dropdownEl?.focus());
+    requestAnimationFrame(() => {
+      if (showModelFilter && modelFilterEl) modelFilterEl.focus();
+      else dropdownEl?.focus();
+    });
   }
 
   function selectModel(val: string) {
@@ -260,25 +278,51 @@
     onModelChange?.(val);
   }
 
-  function handleDropdownKeydown(e: KeyboardEvent) {
+  function handleModelFilterKeydown(e: KeyboardEvent) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      focusedModelIdx = Math.min(focusedModelIdx + 1, models.length - 1);
+      focusedModelIdx = Math.min(focusedModelIdx + 1, filteredModels.length - 1);
+      dropdownEl?.focus();
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       focusedModelIdx = Math.max(focusedModelIdx - 1, 0);
-    } else if (e.key === "Enter" && focusedModelIdx >= 0 && focusedModelIdx < models.length) {
+      dropdownEl?.focus();
+    } else if (e.key === "Enter" && filteredModels.length > 0) {
       e.preventDefault();
-      dbg("statusbar", "model selected via keyboard", { model: models[focusedModelIdx].value });
-      selectModel(models[focusedModelIdx].value);
+      const idx = focusedModelIdx >= 0 ? focusedModelIdx : 0;
+      selectModel(filteredModels[idx].value);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      if (modelFilter) modelFilter = "";
+      else dropdownOpen = false;
+    }
+    if (e.key !== "Tab") e.stopPropagation();
+  }
+
+  function handleDropdownKeydown(e: KeyboardEvent) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      focusedModelIdx = Math.min(focusedModelIdx + 1, filteredModels.length - 1);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      focusedModelIdx = Math.max(focusedModelIdx - 1, 0);
+    } else if (
+      e.key === "Enter" &&
+      focusedModelIdx >= 0 &&
+      focusedModelIdx < filteredModels.length
+    ) {
+      e.preventDefault();
+      dbg("statusbar", "model selected via keyboard", {
+        model: filteredModels[focusedModelIdx].value,
+      });
+      selectModel(filteredModels[focusedModelIdx].value);
     } else if (e.key === "Escape") {
       e.preventDefault();
       dropdownOpen = false;
+    } else if (showModelFilter && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+      modelFilterEl?.focus();
     }
-    // Tab: allow focus to leave dropdown; all other keys: stop propagation to prevent global shortcuts
-    if (e.key !== "Tab") {
-      e.stopPropagation();
-    }
+    if (e.key !== "Tab") e.stopPropagation();
   }
 
   onMount(() => {
@@ -928,8 +972,22 @@
     style={dropdownStyle}
     onkeydown={handleDropdownKeydown}
   >
+    {#if showModelFilter}
+      <div class="px-2 pt-2 pb-1">
+        <input
+          bind:this={modelFilterEl}
+          bind:value={modelFilter}
+          placeholder={t("modelFilter_placeholder")}
+          class="w-full rounded border border-border/40 bg-background/50 px-2 py-1 text-xs outline-none focus:border-ring/40"
+          onkeydown={handleModelFilterKeydown}
+        />
+      </div>
+    {/if}
     <div class="p-1">
-      {#each models as m, i}
+      {#if filteredModels.length === 0}
+        <div class="px-3 py-2 text-xs text-muted-foreground/60">{t("modelFilter_noResults")}</div>
+      {/if}
+      {#each filteredModels as m, i}
         <button
           class="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-xs hover:bg-accent transition-colors {model ===
           m.value

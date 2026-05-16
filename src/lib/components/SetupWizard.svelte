@@ -5,6 +5,7 @@
     detectInstallMethods,
     runClaudeLogin,
     updateUserSettings,
+    testApiConnectivity,
   } from "$lib/api";
   import type { InstallMethod, PlatformPreset } from "$lib/types";
   import { PLATFORM_PRESETS, PRESET_CATEGORIES } from "$lib/utils/platform-presets";
@@ -12,12 +13,14 @@
   import { IS_WINDOWS } from "$lib/utils/platform";
   import { getTransport } from "$lib/transport";
   import { t } from "$lib/i18n/index.svelte";
+  import { buildDoctorReport } from "$lib/utils/doctor";
 
   let { onComplete }: { onComplete: () => void } = $props();
 
   type WizardStep =
     | "checking"
     | "cli_not_found"
+    | "network_check"
     | "auth_choice"
     | "oauth_login"
     | "api_key_setup"
@@ -29,7 +32,7 @@
   // CLI install state
   let installMethods = $state<InstallMethod[]>([]);
 
-  // Copy button state: method id → "copy" | "copied"
+  // Copy button state: method id -> "copy" | "copied"
   let copyStates = $state<Record<string, string>>({});
 
   // Recheck state
@@ -46,8 +49,17 @@
   let showKey = $state(false);
   let saving = $state(false);
 
+  // Network probe state
+  let networkProbing = $state(false);
+  let networkResults = $state<{ name: string; ok: boolean; latency?: number; error?: string }[]>(
+    [],
+  );
+  let showProxyGuidance = $state(false);
+
   // Done state
   let doneTimer = $state<ReturnType<typeof setTimeout> | null>(null);
+  let doctorReport = $state<string>("");
+  let reportCopied = $state(false);
 
   // Start checking on mount
   $effect(() => {
@@ -71,23 +83,20 @@
       });
 
       if (cliResult.found && (authResult.has_oauth || authResult.has_api_key)) {
-        // Fully configured — mark onboarding done and skip
         await completeOnboarding();
         return;
       }
 
-      if (cliResult.found && !authResult.has_oauth && !authResult.has_api_key) {
-        // CLI found but no auth — go to auth choice
-        step = "auth_choice";
+      if (cliResult.found) {
+        step = "network_check";
+        runNetworkProbe();
         return;
       }
 
-      // CLI not found — show install commands
       step = "cli_not_found";
       await loadInstallMethods();
     } catch (e) {
       dbgWarn("wizard", "initial check error", e);
-      // If check fails, assume CLI not installed
       step = "cli_not_found";
       await loadInstallMethods();
     }
@@ -100,6 +109,73 @@
     } catch (e) {
       dbgWarn("wizard", "detect methods error", e);
       installMethods = [];
+    }
+  }
+
+  async function runNetworkProbe() {
+    networkProbing = true;
+    networkResults = [];
+    showProxyGuidance = false;
+
+    const probes = [
+      {
+        name: "api.anthropic.com",
+        baseUrl: "https://api.anthropic.com",
+        envVar: "ANTHROPIC_API_KEY",
+      },
+    ];
+
+    const results: typeof networkResults = [];
+
+    for (const probe of probes) {
+      try {
+        const result = await testApiConnectivity("", probe.baseUrl, probe.envVar, "");
+        results.push({
+          name: probe.name,
+          ok: result.success || result.partial,
+          latency: result.latencyMs,
+          error: result.error,
+        });
+      } catch (e) {
+        results.push({
+          name: probe.name,
+          ok: false,
+          error: String(e),
+        });
+      }
+    }
+
+    networkResults = results;
+    networkProbing = false;
+
+    const anyFailed = results.some((r) => !r.ok);
+    if (anyFailed) {
+      showProxyGuidance = true;
+    }
+  }
+
+  function proceedToAuth() {
+    step = "auth_choice";
+  }
+
+  async function generateDoctorReport() {
+    try {
+      doctorReport = await buildDoctorReport("");
+    } catch (e) {
+      dbgWarn("wizard", "doctor report error", e);
+      doctorReport = `## System Info\n- OS: ${navigator.platform}\n- User Agent: ${navigator.userAgent}`;
+    }
+  }
+
+  async function copyDoctorReport() {
+    try {
+      await navigator.clipboard.writeText(doctorReport);
+      reportCopied = true;
+      setTimeout(() => {
+        reportCopied = false;
+      }, 2000);
+    } catch (e) {
+      dbgWarn("wizard", "copy report failed", e);
     }
   }
 
@@ -121,7 +197,8 @@
       const result = await checkAgentCli("claude");
       dbg("wizard", "recheck result", result);
       if (result.found) {
-        step = "auth_choice";
+        step = "network_check";
+        runNetworkProbe();
       }
     } catch (e) {
       dbgWarn("wizard", "recheck error", e);
@@ -219,6 +296,7 @@
     } catch {
       // Non-critical — continue anyway
     }
+    await generateDoctorReport();
     step = "done";
     doneTimer = setTimeout(() => {
       onComplete();
@@ -243,6 +321,111 @@
           class="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
         ></div>
         <p class="text-sm text-muted-foreground">{t("setup_checking")}</p>
+      </div>
+    {:else if step === "network_check"}
+      <!-- Network connectivity probe -->
+      <div class="flex flex-col gap-6">
+        <div class="text-center">
+          <h2 class="text-xl font-semibold">{t("setup_networkTitle")}</h2>
+          <p class="text-sm text-muted-foreground mt-2">{t("setup_networkDesc")}</p>
+        </div>
+
+        <!-- Probe results -->
+        <div class="flex flex-col gap-2">
+          {#each networkResults as result}
+            <div
+              class="flex items-center gap-3 rounded-lg border {result.ok
+                ? 'border-green-500/30 bg-green-500/5'
+                : 'border-red-500/30 bg-red-500/5'} p-3"
+            >
+              {#if result.ok}
+                <svg
+                  class="h-5 w-5 text-green-500 shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"><path d="M20 6 9 17l-5-5" /></svg
+                >
+              {:else}
+                <svg
+                  class="h-5 w-5 text-red-500 shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  ><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line
+                    x1="9"
+                    y1="9"
+                    x2="15"
+                    y2="15"
+                  /></svg
+                >
+              {/if}
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium">{result.name}</p>
+                {#if result.ok && result.latency}
+                  <p class="text-xs text-muted-foreground">{result.latency}ms</p>
+                {:else if !result.ok && result.error}
+                  <p class="text-xs text-red-500 truncate">{result.error}</p>
+                {/if}
+              </div>
+            </div>
+          {/each}
+
+          {#if networkProbing}
+            <div class="flex items-center gap-3 rounded-lg border border-border p-3">
+              <div
+                class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0"
+              ></div>
+              <p class="text-sm text-muted-foreground">{t("setup_networkProbing")}</p>
+            </div>
+          {/if}
+        </div>
+
+        <!-- Proxy guidance for China network -->
+        {#if showProxyGuidance}
+          <div class="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+            <div class="flex items-start gap-2">
+              <svg
+                class="h-5 w-5 text-amber-500 shrink-0 mt-0.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                ><path d="M12 9v4" /><path d="M12 17h.01" /><path
+                  d="M3.6 15.4 10.2 4a2 2 0 0 1 3.6 0l6.6 11.4a2 2 0 0 1-1.8 3H5.4a2 2 0 0 1-1.8-3Z"
+                /></svg
+              >
+              <div>
+                <p class="text-sm font-medium text-amber-500">{t("setup_networkFailTitle")}</p>
+                <p class="text-xs text-muted-foreground mt-1">{t("setup_networkFailDesc")}</p>
+                <ul class="text-xs text-muted-foreground mt-2 space-y-1 list-disc list-inside">
+                  <li>{t("setup_networkTipProxy")}</li>
+                  <li>{t("setup_networkTipVPN")}</li>
+                  <li>{t("setup_networkTipMirror")}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        {/if}
+
+        <!-- Actions -->
+        <div class="flex items-center justify-center gap-3">
+          <button
+            class="rounded-md border border-border px-4 py-2 text-sm hover:bg-accent transition-colors disabled:opacity-50"
+            disabled={networkProbing}
+            onclick={runNetworkProbe}
+          >
+            {t("setup_networkRetry")}
+          </button>
+          <button
+            class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+            disabled={networkProbing}
+            onclick={proceedToAuth}
+          >
+            {t("setup_networkContinue")}
+          </button>
+        </div>
       </div>
     {:else if step === "cli_not_found"}
       <!-- CLI not found — show install commands to copy -->
@@ -569,7 +752,7 @@
       </div>
     {:else if step === "done"}
       <!-- Done! -->
-      <div class="flex flex-col items-center gap-4 py-16">
+      <div class="flex flex-col items-center gap-4 py-8">
         <div
           class="flex h-16 w-16 items-center justify-center rounded-full bg-miwarp-status-success/10"
         >
@@ -585,6 +768,24 @@
         </div>
         <h2 class="text-xl font-semibold">{t("setup_allSet")}</h2>
         <p class="text-sm text-muted-foreground">{t("setup_allSetDesc")}</p>
+
+        <!-- Doctor report -->
+        {#if doctorReport}
+          <div class="w-full max-w-md mt-2">
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-xs font-medium text-muted-foreground">{t("setup_doctorReport")}</p>
+              <button
+                class="rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                onclick={copyDoctorReport}
+              >
+                {reportCopied ? t("setup_copied") : t("setup_copyReport")}
+              </button>
+            </div>
+            <pre
+              class="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground overflow-auto max-h-48 whitespace-pre-wrap">{doctorReport}</pre>
+          </div>
+        {/if}
+
         <button
           class="rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors mt-2"
           onclick={finishNow}>{t("setup_start")}</button
