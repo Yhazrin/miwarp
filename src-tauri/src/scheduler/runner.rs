@@ -184,7 +184,7 @@ async fn monitor_run_completion(task_run_id: &str, run_id: &str) {
         if let Some((status, error)) = terminal {
             log::info!("[scheduler] run {run_id} finished with status {status:?}");
             if let Some(mut task_run) = store::load_run(task_run_id) {
-                task_run.status = status;
+                task_run.status = status.clone();
                 task_run.error = error;
                 task_run.ended_at = Some(Utc::now().to_rfc3339());
                 let _ = store::save_run(&task_run);

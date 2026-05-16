@@ -375,6 +375,17 @@ impl Default for UserSettings {
             web_server_bind: None,
             web_server_allowed_origins: None,
             web_server_tunnel_url: None,
+            feishu_webhook_url: None,
+            feishu_webhook_enabled: false,
+            feishu_webhook_triggers: vec![],
+            feishu_webhook_template: None,
+            notifications_enabled: None,
+            notify_on_run_completed: None,
+            notify_on_run_failed: None,
+            notify_on_approval_required: None,
+            notify_on_schedule_completed: None,
+            notify_on_team_completed: None,
+            notification_min_duration_sec: None,
             updated_at: now_iso(),
         }
     }

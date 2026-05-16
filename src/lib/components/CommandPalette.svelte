@@ -12,6 +12,7 @@
   import * as api from "$lib/api";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
+  import { getIcon, commandIconMap } from "$lib/icons";
 
   let {
     open = $bindable(false),
@@ -36,6 +37,8 @@
   let query = $state("");
   let selectedIndex = $state(0);
   let inputEl: HTMLInputElement | undefined = $state();
+  let previewContent = $state<string | null>(null);
+  let hoveredCmdId = $state<string | null>(null);
 
   let filtered = $derived(filterCommands(query, agent));
   let grouped = $derived(groupByCategory(filtered));
@@ -48,8 +51,18 @@
     if (open) {
       query = "";
       selectedIndex = 0;
+      previewContent = null;
+      hoveredCmdId = null;
       requestAnimationFrame(() => inputEl?.focus());
     }
+  });
+
+  // Clear preview when query changes or selection changes
+  $effect(() => {
+    // Track changes to reset preview
+    void query;
+    void selectedIndex;
+    previewContent = null;
   });
 
   function handleKeydown(e: KeyboardEvent) {
@@ -75,6 +88,12 @@
       executeCommand(flatList[selectedIndex]);
       return;
     }
+    if (e.key === "Tab" && hoveredCmdId) {
+      // Preview command on Tab
+      e.preventDefault();
+      showCommandPreview(flatList.find((c) => c.id === hoveredCmdId) || flatList[selectedIndex]);
+      return;
+    }
   }
 
   function scrollToSelected() {
@@ -82,9 +101,75 @@
     el?.scrollIntoView({ block: "nearest" });
   }
 
+  function showCommandPreview(cmd: CommandDef) {
+    if (!cmd) return;
+
+    // Generate preview based on action type
+    let preview = "";
+    switch (cmd.action) {
+      case "navigate":
+        preview = `导航到: ${cmd.payload || "/"}`;
+        break;
+      case "send_prompt":
+        preview = `发送提示: ${cmd.payload?.slice(0, 60)}${cmd.payload && cmd.payload.length > 60 ? "..." : ""}`;
+        break;
+      case "toggle_state":
+        preview = cmd.payload === "plan_mode" ? "切换计划模式" : `切换状态: ${cmd.payload}`;
+        break;
+      case "open_modal": {
+        const modalNames: Record<string, string> = {
+          "model-selector": "模型选择器",
+          "folder-browser": "文件夹浏览器",
+          "version-info": "版本信息",
+          permissions: "权限设置",
+        };
+        preview = `打开: ${modalNames[cmd.payload || ""] || cmd.payload}`;
+        break;
+      }
+      case "ipc_command": {
+        const ipcNames: Record<string, string> = {
+          get_git_diff: "获取 Git 差异",
+          get_git_status: "获取 Git 状态",
+          get_run_artifacts: "获取运行统计",
+          export_conversation: "导出对话 (Markdown)",
+          export_conversation_html: "导出对话 (HTML)",
+          stop_run: "停止当前运行",
+          check_agent_cli: "检查 CLI 安装状态",
+        };
+        preview = `执行: ${ipcNames[cmd.payload || ""] || cmd.payload}`;
+        break;
+      }
+      case "panel:multi-agent":
+        preview = "打开多 Agent 面板";
+        break;
+      default:
+        if (cmd.payload) {
+          preview = `执行: ${cmd.payload}`;
+        }
+    }
+
+    // Add shortcut hint if available
+    if (cmd.shortcut) {
+      preview += ` [${cmd.shortcut}]`;
+    }
+
+    // Add permission hint
+    if (requiresPermission(cmd)) {
+      preview += " ⚠️ 需要确认";
+    }
+
+    previewContent = preview;
+  }
+
+  function requiresPermission(cmd: CommandDef): boolean {
+    const permissionRequiredActions = ["ipc_command", "send_prompt", "panel:multi-agent"];
+    return permissionRequiredActions.includes(cmd.action) && cmd.action !== "navigate";
+  }
+
   async function executeCommand(cmd: CommandDef) {
     open = false;
     recordRecentCommand(cmd.id);
+    previewContent = null;
 
     switch (cmd.action) {
       case "navigate":
@@ -110,6 +195,10 @@
 
       case "ipc_command":
         await handleIpcCommand(cmd);
+        break;
+
+      case "panel:multi-agent":
+        window.dispatchEvent(new CustomEvent("ocv:open-multi-agent"));
         break;
     }
   }
@@ -228,12 +317,6 @@
   let indexMap = $derived.by(() => {
     const map = new Map<string, number>();
     let idx = 0;
-    // Recent commands first
-    if (showRecent) {
-      for (const cmd of recentCommands) {
-        map.set(cmd.id, idx++);
-      }
-    }
     const categoryOrder: CommandCategory[] = [
       "chat",
       "tools",
@@ -243,16 +326,37 @@
     ];
     for (const cat of categoryOrder) {
       for (const cmd of grouped[cat]) {
-        if (!map.has(cmd.id)) map.set(cmd.id, idx++);
+        map.set(cmd.id, idx++);
       }
     }
     return map;
   });
+
+  // Get icon for command
+  function getCommandIcon(cmd: CommandDef): string {
+    const iconName = commandIconMap[cmd.id];
+    if (iconName) {
+      return getIcon(iconName);
+    }
+    // Fallback to built-in search icon
+    return getIcon("search");
+  }
+
+  // Handle mouse enter for preview
+  function handleMouseEnter(cmd: CommandDef) {
+    hoveredCmdId = cmd.id;
+    showCommandPreview(cmd);
+  }
+
+  function handleMouseLeave() {
+    hoveredCmdId = null;
+    previewContent = null;
+  }
 </script>
 
 {#if open}
   <div
-    class="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]"
+    class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
     role="dialog"
     aria-modal="true"
   >
@@ -264,73 +368,44 @@
       onkeydown={() => {}}
     ></div>
 
-    <!-- Palette -->
-    <div
-      class="relative z-50 w-full max-w-xl rounded-lg border bg-background shadow-2xl animate-fade-in"
-    >
-      <!-- Search -->
-      <div class="flex items-center gap-2 border-b px-4 py-3">
-        <svg
-          class="h-4 w-4 text-muted-foreground shrink-0"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg
-        >
-        <input
-          bind:this={inputEl}
-          bind:value={query}
-          onkeydown={handleKeydown}
-          class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-          placeholder={t("cmd_placeholder")}
-        />
-        <kbd class="hidden sm:inline text-xs text-muted-foreground bg-muted rounded px-1.5 py-0.5"
-          >{t("cmd_esc")}</kbd
-        >
-      </div>
-
-      <!-- Results -->
-      <div class="max-h-[40vh] overflow-y-auto p-2">
-        {#if showRecent}
-          <div class="mb-1">
-            <p
-              class="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider"
-            >
-              {t("cmd_cat_recent")}
-            </p>
-            {#each recentCommands as cmd}
-              {@const idx = indexMap.get(cmd.id) ?? 0}
-              <button
-                data-cmd-idx={idx}
-                class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors
-                  {idx === selectedIndex
-                  ? 'bg-accent text-accent-foreground'
-                  : 'hover:bg-accent/50'}"
-                onclick={() => executeCommand(cmd)}
-                onmouseenter={() => (selectedIndex = idx)}
+    <!-- Palette Container -->
+    <div class="relative z-50 w-full max-w-xl">
+      <!-- Main Palette -->
+      <div class="rounded-lg border bg-background shadow-2xl animate-fade-in overflow-hidden">
+        <!-- Search -->
+        <div class="flex items-center gap-3 border-b px-4 py-3">
+          <span class="text-muted-foreground shrink-0">{@html getIcon("search")}</span>
+          <input
+            bind:this={inputEl}
+            bind:value={query}
+            onkeydown={handleKeydown}
+            class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            placeholder={t("cmd_placeholder")}
+          />
+          <div class="flex items-center gap-2">
+            {#if previewContent}
+              <span
+                class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded animate-fade-in"
               >
-                <span class="flex-1 text-left">{cmd.name}</span>
-                <span class="text-xs text-muted-foreground">{cmd.description}</span>
-                {#if cmd.shortcut}
-                  <kbd class="text-[10px] text-muted-foreground bg-muted rounded px-1 py-0.5"
-                    >{cmd.shortcut}</kbd
-                  >
-                {/if}
-              </button>
-            {/each}
+                {previewContent}
+              </span>
+            {/if}
+            <kbd class="text-xs text-muted-foreground bg-muted rounded px-1.5 py-0.5"
+              >{t("cmd_esc")}</kbd
+            >
           </div>
-        {/if}
-        {#each ["chat", "tools", "navigation", "settings", "diagnostics"] as cat}
-          {#if grouped[cat as CommandCategory].length > 0}
+        </div>
+
+        <!-- Results -->
+        <div class="max-h-[40vh] overflow-y-auto p-2">
+          {#if showRecent}
             <div class="mb-1">
               <p
                 class="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider"
               >
-                {categoryLabels[cat as CommandCategory]}
+                {t("cmd_cat_recent")}
               </p>
-              {#each grouped[cat as CommandCategory] as cmd}
+              {#each recentCommands as cmd}
                 {@const idx = indexMap.get(cmd.id) ?? 0}
                 <button
                   data-cmd-idx={idx}
@@ -339,7 +414,8 @@
                     ? 'bg-accent text-accent-foreground'
                     : 'hover:bg-accent/50'}"
                   onclick={() => executeCommand(cmd)}
-                  onmouseenter={() => (selectedIndex = idx)}
+                  onmouseenter={() => handleMouseEnter(cmd)}
+                  onmouseleave={handleMouseLeave}
                 >
                   <span class="flex-1 text-left">{cmd.name}</span>
                   <span class="text-xs text-muted-foreground">{cmd.description}</span>
@@ -352,13 +428,81 @@
               {/each}
             </div>
           {/if}
-        {/each}
+          {#each ["chat", "tools", "navigation", "settings", "diagnostics"] as cat}
+            {#if grouped[cat as CommandCategory].length > 0}
+              <div class="mb-1">
+                <p
+                  class="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider"
+                >
+                  {categoryLabels[cat as CommandCategory]}
+                </p>
+                {#each grouped[cat as CommandCategory] as cmd}
+                  {@const idx = indexMap.get(cmd.id) ?? 0}
+                  <button
+                    data-cmd-idx={idx}
+                    class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors
+                      {idx === selectedIndex
+                      ? 'bg-accent text-accent-foreground'
+                      : 'hover:bg-accent/50'}"
+                    onclick={() => executeCommand(cmd)}
+                    onmouseenter={() => handleMouseEnter(cmd)}
+                    onmouseleave={handleMouseLeave}
+                  >
+                    <!-- Icon -->
+                    <span
+                      class="flex h-5 w-5 items-center justify-center shrink-0 text-muted-foreground [&_svg]:w-4 [&_svg]:h-4"
+                    >
+                      {@html getCommandIcon(cmd)}
+                    </span>
 
-        {#if flatList.length === 0}
-          <div class="py-6 text-center text-sm text-muted-foreground">
-            {t("cmd_noCommandsFound")}
-          </div>
-        {/if}
+                    <!-- Name -->
+                    <span class="flex-1 text-left font-medium">{cmd.name}</span>
+
+                    <!-- Description -->
+                    <span class="text-xs text-muted-foreground truncate max-w-[120px]">
+                      {cmd.description}
+                    </span>
+
+                    <!-- Shortcut -->
+                    {#if cmd.shortcut}
+                      <kbd
+                        class="text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-0.5 shrink-0"
+                      >
+                        {cmd.shortcut}
+                      </kbd>
+                    {/if}
+
+                    <!-- Permission indicator -->
+                    {#if requiresPermission(cmd) && idx === selectedIndex}
+                      <span
+                        class="text-[10px] text-amber-600 dark:text-amber-400 shrink-0"
+                        title="需要确认"
+                      >
+                        ⚠️
+                      </span>
+                    {/if}
+                  </button>
+                {/each}
+              </div>
+            {/if}
+          {/each}
+
+          {#if flatList.length === 0}
+            <div class="py-6 text-center text-sm text-muted-foreground">
+              {t("cmd_noCommandsFound")}
+            </div>
+          {/if}
+        </div>
+
+        <!-- Footer hint -->
+        <div
+          class="border-t px-4 py-2 flex items-center justify-between text-xs text-muted-foreground"
+        >
+          <span>↑↓ 导航 · Enter 执行 · Tab 预览</span>
+          {#if flatList.length > 0}
+            <span>{flatList.length} 条命令</span>
+          {/if}
+        </div>
       </div>
     </div>
   </div>

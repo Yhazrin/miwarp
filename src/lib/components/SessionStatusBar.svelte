@@ -443,13 +443,22 @@
   });
 </script>
 
+<!--
+  data-tauri-drag-region + .session-status-drag class on the OUTER shell makes
+  the *entire* status-bar background a window drag region (not just the left
+  and right spacers). Buttons, inputs and anchors inside are already marked
+  `-webkit-app-region: no-drag` globally (see src/app.css), so the model
+  selector, sidebar toggle, more menu etc. still work normally. The two
+  spacers below are kept for Linux/Windows where the JS handler is needed.
+-->
 <div
-  class="relative mx-4 mt-3 rounded-2xl border border-border/35 bg-background/46 font-mono text-xs text-foreground/70 backdrop-blur-xl"
+  class="session-status-drag relative mx-4 mt-3 rounded-full border border-border/35 bg-background/46 font-mono text-xs text-foreground/70 backdrop-blur-xl"
+  data-tauri-drag-region
 >
-  <!-- Left drag spacer -->
-  <WindowDragArea class="absolute left-0 top-0 bottom-0 w-24 rounded-l-2xl" />
-  <!-- Right drag spacer -->
-  <WindowDragArea class="absolute right-0 top-0 bottom-0 w-24 rounded-r-2xl" />
+  <!-- Left drag spacer (Linux/Windows JS fallback) -->
+  <WindowDragArea class="absolute left-0 top-0 bottom-0 w-24 rounded-l-full" />
+  <!-- Right drag spacer (Linux/Windows JS fallback) -->
+  <WindowDragArea class="absolute right-0 top-0 bottom-0 w-24 rounded-r-full" />
   <!-- Tier 1: Always visible (h-9) -->
   <div class="relative z-10 flex h-9 items-center justify-between px-3">
     <!-- Left: core info -->

@@ -966,7 +966,7 @@
     ></div>
     <!-- Header: icon tabs -->
     <div
-      class="m-1.5 rounded-2xl border border-border/40 bg-background/40 px-2 py-1.5 backdrop-blur-xl"
+      class="mt-3 mx-1.5 mb-1.5 rounded-2xl border border-border/40 bg-background/40 px-2 py-1.5 backdrop-blur-xl"
     >
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-0.5 overflow-x-auto pr-1">
