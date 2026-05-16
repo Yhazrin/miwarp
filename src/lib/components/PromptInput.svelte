@@ -57,7 +57,6 @@
   import type { ClipboardFileInfo } from "$lib/api";
   import type { PromptInputSnapshot } from "$lib/types";
   import { PromptInputStore } from "$lib/stores";
-  import type { PendingAttachment, PastedBlock, PathRef } from "$lib/stores";
   import {
     type HistoryState,
     type HistoryAction,
