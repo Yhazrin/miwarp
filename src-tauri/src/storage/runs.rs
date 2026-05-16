@@ -110,6 +110,10 @@ pub fn create_run(
         cli_usage_incomplete: None,
         folder_id: None,
         deleted_at: None,
+        creation_mode: None,   // Caller sets after create_run
+        worktree_path: None,   // Caller sets after create_run
+        worktree_branch: None, // Caller sets after create_run
+        parent_cwd: None,      // Caller sets after create_run
         no_session_persistence,
         execution_path: None,   // Caller sets after create_run
         conversation_ref: None, // Written by runtime events (session_init / thread.started)

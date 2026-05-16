@@ -1,5 +1,7 @@
 use crate::agent::adapter::ActorSessionMap;
-use crate::models::{ExecutionPath, PromptFavorite, PromptSearchResult, RunStatus, TaskRun};
+use crate::models::{
+    ExecutionPath, PromptFavorite, PromptSearchResult, RunStatus, SessionCreationMode, TaskRun,
+};
 use crate::storage;
 use std::collections::{HashMap, HashSet};
 
@@ -157,6 +159,40 @@ pub fn start_run(
         platform_id,
     )?;
     meta.execution_path = Some(path);
+
+    // ── Worktree mode: auto-create isolated branch + worktree ──
+    let settings = storage::settings::get_user_settings();
+    let use_worktree = remote_host_name.is_none() && settings.default_session_mode == "worktree";
+
+    if use_worktree {
+        let is_repo = super::worktree::is_git_repo_internal(&cwd).unwrap_or(false);
+        if is_repo {
+            let short_id: String = id.chars().take(8).collect();
+            let branch_name = format!("feat/{}", short_id);
+            match super::worktree::create_worktree_internal(&cwd, &short_id, &branch_name) {
+                Ok(wt_info) => {
+                    meta.parent_cwd = Some(cwd.clone());
+                    meta.cwd = wt_info.path.clone();
+                    meta.worktree_path = Some(wt_info.path);
+                    meta.worktree_branch = Some(wt_info.branch);
+                    meta.creation_mode = Some(SessionCreationMode::Worktree);
+                    log::info!("[runs] start_run: worktree created for id={}", id);
+                }
+                Err(e) => {
+                    log::warn!(
+                        "[runs] start_run: worktree creation failed, falling back to single: {}",
+                        e
+                    );
+                    meta.creation_mode = Some(SessionCreationMode::Single);
+                }
+            }
+        } else {
+            meta.creation_mode = Some(SessionCreationMode::Single);
+        }
+    } else {
+        meta.creation_mode = Some(SessionCreationMode::Single);
+    }
+
     storage::runs::save_meta(&meta)?;
     log::debug!("[runs] start_run: created id={}", id);
     Ok(meta.to_task_run(None, None, None))
@@ -171,6 +207,7 @@ pub fn rename_run(id: String, name: String) -> Result<(), String> {
 #[tauri::command]
 pub fn soft_delete_runs(ids: Vec<String>) -> Result<u32, String> {
     log::debug!("[cmd/runs] soft_delete_runs: ids={:?}", ids);
+    cleanup_worktrees_for_runs(&ids);
     storage::runs::soft_delete_runs(&ids)
 }
 
@@ -315,4 +352,31 @@ pub fn list_prompt_favorites() -> Result<Vec<PromptFavorite>, String> {
 #[tauri::command]
 pub fn list_prompt_tags() -> Result<Vec<String>, String> {
     Ok(storage::favorites::list_all_tags())
+}
+
+/// Best-effort cleanup of worktree directories for the given run IDs.
+/// Runs before soft/hard delete. Failures are logged but do not block deletion.
+pub fn cleanup_worktrees_for_runs(ids: &[String]) {
+    let settings = storage::settings::get_user_settings();
+    if !settings.auto_cleanup_worktree {
+        return;
+    }
+    for id in ids {
+        if let Some(meta) = storage::runs::get_run(id) {
+            if let Some(ref wt_path) = meta.worktree_path {
+                let parent = meta.parent_cwd.as_deref().unwrap_or(&meta.cwd);
+                if let Err(e) = super::worktree::remove_worktree_internal(
+                    wt_path,
+                    parent,
+                    meta.worktree_branch.as_deref(),
+                ) {
+                    log::warn!(
+                        "[runs] worktree cleanup failed for run={} (non-fatal): {}",
+                        id,
+                        e
+                    );
+                }
+            }
+        }
+    }
 }

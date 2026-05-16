@@ -2093,6 +2093,7 @@ impl SessionActor {
             self.emit_state(state_str, exit_code, error_msg, true);
         } else {
             self.finalize_meta(exit_code);
+            self.trigger_auto_commit();
         }
     }
 
@@ -2228,6 +2229,63 @@ impl SessionActor {
                 e
             );
         }
+    }
+
+    /// Fire-and-forget auto-commit for worktree sessions on completion.
+    fn trigger_auto_commit(&self) {
+        let run_id = self.run_id.clone();
+        tokio::spawn(async move {
+            let meta = tokio::task::spawn_blocking({
+                let rid = run_id.clone();
+                move || crate::storage::runs::get_run(&rid)
+            })
+            .await
+            .unwrap_or(None);
+
+            let Some(meta) = meta else { return };
+
+            if meta.creation_mode != Some(crate::models::SessionCreationMode::Worktree) {
+                return;
+            }
+
+            let settings = crate::storage::settings::get_user_settings();
+            if !settings.auto_commit_on_complete {
+                return;
+            }
+
+            let cwd = meta.worktree_path.as_deref().unwrap_or(&meta.cwd);
+            let short_id: String = run_id.chars().take(8).collect();
+            let msg = format!("auto: session {} completed", short_id);
+
+            match crate::commands::worktree::auto_commit_internal(cwd, &msg) {
+                Ok(result) => {
+                    if result.committed {
+                        log::info!(
+                            "[actor] auto-committed worktree for run={}: {:?}",
+                            run_id,
+                            result.sha
+                        );
+                        // Optionally create PR
+                        if settings.auto_pr_on_complete {
+                            if let Some(ref branch) = meta.worktree_branch {
+                                let base = crate::commands::worktree::detect_base_branch(cwd);
+                                match crate::commands::worktree::create_pull_request_internal(
+                                    cwd, branch, &base,
+                                )
+                                .await
+                                {
+                                    Ok(url) => log::info!("[actor] auto-PR created: {}", url),
+                                    Err(e) => log::warn!("[actor] auto-PR failed: {}", e),
+                                }
+                            }
+                        }
+                    } else {
+                        log::debug!("[actor] no changes to auto-commit for run={}", run_id);
+                    }
+                }
+                Err(e) => log::warn!("[actor] auto-commit failed for run={}: {}", run_id, e),
+            }
+        });
     }
 
     // ── Cleanup ──

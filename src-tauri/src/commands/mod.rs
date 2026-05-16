@@ -29,3 +29,4 @@ pub mod team_runs;
 pub mod teams;
 pub mod updates;
 pub mod web_server;
+pub mod worktree;

@@ -306,6 +306,11 @@ pub fn run() {
             scheduler::set_scheduled_task_enabled,
             scheduler::run_scheduled_task_now,
             scheduler::list_scheduled_task_runs,
+            commands::worktree::create_worktree,
+            commands::worktree::auto_commit,
+            commands::worktree::create_pull_request,
+            commands::worktree::remove_worktree,
+            commands::worktree::list_worktrees,
         ])
         .setup(move |app| {
             // Set up broadcast emitter (requires AppHandle, so must be in setup)

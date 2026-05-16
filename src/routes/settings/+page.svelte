@@ -2113,6 +2113,127 @@
                 {/if}
               </Card>
             {/if}
+
+            <!-- Session Mode Card -->
+            <Card class="p-6 space-y-4">
+              <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                {t("settings_sessionMode")}
+              </h2>
+
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium">{t("settings_defaultSessionMode")}</p>
+                  <p class="text-xs text-muted-foreground">
+                    {t("settings_defaultSessionModeDesc")}
+                  </p>
+                </div>
+                <div class="flex gap-1.5">
+                  <button
+                    class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
+                      {(settings?.default_session_mode ?? 'worktree') === 'single'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'border-muted-foreground/30 text-muted-foreground hover:bg-accent'}"
+                    onclick={async () => {
+                      settings = await api.updateUserSettings({
+                        default_session_mode: "single",
+                      } as Partial<UserSettings>);
+                    }}
+                  >
+                    {t("settings_sessionModeSingle")}
+                  </button>
+                  <button
+                    class="rounded-md border px-3 py-1.5 text-xs transition-all duration-150
+                      {(settings?.default_session_mode ?? 'worktree') === 'worktree'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'border-muted-foreground/30 text-muted-foreground hover:bg-accent'}"
+                    onclick={async () => {
+                      settings = await api.updateUserSettings({
+                        default_session_mode: "worktree",
+                      } as Partial<UserSettings>);
+                    }}
+                  >
+                    {t("settings_sessionModeWorktree")}
+                  </button>
+                </div>
+              </div>
+
+              {#if (settings?.default_session_mode ?? "worktree") === "worktree"}
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm font-medium">{t("settings_autoCommit")}</p>
+                    <p class="text-xs text-muted-foreground">{t("settings_autoCommitDesc")}</p>
+                  </div>
+                  <button
+                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {settings?.auto_commit_on_complete
+                      ? 'bg-primary'
+                      : 'bg-muted'}"
+                    onclick={async () => {
+                      settings = await api.updateUserSettings({
+                        auto_commit_on_complete: !settings?.auto_commit_on_complete,
+                      } as Partial<UserSettings>);
+                    }}
+                  >
+                    <span
+                      class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {settings?.auto_commit_on_complete
+                        ? 'translate-x-6'
+                        : 'translate-x-1'}"
+                    ></span>
+                  </button>
+                </div>
+
+                {#if settings?.auto_commit_on_complete}
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-sm font-medium">{t("settings_autoPR")}</p>
+                      <p class="text-xs text-muted-foreground">{t("settings_autoPRDesc")}</p>
+                    </div>
+                    <button
+                      class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {settings?.auto_pr_on_complete
+                        ? 'bg-primary'
+                        : 'bg-muted'}"
+                      onclick={async () => {
+                        settings = await api.updateUserSettings({
+                          auto_pr_on_complete: !settings?.auto_pr_on_complete,
+                        } as Partial<UserSettings>);
+                      }}
+                    >
+                      <span
+                        class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {settings?.auto_pr_on_complete
+                          ? 'translate-x-6'
+                          : 'translate-x-1'}"
+                      ></span>
+                    </button>
+                  </div>
+                {/if}
+
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-sm font-medium">{t("settings_autoCleanupWorktree")}</p>
+                    <p class="text-xs text-muted-foreground">
+                      {t("settings_autoCleanupWorktreeDesc")}
+                    </p>
+                  </div>
+                  <button
+                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {settings?.auto_cleanup_worktree !==
+                    false
+                      ? 'bg-primary'
+                      : 'bg-muted'}"
+                    onclick={async () => {
+                      settings = await api.updateUserSettings({
+                        auto_cleanup_worktree: settings?.auto_cleanup_worktree === false,
+                      } as Partial<UserSettings>);
+                    }}
+                  >
+                    <span
+                      class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {settings?.auto_cleanup_worktree !==
+                      false
+                        ? 'translate-x-6'
+                        : 'translate-x-1'}"
+                    ></span>
+                  </button>
+                </div>
+              {/if}
+            </Card>
           </div>
 
           <!-- ═══ Connection tab ═══ -->
