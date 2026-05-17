@@ -16,6 +16,7 @@
   import AgentAppearanceSettings from "$lib/components/settings/AgentAppearanceSettings.svelte";
   import RemoteTab from "$lib/components/settings/RemoteTab.svelte";
   import CliConfigTab from "$lib/components/settings/CliConfigTab.svelte";
+  import { useConnectionPlatform } from "$lib/composables/use-connection-platform.svelte";
   import { formatKeyDisplay } from "$lib/stores/keybindings.svelte";
   import {
     PLATFORM_PRESETS,
@@ -116,67 +117,20 @@
   ];
 
   let settings = $state<UserSettings | null>(null);
-  let authMode = $state("cli");
-  let anthropicApiKey = $state("");
-  let anthropicBaseUrl = $state("");
-  let showApiKey = $state(false);
   let generalSaved = $state(false);
-  let modelOpus = $state("");
-  let modelSonnet = $state("");
-  let modelHaiku = $state("");
-  let selectedPlatformId = $state<string | null>(null);
-  let platformCredentials = $state<PlatformCredential[]>([]);
-  let platformExtraEnv = $state<Array<{ key: string; value: string }>>([]);
-  // Track whether user manually edited extra_env (per platform ID).
-  // Untouched platforms don't write extra_env, avoiding preset defaults being baked into credentials.
-  let extraEnvTouched = $state<Record<string, boolean>>({});
 
-  // CLI Auth state
-  let authOverview = $state<import("$lib/types").AuthOverview | null>(null);
-  let cliLoginLoading = $state(false);
-  let cliLoginError = $state("");
+  async function saveGeneralPatch(patch: Record<string, unknown>) {
+    dbg("settings", "saveGeneralPatch", redactSensitive(patch));
+    try {
+      settings = await api.updateUserSettings(patch as Partial<UserSettings>);
+      generalSaved = true;
+      setTimeout(() => (generalSaved = false), 1500);
+    } catch (e) {
+      dbgWarn("settings", "saveGeneralPatch error", e);
+    }
+  }
 
-  // Derive merged platform list (static presets + dynamic custom endpoints)
-  let platformList = $derived(buildPlatformList(platformCredentials));
-
-  // Derive selected platform from id (search merged list, not just static presets)
-  let selectedPlatform = $derived<PlatformPreset | null>(
-    selectedPlatformId ? (platformList.find((p) => p.id === selectedPlatformId) ?? null) : null,
-  );
-
-  // Custom endpoint editing state
-  // ── Local proxy detection state ──
-  let localProxyStatus = $state<import("$lib/types").LocalProxyStatus | null>(null);
-  let localProxyChecking = $state(false);
-  let localProxyRequestId = $state(0);
-  let localAdvancedOpen = $state(false);
-  let localProxyStatuses = $state<Record<string, { running: boolean; needsAuth: boolean }>>({});
-
-  // ── API connectivity test state ──
-  let apiTestLoading = $state(false);
-  let apiTestResult = $state<import("$lib/types").ApiTestResult | null>(null);
-  let apiTestRequestId = $state(0);
-
-  // Derive effective auth env var (tracks platformCredentials + selectedPlatformId)
-  let effectiveAuthEnvVar = $derived(
-    findCredential(platformCredentials, selectedPlatformId ?? "")?.auth_env_var ||
-      selectedPlatform?.auth_env_var ||
-      "ANTHROPIC_API_KEY",
-  );
-  // Clear stale test result AND invalidate in-flight requests when any relevant input changes
-  $effect(() => {
-    void anthropicApiKey;
-    void anthropicBaseUrl;
-    void modelOpus;
-    void modelSonnet;
-    void modelHaiku;
-    void effectiveAuthEnvVar;
-    return () => {
-      apiTestResult = null;
-      apiTestRequestId++; // invalidate in-flight request
-      apiTestLoading = false;
-    };
-  });
+  const conn = useConnectionPlatform({ saveGeneralPatch });
 
   let debugOn = $state(isDebugMode());
   let logCopied = $state(false);
@@ -228,296 +182,6 @@
     return () => clearInterval(timer);
   });
 
-  function detectPlatformFromUrl(url: string, activePlatformId?: string): string | null {
-    // If we have a stored active_platform_id, prefer it
-    if (activePlatformId) return activePlatformId;
-    if (!url) return null;
-    const match = PLATFORM_PRESETS.find((p) => p.base_url && url === p.base_url);
-    return match?.id ?? "custom";
-  }
-
-  /** Load display fields (key + URL) from credential store for a given platform. */
-  function loadFieldsFromCredential(platformId: string | null) {
-    apiTestResult = null;
-    if (!platformId) {
-      anthropicApiKey = "";
-      anthropicBaseUrl = "";
-      platformExtraEnv = [];
-      return;
-    }
-    const cred = findCredential(platformCredentials, platformId);
-    const preset = PLATFORM_PRESETS.find((p) => p.id === platformId);
-    anthropicApiKey = cred?.api_key ?? "";
-    // base_url: credential override > preset default > empty
-    anthropicBaseUrl = cred?.base_url ?? preset?.base_url ?? "";
-    // models: credential override > preset default > expand to 3 tiers
-    const models = cred?.models ?? preset?.models;
-    const [o, s, h] = expandModelsToTiers(models);
-    modelOpus = o;
-    modelSonnet = s;
-    modelHaiku = h;
-    // extra_env: credential explicit value (including {}) takes priority; undefined falls back to preset
-    const extraEnv = cred?.extra_env !== undefined ? cred.extra_env : (preset?.extra_env ?? {});
-    platformExtraEnv = Object.entries(extraEnv).map(([key, value]) => ({ key, value }));
-    // Don't set touched on load — touched is only driven by UI edit actions (onblur/delete row)
-    dbg("settings", "loadFieldsFromCredential", {
-      platformId,
-      hasKey: !!anthropicApiKey,
-      url: anthropicBaseUrl,
-      models: [modelOpus, modelSonnet, modelHaiku],
-      extraEnvKeys: Object.keys(extraEnv),
-      extraEnvSource: cred?.extra_env !== undefined ? "credential" : "preset",
-    });
-  }
-
-  /** Save current editing fields into the credentials array. */
-  function saveCurrentToCredential() {
-    if (!selectedPlatformId) return;
-    const preset = PLATFORM_PRESETS.find((p) => p.id === selectedPlatformId);
-    // Compress 3 tier inputs → models array; undefined when all empty (→ backend preset fallback).
-    // Do NOT fall back to preset?.models here — undefined means "use provider defaults",
-    // and baking preset values into credential would prevent future preset updates from taking effect.
-    const modelsToSave = compressModelsFromTiers(modelOpus, modelSonnet, modelHaiku);
-
-    // Convert extra_env array back to Record, filter empty keys, warn on duplicates
-    const extraEnvRecord: Record<string, string> = {};
-    const seenKeys = new Set<string>();
-    for (const { key, value } of platformExtraEnv) {
-      const k = key.trim();
-      if (!k) continue;
-      if (seenKeys.has(k)) {
-        dbgWarn("settings", `duplicate extra_env key "${k}" — last value wins`);
-      }
-      seenKeys.add(k);
-      extraEnvRecord[k] = value;
-    }
-
-    // Only write extra_env when user has touched it; otherwise preserve credential's original value
-    const extraEnvToSave = extraEnvTouched[selectedPlatformId]
-      ? extraEnvRecord // always write (even empty {}), distinct from undefined
-      : undefined; // don't overwrite — keep credential as-is (may be undefined or old value)
-
-    dbg("settings", "saveCurrentToCredential: extra_env", {
-      platform: selectedPlatformId,
-      touched: !!extraEnvTouched[selectedPlatformId],
-      keys: Object.keys(extraEnvRecord),
-    });
-
-    _upsertCredential(selectedPlatformId, {
-      api_key: anthropicApiKey || undefined,
-      // Always save base_url — backend needs it for ANTHROPIC_BASE_URL injection
-      base_url: anthropicBaseUrl || preset?.base_url || undefined,
-      auth_env_var: selectedPlatform?.auth_env_var ?? preset?.auth_env_var,
-      models: modelsToSave,
-      ...(extraEnvToSave !== undefined ? { extra_env: extraEnvToSave } : {}),
-    });
-  }
-
-  /** Sync global fields from current display state and persist everything. */
-  function syncAndSave(platformId: string) {
-    const preset = PLATFORM_PRESETS.find((p) => p.id === platformId);
-    saveGeneralPatch({
-      anthropic_api_key: anthropicApiKey || undefined,
-      anthropic_base_url: anthropicBaseUrl || undefined,
-      auth_env_var: preset?.auth_env_var,
-      active_platform_id: platformId,
-      platform_credentials: platformCredentials,
-    });
-  }
-
-  function markExtraEnvTouched() {
-    if (selectedPlatformId) extraEnvTouched[selectedPlatformId] = true;
-  }
-
-  /**
-   * Parse pasted env text. Supported formats:
-   * - KEY=value lines (with optional `export` prefix, # comments, quoted values)
-   * - JSON object: { "KEY": "value", ... }
-   */
-  function parseEnvText(text: string): Array<{ key: string; value: string }> {
-    const trimmed = text.trim();
-    // Try JSON object first
-    if (trimmed.startsWith("{")) {
-      try {
-        const obj = JSON.parse(trimmed);
-        if (obj && typeof obj === "object" && !Array.isArray(obj)) {
-          const results: Array<{ key: string; value: string }> = [];
-          for (const [key, val] of Object.entries(obj)) {
-            if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
-              results.push({ key, value: String(val) });
-            }
-          }
-          if (results.length > 0) return results;
-        }
-      } catch {
-        // Not valid JSON, fall through to line-based parsing
-      }
-    }
-    // Line-based: KEY=value, export KEY=value, # comments
-    const results: Array<{ key: string; value: string }> = [];
-    for (const raw of trimmed.split(/\r?\n/)) {
-      const line = raw.trim();
-      if (!line || line.startsWith("#")) continue;
-      const stripped = line.replace(/^export\s+/, "");
-      const eqIdx = stripped.indexOf("=");
-      if (eqIdx <= 0) continue;
-      const key = stripped.slice(0, eqIdx).trim();
-      let value = stripped.slice(eqIdx + 1).trim();
-      if (
-        (value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))
-      ) {
-        value = value.slice(1, -1);
-      }
-      if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
-        results.push({ key, value });
-      }
-    }
-    return results;
-  }
-
-  /** Handle paste on env key input: if content looks like KEY=value lines, bulk-add them. */
-  function handleEnvKeyPaste(e: ClipboardEvent, index: number) {
-    const text = e.clipboardData?.getData("text/plain") ?? "";
-    const parsed = parseEnvText(text);
-    if (parsed.length === 0) return; // not env format, let normal paste through
-    e.preventDefault();
-    // Replace current (likely empty) row with first parsed entry, append rest
-    const before = platformExtraEnv.slice(0, index);
-    const after = platformExtraEnv.slice(index + 1);
-    platformExtraEnv = [...before, ...parsed, ...after];
-    markExtraEnvTouched();
-    persistCurrentPlatform();
-    dbg("settings", "env paste parsed", { count: parsed.length, keys: parsed.map((p) => p.key) });
-  }
-
-  /** Unified persist: save current platform fields to credential + sync to settings. */
-  function persistCurrentPlatform() {
-    saveCurrentToCredential();
-    if (selectedPlatformId) syncAndSave(selectedPlatformId);
-  }
-
-  // ── Local proxy detection ──
-
-  async function checkLocalProxy() {
-    if (!selectedPlatform || selectedPlatform.category !== "local" || !selectedPlatformId) return;
-    localProxyChecking = true;
-    localProxyStatus = null;
-    const myRequestId = ++localProxyRequestId;
-    const myPlatformId = selectedPlatformId;
-    const urlToCheck = anthropicBaseUrl;
-    dbg("settings", "checkLocalProxy start", {
-      id: myPlatformId,
-      url: urlToCheck,
-      reqId: myRequestId,
-    });
-    try {
-      const result = await api.detectLocalProxy(myPlatformId, urlToCheck);
-      if (myRequestId !== localProxyRequestId) return;
-      if (myPlatformId !== selectedPlatformId) return;
-      localProxyStatus = result;
-      localProxyStatuses = {
-        ...localProxyStatuses,
-        [myPlatformId]: { running: result.running, needsAuth: result.needsAuth },
-      };
-      dbg("settings", "checkLocalProxy result", result);
-    } catch (e) {
-      if (myRequestId !== localProxyRequestId || myPlatformId !== selectedPlatformId) return;
-      localProxyStatus = {
-        proxyId: myPlatformId,
-        running: false,
-        needsAuth: false,
-        baseUrl: urlToCheck,
-        error: String(e),
-      };
-      localProxyStatuses = {
-        ...localProxyStatuses,
-        [myPlatformId]: { running: false, needsAuth: false },
-      };
-      dbgWarn("settings", "checkLocalProxy error", e);
-    } finally {
-      if (myRequestId === localProxyRequestId) localProxyChecking = false;
-    }
-  }
-
-  async function checkAllLocalProxies() {
-    const localPresets = PLATFORM_PRESETS.filter((p) => p.category === "local");
-    const results = await Promise.allSettled(
-      localPresets.map((p) => {
-        const cred = findCredential(platformCredentials, p.id);
-        const url = cred?.base_url || p.base_url;
-        return api.detectLocalProxy(p.id, url);
-      }),
-    );
-    const statuses: Record<string, { running: boolean; needsAuth: boolean }> = {};
-    results.forEach((r, i) => {
-      if (r.status === "fulfilled") {
-        statuses[localPresets[i].id] = { running: r.value.running, needsAuth: r.value.needsAuth };
-      } else {
-        statuses[localPresets[i].id] = { running: false, needsAuth: false };
-      }
-    });
-    localProxyStatuses = statuses;
-    dbg("settings", "checkAllLocalProxies", statuses);
-  }
-
-  function applyPlatformPreset(preset: PlatformPreset) {
-    // 1. Save current platform's data to credentials (if modified)
-    saveCurrentToCredential();
-    // 2. Switch to new platform
-    selectedPlatformId = preset.id;
-    localAdvancedOpen = false;
-    localProxyStatus = null;
-    // 3. Load new platform's data from credentials
-    loadFieldsFromCredential(preset.id);
-    // 4. Sync global fields + persist
-    syncAndSave(preset.id);
-    // 5. Auto-detect if local proxy
-    if (preset.category === "local") {
-      checkLocalProxy();
-    }
-  }
-
-  /** Upsert a credential in the local platformCredentials array. */
-  function _upsertCredential(platformId: string, fields: Partial<PlatformCredential>) {
-    const idx = platformCredentials.findIndex((c) => c.platform_id === platformId);
-    if (idx >= 0) {
-      platformCredentials[idx] = { ...platformCredentials[idx], ...fields };
-    } else {
-      platformCredentials = [...platformCredentials, { platform_id: platformId, ...fields }];
-    }
-  }
-
-  /** Add a new custom endpoint — creates with defaults and immediately selects it. */
-  function addCustomEndpoint() {
-    const id = `custom-${Date.now()}`;
-    const cred: PlatformCredential = {
-      platform_id: id,
-      name: "Custom",
-      base_url: "",
-      auth_env_var: "ANTHROPIC_AUTH_TOKEN",
-    };
-    platformCredentials = [...platformCredentials, cred];
-    saveGeneralPatch({ platform_credentials: platformCredentials });
-    // Select the newly created endpoint — opens full config form below
-    const preset = buildPlatformList(platformCredentials).find((p) => p.id === id);
-    if (preset) applyPlatformPreset(preset);
-  }
-
-  /** Delete a custom endpoint. */
-  function deleteCustomEndpoint(platformId: string) {
-    // Clear selection first so applyPlatformPreset won't re-save the deleted credential
-    const wasActive = selectedPlatformId === platformId;
-    if (wasActive) selectedPlatformId = null;
-    platformCredentials = platformCredentials.filter((c) => c.platform_id !== platformId);
-    saveGeneralPatch({ platform_credentials: platformCredentials });
-    // If we deleted the active platform, switch to Anthropic
-    if (wasActive) {
-      const anthropic = PLATFORM_PRESETS.find((p) => p.id === "anthropic")!;
-      applyPlatformPreset(anthropic);
-    }
-  }
-
   function openSetupWizard() {
     window.dispatchEvent(new CustomEvent("ocv:show-wizard"));
   }
@@ -525,34 +189,20 @@
   onMount(async () => {
     try {
       settings = await api.getUserSettings();
-      authMode = settings.auth_mode ?? "cli";
-      platformCredentials = settings.platform_credentials ?? [];
-      // Load display fields from credentials (not global fields)
-      if (authMode === "api") {
-        selectedPlatformId = detectPlatformFromUrl(
-          settings.anthropic_base_url ?? "",
-          settings.active_platform_id,
-        );
-        loadFieldsFromCredential(selectedPlatformId);
-      } else {
-        anthropicApiKey = settings.anthropic_api_key ?? "";
-        anthropicBaseUrl = settings.anthropic_base_url ?? "";
-      }
+      conn.initFromSettings(settings);
     } catch (e) {
       dbgWarn("settings", "error", e);
     }
-    // Load auth overview
     api
       .getAuthOverview()
-      .then((ov) => (authOverview = ov))
+      .then((ov) => (conn.authOverview = ov))
       .catch((e) => {
         dbgWarn("settings", "failed to load auth overview", e);
       });
     loadCliInfo();
-    // Auto-detect local proxies
-    checkAllLocalProxies();
-    if (selectedPlatform?.category === "local") {
-      checkLocalProxy();
+    conn.checkAllLocalProxies();
+    if (conn.selectedPlatform?.category === "local") {
+      conn.checkLocalProxy();
     }
     // Detect CLI keybindings source
     import("@tauri-apps/api/path")
@@ -568,17 +218,6 @@
         cliSource = "defaults";
       });
   });
-
-  async function saveGeneralPatch(patch: Record<string, unknown>) {
-    dbg("settings", "saveGeneralPatch", redactSensitive(patch));
-    try {
-      settings = await api.updateUserSettings(patch as Partial<UserSettings>);
-      generalSaved = true;
-      setTimeout(() => (generalSaved = false), 1500);
-    } catch (e) {
-      dbgWarn("settings", "saveGeneralPatch error", e);
-    }
-  }
 </script>
 
 {#key currentLocale()}
@@ -788,11 +427,11 @@
                 <div class="mt-1 grid grid-cols-2 gap-3">
                   <button
                     class="flex flex-col items-center gap-2 rounded-lg border p-4 text-sm transition-all duration-150
-                {authMode === 'cli'
+                {conn.authMode === 'cli'
                       ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
                       : 'hover:bg-accent hover:border-ring/30'}"
                     onclick={() => {
-                      authMode = "cli";
+                      conn.authMode = "cli";
                       saveGeneralPatch({
                         auth_mode: "cli",
                         anthropic_base_url: null,
@@ -802,7 +441,7 @@
                       api.removeCliApiKey().catch(() => {});
                       api
                         .getAuthOverview()
-                        .then((ov) => (authOverview = ov))
+                        .then((ov) => (conn.authOverview = ov))
                         .catch(() => {});
                     }}
                   >
@@ -830,15 +469,15 @@
                   </button>
                   <button
                     class="flex flex-col items-center gap-2 rounded-lg border p-4 text-sm transition-all duration-150
-                {authMode === 'api'
+                {conn.authMode === 'api'
                       ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
                       : 'hover:bg-accent hover:border-ring/30'}"
                     onclick={() => {
-                      authMode = "api";
+                      conn.authMode = "api";
                       saveGeneralPatch({ auth_mode: "api" });
                       api
                         .getAuthOverview()
-                        .then((ov) => (authOverview = ov))
+                        .then((ov) => (conn.authOverview = ov))
                         .catch(() => {});
                     }}
                   >
@@ -868,7 +507,7 @@
               </div>
 
               <!-- CLI Auth details (expanded when auth_mode = cli) -->
-              {#if authMode === "cli"}
+              {#if conn.authMode === "cli"}
                 <div class="space-y-4 rounded-lg border border-border/50 p-4">
                   <!-- CLI Login status -->
                   <div>
@@ -876,12 +515,12 @@
                     <p class="text-xs text-muted-foreground mb-2">
                       {t("settings_auth_cliLoginDesc")}
                     </p>
-                    {#if authOverview?.cli_login_available}
+                    {#if conn.authOverview?.cli_login_available}
                       <div class="flex items-center gap-2">
                         <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
                         <span class="text-xs text-emerald-500">
-                          {t("auth_loggedIn")}{authOverview.cli_login_account
-                            ? `: ${authOverview.cli_login_account}`
+                          {t("auth_loggedIn")}{conn.authOverview.cli_login_account
+                            ? `: ${conn.authOverview.cli_login_account}`
                             : ""}
                         </span>
                       </div>
@@ -893,31 +532,31 @@
                           <Button
                             size="sm"
                             variant="outline"
-                            disabled={cliLoginLoading}
+                            disabled={conn.cliLoginLoading}
                             onclick={() => {
-                              cliLoginLoading = true;
-                              cliLoginError = "";
+                              conn.cliLoginLoading = true;
+                              conn.cliLoginError = "";
                               api
                                 .runClaudeLogin()
                                 .then((success) => {
                                   if (success) {
                                     api
                                       .getAuthOverview()
-                                      .then((ov) => (authOverview = ov))
+                                      .then((ov) => (conn.authOverview = ov))
                                       .catch(() => {});
                                   } else {
-                                    cliLoginError = t("setup_loginFailed");
+                                    conn.cliLoginError = t("setup_loginFailed");
                                   }
                                 })
                                 .catch((e) => {
-                                  cliLoginError = String(e);
+                                  conn.cliLoginError = String(e);
                                 })
                                 .finally(() => {
-                                  cliLoginLoading = false;
+                                  conn.cliLoginLoading = false;
                                 });
                             }}
                           >
-                            {#if cliLoginLoading}
+                            {#if conn.cliLoginLoading}
                               <span class="flex items-center gap-1.5">
                                 <span
                                   class="h-3 w-3 border border-foreground/30 border-t-foreground rounded-full animate-spin"
@@ -929,9 +568,9 @@
                             {/if}
                           </Button>
                         </div>
-                        {#if cliLoginError}
+                        {#if conn.cliLoginError}
                           <div class="rounded border border-red-500/30 bg-red-500/5 px-2 py-1">
-                            <p class="text-xs text-red-500">{cliLoginError}</p>
+                            <p class="text-xs text-red-500">{conn.cliLoginError}</p>
                           </div>
                         {/if}
                       </div>
@@ -941,23 +580,23 @@
                   <!-- CLI API Key (read-only) -->
                   <div>
                     <h3 class="text-sm font-medium mb-1">{t("settings_auth_cliApiKeyTitle")}</h3>
-                    {#if authOverview?.cli_has_api_key}
+                    {#if conn.authOverview?.cli_has_api_key}
                       <div class="flex items-center gap-2">
                         <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
                         <span class="text-xs text-emerald-500"
                           >{t("auth_cliKeyHint", {
-                            hint: authOverview.cli_api_key_hint ?? "",
+                            hint: conn.authOverview.cli_api_key_hint ?? "",
                           })}</span
                         >
                       </div>
                       <p class="mt-1 text-[10px] text-muted-foreground/70 italic">
-                        {#if authOverview.cli_api_key_source === "settings"}
+                        {#if conn.authOverview.cli_api_key_source === "settings"}
                           {t("settings_auth_cliApiKeySourceSettings")}
-                        {:else if authOverview.cli_api_key_source === "env"}
+                        {:else if conn.authOverview.cli_api_key_source === "env"}
                           {t("settings_auth_cliApiKeySourceEnv")}
-                        {:else if authOverview.cli_api_key_source?.startsWith("shell_config:")}
+                        {:else if conn.authOverview.cli_api_key_source?.startsWith("shell_config:")}
                           {t("settings_auth_cliApiKeySourceShell", {
-                            path: authOverview.cli_api_key_source.slice(13),
+                            path: conn.authOverview.cli_api_key_source.slice(13),
                           })}
                         {/if}
                       </p>
@@ -975,7 +614,7 @@
                   </div>
 
                   <!-- Priority hint -->
-                  {#if authOverview?.cli_login_available && authOverview?.cli_has_api_key}
+                  {#if conn.authOverview?.cli_login_available && conn.authOverview?.cli_has_api_key}
                     <p class="text-[10px] text-muted-foreground/70 italic">
                       {t("auth_cliPriorityHint")}
                     </p>
@@ -983,7 +622,7 @@
                 </div>
               {/if}
 
-              {#if authMode === "api"}
+              {#if conn.authMode === "api"}
                 <div class="space-y-4 rounded-lg border border-border/50 p-4">
                   <div>
                     <h3 class="text-sm font-medium mb-1">{t("settings_auth_appApiKeyTitle")}</h3>
@@ -998,13 +637,13 @@
                     >
                     <!-- Platform grid (always visible) -->
                     <div class="grid grid-cols-4 gap-1.5">
-                      {#each platformList.filter((p) => p.id !== "custom") as preset (preset.id)}
+                      {#each conn.platformList.filter((p) => p.id !== "custom") as preset (preset.id)}
                         <button
                           class="flex flex-col gap-0 rounded-md p-2 text-left transition-colors relative group
-                      {selectedPlatformId === preset.id
+                      {conn.selectedPlatformId === preset.id
                             ? 'bg-primary/10 ring-1 ring-primary'
                             : 'bg-muted/40 hover:bg-muted/70'}"
-                          onclick={() => applyPlatformPreset(preset)}
+                          onclick={() => conn.applyPlatformPreset(preset)}
                         >
                           <span class="text-xs font-medium truncate">{preset.name}</span>
                           <span class="text-[10px] text-muted-foreground truncate"
@@ -1017,12 +656,12 @@
                               class="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-0.5 cursor-pointer"
                               onclick={(e: MouseEvent) => {
                                 e.stopPropagation();
-                                deleteCustomEndpoint(preset.id);
+                                conn.deleteCustomEndpoint(preset.id);
                               }}
                               onkeydown={(e: KeyboardEvent) => {
                                 if (e.key === "Enter" || e.key === " ") {
                                   e.stopPropagation();
-                                  deleteCustomEndpoint(preset.id);
+                                  conn.deleteCustomEndpoint(preset.id);
                                 }
                               }}
                               title={t("settings_general_deleteCustom")}
@@ -1037,7 +676,7 @@
                             </span>
                           {/if}
                           {#if preset.category === "local"}
-                            {@const ps = localProxyStatuses[preset.id]}
+                            {@const ps = conn.localProxyStatuses[preset.id]}
                             <span
                               class="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full {ps?.running &&
                               !ps.needsAuth
@@ -1051,7 +690,7 @@
                                   ? t("settings_local_needsAuth")
                                   : t("settings_local_notDetected")}
                             ></span>
-                          {:else if findCredential(platformCredentials, preset.id)?.api_key}
+                          {:else if findCredential(conn.platformCredentials, preset.id)?.api_key}
                             <span
                               class="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-green-500"
                               title="Key saved"
@@ -1062,7 +701,7 @@
                       <!-- Add Custom -->
                       <button
                         class="flex flex-col items-center justify-center gap-1 rounded-md border border-dashed border-muted-foreground/30 p-2 text-muted-foreground hover:border-primary/50 hover:text-foreground hover:bg-muted/40 transition-colors"
-                        onclick={() => addCustomEndpoint()}
+                        onclick={() => conn.addCustomEndpoint()}
                       >
                         <svg
                           class="h-4 w-4"
@@ -1076,17 +715,17 @@
                     </div>
                   </div>
 
-                  {#if selectedPlatform?.category === "local"}
+                  {#if conn.selectedPlatform?.category === "local"}
                     <!-- Local proxy status card -->
                     <div class="rounded-lg border p-4 space-y-3">
                       <div class="flex items-center gap-2">
-                        {#if localProxyChecking}
+                        {#if conn.localProxyChecking}
                           <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
                           <span class="text-sm">{t("settings_local_checking")}</span>
-                        {:else if localProxyStatus?.running && !localProxyStatus.needsAuth}
+                        {:else if conn.localProxyStatus?.running && !conn.localProxyStatus.needsAuth}
                           <span class="h-2 w-2 rounded-full bg-green-500"></span>
                           <span class="text-sm font-medium">{t("settings_local_running")}</span>
-                        {:else if localProxyStatus?.running && localProxyStatus.needsAuth}
+                        {:else if conn.localProxyStatus?.running && conn.localProxyStatus.needsAuth}
                           <span class="h-2 w-2 rounded-full bg-amber-500"></span>
                           <span class="text-sm font-medium">{t("settings_local_needsAuth")}</span>
                         {:else}
@@ -1095,20 +734,20 @@
                         {/if}
                         <button
                           class="ml-auto rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                          onclick={checkLocalProxy}>{t("settings_local_refresh")}</button
+                          onclick={conn.checkLocalProxy}>{t("settings_local_refresh")}</button
                         >
                       </div>
-                      <p class="text-xs text-muted-foreground font-mono">{anthropicBaseUrl}</p>
-                      {#if localProxyStatus && !localProxyStatus.running}
+                      <p class="text-xs text-muted-foreground font-mono">{conn.anthropicBaseUrl}</p>
+                      {#if conn.localProxyStatus && !conn.localProxyStatus.running}
                         <p class="text-xs text-amber-500">
-                          {selectedPlatform.setup_hint
-                            ? t(selectedPlatform.setup_hint as Parameters<typeof t>[0])
-                            : t("settings_local_startHint", { name: selectedPlatform.name })}
+                          {conn.selectedPlatform.setup_hint
+                            ? t(conn.selectedPlatform.setup_hint as Parameters<typeof t>[0])
+                            : t("settings_local_startHint", { name: conn.selectedPlatform.name })}
                         </p>
                       {/if}
-                      {#if selectedPlatform.docs_url}
+                      {#if conn.selectedPlatform.docs_url}
                         <a
-                          href={selectedPlatform.docs_url}
+                          href={conn.selectedPlatform.docs_url}
                           target="_blank"
                           class="text-xs text-primary hover:underline"
                         >
@@ -1120,33 +759,39 @@
                     <!-- Advanced settings toggle -->
                     <button
                       class="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                      onclick={() => (localAdvancedOpen = !localAdvancedOpen)}
+                      onclick={() => (conn.localAdvancedOpen = !conn.localAdvancedOpen)}
                     >
-                      {localAdvancedOpen ? "▾" : "▸"}
+                      {conn.localAdvancedOpen ? "▾" : "▸"}
                       {t("settings_local_advanced")}
                     </button>
                   {/if}
 
-                  {#if selectedPlatform?.category !== "local" || localAdvancedOpen}
+                  {#if conn.selectedPlatform?.category !== "local" || conn.localAdvancedOpen}
                     <!-- Custom endpoint: Name + Auth Type -->
-                    {#if isCustomPlatform(selectedPlatformId ?? "")}
+                    {#if isCustomPlatform(conn.selectedPlatformId ?? "")}
                       <div class="flex gap-3">
                         <div class="flex-1">
                           <label class="text-sm font-medium mb-1.5 block"
                             >{t("settings_general_customNameLabel")}</label
                           >
                           <Input
-                            value={findCredential(platformCredentials, selectedPlatformId ?? "")
-                              ?.name ?? ""}
+                            value={findCredential(
+                              conn.platformCredentials,
+                              conn.selectedPlatformId ?? "",
+                            )?.name ?? ""}
                             placeholder={t("settings_general_customNamePlaceholder")}
                             class="mt-1 text-xs"
                             onblur={(e) => {
                               const target = e.currentTarget as HTMLInputElement | null;
                               if (!target) return;
                               const val = target.value.trim();
-                              if (selectedPlatformId) {
-                                _upsertCredential(selectedPlatformId, { name: val || "Custom" });
-                                saveGeneralPatch({ platform_credentials: platformCredentials });
+                              if (conn.selectedPlatformId) {
+                                conn._upsertCredential(conn.selectedPlatformId, {
+                                  name: val || "Custom",
+                                });
+                                saveGeneralPatch({
+                                  platform_credentials: conn.platformCredentials,
+                                });
                               }
                             }}
                           />
@@ -1158,33 +803,37 @@
                           <div class="mt-1 flex rounded-md border border-input overflow-hidden">
                             <button
                               class="px-3 py-1.5 text-xs font-medium transition-colors {(findCredential(
-                                platformCredentials,
-                                selectedPlatformId ?? '',
+                                conn.platformCredentials,
+                                conn.selectedPlatformId ?? '',
                               )?.auth_env_var ?? 'ANTHROPIC_AUTH_TOKEN') === 'ANTHROPIC_AUTH_TOKEN'
                                 ? 'bg-primary text-primary-foreground'
                                 : 'text-muted-foreground hover:text-foreground hover:bg-accent'}"
                               onclick={() => {
-                                if (selectedPlatformId) {
-                                  _upsertCredential(selectedPlatformId, {
+                                if (conn.selectedPlatformId) {
+                                  conn._upsertCredential(conn.selectedPlatformId, {
                                     auth_env_var: "ANTHROPIC_AUTH_TOKEN",
                                   });
-                                  saveGeneralPatch({ platform_credentials: platformCredentials });
+                                  saveGeneralPatch({
+                                    platform_credentials: conn.platformCredentials,
+                                  });
                                 }
                               }}>{t("settings_bearer")}</button
                             >
                             <button
                               class="px-3 py-1.5 text-xs font-medium transition-colors border-l border-input {(findCredential(
-                                platformCredentials,
-                                selectedPlatformId ?? '',
+                                conn.platformCredentials,
+                                conn.selectedPlatformId ?? '',
                               )?.auth_env_var ?? 'ANTHROPIC_AUTH_TOKEN') === 'ANTHROPIC_API_KEY'
                                 ? 'bg-primary text-primary-foreground'
                                 : 'text-muted-foreground hover:text-foreground hover:bg-accent'}"
                               onclick={() => {
-                                if (selectedPlatformId) {
-                                  _upsertCredential(selectedPlatformId, {
+                                if (conn.selectedPlatformId) {
+                                  conn._upsertCredential(conn.selectedPlatformId, {
                                     auth_env_var: "ANTHROPIC_API_KEY",
                                   });
-                                  saveGeneralPatch({ platform_credentials: platformCredentials });
+                                  saveGeneralPatch({
+                                    platform_credentials: conn.platformCredentials,
+                                  });
                                 }
                               }}>x-api-key</button
                             >
@@ -1201,40 +850,42 @@
                       <div class="mt-1 flex gap-2">
                         <div class="flex-1 relative">
                           <Input
-                            bind:value={anthropicApiKey}
-                            placeholder={selectedPlatform?.key_placeholder ?? "<your-api-key>"}
-                            type={showApiKey ? "text" : "password"}
+                            bind:value={conn.anthropicApiKey}
+                            placeholder={conn.selectedPlatform?.key_placeholder ?? "<your-api-key>"}
+                            type={conn.showApiKey ? "text" : "password"}
                             class="font-mono text-xs"
-                            onblur={() => persistCurrentPlatform()}
+                            onblur={() => conn.persistCurrentPlatform()}
                           />
                         </div>
                         <button
                           class="rounded-md border px-3 py-2 text-xs text-muted-foreground hover:bg-accent transition-colors"
-                          onclick={() => (showApiKey = !showApiKey)}
+                          onclick={() => (conn.showApiKey = !conn.showApiKey)}
                         >
-                          {showApiKey ? t("settings_general_hide") : t("settings_general_show")}
+                          {conn.showApiKey
+                            ? t("settings_general_hide")
+                            : t("settings_general_show")}
                         </button>
-                        {#if selectedPlatform?.category !== "local"}
+                        {#if conn.selectedPlatform?.category !== "local"}
                           {@const cred = findCredential(
-                            platformCredentials,
-                            selectedPlatformId ?? "",
+                            conn.platformCredentials,
+                            conn.selectedPlatformId ?? "",
                           )}
                           {@const authEnvVar =
                             cred?.auth_env_var ||
-                            selectedPlatform?.auth_env_var ||
+                            conn.selectedPlatform?.auth_env_var ||
                             "ANTHROPIC_API_KEY"}
                           {@const [presetOpusTest, presetSonnetTest] = expandModelsToTiers(
-                            selectedPlatform?.models,
+                            conn.selectedPlatform?.models,
                           )}
                           {@const testModel =
-                            modelSonnet.trim() ||
-                            modelOpus.trim() ||
+                            conn.modelSonnet.trim() ||
+                            conn.modelOpus.trim() ||
                             presetSonnetTest ||
                             presetOpusTest ||
                             ""}
-                          {@const isCustom = isCustomPlatform(selectedPlatformId ?? "")}
-                          {@const noKey = !anthropicApiKey}
-                          {@const noUrl = isCustom && !anthropicBaseUrl.trim()}
+                          {@const isCustom = isCustomPlatform(conn.selectedPlatformId ?? "")}
+                          {@const noKey = !conn.anthropicApiKey}
+                          {@const noUrl = isCustom && !conn.anthropicBaseUrl.trim()}
                           {@const disableReason = noKey
                             ? t("settings_apiTest_noKey")
                             : noUrl
@@ -1242,16 +893,16 @@
                               : ""}
                           <button
                             class="rounded-md border px-3 py-2 text-xs transition-colors {disableReason ||
-                            apiTestLoading
+                            conn.apiTestLoading
                               ? 'text-muted-foreground/50 cursor-not-allowed'
                               : 'text-muted-foreground hover:bg-accent hover:text-foreground'}"
-                            disabled={!!disableReason || apiTestLoading}
+                            disabled={!!disableReason || conn.apiTestLoading}
                             title={disableReason || ""}
                             onclick={async () => {
-                              const myRequestId = ++apiTestRequestId;
-                              const myPlatformId = selectedPlatformId;
-                              apiTestLoading = true;
-                              apiTestResult = null;
+                              const myRequestId = ++conn.apiTestRequestId;
+                              const myPlatformId = conn.selectedPlatformId;
+                              conn.apiTestLoading = true;
+                              conn.apiTestResult = null;
                               dbg("settings", "testApi start", {
                                 platform: myPlatformId,
                                 model: testModel,
@@ -1260,14 +911,14 @@
                               });
                               try {
                                 const result = await api.testApiConnectivity(
-                                  anthropicApiKey,
-                                  anthropicBaseUrl,
+                                  conn.anthropicApiKey,
+                                  conn.anthropicBaseUrl,
                                   authEnvVar,
                                   testModel,
                                 );
-                                if (myRequestId !== apiTestRequestId) return;
-                                if (myPlatformId !== selectedPlatformId) return;
-                                apiTestResult = result;
+                                if (myRequestId !== conn.apiTestRequestId) return;
+                                if (myPlatformId !== conn.selectedPlatformId) return;
+                                conn.apiTestResult = result;
                                 if (result.success) {
                                   dbg("settings", "testApi success", {
                                     latencyMs: result.latencyMs,
@@ -1277,11 +928,11 @@
                                 }
                               } catch (e) {
                                 if (
-                                  myRequestId !== apiTestRequestId ||
-                                  myPlatformId !== selectedPlatformId
+                                  myRequestId !== conn.apiTestRequestId ||
+                                  myPlatformId !== conn.selectedPlatformId
                                 )
                                   return;
-                                apiTestResult = {
+                                conn.apiTestResult = {
                                   success: false,
                                   latencyMs: 0,
                                   error: String(e),
@@ -1289,7 +940,8 @@
                                 };
                                 dbgWarn("settings", "testApi error", e);
                               } finally {
-                                if (myRequestId === apiTestRequestId) apiTestLoading = false;
+                                if (myRequestId === conn.apiTestRequestId)
+                                  conn.apiTestLoading = false;
                               }
                             }}
                           >
@@ -1298,39 +950,39 @@
                         {/if}
                       </div>
                       <!-- API test result -->
-                      {#if apiTestLoading}
+                      {#if conn.apiTestLoading}
                         <div class="mt-1.5 flex items-center gap-1.5">
                           <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
                           <span class="text-xs text-muted-foreground"
                             >{t("settings_apiTest_testing")}</span
                           >
                         </div>
-                      {:else if apiTestResult?.success && apiTestResult.partial}
+                      {:else if conn.apiTestResult?.success && conn.apiTestResult.partial}
                         <div class="mt-1.5 flex items-center gap-1.5">
                           <span class="h-2 w-2 rounded-full bg-green-500"></span>
                           <span class="text-xs text-green-600 dark:text-green-400"
                             >{t("settings_apiTest_partial", {
-                              latency: String(apiTestResult.latencyMs),
+                              latency: String(conn.apiTestResult.latencyMs),
                             })}</span
                           >
                         </div>
-                      {:else if apiTestResult?.success}
+                      {:else if conn.apiTestResult?.success}
                         <div class="mt-1.5 flex items-center gap-1.5">
                           <span class="h-2 w-2 rounded-full bg-green-500"></span>
                           <span class="text-xs text-green-600 dark:text-green-400"
                             >{t("settings_apiTest_success", {
-                              latency: String(apiTestResult.latencyMs),
+                              latency: String(conn.apiTestResult.latencyMs),
                             })}</span
                           >
                         </div>
-                      {:else if apiTestResult && !apiTestResult.success}
+                      {:else if conn.apiTestResult && !conn.apiTestResult.success}
                         <div class="mt-1.5 flex items-center gap-1.5">
                           <span class="h-2 w-2 rounded-full bg-red-500"></span>
                           <span class="text-xs text-red-600 dark:text-red-400"
-                            >{apiTestResult.error ?? t("settings_apiTest_failed")}</span
+                            >{conn.apiTestResult.error ?? t("settings_apiTest_failed")}</span
                           >
                         </div>
-                      {:else if selectedPlatform?.id === "ollama"}
+                      {:else if conn.selectedPlatform?.id === "ollama"}
                         <p class="mt-1 text-xs text-muted-foreground">{t("setup_noKeyNeeded")}</p>
                       {:else}
                         <p class="mt-1 text-xs text-muted-foreground">
@@ -1345,19 +997,19 @@
                         >{t("settings_general_baseUrl")}</label
                       >
                       <Input
-                        bind:value={anthropicBaseUrl}
+                        bind:value={conn.anthropicBaseUrl}
                         placeholder="https://api.anthropic.com"
                         class="mt-1 font-mono text-xs"
-                        disabled={selectedPlatformId !== null &&
-                          selectedPlatformId !== "anthropic" &&
-                          selectedPlatform?.category !== "local" &&
-                          !isCustomPlatform(selectedPlatformId ?? "")}
-                        onblur={() => persistCurrentPlatform()}
+                        disabled={conn.selectedPlatformId !== null &&
+                          conn.selectedPlatformId !== "anthropic" &&
+                          conn.selectedPlatform?.category !== "local" &&
+                          !isCustomPlatform(conn.selectedPlatformId ?? "")}
+                        onblur={() => conn.persistCurrentPlatform()}
                       />
                       <p class="mt-1 text-xs text-muted-foreground">
-                        {#if selectedPlatform && selectedPlatform.auth_env_var === "ANTHROPIC_AUTH_TOKEN"}
+                        {#if conn.selectedPlatform && conn.selectedPlatform.auth_env_var === "ANTHROPIC_AUTH_TOKEN"}
                           {t("setup_authTypeBearer")}
-                        {:else if selectedPlatform && selectedPlatform.auth_env_var === "ANTHROPIC_API_KEY"}
+                        {:else if conn.selectedPlatform && conn.selectedPlatform.auth_env_var === "ANTHROPIC_API_KEY"}
                           {t("setup_authTypeApiKey")}
                         {:else}
                           {t("settings_general_baseUrlHelp")}
@@ -1367,7 +1019,7 @@
 
                     <!-- Models (3-tier: Opus / Sonnet / Haiku) -->
                     {@const [presetOpus, presetSonnet, presetHaiku] = expandModelsToTiers(
-                      selectedPlatform?.models,
+                      conn.selectedPlatform?.models,
                     )}
                     {@const phOpus = presetOpus || t("settings_general_modelsPlaceholder")}
                     {@const phSonnet = presetSonnet || t("settings_general_modelsPlaceholder")}
@@ -1382,10 +1034,10 @@
                             >{t("settings_general_modelOpus")}</span
                           >
                           <Input
-                            bind:value={modelOpus}
+                            bind:value={conn.modelOpus}
                             placeholder={phOpus}
                             class="flex-1 font-mono text-xs"
-                            onblur={() => persistCurrentPlatform()}
+                            onblur={() => conn.persistCurrentPlatform()}
                           />
                         </div>
                         <div class="flex items-center gap-2">
@@ -1394,10 +1046,10 @@
                             >{t("settings_general_modelSonnet")}</span
                           >
                           <Input
-                            bind:value={modelSonnet}
+                            bind:value={conn.modelSonnet}
                             placeholder={phSonnet}
                             class="flex-1 font-mono text-xs"
-                            onblur={() => persistCurrentPlatform()}
+                            onblur={() => conn.persistCurrentPlatform()}
                           />
                         </div>
                         <div class="flex items-center gap-2">
@@ -1405,10 +1057,10 @@
                             >{t("settings_general_modelHaiku")}</span
                           >
                           <Input
-                            bind:value={modelHaiku}
+                            bind:value={conn.modelHaiku}
                             placeholder={phHaiku}
                             class="flex-1 font-mono text-xs"
-                            onblur={() => persistCurrentPlatform()}
+                            onblur={() => conn.persistCurrentPlatform()}
                           />
                         </div>
                       </div>
@@ -1422,30 +1074,32 @@
                       <label class="text-sm font-medium mb-1.5 block" for="extra-env-section">
                         {t("settings_general_extraEnv")}
                       </label>
-                      {#each platformExtraEnv as envVar, i}
+                      {#each conn.platformExtraEnv as envVar, i}
                         <div class="flex gap-1.5 mt-1.5">
                           <Input
                             bind:value={envVar.key}
                             placeholder={t("settings_general_envKeyPlaceholder")}
                             class="flex-1 font-mono text-xs"
-                            oninput={() => markExtraEnvTouched()}
-                            onblur={() => persistCurrentPlatform()}
-                            onpaste={(e: ClipboardEvent) => handleEnvKeyPaste(e, i)}
+                            oninput={() => conn.markExtraEnvTouched()}
+                            onblur={() => conn.persistCurrentPlatform()}
+                            onpaste={(e: ClipboardEvent) => conn.handleEnvKeyPaste(e, i)}
                           />
                           <Input
                             bind:value={envVar.value}
                             placeholder={t("settings_general_envValuePlaceholder")}
                             class="flex-1 font-mono text-xs"
-                            oninput={() => markExtraEnvTouched()}
-                            onblur={() => persistCurrentPlatform()}
+                            oninput={() => conn.markExtraEnvTouched()}
+                            onblur={() => conn.persistCurrentPlatform()}
                           />
                           <button
                             class="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                             aria-label={t("settings_remote_delete")}
                             onclick={() => {
-                              platformExtraEnv = platformExtraEnv.filter((_, idx) => idx !== i);
-                              markExtraEnvTouched();
-                              persistCurrentPlatform();
+                              conn.platformExtraEnv = conn.platformExtraEnv.filter(
+                                (_, idx) => idx !== i,
+                              );
+                              conn.markExtraEnvTouched();
+                              conn.persistCurrentPlatform();
                             }}
                           >
                             <svg
@@ -1465,7 +1119,10 @@
                       <button
                         class="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                         onclick={() => {
-                          platformExtraEnv = [...platformExtraEnv, { key: "", value: "" }];
+                          conn.platformExtraEnv = [
+                            ...conn.platformExtraEnv,
+                            { key: "", value: "" },
+                          ];
                         }}
                       >
                         <svg
