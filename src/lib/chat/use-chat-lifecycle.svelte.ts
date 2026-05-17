@@ -31,7 +31,7 @@
 import { page } from "$app/stores";
 import { replaceState } from "$app/navigation";
 import { tick, onMount, untrack } from "svelte";
-import { get } from "svelte/store";
+import { fromStore, get } from "svelte/store";
 import { getTransport } from "$lib/transport";
 import * as api from "$lib/api";
 import {
@@ -215,6 +215,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     pendingToolPermissions,
     setSidebarRequestedTab,
   } = options;
+  const pageState = fromStore(page);
 
   // ── Core state ──
   let middlewareReady = $state(false);
@@ -595,7 +596,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
 
   // ── URL param consumption: ?folder= and ?host= ──
   $effect(() => {
-    const url = get(page).url;
+    const url = pageState.current.url;
     const folder = url.searchParams.get("folder");
     const host = url.searchParams.get("host");
     if (!folder && !host) return;
@@ -637,7 +638,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
 
   // ── Watch runId changes → load run + subscribe middleware ──
   $effect(() => {
-    const url = get(page).url;
+    const url = pageState.current.url;
     const id = url.searchParams.get("run") ?? "";
     const hasResume = url.searchParams.has("resume");
     untrack(() => {
@@ -675,12 +676,12 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   let _scrollToInFlight = false;
   $effect(() => {
     if (!middlewareReady) return;
-    const scrollTo = get(page).url.searchParams.get("scrollTo");
+    const url = pageState.current.url;
+    const scrollTo = url.searchParams.get("scrollTo");
     if (!scrollTo) return;
     untrack(() => {
       if (_scrollToInFlight) return;
       if (store.phase === "loading") return;
-      const url = get(page).url;
       const runId = url.searchParams.get("run") ?? "";
       if (store.run?.id !== runId) return;
 
@@ -698,7 +699,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
 
   // ── Consume ?resume= URL param ──
   $effect(() => {
-    const url = get(page).url;
+    const url = pageState.current.url;
     const paramRunId = url.searchParams.get("run");
     const resumeMode = url.searchParams.get("resume") as import("$lib/types").SessionMode | null;
 
