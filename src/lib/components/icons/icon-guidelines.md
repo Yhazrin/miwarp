@@ -4,11 +4,11 @@ MiWarp uses a three-layer icon strategy for a consistent, lightweight desktop wo
 
 ## Icon Libraries
 
-| Layer | Library | Purpose |
-|-------|---------|---------|
-| Primary | Lucide | All UI icons: sidebar, toolbar, buttons, navigation, status |
-| Supplemental | Tabler | Specialized technical icons: MCP, hooks, workflows, automation |
-| Empty State | Phosphor | Large illustrations only: empty states, onboarding |
+| Layer        | Library  | Purpose                                                        |
+| ------------ | -------- | -------------------------------------------------------------- |
+| Primary      | Lucide   | All UI icons: sidebar, toolbar, buttons, navigation, status    |
+| Supplemental | Tabler   | Specialized technical icons: MCP, hooks, workflows, automation |
+| Empty State  | Phosphor | Large illustrations only: empty states, onboarding             |
 
 ## Core Rules
 
@@ -19,14 +19,14 @@ MiWarp uses a three-layer icon strategy for a consistent, lightweight desktop wo
 
 ## Default Sizes
 
-| Context | Size | Stroke Width |
-|---------|------|-------------|
-| Navigation/Sidebar icon | 18px | 1.8 |
-| Small button icon | 16px | 1.8 |
-| Top capsule icon | 15-16px | 1.8 |
-| Right panel tab icon | 17-18px | 1.8 |
-| Large card icon | 22-24px | 1.6 |
-| Empty state icon | 32-44px | Phosphor regular |
+| Context                 | Size    | Stroke Width     |
+| ----------------------- | ------- | ---------------- |
+| Navigation/Sidebar icon | 18px    | 1.8              |
+| Small button icon       | 16px    | 1.8              |
+| Top capsule icon        | 15-16px | 1.8              |
+| Right panel tab icon    | 17-18px | 1.8              |
+| Large card icon         | 22-24px | 1.6              |
+| Empty state icon        | 32-44px | Phosphor regular |
 
 ## Icon Map Usage
 
@@ -62,6 +62,7 @@ MiWarp uses a three-layer icon strategy for a consistent, lightweight desktop wo
 ## Icon Sources
 
 ### Lucide (Primary)
+
 Lucide is the default for all UI icons. Import from `lucide-svelte`.
 
 ```ts
@@ -69,6 +70,7 @@ import { Settings, Home, Search } from "lucide-svelte";
 ```
 
 ### Tabler (Supplemental)
+
 Use Tabler only when Lucide lacks a suitable icon or the Tabler version is significantly better.
 
 ```ts
@@ -76,6 +78,7 @@ import { IconTopologyComplex, IconWebhook } from "@tabler/icons-svelte";
 ```
 
 Current Tabler icons in use:
+
 - `mcp` → `IconTopologyComplex` (API/MCP topology)
 - `hook` → `IconWebhook` (webhook symbol)
 - `workflow` → `IconRouteAltLeft` (automation routing)
@@ -83,6 +86,7 @@ Current Tabler icons in use:
 - `marketplace` → `IconApps` (app grid/marketplace)
 
 ### Phosphor (Empty State Only)
+
 Use Phosphor only for large empty-state illustrations.
 
 ```ts
@@ -90,6 +94,7 @@ import { CalendarBlank, Sparkle } from "phosphor-svelte";
 ```
 
 Current Phosphor icons in use:
+
 - `emptyTasks` → `CalendarBlank` (empty task list)
 - `emptyPlugins` → `PhosphorPackage` (empty plugins)
 - `emptySearch` → `MagnifyingGlass` (no search results)

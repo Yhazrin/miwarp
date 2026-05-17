@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { goto } from "$app/navigation";
   import type { Attachment, CliCommand, CliModelInfo } from "$lib/types";
   import * as api from "$lib/api";
@@ -307,6 +307,38 @@
     closeModeDropdown,
   });
 
+  const slashMenuAnchorEl = $derived(
+    slash.slashPreferTriggerAnchor && slash.slashBtnEl ? slash.slashBtnEl : store.textareaEl,
+  );
+
+  function clampPopoverLeft(left: number, width: number, pad = 12) {
+    return Math.min(Math.max(left, pad), window.innerWidth - width - pad);
+  }
+
+  function positionModeDropdown() {
+    if (!modeDropdownOpen || !modeBtnEl) return;
+    const rect = modeBtnEl.getBoundingClientRect();
+    const w = modeDropdownEl?.offsetWidth || 260;
+    const left = clampPopoverLeft(rect.left - 8, w);
+    const bottom = window.innerHeight - rect.top + 10;
+    modeDropdownStyle = `position:fixed;bottom:${bottom}px;left:${left}px;z-index:520;`;
+  }
+
+  $effect(() => {
+    if (!modeDropdownOpen) return;
+    const onResize = () => positionModeDropdown();
+    const onScroll = () => positionModeDropdown();
+    window.addEventListener("resize", onResize);
+    window.addEventListener("scroll", onScroll, true);
+    void tick().then(() => {
+      requestAnimationFrame(() => positionModeDropdown());
+    });
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("scroll", onScroll, true);
+    };
+  });
+
   function toggleModeDropdown() {
     if (modeDropdownOpen) {
       modeDropdownOpen = false;
@@ -316,10 +348,9 @@
     if (at.atMenuOpen) at.closeAtMenu("mode-open");
 
     modeDropdownOpen = true;
-    if (modeBtnEl) {
-      const rect = modeBtnEl.getBoundingClientRect();
-      modeDropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:99;`;
-    }
+    void tick().then(() => {
+      requestAnimationFrame(() => positionModeDropdown());
+    });
   }
 
   function selectMode(mode: string) {
@@ -1102,43 +1133,6 @@
       style="min-height: 36px;"
     ></textarea>
 
-    {#if at.atMenuOpen}
-      <AtMentionMenu
-        entries={at.atResults}
-        selectedIndex={at.atSelectedIndex}
-        loading={at.atLoading}
-        query={at.atQuery}
-        anchorEl={store.textareaEl}
-        onSelect={at.selectAtEntry}
-        onHover={(i) => (at.atSelectedIndex = i)}
-        onDismiss={() => at.closeAtMenu("click-outside")}
-      />
-    {/if}
-
-    {#if slash.slashMenuOpen}
-      <SlashMenu
-        commands={slash.filteredCommands}
-        slashGroups={slash.slashGroups}
-        selectedIndex={slash.slashSelectedIndex}
-        anchorEl={store.textareaEl}
-        triggerEl={slash.slashBtnEl}
-        phase={slash.slashPhase}
-        {models}
-        {currentModel}
-        subSelectedIndex={slash.slashSubSelectedIndex}
-        hintText={slash.hintText}
-        inputDisplay={store.inputText}
-        {fastModeState}
-        onSelect={(cmd) => slash.selectSlashCommand(cmd, "enter")}
-        onHover={(i) => (slash.slashSelectedIndex = i)}
-        onSubHover={(i) => (slash.slashSubSelectedIndex = i)}
-        onSubSelect={slash.handleSubModelSelect}
-        onFastSelect={slash.handleFastModeSelect}
-        onBack={slash.goBackToCommands}
-        onDismiss={() => slash.closeSlashMenu("click-outside")}
-      />
-    {/if}
-
     <!-- Bottom action bar -->
     <div class="flex items-center justify-between gap-1 px-3 pb-2.5">
       <!-- Left: agent selector + permission mode -->
@@ -1402,10 +1396,47 @@
     </div>
   </div>
 
+  {#if at.atMenuOpen}
+    <AtMentionMenu
+      entries={at.atResults}
+      selectedIndex={at.atSelectedIndex}
+      loading={at.atLoading}
+      query={at.atQuery}
+      anchorEl={store.textareaEl}
+      onSelect={at.selectAtEntry}
+      onHover={(i) => (at.atSelectedIndex = i)}
+      onDismiss={() => at.closeAtMenu("click-outside")}
+    />
+  {/if}
+
+  {#if slash.slashMenuOpen}
+    <SlashMenu
+      commands={slash.filteredCommands}
+      slashGroups={slash.slashGroups}
+      selectedIndex={slash.slashSelectedIndex}
+      anchorEl={slashMenuAnchorEl}
+      triggerEl={slash.slashBtnEl}
+      phase={slash.slashPhase}
+      {models}
+      {currentModel}
+      subSelectedIndex={slash.slashSubSelectedIndex}
+      hintText={slash.hintText}
+      inputDisplay={store.inputText}
+      {fastModeState}
+      onSelect={(cmd) => slash.selectSlashCommand(cmd, "enter")}
+      onHover={(i) => (slash.slashSelectedIndex = i)}
+      onSubHover={(i) => (slash.slashSubSelectedIndex = i)}
+      onSubSelect={slash.handleSubModelSelect}
+      onFastSelect={slash.handleFastModeSelect}
+      onBack={slash.goBackToCommands}
+      onDismiss={() => slash.closeSlashMenu("click-outside")}
+    />
+  {/if}
+
   {#if modeDropdownOpen}
     <div
       bind:this={modeDropdownEl}
-      class="min-w-[220px] w-max rounded-2xl border border-border/35 bg-background/86 backdrop-blur-xl animate-fade-in"
+      class="min-w-[220px] w-max rounded-xl border border-border/45 bg-background/95 shadow-xl backdrop-blur-xl animate-fade-in"
       style={modeDropdownStyle}
     >
       <div class="p-1">

@@ -8,7 +8,6 @@
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { hasAttention } from "$lib/stores/attention-store.svelte";
-  import { RUNS_CHANGED_KEY } from "$lib/utils/storage-keys";
 
   function platformLabel(id: string): string {
     return PLATFORM_PRESETS.find((p) => p.id === id)?.name ?? id;
@@ -83,7 +82,7 @@
           runId: conversation.latestRun.id,
           name: trimmed,
         });
-        window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
+        window.dispatchEvent(new Event("ocv:runs-changed"));
       } catch (e) {
         dbgWarn("conv-item", "rename failed", e);
         // runs will refresh on next poll

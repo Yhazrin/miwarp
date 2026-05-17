@@ -50,6 +50,8 @@
     isRemote = false,
     requestedPreviewPath = $bindable(null as string | null),
     requestedPreviewUrl = $bindable(null as string | null),
+    /** True when chat layout places SessionStatusBar above both chat + this rail (flush panel top). */
+    underUnifiedCapsule = false,
   }: {
     timeline: TimelineEntry[];
     tools: HookEvent[];
@@ -70,6 +72,7 @@
     isRemote?: boolean;
     requestedPreviewPath?: string | null;
     requestedPreviewUrl?: string | null;
+    underUnifiedCapsule?: boolean;
   } = $props();
 
   // Lazy keep-alive: a tab is mounted on first activation and stays mounted thereafter.
@@ -705,7 +708,9 @@
     : effectiveWidth + 'px'}; contain: layout style; clip-path: inset(0);"
 >
   <div
-    class="absolute top-3 bottom-0 left-0 flex flex-col toolactivity-panel-slide"
+    class="absolute bottom-0 left-0 flex flex-col toolactivity-panel-slide {underUnifiedCapsule
+      ? 'top-0 pt-0.5'
+      : 'top-3'}"
     style="width: {effectiveWidth}px; transform: translateX({collapsed
       ? '100%'
       : '0'}); visibility: {collapsed ? 'hidden' : 'visible'}; pointer-events: {collapsed
