@@ -8,7 +8,6 @@ import { tick } from "svelte";
 import * as api from "$lib/api";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import type { SessionStore } from "$lib/stores";
-import type { TimelineEntry } from "$lib/types";
 
 export function useExportController(opts: {
   getStore: () => SessionStore;

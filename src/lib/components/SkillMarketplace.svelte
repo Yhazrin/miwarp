@@ -7,7 +7,6 @@
   import { t } from "$lib/i18n/index.svelte";
   import type { MarketplaceSkill, MarketplaceCategory } from "$lib/types/marketplace";
   import Spinner from "./Spinner.svelte";
-  import { SKILL_CATEGORIES } from "$lib/types/skill";
   import { fmtDateYear } from "$lib/i18n/format";
 
   interface Props {
@@ -23,7 +22,6 @@
   let skills = $state<MarketplaceSkill[]>([]);
   let categories = $state<MarketplaceCategory[]>([]);
   let loading = $state(true);
-  let selectedSkill = $state<MarketplaceSkill | null>(null);
   let installing = $state<string | null>(null);
   let error = $state<string | null>(null);
 
@@ -166,7 +164,6 @@ Analyze your test coverage...`,
   }
 
   function previewSkill(skill: MarketplaceSkill) {
-    selectedSkill = skill;
     onPreview?.(skill);
   }
 

@@ -5,8 +5,8 @@
   Based on Claude Cowork design patterns.
 -->
 <script lang="ts">
-  import type { TaskExecutionMonitor, ExecutionLog } from "$lib/types/task-execution-monitor";
-  import { t } from "$lib/i18n/index.svelte";
+  import type { ExecutionLog } from "$lib/types/task-execution-monitor";
+
   import { fmtFull } from "$lib/i18n/format";
 
   interface Props {

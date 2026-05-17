@@ -1,5 +1,4 @@
-import type { CliModelInfo, PlatformCredential } from "$lib/types";
-import { isContaminatedDefaultModel, resolvePlatformDefaultModels } from "./model-utils";
+import type { PlatformCredential } from "$lib/types";
 import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
 
 export interface ModelPlatformControllerOptions {
@@ -39,9 +38,6 @@ export interface ModelPlatformControllerOptions {
   dbgWarn: (area: string, msg: string, ...args: unknown[]) => void;
 }
 
-/** Last confirmed-clean Anthropic model, used as final fallback. */
-let lastKnownGoodAnthropicModel: string | undefined;
-
 export function createModelPlatformController(options: ModelPlatformControllerOptions) {
   const {
     store,
@@ -49,9 +45,9 @@ export function createModelPlatformController(options: ModelPlatformControllerOp
     getCliCurrentModel,
     setAuthOverview,
     setLocalProxyStatuses,
-    platformCredentials,
+    platformCredentials: _platformCredentials,
     getSettings,
-    t,
+    t: _t,
     dbg,
     dbgWarn,
   } = options;
@@ -78,7 +74,6 @@ export function createModelPlatformController(options: ModelPlatformControllerOp
     }
 
     if (!isThirdParty) {
-      lastKnownGoodAnthropicModel = newModel;
       try {
         await api.updateUserSettings({ default_model: newModel } as Record<string, unknown>);
       } catch (e) {

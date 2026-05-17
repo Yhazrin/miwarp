@@ -4,7 +4,6 @@
   import { SKILL_CATEGORIES } from "$lib/types/skill";
   import { dbg } from "$lib/utils/debug";
   import SkillPreviewDialog from "./SkillPreviewDialog.svelte";
-  import { fmtDateYear } from "$lib/i18n/format";
 
   interface Props {
     skill: Skill;
@@ -51,7 +50,7 @@
     showPreview = true;
   }
 
-  function handleConfirm(skill: Skill, args: string) {
+  function handleConfirm(skill: Skill, _args: string) {
     showPreview = false;
     onSelect?.(skill);
   }

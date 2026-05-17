@@ -4,7 +4,7 @@
  * Implements guided onboarding flow based on Cowork setup-cowork pattern.
  * Step-by-step workflow with explicit transitions and widget-based UI.
  */
-import { dbg, dbgWarn } from "$lib/utils/debug";
+import { dbg } from "$lib/utils/debug";
 import type { WidgetSpec } from "$lib/services/skill-executor";
 
 // ── Types ──

@@ -53,8 +53,6 @@
     open = false;
   }
 
-  let selectedPreset = $derived(presets.find((p) => p.id === selectedPresetId));
-
   const PRESET_ICONS: Record<string, string> = {
     fullstack: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
     review: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z",

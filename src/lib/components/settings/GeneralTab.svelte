@@ -257,12 +257,6 @@
     }
   }
 
-  // ── Helper to update settings and notify parent ──
-  async function updateSetting(patch: Partial<UserSettings>) {
-    settings = await api.updateUserSettings(patch);
-    onSettingsUpdated(settings);
-  }
-
   onMount(async () => {
     settings = initialSettings;
     // Load web server status + token (desktop only)

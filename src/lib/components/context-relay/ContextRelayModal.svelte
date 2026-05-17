@@ -2,7 +2,6 @@
   import { t } from "$lib/i18n/index.svelte";
   import { contextRelayStore } from "$lib/context-relay/context-relay-store.svelte";
   import ContextClipCard from "./ContextClipCard.svelte";
-  import { truncate } from "$lib/utils/format";
 
   let instructions = $state("");
 
