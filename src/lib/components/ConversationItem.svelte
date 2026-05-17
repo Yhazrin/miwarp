@@ -17,6 +17,7 @@
     conversation,
     selected = false,
     batchSelected = false,
+    isDragging = false,
     onclick,
     onresume,
     ondelete,
@@ -28,12 +29,13 @@
     conversation: ConversationGroup;
     selected?: boolean;
     batchSelected?: boolean;
+    isDragging?: boolean;
     onclick?: () => void;
     onresume?: (runId: string, mode: "resume") => void;
     ondelete?: (conversation: ConversationGroup) => void;
     onmovetofolder?: (runIds: string[]) => void;
     onBatchClick?: (groupKey: string, e: MouseEvent) => void;
-    ondragstart?: (e: DragEvent, runIds: string[]) => void;
+    ondragstart?: (e: DragEvent, runIds: string[], groupKey: string) => void;
     ondragend?: () => void;
   } = $props();
 
@@ -111,11 +113,13 @@
 </script>
 
 <div
-  class="group w-full text-left border-l-[3px] rounded-md py-1.5 pr-3 pl-2 transition-colors text-[11px] cursor-pointer
+  class="group w-full text-left rounded-md py-1.5 pr-3 pl-2 transition-[background-color,border-color,box-shadow,opacity,transform] duration-150 text-[11px] cursor-pointer
     {selected
-    ? 'border-l-primary/45 bg-sidebar-accent/25 text-sidebar-foreground'
-    : 'border-l-transparent hover:bg-sidebar-accent/28 text-sidebar-foreground'} {batchSelected
+    ? 'bg-sidebar-accent/25 text-sidebar-foreground'
+    : 'hover:bg-sidebar-accent/28 text-sidebar-foreground'} {batchSelected
     ? 'ring-1 ring-primary/50'
+    : ''} {isDragging
+    ? 'scale-[0.985] opacity-45 shadow-sm'
     : ''}"
   role="button"
   tabindex="0"
@@ -127,6 +131,7 @@
         ondragstart!(
           e,
           conversation.runs.map((r) => r.id),
+          conversation.groupKey,
         )
     : undefined}
   {ondragend}

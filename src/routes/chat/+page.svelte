@@ -56,6 +56,7 @@
   import AuthSourceBadge from "$lib/components/AuthSourceBadge.svelte";
 
   import ToolActivity from "$lib/components/ToolActivity.svelte";
+  import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
   import ShortcutHelpPanel from "$lib/components/ShortcutHelpPanel.svelte";
   import type { PromptInputSnapshot } from "$lib/types";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
@@ -324,9 +325,9 @@
   let shortcutHelpOpen = $state(false);
   let statusBarRef: SessionStatusBar | undefined = $state();
   let stashedInput: PromptInputSnapshot | null = $state(null);
-  let sidebarRequestedTab = $state<
-    "workspace" | "tools" | "context" | "files" | "info" | "tasks" | "preview" | null
-  >(null);
+  let sidebarRequestedTab = $state<ToolActivityPanelTab | null>(null);
+  let toolPanelActiveTab = $state<ToolActivityPanelTab>("workspace");
+  let toolPanelIndicators = $state({ context: false, files: false, tasks: false });
   let requestedPreviewPath = $state<string | null>(null);
   let requestedPreviewUrl = $state<string | null>(null);
 
@@ -677,12 +678,6 @@
     };
   });
 
-  // ── Sidebar data ──
-  let sidebarToolsCount = $derived(
-    store.timeline.some((e) => e.kind === "tool")
-      ? store.timeline.filter((e) => e.kind === "tool").length
-      : store.tools.filter((e) => e.tool_name).length,
-  );
   // ── CLI version info (reactive — ensures heroMetaFooter re-renders after async load) ──
   let cliVersionInfo = $derived(getCliVersionInfo_cached());
 
@@ -2833,8 +2828,13 @@
     }
   }
 
-  function toggleSidebar() {
-    sidebarCollapsed = !sidebarCollapsed;
+  function selectToolPanelTab(tab: ToolActivityPanelTab) {
+    if (!sidebarCollapsed && toolPanelActiveTab === tab) {
+      sidebarCollapsed = true;
+      return;
+    }
+    toolPanelActiveTab = tab;
+    sidebarCollapsed = false;
   }
 
   async function scrollToTool(toolUseId: string) {
@@ -3336,7 +3336,9 @@
   </div>
 {/snippet}
 
-<div class="miwarp-immersive-page-root relative flex h-full overflow-hidden bg-background">
+<div
+  class="miwarp-chat-page-root miwarp-immersive-page-root relative flex h-full min-h-0 w-full overflow-hidden"
+>
   <!-- Page-level drag overlay (drag-hover or processing spinner) -->
   {#if pageDragActive || dragProcessing}
     <div
@@ -3378,64 +3380,67 @@
     </div>
   {/if}
 
-  <!-- Main content area -->
-  <div class="flex flex-1 flex-col min-w-0 relative">
+  <!-- Main content area: min-w-0 so status capsule uses column width, not viewport -->
+  <div class="relative z-20 flex min-h-0 min-w-0 flex-1 flex-col">
     <!-- Status bar -->
-    <SessionStatusBar
-      bind:this={statusBarRef}
-      running={store.sessionAlive}
-      run={store.run}
-      agent={store.run?.agent ?? store.agent}
-      model={store.model}
-      cost={store.usage.cost}
-      inputTokens={cumulativeTokens.input}
-      outputTokens={cumulativeTokens.output}
-      cacheReadTokens={cumulativeTokens.cacheRead}
-      cacheWriteTokens={cumulativeTokens.cacheWrite}
-      parentRunId={store.run?.parent_run_id}
-      onEndSession={handleStop}
-      onFork={forkOverlay ? undefined : () => handleResume("fork")}
-      onModelChange={handleModelChange}
-      effort={store.features.effortSelector ? currentEffort : undefined}
-      onEffortChange={store.features.effortSelector ? handleEffortChange : undefined}
-      onNavigateParent={store.run?.parent_run_id
-        ? () => goto(`/chat?run=${store.run!.parent_run_id}`)
-        : undefined}
-      cwd={store.effectiveCwd}
-      onToggleSidebar={toggleLayoutSidebar}
-      mcpServers={store.mcpServers}
-      onMcpToggle={() => (mcpPanelOpen = !mcpPanelOpen)}
-      cliVersion={store.cliVersion}
-      permissionMode={store.permissionMode}
-      {platformModels}
-      fastModeState={store.fastModeState}
-      verbose={verboseEnabled}
-      numTurns={store.numTurns}
-      durationMs={store.durationMs}
-      persistedFiles={store.persistedFiles}
-      onRewind={store.sessionAlive && !store.isRunning ? handleRewind : undefined}
-      contextUtilization={store.contextUtilization}
-      contextWarningLevel={store.contextWarningLevel}
-      contextWindow={store.contextWindow}
-      lastCompactedAt={store.lastCompactedAt}
-      compactCount={store.compactCount}
-      microcompactCount={store.microcompactCount}
-      turnUsages={store.turnUsages}
-      activeTaskCount={store.activeBackgroundTasks.length}
-      mode={store.run ? (store.useStreamSession ? "Stream" : "CLI") : ""}
-      toolsCount={sidebarCollapsed ? sidebarToolsCount : 0}
-      onToolsClick={sidebarCollapsed ? toggleSidebar : undefined}
-      remoteHostName={store.remoteHostName}
-      onRename={store.run ? handleRename : undefined}
-      authSourceLabel={store.authSourceLabel}
-      authSourceCategory={store.authSourceCategory}
-      apiKeySource={store.apiKeySource}
-      onStatusClick={() => {
-        if (sidebarCollapsed) sidebarCollapsed = false;
-        sidebarRequestedTab = "info";
-      }}
-      onExportHtml={store.run ? () => void handleExportHtml() : undefined}
-    />
+    <div class="min-w-0 shrink-0 px-2 sm:px-3">
+      <SessionStatusBar
+        bind:this={statusBarRef}
+        running={store.sessionAlive}
+        run={store.run}
+        agent={store.run?.agent ?? store.agent}
+        model={store.model}
+        cost={store.usage.cost}
+        inputTokens={cumulativeTokens.input}
+        outputTokens={cumulativeTokens.output}
+        cacheReadTokens={cumulativeTokens.cacheRead}
+        cacheWriteTokens={cumulativeTokens.cacheWrite}
+        parentRunId={store.run?.parent_run_id}
+        onEndSession={handleStop}
+        onFork={forkOverlay ? undefined : () => handleResume("fork")}
+        onModelChange={handleModelChange}
+        effort={store.features.effortSelector ? currentEffort : undefined}
+        onEffortChange={store.features.effortSelector ? handleEffortChange : undefined}
+        onNavigateParent={store.run?.parent_run_id
+          ? () => goto(`/chat?run=${store.run!.parent_run_id}`)
+          : undefined}
+        cwd={store.effectiveCwd}
+        onToggleSidebar={toggleLayoutSidebar}
+        mcpServers={store.mcpServers}
+        onMcpToggle={() => (mcpPanelOpen = !mcpPanelOpen)}
+        cliVersion={store.cliVersion}
+        permissionMode={store.permissionMode}
+        {platformModels}
+        fastModeState={store.fastModeState}
+        verbose={verboseEnabled}
+        numTurns={store.numTurns}
+        durationMs={store.durationMs}
+        persistedFiles={store.persistedFiles}
+        onRewind={store.sessionAlive && !store.isRunning ? handleRewind : undefined}
+        contextUtilization={store.contextUtilization}
+        contextWarningLevel={store.contextWarningLevel}
+        contextWindow={store.contextWindow}
+        lastCompactedAt={store.lastCompactedAt}
+        compactCount={store.compactCount}
+        microcompactCount={store.microcompactCount}
+        turnUsages={store.turnUsages}
+        activeTaskCount={store.activeBackgroundTasks.length}
+        mode={store.run ? (store.useStreamSession ? "Stream" : "CLI") : ""}
+        remoteHostName={store.remoteHostName}
+        onRename={store.run ? handleRename : undefined}
+        authSourceLabel={store.authSourceLabel}
+        authSourceCategory={store.authSourceCategory}
+        apiKeySource={store.apiKeySource}
+        onStatusClick={() => {
+          if (sidebarCollapsed) sidebarCollapsed = false;
+          sidebarRequestedTab = "info";
+        }}
+        onExportHtml={store.run ? () => void handleExportHtml() : undefined}
+        {toolPanelActiveTab}
+        onToolPanelTabChange={selectToolPanelTab}
+        {toolPanelIndicators}
+      />
+    </div>
 
     <!-- MCP panel (floating below status bar) -->
     {#if mcpPanelOpen && store.mcpServers.length > 0}
@@ -3453,7 +3458,7 @@
     {/if}
 
     <!-- Main area -->
-    <div class="flex-1 overflow-hidden relative">
+    <div class="relative z-0 min-h-0 min-w-0 flex-1 overflow-hidden bg-background">
       {#if store.useStreamSession}
         <!-- API mode: chat messages -->
         <div
@@ -4471,9 +4476,6 @@
               folderCwdOverride ||
               localStorage.getItem("ocv:project-cwd") ||
               ""}
-            authMode={store.authMode}
-            platformId={store.platformId ?? "anthropic"}
-            platformCredentials={settings?.platform_credentials ?? []}
             onSend={ctrl.sendMessage}
             onBtwSend={handleBtwSend}
             onAgentChange={undefined}
@@ -4485,14 +4487,6 @@
             onVirtualCommand={handleVirtualCommand}
             fastModeState={store.fastModeState}
             onFastModeSwitch={handleFastModeSwitch}
-            onPlatformChange={handlePlatformChange}
-            {authOverview}
-            authSourceLabel={store.authSourceLabel}
-            authSourceCategory={store.authSourceCategory}
-            apiKeySource={store.apiKeySource}
-            onAuthModeChange={handleAuthModeChange}
-            {localProxyStatuses}
-            showAuthBadge={!welcomeVisible}
             onShortcutHelp={() => (shortcutHelpOpen = !shortcutHelpOpen)}
             availableSkills={store.availableSkills}
             {skillItems}
@@ -4537,27 +4531,30 @@
     {/if}
   </div>
 
-  <!-- Tool Activity sidebar -->
-  <ToolActivity
-    timeline={store.timeline}
-    tools={store.tools}
-    turnUsages={store.turnUsages}
-    {contextHistory}
-    persistedFiles={store.persistedFiles}
-    sessionInfo={currentSessionInfo}
-    collapsed={sidebarCollapsed}
-    onToggle={toggleSidebar}
-    onScrollToTool={scrollToTool}
-    onScrollToTurn={(anchorId) => scrollToMessage(anchorId)}
-    bind:requestedTab={sidebarRequestedTab}
-    backgroundTasks={store.taskNotifications}
-    activeBackgroundTasks={store.activeBackgroundTasks}
-    cwd={store.effectiveCwd}
-    runId={store.run?.id ?? ""}
-    isRemote={store.isRemote}
-    bind:requestedPreviewPath
-    bind:requestedPreviewUrl
-  />
+  <!-- Tool Activity sidebar: transparent rail so cards float; keep below center column in stacking -->
+  <div class="relative z-0 flex h-full min-h-0 shrink-0 flex-col bg-transparent">
+    <ToolActivity
+      timeline={store.timeline}
+      tools={store.tools}
+      turnUsages={store.turnUsages}
+      {contextHistory}
+      persistedFiles={store.persistedFiles}
+      sessionInfo={currentSessionInfo}
+      collapsed={sidebarCollapsed}
+      onScrollToTool={scrollToTool}
+      onScrollToTurn={(anchorId) => scrollToMessage(anchorId)}
+      bind:requestedTab={sidebarRequestedTab}
+      bind:activeTab={toolPanelActiveTab}
+      bind:panelIndicators={toolPanelIndicators}
+      backgroundTasks={store.taskNotifications}
+      activeBackgroundTasks={store.activeBackgroundTasks}
+      cwd={store.effectiveCwd}
+      runId={store.run?.id ?? ""}
+      isRemote={store.isRemote}
+      bind:requestedPreviewPath
+      bind:requestedPreviewUrl
+    />
+  </div>
 
   <RewindModal
     bind:open={rewindModalOpen}

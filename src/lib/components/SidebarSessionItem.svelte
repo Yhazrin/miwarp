@@ -59,10 +59,10 @@
 </script>
 
 <div
-  class="group/item w-full text-left border-l-[3px] rounded-md py-1.5 pr-2.5 pl-2 transition-colors cursor-pointer text-[11px]
+  class="group/item w-full text-left rounded-md py-1.5 pr-2.5 pl-2 transition-colors cursor-pointer text-[11px]
     {selected
-    ? 'border-l-primary/45 bg-sidebar-accent/25 text-sidebar-foreground'
-    : 'border-l-transparent hover:bg-sidebar-accent/28 text-sidebar-foreground'}"
+    ? 'bg-sidebar-accent/25 text-sidebar-foreground'
+    : 'hover:bg-sidebar-accent/28 text-sidebar-foreground'}"
   role="button"
   tabindex="0"
   onclick={() => onclick?.()}

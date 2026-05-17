@@ -9,6 +9,8 @@
   import { fmtNumber } from "$lib/i18n/format";
   import { truncate, formatTokenCount, formatDuration, formatCostDisplay } from "$lib/utils/format";
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
+  import SessionPanelTabs from "$lib/components/chat/SessionPanelTabs.svelte";
+  import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
 
   let {
     run = null,
@@ -58,6 +60,9 @@
     onEffortChange,
     onStatusClick,
     onExportHtml,
+    toolPanelActiveTab,
+    onToolPanelTabChange,
+    toolPanelIndicators,
   }: {
     run?: TaskRun | null;
     agent?: string;
@@ -106,6 +111,9 @@
     onEffortChange?: (effort: string) => void;
     onStatusClick?: () => void;
     onExportHtml?: () => void;
+    toolPanelActiveTab?: ToolActivityPanelTab;
+    onToolPanelTabChange?: (tab: ToolActivityPanelTab) => void;
+    toolPanelIndicators?: { context: boolean; files: boolean; tasks: boolean };
   } = $props();
 
   $effect(() => {
@@ -231,19 +239,37 @@
     );
   });
 
-  // More menu state
+  // ── Dynamic Island hover (peek extra row without toggling persisted expanded) ──
+  let islandHover = $state(false);
+  let islandLeaveTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function onIslandPointerEnter() {
+    clearTimeout(islandLeaveTimer);
+    islandHover = true;
+  }
+
+  function onIslandPointerLeave() {
+    islandLeaveTimer = setTimeout(() => {
+      islandHover = false;
+    }, 140);
+  }
+
   let moreMenuOpen = $state(false);
   let moreMenuBtnEl: HTMLButtonElement | undefined = $state();
   let moreMenuEl: HTMLDivElement | undefined = $state();
+
+  let showIslandExpanded = $derived(
+    expanded || islandHover || dropdownOpen || moreMenuOpen || titleEditing,
+  );
 
   function positionDropdown() {
     if (!modelBtnEl) return;
     const rect = modelBtnEl.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
     if (spaceBelow < 200) {
-      dropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:50;`;
+      dropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:99;`;
     } else {
-      dropdownStyle = `position:fixed; top:${rect.bottom + 4}px; left:${rect.left}px; z-index:50;`;
+      dropdownStyle = `position:fixed; top:${rect.bottom + 4}px; left:${rect.left}px; z-index:99;`;
     }
   }
 
@@ -364,6 +390,7 @@
   onDestroy(() => {
     clearTimeout(compactTimer);
     clearTimeout(confirmTimer);
+    clearTimeout(islandLeaveTimer);
   });
 
   // ── End Session confirmation ──
@@ -452,20 +479,26 @@
   spacers below are kept for Linux/Windows where the JS handler is needed.
 -->
 <div
-  class="session-status-drag relative mx-4 mt-3 rounded-full border border-white/10 bg-background/55 font-mono text-xs text-foreground/70 backdrop-blur-2xl shadow-[0_2px_16px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.08)]"
+  class="session-status-drag session-island-shell relative mx-3 mt-3 w-full min-w-0 max-w-[1100px] self-center border border-white/10 bg-background/55 font-mono text-xs text-foreground/70 backdrop-blur-2xl transition-[border-radius,box-shadow] duration-[520ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:duration-150 motion-reduce:ease-linear sm:mx-4 {showIslandExpanded
+    ? 'rounded-[1.28rem] shadow-[0_12px_44px_rgba(0,0,0,0.12),0_4px_14px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.1)]'
+    : 'rounded-full shadow-[0_2px_16px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.08)]'}"
   data-tauri-drag-region
+  onpointerenter={onIslandPointerEnter}
+  onpointerleave={onIslandPointerLeave}
+  aria-label={t("statusbar_islandRegion")}
 >
   <!-- Left drag spacer (Linux/Windows JS fallback) -->
   <WindowDragArea class="absolute left-0 top-0 bottom-0 w-24 rounded-l-full" />
   <!-- Right drag spacer (Linux/Windows JS fallback) -->
   <WindowDragArea class="absolute right-0 top-0 bottom-0 w-24 rounded-r-full" />
-  <!-- Tier 1: Always visible (h-9) -->
-  <div class="relative z-10 flex h-9 items-center justify-between px-3">
-    <!-- Left: core info -->
-    <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+  <!-- Tier 1: session status + panel tabs + actions -->
+  <div class="relative z-10 flex h-9 min-w-0 items-center gap-1.5 px-3">
+    <!-- Left: core session status (segment 1) -->
+    <div class="flex min-h-0 min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
       {#if onToggleSidebar}
         <button
-          class="rounded p-1 -ml-1 mr-0.5 hover:bg-accent transition-colors"
+          type="button"
+          class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md -ml-1 mr-0.5 hover:bg-accent transition-colors"
           onclick={onToggleSidebar}
           title={t("statusbar_toggleSidebar")}
         >
@@ -485,7 +518,8 @@
       <!-- Pulse indicator + agent name (clickable for status) -->
       {#if onStatusClick}
         <button
-          class="inline-flex items-center gap-1.5 shrink-0 rounded px-1 -mx-1 hover:bg-accent/50 transition-colors"
+          type="button"
+          class="inline-flex h-7 min-w-0 shrink-0 items-center gap-1.5 rounded-md px-1 -mx-1 hover:bg-accent/50 transition-colors"
           onclick={onStatusClick}
           title={t("toolActivity_tabInfo")}
         >
@@ -553,7 +587,7 @@
         {#if onModelChange}
           <button
             bind:this={modelBtnEl}
-            class="flex items-center gap-1 max-w-[min(11rem,32vw)] min-w-0 shrink rounded border border-transparent px-1.5 py-0.5 -my-0.5 text-foreground/80 hover:text-foreground hover:bg-accent hover:border-border transition-colors"
+            class="inline-flex h-7 max-w-[min(11rem,30vw)] min-w-0 shrink-0 items-center gap-1 rounded-md border border-transparent px-1.5 text-foreground/80 transition-colors hover:border-border hover:bg-accent hover:text-foreground"
             onclick={toggleModelDropdown}
             title={modelLabel}
           >
@@ -570,7 +604,7 @@
             >
           </button>
         {:else}
-          <span class="truncate max-w-[min(11rem,32vw)] text-foreground/80" title={model}
+          <span class="truncate max-w-[min(11rem,30vw)] text-foreground/80" title={model}
             >{model}</span
           >
         {/if}
@@ -634,8 +668,22 @@
       {/if}
     </div>
 
+    {#if onToolPanelTabChange && toolPanelActiveTab}
+      <div
+        class="hidden h-5 w-px shrink-0 self-center bg-border/50 min-[480px]:block"
+        aria-hidden="true"
+      ></div>
+      <div class="flex h-9 min-w-0 shrink items-center">
+        <SessionPanelTabs
+          active={toolPanelActiveTab}
+          onSelect={onToolPanelTabChange}
+          indicators={toolPanelIndicators ?? { context: false, files: false, tasks: false }}
+        />
+      </div>
+    {/if}
+
     <!-- Right: tools count + More menu + chevron -->
-    <div class="flex items-center gap-2">
+    <div class="ml-auto flex h-9 shrink-0 items-center gap-1.5">
       {#if toolsCount && toolsCount > 0 && onToolsClick}
         <button
           class="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -650,8 +698,9 @@
       {#if hasMoreActions}
         <div class="relative">
           <button
+            type="button"
             bind:this={moreMenuBtnEl}
-            class="rounded p-0.5 text-foreground/40 hover:text-foreground/70 hover:bg-accent transition-colors"
+            class="inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground/40 hover:bg-accent hover:text-foreground/70 transition-colors"
             onclick={() => (moreMenuOpen = !moreMenuOpen)}
             title={t("statusbar_moreMenu")}
           >
@@ -791,7 +840,8 @@
 
       <!-- Expand/collapse chevron -->
       <button
-        class="rounded p-0.5 text-foreground/30 hover:text-foreground/60 hover:bg-accent transition-colors"
+        type="button"
+        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-foreground/30 hover:bg-accent hover:text-foreground/60 transition-colors"
         onclick={() => (expanded = !expanded)}
         title={expanded ? t("statusbar_collapse") : t("statusbar_expand")}
       >
@@ -810,9 +860,14 @@
     </div>
   </div>
 
-  <!-- Tier 2: Collapsible details (h-7) -->
-  {#if expanded}
-    <div class="flex h-7 items-center justify-between border-t border-border/20 px-3">
+  <!-- Tier 2: expands on hover (peek) or when pinned open via chevron -->
+  <div
+    class="grid transition-[grid-template-rows] duration-[520ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:duration-150 motion-reduce:ease-linear"
+    style="grid-template-rows: {showIslandExpanded ? '1fr' : '0fr'};"
+    aria-hidden={!showIslandExpanded}
+  >
+    <div class="min-h-0 overflow-hidden {showIslandExpanded ? '' : 'pointer-events-none'}">
+      <div class="flex h-7 min-h-[1.75rem] items-center justify-between border-t border-border/20 px-3">
       <!-- Left: details -->
       <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
         {#if cwdShort}
@@ -972,7 +1027,8 @@
         {/if}
       </div>
     </div>
-  {/if}
+  </div>
+</div>
 </div>
 
 {#if dropdownOpen}

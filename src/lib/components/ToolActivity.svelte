@@ -24,6 +24,7 @@
   } from "$lib/utils/file-entries";
   import { extractTaskToolMeta, type TaskToolMeta } from "$lib/utils/tool-rendering";
   import type { TaskNotificationItem } from "$lib/stores/session-store.svelte";
+  import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
 
   let {
     timeline = [],
@@ -33,12 +34,15 @@
     persistedFiles = [],
     sessionInfo = null,
     collapsed = false,
-    onToggle,
     onScrollToTool,
     onScrollToTurn,
-    requestedTab = $bindable(
-      null as "workspace" | "tools" | "context" | "files" | "info" | "tasks" | "preview" | null,
-    ),
+    requestedTab = $bindable(null as ToolActivityPanelTab | null),
+    activeTab = $bindable("workspace" as ToolActivityPanelTab),
+    panelIndicators = $bindable({
+      context: false,
+      files: false,
+      tasks: false,
+    }),
     backgroundTasks = new Map(),
     activeBackgroundTasks = [],
     cwd = "",
@@ -54,18 +58,11 @@
     persistedFiles?: unknown[];
     sessionInfo?: SessionInfoData | null;
     collapsed: boolean;
-    onToggle: () => void;
     onScrollToTool?: (toolUseId: string) => void;
     onScrollToTurn?: (anchorId: string) => void;
-    requestedTab?:
-      | "workspace"
-      | "tools"
-      | "context"
-      | "files"
-      | "info"
-      | "tasks"
-      | "preview"
-      | null;
+    requestedTab?: ToolActivityPanelTab | null;
+    activeTab?: ToolActivityPanelTab;
+    panelIndicators?: { context: boolean; files: boolean; tasks: boolean };
     backgroundTasks?: Map<string, TaskNotificationItem>;
     activeBackgroundTasks?: TaskNotificationItem[];
     cwd?: string;
@@ -75,24 +72,11 @@
     requestedPreviewUrl?: string | null;
   } = $props();
 
-  // ── Tab state ──
-  type SidebarPanel = "workspace" | "tools" | "context" | "files" | "info" | "tasks" | "preview";
-  let activeTab: SidebarPanel = $state("workspace");
-
-  function toolTabBtn(active: boolean, compact: boolean): string {
-    const shell = compact
-      ? "relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors"
-      : "relative shrink-0 rounded-lg p-1.5 transition-colors";
-    return active
-      ? `${shell} bg-muted/75 text-foreground shadow-sm ring-1 ring-border/50`
-      : `${shell} text-muted-foreground hover:bg-muted/45 hover:text-foreground`;
-  }
-
   // Lazy keep-alive: a tab is mounted on first activation and stays mounted thereafter.
   // Switching back to a previously-opened tab is then visibility-only (no remount).
   // Svelte 5: $state(Set) requires reassignment to trigger reactivity (mutation methods
   // alone won't), mirroring the existing collapsedTurns pattern below.
-  let mountedTabs = $state(new Set<SidebarPanel>(["workspace"]));
+  let mountedTabs = $state(new Set<ToolActivityPanelTab>(["workspace"]));
   $effect(() => {
     if (!mountedTabs.has(activeTab)) {
       mountedTabs = new Set(mountedTabs).add(activeTab);
@@ -102,7 +86,7 @@
   // Perf: measure tab-switch frame cost. Tracks the gap between activeTab change and the next
   // animation frame — proxy for "how much work was queued by switching".
   // Gated by isPerfEnabled() so non-debug runs don't pay performance.now() + rAF overhead.
-  let _prevTab: SidebarPanel | null = null;
+  let _prevTab: ToolActivityPanelTab | null = null;
   $effect(() => {
     const cur = activeTab;
     const from = _prevTab;
@@ -160,7 +144,7 @@
   const WIDTH_MIN = 280;
   const WIDTH_MAX = 720;
   const WIDTH_DEFAULT = 420;
-  const WIDTH_COLLAPSED = 44;
+  const WIDTH_COLLAPSED = 0;
 
   function clampWidth(v: number): number {
     return Math.max(WIDTH_MIN, Math.min(WIDTH_MAX, v));
@@ -428,6 +412,14 @@
     );
   });
 
+  $effect(() => {
+    panelIndicators = {
+      context: contextHistory.length > 0,
+      files: fileEntries.length > 0,
+      tasks: activeBackgroundTasks.length > 0,
+    };
+  });
+
   // ── Subagent extraction (for info tab) ──
 
   interface SubagentInfo {
@@ -614,11 +606,6 @@
     collapsedTurns = new Set(collapsedTurns);
   }
 
-  function openCollapsedTab(tab: SidebarPanel) {
-    activeTab = tab;
-    onToggle();
-  }
-
   $effect(() => {
     dbg("tools", "sidebar updated", {
       useTimeline,
@@ -694,7 +681,7 @@
 {/snippet}
 
 <!--
-  Outer wrapper is ALWAYS mounted: width animates between a slim icon rail and effectiveWidth.
+  Outer wrapper is always mounted: width is 0 when collapsed and effectiveWidth when open.
   The expanded panel inside stays in the DOM at full width but is visually clipped + hidden when
   collapsed, so CodeMirror (FilePreviewPane) is never torn down on collapse toggle. This is the
   fix for "files tab + click expand briefly hangs".
@@ -708,186 +695,15 @@
 {/if}
 <aside
   bind:this={asideEl}
-  class="relative h-full overflow-hidden {collapsed
+  class="relative flex min-h-0 flex-1 overflow-hidden {collapsed
     ? 'bg-transparent'
     : 'miwarp-toolactivity-glass'}"
   style="width: {collapsed
     ? WIDTH_COLLAPSED + 'px'
     : effectiveWidth + 'px'}; contain: layout style; clip-path: inset(0);"
 >
-  {#if collapsed}
-    <div
-      class="absolute inset-0 z-30 flex flex-col items-center gap-1 px-1 py-1.5 backdrop-blur-md bg-background/40"
-    >
-      <div
-        class="flex w-full flex-col items-center gap-1 rounded-2xl border border-border/40 bg-muted/20 p-1"
-      >
-        <button
-          class={toolTabBtn(activeTab === "workspace", true)}
-          onclick={() => openCollapsedTab("workspace")}
-          title={t("toolActivity_tabWorkspace")}
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <polyline points="9 22 9 12 15 12 15 22" />
-          </svg>
-        </button>
-        <button
-          class={toolTabBtn(activeTab === "tools", true)}
-          onclick={() => openCollapsedTab("tools")}
-          title={t("toolActivity_tabActivity")}
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path
-              d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
-            />
-          </svg>
-        </button>
-        <button
-          class="{toolTabBtn(activeTab === 'context', true)} relative"
-          onclick={() => openCollapsedTab("context")}
-          title={t("toolActivity_tabContext")}
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-          {#if contextHistory.length > 0}
-            <span
-              class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-success))]"
-            ></span>
-          {/if}
-        </button>
-        <button
-          class="{toolTabBtn(activeTab === 'files', true)} relative"
-          onclick={() => openCollapsedTab("files")}
-          title={t("toolActivity_tabFiles")}
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-          </svg>
-          {#if fileEntries.length > 0}
-            <span
-              class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-warning))]"
-            ></span>
-          {/if}
-        </button>
-        <button
-          class={toolTabBtn(activeTab === "preview", true)}
-          onclick={() => openCollapsedTab("preview")}
-          title={t("toolActivity_tabPreview")}
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <rect x="2" y="3" width="20" height="14" rx="2" />
-            <path d="M8 21h8M12 17v4" />
-          </svg>
-        </button>
-        <button
-          class={toolTabBtn(activeTab === "info", true)}
-          onclick={() => openCollapsedTab("info")}
-          title={t("toolActivity_tabInfo")}
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="16" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12.01" y2="8" />
-          </svg>
-        </button>
-        <button
-          class="{toolTabBtn(activeTab === 'tasks', true)} relative"
-          onclick={() => openCollapsedTab("tasks")}
-          title={t("toolActivity_tabTasks")}
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <path d="M9 12l2 2 4-4" />
-          </svg>
-          {#if activeBackgroundTasks.length > 0}
-            <span
-              class="absolute right-1 top-1 h-1.5 w-1.5 animate-pulse rounded-full bg-[hsl(var(--miwarp-status-info))]"
-            ></span>
-          {/if}
-        </button>
-      </div>
-      <button
-        class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border/35 bg-muted/25 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
-        onclick={onToggle}
-        title={t("toolActivity_expand")}
-      >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
-      </button>
-    </div>
-  {/if}
-  <!-- Always-mounted expanded panel (hidden + translated off-canvas when collapsed) -->
   <div
-    class="absolute top-0 left-0 h-full flex flex-col transition-transform duration-200"
+    class="absolute top-3 bottom-0 left-0 flex flex-col transition-transform duration-200"
     style="width: {effectiveWidth}px; transform: translateX({collapsed
       ? '100%'
       : '0'}); visibility: {collapsed ? 'hidden' : 'visible'}; pointer-events: {collapsed
@@ -908,181 +724,6 @@
       onpointerup={onResizeEnd}
       onpointercancel={onResizeEnd}
     ></div>
-    <!-- Header: icon tabs -->
-    <div class="mt-3 mx-1.5 mb-1 flex items-center justify-between gap-2">
-      <div
-        class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-xl border border-border/40 bg-muted/15 p-1 pr-2"
-      >
-        <!-- Workspace icon -->
-        <button
-          class={toolTabBtn(activeTab === "workspace", false)}
-          onclick={() => (activeTab = "workspace")}
-          title={t("toolActivity_tabWorkspace")}
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <polyline points="9 22 9 12 15 12 15 22" />
-          </svg>
-        </button>
-        <!-- Activity (tools) icon -->
-        <button
-          class={toolTabBtn(activeTab === "tools", false)}
-          onclick={() => (activeTab = "tools")}
-          title={t("toolActivity_tabActivity")}
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path
-              d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
-            />
-          </svg>
-        </button>
-        <!-- Context icon -->
-        <button
-          class="{toolTabBtn(activeTab === 'context', false)} relative"
-          onclick={() => (activeTab = "context")}
-          title={t("toolActivity_tabContext")}
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-          {#if contextHistory.length > 0}
-            <span
-              class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-success))]"
-            ></span>
-          {/if}
-        </button>
-        <!-- Files icon -->
-        <button
-          class="{toolTabBtn(activeTab === 'files', false)} relative"
-          onclick={() => (activeTab = "files")}
-          title={t("toolActivity_tabFiles")}
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-          </svg>
-          {#if fileEntries.length > 0}
-            <span
-              class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-warning))]"
-            ></span>
-          {/if}
-        </button>
-        <!-- Preview icon -->
-        <button
-          class={toolTabBtn(activeTab === "preview", false)}
-          onclick={() => (activeTab = "preview")}
-          title={t("toolActivity_tabPreview")}
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <rect x="2" y="3" width="20" height="14" rx="2" />
-            <path d="M8 21h8M12 17v4" />
-          </svg>
-        </button>
-        <!-- Info icon -->
-        <button
-          class={toolTabBtn(activeTab === "info", false)}
-          onclick={() => (activeTab = "info")}
-          title={t("toolActivity_tabInfo")}
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="16" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12.01" y2="8" />
-          </svg>
-        </button>
-        <!-- Tasks icon -->
-        <button
-          class="{toolTabBtn(activeTab === 'tasks', false)} relative"
-          onclick={() => (activeTab = "tasks")}
-          title={t("toolActivity_tabTasks")}
-        >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <path d="M9 12l2 2 4-4" />
-          </svg>
-          {#if activeBackgroundTasks.length > 0}
-            <span
-              class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"
-            ></span>
-          {/if}
-        </button>
-      </div>
-      <button
-        class="shrink-0 rounded-lg border border-border/35 bg-muted/20 p-1.5 text-muted-foreground transition-colors hover:bg-muted/35 hover:text-foreground"
-        onclick={onToggle}
-        title={t("toolActivity_collapse")}
-      >
-        <svg
-          class="h-4 w-4"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
-      </button>
-    </div>
-
     <!-- Lazy keep-alive: each tab mounts on first activation and stays mounted (visibility-only after).
          Tab content is absolutely positioned within this relative wrapper so all mounted tabs share
          the same layout slot but only the active one is visible/interactive. -->
@@ -1256,7 +897,7 @@
                   {@const isError = sa.status === "error" || sa.status === "denied"}
                   {@const isRunning = !isDone && !isError}
                   <button
-                    class="w-full text-left rounded-md border border-border/50 bg-background/50 px-2.5 py-1.5 hover:bg-accent/30 transition-colors"
+                    class="w-full text-left rounded-md border border-border/50 px-2.5 py-1.5 hover:bg-accent/30 transition-colors"
                     onclick={() => onScrollToTool?.(sa.toolUseId)}
                     title={t("toolActivity_scrollTo")}
                   >

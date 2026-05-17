@@ -31,6 +31,7 @@
   import CliSessionBrowser from "$lib/components/CliSessionBrowser.svelte";
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
+  import MemorySidebarGroup from "$lib/components/MemorySidebarGroup.svelte";
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
   import TopWindowDrag from "$lib/components/TopWindowDrag.svelte";
   import SidebarProjectContextStrip from "$lib/components/sidebar/SidebarProjectContextStrip.svelte";
@@ -161,11 +162,30 @@
   });
 
   // ── Drag-and-drop for sessions → folders ──
+  const RUN_DRAG_MIME = "application/x-miwarp-run-ids";
   let dragRunIds = $state<string[]>([]);
   let dragOverFolderId = $state<string | null>(null);
+  let dragExpandTimer: ReturnType<typeof setTimeout> | null = null;
 
   function parseDragRunIdsFromDataTransfer(dt: DataTransfer | null): string[] {
     if (!dt) return [];
+    let customRaw = "";
+    try {
+      customRaw = dt.getData(RUN_DRAG_MIME);
+    } catch {
+      customRaw = "";
+    }
+    if (customRaw) {
+      try {
+        const parsed = JSON.parse(customRaw);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((id): id is string => typeof id === "string" && id.length > 0);
+        }
+      } catch {
+        // Fall back to text/plain below for older drag payloads.
+      }
+    }
+
     const raw = dt.getData("text/plain").trim();
     if (!raw) return [];
     return raw
@@ -174,47 +194,107 @@
       .filter(Boolean);
   }
 
-  function handleDragStartConversation(e: DragEvent, runIds: string[]) {
-    dragRunIds = runIds;
+  function getSelectedRunIdsForDrag(groupKey: string, fallbackRunIds: string[]): string[] {
+    if (!selectedGroupKeys.has(groupKey)) return fallbackRunIds;
+
+    const selectedRunIds: string[] = [];
+    for (const folder of enrichedProjectFolders) {
+      for (const conv of folder.conversations) {
+        if (selectedGroupKeys.has(conv.groupKey)) {
+          selectedRunIds.push(...conv.runs.map((r) => r.id));
+        }
+      }
+      for (const sf of folder.subFolders ?? []) {
+        for (const conv of sf.conversations) {
+          if (selectedGroupKeys.has(conv.groupKey)) {
+            selectedRunIds.push(...conv.runs.map((r) => r.id));
+          }
+        }
+      }
+    }
+
+    return selectedRunIds.length > 0 ? Array.from(new Set(selectedRunIds)) : fallbackRunIds;
+  }
+
+  function handleDragStartConversation(e: DragEvent, runIds: string[], groupKey: string) {
+    const ids = getSelectedRunIdsForDrag(groupKey, runIds);
+    dragRunIds = ids;
     if (e.dataTransfer) {
       e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", runIds.join(","));
+      try {
+        e.dataTransfer.setData(RUN_DRAG_MIME, JSON.stringify(ids));
+      } catch {
+        // Some WebViews only preserve text/plain for internal drags.
+      }
+      e.dataTransfer.setData("text/plain", ids.join(","));
     }
   }
 
   function handleDragEndConversation() {
+    if (dragExpandTimer) {
+      clearTimeout(dragExpandTimer);
+      dragExpandTimer = null;
+    }
     setTimeout(() => {
       dragRunIds = [];
       dragOverFolderId = null;
     }, 0);
   }
 
-  function handleDragOverFolder(folderId: string, e?: DragEvent) {
+  function hasRunDragPayload(e?: DragEvent): boolean {
     const fromState = dragRunIds.length > 0;
-    const fromTypes = e?.dataTransfer?.types?.includes("text/plain") ?? false;
-    if (fromState || fromTypes) dragOverFolderId = folderId;
+    const types = e?.dataTransfer?.types;
+    const fromTypes =
+      !!types &&
+      Array.from(types).some((type) => type === RUN_DRAG_MIME || type === "text/plain");
+    return fromState || fromTypes;
+  }
+
+  function handleDragOverFolder(folderId: string, e?: DragEvent, folderKey?: string) {
+    if (!hasRunDragPayload(e)) return;
+    if (e?.dataTransfer) e.dataTransfer.dropEffect = "move";
+    dragOverFolderId = folderId;
+
+    if (folderKey && !expandedSubFolders.has(folderKey) && !dragExpandTimer) {
+      dragExpandTimer = setTimeout(() => {
+        const next = new Set(expandedSubFolders);
+        next.add(folderKey);
+        expandedSubFolders = next;
+        dragExpandTimer = null;
+      }, 450);
+    }
   }
 
   function handleDragLeaveFolder() {
     dragOverFolderId = null;
+    if (dragExpandTimer) {
+      clearTimeout(dragExpandTimer);
+      dragExpandTimer = null;
+    }
   }
 
   async function handleDropOnFolder(folderId: string, e?: DragEvent) {
     const fromTransfer = parseDragRunIdsFromDataTransfer(e?.dataTransfer ?? null);
     const ids = fromTransfer.length > 0 ? fromTransfer : dragRunIds.slice();
+    const folderByRunId = new Map(runs.map((r) => [r.id, r.folder_id ?? null]));
+    const idsToMove = ids.filter((id) => folderByRunId.get(id) !== folderId);
     dragRunIds = [];
     dragOverFolderId = null;
-    if (ids.length === 0) return;
+    if (dragExpandTimer) {
+      clearTimeout(dragExpandTimer);
+      dragExpandTimer = null;
+    }
+    if (idsToMove.length === 0) return;
     try {
-      if (ids.length === 1) {
-        await moveRunToFolder(ids[0], folderId);
+      if (idsToMove.length === 1) {
+        await moveRunToFolder(idsToMove[0], folderId);
       } else {
-        await batchMoveToFolder(ids, folderId);
+        await batchMoveToFolder(idsToMove, folderId);
       }
-      runs = runs.map((r) => (ids.includes(r.id) ? { ...r, folder_id: folderId } : r));
+      runs = runs.map((r) => (idsToMove.includes(r.id) ? { ...r, folder_id: folderId } : r));
       await loadSessionFolders();
       window.dispatchEvent(new Event("ocv:runs-changed"));
-      dbg("layout", "drag-drop move to folder", { count: ids.length, folderId });
+      dbg("layout", "drag-drop move to folder", { count: idsToMove.length, folderId });
     } catch (e) {
       dbgWarn("layout", "drag-drop moveRunToFolder failed", e);
     }
@@ -566,13 +646,22 @@
   let memoryLoading = $state(false);
   let memoryScopeExpanded = $state<Record<string, boolean>>({
     global: false,
+    project: false,
+    memory: false,
   });
 
   let memoryScopeProject = $derived(memoryCandidates.filter((c) => c.scope === "project"));
   let memoryScopeGlobal = $derived(memoryCandidates.filter((c) => c.scope === "global"));
   let memoryScopeMemory = $derived(memoryCandidates.filter((c) => c.scope === "memory"));
-  // Merged project + auto memory for flat folder view
-  let memoryScopeFolder = $derived([...memoryScopeProject, ...memoryScopeMemory]);
+  let visibleMemoryProject = $derived(
+    filterVisibleCandidates(memoryScopeProject, true, memorySelectedFile),
+  );
+  let visibleMemoryGlobal = $derived(
+    filterVisibleCandidates(memoryScopeGlobal, true, memorySelectedFile),
+  );
+  let visibleMemoryAuto = $derived(
+    filterVisibleCandidates(memoryScopeMemory, true, memorySelectedFile),
+  );
 
   let memoryCandidateSeq = 0;
 
@@ -610,6 +699,14 @@
 
   function toggleMemoryScope(scope: string) {
     memoryScopeExpanded = { ...memoryScopeExpanded, [scope]: !memoryScopeExpanded[scope] };
+  }
+
+  function memoryScopeHasSelected(files: MemoryFileCandidate[]) {
+    return files.some((file) => file.path === memorySelectedFile);
+  }
+
+  function memoryScopeIsExpanded(scope: string, files: MemoryFileCandidate[]) {
+    return !!memoryScopeExpanded[scope] || memoryScopeHasSelected(files);
   }
 
   // Load tree when switching to explorer page or changing project
@@ -2440,40 +2537,27 @@
                           class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
                         ></div>
                       </div>
-                    {:else if memoryScopeFolder.length > 0}
-                      {#each filterVisibleCandidates(memoryScopeFolder, true, memorySelectedFile) as file}
-                        <button
-                          class="flex w-full items-center gap-1.5 py-1 pl-4 pr-3 text-xs transition-colors
-                        {memorySelectedFile === file.path
-                            ? 'bg-sidebar-accent text-sidebar-foreground'
-                            : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
-                          onclick={() => selectMemoryFile(file)}
-                          title={file.path}
-                        >
-                          <svg
-                            class="h-3 w-3 shrink-0 {file.scope === 'memory'
-                              ? 'text-amber-400'
-                              : file.exists
-                                ? 'text-blue-400'
-                                : 'text-muted-foreground/40'}"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            ><path
-                              d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"
-                            /><path d="M14 2v4a2 2 0 0 0 2 2h4" /></svg
-                          >
-                          <span class="min-w-0 truncate">{file.label}</span>
-                          {#if !file.exists}
-                            <span class="ml-auto text-[10px] text-muted-foreground shrink-0"
-                              >{t("memory_new")}</span
-                            >
-                          {/if}
-                        </button>
-                      {/each}
+                    {:else if visibleMemoryProject.length > 0 || visibleMemoryAuto.length > 0}
+                      <div class="space-y-0.5">
+                        <MemorySidebarGroup
+                          label={t("memory_tabProject")}
+                          files={visibleMemoryProject}
+                          selectedPath={memorySelectedFile}
+                          expanded={memoryScopeIsExpanded("project", visibleMemoryProject)}
+                          tone="project"
+                          onToggle={() => toggleMemoryScope("project")}
+                          onSelect={selectMemoryFile}
+                        />
+                        <MemorySidebarGroup
+                          label={t("memory_tabMemory")}
+                          files={visibleMemoryAuto}
+                          selectedPath={memorySelectedFile}
+                          expanded={memoryScopeIsExpanded("memory", visibleMemoryAuto)}
+                          tone="memory"
+                          onToggle={() => toggleMemoryScope("memory")}
+                          onSelect={selectMemoryFile}
+                        />
+                      </div>
                     {:else}
                       <p class="px-2 py-3 text-xs text-muted-foreground">
                         {t("memory_noProjectFiles")}
@@ -2482,77 +2566,15 @@
                   </ProjectFolderItem>
                 {/each}
                 <!-- Global scope (same style as project folders, globe icon) -->
-                {#if memoryScopeGlobal.length > 0}
-                  <div class="mb-0.5">
-                    <button
-                      class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-                      onclick={() => toggleMemoryScope("global")}
-                    >
-                      <svg
-                        class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform duration-150 {memoryScopeExpanded[
-                          'global'
-                        ]
-                          ? 'rotate-90'
-                          : ''}"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"><path d="M9 18l6-6-6-6" /></svg
-                      >
-                      <!-- Globe icon -->
-                      <svg
-                        class="h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        ><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path
-                          d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
-                        /></svg
-                      >
-                      <span class="truncate">{t("memory_tabGlobal")}</span>
-                    </button>
-                    {#if memoryScopeExpanded["global"]}
-                      <div class="pl-3">
-                        {#each filterVisibleCandidates(memoryScopeGlobal, true, memorySelectedFile) as file}
-                          <button
-                            class="flex w-full items-center gap-1.5 py-1 pl-4 pr-3 text-xs transition-colors
-                          {memorySelectedFile === file.path
-                              ? 'bg-sidebar-accent text-sidebar-foreground'
-                              : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
-                            onclick={() => selectMemoryFile(file)}
-                            title={file.path}
-                          >
-                            <svg
-                              class="h-3 w-3 shrink-0 {file.exists
-                                ? 'text-blue-400'
-                                : 'text-muted-foreground/40'}"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-width="2"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              ><path
-                                d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"
-                              /><path d="M14 2v4a2 2 0 0 0 2 2h4" /></svg
-                            >
-                            <span class="min-w-0 truncate">{file.label}</span>
-                            {#if !file.exists}
-                              <span class="ml-auto text-[10px] text-muted-foreground shrink-0"
-                                >{t("memory_new")}</span
-                              >
-                            {/if}
-                          </button>
-                        {/each}
-                      </div>
-                    {/if}
-                  </div>
-                {/if}
+                <MemorySidebarGroup
+                  label={t("memory_tabGlobal")}
+                  files={visibleMemoryGlobal}
+                  selectedPath={memorySelectedFile}
+                  expanded={memoryScopeIsExpanded("global", visibleMemoryGlobal)}
+                  tone="global"
+                  onToggle={() => toggleMemoryScope("global")}
+                  onSelect={selectMemoryFile}
+                />
 
                 <SidebarProjectContextStrip variant="open-folder-row" onPickFolder={pickFolder} />
               </div>
@@ -2702,6 +2724,7 @@
                       onDelete={requestDeleteConversation}
                       onMoveToFolder={requestMoveToFolder}
                       {selectedGroupKeys}
+                      draggingRunIds={dragRunIds}
                       onBatchClick={toggleSelectConversation}
                       onRemove={folder.isUncategorized
                         ? undefined
@@ -2728,7 +2751,8 @@
                         if (f) requestDeleteFolder(f);
                       }}
                       dragOverSubFolderKey={dragOverFolderId ? `sf:${dragOverFolderId}` : null}
-                      onDragOverSubFolder={(_key, folderId, e) => handleDragOverFolder(folderId, e)}
+                      onDragOverSubFolder={(key, folderId, e) =>
+                        handleDragOverFolder(folderId, e, key)}
                       onDragLeaveSubFolder={handleDragLeaveFolder}
                       onDropOnSubFolder={(folderId, e) => handleDropOnFolder(folderId, e)}
                     />

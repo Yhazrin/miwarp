@@ -47,8 +47,9 @@
     onMoveToFolder?: (runIds: string[]) => void;
     onNewChat?: () => void;
     selectedGroupKeys?: Set<string>;
+    draggingRunIds?: string[];
     onBatchClick?: (groupKey: string, e: MouseEvent) => void;
-    onDragStartConversation?: (e: DragEvent, runIds: string[]) => void;
+    onDragStartConversation?: (e: DragEvent, runIds: string[], groupKey: string) => void;
     onDragEndConversation?: () => void;
   };
 
@@ -61,6 +62,7 @@
     onMoveToFolder?: never;
     onNewChat?: never;
     selectedGroupKeys?: never;
+    draggingRunIds?: never;
     onBatchClick?: never;
     onDragStartConversation?: never;
     onDragEndConversation?: never;
@@ -80,6 +82,7 @@
     onMoveToFolder,
     onNewChat,
     selectedGroupKeys,
+    draggingRunIds = [],
     onBatchClick,
     isDragOver = false,
     onDragOver,
@@ -130,6 +133,12 @@
 
   function isConvSelected(conv: { runs: { id: string }[] }): boolean {
     return conv.runs.some((r) => r.id === selectedRunId);
+  }
+
+  function handleSubFolderDragLeave(e: DragEvent) {
+    const nextTarget = e.relatedTarget as Node | null;
+    if (nextTarget && (e.currentTarget as HTMLElement).contains(nextTarget)) return;
+    onDragLeaveSubFolder?.();
   }
 
   // Warn once if conversation-mode callbacks are missing
@@ -338,10 +347,36 @@
             {#each subFolders as sf (sf.folderKey)}
               {@const sfExpanded = expandedSubFolders.has(sf.folderKey)}
               {@const sfDragOver = dragOverSubFolderKey === sf.folderKey}
-              <div class="group/sf mb-0.5">
+              <div
+                class="group/sf mb-0.5 rounded-md"
+                ondragenter={onDragOverSubFolder
+                  ? (e) => {
+                      e.preventDefault();
+                      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+                      onDragOverSubFolder!(sf.folderKey, sf.folderId, e);
+                    }
+                  : undefined}
+                ondragover={onDragOverSubFolder
+                  ? (e) => {
+                      e.preventDefault();
+                      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+                      onDragOverSubFolder!(sf.folderKey, sf.folderId, e);
+                    }
+                  : undefined}
+                ondragleave={handleSubFolderDragLeave}
+                ondrop={onDropOnSubFolder
+                  ? (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onDropOnSubFolder!(sf.folderId, e);
+                    }
+                  : undefined}
+              >
                 <div
-                  class="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium text-sidebar-foreground/95 hover:bg-sidebar-accent/40 transition-colors cursor-pointer
-                    {sfDragOver ? 'bg-primary/15 ring-1 ring-primary/40' : ''}"
+                  class="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium text-sidebar-foreground/95 hover:bg-sidebar-accent/40 transition-[background-color,box-shadow,transform,color] duration-150 cursor-pointer
+                    {sfDragOver
+                    ? 'translate-x-0.5 bg-primary/15 ring-1 ring-primary/45 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)]'
+                    : ''}"
                   role="button"
                   tabindex="0"
                   onclick={() => onToggleSubFolder?.(sf.folderKey)}
@@ -351,21 +386,6 @@
                       onToggleSubFolder?.(sf.folderKey);
                     }
                   }}
-                  ondragovercapture={onDragOverSubFolder
-                    ? (e) => {
-                        e.preventDefault();
-                        if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
-                        onDragOverSubFolder!(sf.folderKey, sf.folderId, e);
-                      }
-                    : undefined}
-                  ondragleave={onDragLeaveSubFolder}
-                  ondropcapture={onDropOnSubFolder
-                    ? (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onDropOnSubFolder!(sf.folderId, e);
-                      }
-                    : undefined}
                 >
                   <svg
                     class="h-2.5 w-2.5 shrink-0 text-muted-foreground/50 transition-transform duration-150 {sfExpanded
@@ -392,6 +412,24 @@
                     /><circle cx="7" cy="7" r="1" /></svg
                   >
                   <span class="truncate flex-1">{sf.name}</span>
+                  {#if sfDragOver}
+                    <span
+                      class="shrink-0 rounded bg-primary/15 p-1 text-primary"
+                      aria-hidden="true"
+                    >
+                      <svg
+                        class="h-3 w-3"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M12 5v14" /><path d="m19 12-7 7-7-7" />
+                      </svg>
+                    </span>
+                  {/if}
                   <!-- Hover actions -->
                   <div
                     class="shrink-0 flex gap-0.5 opacity-0 group-hover/sf:opacity-100 transition-opacity ml-0.5"
@@ -455,6 +493,7 @@
                         ondelete={onDelete}
                         onmovetofolder={onMoveToFolder}
                         {onBatchClick}
+                        isDragging={conv.runs.some((r) => draggingRunIds.includes(r.id))}
                         ondragstart={onDragStartConversation}
                         ondragend={onDragEndConversation}
                       />
@@ -490,6 +529,7 @@
                 ondelete={onDelete}
                 onmovetofolder={onMoveToFolder}
                 {onBatchClick}
+                isDragging={conv.runs.some((r) => draggingRunIds.includes(r.id))}
                 ondragstart={onDragStartConversation}
                 ondragend={onDragEndConversation}
               />
@@ -506,6 +546,7 @@
               ondelete={onDelete}
               onmovetofolder={onMoveToFolder}
               {onBatchClick}
+              isDragging={conv.runs.some((r) => draggingRunIds.includes(r.id))}
               ondragstart={onDragStartConversation}
               ondragend={onDragEndConversation}
             />

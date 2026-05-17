@@ -375,7 +375,7 @@
               {/if}
             </button>
             {#if isExpanded}
-              <div class="px-4 py-1.5 bg-muted/20 border-b border-border/20">
+              <div class="px-4 py-1.5 bg-transparent border-b border-border/20">
                 {#if entry.snap}
                   {#each entry.snap.data.categories as cat}
                     <div class="flex items-center gap-1.5 text-[10px] py-0.5">

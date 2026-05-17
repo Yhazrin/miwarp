@@ -345,7 +345,7 @@
                 </button>
                 {#if !thinkingCollapsed}
                   <div
-                    class="border-t border-[hsl(var(--miwarp-accent-primary)/0.12)] px-3 py-2.5 text-xs text-[hsl(var(--miwarp-text-secondary))] whitespace-pre-wrap leading-relaxed"
+                    class="px-3 py-2.5 text-xs text-[hsl(var(--miwarp-text-secondary))] whitespace-pre-wrap leading-relaxed"
                   >
                     {thinkingText.trimEnd()}
                   </div>

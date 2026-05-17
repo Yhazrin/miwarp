@@ -3,15 +3,12 @@
   import { goto } from "$app/navigation";
   import type {
     Attachment,
-    AuthOverview,
     CliCommand,
     CliModelInfo,
-    PlatformCredential,
   } from "$lib/types";
   import * as api from "$lib/api";
   import { createGitBranchPoller } from "$lib/utils/git-branch";
   import AgentSelector from "./AgentSelector.svelte";
-  import AuthSourceBadge from "./AuthSourceBadge.svelte";
   import SkillSelector from "./SkillSelector.svelte";
   import FileAttachment from "./FileAttachment.svelte";
   import SlashMenu from "./SlashMenu.svelte";
@@ -66,20 +63,9 @@
     fastModeState = "",
     onFastModeSwitch,
     cwd = "/",
-    authMode = "cli",
-    platformId = "anthropic",
-    platformCredentials = [],
-    onPlatformChange,
-    authOverview = null,
-    authSourceLabel = "",
-    authSourceCategory = "unknown",
-    apiKeySource = "",
-    onAuthModeChange,
-    localProxyStatuses = {} as Record<string, { running: boolean; needsAuth: boolean }>,
     availableSkills = [],
     skillItems = [],
     agents = [],
-    showAuthBadge = true,
     pendingPermission = false,
     hasStash = false,
     onBtwSend,
@@ -112,20 +98,9 @@
     fastModeState?: string;
     onFastModeSwitch?: (mode: "on" | "off") => void;
     cwd?: string;
-    authMode?: string;
-    platformId?: string;
-    platformCredentials?: PlatformCredential[];
-    onPlatformChange?: (platformId: string) => void;
-    authOverview?: AuthOverview | null;
-    authSourceLabel?: string;
-    authSourceCategory?: string;
-    apiKeySource?: string;
-    onAuthModeChange?: (mode: string) => void;
-    localProxyStatuses?: Record<string, { running: boolean; needsAuth: boolean }>;
     availableSkills?: string[];
     skillItems?: { name: string; description: string }[];
     agents?: { name: string; description: string }[];
-    showAuthBadge?: boolean; // TODO: remove unused auth props after hero migration
     pendingPermission?: boolean;
     hasStash?: boolean;
     onBtwSend?: (question: string) => void;
@@ -347,7 +322,7 @@
     modeDropdownOpen = true;
     if (modeBtnEl) {
       const rect = modeBtnEl.getBoundingClientRect();
-      modeDropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:50;`;
+      modeDropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:99;`;
     }
   }
 
@@ -1206,40 +1181,6 @@
           </button>
         {:else if !hasRun}
           <div class="w-1"></div>
-        {/if}
-        <button
-          class="flex h-7 items-center gap-0.5 rounded-md border border-transparent px-1.5 py-0 text-[10px] font-medium text-muted-foreground/80 transition-colors hover:border-border/35 hover:bg-accent/12 hover:text-foreground"
-          onclick={() => window.dispatchEvent(new CustomEvent("ocv:open-permissions"))}
-          title={t("permissions_title")}
-        >
-          <svg
-            class="h-3 w-3 shrink-0 opacity-80"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-          {t("permissions_rules")}
-        </button>
-        {#if showAuthBadge && !hasRun}
-          <AuthSourceBadge
-            {authOverview}
-            {authSourceLabel}
-            {authSourceCategory}
-            {apiKeySource}
-            {hasRun}
-            {authMode}
-            {platformCredentials}
-            {platformId}
-            {onAuthModeChange}
-            {onPlatformChange}
-            {localProxyStatuses}
-          />
         {/if}
         <SkillSelector
           skills={skillItems}

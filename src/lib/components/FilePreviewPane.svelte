@@ -321,7 +321,7 @@
       {/if}
       <span class="text-[11px] text-muted-foreground truncate flex-1 min-w-0">{path}</span>
       {#if kind === "markdown"}
-        <div class="flex rounded-md border bg-background p-0.5 shrink-0">
+        <div class="flex rounded-md border border-border/40 bg-transparent p-0.5 shrink-0">
           <button
             class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors
               {editorMode === 'edit'
@@ -404,7 +404,9 @@
 
     <!-- Overlays: only one rendered at a time, absolute on top of CodeEditor -->
     {#if isRemote}
-      <div class="absolute inset-0 flex items-center justify-center p-4 bg-background">
+      <div
+        class="absolute inset-0 flex items-center justify-center p-4 bg-transparent backdrop-blur-[1px]"
+      >
         <div class="flex flex-col items-center gap-2 text-center">
           <svg
             class="h-8 w-8 text-muted-foreground/40"
@@ -422,7 +424,9 @@
         </div>
       </div>
     {:else if !path}
-      <div class="absolute inset-0 flex items-center justify-center p-4 bg-background">
+      <div
+        class="absolute inset-0 flex items-center justify-center p-4 bg-transparent backdrop-blur-[1px]"
+      >
         <div class="flex flex-col items-center gap-2 text-center">
           <svg
             class="h-8 w-8 text-muted-foreground/30"
@@ -440,7 +444,7 @@
         </div>
       </div>
     {:else if mode === "diff"}
-      <div class="absolute inset-0 overflow-auto bg-background">
+      <div class="absolute inset-0 overflow-auto bg-transparent">
         {#if diffLoading}
           <div class="flex items-center justify-center py-12">
             <div
@@ -504,17 +508,23 @@
         {/if}
       </div>
     {:else if fileLoading}
-      <div class="absolute inset-0 flex items-center justify-center bg-background">
+      <div
+        class="absolute inset-0 flex items-center justify-center bg-transparent backdrop-blur-[1px]"
+      >
         <div
           class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
         ></div>
       </div>
     {:else if fileError}
-      <div class="absolute inset-0 flex items-center justify-center p-4 bg-background">
+      <div
+        class="absolute inset-0 flex items-center justify-center p-4 bg-transparent backdrop-blur-[1px]"
+      >
         <p class="text-sm text-destructive">{fileError}</p>
       </div>
     {:else if fileTooLarge}
-      <div class="absolute inset-0 flex items-center justify-center p-4 bg-background">
+      <div
+        class="absolute inset-0 flex items-center justify-center p-4 bg-transparent backdrop-blur-[1px]"
+      >
         <p class="text-xs text-muted-foreground text-center">
           {t("preview_tooLarge")} ({Math.round(fileSize / 1024)} KB)
         </p>
@@ -530,7 +540,7 @@
         />
       </div>
     {:else if editorMode === "rendered" && kind === "markdown"}
-      <div class="absolute inset-0 overflow-y-auto p-4 bg-background">
+      <div class="absolute inset-0 overflow-y-auto p-4 bg-transparent">
         {#if fileContent}
           <MarkdownContent text={fileContent} basePath={path.replace(/[/\\][^/\\]*$/, "")} />
         {:else}

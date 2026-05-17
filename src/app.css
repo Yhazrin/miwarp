@@ -79,9 +79,9 @@
     -webkit-backdrop-filter: blur(var(--miwarp-chrome-blur, 28px)) saturate(180%);
   }
 
-  /* Chat right tool panel: match window chrome sliders */
+  /* Chat right tool panel: float on the canvas — blur only, no opaque fill */
   .miwarp-toolactivity-glass {
-    background: hsl(var(--background) / calc(0.4 * var(--miwarp-chrome-opacity-mul, 1)));
+    background: transparent;
     backdrop-filter: blur(var(--miwarp-chrome-blur, 28px)) saturate(180%);
     -webkit-backdrop-filter: blur(var(--miwarp-chrome-blur, 28px)) saturate(180%);
   }
@@ -165,6 +165,11 @@
     height: 100%;
     overflow: hidden;
     overscroll-behavior: none;
+  }
+
+  /* Chat + right tool shelf: don't paint main under the tool column (capsule + wallpaper bleed). */
+  main.flex-1:has(.miwarp-chat-page-root) {
+    background: transparent !important;
   }
 
   /* Immersive wallpaper: chat (and similar) full-bleed shells opt in via .miwarp-immersive-page-root */
