@@ -96,8 +96,12 @@ class ThemeStore {
 
   /** Cycle through themes (dark → light → dark...) */
   cycleTheme() {
+    if (!this.themes || this.themes.length === 0) return;
+
     const darkThemes = this.themes.filter((t) => t.type === "dark").map((t) => t.id);
     const lightThemes = this.themes.filter((t) => t.type === "light").map((t) => t.id);
+
+    if (darkThemes.length === 0 || lightThemes.length === 0) return;
 
     if (darkThemes.includes(this.currentTheme)) {
       // Switch to a light theme, preferring codex-light

@@ -54,9 +54,12 @@
 
   function getComputedHsl(varName: string): string {
     if (typeof document === "undefined") return "0 0% 50%";
-    return (
-      getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || "0 0% 50%"
-    );
+    const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    // Validate format: should be "h s% l%" with numbers
+    if (value && /^\d+\s+\d+%?\s+\d+%?$/.test(value)) {
+      return value;
+    }
+    return "0 0% 50%";
   }
 
   function hslToHex(hsl: string): string {
@@ -112,7 +115,9 @@
 
   function setVariable(varName: string, hex: string) {
     const hsl = hexToHsl(hex);
-    document.documentElement.style.setProperty(varName, hsl);
+    if (hsl && typeof document !== "undefined") {
+      document.documentElement.style.setProperty(varName, hsl);
+    }
   }
 
   function handleThemeSelect(themeId: ThemeId) {
