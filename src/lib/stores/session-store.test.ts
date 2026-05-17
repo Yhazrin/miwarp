@@ -3988,6 +3988,32 @@ describe("SessionStore reducer", () => {
     });
 
     describe("loadRun snapshot paths", () => {
+      it("clears the previous run if getRun fails", async () => {
+        const previousRun = makeRun("run-old", { cwd: "/old-project", status: "completed" });
+        const testStore = new SessionStore();
+        testStore.run = previousRun;
+        testStore.phase = "completed";
+        testStore.timeline = [
+          {
+            kind: "assistant",
+            id: "old-msg",
+            anchorId: "old-msg",
+            content: "old content",
+            ts: new Date().toISOString(),
+          },
+        ];
+
+        mockGetRun.mockRejectedValueOnce(new Error("run not found"));
+
+        await testStore.loadRun("run-missing");
+
+        expect(testStore.run).toBeNull();
+        expect(testStore.timeline).toEqual([]);
+        expect(testStore.phase).toBe("failed");
+        expect(testStore.error).toContain("run not found");
+        warnSpy.mockClear();
+      });
+
       it("uses snapshot on hit for terminal stream session", async () => {
         const termRun = makeRun("run-snap-1", { status: "completed", agent: "claude" });
         mockGetRun.mockResolvedValue(termRun);
@@ -4045,6 +4071,28 @@ describe("SessionStore reducer", () => {
         // Snapshot read was attempted but failed → fell back to getBusEvents
         expect(mockReadSnapshot).toHaveBeenCalled();
         expect(mockGetBusEvents).toHaveBeenCalledWith("run-snap-3");
+        expect(testStore.timeline.length).toBeGreaterThan(0);
+        warnSpy.mockClear();
+      });
+
+      it("falls back to getBusEvents when snapshot restores an empty state", async () => {
+        const idleRun = makeRun("run-snap-empty", { status: "idle", agent: "claude" });
+        mockGetRun.mockResolvedValue(idleRun);
+
+        const emptySnapshotStore = new SessionStore();
+        const emptySnapshot = (
+          emptySnapshotStore as unknown as { _buildSnapshot(): string }
+        )._buildSnapshot();
+
+        mockReadSnapshot.mockResolvedValue(emptySnapshot);
+        mockGetBusEvents.mockResolvedValue(simpleChatEvents);
+
+        const testStore = new SessionStore();
+        await testStore.loadRun("run-snap-empty");
+
+        expect(mockReadSnapshot).toHaveBeenCalledWith("run-snap-empty", "idle");
+        expect(mockDeleteSnapshot).toHaveBeenCalledWith("run-snap-empty");
+        expect(mockGetBusEvents).toHaveBeenCalledWith("run-snap-empty");
         expect(testStore.timeline.length).toBeGreaterThan(0);
         warnSpy.mockClear();
       });

@@ -22,6 +22,7 @@ const SNAPSHOT_VERSION = 2;
 
 /** Max cached snapshots. Evicts least-recently-accessed when exceeded. */
 const MAX_ENTRIES = 200;
+const IDB_TIMEOUT_MS = 800;
 
 interface SnapshotRecord {
   runId: string; // primary key
@@ -35,9 +36,39 @@ interface SnapshotRecord {
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
+function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error(`${label} timed out after ${IDB_TIMEOUT_MS}ms`));
+    }, IDB_TIMEOUT_MS);
+
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        window.clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
 function getDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
+    let settled = false;
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      fn();
+    };
+    const timer = window.setTimeout(() => {
+      dbPromise = null;
+      finish(() => reject(new Error(`IndexedDB open timed out after ${IDB_TIMEOUT_MS}ms`)));
+    }, IDB_TIMEOUT_MS);
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
@@ -53,10 +84,14 @@ function getDb(): Promise<IDBDatabase> {
         }
       }
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => finish(() => resolve(req.result));
     req.onerror = () => {
       dbPromise = null; // allow retry
-      reject(req.error);
+      finish(() => reject(req.error));
+    };
+    req.onblocked = () => {
+      dbPromise = null;
+      finish(() => reject(new Error("IndexedDB open blocked by another MiWarp window")));
     };
   });
   return dbPromise;
@@ -71,14 +106,17 @@ function getDb(): Promise<IDBDatabase> {
  */
 export async function readSnapshot(runId: string, expectedStatus: string): Promise<string | null> {
   try {
-    const db = await getDb();
+    const db = await withTimeout(getDb(), "IndexedDB snapshot open");
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
-    const record: SnapshotRecord | undefined = await new Promise((resolve, reject) => {
-      const req = store.get(runId);
-      req.onsuccess = () => resolve(req.result as SnapshotRecord | undefined);
-      req.onerror = () => reject(req.error);
-    });
+    const record: SnapshotRecord | undefined = await withTimeout(
+      new Promise((resolve, reject) => {
+        const req = store.get(runId);
+        req.onsuccess = () => resolve(req.result as SnapshotRecord | undefined);
+        req.onerror = () => reject(req.error);
+      }),
+      "IndexedDB snapshot read",
+    );
 
     if (!record) {
       dbg("snapshot", "read:miss", { runId });

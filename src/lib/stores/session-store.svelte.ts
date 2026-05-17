@@ -1508,6 +1508,7 @@ export class SessionStore implements SessionEventSink {
 
     // Reset state for new load
     this._setPhase("loading");
+    this.run = null;
     this._clearContentState();
 
     if (xtermRef) {
@@ -1571,6 +1572,7 @@ export class SessionStore implements SessionEventSink {
       if (this.useStreamSession) {
         let reducerMs = 0;
         let snapshotHit = false;
+        let forceFullReplay = false;
 
         // Try IDB snapshot (terminal + idle sessions)
         const snapshotEligible = isTerminal || this.run!.status === "idle";
@@ -1605,11 +1607,33 @@ export class SessionStore implements SessionEventSink {
               // Align _lastSnapshotSeq to prevent unnecessary rewrite on first idle
               this._lastSnapshotSeq = this._lastProcessedSeq;
 
+              // Treat an empty snapshot as suspect and fall back to events.jsonl replay.
+              // This recovers from earlier buggy/stale IDB snapshots that can otherwise
+              // make a real historical session look blank forever in the desktop app.
+              const snapshotLooksEmpty =
+                this.timeline.length === 0 &&
+                this.tools.length === 0 &&
+                !this.streamingText &&
+                !this.thinkingText &&
+                this.turnUsages.length === 0;
+              if (snapshotLooksEmpty) {
+                dbgWarn("store", "snapshot hit produced empty state, forcing full replay", { id });
+                snapshotHit = false;
+                forceFullReplay = true;
+                snapshotCache
+                  .deleteSnapshot(id)
+                  .catch((e) => dbgWarn("snapshot", "delete failed", e));
+                this._clearContentState();
+                // Keep the fetched run metadata; only clear the replayed session content.
+                this._setPhase(st === "idle" ? "ready" : (st as SessionPhase));
+                this._isLoadingReplay = true;
+              }
+
               // Fix: idle snapshot hit → phase must be "idle", not "ready"
-              if (isIdleSnap) this._setPhase("idle");
+              if (snapshotHit && isIdleSnap) this._setPhase("idle");
 
               // Desktop idle: incremental catchup (no WS available)
-              if (isIdleSnap && getTransport().isDesktop()) {
+              if (snapshotHit && isIdleSnap && getTransport().isDesktop()) {
                 const catchupEvents = await api.getBusEvents(id, this._lastProcessedSeq);
                 if (gen !== this._loadGen) return;
                 if (catchupEvents.length > 0) {
@@ -1631,11 +1655,11 @@ export class SessionStore implements SessionEventSink {
                     this._saveSnapshotToIdb(id);
                   }
                 }
-              } else if (isIdleSnap) {
+              } else if (snapshotHit && isIdleSnap) {
                 this._wsSubscribeWithSeq(id, this._lastProcessedSeq);
               }
               // Terminal: no catchup needed, just subscribe for WS if applicable
-              if (!isIdleSnap) {
+              if (snapshotHit && !isIdleSnap) {
                 this._wsSubscribeWithSeq(id, this._lastProcessedSeq);
               }
             } else {
@@ -1644,7 +1668,7 @@ export class SessionStore implements SessionEventSink {
           }
         }
 
-        if (!snapshotHit) {
+        if (!snapshotHit || forceFullReplay) {
           // Miss or snapshot corrupted → normal path
           const busEvents = await api.getBusEvents(id);
           if (gen !== this._loadGen) {

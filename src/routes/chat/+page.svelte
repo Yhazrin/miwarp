@@ -78,7 +78,9 @@
   let chatAreaRef: HTMLDivElement | undefined = $state();
   let mcpPanelOpen = $state(false);
   const routeRunId = $derived($page.url.searchParams.get("run") ?? "");
-  const routeRunPending = $derived(!!routeRunId && store.run?.id !== routeRunId);
+  const routeRunPending = $derived(
+    store.phase === "loading" && !!routeRunId && store.run?.id !== routeRunId,
+  );
 
   // ── Composable chain ──
   const preload = useProjectPreload({ store, availableSkills: () => store.availableSkills });
@@ -143,11 +145,19 @@
   progressiveRef.current = progressive;
   const { rearmLoadMore } = progressive;
 
-  /** Bridge DOM ref — `bind:this={progressive.topSentinel}` breaks in production (no component `$set`). */
-  let topSentinelEl = $state<HTMLDivElement | null>(null);
-  $effect(() => {
-    progressive.topSentinel = topSentinelEl;
-  });
+  /**
+   * Bridge DOM ref — `bind:this={progressive.topSentinel}` breaks in production (no component `$set`).
+   * Use an action instead of `$effect`; an effect that writes composable `$state` can participate in
+   * `effect_update_depth_exceeded` when combined with IntersectionObserver + layout flushes.
+   */
+  function topSentinelSync(node: HTMLDivElement) {
+    progressive.topSentinel = node;
+    return {
+      destroy() {
+        if (progressive.topSentinel === node) progressive.topSentinel = null;
+      },
+    };
+  }
 
   const chatScroll = useChatScroll({
     chatAreaRef: () => chatAreaRef,
@@ -620,9 +630,14 @@
                   </div>
                 {/if}
                 <div class="chat-content-width pb-1" data-export-exclude><ViewModeToggle /></div>
-                {#if filteredTimeline.length - progressive.renderLimit > 0}
-                  <div bind:this={topSentinelEl} aria-hidden="true" class="h-px w-full"></div>
-                {/if}
+                <!-- Keep sentinel mounted: {#if} mount churn can fight IntersectionObserver + renderLimit. -->
+                <div
+                  use:topSentinelSync
+                  aria-hidden="true"
+                  class="h-px w-full shrink-0 {filteredTimeline.length - progressive.renderLimit > 0
+                    ? ''
+                    : 'hidden'}"
+                ></div>
                 {#each progressive.visibleTimeline as entry, i (entry.id)}
                   {#if !(chatDerived.burstHiddenIndices.has(i) && !chatDerived.toolBursts.has(i))}
                     <div
