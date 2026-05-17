@@ -603,10 +603,11 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   });
 
   // ── URL param consumption: ?folder= and ?host= ──
-  // NOTE: entire body is untracked because it calls replaceState which changes pageState.current.url
+  // NOTE: url is read before untrack so Svelte tracks pageState changes.
+  // All store mutations and replaceState are inside untrack to prevent loops.
   $effect(() => {
+    const url = pageState.current.url;
     untrack(() => {
-      const url = pageState.current.url;
       const folder = url.searchParams.get("folder");
       const host = url.searchParams.get("host");
       if (!folder && !host) return;
@@ -646,11 +647,11 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   });
 
   // ── Watch runId changes → load run + subscribe middleware ──
-  // NOTE: entire body is untracked to avoid effect_update_depth_exceeded.
-  // The effect only tracks pageState.current changes (URL navigation).
+  // NOTE: url is read before untrack so Svelte tracks pageState changes.
+  // All store mutations and replaceState are inside untrack to prevent loops.
   $effect(() => {
+    const url = pageState.current.url;
     untrack(() => {
-      const url = pageState.current.url;
       const id = url.searchParams.get("run") ?? "";
       const hasResume = url.searchParams.has("resume");
       middleware.subscribeCurrent(id, store);
@@ -700,9 +701,9 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   // ── Handle scrollTo for already-loaded runs ──
   let _scrollToInFlight = false;
   $effect(() => {
+    const url = pageState.current.url;
     untrack(() => {
       if (!middlewareReady) return;
-      const url = pageState.current.url;
       const scrollTo = url.searchParams.get("scrollTo");
       if (!scrollTo) return;
       if (_scrollToInFlight) return;
@@ -723,10 +724,11 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   });
 
   // ── Consume ?resume= URL param ──
-  // NOTE: entire body is untracked because it calls replaceState which changes pageState.current.url
+  // NOTE: url is read before untrack so Svelte tracks pageState changes.
+  // All store mutations and replaceState are inside untrack to prevent loops.
   $effect(() => {
+    const url = pageState.current.url;
     untrack(() => {
-      const url = pageState.current.url;
       const paramRunId = url.searchParams.get("run");
       const resumeMode = url.searchParams.get("resume") as import("$lib/types").SessionMode | null;
 
