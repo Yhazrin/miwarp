@@ -47,13 +47,10 @@
   import { filterVisibleCandidates } from "$lib/utils/memory-helpers";
   import {
     buildEnrichedProjectFolders,
-    buildSessionFolderGroups,
     autoExpandForRun,
     expandForProjectChange,
     normalizeCwd,
     type ConversationGroup,
-    type SessionFolderGroup,
-    type EnrichedProjectFolder,
   } from "$lib/utils/sidebar-groups";
   import { loadRemovedCwds } from "$lib/utils/removed-cwds";
   import {
@@ -125,8 +122,6 @@
 
   // ── Session folders ──
   let sessionFolders = $state<SessionFolder[]>([]);
-  let sessionFolderGroups = $state<SessionFolderGroup[]>([]);
-  let unassignedRuns = $state<TaskRun[]>([]);
 
   // Sub-folder expand state (folderKey → expanded)
   let expandedSubFolders = $state(new Set<string>());
@@ -291,12 +286,6 @@
     } catch {
       // silently fail
     }
-  }
-
-  function refreshFolderGroups() {
-    const result = buildSessionFolderGroups(runs, sessionFolders, favoriteRunIds);
-    sessionFolderGroups = result.folderGroups;
-    unassignedRuns = result.unassignedRuns;
   }
 
   function requestMoveToFolder(runIds: string[]) {
@@ -1337,7 +1326,6 @@
   }
 
   async function batchDelete() {
-    const keys = new Set(selectedGroupKeys);
     batchDeleteConfirmOpen = false;
     clearBatchSelection();
     const ids = collectSelectedRunIds();
@@ -1418,13 +1406,6 @@
   let enrichedProjectFolders = $derived.by(() =>
     buildEnrichedProjectFolders(runs, sessionFolders, favoriteRunIds, pinnedCwds, removedCwds),
   );
-
-  // Keep sessionFolderGroups synced for compatibility (move-to-folder dialog etc.)
-  $effect(() => {
-    const result = buildSessionFolderGroups(runs, sessionFolders, favoriteRunIds);
-    sessionFolderGroups = result.folderGroups;
-    unassignedRuns = result.unassignedRuns;
-  });
 
   // Reload session folders when project context changes
   $effect(() => {
