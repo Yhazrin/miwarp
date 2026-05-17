@@ -7,6 +7,7 @@
   } from "$lib/api";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import type {
     ProviderHealth,
     McpRegistryServer,
@@ -349,9 +350,7 @@
 <!-- Loading spinner -->
 {#if searching}
   <div class="flex items-center justify-center py-4">
-    <div
-      class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-    ></div>
+    <Spinner size="md" class="text-primary" />
     <span class="ml-2 text-xs text-muted-foreground">{t("mcp_searching")}</span>
   </div>
 {/if}

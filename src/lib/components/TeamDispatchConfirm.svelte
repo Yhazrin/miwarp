@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { getPresets } from "$lib/services/team-dispatcher";
   import type { TeamPreset } from "$lib/types";
 
@@ -110,9 +111,7 @@
         <p class="text-xs font-medium text-foreground mb-2">{t("teamRun_selectPreset")}</p>
         {#if loading}
           <div class="flex items-center justify-center py-6">
-            <div
-              class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-            ></div>
+            <Spinner size="md" class="text-primary" />
           </div>
         {:else}
           <div class="space-y-1.5">

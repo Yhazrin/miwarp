@@ -10,6 +10,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
   import { showToast } from "$lib/stores/toast-store.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
 
   const CLAUDE_CODE_UPDATE_DOCS = "https://code.claude.com/docs/en/setup#updating-claude-code";
 
@@ -260,9 +261,7 @@
   <div class="flex-1 overflow-y-auto">
     {#if loading}
       <div class="flex items-center justify-center py-20">
-        <div
-          class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-        ></div>
+        <Spinner size="md" class="text-primary" />
       </div>
     {:else if error}
       <div class="flex flex-col items-center gap-3 px-6 py-20 text-center">

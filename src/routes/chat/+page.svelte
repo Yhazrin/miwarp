@@ -46,6 +46,7 @@
   import TeamDispatchConfirm from "$lib/components/TeamDispatchConfirm.svelte";
   import TeamRunCard from "$lib/components/TeamRunCard.svelte";
   import WelcomeScreen from "$lib/components/chat/WelcomeScreen.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
 
   // ── Composables ──
   import { useProgressiveTimeline } from "$lib/chat/use-progressive-timeline.svelte";
@@ -514,9 +515,7 @@
             />
           {:else if store.phase === "loading" && store.timeline.length === 0}
             <div class="flex h-full items-center justify-center">
-              <div
-                class="h-5 w-5 rounded-full border-2 border-muted-foreground/30 border-t-primary animate-spin"
-              ></div>
+              <Spinner size="md" class="text-primary" />
             </div>
           {:else}
             <!-- Timeline -->
@@ -895,10 +894,10 @@
                         <span class="text-xs font-medium text-[hsl(var(--miwarp-status-info))]"
                           >{t("chat_thinking")}</span
                         >
-                        {#if store.isRunning && !store.streamingText}<div
-                            class="h-2.5 w-2.5 rounded-full border-2 border-[hsl(var(--miwarp-status-info)/0.3)] border-t-[hsl(var(--miwarp-status-info))] animate-spin"
-                            data-export-exclude
-                          ></div>{/if}
+                        {#if store.isRunning && !store.streamingText}<Spinner
+                            size="xs"
+                            class="text-[hsl(var(--miwarp-status-info))]"
+                          />{/if}
                         <svg
                           class="h-3 w-3 text-muted-foreground/40 shrink-0 transition-transform ml-auto {lifecycle.thinkingExpanded
                             ? 'rotate-180'
@@ -949,9 +948,7 @@
                 <div class="w-full animate-fade-in" data-export-exclude>
                   <div class="chat-content-width py-2">
                     <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                      <div
-                        class="h-3.5 w-3.5 rounded-full border-2 border-border border-t-muted-foreground animate-spin"
-                      ></div>
+                      <Spinner size="sm" class="text-muted-foreground" />
                       <span
                         >{t("chat_processingCommand", { command: ctrl.processingSlashCmd })}</span
                       >
@@ -990,9 +987,7 @@
                     <div class="pl-7">
                       {#if store.activeToolName}
                         <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                          <div
-                            class="h-3.5 w-3.5 rounded-full border-2 border-border border-t-muted-foreground animate-spin"
-                          ></div>
+                          <Spinner size="sm" class="text-muted-foreground" />
                           <span
                             >{t("chat_usingTool")}
                             <span class="text-foreground font-medium">{store.activeToolName}</span
@@ -1004,16 +999,12 @@
                         </div>
                       {:else if handlers.approving}
                         <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                          <div
-                            class="h-3.5 w-3.5 rounded-full border-2 border-border border-t-muted-foreground animate-spin"
-                          ></div>
+                          <Spinner size="sm" class="text-muted-foreground" />
                           <span>{t("chat_restartingApproved")}</span>
                         </div>
                       {:else if store.phase === "spawning"}
                         <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                          <div
-                            class="h-3.5 w-3.5 rounded-full border-2 border-border border-t-muted-foreground animate-spin"
-                          ></div>
+                          <Spinner size="sm" class="text-muted-foreground" />
                           <span>{t("chat_startingSession")}</span>
                         </div>
                       {:else}

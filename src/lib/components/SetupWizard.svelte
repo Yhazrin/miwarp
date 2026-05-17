@@ -14,6 +14,7 @@
   import { getTransport } from "$lib/transport";
   import { t } from "$lib/i18n/index.svelte";
   import { buildDoctorReport } from "$lib/utils/doctor";
+  import Spinner from "$lib/components/Spinner.svelte";
 
   let { onComplete }: { onComplete: () => void } = $props();
 
@@ -317,9 +318,7 @@
     {#if step === "checking"}
       <!-- Checking step -->
       <div class="flex flex-col items-center gap-4 py-16">
-        <div
-          class="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-        ></div>
+        <Spinner size="xl" class="text-primary" />
         <p class="text-sm text-muted-foreground">{t("setup_checking")}</p>
       </div>
     {:else if step === "network_check"}
@@ -374,9 +373,7 @@
 
           {#if networkProbing}
             <div class="flex items-center gap-3 rounded-lg border border-border p-3">
-              <div
-                class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0"
-              ></div>
+              <Spinner size="md" class="text-primary shrink-0" />
               <p class="text-sm text-muted-foreground">{t("setup_networkProbing")}</p>
             </div>
           {/if}
@@ -495,9 +492,7 @@
           >
             {#if rechecking}
               <span class="flex items-center gap-2">
-                <span
-                  class="h-3 w-3 border border-foreground/30 border-t-foreground rounded-full animate-spin"
-                ></span>
+                <Spinner size="xs" class="text-foreground" />
                 {t("setup_recheck")}
               </span>
             {:else}
@@ -585,9 +580,7 @@
       <!-- OAuth login in progress -->
       <div class="flex flex-col items-center gap-4 py-8">
         {#if oauthLoading}
-          <div
-            class="h-8 w-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-          ></div>
+          <Spinner size="xl" class="text-primary" />
           <p class="text-sm font-medium">{t("setup_openingBrowser")}</p>
           <p class="text-xs text-muted-foreground text-center">{t("setup_completeBrowser")}</p>
         {/if}
@@ -738,9 +731,7 @@
             >
               {#if saving}
                 <span class="flex items-center gap-2 justify-center">
-                  <span
-                    class="h-3 w-3 border border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"
-                  ></span>
+                  <Spinner size="xs" class="text-primary-foreground" />
                   {t("setup_saving")}
                 </span>
               {:else}

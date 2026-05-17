@@ -7,6 +7,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import Card from "$lib/components/Card.svelte";
   import HeatmapCalendar from "$lib/components/HeatmapCalendar.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import StackedModelChart from "$lib/components/StackedModelChart.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { fmtDate, fmtNumber } from "$lib/i18n/format";
@@ -316,9 +317,7 @@
 
   {#if loading}
     <div class="flex flex-col items-center justify-center py-12 gap-3">
-      <div
-        class="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-      ></div>
+      <Spinner size="lg" class="text-primary" />
       {#if showFullScanMessage}
         <p class="text-sm text-muted-foreground animate-fade-in">
           {t("usage_firstLoadMessage")}

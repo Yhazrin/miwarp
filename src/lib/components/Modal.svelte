@@ -5,7 +5,8 @@
     open = $bindable(false),
     title = "",
     closeable = true,
-    size: _size = "default",
+    size = "default",
+    noPadding = false,
     type: _type = "default",
     onclose: _onclose,
     children,
@@ -14,6 +15,7 @@
     title?: string;
     closeable?: boolean;
     size?: "default" | "sm" | "lg" | "xl";
+    noPadding?: boolean;
     type?: "default" | "info" | "warning" | "error";
     onclose?: () => void;
     children?: import("svelte").Snippet;
@@ -65,7 +67,14 @@
 
     <!-- Content -->
     <div
-      class="elevation-3 relative z-50 w-full max-w-lg p-6 animate-modal-in rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] backdrop-blur-2xl"
+      class="elevation-3 relative z-50 w-full animate-modal-in rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] backdrop-blur-2xl {size ===
+      'sm'
+        ? 'max-w-sm'
+        : size === 'lg'
+          ? 'max-w-xl'
+          : size === 'xl'
+            ? 'max-w-2xl'
+            : 'max-w-lg'} {noPadding ? '' : 'p-6'}"
       style="background: hsl(var(--miwarp-bg-deep) / 0.94);"
     >
       {#if title}

@@ -6,6 +6,7 @@
    */
   import { t } from "$lib/i18n/index.svelte";
   import { formatInstallCount } from "$lib/utils/format";
+  import Spinner from "$lib/components/Spinner.svelte";
   import type { MarketplacePlugin, InstalledPlugin } from "$lib/types";
 
   interface Props {
@@ -169,9 +170,7 @@
         {t("plugin_uninstall")}
       </button>
       {#if isLoading}
-        <div
-          class="h-3.5 w-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-        ></div>
+        <Spinner size="sm" class="text-primary" />
       {/if}
     </div>
   </div>

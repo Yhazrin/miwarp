@@ -31,6 +31,7 @@
   import FolderCrudDialogs from "$lib/components/FolderCrudDialogs.svelte";
   import MemorySidebarGroup from "$lib/components/MemorySidebarGroup.svelte";
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import TopWindowDrag from "$lib/components/TopWindowDrag.svelte";
   import SidebarProjectContextStrip from "$lib/components/sidebar/SidebarProjectContextStrip.svelte";
   import type {
@@ -2276,9 +2277,7 @@
                     </div>
                   {:else if treeLoading}
                     <div class="flex items-center justify-center py-12">
-                      <div
-                        class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                      ></div>
+                      <Spinner size="sm" class="text-primary" />
                     </div>
                   {:else if fileTree.length === 0}
                     <p class="px-2 py-8 text-xs text-muted-foreground text-center">
@@ -2298,9 +2297,7 @@
                   </div>
                 {:else if gitLoading}
                   <div class="flex-1 flex items-center justify-center">
-                    <div
-                      class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                    ></div>
+                    <Spinner size="sm" class="text-primary" />
                   </div>
                 {:else if !gitSummary}
                   <div class="flex-1 flex items-center justify-center px-3">
@@ -2433,9 +2430,7 @@
                   >
                     {#if memoryLoading}
                       <div class="flex items-center justify-center py-6">
-                        <div
-                          class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                        ></div>
+                        <Spinner size="sm" class="text-primary" />
                       </div>
                     {:else if visibleMemoryProject.length > 0 || visibleMemoryAuto.length > 0}
                       <div class="space-y-0.5">
@@ -2491,9 +2486,7 @@
               <div class="flex-1 overflow-y-auto px-2 py-1">
                 {#if teamStore.loading}
                   <div class="flex items-center justify-center py-6">
-                    <div
-                      class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                    ></div>
+                    <Spinner size="sm" class="text-primary" />
                   </div>
                 {:else if filteredTeams.length === 0}
                   <div class="flex flex-col items-center gap-1 px-3 py-6 text-center">
@@ -2570,9 +2563,7 @@
                 <div class="flex-1 overflow-y-auto">
                   {#if searching && visibleSearchResults.length === 0}
                     <div class="flex items-center justify-center py-10">
-                      <div
-                        class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                      ></div>
+                      <Spinner size="sm" class="text-primary" />
                     </div>
                   {:else if !searching && visibleSearchResults.length === 0}
                     <div class="flex items-center justify-center px-3 py-10 text-center">

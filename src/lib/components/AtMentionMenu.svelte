@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import { formatBytes } from "$lib/utils/format";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
 
   let {
     entries,
@@ -77,9 +78,11 @@
   <div class="flex items-center gap-2 px-3 py-1.5 border-b border-border">
     <span class="text-xs text-muted-foreground/60">@{query || "..."}</span>
     {#if loading}
-      <div
-        class="h-3 w-3 rounded-full border-2 border-border border-t-muted-foreground animate-spin ml-auto"
-      ></div>
+      <Spinner
+        size="xs"
+        class="text-border ml-auto"
+        style="border-top-color: var(--muted-foreground)"
+      />
     {/if}
   </div>
 

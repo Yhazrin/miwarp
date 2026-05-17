@@ -7,6 +7,7 @@
   import HighlightedCode from "$lib/components/HighlightedCode.svelte";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
   import { classifyPath, getExtension, isImage, isPreviewable } from "$lib/utils/preview-ext";
+  import Spinner from "$lib/components/Spinner.svelte";
 
   // ── Props ──
   let {
@@ -447,9 +448,7 @@
       <div class="absolute inset-0 overflow-auto bg-transparent">
         {#if diffLoading}
           <div class="flex items-center justify-center py-12">
-            <div
-              class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-            ></div>
+            <Spinner size="md" class="text-primary" />
           </div>
         {:else if diffContent.trim()}
           {@const diffLines = parseDiffLines(diffContent)}
@@ -511,9 +510,7 @@
       <div
         class="absolute inset-0 flex items-center justify-center bg-transparent backdrop-blur-[1px]"
       >
-        <div
-          class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-        ></div>
+        <Spinner size="md" class="text-primary" />
       </div>
     {:else if fileError}
       <div

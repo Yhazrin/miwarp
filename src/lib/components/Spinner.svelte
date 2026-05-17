@@ -2,9 +2,11 @@
   let {
     size = "md",
     class: className = "",
+    style = "",
   }: {
     size?: "xs" | "sm" | "md" | "lg" | "xl";
     class?: string;
+    style?: string;
   } = $props();
 
   const sizeClass = {
@@ -18,4 +20,5 @@
 
 <div
   class="animate-spin rounded-full {sizeClass} border-current border-t-transparent {className}"
+  {style}
 ></div>
