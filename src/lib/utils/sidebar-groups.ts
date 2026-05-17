@@ -122,7 +122,7 @@ export function buildProjectFolders(
     const isUncategorized = cwd === "";
     const folderKey = isUncategorized ? "uncategorized" : `cwd:${cwd}`;
 
-    // Group runs by session_id within this cwd
+    // Group runs by session_id or scheduled_task_id within this cwd
     const sessionMap = new Map<string, TaskRun[]>();
     const standalone: TaskRun[] = [];
 
@@ -134,6 +134,14 @@ export function buildProjectFolders(
           sessionMap.set(run.session_id, group);
         }
         group.push(run);
+      } else if (run.scheduled_task_id) {
+        // Group by scheduled_task_id for aggregation
+        let group = sessionMap.get(`scheduled:${run.scheduled_task_id}`);
+        if (!group) {
+          group = [];
+          sessionMap.set(`scheduled:${run.scheduled_task_id}`, group);
+        }
+        group.push(run);
       } else {
         standalone.push(run);
       }
@@ -142,7 +150,7 @@ export function buildProjectFolders(
     // Build conversation groups
     const conversations: ConversationGroup[] = [];
 
-    // Session-based groups
+    // Session-based groups (includes scheduled task groups)
     for (const [sessionId, sessionRuns] of sessionMap) {
       // Sort runs by started_at desc
       sessionRuns.sort((a, b) => b.started_at.localeCompare(a.started_at));
@@ -152,8 +160,10 @@ export function buildProjectFolders(
       const isFavorite = sessionRuns.some((r) => favoriteRunIds.has(r.id));
       const totalMessages = sessionRuns.reduce((sum, r) => sum + (r.message_count ?? 0), 0);
 
+      // Use 'st:' prefix for scheduled task groups, 's:' for regular sessions
+      const prefix = sessionId.startsWith("scheduled:") ? "st" : "s";
       conversations.push({
-        groupKey: `s:${sessionId}`,
+        groupKey: `${prefix}:${sessionId}`,
         runs: sessionRuns,
         title,
         latestRun,
@@ -386,7 +396,7 @@ export function buildEnrichedProjectFolders(
     if (!cwdBuckets.has(cwd)) cwdBuckets.set(cwd, []);
   }
   // Also ensure any cwd that has session folders appears
-  for (const [, cwd] of folderCwdMap) {
+  for (const [folderId, cwd] of folderCwdMap) {
     if (cwd !== "" && !removedSet.has(cwd) && !cwdBuckets.has(cwd)) {
       cwdBuckets.set(cwd, []);
     }

@@ -41,6 +41,8 @@ export interface TaskRun {
   message_count?: number;
   last_message_preview?: string;
   session_id?: string;
+  /** When run was started by a scheduled task, groups runs in the sidebar. */
+  scheduled_task_id?: string;
   result_subtype?: string;
   /** Model used in this run (persisted on hot-switch). */
   model?: string;

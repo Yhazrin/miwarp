@@ -6,6 +6,7 @@
     RESERVED_KEYS,
   } from "$lib/stores/keybindings.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/icons/Icon.svelte";
 
   let {
     binding,
@@ -219,18 +220,7 @@
             onclick={onReset}
             title={t("keybinding_resetDefault")}
           >
-            <svg
-              class="h-3.5 w-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              ><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path
-                d="M3 3v5h5"
-              /></svg
-            >
+            <Icon name="rotate" size={14} />
           </button>
         {/if}
         <button
@@ -238,18 +228,7 @@
           onclick={startRecording}
           title={t("keybinding_editShortcut")}
         >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><path
-              d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"
-            /></svg
-          >
+          <Icon name="edit2" size={14} />
         </button>
       {/if}
     </div>

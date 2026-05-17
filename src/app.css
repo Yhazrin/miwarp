@@ -69,6 +69,36 @@
     box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.08);
   }
 
+  /* Four-tier shell depth: (1) left sidebar → (2) main column → (3) chat tool rail — complements status capsule */
+  .glass-sidebar.miwarp-shell-tier-1 {
+    box-shadow:
+      inset -1px 0 0 rgba(0, 0, 0, 0.08),
+      14px 8px 36px -18px hsla(0, 0%, 0%, 0.12);
+  }
+  .dark .glass-sidebar.miwarp-shell-tier-1 {
+    box-shadow:
+      inset -1px 0 0 rgba(255, 255, 255, 0.05),
+      18px 10px 44px -18px hsla(0, 0%, 0%, 0.55);
+  }
+
+  .app-main-shell.miwarp-shell-tier-2 {
+    box-shadow:
+      inset 1px 0 0 hsla(0, 0%, 100%, 0.04),
+      -12px 0 32px -16px hsla(0, 0%, 0%, 0.1);
+  }
+  .dark .app-main-shell.miwarp-shell-tier-2 {
+    box-shadow:
+      inset 1px 0 0 hsla(0, 0%, 100%, 0.03),
+      -14px 0 40px -14px hsla(0, 0%, 0%, 0.42);
+  }
+
+  .miwarp-shell-tier-3 {
+    box-shadow: -10px 0 28px -14px hsla(0, 0%, 0%, 0.11);
+  }
+  .dark .miwarp-shell-tier-3 {
+    box-shadow: -14px 0 38px -14px hsla(0, 0%, 0%, 0.48);
+  }
+
   /* Main shell frost when full-window wallpaper is active (see +layout) */
   .miwarp-chrome-frost {
     background: hsla(var(--miwarp-glass-bg), calc(0.52 * var(--miwarp-chrome-opacity-mul, 1)));
@@ -98,6 +128,53 @@
     box-shadow:
       0 8px 24px hsla(0, 0%, 0%, 0.4),
       0 4px 8px hsla(0, 0%, 0%, 0.25);
+  }
+
+  /* Settings → Shortcuts: four-step “deck” (blocks step forward slightly). */
+  .miwarp-shortcuts-deck-1,
+  .miwarp-shortcuts-deck-2,
+  .miwarp-shortcuts-deck-3,
+  .miwarp-shortcuts-deck-4 {
+    transition:
+      transform 200ms ease-out,
+      box-shadow 200ms ease-out;
+  }
+  .miwarp-shortcuts-deck-1 {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px -3px hsla(0, 0%, 0%, 0.08);
+  }
+  .miwarp-shortcuts-deck-2 {
+    transform: translateY(5px);
+    box-shadow: 0 7px 18px -5px hsla(0, 0%, 0%, 0.1);
+  }
+  .miwarp-shortcuts-deck-3 {
+    transform: translateY(10px);
+    box-shadow: 0 11px 24px -7px hsla(0, 0%, 0%, 0.12);
+  }
+  .miwarp-shortcuts-deck-4 {
+    transform: translateY(15px);
+    box-shadow: 0 15px 30px -9px hsla(0, 0%, 0%, 0.14);
+  }
+  .dark .miwarp-shortcuts-deck-1 {
+    box-shadow: 0 2px 14px -3px hsla(0, 0%, 0%, 0.35);
+  }
+  .dark .miwarp-shortcuts-deck-2 {
+    box-shadow: 0 8px 22px -5px hsla(0, 0%, 0%, 0.42);
+  }
+  .dark .miwarp-shortcuts-deck-3 {
+    box-shadow: 0 12px 28px -7px hsla(0, 0%, 0%, 0.48);
+  }
+  .dark .miwarp-shortcuts-deck-4 {
+    box-shadow: 0 16px 34px -9px hsla(0, 0%, 0%, 0.52);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .miwarp-shortcuts-deck-1,
+    .miwarp-shortcuts-deck-2,
+    .miwarp-shortcuts-deck-3,
+    .miwarp-shortcuts-deck-4 {
+      transform: none;
+      transition: none;
+    }
   }
 
   /* Accent gradient border (left accent for tool cards) */
@@ -162,6 +239,11 @@
     height: 100%;
     overflow: hidden;
     overscroll-behavior: none;
+  }
+
+  /* Streaming chat list: avoid scroll-anchoring fighting JS scroll-to-bottom (reduces jitter). */
+  .miwarp-chat-scroll-area {
+    overflow-anchor: none;
   }
 
   /* Chat + right tool shelf: don't paint main under the tool column (capsule + wallpaper bleed). */

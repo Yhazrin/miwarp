@@ -421,7 +421,7 @@
                       {t("shortcutHelp_global")}
                     </h3>
                     <div
-                      class="rounded-lg border border-border/70 bg-muted/10 divide-y divide-border/60 overflow-hidden"
+                      class="miwarp-shortcuts-deck-1 rounded-lg border border-border/70 bg-muted/10 divide-y divide-border/60 overflow-hidden"
                     >
                       {#each appBindingsGlobal as binding (binding.command)}
                         <div class="px-3 sm:px-4">
@@ -459,7 +459,7 @@
                       {t("shortcutHelp_chat")}
                     </h3>
                     <div
-                      class="rounded-lg border border-border/70 bg-muted/10 divide-y divide-border/60 overflow-hidden"
+                      class="miwarp-shortcuts-deck-2 rounded-lg border border-border/70 bg-muted/10 divide-y divide-border/60 overflow-hidden"
                     >
                       {#each appBindingsChat as binding (binding.command)}
                         <div class="px-3 sm:px-4">
@@ -492,7 +492,7 @@
             </Card>
 
             <!-- Fixed shortcuts (prompt context) -->
-            <Card class="p-6 space-y-4">
+            <Card class="p-6 space-y-4 miwarp-shortcuts-deck-3">
               <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                 {t("settings_shortcuts_inputFixed")}
               </h2>
@@ -518,7 +518,7 @@
             </Card>
 
             <!-- CLI shortcuts (collapsible) -->
-            <Card class="p-0 overflow-hidden">
+            <Card class="p-0 overflow-hidden miwarp-shortcuts-deck-4">
               <button
                 type="button"
                 class="flex w-full items-center justify-between gap-3 px-6 py-4 text-left transition-colors hover:bg-muted/30"
