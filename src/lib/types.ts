@@ -210,6 +210,8 @@ export interface UserSettings {
   show_token_usage_report?: boolean;
   /** Per-agent mascot overrides. Maps agent kind → image URL or data URI. */
   mascot_overrides?: Record<string, string>;
+  /** Process visibility level: "output" | "guided" | "developer" | "expert". */
+  process_visibility?: string;
   updated_at: string;
 }
 

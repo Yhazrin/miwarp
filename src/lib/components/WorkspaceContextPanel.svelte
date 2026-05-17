@@ -273,8 +273,7 @@
       <p class="text-xs text-muted-foreground/60">{t("workspaceContext_noWorkspace")}</p>
     </div>
   {:else}
-    {@const card =
-      "rounded-xl border border-border/35 overflow-hidden bg-transparent"}
+    {@const card = "rounded-xl border border-border/35 overflow-hidden bg-transparent"}
     {@const cardHd = "flex items-center gap-2 px-3 py-2 border-b border-border/25"}
     <div class="p-3 space-y-2.5">
       <!-- Session context (primary) -->
@@ -438,9 +437,7 @@
             </span>
             {#if totalMemoryItemCount > 0}
               <div class="ml-auto flex items-center gap-1">
-                <span
-                  class="text-[10px] px-1.5 py-0.5 rounded bg-muted/80 text-muted-foreground"
-                >
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-muted/80 text-muted-foreground">
                   {t("workspaceContext_memoryFilesCount", { count: String(totalMemoryFileCount) })}
                 </span>
                 <span
@@ -462,16 +459,16 @@
               {#each memorySections as section (section.path)}
                 {@const sectionExpanded = expandedMemoryFiles.has(section.path)}
                 {@const visibleItems = sectionExpanded ? section.items : section.items.slice(0, 2)}
-                <section
-                  class="rounded-xl border border-border/30 overflow-hidden bg-transparent"
-                >
+                <section class="rounded-xl border border-border/30 overflow-hidden bg-transparent">
                   <div class="flex items-start gap-2 px-3 py-2 border-b border-border/20">
                     <div class="pt-0.5">
-                      <span class="block h-2 w-2 rounded-full {section.scope === 'project'
-                        ? 'bg-blue-400/80'
-                        : section.scope === 'global'
-                          ? 'bg-emerald-400/80'
-                          : 'bg-amber-400/80'}"></span>
+                      <span
+                        class="block h-2 w-2 rounded-full {section.scope === 'project'
+                          ? 'bg-blue-400/80'
+                          : section.scope === 'global'
+                            ? 'bg-emerald-400/80'
+                            : 'bg-amber-400/80'}"
+                      ></span>
                     </div>
                     <div class="min-w-0 flex-1">
                       <div class="flex items-center gap-2 min-w-0">
@@ -514,8 +511,7 @@
                       <div
                         class="group/item flex items-start gap-2 rounded-lg px-2 py-1.5 hover:bg-accent/20 transition-colors"
                       >
-                        <span
-                          class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/30"
+                        <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/30"
                         ></span>
                         <p
                           class="text-[11px] text-foreground/72 leading-relaxed flex-1 min-w-0 {expandedMemory.has(

@@ -245,8 +245,7 @@
     const fromState = dragRunIds.length > 0;
     const types = e?.dataTransfer?.types;
     const fromTypes =
-      !!types &&
-      Array.from(types).some((type) => type === RUN_DRAG_MIME || type === "text/plain");
+      !!types && Array.from(types).some((type) => type === RUN_DRAG_MIME || type === "text/plain");
     return fromState || fromTypes;
   }
 

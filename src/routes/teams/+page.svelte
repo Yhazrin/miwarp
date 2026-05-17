@@ -92,14 +92,16 @@
       content: msg.content,
       createdAt: msg.createdAt,
     }));
-    const inboxRows: RoomRow[] = (teamStore.allInbox ?? []).map((m: TeamInboxMessage, i: number) => ({
-      kind: "inbox",
-      id: `inbox-${m.timestamp}-${m.from}-${i}`,
-      from: m.from,
-      content: m.text?.trim() ? m.text : m.summary,
-      createdAt: m.timestamp,
-      color: m.color,
-    }));
+    const inboxRows: RoomRow[] = (teamStore.allInbox ?? []).map(
+      (m: TeamInboxMessage, i: number) => ({
+        kind: "inbox",
+        id: `inbox-${m.timestamp}-${m.from}-${i}`,
+        from: m.from,
+        content: m.text?.trim() ? m.text : m.summary,
+        createdAt: m.timestamp,
+        color: m.color,
+      }),
+    );
     return [...userRows, ...inboxRows].sort(
       (a, b) => parseRoomTime(a.createdAt) - parseRoomTime(b.createdAt),
     );
@@ -551,7 +553,9 @@
               {#if row.kind === "user"}
                 <div class="flex justify-end gap-2">
                   <div class="order-1 max-w-[min(32rem,85%)]">
-                    <div class="rounded-2xl rounded-br-md bg-primary px-3 py-2 text-xs text-primary-foreground shadow-sm">
+                    <div
+                      class="rounded-2xl rounded-br-md bg-primary px-3 py-2 text-xs text-primary-foreground shadow-sm"
+                    >
                       <p class="whitespace-pre-wrap">{row.content}</p>
                       <span class="mt-1 block text-right text-[9px] opacity-80"
                         >{new Date(row.createdAt).toLocaleTimeString()}</span

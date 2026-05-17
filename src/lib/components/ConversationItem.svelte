@@ -118,9 +118,7 @@
     ? 'bg-sidebar-accent/25 text-sidebar-foreground'
     : 'hover:bg-sidebar-accent/28 text-sidebar-foreground'} {batchSelected
     ? 'ring-1 ring-primary/50'
-    : ''} {isDragging
-    ? 'scale-[0.985] opacity-45 shadow-sm'
-    : ''}"
+    : ''} {isDragging ? 'scale-[0.985] opacity-45 shadow-sm' : ''}"
   role="button"
   tabindex="0"
   draggable={!!ondragstart}

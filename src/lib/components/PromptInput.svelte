@@ -1,11 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
-  import type {
-    Attachment,
-    CliCommand,
-    CliModelInfo,
-  } from "$lib/types";
+  import type { Attachment, CliCommand, CliModelInfo } from "$lib/types";
   import * as api from "$lib/api";
   import { createGitBranchPoller } from "$lib/utils/git-branch";
   import AgentSelector from "./AgentSelector.svelte";
