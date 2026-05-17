@@ -123,10 +123,12 @@
 
 | 任务 | 文件 | PR 切片 |
 |------|------|---------|
-| ~~settings page 按 tab 拆子组件~~ | settings/+page.svelte → RemoteTab, NotificationsTab | ✅ DONE (-1377 行) |
+| ~~settings page 按 tab 拆子组件~~ | settings/+page.svelte → RemoteTab, NotificationsTab, ConnectionTab, CliConfigTab | ✅ DONE (-3644 行, 83.5%) |
 | ~~提取 layout 子组件~~ | +layout.svelte → FolderCrudDialogs | ✅ DONE (-190 行) |
 | ~~消除 chat composable split-brain~~ | 删除 3 个死文件 | ✅ DONE (P0 已完成) |
-| 推广已有共享组件 | Card, Input, Textarea, Spinner | PR-1d: adopt-shared-components |
+| ~~提取 connection 逻辑到 composable~~ | use-connection-platform.svelte.ts (497行) | ✅ DONE |
+| ~~提取共享 Spinner 组件~~ | Spinner.svelte, 14/15 实例替换 | ✅ DONE |
+| 推广已有共享组件 | Card, Input, Textarea | PR-1d: adopt-shared-components (剩余) |
 | ~~统一 formatTime/formatDate~~ | 提取到 i18n/format.ts | ✅ DONE (-26 行) |
 
 ### P2 — 中期（2-4 周）
@@ -161,11 +163,13 @@
 
 | 指标 | 基线 | 当前值 | P1 目标 | P2 目标 |
 |------|------|--------|---------|---------|
-| 最大 .svelte 文件 | 4,367 行 | ~2,990 行 (settings) | < 1,500 行 | < 800 行 |
-| 最大 .ts 文件 | 3,377 行 | 3,377 行 | < 2,000 行 | < 1,000 行 |
+| 最大 .svelte 文件 | 4,367 行 | 1,881 行 (InlineToolCard) | < 1,500 行 | < 800 行 |
+| settings/+page.svelte | 4,367 行 | **723 行** (-83.5%) | < 1,500 行 ✅ | < 800 行 |
+| 最大 .ts 文件 | 3,377 行 | 3,617 行 (session-store) | < 2,000 行 | < 1,000 行 |
 | 最大 .rs 文件 | 2,714 行 | 2,714 行 | 不变 | < 1,500 行 |
 | 组件最大 props 数 | 52 | 52 | < 25 | < 15 |
-| 单文件最大 $state 数 | 97 | ~76 (settings) | < 30 | < 15 |
+| 单文件最大 $state 数 | 97 | ~23 (conn composable) | < 30 | < 15 |
+| 共享 Spinner 组件 | 0/15 使用 | 14/15 使用 | 15/15 | 15/15 |
 | localStorage key 使用处 | 17+ (ocv:project-cwd) | 17+ | 1 (cwdStore) | 0 (统一 store) |
 | 未使用组件 | 3 | 0 | 0 | 0 |
 | 逐字重复代码块 | 3 处 | 0 | 0 | 0 |
