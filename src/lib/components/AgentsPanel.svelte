@@ -4,6 +4,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import type { AgentDefinitionSummary } from "$lib/types";
   import AgentEditor from "./AgentEditor.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
 
   let {
     projectCwd = "",
@@ -311,9 +312,7 @@
 
   {#if loading}
     <div class="flex items-center justify-center py-12">
-      <div
-        class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-      ></div>
+      <Spinner size="md" class="text-primary" />
     </div>
   {:else}
     <div class="flex gap-4" style="min-height: 400px;">

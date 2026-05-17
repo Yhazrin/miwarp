@@ -3,12 +3,10 @@
   import { t } from "$lib/i18n/index.svelte";
 
   let {
-    runId = "",
     sessionId = "",
     currentRunId = "",
     currentCwd = "/",
   }: {
-    runId?: string;
     sessionId?: string;
     currentRunId?: string;
     currentCwd?: string;

@@ -7,7 +7,6 @@
 import { tick } from "svelte";
 import { dbg } from "$lib/utils/debug";
 import type { TimelineEntry } from "$lib/types";
-import type { ToolBurst } from "$lib/utils/tool-rendering";
 
 export function useScrollController(opts: {
   chatAreaRef: () => HTMLDivElement | undefined;

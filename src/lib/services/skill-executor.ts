@@ -8,7 +8,7 @@
  * - Self-contained task execution
  */
 import { dbg, dbgWarn } from "$lib/utils/debug";
-import type { Skill, SkillExecution } from "$lib/types/skill";
+import type { Skill } from "$lib/types/skill";
 
 // ── Step-Based Workflow Types ──
 
@@ -185,7 +185,7 @@ export class SkillExecutor {
     skill: Skill,
     stepId: string,
     input: any,
-    context?: SkillExecutionContext,
+    _context?: SkillExecutionContext,
   ): Promise<ExecutionResult> {
     dbg("skill-executor", "executeStep", { skill: skill.name, stepId });
 
@@ -523,7 +523,7 @@ export class SkillExecutor {
   private async handleSetupCoworkSkill(
     skill: Skill,
     args: string,
-    context?: SkillExecutionContext,
+    _context?: SkillExecutionContext,
   ): Promise<ExecutionResult> {
     const parsed = this.parseArgs(args);
     const step = parsed.step as string | undefined;
@@ -705,9 +705,6 @@ export class SkillExecutor {
     args: string,
     context?: SkillExecutionContext,
   ): Promise<ExecutionResult> {
-    const parsed = this.parseArgs(args);
-    const verbose = parsed.verbose === true;
-
     const output: string[] = [];
     output.push("## Security Review");
     output.push("");
@@ -762,7 +759,7 @@ export class SkillExecutor {
   private async handleInitSkill(
     skill: Skill,
     args: string,
-    context?: SkillExecutionContext,
+    _context?: SkillExecutionContext,
   ): Promise<ExecutionResult> {
     const parsed = this.parseArgs(args);
     const projectName = (parsed._ as string) || "my-project";

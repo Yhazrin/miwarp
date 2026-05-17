@@ -390,9 +390,6 @@ export class TaskPromptTemplateEngine {
       }
     }
 
-    // Generate static values
-    const staticValues = this.getStaticValues();
-
     // Replace template variables
     let result = template.template;
     for (const variable of template.variables) {

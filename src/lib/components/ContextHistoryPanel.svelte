@@ -9,6 +9,7 @@
   import { formatTokenCount, formatDuration, formatCost } from "$lib/utils/format";
   import { getColor, getIcon, computeContextDelta } from "$lib/utils/context-parser";
   import { t } from "$lib/i18n/index.svelte";
+  import { fmtTime } from "$lib/i18n/format";
 
   let {
     history = [],
@@ -89,15 +90,6 @@
     if (d > 0) return "text-miwarp-status-warning";
     if (d < 0) return "text-emerald-500";
     return "text-muted-foreground/50";
-  }
-
-  function formatTime(ts: string): string {
-    try {
-      const d = new Date(ts);
-      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    } catch {
-      return "";
-    }
   }
 
   // Latest turn usage (for showing deltas in resource summary)
@@ -351,7 +343,7 @@
                   {t("contextPanel_turn", { index: String(entry.turnIndex) })}
                 </span>
                 {#if entry.ts}
-                  <span class="text-muted-foreground/50">{formatTime(entry.ts)}</span>
+                  <span class="text-muted-foreground/50">{fmtTime(entry.ts)}</span>
                 {/if}
                 {#if entry.snap}
                   <span class="ml-auto tabular-nums text-foreground/70"

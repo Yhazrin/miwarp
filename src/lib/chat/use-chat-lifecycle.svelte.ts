@@ -54,11 +54,13 @@ import type {
   BtwDelta,
   BtwComplete,
   BtwError,
+  Attachment,
 } from "$lib/types";
 import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
 import { parseContextMarkdown } from "$lib/utils/context-parser";
 import type { ContextSnapshot } from "$lib/types";
 import { getLastTarget, setLastTarget, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
+import { PROJECT_CWD_KEY, RUNS_CHANGED_KEY, PROJECT_CHANGED_KEY } from "$lib/utils/storage-keys";
 import { randomSpinnerVerb } from "$lib/utils/spinner-verbs";
 import { t } from "$lib/i18n/index.svelte";
 import { dbg, dbgWarn } from "$lib/utils/debug";
@@ -73,8 +75,6 @@ import {
 import type { useProjectPreload } from "$lib/chat/use-project-preload.svelte";
 import type { useProgressiveTimeline } from "$lib/chat/use-progressive-timeline.svelte";
 import type { useChatController } from "$lib/chat/use-chat-controller.svelte";
-import type { ResumeOptions } from "$lib/chat/use-session-lifecycle.svelte";
-import type { useDragDropController } from "$lib/chat/use-drag-drop-controller.svelte";
 import type { useExportController } from "$lib/chat/use-export-controller.svelte";
 import type XTerminal from "$lib/components/XTerminal.svelte";
 import type PromptInput from "$lib/components/PromptInput.svelte";
@@ -122,11 +122,15 @@ export interface UseChatLifecycleOptions {
     handleResume: (
       mode: import("$lib/types").SessionMode,
       overrideRunId?: string,
-      opts?: ResumeOptions,
+      opts?: { initialMessage?: string; initialAttachments?: Attachment[] },
     ) => Promise<void>;
     resuming: { get: () => boolean };
   };
-  dragDrop: ReturnType<typeof useDragDropController>;
+  dragDrop: {
+    pageDragActive: boolean;
+    dragProcessing: boolean;
+    handleTauriDrop: (payload: { paths: string[] }) => Promise<void>;
+  };
   exportCtrl: ReturnType<typeof useExportController>;
 
   // Context
@@ -252,7 +256,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   );
 
   async function checkProjectInit() {
-    const cwd = localStorage.getItem("ocv:project-cwd") || "";
+    const cwd = localStorage.getItem(PROJECT_CWD_KEY) || "";
     if (!cwd || cwd === "/") {
       projectInitStatus = null;
       dbg("chat", "checkProjectInit: skip (no cwd)");
@@ -615,7 +619,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
           setStoredRemoteCwd(resolvedHost, folder);
         } else {
           try {
-            localStorage.setItem("ocv:project-cwd", folder);
+            localStorage.setItem(PROJECT_CWD_KEY, folder);
           } catch {
             // localStorage may fail in restricted contexts
           }
@@ -877,7 +881,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     loadCliVersionInfo();
     checkProjectInit();
     if (!runId) {
-      const cwd = localStorage.getItem("ocv:project-cwd") || "";
+      const cwd = localStorage.getItem(PROJECT_CWD_KEY) || "";
       preload.reloadProjectData(cwd);
     }
   });
@@ -889,17 +893,17 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
       const url = get(page).url;
       const runId = url.searchParams.get("run") ?? "";
       if (!runId && !store.run) {
-        const cwd = localStorage.getItem("ocv:project-cwd") || "";
+        const cwd = localStorage.getItem(PROJECT_CWD_KEY) || "";
         preload.reloadProjectData(cwd);
       }
     };
-    window.addEventListener("ocv:project-changed", handler);
-    return () => window.removeEventListener("ocv:project-changed", handler);
+    window.addEventListener(PROJECT_CHANGED_KEY, handler);
+    return () => window.removeEventListener(PROJECT_CHANGED_KEY, handler);
   });
 
   // ── Warm up file IPC chain ──
   onMount(() => {
-    const cwd = localStorage.getItem("ocv:project-cwd") || "";
+    const cwd = localStorage.getItem(PROJECT_CWD_KEY) || "";
     if (!cwd) return;
     const t0 = performance.now();
     api
@@ -931,8 +935,8 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
           dbgWarn("chat", "runs-changed: failed to sync name", e);
         });
     }
-    window.addEventListener("ocv:runs-changed", onRunsChanged);
-    return () => window.removeEventListener("ocv:runs-changed", onRunsChanged);
+    window.addEventListener(RUNS_CHANGED_KEY, onRunsChanged);
+    return () => window.removeEventListener(RUNS_CHANGED_KEY, onRunsChanged);
   });
 
   // ── Start middleware + register pipe/run handlers ──

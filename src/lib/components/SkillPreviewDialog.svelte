@@ -7,7 +7,6 @@
 <script lang="ts">
   import type { Skill } from "$lib/types/skill";
   import { generateSkillPreview, type SkillPreview } from "$lib/services/skill-preview";
-  import { t } from "$lib/i18n/index.svelte";
 
   interface Props {
     open?: boolean;

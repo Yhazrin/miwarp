@@ -386,7 +386,7 @@ export function buildEnrichedProjectFolders(
     if (!cwdBuckets.has(cwd)) cwdBuckets.set(cwd, []);
   }
   // Also ensure any cwd that has session folders appears
-  for (const [folderId, cwd] of folderCwdMap) {
+  for (const [, cwd] of folderCwdMap) {
     if (cwd !== "" && !removedSet.has(cwd) && !cwdBuckets.has(cwd)) {
       cwdBuckets.set(cwd, []);
     }

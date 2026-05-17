@@ -2,6 +2,7 @@
   import { untrack } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { fmtTime } from "$lib/i18n/format";
+  import Spinner from "./Spinner.svelte";
   import * as api from "$lib/api";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { truncate } from "$lib/utils/format";
@@ -300,9 +301,7 @@
     {#if dryRunLoading}
       <!-- Loading spinner -->
       <div class="flex items-center justify-center py-12">
-        <div
-          class="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"
-        ></div>
+        <Spinner size="lg" class="text-muted-foreground" />
       </div>
     {:else if dryRunResult && dryRunResult.canRewind}
       <!-- Successful dryRun preview -->
@@ -433,9 +432,7 @@
     <!-- Phase: executing -->
   {:else if phase === "executing"}
     <div class="flex flex-col items-center gap-3 py-12">
-      <div
-        class="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"
-      ></div>
+      <Spinner size="lg" class="text-muted-foreground" />
       <p class="text-sm text-muted-foreground">{t("rewind_executing")}</p>
     </div>
   {/if}

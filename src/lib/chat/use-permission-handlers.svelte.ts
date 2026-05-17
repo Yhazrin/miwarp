@@ -9,6 +9,7 @@ import { goto } from "$app/navigation";
 import * as api from "$lib/api";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { resolvePermissionOptimistic } from "$lib/utils/resolve-permission";
+import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
 import type { SessionStore } from "$lib/stores";
 import type { PermissionSuggestion } from "$lib/types";
 
@@ -103,7 +104,7 @@ export function usePermissionHandlers(opts: {
     const store = opts.getStore();
     if (!store.run) return;
     const runId = store.run.id;
-    const cwd = localStorage.getItem("ocv:project-cwd") || "";
+    const cwd = localStorage.getItem(PROJECT_CWD_KEY) || "";
     dbg("chat", "ExitPlanMode: clear context + auto-accept");
 
     const exitPlanEntry = store.timeline.find(

@@ -20,7 +20,7 @@
 
 {#if status === "done"}
   <svg
-    class="{sizeClass[size]} text-emerald-500 dark:text-emerald-400 shrink-0"
+    class="{sizeClass[size]} text-[hsl(var(--miwarp-status-success))] shrink-0"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"

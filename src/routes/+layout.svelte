@@ -3,6 +3,13 @@
   import "$lib/styles/sidebar-animations.css";
   import { escapeHtml } from "$lib/utils/ansi";
   import {
+    PROJECT_CWD_KEY,
+    RUNS_CHANGED_KEY,
+    PROJECT_CHANGED_KEY,
+    FAVORITES_CHANGED_KEY,
+    EXPLORER_FILE_SELECTED_KEY,
+  } from "$lib/utils/storage-keys";
+  import {
     listRuns,
     listRunsSince,
     getUserSettings,
@@ -15,9 +22,6 @@
     softDeleteRuns,
     hardDeleteRuns,
     listAllSessionFolders,
-    createSessionFolder,
-    renameSessionFolder,
-    deleteSessionFolder,
     moveRunToFolder,
     batchMoveToFolder,
     checkForUpdates,
@@ -31,8 +35,10 @@
   import CliSessionBrowser from "$lib/components/CliSessionBrowser.svelte";
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
+  import FolderCrudDialogs from "$lib/components/FolderCrudDialogs.svelte";
   import MemorySidebarGroup from "$lib/components/MemorySidebarGroup.svelte";
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import TopWindowDrag from "$lib/components/TopWindowDrag.svelte";
   import SidebarProjectContextStrip from "$lib/components/sidebar/SidebarProjectContextStrip.svelte";
   import type {
@@ -49,13 +55,10 @@
   import { filterVisibleCandidates } from "$lib/utils/memory-helpers";
   import {
     buildEnrichedProjectFolders,
-    buildSessionFolderGroups,
     autoExpandForRun,
     expandForProjectChange,
     normalizeCwd,
     type ConversationGroup,
-    type SessionFolderGroup,
-    type EnrichedProjectFolder,
   } from "$lib/utils/sidebar-groups";
   import { loadRemovedCwds } from "$lib/utils/removed-cwds";
   import {
@@ -127,13 +130,9 @@
 
   // ── Session folders ──
   let sessionFolders = $state<SessionFolder[]>([]);
-  let sessionFolderGroups = $state<SessionFolderGroup[]>([]);
-  let unassignedRuns = $state<TaskRun[]>([]);
 
   // Sub-folder expand state (folderKey → expanded)
   let expandedSubFolders = $state(new Set<string>());
-  // Target workspace when creating a logical folder (`null` = legacy / unset).
-  let folderCreateTargetWorkspace = $state<string | null>(null);
 
   function toggleSubFolder(folderKey: string) {
     const next = new Set(expandedSubFolders);
@@ -142,24 +141,14 @@
     expandedSubFolders = next;
   }
 
-  // Folder CRUD dialogs
-  let folderCreateOpen = $state(false);
-  let folderCreateName = $state("");
-  let folderRenameOpen = $state(false);
-  let folderRenameTarget = $state<SessionFolder | null>(null);
-  let folderRenameName = $state("");
-  let folderDeleteOpen = $state(false);
-  let folderDeleteTarget = $state<SessionFolder | null>(null);
+  // Folder CRUD dialogs (extracted component)
+  let folderDialogs: FolderCrudDialogs;
 
   // Move-to-folder dialog
   let moveToFolderOpen = $state(false);
   let moveToFolderRunIds = $state<string[]>([]);
   let moveToFolderWorkspaceId = $state<string>("");
   let moveToFolderSelectedId = $state<string | null>(null);
-
-  $effect(() => {
-    if (!folderCreateOpen) folderCreateTargetWorkspace = null;
-  });
 
   // ── Drag-and-drop for sessions → folders ──
   const RUN_DRAG_MIME = "application/x-miwarp-run-ids";
@@ -292,7 +281,7 @@
       }
       runs = runs.map((r) => (idsToMove.includes(r.id) ? { ...r, folder_id: folderId } : r));
       await loadSessionFolders();
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       dbg("layout", "drag-drop move to folder", { count: idsToMove.length, folderId });
     } catch (e) {
       dbgWarn("layout", "drag-drop moveRunToFolder failed", e);
@@ -304,78 +293,6 @@
       sessionFolders = await listAllSessionFolders();
     } catch {
       // silently fail
-    }
-  }
-
-  function refreshFolderGroups() {
-    const result = buildSessionFolderGroups(runs, sessionFolders, favoriteRunIds);
-    sessionFolderGroups = result.folderGroups;
-    unassignedRuns = result.unassignedRuns;
-  }
-
-  async function doCreateFolder() {
-    const name = folderCreateName.trim();
-    if (!name) return;
-    const target = folderCreateTargetWorkspace;
-    const workspaceId =
-      target != null && target !== ""
-        ? normalizeCwd(target) || target.trim()
-        : normalizeCwd(projectCwd) || "default";
-    folderCreateOpen = false;
-    folderCreateName = "";
-    folderCreateTargetWorkspace = null;
-    try {
-      const folder = await createSessionFolder(name, workspaceId);
-      sessionFolders = [...sessionFolders, folder];
-      dbg("layout", "createFolder success", { id: folder.id, name });
-    } catch (e) {
-      dbgWarn("layout", "createFolder failed", e);
-    }
-  }
-
-  function requestRenameFolder(folder: SessionFolder) {
-    folderRenameTarget = folder;
-    folderRenameName = folder.name;
-    folderRenameOpen = true;
-  }
-
-  async function doRenameFolder() {
-    const target = folderRenameTarget;
-    const newName = folderRenameName.trim();
-    if (!target || !newName) return;
-    folderRenameOpen = false;
-    folderRenameTarget = null;
-    try {
-      await renameSessionFolder(target.id, newName);
-      sessionFolders = sessionFolders.map((f) =>
-        f.id === target.id ? { ...f, name: newName } : f,
-      );
-      dbg("layout", "renameFolder success", { id: target.id, newName });
-    } catch (e) {
-      dbgWarn("layout", "renameFolder failed", e);
-    }
-  }
-
-  function requestDeleteFolder(folder: SessionFolder) {
-    folderDeleteTarget = folder;
-    folderDeleteOpen = true;
-  }
-
-  async function doDeleteFolder(cascade: boolean) {
-    const target = folderDeleteTarget;
-    folderDeleteOpen = false;
-    folderDeleteTarget = null;
-    if (!target) return;
-    try {
-      await deleteSessionFolder(target.id, cascade);
-      sessionFolders = sessionFolders.filter((f) => f.id !== target.id);
-      if (cascade) {
-        // Reload runs to reflect folder_id changes
-        await loadRuns();
-      }
-      dbg("layout", "deleteFolder success", { id: target.id, cascade });
-    } catch (e) {
-      dbgWarn("layout", "deleteFolder failed", e);
     }
   }
 
@@ -401,7 +318,7 @@
       }
       // Optimistic update
       runs = runs.map((r) => (ids.includes(r.id) ? { ...r, folder_id: folderId ?? undefined } : r));
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       dbg("layout", "moveToFolder success", { count: ids.length, folderId });
     } catch (e) {
       dbgWarn("layout", "moveToFolder failed", e);
@@ -988,7 +905,7 @@
     })();
 
     // Load saved CWD and pinned folders from localStorage
-    const saved = localStorage.getItem("ocv:project-cwd");
+    const saved = localStorage.getItem(PROJECT_CWD_KEY);
     if (saved) projectCwd = normalizeCwd(saved) || "";
 
     // Load expanded projects from localStorage (defensive parse)
@@ -1113,13 +1030,13 @@
         loadGitSummary();
       }
     }
-    window.addEventListener("ocv:runs-changed", onRunsChanged);
+    window.addEventListener(RUNS_CHANGED_KEY, onRunsChanged);
 
     // Refresh sidebar favorites when /runs page changes them
     function onFavoritesChanged() {
       loadSidebarFavorites();
     }
-    window.addEventListener("ocv:favorites-changed", onFavoritesChanged);
+    window.addEventListener(FAVORITES_CHANGED_KEY, onFavoritesChanged);
 
     // Listen for Settings page requesting wizard re-open
     function onShowWizard() {
@@ -1142,7 +1059,7 @@
 
     // Sync projectCwd when chat page picks a folder via dialog
     function handleCwdChanged() {
-      const newCwd = normalizeCwd(localStorage.getItem("ocv:project-cwd") ?? "") || "";
+      const newCwd = normalizeCwd(localStorage.getItem(PROJECT_CWD_KEY) ?? "") || "";
       if (newCwd !== projectCwd) {
         projectCwd = newCwd;
       }
@@ -1199,7 +1116,7 @@
     function onExplorerFileSelected(e: Event) {
       explorerSelectedFile = (e as CustomEvent).detail?.path ?? "";
     }
-    window.addEventListener("ocv:explorer-file-selected", onExplorerFileSelected);
+    window.addEventListener(EXPLORER_FILE_SELECTED_KEY, onExplorerFileSelected);
 
     // Listen for run status changes (idle↔running) from backend
     let unlistenStatus: (() => void) | undefined;
@@ -1230,15 +1147,15 @@
       keybindingStore.unregisterCallback("app:toggleSidebar");
       keybindingStore.unregisterCallback("app:commandPalette");
       keybindingStore.unregisterCallback("app:newChat");
-      window.removeEventListener("ocv:runs-changed", onRunsChanged);
-      window.removeEventListener("ocv:favorites-changed", onFavoritesChanged);
+      window.removeEventListener(RUNS_CHANGED_KEY, onRunsChanged);
+      window.removeEventListener(FAVORITES_CHANGED_KEY, onFavoritesChanged);
       window.removeEventListener("ocv:show-wizard", onShowWizard);
       window.removeEventListener("ocv:cwd-changed", handleCwdChanged);
       window.removeEventListener("ocv:memory-file-selected", onMemoryFileSelected);
       window.removeEventListener("ocv:memory-file-saved", onMemoryFileSaved);
       window.removeEventListener("ocv:open-permissions", onOpenPermissions);
       document.removeEventListener("click", handleExternalLink, true);
-      window.removeEventListener("ocv:explorer-file-selected", onExplorerFileSelected);
+      window.removeEventListener(EXPLORER_FILE_SELECTED_KEY, onExplorerFileSelected);
       cleanupOverscroll();
     };
   });
@@ -1248,17 +1165,17 @@
   $effect(() => {
     if (typeof window !== "undefined") {
       if (projectCwd) {
-        localStorage.setItem("ocv:project-cwd", projectCwd);
+        localStorage.setItem(PROJECT_CWD_KEY, projectCwd);
         // Pin this cwd so it stays in the dropdown after switching away
         if (projectCwd !== "/" && !pinnedCwds.includes(projectCwd)) {
           pinnedCwds = [...pinnedCwds, projectCwd];
           localStorage.setItem("ocv:pinned-cwds", JSON.stringify(pinnedCwds));
         }
       } else {
-        localStorage.removeItem("ocv:project-cwd");
+        localStorage.removeItem(PROJECT_CWD_KEY);
       }
       // Notify child pages (e.g. Memory) that project cwd changed
-      window.dispatchEvent(new CustomEvent("ocv:project-changed", { detail: { cwd: projectCwd } }));
+      window.dispatchEvent(new CustomEvent(PROJECT_CHANGED_KEY, { detail: { cwd: projectCwd } }));
     }
   });
 
@@ -1314,7 +1231,7 @@
       const ids = conv.runs.map((r) => r.id);
       await softDeleteRuns(ids);
       dbg("layout", "deleteConversation success", { ids });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       if (conv.runs.some((r) => r.id === selectedRunId)) {
         goto("/chat");
       }
@@ -1335,7 +1252,7 @@
       const idSet = new Set(ids);
       runs = runs.filter((r) => !idSet.has(r.id));
       dbg("layout", "hardDeleteConversation success", { ids });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       if (ids.some((id) => id === selectedRunId)) {
         goto("/chat");
       }
@@ -1417,7 +1334,6 @@
   }
 
   async function batchDelete() {
-    const keys = new Set(selectedGroupKeys);
     batchDeleteConfirmOpen = false;
     clearBatchSelection();
     const ids = collectSelectedRunIds();
@@ -1425,7 +1341,7 @@
     try {
       await softDeleteRuns(ids);
       dbg("layout", "batchDelete success", { count: ids.length });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       if (ids.includes(selectedRunId)) goto("/chat");
     } catch (e) {
       dbgWarn("layout", "batchDelete failed", e);
@@ -1442,7 +1358,7 @@
       const idSet = new Set(ids);
       runs = runs.filter((r) => !idSet.has(r.id));
       dbg("layout", "batchHardDelete success", { count: ids.length });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       if (ids.includes(selectedRunId)) goto("/chat");
     } catch (e) {
       dbgWarn("layout", "batchHardDelete failed", e);
@@ -1498,13 +1414,6 @@
   let enrichedProjectFolders = $derived.by(() =>
     buildEnrichedProjectFolders(runs, sessionFolders, favoriteRunIds, pinnedCwds, removedCwds),
   );
-
-  // Keep sessionFolderGroups synced for compatibility (move-to-folder dialog etc.)
-  $effect(() => {
-    const result = buildSessionFolderGroups(runs, sessionFolders, favoriteRunIds);
-    sessionFolderGroups = result.folderGroups;
-    unassignedRuns = result.unassignedRuns;
-  });
 
   // Reload session folders when project context changes
   $effect(() => {
@@ -2375,9 +2284,7 @@
                     </div>
                   {:else if treeLoading}
                     <div class="flex items-center justify-center py-12">
-                      <div
-                        class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                      ></div>
+                      <Spinner size="sm" class="text-primary" />
                     </div>
                   {:else if fileTree.length === 0}
                     <p class="px-2 py-8 text-xs text-muted-foreground text-center">
@@ -2397,9 +2304,7 @@
                   </div>
                 {:else if gitLoading}
                   <div class="flex-1 flex items-center justify-center">
-                    <div
-                      class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                    ></div>
+                    <Spinner size="sm" class="text-primary" />
                   </div>
                 {:else if !gitSummary}
                   <div class="flex-1 flex items-center justify-center px-3">
@@ -2532,9 +2437,7 @@
                   >
                     {#if memoryLoading}
                       <div class="flex items-center justify-center py-6">
-                        <div
-                          class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                        ></div>
+                        <Spinner size="sm" class="text-primary" />
                       </div>
                     {:else if visibleMemoryProject.length > 0 || visibleMemoryAuto.length > 0}
                       <div class="space-y-0.5">
@@ -2590,9 +2493,7 @@
               <div class="flex-1 overflow-y-auto px-2 py-1">
                 {#if teamStore.loading}
                   <div class="flex items-center justify-center py-6">
-                    <div
-                      class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                    ></div>
+                    <Spinner size="sm" class="text-primary" />
                   </div>
                 {:else if filteredTeams.length === 0}
                   <div class="flex flex-col items-center gap-1 px-3 py-6 text-center">
@@ -2669,9 +2570,7 @@
                 <div class="flex-1 overflow-y-auto">
                   {#if searching && visibleSearchResults.length === 0}
                     <div class="flex items-center justify-center py-10">
-                      <div
-                        class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                      ></div>
+                      <Spinner size="sm" class="text-primary" />
                     </div>
                   {:else if !searching && visibleSearchResults.length === 0}
                     <div class="flex items-center justify-center px-3 py-10 text-center">
@@ -2737,17 +2636,15 @@
                       {expandedSubFolders}
                       onToggleSubFolder={toggleSubFolder}
                       onCreateSubFolder={() => {
-                        folderCreateTargetWorkspace = folder.isUncategorized ? null : folder.cwd;
-                        folderCreateOpen = true;
-                        folderCreateName = "";
+                        folderDialogs.openCreateFolder(folder.isUncategorized ? null : folder.cwd);
                       }}
                       onRenameSubFolder={(sf) => {
                         const f = sessionFolders.find((x) => x.id === sf.folderId);
-                        if (f) requestRenameFolder(f);
+                        if (f) folderDialogs.openRenameFolder(f);
                       }}
                       onDeleteSubFolder={(sf) => {
                         const f = sessionFolders.find((x) => x.id === sf.folderId);
-                        if (f) requestDeleteFolder(f);
+                        if (f) folderDialogs.openDeleteFolder(f);
                       }}
                       dragOverSubFolderKey={dragOverFolderId ? `sf:${dragOverFolderId}` : null}
                       onDragOverSubFolder={(key, folderId, e) =>
@@ -2954,94 +2851,14 @@
   </div>
 </Modal>
 
-<!-- Create folder dialog -->
-<Modal bind:open={folderCreateOpen} title={t("sidebar_createFolder")}>
-  <p class="text-sm text-muted-foreground mb-3">{t("sidebar_createFolderDesc")}</p>
-  <input
-    type="text"
-    class="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring mb-4"
-    placeholder={t("sidebar_folderNamePlaceholder")}
-    bind:value={folderCreateName}
-    onkeydown={(e) => e.key === "Enter" && doCreateFolder()}
-    autofocus
-  />
-  <div class="flex justify-end gap-2">
-    <button
-      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
-      onclick={() => {
-        folderCreateOpen = false;
-        folderCreateName = "";
-        folderCreateTargetWorkspace = null;
-      }}
-    >
-      {t("sidebar_deleteCancel")}
-    </button>
-    <button
-      class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-      onclick={doCreateFolder}
-    >
-      {t("sidebar_createFolderOk")}
-    </button>
-  </div>
-</Modal>
-
-<!-- Rename folder dialog -->
-<Modal bind:open={folderRenameOpen} title={t("sidebar_renameFolder")}>
-  <input
-    type="text"
-    class="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring mb-4"
-    bind:value={folderRenameName}
-    onkeydown={(e) => e.key === "Enter" && doRenameFolder()}
-    autofocus
-  />
-  <div class="flex justify-end gap-2">
-    <button
-      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
-      onclick={() => {
-        folderRenameOpen = false;
-        folderRenameTarget = null;
-      }}
-    >
-      {t("sidebar_deleteCancel")}
-    </button>
-    <button
-      class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-      onclick={doRenameFolder}
-    >
-      {t("sidebar_renameFolderOk")}
-    </button>
-  </div>
-</Modal>
-
-<!-- Delete folder dialog -->
-<Modal bind:open={folderDeleteOpen} title={t("sidebar_deleteFolder")}>
-  <p class="text-sm text-muted-foreground mb-4">
-    {t("sidebar_deleteFolderDesc", { name: folderDeleteTarget?.name ?? "" })}
-  </p>
-  <div class="flex justify-end gap-2">
-    <button
-      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
-      onclick={() => {
-        folderDeleteOpen = false;
-        folderDeleteTarget = null;
-      }}
-    >
-      {t("sidebar_deleteCancel")}
-    </button>
-    <button
-      class="px-3 py-1.5 text-sm rounded-md border border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors"
-      onclick={() => doDeleteFolder(false)}
-    >
-      {t("sidebar_deleteFolderKeep")}
-    </button>
-    <button
-      class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
-      onclick={() => doDeleteFolder(true)}
-    >
-      {t("sidebar_deleteFolderCascade")}
-    </button>
-  </div>
-</Modal>
+<!-- Folder CRUD dialogs (create, rename, delete) -->
+<FolderCrudDialogs
+  bind:this={folderDialogs}
+  {sessionFolders}
+  {projectCwd}
+  onFoldersChanged={(f) => (sessionFolders = f)}
+  onCascadeDelete={loadRuns}
+/>
 
 <!-- Move to folder dialog -->
 <Modal bind:open={moveToFolderOpen} title={t("sidebar_moveToFolder")}>

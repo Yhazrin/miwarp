@@ -5,17 +5,19 @@
     open = $bindable(false),
     title = "",
     closeable = true,
-    size: _size = "default",
+    size = "default",
+    noPadding = false,
     type: _type = "default",
-    onClose: _onClose,
+    onclose: _onclose,
     children,
   }: {
     open?: boolean;
     title?: string;
     closeable?: boolean;
     size?: "default" | "sm" | "lg" | "xl";
+    noPadding?: boolean;
     type?: "default" | "info" | "warning" | "error";
-    onClose?: () => void;
+    onclose?: () => void;
     children?: import("svelte").Snippet;
   } = $props();
 
@@ -36,12 +38,14 @@
         return;
       }
       open = false;
+      _onclose?.();
     }
   }
 
   function handleBackdropClick() {
     if (!closeable) return;
     open = false;
+    _onclose?.();
   }
 </script>
 
@@ -63,7 +67,14 @@
 
     <!-- Content -->
     <div
-      class="elevation-3 relative z-50 w-full max-w-lg p-6 animate-modal-in rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] backdrop-blur-2xl"
+      class="elevation-3 relative z-50 w-full animate-modal-in rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] backdrop-blur-2xl {size ===
+      'sm'
+        ? 'max-w-sm'
+        : size === 'lg'
+          ? 'max-w-xl'
+          : size === 'xl'
+            ? 'max-w-2xl'
+            : 'max-w-lg'} {noPadding ? '' : 'p-6'}"
       style="background: hsl(var(--miwarp-bg-deep) / 0.94);"
     >
       {#if title}
@@ -74,7 +85,10 @@
           class="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-md
                  text-miwarp-text-tertiary transition-colors
                  hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary"
-          onclick={() => (open = false)}
+          onclick={() => {
+            open = false;
+            _onclose?.();
+          }}
           aria-label={t("common_close")}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">

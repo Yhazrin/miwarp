@@ -7,18 +7,18 @@
     platformId,
     model,
     size = "md",
-    animated = false,
     showName = true,
     showModel = false,
+    animated: _animated = false,
     class: className = "",
   }: {
     agent?: string;
     platformId?: string;
     model?: string;
     size?: "sm" | "md" | "lg";
-    animated?: boolean;
     showName?: boolean;
     showModel?: boolean;
+    animated?: boolean;
     class?: string;
   } = $props();
 

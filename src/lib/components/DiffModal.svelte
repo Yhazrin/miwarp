@@ -1,7 +1,9 @@
 <script lang="ts">
   import Modal from "./Modal.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import * as api from "$lib/api";
   import { t } from "$lib/i18n/index.svelte";
+  import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
 
   let {
     open = $bindable(false),
@@ -16,8 +18,7 @@
   let loading = $state(false);
 
   async function loadDiff(staged: boolean) {
-    const cwd =
-      typeof window !== "undefined" ? localStorage.getItem("ocv:project-cwd") || "/" : "/";
+    const cwd = typeof window !== "undefined" ? localStorage.getItem(PROJECT_CWD_KEY) || "/" : "/";
     loading = true;
     try {
       diff = await api.getGitDiff(cwd, staged);
@@ -59,9 +60,7 @@
 
     {#if loading}
       <div class="flex items-center justify-center py-8">
-        <div
-          class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-        ></div>
+        <Spinner size="md" class="text-primary" />
       </div>
     {:else if diff.trim()}
       <pre

@@ -7,6 +7,7 @@
   import SkillCard from "$lib/components/SkillCard.svelte";
   import SkillEditor from "$lib/components/SkillEditor.svelte";
   import Modal from "$lib/components/Modal.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { t } from "$lib/i18n/index.svelte";
 
   // Local state
@@ -214,9 +215,7 @@
     {#if activeTab === "browse"}
       {#if skillStore.loading}
         <div class="flex h-40 items-center justify-center">
-          <div
-            class="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"
-          ></div>
+          <Spinner size="xl" class="text-primary" />
         </div>
       {:else if filteredSkills().length === 0}
         <div class="flex h-40 flex-col items-center justify-center gap-2 text-center">
@@ -314,7 +313,7 @@
 
 <!-- Editor Modal -->
 {#if skillStore.showEditor}
-  <Modal onClose={() => skillStore.closeEditor()}>
+  <Modal onclose={() => skillStore.closeEditor()}>
     <div class="w-[800px] max-w-[90vw] h-[80vh]">
       <SkillEditor
         skill={skillStore.editingSkill}
@@ -327,7 +326,7 @@
 
 <!-- Delete Confirmation Modal -->
 {#if showDeleteConfirm && skillToDelete}
-  <Modal onClose={cancelDelete}>
+  <Modal onclose={cancelDelete}>
     <div class="w-[400px] p-6">
       <div class="flex items-center gap-3 mb-4">
         <div class="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">

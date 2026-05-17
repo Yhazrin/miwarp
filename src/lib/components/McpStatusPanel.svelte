@@ -3,6 +3,7 @@
   import * as api from "$lib/api";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { statusDotClass, statusLabel, parseServersFromResponse } from "$lib/utils/mcp";
 
   let {
@@ -192,9 +193,7 @@
             >
               {#if togglingServer === server.name}
                 <span class="flex items-center gap-1">
-                  <span
-                    class="h-2.5 w-2.5 border border-current/30 border-t-current rounded-full animate-spin"
-                  ></span>
+                  <Spinner size="xs" />
                 </span>
               {:else}
                 {server.status === "disabled" ? t("mcp_enable") : t("mcp_disable")}

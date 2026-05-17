@@ -8,6 +8,8 @@
  * URL:     ?debug
  */
 
+import { DEBUG_KEY } from "./storage-keys";
+
 const MAX_LOG_ENTRIES = 2000;
 
 export interface LogEntry {
@@ -21,7 +23,7 @@ const logBuffer: LogEntry[] = [];
 
 function shouldLog(tag: string): boolean {
   if (typeof window === "undefined") return false;
-  const filter = localStorage.getItem("ocv:debug") ?? "";
+  const filter = localStorage.getItem(DEBUG_KEY) ?? "";
   if (!filter) {
     // Check URL param
     if (new URL(window.location.href).searchParams.has("debug")) return true;
@@ -44,7 +46,7 @@ let _enabled: boolean | null = null;
 function enabled(): boolean {
   if (_enabled === null) {
     if (typeof window === "undefined") return false;
-    const filter = localStorage.getItem("ocv:debug");
+    const filter = localStorage.getItem(DEBUG_KEY);
     if (filter) {
       _enabled = true; // has a filter value — enabled (shouldLog handles per-tag)
     } else {
@@ -141,17 +143,17 @@ export function isDebugMode(): boolean {
 /** Get current debug filter string */
 export function getDebugFilter(): string {
   if (typeof window === "undefined") return "";
-  return localStorage.getItem("ocv:debug") ?? "";
+  return localStorage.getItem(DEBUG_KEY) ?? "";
 }
 
 /** Toggle debug mode on/off, or set a tag filter */
 export function setDebugMode(on: boolean | string): void {
   if (typeof on === "string") {
-    localStorage.setItem("ocv:debug", on);
+    localStorage.setItem(DEBUG_KEY, on);
   } else if (on) {
-    localStorage.setItem("ocv:debug", "1");
+    localStorage.setItem(DEBUG_KEY, "1");
   } else {
-    localStorage.removeItem("ocv:debug");
+    localStorage.removeItem(DEBUG_KEY);
   }
   refreshDebugState();
 }

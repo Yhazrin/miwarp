@@ -16,6 +16,7 @@ import {
   mergeWithVirtual,
   parseRalphArgs,
 } from "$lib/utils/slash-commands";
+import { PROJECT_CWD_KEY, RUNS_CHANGED_KEY } from "$lib/utils/storage-keys";
 
 export type VirtualCommandTranslate = (key: MessageKey, params?: MessageParams) => string;
 
@@ -106,7 +107,7 @@ export function createHandleVirtualCommand(deps: VirtualCommandDeps) {
     } else if (action === "run-doctor") {
       try {
         dbg("doctor", "run-doctor triggered", { cwd: store.effectiveCwd });
-        const cwd = store.effectiveCwd || localStorage.getItem("ocv:project-cwd") || "";
+        const cwd = store.effectiveCwd || localStorage.getItem(PROJECT_CWD_KEY) || "";
         const mcpSvrs = store.sessionAlive ? store.mcpServers : undefined;
         const report = await buildDoctorReport(cwd, mcpSvrs);
         appendCommandOutput(report);
@@ -154,7 +155,7 @@ export function createHandleVirtualCommand(deps: VirtualCommandDeps) {
         appendCommandOutput(t("todos_empty"));
       }
     } else if (action === "show-diff") {
-      const cwd = store.effectiveCwd || localStorage.getItem("ocv:project-cwd") || "";
+      const cwd = store.effectiveCwd || localStorage.getItem(PROJECT_CWD_KEY) || "";
       if (!cwd) {
         appendCommandOutput(t("diff_noCwd"));
         return;
@@ -374,7 +375,7 @@ export function createHandleVirtualCommand(deps: VirtualCommandDeps) {
         await store.stop();
         dbg("chat", "clear-context: navigating to fresh chat");
         goto("/chat", { replaceState: true });
-        window.dispatchEvent(new Event("ocv:runs-changed"));
+        window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       } catch (e) {
         dbgWarn("chat", "clear-context failed", e);
         store.error = String(e);
