@@ -5,24 +5,10 @@
  * useChatHandlers or useChatLifecycle. Keeps the page template thin.
  */
 import type { SessionStore } from "$lib/stores";
-import type {
-  BusToolItem,
-  TimelineEntry,
-  CliModelInfo,
-  ContextSnapshot,
-  SessionInfoData,
-} from "$lib/types";
+import type { BusToolItem, TimelineEntry, CliModelInfo, SessionInfoData } from "$lib/types";
 import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
-import {
-  detectBatchGroups,
-  detectToolBursts,
-  isPlanFilePath,
-  planFileName,
-  extractPlanContent,
-} from "$lib/utils/tool-rendering";
+import { detectBatchGroups, detectToolBursts, isPlanFilePath } from "$lib/utils/tool-rendering";
 import type { ToolBurst } from "$lib/utils/tool-rendering";
-import { parseContextMarkdown } from "$lib/utils/context-parser";
-import { formatTokenCount } from "$lib/utils/format";
 import type { TurnUsage } from "$lib/stores/types";
 import { CONTEXT_CLEARED_MARKER } from "$lib/utils/slash-commands";
 import { getCliModels, getCliVersionInfo_cached } from "$lib/stores";
