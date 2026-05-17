@@ -7,6 +7,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import type { MarketplaceSkill, MarketplaceCategory } from "$lib/types/marketplace";
   import { SKILL_CATEGORIES } from "$lib/types/skill";
+  import { fmtDateYear } from "$lib/i18n/format";
 
   interface Props {
     onInstall?: (skill: MarketplaceSkill) => void;
@@ -175,14 +176,6 @@ Analyze your test coverage...`,
     return num.toString();
   }
 
-  function formatDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleDateString("zh-CN", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  }
-
   // Load on mount
   $effect(() => {
     loadMarketplace();
@@ -336,7 +329,7 @@ Analyze your test coverage...`,
               {skill.rating.toFixed(1)}
             </span>
             <span class="ml-auto">
-              {formatDate(skill.updatedAt)}
+              {fmtDateYear(skill.updatedAt)}
             </span>
           </div>
 

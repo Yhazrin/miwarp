@@ -4,6 +4,7 @@
   import { SKILL_CATEGORIES } from "$lib/types/skill";
   import { dbg } from "$lib/utils/debug";
   import SkillPreviewDialog from "./SkillPreviewDialog.svelte";
+  import { fmtDateYear } from "$lib/i18n/format";
 
   interface Props {
     skill: Skill;
@@ -53,15 +54,6 @@
   function handleConfirm(skill: Skill, args: string) {
     showPreview = false;
     onSelect?.(skill);
-  }
-
-  function formatDate(dateStr: string): string {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
   }
 </script>
 
