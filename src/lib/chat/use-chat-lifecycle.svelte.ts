@@ -541,49 +541,51 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
 
   // ── Restore model when store.model is empty ──
   $effect(() => {
-    if (!store.model) {
-      if (store.phase === "loading") return;
+    untrack(() => {
+      if (!store.model) {
+        if (store.phase === "loading") return;
 
-      const isThirdParty = store.platformId && store.platformId !== "anthropic";
-      if (isThirdParty) {
-        const restoreCred = findCredential(
-          settings?.platform_credentials ?? [],
-          store.platformId ?? "",
-        );
-        const restorePreset = PLATFORM_PRESETS.find((p) => p.id === store.platformId);
-        const restoreModels = restoreCred?.models?.length
-          ? restoreCred.models
-          : restorePreset?.models;
-        if (restoreModels?.[0]) {
-          dbg("chat", "restore model from credential/preset", {
-            platform: store.platformId,
-            model: restoreModels[0],
+        const isThirdParty = store.platformId && store.platformId !== "anthropic";
+        if (isThirdParty) {
+          const restoreCred = findCredential(
+            settings?.platform_credentials ?? [],
+            store.platformId ?? "",
+          );
+          const restorePreset = PLATFORM_PRESETS.find((p) => p.id === store.platformId);
+          const restoreModels = restoreCred?.models?.length
+            ? restoreCred.models
+            : restorePreset?.models;
+          if (restoreModels?.[0]) {
+            dbg("chat", "restore model from credential/preset", {
+              platform: store.platformId,
+              model: restoreModels[0],
+            });
+            store.model = restoreModels[0];
+            return;
+          }
+        }
+        const cliModel = getCliCurrentModel();
+        const isAnthropicPlatform = !store.platformId || store.platformId === "anthropic";
+        const rawFallback = isAnthropicPlatform ? settings?.default_model : undefined;
+        const contaminated = rawFallback ? isContaminatedDefaultModelFn(rawFallback) : null;
+        const fallback = contaminated === false ? rawFallback : undefined;
+        const model =
+          cliModel || fallback || (isAnthropicPlatform ? lastKnownGoodAnthropicModel : undefined);
+        if (model) {
+          if (isAnthropicPlatform && (cliModel || contaminated === false)) {
+            lastKnownGoodAnthropicModel = model;
+          }
+          dbg("chat", "restore model", {
+            cliModel,
+            rawFallback,
+            contaminated,
+            lastKnownGood: lastKnownGoodAnthropicModel,
+            using: model,
           });
-          store.model = restoreModels[0];
-          return;
+          store.model = model;
         }
       }
-      const cliModel = getCliCurrentModel();
-      const isAnthropicPlatform = !store.platformId || store.platformId === "anthropic";
-      const rawFallback = isAnthropicPlatform ? settings?.default_model : undefined;
-      const contaminated = rawFallback ? isContaminatedDefaultModelFn(rawFallback) : null;
-      const fallback = contaminated === false ? rawFallback : undefined;
-      const model =
-        cliModel || fallback || (isAnthropicPlatform ? lastKnownGoodAnthropicModel : undefined);
-      if (model) {
-        if (isAnthropicPlatform && (cliModel || contaminated === false)) {
-          lastKnownGoodAnthropicModel = model;
-        }
-        dbg("chat", "restore model", {
-          cliModel,
-          rawFallback,
-          contaminated,
-          lastKnownGood: lastKnownGoodAnthropicModel,
-          using: model,
-        });
-        store.model = model;
-      }
-    }
+    });
   });
 
   // ── Permission panel visibility log ──
@@ -603,143 +605,125 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   });
 
   // ── URL param consumption: ?folder= and ?host= ──
-  // NOTE: url is read before untrack so Svelte tracks pageState changes.
-  // All store mutations and replaceState are inside untrack to prevent loops.
-  $effect(() => {
-    const url = pageState.current.url;
-    untrack(() => {
-      const folder = url.searchParams.get("folder");
-      const host = url.searchParams.get("host");
-      if (!folder && !host) return;
-      dbg("chat", "url params", { folder, host });
-      let resolvedHost: string | null = null;
-      if (host !== null) {
-        if (host === "") {
-          resolvedHost = null;
-        } else if (remoteHosts.length === 0 || remoteHosts.some((h) => h.name === host)) {
-          resolvedHost = host;
-        } else {
-          dbgWarn("chat", "URL ?host= references unknown remote — ignoring", { host });
-          resolvedHost = null;
-        }
-        store.remoteHostName = resolvedHost;
-        setLastTarget(resolvedHost);
+  // Uses untrack to prevent infinite loops from replaceState.
+  let _prevFolderHost = "";
+  const unsubscribeFolderHost = page.subscribe((p) => {
+    const url = p.url;
+    const folder = url.searchParams.get("folder");
+    const host = url.searchParams.get("host");
+    if (!folder && !host) return;
+
+    const key = `${folder}:${host}`;
+    if (key === _prevFolderHost) return;
+    _prevFolderHost = key;
+
+    dbg("chat", "url params", { folder, host });
+    let resolvedHost: string | null = null;
+    if (host !== null) {
+      if (host === "") {
+        resolvedHost = null;
+      } else if (remoteHosts.length === 0 || remoteHosts.some((h) => h.name === host)) {
+        resolvedHost = host;
+      } else {
+        dbgWarn("chat", "URL ?host= references unknown remote — ignoring", { host });
+        resolvedHost = null;
       }
-      if (folder) {
-        if (resolvedHost) {
-          setStoredRemoteCwd(resolvedHost, folder);
-        } else {
-          try {
-            localStorage.setItem(PROJECT_CWD_KEY, folder);
-          } catch {
-            // localStorage may fail in restricted contexts
-          }
+      store.remoteHostName = resolvedHost;
+      setLastTarget(resolvedHost);
+    }
+    if (folder) {
+      if (resolvedHost) {
+        setStoredRemoteCwd(resolvedHost, folder);
+      } else {
+        try {
+          localStorage.setItem(PROJECT_CWD_KEY, folder);
+        } catch {
+          // localStorage may fail in restricted contexts
         }
-        setFolderCwdOverride(folder);
-        store.loadRun("", xtermRef());
       }
-      const clean = new URL(url);
-      clean.searchParams.delete("folder");
-      clean.searchParams.delete("host");
-      replaceState(clean, {});
-      requestAnimationFrame(() => promptRef()?.focus());
-    });
+      setFolderCwdOverride(folder);
+      store.loadRun("", xtermRef());
+    }
+    const clean = new URL(url);
+    clean.searchParams.delete("folder");
+    clean.searchParams.delete("host");
+    replaceState(clean, {});
+    requestAnimationFrame(() => promptRef()?.focus());
   });
 
   // ── Watch runId changes → load run + subscribe middleware ──
-  // NOTE: url is read before untrack so Svelte tracks pageState changes.
-  // All store mutations and replaceState are inside untrack to prevent loops.
-  $effect(() => {
-    const url = pageState.current.url;
-    untrack(() => {
-      const id = url.searchParams.get("run") ?? "";
-      const hasResume = url.searchParams.has("resume");
-      middleware.subscribeCurrent(id, store);
+  // Uses page.subscribe to manually track URL changes without reactive effect dependencies.
+  let _prevRunUrl = "";
+  const unsubscribe = page.subscribe((p) => {
+    const url = p.url;
+    const id = url.searchParams.get("run") ?? "";
+    const resumeMode = url.searchParams.get("resume") as import("$lib/types").SessionMode | null;
+    const scrollTo = url.searchParams.get("scrollTo");
 
-      if (store.resumeInFlight || sessionLifecycle.resuming.get()) {
-        dbg("effect", "skip loadRun — resume in progress");
-        return;
-      }
-      if (hasResume) return;
+    // Handle ?resume= first (must clean URL before loadRun)
+    if (resumeMode) {
+      const clean = new URL(url);
+      clean.searchParams.delete("resume");
+      clean.searchParams.delete("scrollTo");
+      replaceState(clean, {});
+      sessionLifecycle.handleResume(resumeMode, id);
+      return;
+    }
 
-      if (!id) {
-        store.loadRun("", xtermRef());
-        progressive.cancelProgressive();
-        return;
-      }
-
-      const hasHydratedRunState =
-        store.timeline.length > 0 ||
-        store.tools.length > 0 ||
-        store.turnUsages.length > 0 ||
-        !!store.streamingText ||
-        !!store.thinkingText ||
-        !!store.error ||
-        store.sessionAlive;
-
-      if (
-        store.run?.id === id &&
-        store.phase !== "empty" &&
-        store.phase !== "loading" &&
-        hasHydratedRunState
-      ) {
-        dbg("effect", "skip loadRun — run already in singleton store", id, store.phase);
-        const scrollTo = url.searchParams.get("scrollTo");
-        if (scrollTo) {
-          const clean = new URL(url);
-          clean.searchParams.delete("scrollTo");
-          replaceState(clean, {});
-          tick().then(() => scrollToMessage(scrollTo));
-        }
-        return;
-      }
-
-      ctrl.loadRunProgressive(id, xtermRef());
-    });
-  });
-
-  // ── Handle scrollTo for already-loaded runs ──
-  let _scrollToInFlight = false;
-  $effect(() => {
-    const url = pageState.current.url;
-    untrack(() => {
-      if (!middlewareReady) return;
-      const scrollTo = url.searchParams.get("scrollTo");
-      if (!scrollTo) return;
-      if (_scrollToInFlight) return;
-      if (store.phase === "loading") return;
-      const runId = url.searchParams.get("run") ?? "";
-      if (store.run?.id !== runId) return;
-
-      dbg("effect", "same-run scrollTo", { scrollTo, runId });
-      _scrollToInFlight = true;
+    // Handle ?scrollTo= for already-loaded runs
+    if (scrollTo && store.run?.id === id && store.phase !== "loading") {
       const clean = new URL(url);
       clean.searchParams.delete("scrollTo");
       replaceState(clean, {});
-      tick().then(() => {
-        scrollToMessage(scrollTo);
-        _scrollToInFlight = false;
-      });
-    });
+      tick().then(() => scrollToMessage(scrollTo));
+      return;
+    }
+
+    // Skip if URL hasn't changed
+    const key = id;
+    if (key === _prevRunUrl) return;
+    _prevRunUrl = key;
+
+    middleware.subscribeCurrent(id, store);
+
+    if (store.resumeInFlight || sessionLifecycle.resuming.get()) {
+      dbg("effect", "skip loadRun — resume in progress");
+      return;
+    }
+
+    if (!id) {
+      store.loadRun("", xtermRef());
+      progressive.cancelProgressive();
+      return;
+    }
+
+    const hasHydratedRunState =
+      store.timeline.length > 0 ||
+      store.tools.length > 0 ||
+      store.turnUsages.length > 0 ||
+      !!store.streamingText ||
+      !!store.thinkingText ||
+      !!store.error ||
+      store.sessionAlive;
+
+    if (
+      store.run?.id === id &&
+      store.phase !== "empty" &&
+      store.phase !== "loading" &&
+      hasHydratedRunState
+    ) {
+      dbg("effect", "skip loadRun — run already in singleton store", id, store.phase);
+      return;
+    }
+
+    ctrl.loadRunProgressive(id, xtermRef());
   });
+
+  // ── Handle scrollTo for already-loaded runs ──
+  // Now handled in the main page.subscribe callback above.
 
   // ── Consume ?resume= URL param ──
-  // NOTE: url is read before untrack so Svelte tracks pageState changes.
-  // All store mutations and replaceState are inside untrack to prevent loops.
-  $effect(() => {
-    const url = pageState.current.url;
-    untrack(() => {
-      const paramRunId = url.searchParams.get("run");
-      const resumeMode = url.searchParams.get("resume") as import("$lib/types").SessionMode | null;
-
-      if (paramRunId && resumeMode) {
-        const clean = new URL(url);
-        clean.searchParams.delete("resume");
-        replaceState(clean, {});
-        sessionLifecycle.handleResume(resumeMode, paramRunId);
-      }
-    });
-  });
+  // Now handled in the main page.subscribe callback above.
 
   // ========================================================================
   // onMount lifecycle hooks
