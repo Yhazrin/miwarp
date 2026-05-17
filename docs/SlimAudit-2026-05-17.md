@@ -79,13 +79,13 @@
 | 11 | 推广已有的 `<Card>` 组件到 plugins 页面 | plugins/ | LOW | 组件已存在，仅 3 文件使用 |
 | 12 | 推广已有的 `<Input>` 组件 | 多文件 | LOW | 组件已存在但 0 使用 |
 | 13 | 推广已有的 `<Textarea>` 组件 | 多文件 | LOW | 组件已存在但 0 使用 |
-| 14 | 提取 Spinner 为共享组件 | 多文件 | LOW | 13+ 处手写相同 CSS |
+| 14 | ~~提取 Spinner 为共享组件~~ | 多文件 | LOW | ✅ DONE (40+/53 实例替换) |
 | 15 | `StatusIcon` 硬编码色改为 CSS 变量 | components/ | LOW | `text-emerald-500` → `--miwarp-status-success` |
 | 16 | ~~消除 fork/forkElapsed/resuming split-brain~~ | chat/ | MEDIUM | ✅ DONE — 删除死文件 use-session-lifecycle.svelte.ts |
 | 17 | ~~消除 folderPickerOpen 重复~~ | chat/ | MEDIUM | ✅ DONE — 删除死文件 use-folder-picker.svelte.ts |
 | 18 | ~~消除 pageDragActive 重复~~ | chat/ | MEDIUM | ✅ DONE — 删除死文件 use-drag-drop-controller.svelte.ts |
 | 19 | `browser-service.ts` 14 个 `any` 类型替换为具体类型 | services/ | LOW | 消除 any 类型 |
-| 20 | `ContextRelayModal` 改为使用 `<Modal>` 组件 | components/ | LOW | 逐行复制了 Modal 结构 |
+| 20 | ~~`ContextRelayModal` 改为使用 `<Modal>` 组件~~ | components/ | LOW | ✅ DONE |
 
 ---
 
