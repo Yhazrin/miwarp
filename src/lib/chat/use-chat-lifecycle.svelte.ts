@@ -54,6 +54,7 @@ import type {
   BtwDelta,
   BtwComplete,
   BtwError,
+  Attachment,
 } from "$lib/types";
 import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
 import { parseContextMarkdown } from "$lib/utils/context-parser";
@@ -73,8 +74,6 @@ import {
 import type { useProjectPreload } from "$lib/chat/use-project-preload.svelte";
 import type { useProgressiveTimeline } from "$lib/chat/use-progressive-timeline.svelte";
 import type { useChatController } from "$lib/chat/use-chat-controller.svelte";
-import type { ResumeOptions } from "$lib/chat/use-session-lifecycle.svelte";
-import type { useDragDropController } from "$lib/chat/use-drag-drop-controller.svelte";
 import type { useExportController } from "$lib/chat/use-export-controller.svelte";
 import type XTerminal from "$lib/components/XTerminal.svelte";
 import type PromptInput from "$lib/components/PromptInput.svelte";
@@ -122,11 +121,15 @@ export interface UseChatLifecycleOptions {
     handleResume: (
       mode: import("$lib/types").SessionMode,
       overrideRunId?: string,
-      opts?: ResumeOptions,
+      opts?: { initialMessage?: string; initialAttachments?: Attachment[] },
     ) => Promise<void>;
     resuming: { get: () => boolean };
   };
-  dragDrop: ReturnType<typeof useDragDropController>;
+  dragDrop: {
+    pageDragActive: boolean;
+    dragProcessing: boolean;
+    handleTauriDrop: (payload: { paths: string[] }) => Promise<void>;
+  };
   exportCtrl: ReturnType<typeof useExportController>;
 
   // Context
