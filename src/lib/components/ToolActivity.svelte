@@ -697,13 +697,15 @@
   bind:this={asideEl}
   class="relative flex min-h-0 flex-1 overflow-hidden {collapsed
     ? 'bg-transparent'
-    : 'miwarp-toolactivity-glass'}"
+    : 'miwarp-toolactivity-glass'} {resizing
+    ? 'toolactivity-aside-resizing'
+    : 'toolactivity-aside-width-transition'}"
   style="width: {collapsed
     ? WIDTH_COLLAPSED + 'px'
     : effectiveWidth + 'px'}; contain: layout style; clip-path: inset(0);"
 >
   <div
-    class="absolute top-3 bottom-0 left-0 flex flex-col transition-transform duration-200"
+    class="absolute top-3 bottom-0 left-0 flex flex-col toolactivity-panel-slide"
     style="width: {effectiveWidth}px; transform: translateX({collapsed
       ? '100%'
       : '0'}); visibility: {collapsed ? 'hidden' : 'visible'}; pointer-events: {collapsed

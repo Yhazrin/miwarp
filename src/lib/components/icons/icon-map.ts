@@ -1,0 +1,710 @@
+/**
+ * MiWarp Icon Map
+ *
+ * Central registry for all icons used in MiWarp.
+ * All business components must use icons from this map via Icon.svelte.
+ *
+ * Library sources:
+ * - Lucide (primary): UI icons, sidebar, toolbar, buttons
+ * - Tabler (supplemental): MCP, hooks, workflows, automation, specialized technical icons
+ * - Phosphor (empty state): Large empty-state illustrations only
+ */
+
+// Lucide icons - primary UI library
+import {
+  Home,
+  MessageSquare,
+  Settings,
+  Search,
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  FolderMinus,
+  Clock,
+  Calendar,
+  CalendarClock,
+  Timer,
+  Hourglass,
+  ListTodo,
+  List,
+  ListChecks,
+  Clipboard,
+  ClipboardList,
+  ClipboardCheck,
+  Wrench,
+  Terminal,
+  Bug,
+  Code,
+  Code2,
+  File,
+  FileText,
+  FilePlus,
+  FileCheck,
+  FileX,
+  Eye,
+  EyeOff,
+  Info,
+  AlertTriangle,
+  CheckCircle2,
+  CircleX,
+  Circle,
+  Play,
+  Pause,
+  Square,
+  Trash2,
+  Pencil,
+  Edit2,
+  Edit3,
+  Plus,
+  MoreHorizontal,
+  Copy,
+  CopyPlus,
+  Send,
+  Share2,
+  Download,
+  Upload,
+  Save,
+  Link,
+  ExternalLink,
+  RefreshCw,
+  RotateCcw,
+  Maximize2,
+  Minimize2,
+  ZoomIn,
+  ZoomOut,
+  Lock,
+  Unlock,
+  KeyRound,
+  Shield,
+  Bot,
+  Cpu,
+  Activity,
+  Layers,
+  Brain,
+  Database,
+  Server,
+  Package,
+  Box,
+  Boxes,
+  GitBranch,
+  GitPullRequest,
+  History,
+  Bell,
+  Globe,
+  Wifi,
+  WifiOff,
+  Bookmark,
+  BookmarkPlus,
+  Star,
+  StarHalf,
+  Tag,
+  Tags,
+  Filter,
+  SortAsc,
+  SortDesc,
+  BarChart3,
+  LineChart,
+  PieChart,
+  AreaChart,
+  Type,
+  Bold,
+  Italic,
+  Underline,
+  Strikethrough,
+  Highlighter,
+  Image,
+  Images,
+  Video,
+  VideoOff,
+  Music,
+  Headphones,
+  Camera,
+  CameraOff,
+  Monitor,
+  Smartphone,
+  Tablet,
+  Laptop,
+  Sun,
+  Moon,
+  Cloud,
+  CloudOff,
+  CloudRain,
+  CloudSnow,
+  CloudLightning,
+  Wind,
+  Snowflake,
+  Zap,
+  User,
+  UserPlus,
+  UserCheck,
+  UserMinus,
+  UserX,
+  Users,
+  Inbox,
+  Mail,
+  SendHorizontal,
+  Paperclip,
+  Flag,
+  FlagOff,
+  Target,
+  Crosshair,
+  Speaker,
+  Volume,
+  VolumeX,
+  Mic,
+  MicOff,
+  Building,
+  Building2,
+  Store,
+  Warehouse,
+  Factory,
+  Briefcase,
+  Gift,
+  Heart,
+  ShoppingCart,
+  ShoppingBag,
+  GraduationCap,
+  School,
+  Atom,
+  Beaker,
+  FlaskConical,
+  TestTube,
+  Rocket,
+  Plane,
+  Car,
+  Map,
+  MapPin,
+  Navigation,
+  Compass,
+  TreePine,
+  Leaf,
+  Triangle,
+  Square as SquareIcon,
+  Diamond,
+  Hexagon,
+  Octagon,
+  Pentagon,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ArrowRight,
+  ArrowLeft,
+  ArrowUp,
+  ArrowDown,
+  Check,
+  X,
+  CheckSquare,
+  CircleDot,
+  CornerDownLeft,
+  CornerDownRight,
+  Layout,
+  LayoutDashboard,
+  LayoutGrid,
+  LayoutList,
+  PanelLeft,
+  PanelRight,
+  ArrowRightLeft,
+  ArrowUpDown,
+  ScrollText,
+  HardDrive,
+  Frown,
+  Meh,
+  Smile,
+  AlertCircle,
+  Ban,
+  XCircle,
+  XSquare,
+  Variable,
+  Grid3x3,
+  Grid2x2,
+  LayoutTemplate,
+  Lamp,
+  Lightbulb,
+  LightbulbOff,
+  Magnet,
+  Mars,
+  Mouse,
+  MousePointer,
+  Move,
+  Orbit,
+  ParkingCircle,
+  Printer,
+  Radar,
+  Rainbow,
+  Receipt,
+  Redo,
+  Redo2,
+  Repeat,
+  Repeat1,
+  Replace,
+  Reply,
+  ReplyAll,
+  Router,
+  Rss,
+  Ruler,
+  Scale,
+  Scan,
+  Scissors,
+  Settings2,
+  Share,
+  Sheet,
+  ShieldAlert,
+  ShieldCheck,
+  ShieldHalf,
+  ShieldOff,
+  Ship,
+  Shirt,
+  ShoppingBasket,
+  Shrink,
+  Sidebar,
+  Sigma,
+  Signal,
+  Sliders,
+  SlidersHorizontal,
+  Soup,
+  Space,
+  Sparkles,
+  Squirrel,
+  Stamp,
+  Stethoscope,
+  StickyNote,
+  StopCircle,
+  SunMoon,
+  Sunrise,
+  Sunset,
+  Sword,
+  Syringe,
+  Table,
+  Table2,
+  Tag as TagIcon,
+  Tags as TagsIcon,
+  Tent,
+  TestTube2,
+  Thermometer,
+  ThumbsDown,
+  ThumbsUp,
+  Ticket,
+  TimerOff,
+  ToggleLeft,
+  ToggleRight,
+  Touchpad,
+  TowerControl,
+  ToyBrick,
+  TrafficCone,
+  Train,
+  TrainFront,
+  Trash,
+  TreeDeciduous,
+  Trophy,
+  Truck,
+  Umbrella,
+  Undo,
+  Undo2,
+  Ungroup,
+  Unlink,
+  Upload as UploadIcon,
+  Utensils,
+  UtensilsCrossed,
+  Vegan,
+  VenetianMask,
+  Verified,
+  Vibrate,
+  Voicemail,
+  Vote,
+  Wallet,
+  Wallpaper,
+  Watch,
+  Waves,
+  Weight,
+  WifiHigh,
+  WifiLow,
+  Wind as WindIcon,
+  Wrench as WrenchIcon,
+  ZapOff,
+  Smartphone as SmartphoneIcon,
+} from "lucide-svelte";
+
+// Tabler icons - supplemental for specialized technical concepts
+import {
+  IconTopologyComplex,
+  IconApiApp,
+  IconWebhook,
+  IconRouteAltLeft,
+  IconSitemap,
+  IconRobot,
+  IconSettingsAutomation,
+  IconApps,
+  IconTerminal2,
+} from "@tabler/icons-svelte";
+
+// Phosphor icons - empty state and large illustrations only
+import {
+  CalendarBlank,
+  ClipboardText,
+  Package as PhosphorPackage,
+  Plugs,
+  MagnifyingGlass,
+  FolderOpen as PhosphorFolderOpen,
+  Sparkle,
+  FileX as PhosphorFileX,
+  Smiley,
+} from "phosphor-svelte";
+
+/**
+ * Icon metadata
+ */
+export interface IconEntry {
+  component: any;
+  variant: "ui" | "supplement" | "empty";
+  reason?: string;
+}
+
+export type IconName = string;
+export type IconVariant = "ui" | "supplement" | "empty";
+
+/**
+ * Icon map - all icons used in MiWarp
+ */
+export const iconMap = {
+  // ── Navigation & Layout ──
+  home: { component: Home, variant: "ui" },
+  chat: { component: MessageSquare, variant: "ui" },
+  settings: { component: Settings, variant: "ui" },
+  search: { component: Search, variant: "ui" },
+  folder: { component: Folder, variant: "ui" },
+  folderOpen: { component: FolderOpen, variant: "ui" },
+  folderPlus: { component: FolderPlus, variant: "ui" },
+  folderMinus: { component: FolderMinus, variant: "ui" },
+
+  // ── Time & Scheduling ──
+  clock: { component: Clock, variant: "ui" },
+  calendar: { component: Calendar, variant: "ui" },
+  calendarClock: { component: CalendarClock, variant: "ui" },
+  timer: { component: Timer, variant: "ui" },
+  hourglass: { component: Hourglass, variant: "ui" },
+
+  // ── Tasks & Lists ──
+  task: { component: ListTodo, variant: "ui" },
+  list: { component: List, variant: "ui" },
+  checklist: { component: ListChecks, variant: "ui" },
+  clipboard: { component: Clipboard, variant: "ui" },
+  clipboardList: { component: ClipboardList, variant: "ui" },
+  clipboardCheck: { component: ClipboardCheck, variant: "ui" },
+
+  // ── Tools & Technical ──
+  tools: { component: Wrench, variant: "ui" },
+  terminal: { component: Terminal, variant: "ui" },
+  bug: { component: Bug, variant: "ui" },
+  code: { component: Code, variant: "ui" },
+  code2: { component: Code2, variant: "ui" },
+
+  // ── Files & Documents ──
+  file: { component: File, variant: "ui" },
+  fileText: { component: FileText, variant: "ui" },
+  filePlus: { component: FilePlus, variant: "ui" },
+  fileCheck: { component: FileCheck, variant: "ui" },
+  fileX: { component: FileX, variant: "ui" },
+
+  // ── Actions & UI ──
+  preview: { component: Eye, variant: "ui" },
+  previewOff: { component: EyeOff, variant: "ui" },
+  info: { component: Info, variant: "ui" },
+  warning: { component: AlertTriangle, variant: "ui" },
+  success: { component: CheckCircle2, variant: "ui" },
+  error: { component: CircleX, variant: "ui" },
+  alert: { component: AlertCircle, variant: "ui" },
+
+  // ── Media Controls ──
+  play: { component: Play, variant: "ui" },
+  pause: { component: Pause, variant: "ui" },
+  stop: { component: Square, variant: "ui" },
+
+  // ── Edit Operations ──
+  delete: { component: Trash2, variant: "ui" },
+  edit: { component: Pencil, variant: "ui" },
+  edit2: { component: Edit2, variant: "ui" },
+  edit3: { component: Edit3, variant: "ui" },
+
+  // ── Common Actions ──
+  plus: { component: Plus, variant: "ui" },
+  more: { component: MoreHorizontal, variant: "ui" },
+  copy: { component: Copy, variant: "ui" },
+  copyPlus: { component: CopyPlus, variant: "ui" },
+  send: { component: Send, variant: "ui" },
+  share: { component: Share2, variant: "ui" },
+  download: { component: Download, variant: "ui" },
+  upload: { component: Upload, variant: "ui" },
+  save: { component: Save, variant: "ui" },
+  link: { component: Link, variant: "ui" },
+  externalLink: { component: ExternalLink, variant: "ui" },
+  refresh: { component: RefreshCw, variant: "ui" },
+  rotate: { component: RotateCcw, variant: "ui" },
+
+  // ── Navigation ──
+  chevronRight: { component: ChevronRight, variant: "ui" },
+  chevronDown: { component: ChevronDown, variant: "ui" },
+  chevronUp: { component: ChevronUp, variant: "ui" },
+  chevronLeft: { component: ChevronLeft, variant: "ui" },
+  arrowRight: { component: ArrowRight, variant: "ui" },
+  arrowLeft: { component: ArrowLeft, variant: "ui" },
+  arrowUp: { component: ArrowUp, variant: "ui" },
+  arrowDown: { component: ArrowDown, variant: "ui" },
+
+  // ── Selection & UI ──
+  check: { component: Check, variant: "ui" },
+  x: { component: X, variant: "ui" },
+  checkSquare: { component: CheckSquare, variant: "ui" },
+  circle: { component: Circle, variant: "ui" },
+  circleDot: { component: CircleDot, variant: "ui" },
+
+  // ── Status ──
+  lock: { component: Lock, variant: "ui" },
+  unlock: { component: Unlock, variant: "ui" },
+  key: { component: KeyRound, variant: "ui" },
+  shield: { component: Shield, variant: "ui" },
+
+  // ── AI & Agents ──
+  agent: { component: Bot, variant: "ui" },
+  model: { component: Cpu, variant: "ui" },
+  activity: { component: Activity, variant: "ui" },
+  context: { component: Layers, variant: "ui" },
+  memory: { component: Brain, variant: "ui" },
+
+  // ── Data & Storage ──
+  database: { component: Database, variant: "ui" },
+  remote: { component: Server, variant: "ui" },
+  package: { component: Package, variant: "ui" },
+  box: { component: Box, variant: "ui" },
+  boxes: { component: Boxes, variant: "ui" },
+
+  // ── Version Control ──
+  branch: { component: GitBranch, variant: "ui" },
+  gitPullRequest: { component: GitPullRequest, variant: "ui" },
+
+  // ── Communication ──
+  history: { component: History, variant: "ui" },
+  notification: { component: Bell, variant: "ui" },
+  mail: { component: Mail, variant: "ui" },
+  sendHorizontal: { component: SendHorizontal, variant: "ui" },
+
+  // ── Internet & Network ──
+  globe: { component: Globe, variant: "ui" },
+  wifi: { component: Wifi, variant: "ui" },
+  wifiOff: { component: WifiOff, variant: "ui" },
+
+  // ── Misc ──
+  bookmark: { component: Bookmark, variant: "ui" },
+  bookmarkPlus: { component: BookmarkPlus, variant: "ui" },
+  star: { component: Star, variant: "ui" },
+  starHalf: { component: StarHalf, variant: "ui" },
+  tag: { component: Tag, variant: "ui" },
+  tags: { component: Tags, variant: "ui" },
+  filter: { component: Filter, variant: "ui" },
+  sort: { component: SortAsc, variant: "ui" },
+  sortAsc: { component: SortAsc, variant: "ui" },
+  sortDesc: { component: SortDesc, variant: "ui" },
+  maximize: { component: Maximize2, variant: "ui" },
+  minimize: { component: Minimize2, variant: "ui" },
+  zoomIn: { component: ZoomIn, variant: "ui" },
+  zoomOut: { component: ZoomOut, variant: "ui" },
+
+  // ── Visualization ──
+  chart: { component: BarChart3, variant: "ui" },
+  chartLine: { component: LineChart, variant: "ui" },
+  chartPie: { component: PieChart, variant: "ui" },
+  chartArea: { component: AreaChart, variant: "ui" },
+
+  // ── Text & Formatting ──
+  type: { component: Type, variant: "ui" },
+  bold: { component: Bold, variant: "ui" },
+  italic: { component: Italic, variant: "ui" },
+  underline: { component: Underline, variant: "ui" },
+  strikethrough: { component: Strikethrough, variant: "ui" },
+  highlighter: { component: Highlighter, variant: "ui" },
+
+  // ── Media ──
+  image: { component: Image, variant: "ui" },
+  images: { component: Images, variant: "ui" },
+  video: { component: Video, variant: "ui" },
+  videoOff: { component: VideoOff, variant: "ui" },
+  music: { component: Music, variant: "ui" },
+  headphones: { component: Headphones, variant: "ui" },
+  camera: { component: Camera, variant: "ui" },
+  cameraOff: { component: CameraOff, variant: "ui" },
+  monitor: { component: Monitor, variant: "ui" },
+  smartphone: { component: SmartphoneIcon, variant: "ui" },
+  tablet: { component: Tablet, variant: "ui" },
+  laptop: { component: Laptop, variant: "ui" },
+
+  // ── Weather & Nature ──
+  sun: { component: Sun, variant: "ui" },
+  moon: { component: Moon, variant: "ui" },
+  cloud: { component: Cloud, variant: "ui" },
+  cloudOff: { component: CloudOff, variant: "ui" },
+  cloudRain: { component: CloudRain, variant: "ui" },
+  cloudSnow: { component: CloudSnow, variant: "ui" },
+  cloudLightning: { component: CloudLightning, variant: "ui" },
+  snowflake: { component: Snowflake, variant: "ui" },
+  wind: { component: WindIcon, variant: "ui" },
+  zap: { component: Zap, variant: "ui" },
+
+  // ── People & Social ──
+  user: { component: User, variant: "ui" },
+  users: { component: Users, variant: "ui" },
+  userPlus: { component: UserPlus, variant: "ui" },
+  userCheck: { component: UserCheck, variant: "ui" },
+  userMinus: { component: UserMinus, variant: "ui" },
+  userX: { component: UserX, variant: "ui" },
+
+  // ── Communication ──
+  messageSquare: { component: MessageSquare, variant: "ui" },
+  inbox: { component: Inbox, variant: "ui" },
+  paperclip: { component: Paperclip, variant: "ui" },
+
+  // ── Status ──
+  flag: { component: Flag, variant: "ui" },
+  flagOff: { component: FlagOff, variant: "ui" },
+  target: { component: Target, variant: "ui" },
+  crosshair: { component: Crosshair, variant: "ui" },
+
+  // ── Devices ──
+  speaker: { component: Speaker, variant: "ui" },
+  volume: { component: Volume, variant: "ui" },
+  volumeX: { component: VolumeX, variant: "ui" },
+  mic: { component: Mic, variant: "ui" },
+  micOff: { component: MicOff, variant: "ui" },
+
+  // ── Buildings & Places ──
+  building: { component: Building, variant: "ui" },
+  building2: { component: Building2, variant: "ui" },
+  store: { component: Store, variant: "ui" },
+  warehouse: { component: Warehouse, variant: "ui" },
+  factory: { component: Factory, variant: "ui" },
+
+  // ── Objects & Items ──
+  briefcase: { component: Briefcase, variant: "ui" },
+  gift: { component: Gift, variant: "ui" },
+  heart: { component: Heart, variant: "ui" },
+  shoppingCart: { component: ShoppingCart, variant: "ui" },
+  shoppingBag: { component: ShoppingBag, variant: "ui" },
+
+  // ── Science & Lab ──
+  flask: { component: FlaskConical, variant: "ui" },
+  testTube: { component: TestTube, variant: "ui" },
+  atom: { component: Atom, variant: "ui" },
+  beaker: { component: Beaker, variant: "ui" },
+  graduationCap: { component: GraduationCap, variant: "ui" },
+  school: { component: School, variant: "ui" },
+
+  // ── Travel & Transport ──
+  rocket: { component: Rocket, variant: "ui" },
+  plane: { component: Plane, variant: "ui" },
+  car: { component: Car, variant: "ui" },
+  map: { component: Map, variant: "ui" },
+  mapPin: { component: MapPin, variant: "ui" },
+  navigation: { component: Navigation, variant: "ui" },
+  compass: { component: Compass, variant: "ui" },
+
+  // ── Abstract Shapes ──
+  triangle: { component: Triangle, variant: "ui" },
+  square: { component: SquareIcon, variant: "ui" },
+  circleShape: { component: Circle, variant: "ui" },
+  diamond: { component: Diamond, variant: "ui" },
+  hexagon: { component: Hexagon, variant: "ui" },
+  octagon: { component: Octagon, variant: "ui" },
+  pentagon: { component: Pentagon, variant: "ui" },
+
+  // ── Layout & Design ──
+  layout: { component: Layout, variant: "ui" },
+  layoutGrid: { component: LayoutGrid, variant: "ui" },
+  layoutList: { component: LayoutList, variant: "ui" },
+  layoutDashboard: { component: LayoutDashboard, variant: "ui" },
+  panelLeft: { component: PanelLeft, variant: "ui" },
+  panelRight: { component: PanelRight, variant: "ui" },
+
+  // ── Tabler Icons - Supplemental ──
+  mcp: {
+    component: IconTopologyComplex,
+    variant: "supplement",
+    reason:
+      "Lucide lacks API/MCP topology icons; Tabler's IconTopologyComplex accurately represents MCP server architecture",
+  },
+  hook: {
+    component: IconWebhook,
+    variant: "supplement",
+    reason:
+      "Lucide's alternatives are less recognizable; Tabler's IconWebhook is the standard webhook symbol",
+  },
+  workflow: {
+    component: IconRouteAltLeft,
+    variant: "supplement",
+    reason:
+      "Lucide's Route is for hyperlinks; Tabler's IconRouteAltLeft better represents workflow automation routing",
+  },
+  automation: {
+    component: IconSettingsAutomation,
+    variant: "supplement",
+    reason:
+      "Lucide has Robot but it looks like a toy; Tabler's automation icon is more professional",
+  },
+  marketplace: {
+    component: IconApps,
+    variant: "supplement",
+    reason:
+      "Lucide's App/GripVertical don't convey marketplace; Tabler's IconApps is the standard app grid icon",
+  },
+  terminalTabler: {
+    component: IconTerminal2,
+    variant: "supplement",
+    reason: "Tabler's terminal icon has better line weight consistency with Lucide",
+  },
+
+  // ── Phosphor Icons - Empty States Only ──
+  emptyTasks: {
+    component: CalendarBlank,
+    variant: "empty",
+    reason:
+      "Phosphor's CalendarBlank with ClipboardText provides a clearer empty-state illustration",
+  },
+  emptyPlugins: {
+    component: PhosphorPackage,
+    variant: "empty",
+    reason: "Phosphor's Package icon reads better at large sizes for empty extension/plugin states",
+  },
+  emptySearch: {
+    component: MagnifyingGlass,
+    variant: "empty",
+    reason:
+      "Phosphor's MagnifyingGlass has a friendlier, more approachable style for empty search states",
+  },
+  emptyFolder: {
+    component: PhosphorFolderOpen,
+    variant: "empty",
+    reason: "Phosphor's FolderOpen icon is more visually distinct as an empty state illustration",
+  },
+  emptyState: {
+    component: Sparkle,
+    variant: "empty",
+    reason: "Phosphor's Sparkle provides a positive, encouraging empty-state feel",
+  },
+  emptyFile: {
+    component: PhosphorFileX,
+    variant: "empty",
+    reason: "Phosphor's FileX is clearer for file-not-found empty states",
+  },
+} as const;
+
+/**
+ * Get an icon entry by name
+ */
+export function getIcon(name: string): IconEntry | undefined {
+  return iconMap[name as keyof typeof iconMap];
+}
+
+/**
+ * Check if an icon exists
+ */
+export function hasIcon(name: string): boolean {
+  return name in iconMap;
+}

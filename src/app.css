@@ -282,6 +282,53 @@
   animation: slow-pulse 2.5s ease-in-out infinite;
 }
 
+@keyframes chat-block-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-scroll-shell {
+  scroll-behavior: auto;
+}
+
+.chat-flow-stable .animate-fade-in,
+.chat-flow-stable .motion-slide-up,
+.chat-live-block {
+  animation: chat-block-in 140ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.chat-flow-stable .motion-sweep::after {
+  display: none;
+}
+
+.chat-flow-stable .motion-status-success,
+.chat-message-live {
+  animation: none !important;
+}
+
+.chat-flow-stable .motion-status-error {
+  animation-duration: 140ms;
+}
+
+.chat-entry-tail {
+  content-visibility: visible;
+  contain-intrinsic-size: auto;
+}
+
+.chat-live-block {
+  contain: paint;
+}
+
+.chat-streaming-body {
+  min-height: 1.75rem;
+}
+
 /* Spin animation */
 @keyframes spin {
   from {

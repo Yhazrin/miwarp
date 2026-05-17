@@ -13,21 +13,44 @@
     thinkingText,
     onRewind,
     onDispatchToTeam,
+    onRelayToSession,
     agent,
     platformId,
     model,
+    runId = "",
+    sessionId = "",
     animated = false,
+    showThinking = true,
   }: {
     message: ChatMessage;
     attachments?: Attachment[];
     thinkingText?: string;
     onRewind?: () => void;
     onDispatchToTeam?: () => void;
+    onRelayToSession?: (clip: import("$lib/context-relay/context-clip-types").ContextClip) => void;
     agent?: string;
     platformId?: string;
     model?: string;
+    runId?: string;
+    sessionId?: string;
     animated?: boolean;
+    /** When false, assistant thought blocks are omitted (process visibility). */
+    showThinking?: boolean;
   } = $props();
+
+  async function openRelayModal() {
+    if (!onRelayToSession) return;
+    const { buildMessageClip } = await import("$lib/context-relay/context-clip-builder");
+    const clip = buildMessageClip({
+      runId,
+      sessionId,
+      messageId: message.id ?? "",
+      role: message.role === "assistant" ? "assistant" : "user",
+      content: message.content,
+      model,
+    });
+    onRelayToSession(clip);
+  }
 
   function isImage(att: Attachment): boolean {
     return (IMAGE_TYPES as readonly string[]).includes(att.type);
@@ -70,7 +93,7 @@
 </script>
 
 <div
-  class="w-full {animated ? 'motion-slide-up' : ''}"
+  class="w-full chat-message-shell {animated ? 'chat-message-live' : ''}"
   role="group"
   onmouseenter={() => (hovered = true)}
   onmouseleave={() => (hovered = false)}
@@ -219,10 +242,35 @@
                 </svg>
               </button>
             {/if}
+            {#if onRelayToSession}
+              <button
+                class="rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered
+                  ? 'opacity-100'
+                  : 'opacity-0'}"
+                onclick={openRelayModal}
+                title={t("contextRelay_sendToSession")}
+                data-export-exclude
+              >
+                <svg
+                  class="h-3.5 w-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </button>
+            {/if}
             <button
-              class="{onRewind
-                ? ''
-                : 'ml-auto'} rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered ||
+              class="{!onRewind && !onRelayToSession
+                ? 'ml-auto'
+                : ''} rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered ||
               copied
                 ? 'opacity-100'
                 : 'opacity-0'}"
@@ -304,7 +352,7 @@
               <p class="whitespace-pre-wrap">{message.content}</p>
             {/if}
           {:else}
-            {#if thinkingText}
+            {#if thinkingText && showThinking}
               <div
                 class="mb-3 rounded-xl border border-[hsl(var(--miwarp-accent-primary)/0.18)] overflow-hidden"
                 style="background: hsl(var(--miwarp-bg-deep) / 0.72); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);"
@@ -353,7 +401,7 @@
               </div>
             {/if}
             <div class="prose-chat">
-              <MarkdownContent text={message.content} />
+              <MarkdownContent text={message.content} lazy={!animated} />
             </div>
           {/if}
         </div>

@@ -11,6 +11,12 @@
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
   import SessionPanelTabs from "$lib/components/chat/SessionPanelTabs.svelte";
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
+  import type { ProcessVisibility } from "$lib/utils/process-visibility";
+  import {
+    PROCESS_VISIBILITY_LEVELS,
+    normalizeProcessVisibility,
+  } from "$lib/utils/process-visibility";
+  import type { MessageKey } from "$lib/i18n/types";
 
   let {
     run = null,
@@ -63,6 +69,8 @@
     toolPanelActiveTab,
     onToolPanelTabChange,
     toolPanelIndicators,
+    processVisibility: processVisibilityProp,
+    onProcessVisibilityChange,
   }: {
     run?: TaskRun | null;
     agent?: string;
@@ -114,6 +122,8 @@
     toolPanelActiveTab?: ToolActivityPanelTab;
     onToolPanelTabChange?: (tab: ToolActivityPanelTab) => void;
     toolPanelIndicators?: { context: boolean; files: boolean; tasks: boolean };
+    processVisibility?: ProcessVisibility | string;
+    onProcessVisibilityChange?: (v: ProcessVisibility) => void;
   } = $props();
 
   $effect(() => {
@@ -258,8 +268,21 @@
   let moreMenuBtnEl: HTMLButtonElement | undefined = $state();
   let moreMenuEl: HTMLDivElement | undefined = $state();
 
+  let processVisOpen = $state(false);
+  let processVisBtnEl: HTMLButtonElement | undefined = $state();
+  let processVisMenuEl: HTMLDivElement | undefined = $state();
+
+  let processVisibility = $derived(normalizeProcessVisibility(processVisibilityProp));
+
+  const PV_LABEL: Record<ProcessVisibility, MessageKey> = {
+    output: "processVisibility_output",
+    guided: "processVisibility_guided",
+    developer: "processVisibility_developer",
+    expert: "processVisibility_expert",
+  };
+
   let showIslandExpanded = $derived(
-    expanded || islandHover || dropdownOpen || moreMenuOpen || titleEditing,
+    expanded || islandHover || dropdownOpen || moreMenuOpen || processVisOpen || titleEditing,
   );
 
   function positionDropdown() {
@@ -371,6 +394,15 @@
       ) {
         moreMenuOpen = false;
       }
+      if (
+        processVisOpen &&
+        processVisBtnEl &&
+        !processVisBtnEl.contains(e.target as Node) &&
+        processVisMenuEl &&
+        !processVisMenuEl.contains(e.target as Node)
+      ) {
+        processVisOpen = false;
+      }
     }
     function onDocKeydown(e: KeyboardEvent) {
       if (dropdownOpen && e.key === "Escape") {
@@ -479,9 +511,9 @@
   spacers below are kept for Linux/Windows where the JS handler is needed.
 -->
 <div
-  class="session-status-drag session-island-shell relative mx-3 mt-3 w-full min-w-0 max-w-[1100px] self-center border border-white/10 bg-background/55 font-mono text-xs text-foreground/70 backdrop-blur-2xl transition-[border-radius,box-shadow] duration-[520ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:duration-150 motion-reduce:ease-linear sm:mx-4 {showIslandExpanded
-    ? 'rounded-[1.28rem] shadow-[0_12px_44px_rgba(0,0,0,0.12),0_4px_14px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.1)]'
-    : 'rounded-full shadow-[0_2px_16px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.08)]'}"
+  class="session-status-drag session-island-shell relative mt-3 w-full min-w-0 max-w-[1100px] border border-border/55 dark:border-white/[0.13] bg-background/[0.42] dark:bg-background/[0.34] font-mono text-xs text-foreground/70 backdrop-blur-2xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.38)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[border-radius,background-color,border-color,box-shadow] duration-[520ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:duration-150 motion-reduce:ease-linear {showIslandExpanded
+    ? 'rounded-[1.28rem]'
+    : 'rounded-full'}"
   data-tauri-drag-region
   onpointerenter={onIslandPointerEnter}
   onpointerleave={onIslandPointerLeave}
@@ -668,7 +700,7 @@
       {/if}
     </div>
 
-    {#if onToolPanelTabChange && toolPanelActiveTab}
+    {#if onToolPanelTabChange && toolPanelActiveTab && processVisibility !== "output"}
       <div
         class="hidden h-5 w-px shrink-0 self-center bg-border/50 min-[480px]:block"
         aria-hidden="true"
@@ -684,7 +716,7 @@
 
     <!-- Right: tools count + More menu + chevron -->
     <div class="ml-auto flex h-9 shrink-0 items-center gap-1.5">
-      {#if toolsCount && toolsCount > 0 && onToolsClick}
+      {#if toolsCount && toolsCount > 0 && onToolsClick && processVisibility !== "output"}
         <button
           class="text-xs text-muted-foreground hover:text-foreground transition-colors"
           onclick={onToolsClick}
@@ -692,6 +724,62 @@
         >
           {t("statusbar_tools", { count: String(toolsCount) })}
         </button>
+      {/if}
+
+      {#if onProcessVisibilityChange}
+        <div class="relative">
+          <button
+            type="button"
+            bind:this={processVisBtnEl}
+            class="hidden sm:inline-flex h-7 max-w-[9.5rem] min-w-0 items-center gap-1 rounded-md border border-transparent px-2 text-[10px] font-medium text-muted-foreground transition-colors hover:border-border/40 hover:bg-accent/20 hover:text-foreground"
+            onclick={() => (processVisOpen = !processVisOpen)}
+            title={t("statusbar_processVisibilityTitle")}
+          >
+            <span class="shrink-0 opacity-80">{t("statusbar_processVisibility")}</span>
+            <span class="min-w-0 truncate text-foreground/90">{t(PV_LABEL[processVisibility])}</span
+            >
+            <svg
+              class="h-2.5 w-2.5 shrink-0 opacity-50"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"><path d="m6 9 6 6 6-6" /></svg
+            >
+          </button>
+          {#if processVisOpen}
+            <div
+              bind:this={processVisMenuEl}
+              class="absolute right-0 top-full z-50 mt-1 w-64 max-w-[80vw] rounded-md border border-border/40 bg-popover p-1 text-xs shadow-lg"
+            >
+              {#each PROCESS_VISIBILITY_LEVELS as level (level)}
+                <button
+                  type="button"
+                  class="flex w-full flex-col items-start gap-0.5 rounded px-2 py-2 text-left transition-colors hover:bg-accent {processVisibility ===
+                  level
+                    ? 'bg-accent/40'
+                    : ''}"
+                  onclick={() => {
+                    onProcessVisibilityChange?.(level);
+                    processVisOpen = false;
+                  }}
+                >
+                  <span class="font-medium text-foreground">{t(PV_LABEL[level])}</span>
+                  <span class="text-[10px] leading-snug text-muted-foreground"
+                    >{t(
+                      level === "output"
+                        ? "processVisibility_outputDesc"
+                        : level === "guided"
+                          ? "processVisibility_guidedDesc"
+                          : level === "developer"
+                            ? "processVisibility_developerDesc"
+                            : "processVisibility_expertDesc",
+                    )}</span
+                  >
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
       {/if}
 
       <!-- More menu -->

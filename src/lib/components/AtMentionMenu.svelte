@@ -30,13 +30,26 @@
   let left = $state(0);
   let width = $state(0);
 
+  const VIEWPORT_PAD = 8;
+  const MIN_W = 260;
+  const MAX_W = 400;
+
   function updatePosition() {
     if (!anchorEl) return;
     const rect = anchorEl.getBoundingClientRect();
     bottom = window.innerHeight - rect.top + 4;
-    left = rect.left;
-    width = Math.min(rect.width, 400);
+    const menuW = Math.min(Math.max(rect.width, MIN_W), MAX_W);
+    width = menuW;
+    let nextLeft = rect.left;
+    nextLeft = Math.min(Math.max(nextLeft, VIEWPORT_PAD), window.innerWidth - menuW - VIEWPORT_PAD);
+    left = nextLeft;
   }
+
+  $effect(() => {
+    void anchorEl;
+    void menuEl;
+    updatePosition();
+  });
 
   // Scroll selected item into view
   $effect(() => {
@@ -71,7 +84,7 @@
 
 <div
   bind:this={menuEl}
-  class="fixed z-[99] rounded-lg border border-border bg-background shadow-lg animate-fade-in"
+  class="fixed z-[300] rounded-lg border border-border bg-background shadow-lg animate-fade-in"
   style="bottom: {bottom}px; left: {left}px; width: {width}px;"
 >
   <!-- Header -->

@@ -43,6 +43,8 @@ export function useSlashMenu(opts: {
   let slashSubSelectedIndex = $state(0);
   let activeSlashCmd: CliCommand | null = $state(null);
   let slashBtnEl = $state<HTMLButtonElement | undefined>();
+  /** When true, position the slash menu from the / toolbar button (right-aligned) instead of the textarea. */
+  let slashPreferTriggerAnchor = $state(false);
   let savedInputForSlash = $state("");
 
   // ── Derived ──
@@ -105,6 +107,7 @@ export function useSlashMenu(opts: {
   function closeSlashMenu(reason: string) {
     if (!slashMenuOpen) return;
     dbg("slash", `close:${reason}`);
+    slashPreferTriggerAnchor = false;
     slashMenuOpen = false;
     slashPhase = "commands";
     activeSlashCmd = null;
@@ -203,6 +206,7 @@ export function useSlashMenu(opts: {
 
     savedInputForSlash = store.inputText;
     store.inputText = "/";
+    slashPreferTriggerAnchor = true;
     slashMenuOpen = true;
     slashPhase = "commands";
     slashSelectedIndex = 0;
@@ -228,6 +232,7 @@ export function useSlashMenu(opts: {
         slashPhase = "sub-model";
         slashSubSelectedIndex = 0;
       }
+      slashPreferTriggerAnchor = false;
       slashMenuOpen = true;
       moveCursorToEnd();
       return;
@@ -258,6 +263,7 @@ export function useSlashMenu(opts: {
 
   /** Open slash menu programmatically (from handleInput when "/" is typed). */
   function openSlashMenu() {
+    slashPreferTriggerAnchor = false;
     slashMenuOpen = true;
     slashPhase = "commands";
     slashSelectedIndex = 0;
@@ -293,6 +299,9 @@ export function useSlashMenu(opts: {
     },
     set slashBtnEl(v: HTMLButtonElement | undefined) {
       slashBtnEl = v;
+    },
+    get slashPreferTriggerAnchor() {
+      return slashPreferTriggerAnchor;
     },
     get filteredCommands() {
       return filteredCommands;

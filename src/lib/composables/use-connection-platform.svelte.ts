@@ -39,7 +39,7 @@ export function useConnectionPlatform(opts: {
   let selectedPlatformId = $state<string | null>(null);
   let platformCredentials = $state<PlatformCredential[]>([]);
   let platformExtraEnv = $state<Array<{ key: string; value: string }>>([]);
-  let extraEnvTouched = $state<Record<string, boolean>>({});
+  const extraEnvTouched = $state<Record<string, boolean>>({});
 
   // CLI Auth state
   let authOverview = $state<AuthOverview | null>(null);
@@ -47,10 +47,10 @@ export function useConnectionPlatform(opts: {
   let cliLoginError = $state("");
 
   // Derive merged platform list (static presets + dynamic custom endpoints)
-  let platformList = $derived(buildPlatformList(platformCredentials));
+  const platformList = $derived(buildPlatformList(platformCredentials));
 
   // Derive selected platform from id
-  let selectedPlatform = $derived<PlatformPreset | null>(
+  const selectedPlatform = $derived<PlatformPreset | null>(
     selectedPlatformId ? (platformList.find((p) => p.id === selectedPlatformId) ?? null) : null,
   );
 
@@ -67,7 +67,7 @@ export function useConnectionPlatform(opts: {
   let apiTestRequestId = $state(0);
 
   // Derive effective auth env var
-  let effectiveAuthEnvVar = $derived(
+  const effectiveAuthEnvVar = $derived(
     findCredential(platformCredentials, selectedPlatformId ?? "")?.auth_env_var ||
       selectedPlatform?.auth_env_var ||
       "ANTHROPIC_API_KEY",

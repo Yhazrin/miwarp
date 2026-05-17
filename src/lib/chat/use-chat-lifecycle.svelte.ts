@@ -637,7 +637,6 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
 
   // ── Watch runId changes → load run + subscribe middleware ──
   $effect(() => {
-    if (!middlewareReady) return;
     const url = get(page).url;
     const id = url.searchParams.get("run") ?? "";
     const hasResume = url.searchParams.has("resume");

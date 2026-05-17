@@ -333,6 +333,9 @@ pub struct UserSettings {
     /// Show per-turn token usage report below each AI response. Default true.
     #[serde(default = "default_true")]
     pub show_token_usage_report: bool,
+    /// Transcript process density: output | guided | developer | expert.
+    #[serde(default = "default_process_visibility")]
+    pub process_visibility: String,
     /// Per-agent mascot overrides. Maps agent kind → image URL or data URI.
     #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
     pub mascot_overrides: std::collections::HashMap<String, String>,
@@ -341,6 +344,10 @@ pub struct UserSettings {
 
 fn default_auth_mode() -> String {
     "cli".to_string()
+}
+
+fn default_process_visibility() -> String {
+    "developer".to_string()
 }
 
 fn default_ssh_port() -> u16 {
@@ -451,6 +458,7 @@ impl Default for UserSettings {
             auto_pr_on_complete: false,
             auto_cleanup_worktree: true,
             show_token_usage_report: true,
+            process_visibility: default_process_visibility(),
             mascot_overrides: std::collections::HashMap::new(),
             updated_at: now_iso(),
         }

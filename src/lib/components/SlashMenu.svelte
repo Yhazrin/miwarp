@@ -62,13 +62,27 @@
   let left = $state(0);
   let width = $state(0);
 
+  const VIEWPORT_PAD = 8;
+  const MIN_MENU_W = 280;
+
   function updatePosition() {
     if (!anchorEl) return;
     const rect = anchorEl.getBoundingClientRect();
+    const wideAnchor = rect.width >= 100;
+    const menuW = wideAnchor ? Math.max(rect.width, MIN_MENU_W) : MIN_MENU_W;
+    width = menuW;
+    let nextLeft = wideAnchor ? rect.left : rect.right - menuW;
+    nextLeft = Math.min(Math.max(nextLeft, VIEWPORT_PAD), window.innerWidth - menuW - VIEWPORT_PAD);
+    left = nextLeft;
     bottom = window.innerHeight - rect.top + 4;
-    left = rect.left;
-    width = rect.width;
   }
+
+  $effect(() => {
+    void anchorEl;
+    void phase;
+    void menuEl;
+    updatePosition();
+  });
 
   // Scroll selected item into view (commands phase)
   $effect(() => {
@@ -121,7 +135,7 @@
 
 <div
   bind:this={menuEl}
-  class="fixed z-[99] rounded-lg border border-border bg-background shadow-lg animate-fade-in"
+  class="fixed z-[300] rounded-lg border border-border bg-background shadow-lg animate-fade-in"
   style="bottom: {bottom}px; left: {left}px; width: {width}px;"
 >
   {#if phase === "commands"}

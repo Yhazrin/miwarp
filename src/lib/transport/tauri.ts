@@ -7,7 +7,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen as tauriListen } from "@tauri-apps/api/event";
 import { dbg } from "$lib/utils/debug";
-import type { Transport } from "./index";
+import type { Transport } from "./transport-types";
 
 export class TauriTransport implements Transport {
   async invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {

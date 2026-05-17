@@ -8,7 +8,7 @@
  */
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import type { BusEvent, HookEvent } from "$lib/types";
-import type { SessionStore } from "./session-store.svelte";
+import type { SessionEventSink } from "./session-event-sink";
 import { markAttention, clearAttention } from "./attention-store.svelte";
 import { getTransport } from "$lib/transport";
 
@@ -27,9 +27,9 @@ export interface RunEventHandler {
 
 export class EventMiddleware {
   private _unlisteners: (() => void)[] = [];
-  private _subscriptions = new Map<string, SessionStore>();
+  private _subscriptions = new Map<string, SessionEventSink>();
   private _currentRunId: string | null = null;
-  private _currentStore: SessionStore | null = null;
+  private _currentStore: SessionEventSink | null = null;
 
   // Handler callbacks (set by page component)
   private _pipeHandler: PipeHandler | null = null;
@@ -164,7 +164,7 @@ export class EventMiddleware {
   // ── Subscriptions ──
 
   /** Subscribe a store for a run_id. Clears previous subscription (single-session mode). */
-  subscribeCurrent(runId: string, store: SessionStore): void {
+  subscribeCurrent(runId: string, store: SessionEventSink): void {
     // Idempotent: skip if already subscribed for the same run + store.
     // Re-subscribing for the same pair would clear the batch buffer,
     // dropping in-flight events (e.g. RunState(idle) after resume).
@@ -191,7 +191,7 @@ export class EventMiddleware {
   }
 
   /** Multi-session subscribe (for future subagent support). */
-  subscribe(runId: string, store: SessionStore): void {
+  subscribe(runId: string, store: SessionEventSink): void {
     this._subscriptions.set(runId, store);
     dbg("middleware", "subscribe", runId);
   }

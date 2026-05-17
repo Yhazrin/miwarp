@@ -208,10 +208,13 @@ export interface UserSettings {
   auto_cleanup_worktree?: boolean;
   /** Show per-turn token usage report below each AI response. Default true. */
   show_token_usage_report?: boolean;
+  /**
+   * How much of the agent working process to show in the chat transcript.
+   * Default "developer" matches historical MiWarp density.
+   */
+  process_visibility?: "output" | "guided" | "developer" | "expert";
   /** Per-agent mascot overrides. Maps agent kind → image URL or data URI. */
   mascot_overrides?: Record<string, string>;
-  /** Process visibility level: "output" | "guided" | "developer" | "expert". */
-  process_visibility?: string;
   updated_at: string;
 }
 

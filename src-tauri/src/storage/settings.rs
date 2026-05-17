@@ -643,6 +643,14 @@ pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, St
     {
         all.user.show_token_usage_report = v;
     }
+    if let Some(v) = patch.get("process_visibility").and_then(|v| v.as_str()) {
+        let allowed = ["output", "guided", "developer", "expert"];
+        if allowed.contains(&v) {
+            all.user.process_visibility = v.to_string();
+        } else {
+            return Err(format!("Invalid process_visibility: {}", v));
+        }
+    }
     // Mascot overrides
     if let Some(v) = patch.get("mascot_overrides") {
         if v.is_null() {

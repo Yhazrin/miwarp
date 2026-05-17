@@ -45,6 +45,30 @@
   transition: none !important;
 }
 
+/* Right Tool Activity rail: keep width in sync with layout sidebar (260ms) so chat pane reflow + status capsule stay smooth */
+.toolactivity-aside-width-transition {
+  transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: width;
+}
+.toolactivity-aside-resizing {
+  transition: none !important;
+}
+.toolactivity-panel-slide {
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.toolactivity-aside-resizing .toolactivity-panel-slide {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolactivity-aside-width-transition {
+    transition: none;
+  }
+  .toolactivity-panel-slide {
+    transition: none;
+  }
+}
+
 /* Session item hover */
 .session-item {
   transition:

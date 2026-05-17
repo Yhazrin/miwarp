@@ -4,25 +4,31 @@
  * Detects Tauri desktop vs browser environment and returns the appropriate
  * transport implementation. The singleton is cached after first call.
  */
+import { isTauri as runtimeIsTauri } from "@tauri-apps/api/core";
 import { dbg } from "$lib/utils/debug";
 import { TauriTransport } from "./tauri";
 import { WsTransport } from "./websocket";
+import type { Transport } from "./transport-types";
 
-export interface Transport {
-  invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T>;
-  listen<T>(event: string, handler: (payload: T) => void): Promise<() => void>;
-  isDesktop(): boolean;
-  /** Subscribe to a run's real-time events (WS only, no-op on desktop) */
-  subscribeRun(runId: string, lastSeq?: number): void;
-  /** Unsubscribe from a run's events (WS only, no-op on desktop) */
-  unsubscribeRun(runId: string): void;
-}
+export type { Transport } from "./transport-types";
 
 let _instance: Transport | null = null;
 
+function detectTauriRuntime(): boolean {
+  if (typeof window === "undefined") return false;
+
+  const w = window as typeof window & {
+    __TAURI_INTERNALS__?: unknown;
+    __TAURI__?: unknown;
+    isTauri?: boolean;
+  };
+
+  return runtimeIsTauri() || !!w.__TAURI_INTERNALS__ || !!w.__TAURI__ || w.isTauri === true;
+}
+
 export function getTransport(): Transport {
   if (!_instance) {
-    const isTauri = typeof window !== "undefined" && !!(window as any).__TAURI_INTERNALS__;
+    const isTauri = detectTauriRuntime();
 
     _instance = isTauri ? new TauriTransport() : new WsTransport();
 

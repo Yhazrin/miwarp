@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getContext } from "svelte";
   import { goto } from "$app/navigation";
+  import { page } from "$app/stores";
   import {
     KeybindingStore,
     getEventMiddleware,
@@ -76,10 +77,20 @@
   let statusBarRef: SessionStatusBar | undefined = $state();
   let chatAreaRef: HTMLDivElement | undefined = $state();
   let mcpPanelOpen = $state(false);
+  const routeRunId = $derived($page.url.searchParams.get("run") ?? "");
+  const routeRunPending = $derived(!!routeRunId && store.run?.id !== routeRunId);
 
   // ── Composable chain ──
   const preload = useProjectPreload({ store, availableSkills: () => store.availableSkills });
   const { preloadedSkills, preloadedAgents, projectCommands, reloadProjectData } = preload;
+
+  /** Breaks TDZ: deriveds/composables above `useChatLifecycle` must not close over `let lifecycle` before it exists. */
+  const lifecycleRef: { current: ReturnType<typeof useChatLifecycle> | null } = { current: null };
+
+  /** Same pattern: `useChatDerived` reads `visibleTimeline` during init, before `useProgressiveTimeline` returns. */
+  const progressiveRef: { current: ReturnType<typeof useProgressiveTimeline> | null } = {
+    current: null,
+  };
 
   const team = useTeamDispatch({
     effectiveCwd: () => store.effectiveCwd || "",
@@ -96,12 +107,12 @@
     const pid = store.platformId;
     if (!pid) return undefined;
     const preset = PLATFORM_PRESETS.find((p) => p.id === pid);
-    return preset?.name ?? lifecycle.authOverview?.app_platform_name ?? pid;
+    return preset?.name ?? lifecycleRef.current?.authOverview?.app_platform_name ?? pid;
   });
 
   // ── Computed standalone ──
   const filteredTimeline = $derived.by(() => {
-    const tf = lifecycle.toolFilter;
+    const tf = lifecycleRef.current?.toolFilter ?? null;
     if (!tf) return store.timeline;
     return store.timeline.filter((e) => e.kind !== "tool" || e.tool.tool_name === tf);
   });
@@ -110,13 +121,13 @@
   let chatDerived = useChatDerived({
     store,
     filteredTimeline: () => filteredTimeline,
-    visibleTimeline: () => progressive.visibleTimeline,
-    toolFilter: () => lifecycle.toolFilter,
-    settings: () => lifecycle.settings,
+    visibleTimeline: () => progressiveRef.current?.visibleTimeline ?? filteredTimeline,
+    toolFilter: () => lifecycleRef.current?.toolFilter ?? null,
+    settings: () => lifecycleRef.current?.settings ?? null,
     cliVersionInfo: () => cliVersionInfo,
     channelLatest: () => channelLatest,
     platformDisplayName: () => platformDisplayName,
-    authOverview: () => lifecycle.authOverview,
+    authOverview: () => lifecycleRef.current?.authOverview ?? null,
   });
 
   const progressive = useProgressiveTimeline({
@@ -129,6 +140,7 @@
       chatDerived.manualOverrides = next;
     },
   });
+  progressiveRef.current = progressive;
   const { rearmLoadMore } = progressive;
 
   const chatScroll = useChatScroll({
@@ -138,7 +150,7 @@
     streamingTextLength: () => store.streamingText.length,
     runId: () => store.run?.id ?? "",
     hasInlinePermission: () => store.hasInlinePermission,
-    scrollToInFlight: () => lifecycle.getScrollToInFlight(),
+    scrollToInFlight: () => lifecycleRef.current?.getScrollToInFlight() ?? false,
     rearmLoadMore,
   });
   const { handleChatScroll, scrollChatToBottom } = chatScroll;
@@ -154,16 +166,17 @@
     scrollToMessage: (ts) => handlers.scrollToMessage(ts),
     handleResume: (mode, runId, msg, att) => handlers.handleResume(mode, runId, msg, att),
     showChatToast: (msg) => handlers.showChatToast(msg),
-    openFolderPicker: (opts) => lifecycle.openFolderPicker(opts),
+    openFolderPicker: (opts) =>
+      lifecycleRef.current?.openFolderPicker(opts) ?? Promise.resolve(null),
     promptRef: () => promptRef,
-    getRemoteHosts: () => lifecycle.remoteHosts,
-    getSettings: () => lifecycle.settings,
+    getRemoteHosts: () => lifecycleRef.current?.remoteHosts ?? [],
+    getSettings: () => lifecycleRef.current?.settings ?? null,
     onBeforeLoadRun: () => {
-      lifecycle.setToolFilter(null);
+      lifecycleRef.current?.setToolFilter(null);
       folderCwdOverride = "";
     },
-    getScrollToInFlight: () => lifecycle.getScrollToInFlight(),
-    setScrollToInFlight: (v) => lifecycle.setScrollToInFlight(v),
+    getScrollToInFlight: () => lifecycleRef.current?.getScrollToInFlight() ?? false,
+    setScrollToInFlight: (v) => lifecycleRef.current?.setScrollToInFlight(v),
   });
 
   // ── Page state (must precede handlers/lifecycle for TDZ) ──
@@ -182,35 +195,36 @@
     xtermRef: () => xtermRef,
     statusBarRef: () => statusBarRef,
     chatAreaRef: () => chatAreaRef,
-    getSettings: () => lifecycle.settings,
-    getAgentSettings: () => lifecycle.agentSettings,
-    getRemoteHosts: () => lifecycle.remoteHosts,
-    getAuthOverview: () => lifecycle.authOverview,
+    getSettings: () => lifecycleRef.current?.settings ?? null,
+    getAgentSettings: () => lifecycleRef.current?.agentSettings ?? null,
+    getRemoteHosts: () => lifecycleRef.current?.remoteHosts ?? [],
+    getAuthOverview: () => lifecycleRef.current?.authOverview ?? null,
     getCurrentEffort: () => currentEffort,
     setCurrentEffort: (v) => {
       currentEffort = v;
     },
-    getVerboseEnabled: () => lifecycle.verboseEnabled,
-    setVerboseEnabled: (v) => lifecycle.setVerboseEnabled(v),
-    getToolFilter: () => lifecycle.toolFilter,
-    setToolFilter: (v) => lifecycle.setToolFilter(v),
+    getVerboseEnabled: () => lifecycleRef.current?.verboseEnabled ?? false,
+    setVerboseEnabled: (v) => lifecycleRef.current?.setVerboseEnabled(v),
+    getToolFilter: () => lifecycleRef.current?.toolFilter ?? null,
+    setToolFilter: (v) => lifecycleRef.current?.setToolFilter(v),
     getFilteredTimeline: () => filteredTimeline,
     getVisibleTimeline: () => progressive.visibleTimeline,
-    getSidebarCollapsed: () => lifecycle.sidebarCollapsed,
-    setSidebarCollapsed: (v) => lifecycle.setSidebarCollapsed(v),
+    getSidebarCollapsed: () => lifecycleRef.current?.sidebarCollapsed ?? false,
+    setSidebarCollapsed: (v) => lifecycleRef.current?.setSidebarCollapsed(v),
     getFolderCwdOverride: () => folderCwdOverride,
     setFolderCwdOverride: (v) => {
       folderCwdOverride = v;
     },
     reloadProjectData,
-    openFolderPicker: (opts) => lifecycle.openFolderPicker(opts),
+    openFolderPicker: (opts) =>
+      lifecycleRef.current?.openFolderPicker(opts) ?? Promise.resolve(null),
     openPreviewForPath,
     contextHistoryMap,
     localProxyStatuses: {} as Record<string, { running: boolean; needsAuth: boolean }>,
-    setLocalProxyStatuses: (v) => lifecycle.setLocalProxyStatuses(v),
+    setLocalProxyStatuses: (v) => lifecycleRef.current?.setLocalProxyStatuses(v),
     authOverview: null,
-    setAuthOverview: (v) => lifecycle.setAuthOverview(v),
-    setLastContinuableRun: (v) => lifecycle.setLastContinuableRun(v),
+    setAuthOverview: (v) => lifecycleRef.current?.setAuthOverview(v),
+    setLastContinuableRun: (v) => lifecycleRef.current?.setLastContinuableRun(v),
     getRewindCandidates: () => rewindCandidates,
   });
 
@@ -278,6 +292,8 @@
       handlers.sidebarRequestedTab = v;
     },
   });
+
+  lifecycleRef.current = lifecycle;
 
   // ── Helpers ──
   function fillPrompt(text: string) {
@@ -482,7 +498,11 @@
           bind:this={chatAreaRef}
           onscroll={handleChatScroll}
         >
-          {#if chatDerived.welcomeVisible}
+          {#if routeRunPending || (store.phase === "loading" && store.timeline.length === 0)}
+            <div class="flex h-full items-center justify-center">
+              <Spinner size="md" class="text-primary" />
+            </div>
+          {:else if chatDerived.welcomeVisible}
             <WelcomeScreen
               welcomeQuickActionsReady={lifecycle.welcomeQuickActionsReady}
               lastContinuableRun={lifecycle.lastContinuableRun}
@@ -514,10 +534,6 @@
                 lifecycle.setTargetDropdownOpen(!lifecycle.targetDropdownOpen)}
               onTargetDropdownClose={() => lifecycle.setTargetDropdownOpen(false)}
             />
-          {:else if store.phase === "loading" && store.timeline.length === 0}
-            <div class="flex h-full items-center justify-center">
-              <Spinner size="md" class="text-primary" />
-            </div>
           {:else}
             <!-- Timeline -->
             <div data-conversation-root>

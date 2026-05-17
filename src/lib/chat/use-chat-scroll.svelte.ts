@@ -6,8 +6,9 @@
  * from `handleChatScroll` to coordinate scroll-driven load-more behavior.
  */
 import { dbg } from "$lib/utils/debug";
+import { onDestroy } from "svelte";
 
-const SCROLL_BOTTOM_THRESHOLD = 40;
+const SCROLL_BOTTOM_THRESHOLD = 96;
 
 export function useChatScroll(opts: {
   chatAreaRef: () => HTMLDivElement | undefined;
@@ -25,6 +26,41 @@ export function useChatScroll(opts: {
   // Internal previous-value trackers for the auto-scroll effect
   let prevTl = 0;
   let prevSt = 0;
+  let scrollRaf: number | null = null;
+  let settleRaf: number | null = null;
+
+  function cancelScheduledScroll() {
+    if (scrollRaf !== null) {
+      cancelAnimationFrame(scrollRaf);
+      scrollRaf = null;
+    }
+    if (settleRaf !== null) {
+      cancelAnimationFrame(settleRaf);
+      settleRaf = null;
+    }
+  }
+
+  function commitScrollToBottom() {
+    const el = opts.chatAreaRef();
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function scheduleScrollToBottom() {
+    if (scrollRaf !== null) return;
+    scrollRaf = requestAnimationFrame(() => {
+      scrollRaf = null;
+      commitScrollToBottom();
+
+      // Markdown finalization, tool details, and image sizing can settle one frame later.
+      if (settleRaf === null) {
+        settleRaf = requestAnimationFrame(() => {
+          settleRaf = null;
+          if (isChatAutoScroll) commitScrollToBottom();
+        });
+      }
+    });
+  }
 
   // Auto-scroll: follow new content when near bottom
   $effect(() => {
@@ -35,10 +71,7 @@ export function useChatScroll(opts: {
       prevTl = tl;
       prevSt = st;
       if (isChatAutoScroll) {
-        requestAnimationFrame(() => {
-          const el = opts.chatAreaRef();
-          if (el) el.scrollTop = el.scrollHeight;
-        });
+        scheduleScrollToBottom();
       } else if (changed) {
         showChatScrollHint = true;
       }
@@ -52,6 +85,7 @@ export function useChatScroll(opts: {
     showChatScrollHint = false;
     prevTl = 0;
     prevSt = 0;
+    cancelScheduledScroll();
   });
 
   // Permission pending auto-scroll (inline AskUserQuestion / ExitPlanMode)
@@ -70,9 +104,7 @@ export function useChatScroll(opts: {
     if (hasInline && !prevHadPermission) {
       const el = opts.chatAreaRef();
       if (!el) return;
-      requestAnimationFrame(() => {
-        scrollChatToBottom();
-      });
+      scheduleScrollToBottom();
       dbg("chat", "inline permission pending -> autoscroll", { runId: rid });
     }
 
@@ -89,13 +121,13 @@ export function useChatScroll(opts: {
   }
 
   function scrollChatToBottom() {
-    const el = opts.chatAreaRef();
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-      showChatScrollHint = false;
-      isChatAutoScroll = true;
-    }
+    cancelScheduledScroll();
+    commitScrollToBottom();
+    showChatScrollHint = false;
+    isChatAutoScroll = true;
   }
+
+  onDestroy(cancelScheduledScroll);
 
   return {
     get isChatAutoScroll() {
