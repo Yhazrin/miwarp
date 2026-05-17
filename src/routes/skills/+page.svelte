@@ -313,7 +313,7 @@
 
 <!-- Editor Modal -->
 {#if skillStore.showEditor}
-  <Modal onClose={() => skillStore.closeEditor()}>
+  <Modal onclose={() => skillStore.closeEditor()}>
     <div class="w-[800px] max-w-[90vw] h-[80vh]">
       <SkillEditor
         skill={skillStore.editingSkill}
@@ -326,7 +326,7 @@
 
 <!-- Delete Confirmation Modal -->
 {#if showDeleteConfirm && skillToDelete}
-  <Modal onClose={cancelDelete}>
+  <Modal onclose={cancelDelete}>
     <div class="w-[400px] p-6">
       <div class="flex items-center gap-3 mb-4">
         <div class="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">

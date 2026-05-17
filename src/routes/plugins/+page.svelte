@@ -34,6 +34,8 @@
   import McpConfiguredPanel from "$lib/components/McpConfiguredPanel.svelte";
   import HookManager from "$lib/components/HookManager.svelte";
   import AgentsPanel from "$lib/components/AgentsPanel.svelte";
+  import Modal from "$lib/components/Modal.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import PluginInstaller from "$lib/components/PluginInstaller.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import type {
@@ -802,59 +804,34 @@
   }
 
   // ── Confirm dialog Esc handling ──
-  function handleConfirmKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape" && confirmAction) {
-      confirmAction = null;
-    }
-  }
 </script>
 
 <svelte:head>
   <title>{t("extensions_title")} — MiWarp</title>
 </svelte:head>
 
-<svelte:window onkeydown={handleConfirmKeydown} />
-
 <!-- Confirmation dialog -->
-{#if confirmAction}
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-    onclick={() => (confirmAction = null)}
-    onkeydown={(e) => {
-      if (e.key === "Escape") confirmAction = null;
-    }}
-    role="dialog"
-    aria-modal="true"
-  >
-    <div
-      class="rounded-2xl border border-border bg-background/95 backdrop-blur-md p-6 shadow-2xl max-w-sm w-full mx-4"
-      onclick={(e) => e.stopPropagation()}
+<Modal open={!!confirmAction} title={confirmAction?.title} onclose={() => (confirmAction = null)}>
+  <p class="text-xs text-muted-foreground mb-5 leading-relaxed">{confirmAction?.message}</p>
+  <div class="flex justify-end gap-2">
+    <button
+      class="rounded-lg border border-border px-3.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+      onclick={() => (confirmAction = null)}>{t("common_cancel")}</button
     >
-      <h3 class="text-sm font-semibold text-foreground mb-2">{confirmAction.title}</h3>
-      <p class="text-xs text-muted-foreground mb-5 leading-relaxed">{confirmAction.message}</p>
-      <div class="flex justify-end gap-2">
-        <button
-          class="rounded-lg border border-border px-3.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          onclick={() => (confirmAction = null)}>{t("common_cancel")}</button
-        >
-        <button
-          class="rounded-lg bg-destructive px-3.5 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors"
-          onclick={() => {
-            confirmAction?.onConfirm();
-            confirmAction = null;
-          }}>{t("plugin_confirm")}</button
-        >
-      </div>
-    </div>
+    <button
+      class="rounded-lg bg-destructive px-3.5 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors"
+      onclick={() => {
+        confirmAction?.onConfirm();
+        confirmAction = null;
+      }}>{t("plugin_confirm")}</button
+    >
   </div>
-{/if}
+</Modal>
 
 <div class="px-8 pt-6 pb-6 h-full overflow-y-auto">
   {#if loading}
     <div class="flex items-center justify-center py-16">
-      <div
-        class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-      ></div>
+      <Spinner size="md" class="text-primary/30" />
     </div>
   {:else if loadError}
     <div class="flex flex-col items-center justify-center py-16 text-center">
@@ -1470,128 +1447,97 @@
 
       <!-- Create / Edit Skill modal -->
       {#if editorMode === "new" || editorMode === "edit"}
-        <div
-          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-          onclick={(e) => {
-            if (e.target === e.currentTarget) cancelEditor();
-          }}
-          onkeydown={(e) => {
-            if (e.key === "Escape") cancelEditor();
-          }}
-          role="dialog"
-          aria-modal="true"
+        <Modal
+          open={true}
+          title={editorMode === "new" ? t("plugin_createSkill") : t("extensions_editSkill")}
+          onclose={cancelEditor}
         >
-          <div
-            class="w-full max-w-lg rounded-2xl border border-border/40 bg-background/95 backdrop-blur-md shadow-2xl max-h-[85vh] flex flex-col mx-4"
-            onclick={(e) => e.stopPropagation()}
-          >
-            <div
-              class="flex items-center justify-between px-5 py-4 border-b border-border shrink-0"
-            >
-              <h3 class="text-sm font-semibold text-foreground">
-                {editorMode === "new" ? t("plugin_createSkill") : t("extensions_editSkill")}
-              </h3>
-              <button
-                class="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                onclick={cancelEditor}
-              >
-                <svg
-                  class="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
+          <div class="space-y-4">
+            {#if editorMode === "new"}
+              <div>
+                <label class="block text-xs font-medium text-muted-foreground mb-1"
+                  >{t("plugin_editorName")}</label
                 >
-              </button>
-            </div>
-
-            <div class="px-5 py-4 space-y-4 overflow-y-auto">
-              {#if editorMode === "new"}
-                <div>
-                  <label class="block text-xs font-medium text-muted-foreground mb-1"
-                    >{t("plugin_editorName")}</label
-                  >
-                  <input
-                    type="text"
-                    placeholder={t("plugins_skillNamePlaceholder")}
-                    class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                    bind:value={editorName}
-                  />
-                </div>
-
-                <div>
-                  <label class="block text-xs font-medium text-muted-foreground mb-1"
-                    >{t("plugin_editorDescription")}</label
-                  >
-                  <input
-                    type="text"
-                    placeholder={t("plugins_skillDescPlaceholder")}
-                    class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                    bind:value={editorDescription}
-                  />
-                </div>
-
-                <div>
-                  <label class="block text-xs font-medium text-muted-foreground mb-1"
-                    >{t("plugin_editorScope")}</label
-                  >
-                  <select
-                    class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                    bind:value={editorScope}
-                  >
-                    <option value="user">{t("plugin_editorScopeUser")}</option>
-                    <option value="project" disabled={!projectCwd}>
-                      {t("plugin_editorScopeProject")}
-                      {projectCwd ? "" : t("plugin_editorNoProject")}
-                    </option>
-                  </select>
-                  <p class="text-[11px] text-muted-foreground mt-1">
-                    {editorScope === "user"
-                      ? t("extensions_scopeUserDesc")
-                      : t("extensions_scopeProjectDesc")}
-                  </p>
-                  {#if !projectCwd && editorScope === "user"}
-                    <p class="text-[11px] text-amber-500/80 mt-0.5">
-                      {t("extensions_noWorkspaceForProjectScope")}
-                    </p>
-                  {/if}
-                </div>
-              {/if}
+                <input
+                  type="text"
+                  placeholder={t("plugins_skillNamePlaceholder")}
+                  class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  bind:value={editorName}
+                />
+              </div>
 
               <div>
                 <label class="block text-xs font-medium text-muted-foreground mb-1"
-                  >{editorMode === "new"
-                    ? t("plugin_editorContent")
-                    : t("plugin_skillMdContent")}</label
+                  >{t("plugin_editorDescription")}</label
                 >
-                <textarea
-                  class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
-                  rows="12"
-                  placeholder={t("plugins_skillContentPlaceholder")}
-                  bind:value={editorContent}
-                ></textarea>
+                <input
+                  type="text"
+                  placeholder={t("plugins_skillDescPlaceholder")}
+                  class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  bind:value={editorDescription}
+                />
               </div>
-            </div>
 
-            <div class="flex justify-end gap-2 px-5 py-3 border-t border-border shrink-0">
-              <button
-                class="rounded-lg border border-border px-3.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                onclick={cancelEditor}>{t("common_cancel")}</button
+              <div>
+                <label class="block text-xs font-medium text-muted-foreground mb-1"
+                  >{t("plugin_editorScope")}</label
+                >
+                <select
+                  class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  bind:value={editorScope}
+                >
+                  <option value="user">{t("plugin_editorScopeUser")}</option>
+                  <option value="project" disabled={!projectCwd}>
+                    {t("plugin_editorScopeProject")}
+                    {projectCwd ? "" : t("plugin_editorNoProject")}
+                  </option>
+                </select>
+                <p class="text-[11px] text-muted-foreground mt-1">
+                  {editorScope === "user"
+                    ? t("extensions_scopeUserDesc")
+                    : t("extensions_scopeProjectDesc")}
+                </p>
+                {#if !projectCwd && editorScope === "user"}
+                  <p class="text-[11px] text-amber-500/80 mt-0.5">
+                    {t("extensions_noWorkspaceForProjectScope")}
+                  </p>
+                {/if}
+              </div>
+            {/if}
+
+            <div>
+              <label class="block text-xs font-medium text-muted-foreground mb-1"
+                >{editorMode === "new"
+                  ? t("plugin_editorContent")
+                  : t("plugin_skillMdContent")}</label
               >
-              <button
-                class="rounded-lg bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-                onclick={editorMode === "new" ? handleCreateSkill : handleSaveSkill}
-                disabled={editorSaving || (editorMode === "new" && !editorName.trim())}
-              >
-                {editorSaving
-                  ? t("plugin_saving")
-                  : editorMode === "new"
-                    ? t("plugin_createSkill")
-                    : t("plugin_saveChanges")}
-              </button>
+              <textarea
+                class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+                rows="12"
+                placeholder={t("plugins_skillContentPlaceholder")}
+                bind:value={editorContent}
+              ></textarea>
             </div>
           </div>
-        </div>
+
+          <div class="flex justify-end gap-2 mt-4">
+            <button
+              class="rounded-lg border border-border px-3.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              onclick={cancelEditor}>{t("common_cancel")}</button
+            >
+            <button
+              class="rounded-lg bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              onclick={editorMode === "new" ? handleCreateSkill : handleSaveSkill}
+              disabled={editorSaving || (editorMode === "new" && !editorName.trim())}
+            >
+              {editorSaving
+                ? t("plugin_saving")
+                : editorMode === "new"
+                  ? t("plugin_createSkill")
+                  : t("plugin_saveChanges")}
+            </button>
+          </div>
+        </Modal>
       {/if}
 
       <!-- Discover sub-view (community skills) -->
@@ -1707,9 +1653,7 @@
         <!-- Loading spinner for search -->
         {#if communitySearching}
           <div class="flex items-center justify-center py-4">
-            <div
-              class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-            ></div>
+            <Spinner size="sm" class="text-primary/30" />
             <span class="ml-2 text-xs text-muted-foreground">{t("plugin_searching")}</span>
           </div>
         {/if}
@@ -1807,9 +1751,7 @@
                     <div
                       class="rounded-xl border border-border/50 bg-card/20 p-6 flex items-center justify-center h-full"
                     >
-                      <div
-                        class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                      ></div>
+                      <Spinner size="sm" class="text-primary/30" />
                       <span class="ml-2 text-xs text-muted-foreground"
                         >{t("plugin_loadingPreview")}</span
                       >
@@ -2474,9 +2416,7 @@
                   </button>
                   <!-- Loading spinner -->
                   {#if operationLoading === plugin.name}
-                    <div
-                      class="h-3.5 w-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                    ></div>
+                    <Spinner size="sm" class="text-primary/30" />
                   {/if}
                 </div>
               </div>
@@ -2561,9 +2501,7 @@
                           {t("plugin_remove")}
                         </button>
                         {#if operationLoading === `__mp_${mp.name}`}
-                          <div
-                            class="h-3.5 w-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                          ></div>
+                          <Spinner size="sm" class="text-primary/30" />
                         {/if}
                       </div>
                     </div>

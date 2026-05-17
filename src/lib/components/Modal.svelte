@@ -7,7 +7,7 @@
     closeable = true,
     size: _size = "default",
     type: _type = "default",
-    onClose: _onClose,
+    onclose: _onclose,
     children,
   }: {
     open?: boolean;
@@ -15,7 +15,7 @@
     closeable?: boolean;
     size?: "default" | "sm" | "lg" | "xl";
     type?: "default" | "info" | "warning" | "error";
-    onClose?: () => void;
+    onclose?: () => void;
     children?: import("svelte").Snippet;
   } = $props();
 
@@ -36,12 +36,14 @@
         return;
       }
       open = false;
+      _onclose?.();
     }
   }
 
   function handleBackdropClick() {
     if (!closeable) return;
     open = false;
+    _onclose?.();
   }
 </script>
 
@@ -74,7 +76,10 @@
           class="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-md
                  text-miwarp-text-tertiary transition-colors
                  hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary"
-          onclick={() => (open = false)}
+          onclick={() => {
+            open = false;
+            _onclose?.();
+          }}
           aria-label={t("common_close")}
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
