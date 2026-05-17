@@ -4,6 +4,7 @@
   import type { UserSettings, RemoteHost, RemoteTestResult, SshKeyInfo } from "$lib/types";
   import Card from "$lib/components/Card.svelte";
   import Button from "$lib/components/Button.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { splitPath } from "$lib/utils/format";
@@ -440,9 +441,7 @@
           <div class="mt-2 rounded-lg border border-border p-3 space-y-2 text-xs bg-muted/30">
             {#if sshKeyStep === "checking"}
               <div class="flex items-center gap-2 text-muted-foreground">
-                <div
-                  class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"
-                ></div>
+                <Spinner size="sm" class="text-primary" />
                 {t("settings_remote_sshKeyChecking")}
               </div>
             {:else if sshKeyStep === "no_key"}
@@ -455,9 +454,7 @@
               </button>
             {:else if sshKeyStep === "generating"}
               <div class="flex items-center gap-2 text-muted-foreground">
-                <div
-                  class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"
-                ></div>
+                <Spinner size="sm" class="text-primary" />
                 {t("settings_remote_sshKeyGenerating")}
               </div>
             {:else if sshKeyStep === "pub_missing" && sshKeyInfo}

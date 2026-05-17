@@ -6,6 +6,7 @@
    */
   import { t } from "$lib/i18n/index.svelte";
   import type { MarketplaceSkill, MarketplaceCategory } from "$lib/types/marketplace";
+  import Spinner from "./Spinner.svelte";
   import { SKILL_CATEGORIES } from "$lib/types/skill";
   import { fmtDateYear } from "$lib/i18n/format";
 
@@ -241,9 +242,7 @@ Analyze your test coverage...`,
   <!-- Loading State -->
   {#if loading}
     <div class="flex h-40 items-center justify-center">
-      <div
-        class="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"
-      ></div>
+      <Spinner size="xl" class="text-primary" />
     </div>
   {:else if error}
     <!-- Error State -->
@@ -350,9 +349,7 @@ Analyze your test coverage...`,
               disabled={installing !== null}
             >
               {#if installing === skill.id}
-                <span
-                  class="inline-block h-3 w-3 animate-spin rounded-full border border-primary-foreground border-t-transparent"
-                ></span>
+                <Spinner size="xs" class="text-primary-foreground" />
               {:else}
                 {t("skillMarketplace_install")}
               {/if}

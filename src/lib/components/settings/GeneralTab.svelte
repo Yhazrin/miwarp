@@ -3,6 +3,7 @@
   import * as api from "$lib/api";
   import type { UserSettings } from "$lib/types";
   import Card from "$lib/components/Card.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import SettingsToggle from "$lib/components/settings/SettingsToggle.svelte";
   import { t, LOCALE_REGISTRY, currentLocale, switchLocale } from "$lib/i18n/index.svelte";
   import { getTransport } from "$lib/transport";
@@ -779,9 +780,7 @@
           >
             {#if webRestarting}
               <span class="inline-flex items-center gap-2">
-                <span
-                  class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"
-                ></span>
+                <Spinner size="sm" class="text-primary" />
                 {t("settings_general_webApplying")}
               </span>
             {:else}

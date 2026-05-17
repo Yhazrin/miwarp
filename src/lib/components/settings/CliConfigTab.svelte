@@ -5,6 +5,7 @@
    */
   import { onMount } from "svelte";
   import Card from "$lib/components/Card.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import type { CliConfigSettingDef } from "$lib/types";
   import { t } from "$lib/i18n/index.svelte";
   import * as api from "$lib/api";
@@ -249,9 +250,7 @@
 
 {#if cliConfigLoading && !cliConfigLoaded}
   <div class="flex items-center justify-center py-12">
-    <div
-      class="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent"
-    ></div>
+    <Spinner class="text-primary" />
     <span class="ml-3 text-sm text-muted-foreground">{t("settings_cliConfig_loading")}</span>
   </div>
 {:else if cliConfigError}
