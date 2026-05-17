@@ -19,6 +19,7 @@
   import { mergeProjectCommands } from "$lib/utils/slash-commands";
   import { uuid } from "$lib/utils/uuid";
   import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
+  import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
 
   // ── Components ──
   import XTerminal from "$lib/components/XTerminal.svelte";
@@ -1309,7 +1310,7 @@
             permissionMode={store.permissionMode}
             cwd={store.effectiveCwd ||
               folderCwdOverride ||
-              localStorage.getItem("ocv:project-cwd") ||
+              localStorage.getItem(PROJECT_CWD_KEY) ||
               ""}
             onSend={ctrl.sendMessage}
             onBtwSend={handlers.handleBtwSend}

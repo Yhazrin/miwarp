@@ -8,6 +8,7 @@
   import CodeEditor from "$lib/components/CodeEditor.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbgWarn } from "$lib/utils/debug";
+  import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
   import Spinner from "$lib/components/Spinner.svelte";
   import { memoryStore } from "$lib/stores/memory-store.svelte";
   import { getMemoryStats } from "$lib/services/memory-service";
@@ -32,7 +33,7 @@
   let selectedFile = $state("");
 
   let projectCwd = $state(
-    typeof window !== "undefined" ? (localStorage.getItem("ocv:project-cwd") ?? "") : "",
+    typeof window !== "undefined" ? (localStorage.getItem(PROJECT_CWD_KEY) ?? "") : "",
   );
 
   // Memory stats display

@@ -60,6 +60,7 @@ import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
 import { parseContextMarkdown } from "$lib/utils/context-parser";
 import type { ContextSnapshot } from "$lib/types";
 import { getLastTarget, setLastTarget, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
+import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
 import { randomSpinnerVerb } from "$lib/utils/spinner-verbs";
 import { t } from "$lib/i18n/index.svelte";
 import { dbg, dbgWarn } from "$lib/utils/debug";
@@ -255,7 +256,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   );
 
   async function checkProjectInit() {
-    const cwd = localStorage.getItem("ocv:project-cwd") || "";
+    const cwd = localStorage.getItem(PROJECT_CWD_KEY) || "";
     if (!cwd || cwd === "/") {
       projectInitStatus = null;
       dbg("chat", "checkProjectInit: skip (no cwd)");
@@ -618,7 +619,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
           setStoredRemoteCwd(resolvedHost, folder);
         } else {
           try {
-            localStorage.setItem("ocv:project-cwd", folder);
+            localStorage.setItem(PROJECT_CWD_KEY, folder);
           } catch {
             // localStorage may fail in restricted contexts
           }
@@ -880,7 +881,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     loadCliVersionInfo();
     checkProjectInit();
     if (!runId) {
-      const cwd = localStorage.getItem("ocv:project-cwd") || "";
+      const cwd = localStorage.getItem(PROJECT_CWD_KEY) || "";
       preload.reloadProjectData(cwd);
     }
   });
@@ -892,7 +893,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
       const url = get(page).url;
       const runId = url.searchParams.get("run") ?? "";
       if (!runId && !store.run) {
-        const cwd = localStorage.getItem("ocv:project-cwd") || "";
+        const cwd = localStorage.getItem(PROJECT_CWD_KEY) || "";
         preload.reloadProjectData(cwd);
       }
     };
@@ -902,7 +903,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
 
   // ── Warm up file IPC chain ──
   onMount(() => {
-    const cwd = localStorage.getItem("ocv:project-cwd") || "";
+    const cwd = localStorage.getItem(PROJECT_CWD_KEY) || "";
     if (!cwd) return;
     const t0 = performance.now();
     api

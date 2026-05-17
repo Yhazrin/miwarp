@@ -2,6 +2,7 @@
   import "../app.css";
   import "$lib/styles/sidebar-animations.css";
   import { escapeHtml } from "$lib/utils/ansi";
+  import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
   import {
     listRuns,
     listRunsSince,
@@ -898,7 +899,7 @@
     })();
 
     // Load saved CWD and pinned folders from localStorage
-    const saved = localStorage.getItem("ocv:project-cwd");
+    const saved = localStorage.getItem(PROJECT_CWD_KEY);
     if (saved) projectCwd = normalizeCwd(saved) || "";
 
     // Load expanded projects from localStorage (defensive parse)
@@ -1052,7 +1053,7 @@
 
     // Sync projectCwd when chat page picks a folder via dialog
     function handleCwdChanged() {
-      const newCwd = normalizeCwd(localStorage.getItem("ocv:project-cwd") ?? "") || "";
+      const newCwd = normalizeCwd(localStorage.getItem(PROJECT_CWD_KEY) ?? "") || "";
       if (newCwd !== projectCwd) {
         projectCwd = newCwd;
       }
@@ -1158,14 +1159,14 @@
   $effect(() => {
     if (typeof window !== "undefined") {
       if (projectCwd) {
-        localStorage.setItem("ocv:project-cwd", projectCwd);
+        localStorage.setItem(PROJECT_CWD_KEY, projectCwd);
         // Pin this cwd so it stays in the dropdown after switching away
         if (projectCwd !== "/" && !pinnedCwds.includes(projectCwd)) {
           pinnedCwds = [...pinnedCwds, projectCwd];
           localStorage.setItem("ocv:pinned-cwds", JSON.stringify(pinnedCwds));
         }
       } else {
-        localStorage.removeItem("ocv:project-cwd");
+        localStorage.removeItem(PROJECT_CWD_KEY);
       }
       // Notify child pages (e.g. Memory) that project cwd changed
       window.dispatchEvent(new CustomEvent("ocv:project-changed", { detail: { cwd: projectCwd } }));

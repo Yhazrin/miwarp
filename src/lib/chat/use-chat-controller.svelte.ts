@@ -15,6 +15,7 @@ import type { Attachment, SessionMode, RemoteHost, UserSettings } from "$lib/typ
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { t } from "$lib/i18n/index.svelte";
 import { setLastTarget, getStoredRemoteCwd, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
+import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
 import type { useProgressiveTimeline } from "$lib/chat/use-progressive-timeline.svelte";
 import type { useChatScroll } from "$lib/chat/use-chat-scroll.svelte";
 import type { useTeamDispatch } from "$lib/chat/use-team-dispatch.svelte";
@@ -183,7 +184,7 @@ export function useChatController(opts: {
             cwd = getStoredRemoteCwd(store.remoteHostName!);
           } else {
             cwd =
-              localStorage.getItem("ocv:project-cwd") ||
+              localStorage.getItem(PROJECT_CWD_KEY) ||
               localStorage.getItem("ocv:settings-cwd") ||
               "";
           }
@@ -207,7 +208,7 @@ export function useChatController(opts: {
             });
             if (!selected) return;
             cwd = selected as string;
-            localStorage.setItem("ocv:project-cwd", cwd);
+            localStorage.setItem(PROJECT_CWD_KEY, cwd);
             window.dispatchEvent(new Event("ocv:cwd-changed"));
           } else {
             const result = await opts.openFolderPicker({ initialHost: null });
@@ -218,7 +219,7 @@ export function useChatController(opts: {
               setLastTarget(result.hostName);
               setStoredRemoteCwd(result.hostName, cwd);
             } else {
-              localStorage.setItem("ocv:project-cwd", cwd);
+              localStorage.setItem(PROJECT_CWD_KEY, cwd);
               window.dispatchEvent(new Event("ocv:cwd-changed"));
             }
           }

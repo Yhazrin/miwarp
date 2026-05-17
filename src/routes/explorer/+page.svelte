@@ -4,6 +4,7 @@
   import FilePreviewPane from "$lib/components/FilePreviewPane.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { getCachedFile, setCachedFile, clearCachedFile } from "$lib/utils/explorer-state";
+  import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
 
   // ── State ──
 
@@ -12,7 +13,7 @@
   let activeView = $state<"preview" | "diff">("preview");
 
   let projectCwd = $state(
-    typeof window !== "undefined" ? (localStorage.getItem("ocv:project-cwd") ?? "") : "",
+    typeof window !== "undefined" ? (localStorage.getItem(PROJECT_CWD_KEY) ?? "") : "",
   );
 
   /** True while we're restoring from cache — onLoadFailed should clear that cache entry. */

@@ -10,6 +10,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import * as api from "$lib/api";
   import { dbg, dbgWarn } from "$lib/utils/debug";
+  import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
 
   onMount(() => loadCliConfig());
 
@@ -230,7 +231,7 @@
     cliConfigError = "";
     try {
       cliConfig = await api.getCliConfig();
-      const cwd = localStorage.getItem("ocv:project-cwd") || "";
+      const cwd = localStorage.getItem(PROJECT_CWD_KEY) || "";
       if (cwd) {
         projectCliConfig = await api.getProjectCliConfig(cwd);
       }

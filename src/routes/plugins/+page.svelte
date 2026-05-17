@@ -38,6 +38,7 @@
   import Spinner from "$lib/components/Spinner.svelte";
   import PluginInstaller from "$lib/components/PluginInstaller.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
   import type {
     MarketplacePlugin,
     StandaloneSkill,
@@ -254,7 +255,7 @@
       mcpSource = urlSource;
     }
 
-    projectCwd = localStorage.getItem("ocv:project-cwd") ?? "";
+    projectCwd = localStorage.getItem(PROJECT_CWD_KEY) ?? "";
     loading = true;
     const warnings: string[] = [];
     try {
