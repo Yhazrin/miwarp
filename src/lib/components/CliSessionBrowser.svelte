@@ -3,7 +3,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { fmtRelative } from "$lib/i18n/format";
-  import { cwdDisplayLabel } from "$lib/utils/format";
+  import { cwdDisplayLabel, formatBytes } from "$lib/utils/format";
   import type { CliSessionSummary, DiscoverResult, ImportResult, SyncResult } from "$lib/types";
 
   function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
@@ -187,12 +187,6 @@
       importingId = null;
       importingAll = false;
     }
-  }
-
-  function formatSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   function handleBackdropClick(e: MouseEvent) {
@@ -382,7 +376,7 @@
                   <div class="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                     <span>{t("cliSync_messages", { count: String(session.messageCount) })}</span>
                     <span>&middot;</span>
-                    <span>{formatSize(session.fileSize)}</span>
+                    <span>{formatBytes(session.fileSize)}</span>
                     {#if session.hasSubagents}
                       <span>&middot;</span>
                       <span>{t("cliSync_subagents")}</span>
