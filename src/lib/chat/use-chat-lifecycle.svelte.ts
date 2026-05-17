@@ -428,7 +428,10 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
       const showTimer = setTimeout(() => {
         thinkingVisible = true;
       }, 300);
-      thinkingElapsed = Math.max(0, Math.floor((Date.now() - base) / 1000));
+      // Avoid feeding this composable `$state` write back into the same effect scheduling graph as `store.isThinking`.
+      untrack(() => {
+        thinkingElapsed = Math.max(0, Math.floor((Date.now() - base) / 1000));
+      });
       const interval = setInterval(() => {
         thinkingElapsed = Math.max(0, Math.floor((Date.now() - base) / 1000));
       }, 1000);
@@ -437,8 +440,10 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
         clearInterval(interval);
       };
     } else {
-      thinkingElapsed = 0;
-      thinkingVisible = false;
+      untrack(() => {
+        thinkingElapsed = 0;
+        thinkingVisible = false;
+      });
       thinkingVerbPicked = false;
     }
   });
@@ -500,7 +505,10 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   // ── Sync verbose state from CLI config when run changes (or on retry) ──
   $effect(() => {
     const _tick = verboseRetryTick;
-    syncVerboseState(store.run?.id);
+    const rid = store.run?.id;
+    untrack(() => {
+      void syncVerboseState(rid);
+    });
   });
 
   // ── Auto-name one-shot latch: reset only on actual run ID change ──
@@ -637,11 +645,13 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   });
 
   // ── Watch runId changes → load run + subscribe middleware ──
+  // NOTE: entire body is untracked to avoid effect_update_depth_exceeded.
+  // The effect only tracks pageState.current changes (URL navigation).
   $effect(() => {
-    const url = pageState.current.url;
-    const id = url.searchParams.get("run") ?? "";
-    const hasResume = url.searchParams.has("resume");
     untrack(() => {
+      const url = pageState.current.url;
+      const id = url.searchParams.get("run") ?? "";
+      const hasResume = url.searchParams.has("resume");
       middleware.subscribeCurrent(id, store);
 
       if (store.resumeInFlight || sessionLifecycle.resuming.get()) {
@@ -656,7 +666,21 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
         return;
       }
 
-      if (store.run?.id === id && store.phase !== "empty" && store.phase !== "loading") {
+      const hasHydratedRunState =
+        store.timeline.length > 0 ||
+        store.tools.length > 0 ||
+        store.turnUsages.length > 0 ||
+        !!store.streamingText ||
+        !!store.thinkingText ||
+        !!store.error ||
+        store.sessionAlive;
+
+      if (
+        store.run?.id === id &&
+        store.phase !== "empty" &&
+        store.phase !== "loading" &&
+        hasHydratedRunState
+      ) {
         dbg("effect", "skip loadRun — run already in singleton store", id, store.phase);
         const scrollTo = url.searchParams.get("scrollTo");
         if (scrollTo) {
@@ -675,11 +699,11 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   // ── Handle scrollTo for already-loaded runs ──
   let _scrollToInFlight = false;
   $effect(() => {
-    if (!middlewareReady) return;
-    const url = pageState.current.url;
-    const scrollTo = url.searchParams.get("scrollTo");
-    if (!scrollTo) return;
     untrack(() => {
+      if (!middlewareReady) return;
+      const url = pageState.current.url;
+      const scrollTo = url.searchParams.get("scrollTo");
+      if (!scrollTo) return;
       if (_scrollToInFlight) return;
       if (store.phase === "loading") return;
       const runId = url.searchParams.get("run") ?? "";

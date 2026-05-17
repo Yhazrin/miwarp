@@ -6,6 +6,7 @@
  */
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import type { Skill, SkillExecution, SkillCategory, SkillMetadata } from "$lib/types/skill";
+import type { WidgetSpec } from "$lib/services/skill-executor";
 
 export class SkillStore {
   // Skill registry
@@ -13,7 +14,9 @@ export class SkillStore {
 
   // Execution state
   executions = $state<SkillExecution[]>([]);
+  // Current execution with widget
   currentExecution = $state<SkillExecution | null>(null);
+  currentWidget = $state<import("$lib/services/skill-executor").WidgetSpec | null>(null);
 
   // UI state
   loading = $state(false);
@@ -299,12 +302,17 @@ export class SkillStore {
 
       const data = await response.json();
 
-      // Update execution with result
+      // Update execution with result and widget
       this.updateExecution(execution.id, {
         status: "completed",
         completedAt: new Date().toISOString(),
         result: data.result,
       });
+
+      // Set widget for rendering if provided
+      if (data.widget) {
+        this.currentWidget = data.widget;
+      }
 
       dbg("skill-store", "executeSkill", { skillName, args });
       this.currentExecution = null;
@@ -395,6 +403,22 @@ export class SkillStore {
    */
   clearExecutionHistory(): void {
     this.executions = [];
+  }
+
+  /**
+   * Dismiss the current widget
+   */
+  dismissWidget(): void {
+    this.currentWidget = null;
+  }
+
+  /**
+   * Handle widget action
+   */
+  handleWidgetAction(data: any): void {
+    dbg("skill-store", "handleWidgetAction", data);
+    this.currentWidget = null;
+    // TODO: Process the widget action data
   }
 }
 

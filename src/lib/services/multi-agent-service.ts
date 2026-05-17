@@ -23,6 +23,165 @@ export interface MultiAgentResult {
   result?: string;
   error?: string;
   duration?: number;
+  logs?: string[];
+  progress?: number;
+}
+
+// ── Natural Language Parsing Types ──
+
+interface ParsePattern {
+  /** Regex pattern to match */
+  regex: RegExp;
+  /** Priority for matching (higher = first) */
+  priority: number;
+  /** Generate agents based on matched groups */
+  generator: (match: RegExpMatchArray) => AgentDefinition[];
+  /** Template name for display */
+  templateName: string;
+}
+
+// ── Synonym Mapping ──
+
+const SYNONYMS: Record<string, string[]> = {
+  // Development
+  开发: ["dev", "develop", "building", "创建", "制作"],
+  前端: ["frontend", "front-end", "ui", "界面", "网页"],
+  后端: ["backend", "back-end", "api", "服务"],
+  数据库: ["database", "db", "数据", "存储"],
+  全栈: ["fullstack", "full-stack", "全部", "整体"],
+
+  // Review
+  审查: ["review", "check", "audit", "检查", "审核"],
+  安全: ["security", "safe", "secure", "漏洞"],
+  性能: ["performance", "speed", "optimize", "优化", "效率"],
+  风格: ["style", "lint", "format", "代码规范"],
+  代码: ["code", "coding", "source", "代码"],
+
+  // Testing
+  测试: ["test", "testing", "spec", "测试用例"],
+  单元: ["unit", "单个", "单一"],
+  集成: ["integration", "集成", "组合"],
+  E2E: ["e2e", "end-to-end", "端到端", "e2e", "e2e testing"],
+
+  // Documentation
+  文档: ["docs", "documentation", "文档", "说明"],
+  API: ["api", "接口", "rest", "graphql"],
+  README: ["readme", "说明", "简介"],
+  CHANGELOG: ["changelog", "更新日志", "变更记录"],
+
+  // Task-related
+  实现: ["implement", "build", "create", "实现", "完成"],
+  功能: ["feature", "function", "功能"],
+  模块: ["module", "component", "模块", "组件"],
+  任务: ["task", "job", "work", "任务", "工作"],
+};
+
+// ── Parse Patterns ──
+
+const PARSE_PATTERNS: ParsePattern[] = [
+  // Fullstack development
+  {
+    regex: /(?:全栈|fullstack|全部|整体).*(?:开发|build)/i,
+    priority: 100,
+    templateName: "全栈开发",
+    generator: () => [
+      { id: "frontend", name: "前端开发", prompt: "开发前端界面组件，使用 React/Vue/Svelte 实现 UI" },
+      { id: "backend", name: "后端开发", prompt: "开发 REST API 和业务逻辑", dependsOn: ["frontend"] },
+      { id: "database", name: "数据库设计", prompt: "设计数据库 schema 和 migrations" },
+    ],
+  },
+  // Frontend + Backend
+  {
+    regex: /(?:前端|frontend).*(?:后端|backend|api)|(?:后端|backend|api).*(?:前端|frontend)/i,
+    priority: 90,
+    templateName: "前后端开发",
+    generator: () => [
+      { id: "frontend", name: "前端开发", prompt: "开发前端界面组件" },
+      { id: "backend", name: "后端开发", prompt: "开发后端 API 和业务逻辑" },
+    ],
+  },
+  // Review all
+  {
+    regex: /(?:审查|review|检查|审核).*(?:所有|全部|all)|(?:代码|pr).*审查/i,
+    priority: 90,
+    templateName: "代码审查",
+    generator: () => [
+      { id: "security", name: "安全审查", prompt: "检查安全漏洞：SQL注入、XSS、CSRF等" },
+      { id: "performance", name: "性能审查", prompt: "检查性能问题：N+1查询、内存泄漏等" },
+      { id: "style", name: "代码风格", prompt: "检查代码规范和最佳实践" },
+    ],
+  },
+  // Testing all
+  {
+    regex: /(?:测试|test).*(?:所有|全部|all)|(?:单测|单元).*(?:集成|e2e)/i,
+    priority: 90,
+    templateName: "全面测试",
+    generator: () => [
+      { id: "unit", name: "单元测试", prompt: "编写单元测试用例，覆盖核心函数和模块" },
+      { id: "integration", name: "集成测试", prompt: "编写集成测试用例，测试模块间协作" },
+      { id: "e2e", name: "E2E测试", prompt: "编写端到端测试用例，测试完整用户流程" },
+    ],
+  },
+  // Documentation
+  {
+    regex: /(?:文档|docs).*(?:生成|创建|写)|生成.*文档/i,
+    priority: 80,
+    templateName: "文档生成",
+    generator: () => [
+      { id: "api", name: "API 文档", prompt: "生成 API 文档，包含接口说明和参数" },
+      { id: "readme", name: "README", prompt: "生成项目 README，包含安装和使用说明" },
+      { id: "changelog", name: "CHANGELOG", prompt: "生成更新日志，记录版本变更" },
+    ],
+  },
+  // Multiple features
+  {
+    regex: /(?:实现|开发|创建).*功能|[多第]个.*(?:模块|功能|任务)/i,
+    priority: 70,
+    generator: (match) => {
+      // Extract number if present
+      const numMatch = match[0].match(/[多第]?([0-9一二两三四五六七八九十]+|[0-9]+)/);
+      const count = numMatch ? parseFeatureCount(numMatch[1]) : 3;
+      return generateFeatures(count);
+    },
+    templateName: "多功能开发",
+  },
+];
+
+// ── Helper Functions ──
+
+function parseFeatureCount(text: string): number {
+  const chineseToNum: Record<string, number> = {
+    一: 1, 二: 2, 三: 3, 四: 4, 五: 5,
+    六: 6, 七: 7, 八: 8, 九: 9, 十: 10,
+    两: 2, 多: 5,
+  };
+  if (/^[0-9]+$/.test(text)) return parseInt(text, 10);
+  return chineseToNum[text] || 3;
+}
+
+function generateFeatures(count: number): AgentDefinition[] {
+  const features: AgentDefinition[] = [];
+  for (let i = 1; i <= count; i++) {
+    features.push({
+      id: `feature${i}`,
+      name: `功能 ${i}`,
+      prompt: `实现第 ${i} 个功能模块`,
+      priority: i,
+    });
+  }
+  return features;
+}
+
+function expandSynonyms(text: string): string[] {
+  const variants = [text.toLowerCase()];
+  for (const [, syns] of Object.entries(SYNONYMS)) {
+    for (const syn of syns) {
+      if (text.includes(syn)) {
+        variants.push(syn.toLowerCase());
+      }
+    }
+  }
+  return variants;
 }
 
 class MultiAgentService {
@@ -189,7 +348,7 @@ class MultiAgentService {
   async execute(
     config: MultiAgentConfig,
     context: { cwd: string; projectPath: string },
-    onProgress?: (agentId: string, status: string) => void,
+    onProgress?: (agentId: string, status: string, progress?: number) => void,
   ): Promise<MultiAgentResult[]> {
     const results: MultiAgentResult[] = [];
     const runningAgents = new Map<string, Promise<MultiAgentResult>>();
@@ -198,6 +357,8 @@ class MultiAgentService {
       const result: MultiAgentResult = {
         agentId: agent.id,
         status: "pending",
+        logs: [],
+        progress: 0,
       };
 
       // 检查依赖
@@ -218,10 +379,13 @@ class MultiAgentService {
       // 启动 Agent
       const startTime = Date.now();
       result.status = "running";
-      onProgress?.(agent.id, "started");
+      result.logs?.push(`[${agent.name}] 启动于 ${new Date().toLocaleTimeString()}`);
+      onProgress?.(agent.id, "started", 0);
 
-      const task = this.executeAgent(agent, context, (status) => {
-        onProgress?.(agent.id, status);
+      const task = this.executeAgent(agent, context, (status, progress) => {
+        result.logs?.push(`[${agent.name}] ${status}`);
+        result.progress = progress;
+        onProgress?.(agent.id, status, progress);
       });
 
       runningAgents.set(
@@ -231,12 +395,15 @@ class MultiAgentService {
             result.status = "completed";
             result.result = r;
             result.duration = Date.now() - startTime;
+            result.progress = 100;
+            result.logs?.push(`[${agent.name}] 完成于 ${new Date().toLocaleTimeString()}`);
             return result;
           })
           .catch((e) => {
             result.status = "failed";
             result.error = String(e);
             result.duration = Date.now() - startTime;
+            result.logs?.push(`[${agent.name}] 失败: ${e}`);
             return result;
           }),
       );
@@ -255,45 +422,177 @@ class MultiAgentService {
   private async executeAgent(
     agent: AgentDefinition,
     context: { cwd: string; projectPath: string },
-    onStatus?: (status: string) => void,
+    onStatus?: (status: string, progress?: number) => void,
   ): Promise<string> {
-    // 这里应该调用实际的 Agent 执行逻辑
-    // 暂时返回模拟结果
-    onStatus?.("completed");
+    // 模拟分阶段执行
+    onStatus?.("初始化中...", 10);
+    await this.delay(100);
+
+    onStatus?.("执行任务...", 30);
+    await this.delay(200);
+
+    onStatus?.("处理中...", 60);
+    await this.delay(150);
+
+    onStatus?.("完成中...", 90);
+    await this.delay(100);
+
+    onStatus?.("完成", 100);
     return `[${agent.name}] 任务完成`;
+  }
+
+  /** 辅助：延迟函数 */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   /** 从自然语言生成多 Agent 任务 */
   parseNaturalLanguage(input: string): MultiAgentConfig | null {
-    // 简单的模式匹配
-    const patterns = [
-      {
-        regex: /实现.*功能/i,
-        agents: [
-          { id: "dev1", name: "开发 1", prompt: "实现第一个功能" },
-          { id: "dev2", name: "开发 2", prompt: "实现第二个功能" },
-        ],
-      },
-      {
-        regex: /开发.*前端.*后端/i,
-        agents: [
-          { id: "frontend", name: "前端", prompt: "开发前端界面" },
-          { id: "backend", name: "后端", prompt: "开发后端 API" },
-        ],
-      },
-    ];
+    const normalized = input.trim().toLowerCase();
 
-    for (const pattern of patterns) {
-      if (pattern.regex.test(input)) {
+    // Try each pattern in priority order
+    const matches = PARSE_PATTERNS
+      .map((pattern) => {
+        const match = normalized.match(pattern.regex);
+        return match ? { pattern, match } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => (b!.pattern.priority ?? 0) - (a!.pattern.priority ?? 0));
+
+    if (matches.length > 0) {
+      const { pattern, match } = matches[0]!;
+      const agents = pattern.generator(match!);
+      return {
+        name: pattern.templateName,
+        description: input,
+        agents,
+      };
+    }
+
+    // Fallback: try synonym-based matching
+    const synonymMatch = this.matchBySynonyms(normalized);
+    if (synonymMatch) {
+      return synonymMatch;
+    }
+
+    return null;
+  }
+
+  /**
+   * Match input using synonym-based rules
+   */
+  private matchBySynonyms(input: string): MultiAgentConfig | null {
+    const expanded = expandSynonyms(input);
+
+    // Check for development keywords
+    if (expanded.some((e) => e.includes("前端") || e.includes("frontend") || e.includes("ui"))) {
+      if (expanded.some((e) => e.includes("后端") || e.includes("backend") || e.includes("api"))) {
         return {
-          name: "自定义任务",
+          name: "前后端开发",
           description: input,
-          agents: pattern.agents,
+          agents: [
+            { id: "frontend", name: "前端开发", prompt: "开发前端界面组件" },
+            { id: "backend", name: "后端开发", prompt: "开发后端 API 和业务逻辑" },
+          ],
         };
       }
     }
 
+    // Check for review keywords
+    if (expanded.some((e) => e.includes("审查") || e.includes("review") || e.includes("检查"))) {
+      return {
+        name: "代码审查",
+        description: input,
+        agents: [
+          { id: "security", name: "安全审查", prompt: "检查安全漏洞" },
+          { id: "performance", name: "性能审查", prompt: "检查性能问题" },
+          { id: "style", name: "代码风格", prompt: "检查代码规范" },
+        ],
+      };
+    }
+
+    // Check for testing keywords
+    if (expanded.some((e) => e.includes("测试") || e.includes("test"))) {
+      return {
+        name: "测试覆盖",
+        description: input,
+        agents: [
+          { id: "unit", name: "单元测试", prompt: "编写单元测试用例" },
+          { id: "integration", name: "集成测试", prompt: "编写集成测试用例" },
+        ],
+      };
+    }
+
+    // Check for documentation keywords
+    if (expanded.some((e) => e.includes("文档") || e.includes("docs"))) {
+      return {
+        name: "文档生成",
+        description: input,
+        agents: [
+          { id: "api", name: "API 文档", prompt: "生成 API 文档" },
+          { id: "readme", name: "README", prompt: "生成 README" },
+        ],
+      };
+    }
+
     return null;
+  }
+
+  /**
+   * Parse input and return confidence score
+   */
+  parseNaturalLanguageWithConfidence(input: string): {
+    config: MultiAgentConfig | null;
+    confidence: number;
+    matchedKeywords: string[];
+  } {
+    const normalized = input.trim().toLowerCase();
+    const matchedKeywords: string[] = [];
+
+    // Check for synonym matches
+    for (const [key, syns] of Object.entries(SYNONYMS)) {
+      for (const syn of syns) {
+        if (normalized.includes(syn)) {
+          matchedKeywords.push(key);
+        }
+      }
+    }
+
+    // Calculate confidence based on keyword matches
+    let confidence = 0;
+    if (matchedKeywords.length >= 3) confidence = 0.9;
+    else if (matchedKeywords.length >= 2) confidence = 0.7;
+    else if (matchedKeywords.length >= 1) confidence = 0.5;
+
+    // Check for pattern matches
+    for (const pattern of PARSE_PATTERNS) {
+      if (pattern.regex.test(normalized)) {
+        confidence = Math.max(confidence, pattern.priority / 100);
+      }
+    }
+
+    return {
+      config: this.parseNaturalLanguage(input),
+      confidence,
+      matchedKeywords: [...new Set(matchedKeywords)],
+    };
+  }
+
+  /**
+   * Get suggested prompts based on current context
+   */
+  getSuggestedPrompts(context?: { hasGitChanges: boolean; hasTests: boolean; hasDocs: boolean }): string[] {
+    const suggestions: string[] = [];
+
+    if (context?.hasGitChanges) {
+      suggestions.push("审查我的代码变更");
+      suggestions.push("测试变更的代码");
+    }
+
+    suggestions.push("全栈开发新功能");
+    suggestions.push("生成项目文档");
+
+    return suggestions;
   }
 }
 

@@ -106,59 +106,119 @@
 
     // Generate preview based on action type
     let preview = "";
+    let detail = "";
+    let hint = "";
+
     switch (cmd.action) {
       case "navigate":
         preview = `导航到: ${cmd.payload || "/"}`;
+        detail = `将切换到 ${cmd.payload || "/"} 页面`;
+        hint = "直接跳转到目标页面";
         break;
       case "send_prompt":
-        preview = `发送提示: ${cmd.payload?.slice(0, 60)}${cmd.payload && cmd.payload.length > 60 ? "..." : ""}`;
+        preview = `发送提示: ${cmd.payload?.slice(0, 50)}${cmd.payload && cmd.payload.length > 50 ? "..." : ""}`;
+        detail = "将提示发送到 AI 进行处理";
+        hint = "可编辑后再发送";
         break;
       case "toggle_state":
-        preview = cmd.payload === "plan_mode" ? "切换计划模式" : `切换状态: ${cmd.payload}`;
+        if (cmd.payload === "plan_mode") {
+          preview = "切换计划模式";
+          detail = "开启后 AI 会先分析再执行";
+          hint = "适合复杂任务规划";
+        } else {
+          preview = `切换状态: ${cmd.payload}`;
+          detail = "切换应用的某个状态";
+        }
         break;
       case "open_modal": {
-        const modalNames: Record<string, string> = {
-          "model-selector": "模型选择器",
-          "folder-browser": "文件夹浏览器",
-          "version-info": "版本信息",
-          permissions: "权限设置",
+        const modalNames: Record<string, { name: string; desc: string }> = {
+          "model-selector": { name: "模型选择器", desc: "选择使用的 AI 模型" },
+          "folder-browser": { name: "文件夹浏览器", desc: "选择工作目录" },
+          "version-info": { name: "版本信息", desc: "查看应用版本和更新" },
+          permissions: { name: "权限设置", desc: "配置操作权限规则" },
         };
-        preview = `打开: ${modalNames[cmd.payload || ""] || cmd.payload}`;
+        const modalInfo = modalNames[cmd.payload || ""] || { name: cmd.payload || "对话框", desc: "" };
+        preview = `打开: ${modalInfo.name}`;
+        detail = modalInfo.desc;
         break;
       }
       case "ipc_command": {
-        const ipcNames: Record<string, string> = {
-          get_git_diff: "获取 Git 差异",
-          get_git_status: "获取 Git 状态",
-          get_run_artifacts: "获取运行统计",
-          export_conversation: "导出对话 (Markdown)",
-          export_conversation_html: "导出对话 (HTML)",
-          stop_run: "停止当前运行",
-          check_agent_cli: "检查 CLI 安装状态",
+        const ipcNames: Record<string, { name: string; desc: string }> = {
+          get_git_diff: { name: "获取 Git 差异", desc: "显示当前文件变更" },
+          get_git_status: { name: "获取 Git 状态", desc: "显示文件状态 (已修改/已暂存)" },
+          get_run_artifacts: { name: "获取运行统计", desc: "显示当前运行的消耗统计" },
+          export_conversation: { name: "导出对话 (Markdown)", desc: "将对话导出为 Markdown 文件" },
+          export_conversation_html: { name: "导出对话 (HTML)", desc: "将对话导出为 HTML 文件" },
+          stop_run: { name: "停止当前运行", desc: "终止正在进行的 AI 任务" },
+          check_agent_cli: { name: "检查 CLI 安装状态", desc: "诊断 Claude/Codex CLI 是否可用" },
         };
-        preview = `执行: ${ipcNames[cmd.payload || ""] || cmd.payload}`;
+        const ipcInfo = ipcNames[cmd.payload || ""] || { name: cmd.payload || "命令", desc: "" };
+        preview = `执行: ${ipcInfo.name}`;
+        detail = ipcInfo.desc;
         break;
       }
       case "panel:multi-agent":
         preview = "打开多 Agent 面板";
+        detail = "并行启动多个 AI 完成任务";
+        hint = "适合多任务并行处理";
+        break;
+      case "preset:fullstack":
+        preview = "全栈开发预设";
+        detail = "并行运行前端、后端、数据库三个 Agent";
+        hint = "适合大型项目开发";
+        break;
+      case "preset:review":
+        preview = "代码审查预设";
+        detail = "并行运行安全、性能、风格三个审查 Agent";
+        hint = "适合 PR 审查场景";
+        break;
+      case "preset:upgrade":
+        preview = "实现升级预设";
+        detail = "并行实现多个功能模块";
+        hint = "适合功能扩展开发";
+        break;
+      case "preset:test":
+        preview = "测试预设";
+        detail = "并行运行单元、集成、E2E 三个测试 Agent";
+        hint = "适合全面测试覆盖";
+        break;
+      case "preset:docs":
+        preview = "文档预设";
+        detail = "并行生成 API、README、CHANGELOG 文档";
+        hint = "适合项目文档更新";
         break;
       default:
         if (cmd.payload) {
           preview = `执行: ${cmd.payload}`;
+          detail = "执行预设的命令动作";
         }
     }
 
     // Add shortcut hint if available
     if (cmd.shortcut) {
-      preview += ` [${cmd.shortcut}]`;
+      hint = hint ? `${hint} · 快捷键: ${cmd.shortcut}` : `快捷键: ${cmd.shortcut}`;
     }
 
     // Add permission hint
     if (requiresPermission(cmd)) {
-      preview += " ⚠️ 需要确认";
+      hint = hint ? `${hint} · ⚠️ 需要确认` : "⚠️ 需要确认";
     }
 
     previewContent = preview;
+
+    // Store detail for preview panel display
+    (cmd as any)._previewDetail = detail;
+    (cmd as any)._previewHint = hint;
+  }
+
+  // Get preview detail for a command
+  function getPreviewDetail(cmd: CommandDef): string {
+    return (cmd as any)._previewDetail || "";
+  }
+
+  // Get preview hint for a command
+  function getPreviewHint(cmd: CommandDef): string {
+    return (cmd as any)._previewHint || "";
   }
 
   function requiresPermission(cmd: CommandDef): boolean {
@@ -384,11 +444,24 @@
           />
           <div class="flex items-center gap-2">
             {#if previewContent}
-              <span
-                class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded animate-fade-in"
-              >
-                {previewContent}
-              </span>
+              <div class="flex flex-col items-end gap-0.5">
+                <span class="text-xs text-foreground bg-muted px-2 py-1 rounded animate-fade-in font-medium">
+                  {previewContent}
+                </span>
+                {#if hoveredCmdId}
+                  {@const hoveredCmd = flatList.find(c => c.id === hoveredCmdId)}
+                  {#if hoveredCmd}
+                    {@const detail = getPreviewDetail(hoveredCmd)}
+                    {@const hint = getPreviewHint(hoveredCmd)}
+                    {#if detail}
+                      <span class="text-[10px] text-muted-foreground">{detail}</span>
+                    {/if}
+                    {#if hint}
+                      <span class="text-[10px] text-blue-600 dark:text-blue-400">{hint}</span>
+                    {/if}
+                  {/if}
+                {/if}
+              </div>
             {/if}
             <kbd class="text-xs text-muted-foreground bg-muted rounded px-1.5 py-0.5"
               >{t("cmd_esc")}</kbd
