@@ -1417,6 +1417,10 @@
         cwd={store.effectiveCwd}
         runId={store.run?.id ?? ""}
         isRemote={store.isRemote}
+        worktreePath={store.run?.worktree_path}
+        worktreeBranch={store.run?.worktree_branch}
+        creationMode={store.run?.creation_mode}
+        parentCwd={store.run?.parent_cwd}
         bind:requestedPreviewPath={handlers.requestedPreviewPath}
         bind:requestedPreviewUrl={handlers.requestedPreviewUrl}
         underUnifiedCapsule={true}

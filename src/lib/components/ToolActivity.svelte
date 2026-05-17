@@ -48,6 +48,10 @@
     cwd = "",
     runId = "",
     isRemote = false,
+    worktreePath = undefined,
+    worktreeBranch = undefined,
+    creationMode = undefined,
+    parentCwd = undefined,
     requestedPreviewPath = $bindable(null as string | null),
     requestedPreviewUrl = $bindable(null as string | null),
     /** True when chat layout places SessionStatusBar above both chat + this rail (flush panel top). */
@@ -70,6 +74,10 @@
     cwd?: string;
     runId?: string;
     isRemote?: boolean;
+    worktreePath?: string;
+    worktreeBranch?: string;
+    creationMode?: string;
+    parentCwd?: string;
     requestedPreviewPath?: string | null;
     requestedPreviewUrl?: string | null;
     underUnifiedCapsule?: boolean;
@@ -749,6 +757,10 @@
             {contextHistory}
             {turnUsages}
             {toolStats}
+            {worktreePath}
+            {worktreeBranch}
+            {creationMode}
+            {parentCwd}
             onSwitchToActivity={() => (activeTab = "tools")}
             onSwitchToFiles={() => (activeTab = "files")}
           />

@@ -8,6 +8,7 @@
   import { formatTokenCount } from "$lib/utils/format";
   import * as api from "$lib/api";
   import ContextHistoryPanel from "$lib/components/ContextHistoryPanel.svelte";
+  import GitWorktreePanel from "$lib/components/GitWorktreePanel.svelte";
 
   let {
     cwd = "",
@@ -16,6 +17,10 @@
     contextHistory = [],
     turnUsages = [],
     toolStats,
+    worktreePath = undefined,
+    worktreeBranch = undefined,
+    creationMode = undefined,
+    parentCwd = undefined,
     onSwitchToActivity,
     onSwitchToFiles,
   }: {
@@ -32,6 +37,10 @@
       writes: number;
       errorCount: number;
     };
+    worktreePath?: string;
+    worktreeBranch?: string;
+    creationMode?: string;
+    parentCwd?: string;
     onSwitchToActivity?: () => void;
     onSwitchToFiles?: () => void;
   } = $props();
@@ -673,6 +682,9 @@
           </details>
         </div>
       {/if}
+
+      <!-- Git / Worktree Panel -->
+      <GitWorktreePanel {cwd} {worktreePath} {parentCwd} {worktreeBranch} {creationMode} />
     </div>
   {/if}
 </div>
