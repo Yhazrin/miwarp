@@ -138,7 +138,7 @@
 | 任务 | 文件 | PR 切片 |
 |------|------|---------|
 | ~~api.ts 按 domain 拆分~~ | api.ts → api/{teams,plugins,mcp}.ts + index.ts barrel | ✅ DONE (3 domains extracted, ~406 lines moved) |
-| types.ts 按 domain 拆分 | types.ts → types/session.ts, types/team.ts, etc. | PR-2b: split-types |
+| ~~types.ts 按 domain 拆分~~ | types.ts → types/{teams,plugins,bus-events}.ts + index.ts | ✅ DONE (3 域提取, 973 行 ← 1574 行, -38%) |
 | use-chat-handlers 拆分 composable | 拆出 fork/BTW/rewind/preview | PR-2c: split-chat-handlers |
 | use-chat-lifecycle 拆分 effect 组 | 拆出 thinking/project-init/model-guard | PR-2d: split-chat-lifecycle |
 | SessionStore 抽纯 reducer | 抽 SessionReducer 为独立函数模块 | PR-2e: extract-session-reducer |
