@@ -75,7 +75,7 @@
 | 5 | ~~提取 `PROJECT_CWD_KEY` 常量~~ | utils/ | LOW | ✅ DONE (2/12 文件已替换) |
 | 8 | ~~统一 `formatTime()` — 抽取到 `utils/format.ts`~~ | 多文件 | LOW | ✅ DONE (4 处替换) |
 | 9 | ~~统一 `formatDate()` — 使用 i18n locale 而非硬编码~~ | 多文件 | LOW | ✅ DONE (硬编码 locale 已消除) |
-| 10 | 提取 localStorage key 常量 `PROJECT_CWD_KEY` | 多文件 | LOW | 17+ 处使用同一字符串字面量 |
+| 10 | ~~提取 localStorage key 常量 `PROJECT_CWD_KEY`~~ | 多文件 | LOW | ✅ DONE (19 处替换, 10 文件) |
 | 11 | 推广已有的 `<Card>` 组件到 plugins 页面 | plugins/ | LOW | 组件已存在，仅 3 文件使用 |
 | 12 | 推广已有的 `<Input>` 组件 | 多文件 | LOW | 组件已存在但 0 使用 |
 | 13 | 推广已有的 `<Textarea>` 组件 | 多文件 | LOW | 组件已存在但 0 使用 |
@@ -170,7 +170,7 @@
 | 组件最大 props 数 | 52 | 52 | < 25 | < 15 |
 | 单文件最大 $state 数 | 97 | ~23 (conn composable) | < 30 | < 15 |
 | 共享 Spinner 组件 | 0/53 使用 | 40/53 使用 (5 files have dual-color) | 45/53 | 50/53 |
-| localStorage key 使用处 | 17+ (ocv:project-cwd) | 17+ | 1 (cwdStore) | 0 (统一 store) |
+| localStorage key 使用处 | 17+ (ocv:project-cwd) | **0** (全部用常量) | 1 (cwdStore) ✅ | 0 (统一 store) |
 | 未使用组件 | 3 | 0 | 0 | 0 |
 | 逐字重复代码块 | 3 处 | 0 | 0 | 0 |
 | 硬编码格式函数 | 4 处 | 0 | 0 | 0 |
