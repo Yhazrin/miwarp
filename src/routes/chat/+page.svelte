@@ -143,6 +143,12 @@
   progressiveRef.current = progressive;
   const { rearmLoadMore } = progressive;
 
+  /** Bridge DOM ref — `bind:this={progressive.topSentinel}` breaks in production (no component `$set`). */
+  let topSentinelEl = $state<HTMLDivElement | null>(null);
+  $effect(() => {
+    progressive.topSentinel = topSentinelEl;
+  });
+
   const chatScroll = useChatScroll({
     chatAreaRef: () => chatAreaRef,
     isStreamSession: () => store.useStreamSession,
@@ -614,11 +620,7 @@
               {/if}
               <div class="chat-content-width pb-1" data-export-exclude><ViewModeToggle /></div>
               {#if filteredTimeline.length - progressive.renderLimit > 0}
-                <div
-                  bind:this={progressive.topSentinel}
-                  aria-hidden="true"
-                  class="h-px w-full"
-                ></div>
+                <div bind:this={topSentinelEl} aria-hidden="true" class="h-px w-full"></div>
               {/if}
               {#each progressive.visibleTimeline as entry, i (entry.id)}
                 {#if !(chatDerived.burstHiddenIndices.has(i) && !chatDerived.toolBursts.has(i))}

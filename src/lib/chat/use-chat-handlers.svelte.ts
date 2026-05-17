@@ -804,13 +804,28 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
         // Non-fork resume failed — stay on the target run's view instead of
         // navigating to blank new-session page (the run's history is still useful).
         setLastContinuableRun(null);
-        goto(`/chat?run=${targetRunId}`, { replaceState: true });
+        await goto(`/chat?run=${targetRunId}`, { replaceState: true });
+        // Initial navigation used ?resume=… so loadRun was skipped; after stripping resume
+        // the URL may already be /chat?run=id, making goto a no-op — effects won't re-run.
+        // Always replay history from disk/backend so the chat is never stuck empty.
+        await ctrl.loadRunProgressive(targetRunId);
       }
       window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
     } catch (e) {
       // Fork sync failure → show error in overlay instead of error bar
       if (mode === "fork" && forkOverlay) {
         forkOverlay = { ...forkOverlay, error: String(e) };
+      } else if (mode !== "fork") {
+        const tid = overrideRunId ?? store.run?.id;
+        if (tid) {
+          setLastContinuableRun(null);
+          try {
+            await goto(`/chat?run=${tid}`, { replaceState: true });
+            await ctrl.loadRunProgressive(tid);
+          } catch {
+            /* best-effort: surface already via store.error when resumeSession failed */
+          }
+        }
       }
     } finally {
       resuming = false;

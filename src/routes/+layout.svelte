@@ -809,7 +809,12 @@
     const factor = Math.min(1.5, Math.max(0.75, zoom ?? 1.0));
     import("@tauri-apps/api/webviewWindow")
       .then(({ getCurrentWebviewWindow }) => {
-        getCurrentWebviewWindow()
+        const win = getCurrentWebviewWindow();
+        if (!win) {
+          dbgWarn("layout", "applyZoom: no webview window");
+          return;
+        }
+        win
           .setZoom(factor)
           .then(() => dbg("layout", "applyZoom success", { factor }))
           .catch((e) => dbgWarn("layout", "setZoom failed", e));

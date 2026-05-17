@@ -349,6 +349,10 @@ pub async fn dispatch_command(
             crate::commands::teams::delete_team(name)?;
             Ok(json!(true))
         }
+        "list_team_presets" => {
+            let result = crate::commands::team_runs::list_team_presets()?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
 
         // ── Plugins / Skills ──
         "list_marketplaces" => {
