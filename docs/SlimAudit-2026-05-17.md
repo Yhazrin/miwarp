@@ -75,7 +75,7 @@
 | 5 | ~~提取 `PROJECT_CWD_KEY` 常量~~ | utils/ | LOW | ✅ DONE (2/12 文件已替换) |
 | 8 | ~~统一 `formatTime()` — 抽取到 `utils/format.ts`~~ | 多文件 | LOW | ✅ DONE (4 处替换) |
 | 9 | ~~统一 `formatDate()` — 使用 i18n locale 而非硬编码~~ | 多文件 | LOW | ✅ DONE (硬编码 locale 已消除) |
-| 10 | ~~提取 localStorage key 常量 `PROJECT_CWD_KEY`~~ | 多文件 | LOW | ✅ DONE (19 处替换, 10 文件) |
+| 10 | ~~提取 localStorage key 常量 (8 个 key)~~ | 多文件 | LOW | ✅ DONE (50+ 处替换, 16 文件, 8 常量) |
 | 11 | 推广已有的 `<Card>` 组件到 plugins 页面 | plugins/ | LOW | 组件已存在，仅 3 文件使用 |
 | 12 | 推广已有的 `<Input>` 组件 | 多文件 | LOW | 组件已存在但 0 使用 |
 | 13 | 推广已有的 `<Textarea>` 组件 | 多文件 | LOW | 组件已存在但 0 使用 |
@@ -128,7 +128,7 @@
 | ~~消除 chat composable split-brain~~ | 删除 3 个死文件 | ✅ DONE (P0 已完成) |
 | ~~提取 connection 逻辑到 composable~~ | use-connection-platform.svelte.ts (497行) | ✅ DONE |
 | ~~提取共享 Spinner 组件~~ | Spinner.svelte, 40+ 实例替换 (20 文件) | ✅ DONE |
-| 推广已有共享组件 | Card, Input, Textarea | PR-1d: adopt-shared-components (剩余) |
+| ~~推广已有共享组件~~ | Card (26 用法), Input (8 用法), Textarea (0 候选) | ✅ DONE (无剩余候选) |
 | ~~统一 formatTime/formatDate~~ | 提取到 i18n/format.ts | ✅ DONE (-26 行) |
 
 ### P2 — 中期（2-4 周）
@@ -137,7 +137,7 @@
 
 | 任务 | 文件 | PR 切片 |
 |------|------|---------|
-| api.ts 按 domain 拆分 | api.ts → session-api.ts, team-api.ts, etc. | PR-2a: split-api |
+| ~~api.ts 按 domain 拆分~~ | api.ts → api/{teams,plugins,mcp}.ts + index.ts barrel | ✅ DONE (3 domains extracted, ~406 lines moved) |
 | types.ts 按 domain 拆分 | types.ts → types/session.ts, types/team.ts, etc. | PR-2b: split-types |
 | use-chat-handlers 拆分 composable | 拆出 fork/BTW/rewind/preview | PR-2c: split-chat-handlers |
 | use-chat-lifecycle 拆分 effect 组 | 拆出 thinking/project-init/model-guard | PR-2d: split-chat-lifecycle |
@@ -165,12 +165,12 @@
 |------|------|--------|---------|---------|
 | 最大 .svelte 文件 | 4,367 行 | 1,881 行 (InlineToolCard) | < 1,500 行 | < 800 行 |
 | settings/+page.svelte | 4,367 行 | **723 行** (-83.5%) | < 1,500 行 ✅ | < 800 行 |
-| 最大 .ts 文件 | 3,377 行 | 3,617 行 (session-store) | < 2,000 行 | < 1,000 行 |
+| api.ts | 1,497 行 | **1,100 行** (index.ts, 3 域已提取) | < 1,200 行 ✅ | < 800 行 |
 | 最大 .rs 文件 | 2,714 行 | 2,714 行 | 不变 | < 1,500 行 |
 | 组件最大 props 数 | 52 | 52 | < 25 | < 15 |
 | 单文件最大 $state 数 | 97 | ~23 (conn composable) | < 30 | < 15 |
 | 共享 Spinner 组件 | 0/53 使用 | 40/53 使用 (5 files have dual-color) | 45/53 | 50/53 |
-| localStorage key 使用处 | 17+ (ocv:project-cwd) | **0** (全部用常量) | 1 (cwdStore) ✅ | 0 (统一 store) |
+| localStorage key 使用处 | 17+ (ocv:project-cwd) | **0** (8 key 全部用常量) | 1 (cwdStore) ✅ | 0 (统一 store) |
 | 未使用组件 | 3 | 0 | 0 | 0 |
 | 逐字重复代码块 | 3 处 | 0 | 0 | 0 |
 | 硬编码格式函数 | 4 处 | 0 | 0 | 0 |
