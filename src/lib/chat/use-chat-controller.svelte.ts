@@ -15,7 +15,7 @@ import type { Attachment, SessionMode, RemoteHost, UserSettings } from "$lib/typ
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { t } from "$lib/i18n/index.svelte";
 import { setLastTarget, getStoredRemoteCwd, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
-import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
+import { PROJECT_CWD_KEY, RUNS_CHANGED_KEY } from "$lib/utils/storage-keys";
 import type { useProgressiveTimeline } from "$lib/chat/use-progressive-timeline.svelte";
 import type { useChatScroll } from "$lib/chat/use-chat-scroll.svelte";
 import type { useTeamDispatch } from "$lib/chat/use-team-dispatch.svelte";
@@ -232,7 +232,7 @@ export function useChatController(opts: {
 
         const runId = await store.startSession(text, cwd, attachments);
         goto(`/chat?run=${runId}`, { replaceState: true });
-        window.dispatchEvent(new Event("ocv:runs-changed"));
+        window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
         loadCliVersionInfo();
       } else if (store.useStreamSession && !store.sessionAlive && store.run.session_id) {
         // Stopped stream session: atomic resume + send

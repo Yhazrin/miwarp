@@ -60,7 +60,7 @@ import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
 import { parseContextMarkdown } from "$lib/utils/context-parser";
 import type { ContextSnapshot } from "$lib/types";
 import { getLastTarget, setLastTarget, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
-import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
+import { PROJECT_CWD_KEY, RUNS_CHANGED_KEY, PROJECT_CHANGED_KEY } from "$lib/utils/storage-keys";
 import { randomSpinnerVerb } from "$lib/utils/spinner-verbs";
 import { t } from "$lib/i18n/index.svelte";
 import { dbg, dbgWarn } from "$lib/utils/debug";
@@ -897,8 +897,8 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
         preload.reloadProjectData(cwd);
       }
     };
-    window.addEventListener("ocv:project-changed", handler);
-    return () => window.removeEventListener("ocv:project-changed", handler);
+    window.addEventListener(PROJECT_CHANGED_KEY, handler);
+    return () => window.removeEventListener(PROJECT_CHANGED_KEY, handler);
   });
 
   // ── Warm up file IPC chain ──
@@ -935,8 +935,8 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
           dbgWarn("chat", "runs-changed: failed to sync name", e);
         });
     }
-    window.addEventListener("ocv:runs-changed", onRunsChanged);
-    return () => window.removeEventListener("ocv:runs-changed", onRunsChanged);
+    window.addEventListener(RUNS_CHANGED_KEY, onRunsChanged);
+    return () => window.removeEventListener(RUNS_CHANGED_KEY, onRunsChanged);
   });
 
   // ── Start middleware + register pipe/run handlers ──

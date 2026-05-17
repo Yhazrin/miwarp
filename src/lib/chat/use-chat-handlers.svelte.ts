@@ -34,7 +34,7 @@ import { dbg, dbgWarn } from "$lib/utils/debug";
 import { shouldAutoName } from "$lib/utils/auto-name";
 import { resolvePermissionOptimistic } from "$lib/utils/resolve-permission";
 import { createHandleVirtualCommand } from "$lib/chat/virtual-commands";
-import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
+import { PROJECT_CWD_KEY, RUNS_CHANGED_KEY } from "$lib/utils/storage-keys";
 import type { RewindCandidate, RewindMarker } from "$lib/utils/rewind";
 import { mapSettled } from "$lib/utils/async-utils";
 import { uuid } from "$lib/utils/uuid";
@@ -638,7 +638,7 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
     try {
       await api.renameRun(store.run.id, name);
       store.run = { ...store.run, name };
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       dbg("chat", "renamed run", { id: store.run.id, name });
     } catch (e) {
       dbgWarn("chat", "rename failed", e);
@@ -741,7 +741,7 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
 
   async function handleStop() {
     await store.stop();
-    window.dispatchEvent(new Event("ocv:runs-changed"));
+    window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
   }
 
   async function handleResume(
@@ -806,7 +806,7 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
         setLastContinuableRun(null);
         goto(`/chat?run=${targetRunId}`, { replaceState: true });
       }
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
     } catch (e) {
       // Fork sync failure → show error in overlay instead of error bar
       if (mode === "fork" && forkOverlay) {
@@ -837,7 +837,7 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
     goto(`/chat?run=${sourceRunId}`, { replaceState: true });
     // Explicit reload — URL may not change if we're returning to the same run
     await ctrl.loadRunProgressive(sourceRunId);
-    window.dispatchEvent(new Event("ocv:runs-changed"));
+    window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
   }
 
   async function handleForkRetry() {

@@ -2,7 +2,13 @@
   import "../app.css";
   import "$lib/styles/sidebar-animations.css";
   import { escapeHtml } from "$lib/utils/ansi";
-  import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
+  import {
+    PROJECT_CWD_KEY,
+    RUNS_CHANGED_KEY,
+    PROJECT_CHANGED_KEY,
+    FAVORITES_CHANGED_KEY,
+    EXPLORER_FILE_SELECTED_KEY,
+  } from "$lib/utils/storage-keys";
   import {
     listRuns,
     listRunsSince,
@@ -275,7 +281,7 @@
       }
       runs = runs.map((r) => (idsToMove.includes(r.id) ? { ...r, folder_id: folderId } : r));
       await loadSessionFolders();
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       dbg("layout", "drag-drop move to folder", { count: idsToMove.length, folderId });
     } catch (e) {
       dbgWarn("layout", "drag-drop moveRunToFolder failed", e);
@@ -312,7 +318,7 @@
       }
       // Optimistic update
       runs = runs.map((r) => (ids.includes(r.id) ? { ...r, folder_id: folderId ?? undefined } : r));
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       dbg("layout", "moveToFolder success", { count: ids.length, folderId });
     } catch (e) {
       dbgWarn("layout", "moveToFolder failed", e);
@@ -1024,13 +1030,13 @@
         loadGitSummary();
       }
     }
-    window.addEventListener("ocv:runs-changed", onRunsChanged);
+    window.addEventListener(RUNS_CHANGED_KEY, onRunsChanged);
 
     // Refresh sidebar favorites when /runs page changes them
     function onFavoritesChanged() {
       loadSidebarFavorites();
     }
-    window.addEventListener("ocv:favorites-changed", onFavoritesChanged);
+    window.addEventListener(FAVORITES_CHANGED_KEY, onFavoritesChanged);
 
     // Listen for Settings page requesting wizard re-open
     function onShowWizard() {
@@ -1110,7 +1116,7 @@
     function onExplorerFileSelected(e: Event) {
       explorerSelectedFile = (e as CustomEvent).detail?.path ?? "";
     }
-    window.addEventListener("ocv:explorer-file-selected", onExplorerFileSelected);
+    window.addEventListener(EXPLORER_FILE_SELECTED_KEY, onExplorerFileSelected);
 
     // Listen for run status changes (idle↔running) from backend
     let unlistenStatus: (() => void) | undefined;
@@ -1141,15 +1147,15 @@
       keybindingStore.unregisterCallback("app:toggleSidebar");
       keybindingStore.unregisterCallback("app:commandPalette");
       keybindingStore.unregisterCallback("app:newChat");
-      window.removeEventListener("ocv:runs-changed", onRunsChanged);
-      window.removeEventListener("ocv:favorites-changed", onFavoritesChanged);
+      window.removeEventListener(RUNS_CHANGED_KEY, onRunsChanged);
+      window.removeEventListener(FAVORITES_CHANGED_KEY, onFavoritesChanged);
       window.removeEventListener("ocv:show-wizard", onShowWizard);
       window.removeEventListener("ocv:cwd-changed", handleCwdChanged);
       window.removeEventListener("ocv:memory-file-selected", onMemoryFileSelected);
       window.removeEventListener("ocv:memory-file-saved", onMemoryFileSaved);
       window.removeEventListener("ocv:open-permissions", onOpenPermissions);
       document.removeEventListener("click", handleExternalLink, true);
-      window.removeEventListener("ocv:explorer-file-selected", onExplorerFileSelected);
+      window.removeEventListener(EXPLORER_FILE_SELECTED_KEY, onExplorerFileSelected);
       cleanupOverscroll();
     };
   });
@@ -1169,7 +1175,7 @@
         localStorage.removeItem(PROJECT_CWD_KEY);
       }
       // Notify child pages (e.g. Memory) that project cwd changed
-      window.dispatchEvent(new CustomEvent("ocv:project-changed", { detail: { cwd: projectCwd } }));
+      window.dispatchEvent(new CustomEvent(PROJECT_CHANGED_KEY, { detail: { cwd: projectCwd } }));
     }
   });
 
@@ -1225,7 +1231,7 @@
       const ids = conv.runs.map((r) => r.id);
       await softDeleteRuns(ids);
       dbg("layout", "deleteConversation success", { ids });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       if (conv.runs.some((r) => r.id === selectedRunId)) {
         goto("/chat");
       }
@@ -1246,7 +1252,7 @@
       const idSet = new Set(ids);
       runs = runs.filter((r) => !idSet.has(r.id));
       dbg("layout", "hardDeleteConversation success", { ids });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       if (ids.some((id) => id === selectedRunId)) {
         goto("/chat");
       }
@@ -1335,7 +1341,7 @@
     try {
       await softDeleteRuns(ids);
       dbg("layout", "batchDelete success", { count: ids.length });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       if (ids.includes(selectedRunId)) goto("/chat");
     } catch (e) {
       dbgWarn("layout", "batchDelete failed", e);
@@ -1352,7 +1358,7 @@
       const idSet = new Set(ids);
       runs = runs.filter((r) => !idSet.has(r.id));
       dbg("layout", "batchHardDelete success", { count: ids.length });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       if (ids.includes(selectedRunId)) goto("/chat");
     } catch (e) {
       dbgWarn("layout", "batchHardDelete failed", e);

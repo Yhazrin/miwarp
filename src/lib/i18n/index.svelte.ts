@@ -14,6 +14,7 @@ import { LOCALE_REGISTRY, SUPPORTED_LOCALES, BASE_LOCALE, isLocale, getEntry } f
 import type { Locale } from "./registry";
 import type { MessageKey, MessageParams } from "./types";
 import { dbg, dbgWarn } from "$lib/utils/debug";
+import { LOCALE_KEY } from "$lib/utils/storage-keys";
 
 // ── Re-exports from registry ────────────────────────────────────
 export { LOCALE_REGISTRY, SUPPORTED_LOCALES, BASE_LOCALE, isLocale, getEntry };
@@ -24,7 +25,7 @@ export const baseLocale = BASE_LOCALE;
 export const locales = SUPPORTED_LOCALES;
 
 // ── localStorage key migration ──────────────────────────────────
-const LOCAL_STORAGE_KEY = "ocv:locale";
+const LOCAL_STORAGE_KEY = LOCALE_KEY;
 const LEGACY_STORAGE_KEY = "PARAGLIDE_LOCALE";
 
 // ── Message cache ───────────────────────────────────────────────

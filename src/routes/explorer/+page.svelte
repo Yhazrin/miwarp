@@ -4,7 +4,11 @@
   import FilePreviewPane from "$lib/components/FilePreviewPane.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { getCachedFile, setCachedFile, clearCachedFile } from "$lib/utils/explorer-state";
-  import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
+  import {
+    PROJECT_CWD_KEY,
+    PROJECT_CHANGED_KEY,
+    EXPLORER_FILE_SELECTED_KEY,
+  } from "$lib/utils/storage-keys";
 
   // ── State ──
 
@@ -60,7 +64,7 @@
       clearCachedFile(projectCwd);
       selectedFilePath = "";
       restoringFromCache = false;
-      window.dispatchEvent(new CustomEvent("ocv:explorer-file-selected", { detail: { path: "" } }));
+      window.dispatchEvent(new CustomEvent(EXPLORER_FILE_SELECTED_KEY, { detail: { path: "" } }));
     }
   }
 
@@ -100,17 +104,15 @@
         restoringFromCache = true;
         selectedFilePath = cached;
         window.dispatchEvent(
-          new CustomEvent("ocv:explorer-file-selected", { detail: { path: cached } }),
+          new CustomEvent(EXPLORER_FILE_SELECTED_KEY, { detail: { path: cached } }),
         );
       } else {
         dbg("explorer", "no cache for project, clearing", { cwd });
         selectedFilePath = "";
-        window.dispatchEvent(
-          new CustomEvent("ocv:explorer-file-selected", { detail: { path: "" } }),
-        );
+        window.dispatchEvent(new CustomEvent(EXPLORER_FILE_SELECTED_KEY, { detail: { path: "" } }));
       }
     }
-    window.addEventListener("ocv:project-changed", onProjectChanged);
+    window.addEventListener(PROJECT_CHANGED_KEY, onProjectChanged);
 
     // Restore cached file state on mount
     const cached = getCachedFile(projectCwd);
@@ -119,7 +121,7 @@
       restoringFromCache = true;
       selectedFilePath = cached;
       window.dispatchEvent(
-        new CustomEvent("ocv:explorer-file-selected", { detail: { path: cached } }),
+        new CustomEvent(EXPLORER_FILE_SELECTED_KEY, { detail: { path: cached } }),
       );
     }
 
@@ -133,7 +135,7 @@
       }
       window.removeEventListener("ocv:explorer-file", onExplorerFile);
       window.removeEventListener("ocv:explorer-diff", onExplorerDiff);
-      window.removeEventListener("ocv:project-changed", onProjectChanged);
+      window.removeEventListener(PROJECT_CHANGED_KEY, onProjectChanged);
     };
   });
 

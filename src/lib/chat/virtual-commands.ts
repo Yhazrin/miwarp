@@ -16,7 +16,7 @@ import {
   mergeWithVirtual,
   parseRalphArgs,
 } from "$lib/utils/slash-commands";
-import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
+import { PROJECT_CWD_KEY, RUNS_CHANGED_KEY } from "$lib/utils/storage-keys";
 
 export type VirtualCommandTranslate = (key: MessageKey, params?: MessageParams) => string;
 
@@ -375,7 +375,7 @@ export function createHandleVirtualCommand(deps: VirtualCommandDeps) {
         await store.stop();
         dbg("chat", "clear-context: navigating to fresh chat");
         goto("/chat", { replaceState: true });
-        window.dispatchEvent(new Event("ocv:runs-changed"));
+        window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       } catch (e) {
         dbgWarn("chat", "clear-context failed", e);
         store.error = String(e);

@@ -38,7 +38,7 @@
   import Spinner from "$lib/components/Spinner.svelte";
   import PluginInstaller from "$lib/components/PluginInstaller.svelte";
   import { t } from "$lib/i18n/index.svelte";
-  import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
+  import { PROJECT_CWD_KEY, PROJECT_CHANGED_KEY } from "$lib/utils/storage-keys";
   import type {
     MarketplacePlugin,
     StandaloneSkill,
@@ -358,8 +358,8 @@
           dbgWarn("plugins", "skills reload on project-change failed", err);
         });
     }
-    window.addEventListener("ocv:project-changed", onProjectChanged);
-    return () => window.removeEventListener("ocv:project-changed", onProjectChanged);
+    window.addEventListener(PROJECT_CHANGED_KEY, onProjectChanged);
+    return () => window.removeEventListener(PROJECT_CHANGED_KEY, onProjectChanged);
   });
 
   onDestroy(() => {

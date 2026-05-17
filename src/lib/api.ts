@@ -1,5 +1,6 @@
 import { getTransport } from "./transport";
 import { dbg, dbgWarn, redactSensitive } from "./utils/debug";
+import { FAVORITES_CHANGED_KEY } from "./utils/storage-keys";
 import { perfMarkAsync } from "./utils/perf";
 
 function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
@@ -196,14 +197,14 @@ export async function addPromptFavorite(
 ): Promise<PromptFavorite> {
   dbg("api", "addPromptFavorite", { runId, seq });
   const result = await invoke<PromptFavorite>("add_prompt_favorite", { runId, seq, text });
-  window.dispatchEvent(new Event("ocv:favorites-changed"));
+  window.dispatchEvent(new Event(FAVORITES_CHANGED_KEY));
   return result;
 }
 
 export async function removePromptFavorite(runId: string, seq: number): Promise<void> {
   dbg("api", "removePromptFavorite", { runId, seq });
   await invoke<void>("remove_prompt_favorite", { runId, seq });
-  window.dispatchEvent(new Event("ocv:favorites-changed"));
+  window.dispatchEvent(new Event(FAVORITES_CHANGED_KEY));
 }
 
 export async function updatePromptFavoriteTags(
@@ -213,7 +214,7 @@ export async function updatePromptFavoriteTags(
 ): Promise<void> {
   dbg("api", "updatePromptFavoriteTags", { runId, seq, tags });
   await invoke<void>("update_prompt_favorite_tags", { runId, seq, tags });
-  window.dispatchEvent(new Event("ocv:favorites-changed"));
+  window.dispatchEvent(new Event(FAVORITES_CHANGED_KEY));
 }
 
 export async function updatePromptFavoriteNote(
@@ -223,7 +224,7 @@ export async function updatePromptFavoriteNote(
 ): Promise<void> {
   dbg("api", "updatePromptFavoriteNote", { runId, seq, note });
   await invoke<void>("update_prompt_favorite_note", { runId, seq, note });
-  window.dispatchEvent(new Event("ocv:favorites-changed"));
+  window.dispatchEvent(new Event(FAVORITES_CHANGED_KEY));
 }
 
 export async function listPromptFavorites(): Promise<PromptFavorite[]> {

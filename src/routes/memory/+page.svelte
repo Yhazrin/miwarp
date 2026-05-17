@@ -8,7 +8,7 @@
   import CodeEditor from "$lib/components/CodeEditor.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbgWarn } from "$lib/utils/debug";
-  import { PROJECT_CWD_KEY } from "$lib/utils/storage-keys";
+  import { PROJECT_CWD_KEY, PROJECT_CHANGED_KEY } from "$lib/utils/storage-keys";
   import Spinner from "$lib/components/Spinner.svelte";
   import { memoryStore } from "$lib/stores/memory-store.svelte";
   import { getMemoryStats } from "$lib/services/memory-service";
@@ -269,8 +269,8 @@
       }
       guardedProjectChange(cwd);
     }
-    window.addEventListener("ocv:project-changed", onProjectChanged);
-    return () => window.removeEventListener("ocv:project-changed", onProjectChanged);
+    window.addEventListener(PROJECT_CHANGED_KEY, onProjectChanged);
+    return () => window.removeEventListener(PROJECT_CHANGED_KEY, onProjectChanged);
   });
 
   // Warn before navigating away with unsaved changes
