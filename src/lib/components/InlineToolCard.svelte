@@ -192,6 +192,36 @@
       Object.keys(tool.input).length > 0 &&
       (tool as Record<string, unknown>)._inputJsonAccum != null,
   );
+
+  // Delayed expansion: wait 300ms before auto-expanding on streaming input
+  // This allows the skeleton placeholder to render first, preventing height jitter
+  let pendingExpand = $state(false);
+  let expandTimer: ReturnType<typeof setTimeout> | null = null;
+
+  $effect(() => {
+    const streaming = isInputStreaming;
+    const userWantsExpand = userExpanded !== null;
+
+    if (streaming && !userWantsExpand) {
+      // Start delay timer
+      if (!expandTimer) {
+        expandTimer = setTimeout(() => {
+          pendingExpand = true;
+          expandTimer = null;
+        }, 300);
+      }
+    } else {
+      // Cancel pending expansion
+      if (expandTimer) {
+        clearTimeout(expandTimer);
+        expandTimer = null;
+      }
+      if (!streaming) {
+        pendingExpand = false;
+      }
+    }
+  });
+
   let renderLevel = $derived(getToolRenderLevel(tool.tool_name, tool.status));
   let isPlan = $derived(isPlanFilePath(String(tool.input?.file_path ?? tool.input?.path ?? "")));
   let expanded = $derived(
@@ -200,7 +230,7 @@
         ? true
         : processVisibility === "guided"
           ? false
-          : renderLevel === 2 || (isPlan && latestPlanTool) || isInputStreaming),
+          : renderLevel === 2 || (isPlan && latestPlanTool) || pendingExpand),
   );
 
   let hasSubTimeline = $derived((subTimeline?.length ?? 0) > 0);

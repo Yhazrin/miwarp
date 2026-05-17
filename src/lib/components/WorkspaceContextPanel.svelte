@@ -3,7 +3,7 @@
   import type { TurnUsage } from "$lib/stores/types";
   import { t } from "$lib/i18n/index.svelte";
   import { memoryStore } from "$lib/stores/memory-store.svelte";
-  import { parseMemoryItems } from "$lib/utils/memory-items";
+  import { parseMemoryFileContent } from "$lib/utils/memory-items";
   import { sortByDisplayPriority } from "$lib/utils/memory-helpers";
   import { formatTokenCount } from "$lib/utils/format";
   import * as api from "$lib/api";
@@ -131,15 +131,22 @@
   let memorySections = $derived.by(() => {
     return memoryFileContents
       .map((file) => {
-        const items = parseMemoryItems(file.content).map((item) => ({
-          ...item,
-          id: `${file.path}::${item.id}`,
+        // Use unified parseMemoryFileContent which preserves block type and hierarchy
+        const parsed = parseMemoryFileContent(file.content, file.path, file.label, file.scope);
+
+        // Map blocks to items format for display compatibility
+        const items = parsed.blocks.map((block) => ({
+          id: `${file.path}::${block.id}`,
+          text: block.text,
+          type: block.type,
+          level: block.level,
           source: file.label,
         }));
+
         return {
           ...file,
           items,
-          itemCount: items.length,
+          itemCount: parsed.itemCount,
           shortPath:
             cwd && file.path.startsWith(`${cwd}/`) ? file.path.slice(cwd.length + 1) : file.path,
         };

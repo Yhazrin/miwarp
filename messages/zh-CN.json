@@ -572,6 +572,7 @@
   "tool_awaitingApproval": "等待审批",
   "tool_input": "输入",
   "tool_output": "输出",
+  "tool_processingOutput": "正在处理输出...",
   "tool_subagents": "子代理 ({count})",
   "tool_teamCreated": "团队已创建",
   "tool_teamDeleted": "团队已删除",

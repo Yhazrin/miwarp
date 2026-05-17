@@ -572,6 +572,7 @@
   "tool_awaitingApproval": "Awaiting approval",
   "tool_input": "Input",
   "tool_output": "Output",
+  "tool_processingOutput": "Processing output...",
   "tool_subagents": "Subagents ({count})",
   "tool_teamCreated": "Team created",
   "tool_teamDeleted": "Team deleted",

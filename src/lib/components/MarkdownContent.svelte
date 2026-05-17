@@ -3,6 +3,7 @@
   import { readFileBase64 } from "$lib/api";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { onDestroy } from "svelte";
+  import StreamingSkeleton from "$lib/components/StreamingSkeleton.svelte";
 
   let {
     text = "",
@@ -109,6 +110,10 @@
   let renderMarkdownNow = $derived(!streaming && visibleOnce);
   let html = $derived(renderMarkdownNow && displayText ? renderMarkdown(displayText) : "");
 
+  // Show skeleton when streaming with very little text to prevent height jitter
+  let showSkeleton = $derived(streaming && displayText.length < 100);
+  let skeletonLines = $derived(displayText.length < 50 ? 2 : displayText.length < 200 ? 3 : 4);
+
   $effect(() => {
     if (!container || !html) return;
 
@@ -168,9 +173,17 @@
 </script>
 
 {#if !renderMarkdownNow}
-  <pre
-    bind:this={lazyEl}
-    class="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-foreground/90 m-0 {className}">{displayText}</pre>
+  {#if showSkeleton}
+    <div class="min-h-[3em]">
+      <StreamingSkeleton lines={skeletonLines} minHeight="1.2em" />
+    </div>
+  {:else}
+    <div class="min-h-[3em]">
+      <pre
+        bind:this={lazyEl}
+        class="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-foreground/90 m-0 {className}">{displayText}</pre>
+    </div>
+  {/if}
 {:else}
   <div
     bind:this={container}
