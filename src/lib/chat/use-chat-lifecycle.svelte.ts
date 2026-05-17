@@ -603,12 +603,13 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   });
 
   // ── URL param consumption: ?folder= and ?host= ──
+  // NOTE: entire body is untracked because it calls replaceState which changes pageState.current.url
   $effect(() => {
-    const url = pageState.current.url;
-    const folder = url.searchParams.get("folder");
-    const host = url.searchParams.get("host");
-    if (!folder && !host) return;
     untrack(() => {
+      const url = pageState.current.url;
+      const folder = url.searchParams.get("folder");
+      const host = url.searchParams.get("host");
+      if (!folder && !host) return;
       dbg("chat", "url params", { folder, host });
       let resolvedHost: string | null = null;
       if (host !== null) {
@@ -722,20 +723,20 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   });
 
   // ── Consume ?resume= URL param ──
+  // NOTE: entire body is untracked because it calls replaceState which changes pageState.current.url
   $effect(() => {
-    const url = pageState.current.url;
-    const paramRunId = url.searchParams.get("run");
-    const resumeMode = url.searchParams.get("resume") as import("$lib/types").SessionMode | null;
+    untrack(() => {
+      const url = pageState.current.url;
+      const paramRunId = url.searchParams.get("run");
+      const resumeMode = url.searchParams.get("resume") as import("$lib/types").SessionMode | null;
 
-    if (paramRunId && resumeMode) {
-      const clean = new URL(url);
-      clean.searchParams.delete("resume");
-      replaceState(clean, {});
-
-      untrack(() => {
+      if (paramRunId && resumeMode) {
+        const clean = new URL(url);
+        clean.searchParams.delete("resume");
+        replaceState(clean, {});
         sessionLifecycle.handleResume(resumeMode, paramRunId);
-      });
-    }
+      }
+    });
   });
 
   // ========================================================================
