@@ -84,7 +84,7 @@
 | 16 | ~~消除 fork/forkElapsed/resuming split-brain~~ | chat/ | MEDIUM | ✅ DONE — 删除死文件 use-session-lifecycle.svelte.ts |
 | 17 | ~~消除 folderPickerOpen 重复~~ | chat/ | MEDIUM | ✅ DONE — 删除死文件 use-folder-picker.svelte.ts |
 | 18 | ~~消除 pageDragActive 重复~~ | chat/ | MEDIUM | ✅ DONE — 删除死文件 use-drag-drop-controller.svelte.ts |
-| 19 | `browser-service.ts` 14 个 `any` 类型替换为具体类型 | services/ | LOW | 消除 any 类型 |
+| 19 | ~~`browser-service.ts` 18 个 `any` 类型替换为具体类型~~ | services/ | LOW | ✅ DONE (MCP response interfaces) |
 | 20 | ~~`ContextRelayModal` 改为使用 `<Modal>` 组件~~ | components/ | LOW | ✅ DONE |
 
 ---
@@ -175,4 +175,4 @@
 | 逐字重复代码块 | 3 处 | 0 | 0 | 0 |
 | 硬编码格式函数 | 4 处 | 0 | 0 | 0 |
 | 硬编码颜色值 | 100+ 处 | 100+ 处 | 80 处 | < 20 处 |
-| `any` 类型使用 | 20+ 处 | 20+ 处 | 10 处 | < 5 处 |
+| `any` 类型使用 | 20+ 处 | **~6 处** (browser-service 已清理) | 10 处 ✅ | < 5 处 |
