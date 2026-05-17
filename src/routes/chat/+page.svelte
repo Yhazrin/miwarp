@@ -1,46 +1,26 @@
 <script lang="ts">
-  import { page } from "$app/stores";
-  import { goto, replaceState } from "$app/navigation";
-  import { tick, onMount, untrack, getContext } from "svelte";
-  import { getTransport } from "$lib/transport";
-  import * as api from "$lib/api";
+  import { getContext } from "svelte";
+  import { goto } from "$app/navigation";
   import {
-    SessionStore,
     KeybindingStore,
     getEventMiddleware,
-    loadCliInfo,
-    getCliCurrentModel,
-    getCliCommands,
-    getCliModels,
-    canResumeNow,
-    TERMINAL_PHASES,
-    getResumeWarning,
-    loadCliVersionInfo,
     getCliVersionInfo_cached,
+    TERMINAL_PHASES,
+    canResumeNow,
+    getResumeWarning,
+    getCliCommands,
   } from "$lib/stores";
-  import type {
-    Attachment,
-    BusToolItem,
-    UserSettings,
-    AgentSettings,
-    SessionMode,
-    CliModelInfo,
-    ScreenshotPayload,
-    SessionInfoData,
-    TimelineEntry,
-  } from "$lib/types";
-  import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
-  import {
-    detectBatchGroups,
-    detectToolBursts,
-    isPlanFilePath,
-    planFileName,
-    extractPlanContent,
-  } from "$lib/utils/tool-rendering";
-  import type { ToolBurst } from "$lib/utils/tool-rendering";
+  import { t } from "$lib/i18n/index.svelte";
+  import { dbg } from "$lib/utils/debug";
+  import { truncate, formatTokenCount } from "$lib/utils/format";
+  import { getToolColor } from "$lib/utils/tool-colors";
+  import { ansiToHtml, hasAnsiCodes } from "$lib/utils/ansi";
+  import { classifyError } from "$lib/stores/types";
+  import { mergeProjectCommands } from "$lib/utils/slash-commands";
+  import { uuid } from "$lib/utils/uuid";
+  import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
 
-  const EMPTY_BATCH_MAP = new Map();
-  const EMPTY_BURST_MAP = new Map() as Map<number, ToolBurst>;
+  // ── Components ──
   import XTerminal from "$lib/components/XTerminal.svelte";
   import ChatMessage from "$lib/components/ChatMessage.svelte";
   import AgentIdentity from "$lib/components/AgentIdentity.svelte";
@@ -53,46 +33,19 @@
   import CreatedFiles from "$lib/components/CreatedFiles.svelte";
   import PermissionPanel from "$lib/components/PermissionPanel.svelte";
   import ElicitationDialog from "$lib/components/ElicitationDialog.svelte";
-  import AuthSourceBadge from "$lib/components/AuthSourceBadge.svelte";
-
   import ToolActivity from "$lib/components/ToolActivity.svelte";
-  import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
   import ShortcutHelpPanel from "$lib/components/ShortcutHelpPanel.svelte";
-  import type { PromptInputSnapshot } from "$lib/types";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
   import HookReviewCard from "$lib/components/HookReviewCard.svelte";
   import ViewModeToggle from "$lib/components/ViewModeToggle.svelte";
   import ContextUsageGrid from "$lib/components/ContextUsageGrid.svelte";
   import CostSummaryView from "$lib/components/CostSummaryView.svelte";
-  import { parseContextMarkdown } from "$lib/utils/context-parser";
-  import type { ContextSnapshot } from "$lib/types";
   import ReleaseNotesCard from "$lib/components/ReleaseNotesCard.svelte";
-  import { t } from "$lib/i18n/index.svelte";
-  import { dbg, dbgWarn } from "$lib/utils/debug";
-  import { getLastTarget, setLastTarget, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
-  import { shouldAutoName } from "$lib/utils/auto-name";
-  import { resolvePermissionOptimistic } from "$lib/utils/resolve-permission";
-  import { getToolColor } from "$lib/utils/tool-colors";
-  import { ansiToHtml, hasAnsiCodes } from "$lib/utils/ansi";
-  import { randomSpinnerVerb } from "$lib/utils/spinner-verbs";
-  import { type TurnUsage, classifyError } from "$lib/stores/types";
-  import {
-    mergeWithVirtual,
-    mergeProjectCommands,
-    buildHelpText,
-    CONTEXT_CLEARED_MARKER,
-    parseRalphArgs,
-  } from "$lib/utils/slash-commands";
-  import { executeAddDir } from "$lib/utils/add-dir";
-  import { buildDoctorReport } from "$lib/utils/doctor";
-  import type { RewindCandidate, RewindMarker } from "$lib/utils/rewind";
-  import { truncate, formatTokenCount, relativeTime } from "$lib/utils/format";
-  import { mapSettled } from "$lib/utils/async-utils";
-  import { uuid } from "$lib/utils/uuid";
   import RewindModal from "$lib/components/RewindModal.svelte";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import TeamDispatchConfirm from "$lib/components/TeamDispatchConfirm.svelte";
   import TeamRunCard from "$lib/components/TeamRunCard.svelte";
+  import WelcomeScreen from "$lib/components/chat/WelcomeScreen.svelte";
 
   // ── Composables ──
   import { useProgressiveTimeline } from "$lib/chat/use-progressive-timeline.svelte";
@@ -100,382 +53,82 @@
   import { useTeamDispatch } from "$lib/chat/use-team-dispatch.svelte";
   import { useProjectPreload } from "$lib/chat/use-project-preload.svelte";
   import { useChatController } from "$lib/chat/use-chat-controller.svelte";
+  import { useChatHandlers } from "$lib/chat/use-chat-handlers.svelte";
+  import { useChatLifecycle } from "$lib/chat/use-chat-lifecycle.svelte";
+  import { useChatDerived } from "$lib/chat/use-chat-derived.svelte";
 
-  // ── Page-level singletons (survive navigation) ──
-  import {
-    getChatSessionStore,
-    getCachedUserSettings,
-    setCachedUserSettings,
-    getCachedAgentSettings,
-    setCachedAgentSettings,
-  } from "$lib/stores/chat-page-singletons";
-
-  // ── Helpers ──
+  // ── Page-level singletons ──
+  import { getChatSessionStore } from "$lib/stores/chat-page-singletons";
 
   // ── Layout context ──
   const toggleLayoutSidebar = getContext<() => void>("toggleSidebar");
   const keybindingStore = getContext<KeybindingStore>("keybindings");
 
   // ── Store + Middleware ──
-  // getChatSessionStore() returns a module-level singleton so conversation
-  // state (timeline, run, phase) survives navigation away from /chat.
   const store = getChatSessionStore();
   const middleware = getEventMiddleware();
 
-  // ── UI-only state (not in store) ──
-  let middlewareReady = $state(false);
-  let settings = $state<UserSettings | null>(null);
+  // ── Refs ──
   let xtermRef: XTerminal | undefined = $state();
   let promptRef: PromptInput | undefined = $state();
-  // Created files tracking
-  const createdFiles = $derived.by(() => {
-    const files: { path: string; name: string; tool: string; timestamp: number }[] = [];
-    const seen = new Set<string>();
-    for (const entry of store.timeline) {
-      if (entry.kind !== "tool") continue;
-      const tool = entry.tool;
-      if (tool.status !== "success") continue;
-      const output = tool.output as Record<string, unknown> | undefined;
-      if (!output) continue;
-      const path =
-        (output.path as string) || (output.file_path as string) || (output.created_path as string);
-      if (path && !seen.has(path)) {
-        seen.add(path);
-        files.push({
-          path,
-          name: path.split("/").pop() ?? path,
-          tool: tool.tool_name,
-          timestamp: ((entry as Record<string, unknown>).seq as number) ?? Date.now(),
-        });
-      }
-    }
-    return files.sort((a, b) => a.timestamp - b.timestamp);
-  });
-  const hasCreatedFiles = $derived(createdFiles.length > 0);
-  let sidebarCollapsed = $state(false);
-  /** Reactive cwd override for new-chat-in-folder (cleared when a run is loaded) */
-  let folderCwdOverride = $state("");
+  let statusBarRef: SessionStatusBar | undefined = $state();
   let chatAreaRef: HTMLDivElement | undefined = $state();
-  /** Non-reactive flag: suppresses auto-scroll reset during search scroll-to navigation. */
-  let _scrollToInFlight = false;
-  let agentSettings = $state<AgentSettings | null>(null);
-  let resuming = $state(false);
-  /** Suppress "Session ended" flash during tool approval restart cycle. */
-  let approving = $state(false);
-  // (pendingResumeText removed — auto-resume uses atomic resume+send via initialMessage)
-  /** Most recent run with a session_id — for "Continue last session" on welcome screen. */
-  let lastContinuableRun = $state<import("$lib/types").TaskRun | null>(null);
-  /**
-   * False until onMount Phase 2 finishes `listRuns` (success or failure). The welcome screen
-   * can paint before that while `middlewareReady` + empty `loadRun` are fast; showing quick
-   * actions early and then inserting "Continue last session" causes a layout jump (often
-   * mistaken for "Analyze project" loading late).
-   */
-  let welcomeQuickActionsReady = $state(false);
-  /** Available remote hosts from settings. */
-  let remoteHosts = $state<import("$lib/types").RemoteHost[]>([]);
-  /** Target host dropdown in hero meta. */
-  let targetDropdownOpen = $state(false);
-  /** Auth overview for AuthSourceBadge. */
-  let authOverview = $state<import("$lib/types").AuthOverview | null>(null);
+  let mcpPanelOpen = $state(false);
 
-  /** Folder picker state — resolves a Promise on confirm/cancel. */
-  let folderPickerOpen = $state(false);
-  let folderPickerInitialHost = $state<string | null>(null);
-  let folderPickerInitialPath = $state("");
-  let folderPickerHideTarget = $state(false);
-  let folderPickerResolve: ((v: { hostName: string | null; path: string } | null) => void) | null =
-    null;
-  function openFolderPicker(opts: {
-    initialHost?: string | null;
-    initialPath?: string;
-    hideTargetSelector?: boolean;
-  }): Promise<{ hostName: string | null; path: string } | null> {
-    folderPickerInitialHost = opts.initialHost ?? null;
-    folderPickerInitialPath = opts.initialPath ?? "";
-    folderPickerHideTarget = opts.hideTargetSelector ?? false;
-    folderPickerOpen = true;
-    return new Promise((resolve) => {
-      folderPickerResolve = resolve;
-    });
-  }
-  // ── Project preload (composable) ──
-  const preload = useProjectPreload({
-    store,
-    availableSkills: () => store.availableSkills,
-  });
+  // ── Composable chain ──
+  const preload = useProjectPreload({ store, availableSkills: () => store.availableSkills });
   const { preloadedSkills, preloadedAgents, projectCommands, reloadProjectData } = preload;
-  /** Local proxy running statuses for AuthSourceBadge. */
-  let localProxyStatuses = $state<Record<string, { running: boolean; needsAuth: boolean }>>({});
 
-  // ── Model contamination helpers ──
-
-  /** Cache of last confirmed-clean Anthropic model, used as final fallback. */
-  let lastKnownGoodAnthropicModel: string | undefined;
-
-  /** Detect if default_model was contaminated by a third-party platform model.
-   *  Returns:
-   *  - true  = confirmed contaminated (in third-party models, not in CLI models)
-   *  - false = confirmed clean (in CLI known models)
-   *  - null  = unknown (CLI not loaded, or model not found in any list)
-   */
-  function isContaminatedDefaultModel(dm: string): boolean | null {
-    const cliModels = getCliModels();
-    if (!cliModels.length) return null; // CLI models not loaded yet
-    if (cliModels.some((m) => m.value === dm)) return false; // in CLI model list = clean
-
-    const inThirdParty =
-      PLATFORM_PRESETS.some(
-        (p) => p.id !== "anthropic" && p.id !== "custom" && p.models?.includes(dm),
-      ) ||
-      (settings?.platform_credentials ?? []).some(
-        (c) => c.platform_id !== "anthropic" && c.models?.includes(dm),
-      );
-    return inThirdParty ? true : null; // not in CLI + not in third-party = unknown
-  }
-
-  // ── Project init detection ──
-  let projectInitStatus = $state<import("$lib/types").ProjectInitStatus | null>(null);
-  let initCheckSeq = 0;
-
-  // ── Task notification banner ──
-  let notificationVisible = $state(false);
-  let latestNotification = $state<{ task_id: string; status: string } | null>(null);
-
-  // ── Rewind modal ──
-  let rewindModalOpen = $state(false);
-  let rewindDirectTarget = $state<RewindCandidate | null>(null);
-  let rewindMarkers = $state<RewindMarker[]>([]);
-
-  // Clear direct target on modal close
-  $effect(() => {
-    if (!rewindModalOpen) rewindDirectTarget = null;
-  });
-
-  // ── Team dispatch (composable) ──
   const team = useTeamDispatch({
     effectiveCwd: () => store.effectiveCwd || "",
     onSendMessage: (text) => ctrl.sendMessage(text, []),
   });
-  // Non-reactive exports only — reactive values accessed via team.xxx
-  const {
-    handleInputValueChange,
-    handleTeamDispatch,
-    handleUseSingleClaude,
-    handleCancelTeamDispatch,
-  } = team;
 
-  // Auto-name one-shot latch: reset only on actual run ID change
-  let prevAutoNameRunId = "";
-  let autoNameDone = false;
-  $effect(() => {
-    const id = store.run?.id ?? "";
-    if (id !== prevAutoNameRunId) {
-      prevAutoNameRunId = id;
-      autoNameDone = false;
-    }
+  // ── CLI version info (standalone, no forward refs) ──
+  const cliVersionInfo = $derived(getCliVersionInfo_cached());
+  const channelLatest = $derived.by(() => {
+    if (!cliVersionInfo?.installed) return undefined;
+    return cliVersionInfo.channel === "stable" ? cliVersionInfo.stable : cliVersionInfo.latest;
+  });
+  const platformDisplayName = $derived.by(() => {
+    const pid = store.platformId;
+    if (!pid) return undefined;
+    const preset = PLATFORM_PRESETS.find((p) => p.id === pid);
+    return preset?.name ?? lifecycle.authOverview?.app_platform_name ?? pid;
   });
 
-  // Clear markers on run switch (explicit prev-value check)
-  let prevRewindRunId = "";
-  $effect(() => {
-    const id = store.run?.id ?? "";
-    if (id !== prevRewindRunId) {
-      prevRewindRunId = id;
-      rewindMarkers = [];
-    }
+  // ── Computed standalone ──
+  const filteredTimeline = $derived.by(() => {
+    const tf = lifecycle.toolFilter;
+    if (!tf) return store.timeline;
+    return store.timeline.filter((e) => e.kind !== "tool" || e.tool.tool_name === tf);
   });
 
-  // Lazy: only compute when rewind modal is open (avoids 3 array allocations per timeline change)
-  let rewindCandidates = $derived(
-    rewindModalOpen
-      ? store.timeline
-          .map((e, i) => ({ entry: e, idx: i }))
-          .filter(
-            (
-              x,
-            ): x is {
-              entry: Extract<TimelineEntry, { kind: "user" }> & { cliUuid: string };
-              idx: number;
-            } => x.entry.kind === "user" && !!x.entry.cliUuid,
-          )
-          .reverse()
-          .map(
-            ({ entry, idx }): RewindCandidate => ({
-              cliUuid: entry.cliUuid,
-              content: entry.content,
-              ts: entry.ts,
-              timelineIndex: idx,
-            }),
-          )
-      : [],
-  );
-
-  // ── BTW side question ──
-  let btwState = $state<{
-    active: boolean;
-    btwId: string | null;
-    question: string;
-    answer: string;
-    error: string | null;
-    loading: boolean;
-  }>({ active: false, btwId: null, question: "", answer: "", error: null, loading: false });
-
-  // ── Shortcut help panel ──
-  let shortcutHelpOpen = $state(false);
-  let statusBarRef: SessionStatusBar | undefined = $state();
-  let stashedInput: PromptInputSnapshot | null = $state(null);
-  let sidebarRequestedTab = $state<ToolActivityPanelTab | null>(null);
-  let toolPanelActiveTab = $state<ToolActivityPanelTab>("workspace");
-  let toolPanelIndicators = $state({ context: false, files: false, tasks: false });
-  let requestedPreviewPath = $state<string | null>(null);
-  let requestedPreviewUrl = $state<string | null>(null);
-
-  function openPreviewForPath(path: string) {
-    if (!path) return;
-    requestedPreviewPath = path;
-    sidebarRequestedTab = "files";
-    if (sidebarCollapsed) sidebarCollapsed = false;
-  }
-
-  // Clear preview when run changes (defense-in-depth; ToolActivity also clears via its runId effect)
-  let _lastPreviewClearRunId = "__unset__";
-  $effect(() => {
-    const id = store.run?.id ?? "";
-    if (id !== _lastPreviewClearRunId) {
-      _lastPreviewClearRunId = id;
-      requestedPreviewPath = null;
-    }
+  // ── Core composables (let for TDZ — callbacks reference each other) ──
+  let chatDerived = useChatDerived({
+    store,
+    filteredTimeline: () => filteredTimeline,
+    visibleTimeline: () => progressive.visibleTimeline,
+    toolFilter: () => lifecycle.toolFilter,
+    settings: () => lifecycle.settings,
+    cliVersionInfo: () => cliVersionInfo,
+    channelLatest: () => channelLatest,
+    platformDisplayName: () => platformDisplayName,
+    authOverview: () => lifecycle.authOverview,
   });
 
-  // ── Verbose state (chat page level) ──
-  let verboseEnabled = $state(false);
-  let verboseSeq = 0;
-  let lastSyncedRunId = "__unset__"; // sentinel ≠ "__no_run__", ensures first-screen trigger
-  let verboseRetryTick = $state(0);
-  let verboseRetryCount = 0;
-  let verboseRetryTimer: ReturnType<typeof setTimeout> | null = null;
-  const VERBOSE_MAX_RETRIES = 3;
-
-  // ── Tool result lazy-load cache (Phase 2) ──
-  let toolResultCache = new Map<string, Record<string, unknown>>();
-  let toolResultInflight = new Map<string, Promise<Record<string, unknown> | null>>();
-  // Clear cache on run switch
-  $effect(() => {
-    const _ = store.run?.id;
-    toolResultCache = new Map();
-    toolResultInflight = new Map();
-  });
-
-  async function fetchToolResult(
-    runId: string,
-    toolUseId: string,
-  ): Promise<Record<string, unknown> | null> {
-    const key = `${runId}:${toolUseId}`;
-    const cached = toolResultCache.get(key);
-    if (cached) return cached;
-    let pending = toolResultInflight.get(key);
-    if (!pending) {
-      pending = api.getToolResult(runId, toolUseId);
-      toolResultInflight.set(key, pending);
-    }
-    try {
-      const result = await pending;
-      // Run-gen check: don't write stale results into a different run's cache
-      if (result && store.run?.id === runId) {
-        toolResultCache.set(key, result);
-      }
-      return result;
-    } finally {
-      toolResultInflight.delete(key);
-    }
-  }
-
-  async function syncVerboseState(runId: string | undefined) {
-    const key = runId ?? "__no_run__";
-    if (key === lastSyncedRunId) return; // same run — skip
-    const seq = ++verboseSeq;
-    // New run resets retry counter
-    verboseRetryCount = 0;
-    try {
-      const cfg = await api.getCliConfig();
-      if (seq !== verboseSeq) return; // stale response
-      lastSyncedRunId = key; // mark synced on success only
-      verboseEnabled = cfg.verbose === true;
-      dbg("chat", "verbose state synced", { verbose: verboseEnabled, runId, seq });
-    } catch {
-      // Don't mark synced — retry via tick++ after 3s (up to max)
-      if (seq === verboseSeq && verboseRetryCount < VERBOSE_MAX_RETRIES) {
-        verboseRetryCount++;
-        verboseRetryTimer = setTimeout(() => {
-          verboseRetryTimer = null;
-          verboseRetryTick++;
-        }, 3000);
-      }
-    }
-  }
-
-  // ── MCP panel ──
-  let mcpPanelOpen = $state(false);
-
-  // ── CLI session browser ──
-
-  // Track status bar expansion for MCP panel offset
-  let statusBarExpanded = $state(
-    typeof window !== "undefined"
-      ? localStorage.getItem("ocv:statusbar-expanded") !== "false"
-      : true,
-  );
-
-  // ── Tool filtering ──
-  let toolFilter = $state<string | null>(null);
-
-  // ── Input history (most recent first) ──
-  let userHistory = $derived.by(() =>
-    store.timeline
-      .filter((e): e is Extract<TimelineEntry, { kind: "user" }> => e.kind === "user")
-      .map((e) => e.content)
-      .reverse(),
-  );
-
-  let toolNamesInTimeline = $derived.by(() => {
-    const names = new Set<string>();
-    for (const entry of store.timeline) {
-      if (entry.kind === "tool") names.add(entry.tool.tool_name);
-    }
-    return [...names].sort();
-  });
-
-  let filteredTimeline = $derived.by(() => {
-    if (!toolFilter) return store.timeline;
-    return store.timeline.filter((e) => e.kind !== "tool" || e.tool.tool_name === toolFilter);
-  });
-
-  // ── Progressive timeline (composable) ──
   const progressive = useProgressiveTimeline({
     filteredTimeline: () => filteredTimeline,
     chatAreaRef: () => chatAreaRef,
-    burstHiddenIndices: () => burstHiddenIndices,
-    toolBursts: () => toolBursts,
-    manualOverrides: () => manualOverrides,
+    burstHiddenIndices: () => chatDerived.burstHiddenIndices,
+    toolBursts: () => chatDerived.toolBursts,
+    manualOverrides: () => chatDerived.manualOverrides,
     onManualOverridesChange: (next) => {
-      manualOverrides = next;
+      chatDerived.manualOverrides = next;
     },
   });
-  // Non-reactive exports only — reactive values accessed via progressive.xxx
-  const { cancelProgressive, expandRenderLimitTo, ensureBurstExpandedFor, rearmLoadMore } =
-    progressive;
+  const { rearmLoadMore } = progressive;
 
-  const visibleTimeline = $derived(progressive.visibleTimeline);
-
-  let lastAssistantIdx = $derived.by(() => {
-    for (let j = visibleTimeline.length - 1; j >= 0; j--) {
-      if (visibleTimeline[j].kind === "assistant") return j;
-    }
-    return -1;
-  });
-
-  // ── Chat scroll (composable) ──
   const chatScroll = useChatScroll({
     chatAreaRef: () => chatAreaRef,
     isStreamSession: () => store.useStreamSession,
@@ -483,2708 +136,186 @@
     streamingTextLength: () => store.streamingText.length,
     runId: () => store.run?.id ?? "",
     hasInlinePermission: () => store.hasInlinePermission,
-    scrollToInFlight: () => _scrollToInFlight,
+    scrollToInFlight: () => lifecycle.getScrollToInFlight(),
     rearmLoadMore,
   });
-  // Non-reactive exports only — reactive values accessed via chatScroll.xxx
   const { handleChatScroll, scrollChatToBottom } = chatScroll;
 
-  // ── Chat controller (composable) ──
   const ctrl = useChatController({
     store,
     progressive,
     preload,
     chatScroll,
     team,
-    getSearchParam: (key) => {
-      const p = new URLSearchParams(window.location.search);
-      return p.get(key);
-    },
+    getSearchParam: (key) => new URLSearchParams(window.location.search).get(key),
     getChatAreaRef: () => chatAreaRef,
-    scrollToMessage,
-    handleResume,
-    showChatToast,
-    openFolderPicker,
+    scrollToMessage: (ts) => handlers.scrollToMessage(ts),
+    handleResume: (mode, runId, msg, att) => handlers.handleResume(mode, runId, msg, att),
+    showChatToast: (msg) => handlers.showChatToast(msg),
+    openFolderPicker: (opts) => lifecycle.openFolderPicker(opts),
     promptRef: () => promptRef,
-    getRemoteHosts: () => remoteHosts,
-    getSettings: () => settings,
+    getRemoteHosts: () => lifecycle.remoteHosts,
+    getSettings: () => lifecycle.settings,
     onBeforeLoadRun: () => {
-      toolFilter = null;
+      lifecycle.setToolFilter(null);
       folderCwdOverride = "";
     },
-    getScrollToInFlight: () => _scrollToInFlight,
-    setScrollToInFlight: (v) => {
-      _scrollToInFlight = v;
+    getScrollToInFlight: () => lifecycle.getScrollToInFlight(),
+    setScrollToInFlight: (v) => lifecycle.setScrollToInFlight(v),
+  });
+
+  // ── Page state (must precede handlers/lifecycle for TDZ) ──
+  let currentEffort = $state("");
+  let folderCwdOverride = $state("");
+  let contextHistoryMap = $state<Map<string, import("$lib/types").ContextSnapshot[]>>(new Map());
+
+  const handlers = useChatHandlers({
+    store,
+    progressive,
+    preload,
+    chatScroll,
+    team,
+    ctrl,
+    promptRef: () => promptRef,
+    xtermRef: () => xtermRef,
+    statusBarRef: () => statusBarRef,
+    chatAreaRef: () => chatAreaRef,
+    getSettings: () => lifecycle.settings,
+    getAgentSettings: () => lifecycle.agentSettings,
+    getRemoteHosts: () => lifecycle.remoteHosts,
+    getAuthOverview: () => lifecycle.authOverview,
+    getCurrentEffort: () => currentEffort,
+    setCurrentEffort: (v) => {
+      currentEffort = v;
+    },
+    getVerboseEnabled: () => lifecycle.verboseEnabled,
+    setVerboseEnabled: (v) => lifecycle.setVerboseEnabled(v),
+    getToolFilter: () => lifecycle.toolFilter,
+    setToolFilter: (v) => lifecycle.setToolFilter(v),
+    getFilteredTimeline: () => filteredTimeline,
+    getVisibleTimeline: () => progressive.visibleTimeline,
+    getSidebarCollapsed: () => lifecycle.sidebarCollapsed,
+    setSidebarCollapsed: (v) => lifecycle.setSidebarCollapsed(v),
+    getFolderCwdOverride: () => folderCwdOverride,
+    setFolderCwdOverride: (v) => {
+      folderCwdOverride = v;
+    },
+    reloadProjectData,
+    openFolderPicker: (opts) => lifecycle.openFolderPicker(opts),
+    openPreviewForPath,
+    contextHistoryMap,
+    localProxyStatuses: {} as Record<string, { running: boolean; needsAuth: boolean }>,
+    setLocalProxyStatuses: (v) => lifecycle.setLocalProxyStatuses(v),
+    authOverview: null,
+    setAuthOverview: (v) => lifecycle.setAuthOverview(v),
+    setLastContinuableRun: (v) => lifecycle.setLastContinuableRun(v),
+    getRewindCandidates: () => rewindCandidates,
+  });
+
+  let lifecycle = useChatLifecycle({
+    store,
+    middleware,
+    preload,
+    progressive,
+    ctrl,
+    xtermRef: () => xtermRef,
+    promptRef: () => promptRef,
+    statusBarRef: () => statusBarRef,
+    sessionLifecycle: {
+      handleResume: (mode, runId, opts) =>
+        handlers.handleResume(mode, runId, opts?.initialMessage, opts?.initialAttachments),
+      resuming: { get: () => handlers.resuming },
+    },
+    dragDrop: {
+      get pageDragActive() {
+        return handlers.pageDragActive;
+      },
+      set pageDragActive(v: boolean) {
+        handlers.pageDragActive = v;
+      },
+      get dragProcessing() {
+        return handlers.dragProcessing;
+      },
+      handleTauriDrop: handlers.handleTauriDrop,
+    },
+    exportCtrl: { handleExportHtml: handlers.handleExportHtml },
+    keybindingStore,
+    showChatToast: (msg) => handlers.showChatToast(msg),
+    scrollToMessage: (ts) => handlers.scrollToMessage(ts),
+    handleRewind: () => handlers.handleRewind(),
+    handlePermissionModeChange: (mode) => handlers.handlePermissionModeChange(mode),
+    getBtwState: () => handlers.btwState,
+    getForkOverlay: () => handlers.forkOverlay,
+    getRewindMarkers: () => handlers.rewindMarkers,
+    setRewindMarkers: (v) => {
+      handlers.rewindMarkers = v;
+    },
+    getCurrentEffort: () => currentEffort,
+    setCurrentEffort: (v) => {
+      currentEffort = v;
+    },
+    getStashedInput: () => handlers.stashedInput,
+    setStashedInput: (v) => {
+      handlers.stashedInput = v;
+    },
+    getShortcutHelpOpen: () => handlers.shortcutHelpOpen,
+    setShortcutHelpOpen: (v) => {
+      handlers.shortcutHelpOpen = v;
+    },
+    getFolderCwdOverride: () => folderCwdOverride,
+    setFolderCwdOverride: (v) => {
+      folderCwdOverride = v;
+    },
+    getContextHistoryMap: () => contextHistoryMap,
+    setContextHistoryMap: (v) => {
+      contextHistoryMap = v;
+    },
+    effectiveModels: () => chatDerived.effectiveModels,
+    pendingToolPermissions: () => chatDerived.pendingToolPermissions,
+    setSidebarRequestedTab: (v) => {
+      handlers.sidebarRequestedTab = v;
     },
   });
 
-  // ── Batch groups (consecutive ≥3 Task tools) ──
-  // Skip batch detection when tool filter is active — filtering removes non-Task
-  // entries, causing originally non-consecutive Tasks to merge into false batches.
-  let batchGroups = $derived(
-    toolFilter
-      ? (EMPTY_BATCH_MAP as Map<number, BusToolItem[]>)
-      : detectBatchGroups(progressive.visibleTimeline),
-  );
-
-  let _lastBatchSig = "";
-  $effect(() => {
-    const size = batchGroups.size;
-    const agents = size > 0 ? [...batchGroups.values()].reduce((s, g) => s + g.length, 0) : 0;
-    const sig = `${size}:${agents}`;
-    if (sig !== _lastBatchSig) {
-      _lastBatchSig = sig;
-      if (size > 0) dbg("chat", "batchGroups", { groupCount: size, totalAgents: agents });
-    }
-  });
-
-  // ── Tool burst groups (excludes Task — handled by BatchProgressBar) ──
-  let toolBursts = $derived(
-    toolFilter ? EMPTY_BURST_MAP : detectToolBursts(progressive.visibleTimeline),
-  );
-
-  // Layer 1: Auto-collapse — completed + no interaction needed → collapsed (derived, pure)
-  let autoCollapsed = $derived.by(() => {
-    const keys = new Set<string>();
-    for (const [, burst] of toolBursts) {
-      const needsInteraction = burst.tools.some(
-        (t) => t.status === "permission_prompt" || t.status === "ask_pending",
-      );
-      if (burst.stats.running === 0 && burst.stats.total > 0 && !needsInteraction) {
-        keys.add(burst.key);
-      }
-    }
-    return keys;
-  });
-
-  // Layer 2: Manual overrides — user explicitly toggled (state, survives re-renders)
-  // true = user forced expand, false = user forced collapse, absent = follow auto
-  let manualOverrides = $state(new Map<string, boolean>());
-
-  function toggleBurst(key: string) {
-    const next = new Map(manualOverrides);
-    const currentlyCollapsed = effectiveCollapsed.has(key);
-    next.set(key, currentlyCollapsed); // if collapsed → override to expanded (true), vice versa
-    manualOverrides = next;
-  }
-
-  // Layer 3: Effective collapsed set — merge auto + manual (derived)
-  // Priority: needsInteraction (force expand) > manual > auto
-  let effectiveCollapsed = $derived.by(() => {
-    const result = new Set<string>();
-    for (const [, burst] of toolBursts) {
-      // Highest priority: interaction needed → always expand, ignore everything else
-      const needsInteraction = burst.tools.some(
-        (t) => t.status === "permission_prompt" || t.status === "ask_pending",
-      );
-      if (needsInteraction) continue;
-
-      const manual = manualOverrides.get(burst.key);
-      if (manual === true) continue; // user forced expand → skip
-      if (manual === false) {
-        // user forced collapse → add
-        result.add(burst.key);
-        continue;
-      }
-      if (autoCollapsed.has(burst.key)) {
-        // no override → follow auto
-        result.add(burst.key);
-      }
-    }
-    return result;
-  });
-
-  // Indices hidden by collapsed bursts (for skipping render)
-  let burstHiddenIndices = $derived.by(() => {
-    const hidden = new Set<number>();
-    for (const [, burst] of toolBursts) {
-      if (effectiveCollapsed.has(burst.key)) {
-        for (let j = burst.startIndex; j <= burst.endIndex; j++) hidden.add(j);
-      }
-    }
-    return hidden;
-  });
-
-  // ── Auto-context tracking ──
-  // Map<runId, snapshots> — persists across run switches within the session
-  let contextHistoryMap = $state<Map<string, ContextSnapshot[]>>(new Map());
-  let contextHistory = $derived(contextHistoryMap.get(store.run?.id ?? "") ?? []);
-
-  // ── Cumulative session token totals (from modelUsage, which is session-cumulative) ──
-  // status bar shows session totals; per-turn values are in the turn separator annotations.
-  let cumulativeTokens = $derived.by(() => {
-    const mu = store.usage.modelUsage;
-    if (!mu || Object.keys(mu).length === 0) {
-      // No modelUsage yet — fall back to per-turn values (better than zero)
-      return {
-        input: store.usage.inputTokens,
-        output: store.usage.outputTokens,
-        cacheRead: store.usage.cacheReadTokens,
-        cacheWrite: store.usage.cacheWriteTokens,
-      };
-    }
-    let input = 0,
-      output = 0,
-      cacheRead = 0,
-      cacheWrite = 0;
-    for (const entry of Object.values(mu)) {
-      input += entry.input_tokens;
-      output += entry.output_tokens;
-      cacheRead += entry.cache_read_tokens;
-      cacheWrite += entry.cache_write_tokens;
-    }
-    return { input, output, cacheRead, cacheWrite };
-  });
-
-  // ── Session info for InfoPanel ──
-  let currentSessionInfo: SessionInfoData | null = $derived.by(() => {
-    if (!store.run) return null;
-    return {
-      sessionId: store.run.session_id,
-      runId: store.run.id,
-      runName: store.run.name,
-      cwd: store.sessionCwd || store.run.cwd,
-      numTurns: store.numTurns,
-      status: store.run.status ?? "pending",
-      startedAt: store.run.started_at ?? null,
-      endedAt: store.run.ended_at ?? null,
-      lastTurnDurationMs: store.durationMs,
-      tokensEstimated: !store.usage.modelUsage || Object.keys(store.usage.modelUsage).length === 0,
-      model: store.run.model ?? store.model,
-      agent: store.run.agent ?? store.agent,
-      cliVersion: store.cliVersion,
-      permissionMode: store.permissionMode,
-      fastModeState: store.fastModeState,
-      cost: store.usage.cost,
-      inputTokens: cumulativeTokens.input,
-      outputTokens: cumulativeTokens.output,
-      cacheReadTokens: cumulativeTokens.cacheRead,
-      cacheWriteTokens: cumulativeTokens.cacheWrite,
-      contextWindow: store.contextWindow,
-      contextUtilization: store.contextUtilization,
-      compactCount: store.compactCount,
-      microcompactCount: store.microcompactCount,
-      mcpServers: store.mcpServers,
-      remoteHostName: store.remoteHostName,
-      platformId: store.platformId,
-      cliUsageIncomplete: store.run.cli_usage_incomplete ?? false,
-      runSource: store.run.source,
-      authSourceLabel: store.authSourceLabel || undefined,
-      platformName: platformDisplayName || undefined,
-      cliUpdateAvailable:
-        store.cliVersion && channelLatest && channelLatest !== store.cliVersion
-          ? channelLatest
-          : undefined,
-    };
-  });
-
-  // ── CLI version info (reactive — ensures heroMetaFooter re-renders after async load) ──
-  let cliVersionInfo = $derived(getCliVersionInfo_cached());
-
-  // ── CLI update channel ──
-  let channelLatest = $derived.by(() => {
-    if (!cliVersionInfo?.installed) return undefined;
-    return cliVersionInfo.channel === "stable" ? cliVersionInfo.stable : cliVersionInfo.latest;
-  });
-
-  // ── Platform display name ──
-  let platformDisplayName = $derived.by(() => {
-    const pid = store.platformId;
-    if (!pid) return undefined;
-    const preset = PLATFORM_PRESETS.find((p) => p.id === pid);
-    return preset?.name ?? authOverview?.app_platform_name ?? pid;
-  });
-
-  // ── Provider-aware model list ──
-  // When a third-party platform is active and has a models list, use that instead of CLI models.
-  // Priority: credential.models (user-configured) > preset.models (static defaults)
-  let platformModels = $derived.by((): CliModelInfo[] => {
-    const pid = store.platformId;
-    if (!pid || pid === "anthropic") return [];
-    const cred = findCredential(settings?.platform_credentials ?? [], pid);
-    const preset = PLATFORM_PRESETS.find((p) => p.id === pid);
-    const models = cred?.models?.length ? cred.models : preset?.models;
-    if (!models?.length) return [];
-    return models.map((m, i) => ({
-      value: m,
-      displayName: m,
-      description: i === 0 ? "Default" : "",
-    }));
-  });
-
-  let effectiveModels = $derived(platformModels.length > 0 ? platformModels : getCliModels());
-  let currentEffort = $state("");
-
-  // Effort guard: auto-clear effort when model doesn't support it;
-  // also auto-populate default effort ("high") when empty and model supports it.
-  $effect(() => {
-    if (store.agent !== "claude") return;
-
-    const pid = store.platformId;
-    // Third-party platform: don't touch effort
-    if (pid && pid !== "anthropic") return;
-
-    const modelInfo = effectiveModels.find((m) => m.value === store.model);
-    if (!modelInfo) return; // models not loaded yet
-
-    if (currentEffort && modelInfo.supportsEffort === false) {
-      // Model doesn't support effort → clear
-      dbg("chat", "effort-guard: clearing for unsupported model", { model: store.model });
-      currentEffort = "";
-      api.updateCliConfig({ effortLevel: null }).catch((e) => {
-        dbgWarn("chat", "effort-guard: CLI config clear failed", e);
-      });
-    } else if (!currentEffort && modelInfo.supportsEffort === true) {
-      // No effort set but model supports it → default to "high" (CLI default)
-      dbg("chat", "effort-guard: defaulting to high", { model: store.model });
-      currentEffort = "high";
-      api.updateCliConfig({ effortLevel: "high" }).catch((e) => {
-        dbgWarn("chat", "effort-guard: CLI config default failed", e);
-      });
-    }
-  });
-
-  // Reset filter on run change & auto-focus input
-  $effect(() => {
-    const _ = store.run?.id;
-    toolFilter = null;
-    // Auto-focus the prompt input when entering a session
-    requestAnimationFrame(() => promptRef?.focus());
-  });
-
-  // Sync verbose state from CLI config when run changes (or on retry)
-  $effect(() => {
-    const _tick = verboseRetryTick; // extra dep: drives retry on failure
-    syncVerboseState(store.run?.id);
-  });
-
-  let welcomeVisible = $derived(
-    store.timeline.length === 0 && !store.streamingText && !store.run && store.phase !== "loading",
-  );
-
-  let inputBlockedByPermission = $derived(store.hasPendingPermission || store.hasElicitation);
-  let pendingToolPermissions = $derived(store.pendingToolPermissions);
-  let showPermissionPanel = $derived(pendingToolPermissions.length > 0 && store.sessionAlive);
-
-  /** Skill info for SkillSelector: merge preloaded details with session skill names. */
-  let skillItems = $derived.by(() => {
-    const detailMap = new Map(preloadedSkills.map((s) => [s.name, s]));
-    const names = store.availableSkills;
-    if (names.length > 0) {
-      return names.map((name) => ({
-        name,
-        description: detailMap.get(name)?.description ?? "",
-      }));
-    }
-    return preloadedSkills.map((s) => ({ name: s.name, description: s.description }));
-  });
-
-  // ── Per-turn usage annotations in timeline ──
-
-  let usageByTurn = $derived(new Map(store.turnUsages.map((tu) => [tu.turnIndex, tu])));
-
-  /** Prefix-sum of user message count across filteredTimeline (for progressive rendering offset). */
-  let userCountPrefix = $derived.by(() => {
-    const ft = filteredTimeline;
-    const arr = new Int32Array(ft.length + 1);
-    for (let i = 0; i < ft.length; i++) {
-      arr[i + 1] = arr[i] + (ft[i].kind === "user" ? 1 : 0);
-    }
-    return arr;
-  });
-
-  /** Map of visibleTimeline index → TurnUsage to show BEFORE this entry (turn boundary). */
-  let usageAnnotations = $derived.by(() => {
-    const map = new Map<number, TurnUsage>();
-    if (usageByTurn.size === 0) return map;
-    const vt = visibleTimeline;
-    const hidden = filteredTimeline.length - vt.length;
-    let userCount = userCountPrefix[hidden];
-    for (let i = 0; i < vt.length; i++) {
-      if (vt[i].kind === "user") {
-        if (userCount > 0) {
-          const tu = usageByTurn.get(userCount);
-          if (tu) map.set(i, tu);
-        }
-        userCount++;
-      }
-    }
-    return map;
-  });
-
-  /**
-   * Indices where a Claude turn starts (first tool after a user message).
-   * Used to render a "Claude" header before tool cards.
-   */
-  let claudeTurnStarts = $derived.by(() => {
-    const starts = new Set<number>();
-    const vt = visibleTimeline;
-    for (let i = 0; i < vt.length; i++) {
-      if (vt[i].kind !== "tool") continue;
-      if (burstHiddenIndices.has(i)) continue;
-      // Look back for the previous visible non-tool entry
-      for (let j = i - 1; j >= 0; j--) {
-        if (burstHiddenIndices.has(j)) continue;
-        if (vt[j].kind === "tool") continue;
-        if (vt[j].kind === "user") starts.add(i);
-        break;
-      }
-    }
-    return starts;
-  });
-
-  /** Usage for the last (current/latest) turn — shown after all entries. */
-  let lastTurnUsage = $derived.by(() => {
-    const userCount = filteredTimeline.filter((e) => e.kind === "user").length;
-    if (userCount === 0) return null;
-    return usageByTurn.get(userCount) ?? null;
-  });
-
-  // ── Fork overlay ──
-  let forkOverlay = $state<{
-    active: boolean;
-    sourceRunId: string;
-    startedAt: number;
-    error: string | null;
-  } | null>(null);
-  let forkElapsed = $state(0);
-
-  // ── Thinking timer + panel ──
-  let thinkingElapsed = $state(0);
-  let thinkingExpanded = $state(true);
-  let spinnerVerb = $state(randomSpinnerVerb());
-  /** Plain flag (not $state) — avoids $effect dependency cycle with thinkingElapsed. */
-  let thinkingVerbPicked = false;
-  /** Debounced visibility — prevents spinner flash on fast CLI commands (/context, /cost). */
-  let thinkingVisible = $state(false);
-
-  $effect(() => {
-    if (store.isThinking) {
-      // Use store.thinkingStartMs as the authoritative start time.
-      // During replay it holds the original event timestamp, so the timer
-      // survives session switches without resetting to 0.
-      const base = store.thinkingStartMs || Date.now();
-      if (!thinkingVerbPicked) {
-        spinnerVerb = randomSpinnerVerb();
-        thinkingVerbPicked = true;
-      }
-      // Debounce: only show spinner after 300ms to avoid flash on fast commands
-      const showTimer = setTimeout(() => {
-        thinkingVisible = true;
-      }, 300);
-      // Immediately compute elapsed (don't wait 1s for first update)
-      thinkingElapsed = Math.max(0, Math.floor((Date.now() - base) / 1000));
-      const interval = setInterval(() => {
-        thinkingElapsed = Math.max(0, Math.floor((Date.now() - base) / 1000));
-      }, 1000);
-      return () => {
-        clearTimeout(showTimer);
-        clearInterval(interval);
-      };
-    } else {
-      thinkingElapsed = 0;
-      thinkingVisible = false;
-      thinkingVerbPicked = false;
-    }
-  });
-
-  // Fork overlay timer: tick elapsed seconds while active
-  $effect(() => {
-    if (forkOverlay?.active && !forkOverlay.error) {
-      const interval = setInterval(() => {
-        forkElapsed = Math.floor((Date.now() - forkOverlay!.startedAt) / 1000);
-      }, 1000);
-      return () => clearInterval(interval);
-    } else {
-      forkElapsed = 0;
-    }
-  });
-
-  // Fork overlay phase watcher: show error on failure during step 1 (fork_oneshot).
-  // Overlay is dismissed explicitly by handleResume after step 1 succeeds.
-  // Guard `!forkOverlay.error`: only set error once to prevent infinite $effect loop —
-  // writing `forkOverlay = { ...spread }` creates a new object ref that re-triggers the effect.
-  $effect(() => {
-    if (!forkOverlay?.active) return;
-    const phase = store.phase;
-    if ((phase === "failed" || phase === "stopped") && !forkOverlay.error) {
-      forkOverlay = { ...forkOverlay, error: store.error || t("chat_forkFailedFallback") };
-    }
-  });
-
-  // Task notification: auto-show and dismiss after 5s
-  $effect(() => {
-    const notifications = store.taskNotifications;
-    if (notifications.size === 0) return;
-    const latest = Array.from(notifications.values()).pop();
-    if (!latest) return;
-    latestNotification = { task_id: latest.task_id, status: latest.status };
-    notificationVisible = true;
-    const timer = setTimeout(() => {
-      notificationVisible = false;
-    }, 5000);
-    return () => clearTimeout(timer);
-  });
-
-  function formatElapsed(seconds: number): string {
-    if (seconds < 60) return `${seconds}s`;
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  }
-
-  // ── URL-derived (primitive values only — avoids $effect re-trigger on unrelated URL changes) ──
-  let runId = $derived($page.url.searchParams.get("run") ?? "");
-  let hasResumeParam = $derived($page.url.searchParams.has("resume"));
-  let folderParam = $derived($page.url.searchParams.get("folder"));
-  let hostParam = $derived($page.url.searchParams.get("host"));
-
-  // Consume ?folder= and/or ?host= params: switch target/folder, then clean URL.
-  $effect(() => {
-    const folder = folderParam;
-    const host = hostParam;
-    if (!folder && !host) return;
-    untrack(() => {
-      dbg("chat", "url params", { folder, host });
-      // Validate non-empty host against currently loaded settings. If `remoteHosts`
-      // hasn't loaded yet (this effect can fire before onMount finishes settings
-      // fetch), fall back to optimistic acceptance — the backend surfaces a
-      // "Remote host '...' not found" error if the name is genuinely bogus.
-      let resolvedHost: string | null = null;
-      if (host !== null) {
-        if (host === "") {
-          resolvedHost = null; // explicit clear
-        } else if (remoteHosts.length === 0 || remoteHosts.some((h) => h.name === host)) {
-          resolvedHost = host;
-        } else {
-          dbgWarn("chat", "URL ?host= references unknown remote — ignoring", { host });
-          resolvedHost = null;
-        }
-        store.remoteHostName = resolvedHost;
-        setLastTarget(resolvedHost);
-      }
-      if (folder) {
-        if (resolvedHost) {
-          setStoredRemoteCwd(resolvedHost, folder);
-        } else {
-          try {
-            localStorage.setItem("ocv:project-cwd", folder);
-          } catch {
-            // localStorage may fail in restricted contexts
-          }
-        }
-        folderCwdOverride = folder;
-        store.loadRun("", xtermRef);
-      }
-      const clean = new URL($page.url);
-      clean.searchParams.delete("folder");
-      clean.searchParams.delete("host");
-      replaceState(clean, {});
-      requestAnimationFrame(() => promptRef?.focus());
-    });
-  });
-
-  // ── Computed (thin wrappers for template convenience) ──
-  let sending = $derived(store.phase === "spawning");
-
-  // ── Lifecycle ──
-
-  // Load settings
-  onMount(async () => {
-    // Phase 1: load settings (required by everything else)
-    // Fast-path: serve from module-level cache on re-visits (30 s TTL).
-    // The cache is populated after every successful fetch below.
-    try {
-      const cached = getCachedUserSettings();
-      if (cached) {
-        settings = cached;
-        // Refresh in background so a long-running session picks up changes
-        api
-          .getUserSettings()
-          .then(setCachedUserSettings)
-          .catch(() => {});
-      } else {
-        settings = await api.getUserSettings();
-        setCachedUserSettings(settings);
-      }
-      store.authMode = settings.auth_mode ?? "cli";
-      remoteHosts = settings.remote_hosts ?? [];
-      // Restore last target selection (must validate against current settings — a
-      // configured host may have been removed since the value was persisted).
-      if (!store.run && remoteHosts.length > 0) {
-        const lastTarget = getLastTarget();
-        if (lastTarget && remoteHosts.some((h) => h.name === lastTarget)) {
-          store.remoteHostName = lastTarget;
-        }
-      }
-      // Initialize per-session platform from global active
-      // Only use active_platform_id in App API Key mode; CLI Auth manages its own connection
-      if (!store.platformId) {
-        store.platformId =
-          settings.auth_mode === "api" ? (settings.active_platform_id ?? "anthropic") : "anthropic";
-      }
-      // Initialize model: for third-party platforms, use credential > preset default model
-      // Only for new sessions — if runId is set, loadRun will handle model restoration.
-      if (!store.model && !runId && store.phase !== "loading") {
-        const initCred = findCredential(
-          settings.platform_credentials ?? [],
-          store.platformId ?? "",
-        );
-        const initPreset = PLATFORM_PRESETS.find((p) => p.id === store.platformId);
-        const initModels = initCred?.models?.length ? initCred.models : initPreset?.models;
-        if (store.platformId !== "anthropic" && initModels?.[0]) {
-          store.model = initModels[0];
-        } else if (store.platformId === "anthropic" && settings.default_model) {
-          // default_model is global — only valid for Anthropic native platform.
-          // Third-party platforms without a models list leave model unset.
-          store.model = settings.default_model;
-        }
-      }
-      // Load auth overview for AuthSourceBadge (fire-and-forget)
-      api
-        .getAuthOverview()
-        .then((ov) => (authOverview = ov))
-        .catch(() => {});
-      // Detect local proxy statuses for AuthSourceBadge
-      checkAllLocalProxies();
-    } catch (e) {
-      dbgWarn("chat", "failed to load settings:", e);
-    }
-
-    // Phase 2: parallel fetch of independent data
-    // agentSettings is served from cache on re-visits; listRuns is still
-    // needed to detect the last continuable run for auto-resume.
-    const cachedAgent = getCachedAgentSettings();
-    const [agentResult, runsResult] = await Promise.allSettled([
-      cachedAgent ? Promise.resolve(cachedAgent) : api.getAgentSettings("claude"),
-      api.listRuns(),
-    ]);
-
-    if (agentResult.status === "fulfilled") {
-      agentSettings = agentResult.value;
-      setCachedAgentSettings(agentSettings);
-      // Read effort from CLI config (~/.claude/settings.json) — the authoritative source.
-      // NOT from agentSettings.effort (that would cause --effort flag at spawn, which
-      // locks effort in memory and prevents live switching via settings.json).
-      try {
-        const cliCfg = await api.getCliConfig();
-        const cliEffort = cliCfg.effortLevel;
-        currentEffort = typeof cliEffort === "string" && cliEffort ? cliEffort : "";
-      } catch {
-        currentEffort = "";
-      }
-      // One-time migration: clear stale agentSettings.effort to prevent --effort at spawn
-      if (agentSettings?.effort) {
-        api.updateAgentSettings("claude", { effort: "" }).catch(() => {});
-      }
-    } else {
-      dbgWarn("chat", "failed to load agent settings:", agentResult.reason);
-    }
-
-    if (runsResult.status === "fulfilled") {
-      lastContinuableRun =
-        runsResult.value.find(
-          (r) =>
-            r.session_id &&
-            (r.status === "completed" || r.status === "stopped" || r.status === "failed"),
-        ) ?? null;
-
-      // Auto-load last session if no runId is specified, instead of showing welcome screen
-      if (!runId && lastContinuableRun) {
-        welcomeQuickActionsReady = true;
-        goto(`/chat?run=${lastContinuableRun.id}&resume=continue`, { replaceState: true });
-        return;
-      }
-    } else {
-      dbgWarn("chat", "failed to load runs for continue:", runsResult.reason);
-    }
-    welcomeQuickActionsReady = true;
-
-    // Phase 3: permission mode init (depends on settings + agentSettings)
-    // Initialize permission mode from saved settings (before session_init arrives)
-    // Agent plan_mode=true overrides user permission_mode (legacy compat)
-    if (!store.permissionModeSetByUser) {
-      if (agentSettings?.plan_mode) {
-        store.permissionMode = "plan";
-        store.permissionModeSetByUser = true;
-      } else if (settings?.permission_mode) {
-        const cliName = APP_TO_CLI_MODE[settings.permission_mode] ?? settings.permission_mode;
-        store.permissionMode = cliName;
-        store.permissionModeSetByUser = true;
-      }
-    }
-    let selfHealDone = false;
-    let selfHealInFlight = false;
-    loadCliInfo().then(() => {
-      // Self-heal: detect and fix contaminated default_model
-      if (settings?.default_model && !selfHealDone && !selfHealInFlight) {
-        const dm = settings.default_model;
-        const contaminated = isContaminatedDefaultModel(dm);
-        if (contaminated === true) {
-          const healModel = getCliCurrentModel();
-          if (healModel) {
-            selfHealInFlight = true;
-            dbg("chat", "self-heal: default_model contaminated, persisting fix", {
-              old: dm,
-              new: healModel,
-            });
-            api
-              .updateUserSettings({ default_model: healModel })
-              .then(() => {
-                settings!.default_model = healModel;
-                lastKnownGoodAnthropicModel = healModel;
-                selfHealDone = true;
-                dbg("chat", "self-heal: persist succeeded");
-              })
-              .catch((e) => {
-                dbgWarn("chat", "self-heal persist failed, will retry next loadCliInfo", e);
-              })
-              .finally(() => {
-                selfHealInFlight = false;
-              });
-          } else {
-            dbg("chat", "self-heal: contaminated but CLI model unavailable, deferring", { dm });
-          }
-        } else if (contaminated === false) {
-          selfHealDone = true;
-        }
-      }
-
-      const cliModel = getCliCurrentModel();
-      const isThirdParty = store.platformId && store.platformId !== "anthropic";
-      // Update lastKnownGoodAnthropicModel when CLI model is available
-      if (cliModel && !isThirdParty) {
-        lastKnownGoodAnthropicModel = cliModel;
-      }
-      // Only for genuinely new chats: no run loaded/loading, no URL run param
-      if (cliModel && !store.run && !runId && store.phase !== "loading" && !isThirdParty) {
-        dbg("chat", "set model from CLI after loadCliInfo", { cliModel, prev: store.model });
-        store.model = cliModel;
-      }
-    });
-    loadCliVersionInfo();
-    checkProjectInit();
-    // Preload project data from filesystem (no session needed)
-    if (!runId) {
-      const cwd = localStorage.getItem("ocv:project-cwd") || "";
-      reloadProjectData(cwd);
-    }
-  });
-
-  // Listen for project folder changes to re-check project init + reload project data
-  onMount(() => {
-    const handler = () => {
-      checkProjectInit();
-      if (!runId && !store.run) {
-        const cwd = localStorage.getItem("ocv:project-cwd") || "";
-        reloadProjectData(cwd);
-      }
-    };
-    window.addEventListener("ocv:project-changed", handler);
-    return () => window.removeEventListener("ocv:project-changed", handler);
-  });
-
-  // Warm up file IPC chain: validate_file_path's first invocation walks several
-  // canonicalize() calls (data dir, claude dir, agents' working dirs, project cwd).
-  // Firing one stat at chat-page mount primes the OS FS cache so the user's first
-  // file click doesn't pay the cold-cache cost.
-  onMount(() => {
-    const cwd = localStorage.getItem("ocv:project-cwd") || "";
-    if (!cwd) return;
-    const t0 = performance.now();
-    api
-      .statTextFile(cwd, cwd)
-      .then(() => dbg("file-ipc", "warmup done", { ms: +(performance.now() - t0).toFixed(0) }))
-      .catch((e) =>
-        dbg("file-ipc", "warmup err (still warmed)", {
-          ms: +(performance.now() - t0).toFixed(0),
-          err: String(e),
-        }),
-      );
-  });
-
-  // Sync run name when sidebar/history renames the current run
-  onMount(() => {
-    function onRunsChanged() {
-      if (!store.run) return;
-      const id = store.run.id;
-      api
-        .getRun(id)
-        .then((fresh) => {
-          if (fresh && store.run?.id === id && fresh.name !== store.run.name) {
-            dbg("chat", "runs-changed: syncing name", { id, name: fresh.name });
-            store.run = { ...store.run, name: fresh.name ?? undefined };
-            if (fresh.name) autoNameDone = true;
-          }
-        })
-        .catch((e) => {
-          dbgWarn("chat", "runs-changed: failed to sync name", e);
-        });
-    }
-    window.addEventListener("ocv:runs-changed", onRunsChanged);
-    return () => window.removeEventListener("ocv:runs-changed", onRunsChanged);
-  });
-
-  // Start middleware + register handlers
-  onMount(() => {
-    // Fast-path: if the singleton middleware is already started (re-visit to /chat),
-    // set middlewareReady synchronously so the run-load $effect fires immediately
-    // in the next microtask instead of waiting for async IPC round-trips.
-    if (middleware.isStarted) middlewareReady = true;
-
-    let destroyed = false;
-    (async () => {
-      try {
-        // start() is idempotent — returns immediately if already started.
-        await middleware.start();
-      } catch (e) {
-        console.error("[chat] middleware.start() failed:", e);
-        store.error = t("chat_eventSystemFailed");
-      }
-      // Start notification listener (piggybacks on same transport, idempotent)
-      try {
-        const { startNotificationListener } = await import("$lib/services/notification-listener");
-        await startNotificationListener();
-      } catch {
-        // Non-critical: notifications are best-effort
-      }
-      if (!destroyed) middlewareReady = true;
-    })();
-
-    // Pipe handler: chat-delta / chat-done (Codex pipe mode)
-    middleware.setPipeHandler({
-      onDelta(delta) {
-        store.handleChatDelta(delta.text, xtermRef);
-      },
-      onDone(done) {
-        store.handleChatDone(done);
-      },
-    });
-
-    // Run event handler: stderr for Codex pipe mode
-    middleware.setRunEventHandler({
-      onRunEvent(event) {
-        if (
-          store.run?.execution_path === "pipe_exec" &&
-          store.run &&
-          event.run_id === store.run.id &&
-          xtermRef
-        ) {
-          if (event.type === "stderr") {
-            xtermRef.writeText(`\x1b[31m${event.text}\x1b[0m\r\n`);
-          }
-        }
-      },
-    });
-
-    return () => {
-      destroyed = true;
-      // Kill fork run process on unmount (but not the source run)
-      if (forkOverlay?.active && store.run && store.run.id !== forkOverlay.sourceRunId) {
-        api.stopSession(store.run.id).catch(() => {});
-      }
-      store.unmountGuards();
-      // Do NOT call middleware.destroy() — the singleton must stay started so
-      // that re-entering /chat doesn't pay the cost of re-registering Tauri
-      // event listeners.  Just clear the DOM-bound callbacks so stale closures
-      // (over xtermRef etc.) can't fire while the page is unmounted.
-      middleware.setPipeHandler(null);
-      middleware.setRunEventHandler(null);
-    };
-  });
-
-  // Watch runId changes → load run + subscribe middleware
-  // Gated on middlewareReady to ensure listeners are registered before subscribing
-  $effect(() => {
-    if (!middlewareReady) return;
-    const id = runId;
-    const hasResume = hasResumeParam;
-    untrack(() => {
-      middleware.subscribeCurrent(id, store);
-
-      // Strongest guard: resume operation in progress — don't interfere.
-      // Check both store guard (set inside resumeSession) and local flag
-      // (set at handleResume entry, before store guard is acquired).
-      if (store.resumeInFlight || resuming) {
-        dbg("effect", "skip loadRun — resume in progress");
-        return;
-      }
-      // Resume $effect will handle this case
-      if (hasResume) return;
-
-      if (!id) {
-        store.loadRun("", xtermRef);
-        cancelProgressive(); // empty run — no progressive needed
-        return;
-      }
-
-      // Skip redundant loadRun when the singleton store already has this run's
-      // data.  Two cases:
-      //   • sessionAlive (spawning/running/idle) — live session, never reload.
-      //   • phase is not "empty"/"loading" — run was fully loaded on a previous
-      //     mount (completed/stopped/failed/ready); data in the singleton is
-      //     immutable, safe to reuse without an IPC round-trip.
-      if (store.run?.id === id && store.phase !== "empty" && store.phase !== "loading") {
-        dbg("effect", "skip loadRun — run already in singleton store", id, store.phase);
-        const scrollTo = $page.url.searchParams.get("scrollTo");
-        if (scrollTo) {
-          const clean = new URL($page.url);
-          clean.searchParams.delete("scrollTo");
-          replaceState(clean, {});
-          tick().then(() => scrollToMessage(scrollTo));
-        }
-        return;
-      }
-
-      ctrl.loadRunProgressive(id, xtermRef);
-    });
-  });
-
-  // Handle scrollTo for already-loaded runs (e.g., clicking a second search result
-  // in the same run). The runId effect above won't re-fire when only scrollTo changes.
-  $effect(() => {
-    if (!middlewareReady) return;
-    const scrollTo = $page.url.searchParams.get("scrollTo");
-    if (!scrollTo) return;
-    untrack(() => {
-      // loadRunProgressive handles scrollTo during run loading — don't double-scroll
-      if (_scrollToInFlight) return;
-      if (store.phase === "loading") return;
-      if (store.run?.id !== runId) return;
-
-      dbg("effect", "same-run scrollTo", { scrollTo, runId });
-      _scrollToInFlight = true;
-      const clean = new URL($page.url);
-      clean.searchParams.delete("scrollTo");
-      replaceState(clean, {});
-      tick().then(() => {
-        scrollToMessage(scrollTo);
-        _scrollToInFlight = false;
-      });
-    });
-  });
-
-  // Consume ?resume= URL param for session resume via sidebar button
-  $effect(() => {
-    const url = $page.url;
-    const paramRunId = url.searchParams.get("run");
-    const resumeMode = url.searchParams.get("resume") as SessionMode | null;
-
-    if (paramRunId && resumeMode) {
-      // Clean URL immediately to prevent re-trigger on refresh
-      const clean = new URL(url);
-      clean.searchParams.delete("resume");
-      replaceState(clean, {});
-
-      untrack(() => {
-        handleResume(resumeMode, paramRunId);
-      });
-    }
-  });
-
-  // Auto-focus prompt input on mount + listen for status bar toggle + register chat keybindings
-  onMount(() => {
-    requestAnimationFrame(() => promptRef?.focus());
-    function onStatusBarToggle(e: Event) {
-      statusBarExpanded = (e as CustomEvent).detail.expanded;
-    }
-    window.addEventListener("ocv:statusbar-toggle", onStatusBarToggle);
-
-    // Register chat-context keybinding callbacks
-    keybindingStore.registerCallback("chat:interrupt", () => {
-      if (shortcutHelpOpen) {
-        shortcutHelpOpen = false;
-        return;
-      }
-      if (store.isRunning) {
-        store.interrupt();
-      }
-    });
-    keybindingStore.registerCallback("chat:sendGlobal", () => {
-      if (!store.isRunning) {
-        promptRef?.triggerSend();
-      }
-    });
-    keybindingStore.registerCallback("app:shortcutHelp", () => {
-      shortcutHelpOpen = !shortcutHelpOpen;
-    });
-    keybindingStore.registerCallback("app:modelPicker", () => {
-      statusBarRef?.openModelDropdown();
-    });
-    keybindingStore.registerCallback("chat:cyclePermission", () => {
-      // Guard: if focus is on a focusable interactive control, don't cycle (preserve Shift+Tab navigation)
-      const active = document.activeElement;
-      if (active && active !== document.body) {
-        const el = active as HTMLElement;
-        const isFocusable =
-          el.tagName === "BUTTON" ||
-          el.tagName === "SELECT" ||
-          el.tagName === "A" ||
-          (el.hasAttribute("tabindex") && el.getAttribute("tabindex") !== "-1") ||
-          el.closest("[role='menu']") ||
-          el.closest("[role='listbox']") ||
-          el.closest("[role='dialog']") ||
-          (el.hasAttribute("role") &&
-            ["button", "link", "menuitem", "option", "tab"].includes(
-              el.getAttribute("role") ?? "",
-            ));
-        if (isFocusable) return;
-      }
-      const modes = ["default", "acceptEdits", "bypassPermissions", "plan", "auto", "dontAsk"];
-      const idx = modes.indexOf(store.permissionMode);
-      const next = modes[(idx + 1) % modes.length];
-      handlePermissionModeChange(next);
-    });
-    keybindingStore.registerCallback("chat:stashPrompt", () => {
-      if (stashedInput) {
-        promptRef?.restoreSnapshot(stashedInput);
-        stashedInput = null;
-        showChatToast(t("toast_stashRestored"));
-      } else {
-        const snapshot = promptRef?.getInputSnapshot();
-        if (
-          snapshot &&
-          (snapshot.text.trim() ||
-            snapshot.attachments.length ||
-            snapshot.pastedBlocks.length ||
-            (snapshot.pathRefs?.length ?? 0) > 0)
-        ) {
-          stashedInput = snapshot;
-          promptRef?.clearAll();
-          showChatToast(t("toast_stashSaved"));
-        }
-      }
-    });
-    keybindingStore.registerCallback("app:toggleFastMode", () => {
-      toggleCliConfigBool("fastMode");
-    });
-    keybindingStore.registerCallback("chat:toggleVerbose", () => {
-      toggleCliConfigBool("verbose");
-    });
-    keybindingStore.registerCallback("chat:toggleTasks", () => {
-      if (store.hasBackgroundTasks) {
-        if (sidebarCollapsed) sidebarCollapsed = false;
-        sidebarRequestedTab = "tasks";
-      }
-    });
-    keybindingStore.registerCallback("chat:undoLastTurn", () => {
-      handleRewind();
-    });
-    keybindingStore.registerCallback("app:exportChatHtml", () => void handleExportHtml());
-    const onExportHtmlEvent = () => {
-      window.dispatchEvent(new CustomEvent("ocv:export-html-ack"));
-      void handleExportHtml();
-    };
-    window.addEventListener("ocv:export-html", onExportHtmlEvent);
-
-    // Screenshot event listener (global hotkey → attachment injection)
-    const chatTransport = getTransport();
-    const screenshotUnlisten = chatTransport.listen<ScreenshotPayload>(
-      "screenshot-taken",
-      (payload) => {
-        dbg("chat", "screenshot-taken", { filename: payload.filename });
-        const { contentBase64, mediaType, filename } = payload;
-        const bytes = Uint8Array.from(atob(contentBase64), (c) => c.charCodeAt(0));
-        const file = new File([bytes], filename, { type: mediaType });
-        promptRef?.addFiles([file]);
-      },
-    );
-
-    // Tauri native drag-drop listeners (dragDropEnabled: true in tauri.conf.json)
-    const dragEnterUnlisten = chatTransport.listen<{ paths: string[] }>(
-      "tauri://drag-enter",
-      () => {
-        pageDragActive = true;
-      },
-    );
-    const dragLeaveUnlisten = chatTransport.listen("tauri://drag-leave", () => {
-      pageDragActive = false;
-    });
-    const dragDropUnlisten = chatTransport.listen<{ paths: string[] }>(
-      "tauri://drag-drop",
-      handleTauriDrop,
-    );
-
-    return () => {
-      window.removeEventListener("ocv:statusbar-toggle", onStatusBarToggle);
-      keybindingStore.unregisterCallback("chat:interrupt");
-      keybindingStore.unregisterCallback("chat:sendGlobal");
-      keybindingStore.unregisterCallback("app:shortcutHelp");
-      keybindingStore.unregisterCallback("app:modelPicker");
-      keybindingStore.unregisterCallback("chat:cyclePermission");
-      keybindingStore.unregisterCallback("chat:stashPrompt");
-      keybindingStore.unregisterCallback("app:toggleFastMode");
-      keybindingStore.unregisterCallback("chat:toggleVerbose");
-      keybindingStore.unregisterCallback("chat:toggleTasks");
-      keybindingStore.unregisterCallback("chat:undoLastTurn");
-      keybindingStore.unregisterCallback("app:exportChatHtml");
-      window.removeEventListener("ocv:export-html", onExportHtmlEvent);
-      screenshotUnlisten.then((fn) => fn());
-      dragEnterUnlisten.then((fn) => fn());
-      dragLeaveUnlisten.then((fn) => fn());
-      dragDropUnlisten.then((fn) => fn());
-      // Clean up verbose retry timer
-      if (verboseRetryTimer) clearTimeout(verboseRetryTimer);
-      // Clean up progressive rendering timer
-      cancelProgressive();
-    };
-  });
-
-  // Listen for auto-context snapshots from Rust backend
-  onMount(() => {
-    const unlisten = getTransport().listen<{
-      runId: string;
-      content: string;
-      turnIndex: number;
-      ts: string;
-    }>("context-snapshot", (payload) => {
-      const { runId, content, turnIndex, ts } = payload;
-      dbg("chat", "context-snapshot-recv", { runId, turnIndex, len: content.length });
-      if (runId !== store.run?.id) return;
-      const data = parseContextMarkdown(content);
-      if (!data) {
-        dbgWarn("chat", "context-parse-failed", {
-          runId,
-          turnIndex,
-          head: content.slice(0, 200),
-        });
-        return;
-      }
-      // Upsert by turnIndex: same turn overwrites (not appends)
-      const prev = contextHistoryMap.get(runId) ?? [];
-      const existingIdx = prev.findIndex((s) => s.turnIndex === turnIndex);
-      const replaced = existingIdx >= 0;
-      const updated = replaced
-        ? prev.map((s, i) => (i === existingIdx ? { runId, turnIndex, ts, data } : s))
-        : [...prev, { runId, turnIndex, ts, data }];
-      contextHistoryMap.set(runId, updated);
-      contextHistoryMap = new Map(contextHistoryMap); // trigger reactivity
-      dbg("chat", "context-snapshot", { turn: turnIndex, pct: data.percentage, replaced });
-    });
-    return () => {
-      unlisten.then((f) => f());
-    };
-  });
-
-  // ── BTW event listeners ──
-  // NOTE: Don't filter by btw_id — events may arrive before the IPC call returns
-  // the btw_id (race condition). Only one BTW is active at a time, so checking
-  // btwState.active is sufficient.
-  onMount(() => {
-    const transport = getTransport();
-    const deltaUnlisten = transport.listen<import("$lib/types").BtwDelta>("btw-delta", (ev) => {
-      if (btwState.active) {
-        dbg("chat", "btw-delta", { len: ev.text.length });
-        btwState.answer += ev.text;
-      }
-    });
-    const completeUnlisten = transport.listen<import("$lib/types").BtwComplete>(
-      "btw-complete",
-      (ev) => {
-        if (btwState.active) {
-          dbg("chat", "btw-complete", { btwId: ev.btw_id });
-          btwState.loading = false;
-        }
-      },
-    );
-    const errorUnlisten = transport.listen<import("$lib/types").BtwError>("btw-error", (ev) => {
-      if (btwState.active) {
-        dbgWarn("chat", "btw-error", { error: ev.error });
-        btwState.error = ev.error;
-        btwState.loading = false;
-      }
-    });
-    return () => {
-      deltaUnlisten.then((f) => f());
-      completeUnlisten.then((f) => f());
-      errorUnlisten.then((f) => f());
-    };
-  });
-
-  // Restore model when store.model is empty (e.g. after reset/loadRun):
-  // For third-party platforms, use the platform's default model.
-  // For Anthropic, prefer CC's current active model, fall back to our saved default_model
-  // (only if confirmed clean via three-state contamination check).
-  $effect(() => {
-    if (!store.model) {
-      // Don't overwrite model during loadRun async gap — loadRun will set it
-      if (store.phase === "loading") return;
-
-      const isThirdParty = store.platformId && store.platformId !== "anthropic";
-      if (isThirdParty) {
-        const restoreCred = findCredential(
-          settings?.platform_credentials ?? [],
-          store.platformId ?? "",
-        );
-        const restorePreset = PLATFORM_PRESETS.find((p) => p.id === store.platformId);
-        const restoreModels = restoreCred?.models?.length
-          ? restoreCred.models
-          : restorePreset?.models;
-        if (restoreModels?.[0]) {
-          dbg("chat", "restore model from credential/preset", {
-            platform: store.platformId,
-            model: restoreModels[0],
-          });
-          store.model = restoreModels[0];
-          return;
-        }
-      }
-      // Only fall back to default_model for Anthropic platform — otherwise
-      // default_model may belong to a different platform (cross-pollution).
-      const cliModel = getCliCurrentModel();
-      const isAnthropicPlatform = !store.platformId || store.platformId === "anthropic";
-      const rawFallback = isAnthropicPlatform ? settings?.default_model : undefined;
-      const contaminated = rawFallback ? isContaminatedDefaultModel(rawFallback) : null;
-      // Only use default_model when confirmed clean (false). true/null → skip.
-      const fallback = contaminated === false ? rawFallback : undefined;
-      // Last resort: cached last-known-good Anthropic model (only for Anthropic platform)
-      const model =
-        cliModel || fallback || (isAnthropicPlatform ? lastKnownGoodAnthropicModel : undefined);
-      if (model) {
-        // Update cache when we have a trusted source
-        if (isAnthropicPlatform && (cliModel || contaminated === false)) {
-          lastKnownGoodAnthropicModel = model;
-        }
-        dbg("chat", "restore model", {
-          cliModel,
-          rawFallback,
-          contaminated,
-          lastKnownGood: lastKnownGoodAnthropicModel,
-          using: model,
-        });
-        store.model = model;
-      }
-    }
-  });
-
-  // ── Terminal helpers ──
-
-  function handleTermReady(_cols: number, _rows: number) {
-    // Terminal ready — Codex pipe mode is output-only, no setup needed
-  }
-
-  function handleTermResize(_cols: number, _rows: number) {
-    // Codex pipe mode doesn't need resize — terminal is output-only
-  }
-
-  // ── Permission panel visibility log ──
-  let _prevPanelCount = 0;
-  $effect(() => {
-    const count = pendingToolPermissions.length;
-    if (count !== _prevPanelCount) {
-      if (count > 0)
-        dbg("chat", "permissionPanel visible", {
-          count,
-          ids: pendingToolPermissions.map((p) => p.requestId),
-          tools: pendingToolPermissions.map((p) => p.tool.tool_name),
-        });
-      else if (_prevPanelCount > 0) dbg("chat", "permissionPanel hidden");
-      _prevPanelCount = count;
-    }
-  });
-
+  // ── Helpers ──
   function fillPrompt(text: string) {
     promptRef?.setValue(text);
   }
+  function openPreviewForPath(path: string) {
+    if (!path) return;
+    handlers.requestedPreviewPath = path;
+    handlers.sidebarRequestedTab = "files";
+    if (lifecycle.sidebarCollapsed) lifecycle.setSidebarCollapsed(false);
+  }
 
-  // ── Project init detection ──
-  let showInitHint = $derived(
-    projectInitStatus !== null && !projectInitStatus.has_claude_md && !store.run,
+  // ── Rewind candidates (lazy, only when modal open) ──
+  const rewindCandidates = $derived(
+    handlers.rewindModalOpen
+      ? store.timeline
+          .map((e, i) => ({ entry: e, idx: i }))
+          .filter(
+            (
+              x,
+            ): x is {
+              entry: Extract<import("$lib/types").TimelineEntry, { kind: "user" }> & {
+                cliUuid: string;
+              };
+              idx: number;
+            } => x.entry.kind === "user" && !!x.entry.cliUuid,
+          )
+          .reverse()
+          .map(({ entry, idx }) => ({
+            cliUuid: entry.cliUuid,
+            content: entry.content,
+            ts: entry.ts,
+            timelineIndex: idx,
+          }))
+      : [],
   );
-
-  async function checkProjectInit() {
-    const cwd = localStorage.getItem("ocv:project-cwd") || "";
-    if (!cwd || cwd === "/") {
-      projectInitStatus = null;
-      dbg("chat", "checkProjectInit: skip (no cwd)");
-      return;
-    }
-    const seq = ++initCheckSeq;
-    try {
-      const status = await api.checkProjectInit(cwd);
-      dbg("chat", "checkProjectInit result", {
-        cwd,
-        status,
-        seq,
-        currentSeq: initCheckSeq,
-        hasRun: !!store.run,
-        isApiMode: store.isApiMode,
-      });
-      if (seq !== initCheckSeq) return;
-      const dismissKey = `ocv:init-dismissed:${status.cwd}`;
-      const dismissed = localStorage.getItem(dismissKey);
-      if (dismissed) {
-        projectInitStatus = null;
-        dbg("chat", "checkProjectInit: dismissed", dismissKey);
-        return;
-      }
-      projectInitStatus = status;
-    } catch (e) {
-      dbgWarn("chat", "checkProjectInit failed", e);
-      if (seq === initCheckSeq) projectInitStatus = null;
-    }
-  }
-
-  function dismissInitHint() {
-    if (projectInitStatus?.cwd) {
-      localStorage.setItem(`ocv:init-dismissed:${projectInitStatus.cwd}`, "1");
-    }
-    projectInitStatus = null;
-    dbg("chat", "init hint dismissed");
-  }
-
-  // ── Permission mode name translation ──
-  // Store/dropdown use CLI names; UserSettings uses app names; adapter.rs maps app→CLI.
-  const CLI_TO_APP_MODE: Record<string, string> = {
-    default: "ask",
-    acceptEdits: "auto_read",
-    bypassPermissions: "auto_all",
-    plan: "plan",
-    auto: "auto",
-    dontAsk: "dont_ask",
-  };
-  const APP_TO_CLI_MODE: Record<string, string> = {
-    ask: "default",
-    auto_read: "acceptEdits",
-    auto_all: "bypassPermissions",
-    plan: "plan",
-    auto: "auto",
-    dont_ask: "dontAsk",
-  };
-
-  function getPermModeLabel(mode: string): string {
-    const map: Record<string, () => string> = {
-      default: () => t("prompt_permAskShort"),
-      acceptEdits: () => t("prompt_permAutoReadShort"),
-      bypassPermissions: () => t("prompt_permAutoAllShort"),
-      plan: () => t("prompt_permPlanShort"),
-      auto: () => t("prompt_permAutoShort"),
-      dontAsk: () => t("prompt_permDontAskShort"),
-    };
-    return map[mode]?.() ?? mode;
-  }
-
-  let permissionModeChangeSeq = 0;
-  let pendingPersist: Promise<void> = Promise.resolve();
-
-  async function handlePermissionModeChange(
-    newMode: string,
-    opts?: { toast?: boolean },
-  ): Promise<boolean> {
-    const seq = ++permissionModeChangeSeq;
-    const oldMode = store.permissionMode;
-    const oldFlag = store.permissionModeSetByUser;
-    const oldPersistFailed = store.permissionModePersistFailed;
-    const hadActiveSession = store.sessionAlive; // capture at entry, before awaits
-    dbg("chat", "permission mode change", { from: oldMode, to: newMode, seq, hadActiveSession });
-
-    // Optimistic UI + protect from session_init during awaits
-    store.permissionMode = newMode;
-    store.permissionModeSetByUser = true;
-    store.permissionModePersistFailed = false;
-
-    if (hadActiveSession && store.run) {
-      // Active session: hot-switch via control protocol (CLI expects CLI names)
-      try {
-        await api.setPermissionMode(store.run.id, newMode);
-        dbg("chat", "permission mode changed via control protocol", { newMode });
-      } catch (e) {
-        if (seq !== permissionModeChangeSeq) return false;
-        // Restore mode, flag, AND persistFailed
-        store.permissionMode = oldMode;
-        store.permissionModeSetByUser = oldFlag;
-        store.permissionModePersistFailed = oldPersistFailed;
-        dbgWarn("chat", "permission mode change failed:", e);
-        store.error = t("chat_permModeFailed", { mode: newMode, error: String(e) });
-        if (opts?.toast !== false) {
-          showChatToast(t("toast_permissionFailed"));
-        }
-        return false;
-      }
-    }
-
-    if (seq !== permissionModeChangeSeq) return false;
-
-    if (opts?.toast !== false) {
-      showChatToast(t("toast_permissionMode", { mode: getPermModeLabel(newMode) }));
-    }
-
-    // Persist — serialized to prevent concurrent writes overwriting each other.
-    // persistFailed flag signals whether the no-active-session branch reverted.
-    let persistFailed = false;
-    const appName = CLI_TO_APP_MODE[newMode] ?? newMode;
-
-    pendingPersist = pendingPersist
-      .then(async () => {
-        if (seq !== permissionModeChangeSeq) return;
-        try {
-          await api.updateUserSettings({ permission_mode: appName });
-          dbg("chat", "permission mode persisted", { appName });
-        } catch (e) {
-          if (seq !== permissionModeChangeSeq) return;
-          dbgWarn("chat", "permission mode persist failed:", e);
-          if (hadActiveSession) {
-            // CLI was already switched via control protocol → current session correct.
-            // Mark persist-failed so _clearContentState() resets flag on next run,
-            // allowing new session's session_init to re-sync from CLI's startup mode.
-            store.permissionModePersistFailed = true;
-            if (opts?.toast !== false) showChatToast(t("toast_permissionPersistFailed"));
-          } else {
-            // No active session → persist was ONLY path for mode to take effect.
-            // Revert everything.
-            persistFailed = true;
-            store.permissionMode = oldMode;
-            store.permissionModeSetByUser = oldFlag;
-            store.permissionModePersistFailed = oldPersistFailed;
-            dbgWarn("chat", "no active session — reverting UI to match persisted settings");
-            if (opts?.toast !== false) showChatToast(t("toast_permissionChangeFailed"));
-          }
-        }
-      })
-      .catch(() => {}); // ensure chain never breaks
-
-    await pendingPersist;
-
-    if (persistFailed) return false;
-
-    // Sync legacy plan_mode (fire-and-forget)
-    if (seq === permissionModeChangeSeq) {
-      api.updateAgentSettings("claude", { plan_mode: newMode === "plan" }).catch((e) => {
-        dbgWarn("chat", "plan_mode sync failed:", e);
-      });
-    }
-
-    return seq === permissionModeChangeSeq;
-  }
-
-  // ── HTML Export ──
-
-  async function handleExportHtml() {
-    if (!store.run) {
-      dbgWarn("chat", "handleExportHtml: no run");
-      showChatToast(t("export_noConversation"));
-      return;
-    }
-    dbg("chat", "handleExportHtml: start");
-
-    let html: string;
-    let title: string;
-    const prevFilter = toolFilter;
-    const prevLimit = progressive.renderLimit;
-    try {
-      // Force full render (clear filter + unlimited)
-      toolFilter = null;
-      progressive.renderLimit = Infinity;
-      await tick();
-      await new Promise((r) => requestAnimationFrame(() => r(undefined)));
-
-      // Re-query after Svelte re-render (DOM may have been replaced)
-      const rootEl = document.querySelector<HTMLElement>("[data-conversation-root]");
-      if (!rootEl) {
-        dbgWarn("chat", "handleExportHtml: data-conversation-root not found");
-        showChatToast(t("export_noConversation"));
-        return;
-      }
-
-      const { exportConversationToHtml, buildExportFilename: buildFn } =
-        await import("$lib/utils/html-export");
-
-      title = store.run.name ?? store.run.prompt?.slice(0, 80) ?? "Untitled";
-      html = await exportConversationToHtml(rootEl, {
-        title,
-        sessionInfo: {
-          model: store.model,
-          cwd: store.effectiveCwd,
-          startedAt: store.run.started_at,
-          turnCount: store.numTurns || store.timeline.filter((e) => e.kind === "user").length,
-        },
-      });
-
-      // Restore UI immediately (HTML already captured, no need to keep filter cleared)
-      toolFilter = prevFilter;
-      progressive.renderLimit = prevLimit;
-
-      const { save } = await import("@tauri-apps/plugin-dialog");
-      const path = await save({
-        defaultPath: buildFn(title),
-        filters: [{ name: "HTML", extensions: ["html"] }],
-      });
-      if (!path) {
-        dbg("chat", "handleExportHtml: user cancelled");
-        return;
-      }
-
-      await api.writeHtmlExport(path, html);
-      dbg("chat", "handleExportHtml: done", { path });
-      showChatToast(t("export_htmlSuccess"));
-    } catch (e) {
-      dbgWarn("chat", "handleExportHtml failed", e);
-      showChatToast(t("export_htmlFailed"));
-    } finally {
-      // Ensure restore even on early return paths
-      toolFilter = prevFilter;
-      progressive.renderLimit = prevLimit;
-    }
-  }
-
-  async function handleModelChange(newModel: string) {
-    dbg("chat", "model change", { from: store.model, to: newModel });
-    store.model = newModel;
-
-    const isThirdParty = store.platformId && store.platformId !== "anthropic";
-
-    // Hot-switch model if session is alive (only for Anthropic — third-party models
-    // are set via ANTHROPIC_MODEL env var at spawn time, not via control protocol)
-    if (!isThirdParty && store.sessionAlive && store.run) {
-      try {
-        await api.sendSessionControl(store.run.id, "set_model", { model: newModel });
-        dbg("chat", "model hot-switched via control protocol");
-      } catch (e) {
-        dbgWarn("chat", "model hot-switch failed, will use new model on next session", e);
-      }
-    }
-
-    // Persist model to run meta (per-run model memory)
-    if (store.run) {
-      api.updateRunModel(store.run.id, newModel).catch((e) => {
-        dbgWarn("chat", "failed to persist run model", e);
-      });
-    }
-
-    // Only persist default_model for Anthropic — third-party models managed per-credential
-    if (!isThirdParty) {
-      lastKnownGoodAnthropicModel = newModel;
-      try {
-        await api.updateUserSettings({ default_model: newModel });
-      } catch (e) {
-        dbgWarn("chat", "failed to persist model change", e);
-      }
-    }
-  }
-
-  async function handleEffortChange(newEffort: string) {
-    dbg("chat", "effort change", { from: currentEffort, to: newEffort });
-    currentEffort = newEffort;
-    // Write to CLI config (~/.claude/settings.json) — the CLI reads effortLevel
-    // per-request, so changes take effect immediately within a running session.
-    // Deliberately NOT writing to agentSettings.effort — that would cause --effort
-    // to be passed at spawn, which locks the CLI's in-memory effort and prevents
-    // settings.json changes from being picked up during the session.
-    api.updateCliConfig({ effortLevel: newEffort || null }).catch((e) => {
-      dbgWarn("chat", "failed to persist effort to CLI config", e);
-    });
-  }
-
-  async function handleAuthModeChange(mode: string) {
-    dbg("chat", "auth mode change", { from: store.authMode, to: mode });
-    store.authMode = mode;
-    try {
-      await api.updateUserSettings({ auth_mode: mode } as Partial<UserSettings>);
-      // Refresh auth overview after mode change
-      authOverview = await api.getAuthOverview();
-    } catch (e) {
-      dbgWarn("chat", "failed to persist auth mode change", e);
-    }
-  }
-
-  async function checkAllLocalProxies() {
-    const localPresets = PLATFORM_PRESETS.filter((p) => p.category === "local");
-    const results = await Promise.allSettled(
-      localPresets.map((p) => {
-        const cred = findCredential(settings?.platform_credentials ?? [], p.id);
-        const url = cred?.base_url || p.base_url;
-        return api.detectLocalProxy(p.id, url);
-      }),
-    );
-    const statuses: Record<string, { running: boolean; needsAuth: boolean }> = {};
-    results.forEach((r, i) => {
-      if (r.status === "fulfilled") {
-        statuses[localPresets[i].id] = { running: r.value.running, needsAuth: r.value.needsAuth };
-      } else {
-        statuses[localPresets[i].id] = { running: false, needsAuth: false };
-      }
-    });
-    localProxyStatuses = statuses;
-    dbg("chat", "checkAllLocalProxies", statuses);
-  }
-
-  async function handlePlatformChange(platformId: string) {
-    dbg("chat", "platform change", { from: store.platformId, to: platformId });
-    store.platformId = platformId;
-
-    // Auto-switch model to provider's default when switching to a third-party platform
-    // Priority: credential.models (user-configured) > preset.models (static defaults)
-    const cred = findCredential(settings?.platform_credentials ?? [], platformId);
-    const preset = PLATFORM_PRESETS.find((p) => p.id === platformId);
-    const models = cred?.models?.length ? cred.models : preset?.models;
-    if (models?.length) {
-      const defaultModel = models[0];
-      dbg("chat", "auto-switch model for platform", { platformId, model: defaultModel });
-      store.model = defaultModel;
-    } else if (platformId === "anthropic") {
-      // Switching back to Anthropic: always overwrite — don't keep third-party model;
-      // don't fallback to settings.default_model which might be contaminated.
-      const cliModel = getCliCurrentModel();
-      store.model = cliModel || "";
-      dbg("chat", "restore model on switch to anthropic", { cliModel, using: store.model });
-    } else {
-      // Custom/unknown platform without preset models: clear model
-      // (let CLI use whatever default it has, or the user can set manually)
-      store.model = "";
-    }
-
-    // Only persist default_model when switching to Anthropic with a validated CLI model.
-    // Don't persist empty or potentially-stale model values.
-    const persistUpdate: Partial<UserSettings> = { active_platform_id: platformId };
-    if (platformId === "anthropic") {
-      const validated = getCliCurrentModel();
-      if (validated) persistUpdate.default_model = validated;
-    }
-    try {
-      await api.updateUserSettings(persistUpdate);
-    } catch (e) {
-      dbgWarn("chat", "failed to persist platform change", e);
-    }
-    // Refresh local proxy statuses after platform switch
-    checkAllLocalProxies();
-  }
-
-  function appendCommandOutput(text: string) {
-    const cmdId = uuid();
-    store.timeline = [
-      ...store.timeline,
-      {
-        kind: "command_output",
-        id: cmdId,
-        anchorId: cmdId,
-        content: text,
-        ts: new Date().toISOString(),
-      },
-    ];
-  }
-
-  async function handleRename(name: string) {
-    if (!store.run) return;
-    try {
-      await api.renameRun(store.run.id, name);
-      store.run = { ...store.run, name };
-      window.dispatchEvent(new Event("ocv:runs-changed"));
-      dbg("chat", "renamed run", { id: store.run.id, name });
-    } catch (e) {
-      dbgWarn("chat", "rename failed", e);
-    }
-  }
-
-  // Auto-name: on first idle, generate title from prompt (one-shot per run)
-  $effect(() => {
-    const result = shouldAutoName({
-      phase: store.phase,
-      runId: store.run?.id,
-      runName: store.run?.name,
-      prompt: store.run?.prompt,
-      autoNameDone,
-    });
-    if (result.fire && result.autoName) {
-      autoNameDone = true;
-      handleRename(result.autoName);
-    }
-  });
-
-  async function handleFastModeSwitch(mode: "on" | "off") {
-    const enabling = mode === "on";
-    const current = store.fastModeState === "on";
-    if (enabling === current) {
-      appendCommandOutput(t(enabling ? "fast_alreadyOn" : "fast_alreadyOff"));
-      return;
-    }
-    try {
-      await api.updateCliConfig({ fastMode: enabling });
-      store.fastModeState = enabling ? "on" : "";
-      dbg("chat", "fastMode set", { mode });
-      showChatToast(t(enabling ? "toast_fastModeOn" : "toast_fastModeOff"));
-      appendCommandOutput(t(enabling ? "fast_enabled" : "fast_disabled"));
-    } catch (e) {
-      dbgWarn("chat", "fastMode set failed:", e);
-    }
-  }
-
-  async function handleBtwSend(question: string) {
-    if (!store.run?.id) return;
-    dbg("chat", "btwSend", { runId: store.run.id, question: question.slice(0, 50) });
-    btwState = { active: true, btwId: null, question, answer: "", error: null, loading: true };
-    try {
-      const btwId = await api.sideQuestion(store.run.id, question);
-      btwState.btwId = btwId;
-    } catch (e) {
-      btwState.error = String(e);
-      btwState.loading = false;
-    }
-  }
-
-  // ── Preview helpers ──
-
-  function openPreviewInSidebar(url?: string) {
-    const targetUrl = url?.trim() || localStorage.getItem("ocv:preview-url") || "";
-    if (!targetUrl) {
-      appendCommandOutput(t("preview_usage"));
-      return;
-    }
-    requestedPreviewUrl = targetUrl;
-    sidebarRequestedTab = "preview";
-    if (sidebarCollapsed) sidebarCollapsed = false;
-    appendCommandOutput(t("preview_opened"));
-  }
-
-  async function handleRalphCancel() {
-    if (!store.run?.id) return;
-    try {
-      const result = await api.cancelRalphLoop(store.run.id);
-      if (result.immediate) {
-        appendCommandOutput(`Loop cancelled (iteration ${result.iteration})`);
-      } else {
-        appendCommandOutput(
-          `Loop will stop after current iteration (iteration ${result.iteration})`,
-        );
-      }
-    } catch (err) {
-      appendCommandOutput(
-        `Failed to cancel loop: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-  }
-
-  async function handleVirtualCommand(action: string, args: string) {
-    dbg("chat", "virtualCommand", { action, args });
-    if (action === "copy-last") {
-      const lastAssistant = [...store.timeline].reverse().find((e) => e.kind === "assistant");
-      if (lastAssistant && lastAssistant.kind === "assistant" && lastAssistant.content) {
-        try {
-          await navigator.clipboard.writeText(lastAssistant.content);
-          const chars = lastAssistant.content.length;
-          const lines = lastAssistant.content.split("\n").length;
-          appendCommandOutput(
-            t("chat_copiedClipboard", { chars: String(chars), lines: String(lines) }),
-          );
-          dbg("chat", "copied last response", { chars, lines });
-        } catch (e) {
-          dbgWarn("chat", "copy failed", e);
-          appendCommandOutput(t("chat_copyFailed"));
-        }
-      } else {
-        appendCommandOutput(t("chat_noResponseToCopy"));
-      }
-    } else if (action === "rename-session") {
-      if (!store.run) {
-        appendCommandOutput(t("chat_noSessionToRename"));
-        return;
-      }
-      if (args) {
-        // With args: rename locally
-        await handleRename(args);
-        appendCommandOutput(t("chat_sessionRenamed", { name: args }));
-      } else if (store.sessionAlive) {
-        // No args + session alive: send /rename to CLI (AI-generated name)
-        await ctrl.sendMessage("/rename", []);
-      } else {
-        appendCommandOutput("Usage: /rename <name>");
-      }
-    } else if (action === "toggle-plan") {
-      const entering = store.permissionMode !== "plan";
-      const newMode = entering ? "plan" : "default";
-      const ok = await handlePermissionModeChange(newMode, { toast: false });
-      if (ok) {
-        appendCommandOutput(entering ? "Plan mode enabled" : "Plan mode disabled");
-        // If instructions provided, send them as a message
-        if (args && entering) {
-          await ctrl.sendMessage(args, []);
-        }
-      }
-      // On failure, handlePermissionModeChange already sets store.error
-    } else if (action === "show-help") {
-      const allCmds = mergeWithVirtual(
-        store.sessionInitReceived && store.sessionCommands.length > 0
-          ? store.sessionCommands
-          : mergeProjectCommands(getCliCommands(), projectCommands),
-      );
-      const skillSet = new Set(store.availableSkills);
-      appendCommandOutput(buildHelpText(allCmds, skillSet));
-    } else if (action === "run-doctor") {
-      try {
-        dbg("doctor", "run-doctor triggered", { cwd: store.effectiveCwd });
-        const cwd = store.effectiveCwd || localStorage.getItem("ocv:project-cwd") || "";
-        const mcpSvrs = store.sessionAlive ? store.mcpServers : undefined;
-        const report = await buildDoctorReport(cwd, mcpSvrs);
-        appendCommandOutput(report);
-      } catch (err) {
-        dbgWarn("doctor", "run_diagnostics failed", err);
-        appendCommandOutput(
-          `❌ ${t("doctor_failed")}: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      }
-    } else if (action === "show-status") {
-      if (sidebarCollapsed) sidebarCollapsed = false;
-      sidebarRequestedTab = "info";
-    } else if (action === "list-todos") {
-      // Escape markdown special chars in todo content
-      const esc = (s: string) => s.replace(/([\\*_~`[\]#>|])/g, "\\$1");
-
-      // Find the last TodoWrite tool_end in timeline with newTodos
-      const lastTodo = [...store.timeline]
-        .reverse()
-        .find(
-          (e): e is Extract<TimelineEntry, { kind: "tool" }> =>
-            e.kind === "tool" &&
-            e.tool.tool_name === "TodoWrite" &&
-            e.tool.status === "success" &&
-            e.tool.tool_use_result != null &&
-            typeof e.tool.tool_use_result === "object" &&
-            "newTodos" in e.tool.tool_use_result &&
-            Array.isArray(e.tool.tool_use_result.newTodos),
-        );
-
-      if (lastTodo) {
-        const todos = lastTodo.tool.tool_use_result!.newTodos as Array<{
-          content: string;
-          status: "pending" | "in_progress" | "completed";
-        }>;
-        if (todos.length === 0) {
-          appendCommandOutput(t("todos_empty"));
-        } else {
-          const lines = todos.map((td) => {
-            const text = esc(td.content);
-            if (td.status === "completed") return `- [x] ~~${text}~~`;
-            if (td.status === "in_progress") return `- [ ] **⏳ ${text}**`;
-            return `- [ ] ${text}`;
-          });
-          appendCommandOutput(lines.join("\n"));
-        }
-      } else {
-        // No TodoWrite in timeline — show local prompt
-        // CLI /todos is an internal command that doesn't produce timeline events,
-        // so fallback to sendMessage would just create an empty turn.
-        appendCommandOutput(t("todos_empty"));
-      }
-    } else if (action === "show-diff") {
-      const cwd = store.effectiveCwd || localStorage.getItem("ocv:project-cwd") || "";
-      if (!cwd) {
-        appendCommandOutput(t("diff_noCwd"));
-        return;
-      }
-      try {
-        dbg("chat", "show-diff", { cwd });
-        const [unstaged, staged] = await Promise.all([
-          api.getGitDiff(cwd, false),
-          api.getGitDiff(cwd, true),
-        ]);
-        if (!unstaged.trim() && !staged.trim()) {
-          appendCommandOutput(t("diff_noChanges"));
-          return;
-        }
-        // Add source-file line numbers parsed from @@ hunk headers
-        function addLineNumbers(raw: string): string {
-          const lines = raw.split("\n");
-          const out: string[] = [];
-          let oldLn = 0,
-            newLn = 0;
-          for (const line of lines) {
-            if (line.startsWith("@@")) {
-              const m = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
-              if (m) {
-                oldLn = parseInt(m[1]);
-                newLn = parseInt(m[2]);
-              }
-              out.push(line);
-            } else if (
-              line.startsWith("diff ") ||
-              line.startsWith("index ") ||
-              line.startsWith("--- ") ||
-              line.startsWith("+++ ")
-            ) {
-              out.push(line);
-            } else if (line.startsWith("+")) {
-              out.push(`+${String(newLn).padStart(4)} │ ${line.slice(1)}`);
-              newLn++;
-            } else if (line.startsWith("-")) {
-              out.push(`-${String(oldLn).padStart(4)} │ ${line.slice(1)}`);
-              oldLn++;
-            } else if (line.length > 0 && line[0] === " ") {
-              out.push(` ${String(newLn).padStart(4)} │ ${line.slice(1)}`);
-              oldLn++;
-              newLn++;
-            } else {
-              out.push(line);
-            }
-          }
-          return out.join("\n");
-        }
-        const parts: string[] = [];
-        if (unstaged.trim()) {
-          parts.push(
-            `### ${t("diff_unstaged")}\n\n\`\`\`diff\n${addLineNumbers(unstaged.trimEnd())}\n\`\`\``,
-          );
-        }
-        if (staged.trim()) {
-          parts.push(
-            `### ${t("diff_staged")}\n\n\`\`\`diff\n${addLineNumbers(staged.trimEnd())}\n\`\`\``,
-          );
-        }
-        appendCommandOutput(parts.join("\n\n"));
-      } catch (err) {
-        dbgWarn("chat", "show-diff failed", err);
-        appendCommandOutput(
-          `${t("diff_failed")}: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      }
-    } else if (action === "list-tasks") {
-      const tasks = [...store.taskNotifications.values()];
-
-      if (!args) {
-        // /tasks (no args) — list all tasks as a table
-        dbg("chat", "list-tasks", { count: store.taskNotifications.size });
-        if (tasks.length === 0) {
-          appendCommandOutput(t("slashTasks_empty"));
-          return;
-        }
-        // Sort: active first, then by most recent
-        const sorted = tasks.sort((a, b) => {
-          const aActive =
-            a.status !== "completed" && a.status !== "failed" && a.status !== "error" ? 1 : 0;
-          const bActive =
-            b.status !== "completed" && b.status !== "failed" && b.status !== "error" ? 1 : 0;
-          if (aActive !== bActive) return bActive - aActive;
-          return b.startedAt - a.startedAt;
-        });
-        const now = Date.now();
-        const elapsed = (ms: number) => {
-          const sec = Math.floor((now - ms) / 1000);
-          if (sec < 60) return `${sec}s`;
-          const min = Math.floor(sec / 60);
-          if (min < 60) return `${min}m`;
-          return `${Math.floor(min / 60)}h${min % 60}m`;
-        };
-        const lines: string[] = [
-          "| ID | Type | Status | Description | Elapsed |",
-          "|-----|------|--------|-------------|---------|",
-        ];
-        for (const task of sorted) {
-          const shortId = task.task_id.length > 12 ? task.task_id.slice(0, 12) + "…" : task.task_id;
-          const taskType = task.task_type || "—";
-          const desc =
-            (task.summary || task.message || "").length > 50
-              ? (task.summary || task.message || "").slice(0, 50) + "…"
-              : task.summary || task.message || "—";
-          lines.push(
-            `| \`${shortId}\` | ${taskType} | ${task.status} | ${desc} | ${elapsed(task.startedAt)} |`,
-          );
-        }
-        lines.push("");
-        lines.push(t("slashTasks_hint"));
-        appendCommandOutput(lines.join("\n"));
-      } else {
-        // /tasks <id> — show detail for a specific task
-        dbg("chat", "list-tasks:detail", { id: args });
-
-        // Exact match first, then prefix match
-        let matches = tasks.filter((t) => t.task_id === args);
-        if (matches.length === 0) {
-          matches = tasks.filter((t) => t.task_id.startsWith(args));
-        }
-
-        if (matches.length === 0) {
-          dbg("chat", "list-tasks:detail", { id: args, found: false });
-          appendCommandOutput(t("slashTasks_notFound", { id: args }));
-        } else if (matches.length === 1) {
-          const task = matches[0];
-          const hasOutput = !!task.output_file;
-          dbg("chat", "list-tasks:detail", { id: args, found: true, hasOutput });
-          const now = Date.now();
-          const sec = Math.floor((now - task.startedAt) / 1000);
-          const meta = [
-            `| Field | Value |`,
-            `|-------|-------|`,
-            `| ID | \`${task.task_id}\` |`,
-            `| Status | ${task.status} |`,
-            `| Type | ${task.task_type || "—"} |`,
-            `| Description | ${task.message || "—"} |`,
-            task.summary ? `| Summary | ${task.summary} |` : null,
-            `| Elapsed | ${sec}s |`,
-            task.output_file ? `| Output file | \`${task.output_file}\` |` : null,
-          ]
-            .filter(Boolean)
-            .join("\n");
-
-          if (task.output_file) {
-            try {
-              const raw = await api.readTaskOutput(task.output_file);
-              dbg("chat", "readTaskOutput", { path: task.output_file, ok: true });
-              // Frontend truncation: last 200 lines
-              const allLines = raw.split("\n");
-              const trimmed =
-                allLines.length > 200
-                  ? `... (${allLines.length - 200} lines truncated)\n${allLines.slice(-200).join("\n")}`
-                  : raw;
-              appendCommandOutput(`${meta}\n\n**Output:**\n\`\`\`\n${trimmed}\n\`\`\``);
-            } catch (err) {
-              dbgWarn("chat", "readTaskOutput failed", err);
-              appendCommandOutput(
-                `${meta}\n\n${t("slashTasks_outputError", { error: err instanceof Error ? err.message : String(err) })}`,
-              );
-            }
-          } else {
-            appendCommandOutput(meta);
-          }
-        } else {
-          // Multiple matches — ambiguous
-          const list = matches.map((m) => `- \`${m.task_id}\` (${m.status})`).join("\n");
-          appendCommandOutput(`${t("slashTasks_ambiguous", { id: args })}\n${list}`);
-        }
-      }
-    } else if (action === "toggle-fast") {
-      const arg = args.toLowerCase();
-      if (arg === "on" || arg === "off") {
-        await handleFastModeSwitch(arg);
-      } else if (arg === "") {
-        const enabling = store.fastModeState !== "on";
-        await handleFastModeSwitch(enabling ? "on" : "off");
-      } else {
-        appendCommandOutput(t("fast_usage"));
-      }
-    } else if (action === "add-dir") {
-      try {
-        await executeAddDir(
-          { agent: store.agent, sessionAlive: store.sessionAlive, args },
-          {
-            openDirectoryDialog: async (title) => {
-              const { open } = await import("@tauri-apps/plugin-dialog");
-              const result = await open({ directory: true, title });
-              return typeof result === "string" ? result : null;
-            },
-            sendMessage: (text) => ctrl.sendMessage(text, []),
-            getAgentSettings: api.getAgentSettings,
-            updateAgentSettings: api.updateAgentSettings,
-            appendOutput: appendCommandOutput,
-            t: t as (key: string, params?: Record<string, string>) => string,
-          },
-        );
-      } catch (err) {
-        dbgWarn("chat", "add-dir failed", err);
-        appendCommandOutput(
-          t("chat_addDirFailed", {
-            error: err instanceof Error ? err.message : String(err),
-          }),
-        );
-      }
-    } else if (action === "clear-context") {
-      if (!store.run || !store.sessionAlive) {
-        appendCommandOutput(t("chat_noActiveSession"));
-        return;
-      }
-      if (!store.useStreamSession) {
-        appendCommandOutput(t("chat_clearNotSupported"));
-        return;
-      }
-      if (store.isRunning) {
-        appendCommandOutput(t("chat_clearSessionBusy"));
-        return;
-      }
-      dbg("chat", "clear-context: stopping session", { runId: store.run.id });
-      try {
-        await store.stop();
-        dbg("chat", "clear-context: navigating to fresh chat");
-        goto("/chat", { replaceState: true });
-        window.dispatchEvent(new Event("ocv:runs-changed"));
-      } catch (e) {
-        dbgWarn("chat", "clear-context failed", e);
-        store.error = String(e);
-      }
-    } else if (action === "rewind") {
-      if (!store.run) {
-        appendCommandOutput(t("rewind_noSession"));
-      } else if (!store.sessionAlive) {
-        appendCommandOutput(t("rewind_sessionEnded"));
-      } else if (store.isRunning) {
-        appendCommandOutput(t("rewind_sessionBusy"));
-      } else {
-        handleRewind();
-      }
-    } else if (action === "open-permissions") {
-      window.dispatchEvent(new CustomEvent("ocv:open-permissions"));
-    } else if (action === "open-stickers") {
-      const url = "https://www.stickermule.com/claudecode";
-      dbg("chat", "open-stickers", { url });
-      try {
-        const { open } = await import("@tauri-apps/plugin-shell");
-        await open(url);
-      } catch (err) {
-        dbgWarn("chat", "open-stickers: plugin-shell failed, fallback", err);
-        window.open(url, "_blank");
-      }
-      appendCommandOutput("Opening sticker page in browser…");
-    } else if (action === "start-ralph-loop") {
-      const parsed = parseRalphArgs(args);
-      if (!parsed.prompt) {
-        appendCommandOutput(
-          "Usage: /ralph <prompt> [--max-iterations N] [--completion-promise TEXT]",
-        );
-        return;
-      }
-      try {
-        // If no active session, send the prompt as a normal message first to bootstrap
-        if (!store.run?.id || !store.sessionAlive) {
-          await ctrl.sendMessage(parsed.prompt, []);
-          // Wait briefly for session to be alive (actor created)
-          let retries = 0;
-          while (!store.sessionAlive && retries < 20) {
-            await new Promise((r) => setTimeout(r, 100));
-            retries++;
-          }
-          if (!store.run?.id || !store.sessionAlive) {
-            appendCommandOutput("Failed to start session for ralph loop.");
-            return;
-          }
-        }
-        await api.startRalphLoop(
-          store.run.id,
-          parsed.prompt,
-          parsed.maxIterations,
-          parsed.completionPromise,
-        );
-        appendCommandOutput(
-          `Ralph loop started (max: ${parsed.maxIterations || "unlimited"}, promise: ${parsed.completionPromise ?? "none"})`,
-        );
-      } catch (err) {
-        appendCommandOutput(
-          `Failed to start loop: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      }
-    } else if (action === "cancel-ralph-loop") {
-      await handleRalphCancel();
-    } else if (action === "toggle-preview") {
-      openPreviewInSidebar(args);
-    }
-  }
-
-  async function handleStop() {
-    await store.stop();
-    window.dispatchEvent(new Event("ocv:runs-changed"));
-  }
-
-  async function handleResume(
-    mode: SessionMode,
-    overrideRunId?: string,
-    initialMessage?: string,
-    initialAttachments?: Attachment[],
-  ) {
-    const targetRunId = overrideRunId ?? store.run?.id;
-    if (!targetRunId || resuming) return;
-    resuming = true;
-
-    // Per-session platform: resume automatically uses run's saved platform_id
-    // via backend resolve_auth_env_for_platform() — no mismatch dialog needed.
-
-    // Fork: activate overlay immediately for progress feedback
-    if (mode === "fork") {
-      forkOverlay = { active: true, sourceRunId: targetRunId, startedAt: Date.now(), error: null };
-    }
-
-    try {
-      // Fork: don't subscribe to source — backend emits RunState(stopped)
-      // for the source which would interfere with the fork state machine.
-      if (mode !== "fork") {
-        middleware.subscribeCurrent(targetRunId, store);
-      }
-      const resultId = await store.resumeSession(
-        targetRunId,
-        mode,
-        initialMessage,
-        initialAttachments,
-      );
-      if (resultId) {
-        middleware.subscribeCurrent(resultId, store);
-        if (mode === "fork") {
-          // Check if user cancelled during fork_oneshot
-          if (!forkOverlay) {
-            dbg("chat", "fork: cancelled during fork_oneshot, skipping step 2");
-          } else {
-            // Step 1 complete — dismiss overlay, use normal session startup UI for step 2
-            forkOverlay = null;
-            goto(`/chat?run=${resultId}`, { replaceState: true });
-            // Step 2: establish stream-json connection (shows "Starting session..." spinner)
-            try {
-              await store.connectSession(resultId);
-            } catch (e) {
-              store.error = String(e);
-            }
-          }
-        } else {
-          goto(`/chat?run=${resultId}`, { replaceState: true });
-        }
-      } else if (mode === "fork") {
-        // Fork failed — don't clear overlay or navigate away.
-        // The phase watcher $effect will show the error in the overlay.
-        // User can Retry or Cancel from there.
-        dbg("chat", "fork failed, keeping overlay for retry/cancel");
-      } else {
-        // Non-fork resume failed — stay on the target run's view instead of
-        // navigating to blank new-session page (the run's history is still useful).
-        lastContinuableRun = null;
-        goto(`/chat?run=${targetRunId}`, { replaceState: true });
-      }
-      window.dispatchEvent(new Event("ocv:runs-changed"));
-    } catch (e) {
-      // Fork sync failure → show error in overlay instead of error bar
-      if (mode === "fork" && forkOverlay) {
-        forkOverlay = { ...forkOverlay, error: String(e) };
-      }
-    } finally {
-      resuming = false;
-    }
-  }
-
-  /** Stop the fork run's process (if it exists and isn't the source run). */
-  async function stopForkProcess(sourceRunId: string) {
-    if (store.run && store.run.id !== sourceRunId) {
-      try {
-        await api.stopSession(store.run.id);
-      } catch {
-        /* best-effort */
-      }
-    }
-  }
-
-  async function handleForkCancel() {
-    if (!forkOverlay) return;
-    const sourceRunId = forkOverlay.sourceRunId;
-    await stopForkProcess(sourceRunId);
-    forkOverlay = null;
-    store.error = "";
-    goto(`/chat?run=${sourceRunId}`, { replaceState: true });
-    // Explicit reload — URL may not change if we're returning to the same run
-    await ctrl.loadRunProgressive(sourceRunId);
-    window.dispatchEvent(new Event("ocv:runs-changed"));
-  }
-
-  async function handleForkRetry() {
-    if (!forkOverlay || resuming) return;
-    const sourceRunId = forkOverlay.sourceRunId;
-    await stopForkProcess(sourceRunId);
-    forkOverlay = { active: true, sourceRunId, startedAt: Date.now(), error: null };
-    store.error = "";
-    await handleResume("fork", sourceRunId);
-  }
-
-  // ── Chat-level toast (same pattern as PromptInput's showFileToast) ──
-  let chatToast = $state<string | null>(null);
-  let chatToastTimeout: ReturnType<typeof setTimeout> | null = null;
-  function showChatToast(msg: string) {
-    chatToast = msg;
-    if (chatToastTimeout) clearTimeout(chatToastTimeout);
-    chatToastTimeout = setTimeout(() => {
-      chatToast = null;
-    }, 2500);
-  }
-
-  async function toggleCliConfigBool(key: string) {
-    try {
-      const config = await api.getCliConfig();
-      const current = config[key] === true;
-      await api.updateCliConfig({ [key]: !current });
-      dbg("chat", `toggled ${key}`, { from: current, to: !current });
-      // Immediately mirror UI state
-      if (key === "fastMode") {
-        store.fastModeState = !current ? "on" : "";
-        dbg("chat", "fastMode UI mirrored", { state: store.fastModeState });
-      } else if (key === "verbose") {
-        verboseEnabled = !current;
-        dbg("chat", "verbose UI mirrored", { verbose: verboseEnabled });
-      }
-      const label =
-        key === "fastMode"
-          ? !current
-            ? "toast_fastModeOn"
-            : "toast_fastModeOff"
-          : !current
-            ? "toast_verboseOn"
-            : "toast_verboseOff";
-      showChatToast(t(label as Parameters<typeof t>[0]));
-    } catch (e) {
-      dbgWarn("chat", `toggle ${key} failed:`, e);
-    }
-  }
-
-  // Chat keybinding callbacks — registered/unregistered via keybindingStore in onMount below
-
-  // ── Page-level drag-drop (Tauri native events) ──
-  let pageDragActive = $state(false);
-  let dragProcessingCount = $state(0);
-  let dragProcessing = $derived(dragProcessingCount > 0);
-
-  /** Concurrency-limited parallel map returning PromiseSettledResult for each item. */
-  async function handleTauriDrop(payload: { paths: string[] }) {
-    pageDragActive = false;
-    const paths = payload.paths;
-    const input = promptRef; // cache ref — promptRef may become undefined after awaits
-    if (!paths?.length || !input) return;
-
-    dragProcessingCount++;
-    dbg("chat", "tauri-drop", { count: paths.length });
-
-    try {
-      // Phase 1: parallel classify (concurrency=5 to avoid IPC flood on large batches)
-      const classified = await mapSettled(
-        paths,
-        async (p) => {
-          const name = p.split(/[/\\]/).pop() || "file";
-          const isDir = await api.checkIsDirectory(p);
-          return { p, name, isDir };
-        },
-        5,
-      );
-
-      const dirRefs: Array<{ path: string; name: string; isDir: true }> = [];
-      const fileEntries: Array<{ p: string; name: string }> = [];
-
-      for (let i = 0; i < classified.length; i++) {
-        const result = classified[i];
-        const p = paths[i];
-        const name = p.split(/[/\\]/).pop() || "file";
-        if (result.status === "fulfilled") {
-          if (result.value.isDir) {
-            dirRefs.push({ path: p, name, isDir: true });
-            dbg("chat", "tauri-drop: dir", { name });
-          } else {
-            fileEntries.push({ p, name });
-          }
-        } else {
-          // checkIsDirectory IPC failed — conservatively treat as file
-          fileEntries.push({ p, name });
-          dbgWarn("chat", "tauri-drop: classify failed, treating as file", {
-            name,
-            error: result.reason,
-          });
-        }
-      }
-
-      // Phase 2: parallel file read (concurrency=2 to limit memory)
-      const fileResults = await mapSettled(
-        fileEntries,
-        async ({ p, name }) => {
-          const [base64, mime] = await api.readFileBase64(p);
-          const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-          return { file: new File([bytes], name, { type: mime }), name, mime, size: bytes.length };
-        },
-        2,
-      );
-
-      const filesToProcess: File[] = [];
-      const fileRefs: Array<{ path: string; name: string; isDir: false }> = [];
-
-      for (let i = 0; i < fileResults.length; i++) {
-        const result = fileResults[i];
-        const { p, name } = fileEntries[i];
-        if (result.status === "fulfilled") {
-          filesToProcess.push(result.value.file);
-          dbg("chat", "tauri-drop: file", {
-            name: result.value.name,
-            mime: result.value.mime,
-            size: result.value.size,
-          });
-        } else {
-          fileRefs.push({ path: p, name, isDir: false });
-          dbgWarn("chat", "tauri-drop: fallback to path ref", { name, error: result.reason });
-        }
-      }
-
-      // Guard: if page navigated away during processing, promptRef is stale
-      if (promptRef !== input) {
-        dbgWarn("chat", "tauri-drop: promptRef stale after processing, discarding");
-        return;
-      }
-
-      // Add path refs (dirs + failed files)
-      const allPathRefs = [...dirRefs, ...fileRefs];
-      if (allPathRefs.length > 0) {
-        input.addPathRefs(allPathRefs);
-      }
-
-      // Normal files → existing addFiles pipeline (await so spinner covers processFiles)
-      if (filesToProcess.length > 0) {
-        await input.addFiles(filesToProcess);
-      }
-
-      // Single summary toast
-      if (allPathRefs.length > 0) {
-        const parts: string[] = [];
-        if (dirRefs.length > 0) {
-          parts.push(t("drag_foldersInserted", { count: String(dirRefs.length) }));
-        }
-        if (fileRefs.length > 0) {
-          parts.push(t("drag_filesAsPathRef", { count: String(fileRefs.length) }));
-        }
-        input.showToast(parts.join(t("common_listSeparator")));
-      }
-    } finally {
-      dragProcessingCount--;
-    }
-  }
-
-  function selectToolPanelTab(tab: ToolActivityPanelTab) {
-    if (!sidebarCollapsed && toolPanelActiveTab === tab) {
-      sidebarCollapsed = true;
-      return;
-    }
-    toolPanelActiveTab = tab;
-    sidebarCollapsed = false;
-  }
-
-  async function scrollToTool(toolUseId: string) {
-    // Clear filter first — target may be filtered out, and burst/visible indices
-    // depend on the unfiltered timeline.
-    if (toolFilter) {
-      toolFilter = null;
-      await tick();
-    }
-    // Locate target in the data layer (DOM may not be mounted yet under progressive render).
-    const ft = filteredTimeline;
-    const ftIdx = ft.findIndex((e) => e.kind === "tool" && e.tool.tool_use_id === toolUseId);
-    if (ftIdx < 0) return;
-    expandRenderLimitTo(ftIdx);
-    await tick();
-    // Re-map to visibleTimeline-local index for burst expansion.
-    const visibleIdx = visibleTimeline.findIndex(
-      (e) => e.kind === "tool" && e.tool.tool_use_id === toolUseId,
-    );
-    if (visibleIdx >= 0) await ensureBurstExpandedFor(visibleIdx);
-    const el = document.getElementById("tool-" + toolUseId);
-    if (el) {
-      // Temporarily disable content-visibility so the browser knows real heights and
-      // scrollIntoView lands at the correct offset (mirrors scrollToMessage).
-      const container = chatAreaRef;
-      const cvEls = container
-        ? Array.from(container.querySelectorAll<HTMLElement>(".cv-auto"))
-        : [];
-      for (const c of cvEls) c.style.contentVisibility = "visible";
-      el.getBoundingClientRect();
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("ring-2", "ring-primary/50");
-      requestAnimationFrame(() => {
-        for (const c of cvEls) c.style.contentVisibility = "";
-      });
-      setTimeout(() => el.classList.remove("ring-2", "ring-primary/50"), 2000);
-    }
-  }
-
-  async function scrollToMessage(ts: string) {
-    dbg("chat", "scrollToMessage", { ts });
-    if (toolFilter) {
-      toolFilter = null;
-      await tick();
-    }
-    // Resolve target from data — `ts` may be ts, anchorId, cliUuid, or id.
-    const match = store.timeline.find(
-      (e) =>
-        e.ts === ts || e.anchorId === ts || (e.kind === "user" && e.cliUuid === ts) || e.id === ts,
-    );
-    if (!match) return;
-    const ft = filteredTimeline;
-    const ftIdx = ft.findIndex((e) => e.id === match.id);
-    if (ftIdx < 0) return;
-    expandRenderLimitTo(ftIdx);
-    await tick();
-    const visibleIdx = visibleTimeline.findIndex((e) => e.id === match.id);
-    if (visibleIdx >= 0) await ensureBurstExpandedFor(visibleIdx);
-    // DOM id uses anchorId (see `id="msg-{entry.anchorId}"` in the each block).
-    const el = document.getElementById("msg-" + match.anchorId);
-    if (el) {
-      // Temporarily disable content-visibility on ALL entries so the browser
-      // knows real heights and scrollIntoView lands at the correct offset.
-      const container = chatAreaRef;
-      const cvEls = container
-        ? Array.from(container.querySelectorAll<HTMLElement>(".cv-auto"))
-        : [];
-      for (const c of cvEls) c.style.contentVisibility = "visible";
-
-      el.getBoundingClientRect(); // force reflow
-      el.scrollIntoView({ behavior: "instant", block: "center" });
-      el.classList.add("ring-2", "ring-primary/50");
-
-      // Restore content-visibility after scroll settles
-      requestAnimationFrame(() => {
-        for (const c of cvEls) c.style.contentVisibility = "";
-      });
-      setTimeout(() => {
-        el!.classList.remove("ring-2", "ring-primary/50");
-      }, 2000);
-    } else {
-      dbg("chat", "scrollToMessage: element not found", { anchor: ts });
-    }
-  }
-
-  async function handleToolAnswer(toolUseId: string, answer: string) {
-    await store.answerToolQuestion(toolUseId, answer);
-  }
-
-  function handleRewind() {
-    if (!store.run || !store.sessionAlive || store.isRunning) return;
-    rewindModalOpen = true;
-  }
-
-  function handleRewindToMessage(entry: { cliUuid: string; content: string; ts: string }) {
-    if (!store.run || !store.sessionAlive || store.isRunning) return;
-    rewindDirectTarget = {
-      cliUuid: entry.cliUuid,
-      content: entry.content,
-      ts: entry.ts,
-      timelineIndex: store.timeline.findIndex(
-        (e) => e.kind === "user" && e.cliUuid === entry.cliUuid,
-      ),
-    };
-    rewindModalOpen = true;
-  }
-
-  async function handleToolApprove(toolName: string) {
-    if (!store.run) return;
-    approving = true;
-    dbg("chat", "approving tool", { runId: store.run.id, toolName });
-    try {
-      await api.approveSessionTool(store.run.id, toolName);
-    } catch (e) {
-      dbgWarn("chat", "approve failed:", e);
-      store.error = String(e);
-    } finally {
-      // approving resets when new RunState events arrive (spawning/running)
-      setTimeout(() => {
-        approving = false;
-      }, 3000);
-    }
-  }
-
-  async function handlePermissionRespond(
-    requestId: string,
-    behavior: "allow" | "deny",
-    updatedPermissions?: import("$lib/types").PermissionSuggestion[],
-    updatedInput?: Record<string, unknown>,
-    denyMessage?: string,
-    interrupt?: boolean,
-  ) {
-    if (!store.run || !store.sessionAlive) return;
-    const runId = store.run.id; // snapshot — store.run may change after await
-    dbg("chat", "inline permission respond", {
-      runId,
-      requestId,
-      behavior,
-      updatedPermissions,
-      updatedInput,
-      denyMessage,
-      interrupt,
-    });
-    try {
-      // Set pending mode override BEFORE responding (so reducer picks it up)
-      if (behavior === "allow" && updatedPermissions) {
-        const modePerm = updatedPermissions.find((p) => p.type === "setMode");
-        if (modePerm && modePerm.mode) {
-          store.pendingPermissionModeOverride = modePerm.mode;
-          dbg("chat", "set pendingPermissionModeOverride", { mode: modePerm.mode });
-        }
-      }
-
-      await api.respondPermission(
-        runId,
-        requestId,
-        behavior,
-        updatedPermissions,
-        updatedInput,
-        denyMessage,
-        interrupt,
-      );
-      // Optimistic resolve + clear attention flag
-      resolvePermissionOptimistic(store, runId, requestId, behavior);
-    } catch (e) {
-      dbgWarn("chat", "permission respond failed:", e);
-      // If the CLI rejected the response (e.g. session already idle after interrupt),
-      // still resolve the card locally so buttons are removed.
-      if (behavior === "deny") {
-        resolvePermissionOptimistic(store, runId, requestId, "deny");
-      }
-      // allow failure: don't change status — submitting timeout auto-resets (§5)
-      store.error = String(e);
-      throw e; // Let component-side wrapper catch and unlock buttons
-    }
-  }
-
-  async function handleElicitationRespond(
-    requestId: string,
-    action: "accept" | "decline" | "cancel",
-    content?: Record<string, unknown>,
-  ) {
-    if (!store.run || !store.sessionAlive) return;
-    const runId = store.run.id;
-    dbg("chat", "elicitation respond", { runId, requestId, action });
-    try {
-      await api.respondElicitation(runId, requestId, action, content);
-      // Cleanup after successful response — not optimistic, avoids card loss on failure
-      const { resolveElicitationOptimistic } = await import("$lib/utils/resolve-elicitation");
-      resolveElicitationOptimistic(store, runId, requestId);
-    } catch (e) {
-      dbgWarn("chat", "elicitation respond failed:", e);
-      store.error = String(e);
-    }
-  }
-
-  // O(1) lookup: timeline entry id → index
-  let timelineIdIndex = $derived.by(() => {
-    const map = new Map<string, number>();
-    for (let i = 0; i < store.timeline.length; i++) {
-      map.set(store.timeline[i].id, i);
-    }
-    return map;
-  });
-
-  // ID of the last context-cleared separator (for dimming messages above it)
-  let lastClearSepId = $derived.by(() => {
-    for (let i = store.timeline.length - 1; i >= 0; i--) {
-      const e = store.timeline[i];
-      if (e.kind === "separator" && e.content === CONTEXT_CLEARED_MARKER) return e.id;
-    }
-    return null;
-  });
-
-  // Latest plan tool card's tool_use_id (for auto-expand)
-  let latestPlanToolId = $derived.by(() => {
-    for (let i = store.timeline.length - 1; i >= 0; i--) {
-      const e = store.timeline[i];
-      if (e.kind !== "tool" || !e.tool) continue;
-      const fp = String(e.tool.input?.file_path ?? e.tool.input?.path ?? "");
-      if ((e.tool.tool_name === "Write" || e.tool.tool_name === "Edit") && isPlanFilePath(fp)) {
-        return e.tool.tool_use_id;
-      }
-    }
-    return null;
-  });
-
-  function getPlanContentForExitPlan(
-    entryId: string,
-  ): { content: string; fileName: string } | null {
-    const idx = timelineIdIndex.get(entryId);
-    if (idx == null) {
-      dbgWarn("chat", "ExitPlanMode entry not found in timeline index", { id: entryId });
-      return null;
-    }
-    const result = extractPlanContent(store.timeline, idx);
-    if (result) return result;
-    // Fallback: use tool_use_result.plan (--permission-mode=plan auto-approves
-    // ExitPlanMode without Write, plan content is in the result directly)
-    const entry = store.timeline[idx];
-    if (entry?.kind === "tool" && entry.tool.status === "success") {
-      const toolResult = entry.tool.tool_use_result as
-        | { plan?: string; filePath?: string }
-        | undefined;
-      if (toolResult?.plan && typeof toolResult.plan === "string") {
-        const fp = String(toolResult.filePath ?? "");
-        const name = isPlanFilePath(fp) ? (planFileName(fp) ?? "plan") : "plan";
-        return { content: toolResult.plan, fileName: name };
-      }
-    }
-    return null;
-  }
-
-  /** Get the latest plan content for an approved ExitPlanMode card.
-   *  Applies subsequent Edits to the approved plan content. */
-  async function handleExitPlanClearContext() {
-    if (!store.run) return;
-    const runId = store.run.id;
-    const cwd = localStorage.getItem("ocv:project-cwd") || "";
-    dbg("chat", "ExitPlanMode: clear context + auto-accept");
-
-    // Find the ExitPlanMode tool's permission request ID from timeline
-    const exitPlanEntry = store.timeline.find(
-      (e) =>
-        e.kind === "tool" &&
-        e.tool.tool_name === "ExitPlanMode" &&
-        e.tool.status === "permission_prompt" &&
-        e.tool.permission_request_id,
-    );
-    if (!exitPlanEntry || exitPlanEntry.kind !== "tool") return;
-    const requestId = exitPlanEntry.tool.permission_request_id!;
-
-    try {
-      // 1. Set flags BEFORE responding
-      store.pendingPermissionModeOverride = "acceptEdits";
-      store.pendingClearContextPlan = "__pending__"; // marker: waiting for tool_end
-
-      // 2. Allow ExitPlanMode (with setMode) — satisfies the control_response requirement
-      await api.respondPermission(
-        runId,
-        requestId,
-        "allow",
-        [{ type: "setMode", mode: "acceptEdits", destination: "session" }],
-        exitPlanEntry.tool.input,
-      );
-      resolvePermissionOptimistic(store, runId, requestId, "allow");
-
-      // 3. Wait for tool_end to deliver plan content (via pendingClearContextPlan)
-      //    Poll briefly — tool_end should arrive within a few hundred ms
-      let planContent: string | null = null;
-      for (let i = 0; i < 20; i++) {
-        await new Promise((r) => setTimeout(r, 200));
-        if (store.pendingClearContextPlan && store.pendingClearContextPlan !== "__pending__") {
-          planContent = store.pendingClearContextPlan;
-          break;
-        }
-      }
-      store.pendingClearContextPlan = null;
-
-      if (!planContent) {
-        dbgWarn("chat", "ExitPlanMode: timed out waiting for plan content");
-        // Fallback: continue in current session (ExitPlanMode already allowed)
-        return;
-      }
-
-      // 4. Interrupt + stop current session
-      await api.interruptSession(runId).catch(() => {});
-      await api.stopSession(runId);
-      dbg("chat", "ExitPlanMode: session stopped");
-
-      // 5. Navigate to fresh chat URL, then start a new session inline.
-      //    Using sessionStorage + onMount doesn't work: /chat?run=X → /chat
-      //    is the same route component and onMount won't re-fire.
-      //    permissionModeOverride threads through api.startSession → backend
-      //    adapter_settings, so the CLI spawns with --permission-mode acceptEdits
-      //    and the first "Implement..." turn runs in auto-accept (not plan).
-      const planPrompt = `Implement the following plan:\n\n${planContent}`;
-      await goto("/chat", { replaceState: true });
-      await tick(); // let runId effect run loadRun("") → store.reset()
-      const newRunId = await store.startSession(planPrompt, cwd, [], "acceptEdits");
-      await goto(`/chat?run=${newRunId}`, { replaceState: true });
-      dbg("chat", "ExitPlanMode: new session started", { newRunId });
-    } catch (e) {
-      dbgWarn("chat", "ExitPlanMode clear context failed:", e);
-      store.pendingClearContextPlan = null;
-      store.error = String(e);
-      throw e; // Let component-side wrapper catch and unlock buttons
-    }
-  }
-
-  async function handleHookCallbackRespond(requestId: string, decision: "allow" | "deny") {
-    if (!store.run) return;
-    dbg("chat", "hook callback respond", { runId: store.run.id, requestId, decision });
-    try {
-      await api.respondHookCallback(store.run.id, requestId, decision);
-      // Update hook event status in store
-      store.hookEvents = store.hookEvents.map((h) =>
-        h.request_id === requestId
-          ? { ...h, status: decision === "allow" ? ("allowed" as const) : ("denied" as const) }
-          : h,
-      );
-    } catch (e) {
-      dbgWarn("chat", "hook callback respond failed:", e);
-      store.error = String(e);
-    }
-  }
 </script>
 
 {#snippet initHintCard()}
-  {#if showInitHint}
+  {#if lifecycle.showInitHint}
     <div class="mt-3 flex items-center gap-2 text-[11px] text-amber-400/80">
       <svg
         class="h-3.5 w-3.5 shrink-0"
@@ -3199,16 +330,14 @@
         <path d="M3.6 15.4 10.2 4a2 2 0 0 1 3.6 0l6.6 11.4a2 2 0 0 1-1.8 3H5.4a2 2 0 0 1-1.8-3Z" />
       </svg>
       <span>
-        Run
-        <button
+        Run <button
           class="font-mono text-amber-300 hover:text-amber-200 underline underline-offset-2 transition-colors"
           onclick={() => ctrl.sendMessage("/init", [])}>{t("chat_initHintAction")}</button
-        >
-        to create CLAUDE.md
+        > to create CLAUDE.md
       </span>
       <button
         class="ml-auto text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
-        onclick={dismissInitHint}
+        onclick={lifecycle.dismissInitHint}
         title={t("chat_initHintDismiss")}
       >
         <svg
@@ -3218,136 +347,25 @@
           stroke="currentColor"
           stroke-width="2"
           stroke-linecap="round"
-          stroke-linejoin="round"
+          stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
         >
-          <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-        </svg>
       </button>
     </div>
   {/if}
-{/snippet}
-
-{#snippet heroMetaItems()}
-  {@const hasUpdate = !!(
-    cliVersionInfo?.installed &&
-    channelLatest &&
-    cliVersionInfo.installed !== channelLatest
-  )}
-  {#if cliVersionInfo?.installed}
-    <button
-      class="tabular-nums hover:text-muted-foreground transition-colors"
-      onclick={() => goto("/release-notes")}
-    >
-      {t("chat_cliVersion").replace("{version}", cliVersionInfo.installed)}
-    </button>
-    {#if hasUpdate}
-      <span class="text-primary/70">·</span>
-      <button
-        class="text-primary/70 hover:text-primary transition-colors"
-        onclick={() => goto("/release-notes")}
-        title={t("chat_cliUpdateAvailable").replace("{version}", channelLatest!)}
-      >
-        {t("chat_cliUpdateAvailable").replace("{version}", channelLatest!)}
-      </button>
-    {/if}
-  {/if}
-  {#if remoteHosts.length > 0}
-    {#if cliVersionInfo?.installed}
-      <span class="text-muted-foreground">·</span>
-    {/if}
-    <div class="relative inline-flex items-center">
-      {#if targetDropdownOpen}
-        <!-- Invisible backdrop to close dropdown on outside click -->
-        <div class="fixed inset-0 z-40" onclick={() => (targetDropdownOpen = false)}></div>
-      {/if}
-      <button
-        class="inline-flex items-center gap-1 cursor-pointer text-xs {store.remoteHostName
-          ? 'text-blue-400/70 hover:text-blue-400'
-          : 'text-muted-foreground hover:text-foreground'} transition-colors"
-        onclick={() => (targetDropdownOpen = !targetDropdownOpen)}
-      >
-        <svg
-          class="h-3 w-3 shrink-0"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <rect width="20" height="14" x="2" y="3" rx="2" /><line
-            x1="8"
-            y1="21"
-            x2="16"
-            y2="21"
-          /><line x1="12" y1="17" x2="12" y2="21" />
-        </svg>
-        <span>{store.remoteHostName || t("chat_local")}</span>
-        <svg
-          class="h-2.5 w-2.5 opacity-60"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.5"><path d="m6 9 6 6 6-6" /></svg
-        >
-      </button>
-      {#if targetDropdownOpen}
-        <div
-          class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded-md border border-border bg-popover py-1 shadow-md z-50"
-        >
-          <button
-            class="flex w-full items-center gap-1.5 px-3 py-1.5 text-xs {!store.remoteHostName
-              ? 'text-foreground font-medium'
-              : 'text-foreground/70 hover:bg-accent'} transition-colors"
-            onclick={() => {
-              store.remoteHostName = null;
-              setLastTarget(null);
-              dbg("chat", "target changed", "local");
-              targetDropdownOpen = false;
-            }}
-          >
-            {t("chat_local")}
-          </button>
-          {#each remoteHosts as host (host.name)}
-            <button
-              class="flex w-full items-center gap-1.5 px-3 py-1.5 text-xs {store.remoteHostName ===
-              host.name
-                ? 'text-foreground font-medium'
-                : 'text-foreground/70 hover:bg-accent'} transition-colors"
-              onclick={() => {
-                store.remoteHostName = host.name;
-                setLastTarget(host.name);
-                dbg("chat", "target changed", host.name);
-                targetDropdownOpen = false;
-              }}
-            >
-              {host.name} ({host.user}@{host.host})
-            </button>
-          {/each}
-        </div>
-      {/if}
-    </div>
-  {/if}
-{/snippet}
-
-{#snippet heroMetaFooter()}
-  <div class="mt-4 flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/40">
-    {@render heroMetaItems()}
-  </div>
 {/snippet}
 
 <div
   class="miwarp-chat-page-root miwarp-immersive-page-root relative flex h-full min-h-0 w-full overflow-hidden"
 >
-  <!-- Page-level drag overlay (drag-hover or processing spinner) -->
-  {#if pageDragActive || dragProcessing}
+  <!-- Page-level drag overlay -->
+  {#if handlers.pageDragActive || handlers.dragProcessing}
     <div
       class="absolute inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-[2px]"
     >
       <div
         class="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/50 bg-primary/5 px-12 py-8"
       >
-        {#if dragProcessing}
+        {#if handlers.dragProcessing}
           <svg
             class="h-8 w-8 text-primary/60 animate-spin"
             viewBox="0 0 24 24"
@@ -3355,10 +373,8 @@
             stroke="currentColor"
             stroke-width="1.5"
             stroke-linecap="round"
-            stroke-linejoin="round"
+            stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg
           >
-            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-          </svg>
           <span class="text-sm font-medium text-primary/70">{t("drag_processing")}</span>
         {:else}
           <svg
@@ -3369,18 +385,17 @@
             stroke-width="1.5"
             stroke-linecap="round"
             stroke-linejoin="round"
+            ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline
+              points="17 8 12 3 7 8"
+            /><line x1="12" x2="12" y1="3" y2="15" /></svg
           >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" x2="12" y1="3" y2="15" />
-          </svg>
           <span class="text-sm font-medium text-primary/70">{t("prompt_dropFiles")}</span>
         {/if}
       </div>
     </div>
   {/if}
 
-  <!-- Main content area: min-w-0 so status capsule uses column width, not viewport -->
+  <!-- Main content area -->
   <div class="relative z-20 flex min-h-0 min-w-0 flex-1 flex-col">
     <!-- Status bar -->
     <div class="min-w-0 shrink-0 px-2 sm:px-3">
@@ -3391,16 +406,16 @@
         agent={store.run?.agent ?? store.agent}
         model={store.model}
         cost={store.usage.cost}
-        inputTokens={cumulativeTokens.input}
-        outputTokens={cumulativeTokens.output}
-        cacheReadTokens={cumulativeTokens.cacheRead}
-        cacheWriteTokens={cumulativeTokens.cacheWrite}
+        inputTokens={chatDerived.cumulativeTokens.input}
+        outputTokens={chatDerived.cumulativeTokens.output}
+        cacheReadTokens={chatDerived.cumulativeTokens.cacheRead}
+        cacheWriteTokens={chatDerived.cumulativeTokens.cacheWrite}
         parentRunId={store.run?.parent_run_id}
-        onEndSession={handleStop}
-        onFork={forkOverlay ? undefined : () => handleResume("fork")}
-        onModelChange={handleModelChange}
+        onEndSession={handlers.handleStop}
+        onFork={handlers.forkOverlay ? undefined : () => handlers.handleResume("fork")}
+        onModelChange={handlers.handleModelChange}
         effort={store.features.effortSelector ? currentEffort : undefined}
-        onEffortChange={store.features.effortSelector ? handleEffortChange : undefined}
+        onEffortChange={store.features.effortSelector ? handlers.handleEffortChange : undefined}
         onNavigateParent={store.run?.parent_run_id
           ? () => goto(`/chat?run=${store.run!.parent_run_id}`)
           : undefined}
@@ -3410,13 +425,13 @@
         onMcpToggle={() => (mcpPanelOpen = !mcpPanelOpen)}
         cliVersion={store.cliVersion}
         permissionMode={store.permissionMode}
-        {platformModels}
+        platformModels={chatDerived.platformModels}
         fastModeState={store.fastModeState}
-        verbose={verboseEnabled}
+        verbose={lifecycle.verboseEnabled}
         numTurns={store.numTurns}
         durationMs={store.durationMs}
         persistedFiles={store.persistedFiles}
-        onRewind={store.sessionAlive && !store.isRunning ? handleRewind : undefined}
+        onRewind={store.sessionAlive && !store.isRunning ? handlers.handleRewind : undefined}
         contextUtilization={store.contextUtilization}
         contextWarningLevel={store.contextWarningLevel}
         contextWindow={store.contextWindow}
@@ -3427,32 +442,30 @@
         activeTaskCount={store.activeBackgroundTasks.length}
         mode={store.run ? (store.useStreamSession ? "Stream" : "CLI") : ""}
         remoteHostName={store.remoteHostName}
-        onRename={store.run ? handleRename : undefined}
+        onRename={store.run ? handlers.handleRename : undefined}
         authSourceLabel={store.authSourceLabel}
         authSourceCategory={store.authSourceCategory}
         apiKeySource={store.apiKeySource}
         onStatusClick={() => {
-          if (sidebarCollapsed) sidebarCollapsed = false;
-          sidebarRequestedTab = "info";
+          if (lifecycle.sidebarCollapsed) lifecycle.setSidebarCollapsed(false);
+          handlers.sidebarRequestedTab = "info";
         }}
-        onExportHtml={store.run ? () => void handleExportHtml() : undefined}
-        {toolPanelActiveTab}
-        onToolPanelTabChange={selectToolPanelTab}
-        {toolPanelIndicators}
+        onExportHtml={store.run ? () => void handlers.handleExportHtml() : undefined}
+        toolPanelActiveTab={handlers.toolPanelActiveTab}
+        onToolPanelTabChange={handlers.selectToolPanelTab}
+        toolPanelIndicators={handlers.toolPanelIndicators}
       />
     </div>
 
-    <!-- MCP panel (floating below status bar) -->
+    <!-- MCP panel -->
     {#if mcpPanelOpen && store.mcpServers.length > 0}
-      <div class="absolute {statusBarExpanded ? 'top-16' : 'top-9'} right-3 z-30">
+      <div class="absolute {lifecycle.statusBarExpanded ? 'top-16' : 'top-9'} right-3 z-30">
         <McpStatusPanel
           runId={store.run?.id ?? ""}
           mcpServers={store.mcpServers}
           sessionAlive={store.sessionAlive}
           onClose={() => (mcpPanelOpen = false)}
-          onServersUpdate={(servers) => {
-            store.updateMcpServers(servers);
-          }}
+          onServersUpdate={(servers) => store.updateMcpServers(servers)}
         />
       </div>
     {/if}
@@ -3467,171 +480,46 @@
           bind:this={chatAreaRef}
           onscroll={handleChatScroll}
         >
-          {#if welcomeVisible}
-            <!-- Welcome state -->
-            <div class="flex h-full items-center justify-center">
-              <div class="flex flex-col items-center max-w-lg w-full px-4 animate-slide-up">
-                <!-- Logo + title -->
-                <img src="/light.png" alt="MiWarp" class="mx-auto mb-3 h-8 w-8 rounded-lg" />
-                <h2 class="text-base font-medium text-foreground mb-1">{t("chat_welcomeTitle")}</h2>
-                <p class="text-xs text-muted-foreground mb-5">{t("chat_welcomeSubtitle")}</p>
-
-                <!-- Quick actions (gate on listRuns — avoids layout jump when "Continue" inserts) -->
-                <div
-                  class="w-full max-w-sm space-y-2"
-                  aria-busy={welcomeVisible && !welcomeQuickActionsReady}
-                >
-                  {#if !welcomeQuickActionsReady}
-                    <span class="sr-only">{t("chat_welcomeQuickActionsLoading")}</span>
-                    <div class="space-y-2" aria-hidden="true">
-                      {#each [1, 2, 3, 4, 5] as _}
-                        <div
-                          class="h-11 w-full rounded-lg bg-muted/40 animate-pulse border border-border/20"
-                        ></div>
-                      {/each}
-                    </div>
-                  {:else}
-                    {#if lastContinuableRun}
-                      <button
-                        class="w-full flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 px-3.5 py-2.5 text-sm text-foreground hover:bg-muted/50 hover:border-border transition-all duration-150 text-left"
-                        onclick={() => goto(`/chat?run=${lastContinuableRun!.id}&resume=continue`)}
-                      >
-                        <svg
-                          class="h-4 w-4 shrink-0 text-primary/70"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          ><polyline points="9 17 4 12 9 7" /><path
-                            d="M20 18v-2a4 4 0 0 0-4-4H4"
-                          /></svg
-                        >
-                        <span class="truncate">{t("chat_continueLastSession")}</span>
-                        <span class="ml-auto text-[11px] text-muted-foreground/60 shrink-0"
-                          >{relativeTime(
-                            lastContinuableRun.last_activity_at || lastContinuableRun.started_at,
-                          )}</span
-                        >
-                      </button>
-                    {/if}
-                    <button
-                      class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                      onclick={() => ctrl.sendMessage(t("chat_quickAnalyzePrompt"), [])}
-                    >
-                      <svg
-                        class="h-4 w-4 shrink-0 text-blue-400/70"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        ><path d="M21 12a9 9 0 1 1-6.219-8.56" /><circle
-                          cx="12"
-                          cy="12"
-                          r="1"
-                        /></svg
-                      >
-                      <span>{t("chat_quickAnalyze")}</span>
-                    </button>
-                    <button
-                      class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                      onclick={() => fillPrompt(t("chat_quickFixPrompt"))}
-                    >
-                      <svg
-                        class="h-4 w-4 shrink-0 text-amber-400/70"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        ><path
-                          d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
-                        /></svg
-                      >
-                      <span>{t("chat_quickFix")}</span>
-                    </button>
-                    <button
-                      class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                      onclick={() => ctrl.sendMessage(t("chat_quickDailyPrompt"), [])}
-                    >
-                      <svg
-                        class="h-4 w-4 shrink-0 text-green-400/70"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        ><path
-                          d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-                        /><polyline points="14 2 14 8 20 8" /><line
-                          x1="16"
-                          y1="13"
-                          x2="8"
-                          y2="13"
-                        /><line x1="16" y1="17" x2="8" y2="17" /></svg
-                      >
-                      <span>{t("chat_quickDaily")}</span>
-                    </button>
-                    <button
-                      class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                      onclick={() => goto("/scheduled-tasks")}
-                    >
-                      <svg
-                        class="h-4 w-4 shrink-0 text-violet-400/70"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        ><circle cx="12" cy="12" r="10" /><polyline
-                          points="12 6 12 12 16 14"
-                        /></svg
-                      >
-                      <span>{t("chat_quickSchedule")}</span>
-                    </button>
-                  {/if}
-                </div>
-
-                {@render initHintCard()}
-
-                <!-- Footer meta -->
-                <div
-                  class="mt-5 flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/30"
-                >
-                  <AuthSourceBadge
-                    {authOverview}
-                    authSourceLabel={store.authSourceLabel}
-                    authSourceCategory={store.authSourceCategory}
-                    apiKeySource={store.apiKeySource}
-                    hasRun={false}
-                    authMode={store.authMode}
-                    platformCredentials={settings?.platform_credentials ?? []}
-                    platformId={store.platformId ?? "anthropic"}
-                    onAuthModeChange={handleAuthModeChange}
-                    onPlatformChange={handlePlatformChange}
-                    {localProxyStatuses}
-                    variant="hero"
-                  />
-                  <span class="text-muted-foreground/30">·</span>
-                  {@render heroMetaItems()}
-                </div>
-              </div>
-            </div>
+          {#if chatDerived.welcomeVisible}
+            <WelcomeScreen
+              welcomeQuickActionsReady={lifecycle.welcomeQuickActionsReady}
+              lastContinuableRun={lifecycle.lastContinuableRun}
+              showInitHint={lifecycle.showInitHint}
+              authOverview={lifecycle.authOverview}
+              authSourceLabel={store.authSourceLabel}
+              authSourceCategory={store.authSourceCategory}
+              apiKeySource={store.apiKeySource}
+              authMode={store.authMode}
+              platformCredentials={lifecycle.settings?.platform_credentials ?? []}
+              platformId={store.platformId ?? "anthropic"}
+              localProxyStatuses={lifecycle.localProxyStatuses}
+              {cliVersionInfo}
+              {channelLatest}
+              remoteHosts={lifecycle.remoteHosts}
+              remoteHostName={store.remoteHostName}
+              targetDropdownOpen={lifecycle.targetDropdownOpen}
+              onSendMessage={(text, att) => ctrl.sendMessage(text, att)}
+              onFillPrompt={fillPrompt}
+              onGoto={(path) => goto(path)}
+              onDismissInitHint={lifecycle.dismissInitHint}
+              onAuthModeChange={handlers.handleAuthModeChange}
+              onPlatformChange={handlers.handlePlatformChange}
+              onTargetChange={(name) => {
+                store.remoteHostName = name;
+                import("$lib/utils/remote-cwd").then((m) => m.setLastTarget(name));
+              }}
+              onTargetDropdownToggle={() =>
+                lifecycle.setTargetDropdownOpen(!lifecycle.targetDropdownOpen)}
+              onTargetDropdownClose={() => lifecycle.setTargetDropdownOpen(false)}
+            />
           {:else if store.phase === "loading" && store.timeline.length === 0}
-            <!-- Loading state — avoids welcome page flash during loadRun -->
             <div class="flex h-full items-center justify-center">
               <div
                 class="h-5 w-5 rounded-full border-2 border-muted-foreground/30 border-t-primary animate-spin"
               ></div>
             </div>
           {:else}
-            <!-- Timeline: chat messages + inline tool cards -->
+            <!-- Timeline -->
             <div data-conversation-root>
               {#if store.run?.parent_run_id}
                 <div class="chat-content-width py-2" data-export-exclude>
@@ -3646,14 +534,14 @@
                       stroke-width="2"
                       stroke-linecap="round"
                       stroke-linejoin="round"
-                    >
-                      <circle cx="12" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><circle
+                      ><circle cx="12" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><circle
                         cx="18"
                         cy="6"
                         r="3"
-                      />
-                      <path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9" /><path d="M12 12v3" />
-                    </svg>
+                      /><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9" /><path
+                        d="M12 12v3"
+                      /></svg
+                    >
                     <span class="text-foreground/60">{t("chat_forkedBanner")}</span>
                     <button
                       class="ml-auto shrink-0 text-blue-400 hover:text-blue-300 underline underline-offset-2"
@@ -3663,33 +551,35 @@
                   </div>
                 </div>
               {/if}
-              {#if notificationVisible && latestNotification}
+              {#if lifecycle.notificationVisible && lifecycle.latestNotification}
                 <div class="chat-content-width py-1" data-export-exclude>
                   <div
                     class="flex items-center gap-2 text-xs text-muted-foreground bg-teal-500/5 border border-teal-500/20 rounded px-3 py-1.5 animate-fade-in"
                   >
                     <span class="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse"></span>
-                    Task #{latestNotification.task_id}: {latestNotification.status}
+                    Task #{lifecycle.latestNotification.task_id}: {lifecycle.latestNotification
+                      .status}
                   </div>
                 </div>
               {/if}
-              {#if toolNamesInTimeline.length >= 2}
+              {#if chatDerived.toolNamesInTimeline.length >= 2}
                 <div class="chat-content-width py-2" data-export-exclude>
                   <div class="flex flex-wrap items-center gap-1.5">
                     <button
-                      class="rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors {!toolFilter
+                      class="rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors {!lifecycle.toolFilter
                         ? 'bg-foreground/10 text-foreground'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted'}"
-                      onclick={() => (toolFilter = null)}>{t("chat_filterAll")}</button
+                      onclick={() => lifecycle.setToolFilter(null)}>{t("chat_filterAll")}</button
                     >
-                    {#each toolNamesInTimeline as name}
+                    {#each chatDerived.toolNamesInTimeline as name}
                       {@const style = getToolColor(name)}
                       <button
-                        class="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors {toolFilter ===
+                        class="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors {lifecycle.toolFilter ===
                         name
                           ? style.bg + ' ' + style.text
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted'}"
-                        onclick={() => (toolFilter = toolFilter === name ? null : name)}
+                        onclick={() =>
+                          lifecycle.setToolFilter(lifecycle.toolFilter === name ? null : name)}
                       >
                         <svg
                           class="h-2.5 w-2.5"
@@ -3698,20 +588,15 @@
                           stroke="currentColor"
                           stroke-width="2"
                           stroke-linecap="round"
-                          stroke-linejoin="round"
+                          stroke-linejoin="round"><path d={style.icon} /></svg
                         >
-                          <path d={style.icon} />
-                        </svg>
                         {name}
                       </button>
                     {/each}
                   </div>
                 </div>
               {/if}
-              <!-- View mode toggle (Normal / Verbose / Summary) -->
-              <div class="chat-content-width pb-1" data-export-exclude>
-                <ViewModeToggle />
-              </div>
+              <div class="chat-content-width pb-1" data-export-exclude><ViewModeToggle /></div>
               {#if filteredTimeline.length - progressive.renderLimit > 0}
                 <div
                   bind:this={progressive.topSentinel}
@@ -3719,19 +604,19 @@
                   class="h-px w-full"
                 ></div>
               {/if}
-              {#each visibleTimeline as entry, i (entry.id)}
-                {#if !(burstHiddenIndices.has(i) && !toolBursts.has(i))}
+              {#each progressive.visibleTimeline as entry, i (entry.id)}
+                {#if !(chatDerived.burstHiddenIndices.has(i) && !chatDerived.toolBursts.has(i))}
                   <div
                     id="msg-{entry.anchorId}"
                     data-entry-id={entry.id}
                     class:cv-auto={true}
                     class="group/msg"
-                    class:opacity-40={lastClearSepId !== null &&
-                      (timelineIdIndex.get(entry.id) ?? 0) <
-                        (timelineIdIndex.get(lastClearSepId) ?? 0)}
+                    class:opacity-40={chatDerived.lastClearSepId !== null &&
+                      (chatDerived.timelineIdIndex.get(entry.id) ?? 0) <
+                        (chatDerived.timelineIdIndex.get(chatDerived.lastClearSepId) ?? 0)}
                   >
-                    {#if batchGroups.has(i)}
-                      {@const batch = batchGroups.get(i)}
+                    {#if chatDerived.batchGroups.has(i)}
+                      {@const batch = chatDerived.batchGroups.get(i)}
                       {#if batch}
                         <div class="w-full py-1">
                           <div class="chat-content-width pl-7">
@@ -3740,38 +625,38 @@
                         </div>
                       {/if}
                     {/if}
-                    {#if toolBursts.has(i)}
-                      {@const burst = toolBursts.get(i)}
+                    {#if chatDerived.toolBursts.has(i)}
+                      {@const burst = chatDerived.toolBursts.get(i)}
                       {#if burst}
                         <div class="w-full py-1">
                           <div class="chat-content-width pl-7">
                             <ToolBurstHeader
                               {burst}
-                              collapsed={effectiveCollapsed.has(burst.key)}
-                              onToggle={() => toggleBurst(burst.key)}
+                              collapsed={chatDerived.effectiveCollapsed.has(burst.key)}
+                              onToggle={() => chatDerived.toggleBurst(burst.key)}
                             />
                           </div>
                         </div>
                       {/if}
                     {/if}
-                    {#if usageAnnotations.has(i)}
-                      {@const tu = usageAnnotations.get(i)}
-                      {#if tu && settings?.show_token_usage_report !== false}
+                    {#if chatDerived.usageAnnotations.has(i)}
+                      {@const tu = chatDerived.usageAnnotations.get(i)}
+                      {#if tu && lifecycle.settings?.show_token_usage_report !== false}
                         <div class="w-full py-1.5">
                           <div class="chat-content-width">
                             <div class="flex items-center gap-3">
                               <div class="h-px flex-1 bg-border/40"></div>
-                              <span class="text-[10px] tabular-nums text-muted-foreground">
-                                {formatTokenCount(tu.inputTokens)}
+                              <span class="text-[10px] tabular-nums text-muted-foreground"
+                                >{formatTokenCount(tu.inputTokens)}
                                 {t("chat_usageIn")} · {formatTokenCount(tu.outputTokens)}
-                                {t("chat_usageOut")}
-                                {#if tu.cacheReadTokens > 0 || tu.cacheWriteTokens > 0}
+                                {t(
+                                  "chat_usageOut",
+                                )}{#if tu.cacheReadTokens > 0 || tu.cacheWriteTokens > 0}
                                   · {t("chat_usageCache", {
                                     read: formatTokenCount(tu.cacheReadTokens),
                                     write: formatTokenCount(tu.cacheWriteTokens),
-                                  })}
-                                {/if}
-                              </span>
+                                  })}{/if}</span
+                              >
                               <div class="h-px flex-1 bg-border/40"></div>
                             </div>
                           </div>
@@ -3789,7 +674,7 @@
                         attachments={entry.attachments}
                         onRewind={entry.cliUuid && store.sessionAlive && !store.isRunning
                           ? () =>
-                              handleRewindToMessage({
+                              handlers.handleRewindToMessage({
                                 cliUuid: entry.cliUuid!,
                                 content: entry.content,
                                 ts: entry.ts,
@@ -3812,37 +697,37 @@
                         agent={store.agent}
                         platformId={store.platformId ?? undefined}
                         model={store.run?.model ?? store.model}
-                        animated={i === lastAssistantIdx && store.isRunning}
+                        animated={i === chatDerived.lastAssistantIdx(progressive.visibleTimeline) &&
+                          store.isRunning}
                       />
                     {:else if entry.kind === "tool"}
-                      {#if claudeTurnStarts.has(i)}
-                        <div class="pt-3"></div>
-                      {/if}
-                      {#if !burstHiddenIndices.has(i)}
+                      {#if chatDerived.claudeTurnStarts.has(i)}<div class="pt-3"></div>{/if}
+                      {#if !chatDerived.burstHiddenIndices.has(i)}
                         <div class="w-full py-1" id="tool-{entry.tool.tool_use_id}">
                           <div class="chat-content-width">
                             <InlineToolCard
                               tool={entry.tool}
                               subTimeline={entry.subTimeline}
                               runId={store.run?.id ?? ""}
-                              {fetchToolResult}
+                              fetchToolResult={lifecycle.fetchToolResult}
                               onAnswer={entry.tool.tool_name === "AskUserQuestion" &&
                               (entry.tool.status === "running" ||
                                 entry.tool.status === "ask_pending")
-                                ? (answer) => handleToolAnswer(entry.tool.tool_use_id, answer)
+                                ? (answer) =>
+                                    handlers.handleToolAnswer(entry.tool.tool_use_id, answer)
                                 : undefined}
-                              onApprove={handleToolApprove}
-                              onPermissionRespond={handlePermissionRespond}
-                              onExitPlanClearContext={handleExitPlanClearContext}
+                              onApprove={handlers.handleToolApprove}
+                              onPermissionRespond={handlers.handlePermissionRespond}
+                              onExitPlanClearContext={handlers.handleExitPlanClearContext}
                               taskNotifications={store.taskNotifications}
                               planContent={entry.tool.tool_name === "ExitPlanMode" &&
                               (entry.tool.status === "permission_prompt" ||
                                 entry.tool.status === "success")
-                                ? getPlanContentForExitPlan(entry.id)
+                                ? handlers.getPlanContentForExitPlan(entry.id)
                                 : undefined}
                               latestPlanTool={entry.kind === "tool" &&
-                                entry.tool.tool_use_id === latestPlanToolId}
-                              showPermissionInPanel={showPermissionPanel}
+                                entry.tool.tool_use_id === chatDerived.latestPlanToolId}
+                              showPermissionInPanel={chatDerived.showPermissionPanel}
                               onPreviewFile={openPreviewForPath}
                             />
                           </div>
@@ -3878,11 +763,11 @@
                         <div class="chat-content-width">
                           <div class="flex items-center gap-3">
                             <div class="h-px flex-1 bg-amber-500/20"></div>
-                            <span class="text-xs text-amber-500/70 font-medium whitespace-nowrap">
-                              {entry.content === CONTEXT_CLEARED_MARKER
+                            <span class="text-xs text-amber-500/70 font-medium whitespace-nowrap"
+                              >{entry.content === "__CONTEXT_CLEARED__"
                                 ? t("chat_contextCleared")
-                                : entry.content}
-                            </span>
+                                : entry.content}</span
+                            >
                             <div class="h-px flex-1 bg-amber-500/20"></div>
                           </div>
                         </div>
@@ -3892,11 +777,11 @@
                 {/if}
               {/each}
 
-              <!-- Rewind markers (independent array, not in store.timeline) -->
-              {#each rewindMarkers as marker, mi (marker.id)}
+              <!-- Rewind markers -->
+              {#each handlers.rewindMarkers as marker, mi (marker.id)}
                 <div
                   class="w-full py-3"
-                  id={mi === rewindMarkers.length - 1 ? "rewind-marker-latest" : undefined}
+                  id={mi === handlers.rewindMarkers.length - 1 ? "rewind-marker-latest" : undefined}
                 >
                   <div class="chat-content-width">
                     <div class="flex items-center gap-3">
@@ -3910,11 +795,10 @@
                           stroke-width="2"
                           stroke-linecap="round"
                           stroke-linejoin="round"
-                        >
-                          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                          <path d="M3 3v5h5" />
-                        </svg>
-                        <span
+                          ><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path
+                            d="M3 3v5h5"
+                          /></svg
+                        ><span
                           >{t("rewind_separatorLabel", {
                             count: String(marker.filesReverted.length),
                           })}</span
@@ -3925,74 +809,71 @@
                     <div class="mt-1 ml-8 text-[11px] text-muted-foreground/60 truncate">
                       &ldquo;{marker.targetContent}&rdquo;
                     </div>
-                    {#if marker.filesReverted.length > 0}
-                      <details class="mt-1 ml-8">
+                    {#if marker.filesReverted.length > 0}<details class="mt-1 ml-8">
                         <summary
                           class="cursor-pointer text-[10px] text-blue-500/50 hover:text-blue-500/80"
-                        >
-                          {t("rewind_separatorFiles", {
+                          >{t("rewind_separatorFiles", {
                             count: String(marker.filesReverted.length),
-                          })}
-                        </summary>
+                          })}</summary
+                        >
                         <div class="mt-1 rounded bg-muted/30 px-2 py-1">
-                          {#each marker.filesReverted as file}
-                            <div class="truncate font-mono text-[10px] text-muted-foreground">
+                          {#each marker.filesReverted as file}<div
+                              class="truncate font-mono text-[10px] text-muted-foreground"
+                            >
                               {file}
-                            </div>
-                          {/each}
+                            </div>{/each}
                         </div>
-                      </details>
-                    {/if}
+                      </details>{/if}
                   </div>
                 </div>
               {/each}
 
-              <!-- Last turn usage annotation (after all entries) -->
-              {#if lastTurnUsage && !store.isRunning && settings?.show_token_usage_report !== false}
+              <!-- Last turn usage -->
+              {#if chatDerived.lastTurnUsage && !store.isRunning && lifecycle.settings?.show_token_usage_report !== false}
                 <div class="w-full py-1.5">
                   <div class="chat-content-width">
                     <div class="flex items-center gap-3">
                       <div class="h-px flex-1 bg-border/40"></div>
-                      <span class="text-[10px] tabular-nums text-muted-foreground">
-                        {formatTokenCount(lastTurnUsage.inputTokens)}
-                        {t("chat_usageIn")} · {formatTokenCount(lastTurnUsage.outputTokens)}
-                        {t("chat_usageOut")}
-                        {#if lastTurnUsage.cacheReadTokens > 0 || lastTurnUsage.cacheWriteTokens > 0}
+                      <span class="text-[10px] tabular-nums text-muted-foreground"
+                        >{formatTokenCount(chatDerived.lastTurnUsage.inputTokens)}
+                        {t("chat_usageIn")} · {formatTokenCount(
+                          chatDerived.lastTurnUsage.outputTokens,
+                        )}
+                        {t(
+                          "chat_usageOut",
+                        )}{#if chatDerived.lastTurnUsage.cacheReadTokens > 0 || chatDerived.lastTurnUsage.cacheWriteTokens > 0}
                           · {t("chat_usageCache", {
-                            read: formatTokenCount(lastTurnUsage.cacheReadTokens),
-                            write: formatTokenCount(lastTurnUsage.cacheWriteTokens),
-                          })}
-                        {/if}
-                      </span>
+                            read: formatTokenCount(chatDerived.lastTurnUsage.cacheReadTokens),
+                            write: formatTokenCount(chatDerived.lastTurnUsage.cacheWriteTokens),
+                          })}{/if}</span
+                      >
                       <div class="h-px flex-1 bg-border/40"></div>
                     </div>
                   </div>
                 </div>
               {/if}
 
-              <!-- Active team runs -->
+              <!-- Team runs -->
               {#each team.activeTeamRuns as teamRun (teamRun.id)}
                 <div class="w-full py-2">
-                  <div class="chat-content-width pl-7">
-                    <TeamRunCard {teamRun} />
-                  </div>
+                  <div class="chat-content-width pl-7"><TeamRunCard {teamRun} /></div>
                 </div>
               {/each}
 
-              <!-- Pending hook callbacks (runtime UI — excluded from export) -->
+              <!-- Hook callbacks -->
               {#each store.hookEvents.filter((h) => h.status === "hook_pending") as hookEvent (hookEvent.request_id)}
                 <div class="chat-content-width pl-7" data-export-exclude>
-                  <HookReviewCard {hookEvent} onRespond={handleHookCallbackRespond} />
+                  <HookReviewCard {hookEvent} onRespond={handlers.handleHookCallbackRespond} />
                 </div>
               {/each}
 
-              <!-- Thinking panel (extended thinking) -->
+              <!-- Thinking panel -->
               {#if store.thinkingText}
                 <div class="w-full animate-fade-in">
                   <div class="chat-content-width py-2">
                     <button
                       class="glass-card w-full text-left px-3 py-2 transition-colors group"
-                      onclick={() => (thinkingExpanded = !thinkingExpanded)}
+                      onclick={() => lifecycle.setThinkingExpanded(!lifecycle.thinkingExpanded)}
                     >
                       <div class="flex items-center gap-2">
                         <div
@@ -4006,24 +887,20 @@
                             stroke-width="2"
                             stroke-linecap="round"
                             stroke-linejoin="round"
-                          >
-                            <path
+                            ><path
                               d="M12 2a8 8 0 0 0-8 8c0 3.4 2.1 6.3 5 7.4V19a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1.6c2.9-1.1 5-4 5-7.4a8 8 0 0 0-8-8z"
-                            />
-                            <path d="M10 22h4" />
-                          </svg>
+                            /><path d="M10 22h4" /></svg
+                          >
                         </div>
                         <span class="text-xs font-medium text-[hsl(var(--miwarp-status-info))]"
                           >{t("chat_thinking")}</span
                         >
-                        {#if store.isRunning && !store.streamingText}
-                          <div
+                        {#if store.isRunning && !store.streamingText}<div
                             class="h-2.5 w-2.5 rounded-full border-2 border-[hsl(var(--miwarp-status-info)/0.3)] border-t-[hsl(var(--miwarp-status-info))] animate-spin"
                             data-export-exclude
-                          ></div>
-                        {/if}
+                          ></div>{/if}
                         <svg
-                          class="h-3 w-3 text-muted-foreground/40 shrink-0 transition-transform ml-auto {thinkingExpanded
+                          class="h-3 w-3 text-muted-foreground/40 shrink-0 transition-transform ml-auto {lifecycle.thinkingExpanded
                             ? 'rotate-180'
                             : ''}"
                           viewBox="0 0 24 24"
@@ -4031,12 +908,10 @@
                           stroke="currentColor"
                           stroke-width="2"
                           stroke-linecap="round"
-                          stroke-linejoin="round"
+                          stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg
                         >
-                          <path d="m6 9 6 6 6-6" />
-                        </svg>
                       </div>
-                      {#if thinkingExpanded}
+                      {#if lifecycle.thinkingExpanded}
                         <div class="mt-2 pl-7 max-h-60 overflow-y-auto">
                           <pre
                             class="text-xs font-mono whitespace-pre-wrap break-words text-[hsl(var(--miwarp-status-info)/0.7)] leading-relaxed">{store.thinkingText.trimEnd()}</pre>
@@ -4069,8 +944,8 @@
                 </div>
               {/if}
 
-              <!-- Slash command processing indicator (before thinking kicks in) -->
-              {#if ctrl.processingSlashCmd && !thinkingVisible && !store.streamingText && !store.thinkingText}
+              <!-- Slash command processing -->
+              {#if ctrl.processingSlashCmd && !lifecycle.thinkingVisible && !store.streamingText && !store.thinkingText}
                 <div class="w-full animate-fade-in" data-export-exclude>
                   <div class="chat-content-width py-2">
                     <div class="flex items-center gap-2 text-sm text-muted-foreground">
@@ -4085,8 +960,8 @@
                 </div>
               {/if}
 
-              <!-- Thinking indicator (debounced 300ms to avoid flash on fast CLI commands) -->
-              {#if thinkingVisible && !store.thinkingText}
+              <!-- Thinking indicator -->
+              {#if lifecycle.thinkingVisible && !store.thinkingText}
                 <div class="w-full animate-fade-in" data-export-exclude>
                   <div class="chat-content-width py-4">
                     <div class="mb-1.5 flex items-center gap-2">
@@ -4101,18 +976,16 @@
                           stroke-width="2"
                           stroke-linecap="round"
                           stroke-linejoin="round"
-                        >
-                          <path
+                          ><path
                             d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"
-                          />
-                        </svg>
+                          /></svg
+                        >
                       </div>
                       <span class="text-sm font-semibold text-foreground">{t("chat_claude")}</span>
-                      {#if thinkingElapsed > 0}
-                        <span class="ml-auto text-[10px] tabular-nums text-muted-foreground"
-                          >{formatElapsed(thinkingElapsed)}</span
-                        >
-                      {/if}
+                      {#if lifecycle.thinkingElapsed > 0}<span
+                          class="ml-auto text-[10px] tabular-nums text-muted-foreground"
+                          >{lifecycle.formatElapsed(lifecycle.thinkingElapsed)}</span
+                        >{/if}
                     </div>
                     <div class="pl-7">
                       {#if store.activeToolName}
@@ -4124,21 +997,19 @@
                             >{t("chat_usingTool")}
                             <span class="text-foreground font-medium">{store.activeToolName}</span
                             ></span
-                          >
-                          {#if store.thinkingEndMs && store.thinkingDurationSec > 0}
-                            <span class="text-xs tabular-nums"
+                          >{#if store.thinkingEndMs && store.thinkingDurationSec > 0}<span
+                              class="text-xs tabular-nums"
                               >· thought for {store.thinkingDurationSec}s</span
-                            >
-                          {/if}
+                            >{/if}
                         </div>
-                      {:else if approving}
+                      {:else if handlers.approving}
                         <div class="flex items-center gap-2 text-sm text-muted-foreground">
                           <div
                             class="h-3.5 w-3.5 rounded-full border-2 border-border border-t-muted-foreground animate-spin"
                           ></div>
                           <span>{t("chat_restartingApproved")}</span>
                         </div>
-                      {:else if sending}
+                      {:else if store.phase === "spawning"}
                         <div class="flex items-center gap-2 text-sm text-muted-foreground">
                           <div
                             class="h-3.5 w-3.5 rounded-full border-2 border-border border-t-muted-foreground animate-spin"
@@ -4147,13 +1018,12 @@
                         </div>
                       {:else}
                         <div class="flex items-center gap-2 text-sm">
-                          <span class="spinner-star">✦</span>
-                          <span class="spinner-shimmer">{spinnerVerb}…</span>
-                          {#if store.thinkingEndMs && store.thinkingDurationSec > 0}
-                            <span class="text-muted-foreground text-xs tabular-nums"
+                          <span class="spinner-star">✦</span><span class="spinner-shimmer"
+                            >{lifecycle.spinnerVerb}…</span
+                          >{#if store.thinkingEndMs && store.thinkingDurationSec > 0}<span
+                              class="text-muted-foreground text-xs tabular-nums"
                               >· thought for {store.thinkingDurationSec}s</span
-                            >
-                          {/if}
+                            >{/if}
                         </div>
                       {/if}
                     </div>
@@ -4176,22 +1046,13 @@
               stroke="currentColor"
               stroke-width="2.5"
               stroke-linecap="round"
-              stroke-linejoin="round"
+              stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg
             >
-              <path d="m6 9 6 6 6-6" />
-            </svg>
           </button>
         {/if}
       {:else if store.run && store.run.status !== "pending"}
-        <!-- CLI mode: terminal -->
-        <XTerminal
-          bind:this={xtermRef}
-          onResize={handleTermResize}
-          onReady={handleTermReady}
-          class="h-full"
-        />
+        <XTerminal bind:this={xtermRef} onResize={() => {}} onReady={() => {}} class="h-full" />
       {:else}
-        <!-- CLI mode: welcome state -->
         <div class="flex h-full items-center justify-center">
           <div class="text-center max-w-md animate-slide-up">
             <img src="/light.png" alt="MiWarp" class="mx-auto mb-4 h-10 w-10 rounded-xl" />
@@ -4200,18 +1061,16 @@
               {store.run ? t("chat_typeToStartSession") : t("chat_startSessionHint")}
             </p>
             {@render initHintCard()}
-            {@render heroMetaFooter()}
           </div>
         </div>
       {/if}
 
       <!-- Fork overlay -->
-      {#if forkOverlay}
+      {#if handlers.forkOverlay}
         <div
           class="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in"
         >
-          {#if forkOverlay.error}
-            <!-- Error state -->
+          {#if handlers.forkOverlay.error}
             <div class="flex flex-col items-center gap-4 max-w-sm text-center animate-slide-up">
               <div
                 class="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10"
@@ -4224,28 +1083,26 @@
                   stroke-width="2"
                   stroke-linecap="round"
                   stroke-linejoin="round"
+                  ><circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" /></svg
                 >
-                  <circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" />
-                </svg>
               </div>
               <div>
                 <h3 class="text-sm font-semibold text-foreground mb-1">{t("chat_forkFailed")}</h3>
-                <p class="text-xs text-muted-foreground">{forkOverlay.error}</p>
+                <p class="text-xs text-muted-foreground">{handlers.forkOverlay.error}</p>
               </div>
               <div class="flex items-center gap-2">
                 <button
                   class="rounded-lg border border-border bg-muted px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
-                  onclick={handleForkCancel}>{t("common_cancel")}</button
+                  onclick={handlers.handleForkCancel}>{t("common_cancel")}</button
                 >
                 <button
                   class="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-                  disabled={resuming}
-                  onclick={handleForkRetry}>{t("common_retry")}</button
+                  disabled={handlers.resuming}
+                  onclick={handlers.handleForkRetry}>{t("common_retry")}</button
                 >
               </div>
             </div>
           {:else}
-            <!-- In-progress state -->
             <div class="flex flex-col items-center gap-4 max-w-sm text-center animate-slide-up">
               <div class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10">
                 <svg
@@ -4255,35 +1112,29 @@
                   stroke="currentColor"
                   stroke-width="2"
                   stroke-linecap="round"
-                  stroke-linejoin="round"
+                  stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56" /></svg
                 >
-                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                </svg>
               </div>
               <div>
                 <h3 class="text-sm font-semibold text-foreground mb-1">
                   {t("chat_forkingSession")}
                 </h3>
-                <p class="text-xs text-muted-foreground">
-                  {t("chat_forkingDesc")}
-                </p>
+                <p class="text-xs text-muted-foreground">{t("chat_forkingDesc")}</p>
               </div>
-              {#if forkElapsed > 0}
-                <span class="text-xs tabular-nums text-muted-foreground"
-                  >{formatElapsed(forkElapsed)}</span
-                >
-              {/if}
+              {#if handlers.forkElapsed > 0}<span class="text-xs tabular-nums text-muted-foreground"
+                  >{lifecycle.formatElapsed(handlers.forkElapsed)}</span
+                >{/if}
               <button
                 class="rounded-lg border border-border bg-muted px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
-                onclick={handleForkCancel}>{t("common_cancel")}</button
+                onclick={handlers.handleForkCancel}>{t("common_cancel")}</button
               >
             </div>
           {/if}
         </div>
       {/if}
 
-      <!-- Classified error card -->
-      {#if store.error && !forkOverlay}
+      <!-- Error card -->
+      {#if store.error && !handlers.forkOverlay}
         {@const classified = classifyError(store.run?.result_subtype, store.error)}
         {@const catIcon =
           classified.category === "context_limit"
@@ -4322,32 +1173,26 @@
               >
             </div>
             <div class="flex items-center gap-2 mt-2 pl-6">
-              {#if classified.canRetry && store.phase === "failed" && store.run?.session_id}
-                <button
+              {#if classified.canRetry && store.phase === "failed" && store.run?.session_id}<button
                   class="rounded px-2.5 py-1 text-xs bg-destructive/20 hover:bg-destructive/30 text-destructive transition-colors"
-                  onclick={() => handleResume("continue")}>{t("common_retry")}</button
-                >
-              {/if}
-              {#if classified.canFork && store.run?.session_id}
-                <button
+                  onclick={() => handlers.handleResume("continue")}>{t("common_retry")}</button
+                >{/if}
+              {#if classified.canFork && store.run?.session_id}<button
                   class="rounded px-2.5 py-1 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors"
-                  onclick={() => handleResume("fork")}>{t("statusbar_fork")}</button
-                >
-              {/if}
-              {#if classified.settingsLink}
-                <button
+                  onclick={() => handlers.handleResume("fork")}>{t("statusbar_fork")}</button
+                >{/if}
+              {#if classified.settingsLink}<button
                   class="rounded px-2.5 py-1 text-xs bg-destructive/20 hover:bg-destructive/30 text-destructive transition-colors"
                   onclick={() => goto(classified.settingsLink)}>{t("chat_checkSettings")}</button
-                >
-              {/if}
+                >{/if}
             </div>
           </div>
         </div>
       {/if}
     </div>
 
-    <!-- Resume warning (if applicable) -->
-    {#if canResumeNow(store.run, store.phase, agentSettings?.no_session_persistence ?? false) && getResumeWarning(store.run)}
+    <!-- Resume warning -->
+    {#if canResumeNow(store.run, store.phase, lifecycle.agentSettings?.no_session_persistence ?? false) && getResumeWarning(store.run)}
       <div
         class="mx-3 mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-400"
       >
@@ -4355,24 +1200,24 @@
       </div>
     {/if}
 
-    <!-- Floating permission panel (above input bar) -->
-    {#if showPermissionPanel}
+    <!-- Permission panel -->
+    {#if chatDerived.showPermissionPanel}
       <PermissionPanel
-        pendingTools={pendingToolPermissions}
-        onPermissionRespond={handlePermissionRespond}
+        pendingTools={chatDerived.pendingToolPermissions}
+        onPermissionRespond={handlers.handlePermissionRespond}
       />
     {/if}
 
-    <!-- MCP Elicitation dialog (above input bar) -->
+    <!-- Elicitation dialog -->
     {#if store.hasElicitation && store.sessionAlive}
       <ElicitationDialog
         elicitations={store.pendingElicitations}
-        onRespond={handleElicitationRespond}
+        onRespond={handlers.handleElicitationRespond}
       />
     {/if}
 
-    <!-- BTW side question drawer -->
-    {#if btwState.active}
+    <!-- BTW side question -->
+    {#if handlers.btwState.active}
       <div
         class="border-t border-blue-500/30 bg-blue-500/5"
         style="max-height: 40vh; overflow-y: auto;"
@@ -4380,7 +1225,7 @@
         <div class="flex items-center justify-between px-4 py-2 border-b border-border/50">
           <span class="text-xs font-medium text-blue-400">{t("chat_btw")}</span>
           <button
-            onclick={() => (btwState = { ...btwState, active: false })}
+            onclick={() => (handlers.btwState = { ...handlers.btwState, active: false })}
             title="Close side question"
             class="text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -4391,37 +1236,35 @@
               stroke="currentColor"
               stroke-width="2"
               stroke-linecap="round"
-              stroke-linejoin="round"
+              stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
             >
-              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-            </svg>
           </button>
         </div>
         <div class="px-4 py-3 space-y-2">
-          <p class="text-xs text-muted-foreground">Q: {btwState.question}</p>
+          <p class="text-xs text-muted-foreground">Q: {handlers.btwState.question}</p>
           <div class="text-sm">
-            {#if btwState.error}
-              <p class="text-destructive">{btwState.error}</p>
-            {:else if btwState.answer}
-              <MarkdownContent text={btwState.answer} streaming={btwState.loading} />
-            {/if}
-            {#if btwState.loading}
-              <span class="inline-block w-2 h-4 bg-blue-400 animate-pulse rounded-sm"></span>
-            {/if}
+            {#if handlers.btwState.error}<p class="text-destructive">
+                {handlers.btwState.error}
+              </p>{:else if handlers.btwState.answer}<MarkdownContent
+                text={handlers.btwState.answer}
+                streaming={handlers.btwState.loading}
+              />{/if}
+            {#if handlers.btwState.loading}<span
+                class="inline-block w-2 h-4 bg-blue-400 animate-pulse rounded-sm"
+              ></span>{/if}
           </div>
         </div>
       </div>
     {/if}
 
-    <!-- Created Files Panel -->
-    {#if store.phase === "completed" && hasCreatedFiles}
+    <!-- Created Files -->
+    {#if store.phase === "completed" && chatDerived.hasCreatedFiles}
       <div class="chat-content-width pb-2">
-        <CreatedFiles files={createdFiles} onOpenFile={(path) => dbg("open", path)} />
+        <CreatedFiles files={chatDerived.createdFiles} onOpenFile={(path) => dbg("open", path)} />
       </div>
     {/if}
 
-    <!-- Input bar -->
-    <!-- Ralph Loop status bar -->
+    <!-- Ralph Loop -->
     {#if store.ralphLoop?.active}
       <div class="mx-auto w-full max-w-3xl px-4 pb-2">
         <div
@@ -4430,25 +1273,22 @@
           <div class="flex items-center gap-2 text-blue-400">
             <span class="animate-pulse">🔄</span>
             <span class="font-medium">{t("chat_ralphLoop")}</span>
-            <span class="text-blue-400/70">
-              iteration {store.ralphLoop.iteration}/{store.ralphLoop.maxIterations || "∞"}
-            </span>
-            {#if store.ralphLoop.completionPromise}
-              <span class="text-blue-400/50">
-                · promise: "{store.ralphLoop.completionPromise}"
-              </span>
-            {/if}
+            <span class="text-blue-400/70"
+              >iteration {store.ralphLoop.iteration}/{store.ralphLoop.maxIterations || "∞"}</span
+            >
+            {#if store.ralphLoop.completionPromise}<span class="text-blue-400/50"
+                >· promise: "{store.ralphLoop.completionPromise}"</span
+              >{/if}
           </div>
           <button
             class="rounded px-2 py-0.5 text-xs text-red-400 hover:bg-red-500/20 transition-colors"
-            onclick={handleRalphCancel}
+            onclick={handlers.handleRalphCancel}>Cancel</button
           >
-            Cancel
-          </button>
         </div>
       </div>
     {/if}
 
+    <!-- Input bar -->
     {#if store.sessionAlive || !store.run || store.phase === "empty" || store.phase === "ready" || TERMINAL_PHASES.includes(store.phase)}
       <div
         class="pointer-events-none sticky bottom-0 z-20 bg-gradient-to-t from-background/95 via-background/70 to-transparent px-2 pb-5 pt-4 backdrop-blur-md [mask-image:linear-gradient(to_top,black_60%,transparent)]"
@@ -4458,18 +1298,22 @@
             bind:this={promptRef}
             agent={store.agent}
             running={store.isActivelyRunning}
-            disabled={inputBlockedByPermission}
+            disabled={chatDerived.inputBlockedByPermission}
             pendingPermission={store.hasInlinePermission}
             hasRun={!!store.run}
             sessionAlive={store.sessionAlive}
             canResume={!store.sessionAlive &&
-              canResumeNow(store.run, store.phase, agentSettings?.no_session_persistence ?? false)}
+              canResumeNow(
+                store.run,
+                store.phase,
+                lifecycle.agentSettings?.no_session_persistence ?? false,
+              )}
             useStreamSession={store.useStreamSession}
             isRemote={store.isRemote}
             cliCommands={store.sessionInitReceived && store.sessionCommands.length > 0
               ? store.sessionCommands
               : mergeProjectCommands(getCliCommands(), projectCommands)}
-            models={effectiveModels}
+            models={chatDerived.effectiveModels}
             currentModel={store.model}
             permissionMode={store.permissionMode}
             cwd={store.effectiveCwd ||
@@ -4477,32 +1321,31 @@
               localStorage.getItem("ocv:project-cwd") ||
               ""}
             onSend={ctrl.sendMessage}
-            onBtwSend={handleBtwSend}
+            onBtwSend={handlers.handleBtwSend}
             onAgentChange={undefined}
             onInterrupt={() => store.interrupt()}
-            onModelSwitch={handleModelChange}
+            onModelSwitch={handlers.handleModelChange}
             onPermissionModeChange={store.features.permissionModeSwitch
-              ? handlePermissionModeChange
+              ? handlers.handlePermissionModeChange
               : undefined}
-            onVirtualCommand={handleVirtualCommand}
+            onVirtualCommand={handlers.handleVirtualCommand}
             fastModeState={store.fastModeState}
-            onFastModeSwitch={handleFastModeSwitch}
-            onShortcutHelp={() => (shortcutHelpOpen = !shortcutHelpOpen)}
+            onFastModeSwitch={handlers.handleFastModeSwitch}
+            onShortcutHelp={() => (handlers.shortcutHelpOpen = !handlers.shortcutHelpOpen)}
             availableSkills={store.availableSkills}
-            {skillItems}
+            skillItems={chatDerived.skillItems(preloadedSkills)}
             agents={preloadedAgents.map((a) => ({ name: a.name, description: a.description }))}
-            hasStash={!!stashedInput}
-            {userHistory}
+            hasStash={!!handlers.stashedInput}
+            userHistory={chatDerived.userHistory}
             runId={store.run?.id ?? ""}
             onRestoreStash={() => {
-              if (stashedInput) {
-                promptRef?.restoreSnapshot(stashedInput);
-                stashedInput = null;
-                showChatToast(t("toast_stashRestored"));
-                dbg("chat", "stash restored via badge click");
+              if (handlers.stashedInput) {
+                promptRef?.restoreSnapshot(handlers.stashedInput);
+                handlers.stashedInput = null;
+                handlers.showChatToast(t("toast_stashRestored"));
               }
             }}
-            onValueChange={handleInputValueChange}
+            onValueChange={team.handleInputValueChange}
             contextWindow={store.contextWindow}
           />
           {#if team.teamHintVisible}
@@ -4517,12 +1360,12 @@
                 stroke-width="2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
+                ><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle
+                  cx="9"
+                  cy="7"
+                  r="4"
+                /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg
               >
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
               <span>{t("teamRun_teamHint")}</span>
             </div>
           {/if}
@@ -4531,41 +1374,40 @@
     {/if}
   </div>
 
-  <!-- Tool Activity sidebar: transparent rail so cards float; keep below center column in stacking -->
+  <!-- Tool Activity sidebar -->
   <div class="relative z-0 flex h-full min-h-0 shrink-0 flex-col bg-transparent">
     <ToolActivity
       timeline={store.timeline}
       tools={store.tools}
       turnUsages={store.turnUsages}
-      {contextHistory}
+      contextHistory={contextHistoryMap.get(store.run?.id ?? "") ?? []}
       persistedFiles={store.persistedFiles}
-      sessionInfo={currentSessionInfo}
-      collapsed={sidebarCollapsed}
-      onScrollToTool={scrollToTool}
-      onScrollToTurn={(anchorId) => scrollToMessage(anchorId)}
-      bind:requestedTab={sidebarRequestedTab}
-      bind:activeTab={toolPanelActiveTab}
-      bind:panelIndicators={toolPanelIndicators}
+      sessionInfo={chatDerived.currentSessionInfo}
+      collapsed={lifecycle.sidebarCollapsed}
+      onScrollToTool={handlers.scrollToTool}
+      onScrollToTurn={(anchorId) => handlers.scrollToMessage(anchorId)}
+      bind:requestedTab={handlers.sidebarRequestedTab}
+      bind:activeTab={handlers.toolPanelActiveTab}
+      bind:panelIndicators={handlers.toolPanelIndicators}
       backgroundTasks={store.taskNotifications}
       activeBackgroundTasks={store.activeBackgroundTasks}
       cwd={store.effectiveCwd}
       runId={store.run?.id ?? ""}
       isRemote={store.isRemote}
-      bind:requestedPreviewPath
-      bind:requestedPreviewUrl
+      bind:requestedPreviewPath={handlers.requestedPreviewPath}
+      bind:requestedPreviewUrl={handlers.requestedPreviewUrl}
     />
   </div>
 
   <RewindModal
-    bind:open={rewindModalOpen}
+    bind:open={handlers.rewindModalOpen}
     runId={store.run?.id ?? ""}
     candidates={rewindCandidates}
-    initialCandidate={rewindDirectTarget}
+    initialCandidate={handlers.rewindDirectTarget}
     onSuccess={(info) => {
-      // Run-id debounce: discard if run changed while modal was open
       if (info.runId !== store.run?.id) return;
-      rewindMarkers = [
-        ...rewindMarkers,
+      handlers.rewindMarkers = [
+        ...handlers.rewindMarkers,
         {
           id: uuid(),
           ts: new Date().toISOString(),
@@ -4573,34 +1415,26 @@
           filesReverted: info.filesReverted,
         },
       ];
-      if (info.degraded) {
-        showChatToast(t("rewind_degradedToFull"));
-      } else {
-        showChatToast(t("toast_rewindSuccess"));
-      }
-      tick().then(() => {
-        document
-          .getElementById("rewind-marker-latest")
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
+      if (info.degraded) handlers.showChatToast(t("rewind_degradedToFull"));
+      else handlers.showChatToast(t("toast_rewindSuccess"));
     }}
   />
 
-  <ShortcutHelpPanel bind:open={shortcutHelpOpen} />
+  <ShortcutHelpPanel bind:open={handlers.shortcutHelpOpen} />
 
   <FolderPicker
-    bind:open={folderPickerOpen}
-    initialHost={folderPickerInitialHost}
-    initialPath={folderPickerInitialPath}
-    hideTargetSelector={folderPickerHideTarget}
+    bind:open={lifecycle.folderPickerOpen}
+    initialHost={lifecycle.folderPickerInitialHost}
+    initialPath={lifecycle.folderPickerInitialPath}
+    hideTargetSelector={lifecycle.folderPickerHideTarget}
     onConfirm={(result) => {
-      const fn = folderPickerResolve;
-      folderPickerResolve = null;
+      const fn = lifecycle.getFolderPickerResolve();
+      lifecycle.setFolderPickerResolve(null);
       fn?.(result);
     }}
     onCancel={() => {
-      const fn = folderPickerResolve;
-      folderPickerResolve = null;
+      const fn = lifecycle.getFolderPickerResolve();
+      lifecycle.setFolderPickerResolve(null);
       fn?.(null);
     }}
   />
@@ -4609,19 +1443,17 @@
     bind:open={team.teamDispatchOpen}
     prompt={team.teamDispatchPrompt}
     cwd={store.effectiveCwd || ""}
-    onDispatch={handleTeamDispatch}
-    onUseSingleClaude={handleUseSingleClaude}
-    onCancel={handleCancelTeamDispatch}
+    onDispatch={team.handleTeamDispatch}
+    onUseSingleClaude={team.handleUseSingleClaude}
+    onCancel={team.handleCancelTeamDispatch}
   />
 
-  <!-- Chat toast (fixed bottom-center, auto-dismiss) -->
-  {#if chatToast}
+  <!-- Toast -->
+  {#if handlers.chatToast}
     <div
-      class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50
-      rounded-lg border bg-background/95 px-4 py-2 text-sm shadow-lg backdrop-blur-sm
-      animate-in fade-in slide-in-from-bottom-2 duration-200"
+      class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 rounded-lg border bg-background/95 px-4 py-2 text-sm shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-bottom-2 duration-200"
     >
-      {chatToast}
+      {handlers.chatToast}
     </div>
   {/if}
 </div>
