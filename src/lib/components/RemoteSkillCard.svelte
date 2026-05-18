@@ -43,7 +43,9 @@
           class="text-[10px] font-medium rounded-full px-1.5 py-0.5 bg-violet-500/10 text-violet-700 dark:text-violet-400"
           >{t("skillSources_badge_feishu")}</span
         >
-        <span class="text-[10px] font-medium rounded-full px-1.5 py-0.5 {badgeClass(candidate.status)}">
+        <span
+          class="text-[10px] font-medium rounded-full px-1.5 py-0.5 {badgeClass(candidate.status)}"
+        >
           {statusLabel(candidate.status)}
         </span>
       </div>

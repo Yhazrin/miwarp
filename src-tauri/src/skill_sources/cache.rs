@@ -14,7 +14,9 @@ pub struct CandidateBundle {
 }
 
 fn cache_root() -> PathBuf {
-    storage::data_dir().join("skill_source_cache").join("candidates")
+    storage::data_dir()
+        .join("skill_source_cache")
+        .join("candidates")
 }
 
 fn candidate_path(id: &str) -> PathBuf {
@@ -24,7 +26,13 @@ fn candidate_path(id: &str) -> PathBuf {
 
 fn sanitize_id_segment(id: &str) -> String {
     id.chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .take(220)
         .collect()
 }
@@ -43,7 +51,9 @@ pub fn load_candidate_bundle(id: &str) -> Result<Option<CandidateBundle>, String
         return Ok(None);
     }
     let raw = std::fs::read_to_string(p).map_err(|e| e.to_string())?;
-    serde_json::from_str(&raw).map(Some).map_err(|e| e.to_string())
+    serde_json::from_str(&raw)
+        .map(Some)
+        .map_err(|e| e.to_string())
 }
 
 pub fn purge_candidates_for_source(source_id: &str) -> Result<(), String> {

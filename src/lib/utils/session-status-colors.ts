@@ -1,6 +1,13 @@
 import type { SessionStatusColors } from "$lib/types";
 
-export type SessionStatusColorKey = "running" | "done" | "failed" | "pending" | "paused" | "blocked" | "idle";
+export type SessionStatusColorKey =
+  | "running"
+  | "done"
+  | "failed"
+  | "pending"
+  | "paused"
+  | "blocked"
+  | "idle";
 
 export const DEFAULT_SESSION_STATUS_COLORS: Record<SessionStatusColorKey, string> = {
   running: "#3B82F6",
@@ -12,13 +19,23 @@ export const DEFAULT_SESSION_STATUS_COLORS: Record<SessionStatusColorKey, string
   idle: "#9CA3AF",
 };
 
-const VALID_KEYS: SessionStatusColorKey[] = ["running", "done", "failed", "pending", "paused", "blocked", "idle"];
+const VALID_KEYS: SessionStatusColorKey[] = [
+  "running",
+  "done",
+  "failed",
+  "pending",
+  "paused",
+  "blocked",
+  "idle",
+];
 
 function isValidHexColor(color: string): boolean {
   return /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(color);
 }
 
-export function normalizeSessionStatusColors(input: unknown): Record<SessionStatusColorKey, string> | null {
+export function normalizeSessionStatusColors(
+  input: unknown,
+): Record<SessionStatusColorKey, string> | null {
   if (input == null || typeof input !== "object") return null;
 
   const result: Record<SessionStatusColorKey, string> = { ...DEFAULT_SESSION_STATUS_COLORS };
@@ -57,8 +74,15 @@ export function mapRunStatusToColorKey(status: string): SessionStatusColorKey {
   if (s === "running" || s === "streaming") return "running";
   if (s === "completed" || s === "done" || s === "success") return "done";
   if (s === "failed" || s === "error") return "failed";
-  if (s === "pending" || s === "queued" || s === "loading" || s === "waiting_input") return "pending";
+  if (s === "pending" || s === "queued" || s === "loading" || s === "waiting_input")
+    return "pending";
   if (s === "stopped" || s === "cancelled" || s === "paused") return "paused";
-  if (s === "permission_prompt" || s === "ask_pending" || s === "blocked" || s === "waiting_approval") return "blocked";
+  if (
+    s === "permission_prompt" ||
+    s === "ask_pending" ||
+    s === "blocked" ||
+    s === "waiting_approval"
+  )
+    return "blocked";
   return "idle";
 }

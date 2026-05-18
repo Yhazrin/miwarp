@@ -2051,9 +2051,7 @@
                       stroke-width="2"
                       stroke-linecap="round"
                       stroke-linejoin="round"
-                      ><path
-                        d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"
-                      /><path
+                      ><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path
                         d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
                       /><path d="M8 7h8" /><path d="M8 11h8" /></svg
                     >
@@ -2799,8 +2797,8 @@
       style="-webkit-app-region: drag; z-index: 0;"
     ></div>
     <UpdateBanner />
-    <!-- Page content — full-bleed, no top bar on non-chat pages -->
-    <main class="flex-1 min-h-0 overflow-y-auto flex flex-col">
+    <!-- Page content: overflow-hidden so route pages own scrolling (chat keeps input in normal flow). -->
+    <main class="flex-1 min-h-0 overflow-hidden flex flex-col">
       {@render children()}
     </main>
   </div>

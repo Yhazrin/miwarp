@@ -8,6 +8,8 @@
   display: grid;
   grid-template-columns: 44px 1fr;
   overflow: hidden;
+  position: relative;
+  z-index: 20;
   transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1);
   will-change: width;
 }

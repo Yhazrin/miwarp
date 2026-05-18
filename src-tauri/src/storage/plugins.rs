@@ -1,4 +1,6 @@
-use crate::models::{MarketplaceInfo, MarketplacePlugin, PluginComponents, SkillRemoteRef, StandaloneSkill};
+use crate::models::{
+    MarketplaceInfo, MarketplacePlugin, PluginComponents, SkillRemoteRef, StandaloneSkill,
+};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};

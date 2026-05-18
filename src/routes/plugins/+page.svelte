@@ -1992,7 +1992,7 @@
     <!-- Skill sources (Feishu MVP) -->
     <div class="space-y-4" class:hidden={activeTab !== "sources"}>
       <SkillSourceManager
-        projectCwd={projectCwd}
+        {projectCwd}
         onSkillsReload={async () => {
           try {
             skills = await listStandaloneSkills(projectCwd || undefined);

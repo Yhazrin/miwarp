@@ -17,7 +17,10 @@ pub fn create_skill_source(config: SkillSourceConfig) -> Result<SkillSourceConfi
 }
 
 #[tauri::command]
-pub fn update_skill_source(id: String, patch: SkillSourceConfig) -> Result<SkillSourceConfig, String> {
+pub fn update_skill_source(
+    id: String,
+    patch: SkillSourceConfig,
+) -> Result<SkillSourceConfig, String> {
     skill_sources::update_source(&id, patch)
 }
 

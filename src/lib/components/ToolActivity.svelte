@@ -15,6 +15,7 @@
   import { onMount } from "svelte";
   import { fpsCounter, isPerfEnabled } from "$lib/utils/perf";
   import SessionInfoPanel from "$lib/components/SessionInfoPanel.svelte";
+  import ScheduledTasksPanel from "$lib/components/ScheduledTasksPanel.svelte";
   import StatusIcon from "$lib/components/StatusIcon.svelte";
   import {
     extractFilesFromTimeline,
@@ -1229,7 +1230,9 @@
             : 'hidden'}; pointer-events: {activeTab === 'files' ? 'auto' : 'none'};"
         >
           <div class="flex flex-1 flex-col min-h-0">
-            <div class="flex-shrink-0 max-h-[40vh] overflow-y-auto border-b border-border/50 scrollbar-hide">
+            <div
+              class="flex-shrink-0 max-h-[40vh] overflow-y-auto border-b border-border/50 scrollbar-hide"
+            >
               <FilesPanel
                 {fileEntries}
                 {onScrollToTool}
@@ -1329,6 +1332,16 @@
             </div>
           {/if}
           <SessionInfoPanel info={sessionInfo} {activeTab} />
+        </div>
+      {/if}
+      {#if mountedTabs.has("scheduled-tasks")}
+        <div
+          class="absolute inset-0 flex flex-col"
+          style="visibility: {activeTab === 'scheduled-tasks'
+            ? 'visible'
+            : 'hidden'}; pointer-events: {activeTab === 'scheduled-tasks' ? 'auto' : 'none'};"
+        >
+          <ScheduledTasksPanel />
         </div>
       {/if}
       {#if mountedTabs.has("tools")}

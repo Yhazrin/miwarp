@@ -164,12 +164,11 @@ export class SkillSourcesStore {
       const result = await skillSourcesApi.installRemoteSkill({
         candidateId,
         scope,
-        cwd: scope === "project" ? projectCwd ?? "" : "",
+        cwd: scope === "project" ? (projectCwd ?? "") : "",
         conflictResolution,
       });
       if (!result.success) {
-        this.error =
-          result.message + (result.conflictName ? ` (${result.conflictName})` : "");
+        this.error = result.message + (result.conflictName ? ` (${result.conflictName})` : "");
         return false;
       }
       this.log("success", `Installed remote skill (${result.skillPath ?? "ok"})`);

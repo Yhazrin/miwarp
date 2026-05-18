@@ -604,10 +604,7 @@ pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, St
         all.user.show_token_usage_report = v.as_bool().unwrap_or(true);
     }
     if let Some(v) = patch.get("process_visibility").and_then(|v| v.as_str()) {
-        if matches!(
-            v,
-            "output" | "guided" | "developer" | "expert"
-        ) {
+        if matches!(v, "output" | "guided" | "developer" | "expert") {
             all.user.process_visibility = v.to_string();
         }
     }

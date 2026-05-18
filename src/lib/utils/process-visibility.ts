@@ -14,12 +14,7 @@ export const PROCESS_VISIBILITY_LEVELS: ProcessVisibility[] = [
 ];
 
 export function normalizeProcessVisibility(value: unknown): ProcessVisibility {
-  if (
-    value === "output" ||
-    value === "guided" ||
-    value === "developer" ||
-    value === "expert"
-  ) {
+  if (value === "output" || value === "guided" || value === "developer" || value === "expert") {
     return value;
   }
   return "developer";
@@ -122,11 +117,7 @@ export function guidedToolRowStatusIconKind(
   tool: BusToolItem,
 ): "done" | "error" | "running" | "other" {
   if (tool.status === "success") return "done";
-  if (
-    tool.status === "error" ||
-    tool.status === "denied" ||
-    tool.status === "permission_denied"
-  ) {
+  if (tool.status === "error" || tool.status === "denied" || tool.status === "permission_denied") {
     return "error";
   }
   if (
@@ -207,11 +198,7 @@ export function computeRunProcessStats(tools: BusToolItem[]): RunProcessStats {
     else if (CMD_NAMES.has(name)) commands += 1;
     else if (EDIT_NAMES.has(name)) edits += 1;
 
-    if (
-      t.status === "error" ||
-      t.status === "denied" ||
-      t.status === "permission_denied"
-    ) {
+    if (t.status === "error" || t.status === "denied" || t.status === "permission_denied") {
       errors += 1;
     }
     if (typeof t.duration_ms === "number" && t.duration_ms > 0) durationMs += t.duration_ms;
@@ -236,18 +223,19 @@ export function formatProcessRunSummaryLine(
   if (stats.errors > 0) {
     parts.push(t("processRunSummary_errors", { n: String(stats.errors) }));
   }
-  const body = parts.length > 0 ? parts.join(t("processRunSummary_sep")) : t("processRunSummary_noTools");
+  const body =
+    parts.length > 0 ? parts.join(t("processRunSummary_sep")) : t("processRunSummary_noTools");
   const time =
     stats.durationMs > 0
       ? t("processRunSummary_timePrefix", { time: formatDuration(stats.durationMs) })
       : "";
-  return t("processRunSummary_full", { body, time: time ? `${t("processRunSummary_sep")}${time}` : "" });
+  return t("processRunSummary_full", {
+    body,
+    time: time ? `${t("processRunSummary_sep")}${time}` : "",
+  });
 }
 
-export function shouldShowTimelineCommandOutput(
-  mode: ProcessVisibility,
-  content: string,
-): boolean {
+export function shouldShowTimelineCommandOutput(mode: ProcessVisibility, content: string): boolean {
   if (mode !== "output") return true;
   const c = content.trimStart();
   if (c.includes("## Context Usage")) return true;

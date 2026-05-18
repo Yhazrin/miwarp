@@ -379,6 +379,16 @@ export async function writeHtmlExport(path: string, content: string): Promise<vo
   return invoke<void>("write_html_export", { path, content });
 }
 
+export interface SummarizeResult {
+  summary: string;
+  markdown: string;
+}
+
+export async function summarizeConversation(runId: string): Promise<SummarizeResult> {
+  dbg("api", "summarizeConversation", runId);
+  return invoke<SummarizeResult>("summarize_conversation", { runId });
+}
+
 // Memory file candidates
 export async function listMemoryFiles(
   cwd?: string,

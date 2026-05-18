@@ -6,9 +6,11 @@
     categoryLabels,
     getRecentCommands,
     recordRecentCommand,
+    getCommandUsageStats,
     type CommandDef,
     type CommandCategory,
   } from "$lib/commands";
+  import { multiFieldFuzzyMatch, highlightMatches } from "$lib/utils/fuzzy";
   import * as api from "$lib/api";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
@@ -39,12 +41,61 @@
   let inputEl: HTMLInputElement | undefined = $state();
   let previewContent = $state<string | null>(null);
   let hoveredCmdId = $state<string | null>(null);
+  let searchMode = $state<"basic" | "fuzzy">("basic");
+  let isLoadingFuzzy = $state(false);
 
-  let filtered = $derived(filterCommands(query, agent));
-  let grouped = $derived(groupByCategory(filtered));
+  // Compute flat list with fuzzy scores
+  let flatListWithScores = $derived.by(() => {
+    const q = query.trim();
+    const usageStats = getCommandUsageStats();
+
+    // Get base filtered commands
+    let cmds = filterCommands(q, agent);
+
+    if (!q) {
+      // No query: return with default score (usage-based sorting from filterCommands)
+      return cmds.map((cmd) => ({
+        cmd,
+        score: usageStats[cmd.id] || 0,
+      }));
+    }
+
+    // Apply fuzzy scoring for better matching
+    return cmds.map((cmd) => {
+      const fields: Record<string, string> = {
+        name: cmd.name,
+        description: cmd.description,
+        id: cmd.id,
+        ...Object.fromEntries((cmd.fuzzyKeywords || []).map((kw, i) => [`kw${i}`, kw])),
+      };
+
+      const weights: Record<string, number> = {
+        name: 1.5,
+        description: 1.0,
+        id: 0.5,
+      };
+
+      const result = multiFieldFuzzyMatch(q, fields, { weights, threshold: 0.2 });
+      const usage = usageStats[cmd.id] || 0;
+
+      // Combined score: fuzzy score + usage bonus
+      return {
+        cmd,
+        score: result.matched ? result.score * 10 + usage * 0.5 : 0,
+      };
+    });
+  });
+
+  // Sort by score
+  let flatList = $derived(
+    [...flatListWithScores].sort((a, b) => b.score - a.score).map((item) => item.cmd),
+  );
+
   let recentCommands = $derived(getRecentCommands(agent));
   let showRecent = $derived(!query && recentCommands.length > 0);
-  let flatList = $derived(showRecent ? [...recentCommands, ...filtered] : filtered);
+  let displayList = $derived(showRecent ? [...recentCommands, ...flatList] : flatList);
+
+  let grouped = $derived(groupByCategory(flatList));
 
   // Reset on open
   $effect(() => {
@@ -53,6 +104,8 @@
       selectedIndex = 0;
       previewContent = null;
       hoveredCmdId = null;
+      searchMode = "basic";
+      isLoadingFuzzy = false;
       requestAnimationFrame(() => inputEl?.focus());
     }
   });
@@ -73,7 +126,7 @@
     }
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      selectedIndex = Math.min(selectedIndex + 1, flatList.length - 1);
+      selectedIndex = Math.min(selectedIndex + 1, displayList.length - 1);
       scrollToSelected();
       return;
     }
@@ -83,15 +136,23 @@
       scrollToSelected();
       return;
     }
-    if (e.key === "Enter" && flatList.length > 0) {
+    if (e.key === "Enter" && displayList.length > 0) {
       e.preventDefault();
-      executeCommand(flatList[selectedIndex]);
+      executeCommand(displayList[selectedIndex]);
       return;
     }
     if (e.key === "Tab" && hoveredCmdId) {
       // Preview command on Tab
       e.preventDefault();
-      showCommandPreview(flatList.find((c) => c.id === hoveredCmdId) || flatList[selectedIndex]);
+      showCommandPreview(
+        displayList.find((c) => c.id === hoveredCmdId) || displayList[selectedIndex],
+      );
+      return;
+    }
+    // Toggle fuzzy mode with Ctrl+F
+    if (e.key === "f" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      searchMode = searchMode === "basic" ? "fuzzy" : "basic";
       return;
     }
   }
@@ -141,6 +202,18 @@
       }
       case "panel:multi-agent":
         preview = "打开多 Agent 面板";
+        break;
+      case "preset:fullstack":
+        preview = "🚀 启动全栈开发模式";
+        break;
+      case "preset:review":
+        preview = "🔍 代码审查模式";
+        break;
+      case "preset:test":
+        preview = "🧪 测试驱动开发";
+        break;
+      case "preset:docs":
+        preview = "📝 生成文档";
         break;
       default:
         if (cmd.payload) {
@@ -199,6 +272,14 @@
 
       case "panel:multi-agent":
         window.dispatchEvent(new CustomEvent("ocv:open-multi-agent"));
+        break;
+
+      case "preset:fullstack":
+      case "preset:review":
+      case "preset:test":
+      case "preset:docs":
+        // Dispatch preset command
+        window.dispatchEvent(new CustomEvent("miwarp:execute-preset", { detail: cmd.action }));
         break;
     }
   }
@@ -352,6 +433,21 @@
     hoveredCmdId = null;
     previewContent = null;
   }
+
+  // Helper to get search mode label
+  let searchModeLabel = $derived(searchMode === "fuzzy" ? "模糊搜索" : "精确搜索");
+
+  // Get usage count for a command
+  function getCommandUsageCount(cmdId: string): number {
+    try {
+      const raw = localStorage.getItem("miwarp:command-usage-stats");
+      if (!raw) return 0;
+      const stats = JSON.parse(raw);
+      return stats[cmdId] || 0;
+    } catch {
+      return 0;
+    }
+  }
 </script>
 
 {#if open}
@@ -385,11 +481,20 @@
           <div class="flex items-center gap-2">
             {#if previewContent}
               <span
-                class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded animate-fade-in"
+                class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded animate-fade-in max-w-[200px] truncate"
+                title={previewContent}
               >
                 {previewContent}
               </span>
             {/if}
+            <!-- Search mode indicator -->
+            <button
+              class="text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-0.5 hover:bg-accent transition-colors"
+              onclick={() => (searchMode = searchMode === "basic" ? "fuzzy" : "basic")}
+              title="点击切换搜索模式 (Ctrl+F)"
+            >
+              {searchModeLabel}
+            </button>
             <kbd class="text-xs text-muted-foreground bg-muted rounded px-1.5 py-0.5"
               >{t("cmd_esc")}</kbd
             >
@@ -406,11 +511,12 @@
                 {t("cmd_cat_recent")}
               </p>
               {#each recentCommands as cmd}
-                {@const idx = indexMap.get(cmd.id) ?? 0}
+                {@const idx = indexMap.get(cmd.id) ?? displayList.indexOf(cmd)}
+                {@const usage = getCommandUsageCount(cmd.id)}
                 <button
-                  data-cmd-idx={idx}
+                  data-cmd-idx={displayList.indexOf(cmd)}
                   class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors
-                    {idx === selectedIndex
+                    {displayList.indexOf(cmd) === selectedIndex
                     ? 'bg-accent text-accent-foreground'
                     : 'hover:bg-accent/50'}"
                   onclick={() => executeCommand(cmd)}
@@ -419,6 +525,11 @@
                 >
                   <span class="flex-1 text-left">{cmd.name}</span>
                   <span class="text-xs text-muted-foreground">{cmd.description}</span>
+                  {#if usage > 0}
+                    <span class="text-[10px] text-muted-foreground bg-muted rounded px-1 py-0.5">
+                      {usage}×
+                    </span>
+                  {/if}
                   {#if cmd.shortcut}
                     <kbd class="text-[10px] text-muted-foreground bg-muted rounded px-1 py-0.5"
                       >{cmd.shortcut}</kbd
@@ -437,7 +548,8 @@
                   {categoryLabels[cat as CommandCategory]}
                 </p>
                 {#each grouped[cat as CommandCategory] as cmd}
-                  {@const idx = indexMap.get(cmd.id) ?? 0}
+                  {@const idx = displayList.indexOf(cmd)}
+                  {@const usage = getCommandUsageCount(cmd.id)}
                   <button
                     data-cmd-idx={idx}
                     class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors
@@ -463,6 +575,15 @@
                       {cmd.description}
                     </span>
 
+                    <!-- Usage count -->
+                    {#if usage > 0}
+                      <span
+                        class="text-[10px] text-muted-foreground bg-muted rounded px-1 py-0.5 shrink-0"
+                      >
+                        {usage}×
+                      </span>
+                    {/if}
+
                     <!-- Shortcut -->
                     {#if cmd.shortcut}
                       <kbd
@@ -487,9 +608,9 @@
             {/if}
           {/each}
 
-          {#if flatList.length === 0}
+          {#if displayList.length === 0}
             <div class="py-6 text-center text-sm text-muted-foreground">
-              {t("cmd_noCommandsFound")}
+              {query ? t("cmd_noCommandsFound") : "没有可用的命令"}
             </div>
           {/if}
         </div>
@@ -498,11 +619,45 @@
         <div
           class="border-t px-4 py-2 flex items-center justify-between text-xs text-muted-foreground"
         >
-          <span>↑↓ 导航 · Enter 执行 · Tab 预览</span>
-          {#if flatList.length > 0}
-            <span>{flatList.length} 条命令</span>
+          <span>↑↓ 导航 · Enter 执行 · Tab 预览 · Ctrl+F 切换搜索模式</span>
+          {#if displayList.length > 0}
+            <span>{displayList.length} 条命令</span>
           {/if}
         </div>
+      </div>
+
+      <!-- Quick Actions Bar (Claude Code style) -->
+      <div class="mt-2 flex items-center gap-2 px-1">
+        <button
+          class="flex items-center gap-1.5 rounded-md bg-accent/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors"
+          onclick={() => {
+            open = false;
+            window.dispatchEvent(new CustomEvent("miwarp:open-workflows"));
+          }}
+        >
+          <span>⚡</span>
+          <span>工作流</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 rounded-md bg-accent/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors"
+          onclick={() => {
+            open = false;
+            window.dispatchEvent(new CustomEvent("miwarp:open-skills"));
+          }}
+        >
+          <span>🧩</span>
+          <span>技能</span>
+        </button>
+        <button
+          class="flex items-center gap-1.5 rounded-md bg-accent/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors"
+          onclick={() => {
+            open = false;
+            window.dispatchEvent(new CustomEvent("miwarp:open-history"));
+          }}
+        >
+          <span>📜</span>
+          <span>历史</span>
+        </button>
       </div>
     </div>
   </div>

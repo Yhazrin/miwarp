@@ -6,4 +6,5 @@ export type ToolActivityPanelTab =
   | "files"
   | "info"
   | "tasks"
-  | "preview";
+  | "preview"
+  | "scheduled-tasks";

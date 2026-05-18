@@ -100,7 +100,14 @@ fn strict_parse(
     let category = map_category(fm.category.as_deref());
     let tags = fm.tags.unwrap_or_default();
 
-    let full_skill_md = build_skill_file(&name, &description, Some(&category), &tags, fm.icon.as_deref(), body);
+    let full_skill_md = build_skill_file(
+        &name,
+        &description,
+        Some(&category),
+        &tags,
+        fm.icon.as_deref(),
+        body,
+    );
 
     Ok(ParsedSkillOutcome::Ok(ParsedRemoteSkill {
         name,
@@ -119,18 +126,30 @@ fn loose_parse(
     remote_url: &str,
     hash: String,
 ) -> ParsedSkillOutcome {
-    if let Ok(ParsedSkillOutcome::Ok(ok)) =
-        strict_parse(markdown, fallback_title, remote_id, remote_url, hash.clone())
-    {
+    if let Ok(ParsedSkillOutcome::Ok(ok)) = strict_parse(
+        markdown,
+        fallback_title,
+        remote_id,
+        remote_url,
+        hash.clone(),
+    ) {
         return ParsedSkillOutcome::Ok(ok);
     }
 
-    let name = markdown_title(markdown).unwrap_or_else(|| slug_from_remote(remote_id, fallback_title));
+    let name =
+        markdown_title(markdown).unwrap_or_else(|| slug_from_remote(remote_id, fallback_title));
     let description = loose_first_paragraph(markdown);
     let category: String = "custom".into();
     let tags: Vec<String> = vec![];
     let body = markdown.trim();
-    let full_skill_md = build_skill_file(&name, &description, Some(category.as_str()), &tags, None, body);
+    let full_skill_md = build_skill_file(
+        &name,
+        &description,
+        Some(category.as_str()),
+        &tags,
+        None,
+        body,
+    );
 
     ParsedSkillOutcome::Ok(ParsedRemoteSkill {
         name,
@@ -149,7 +168,13 @@ fn slug_from_remote(remote_id: &str, title: &str) -> String {
         .unwrap_or(remote_id)
         .to_lowercase()
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '-' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' {
+                c
+            } else {
+                '-'
+            }
+        })
         .collect::<String>();
     let raw = raw.trim_matches('-').to_string();
     if raw.is_empty() {
@@ -204,7 +229,13 @@ fn loose_first_paragraph(md: &str) -> String {
             break;
         }
     }
-    stripped.lines().take(3).collect::<Vec<_>>().join(" ").trim().to_string()
+    stripped
+        .lines()
+        .take(3)
+        .collect::<Vec<_>>()
+        .join(" ")
+        .trim()
+        .to_string()
 }
 
 fn strip_leading_heading(md: &str) -> String {
@@ -240,14 +271,21 @@ fn split_yaml_frontmatter(doc: &str) -> Option<(&str, &str)> {
         .strip_prefix("\n---")
         .or_else(|| rest.strip_prefix("\r\n---"))?;
 
-    let body = body.strip_prefix('\n').or_else(|| body.strip_prefix('\r')).unwrap_or(body).trim_start();
+    let body = body
+        .strip_prefix('\n')
+        .or_else(|| body.strip_prefix('\r'))
+        .unwrap_or(body)
+        .trim_start();
 
     let yaml_only = after[..end].trim_end();
     Some((yaml_only, body))
 }
 
 fn map_category(cat: Option<&str>) -> String {
-    let Some(raw) = cat.map(|s| s.trim().to_lowercase()).filter(|s| !s.is_empty()) else {
+    let Some(raw) = cat
+        .map(|s| s.trim().to_lowercase())
+        .filter(|s| !s.is_empty())
+    else {
         return "custom".into();
     };
     match raw.as_str() {

@@ -39,10 +39,7 @@
     );
   }
 
-  async function handleCandidateInstall(
-    cid: string,
-    resolution?: "abort" | "copy" | "replace",
-  ) {
+  async function handleCandidateInstall(cid: string, resolution?: "abort" | "copy" | "replace") {
     if (installScope === "project" && !projectCwd) {
       globalToast(t("skillSources_need_project_scope"), "error");
       return;
@@ -115,7 +112,10 @@
         placeholder={t("skillSources_preview_url")}
         bind:value={previewUrl}
       />
-      <select class="rounded-lg border border-border bg-background px-3 py-1.5 text-xs" bind:value={previewParser}>
+      <select
+        class="rounded-lg border border-border bg-background px-3 py-1.5 text-xs"
+        bind:value={previewParser}
+      >
         <option value="strict">{t("skillSources_parser_strict")}</option>
         <option value="loose">{t("skillSources_parser_loose")}</option>
       </select>
@@ -140,10 +140,12 @@
       <div class="flex items-center gap-2 text-xs pt-2">
         <span class="text-muted-foreground">{t("skillSources_install_scope")}</span>
         <label class="inline-flex items-center gap-1 cursor-pointer">
-          <input type="radio" bind:group={installScope} value="user" /> {t("plugin_scopeUser")}
+          <input type="radio" bind:group={installScope} value="user" />
+          {t("plugin_scopeUser")}
         </label>
         <label class="inline-flex items-center gap-1 cursor-pointer">
-          <input type="radio" bind:group={installScope} value="project" disabled={!projectCwd} /> {t("plugin_scopeProject")}
+          <input type="radio" bind:group={installScope} value="project" disabled={!projectCwd} />
+          {t("plugin_scopeProject")}
         </label>
       </div>
     {/if}
@@ -175,7 +177,11 @@
             </div>
             <div class="flex flex-wrap gap-1">
               <label class="text-[11px] flex items-center gap-1 mr-2">
-                <input type="checkbox" checked={src.enabled} onchange={(e) => toggleEnabled(src, e)} />
+                <input
+                  type="checkbox"
+                  checked={src.enabled}
+                  onchange={(e) => toggleEnabled(src, e)}
+                />
                 {t("skillSources_toggle")}
               </label>
               {#if src.type === "feishu"}
@@ -193,9 +199,15 @@
                   onclick={() => store.syncSource(src.id)}
                   disabled={store.syncingSourceIds.has(src.id)}
                 >
-                  {store.syncingSourceIds.has(src.id) ? t("skillSources_syncing") : t("skillSources_sync")}
+                  {store.syncingSourceIds.has(src.id)
+                    ? t("skillSources_syncing")
+                    : t("skillSources_sync")}
                 </button>
-                <button type="button" class="rounded-md border px-2 py-1 text-[11px]" onclick={() => store.checkUpdates(src.id, projectCwd)}>
+                <button
+                  type="button"
+                  class="rounded-md border px-2 py-1 text-[11px]"
+                  onclick={() => store.checkUpdates(src.id, projectCwd)}
+                >
                   {t("skillSources_updates")}
                 </button>
               {/if}

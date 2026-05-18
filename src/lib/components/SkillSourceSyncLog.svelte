@@ -30,7 +30,7 @@
   {:else}
     <ul class="space-y-1 max-h-48 overflow-y-auto text-[11px] font-mono">
       {#each slice as row}
-        <li class="{lineClass(row.kind)}">
+        <li class={lineClass(row.kind)}>
           <span class="opacity-60">{new Date(row.ts).toLocaleTimeString()}</span>
           —
           {row.detail}

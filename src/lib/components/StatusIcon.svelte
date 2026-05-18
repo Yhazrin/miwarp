@@ -43,9 +43,7 @@
   >
 {:else if status === "running"}
   <div
-    class="{sizeClass[
-      size
-    ]} rounded-full border-2 border-border animate-spin shrink-0"
+    class="{sizeClass[size]} rounded-full border-2 border-border animate-spin shrink-0"
     style="border-top-color: var(--miwarp-status-running);"
   ></div>
 {:else}

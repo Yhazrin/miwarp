@@ -22,7 +22,11 @@ fn normalize_doc_identifier(url_or_token: &str) -> Result<String, String> {
     if t.starts_with("http://") || t.starts_with("https://") {
         return Ok(t.to_string());
     }
-    if !t.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-') || t.len() < 8 {
+    if !t
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        || t.len() < 8
+    {
         return Err("Provide a Feishu doc/wiki URL or a valid doc_token".into());
     }
     Ok(t.to_string())
@@ -68,7 +72,10 @@ async fn run_cli_quick_version() -> Result<(), String> {
 }
 
 /// Fetch Markdown for a doc URL/token using `docs +fetch` subsyntax (lark-cli / feishu open tools).
-pub async fn fetch_single_doc(doc_url_or_token: &str, auth_profile: Option<&str>) -> Result<RemoteSkillDocumentContent, String> {
+pub async fn fetch_single_doc(
+    doc_url_or_token: &str,
+    auth_profile: Option<&str>,
+) -> Result<RemoteSkillDocumentContent, String> {
     let id_arg = normalize_doc_identifier(doc_url_or_token)?;
     let bin = preferred_cli_binary();
 
@@ -95,7 +102,11 @@ pub async fn fetch_single_doc(doc_url_or_token: &str, auth_profile: Option<&str>
     if !child.status.success() {
         let err = String::from_utf8_lossy(&child.stderr);
         let out = String::from_utf8_lossy(&child.stdout);
-        let combined = if err.trim().is_empty() { out.into_owned() } else { err.into_owned() };
+        let combined = if err.trim().is_empty() {
+            out.into_owned()
+        } else {
+            err.into_owned()
+        };
         return Err(format!(
             "lark-cli docs +fetch exited {}:\n{}",
             code,

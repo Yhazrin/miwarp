@@ -133,8 +133,13 @@ pub async fn preview_feishu_doc(
     let doc = feishu::fetch_single_doc(doc_url, auth_profile.as_deref()).await?;
     let remote_id = doc.remote_id.clone();
     let mode = parser_mode;
-    let outcome =
-        parse_skill_markdown(&doc.markdown, doc.title.clone(), remote_id.clone(), doc_url, mode)?;
+    let outcome = parse_skill_markdown(
+        &doc.markdown,
+        doc.title.clone(),
+        remote_id.clone(),
+        doc_url,
+        mode,
+    )?;
     match outcome {
         parser::ParsedSkillOutcome::Skipped(reason) => Ok(RemoteSkillCandidate {
             id: Uuid::new_v4().to_string(),
@@ -198,7 +203,10 @@ pub async fn sync_source(id: &str) -> Result<SkillSourceSyncResult, String> {
         return Ok(result);
     }
 
-    let fe = cfg.feishu.clone().ok_or_else(|| "missing feishu config".to_string())?;
+    let fe = cfg
+        .feishu
+        .clone()
+        .ok_or_else(|| "missing feishu config".to_string())?;
     let parser_mode = if fe.parser_mode == "loose" {
         SkillParserMode::Loose
     } else {
@@ -373,10 +381,12 @@ pub fn install_candidate(
     match (name_conflict.as_ref(), resolution) {
         (Some((_path, ConflictKind::RemoteMatchSameSource)), _) => {
             return Err(
-                "same skill from this remote/source already installed — use update flow later".into(),
+                "same skill from this remote/source already installed — use update flow later"
+                    .into(),
             );
         }
-        (Some((_path, ConflictKind::NameOnly)), "abort") | (Some((_path, ConflictKind::NameOnly)), "") => {
+        (Some((_path, ConflictKind::NameOnly)), "abort")
+        | (Some((_path, ConflictKind::NameOnly)), "") => {
             return Ok(InstallRemoteSkillResult {
                 success: false,
                 message: "name conflict".into(),
@@ -389,9 +399,8 @@ pub fn install_candidate(
         }
         (Some((_path, ConflictKind::NameOnly)), "replace") => {
             if let Some((path, _)) = name_conflict.as_ref() {
-                crate::storage::plugins::delete_skill(path, cwd).map_err(|e| {
-                    format!("replace: failed to delete existing skill dir: {}", e)
-                })?;
+                crate::storage::plugins::delete_skill(path, cwd)
+                    .map_err(|e| format!("replace: failed to delete existing skill dir: {}", e))?;
             }
         }
         (None, _) => {}
@@ -405,7 +414,8 @@ pub fn install_candidate(
     let desc = yaml_description_from_skill_md(&bundle.skill_md_full).unwrap_or_default();
     let body_only = strip_frontmatter_for_create(&bundle.skill_md_full);
 
-    let created = crate::storage::plugins::create_skill(&chosen_name, &desc, &body_only, scope, cwd)?;
+    let created =
+        crate::storage::plugins::create_skill(&chosen_name, &desc, &body_only, scope, cwd)?;
     let skill_dir = skill_install_path(scope, cwd, &chosen_name)?;
     write_remote_stub(&skill_dir, &bundle.remote_ref_stub)?;
 
@@ -467,7 +477,12 @@ fn uniquify_name(base: &str, scope: &str, cwd: &str) -> Result<String, String> {
         }
         i += 1;
     }
-    let tail = uuid::Uuid::new_v4().to_string().split('-').next().unwrap_or("copy").to_string();
+    let tail = uuid::Uuid::new_v4()
+        .to_string()
+        .split('-')
+        .next()
+        .unwrap_or("copy")
+        .to_string();
     let candidate = format!("{}-{}", base, tail);
     crate::storage::plugins::validate_skill_name(&candidate)?;
     Ok(candidate)
@@ -539,7 +554,12 @@ pub async fn check_updates(id: &str, cwd: &str) -> Result<SkillSourceUpdateCheck
         if url.is_empty() {
             continue;
         }
-        if let Ok(doc) = feishu::fetch_single_doc(&url, cfg.feishu.as_ref().and_then(|f| f.auth_profile.as_deref())).await {
+        if let Ok(doc) = feishu::fetch_single_doc(
+            &url,
+            cfg.feishu.as_ref().and_then(|f| f.auth_profile.as_deref()),
+        )
+        .await
+        {
             let hash = parser::content_hash_normalized(&doc.markdown);
             if hash != rr.content_hash {
                 updates.push(RemoteSkillUpdateItem {
@@ -557,4 +577,3 @@ pub async fn check_updates(id: &str, cwd: &str) -> Result<SkillSourceUpdateCheck
         updates,
     })
 }
-

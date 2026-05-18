@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { goto } from "$app/navigation";
   import type { TaskRun, McpServerInfo, CliModelInfo } from "$lib/types";
   import type { TurnUsage } from "$lib/stores/types";
   import { dbg } from "$lib/utils/debug";
@@ -29,7 +28,6 @@
     running = false,
     parentRunId,
     onEndSession,
-    onFork,
     onModelChange,
     onNavigateParent,
     onToggleSidebar,
@@ -52,8 +50,6 @@
     turnUsages = [],
     activeTaskCount = 0,
     mode = "",
-    toolsCount = 0,
-    onToolsClick,
     remoteHostName,
     onRename,
     platformModels = [],
@@ -64,7 +60,7 @@
     effort,
     onEffortChange,
     onStatusClick,
-    onExportHtml,
+    onSummarize,
     toolPanelActiveTab,
     onToolPanelTabChange,
     toolPanelIndicators,
@@ -83,7 +79,6 @@
     running?: boolean;
     parentRunId?: string;
     onEndSession?: () => void;
-    onFork?: () => void;
     onModelChange?: (model: string) => void;
     onNavigateParent?: () => void;
     onToggleSidebar?: () => void;
@@ -106,8 +101,6 @@
     turnUsages?: TurnUsage[];
     activeTaskCount?: number;
     mode?: string;
-    toolsCount?: number;
-    onToolsClick?: () => void;
     remoteHostName?: string | null;
     onRename?: (name: string) => void;
     platformModels?: CliModelInfo[];
@@ -118,7 +111,7 @@
     effort?: string;
     onEffortChange?: (effort: string) => void;
     onStatusClick?: () => void;
-    onExportHtml?: () => void;
+    onSummarize?: () => void;
     toolPanelActiveTab?: ToolActivityPanelTab;
     onToolPanelTabChange?: (tab: ToolActivityPanelTab) => void;
     toolPanelIndicators?: { context: boolean; files: boolean; tasks: boolean };
@@ -142,20 +135,6 @@
       compactTimer = setTimeout(() => {
         compactVisible = false;
       }, 8000);
-    }
-  });
-
-  // ── Expansion state (persisted) ──
-  let expanded = $state(
-    typeof window !== "undefined"
-      ? localStorage.getItem("ocv:statusbar-expanded") !== "false"
-      : true,
-  );
-
-  $effect(() => {
-    localStorage.setItem("ocv:statusbar-expanded", String(expanded));
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("ocv:statusbar-toggle", { detail: { expanded } }));
     }
   });
 
@@ -251,14 +230,32 @@
     );
   });
 
-  // More menu state
-  let moreMenuOpen = $state(false);
-  let moreMenuBtnEl: HTMLButtonElement | undefined = $state();
-  let moreMenuEl: HTMLDivElement | undefined = $state();
-
   let pvMenuOpen = $state(false);
   let pvMenuBtnEl: HTMLButtonElement | undefined = $state();
   let pvMenuEl: HTMLDivElement | undefined = $state();
+  let pvMenuStyle = $state("");
+
+  const POPOVER_Z = 45;
+  const VIEWPORT_PAD = 8;
+  const POPOVER_GAP = 6;
+  const PV_MENU_WIDTH = 184;
+
+  function clampPopoverLeft(left: number, width: number): number {
+    return Math.max(VIEWPORT_PAD, Math.min(left, window.innerWidth - width - VIEWPORT_PAD));
+  }
+
+  function buildPopoverStyle(anchor: HTMLElement, width: number, flipThreshold = 200): string {
+    const rect = anchor.getBoundingClientRect();
+    const left = clampPopoverLeft(rect.left, width);
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const openAbove = spaceBelow < flipThreshold && spaceAbove > spaceBelow;
+    const base = `position:fixed;left:${left}px;width:${width}px;z-index:${POPOVER_Z};`;
+    if (openAbove) {
+      return `${base}bottom:${window.innerHeight - rect.top + POPOVER_GAP}px;`;
+    }
+    return `${base}top:${rect.bottom + POPOVER_GAP}px;`;
+  }
 
   function processVisibilityLabel(mode: ProcessVisibility): string {
     switch (mode) {
@@ -272,6 +269,20 @@
         return t("processVisibility_mode_developer");
     }
   }
+
+  // ── Island hover state ──
+  let islandHover = $state(false);
+
+  let islandExpanded = $derived(islandHover || dropdownOpen || pvMenuOpen || titleEditing);
+
+  // Dispatch event when island expansion state changes (for tool panel positioning)
+  $effect(() => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("ocv:statusbar-toggle", { detail: { expanded: islandExpanded } }),
+      );
+    }
+  });
 
   function processVisibilityShort(mode: ProcessVisibility): string {
     switch (mode) {
@@ -291,20 +302,31 @@
     if (mode !== processVisibility) onProcessVisibilityChange?.(mode);
   }
 
+  function positionPvMenu() {
+    if (!pvMenuBtnEl) return;
+    pvMenuStyle = buildPopoverStyle(pvMenuBtnEl, PV_MENU_WIDTH, 160);
+  }
+
+  function togglePvMenu() {
+    pvMenuOpen = !pvMenuOpen;
+    if (pvMenuOpen) {
+      dropdownOpen = false;
+      positionPvMenu();
+    }
+  }
+
   function positionDropdown() {
     if (!modelBtnEl) return;
     const rect = modelBtnEl.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    if (spaceBelow < 200) {
-      dropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:50;`;
-    } else {
-      dropdownStyle = `position:fixed; top:${rect.bottom + 4}px; left:${rect.left}px; z-index:50;`;
-    }
+    const maxW = Math.min(400, window.innerWidth - VIEWPORT_PAD * 2);
+    const width = Math.max(rect.width, 280, Math.min(maxW, 360));
+    dropdownStyle = buildPopoverStyle(modelBtnEl, width, 240);
   }
 
   function toggleModelDropdown() {
     dropdownOpen = !dropdownOpen;
     if (dropdownOpen) {
+      pvMenuOpen = false;
       modelFilter = "";
       positionDropdown();
       focusedModelIdx = filteredModels.findIndex((m) => m.value === model);
@@ -317,6 +339,7 @@
   }
 
   export function openModelDropdown() {
+    pvMenuOpen = false;
     dropdownOpen = true;
     modelFilter = "";
     positionDropdown();
@@ -392,15 +415,6 @@
         dropdownOpen = false;
       }
       if (
-        moreMenuOpen &&
-        moreMenuBtnEl &&
-        !moreMenuBtnEl.contains(e.target as Node) &&
-        moreMenuEl &&
-        !moreMenuEl.contains(e.target as Node)
-      ) {
-        moreMenuOpen = false;
-      }
-      if (
         pvMenuOpen &&
         pvMenuBtnEl &&
         !pvMenuBtnEl.contains(e.target as Node) &&
@@ -422,11 +436,19 @@
         e.stopPropagation();
       }
     }
+    function onViewportChange() {
+      if (dropdownOpen) positionDropdown();
+      if (pvMenuOpen) positionPvMenu();
+    }
     document.addEventListener("mousedown", onDocClick, true);
     document.addEventListener("keydown", onDocKeydown);
+    window.addEventListener("resize", onViewportChange);
+    window.addEventListener("scroll", onViewportChange, true);
     return () => {
       document.removeEventListener("mousedown", onDocClick, true);
       document.removeEventListener("keydown", onDocKeydown);
+      window.removeEventListener("resize", onViewportChange);
+      window.removeEventListener("scroll", onViewportChange, true);
     };
   });
 
@@ -456,13 +478,6 @@
     clearTimeout(confirmTimer);
     confirmingEnd = false;
   }
-
-  const hasMoreActions = $derived(
-    onExportHtml ||
-      (!running && onRewind && persistedFiles && persistedFiles.length > 0) ||
-      (onFork && run?.session_id) ||
-      (running && onEndSession),
-  );
 
   let mcpAggregateStatus = $derived.by(() => {
     if (!mcpServers || mcpServers.length === 0) return "none";
@@ -513,30 +528,29 @@
 </script>
 
 <!--
-  data-tauri-drag-region + .session-status-drag class on the OUTER shell makes
-  the *entire* status-bar background a window drag region (not just the left
-  and right spacers). Buttons, inputs and anchors inside are already marked
-  `-webkit-app-region: no-drag` globally (see src/app.css), so the model
-  selector, sidebar toggle, more menu etc. still work normally. The two
-  spacers below are kept for Linux/Windows where the JS handler is needed.
+  Session Island: morphs from capsule to rounded rectangle on interaction.
+  Uses .session-island-shell (defined in app.css) for morph animation.
+  Retains .session-status-drag for window drag region functionality.
 -->
 <div
-  class="session-status-drag relative mt-3 rounded-full border border-white/10 bg-background/55 font-mono text-xs text-foreground/70 backdrop-blur-2xl shadow-[0_2px_16px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.08)] {fuseToolRailCapsule
+  class="session-status-drag session-island-shell flex flex-col {fuseToolRailCapsule
     ? 'mx-2 sm:mx-3'
-    : 'mx-4'}"
+    : 'mx-4'} {islandExpanded ? 'session-island-expanded' : ''}"
   data-tauri-drag-region
+  onmouseenter={() => (islandHover = true)}
+  onmouseleave={() => (islandHover = false)}
 >
   <!-- Left drag spacer (Linux/Windows JS fallback) -->
-  <WindowDragArea class="absolute left-0 top-0 bottom-0 w-24 rounded-l-full" />
+  <WindowDragArea class="absolute left-0 top-0 bottom-0 w-24" />
   <!-- Right drag spacer (Linux/Windows JS fallback) -->
-  <WindowDragArea class="absolute right-0 top-0 bottom-0 w-24 rounded-r-full" />
+  <WindowDragArea class="absolute right-0 top-0 bottom-0 w-24" />
   <!-- Tier 1: Always visible (h-9) -->
   <div class="relative z-10 flex h-9 min-w-0 items-center gap-1.5 px-3">
     <!-- Left: core info -->
     <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
       {#if onToggleSidebar}
         <button
-          class="rounded p-1 -ml-1 mr-0.5 hover:bg-accent transition-colors"
+          class="rounded p-1 -ml-1 mr-0.5 hover:bg-muted/60 transition-colors"
           onclick={onToggleSidebar}
           title={t("statusbar_toggleSidebar")}
         >
@@ -556,7 +570,7 @@
       <!-- Pulse indicator + agent name (clickable for status) -->
       {#if onStatusClick}
         <button
-          class="inline-flex items-center gap-1.5 shrink-0 rounded px-1 -mx-1 hover:bg-accent/50 transition-colors"
+          class="inline-flex items-center gap-1.5 shrink-0 rounded px-1 -mx-1 hover:bg-muted/50 transition-colors"
           onclick={onStatusClick}
           title={t("toolActivity_tabInfo")}
         >
@@ -564,44 +578,13 @@
             class="inline-block h-2 w-2 rounded-full {running ? 'animate-slow-pulse' : ''}"
             style="background-color: var(--miwarp-status-{running ? 'running' : 'idle'});"
           ></span>
-          <span class="text-foreground font-medium">{agent}</span>
+          <span class="text-xs text-foreground font-medium">{agent}</span>
         </button>
       {:else}
         <span
           class="inline-block h-2 w-2 rounded-full {running ? 'animate-pulse' : ''}"
           style="background-color: var(--miwarp-status-{running ? 'running' : 'idle'});"
         ></span>
-      {/if}
-
-      <!-- Session title (inline editable) -->
-      {#if run && onRename}
-        {#if titleEditing}
-          <input
-            bind:this={titleInputEl}
-            bind:value={titleEditValue}
-            class="w-32 bg-transparent border-b border-primary outline-none text-foreground font-medium px-0.5"
-            onkeydown={(e) => {
-              if (e.key === "Enter") commitTitleEdit();
-              else if (e.key === "Escape") cancelTitleEdit();
-            }}
-            onblur={commitTitleEdit}
-          />
-        {:else}
-          <button
-            class="max-w-[200px] truncate text-foreground/80 hover:text-foreground transition-colors {run.name
-              ? 'font-medium'
-              : 'italic text-foreground/40'}"
-            onclick={startTitleEdit}
-            title={run.name || run.prompt || t("statusbar_sessionTitle")}
-          >
-            {truncate(run.name || run.prompt, 30)}
-          </button>
-        {/if}
-        <span class="text-foreground/30">&middot;</span>
-      {/if}
-
-      {#if !onStatusClick}
-        <span class="text-foreground font-medium">{agent}</span>
       {/if}
 
       {#if mode}
@@ -622,42 +605,31 @@
         <div class="relative shrink-0">
           <button
             bind:this={pvMenuBtnEl}
-            class="flex max-w-[7.5rem] sm:max-w-none items-center gap-0.5 rounded border border-transparent px-1 py-0.5 -my-0.5 text-[10px] text-foreground/65 hover:text-foreground hover:bg-accent hover:border-border/60 transition-colors"
-            onclick={() => (pvMenuOpen = !pvMenuOpen)}
+            class="flex max-w-[7.5rem] sm:max-w-none items-center gap-0.5 rounded border border-transparent px-1 py-0.5 -my-0.5 text-[10px] text-foreground/65 hover:text-foreground hover:bg-muted/60 hover:border-border/60 transition-colors {pvMenuOpen
+              ? 'bg-muted/60 border-border/60 text-foreground'
+              : ''}"
+            onclick={(e) => {
+              e.stopPropagation();
+              togglePvMenu();
+            }}
+            aria-expanded={pvMenuOpen}
+            aria-haspopup="listbox"
             title={t("settings_processVisibility")}
           >
-            <span class="hidden sm:inline">{t("statusbar_processView")}</span>
             <span class="sm:hidden font-medium">{processVisibilityShort(processVisibility)}</span>
             <span class="hidden sm:inline truncate font-medium"
               >{processVisibilityLabel(processVisibility)}</span
             >
             <svg
-              class="h-2.5 w-2.5 shrink-0 text-foreground/35"
+              class="h-2.5 w-2.5 shrink-0 text-foreground/35 transition-transform duration-200 {pvMenuOpen
+                ? 'rotate-180'
+                : ''}"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               stroke-width="2"><path d="m6 9 6 6 6-6" /></svg
             >
           </button>
-          {#if pvMenuOpen}
-            <div
-              bind:this={pvMenuEl}
-              class="absolute right-0 top-full z-50 mt-1 min-w-[8rem] rounded-lg border border-border/50 bg-popover py-1 shadow-md"
-            >
-              {#each PROCESS_VISIBILITY_LEVELS as mode (mode)}
-                <button
-                  type="button"
-                  class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-accent/80 {processVisibility ===
-                  mode
-                    ? 'bg-muted/50 font-medium text-foreground'
-                    : 'text-muted-foreground'}"
-                  onclick={() => selectProcessVisibility(mode)}
-                >
-                  {processVisibilityLabel(mode)}
-                </button>
-              {/each}
-            </div>
-          {/if}
         </div>
       {/if}
 
@@ -666,15 +638,24 @@
         {#if onModelChange}
           <button
             bind:this={modelBtnEl}
-            class="flex items-center gap-1 shrink-0 rounded border border-transparent px-1.5 py-0.5 -my-0.5 text-foreground/80 hover:text-foreground hover:bg-accent hover:border-border transition-colors"
-            onclick={toggleModelDropdown}
+            class="flex items-center gap-1 shrink-0 rounded border border-transparent px-1.5 py-0.5 -my-0.5 text-xs text-foreground/80 hover:text-foreground hover:bg-muted/60 hover:border-border transition-colors {dropdownOpen
+              ? 'bg-muted/60 border-border/60 text-foreground'
+              : ''}"
+            onclick={(e) => {
+              e.stopPropagation();
+              toggleModelDropdown();
+            }}
+            aria-expanded={dropdownOpen}
+            aria-haspopup="listbox"
           >
             {modelLabel}
             {#if !effortDisabled && effort}
-              <span class="text-foreground/60 text-[10px]">{effort}</span>
+              <span class="text-[10px] text-foreground/60">{effort}</span>
             {/if}
             <svg
-              class="h-3 w-3 text-foreground/40"
+              class="h-3 w-3 text-foreground/40 transition-transform duration-200 {dropdownOpen
+                ? 'rotate-180'
+                : ''}"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -682,7 +663,7 @@
             >
           </button>
         {:else}
-          <span class="truncate text-foreground/80">{model}</span>
+          <span class="truncate text-xs text-foreground/80">{model}</span>
         {/if}
       {/if}
 
@@ -719,7 +700,7 @@
               style="width: {pct}%"
             ></span>
           </span>
-          <span class="hidden sm:inline">{t("statusbar_ctx", { pct: String(pct) })}</span>
+          <span class="hidden sm:inline text-xs">{t("statusbar_ctx", { pct: String(pct) })}</span>
           {#if compactVisible}
             <span
               class="text-[10px] text-miwarp-status-info font-medium animate-pulse"
@@ -758,169 +739,39 @@
       </div>
     {/if}
 
-    <!-- Right: tools count + More menu + chevron -->
+    <!-- Right: summarize + scheduled tasks -->
     <div class="ml-auto flex shrink-0 items-center gap-2">
-      {#if toolsCount && toolsCount > 0 && onToolsClick}
+      {#if onSummarize}
         <button
-          class="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          onclick={onToolsClick}
-          title={t("statusbar_showTools")}
+          class="flex items-center gap-1.5 rounded p-1.5 text-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors"
+          onclick={onSummarize}
+          title={t("statusbar_summarize")}
         >
-          {t("statusbar_tools", { count: String(toolsCount) })}
+          <svg
+            class="h-3.5 w-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" x2="8" y1="13" y2="13" />
+            <line x1="16" x2="8" y1="17" y2="17" />
+            <line x1="10" x2="8" y1="9" y2="9" />
+          </svg>
         </button>
       {/if}
 
-      <!-- More menu -->
-      {#if hasMoreActions}
-        <div class="relative">
-          <button
-            bind:this={moreMenuBtnEl}
-            class="rounded p-0.5 text-foreground/40 hover:text-foreground/70 hover:bg-accent transition-colors"
-            onclick={() => (moreMenuOpen = !moreMenuOpen)}
-            title={t("statusbar_moreMenu")}
-          >
-            <svg
-              class="h-3.5 w-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle
-                cx="5"
-                cy="12"
-                r="1"
-              />
-            </svg>
-          </button>
-          {#if moreMenuOpen}
-            <div
-              bind:this={moreMenuEl}
-              class="absolute right-0 top-full mt-1 z-50 min-w-[160px] rounded-md border border-border/40 bg-popover p-1 text-xs shadow-lg"
-            >
-              {#if onExportHtml}
-                <button
-                  class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-accent transition-colors"
-                  onclick={() => {
-                    moreMenuOpen = false;
-                    onExportHtml();
-                  }}
-                >
-                  <svg
-                    class="h-3 w-3"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    ><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline
-                      points="16 6 12 2 8 6"
-                    /><line x1="12" x2="12" y1="2" y2="15" /></svg
-                  >
-                  {t("statusbar_exportHtml")}
-                </button>
-              {/if}
-              {#if !running && onRewind && persistedFiles && persistedFiles.length > 0}
-                <button
-                  class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-accent transition-colors"
-                  onclick={() => {
-                    moreMenuOpen = false;
-                    onRewind();
-                  }}
-                >
-                  <svg
-                    class="h-3 w-3"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    ><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path
-                      d="M3 3v5h5"
-                    /></svg
-                  >
-                  {t("statusbar_rewind")}
-                </button>
-              {/if}
-              {#if onFork && run?.session_id}
-                <button
-                  class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-accent transition-colors"
-                  onclick={() => {
-                    moreMenuOpen = false;
-                    onFork();
-                  }}
-                >
-                  <svg
-                    class="h-3 w-3"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    ><circle cx="12" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><circle
-                      cx="18"
-                      cy="6"
-                      r="3"
-                    /><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9" /><path
-                      d="M12 12v3"
-                    /></svg
-                  >
-                  {t("statusbar_fork")}
-                </button>
-              {/if}
-              {#if running && onEndSession}
-                {#if confirmingEnd}
-                  <div class="flex items-center gap-1 px-2 py-1.5">
-                    <span class="text-miwarp-status-warning">{t("statusbar_endConfirm")}</span>
-                    <button
-                      class="ml-auto rounded px-1.5 py-0.5 bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors"
-                      onclick={confirmEnd}>{t("statusbar_yes")}</button
-                    >
-                    <button
-                      class="rounded px-1.5 py-0.5 text-foreground/50 hover:text-foreground hover:bg-accent transition-colors"
-                      onclick={cancelEnd}>{t("statusbar_no")}</button
-                    >
-                  </div>
-                {:else}
-                  <button
-                    class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-destructive hover:bg-destructive/10 transition-colors"
-                    onclick={() => {
-                      moreMenuOpen = false;
-                      requestEnd();
-                    }}
-                  >
-                    <svg
-                      class="h-3 w-3"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /></svg
-                    >
-                    {t("statusbar_endSession")}
-                  </button>
-                {/if}
-              {/if}
-            </div>
-          {/if}
-        </div>
-      {/if}
-
-      <!-- Expand/collapse chevron -->
       <button
-        class="p-0.5 text-foreground/30 hover:text-foreground/60 hover:bg-accent transition-colors"
-        onclick={() => (expanded = !expanded)}
-        title={expanded ? t("statusbar_collapse") : t("statusbar_expand")}
+        class="flex items-center gap-1.5 rounded p-1.5 text-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors"
+        onclick={() => onToolPanelTabChange?.("scheduled-tasks")}
+        title={t("statusbar_scheduledTasks")}
       >
         <svg
-          class="h-3.5 w-3.5 transition-transform {expanded ? '' : 'rotate-180'}"
+          class="h-3.5 w-3.5"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -928,25 +779,53 @@
           stroke-linecap="round"
           stroke-linejoin="round"
         >
-          <path d="m6 9 6 6 6-6" />
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
         </svg>
       </button>
     </div>
   </div>
 
-  <!-- Tier 2: Collapsible details (h-7) -->
-  {#if expanded}
-    <div class="flex h-7 items-center justify-between border-t border-border/20 px-3">
-      <!-- Left: details -->
-      <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+  <!-- Tier 2: Details shown on hover (h-8) -->
+  {#if islandHover}
+    <div class="flex h-8 shrink-0 items-center justify-between border-t border-border/20 px-3">
+      <!-- Left: session info -->
+      <div class="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+        <!-- Session title (inline editable) -->
+        {#if run && onRename}
+          {#if titleEditing}
+            <input
+              bind:this={titleInputEl}
+              bind:value={titleEditValue}
+              class="w-40 bg-transparent border-b border-primary outline-none text-foreground font-medium px-0.5 text-xs leading-8"
+              onkeydown={(e) => {
+                if (e.key === "Enter") commitTitleEdit();
+                else if (e.key === "Escape") cancelTitleEdit();
+              }}
+              onblur={commitTitleEdit}
+            />
+          {:else}
+            <button
+              class="max-w-[240px] truncate text-xs leading-8 text-foreground/70 hover:text-foreground transition-colors {run.name
+                ? 'font-medium'
+                : 'italic text-foreground/40'}"
+              onclick={startTitleEdit}
+              title={run.name || run.prompt || t("statusbar_sessionTitle")}
+            >
+              {truncate(run.name || run.prompt, 40)}
+            </button>
+          {/if}
+          <span class="text-xs leading-8 text-foreground/30">&middot;</span>
+        {/if}
+
         {#if cwdShort}
-          <span class="truncate" title={cwd || run?.cwd || ""}>{cwdShort}</span>
+          <span class="truncate text-xs leading-8" title={cwd || run?.cwd || ""}>{cwdShort}</span>
         {/if}
 
         {#if sessionIdShort}
-          <span class="text-foreground/30">&middot;</span>
+          <span class="text-xs leading-8 text-foreground/30">&middot;</span>
           <button
-            class="text-foreground/40 hover:text-foreground/70 transition-colors"
+            class="inline-flex h-8 items-center text-xs leading-8 text-foreground/40 hover:text-foreground/70 transition-colors"
             title="{t('statusbar_sessionLabel', {
               id: run?.session_id ?? '',
             })}\n{t('statusbar_clickToCopy')}"
@@ -957,9 +836,9 @@
         {/if}
 
         {#if parentRunId && onNavigateParent}
-          <span class="text-foreground/30">&middot;</span>
+          <span class="text-xs leading-8 text-foreground/30">&middot;</span>
           <button
-            class="flex items-center gap-1 text-miwarp-status-info/70 hover:text-miwarp-status-info transition-colors"
+            class="inline-flex h-8 items-center gap-1 text-xs leading-8 text-miwarp-status-info/70 hover:text-miwarp-status-info transition-colors"
             onclick={onNavigateParent}
             title={t("statusbar_viewParent")}
           >
@@ -983,21 +862,17 @@
           </button>
         {/if}
 
-        {#if shouldShowContextDetails(processVisibility) && cost > 0}
-          <span class="text-foreground/30 shrink-0">&middot;</span>
-          <span class="shrink-0">{formatCost(cost)}</span>
-        {/if}
-
         {#if shouldShowContextDetails(processVisibility) && (inputTokens > 0 || outputTokens > 0)}
-          <span class="text-foreground/30 shrink-0">&middot;</span>
+          <span class="shrink-0 text-xs leading-8 text-foreground/30">&middot;</span>
           <span
-            class="shrink-0"
+            class="inline-flex h-8 shrink-0 items-center text-xs leading-8"
             title={`${t("statusbar_inputLabel")}: ${fmtNumber(inputTokens)} / ${t("statusbar_outputLabel")}: ${fmtNumber(outputTokens)}${cacheReadTokens ? `\n${t("statusbar_cacheReadLabel")}: ${fmtNumber(cacheReadTokens)}` : ""}${cacheWriteTokens ? `\n${t("statusbar_cacheWriteLabel")}: ${fmtNumber(cacheWriteTokens)}` : ""}`}
             >{formatTokenCount(inputTokens)} / {formatTokenCount(outputTokens)}
             {t("statusbar_tok")}</span
           >
           {#if cacheReadTokens > 0 || cacheWriteTokens > 0}
-            <span class="text-foreground/60 text-[10px] shrink-0"
+            <span
+              class="inline-flex h-8 shrink-0 items-center text-[10px] leading-8 text-foreground/60"
               >{t("statusbar_cacheRW", {
                 read: formatTokenCount(cacheReadTokens),
                 write: formatTokenCount(cacheWriteTokens),
@@ -1007,9 +882,9 @@
         {/if}
 
         {#if mcpServers && mcpServers.length > 0 && onMcpToggle}
-          <span class="text-foreground/30">&middot;</span>
+          <span class="text-xs leading-8 text-foreground/30">&middot;</span>
           <button
-            class="flex items-center gap-1 shrink-0 rounded border border-transparent px-1.5 py-0.5 -my-0.5 text-foreground/70 hover:text-foreground hover:bg-accent hover:border-border transition-colors"
+            class="inline-flex h-8 shrink-0 items-center gap-1 text-xs leading-8 text-foreground/70 hover:text-foreground transition-colors"
             onclick={onMcpToggle}
             title={t("statusbar_mcpTitle", { count: String(mcpServers.length) })}
           >
@@ -1019,32 +894,20 @@
         {/if}
 
         {#if numTurns && numTurns > 0}
-          <span class="text-foreground/30 shrink-0">&middot;</span>
-          <span class="shrink-0" title={t("statusbar_turnsTitle")}
-            >{t("statusbar_turns", { count: String(numTurns) })}</span
-          >
-        {/if}
-
-        {#if durationMs && durationMs > 0}
-          {@const turnDetail = turnUsages
-            .filter((tu) => tu.durationMs && tu.durationMs > 0)
-            .map((tu) => `T${tu.turnIndex}: ${formatDuration(tu.durationMs!)}`)
-            .join(", ")}
-          <span class="text-foreground/30 shrink-0">&middot;</span>
+          <span class="shrink-0 text-xs leading-8 text-foreground/30">&middot;</span>
           <span
-            class="shrink-0"
-            title={t("statusbar_durationTitle") +
-              (turnDetail ? `\n${t("statusbar_durationPerTurn")}: ${turnDetail}` : "")}
-            >{formatDuration(durationMs)}</span
+            class="inline-flex h-8 shrink-0 items-center text-xs leading-8"
+            title={t("statusbar_turnsTitle")}
+            >{t("statusbar_turns", { count: String(numTurns) })}</span
           >
         {/if}
       </div>
 
-      <!-- Right: secondary controls -->
-      <div class="flex items-center gap-1.5 shrink-0">
+      <!-- Right: badges -->
+      <div class="flex shrink-0 items-center gap-1.5">
         {#if permissionBadge}
           <span
-            class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {permissionBadge.cls}"
+            class="inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[10px] font-medium leading-none {permissionBadge.cls}"
             title={t("statusbar_permissionMode", { mode: permissionMode ?? "" })}
             >{permissionBadge.label}</span
           >
@@ -1052,15 +915,8 @@
 
         {#if fastModeState === "on"}
           <span
-            class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-miwarp-status-warning/15 text-miwarp-status-warning"
+            class="inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[10px] font-medium leading-none bg-miwarp-status-warning/15 text-miwarp-status-warning"
             title={t("statusbar_fastModeTitle")}>{t("statusbar_fastMode")}</span
-          >
-        {/if}
-
-        {#if verbose}
-          <span
-            class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-sky-500/15 text-sky-400 hidden sm:inline"
-            title={t("statusbar_verboseTitle")}>{t("statusbar_verbose")}</span
           >
         {/if}
 
@@ -1074,24 +930,16 @@
                   ? "bg-miwarp-status-warning/15 text-miwarp-status-warning"
                   : "bg-foreground/10 text-foreground/60"}
           <span
-            class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {authBadgeColor}"
+            class="inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[10px] font-medium leading-none {authBadgeColor}"
             title={t("statusbar_authTitle", { source: apiKeySource ?? "" })}>{authSourceLabel}</span
           >
         {/if}
 
         {#if remoteHostName}
           <span
-            class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-miwarp-status-info/15 text-miwarp-status-info"
+            class="inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[10px] font-medium leading-none bg-miwarp-status-info/15 text-miwarp-status-info"
             title={t("statusbar_sshTitle", { name: remoteHostName ?? "" })}
             >{t("statusbar_sshLabel", { name: remoteHostName ?? "" })}</span
-          >
-        {/if}
-
-        {#if cliVersion}
-          <button
-            class="text-foreground/30 hover:text-foreground/60 transition-colors hidden sm:inline"
-            title={t("statusbar_cliVersionTitle", { version: cliVersion ?? "" })}
-            onclick={() => goto("/release-notes")}>CLI v{cliVersion}</button
           >
         {/if}
       </div>
@@ -1099,79 +947,137 @@
   {/if}
 </div>
 
+{#if pvMenuOpen}
+  <div
+    bind:this={pvMenuEl}
+    role="listbox"
+    class="statusbar-popover animate-fade-in overflow-hidden p-1"
+    style={pvMenuStyle}
+  >
+    {#each PROCESS_VISIBILITY_LEVELS as mode (mode)}
+      <button
+        type="button"
+        role="option"
+        aria-selected={processVisibility === mode}
+        class="flex w-full items-center gap-2 rounded-[10px] px-2.5 py-2 text-left text-xs transition-colors {processVisibility ===
+        mode
+          ? 'bg-primary/12 text-primary font-medium'
+          : 'text-foreground/75 hover:bg-muted/50 hover:text-foreground'}"
+        onclick={() => selectProcessVisibility(mode)}
+      >
+        {#if processVisibility === mode}
+          <svg
+            class="h-3.5 w-3.5 shrink-0 text-primary"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
+          >
+        {:else}
+          <span class="h-3.5 w-3.5 shrink-0"></span>
+        {/if}
+        <span class="flex-1">{processVisibilityLabel(mode)}</span>
+      </button>
+    {/each}
+  </div>
+{/if}
+
 {#if dropdownOpen}
   <div
     bind:this={dropdownEl}
     tabindex="-1"
     role="listbox"
-    class="min-w-[560px] w-max rounded-md border bg-background shadow-lg animate-fade-in outline-none"
+    class="statusbar-popover animate-fade-in flex max-h-[min(420px,70vh)] flex-col overflow-hidden outline-none"
     style={dropdownStyle}
     onkeydown={handleDropdownKeydown}
   >
     {#if showModelFilter}
-      <div class="px-2 pt-2 pb-1">
+      <div class="shrink-0 border-b border-border/25 px-2.5 py-2">
         <input
           bind:this={modelFilterEl}
           bind:value={modelFilter}
           placeholder={t("modelFilter_placeholder")}
-          class="w-full rounded border border-border/40 bg-background/50 px-2 py-1 text-xs outline-none focus:border-ring/40"
+          class="w-full rounded-[10px] border border-border/35 bg-muted/25 px-2.5 py-1.5 text-xs outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary/45 focus:bg-muted/35"
           onkeydown={handleModelFilterKeydown}
         />
       </div>
     {/if}
-    <div class="p-1">
+    <div class="min-h-0 flex-1 overflow-y-auto p-1.5 [scrollbar-width:thin]">
       {#if filteredModels.length === 0}
-        <div class="px-3 py-2 text-xs text-muted-foreground/60">{t("modelFilter_noResults")}</div>
+        <div class="px-2.5 py-6 text-center text-xs text-muted-foreground/60">
+          {t("modelFilter_noResults")}
+        </div>
       {/if}
       {#each filteredModels as m, i}
         <button
-          class="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-xs hover:bg-accent transition-colors {model ===
+          type="button"
+          role="option"
+          aria-selected={model === m.value}
+          class="flex w-full items-start gap-2 rounded-[10px] px-2 py-2 text-left transition-colors {model ===
           m.value
-            ? 'bg-accent font-medium'
-            : ''} {i === focusedModelIdx ? 'ring-1 ring-primary/50' : ''}"
+            ? 'bg-primary/12'
+            : 'hover:bg-muted/45'} {i === focusedModelIdx ? 'ring-1 ring-primary/25' : ''}"
           onclick={() => selectModel(m.value)}
         >
           {#if model === m.value}
             <svg
-              class="h-3 w-3 text-primary shrink-0"
+              class="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              stroke-width="2"><path d="M20 6 9 17l-5-5" /></svg
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
             >
           {:else}
-            <span class="w-3 shrink-0"></span>
+            <span class="mt-0.5 h-3.5 w-3.5 shrink-0"></span>
           {/if}
-          <span class="shrink-0 text-foreground">{m.displayName}</span>
-          <span class="text-[10px] text-foreground/70 truncate">{m.description}</span>
+          <span class="min-w-0 flex-1">
+            <span
+              class="block truncate text-xs font-medium {model === m.value
+                ? 'text-primary'
+                : 'text-foreground'}">{m.displayName}</span
+            >
+            {#if m.description}
+              <span class="mt-0.5 block truncate text-[10px] leading-snug text-muted-foreground/65"
+                >{m.description}</span
+              >
+            {/if}
+          </span>
         </button>
       {/each}
     </div>
     {#if effortLevels.length > 0 && onEffortChange}
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
+        class="shrink-0 border-t border-border/25"
         onkeydown={(e) => {
           if (["Enter", " ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
             e.stopPropagation();
           }
         }}
       >
-        <div class="border-t mx-1 my-1"></div>
-        <div class="px-3 py-2">
-          <div class="text-[10px] text-muted-foreground mb-1.5">
-            {t("effort_label")}{#if effortDisabled}<span class="ml-1 opacity-50"
-                >— {currentModelInfo?.displayName ?? model} not supported</span
+        <div class="px-3 py-2.5">
+          <div
+            class="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70"
+          >
+            {t("effort_label")}{#if effortDisabled}<span
+                class="ml-1 font-normal normal-case opacity-50"
+                >— {currentModelInfo?.displayName ?? model}</span
               >{/if}
           </div>
           <div class="flex gap-1">
             {#each effortLevels as level}
               <button
-                class="flex-1 rounded px-2 py-1 text-xs transition-colors
+                type="button"
+                class="flex-1 rounded-[10px] px-2 py-1.5 text-xs transition-colors
                   {effortDisabled
-                  ? 'bg-muted/30 text-muted-foreground/40 cursor-not-allowed'
+                  ? 'cursor-not-allowed bg-muted/25 text-muted-foreground/40'
                   : effort === level
-                    ? 'bg-primary text-primary-foreground font-medium'
-                    : 'bg-muted/50 text-muted-foreground hover:bg-accent'}"
+                    ? 'bg-primary font-medium text-primary-foreground shadow-sm'
+                    : 'bg-muted/35 text-muted-foreground hover:bg-muted/55 hover:text-foreground'}"
                 disabled={effortDisabled}
                 onclick={() => onEffortChange(level)}>{level}</button
               >

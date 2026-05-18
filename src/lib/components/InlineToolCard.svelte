@@ -287,7 +287,9 @@
   let taskMeta = $derived(tool.tool_name === "Task" ? extractTaskToolMeta(tool.input) : null);
 
   // Whether current permission mode already skips permission prompts
-  let skipPermissionMode = $derived(permissionMode === "acceptEdits" || permissionMode === "bypassPermissions");
+  let skipPermissionMode = $derived(
+    permissionMode === "acceptEdits" || permissionMode === "bypassPermissions",
+  );
 
   // Status display
   let statusKind = $derived(
@@ -1432,64 +1434,80 @@
                     {t("plan_skipPermission")}
                   </button>
                 {:else}
-                <!-- Option 1: Clear context + auto-accept -->
-                <button
-                  class="w-full rounded-md border border-[hsl(var(--miwarp-accent-primary)/0.3)] bg-[hsl(var(--miwarp-accent-primary)/0.1)] px-3 py-1.5 text-left text-xs font-medium text-[hsl(var(--miwarp-accent-primary))] hover:bg-[hsl(var(--miwarp-accent-primary)/0.2)] transition-all disabled:opacity-50"
-                  disabled={submitting}
-                  onclick={() => {
-                    submitting = true;
-                    safeClearContext();
-                  }}
-                >
-                  {t("plan_clearContextAutoAccept")}
-                </button>
-                <!-- Option 2: Auto-accept (keep context) -->
-                <button
-                  class="w-full rounded-md border border-[hsl(var(--miwarp-status-success)/0.3)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-left text-xs font-medium text-[hsl(var(--miwarp-status-success))] hover:bg-[hsl(var(--miwarp-status-success)/0.2)] transition-all disabled:opacity-50"
-                  disabled={submitting}
-                  onclick={() => {
-                    submitting = true;
-                    safePermissionRespond(
-                      tool.permission_request_id!,
-                      "allow",
-                      [{ type: "setMode", mode: "acceptEdits", destination: "session" }],
-                      tool.input,
-                    );
-                  }}
-                >
-                  {t("plan_autoAcceptEdits")}
-                </button>
-                <!-- Option 3: Manually approve -->
-                <button
-                  class="w-full rounded-md border border-border px-3 py-1.5 text-left text-xs font-medium text-foreground hover:bg-accent transition-all disabled:opacity-50"
-                  disabled={submitting}
-                  onclick={() => {
-                    submitting = true;
-                    safePermissionRespond(
-                      tool.permission_request_id!,
-                      "allow",
-                      undefined,
-                      tool.input,
-                    );
-                  }}
-                >
-                  {t("plan_manuallyApprove")}
-                </button>
-                <!-- Option 4: Keep planning (with feedback) -->
-                <div class="flex gap-1.5 items-end">
-                  <textarea
-                    bind:value={planFeedback}
-                    placeholder={t("plan_feedbackPlaceholder")}
-                    rows="1"
-                    class="flex-1 rounded-md border border-border bg-transparent px-2 py-1.5 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none overflow-hidden"
-                    oninput={(e) => {
-                      const el = e.currentTarget;
-                      el.style.height = "auto";
-                      el.style.height = Math.min(el.scrollHeight, 120) + "px";
+                  <!-- Option 1: Clear context + auto-accept -->
+                  <button
+                    class="w-full rounded-md border border-[hsl(var(--miwarp-accent-primary)/0.3)] bg-[hsl(var(--miwarp-accent-primary)/0.1)] px-3 py-1.5 text-left text-xs font-medium text-[hsl(var(--miwarp-accent-primary))] hover:bg-[hsl(var(--miwarp-accent-primary)/0.2)] transition-all disabled:opacity-50"
+                    disabled={submitting}
+                    onclick={() => {
+                      submitting = true;
+                      safeClearContext();
                     }}
-                    onkeydown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey && !submitting) {
-                        e.preventDefault();
+                  >
+                    {t("plan_clearContextAutoAccept")}
+                  </button>
+                  <!-- Option 2: Auto-accept (keep context) -->
+                  <button
+                    class="w-full rounded-md border border-[hsl(var(--miwarp-status-success)/0.3)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-left text-xs font-medium text-[hsl(var(--miwarp-status-success))] hover:bg-[hsl(var(--miwarp-status-success)/0.2)] transition-all disabled:opacity-50"
+                    disabled={submitting}
+                    onclick={() => {
+                      submitting = true;
+                      safePermissionRespond(
+                        tool.permission_request_id!,
+                        "allow",
+                        [{ type: "setMode", mode: "acceptEdits", destination: "session" }],
+                        tool.input,
+                      );
+                    }}
+                  >
+                    {t("plan_autoAcceptEdits")}
+                  </button>
+                  <!-- Option 3: Manually approve -->
+                  <button
+                    class="w-full rounded-md border border-border px-3 py-1.5 text-left text-xs font-medium text-foreground hover:bg-accent transition-all disabled:opacity-50"
+                    disabled={submitting}
+                    onclick={() => {
+                      submitting = true;
+                      safePermissionRespond(
+                        tool.permission_request_id!,
+                        "allow",
+                        undefined,
+                        tool.input,
+                      );
+                    }}
+                  >
+                    {t("plan_manuallyApprove")}
+                  </button>
+                  <!-- Option 4: Keep planning (with feedback) -->
+                  <div class="flex gap-1.5 items-end">
+                    <textarea
+                      bind:value={planFeedback}
+                      placeholder={t("plan_feedbackPlaceholder")}
+                      rows="1"
+                      class="flex-1 rounded-md border border-border bg-transparent px-2 py-1.5 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none overflow-hidden"
+                      oninput={(e) => {
+                        const el = e.currentTarget;
+                        el.style.height = "auto";
+                        el.style.height = Math.min(el.scrollHeight, 120) + "px";
+                      }}
+                      onkeydown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey && !submitting) {
+                          e.preventDefault();
+                          submitting = true;
+                          const msg = planFeedback.trim() || undefined;
+                          safePermissionRespond(
+                            tool.permission_request_id!,
+                            "deny",
+                            undefined,
+                            undefined,
+                            msg,
+                          );
+                        }
+                      }}
+                    ></textarea>
+                    <button
+                      class="shrink-0 rounded-md border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-warning))] hover:bg-[hsl(var(--miwarp-status-warning)/0.2)] transition-all disabled:opacity-50"
+                      disabled={submitting}
+                      onclick={() => {
                         submitting = true;
                         const msg = planFeedback.trim() || undefined;
                         safePermissionRespond(
@@ -1499,27 +1517,11 @@
                           undefined,
                           msg,
                         );
-                      }
-                    }}
-                  ></textarea>
-                  <button
-                    class="shrink-0 rounded-md border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-warning))] hover:bg-[hsl(var(--miwarp-status-warning)/0.2)] transition-all disabled:opacity-50"
-                    disabled={submitting}
-                    onclick={() => {
-                      submitting = true;
-                      const msg = planFeedback.trim() || undefined;
-                      safePermissionRespond(
-                        tool.permission_request_id!,
-                        "deny",
-                        undefined,
-                        undefined,
-                        msg,
-                      );
-                    }}
-                  >
-                    {t("plan_keepPlanning")}
-                  </button>
-                </div>
+                      }}
+                    >
+                      {t("plan_keepPlanning")}
+                    </button>
+                  </div>
                 {/if}
               </div>
             {/if}

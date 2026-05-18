@@ -7,7 +7,8 @@
   import { formatDuration } from "$lib/utils/format";
   import type { ProcessVisibility } from "$lib/utils/process-visibility";
   import { shouldShowContextDetails, shouldShowRawDebug } from "$lib/utils/process-visibility";
-  import { mapRunStatusToColorKey, getSessionStatusColor } from "$lib/utils/session-status-colors";
+  import { mapRunStatusToColorKey } from "$lib/utils/session-status-colors";
+  import ContextWindowBar from "$lib/components/ContextWindowBar.svelte";
 
   let {
     info = null,
@@ -258,19 +259,20 @@
           </div>
           {#if info.contextUtilization > 0}
             {@const pct = Math.round(info.contextUtilization * 100)}
-            {@const barColor =
-              pct >= 90 ? "bg-orange-500" : pct >= 70 ? "bg-amber-500" : "bg-emerald-500"}
+            {@const warningLevel =
+              pct >= 90 ? "critical" : pct >= 70 ? "high" : pct >= 50 ? "moderate" : "normal"}
+            {@const totalUsed = Math.round(info.contextUtilization * info.contextWindow)}
             <div class="flex items-center justify-between text-[11px]">
               <span class="text-muted-foreground">{t("infoPanel_contextUsage")}</span>
-              <span class="flex items-center gap-1.5">
-                <span class="inline-flex h-1.5 w-16 rounded-full bg-foreground/10 overflow-hidden">
-                  <span
-                    class="h-full rounded-full transition-all duration-500 {barColor}"
-                    style="width: {pct}%"
-                  ></span>
-                </span>
-                <span class="text-foreground/80 tabular-nums">{pct}%</span>
-              </span>
+              <div class="flex-1 ml-3 mr-2">
+                <ContextWindowBar
+                  {totalUsed}
+                  totalMax={info.contextWindow}
+                  {warningLevel}
+                  compactCount={info.compactCount}
+                  microcompactCount={info.microcompactCount}
+                />
+              </div>
             </div>
           {/if}
           {#if info.compactCount > 0 || info.microcompactCount > 0}

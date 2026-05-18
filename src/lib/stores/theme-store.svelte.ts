@@ -193,8 +193,7 @@ class ThemeStore {
       id: newId,
       name: newThemeName,
       type: sourceTheme.type,
-      accent:
-        this.themeOverrides[sourceThemeId]?.["--miwarp-accent-primary"] ?? sourceTheme.accent,
+      accent: this.themeOverrides[sourceThemeId]?.["--miwarp-accent-primary"] ?? sourceTheme.accent,
     };
 
     this.themes = [...this.themes, newTheme];

@@ -2285,7 +2285,9 @@
               </h2>
               <div class="space-y-2">
                 <div>
-                  <p class="text-sm font-medium text-foreground">{t("settings_processVisibility")}</p>
+                  <p class="text-sm font-medium text-foreground">
+                    {t("settings_processVisibility")}
+                  </p>
                   <p class="text-xs text-muted-foreground mt-0.5">
                     {t("settings_processVisibilityDesc")}
                   </p>
@@ -2351,91 +2353,6 @@
                 description={t("settings_showTokenReportDesc") ||
                   "每次问答结束后在对话底部显示输入/输出/缓存Token统计"}
               />
-            </Card>
-
-            <!-- Session Status Colors Card -->
-            <Card class="p-6 space-y-4">
-              <div class="flex items-center justify-between">
-                <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  {t("settings_sessionStatusColors")}
-                </h2>
-                <button
-                  class="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  onclick={async () => {
-                    settings = await api.updateUserSettings({
-                      session_status_colors: undefined,
-                    } as Partial<UserSettings>);
-                  }}
-                >
-                  {t("settings_sessionStatusColors_resetAll")}
-                </button>
-              </div>
-              <p class="text-xs text-muted-foreground">
-                {t("settings_sessionStatusColorsDesc")}
-              </p>
-
-              <!-- Status color rows -->
-              <div class="space-y-3">
-                {#each STATUS_COLOR_KEYS as status}
-                  {@const key = status as SessionStatusColorKey}
-                  {@const currentColor = settings?.session_status_colors?.[key] ?? DEFAULT_SESSION_STATUS_COLORS[key]}
-                  <div class="flex items-center gap-3">
-                    <span class="w-16 text-sm text-muted-foreground truncate">
-                      {statusColorLabel(key)}
-                    </span>
-                    <div
-                      class="h-5 w-5 rounded-full shrink-0 border border-border/40"
-                      style="background-color: {currentColor};"
-                    ></div>
-                    <input
-                      type="color"
-                      class="w-8 h-5 cursor-pointer rounded border-0 p-0 bg-transparent"
-                      value={currentColor}
-                      onchange={async (e) => {
-                        const val = (e.target as HTMLInputElement).value;
-                        const newColors: SessionStatusColors = {
-                          ...(settings?.session_status_colors ?? {}),
-                          [key]: val,
-                        };
-                        settings = await api.updateUserSettings({
-                          session_status_colors: newColors,
-                        } as Partial<UserSettings>);
-                      }}
-                    />
-                    <input
-                      type="text"
-                      class="w-24 text-xs font-mono bg-muted/30 border border-border/40 rounded px-2 py-1 focus:outline-none focus:border-ring/50"
-                      value={currentColor}
-                      maxlength={7}
-                      onchange={async (e) => {
-                        let val = (e.target as HTMLInputElement).value.trim();
-                        if (!val.startsWith("#")) val = "#" + val;
-                        if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(val)) {
-                          const newColors: SessionStatusColors = {
-                            ...(settings?.session_status_colors ?? {}),
-                            [key]: val,
-                          };
-                          settings = await api.updateUserSettings({
-                            session_status_colors: newColors,
-                          } as Partial<UserSettings>);
-                        }
-                      }}
-                    />
-                    <button
-                      class="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
-                      onclick={async () => {
-                        const newColors = { ...(settings?.session_status_colors ?? {}) };
-                        delete newColors[key];
-                        settings = await api.updateUserSettings({
-                          session_status_colors: Object.keys(newColors).length > 0 ? newColors : null,
-                        } as Partial<UserSettings>);
-                      }}
-                    >
-                      {t("settings_sessionStatusColors_reset")}
-                    </button>
-                  </div>
-                {/each}
-              </div>
             </Card>
           </div>
 
@@ -3497,7 +3414,9 @@
               <div class="divide-y divide-border/50 -mx-3 px-3">
                 {#each fixedBindings as binding (binding.command)}
                   <div class="flex items-center gap-3 py-1.5 group">
-                    <span class="text-sm text-foreground/70 flex-1 min-w-0 truncate">{binding.label}</span>
+                    <span class="text-sm text-foreground/70 flex-1 min-w-0 truncate"
+                      >{binding.label}</span
+                    >
                     <span
                       class="shrink-0 inline-flex items-center rounded border bg-muted/40 px-2 py-0.5 text-xs font-mono text-muted-foreground"
                     >
@@ -3533,7 +3452,9 @@
                 <div class="divide-y divide-border/50 -mx-3 px-3">
                   {#each cliBindings as binding (binding.command)}
                     <div class="flex items-center gap-3 py-1.5">
-                      <span class="text-sm text-foreground/60 flex-1 min-w-0 truncate">{binding.label}</span>
+                      <span class="text-sm text-foreground/60 flex-1 min-w-0 truncate"
+                        >{binding.label}</span
+                      >
                       <span
                         class="shrink-0 inline-flex items-center rounded border bg-muted/40 px-2 py-0.5 text-xs font-mono text-muted-foreground"
                       >

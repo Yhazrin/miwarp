@@ -105,7 +105,10 @@
         </div>
         <div>
           <label class="block text-muted-foreground mb-1">{t("skillSources_field_profile")}</label>
-          <input class="w-full rounded-lg border border-border bg-background px-3 py-1.5" bind:value={auth} />
+          <input
+            class="w-full rounded-lg border border-border bg-background px-3 py-1.5"
+            bind:value={auth}
+          />
         </div>
         <div>
           <label class="block text-muted-foreground mb-1">{t("skillSources_field_parser")}</label>

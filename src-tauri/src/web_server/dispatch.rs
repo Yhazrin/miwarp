@@ -492,7 +492,8 @@ pub async fn dispatch_command(
                 .get("config")
                 .ok_or_else(|| "Missing required parameter: config".to_string())?;
             let config: crate::models::SkillSourceConfig =
-                serde_json::from_value(config_val.clone()).map_err(|e| format!("Bad config: {}", e))?;
+                serde_json::from_value(config_val.clone())
+                    .map_err(|e| format!("Bad config: {}", e))?;
             let result = crate::commands::skill_sources::create_skill_source(config)?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
@@ -501,8 +502,8 @@ pub async fn dispatch_command(
             let patch_val = params
                 .get("patch")
                 .ok_or_else(|| "Missing required parameter: patch".to_string())?;
-            let patch: crate::models::SkillSourceConfig =
-                serde_json::from_value(patch_val.clone()).map_err(|e| format!("Bad patch: {}", e))?;
+            let patch: crate::models::SkillSourceConfig = serde_json::from_value(patch_val.clone())
+                .map_err(|e| format!("Bad patch: {}", e))?;
             let result = crate::commands::skill_sources::update_skill_source(id, patch)?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
@@ -566,7 +567,8 @@ pub async fn dispatch_command(
         "check_skill_source_updates" => {
             let id = extract_str(&params, "id")?;
             let cwd = params.get("cwd").and_then(|v| v.as_str()).map(String::from);
-            let result = crate::commands::skill_sources::check_skill_source_updates(id, cwd).await?;
+            let result =
+                crate::commands::skill_sources::check_skill_source_updates(id, cwd).await?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
 

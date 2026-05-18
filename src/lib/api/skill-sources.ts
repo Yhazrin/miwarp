@@ -23,7 +23,10 @@ export function createSkillSource(config: SkillSourceConfig): Promise<SkillSourc
   return invoke<SkillSourceConfig>("create_skill_source", { config });
 }
 
-export function updateSkillSource(id: string, patch: SkillSourceConfig): Promise<SkillSourceConfig> {
+export function updateSkillSource(
+  id: string,
+  patch: SkillSourceConfig,
+): Promise<SkillSourceConfig> {
   return invoke<SkillSourceConfig>("update_skill_source", { id, patch });
 }
 

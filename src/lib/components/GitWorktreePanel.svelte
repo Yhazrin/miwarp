@@ -78,7 +78,9 @@
         getGitBranch(path).catch(() => ""),
         getGitSummary(path).catch(() => null),
         getGitStatus(path).catch(() => ""),
-        listAnchor ? listWorktrees(listAnchor).catch(() => [] as WorktreeEntry[]) : Promise.resolve([]),
+        listAnchor
+          ? listWorktrees(listAnchor).catch(() => [] as WorktreeEntry[])
+          : Promise.resolve([]),
       ]);
 
       const isClean = !statusOutput.trim();
@@ -110,8 +112,7 @@
   async function handleAutoCommit() {
     if (!effectiveCwd || commitBusy) return;
     const msg =
-      commitMessage.trim() ||
-      `feat: update from MiWarp (${new Date().toISOString().slice(0, 10)})`;
+      commitMessage.trim() || `feat: update from MiWarp (${new Date().toISOString().slice(0, 10)})`;
     commitBusy = true;
     try {
       const res = await apiAutoCommit(effectiveCwd, msg);
@@ -186,7 +187,9 @@
 
       <div class="px-3 py-2 space-y-1.5">
         <div class="flex items-center gap-2">
-          <span class="text-[11px] text-muted-foreground w-14 shrink-0">{t("gitWorktree_branch")}</span>
+          <span class="text-[11px] text-muted-foreground w-14 shrink-0"
+            >{t("gitWorktree_branch")}</span
+          >
           <span class="flex items-center gap-1.5 text-[11px] font-mono text-foreground min-w-0">
             {#if isWorktreeSession}
               <svg
@@ -209,15 +212,22 @@
 
         {#if isWorktreeSession && worktreePath}
           <div class="flex items-center gap-2">
-            <span class="text-[11px] text-muted-foreground w-14 shrink-0">{t("gitWorktree_path")}</span>
-            <span class="text-[10px] font-mono text-foreground/60 truncate flex-1" title={worktreePath}>
+            <span class="text-[11px] text-muted-foreground w-14 shrink-0"
+              >{t("gitWorktree_path")}</span
+            >
+            <span
+              class="text-[10px] font-mono text-foreground/60 truncate flex-1"
+              title={worktreePath}
+            >
               {worktreePath}
             </span>
           </div>
         {/if}
 
         <div class="flex items-center gap-2">
-          <span class="text-[11px] text-muted-foreground w-14 shrink-0">{t("gitWorktree_status")}</span>
+          <span class="text-[11px] text-muted-foreground w-14 shrink-0"
+            >{t("gitWorktree_status")}</span
+          >
           <span class="flex flex-wrap items-center gap-1.5">
             {#if gitState.loading}
               <span class="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -237,7 +247,9 @@
               {#if gitState.changedFiles > 0}
                 <span class="text-[10px] text-muted-foreground">
                   ({gitState.changedFiles}
-                  {gitState.changedFiles === 1 ? t("gitWorktree_file_one") : t("gitWorktree_file_many")})
+                  {gitState.changedFiles === 1
+                    ? t("gitWorktree_file_one")
+                    : t("gitWorktree_file_many")})
                 </span>
               {/if}
             {/if}
@@ -338,7 +350,9 @@
                   <span class="text-[10px] text-muted-foreground/60 truncate block">{wt.path}</span>
                 </span>
                 {#if cur}
-                  <span class="text-[9px] text-primary font-medium shrink-0">{t("gitWorktree_here")}</span>
+                  <span class="text-[9px] text-primary font-medium shrink-0"
+                    >{t("gitWorktree_here")}</span
+                  >
                 {/if}
               </li>
             {/each}
@@ -391,8 +405,9 @@
               />
             </svg>
             <span class="text-muted-foreground truncate">{t("gitWorktree_project_root")}</span>
-            <span class="text-[10px] text-muted-foreground/50 truncate font-mono ml-auto" title={parentCwd}
-              >{pathTail(parentCwd)}</span
+            <span
+              class="text-[10px] text-muted-foreground/50 truncate font-mono ml-auto"
+              title={parentCwd}>{pathTail(parentCwd)}</span
             >
           </div>
 
@@ -428,10 +443,12 @@
               <circle cx="6" cy="18" r="3" />
               <path d="M18 9a9 9 0 0 1-9 9" />
             </svg>
-            <span class="text-foreground font-mono truncate flex-1 min-w-0">{displayedBranch || "—"}</span>
-            <span class="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 shrink-0">{t(
-              "gitWorktree_this_session",
-            )}</span>
+            <span class="text-foreground font-mono truncate flex-1 min-w-0"
+              >{displayedBranch || "—"}</span
+            >
+            <span class="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 shrink-0"
+              >{t("gitWorktree_this_session")}</span
+            >
           </div>
         </div>
       </div>

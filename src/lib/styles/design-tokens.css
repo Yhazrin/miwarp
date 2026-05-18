@@ -38,6 +38,13 @@ html.dark:not([data-theme]) {
   --miwarp-status-warning: 38 80% 55%;
   --miwarp-status-error: 0 72% 60%;
   --miwarp-status-info: 199 89% 55%;
+  --miwarp-status-running: 217 91% 60%;
+  --miwarp-status-done: 160 84% 39%;
+  --miwarp-status-failed: 0 72% 51%;
+  --miwarp-status-pending: 38 92% 50%;
+  --miwarp-status-paused: 212 16% 59%;
+  --miwarp-status-blocked: 27 95% 53%;
+  --miwarp-status-idle: 220 9% 64%;
 
   /* Map to shadcn CSS variables */
   --background: 220 18% 6%;
@@ -99,6 +106,13 @@ html.light:not([data-theme]) {
   --miwarp-status-warning: 38 75% 38%;
   --miwarp-status-error: 0 70% 48%;
   --miwarp-status-info: 199 75% 42%;
+  --miwarp-status-running: 217 91% 60%;
+  --miwarp-status-done: 160 84% 39%;
+  --miwarp-status-failed: 0 72% 51%;
+  --miwarp-status-pending: 38 92% 50%;
+  --miwarp-status-paused: 212 16% 59%;
+  --miwarp-status-blocked: 27 95% 53%;
+  --miwarp-status-idle: 220 9% 64%;
 
   --background: 0 0% 100%;
   --foreground: 220 18% 12%;
@@ -157,6 +171,13 @@ html.light:not([data-theme]) {
   --miwarp-status-warning: 43 96% 56%;
   --miwarp-status-error: 0 72% 51%;
   --miwarp-status-info: 199 89% 48%;
+  --miwarp-status-running: 217 91% 60%;
+  --miwarp-status-done: 160 84% 39%;
+  --miwarp-status-failed: 0 72% 51%;
+  --miwarp-status-pending: 38 92% 50%;
+  --miwarp-status-paused: 212 16% 59%;
+  --miwarp-status-blocked: 27 95% 53%;
+  --miwarp-status-idle: 220 9% 64%;
 
   --background: 230 30% 5%;
   --foreground: 210 40% 95%;
@@ -215,6 +236,13 @@ html.light:not([data-theme]) {
   --miwarp-status-warning: 43 96% 56%;
   --miwarp-status-error: 0 72% 51%;
   --miwarp-status-info: 199 89% 48%;
+  --miwarp-status-running: 217 91% 60%;
+  --miwarp-status-done: 160 84% 39%;
+  --miwarp-status-failed: 0 72% 51%;
+  --miwarp-status-pending: 38 92% 50%;
+  --miwarp-status-paused: 212 16% 59%;
+  --miwarp-status-blocked: 27 95% 53%;
+  --miwarp-status-idle: 220 9% 64%;
 
   --background: 200 30% 6%;
   --foreground: 190 30% 95%;
@@ -273,6 +301,13 @@ html.light:not([data-theme]) {
   --miwarp-status-warning: 65 70% 65%;
   --miwarp-status-error: 325 65% 65%;
   --miwarp-status-info: 197 80% 65%;
+  --miwarp-status-running: 217 91% 60%;
+  --miwarp-status-done: 160 84% 39%;
+  --miwarp-status-failed: 0 72% 51%;
+  --miwarp-status-pending: 38 92% 50%;
+  --miwarp-status-paused: 212 16% 59%;
+  --miwarp-status-blocked: 27 95% 53%;
+  --miwarp-status-idle: 220 9% 64%;
 
   --background: 231 15% 12%;
   --foreground: 60 30% 90%;
@@ -331,6 +366,13 @@ html.light:not([data-theme]) {
   --miwarp-status-warning: 40 70% 60%;
   --miwarp-status-error: 354 42% 56%;
   --miwarp-status-info: 197 45% 55%;
+  --miwarp-status-running: 217 91% 60%;
+  --miwarp-status-done: 160 84% 39%;
+  --miwarp-status-failed: 0 72% 51%;
+  --miwarp-status-pending: 38 92% 50%;
+  --miwarp-status-paused: 212 16% 59%;
+  --miwarp-status-blocked: 27 95% 53%;
+  --miwarp-status-idle: 220 9% 64%;
 
   --background: 220 16% 13%;
   --foreground: 218 28% 88%;
@@ -394,6 +436,13 @@ html.light:not([data-theme]) {
   --miwarp-status-warning: 38 20% 58%; /* 灰黄 */
   --miwarp-status-error: 15 18% 58%; /* 灰橙红 */
   --miwarp-status-info: 200 18% 55%; /* 灰蓝 */
+  --miwarp-status-running: 217 91% 60%;
+  --miwarp-status-done: 160 84% 39%;
+  --miwarp-status-failed: 0 72% 51%;
+  --miwarp-status-pending: 38 92% 50%;
+  --miwarp-status-paused: 212 16% 59%;
+  --miwarp-status-blocked: 27 95% 53%;
+  --miwarp-status-idle: 220 9% 64%;
 
   /* 映射到 shadcn CSS 变量 */
   --background: 30 8% 12%;
@@ -454,6 +503,13 @@ html.light:not([data-theme]) {
   --miwarp-status-warning: 38 18% 45%;
   --miwarp-status-error: 15 15% 48%;
   --miwarp-status-info: 200 15% 45%;
+  --miwarp-status-running: 217 91% 60%;
+  --miwarp-status-done: 160 84% 39%;
+  --miwarp-status-failed: 0 72% 51%;
+  --miwarp-status-pending: 38 92% 50%;
+  --miwarp-status-paused: 212 16% 59%;
+  --miwarp-status-blocked: 27 95% 53%;
+  --miwarp-status-idle: 220 9% 64%;
 
   --background: 40 20% 96%;
   --foreground: 30 12% 18%;
@@ -521,6 +577,13 @@ html.light:not([data-theme]) {
   --miwarp-status-warning: 45 90% 58%; /* 琥珀警告 */
   --miwarp-status-error: 0 75% 62%; /* 亮红错误 */
   --miwarp-status-info: 207 85% 65%; /* 天蓝信息 */
+  --miwarp-status-running: 217 91% 60%;
+  --miwarp-status-done: 160 84% 39%;
+  --miwarp-status-failed: 0 72% 51%;
+  --miwarp-status-pending: 38 92% 50%;
+  --miwarp-status-paused: 212 16% 59%;
+  --miwarp-status-blocked: 27 95% 53%;
+  --miwarp-status-idle: 220 9% 64%;
 
   /* 调试专用色 — 预览侧边栏特有 */
   --miwarp-debug-trace: 270 60% 70%; /* 紫色 trace */
@@ -586,6 +649,13 @@ html.light:not([data-theme]) {
   --miwarp-status-warning: 45 75% 45%;
   --miwarp-status-error: 0 70% 48%;
   --miwarp-status-info: 207 70% 50%;
+  --miwarp-status-running: 217 91% 60%;
+  --miwarp-status-done: 160 84% 39%;
+  --miwarp-status-failed: 0 72% 51%;
+  --miwarp-status-pending: 38 92% 50%;
+  --miwarp-status-paused: 212 16% 59%;
+  --miwarp-status-blocked: 27 95% 53%;
+  --miwarp-status-idle: 220 9% 64%;
 
   --miwarp-debug-trace: 270 50% 55%;
   --miwarp-debug-span: 45 70% 50%;

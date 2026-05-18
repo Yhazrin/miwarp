@@ -177,12 +177,11 @@
                 </svg>
               </button>
             {/if}
-            <span class="text-sm font-semibold text-foreground">{t("chat_roleYou")}</span>
             <div
-              class="flex h-5 w-5 items-center justify-center rounded-full accent-gradient text-white"
+              class="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground"
             >
               <svg
-                class="h-3 w-3"
+                class="h-3.5 w-3.5"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -319,7 +318,15 @@
                   onclick={() => (thinkingCollapsed = false)}
                   title={t("common_expand")}
                 >
-                  <svg class="h-2.5 w-2.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg
+                    class="h-2.5 w-2.5 shrink-0"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
                     <path d="M12 2a8 8 0 0 1 8 8c0 5-8 13-8 13S4 15 4 10a8 8 0 0 1 8-8z" />
                     <circle cx="12" cy="10" r="3" />
                   </svg>
@@ -328,9 +335,21 @@
                   <span class="opacity-50">{t("common_expand")}</span>
                 </button>
               {:else}
-                <div class="mb-2 max-h-28 overflow-hidden rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.18)] bg-[hsl(var(--miwarp-bg-deep)/0.6)]">
-                  <div class="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] text-[hsl(var(--miwarp-status-info))]">
-                    <svg class="h-2.5 w-2.5 shrink-0 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <div
+                  class="mb-2 max-h-28 overflow-hidden rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.18)] bg-[hsl(var(--miwarp-bg-deep)/0.6)]"
+                >
+                  <div
+                    class="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] text-[hsl(var(--miwarp-status-info))]"
+                  >
+                    <svg
+                      class="h-2.5 w-2.5 shrink-0 opacity-70"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
                       <path d="M12 2a8 8 0 0 1 8 8c0 5-8 13-8 13S4 15 4 10a8 8 0 0 1 8-8z" />
                       <circle cx="12" cy="10" r="3" />
                     </svg>
@@ -340,13 +359,24 @@
                       onclick={() => (thinkingCollapsed = true)}
                       title={t("common_collapse")}
                     >
-                      <svg class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg
+                        class="h-2.5 w-2.5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
                         <path d="m18 15-6-6-6 6" />
                       </svg>
                     </button>
                   </div>
-                  <div class="border-t border-[hsl(var(--miwarp-accent-primary)/0.12)] px-2.5 py-2 text-[11px] leading-relaxed text-[hsl(var(--miwarp-text-secondary))] overflow-y-auto overscroll-y-contain max-h-[calc(7rem-2.25rem)]">
-                    <pre class="whitespace-pre-wrap break-words font-mono">{thinkingText.trimEnd()}</pre>
+                  <div
+                    class="border-t border-[hsl(var(--miwarp-accent-primary)/0.12)] px-2.5 py-2 text-[11px] leading-relaxed text-[hsl(var(--miwarp-text-secondary))] overflow-y-auto overscroll-y-contain max-h-[calc(7rem-2.25rem)]"
+                  >
+                    <pre
+                      class="whitespace-pre-wrap break-words font-mono">{thinkingText.trimEnd()}</pre>
                   </div>
                 </div>
               {/if}

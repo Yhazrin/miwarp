@@ -36,6 +36,8 @@
         return t("sessionControl_panelInfo");
       case "tasks":
         return t("sessionControl_panelTasks");
+      case "scheduled-tasks":
+        return t("sessionControl_panelScheduledTasks");
       default:
         return tab;
     }
@@ -205,7 +207,7 @@
                   ></span>
                 {/if}
               </span>
-            {:else}
+            {:else if tab === "tasks"}
               <span class="relative inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
                 <svg
                   class="h-3.5 w-3.5 opacity-90"
@@ -220,6 +222,33 @@
                     class="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"
                   ></span>
                 {/if}
+              </span>
+            {:else if tab === "scheduled-tasks"}
+              <span class="relative inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                <svg
+                  class="h-3.5 w-3.5 opacity-90"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  ><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg
+                >
+              </span>
+            {:else}
+              <span class="relative inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                <svg
+                  class="h-3.5 w-3.5 opacity-90"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  ><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line
+                    x1="12"
+                    y1="8"
+                    x2="12.01"
+                    y2="8"
+                  /></svg
+                >
               </span>
             {/if}
             <span class="flex-1 truncate">{label(tab)}</span>
