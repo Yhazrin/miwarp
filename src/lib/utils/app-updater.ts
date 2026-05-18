@@ -2,12 +2,7 @@ import { checkForUpdates } from "$lib/api";
 import type { UpdateInfo } from "$lib/types";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 
-export type AppUpdatePhase =
-  | "idle"
-  | "checking"
-  | "downloading"
-  | "installing"
-  | "relaunching";
+export type AppUpdatePhase = "idle" | "checking" | "downloading" | "installing" | "relaunching";
 
 export type AppUpdateProgress = {
   phase: AppUpdatePhase;

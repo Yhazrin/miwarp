@@ -81,7 +81,9 @@
 </script>
 
 {#if offer}
-  <div class="flex items-center justify-between gap-2 border-b border-primary/30 bg-primary/10 px-4 py-1.5 text-sm">
+  <div
+    class="flex items-center justify-between gap-2 border-b border-primary/30 bg-primary/10 px-4 py-1.5 text-sm"
+  >
     <span class="min-w-0 truncate text-foreground">
       {t("appUpdate_available", { version: offer.version })}
     </span>

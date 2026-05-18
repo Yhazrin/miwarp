@@ -78,9 +78,7 @@
         return;
       }
       if (!offer) {
-        window.alert(
-          t("appUpdate_upToDate", { version: upToDateVersion || appVersion || "-" }),
-        );
+        window.alert(t("appUpdate_upToDate", { version: upToDateVersion || appVersion || "-" }));
         return;
       }
       if (offer.kind === "in_app") {
