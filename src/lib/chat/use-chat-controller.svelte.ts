@@ -83,13 +83,23 @@ export function useChatController(opts: {
     id: string,
     xtermRef?: { clear(): void; writeText(s: string): void },
   ) {
+    console.log("[DEBUG loadRunProgressive] START id=", id);
     opts.onBeforeLoadRun();
     const gen = progressive.resetForNewRun();
 
     const scrollTo = opts.getSearchParam("scrollTo");
     if (scrollTo) opts.setScrollToInFlight(true);
 
+    console.log("[DEBUG loadRunProgressive] calling store.loadRun id=", id);
     await store.loadRun(id, xtermRef);
+    console.log(
+      "[DEBUG loadRunProgressive] store.loadRun returned, id=",
+      id,
+      "phase=",
+      store.phase,
+      "timelineLen=",
+      store.timeline.length,
+    );
 
     if (id && store.effectiveCwd) {
       preload.reloadProjectData(store.effectiveCwd);
@@ -114,7 +124,14 @@ export function useChatController(opts: {
       }
     }
 
-    if (gen !== progressive.progressiveGen) return;
+    console.log("[DEBUG loadRunProgressive] gen check", {
+      gen,
+      progressiveGen: progressive.progressiveGen,
+    });
+    if (gen !== progressive.progressiveGen) {
+      console.log("[DEBUG loadRunProgressive] STALE gen - bailing out, gen=", gen);
+      return;
+    }
     dbg("chat", "loadRun complete", {
       timeline: store.timeline.length,
       renderLimit: progressive.renderLimit,
@@ -135,6 +152,7 @@ export function useChatController(opts: {
         if (chatArea) chatArea.scrollTop = chatArea.scrollHeight;
       });
     }
+    console.log("[DEBUG loadRunProgressive] END id=", id, "timelineLen=", store.timeline.length);
   }
 
   // ── sendMessage ──

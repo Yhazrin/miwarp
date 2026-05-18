@@ -1499,9 +1499,11 @@ export class SessionStore implements SessionEventSink {
   ): Promise<void> {
     const gen = ++this._loadGen;
     const loadStart = performance.now();
+    console.log("[DEBUG store.loadRun] START id=", id, "gen=", gen);
     dbg("store", "loadRun id=", id, "gen=", gen);
 
     if (!id) {
+      console.log("[DEBUG store.loadRun] no id - calling reset()");
       this.reset();
       return;
     }
@@ -1517,9 +1519,22 @@ export class SessionStore implements SessionEventSink {
     }
 
     try {
+      console.log("[DEBUG store.loadRun] calling api.getRun id=", id);
       this.run = await api.getRun(id);
+      console.log(
+        "[DEBUG store.loadRun] api.getRun returned id=",
+        id,
+        "run=",
+        this.run ? { id: this.run.id, status: this.run.status, name: this.run.name } : null,
+      );
       if (gen !== this._loadGen) {
         dbg("store", "stale after getRun, gen=", gen);
+        console.log(
+          "[DEBUG store.loadRun] STALE after getRun, gen=",
+          gen,
+          "currentLoadGen=",
+          this._loadGen,
+        );
         return;
       }
       // Cache for notification title lookup
@@ -1661,26 +1676,61 @@ export class SessionStore implements SessionEventSink {
 
         if (!snapshotHit || forceFullReplay) {
           // Miss or snapshot corrupted → normal path
+          console.log(
+            "[DEBUG store.loadRun] fetching busEvents for id=",
+            id,
+            "forceFullReplay=",
+            forceFullReplay,
+          );
           const busEvents = await api.getBusEvents(id);
+          console.log("[DEBUG store.loadRun] got busEvents count=", busEvents.length, "id=", id);
           if (gen !== this._loadGen) {
             dbg("store", "stale after getBusEvents, gen=", gen);
+            console.log("[DEBUG store.loadRun] STALE after getBusEvents, gen=", gen);
             return;
           }
+          console.log(
+            "[DEBUG store.loadRun] applying event batch, count=",
+            busEvents.length,
+            "id=",
+            id,
+          );
           const ms = await this.applyEventBatchAsync(busEvents, {
             replayOnly: isTerminal,
             isStale: () => gen !== this._loadGen,
           });
+          console.log(
+            "[DEBUG store.loadRun] applyEventBatchAsync returned, ms=",
+            ms,
+            "id=",
+            id,
+            "timelineLen=",
+            this.timeline.length,
+          );
           // Stale: a newer load owns the store; do not touch _isLoadingReplay.
-          if (ms === null) return;
+          if (ms === null) {
+            console.log(
+              "[DEBUG store.loadRun] applyEventBatchAsync returned null (stale), id=",
+              id,
+            );
+            return;
+          }
           reducerMs = ms;
           this._wsSubscribeAfterLoad(id, busEvents);
-          // Write guard: distinguish "legit empty session" from "reducer anomaly"
+          // Write guard: distinguish "legit empty session" from "reduder anomaly"
           if (snapshotEligible && (this.timeline.length > 0 || busEvents.length === 0)) {
             this._saveSnapshotToIdb(id);
           }
         }
 
         this._isLoadingReplay = false;
+        console.log("[DEBUG store.loadRun] snapshot path complete", {
+          total: Math.round(performance.now() - loadStart),
+          snapshotHit,
+          reducer: Math.round(reducerMs),
+          entries: this.timeline.length,
+          phase: this.phase,
+        });
         dbg("store", "loadRun", {
           total: Math.round(performance.now() - loadStart),
           snapshotHit,
@@ -1730,6 +1780,13 @@ export class SessionStore implements SessionEventSink {
           this._setPhase("ready");
         }
       }
+      console.log("[DEBUG store.loadRun] phase transition done", {
+        phaseBefore: "loading",
+        phaseAfter: this.phase,
+        runStatus: st,
+        isTerminal,
+        timelineLen: this.timeline.length,
+      });
 
       // After replay, reconcile phase with run.status:
       // bus events may leave phase as "idle"/"running" even though the run
@@ -1749,11 +1806,20 @@ export class SessionStore implements SessionEventSink {
         dbg("store", "restore run model from meta:", this.run.model);
         this.model = this.run.model;
       }
+      console.log("[DEBUG store.loadRun] END success", {
+        id,
+        gen,
+        phase: this.phase,
+        runStatus: this.run?.status,
+        timelineLen: this.timeline.length,
+        totalMs: Math.round(performance.now() - loadStart),
+      });
     } catch (e) {
       if (gen !== this._loadGen) return;
       this._isLoadingReplay = false;
       this.error = String(e);
       this._setPhase("failed");
+      console.log("[DEBUG store.loadRun] END error", { id, gen, error: String(e) });
     }
   }
 

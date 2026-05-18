@@ -228,6 +228,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   let remoteHosts = $state<RemoteHost[]>([]);
   let authOverview = $state<AuthOverview | null>(null);
   let localProxyStatuses = $state<Record<string, { running: boolean; needsAuth: boolean }>>({});
+  let _scrollToInFlight = $state(false);
 
   // ── Model contamination ──
   /** Cache of last confirmed-clean Anthropic model, used as final fallback. */
@@ -660,8 +661,18 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     const resumeMode = url.searchParams.get("resume") as import("$lib/types").SessionMode | null;
     const scrollTo = url.searchParams.get("scrollTo");
 
+    console.log("[DEBUG loadRun] page.subscribe fired", {
+      id,
+      resumeMode,
+      scrollTo,
+      currentPhase: store.phase,
+      currentRunId: store.run?.id,
+      timelineLen: store.timeline.length,
+    });
+
     // Handle ?resume= first (must clean URL before loadRun)
     if (resumeMode) {
+      console.log("[DEBUG loadRun] handling ?resume= param", resumeMode);
       const clean = new URL(url);
       clean.searchParams.delete("resume");
       clean.searchParams.delete("scrollTo");
@@ -672,6 +683,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
 
     // Handle ?scrollTo= for already-loaded runs
     if (scrollTo && store.run?.id === id && store.phase !== "loading") {
+      console.log("[DEBUG loadRun] handling ?scrollTo= param", scrollTo);
       const clean = new URL(url);
       clean.searchParams.delete("scrollTo");
       replaceState(clean, {});
@@ -681,17 +693,26 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
 
     // Skip if URL hasn't changed
     const key = id;
-    if (key === _prevRunUrl) return;
+    if (key === _prevRunUrl) {
+      console.log("[DEBUG loadRun] skipping - URL unchanged, id=", id);
+      return;
+    }
     _prevRunUrl = key;
+
+    console.log("[DEBUG loadRun] new run ID detected, id=", id, "prev=" + _prevRunUrl);
 
     middleware.subscribeCurrent(id, store);
 
     if (store.resumeInFlight || sessionLifecycle.resuming.get()) {
-      dbg("effect", "skip loadRun — resume in progress");
+      console.log("[DEBUG loadRun] skipping - resume in progress", {
+        resumeInFlight: store.resumeInFlight,
+        resuming: sessionLifecycle.resuming.get(),
+      });
       return;
     }
 
     if (!id) {
+      console.log("[DEBUG loadRun] no id - resetting store");
       store.loadRun("", xtermRef());
       progressive.cancelProgressive();
       return;
@@ -706,16 +727,27 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
       !!store.error ||
       store.sessionAlive;
 
+    console.log("[DEBUG loadRun] checking hydration", {
+      id,
+      phase: store.phase,
+      hasHydratedRunState,
+      runId: store.run?.id,
+      timelineLen: store.timeline.length,
+      toolsLen: store.tools.length,
+      turnUsagesLen: store.turnUsages.length,
+    });
+
     if (
       store.run?.id === id &&
       store.phase !== "empty" &&
       store.phase !== "loading" &&
       hasHydratedRunState
     ) {
-      dbg("effect", "skip loadRun — run already in singleton store", id, store.phase);
+      console.log("[DEBUG loadRun] skipping - run already hydrated", id, store.phase);
       return;
     }
 
+    console.log("[DEBUG loadRun] calling ctrl.loadRunProgressive with id=", id);
     ctrl.loadRunProgressive(id, xtermRef());
   });
 
