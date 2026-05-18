@@ -185,12 +185,9 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
   // Tool panel
   let sidebarRequestedTab = $state<ToolActivityPanelTab | null>(null);
   let toolPanelActiveTab = $state<ToolActivityPanelTab>("workspace");
-  // eslint-disable-next-line prefer-const -- $state proxy mutated via property access
   let toolPanelIndicators = $state({ context: false, files: false, tasks: false });
-  // eslint-disable-next-line prefer-const -- $state proxy mutated via property access
   let requestedPreviewPath = $state<string | null>(null);
   let requestedPreviewUrl = $state<string | null>(null);
-  // eslint-disable-next-line prefer-const -- $state proxy mutated via property access
   let shortcutHelpOpen = $state(false);
   // eslint-disable-next-line prefer-const -- $state proxy mutated via property access
   let stashedInput = $state<PromptInputSnapshot | null>(null);
@@ -248,9 +245,8 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
         forkElapsed = Math.floor((Date.now() - forkOverlay!.startedAt) / 1000);
       }, 1000);
       return () => clearInterval(interval);
-    } else {
-      forkElapsed = 0;
     }
+    if (forkElapsed !== 0) forkElapsed = 0;
   });
 
   // Fork overlay phase watcher: show error on failure during step 1 (fork_oneshot).
@@ -273,7 +269,9 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
     });
     if (result.fire && result.autoName) {
       autoNameDone = true;
-      handleRename(result.autoName);
+      const suggested = result.autoName;
+      // Defer IPC so this effect commits before rename mutates store (avoids flush cycles).
+      queueMicrotask(() => void handleRename(suggested));
     }
   });
 
@@ -1333,21 +1331,58 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
   }
 
   // ── Return ──
+  // NOTE: Props used with bind:* from pages must use getter/setters; returning a
+  // shorthand field from `$state(...)` binds to the initial snapshot (non-reactive).
   return {
     // Owned state
     forkOverlay,
     forkElapsed,
     btwState,
     chatToast,
-    rewindModalOpen,
+    get rewindModalOpen() {
+      return rewindModalOpen;
+    },
+    set rewindModalOpen(v: boolean) {
+      rewindModalOpen = v;
+    },
     rewindDirectTarget,
     rewindMarkers,
-    sidebarRequestedTab,
-    toolPanelActiveTab,
-    toolPanelIndicators,
-    requestedPreviewPath,
-    requestedPreviewUrl,
-    shortcutHelpOpen,
+    get sidebarRequestedTab() {
+      return sidebarRequestedTab;
+    },
+    set sidebarRequestedTab(v: ToolActivityPanelTab | null) {
+      sidebarRequestedTab = v;
+    },
+    get toolPanelActiveTab() {
+      return toolPanelActiveTab;
+    },
+    set toolPanelActiveTab(v: ToolActivityPanelTab) {
+      toolPanelActiveTab = v;
+    },
+    get toolPanelIndicators() {
+      return toolPanelIndicators;
+    },
+    set toolPanelIndicators(v: { context: boolean; files: boolean; tasks: boolean }) {
+      toolPanelIndicators = v;
+    },
+    get requestedPreviewPath() {
+      return requestedPreviewPath;
+    },
+    set requestedPreviewPath(v: string | null) {
+      requestedPreviewPath = v;
+    },
+    get requestedPreviewUrl() {
+      return requestedPreviewUrl;
+    },
+    set requestedPreviewUrl(v: string | null) {
+      requestedPreviewUrl = v;
+    },
+    get shortcutHelpOpen() {
+      return shortcutHelpOpen;
+    },
+    set shortcutHelpOpen(v: boolean) {
+      shortcutHelpOpen = v;
+    },
     stashedInput,
     approving,
     pageDragActive,

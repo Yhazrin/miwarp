@@ -78,8 +78,18 @@
   let chatAreaRef: HTMLDivElement | undefined = $state();
   let mcpPanelOpen = $state(false);
   const routeRunId = $derived($page.url.searchParams.get("run") ?? "");
-  const routeRunPending = $derived(
-    store.phase === "loading" && !!routeRunId && store.run?.id !== routeRunId,
+  /** True while URL names a run that the singleton SessionStore has not adopted yet. */
+  const routeRunPending = $derived(!!routeRunId && store.run?.id !== routeRunId);
+
+  /** Run bound but timeline not yet usable — avoids a blank gutter when phase wrongly left non-loading */
+  const timelineRecoveryVisible = $derived(
+    store.useStreamSession &&
+      !!store.run?.id &&
+      store.timeline.length === 0 &&
+      !store.streamingText &&
+      !store.thinkingText &&
+      store.phase !== "empty" &&
+      store.phase !== "loading",
   );
 
   // ── Composable chain ──
@@ -554,370 +564,482 @@
             {:else}
               <!-- Timeline -->
               <div data-conversation-root>
-                {#if store.run?.parent_run_id}
-                  <div class="chat-content-width py-2" data-export-exclude>
-                    <div
-                      class="flex items-center gap-2 rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-xs text-blue-400"
+                {#if timelineRecoveryVisible}
+                  <div
+                    class="flex min-h-[40vh] flex-col items-center justify-center gap-3 px-4 py-12"
+                  >
+                    <Spinner size="md" class="text-primary" />
+                    <p class="text-center text-sm text-muted-foreground">
+                      {t("chat_timelineRecovering")}
+                    </p>
+                    <button
+                      type="button"
+                      class="text-sm text-primary underline underline-offset-2"
+                      onclick={() => {
+                        const rid = store.run?.id;
+                        if (rid) void ctrl.loadRunProgressive(rid, xtermRef);
+                      }}
                     >
-                      <svg
-                        class="h-3.5 w-3.5 shrink-0"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        ><circle cx="12" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><circle
-                          cx="18"
-                          cy="6"
-                          r="3"
-                        /><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9" /><path
-                          d="M12 12v3"
-                        /></svg
-                      >
-                      <span class="text-foreground/60">{t("chat_forkedBanner")}</span>
-                      <button
-                        class="ml-auto shrink-0 text-blue-400 hover:text-blue-300 underline underline-offset-2"
-                        onclick={() => goto(`/chat?run=${store.run!.parent_run_id}`)}
-                        >{t("chat_viewParent")}</button
-                      >
-                    </div>
+                      {t("chat_reloadSession")}
+                    </button>
                   </div>
-                {/if}
-                {#if lifecycle.notificationVisible && lifecycle.latestNotification}
-                  <div class="chat-content-width py-1" data-export-exclude>
-                    <div
-                      class="flex items-center gap-2 text-xs text-muted-foreground bg-teal-500/5 border border-teal-500/20 rounded px-3 py-1.5 animate-fade-in"
-                    >
-                      <span class="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse"></span>
-                      Task #{lifecycle.latestNotification.task_id}: {lifecycle.latestNotification
-                        .status}
-                    </div>
-                  </div>
-                {/if}
-                {#if chatDerived.toolNamesInTimeline.length >= 2}
-                  <div class="chat-content-width py-2" data-export-exclude>
-                    <div class="flex flex-wrap items-center gap-1.5">
-                      <button
-                        class="rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors {!lifecycle.toolFilter
-                          ? 'bg-foreground/10 text-foreground'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'}"
-                        onclick={() => lifecycle.setToolFilter(null)}>{t("chat_filterAll")}</button
+                {:else}
+                  {#if store.run?.parent_run_id}
+                    <div class="chat-content-width py-2" data-export-exclude>
+                      <div
+                        class="flex items-center gap-2 rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-xs text-blue-400"
                       >
-                      {#each chatDerived.toolNamesInTimeline as name}
-                        {@const style = getToolColor(name)}
-                        <button
-                          class="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors {lifecycle.toolFilter ===
-                          name
-                            ? style.bg + ' ' + style.text
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'}"
-                          onclick={() =>
-                            lifecycle.setToolFilter(lifecycle.toolFilter === name ? null : name)}
+                        <svg
+                          class="h-3.5 w-3.5 shrink-0"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          ><circle cx="12" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><circle
+                            cx="18"
+                            cy="6"
+                            r="3"
+                          /><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9" /><path
+                            d="M12 12v3"
+                          /></svg
                         >
-                          <svg
-                            class="h-2.5 w-2.5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"><path d={style.icon} /></svg
-                          >
-                          {name}
-                        </button>
-                      {/each}
+                        <span class="text-foreground/60">{t("chat_forkedBanner")}</span>
+                        <button
+                          class="ml-auto shrink-0 text-blue-400 hover:text-blue-300 underline underline-offset-2"
+                          onclick={() => goto(`/chat?run=${store.run!.parent_run_id}`)}
+                          >{t("chat_viewParent")}</button
+                        >
+                      </div>
                     </div>
-                  </div>
-                {/if}
-                <div class="chat-content-width pb-1" data-export-exclude><ViewModeToggle /></div>
-                <!-- Keep sentinel mounted: {#if} mount churn can fight IntersectionObserver + renderLimit. -->
-                <div
-                  use:topSentinelSync
-                  aria-hidden="true"
-                  class="h-px w-full shrink-0 {filteredTimeline.length - progressive.renderLimit > 0
-                    ? ''
-                    : 'hidden'}"
-                ></div>
-                {#each progressive.visibleTimeline as entry, i (entry.id)}
-                  {#if !(chatDerived.burstHiddenIndices.has(i) && !chatDerived.toolBursts.has(i))}
-                    <div
-                      id="msg-{entry.anchorId}"
-                      data-entry-id={entry.id}
-                      class:cv-auto={true}
-                      class="group/msg"
-                      class:opacity-40={chatDerived.lastClearSepId !== null &&
-                        (chatDerived.timelineIdIndex.get(entry.id) ?? 0) <
-                          (chatDerived.timelineIdIndex.get(chatDerived.lastClearSepId) ?? 0)}
-                    >
-                      {#if chatDerived.batchGroups.has(i)}
-                        {@const batch = chatDerived.batchGroups.get(i)}
-                        {#if batch}
-                          <div class="w-full py-1">
+                  {/if}
+                  {#if lifecycle.notificationVisible && lifecycle.latestNotification}
+                    <div class="chat-content-width py-1" data-export-exclude>
+                      <div
+                        class="flex items-center gap-2 text-xs text-muted-foreground bg-teal-500/5 border border-teal-500/20 rounded px-3 py-1.5 animate-fade-in"
+                      >
+                        <span class="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse"></span>
+                        Task #{lifecycle.latestNotification.task_id}: {lifecycle.latestNotification
+                          .status}
+                      </div>
+                    </div>
+                  {/if}
+                  {#if chatDerived.toolNamesInTimeline.length >= 2}
+                    <div class="chat-content-width py-2" data-export-exclude>
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        <button
+                          class="rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors {!lifecycle.toolFilter
+                            ? 'bg-foreground/10 text-foreground'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'}"
+                          onclick={() => lifecycle.setToolFilter(null)}
+                          >{t("chat_filterAll")}</button
+                        >
+                        {#each chatDerived.toolNamesInTimeline as name}
+                          {@const style = getToolColor(name)}
+                          <button
+                            class="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors {lifecycle.toolFilter ===
+                            name
+                              ? style.bg + ' ' + style.text
+                              : 'text-muted-foreground hover:text-foreground hover:bg-muted'}"
+                            onclick={() =>
+                              lifecycle.setToolFilter(lifecycle.toolFilter === name ? null : name)}
+                          >
+                            <svg
+                              class="h-2.5 w-2.5"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"><path d={style.icon} /></svg
+                            >
+                            {name}
+                          </button>
+                        {/each}
+                      </div>
+                    </div>
+                  {/if}
+                  <div class="chat-content-width pb-1" data-export-exclude><ViewModeToggle /></div>
+                  <!-- Keep sentinel mounted: {#if} mount churn can fight IntersectionObserver + renderLimit. -->
+                  <div
+                    use:topSentinelSync
+                    aria-hidden="true"
+                    class="h-px w-full shrink-0 {filteredTimeline.length - progressive.renderLimit >
+                    0
+                      ? ''
+                      : 'hidden'}"
+                  ></div>
+                  {#each progressive.visibleTimeline as entry, i (entry.id)}
+                    {#if !(chatDerived.burstHiddenIndices.has(i) && !chatDerived.toolBursts.has(i))}
+                      <div
+                        id="msg-{entry.anchorId}"
+                        data-entry-id={entry.id}
+                        class:cv-auto={true}
+                        class="group/msg"
+                        class:opacity-40={chatDerived.lastClearSepId !== null &&
+                          (chatDerived.timelineIdIndex.get(entry.id) ?? 0) <
+                            (chatDerived.timelineIdIndex.get(chatDerived.lastClearSepId) ?? 0)}
+                      >
+                        {#if chatDerived.batchGroups.has(i)}
+                          {@const batch = chatDerived.batchGroups.get(i)}
+                          {#if batch}
+                            <div class="w-full py-1">
+                              <div class="chat-content-width pl-7">
+                                <BatchProgressBar tools={batch} />
+                              </div>
+                            </div>
+                          {/if}
+                        {/if}
+                        {#if chatDerived.toolBursts.has(i)}
+                          {@const burst = chatDerived.toolBursts.get(i)}
+                          {#if burst}
+                            <div class="w-full py-1">
+                              <div class="chat-content-width pl-7">
+                                <ToolBurstHeader
+                                  {burst}
+                                  collapsed={chatDerived.effectiveCollapsed.has(burst.key)}
+                                  onToggle={() => chatDerived.toggleBurst(burst.key)}
+                                />
+                              </div>
+                            </div>
+                          {/if}
+                        {/if}
+                        {#if chatDerived.usageAnnotations.has(i)}
+                          {@const tu = chatDerived.usageAnnotations.get(i)}
+                          {#if tu && lifecycle.settings?.show_token_usage_report !== false}
+                            <div class="w-full py-1.5">
+                              <div class="chat-content-width">
+                                <div class="flex items-center gap-3">
+                                  <div class="h-px flex-1 bg-border/40"></div>
+                                  <span class="text-[10px] tabular-nums text-muted-foreground"
+                                    >{formatTokenCount(tu.inputTokens)}
+                                    {t("chat_usageIn")} · {formatTokenCount(tu.outputTokens)}
+                                    {t(
+                                      "chat_usageOut",
+                                    )}{#if tu.cacheReadTokens > 0 || tu.cacheWriteTokens > 0}
+                                      · {t("chat_usageCache", {
+                                        read: formatTokenCount(tu.cacheReadTokens),
+                                        write: formatTokenCount(tu.cacheWriteTokens),
+                                      })}{/if}</span
+                                  >
+                                  <div class="h-px flex-1 bg-border/40"></div>
+                                </div>
+                              </div>
+                            </div>
+                          {/if}
+                        {/if}
+                        {#if entry.kind === "user"}
+                          <ChatMessage
+                            message={{
+                              id: entry.id,
+                              role: "user",
+                              content: entry.content,
+                              timestamp: entry.ts,
+                            }}
+                            attachments={entry.attachments}
+                            onRewind={entry.cliUuid && store.sessionAlive && !store.isRunning
+                              ? () =>
+                                  handlers.handleRewindToMessage({
+                                    cliUuid: entry.cliUuid!,
+                                    content: entry.content,
+                                    ts: entry.ts,
+                                  })
+                              : undefined}
+                            onDispatchToTeam={() => {
+                              team.teamDispatchPrompt = entry.content;
+                              team.teamDispatchOpen = true;
+                            }}
+                          />
+                        {:else if entry.kind === "assistant"}
+                          <ChatMessage
+                            message={{
+                              id: entry.id,
+                              role: "assistant",
+                              content: entry.content,
+                              timestamp: entry.ts,
+                            }}
+                            thinkingText={entry.thinkingText}
+                            agent={store.agent}
+                            platformId={store.platformId ?? undefined}
+                            model={store.run?.model ?? store.model}
+                            animated={i ===
+                              chatDerived.lastAssistantIdx(progressive.visibleTimeline) &&
+                              store.isRunning}
+                          />
+                        {:else if entry.kind === "tool"}
+                          {#if chatDerived.claudeTurnStarts.has(i)}<div class="pt-3"></div>{/if}
+                          {#if !chatDerived.burstHiddenIndices.has(i)}
+                            <div class="w-full py-1" id="tool-{entry.tool.tool_use_id}">
+                              <div class="chat-content-width">
+                                <InlineToolCard
+                                  tool={entry.tool}
+                                  subTimeline={entry.subTimeline}
+                                  runId={store.run?.id ?? ""}
+                                  fetchToolResult={lifecycle.fetchToolResult}
+                                  onAnswer={entry.tool.tool_name === "AskUserQuestion" &&
+                                  (entry.tool.status === "running" ||
+                                    entry.tool.status === "ask_pending")
+                                    ? (answer) =>
+                                        handlers.handleToolAnswer(entry.tool.tool_use_id, answer)
+                                    : undefined}
+                                  onApprove={handlers.handleToolApprove}
+                                  onPermissionRespond={handlers.handlePermissionRespond}
+                                  onExitPlanClearContext={handlers.handleExitPlanClearContext}
+                                  taskNotifications={store.taskNotifications}
+                                  planContent={entry.tool.tool_name === "ExitPlanMode" &&
+                                  (entry.tool.status === "permission_prompt" ||
+                                    entry.tool.status === "success")
+                                    ? handlers.getPlanContentForExitPlan(entry.id)
+                                    : undefined}
+                                  latestPlanTool={entry.kind === "tool" &&
+                                    entry.tool.tool_use_id === chatDerived.latestPlanToolId}
+                                  showPermissionInPanel={chatDerived.showPermissionPanel}
+                                  onPreviewFile={openPreviewForPath}
+                                />
+                              </div>
+                            </div>
+                          {/if}
+                        {:else if entry.kind === "command_output"}
+                          <div class="w-full py-2">
                             <div class="chat-content-width pl-7">
-                              <BatchProgressBar tools={batch} />
+                              <div
+                                class="command-output rounded-lg border border-border/40 bg-[#1a1b26] px-4 py-3 text-sm overflow-x-auto"
+                              >
+                                {#if entry.content.includes("## Context Usage")}
+                                  <ContextUsageGrid text={entry.content} />
+                                {:else if entry.content.includes("Total cost:") && entry.content.includes("Total duration")}
+                                  <CostSummaryView text={entry.content} />
+                                {:else if entry.content
+                                  .trimStart()
+                                  .startsWith("Version ") && entry.content.includes("•")}
+                                  <ReleaseNotesCard text={entry.content} />
+                                {:else if hasAnsiCodes(entry.content)}
+                                  <pre
+                                    class="whitespace-pre font-mono text-xs leading-relaxed text-[#c0caf5] m-0">{@html ansiToHtml(
+                                      entry.content,
+                                    )}</pre>
+                                {:else}
+                                  <MarkdownContent text={entry.content} />
+                                {/if}
+                              </div>
                             </div>
                           </div>
-                        {/if}
-                      {/if}
-                      {#if chatDerived.toolBursts.has(i)}
-                        {@const burst = chatDerived.toolBursts.get(i)}
-                        {#if burst}
-                          <div class="w-full py-1">
-                            <div class="chat-content-width pl-7">
-                              <ToolBurstHeader
-                                {burst}
-                                collapsed={chatDerived.effectiveCollapsed.has(burst.key)}
-                                onToggle={() => chatDerived.toggleBurst(burst.key)}
-                              />
-                            </div>
-                          </div>
-                        {/if}
-                      {/if}
-                      {#if chatDerived.usageAnnotations.has(i)}
-                        {@const tu = chatDerived.usageAnnotations.get(i)}
-                        {#if tu && lifecycle.settings?.show_token_usage_report !== false}
-                          <div class="w-full py-1.5">
+                        {:else if entry.kind === "separator"}
+                          <div class="w-full py-3">
                             <div class="chat-content-width">
                               <div class="flex items-center gap-3">
-                                <div class="h-px flex-1 bg-border/40"></div>
-                                <span class="text-[10px] tabular-nums text-muted-foreground"
-                                  >{formatTokenCount(tu.inputTokens)}
-                                  {t("chat_usageIn")} · {formatTokenCount(tu.outputTokens)}
-                                  {t(
-                                    "chat_usageOut",
-                                  )}{#if tu.cacheReadTokens > 0 || tu.cacheWriteTokens > 0}
-                                    · {t("chat_usageCache", {
-                                      read: formatTokenCount(tu.cacheReadTokens),
-                                      write: formatTokenCount(tu.cacheWriteTokens),
-                                    })}{/if}</span
+                                <div class="h-px flex-1 bg-amber-500/20"></div>
+                                <span
+                                  class="text-xs text-amber-500/70 font-medium whitespace-nowrap"
+                                  >{entry.content === "__CONTEXT_CLEARED__"
+                                    ? t("chat_contextCleared")
+                                    : entry.content}</span
                                 >
-                                <div class="h-px flex-1 bg-border/40"></div>
+                                <div class="h-px flex-1 bg-amber-500/20"></div>
                               </div>
                             </div>
                           </div>
                         {/if}
-                      {/if}
-                      {#if entry.kind === "user"}
-                        <ChatMessage
-                          message={{
-                            id: entry.id,
-                            role: "user",
-                            content: entry.content,
-                            timestamp: entry.ts,
-                          }}
-                          attachments={entry.attachments}
-                          onRewind={entry.cliUuid && store.sessionAlive && !store.isRunning
-                            ? () =>
-                                handlers.handleRewindToMessage({
-                                  cliUuid: entry.cliUuid!,
-                                  content: entry.content,
-                                  ts: entry.ts,
-                                })
-                            : undefined}
-                          onDispatchToTeam={() => {
-                            team.teamDispatchPrompt = entry.content;
-                            team.teamDispatchOpen = true;
-                          }}
-                        />
-                      {:else if entry.kind === "assistant"}
-                        <ChatMessage
-                          message={{
-                            id: entry.id,
-                            role: "assistant",
-                            content: entry.content,
-                            timestamp: entry.ts,
-                          }}
-                          thinkingText={entry.thinkingText}
-                          agent={store.agent}
-                          platformId={store.platformId ?? undefined}
-                          model={store.run?.model ?? store.model}
-                          animated={i ===
-                            chatDerived.lastAssistantIdx(progressive.visibleTimeline) &&
-                            store.isRunning}
-                        />
-                      {:else if entry.kind === "tool"}
-                        {#if chatDerived.claudeTurnStarts.has(i)}<div class="pt-3"></div>{/if}
-                        {#if !chatDerived.burstHiddenIndices.has(i)}
-                          <div class="w-full py-1" id="tool-{entry.tool.tool_use_id}">
-                            <div class="chat-content-width">
-                              <InlineToolCard
-                                tool={entry.tool}
-                                subTimeline={entry.subTimeline}
-                                runId={store.run?.id ?? ""}
-                                fetchToolResult={lifecycle.fetchToolResult}
-                                onAnswer={entry.tool.tool_name === "AskUserQuestion" &&
-                                (entry.tool.status === "running" ||
-                                  entry.tool.status === "ask_pending")
-                                  ? (answer) =>
-                                      handlers.handleToolAnswer(entry.tool.tool_use_id, answer)
-                                  : undefined}
-                                onApprove={handlers.handleToolApprove}
-                                onPermissionRespond={handlers.handlePermissionRespond}
-                                onExitPlanClearContext={handlers.handleExitPlanClearContext}
-                                taskNotifications={store.taskNotifications}
-                                planContent={entry.tool.tool_name === "ExitPlanMode" &&
-                                (entry.tool.status === "permission_prompt" ||
-                                  entry.tool.status === "success")
-                                  ? handlers.getPlanContentForExitPlan(entry.id)
-                                  : undefined}
-                                latestPlanTool={entry.kind === "tool" &&
-                                  entry.tool.tool_use_id === chatDerived.latestPlanToolId}
-                                showPermissionInPanel={chatDerived.showPermissionPanel}
-                                onPreviewFile={openPreviewForPath}
-                              />
-                            </div>
-                          </div>
-                        {/if}
-                      {:else if entry.kind === "command_output"}
-                        <div class="w-full py-2">
-                          <div class="chat-content-width pl-7">
-                            <div
-                              class="command-output rounded-lg border border-border/40 bg-[#1a1b26] px-4 py-3 text-sm overflow-x-auto"
+                      </div>
+                    {/if}
+                  {/each}
+
+                  <!-- Rewind markers -->
+                  {#each handlers.rewindMarkers as marker, mi (marker.id)}
+                    <div
+                      class="w-full py-3"
+                      id={mi === handlers.rewindMarkers.length - 1
+                        ? "rewind-marker-latest"
+                        : undefined}
+                    >
+                      <div class="chat-content-width">
+                        <div class="flex items-center gap-3">
+                          <div class="h-px flex-1 bg-blue-500/20"></div>
+                          <div class="flex items-center gap-2 text-xs text-blue-500/80 font-medium">
+                            <svg
+                              class="h-3.5 w-3.5"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              ><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path
+                                d="M3 3v5h5"
+                              /></svg
+                            ><span
+                              >{t("rewind_separatorLabel", {
+                                count: String(marker.filesReverted.length),
+                              })}</span
                             >
-                              {#if entry.content.includes("## Context Usage")}
-                                <ContextUsageGrid text={entry.content} />
-                              {:else if entry.content.includes("Total cost:") && entry.content.includes("Total duration")}
-                                <CostSummaryView text={entry.content} />
-                              {:else if entry.content
-                                .trimStart()
-                                .startsWith("Version ") && entry.content.includes("•")}
-                                <ReleaseNotesCard text={entry.content} />
-                              {:else if hasAnsiCodes(entry.content)}
-                                <pre
-                                  class="whitespace-pre font-mono text-xs leading-relaxed text-[#c0caf5] m-0">{@html ansiToHtml(
-                                    entry.content,
-                                  )}</pre>
-                              {:else}
-                                <MarkdownContent text={entry.content} />
-                              {/if}
-                            </div>
                           </div>
+                          <div class="h-px flex-1 bg-blue-500/20"></div>
                         </div>
-                      {:else if entry.kind === "separator"}
-                        <div class="w-full py-3">
-                          <div class="chat-content-width">
-                            <div class="flex items-center gap-3">
-                              <div class="h-px flex-1 bg-amber-500/20"></div>
-                              <span class="text-xs text-amber-500/70 font-medium whitespace-nowrap"
-                                >{entry.content === "__CONTEXT_CLEARED__"
-                                  ? t("chat_contextCleared")
-                                  : entry.content}</span
-                              >
-                              <div class="h-px flex-1 bg-amber-500/20"></div>
+                        <div class="mt-1 ml-8 text-[11px] text-muted-foreground/60 truncate">
+                          &ldquo;{marker.targetContent}&rdquo;
+                        </div>
+                        {#if marker.filesReverted.length > 0}<details class="mt-1 ml-8">
+                            <summary
+                              class="cursor-pointer text-[10px] text-blue-500/50 hover:text-blue-500/80"
+                              >{t("rewind_separatorFiles", {
+                                count: String(marker.filesReverted.length),
+                              })}</summary
+                            >
+                            <div class="mt-1 rounded bg-muted/30 px-2 py-1">
+                              {#each marker.filesReverted as file}<div
+                                  class="truncate font-mono text-[10px] text-muted-foreground"
+                                >
+                                  {file}
+                                </div>{/each}
                             </div>
-                          </div>
+                          </details>{/if}
+                      </div>
+                    </div>
+                  {/each}
+
+                  <!-- Last turn usage -->
+                  {#if chatDerived.lastTurnUsage && !store.isRunning && lifecycle.settings?.show_token_usage_report !== false}
+                    <div class="w-full py-1.5">
+                      <div class="chat-content-width">
+                        <div class="flex items-center gap-3">
+                          <div class="h-px flex-1 bg-border/40"></div>
+                          <span class="text-[10px] tabular-nums text-muted-foreground"
+                            >{formatTokenCount(chatDerived.lastTurnUsage.inputTokens)}
+                            {t("chat_usageIn")} · {formatTokenCount(
+                              chatDerived.lastTurnUsage.outputTokens,
+                            )}
+                            {t(
+                              "chat_usageOut",
+                            )}{#if chatDerived.lastTurnUsage.cacheReadTokens > 0 || chatDerived.lastTurnUsage.cacheWriteTokens > 0}
+                              · {t("chat_usageCache", {
+                                read: formatTokenCount(chatDerived.lastTurnUsage.cacheReadTokens),
+                                write: formatTokenCount(chatDerived.lastTurnUsage.cacheWriteTokens),
+                              })}{/if}</span
+                          >
+                          <div class="h-px flex-1 bg-border/40"></div>
                         </div>
-                      {/if}
+                      </div>
                     </div>
                   {/if}
-                {/each}
 
-                <!-- Rewind markers -->
-                {#each handlers.rewindMarkers as marker, mi (marker.id)}
-                  <div
-                    class="w-full py-3"
-                    id={mi === handlers.rewindMarkers.length - 1
-                      ? "rewind-marker-latest"
-                      : undefined}
-                  >
-                    <div class="chat-content-width">
-                      <div class="flex items-center gap-3">
-                        <div class="h-px flex-1 bg-blue-500/20"></div>
-                        <div class="flex items-center gap-2 text-xs text-blue-500/80 font-medium">
-                          <svg
-                            class="h-3.5 w-3.5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            ><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path
-                              d="M3 3v5h5"
-                            /></svg
-                          ><span
-                            >{t("rewind_separatorLabel", {
-                              count: String(marker.filesReverted.length),
+                  <!-- Team runs -->
+                  {#each team.activeTeamRuns as teamRun (teamRun.id)}
+                    <div class="w-full py-2">
+                      <div class="chat-content-width pl-7"><TeamRunCard {teamRun} /></div>
+                    </div>
+                  {/each}
+
+                  <!-- Hook callbacks -->
+                  {#each store.hookEvents.filter((h) => h.status === "hook_pending") as hookEvent (hookEvent.request_id)}
+                    <div class="chat-content-width pl-7" data-export-exclude>
+                      <HookReviewCard {hookEvent} onRespond={handlers.handleHookCallbackRespond} />
+                    </div>
+                  {/each}
+
+                  <!-- Thinking panel -->
+                  {#if store.thinkingText}
+                    <div class="w-full animate-fade-in">
+                      <div class="chat-content-width py-2">
+                        <button
+                          class="glass-card w-full text-left px-3 py-2 transition-colors group"
+                          onclick={() => lifecycle.setThinkingExpanded(!lifecycle.thinkingExpanded)}
+                        >
+                          <div class="flex items-center gap-2">
+                            <div
+                              class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[hsl(var(--miwarp-status-info)/0.15)]"
+                            >
+                              <svg
+                                class="h-3 w-3 text-[hsl(var(--miwarp-status-info))]"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                ><path
+                                  d="M12 2a8 8 0 0 0-8 8c0 3.4 2.1 6.3 5 7.4V19a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1.6c2.9-1.1 5-4 5-7.4a8 8 0 0 0-8-8z"
+                                /><path d="M10 22h4" /></svg
+                              >
+                            </div>
+                            <span class="text-xs font-medium text-[hsl(var(--miwarp-status-info))]"
+                              >{t("chat_thinking")}</span
+                            >
+                            {#if store.isRunning && !store.streamingText}<Spinner
+                                size="xs"
+                                class="text-[hsl(var(--miwarp-status-info))]"
+                              />{/if}
+                            <svg
+                              class="h-3 w-3 text-muted-foreground/40 shrink-0 transition-transform ml-auto {lifecycle.thinkingExpanded
+                                ? 'rotate-180'
+                                : ''}"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg
+                            >
+                          </div>
+                          {#if lifecycle.thinkingExpanded}
+                            <div class="mt-2 pl-7 max-h-60 overflow-y-auto">
+                              <pre
+                                class="text-xs font-mono whitespace-pre-wrap break-words text-[hsl(var(--miwarp-status-info)/0.7)] leading-relaxed">{store.thinkingText.trimEnd()}</pre>
+                            </div>
+                          {/if}
+                        </button>
+                      </div>
+                    </div>
+                  {/if}
+
+                  <!-- Streaming text -->
+                  {#if store.streamingText}
+                    <div class="w-full animate-fade-in">
+                      <div class="chat-content-width py-4">
+                        <div class="mb-1.5 flex items-center gap-2">
+                          <AgentIdentity
+                            agent={store.agent}
+                            platformId={store.platformId ?? undefined}
+                            model={store.run?.model ?? store.model}
+                            size="md"
+                            animated={true}
+                            showName={true}
+                            showModel={false}
+                          />
+                        </div>
+                        <div class="pl-7 prose-chat">
+                          <MarkdownContent text={store.streamingText} streaming={true} />
+                        </div>
+                      </div>
+                    </div>
+                  {/if}
+
+                  <!-- Slash command processing -->
+                  {#if ctrl.processingSlashCmd && !lifecycle.thinkingVisible && !store.streamingText && !store.thinkingText}
+                    <div class="w-full animate-fade-in" data-export-exclude>
+                      <div class="chat-content-width py-2">
+                        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Spinner size="sm" class="text-muted-foreground" />
+                          <span
+                            >{t("chat_processingCommand", {
+                              command: ctrl.processingSlashCmd,
                             })}</span
                           >
                         </div>
-                        <div class="h-px flex-1 bg-blue-500/20"></div>
-                      </div>
-                      <div class="mt-1 ml-8 text-[11px] text-muted-foreground/60 truncate">
-                        &ldquo;{marker.targetContent}&rdquo;
-                      </div>
-                      {#if marker.filesReverted.length > 0}<details class="mt-1 ml-8">
-                          <summary
-                            class="cursor-pointer text-[10px] text-blue-500/50 hover:text-blue-500/80"
-                            >{t("rewind_separatorFiles", {
-                              count: String(marker.filesReverted.length),
-                            })}</summary
-                          >
-                          <div class="mt-1 rounded bg-muted/30 px-2 py-1">
-                            {#each marker.filesReverted as file}<div
-                                class="truncate font-mono text-[10px] text-muted-foreground"
-                              >
-                                {file}
-                              </div>{/each}
-                          </div>
-                        </details>{/if}
-                    </div>
-                  </div>
-                {/each}
-
-                <!-- Last turn usage -->
-                {#if chatDerived.lastTurnUsage && !store.isRunning && lifecycle.settings?.show_token_usage_report !== false}
-                  <div class="w-full py-1.5">
-                    <div class="chat-content-width">
-                      <div class="flex items-center gap-3">
-                        <div class="h-px flex-1 bg-border/40"></div>
-                        <span class="text-[10px] tabular-nums text-muted-foreground"
-                          >{formatTokenCount(chatDerived.lastTurnUsage.inputTokens)}
-                          {t("chat_usageIn")} · {formatTokenCount(
-                            chatDerived.lastTurnUsage.outputTokens,
-                          )}
-                          {t(
-                            "chat_usageOut",
-                          )}{#if chatDerived.lastTurnUsage.cacheReadTokens > 0 || chatDerived.lastTurnUsage.cacheWriteTokens > 0}
-                            · {t("chat_usageCache", {
-                              read: formatTokenCount(chatDerived.lastTurnUsage.cacheReadTokens),
-                              write: formatTokenCount(chatDerived.lastTurnUsage.cacheWriteTokens),
-                            })}{/if}</span
-                        >
-                        <div class="h-px flex-1 bg-border/40"></div>
                       </div>
                     </div>
-                  </div>
-                {/if}
+                  {/if}
 
-                <!-- Team runs -->
-                {#each team.activeTeamRuns as teamRun (teamRun.id)}
-                  <div class="w-full py-2">
-                    <div class="chat-content-width pl-7"><TeamRunCard {teamRun} /></div>
-                  </div>
-                {/each}
-
-                <!-- Hook callbacks -->
-                {#each store.hookEvents.filter((h) => h.status === "hook_pending") as hookEvent (hookEvent.request_id)}
-                  <div class="chat-content-width pl-7" data-export-exclude>
-                    <HookReviewCard {hookEvent} onRespond={handlers.handleHookCallbackRespond} />
-                  </div>
-                {/each}
-
-                <!-- Thinking panel -->
-                {#if store.thinkingText}
-                  <div class="w-full animate-fade-in">
-                    <div class="chat-content-width py-2">
-                      <button
-                        class="glass-card w-full text-left px-3 py-2 transition-colors group"
-                        onclick={() => lifecycle.setThinkingExpanded(!lifecycle.thinkingExpanded)}
-                      >
-                        <div class="flex items-center gap-2">
+                  <!-- Thinking indicator -->
+                  {#if lifecycle.thinkingVisible && !store.thinkingText}
+                    <div class="w-full animate-fade-in" data-export-exclude>
+                      <div class="chat-content-width py-4">
+                        <div class="mb-1.5 flex items-center gap-2">
                           <div
-                            class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[hsl(var(--miwarp-status-info)/0.15)]"
+                            class="flex h-5 w-5 items-center justify-center rounded-sm bg-orange-500/10 text-orange-500"
                           >
                             <svg
-                              class="h-3 w-3 text-[hsl(var(--miwarp-status-info))]"
+                              class="h-3 w-3"
                               viewBox="0 0 24 24"
                               fill="none"
                               stroke="currentColor"
@@ -925,140 +1047,56 @@
                               stroke-linecap="round"
                               stroke-linejoin="round"
                               ><path
-                                d="M12 2a8 8 0 0 0-8 8c0 3.4 2.1 6.3 5 7.4V19a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1.6c2.9-1.1 5-4 5-7.4a8 8 0 0 0-8-8z"
-                              /><path d="M10 22h4" /></svg
+                                d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"
+                              /></svg
                             >
                           </div>
-                          <span class="text-xs font-medium text-[hsl(var(--miwarp-status-info))]"
-                            >{t("chat_thinking")}</span
+                          <span class="text-sm font-semibold text-foreground"
+                            >{t("chat_claude")}</span
                           >
-                          {#if store.isRunning && !store.streamingText}<Spinner
-                              size="xs"
-                              class="text-[hsl(var(--miwarp-status-info))]"
-                            />{/if}
-                          <svg
-                            class="h-3 w-3 text-muted-foreground/40 shrink-0 transition-transform ml-auto {lifecycle.thinkingExpanded
-                              ? 'rotate-180'
-                              : ''}"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg
-                          >
+                          {#if lifecycle.thinkingElapsed > 0}<span
+                              class="ml-auto text-[10px] tabular-nums text-muted-foreground"
+                              >{lifecycle.formatElapsed(lifecycle.thinkingElapsed)}</span
+                            >{/if}
                         </div>
-                        {#if lifecycle.thinkingExpanded}
-                          <div class="mt-2 pl-7 max-h-60 overflow-y-auto">
-                            <pre
-                              class="text-xs font-mono whitespace-pre-wrap break-words text-[hsl(var(--miwarp-status-info)/0.7)] leading-relaxed">{store.thinkingText.trimEnd()}</pre>
-                          </div>
-                        {/if}
-                      </button>
-                    </div>
-                  </div>
-                {/if}
-
-                <!-- Streaming text -->
-                {#if store.streamingText}
-                  <div class="w-full animate-fade-in">
-                    <div class="chat-content-width py-4">
-                      <div class="mb-1.5 flex items-center gap-2">
-                        <AgentIdentity
-                          agent={store.agent}
-                          platformId={store.platformId ?? undefined}
-                          model={store.run?.model ?? store.model}
-                          size="md"
-                          animated={true}
-                          showName={true}
-                          showModel={false}
-                        />
-                      </div>
-                      <div class="pl-7 prose-chat">
-                        <MarkdownContent text={store.streamingText} streaming={true} />
-                      </div>
-                    </div>
-                  </div>
-                {/if}
-
-                <!-- Slash command processing -->
-                {#if ctrl.processingSlashCmd && !lifecycle.thinkingVisible && !store.streamingText && !store.thinkingText}
-                  <div class="w-full animate-fade-in" data-export-exclude>
-                    <div class="chat-content-width py-2">
-                      <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Spinner size="sm" class="text-muted-foreground" />
-                        <span
-                          >{t("chat_processingCommand", { command: ctrl.processingSlashCmd })}</span
-                        >
-                      </div>
-                    </div>
-                  </div>
-                {/if}
-
-                <!-- Thinking indicator -->
-                {#if lifecycle.thinkingVisible && !store.thinkingText}
-                  <div class="w-full animate-fade-in" data-export-exclude>
-                    <div class="chat-content-width py-4">
-                      <div class="mb-1.5 flex items-center gap-2">
-                        <div
-                          class="flex h-5 w-5 items-center justify-center rounded-sm bg-orange-500/10 text-orange-500"
-                        >
-                          <svg
-                            class="h-3 w-3"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            ><path
-                              d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"
-                            /></svg
-                          >
+                        <div class="pl-7">
+                          {#if store.activeToolName}
+                            <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Spinner size="sm" class="text-muted-foreground" />
+                              <span
+                                >{t("chat_usingTool")}
+                                <span class="text-foreground font-medium"
+                                  >{store.activeToolName}</span
+                                ></span
+                              >{#if store.thinkingEndMs && store.thinkingDurationSec > 0}<span
+                                  class="text-xs tabular-nums"
+                                  >· thought for {store.thinkingDurationSec}s</span
+                                >{/if}
+                            </div>
+                          {:else if handlers.approving}
+                            <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Spinner size="sm" class="text-muted-foreground" />
+                              <span>{t("chat_restartingApproved")}</span>
+                            </div>
+                          {:else if store.phase === "spawning"}
+                            <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Spinner size="sm" class="text-muted-foreground" />
+                              <span>{t("chat_startingSession")}</span>
+                            </div>
+                          {:else}
+                            <div class="flex items-center gap-2 text-sm">
+                              <span class="spinner-star">✦</span><span class="spinner-shimmer"
+                                >{lifecycle.spinnerVerb}…</span
+                              >{#if store.thinkingEndMs && store.thinkingDurationSec > 0}<span
+                                  class="text-muted-foreground text-xs tabular-nums"
+                                  >· thought for {store.thinkingDurationSec}s</span
+                                >{/if}
+                            </div>
+                          {/if}
                         </div>
-                        <span class="text-sm font-semibold text-foreground">{t("chat_claude")}</span
-                        >
-                        {#if lifecycle.thinkingElapsed > 0}<span
-                            class="ml-auto text-[10px] tabular-nums text-muted-foreground"
-                            >{lifecycle.formatElapsed(lifecycle.thinkingElapsed)}</span
-                          >{/if}
-                      </div>
-                      <div class="pl-7">
-                        {#if store.activeToolName}
-                          <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Spinner size="sm" class="text-muted-foreground" />
-                            <span
-                              >{t("chat_usingTool")}
-                              <span class="text-foreground font-medium">{store.activeToolName}</span
-                              ></span
-                            >{#if store.thinkingEndMs && store.thinkingDurationSec > 0}<span
-                                class="text-xs tabular-nums"
-                                >· thought for {store.thinkingDurationSec}s</span
-                              >{/if}
-                          </div>
-                        {:else if handlers.approving}
-                          <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Spinner size="sm" class="text-muted-foreground" />
-                            <span>{t("chat_restartingApproved")}</span>
-                          </div>
-                        {:else if store.phase === "spawning"}
-                          <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Spinner size="sm" class="text-muted-foreground" />
-                            <span>{t("chat_startingSession")}</span>
-                          </div>
-                        {:else}
-                          <div class="flex items-center gap-2 text-sm">
-                            <span class="spinner-star">✦</span><span class="spinner-shimmer"
-                              >{lifecycle.spinnerVerb}…</span
-                            >{#if store.thinkingEndMs && store.thinkingDurationSec > 0}<span
-                                class="text-muted-foreground text-xs tabular-nums"
-                                >· thought for {store.thinkingDurationSec}s</span
-                              >{/if}
-                          </div>
-                        {/if}
                       </div>
                     </div>
-                  </div>
+                  {/if}
                 {/if}
               </div>
             {/if}

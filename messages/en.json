@@ -529,6 +529,8 @@
   "chat_usingTool": "Using",
   "chat_restartingApproved": "Restarting with tool approved...",
   "chat_startingSession": "Starting session...",
+  "chat_timelineRecovering": "Still loading this session's history…",
+  "chat_reloadSession": "Reload session",
   "chat_outputCompactActivity": "Working on a reply…",
   "chat_newMessages": "New messages",
   "chat_typeToStartSession": "Type a message below to start the session",

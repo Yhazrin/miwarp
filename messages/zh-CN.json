@@ -529,6 +529,8 @@
   "chat_usingTool": "正在使用",
   "chat_restartingApproved": "正在重启并批准工具...",
   "chat_startingSession": "正在启动会话...",
+  "chat_timelineRecovering": "正在载入该会话的历史消息…",
+  "chat_reloadSession": "重新载入会话",
   "chat_outputCompactActivity": "正在回复…",
   "chat_newMessages": "新消息",
   "chat_typeToStartSession": "在下方输入消息以启动会话",

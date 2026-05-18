@@ -85,8 +85,17 @@ const PARSE_PATTERNS: ParsePattern[] = [
     priority: 100,
     templateName: "全栈开发",
     generator: () => [
-      { id: "frontend", name: "前端开发", prompt: "开发前端界面组件，使用 React/Vue/Svelte 实现 UI" },
-      { id: "backend", name: "后端开发", prompt: "开发 REST API 和业务逻辑", dependsOn: ["frontend"] },
+      {
+        id: "frontend",
+        name: "前端开发",
+        prompt: "开发前端界面组件，使用 React/Vue/Svelte 实现 UI",
+      },
+      {
+        id: "backend",
+        name: "后端开发",
+        prompt: "开发 REST API 和业务逻辑",
+        dependsOn: ["frontend"],
+      },
       { id: "database", name: "数据库设计", prompt: "设计数据库 schema 和 migrations" },
     ],
   },
@@ -151,9 +160,18 @@ const PARSE_PATTERNS: ParsePattern[] = [
 
 function parseFeatureCount(text: string): number {
   const chineseToNum: Record<string, number> = {
-    一: 1, 二: 2, 三: 3, 四: 4, 五: 5,
-    六: 6, 七: 7, 八: 8, 九: 9, 十: 10,
-    两: 2, 多: 5,
+    一: 1,
+    二: 2,
+    三: 3,
+    四: 4,
+    五: 5,
+    六: 6,
+    七: 7,
+    八: 8,
+    九: 9,
+    十: 10,
+    两: 2,
+    多: 5,
   };
   if (/^[0-9]+$/.test(text)) return parseInt(text, 10);
   return chineseToNum[text] || 3;
@@ -451,11 +469,10 @@ class MultiAgentService {
     const normalized = input.trim().toLowerCase();
 
     // Try each pattern in priority order
-    const matches = PARSE_PATTERNS
-      .map((pattern) => {
-        const match = normalized.match(pattern.regex);
-        return match ? { pattern, match } : null;
-      })
+    const matches = PARSE_PATTERNS.map((pattern) => {
+      const match = normalized.match(pattern.regex);
+      return match ? { pattern, match } : null;
+    })
       .filter(Boolean)
       .sort((a, b) => (b!.pattern.priority ?? 0) - (a!.pattern.priority ?? 0));
 
@@ -581,7 +598,11 @@ class MultiAgentService {
   /**
    * Get suggested prompts based on current context
    */
-  getSuggestedPrompts(context?: { hasGitChanges: boolean; hasTests: boolean; hasDocs: boolean }): string[] {
+  getSuggestedPrompts(context?: {
+    hasGitChanges: boolean;
+    hasTests: boolean;
+    hasDocs: boolean;
+  }): string[] {
     const suggestions: string[] = [];
 
     if (context?.hasGitChanges) {

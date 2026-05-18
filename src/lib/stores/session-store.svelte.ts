@@ -1639,7 +1639,9 @@ export class SessionStore implements SessionEventSink {
                   .catch((e) => dbgWarn("snapshot", "delete failed", e));
                 this._clearContentState();
                 // Keep the fetched run metadata; only clear the replayed session content.
-                this._setPhase(st === "idle" ? "ready" : (st as SessionPhase));
+                // Phase must remain "loading": getBusEvents + replay still pending; otherwise UI
+                // renders an empty Timeline while phase looks "ready".
+                this._setPhase("loading");
                 this._isLoadingReplay = true;
               }
 
@@ -1725,8 +1727,8 @@ export class SessionStore implements SessionEventSink {
           }
           reducerMs = ms;
           this._wsSubscribeAfterLoad(id, busEvents);
-          // Write guard: distinguish "legit empty session" from "reduder anomaly"
-          if (snapshotEligible && (this.timeline.length > 0 || busEvents.length === 0)) {
+          // Only persist non-empty timelines; busEvents.length === 0 is not evidence of legitimacy.
+          if (snapshotEligible && this.timeline.length > 0) {
             this._saveSnapshotToIdb(id);
           }
         }

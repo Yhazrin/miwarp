@@ -5,7 +5,7 @@
  * slash-command processing indicator state. Delegates UI-specific side
  * effects (toast, scroll, folder picker) back to the component via callbacks.
  */
-import { goto, replaceState } from "$app/navigation";
+import { goto } from "$app/navigation";
 import { tick } from "svelte";
 import { getTransport } from "$lib/transport";
 import * as api from "$lib/api";
@@ -13,6 +13,7 @@ import { loadCliVersionInfo } from "$lib/stores";
 import type { SessionStore } from "$lib/stores";
 import type { Attachment, SessionMode, RemoteHost, UserSettings } from "$lib/types";
 import { dbg, dbgWarn } from "$lib/utils/debug";
+import { replaceStateIfHrefChanged } from "$lib/utils/replace-state-if-changed";
 import { t } from "$lib/i18n/index.svelte";
 import { setLastTarget, getStoredRemoteCwd, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
 import { PROJECT_CWD_KEY, RUNS_CHANGED_KEY } from "$lib/utils/storage-keys";
@@ -144,7 +145,7 @@ export function useChatController(opts: {
       opts.setScrollToInFlight(false);
       const url = new URL(window.location.href);
       url.searchParams.delete("scrollTo");
-      replaceState(url, {});
+      replaceStateIfHrefChanged(url, "strip scrollTo after progressive load");
     } else {
       await tick();
       requestAnimationFrame(() => {

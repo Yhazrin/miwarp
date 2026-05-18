@@ -4118,20 +4118,21 @@ describe("SessionStore reducer", () => {
         warnSpy.mockClear();
       });
 
-      it("writes snapshot for legit empty session (0 busEvents)", async () => {
+      it("does NOT write snapshot when timeline stays empty after replay (0 busEvents)", async () => {
         vi.useFakeTimers();
         const termRun = makeRun("run-wg-2", { status: "completed", agent: "claude" });
         mockGetRun.mockResolvedValue(termRun);
         mockReadSnapshot.mockResolvedValue(null);
-        mockGetBusEvents.mockResolvedValue([]); // truly empty session
+        mockGetBusEvents.mockResolvedValue([]);
 
         const testStore = new SessionStore();
         await testStore.loadRun("run-wg-2");
 
         // Flush deferred _saveSnapshotToIdb (setTimeout(0))
         vi.advanceTimersByTime(1);
-        // 0 busEvents + 0 timeline → legit empty session → write allowed
-        expect(mockWriteSnapshot).toHaveBeenCalled();
+        expect(testStore.timeline).toHaveLength(0);
+        // Empty timelines must not poison IDB with an empty snapshot (bad replays / bugs).
+        expect(mockWriteSnapshot).not.toHaveBeenCalled();
         vi.useRealTimers();
         warnSpy.mockClear();
       });

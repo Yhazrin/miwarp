@@ -29,7 +29,7 @@
  *   - Permission panel visibility log effect
  */
 import { page } from "$app/stores";
-import { replaceState } from "$app/navigation";
+import { replaceStateIfHrefChanged } from "$lib/utils/replace-state-if-changed";
 import { tick, onMount, untrack } from "svelte";
 import { get } from "svelte/store";
 import { getTransport } from "$lib/transport";
@@ -604,73 +604,57 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     }
   });
 
-  // ── URL param consumption: ?folder= and ?host= ──
-  // Uses untrack to prevent infinite loops from replaceState.
-  let _prevFolderHost = "";
-  const unsubscribeFolderHost = page.subscribe((p) => {
-    const url = p.url;
-    const folder = url.searchParams.get("folder");
-    const host = url.searchParams.get("host");
-    if (!folder && !host) return;
-
-    const key = `${folder}:${host}`;
-    if (key === _prevFolderHost) return;
-    _prevFolderHost = key;
-
-    dbg("chat", "url params", { folder, host });
-    let resolvedHost: string | null = null;
-    if (host !== null) {
-      if (host === "") {
-        resolvedHost = null;
-      } else if (remoteHosts.length === 0 || remoteHosts.some((h) => h.name === host)) {
-        resolvedHost = host;
-      } else {
-        dbgWarn("chat", "URL ?host= references unknown remote — ignoring", { host });
-        resolvedHost = null;
-      }
-      store.remoteHostName = resolvedHost;
-      setLastTarget(resolvedHost);
-    }
-    if (folder) {
-      if (resolvedHost) {
-        setStoredRemoteCwd(resolvedHost, folder);
-      } else {
-        try {
-          localStorage.setItem(PROJECT_CWD_KEY, folder);
-        } catch {
-          // localStorage may fail in restricted contexts
-        }
-      }
-      setFolderCwdOverride(folder);
-      store.loadRun("", xtermRef());
-    }
-    const clean = new URL(url);
-    clean.searchParams.delete("folder");
-    clean.searchParams.delete("host");
-    replaceState(clean, {});
-    requestAnimationFrame(() => promptRef()?.focus());
-  });
-
   // ── Watch runId changes → load run + subscribe middleware ──
   // Uses page.subscribe to manually track URL changes without reactive effect dependencies.
   // Gated on middleware.isStarted to match old $effect behavior — ensures event listeners
   // are registered before we subscribe to bus events.
   let _prevRunUrl = "";
   let _deferredLoad = false;
+  let pendingRetryAfterResume = $state(false);
 
   function _tryLoadFromUrl(url: URL): boolean {
     const id = url.searchParams.get("run") ?? "";
     const resumeMode = url.searchParams.get("resume") as import("$lib/types").SessionMode | null;
     const scrollTo = url.searchParams.get("scrollTo");
 
-    // Handle ?resume= first (must clean URL before loadRun)
+    // Handle ?resume= first: strip only resume param (preserve scrollTo). Do NOT mark URL as reconciled yet.
     if (resumeMode) {
+      if (!id) {
+        dbgWarn("chat", "resume= without run id — stripping param");
+        const clean = new URL(url);
+        clean.searchParams.delete("resume");
+        replaceStateIfHrefChanged(clean, "strip resume= (missing run)");
+        return true;
+      }
+      middleware.subscribeCurrent(id, store);
       const clean = new URL(url);
       clean.searchParams.delete("resume");
-      clean.searchParams.delete("scrollTo");
-      replaceState(clean, {});
-      _prevRunUrl = id;
-      sessionLifecycle.handleResume(resumeMode, id);
+      replaceStateIfHrefChanged(clean, "strip resume=");
+      void sessionLifecycle
+        .handleResume(resumeMode, id)
+        .catch((e) => {
+          dbgWarn("chat", "handleResume rejected", e);
+          void ctrl.loadRunProgressive(id, xtermRef());
+        })
+        .finally(() => {
+          untrack(() => {
+            const rid = new URL(window.location.href).searchParams.get("run") ?? "";
+            if (
+              rid &&
+              store.run?.id === rid &&
+              store.timeline.length === 0 &&
+              !store.streamingText &&
+              !store.thinkingText &&
+              store.phase !== "loading" &&
+              store.phase !== "empty"
+            ) {
+              dbgWarn("chat", "resume settled with empty timeline — fallback loadRunProgressive", {
+                rid,
+              });
+              void ctrl.loadRunProgressive(rid, xtermRef());
+            }
+          });
+        });
       return true;
     }
 
@@ -678,23 +662,64 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     if (scrollTo && store.run?.id === id && store.phase !== "loading") {
       const clean = new URL(url);
       clean.searchParams.delete("scrollTo");
-      replaceState(clean, {});
+      replaceStateIfHrefChanged(clean, "strip scrollTo (already loaded)");
       _prevRunUrl = id;
       tick().then(() => scrollToMessage(scrollTo));
       return true;
     }
 
-    // Skip if URL hasn't changed
+    // Idempotency guard: skipping work when *both* URL and singleton store agree.
+    // IMPORTANT: Previously we returned whenever `run` query === _prevRunUrl, which breaks
+    // the case `/chat` + _prevRunUrl "" on first reconcile — we never cleared a stale SessionStore,
+    // so clicking sessions or landing on "/" could leave the timeline stuck on another run.
     const key = id;
-    if (key === _prevRunUrl) return true;
+    const urlUnchanged = key === _prevRunUrl;
+    const emptySessionReady = !store.run && store.phase !== "loading";
+    const hasRenderableTimeline = store.timeline.length > 0;
+    const hasTransientStream = !!store.streamingText || !!store.thinkingText;
+    // Empty timeline for a completed/historical run is never "aligned" — must reload from disk.
+    const storeMatchesRunUrl =
+      !!id &&
+      store.run?.id === id &&
+      store.phase !== "loading" &&
+      (hasRenderableTimeline || hasTransientStream || store.sessionAlive);
+    const storeAlignedWithUrl = (!id && emptySessionReady) || storeMatchesRunUrl;
+
+    if (urlUnchanged && storeAlignedWithUrl) {
+      dbg("chat", "url→store reconcile: noop (already aligned)", {
+        runId: id || "(empty)",
+        phase: store.phase,
+        timelineLen: store.timeline.length,
+      });
+      return true;
+    }
+
+    if (urlUnchanged && !storeAlignedWithUrl) {
+      dbgWarn("chat", "url→store reconcile: same URL but store drift — forcing resync", {
+        runId: id || "(empty)",
+        storeRunId: store.run?.id ?? null,
+        phase: store.phase,
+        sessionAlive: store.sessionAlive,
+        timelineLen: store.timeline.length,
+      });
+    } else {
+      dbg("chat", "url→store reconcile: apply", {
+        from: _prevRunUrl || "(empty)",
+        to: key || "(empty)",
+        prevStoreRun: store.run?.id ?? null,
+        phase: store.phase,
+      });
+    }
+
+    if (sessionLifecycle.resuming.get() || store.resumeInFlight) {
+      pendingRetryAfterResume = true;
+      dbg("effect", "defer url load — resume in progress", { runId: id || "(empty)" });
+      return true;
+    }
+
     _prevRunUrl = key;
 
     middleware.subscribeCurrent(id, store);
-
-    if (store.resumeInFlight || sessionLifecycle.resuming.get()) {
-      dbg("effect", "skip loadRun — resume in progress");
-      return true;
-    }
 
     if (!id) {
       store.loadRun("", xtermRef());
@@ -709,7 +734,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
       if (scrollTo2) {
         const clean = new URL(url);
         clean.searchParams.delete("scrollTo");
-        replaceState(clean, {});
+        replaceStateIfHrefChanged(clean, "strip scrollTo (session alive skip reload)");
         tick().then(() => scrollToMessage(scrollTo2));
       }
       return true;
@@ -719,26 +744,89 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     return true;
   }
 
-  page.subscribe((p) => {
-    const started = middleware.isStarted;
-    console.log("[lifecycle] page.subscribe fired", { url: p.url.href, started, _deferredLoad });
-    if (!started) {
-      _deferredLoad = true;
-      console.log("[lifecycle] middleware not started, deferring load");
-      return;
-    }
-    _deferredLoad = false;
-    _tryLoadFromUrl(p.url);
+  // Route subscriptions MUST mount/unmount with the chat page — no orphaned subscribers after
+  // teardown, HMR, or leaving /chat (multiple stale loaders must not contend on the singleton store).
+  onMount(() => {
+    let _prevFolderHost = "";
+    const unsubPageFolderHost = page.subscribe((p) => {
+      const url = p.url;
+      const folder = url.searchParams.get("folder");
+      const host = url.searchParams.get("host");
+      if (!folder && !host) return;
+
+      const fhKey = `${folder}:${host}`;
+      if (fhKey === _prevFolderHost) return;
+      _prevFolderHost = fhKey;
+
+      dbg("chat", "url params", { folder, host });
+      let resolvedHost: string | null = null;
+      if (host !== null) {
+        if (host === "") {
+          resolvedHost = null;
+        } else if (remoteHosts.length === 0 || remoteHosts.some((h) => h.name === host)) {
+          resolvedHost = host;
+        } else {
+          dbgWarn("chat", "URL ?host= references unknown remote — ignoring", { host });
+          resolvedHost = null;
+        }
+        store.remoteHostName = resolvedHost;
+        setLastTarget(resolvedHost);
+      }
+      if (folder) {
+        if (resolvedHost) {
+          setStoredRemoteCwd(resolvedHost, folder);
+        } else {
+          try {
+            localStorage.setItem(PROJECT_CWD_KEY, folder);
+          } catch {
+            // localStorage may fail in restricted contexts
+          }
+        }
+        setFolderCwdOverride(folder);
+        store.loadRun("", xtermRef());
+      }
+      const clean = new URL(url);
+      clean.searchParams.delete("folder");
+      clean.searchParams.delete("host");
+      replaceStateIfHrefChanged(clean, "consume folder/host URL params");
+      requestAnimationFrame(() => promptRef()?.focus());
+    });
+
+    const unsubPageRunSync = page.subscribe((p) => {
+      if (!middleware.isStarted) {
+        _deferredLoad = true;
+        return;
+      }
+      _deferredLoad = false;
+      _tryLoadFromUrl(p.url);
+    });
+
+    return () => {
+      unsubPageFolderHost();
+      unsubPageRunSync();
+      dbg("chat", "page subscriptions disposed (route sync teardown)");
+    };
+  });
+
+  // After resume UI finishes, retry current URL so a session click during resume is not "eaten".
+  $effect(() => {
+    if (!middlewareReady) return;
+    void store.run?.id;
+    void store.phase;
+    if (sessionLifecycle.resuming.get()) return;
+    if (!pendingRetryAfterResume) return;
+    pendingRetryAfterResume = false;
+    untrack(() => {
+      _tryLoadFromUrl(new URL(window.location.href));
+    });
   });
 
   // Deferred load: when middleware becomes ready, fire the pending URL load.
   $effect(() => {
     const ready = middlewareReady;
-    console.log("[lifecycle] $effect fired", { ready, _deferredLoad });
     if (!ready || !_deferredLoad) return;
     _deferredLoad = false;
     const url = new URL(window.location.href);
-    console.log("[lifecycle] deferred load triggered", url.href);
     _tryLoadFromUrl(url);
   });
 
@@ -1324,7 +1412,12 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     toolFilter,
     sidebarCollapsed,
     statusBarExpanded,
-    folderPickerOpen,
+    get folderPickerOpen() {
+      return folderPickerOpen;
+    },
+    set folderPickerOpen(v: boolean) {
+      folderPickerOpen = v;
+    },
     folderPickerInitialHost,
     folderPickerInitialPath,
     folderPickerHideTarget,

@@ -137,7 +137,10 @@
           "version-info": { name: "版本信息", desc: "查看应用版本和更新" },
           permissions: { name: "权限设置", desc: "配置操作权限规则" },
         };
-        const modalInfo = modalNames[cmd.payload || ""] || { name: cmd.payload || "对话框", desc: "" };
+        const modalInfo = modalNames[cmd.payload || ""] || {
+          name: cmd.payload || "对话框",
+          desc: "",
+        };
         preview = `打开: ${modalInfo.name}`;
         detail = modalInfo.desc;
         break;
@@ -445,11 +448,13 @@
           <div class="flex items-center gap-2">
             {#if previewContent}
               <div class="flex flex-col items-end gap-0.5">
-                <span class="text-xs text-foreground bg-muted px-2 py-1 rounded animate-fade-in font-medium">
+                <span
+                  class="text-xs text-foreground bg-muted px-2 py-1 rounded animate-fade-in font-medium"
+                >
                   {previewContent}
                 </span>
                 {#if hoveredCmdId}
-                  {@const hoveredCmd = flatList.find(c => c.id === hoveredCmdId)}
+                  {@const hoveredCmd = flatList.find((c) => c.id === hoveredCmdId)}
                   {#if hoveredCmd}
                     {@const detail = getPreviewDetail(hoveredCmd)}
                     {@const hint = getPreviewHint(hoveredCmd)}

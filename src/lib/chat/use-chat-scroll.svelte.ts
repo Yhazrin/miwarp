@@ -6,7 +6,7 @@
  * from `handleChatScroll` to coordinate scroll-driven load-more behavior.
  */
 import { dbg } from "$lib/utils/debug";
-import { onDestroy } from "svelte";
+import { onDestroy, untrack } from "svelte";
 
 const SCROLL_BOTTOM_THRESHOLD = 96;
 
@@ -62,20 +62,25 @@ export function useChatScroll(opts: {
     });
   }
 
-  // Auto-scroll: follow new content when near bottom
+  // Auto-scroll: follow new content when near bottom.
+  // IMPORTANT: Do not subscribe this effect to `isChatAutoScroll`. Programmatic
+  // scrollTop updates fire `scroll` → handleChatScroll → writes isChatAutoScroll,
+  // which would re-run this effect forever (effect_update_depth_exceeded).
   $effect(() => {
-    if (opts.isStreamSession()) {
-      const tl = opts.timelineLength();
-      const st = opts.streamingTextLength();
-      const changed = tl !== prevTl || st !== prevSt;
-      prevTl = tl;
-      prevSt = st;
+    if (!opts.isStreamSession()) return;
+    const tl = opts.timelineLength();
+    const st = opts.streamingTextLength();
+    const changed = tl !== prevTl || st !== prevSt;
+    if (!changed) return;
+    prevTl = tl;
+    prevSt = st;
+    untrack(() => {
       if (isChatAutoScroll) {
         scheduleScrollToBottom();
-      } else if (changed) {
+      } else {
         showChatScrollHint = true;
       }
-    }
+    });
   });
 
   // Reset scroll state on run change
