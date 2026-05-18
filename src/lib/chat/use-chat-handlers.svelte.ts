@@ -122,6 +122,8 @@ export interface UseChatHandlersOptions {
   setLastContinuableRun: (v: TaskRun | null) => void;
   // Rewind candidates (derived)
   getRewindCandidates: () => RewindCandidate[];
+  /** Called after every handleResume completes — used to flush deferred route reconcile without reactive loops. */
+  onResumeFinally?: () => void;
 }
 
 export function useChatHandlers(opts: UseChatHandlersOptions) {
@@ -148,6 +150,7 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
     setAuthOverview,
     setLastContinuableRun,
     getRewindCandidates: _getRewindCandidates,
+    onResumeFinally,
   } = opts;
 
   const { projectCommands } = preload;
@@ -827,6 +830,7 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
       }
     } finally {
       resuming = false;
+      onResumeFinally?.();
     }
   }
 
@@ -893,12 +897,6 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
   }
 
   // ── Drag-drop ──
-
-  /** Resets transient drag UI state — page overlay must never block clicks if left stuck. */
-  function clearDragState() {
-    pageDragActive = false;
-    dragProcessingCount = 0;
-  }
 
   /** Concurrency-limited parallel map returning PromiseSettledResult for each item. */
   async function handleTauriDrop(payload: { paths: string[] }) {
@@ -1005,8 +1003,7 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
         input.showToast(parts.join(t("common_listSeparator")));
       }
     } finally {
-      dragProcessingCount = Math.max(0, dragProcessingCount - 1);
-      pageDragActive = false;
+      dragProcessingCount--;
     }
   }
 
@@ -1395,7 +1392,6 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
     pageDragActive,
     dragProcessingCount,
     dragProcessing,
-    clearDragState,
     resuming,
     autoNameDone,
     timelineIdIndex,

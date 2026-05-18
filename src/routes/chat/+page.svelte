@@ -198,13 +198,15 @@
     getRemoteHosts: () => lifecycleRef.current?.remoteHosts ?? [],
     getSettings: () => lifecycleRef.current?.settings ?? null,
     onBeforeLoadRun: () => {
-      handlers.clearDragState();
       lifecycleRef.current?.setToolFilter(null);
       folderCwdOverride = "";
     },
     getScrollToInFlight: () => lifecycleRef.current?.getScrollToInFlight() ?? false,
     setScrollToInFlight: (v) => lifecycleRef.current?.setScrollToInFlight(v),
   });
+
+  /** Wired after lifecycle exists — drains deferred route reconcile without subscribing to SessionStore.resumeInFlight. */
+  const chatRouteRetryBridge = { flush: () => {} };
 
   // ── Page state (must precede handlers/lifecycle for TDZ) ──
   let currentEffort = $state("");
@@ -253,6 +255,7 @@
     setAuthOverview: (v) => lifecycleRef.current?.setAuthOverview(v),
     setLastContinuableRun: (v) => lifecycleRef.current?.setLastContinuableRun(v),
     getRewindCandidates: () => rewindCandidates,
+    onResumeFinally: () => chatRouteRetryBridge.flush(),
   });
 
   let lifecycle = useChatLifecycle({
@@ -280,10 +283,6 @@
         return handlers.dragProcessing;
       },
       handleTauriDrop: handlers.handleTauriDrop,
-      clearDragState: handlers.clearDragState,
-      getDragProcessingCount() {
-        return handlers.dragProcessingCount;
-      },
     },
     exportCtrl: { handleExportHtml: handlers.handleExportHtml },
     keybindingStore,
@@ -325,6 +324,7 @@
   });
 
   lifecycleRef.current = lifecycle;
+  chatRouteRetryBridge.flush = () => lifecycle.flushDeferredRouteRetry();
 
   // ── Helpers ──
   function fillPrompt(text: string) {
@@ -409,12 +409,10 @@
   <!-- Page-level drag overlay -->
   {#if handlers.pageDragActive || handlers.dragProcessing}
     <div
-      data-chat-drag-overlay=""
-      aria-hidden="true"
-      class="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-[2px]"
+      class="absolute inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-[2px]"
     >
       <div
-        class="pointer-events-none flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/50 bg-primary/5 px-12 py-8"
+        class="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/50 bg-primary/5 px-12 py-8"
       >
         {#if handlers.dragProcessing}
           <svg

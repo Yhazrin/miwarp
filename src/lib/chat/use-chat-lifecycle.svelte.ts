@@ -64,7 +64,6 @@ import { PROJECT_CWD_KEY, RUNS_CHANGED_KEY, PROJECT_CHANGED_KEY } from "$lib/uti
 import { randomSpinnerVerb } from "$lib/utils/spinner-verbs";
 import { t } from "$lib/i18n/index.svelte";
 import { dbg, dbgWarn } from "$lib/utils/debug";
-import { installChatPointerDiagnostics } from "$lib/chat/pointer-diagnostics";
 
 import {
   getCachedUserSettings,
@@ -131,8 +130,6 @@ export interface UseChatLifecycleOptions {
     pageDragActive: boolean;
     dragProcessing: boolean;
     handleTauriDrop: (payload: { paths: string[] }) => Promise<void>;
-    clearDragState: () => void;
-    getDragProcessingCount: () => number;
   };
   exportCtrl: ReturnType<typeof useExportController>;
 
@@ -614,23 +611,9 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   let _prevRunUrl = "";
   let _deferredLoad = false;
   let pendingRetryAfterResume = false;
+  /** Supersedes stale microtask flushes when multiple resume completions race. */
+  let routeRetryFlushGeneration = 0;
   let lastWatchdogReconcileKey = "";
-
-  let chatDragResetTimer: ReturnType<typeof setTimeout> | null = null;
-  function clearChatDragResetTimer() {
-    if (chatDragResetTimer !== null) {
-      clearTimeout(chatDragResetTimer);
-      chatDragResetTimer = null;
-    }
-  }
-  function armChatDragResetTimer() {
-    clearChatDragResetTimer();
-    chatDragResetTimer = setTimeout(() => {
-      chatDragResetTimer = null;
-      dragDrop.clearDragState();
-      dbgWarn("chat", "drag-enter auto-reset (no leave/drop within 3s)");
-    }, 3000);
-  }
 
   function getXtermHandle(): { clear(): void; writeText(s: string): void } | undefined {
     return xtermRef() as { clear(): void; writeText(s: string): void } | undefined;
@@ -756,12 +739,14 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     }
 
     if (sessionLifecycle.resuming.get() || store.resumeInFlight) {
-      pendingRetryAfterResume = true;
       dbg("chat-route", "reconcile:defer-resume", { reason, runId: id || "(empty)" });
+      // Avoid flipping deferred retry inside the same synchronous reconcile turn as load/resume —
+      // queue so resume handlers finish scheduling before we latch retry intent.
+      queueMicrotask(() => {
+        pendingRetryAfterResume = true;
+      });
       return true;
     }
-
-    dragDrop.clearDragState();
 
     _prevRunUrl = key;
 
@@ -788,6 +773,19 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
 
     void ctrl.loadRunProgressive(id, getXtermHandle());
     return true;
+  }
+
+  /** Invoked from handleResume.finally — not reactive; drains deferred URL reconcile after resume lifts. */
+  function flushDeferredRouteRetry() {
+    const gen = ++routeRetryFlushGeneration;
+    queueMicrotask(() => {
+      if (gen !== routeRetryFlushGeneration) return;
+      if (!pendingRetryAfterResume) return;
+      pendingRetryAfterResume = false;
+      untrack(() => {
+        _tryLoadFromUrl(new URL(window.location.href), "resume-settled");
+      });
+    });
   }
 
   function currentRouteNeedsReconcile(): boolean {
@@ -898,17 +896,8 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     };
   });
 
-  // After resume UI finishes, retry current URL so a session click during resume is not "eaten".
-  $effect(() => {
-    if (!middlewareReady) return;
-    void store.resumeInFlight;
-    if (sessionLifecycle.resuming.get() || store.resumeInFlight) return;
-    if (!pendingRetryAfterResume) return;
-    pendingRetryAfterResume = false;
-    untrack(() => {
-      _tryLoadFromUrl(new URL(window.location.href), "resume-settled");
-    });
-  });
+  // Deferred route retry after resume is handled via handleResume.finally → flushDeferredRouteRetry()
+  // (wired from +page). A reactive $effect on store.resumeInFlight caused nested effect depth blowups.
 
   // Deferred load: when middleware becomes ready, fire the pending URL load.
   $effect(() => {
@@ -993,23 +982,8 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     const url = get(page).url;
     const runId = url.searchParams.get("run") ?? "";
 
-    if (agentResult.status === "fulfilled") {
-      agentSettings = agentResult.value;
-      setCachedAgentSettings(agentSettings);
-      try {
-        const cliCfg = await api.getCliConfig();
-        const cliEffort = cliCfg.effortLevel;
-        setCurrentEffort(typeof cliEffort === "string" && cliEffort ? cliEffort : "");
-      } catch {
-        setCurrentEffort("");
-      }
-      if (agentSettings?.effort) {
-        api.updateAgentSettings("claude", { effort: "" }).catch(() => {});
-      }
-    } else {
-      dbgWarn("chat", "failed to load agent settings:", agentResult.reason);
-    }
-
+    // Unlock welcome quick actions as soon as listRuns settles — do NOT block on getCliConfig().
+    // CLI config IPC can hang while the rest of the UI (preset buttons) should still render.
     if (runsResult.status === "fulfilled") {
       lastContinuableRun =
         runsResult.value.find(
@@ -1026,9 +1000,27 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
         return;
       }
     } else {
+      lastContinuableRun = null;
       dbgWarn("chat", "failed to load runs for continue:", runsResult.reason);
     }
     welcomeQuickActionsReady = true;
+
+    if (agentResult.status === "fulfilled") {
+      agentSettings = agentResult.value;
+      setCachedAgentSettings(agentSettings);
+      try {
+        const cliCfg = await api.getCliConfig();
+        const cliEffort = cliCfg.effortLevel;
+        setCurrentEffort(typeof cliEffort === "string" && cliEffort ? cliEffort : "");
+      } catch {
+        setCurrentEffort("");
+      }
+      if (agentSettings?.effort) {
+        api.updateAgentSettings("claude", { effort: "" }).catch(() => {});
+      }
+    } else {
+      dbgWarn("chat", "failed to load agent settings:", agentResult.reason);
+    }
 
     // Phase 3: permission mode init
     if (!store.permissionModeSetByUser) {
@@ -1199,8 +1191,6 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
 
     return () => {
       destroyed = true;
-      clearChatDragResetTimer();
-      dragDrop.clearDragState();
       // Kill fork run process on unmount
       const fo = getForkOverlay();
       if (fo?.active && store.run && store.run.id !== fo.sourceRunId) {
@@ -1323,46 +1313,22 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
       },
     );
 
-    // Tauri native drag-drop listeners (tauri://drag-leave is not always emitted — use 3s watchdog)
+    // Tauri native drag-drop listeners
     const dragEnterUnlisten = chatTransport.listen<{ paths: string[] }>(
       "tauri://drag-enter",
       () => {
         dragDrop.pageDragActive = true;
-        armChatDragResetTimer();
       },
     );
     const dragLeaveUnlisten = chatTransport.listen("tauri://drag-leave", () => {
-      clearChatDragResetTimer();
-      dragDrop.clearDragState();
+      dragDrop.pageDragActive = false;
     });
     const dragDropUnlisten = chatTransport.listen<{ paths: string[] }>(
       "tauri://drag-drop",
-      (payload) => {
-        clearChatDragResetTimer();
-        void dragDrop.handleTauriDrop(payload);
-      },
+      dragDrop.handleTauriDrop,
     );
 
-    const unPointerDiag = installChatPointerDiagnostics({
-      getPageDragActive: () => dragDrop.pageDragActive,
-      getDragProcessingCount: () => dragDrop.getDragProcessingCount(),
-      getRunId: () => store.run?.id,
-      getPhase: () => store.phase,
-    });
-
-    const onWinBlur = () => dragDrop.clearDragState();
-    const onEscKey = (ev: KeyboardEvent) => {
-      if (ev.key === "Escape") dragDrop.clearDragState();
-    };
-    window.addEventListener("blur", onWinBlur);
-    window.addEventListener("keydown", onEscKey, true);
-
     return () => {
-      window.removeEventListener("blur", onWinBlur);
-      window.removeEventListener("keydown", onEscKey, true);
-      clearChatDragResetTimer();
-      dragDrop.clearDragState();
-      unPointerDiag();
       window.removeEventListener("ocv:statusbar-toggle", onStatusBarToggle);
       keybindingStore.unregisterCallback("chat:interrupt");
       keybindingStore.unregisterCallback("chat:sendGlobal");
@@ -1607,5 +1573,6 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     // Permission mode maps (exposed for page's handlePermissionModeChange)
     APP_TO_CLI_MODE,
     CLI_TO_APP_MODE,
+    flushDeferredRouteRetry,
   };
 }

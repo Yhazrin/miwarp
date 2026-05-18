@@ -69,6 +69,7 @@
   import { onMount, setContext, untrack } from "svelte";
   import { installPreventRootOverscroll } from "$lib/utils/prevent-root-overscroll";
   import { dbg, dbgWarn } from "$lib/utils/debug";
+  import { installSvelteRuntimeDiagnostics } from "$lib/utils/svelte-runtime-diagnostics";
   import { setMascotOverrides } from "$lib/stores/mascot-overrides.svelte";
   import { backgroundStore } from "$lib/stores/background-store.svelte";
   import { fpsCounter } from "$lib/utils/perf";
@@ -938,6 +939,8 @@
 
   // Use onMount for initialization (not $effect - avoids accidental reactive tracking)
   onMount(() => {
+    installSvelteRuntimeDiagnostics();
+
     // Prevent root overscroll / rubber-band on macOS
     const cleanupOverscroll = installPreventRootOverscroll();
 
@@ -2842,6 +2845,22 @@
       class="app-main-shell miwarp-shell-tier-2 relative z-10 flex flex-col overflow-hidden"
       class:miwarp-chrome-frost={rootWallpaper.show}
     >
+      <!--
+      macOS drag region for the main pane.
+      Uses pointer-events: none + -webkit-app-region: drag so native macOS
+      window drag works WITHOUT blocking any button clicks. TopWindowDrag
+      (below) is the global safety net; this element adds redundancy in the
+      main content area without interfering with interactive elements.
+      Linux/Windows: pointer-events:none means the JS drag handler won't
+      fire here, but sidebar spacers still provide drag handles on those
+      platforms.
+    -->
+      <div
+        class="absolute top-0 left-0 right-0 h-11 pointer-events-none"
+        data-tauri-drag-region
+        aria-hidden="true"
+        style="-webkit-app-region: drag; z-index: 0;"
+      ></div>
       <UpdateBanner />
       <!-- Page content — full-bleed, no top bar on non-chat pages -->
       <main

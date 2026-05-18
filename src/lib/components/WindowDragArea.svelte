@@ -8,4 +8,8 @@
   } = $props();
 </script>
 
-<div class={`window-drag-area ${className}`} onmousedown={startWindowDragFromEvent}></div>
+<div
+  class={`window-drag-area ${className}`}
+  data-tauri-drag-region
+  onmousedown={startWindowDragFromEvent}
+></div>
