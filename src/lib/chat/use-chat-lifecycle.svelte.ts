@@ -31,7 +31,7 @@
 import { page } from "$app/stores";
 import { replaceState } from "$app/navigation";
 import { tick, onMount, untrack } from "svelte";
-import { fromStore, get } from "svelte/store";
+import { get } from "svelte/store";
 import { getTransport } from "$lib/transport";
 import * as api from "$lib/api";
 import {
@@ -181,7 +181,6 @@ export interface UseChatLifecycleOptions {
 // ── Main composable ──
 
 export function useChatLifecycle(options: UseChatLifecycleOptions) {
-  console.log("[DEBUG useChatLifecycle] CALLED");
   const {
     store,
     middleware,
@@ -216,7 +215,6 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     pendingToolPermissions,
     setSidebarRequestedTab,
   } = options;
-  const pageState = fromStore(page);
 
   // ── Core state ──
   let middlewareReady = $state(false);
@@ -655,110 +653,88 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
 
   // ── Watch runId changes → load run + subscribe middleware ──
   // Uses page.subscribe to manually track URL changes without reactive effect dependencies.
+  // Gated on middleware.isStarted to match old $effect behavior — ensures event listeners
+  // are registered before we subscribe to bus events.
   let _prevRunUrl = "";
-  console.log("[DEBUG PAGE_SUBSCRIBE] page.subscribe registered, _prevRunUrl=", _prevRunUrl);
-  const unsubscribe = page.subscribe((p) => {
-    console.log("[DEBUG PAGE_SUBSCRIBE] callback FIRED! url=", p.url.href, "prev=" + _prevRunUrl);
-    const url = p.url;
+  let _deferredLoad = false;
+
+  function _tryLoadFromUrl(url: URL): boolean {
     const id = url.searchParams.get("run") ?? "";
     const resumeMode = url.searchParams.get("resume") as import("$lib/types").SessionMode | null;
     const scrollTo = url.searchParams.get("scrollTo");
 
-    console.log("[DEBUG loadRun] page.subscribe fired", {
-      id,
-      resumeMode,
-      scrollTo,
-      currentPhase: store.phase,
-      currentRunId: store.run?.id,
-      timelineLen: store.timeline.length,
-      resumeInFlight: store.resumeInFlight,
-      resuming: sessionLifecycle.resuming.get(),
-    });
-
     // Handle ?resume= first (must clean URL before loadRun)
     if (resumeMode) {
-      console.log("[DEBUG loadRun] handling ?resume= param", resumeMode);
       const clean = new URL(url);
       clean.searchParams.delete("resume");
       clean.searchParams.delete("scrollTo");
       replaceState(clean, {});
-      // IMPORTANT: update _prevRunUrl before returning so the replaceState-triggered
-      // callback doesn't process the same URL again as a new load.
       _prevRunUrl = id;
       sessionLifecycle.handleResume(resumeMode, id);
-      return;
+      return true;
     }
 
     // Handle ?scrollTo= for already-loaded runs
     if (scrollTo && store.run?.id === id && store.phase !== "loading") {
-      console.log("[DEBUG loadRun] handling ?scrollTo= param", scrollTo);
       const clean = new URL(url);
       clean.searchParams.delete("scrollTo");
       replaceState(clean, {});
       _prevRunUrl = id;
       tick().then(() => scrollToMessage(scrollTo));
-      return;
+      return true;
     }
 
     // Skip if URL hasn't changed
     const key = id;
-    if (key === _prevRunUrl) {
-      console.log("[DEBUG loadRun] skipping - URL unchanged, id=", id, "prev=" + _prevRunUrl);
-      return;
-    }
+    if (key === _prevRunUrl) return true;
     _prevRunUrl = key;
-
-    console.log("[DEBUG loadRun] new run ID detected, id=", id);
 
     middleware.subscribeCurrent(id, store);
 
     if (store.resumeInFlight || sessionLifecycle.resuming.get()) {
-      console.log("[DEBUG loadRun] skipping - resume in progress", {
-        resumeInFlight: store.resumeInFlight,
-        resuming: sessionLifecycle.resuming.get(),
-      });
-      return;
+      dbg("effect", "skip loadRun — resume in progress");
+      return true;
     }
 
     if (!id) {
-      console.log("[DEBUG loadRun] no id - resetting store");
       store.loadRun("", xtermRef());
       progressive.cancelProgressive();
-      return;
+      return true;
     }
 
-    const hasHydratedRunState =
-      store.timeline.length > 0 ||
-      store.tools.length > 0 ||
-      store.turnUsages.length > 0 ||
-      !!store.streamingText ||
-      !!store.thinkingText ||
-      !!store.error ||
-      store.sessionAlive;
-
-    console.log("[DEBUG loadRun] checking hydration", {
-      id,
-      phase: store.phase,
-      hasHydratedRunState,
-      runId: store.run?.id,
-      timelineLen: store.timeline.length,
-      toolsLen: store.tools.length,
-      turnUsagesLen: store.turnUsages.length,
-      sessionAlive: store.sessionAlive,
-    });
-
-    if (
-      store.run?.id === id &&
-      store.phase !== "empty" &&
-      store.phase !== "loading" &&
-      hasHydratedRunState
-    ) {
-      console.log("[DEBUG loadRun] skipping - run already hydrated", id, store.phase);
-      return;
+    // Skip if store already has an active session for this run (singleton persistence)
+    if (store.run?.id === id && store.sessionAlive) {
+      dbg("effect", "skip loadRun — session already alive for", id);
+      const scrollTo2 = url.searchParams.get("scrollTo");
+      if (scrollTo2) {
+        const clean = new URL(url);
+        clean.searchParams.delete("scrollTo");
+        replaceState(clean, {});
+        tick().then(() => scrollToMessage(scrollTo2));
+      }
+      return true;
     }
 
-    console.log("[DEBUG loadRun] calling ctrl.loadRunProgressive with id=", id);
     ctrl.loadRunProgressive(id, xtermRef());
+    return true;
+  }
+
+  page.subscribe((p) => {
+    if (!middleware.isStarted) {
+      _deferredLoad = true;
+      return;
+    }
+    _deferredLoad = false;
+    _tryLoadFromUrl(p.url);
+  });
+
+  // Deferred load: when middleware becomes ready, fire the pending URL load.
+  // This is a one-shot effect — only fires when transitioning from false→true.
+  $effect(() => {
+    if (!middlewareReady || !_deferredLoad) return;
+    _deferredLoad = false;
+    const url = new URL(window.location.href);
+    _tryLoadFromUrl(url);
   });
 
   // ── Handle scrollTo for already-loaded runs ──
