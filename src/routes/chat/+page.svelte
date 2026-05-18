@@ -205,6 +205,9 @@
     setScrollToInFlight: (v) => lifecycleRef.current?.setScrollToInFlight(v),
   });
 
+  /** Wired after lifecycle exists — drains deferred route reconcile without subscribing to SessionStore.resumeInFlight. */
+  const chatRouteRetryBridge = { flush: () => {} };
+
   // ── Page state (must precede handlers/lifecycle for TDZ) ──
   let currentEffort = $state("");
   let folderCwdOverride = $state("");
@@ -252,6 +255,7 @@
     setAuthOverview: (v) => lifecycleRef.current?.setAuthOverview(v),
     setLastContinuableRun: (v) => lifecycleRef.current?.setLastContinuableRun(v),
     getRewindCandidates: () => rewindCandidates,
+    onResumeFinally: () => chatRouteRetryBridge.flush(),
   });
 
   let lifecycle = useChatLifecycle({
@@ -320,6 +324,7 @@
   });
 
   lifecycleRef.current = lifecycle;
+  chatRouteRetryBridge.flush = () => lifecycle.flushDeferredRouteRetry();
 
   // ── Helpers ──
   function fillPrompt(text: string) {

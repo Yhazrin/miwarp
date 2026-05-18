@@ -1465,6 +1465,16 @@ export class SessionStore implements SessionEventSink {
     }
   }
 
+  private _replayStateLooksEmpty(): boolean {
+    return (
+      this.timeline.length === 0 &&
+      this.tools.length === 0 &&
+      !this.streamingText &&
+      !this.thinkingText &&
+      this.turnUsages.length === 0
+    );
+  }
+
   /** Fire-and-forget: serialize current state and write to IDB.
    *  Deferred to next event-loop tick so JSON.stringify doesn't block loadRun.
    *  Caller must check write guard before calling. */
@@ -1499,18 +1509,10 @@ export class SessionStore implements SessionEventSink {
   ): Promise<void> {
     const gen = ++this._loadGen;
     const loadStart = performance.now();
-    console.log(
-      "[DEBUG store.loadRun] START id=",
-      id,
-      "gen=",
-      gen,
-      "currentLoadGen=",
-      this._loadGen,
-    );
-    dbg("store", "loadRun id=", id, "gen=", gen);
+    dbg("store", "loadRun:start", { id: id || "(empty)", gen });
 
     if (!id) {
-      console.log("[DEBUG store.loadRun] no id - calling reset()");
+      dbg("store", "loadRun:reset-empty");
       this.reset();
       return;
     }
@@ -1519,7 +1521,7 @@ export class SessionStore implements SessionEventSink {
     this._setPhase("loading");
     this.run = null;
     this._clearContentState();
-    console.log("[DEBUG store.loadRun] state reset done, phase=", this.phase, "gen=", gen);
+    dbg("store", "loadRun:state-reset", { id, gen, phase: this.phase });
 
     if (xtermRef) {
       xtermRef.clear();
@@ -1527,22 +1529,13 @@ export class SessionStore implements SessionEventSink {
     }
 
     try {
-      console.log("[DEBUG store.loadRun] calling api.getRun id=", id);
       this.run = await api.getRun(id);
-      console.log(
-        "[DEBUG store.loadRun] api.getRun returned id=",
+      dbg("store", "loadRun:getRun", {
         id,
-        "run=",
-        this.run ? { id: this.run.id, status: this.run.status, name: this.run.name } : null,
-      );
+        run: this.run ? { id: this.run.id, status: this.run.status, name: this.run.name } : null,
+      });
       if (gen !== this._loadGen) {
         dbg("store", "stale after getRun, gen=", gen);
-        console.log(
-          "[DEBUG store.loadRun] STALE after getRun, gen=",
-          gen,
-          "currentLoadGen=",
-          this._loadGen,
-        );
         return;
       }
       // Cache for notification title lookup
@@ -1624,13 +1617,7 @@ export class SessionStore implements SessionEventSink {
               // Treat an empty snapshot as suspect and fall back to events.jsonl replay.
               // This recovers from earlier buggy/stale IDB snapshots that can otherwise
               // make a real historical session look blank forever in the desktop app.
-              const snapshotLooksEmpty =
-                this.timeline.length === 0 &&
-                this.tools.length === 0 &&
-                !this.streamingText &&
-                !this.thinkingText &&
-                this.turnUsages.length === 0;
-              if (snapshotLooksEmpty) {
+              if (this._replayStateLooksEmpty()) {
                 dbgWarn("store", "snapshot hit produced empty state, forcing full replay", { id });
                 snapshotHit = false;
                 forceFullReplay = true;
@@ -1686,43 +1673,32 @@ export class SessionStore implements SessionEventSink {
 
         if (!snapshotHit || forceFullReplay) {
           // Miss or snapshot corrupted → normal path
-          console.log(
-            "[DEBUG store.loadRun] fetching busEvents for id=",
+          dbg("store", "loadRun:fetch-events", {
             id,
-            "forceFullReplay=",
             forceFullReplay,
-          );
+          });
           const busEvents = await api.getBusEvents(id);
-          console.log("[DEBUG store.loadRun] got busEvents count=", busEvents.length, "id=", id);
+          dbg("store", "loadRun:events", { id, count: busEvents.length });
           if (gen !== this._loadGen) {
             dbg("store", "stale after getBusEvents, gen=", gen);
-            console.log("[DEBUG store.loadRun] STALE after getBusEvents, gen=", gen);
             return;
           }
-          console.log(
-            "[DEBUG store.loadRun] applying event batch, count=",
-            busEvents.length,
-            "id=",
+          dbg("store", "loadRun:apply-events", {
+            count: busEvents.length,
             id,
-          );
+          });
           const ms = await this.applyEventBatchAsync(busEvents, {
             replayOnly: isTerminal,
             isStale: () => gen !== this._loadGen,
           });
-          console.log(
-            "[DEBUG store.loadRun] applyEventBatchAsync returned, ms=",
+          dbg("store", "loadRun:events-applied", {
             ms,
-            "id=",
             id,
-            "timelineLen=",
-            this.timeline.length,
-          );
+            timelineLen: this.timeline.length,
+          });
           // Stale: a newer load owns the store; do not touch _isLoadingReplay.
           if (ms === null) {
-            console.log(
-              "[DEBUG store.loadRun] applyEventBatchAsync returned null (stale), id=",
-              id,
-            );
+            dbg("store", "loadRun:events-stale", { id, gen });
             return;
           }
           reducerMs = ms;
@@ -1734,7 +1710,7 @@ export class SessionStore implements SessionEventSink {
         }
 
         this._isLoadingReplay = false;
-        console.log("[DEBUG store.loadRun] snapshot path complete", {
+        dbg("store", "loadRun:replay-complete", {
           total: Math.round(performance.now() - loadStart),
           snapshotHit,
           reducer: Math.round(reducerMs),
@@ -1790,8 +1766,7 @@ export class SessionStore implements SessionEventSink {
           this._setPhase("ready");
         }
       }
-      console.log("[DEBUG store.loadRun] phase transition done", {
-        phaseBefore: "loading",
+      dbg("store", "loadRun:phase-settled", {
         phaseAfter: this.phase,
         runStatus: st,
         isTerminal,
@@ -1816,7 +1791,7 @@ export class SessionStore implements SessionEventSink {
         dbg("store", "restore run model from meta:", this.run.model);
         this.model = this.run.model;
       }
-      console.log("[DEBUG store.loadRun] END success", {
+      dbg("store", "loadRun:success", {
         id,
         gen,
         phase: this.phase,
@@ -1829,7 +1804,7 @@ export class SessionStore implements SessionEventSink {
       this._isLoadingReplay = false;
       this.error = String(e);
       this._setPhase("failed");
-      console.log("[DEBUG store.loadRun] END error", { id, gen, error: String(e) });
+      dbgWarn("store", "loadRun:error", { id, gen, error: String(e) });
     }
   }
 
@@ -2062,10 +2037,8 @@ export class SessionStore implements SessionEventSink {
 
   private _resumeGuard = new OpGuard();
 
-  /** Whether a resume/continue/fork operation is currently in progress. */
-  get resumeInFlight(): boolean {
-    return this._resumeGuard.busy;
-  }
+  /** True while `resumeSession()` holds the resume guard — reactive for routing / flush effects. */
+  resumeInFlight = $state(false);
 
   /** Resume/continue/fork a finished session. Returns the target run ID.
    *  Avoids flash by NOT calling reset() — clears content fields individually
@@ -2079,6 +2052,7 @@ export class SessionStore implements SessionEventSink {
     attachments?: Attachment[],
   ): Promise<string | null> {
     if (!this._resumeGuard.acquire()) return null;
+    this.resumeInFlight = true;
 
     try {
       let run = await api.getRun(runId);
@@ -2146,11 +2120,26 @@ export class SessionStore implements SessionEventSink {
       let snapshotHit = false;
       if (isStream) {
         if (snapshotBody && this._tryApplySnapshot(snapshotBody)) {
-          snapshotHit = true;
-          this._wsSubscribeWithSeq(runId, this._lastProcessedSeq);
-        } else {
-          // Fallback: snapshot corrupted → re-fetch events if needed
+          if (this._replayStateLooksEmpty()) {
+            dbgWarn("store", "resumeSession: empty snapshot, forcing full replay", { runId });
+            snapshotCache
+              .deleteSnapshot(runId)
+              .catch((e) => dbgWarn("snapshot", "delete failed", e));
+            this._clearContentState();
+            snapshotBody = null;
+          } else {
+            snapshotHit = true;
+            this._wsSubscribeWithSeq(runId, this._lastProcessedSeq);
+          }
+        }
+
+        if (!snapshotHit) {
+          // Snapshot miss/corruption/empty snapshot → re-fetch events if needed.
           if (!busEvents.length && snapshotBody) {
+            busEvents = await api.getBusEvents(runId);
+            if (!this._resumeGuard.isMounted) return runId;
+          }
+          if (!busEvents.length && !snapshotBody) {
             busEvents = await api.getBusEvents(runId);
             if (!this._resumeGuard.isMounted) return runId;
           }
@@ -2244,6 +2233,7 @@ export class SessionStore implements SessionEventSink {
       return null;
     } finally {
       this._resumeGuard.release();
+      this.resumeInFlight = false;
     }
   }
 
@@ -2350,6 +2340,7 @@ export class SessionStore implements SessionEventSink {
   /** Call from page cleanup to prevent stale async writes after unmount. */
   unmountGuards(): void {
     this._resumeGuard.unmount();
+    this.resumeInFlight = false;
     this._clearSpawnTimeout();
   }
 

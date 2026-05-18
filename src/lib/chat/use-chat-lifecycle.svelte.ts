@@ -610,12 +610,36 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   // are registered before we subscribe to bus events.
   let _prevRunUrl = "";
   let _deferredLoad = false;
-  let pendingRetryAfterResume = $state(false);
+  let pendingRetryAfterResume = false;
+  /** Supersedes stale microtask flushes when multiple resume completions race. */
+  let routeRetryFlushGeneration = 0;
+  let lastWatchdogReconcileKey = "";
 
-  function _tryLoadFromUrl(url: URL): boolean {
+  function getXtermHandle(): { clear(): void; writeText(s: string): void } | undefined {
+    return xtermRef() as { clear(): void; writeText(s: string): void } | undefined;
+  }
+
+  function getXtermWriter(): { writeText(s: string): void } | undefined {
+    return xtermRef() as { writeText(s: string): void } | undefined;
+  }
+
+  function _tryLoadFromUrl(url: URL, reason = "page-store"): boolean {
     const id = url.searchParams.get("run") ?? "";
     const resumeMode = url.searchParams.get("resume") as import("$lib/types").SessionMode | null;
     const scrollTo = url.searchParams.get("scrollTo");
+
+    dbg("chat-route", "reconcile:start", {
+      reason,
+      runId: id || "(empty)",
+      resumeMode,
+      scrollTo,
+      prevRunUrl: _prevRunUrl || "(empty)",
+      storeRunId: store.run?.id ?? null,
+      phase: store.phase,
+      timelineLen: store.timeline.length,
+      sessionAlive: store.sessionAlive,
+      middlewareStarted: middleware.isStarted,
+    });
 
     // Handle ?resume= first: strip only resume param (preserve scrollTo). Do NOT mark URL as reconciled yet.
     if (resumeMode) {
@@ -634,7 +658,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
         .handleResume(resumeMode, id)
         .catch((e) => {
           dbgWarn("chat", "handleResume rejected", e);
-          void ctrl.loadRunProgressive(id, xtermRef());
+          void ctrl.loadRunProgressive(id, getXtermHandle());
         })
         .finally(() => {
           untrack(() => {
@@ -651,7 +675,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
               dbgWarn("chat", "resume settled with empty timeline — fallback loadRunProgressive", {
                 rid,
               });
-              void ctrl.loadRunProgressive(rid, xtermRef());
+              void ctrl.loadRunProgressive(rid, getXtermHandle());
             }
           });
         });
@@ -686,7 +710,8 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     const storeAlignedWithUrl = (!id && emptySessionReady) || storeMatchesRunUrl;
 
     if (urlUnchanged && storeAlignedWithUrl) {
-      dbg("chat", "url→store reconcile: noop (already aligned)", {
+      dbg("chat-route", "reconcile:noop", {
+        reason,
         runId: id || "(empty)",
         phase: store.phase,
         timelineLen: store.timeline.length,
@@ -695,7 +720,8 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     }
 
     if (urlUnchanged && !storeAlignedWithUrl) {
-      dbgWarn("chat", "url→store reconcile: same URL but store drift — forcing resync", {
+      dbgWarn("chat-route", "reconcile:store-drift", {
+        reason,
         runId: id || "(empty)",
         storeRunId: store.run?.id ?? null,
         phase: store.phase,
@@ -703,7 +729,8 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
         timelineLen: store.timeline.length,
       });
     } else {
-      dbg("chat", "url→store reconcile: apply", {
+      dbg("chat-route", "reconcile:apply", {
+        reason,
         from: _prevRunUrl || "(empty)",
         to: key || "(empty)",
         prevStoreRun: store.run?.id ?? null,
@@ -712,8 +739,12 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     }
 
     if (sessionLifecycle.resuming.get() || store.resumeInFlight) {
-      pendingRetryAfterResume = true;
-      dbg("effect", "defer url load — resume in progress", { runId: id || "(empty)" });
+      dbg("chat-route", "reconcile:defer-resume", { reason, runId: id || "(empty)" });
+      // Avoid flipping deferred retry inside the same synchronous reconcile turn as load/resume —
+      // queue so resume handlers finish scheduling before we latch retry intent.
+      queueMicrotask(() => {
+        pendingRetryAfterResume = true;
+      });
       return true;
     }
 
@@ -722,14 +753,14 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     middleware.subscribeCurrent(id, store);
 
     if (!id) {
-      store.loadRun("", xtermRef());
+      void store.loadRun("", getXtermHandle());
       progressive.cancelProgressive();
       return true;
     }
 
     // Skip if store already has an active session for this run (singleton persistence)
     if (store.run?.id === id && store.sessionAlive) {
-      dbg("effect", "skip loadRun — session already alive for", id);
+      dbg("chat-route", "reconcile:skip-live-session", { reason, id });
       const scrollTo2 = url.searchParams.get("scrollTo");
       if (scrollTo2) {
         const clean = new URL(url);
@@ -740,8 +771,33 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
       return true;
     }
 
-    ctrl.loadRunProgressive(id, xtermRef());
+    void ctrl.loadRunProgressive(id, getXtermHandle());
     return true;
+  }
+
+  /** Invoked from handleResume.finally — not reactive; drains deferred URL reconcile after resume lifts. */
+  function flushDeferredRouteRetry() {
+    const gen = ++routeRetryFlushGeneration;
+    queueMicrotask(() => {
+      if (gen !== routeRetryFlushGeneration) return;
+      if (!pendingRetryAfterResume) return;
+      pendingRetryAfterResume = false;
+      untrack(() => {
+        _tryLoadFromUrl(new URL(window.location.href), "resume-settled");
+      });
+    });
+  }
+
+  function currentRouteNeedsReconcile(): boolean {
+    const url = get(page).url;
+    const id = url.searchParams.get("run") ?? "";
+    if (!id) return false;
+    if (url.searchParams.get("resume") || url.searchParams.get("scrollTo")) return true;
+    if (sessionLifecycle.resuming.get() || store.resumeInFlight) return false;
+    if (store.phase === "loading") return false;
+    if (store.run?.id !== id) return true;
+    if (store.sessionAlive || store.streamingText || store.thinkingText) return false;
+    return store.timeline.length === 0 && store.phase !== "empty";
   }
 
   // Route subscriptions MUST mount/unmount with the chat page — no orphaned subscribers after
@@ -783,7 +839,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
           }
         }
         setFolderCwdOverride(folder);
-        store.loadRun("", xtermRef());
+        void store.loadRun("", getXtermHandle());
       }
       const clean = new URL(url);
       clean.searchParams.delete("folder");
@@ -793,33 +849,55 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     });
 
     const unsubPageRunSync = page.subscribe((p) => {
+      lastWatchdogReconcileKey = "";
       if (!middleware.isStarted) {
         _deferredLoad = true;
         return;
       }
       _deferredLoad = false;
-      _tryLoadFromUrl(p.url);
+      _tryLoadFromUrl(p.url, "page-store");
     });
 
+    function onRouteReconcile(ev: Event) {
+      const detail = (ev as CustomEvent<{ runId?: string; reason?: string }>).detail;
+      const url = new URL(window.location.href);
+      if (detail?.runId) {
+        url.pathname = "/chat";
+        url.search = "";
+        url.searchParams.set("run", detail.runId);
+      }
+      _tryLoadFromUrl(url, detail?.reason ?? "external-event");
+    }
+    window.addEventListener("ocv:chat-route-reconcile", onRouteReconcile);
+
+    const reconcileWatchdog = window.setInterval(() => {
+      if (!middleware.isStarted || !currentRouteNeedsReconcile()) return;
+      const url = get(page).url;
+      const id = url.searchParams.get("run") ?? "";
+      const key = [
+        id,
+        store.run?.id ?? "",
+        store.phase,
+        store.timeline.length,
+        store.streamingText.length,
+        store.thinkingText.length,
+      ].join(":");
+      if (key === lastWatchdogReconcileKey) return;
+      lastWatchdogReconcileKey = key;
+      _tryLoadFromUrl(url, "watchdog");
+    }, 750);
+
     return () => {
+      window.clearInterval(reconcileWatchdog);
+      window.removeEventListener("ocv:chat-route-reconcile", onRouteReconcile);
       unsubPageFolderHost();
       unsubPageRunSync();
       dbg("chat", "page subscriptions disposed (route sync teardown)");
     };
   });
 
-  // After resume UI finishes, retry current URL so a session click during resume is not "eaten".
-  $effect(() => {
-    if (!middlewareReady) return;
-    void store.run?.id;
-    void store.phase;
-    if (sessionLifecycle.resuming.get()) return;
-    if (!pendingRetryAfterResume) return;
-    pendingRetryAfterResume = false;
-    untrack(() => {
-      _tryLoadFromUrl(new URL(window.location.href));
-    });
-  });
+  // Deferred route retry after resume is handled via handleResume.finally → flushDeferredRouteRetry()
+  // (wired from +page). A reactive $effect on store.resumeInFlight caused nested effect depth blowups.
 
   // Deferred load: when middleware becomes ready, fire the pending URL load.
   $effect(() => {
@@ -827,7 +905,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     if (!ready || !_deferredLoad) return;
     _deferredLoad = false;
     const url = new URL(window.location.href);
-    _tryLoadFromUrl(url);
+    _tryLoadFromUrl(url, "middleware-ready");
   });
 
   // ── Handle scrollTo for already-loaded runs ──
@@ -904,23 +982,8 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     const url = get(page).url;
     const runId = url.searchParams.get("run") ?? "";
 
-    if (agentResult.status === "fulfilled") {
-      agentSettings = agentResult.value;
-      setCachedAgentSettings(agentSettings);
-      try {
-        const cliCfg = await api.getCliConfig();
-        const cliEffort = cliCfg.effortLevel;
-        setCurrentEffort(typeof cliEffort === "string" && cliEffort ? cliEffort : "");
-      } catch {
-        setCurrentEffort("");
-      }
-      if (agentSettings?.effort) {
-        api.updateAgentSettings("claude", { effort: "" }).catch(() => {});
-      }
-    } else {
-      dbgWarn("chat", "failed to load agent settings:", agentResult.reason);
-    }
-
+    // Unlock welcome quick actions as soon as listRuns settles — do NOT block on getCliConfig().
+    // CLI config IPC can hang while the rest of the UI (preset buttons) should still render.
     if (runsResult.status === "fulfilled") {
       lastContinuableRun =
         runsResult.value.find(
@@ -937,9 +1000,27 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
         return;
       }
     } else {
+      lastContinuableRun = null;
       dbgWarn("chat", "failed to load runs for continue:", runsResult.reason);
     }
     welcomeQuickActionsReady = true;
+
+    if (agentResult.status === "fulfilled") {
+      agentSettings = agentResult.value;
+      setCachedAgentSettings(agentSettings);
+      try {
+        const cliCfg = await api.getCliConfig();
+        const cliEffort = cliCfg.effortLevel;
+        setCurrentEffort(typeof cliEffort === "string" && cliEffort ? cliEffort : "");
+      } catch {
+        setCurrentEffort("");
+      }
+      if (agentSettings?.effort) {
+        api.updateAgentSettings("claude", { effort: "" }).catch(() => {});
+      }
+    } else {
+      dbgWarn("chat", "failed to load agent settings:", agentResult.reason);
+    }
 
     // Phase 3: permission mode init
     if (!store.permissionModeSetByUser) {
@@ -1085,7 +1166,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     // Pipe handler: chat-delta / chat-done (Codex pipe mode)
     middleware.setPipeHandler({
       onDelta(delta) {
-        store.handleChatDelta(delta.text, xtermRef());
+        store.handleChatDelta(delta.text, getXtermWriter());
       },
       onDone(done) {
         store.handleChatDone(done);
@@ -1492,5 +1573,6 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     // Permission mode maps (exposed for page's handlePermissionModeChange)
     APP_TO_CLI_MODE,
     CLI_TO_APP_MODE,
+    flushDeferredRouteRetry,
   };
 }

@@ -69,6 +69,7 @@
   import { onMount, setContext, untrack } from "svelte";
   import { installPreventRootOverscroll } from "$lib/utils/prevent-root-overscroll";
   import { dbg, dbgWarn } from "$lib/utils/debug";
+  import { installSvelteRuntimeDiagnostics } from "$lib/utils/svelte-runtime-diagnostics";
   import { setMascotOverrides } from "$lib/stores/mascot-overrides.svelte";
   import { backgroundStore } from "$lib/stores/background-store.svelte";
   import { fpsCounter } from "$lib/utils/perf";
@@ -938,6 +939,8 @@
 
   // Use onMount for initialization (not $effect - avoids accidental reactive tracking)
   onMount(() => {
+    installSvelteRuntimeDiagnostics();
+
     // Prevent root overscroll / rubber-band on macOS
     const cleanupOverscroll = installPreventRootOverscroll();
 
@@ -1598,6 +1601,25 @@
     goto("/chat");
   }
 
+  function chatRunHref(runId: string): string {
+    const params = new URLSearchParams({ run: runId });
+    return `/chat?${params.toString()}`;
+  }
+
+  function selectConversation(runId: string) {
+    const href = chatRunHref(runId);
+    const current = `${$page.url.pathname}${$page.url.search}`;
+    if (current === href) {
+      window.dispatchEvent(
+        new CustomEvent("ocv:chat-route-reconcile", {
+          detail: { runId, reason: "sidebar-same-url-click" },
+        }),
+      );
+      return;
+    }
+    goto(href);
+  }
+
   function newChatInFolder(cwd: string) {
     projectCwd = cwd;
     goto(`/chat?folder=${encodeURIComponent(cwd)}`);
@@ -1683,7 +1705,8 @@
     _prevAutoExpandRunId = runId;
     _prevAutoExpandRunsLen = runsLen;
     if (!runId) return;
-    const next = autoExpandForRun(runId, enrichedProjectFolders, expandedProjects);
+    const currentExpanded = untrack(() => expandedProjects);
+    const next = autoExpandForRun(runId, enrichedProjectFolders, currentExpanded);
     if (next) {
       dbg("layout", "auto-expand for run", { selectedRunId: runId });
       expandedProjects = next;
@@ -1698,7 +1721,8 @@
     _prevAutoExpandCwd = cwd;
     if (!cwd) return;
     const folderKey = `cwd:${cwd}`;
-    const next = expandForProjectChange(folderKey, expandedProjects);
+    const currentExpanded = untrack(() => expandedProjects);
+    const next = expandForProjectChange(folderKey, currentExpanded);
     if (next) {
       dbg("layout", "auto-expand for cwd change", { cwd });
       expandedProjects = next;
@@ -1706,12 +1730,18 @@
   });
 
   // Persist expandedProjects + prune stale keys (only after first successful load)
+  let pruneExpandedQueued = false;
   $effect(() => {
     if (!runsLoadSucceededOnce) return;
     const validKeys = new Set(enrichedProjectFolders.map((f) => f.folderKey));
     const pruned = [...expandedProjects].filter((k) => validKeys.has(k));
-    if (pruned.length !== expandedProjects.size) {
-      expandedProjects = new Set(pruned);
+    const shouldPrune = pruned.length !== expandedProjects.size;
+    if (shouldPrune && !pruneExpandedQueued) {
+      pruneExpandedQueued = true;
+      queueMicrotask(() => {
+        pruneExpandedQueued = false;
+        expandedProjects = new Set(pruned);
+      });
     }
     localStorage.setItem("ocv:expanded-projects", JSON.stringify(pruned));
   });
@@ -2718,7 +2748,7 @@
                       expanded={expandedProjects.has(folder.folderKey)}
                       {selectedRunId}
                       onToggle={() => toggleProject(folder.folderKey)}
-                      onSelectConversation={(runId) => goto(`/chat?run=${runId}`)}
+                      onSelectConversation={selectConversation}
                       onResume={(runId, mode) => goto(`/chat?run=${runId}&resume=${mode}`)}
                       onDelete={requestDeleteConversation}
                       onMoveToFolder={requestMoveToFolder}

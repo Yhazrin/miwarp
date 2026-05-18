@@ -122,6 +122,8 @@ export interface UseChatHandlersOptions {
   setLastContinuableRun: (v: TaskRun | null) => void;
   // Rewind candidates (derived)
   getRewindCandidates: () => RewindCandidate[];
+  /** Called after every handleResume completes — used to flush deferred route reconcile without reactive loops. */
+  onResumeFinally?: () => void;
 }
 
 export function useChatHandlers(opts: UseChatHandlersOptions) {
@@ -148,6 +150,7 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
     setAuthOverview,
     setLastContinuableRun,
     getRewindCandidates: _getRewindCandidates,
+    onResumeFinally,
   } = opts;
 
   const { projectCommands } = preload;
@@ -827,6 +830,7 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
       }
     } finally {
       resuming = false;
+      onResumeFinally?.();
     }
   }
 
