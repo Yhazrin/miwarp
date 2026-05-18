@@ -1555,19 +1555,10 @@ export class SessionStore implements SessionEventSink {
       // Suppress isThinking during event replay (prevents "thinking" flash on session switch)
       this._isLoadingReplay = true;
 
-      // Determine phase from run status
+      // Keep phase as "loading" until events are fully loaded to prevent
+      // the template from rendering an empty timeline during the gap.
       const st = this.run.status;
-      if (st === "running") {
-        this._setPhase("running");
-      } else if (st === "completed" || st === "failed" || st === "stopped") {
-        this._setPhase(st as SessionPhase);
-      } else {
-        this._setPhase("ready");
-      }
-
-      // Terminal runs use replayOnly — historical run_state events must not
-      // overwrite the phase we just set from run.status. Same pattern as resumeSession.
-      const isTerminal = TERMINAL_PHASES.includes(this.phase);
+      const isTerminal = TERMINAL_PHASES.includes(st);
 
       if (this.useStreamSession) {
         let reducerMs = 0;
@@ -1721,6 +1712,22 @@ export class SessionStore implements SessionEventSink {
         }
         if (hasHistory && !this.isRunning && xtermRef) {
           xtermRef.writeText(`\r\n\x1b[90m--- Session ended ---\x1b[0m\r\n`);
+        }
+      }
+
+      // Now that events are loaded, set the actual phase from run status.
+      // This was deferred from the top of loadRun to keep phase="loading"
+      // during event fetch, preventing the template from rendering empty content.
+      // Skip if snapshot path already set a valid phase (e.g. "idle").
+      if (this.phase === "loading") {
+        if (st === "running") {
+          this._setPhase("running");
+        } else if (st === "idle") {
+          this._setPhase("idle");
+        } else if (isTerminal) {
+          this._setPhase(st as SessionPhase);
+        } else {
+          this._setPhase("ready");
         }
       }
 

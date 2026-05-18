@@ -50,7 +50,7 @@ export const SESSION_ALIVE_PHASES: readonly string[] = ["spawning", "running", "
  */
 const VALID_TRANSITIONS: Record<SessionPhase, Set<SessionPhase>> = {
   empty: new Set(["loading", "ready", "spawning"]),
-  loading: new Set(["ready", "running", "completed", "failed", "stopped", "empty"]),
+  loading: new Set(["ready", "running", "completed", "failed", "stopped", "idle", "empty"]),
   ready: new Set(["spawning", "running", "empty", "loading"]),
   spawning: new Set(["running", "failed", "stopped", "idle", "empty", "loading"]),
   running: new Set(["idle", "completed", "failed", "stopped", "empty", "loading"]),
