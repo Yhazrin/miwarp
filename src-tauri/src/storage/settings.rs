@@ -600,6 +600,31 @@ pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, St
             v.as_str().filter(|s| !s.is_empty()).map(|s| s.to_string())
         };
     }
+    if let Some(v) = patch.get("show_token_usage_report") {
+        all.user.show_token_usage_report = v.as_bool().unwrap_or(true);
+    }
+    if let Some(v) = patch.get("process_visibility").and_then(|v| v.as_str()) {
+        if matches!(
+            v,
+            "output" | "guided" | "developer" | "expert"
+        ) {
+            all.user.process_visibility = v.to_string();
+        }
+    }
+    if let Some(v) = patch.get("session_status_colors") {
+        if v.is_null() {
+            all.user.session_status_colors = None;
+        } else {
+            match serde_json::from_value::<crate::models::SessionStatusColors>(v.clone()) {
+                Ok(colors) => {
+                    all.user.session_status_colors = Some(colors);
+                }
+                Err(e) => {
+                    log::warn!("[storage/settings] invalid session_status_colors: {}", e);
+                }
+            }
+        }
+    }
     all.user.updated_at = crate::models::now_iso();
     save(&all)?;
     Ok(all.user)

@@ -20,7 +20,8 @@
 
 {#if status === "done"}
   <svg
-    class="{sizeClass[size]} text-emerald-500 dark:text-emerald-400 shrink-0"
+    class="{sizeClass[size]} shrink-0"
+    style="color: var(--miwarp-status-done);"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -30,7 +31,8 @@
   >
 {:else if status === "error"}
   <svg
-    class="{sizeClass[size]} text-destructive shrink-0"
+    class="{sizeClass[size]} shrink-0"
+    style="color: var(--miwarp-status-failed);"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -43,8 +45,12 @@
   <div
     class="{sizeClass[
       size
-    ]} rounded-full border-2 border-border border-t-muted-foreground animate-spin shrink-0"
+    ]} rounded-full border-2 border-border animate-spin shrink-0"
+    style="border-top-color: var(--miwarp-status-running);"
   ></div>
 {:else}
-  <div class="{sizeClass[size]} rounded-full bg-muted-foreground/30 shrink-0"></div>
+  <div
+    class="{sizeClass[size]} rounded-full shrink-0"
+    style="background-color: var(--miwarp-status-idle);"
+  ></div>
 {/if}

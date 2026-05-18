@@ -24,6 +24,7 @@ pub mod runs;
 pub mod screenshot;
 pub mod session;
 pub mod settings;
+pub mod skill_sources;
 pub mod stats;
 pub mod team_runs;
 pub mod teams;

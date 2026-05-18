@@ -6,6 +6,8 @@
   import { IMAGE_TYPES } from "$lib/utils/file-types";
   import type { ChatMessage, Attachment } from "$lib/types";
   import AgentIdentity from "./AgentIdentity.svelte";
+  import type { ProcessVisibility } from "$lib/utils/process-visibility";
+  import { shouldShowRawDebug } from "$lib/utils/process-visibility";
 
   let {
     message,
@@ -17,6 +19,9 @@
     platformId,
     model,
     animated = false,
+    processVisibility = "developer" as ProcessVisibility,
+    debugRunId = "",
+    debugSessionId = "",
   }: {
     message: ChatMessage;
     attachments?: Attachment[];
@@ -27,6 +32,9 @@
     platformId?: string;
     model?: string;
     animated?: boolean;
+    processVisibility?: ProcessVisibility;
+    debugRunId?: string;
+    debugSessionId?: string;
   } = $props();
 
   function isImage(att: Attachment): boolean {
@@ -304,57 +312,54 @@
               <p class="whitespace-pre-wrap">{message.content}</p>
             {/if}
           {:else}
-            {#if thinkingText}
-              <div
-                class="mb-3 rounded-xl border border-[hsl(var(--miwarp-accent-primary)/0.18)] overflow-hidden"
-                style="background: hsl(var(--miwarp-bg-deep) / 0.72); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);"
-              >
+            {#if thinkingText && processVisibility !== "output"}
+              {#if thinkingCollapsed}
                 <button
-                  class="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-[hsl(var(--miwarp-status-info))] hover:bg-[hsl(var(--miwarp-accent-primary)/0.06)] transition-colors"
-                  onclick={() => (thinkingCollapsed = !thinkingCollapsed)}
+                  class="mb-2 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] text-[hsl(var(--miwarp-status-info))] opacity-70 hover:opacity-100 transition-opacity"
+                  onclick={() => (thinkingCollapsed = false)}
+                  title={t("common_expand")}
                 >
-                  <svg
-                    class="h-3 w-3 shrink-0 transition-transform duration-200 {thinkingCollapsed
-                      ? ''
-                      : 'rotate-90'}"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg
-                  >
-                  <svg
-                    class="h-3.5 w-3.5 shrink-0 opacity-70"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
+                  <svg class="h-2.5 w-2.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M12 2a8 8 0 0 1 8 8c0 5-8 13-8 13S4 15 4 10a8 8 0 0 1 8-8z" />
                     <circle cx="12" cy="10" r="3" />
                   </svg>
                   <span>{t("chat_thoughtProcess")}</span>
-                  <span class="ml-auto text-[10px] opacity-50"
-                    >{thinkingCollapsed
-                      ? t("common_expand") || "展开"
-                      : t("common_collapse") || "收起"}</span
-                  >
+                  <span class="opacity-50">·</span>
+                  <span class="opacity-50">{t("common_expand")}</span>
                 </button>
-                {#if !thinkingCollapsed}
-                  <div
-                    class="border-t border-[hsl(var(--miwarp-accent-primary)/0.12)] px-3 py-2.5 text-xs text-[hsl(var(--miwarp-text-secondary))] whitespace-pre-wrap leading-relaxed"
-                  >
-                    {thinkingText.trimEnd()}
+              {:else}
+                <div class="mb-2 max-h-28 overflow-hidden rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.18)] bg-[hsl(var(--miwarp-bg-deep)/0.6)]">
+                  <div class="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] text-[hsl(var(--miwarp-status-info))]">
+                    <svg class="h-2.5 w-2.5 shrink-0 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 2a8 8 0 0 1 8 8c0 5-8 13-8 13S4 15 4 10a8 8 0 0 1 8-8z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    <span class="font-medium">{t("chat_thoughtProcess")}</span>
+                    <button
+                      class="ml-auto opacity-50 hover:opacity-100 transition-opacity"
+                      onclick={() => (thinkingCollapsed = true)}
+                      title={t("common_collapse")}
+                    >
+                      <svg class="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m18 15-6-6-6 6" />
+                      </svg>
+                    </button>
                   </div>
-                {/if}
-              </div>
+                  <div class="border-t border-[hsl(var(--miwarp-accent-primary)/0.12)] px-2.5 py-2 text-[11px] leading-relaxed text-[hsl(var(--miwarp-text-secondary))] overflow-y-auto overscroll-y-contain max-h-[calc(7rem-2.25rem)]">
+                    <pre class="whitespace-pre-wrap break-words font-mono">{thinkingText.trimEnd()}</pre>
+                  </div>
+                </div>
+              {/if}
             {/if}
             <div class="prose-chat">
               <MarkdownContent text={message.content} />
             </div>
+            {#if shouldShowRawDebug(processVisibility) && (!!debugRunId || !!debugSessionId)}
+              <div class="mt-2 font-mono text-[10px] text-muted-foreground/50 space-y-0.5">
+                {#if debugRunId}<div>run_id {debugRunId}</div>{/if}
+                {#if debugSessionId}<div>session_id {debugSessionId}</div>{/if}
+              </div>
+            {/if}
           {/if}
         </div>
       </div>

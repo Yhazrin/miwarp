@@ -34,6 +34,7 @@
   import McpConfiguredPanel from "$lib/components/McpConfiguredPanel.svelte";
   import HookManager from "$lib/components/HookManager.svelte";
   import AgentsPanel from "$lib/components/AgentsPanel.svelte";
+  import SkillSourceManager from "$lib/components/SkillSourceManager.svelte";
   import PluginInstaller from "$lib/components/PluginInstaller.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import type {
@@ -52,6 +53,7 @@
     (sectionCtx?.active ?? "skills") as
       | "overview"
       | "skills"
+      | "sources"
       | "mcp"
       | "hooks"
       | "plugins"
@@ -237,7 +239,7 @@
     const urlSection = params.get("section");
     if (
       urlSection &&
-      ["overview", "skills", "mcp", "hooks", "plugins", "agents"].includes(urlSection)
+      ["overview", "skills", "sources", "mcp", "hooks", "plugins", "agents"].includes(urlSection)
     ) {
       if (sectionCtx) sectionCtx.active = urlSection;
     }
@@ -1926,6 +1928,12 @@
                             : 'bg-muted text-muted-foreground'}">{skill.scope}</span
                         >
                       {/if}
+                      {#if skill.remoteRef?.sourceType === "feishu"}
+                        <span
+                          class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                          >{t("skillSources_badge_feishu")}</span
+                        >
+                      {/if}
                       <span class="text-[11px] text-muted-foreground truncate"
                         >{skill.description}</span
                       >
@@ -1979,6 +1987,20 @@
           </div>
         {/if}
       </div>
+    </div>
+
+    <!-- Skill sources (Feishu MVP) -->
+    <div class="space-y-4" class:hidden={activeTab !== "sources"}>
+      <SkillSourceManager
+        projectCwd={projectCwd}
+        onSkillsReload={async () => {
+          try {
+            skills = await listStandaloneSkills(projectCwd || undefined);
+          } catch {
+            dbgWarn("plugins", "reload skills after remote install failed");
+          }
+        }}
+      />
     </div>
 
     <!-- ═══════════════════════════════════════════════════════ -->

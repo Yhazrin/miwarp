@@ -1,29 +1,31 @@
 <script lang="ts">
-  import type { SessionInfoData, ContextSnapshot } from "$lib/types";
-  import type { TurnUsage } from "$lib/stores/types";
+  import type { SessionInfoData } from "$lib/types";
   import { t } from "$lib/i18n/index.svelte";
   import { memoryStore } from "$lib/stores/memory-store.svelte";
   import { parseMemoryItems } from "$lib/utils/memory-items";
   import { sortByDisplayPriority } from "$lib/utils/memory-helpers";
   import { formatTokenCount } from "$lib/utils/format";
   import * as api from "$lib/api";
-  import ContextHistoryPanel from "$lib/components/ContextHistoryPanel.svelte";
+  import GitWorktreePanel from "$lib/components/GitWorktreePanel.svelte";
+  import type { ProcessVisibility } from "$lib/utils/process-visibility";
+  import { shouldShowContextDetails } from "$lib/utils/process-visibility";
 
   let {
     cwd = "",
     runId = "",
     sessionInfo = null,
-    contextHistory = [],
-    turnUsages = [],
     toolStats,
     onSwitchToActivity,
     onSwitchToFiles,
+    worktreePath = null,
+    parentCwd = null,
+    worktreeBranch = null,
+    creationMode = null,
+    processVisibility = "developer" as ProcessVisibility,
   }: {
     cwd?: string;
     runId?: string;
     sessionInfo?: SessionInfoData | null;
-    contextHistory?: ContextSnapshot[];
-    turnUsages?: TurnUsage[];
     toolStats: {
       totalToolCount: number;
       reads: number;
@@ -34,6 +36,11 @@
     };
     onSwitchToActivity?: () => void;
     onSwitchToFiles?: () => void;
+    worktreePath?: string | null;
+    parentCwd?: string | null;
+    worktreeBranch?: string | null;
+    creationMode?: "single" | "worktree" | string | null;
+    processVisibility?: ProcessVisibility;
   } = $props();
 
   // ── CLAUDE.md state ──
@@ -177,6 +184,13 @@
     return items;
   });
 
+  let sessionContextItemsVisible = $derived.by(() => {
+    if (shouldShowContextDetails(processVisibility)) return sessionContextItems;
+    return sessionContextItems.filter((x) => x.label === "cwd" || x.label === "run");
+  });
+
+  let minimalOutputWorkspace = $derived(processVisibility === "output");
+
   // ── Copy single memory item ──
   function copyItem(text: string) {
     navigator.clipboard.writeText(text).catch(() => {});
@@ -208,7 +222,15 @@
     </div>
   {:else}
     <div class="p-3 space-y-3">
+      {#if minimalOutputWorkspace}
+        <p
+          class="text-[11px] text-muted-foreground rounded-lg border border-border/30 bg-muted/20 px-2 py-1.5 leading-relaxed"
+        >
+          {t("workspaceContext_outputMinimalHint")}
+        </p>
+      {/if}
       <!-- Instructions / CLAUDE.md card -->
+      {#if !minimalOutputWorkspace}
       <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
         <div class="flex items-center gap-2 px-3 py-2">
           <svg
@@ -375,9 +397,18 @@
           </div>
         {/if}
       </div>
+      {/if}
+
+      <GitWorktreePanel
+        {cwd}
+        {worktreePath}
+        {parentCwd}
+        {worktreeBranch}
+        {creationMode}
+      />
 
       <!-- Session Context card -->
-      {#if sessionContextItems.length > 0}
+      {#if sessionContextItemsVisible.length > 0}
         <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
           <div class="flex items-center gap-2 px-3 py-2">
             <svg
@@ -398,7 +429,7 @@
             </span>
           </div>
           <div class="px-3 pb-2 space-y-1">
-            {#each sessionContextItems as ctx (ctx.label)}
+            {#each sessionContextItemsVisible as ctx (ctx.label)}
               <div class="flex items-center gap-2 text-[11px]">
                 <span class="text-muted-foreground/50 shrink-0 w-12 text-right">{ctx.label}</span>
                 <span class="text-foreground/70 truncate">{ctx.value}</span>
@@ -409,6 +440,7 @@
       {/if}
 
       <!-- Recent Activity summary -->
+      {#if !minimalOutputWorkspace}
       <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
         <div class="flex items-center gap-2 px-3 py-2">
           <svg
@@ -453,35 +485,6 @@
           </div>
         {/if}
       </div>
-
-      <!-- Context Usage (reuse ContextHistoryPanel for detailed view) -->
-      {#if contextHistory.length > 0 || (turnUsages && turnUsages.length > 0)}
-        <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
-          <details>
-            <summary
-              class="flex items-center gap-2 px-3 py-2 cursor-pointer select-none hover:bg-accent/20 transition-colors"
-            >
-              <svg
-                class="h-3.5 w-3.5 text-muted-foreground shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-              <span class="text-[11px] font-semibold text-foreground">
-                {t("workspaceContext_contextUsage")}
-              </span>
-            </summary>
-            <div class="border-t border-border/30">
-              <ContextHistoryPanel history={contextHistory} {turnUsages} {sessionInfo} />
-            </div>
-          </details>
-        </div>
       {/if}
     </div>
   {/if}

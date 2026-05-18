@@ -11,6 +11,11 @@
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
   import SessionPanelTabs from "$lib/components/chat/SessionPanelTabs.svelte";
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
+  import type { ProcessVisibility } from "$lib/utils/process-visibility";
+  import {
+    PROCESS_VISIBILITY_LEVELS,
+    shouldShowContextDetails,
+  } from "$lib/utils/process-visibility";
 
   let {
     run = null,
@@ -64,6 +69,8 @@
     onToolPanelTabChange,
     toolPanelIndicators,
     fuseToolRailCapsule = false,
+    processVisibility = "developer" as ProcessVisibility,
+    onProcessVisibilityChange,
   }: {
     run?: TaskRun | null;
     agent?: string;
@@ -117,6 +124,8 @@
     toolPanelIndicators?: { context: boolean; files: boolean; tasks: boolean };
     /** Widen the top capsule so fused panel tabs align with the unified control row. */
     fuseToolRailCapsule?: boolean;
+    processVisibility?: ProcessVisibility;
+    onProcessVisibilityChange?: (mode: ProcessVisibility) => void;
   } = $props();
 
   $effect(() => {
@@ -247,6 +256,41 @@
   let moreMenuBtnEl: HTMLButtonElement | undefined = $state();
   let moreMenuEl: HTMLDivElement | undefined = $state();
 
+  let pvMenuOpen = $state(false);
+  let pvMenuBtnEl: HTMLButtonElement | undefined = $state();
+  let pvMenuEl: HTMLDivElement | undefined = $state();
+
+  function processVisibilityLabel(mode: ProcessVisibility): string {
+    switch (mode) {
+      case "output":
+        return t("processVisibility_mode_output");
+      case "guided":
+        return t("processVisibility_mode_guided");
+      case "expert":
+        return t("processVisibility_mode_expert");
+      default:
+        return t("processVisibility_mode_developer");
+    }
+  }
+
+  function processVisibilityShort(mode: ProcessVisibility): string {
+    switch (mode) {
+      case "output":
+        return t("processVisibility_short_output");
+      case "guided":
+        return t("processVisibility_short_guided");
+      case "expert":
+        return t("processVisibility_short_expert");
+      default:
+        return t("processVisibility_short_developer");
+    }
+  }
+
+  function selectProcessVisibility(mode: ProcessVisibility) {
+    pvMenuOpen = false;
+    if (mode !== processVisibility) onProcessVisibilityChange?.(mode);
+  }
+
   function positionDropdown() {
     if (!modelBtnEl) return;
     const rect = modelBtnEl.getBoundingClientRect();
@@ -356,12 +400,26 @@
       ) {
         moreMenuOpen = false;
       }
+      if (
+        pvMenuOpen &&
+        pvMenuBtnEl &&
+        !pvMenuBtnEl.contains(e.target as Node) &&
+        pvMenuEl &&
+        !pvMenuEl.contains(e.target as Node)
+      ) {
+        pvMenuOpen = false;
+      }
     }
     function onDocKeydown(e: KeyboardEvent) {
       if (dropdownOpen && e.key === "Escape") {
         dropdownOpen = false;
         e.preventDefault();
         e.stopPropagation(); // Prevent bubble to window → keybindingStore.dispatch → chat:interrupt
+      }
+      if (pvMenuOpen && e.key === "Escape") {
+        pvMenuOpen = false;
+        e.preventDefault();
+        e.stopPropagation();
       }
     }
     document.addEventListener("mousedown", onDocClick, true);
@@ -503,17 +561,15 @@
           title={t("toolActivity_tabInfo")}
         >
           <span
-            class="inline-block h-2 w-2 rounded-full {running
-              ? 'bg-miwarp-status-success animate-slow-pulse'
-              : 'bg-foreground/20'}"
+            class="inline-block h-2 w-2 rounded-full {running ? 'animate-slow-pulse' : ''}"
+            style="background-color: var(--miwarp-status-{running ? 'running' : 'idle'});"
           ></span>
           <span class="text-foreground font-medium">{agent}</span>
         </button>
       {:else}
         <span
-          class="inline-block h-2 w-2 rounded-full {running
-            ? 'bg-miwarp-status-success animate-pulse'
-            : 'bg-foreground/20'}"
+          class="inline-block h-2 w-2 rounded-full {running ? 'animate-pulse' : ''}"
+          style="background-color: var(--miwarp-status-{running ? 'running' : 'idle'});"
         ></span>
       {/if}
 
@@ -561,6 +617,50 @@
         </span>
       {/if}
 
+      {#if onProcessVisibilityChange}
+        <span class="text-foreground/30 hidden sm:inline">&middot;</span>
+        <div class="relative shrink-0">
+          <button
+            bind:this={pvMenuBtnEl}
+            class="flex max-w-[7.5rem] sm:max-w-none items-center gap-0.5 rounded border border-transparent px-1 py-0.5 -my-0.5 text-[10px] text-foreground/65 hover:text-foreground hover:bg-accent hover:border-border/60 transition-colors"
+            onclick={() => (pvMenuOpen = !pvMenuOpen)}
+            title={t("settings_processVisibility")}
+          >
+            <span class="hidden sm:inline">{t("statusbar_processView")}</span>
+            <span class="sm:hidden font-medium">{processVisibilityShort(processVisibility)}</span>
+            <span class="hidden sm:inline truncate font-medium"
+              >{processVisibilityLabel(processVisibility)}</span
+            >
+            <svg
+              class="h-2.5 w-2.5 shrink-0 text-foreground/35"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"><path d="m6 9 6 6 6-6" /></svg
+            >
+          </button>
+          {#if pvMenuOpen}
+            <div
+              bind:this={pvMenuEl}
+              class="absolute right-0 top-full z-50 mt-1 min-w-[8rem] rounded-lg border border-border/50 bg-popover py-1 shadow-md"
+            >
+              {#each PROCESS_VISIBILITY_LEVELS as mode (mode)}
+                <button
+                  type="button"
+                  class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-accent/80 {processVisibility ===
+                  mode
+                    ? 'bg-muted/50 font-medium text-foreground'
+                    : 'text-muted-foreground'}"
+                  onclick={() => selectProcessVisibility(mode)}
+                >
+                  {processVisibilityLabel(mode)}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/if}
+
       {#if model}
         <span class="text-foreground/30">&middot;</span>
         {#if onModelChange}
@@ -586,8 +686,8 @@
         {/if}
       {/if}
 
-      <!-- Context bar (Tier 1 — always visible when available) -->
-      {#if contextWindow && contextWindow > 0 && contextUtilization != null}
+      <!-- Context bar (Tier 1 — developer / expert) -->
+      {#if shouldShowContextDetails(processVisibility) && contextWindow && contextWindow > 0 && contextUtilization != null}
         {@const pct = Math.round(contextUtilization * 100)}
         {@const barColor =
           contextWarningLevel === "critical"
@@ -815,7 +915,7 @@
 
       <!-- Expand/collapse chevron -->
       <button
-        class="rounded p-0.5 text-foreground/30 hover:text-foreground/60 hover:bg-accent transition-colors"
+        class="p-0.5 text-foreground/30 hover:text-foreground/60 hover:bg-accent transition-colors"
         onclick={() => (expanded = !expanded)}
         title={expanded ? t("statusbar_collapse") : t("statusbar_expand")}
       >
@@ -883,12 +983,12 @@
           </button>
         {/if}
 
-        {#if cost > 0}
+        {#if shouldShowContextDetails(processVisibility) && cost > 0}
           <span class="text-foreground/30 shrink-0">&middot;</span>
           <span class="shrink-0">{formatCost(cost)}</span>
         {/if}
 
-        {#if inputTokens > 0 || outputTokens > 0}
+        {#if shouldShowContextDetails(processVisibility) && (inputTokens > 0 || outputTokens > 0)}
           <span class="text-foreground/30 shrink-0">&middot;</span>
           <span
             class="shrink-0"

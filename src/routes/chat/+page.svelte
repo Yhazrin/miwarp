@@ -5,7 +5,7 @@
   import { getTransport } from "$lib/transport";
   import * as api from "$lib/api";
   import {
-    SessionStore,
+    sessionStore,
     KeybindingStore,
     getEventMiddleware,
     loadCliInfo,
@@ -62,6 +62,7 @@
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
   import HookReviewCard from "$lib/components/HookReviewCard.svelte";
   import ViewModeToggle from "$lib/components/ViewModeToggle.svelte";
+  import GuidedToolTimelineRow from "$lib/components/GuidedToolTimelineRow.svelte";
   import ContextUsageGrid from "$lib/components/ContextUsageGrid.svelte";
   import CostSummaryView from "$lib/components/CostSummaryView.svelte";
   import { parseContextMarkdown } from "$lib/utils/context-parser";
@@ -82,6 +83,17 @@
   import { ansiToHtml, hasAnsiCodes } from "$lib/utils/ansi";
   import { randomSpinnerVerb } from "$lib/utils/spinner-verbs";
   import { type TurnUsage, classifyError } from "$lib/stores/types";
+  import {
+    normalizeProcessVisibility,
+    getCachedProcessVisibility,
+    persistCachedProcessVisibility,
+    shouldShowTimelineCommandOutput,
+    shouldShowContextDetails,
+    shouldMountFullToolCardInOutputMode,
+    shouldMountFullToolCardInGuidedMode,
+    timelineHasHiddenRoutineWorkRunning,
+    type ProcessVisibility,
+  } from "$lib/utils/process-visibility";
   import {
     mergeWithVirtual,
     mergeProjectCommands,
@@ -116,7 +128,7 @@
   const keybindingStore = getContext<KeybindingStore>("keybindings");
 
   // ── Store + Middleware ──
-  const store = new SessionStore();
+  const store = sessionStore;
   const middleware = getEventMiddleware();
 
   // ── UI-only state (not in store) ──
@@ -150,6 +162,19 @@
   });
   const hasCreatedFiles = $derived(createdFiles.length > 0);
   let sidebarCollapsed = $state(false);
+
+  /** Use server settings when loaded; until then last-known cache avoids a dev-mode flash for Output users. */
+  const processVisibility = $derived(
+    settings != null
+      ? normalizeProcessVisibility(settings.process_visibility)
+      : getCachedProcessVisibility(),
+  );
+
+  $effect(() => {
+    if (processVisibility === "output") {
+      sidebarCollapsed = true;
+    }
+  });
   /** Reactive cwd override for new-chat-in-folder (cleared when a run is loaded) */
   let folderCwdOverride = $state("");
   let chatAreaRef: HTMLDivElement | undefined = $state();
@@ -1056,12 +1081,19 @@
 
   // ── Thinking timer + panel ──
   let thinkingElapsed = $state(0);
-  let thinkingExpanded = $state(true);
+  let thinkingExpanded = $state(false);
   let spinnerVerb = $state(randomSpinnerVerb());
   /** Plain flag (not $state) — avoids $effect dependency cycle with thinkingElapsed. */
   let thinkingVerbPicked = false;
   /** Debounced visibility — prevents spinner flash on fast CLI commands (/context, /cost). */
   let thinkingVisible = $state(false);
+
+  /** Next thinking stream starts collapsed; also fold when a turn ends and text clears. */
+  $effect(() => {
+    if (!store.thinkingText) {
+      thinkingExpanded = false;
+    }
+  });
 
   /** Slash command processing indicator — shown before thinkingVisible kicks in. */
   let processingSlashCmd = $state<string | null>(null);
@@ -1222,6 +1254,7 @@
     // Phase 1: load settings (required by everything else)
     try {
       settings = await api.getUserSettings();
+      persistCachedProcessVisibility(normalizeProcessVisibility(settings.process_visibility));
       store.authMode = settings.auth_mode ?? "cli";
       remoteHosts = settings.remote_hosts ?? [];
       // Restore last target selection (must validate against current settings — a
@@ -3282,6 +3315,21 @@
     sidebarCollapsed = !sidebarCollapsed;
   }
 
+  async function handleProcessVisibilityChange(mode: ProcessVisibility) {
+    const prev = settings;
+    persistCachedProcessVisibility(mode);
+    if (settings) settings = { ...settings, process_visibility: mode };
+    try {
+      settings = await api.updateUserSettings({ process_visibility: mode });
+      persistCachedProcessVisibility(normalizeProcessVisibility(settings.process_visibility));
+    } catch {
+      settings = prev;
+      if (prev) {
+        persistCachedProcessVisibility(normalizeProcessVisibility(prev.process_visibility));
+      }
+    }
+  }
+
   async function scrollToTool(toolUseId: string) {
     // Clear filter first — target may be filtered out, and burst/visible indices
     // depend on the unfiltered timeline.
@@ -3868,8 +3916,8 @@
       turnUsages={store.turnUsages}
       activeTaskCount={store.activeBackgroundTasks.length}
       mode={store.run ? (store.useStreamSession ? "Stream" : "CLI") : ""}
-      toolsCount={sidebarCollapsed ? sidebarToolsCount : 0}
-      onToolsClick={sidebarCollapsed ? toggleSidebar : undefined}
+      toolsCount={sidebarToolsCount}
+      onToolsClick={toggleSidebar}
       remoteHostName={store.remoteHostName}
       onRename={store.run ? handleRename : undefined}
       authSourceLabel={store.authSourceLabel}
@@ -3883,10 +3931,16 @@
       fuseToolRailCapsule={true}
       {toolPanelActiveTab}
       onToolPanelTabChange={(tab) => {
-        toolPanelActiveTab = tab;
-        if (sidebarCollapsed) sidebarCollapsed = false;
+        if (tab === toolPanelActiveTab && !sidebarCollapsed) {
+          sidebarCollapsed = true;
+        } else {
+          toolPanelActiveTab = tab;
+          if (sidebarCollapsed) sidebarCollapsed = false;
+        }
       }}
       {toolPanelIndicators}
+      {processVisibility}
+      onProcessVisibilityChange={handleProcessVisibilityChange}
     />
 
     <!-- MCP panel (floating below status bar) -->
@@ -3909,7 +3963,7 @@
       {#if store.useStreamSession}
         <!-- API mode: chat messages -->
         <div
-          class="h-full overflow-y-auto pb-40"
+          class="h-full overflow-y-auto pb-40 relative z-0"
           style="overflow-anchor:auto"
           bind:this={chatAreaRef}
           onscroll={handleChatScroll}
@@ -4100,7 +4154,7 @@
                   </div>
                 </div>
               {/if}
-              {#if toolNamesInTimeline.length >= 2}
+              {#if toolNamesInTimeline.length >= 2 && processVisibility !== "output"}
                 <div class="chat-content-width py-2" data-export-exclude>
                   <div class="flex flex-wrap items-center gap-1.5">
                     <button
@@ -4135,10 +4189,12 @@
                   </div>
                 </div>
               {/if}
-              <!-- View mode toggle (Normal / Verbose / Summary) -->
-              <div class="chat-content-width pb-1" data-export-exclude>
-                <ViewModeToggle />
-              </div>
+              {#if processVisibility !== "output"}
+                <!-- View mode toggle (Normal / Verbose / Summary) -->
+                <div class="chat-content-width pb-1" data-export-exclude>
+                  <ViewModeToggle />
+                </div>
+              {/if}
               {#if filteredTimeline.length - renderLimit > 0}
                 <div bind:this={topSentinel} aria-hidden="true" class="h-px w-full"></div>
               {/if}
@@ -4153,7 +4209,7 @@
                       (timelineIdIndex.get(entry.id) ?? 0) <
                         (timelineIdIndex.get(lastClearSepId) ?? 0)}
                   >
-                    {#if batchGroups.has(i)}
+                    {#if batchGroups.has(i) && processVisibility !== "output"}
                       {@const batch = batchGroups.get(i)}
                       {#if batch}
                         <div class="w-full py-1">
@@ -4163,7 +4219,7 @@
                         </div>
                       {/if}
                     {/if}
-                    {#if toolBursts.has(i)}
+                    {#if toolBursts.has(i) && processVisibility !== "output"}
                       {@const burst = toolBursts.get(i)}
                       {#if burst}
                         <div class="w-full py-1">
@@ -4179,7 +4235,7 @@
                     {/if}
                     {#if usageAnnotations.has(i)}
                       {@const tu = usageAnnotations.get(i)}
-                      {#if tu && settings?.show_token_usage_report !== false}
+                      {#if tu && settings?.show_token_usage_report !== false && shouldShowContextDetails(processVisibility)}
                         <div class="w-full py-1.5">
                           <div class="chat-content-width">
                             <div class="flex items-center gap-3">
@@ -4236,67 +4292,87 @@
                         platformId={store.platformId ?? undefined}
                         model={store.run?.model ?? store.model}
                         animated={i === lastAssistantIdx && store.isRunning}
+                        {processVisibility}
+                        debugRunId={store.run?.id}
+                        debugSessionId={store.run?.session_id ?? undefined}
                       />
                     {:else if entry.kind === "tool"}
                       {#if claudeTurnStarts.has(i)}
                         <div class="pt-3"></div>
                       {/if}
                       {#if !burstHiddenIndices.has(i)}
-                        <div class="w-full py-1" id="tool-{entry.tool.tool_use_id}">
-                          <div class="chat-content-width">
-                            <InlineToolCard
-                              tool={entry.tool}
-                              subTimeline={entry.subTimeline}
-                              runId={store.run?.id ?? ""}
-                              {fetchToolResult}
-                              onAnswer={entry.tool.tool_name === "AskUserQuestion" &&
-                              (entry.tool.status === "running" ||
-                                entry.tool.status === "ask_pending")
-                                ? (answer) => handleToolAnswer(entry.tool.tool_use_id, answer)
-                                : undefined}
-                              onApprove={handleToolApprove}
-                              onPermissionRespond={handlePermissionRespond}
-                              onExitPlanClearContext={handleExitPlanClearContext}
-                              taskNotifications={store.taskNotifications}
-                              planContent={entry.tool.tool_name === "ExitPlanMode" &&
-                              (entry.tool.status === "permission_prompt" ||
-                                entry.tool.status === "success")
-                                ? getPlanContentForExitPlan(entry.id)
-                                : undefined}
-                              latestPlanTool={entry.kind === "tool" &&
-                                entry.tool.tool_use_id === latestPlanToolId}
-                              showPermissionInPanel={showPermissionPanel}
-                              onPreviewFile={openPreviewForPath}
-                            />
+                        {#if processVisibility === "output" && !shouldMountFullToolCardInOutputMode(entry.tool)}
+                          <div
+                            id="tool-{entry.tool.tool_use_id}"
+                            class="pointer-events-none h-0 w-full scroll-mt-24 overflow-hidden"
+                            aria-hidden="true"
+                          ></div>
+                        {:else if processVisibility === "guided" && !shouldMountFullToolCardInGuidedMode(entry.tool)}
+                          <div class="w-full py-1" id="tool-{entry.tool.tool_use_id}">
+                            <div class="chat-content-width">
+                              <GuidedToolTimelineRow tool={entry.tool} />
+                            </div>
+                          </div>
+                        {:else}
+                          <div class="w-full py-1" id="tool-{entry.tool.tool_use_id}">
+                            <div class="chat-content-width">
+                              <InlineToolCard
+                                tool={entry.tool}
+                                subTimeline={entry.subTimeline}
+                                runId={store.run?.id ?? ""}
+                                {fetchToolResult}
+                                {processVisibility}
+                                onAnswer={entry.tool.tool_name === "AskUserQuestion" &&
+                                (entry.tool.status === "running" ||
+                                  entry.tool.status === "ask_pending")
+                                  ? (answer) => handleToolAnswer(entry.tool.tool_use_id, answer)
+                                  : undefined}
+                                onApprove={handleToolApprove}
+                                onPermissionRespond={handlePermissionRespond}
+                                onExitPlanClearContext={handleExitPlanClearContext}
+                                taskNotifications={store.taskNotifications}
+                                planContent={entry.tool.tool_name === "ExitPlanMode" &&
+                                (entry.tool.status === "permission_prompt" ||
+                                  entry.tool.status === "success")
+                                  ? getPlanContentForExitPlan(entry.id)
+                                  : undefined}
+                                latestPlanTool={entry.kind === "tool" &&
+                                  entry.tool.tool_use_id === latestPlanToolId}
+                                showPermissionInPanel={showPermissionPanel}
+                                permissionMode={store.permissionMode}
+                                onPreviewFile={openPreviewForPath}
+                              />
+                            </div>
+                          </div>
+                        {/if}
+                      {/if}
+                    {:else if entry.kind === "command_output"}
+                      {#if shouldShowTimelineCommandOutput(processVisibility, entry.content)}
+                        <div class="w-full py-2">
+                          <div class="chat-content-width pl-7">
+                            <div
+                              class="command-output rounded-lg border border-border/40 bg-[#1a1b26] px-4 py-3 text-sm overflow-x-auto"
+                            >
+                              {#if entry.content.includes("## Context Usage")}
+                                <ContextUsageGrid text={entry.content} />
+                              {:else if entry.content.includes("Total cost:") && entry.content.includes("Total duration")}
+                                <CostSummaryView text={entry.content} />
+                              {:else if entry.content
+                                .trimStart()
+                                .startsWith("Version ") && entry.content.includes("•")}
+                                <ReleaseNotesCard text={entry.content} />
+                              {:else if hasAnsiCodes(entry.content)}
+                                <pre
+                                  class="whitespace-pre font-mono text-xs leading-relaxed text-[#c0caf5] m-0">{@html ansiToHtml(
+                                    entry.content,
+                                  )}</pre>
+                              {:else}
+                                <MarkdownContent text={entry.content} />
+                              {/if}
+                            </div>
                           </div>
                         </div>
                       {/if}
-                    {:else if entry.kind === "command_output"}
-                      <div class="w-full py-2">
-                        <div class="chat-content-width pl-7">
-                          <div
-                            class="command-output rounded-lg border border-border/40 bg-[#1a1b26] px-4 py-3 text-sm overflow-x-auto"
-                          >
-                            {#if entry.content.includes("## Context Usage")}
-                              <ContextUsageGrid text={entry.content} />
-                            {:else if entry.content.includes("Total cost:") && entry.content.includes("Total duration")}
-                              <CostSummaryView text={entry.content} />
-                            {:else if entry.content
-                              .trimStart()
-                              .startsWith("Version ") && entry.content.includes("•")}
-                              <ReleaseNotesCard text={entry.content} />
-                            {:else if hasAnsiCodes(entry.content)}
-                              <pre
-                                class="whitespace-pre font-mono text-xs leading-relaxed text-[#c0caf5] m-0">{@html ansiToHtml(
-                                  entry.content,
-                                )}</pre>
-                            {:else}
-                              <MarkdownContent text={entry.content} />
-                            {/if}
-                          </div>
-                        </div>
-                      </div>
-                    {:else if entry.kind === "separator"}
                       <div class="w-full py-3">
                         <div class="chat-content-width">
                           <div class="flex items-center gap-3">
@@ -4314,6 +4390,24 @@
                   </div>
                 {/if}
               {/each}
+
+              <!-- Output mode: single friendly placeholder while routine tools run (no per-tool cards). -->
+              {#if processVisibility === "output" && store.isRunning && timelineHasHiddenRoutineWorkRunning(store.timeline)}
+                <div class="w-full py-2 animate-fade-in">
+                  <div class="chat-content-width pl-7">
+                    <div
+                      class="flex items-center gap-2.5 rounded-lg border border-border/40 bg-muted/25 px-3 py-2.5 text-xs text-muted-foreground"
+                      data-output-working-hint
+                    >
+                      <span
+                        class="h-2 w-2 shrink-0 rounded-full bg-primary/70 animate-pulse"
+                        aria-hidden="true"
+                      ></span>
+                      <span>{t("chat_outputWorkingHint")}</span>
+                    </div>
+                  </div>
+                </div>
+              {/if}
 
               <!-- Rewind markers (independent array, not in store.timeline) -->
               {#each rewindMarkers as marker, mi (marker.id)}
@@ -4411,18 +4505,17 @@
 
               <!-- Thinking panel (extended thinking) -->
               {#if store.thinkingText}
-                <div class="w-full animate-fade-in">
-                  <div class="chat-content-width py-2">
-                    <button
-                      class="glass-card w-full text-left px-3 py-2 transition-colors group"
-                      onclick={() => (thinkingExpanded = !thinkingExpanded)}
-                    >
-                      <div class="flex items-center gap-2">
+                {#if thinkingExpanded}
+                  <div class="w-full animate-fade-in">
+                    <div class="chat-content-width py-1">
+                      <div
+                        class="max-h-28 overflow-hidden rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.18)] bg-[hsl(var(--miwarp-bg-deep)/0.6)]"
+                      >
                         <div
-                          class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[hsl(var(--miwarp-status-info)/0.15)]"
+                          class="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] text-[hsl(var(--miwarp-status-info))]"
                         >
                           <svg
-                            class="h-3 w-3 text-[hsl(var(--miwarp-status-info))]"
+                            class="h-2.5 w-2.5 shrink-0 opacity-70"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
@@ -4435,20 +4528,42 @@
                             />
                             <path d="M10 22h4" />
                           </svg>
+                          <span class="font-medium">{t("chat_thinking")}</span>
+                          <button
+                            class="ml-auto opacity-50 hover:opacity-100 transition-opacity"
+                            onclick={() => (thinkingExpanded = false)}
+                          >
+                            <svg
+                              class="h-2.5 w-2.5"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            >
+                              <path d="m18 15-6-6-6 6" />
+                            </svg>
+                          </button>
                         </div>
-                        <span class="text-xs font-medium text-[hsl(var(--miwarp-status-info))]"
-                          >{t("chat_thinking")}</span
+                        <div
+                          class="border-t border-[hsl(var(--miwarp-accent-primary)/0.12)] px-2.5 py-2 overflow-y-auto overscroll-y-contain max-h-[calc(7rem-2.25rem)]"
                         >
-                        {#if store.isRunning && !store.streamingText}
-                          <div
-                            class="h-2.5 w-2.5 rounded-full border-2 border-[hsl(var(--miwarp-status-info)/0.3)] border-t-[hsl(var(--miwarp-status-info))] animate-spin"
-                            data-export-exclude
-                          ></div>
-                        {/if}
+                          <pre
+                            class="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-[hsl(var(--miwarp-status-info)/0.7)]">{store.thinkingText.trimEnd()}</pre>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                {:else}
+                  <div class="w-full animate-fade-in">
+                    <div class="chat-content-width py-1">
+                      <button
+                        class="inline-flex items-center gap-1.5 rounded-full px-2 py-px text-[10px] text-[hsl(var(--miwarp-status-info))] opacity-70 hover:opacity-100 hover:bg-[hsl(var(--miwarp-status-info)/0.08)] transition-all"
+                        onclick={() => (thinkingExpanded = true)}
+                      >
                         <svg
-                          class="h-3 w-3 text-muted-foreground/40 shrink-0 transition-transform ml-auto {thinkingExpanded
-                            ? 'rotate-180'
-                            : ''}"
+                          class="h-2.5 w-2.5 shrink-0"
                           viewBox="0 0 24 24"
                           fill="none"
                           stroke="currentColor"
@@ -4456,18 +4571,18 @@
                           stroke-linecap="round"
                           stroke-linejoin="round"
                         >
-                          <path d="m6 9 6 6 6-6" />
+                          <path
+                            d="M12 2a8 8 0 0 0-8 8c0 3.4 2.1 6.3 5 7.4V19a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1.6c2.9-1.1 5-4 5-7.4a8 8 0 0 0-8-8z"
+                          />
+                          <path d="M10 22h4" />
                         </svg>
-                      </div>
-                      {#if thinkingExpanded}
-                        <div class="mt-2 pl-7 max-h-60 overflow-y-auto">
-                          <pre
-                            class="text-xs font-mono whitespace-pre-wrap break-words text-[hsl(var(--miwarp-status-info)/0.7)] leading-relaxed">{store.thinkingText.trimEnd()}</pre>
-                        </div>
-                      {/if}
-                    </button>
+                        <span>{t("chat_thinking")}</span>
+                        <span class="opacity-50">·</span>
+                        <span class="opacity-50">{t("common_expand")}</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
+                {/if}
               {/if}
 
               <!-- Streaming text -->
@@ -4871,93 +4986,107 @@
     {/if}
 
     {#if store.sessionAlive || !store.run || store.phase === "empty" || store.phase === "ready" || TERMINAL_PHASES.includes(store.phase)}
-      <div
-        class="pointer-events-none sticky bottom-0 z-20 bg-gradient-to-t from-background/95 via-background/70 to-transparent px-2 pb-5 pt-6 backdrop-blur-md [mask-image:linear-gradient(to_top,black_60%,transparent)]"
-      >
-        <div class="pointer-events-auto">
-          <PromptInput
-            bind:this={promptRef}
-            agent={store.agent}
-            running={store.isActivelyRunning}
-            disabled={inputBlockedByPermission}
-            pendingPermission={store.hasInlinePermission}
-            hasRun={!!store.run}
-            sessionAlive={store.sessionAlive}
-            canResume={!store.sessionAlive &&
-              canResumeNow(store.run, store.phase, agentSettings?.no_session_persistence ?? false)}
-            useStreamSession={store.useStreamSession}
-            isRemote={store.isRemote}
-            cliCommands={store.sessionInitReceived && store.sessionCommands.length > 0
-              ? store.sessionCommands
-              : mergeProjectCommands(getCliCommands(), projectCommands)}
-            models={effectiveModels}
-            currentModel={store.model}
-            permissionMode={store.permissionMode}
-            cwd={store.effectiveCwd ||
-              folderCwdOverride ||
-              localStorage.getItem("ocv:project-cwd") ||
-              ""}
-            authMode={store.authMode}
-            platformId={store.platformId ?? "anthropic"}
-            platformCredentials={settings?.platform_credentials ?? []}
-            onSend={sendMessage}
-            onBtwSend={handleBtwSend}
-            onAgentChange={undefined}
-            onInterrupt={() => store.interrupt()}
-            onModelSwitch={handleModelChange}
-            onPermissionModeChange={store.features.permissionModeSwitch
-              ? handlePermissionModeChange
-              : undefined}
-            onVirtualCommand={handleVirtualCommand}
-            fastModeState={store.fastModeState}
-            onFastModeSwitch={handleFastModeSwitch}
-            onPlatformChange={handlePlatformChange}
-            {authOverview}
-            authSourceLabel={store.authSourceLabel}
-            authSourceCategory={store.authSourceCategory}
-            apiKeySource={store.apiKeySource}
-            onAuthModeChange={handleAuthModeChange}
-            {localProxyStatuses}
-            showAuthBadge={!welcomeVisible}
-            onShortcutHelp={() => (shortcutHelpOpen = !shortcutHelpOpen)}
-            availableSkills={store.availableSkills}
-            {skillItems}
-            agents={preloadedAgents.map((a) => ({ name: a.name, description: a.description }))}
-            hasStash={!!stashedInput}
-            {userHistory}
-            runId={store.run?.id ?? ""}
-            onRestoreStash={() => {
-              if (stashedInput) {
-                promptRef?.restoreSnapshot(stashedInput);
-                stashedInput = null;
-                showChatToast(t("toast_stashRestored"));
-                dbg("chat", "stash restored via badge click");
-              }
-            }}
-            onValueChange={handleInputValueChange}
-            contextWindow={store.contextWindow}
-          />
-          {#if teamHintVisible}
-            <div
-              class="mx-2 mb-1 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-muted-foreground animate-in fade-in slide-in-from-bottom-1 duration-150"
-            >
-              <svg
-                class="h-3.5 w-3.5 shrink-0 text-primary"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+      <div class="pointer-events-none sticky bottom-0 z-[120] isolate">
+        <!--
+          Backdrop blur MUST NOT wrap PromptInput: it creates a containing block / stacking context
+          that traps position:fixed dropdowns (permission mode, skills) under the chat scroll layer.
+          Keep blur on this sibling layer only.
+        -->
+        <div
+          class="pointer-events-none absolute inset-x-0 bottom-0 top-[-2rem] z-0 bg-gradient-to-t from-background/95 via-background/70 to-transparent backdrop-blur-md [mask-image:linear-gradient(to_top,black_60%,transparent)]"
+          aria-hidden="true"
+        ></div>
+        <div class="relative z-10 px-2 pb-3 pt-4">
+          <div class="pointer-events-auto">
+            <PromptInput
+              bind:this={promptRef}
+              agent={store.agent}
+              running={store.isActivelyRunning}
+              disabled={inputBlockedByPermission}
+              pendingPermission={store.hasInlinePermission}
+              hasRun={!!store.run}
+              sessionAlive={store.sessionAlive}
+              canResume={!store.sessionAlive &&
+                canResumeNow(
+                  store.run,
+                  store.phase,
+                  agentSettings?.no_session_persistence ?? false,
+                )}
+              useStreamSession={store.useStreamSession}
+              isRemote={store.isRemote}
+              cliCommands={store.sessionInitReceived && store.sessionCommands.length > 0
+                ? store.sessionCommands
+                : mergeProjectCommands(getCliCommands(), projectCommands)}
+              models={effectiveModels}
+              currentModel={store.model}
+              permissionMode={store.permissionMode}
+              cwd={store.effectiveCwd ||
+                folderCwdOverride ||
+                localStorage.getItem("ocv:project-cwd") ||
+                ""}
+              authMode={store.authMode}
+              platformId={store.platformId ?? "anthropic"}
+              platformCredentials={settings?.platform_credentials ?? []}
+              onSend={sendMessage}
+              onBtwSend={handleBtwSend}
+              onAgentChange={undefined}
+              onInterrupt={() => store.interrupt()}
+              onModelSwitch={handleModelChange}
+              onPermissionModeChange={store.features.permissionModeSwitch
+                ? handlePermissionModeChange
+                : undefined}
+              onVirtualCommand={handleVirtualCommand}
+              fastModeState={store.fastModeState}
+              onFastModeSwitch={handleFastModeSwitch}
+              onPlatformChange={handlePlatformChange}
+              {authOverview}
+              authSourceLabel={store.authSourceLabel}
+              authSourceCategory={store.authSourceCategory}
+              apiKeySource={store.apiKeySource}
+              onAuthModeChange={handleAuthModeChange}
+              {localProxyStatuses}
+              showAuthBadge={!welcomeVisible}
+              onShortcutHelp={() => (shortcutHelpOpen = !shortcutHelpOpen)}
+              availableSkills={store.availableSkills}
+              {skillItems}
+              agents={preloadedAgents.map((a) => ({ name: a.name, description: a.description }))}
+              hasStash={!!stashedInput}
+              {userHistory}
+              runId={store.run?.id ?? ""}
+              onRestoreStash={() => {
+                if (stashedInput) {
+                  promptRef?.restoreSnapshot(stashedInput);
+                  stashedInput = null;
+                  showChatToast(t("toast_stashRestored"));
+                  dbg("chat", "stash restored via badge click");
+                }
+              }}
+              onValueChange={handleInputValueChange}
+              contextWindow={store.contextWindow}
+              {processVisibility}
+            />
+            {#if teamHintVisible}
+              <div
+                class="mx-2 mb-1 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-muted-foreground animate-in fade-in slide-in-from-bottom-1 duration-150"
               >
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="9" cy="7" r="4" />
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
-              <span>{t("teamRun_teamHint")}</span>
-            </div>
-          {/if}
+                <svg
+                  class="h-3.5 w-3.5 shrink-0 text-primary"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                <span>{t("teamRun_teamHint")}</span>
+              </div>
+            {/if}
+          </div>
         </div>
       </div>
     {/if}
@@ -4983,9 +5112,14 @@
     activeBackgroundTasks={store.activeBackgroundTasks}
     cwd={store.effectiveCwd}
     runId={store.run?.id ?? ""}
+    worktreePath={store.run?.worktree_path ?? null}
+    parentCwd={store.run?.parent_cwd ?? null}
+    worktreeBranch={store.run?.worktree_branch ?? null}
+    creationMode={store.run?.creation_mode ?? null}
     isRemote={store.isRemote}
     bind:requestedPreviewPath
     bind:requestedPreviewUrl
+    {processVisibility}
   />
 
   <RewindModal

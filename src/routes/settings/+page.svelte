@@ -40,6 +40,11 @@
   import { IS_WINDOWS } from "$lib/utils/platform";
   import { t, LOCALE_REGISTRY, currentLocale, switchLocale } from "$lib/i18n/index.svelte";
   import { getTransport } from "$lib/transport";
+  import {
+    PROCESS_VISIBILITY_LEVELS,
+    normalizeProcessVisibility,
+    persistCachedProcessVisibility,
+  } from "$lib/utils/process-visibility";
 
   // ── Tab state ──
   type SettingsTab =
@@ -2276,8 +2281,65 @@
             <!-- Chat Display Card -->
             <Card class="p-6 space-y-4">
               <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                {t("settings_chatDisplay") || "对话显示"}
+                {t("settings_chatDisplay")}
               </h2>
+              <div class="space-y-2">
+                <div>
+                  <p class="text-sm font-medium text-foreground">{t("settings_processVisibility")}</p>
+                  <p class="text-xs text-muted-foreground mt-0.5">
+                    {t("settings_processVisibilityDesc")}
+                  </p>
+                </div>
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {#each PROCESS_VISIBILITY_LEVELS as mode (mode)}
+                    {@const active =
+                      normalizeProcessVisibility(settings?.process_visibility) === mode}
+                    <button
+                      type="button"
+                      class="rounded-lg border p-3 text-left transition-colors {active
+                        ? 'border-border bg-muted/55 shadow-sm'
+                        : 'border-border/40 bg-background/40 hover:bg-muted/30'}"
+                      onclick={async () => {
+                        const prev = settings;
+                        if (settings) settings = { ...settings, process_visibility: mode };
+                        try {
+                          settings = await api.updateUserSettings({
+                            process_visibility: mode,
+                          } as Partial<UserSettings>);
+                          persistCachedProcessVisibility(
+                            normalizeProcessVisibility(settings.process_visibility),
+                          );
+                        } catch {
+                          settings = prev;
+                        }
+                      }}
+                    >
+                      <div class="text-sm font-medium text-foreground">
+                        {#if mode === "output"}
+                          {t("settings_processVisibility_output")}
+                        {:else if mode === "guided"}
+                          {t("settings_processVisibility_guided")}
+                        {:else if mode === "expert"}
+                          {t("settings_processVisibility_expert")}
+                        {:else}
+                          {t("settings_processVisibility_developer")}
+                        {/if}
+                      </div>
+                      <p class="mt-1 text-[11px] leading-snug text-muted-foreground">
+                        {#if mode === "output"}
+                          {t("settings_processVisibility_outputDesc")}
+                        {:else if mode === "guided"}
+                          {t("settings_processVisibility_guidedDesc")}
+                        {:else if mode === "expert"}
+                          {t("settings_processVisibility_expertDesc")}
+                        {:else}
+                          {t("settings_processVisibility_developerDesc")}
+                        {/if}
+                      </p>
+                    </button>
+                  {/each}
+                </div>
+              </div>
               <SettingsToggle
                 checked={settings?.show_token_usage_report !== false}
                 onchange={async (v) => {
@@ -2289,6 +2351,91 @@
                 description={t("settings_showTokenReportDesc") ||
                   "每次问答结束后在对话底部显示输入/输出/缓存Token统计"}
               />
+            </Card>
+
+            <!-- Session Status Colors Card -->
+            <Card class="p-6 space-y-4">
+              <div class="flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t("settings_sessionStatusColors")}
+                </h2>
+                <button
+                  class="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  onclick={async () => {
+                    settings = await api.updateUserSettings({
+                      session_status_colors: undefined,
+                    } as Partial<UserSettings>);
+                  }}
+                >
+                  {t("settings_sessionStatusColors_resetAll")}
+                </button>
+              </div>
+              <p class="text-xs text-muted-foreground">
+                {t("settings_sessionStatusColorsDesc")}
+              </p>
+
+              <!-- Status color rows -->
+              <div class="space-y-3">
+                {#each STATUS_COLOR_KEYS as status}
+                  {@const key = status as SessionStatusColorKey}
+                  {@const currentColor = settings?.session_status_colors?.[key] ?? DEFAULT_SESSION_STATUS_COLORS[key]}
+                  <div class="flex items-center gap-3">
+                    <span class="w-16 text-sm text-muted-foreground truncate">
+                      {statusColorLabel(key)}
+                    </span>
+                    <div
+                      class="h-5 w-5 rounded-full shrink-0 border border-border/40"
+                      style="background-color: {currentColor};"
+                    ></div>
+                    <input
+                      type="color"
+                      class="w-8 h-5 cursor-pointer rounded border-0 p-0 bg-transparent"
+                      value={currentColor}
+                      onchange={async (e) => {
+                        const val = (e.target as HTMLInputElement).value;
+                        const newColors: SessionStatusColors = {
+                          ...(settings?.session_status_colors ?? {}),
+                          [key]: val,
+                        };
+                        settings = await api.updateUserSettings({
+                          session_status_colors: newColors,
+                        } as Partial<UserSettings>);
+                      }}
+                    />
+                    <input
+                      type="text"
+                      class="w-24 text-xs font-mono bg-muted/30 border border-border/40 rounded px-2 py-1 focus:outline-none focus:border-ring/50"
+                      value={currentColor}
+                      maxlength={7}
+                      onchange={async (e) => {
+                        let val = (e.target as HTMLInputElement).value.trim();
+                        if (!val.startsWith("#")) val = "#" + val;
+                        if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(val)) {
+                          const newColors: SessionStatusColors = {
+                            ...(settings?.session_status_colors ?? {}),
+                            [key]: val,
+                          };
+                          settings = await api.updateUserSettings({
+                            session_status_colors: newColors,
+                          } as Partial<UserSettings>);
+                        }
+                      }}
+                    />
+                    <button
+                      class="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      onclick={async () => {
+                        const newColors = { ...(settings?.session_status_colors ?? {}) };
+                        delete newColors[key];
+                        settings = await api.updateUserSettings({
+                          session_status_colors: Object.keys(newColors).length > 0 ? newColors : null,
+                        } as Partial<UserSettings>);
+                      }}
+                    >
+                      {t("settings_sessionStatusColors_reset")}
+                    </button>
+                  </div>
+                {/each}
+              </div>
             </Card>
           </div>
 
@@ -3304,13 +3451,18 @@
 
           <!-- ═══ Shortcuts tab ═══ -->
         {:else if activeTab === "shortcuts"}
-          <div class="space-y-6">
+          <div class="space-y-4">
             <!-- App shortcuts (editable) -->
-            <Card class="p-6 space-y-5">
-              <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                {t("settings_shortcuts_appShortcuts")}
-              </h2>
-              <div class="divide-y divide-border/50">
+            <Card class="p-5">
+              <div class="mb-4">
+                <h2 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t("settings_shortcuts_appShortcuts")}
+                </h2>
+                <p class="text-[11px] text-muted-foreground/60 mt-0.5">
+                  {t("settings_shortcuts_appShortcutsDesc")}
+                </p>
+              </div>
+              <div class="divide-y divide-border/50 -mx-3 px-3">
                 {#each appBindings as binding (binding.command)}
                   <KeybindingEditor
                     {binding}
@@ -3333,16 +3485,21 @@
             </Card>
 
             <!-- Fixed shortcuts -->
-            <Card class="p-6 space-y-5">
-              <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                {t("settings_shortcuts_inputFixed")}
-              </h2>
-              <div class="divide-y divide-border/50">
+            <Card class="p-5">
+              <div class="mb-4">
+                <h2 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t("settings_shortcuts_inputFixed")}
+                </h2>
+                <p class="text-[11px] text-muted-foreground/60 mt-0.5">
+                  {t("settings_shortcuts_inputFixedDesc")}
+                </p>
+              </div>
+              <div class="divide-y divide-border/50 -mx-3 px-3">
                 {#each fixedBindings as binding (binding.command)}
-                  <div class="flex items-center gap-3 py-1.5">
-                    <span class="text-sm text-foreground/60 min-w-[140px]">{binding.label}</span>
+                  <div class="flex items-center gap-3 py-1.5 group">
+                    <span class="text-sm text-foreground/70 flex-1 min-w-0 truncate">{binding.label}</span>
                     <span
-                      class="inline-flex items-center rounded-md border bg-muted/30 px-2.5 py-1 text-xs font-mono text-muted-foreground min-w-[60px] justify-center"
+                      class="shrink-0 inline-flex items-center rounded border bg-muted/40 px-2 py-0.5 text-xs font-mono text-muted-foreground"
                     >
                       {formatKeyDisplay(binding.key)}
                     </span>
@@ -3352,9 +3509,9 @@
             </Card>
 
             <!-- CLI shortcuts (collapsible) -->
-            <Card class="p-6 space-y-4">
+            <Card class="p-5">
               <button
-                class="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors w-full"
+                class="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors w-full mb-3"
                 onclick={() => (cliSectionOpen = !cliSectionOpen)}
               >
                 <svg
@@ -3368,43 +3525,52 @@
                 >
                 {t("settings_shortcuts_cliShortcuts")}
                 <span
-                  class="text-[10px] font-normal normal-case tracking-normal text-muted-foreground"
+                  class="text-[10px] font-normal normal-case tracking-normal text-muted-foreground/50 ml-1"
                   >{t("settings_shortcuts_readOnly")}</span
                 >
               </button>
               {#if cliSectionOpen}
-                <div class="divide-y divide-border/50">
+                <div class="divide-y divide-border/50 -mx-3 px-3">
                   {#each cliBindings as binding (binding.command)}
                     <div class="flex items-center gap-3 py-1.5">
-                      <span class="text-sm text-foreground/60 min-w-[140px]">{binding.label}</span>
+                      <span class="text-sm text-foreground/60 flex-1 min-w-0 truncate">{binding.label}</span>
                       <span
-                        class="inline-flex items-center rounded-md border bg-muted/30 px-2.5 py-1 text-xs font-mono text-muted-foreground min-w-[60px] justify-center"
+                        class="shrink-0 inline-flex items-center rounded border bg-muted/40 px-2 py-0.5 text-xs font-mono text-muted-foreground"
                       >
                         {formatKeyDisplay(binding.key)}
                       </span>
                     </div>
                   {/each}
                 </div>
-                <p class="text-[10px] text-muted-foreground">
-                  {t("settings_shortcuts_source", {
-                    source:
-                      cliSource === "file"
-                        ? IS_WINDOWS
-                          ? "%USERPROFILE%\\.claude\\keybindings.json"
-                          : "~/.claude/keybindings.json"
-                        : t("settings_shortcuts_cliDefaults"),
-                  })}
+                <p class="text-[10px] text-muted-foreground/50 mt-3 font-mono">
+                  {cliSource === "file"
+                    ? IS_WINDOWS
+                      ? "%USERPROFILE%\\.claude\\keybindings.json"
+                      : "~/.claude/keybindings.json"
+                    : t("settings_shortcuts_cliDefaults")}
                 </p>
               {/if}
             </Card>
 
             <!-- Reset all -->
             {#if hasOverrides}
-              <div class="flex justify-end">
+              <div class="flex justify-end pt-1">
                 <button
-                  class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  class="inline-flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 hover:border-destructive/50 transition-colors"
                   onclick={() => keybindingStore.resetAll()}
                 >
+                  <svg
+                    class="h-3 w-3"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                    <path d="M3 3v5h5" />
+                  </svg>
                   {t("settings_shortcuts_resetAll")}
                 </button>
               </div>

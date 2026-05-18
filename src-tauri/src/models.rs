@@ -322,7 +322,34 @@ pub struct UserSettings {
     /// Cleanup worktree directory when session is deleted.
     #[serde(default = "default_true")]
     pub auto_cleanup_worktree: bool,
+    /// Show token usage report at the bottom of each chat.
+    #[serde(default = "default_true")]
+    pub show_token_usage_report: bool,
+    /// Process visibility: output | guided | developer | expert (default developer).
+    #[serde(default = "default_process_visibility")]
+    pub process_visibility: String,
+    /// Custom session status colors.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_status_colors: Option<SessionStatusColors>,
     pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SessionStatusColors {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub running: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub done: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failed: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pending: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub paused: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blocked: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub idle: Option<String>,
 }
 
 fn default_auth_mode() -> String {
@@ -331,6 +358,10 @@ fn default_auth_mode() -> String {
 
 fn default_ssh_port() -> u16 {
     22
+}
+
+fn default_process_visibility() -> String {
+    "developer".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -433,6 +464,9 @@ impl Default for UserSettings {
             auto_commit_on_complete: false,
             auto_pr_on_complete: false,
             auto_cleanup_worktree: true,
+            show_token_usage_report: true,
+            process_visibility: "developer".to_string(),
+            session_status_colors: None,
             updated_at: now_iso(),
         }
     }
@@ -1579,6 +1613,7 @@ pub struct MarketplaceInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StandaloneSkill {
     pub name: String,
     pub description: String,
@@ -1586,6 +1621,178 @@ pub struct StandaloneSkill {
     /// "user" or "project"
     #[serde(default)]
     pub scope: String,
+    /// Present when installed from a remote skill source (read from .miwarp_remote.json).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remote_ref: Option<SkillRemoteRef>,
+}
+
+// ── Skill source / remote skill registry ──
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillRemoteRef {
+    pub source_id: String,
+    /// "feishu" | "github" | "folder" | "marketplace"
+    pub source_type: String,
+    pub remote_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remote_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub etag: Option<String>,
+    pub content_hash: String,
+    pub last_synced_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillSourceConfigFeishu {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth_profile: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wiki_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wiki_token: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub folder_token: Option<String>,
+    #[serde(default)]
+    pub doc_tokens: Vec<String>,
+    #[serde(default)]
+    pub doc_urls: Vec<String>,
+    #[serde(default)]
+    pub include_children: bool,
+    #[serde(default = "default_feishu_parser_mode")]
+    pub parser_mode: String,
+}
+
+fn default_feishu_parser_mode() -> String {
+    "strict".to_string()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillSourceConfigSync {
+    #[serde(default = "default_sync_mode")]
+    pub mode: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub interval_minutes: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_synced_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_status: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_error: Option<String>,
+}
+
+fn default_sync_mode() -> String {
+    "manual".to_string()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillSourceConfig {
+    pub id: String,
+    pub name: String,
+    /// "feishu" | "github" | "folder" | "marketplace"
+    pub r#type: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub feishu: Option<SkillSourceConfigFeishu>,
+    #[serde(default)]
+    pub sync: SkillSourceConfigSync,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteSkillDocumentContent {
+    pub remote_id: String,
+    pub title: String,
+    pub markdown: String,
+    pub updated_at: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raw: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteSkillDocument {
+    pub content: RemoteSkillDocumentContent,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteSkillCandidate {
+    pub id: String,
+    pub source_id: String,
+    pub remote_id: String,
+    pub name: String,
+    pub description: String,
+    pub category: String,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    pub content_hash: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub remote_url: Option<String>,
+    /// "not_installed" | "installed" | "update_available" | "conflict"
+    #[serde(default)]
+    pub status: String,
+    #[serde(default)]
+    pub skipped: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skip_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillSourceSyncResult {
+    pub source_id: String,
+    #[serde(default)]
+    pub fetched: u32,
+    #[serde(default)]
+    pub skipped: u32,
+    #[serde(default)]
+    pub errors: Vec<String>,
+    #[serde(default)]
+    pub candidates: Vec<RemoteSkillCandidate>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillSourceHealth {
+    pub ok: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallRemoteSkillResult {
+    pub success: bool,
+    pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub skill_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conflict_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillSourceUpdateCheck {
+    pub source_id: String,
+    #[serde(default)]
+    pub updates: Vec<RemoteSkillUpdateItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RemoteSkillUpdateItem {
+    pub skill_path: String,
+    pub skill_name: String,
+    pub remote_id: String,
+    pub local_hash: String,
+    pub remote_hash: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

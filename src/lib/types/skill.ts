@@ -24,6 +24,7 @@ export interface Skill {
   downloadCount?: number; // Marketplace download count
   rating?: number; // Marketplace rating (0-5)
   publishedAt?: string; // When published to marketplace
+  remoteRef?: SkillRemoteRef;
 }
 
 export interface SkillDependency {
@@ -53,7 +54,109 @@ export type SkillCategory =
 export type SkillSource =
   | "local" // User's custom skills
   | "marketplace" // Downloaded from marketplace
-  | "builtin"; // Built-in skills
+  | "builtin" // Built-in skills
+  | "feishu"
+  | "github"
+  | "folder";
+
+export type SkillRemoteSourceKind = "feishu" | "github" | "folder" | "marketplace";
+
+export interface SkillRemoteRef {
+  sourceId: string;
+  sourceType: SkillRemoteSourceKind;
+  remoteId: string;
+  remoteUrl?: string;
+  etag?: string;
+  contentHash: string;
+  lastSyncedAt: string;
+}
+
+export interface SkillSourceConfigFeishu {
+  authProfile?: string;
+  wikiUrl?: string;
+  wikiToken?: string;
+  folderToken?: string;
+  docTokens?: string[];
+  /** Single-document URLs / wiki links for MVP sync */
+  docUrls?: string[];
+  includeChildren?: boolean;
+  parserMode?: "strict" | "loose";
+}
+
+export interface SkillSourceConfigSync {
+  mode: "manual" | "startup" | "interval";
+  intervalMinutes?: number;
+  lastSyncedAt?: string;
+  lastStatus?: "success" | "failed" | "partial";
+  lastError?: string;
+}
+
+export type SkillSourceProviderType = SkillRemoteSourceKind;
+
+export interface SkillSourceConfig {
+  id: string;
+  name: string;
+  type: SkillSourceProviderType;
+  enabled: boolean;
+  feishu?: Partial<SkillSourceConfigFeishu>;
+  sync: SkillSourceConfigSync;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RemoteSkillCandidate {
+  id: string;
+  sourceId: string;
+  remoteId: string;
+  name: string;
+  description: string;
+  category: string;
+  tags: string[];
+  contentHash: string;
+  remoteUrl?: string;
+  status: RemoteSkillInstallStatus | string;
+  skipped: boolean;
+  skipReason?: string;
+}
+
+export type RemoteSkillInstallStatus =
+  | "not_installed"
+  | "installed"
+  | "update_available"
+  | "conflict";
+
+export interface SkillSourceSyncResult {
+  sourceId: string;
+  fetched: number;
+  skipped: number;
+  errors: string[];
+  candidates: RemoteSkillCandidate[];
+}
+
+export interface SkillSourceHealth {
+  ok: boolean;
+  message?: string;
+}
+
+export interface InstallRemoteSkillResult {
+  success: boolean;
+  message: string;
+  skillPath?: string;
+  conflictName?: string;
+}
+
+export interface RemoteSkillUpdateItem {
+  skillPath: string;
+  skillName: string;
+  remoteId: string;
+  localHash: string;
+  remoteHash: string;
+}
+
+export interface SkillSourceUpdateCheck {
+  sourceId: string;
+  updates: RemoteSkillUpdateItem[];
+}
 
 export interface SkillExecution {
   id: string;

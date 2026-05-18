@@ -5,13 +5,18 @@
   import { dbg } from "$lib/utils/debug";
   import { fmtNumber } from "$lib/i18n/format";
   import { formatDuration } from "$lib/utils/format";
+  import type { ProcessVisibility } from "$lib/utils/process-visibility";
+  import { shouldShowContextDetails, shouldShowRawDebug } from "$lib/utils/process-visibility";
+  import { mapRunStatusToColorKey, getSessionStatusColor } from "$lib/utils/session-status-colors";
 
   let {
     info = null,
     activeTab = "info",
+    processVisibility = "developer" as ProcessVisibility,
   }: {
     info: SessionInfoData | null;
     activeTab?: string;
+    processVisibility?: ProcessVisibility;
   } = $props();
 
   // ── Duration timer (running sessions only) ──
@@ -96,11 +101,8 @@
         <div class="flex items-center justify-between text-[11px]">
           <span class="text-muted-foreground">{t("infoPanel_status")}</span>
           <span
-            class="font-medium {info.status === 'running'
-              ? 'text-emerald-500'
-              : info.status === 'failed'
-                ? 'text-destructive'
-                : 'text-foreground/80'}"
+            class="font-medium"
+            style="color: var(--miwarp-status-{mapRunStatusToColorKey(info.status)});"
           >
             {info.status}
           </span>
@@ -242,7 +244,7 @@
     {/if}
 
     <!-- Context section -->
-    {#if info.contextWindow > 0}
+    {#if shouldShowContextDetails(processVisibility) && info.contextWindow > 0}
       <div class="px-3 py-2 border-b border-border/50">
         <div
           class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
@@ -280,6 +282,33 @@
             </div>
           {/if}
         </div>
+      </div>
+    {/if}
+
+    {#if shouldShowRawDebug(processVisibility)}
+      <div class="px-3 py-2 border-b border-border/50">
+        <div
+          class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
+        >
+          {t("infoPanel_debugIds")}
+        </div>
+        <div class="space-y-1 font-mono text-[10px] text-foreground/70">
+          {#if info.runId}
+            <div class="flex justify-between gap-2">
+              <span class="text-muted-foreground shrink-0">{t("infoPanel_runIdFull")}</span>
+              <span class="truncate text-right" title={info.runId}>{info.runId}</span>
+            </div>
+          {/if}
+          {#if info.sessionId}
+            <div class="flex justify-between gap-2">
+              <span class="text-muted-foreground shrink-0">{t("infoPanel_sessionId")}</span>
+              <span class="truncate text-right" title={info.sessionId}>{info.sessionId}</span>
+            </div>
+          {/if}
+        </div>
+        <p class="mt-2 text-[10px] leading-relaxed text-muted-foreground/80">
+          {t("toolActivity_expertNote")}
+        </p>
       </div>
     {/if}
 

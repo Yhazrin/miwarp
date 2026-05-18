@@ -5,6 +5,7 @@ pub mod models;
 pub mod pricing;
 pub mod process_ext;
 pub mod scheduler;
+pub mod skill_sources;
 pub mod storage;
 pub mod web_server;
 
@@ -256,6 +257,15 @@ pub fn run() {
             commands::plugins::search_community_skills,
             commands::plugins::get_community_skill_detail,
             commands::plugins::install_community_skill,
+            commands::skill_sources::list_skill_sources,
+            commands::skill_sources::create_skill_source,
+            commands::skill_sources::update_skill_source,
+            commands::skill_sources::delete_skill_source,
+            commands::skill_sources::test_skill_source,
+            commands::skill_sources::sync_skill_source,
+            commands::skill_sources::preview_feishu_skill_doc,
+            commands::skill_sources::install_remote_skill,
+            commands::skill_sources::check_skill_source_updates,
             commands::agents::list_agents,
             commands::agents::read_agent_file,
             commands::agents::create_agent_file,

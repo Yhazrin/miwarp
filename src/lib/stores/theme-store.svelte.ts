@@ -44,6 +44,13 @@ const TOKEN_VARS = [
   "--miwarp-text-primary",
   "--miwarp-text-secondary",
   "--miwarp-text-tertiary",
+  "--miwarp-status-running",
+  "--miwarp-status-done",
+  "--miwarp-status-failed",
+  "--miwarp-status-pending",
+  "--miwarp-status-paused",
+  "--miwarp-status-blocked",
+  "--miwarp-status-idle",
 ];
 
 class ThemeStore {
@@ -58,6 +65,12 @@ class ThemeStore {
 
   /** Per-session theme overrides: sessionId → themeId */
   sessionThemes = $state<Map<ThemeId, ThemeId>>(new Map());
+
+  /**
+   * Per-theme color overrides: themeId → variable name → HSL value string.
+   * null means "reset to defaults" for that theme.
+   */
+  themeOverrides = $state<Record<ThemeId, Record<string, string> | null>>({});
 
   /** Whether init() has been called */
   initialized = false;
@@ -126,6 +139,75 @@ class ThemeStore {
     this._persistSettings();
   }
 
+  /** Get all overrides for a specific theme (returns empty object if none). */
+  getThemeOverrides(themeId: ThemeId): Record<string, string> {
+    return this.themeOverrides[themeId] ?? {};
+  }
+
+  /** Check if a specific theme has any overrides. */
+  hasThemeOverrides(themeId: ThemeId): boolean {
+    const overrides = this.themeOverrides[themeId];
+    return overrides !== null && overrides !== undefined && Object.keys(overrides).length > 0;
+  }
+
+  /** Set a single variable override for a theme. */
+  setThemeOverride(themeId: ThemeId, varName: string, hslValue: string) {
+    if (!this.themeOverrides[themeId]) {
+      this.themeOverrides[themeId] = {};
+    }
+    this.themeOverrides[themeId]![varName] = hslValue;
+    // Trigger reactivity
+    this.themeOverrides = { ...this.themeOverrides };
+    this._applyTheme(themeId);
+    this._persistSettings();
+  }
+
+  /** Clear all overrides for a specific theme (reset to built-in defaults). */
+  resetThemeOverrides(themeId: ThemeId) {
+    this.themeOverrides[themeId] = null;
+    this.themeOverrides = { ...this.themeOverrides };
+    this._persistSettings();
+    if (this.currentTheme === themeId) {
+      this._applyTheme(themeId);
+    }
+  }
+
+  /**
+   * Create a new custom theme from the current overrides of an existing theme.
+   * Copies the source theme's overrides to the new theme.
+   */
+  createCustomThemeFromOverrides(sourceThemeId: ThemeId, newThemeName: string): ThemeDefinition {
+    const sourceTheme = this.themes.find((t) => t.id === sourceThemeId);
+    if (!sourceTheme) throw new Error(`Source theme ${sourceThemeId} not found`);
+
+    // Generate unique ID
+    const baseId = `custom-${sourceThemeId}`;
+    let newId = baseId;
+    let counter = 1;
+    while (this.themes.some((t) => t.id === newId)) {
+      newId = `${baseId}-${counter}`;
+      counter++;
+    }
+
+    const newTheme: ThemeDefinition = {
+      id: newId,
+      name: newThemeName,
+      type: sourceTheme.type,
+      accent:
+        this.themeOverrides[sourceThemeId]?.["--miwarp-accent-primary"] ?? sourceTheme.accent,
+    };
+
+    this.themes = [...this.themes, newTheme];
+    // Copy overrides to new theme
+    if (this.themeOverrides[sourceThemeId]) {
+      this.themeOverrides[newId] = { ...this.themeOverrides[sourceThemeId]! };
+    }
+    this.themeOverrides = { ...this.themeOverrides };
+    this._persistSettings();
+
+    return newTheme;
+  }
+
   /** Register a custom theme */
   addCustomTheme(theme: ThemeDefinition) {
     this.themes = [...this.themes, theme];
@@ -150,6 +232,7 @@ class ThemeStore {
         colorScheme: this.colorScheme,
         sessionThemes: Object.fromEntries(this.sessionThemes),
         customThemes: this.themes.filter((t) => !BUILTIN_THEMES.some((b) => b.id === t.id)),
+        themeOverrides: this.themeOverrides,
       },
       null,
       2,
@@ -172,6 +255,9 @@ class ThemeStore {
       if (config.customThemes) {
         const builtins = [...BUILTIN_THEMES];
         this.themes = [...builtins, ...config.customThemes];
+      }
+      if (config.themeOverrides) {
+        this.themeOverrides = config.themeOverrides;
       }
       this._applyTheme(this.currentTheme);
       this._applyColorScheme(this.colorScheme);
@@ -196,6 +282,9 @@ class ThemeStore {
         }
         if (config.customThemes) {
           this.themes = [...BUILTIN_THEMES, ...config.customThemes];
+        }
+        if (config.themeOverrides) {
+          this.themeOverrides = config.themeOverrides;
         }
         this._applyTheme(this.currentTheme);
         this._applyColorScheme(this.colorScheme);
@@ -261,15 +350,21 @@ class ThemeStore {
     const resolvedId = theme?.id ?? "codex-light";
     const isDark = theme?.type === "dark";
 
-    // Clear inline color token vars to avoid them overriding the new theme
-    for (const v of TOKEN_VARS) {
-      root.style.removeProperty(v);
-    }
-
+    // Step 1: Set data-theme attribute — CSS applies built-in theme variables
     root.setAttribute("data-theme", resolvedId);
+
+    // Step 2: Apply class and colorScheme
     root.classList.remove("dark", "light");
     root.classList.add(isDark ? "dark" : "light");
     root.style.colorScheme = isDark ? "dark" : "light";
+
+    // Step 3: Apply user overrides on top of the new theme's CSS vars
+    const overrides = this.themeOverrides[themeId];
+    if (overrides) {
+      for (const [varName, hslValue] of Object.entries(overrides)) {
+        root.style.setProperty(varName, hslValue);
+      }
+    }
   }
 
   private _persistSettings() {
@@ -281,6 +376,7 @@ class ThemeStore {
           colorScheme: this.colorScheme,
           sessionThemes: Object.fromEntries(this.sessionThemes),
           customThemes: this.themes.filter((t) => !BUILTIN_THEMES.some((b) => b.id === t.id)),
+          themeOverrides: this.themeOverrides,
         }),
       );
     } catch {

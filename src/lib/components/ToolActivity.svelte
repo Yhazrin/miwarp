@@ -151,7 +151,7 @@
   const WIDTH_MIN = 280;
   const WIDTH_MAX = 720;
   const WIDTH_DEFAULT = 420;
-  const WIDTH_COLLAPSED = 44;
+  const WIDTH_COLLAPSED = 0;
 
   function clampWidth(v: number): number {
     return Math.max(WIDTH_MIN, Math.min(WIDTH_MAX, v));
@@ -707,7 +707,7 @@
 {/if}
 <aside
   bind:this={asideEl}
-  class="relative h-full overflow-hidden {collapsed
+  class="relative h-full overflow-hidden transition-[width] duration-250 ease-out {collapsed
     ? 'bg-transparent'
     : 'bg-background/40 backdrop-blur-[28px] [backdrop-filter:blur(28px)_saturate(180%)] [-webkit-backdrop-filter:blur(28px)_saturate(180%)]'}"
   style="width: {collapsed
@@ -1115,33 +1115,13 @@
           </button>
         </div>
       </div>
-    {:else}
-      <div class="mx-1.5 mb-1 flex shrink-0 justify-end pt-1">
-        <button
-          class="rounded-xl p-1 text-muted-foreground transition-colors hover:bg-accent/30 hover:text-foreground"
-          onclick={onToggle}
-          title={t("toolActivity_collapse")}
-        >
-          <svg
-            class="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        </button>
-      </div>
     {/if}
 
     <!-- Lazy keep-alive: each tab mounts on first activation and stays mounted (visibility-only after).
          Tab content is absolutely positioned within this relative wrapper so all mounted tabs share
          the same layout slot but only the active one is visible/interactive. -->
     <div
-      class="relative mx-1.5 mb-1.5 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/30 bg-background/30 backdrop-blur-xl"
+      class="relative mx-1.5 mb-1.5 mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/30 bg-background/30 backdrop-blur-xl"
     >
       {#if mountedTabs.has("workspace")}
         <div
@@ -1154,8 +1134,6 @@
             {cwd}
             {runId}
             {sessionInfo}
-            {contextHistory}
-            {turnUsages}
             {toolStats}
             onSwitchToActivity={() => (activeTab = "tools")}
             onSwitchToFiles={() => (activeTab = "files")}
@@ -1170,7 +1148,7 @@
             : 'hidden'}; pointer-events: {activeTab === 'tasks' ? 'auto' : 'none'};"
         >
           <!-- Background tasks panel -->
-          <div class="flex-1 overflow-y-auto">
+          <div class="flex-1 overflow-y-auto scrollbar-hide">
             {#if backgroundTasks.size === 0}
               <div class="flex items-center justify-center h-32 text-xs text-muted-foreground/50">
                 {t("bgTask_empty")}
@@ -1251,7 +1229,7 @@
             : 'hidden'}; pointer-events: {activeTab === 'files' ? 'auto' : 'none'};"
         >
           <div class="flex flex-1 flex-col min-h-0">
-            <div class="flex-shrink-0 max-h-[40vh] overflow-y-auto border-b border-border/50">
+            <div class="flex-shrink-0 max-h-[40vh] overflow-y-auto border-b border-border/50 scrollbar-hide">
               <FilesPanel
                 {fileEntries}
                 {onScrollToTool}
@@ -1288,7 +1266,7 @@
       {/if}
       {#if mountedTabs.has("info")}
         <div
-          class="absolute inset-0 flex flex-col overflow-y-auto"
+          class="absolute inset-0 flex flex-col overflow-y-auto scrollbar-hide"
           style="visibility: {activeTab === 'info'
             ? 'visible'
             : 'hidden'}; pointer-events: {activeTab === 'info' ? 'auto' : 'none'};"
@@ -1432,7 +1410,7 @@
           {/if}
 
           <!-- Tool list -->
-          <div class="flex-1 overflow-y-auto py-0.5">
+          <div class="flex-1 overflow-y-auto py-0.5 scrollbar-hide">
             {#if toolStats.totalToolCount === 0}
               <div class="flex flex-col items-center justify-center h-32 px-4 text-center">
                 <svg
@@ -1650,7 +1628,7 @@
     <!-- Collapsed: thin icon rail overlay (absolute, only mounted when collapsed) -->
     <div
       class="absolute top-0 left-0 h-full flex flex-col items-center py-2 px-1 gap-1"
-      style="width: 32px;"
+      style="width: 0px;"
     >
       <button
         class="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-accent"

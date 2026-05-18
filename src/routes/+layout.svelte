@@ -21,6 +21,10 @@
     moveRunToFolder,
     batchMoveToFolder,
   } from "$lib/api";
+  import {
+    normalizeProcessVisibility,
+    persistCachedProcessVisibility,
+  } from "$lib/utils/process-visibility";
   import ProjectFolderItem from "$lib/components/ProjectFolderItem.svelte";
   import CommandPalette from "$lib/components/CommandPalette.svelte";
   import SetupWizard from "$lib/components/SetupWizard.svelte";
@@ -115,6 +119,7 @@
   let sidebarFavorites = $state<PromptFavorite[]>([]);
   let favoriteRunIds = $derived(new Set(sidebarFavorites.map((f) => f.runId)));
   let settings = $state<UserSettings | null>(null);
+  let statusColorVars = $derived("");
   let sidebarOpen = $state(true);
   let projectCwd = $state("");
   let pinnedCwds = $state<string[]>([]);
@@ -732,6 +737,7 @@
   async function loadSettings() {
     try {
       settings = await getUserSettings();
+      persistCachedProcessVisibility(normalizeProcessVisibility(settings.process_visibility));
       const normalizedWd = normalizeCwd(settings.working_directory);
       if (normalizedWd) {
         localStorage.setItem("ocv:settings-cwd", normalizedWd);
@@ -1428,6 +1434,7 @@
   const pluginSections = [
     { id: "overview", label: () => t("sidebar_overview"), icon: "overview" },
     { id: "skills", label: () => t("sidebar_skills"), icon: "sparkles" },
+    { id: "sources", label: () => t("sidebar_skillSources"), icon: "sources" },
     { id: "mcp", label: () => t("sidebar_mcpServers"), icon: "server" },
     { id: "hooks", label: () => t("sidebar_hooks"), icon: "webhook" },
     { id: "plugins", label: () => t("sidebar_plugins"), icon: "package" },
@@ -1641,7 +1648,7 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="flex h-screen w-screen overflow-hidden">
+<div class="flex h-screen w-screen overflow-hidden" style={statusColorVars}>
   <!-- Sidebar: Icon Rail + Content Panel -->
   <aside
     class="sidebar-container shrink-0 glass-sidebar text-sidebar-foreground"
@@ -1664,7 +1671,7 @@
       </div>
 
       <!-- Rail nav icons -->
-      <nav class="flex flex-1 flex-col items-center gap-1 py-2">
+      <nav class="flex flex-1 flex-col items-center gap-1 py-2 pt-6">
         {#each navItems as item, idx}
           {#if idx > 0 && item.group !== navItems[idx - 1].group}
             <div class="my-1 h-px w-5 bg-border/40"></div>
@@ -2034,6 +2041,21 @@
                       ><path
                         d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"
                       /></svg
+                    >
+                  {:else if section.icon === "sources"}
+                    <svg
+                      class="h-3.5 w-3.5 shrink-0"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      ><path
+                        d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"
+                      /><path
+                        d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"
+                      /><path d="M8 7h8" /><path d="M8 11h8" /></svg
                     >
                   {:else if section.icon === "server"}
                     <svg

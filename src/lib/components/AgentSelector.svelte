@@ -53,7 +53,7 @@
 
   {#if open}
     <div
-      class="absolute bottom-full left-0 mb-1 min-w-[120px] rounded-xl border border-border bg-background py-1 shadow-lg animate-fade-in z-50"
+      class="absolute bottom-full left-0 mb-1 min-w-[120px] rounded-xl border border-border bg-background py-1 shadow-lg animate-fade-in z-[9999]"
     >
       {#each agents as agent}
         <button

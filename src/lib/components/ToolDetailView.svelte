@@ -34,10 +34,13 @@
     tool,
     isInputStreaming = false,
     onPreviewFile,
+    expertPayload = false,
   }: {
     tool: BusToolItem;
     isInputStreaming?: boolean;
     onPreviewFile?: (path: string) => void;
+    /** Expert mode: show raw JSON / full payload blocks where applicable. */
+    expertPayload?: boolean;
   } = $props();
 
   // ── Helpers ──
@@ -1387,5 +1390,15 @@
         </button>
       {/if}
     {/if}
+  {/if}
+  {#if expertPayload && tool.tool_use_result != null && typeof tool.tool_use_result === "object"}
+    <div class="mt-2 rounded border border-dashed border-border/50 bg-muted/30 p-2 max-h-72 overflow-auto">
+      <div class="text-[10px] font-medium text-muted-foreground/70 mb-1">tool_use_result (raw)</div>
+      <pre class="text-[10px] font-mono whitespace-pre-wrap break-all text-muted-foreground">{JSON.stringify(
+          tool.tool_use_result,
+          null,
+          2,
+        )}</pre>
+    </div>
   {/if}
 </div>

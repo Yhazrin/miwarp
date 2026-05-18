@@ -110,7 +110,8 @@
 </script>
 
 {#if pendingTools.length > 0}
-  <div class="w-full chat-content-width pb-2 pt-1">
+  <div class="fixed bottom-0 left-0 right-0 z-[99999] flex justify-center pb-5 pointer-events-auto">
+    <div class="w-full chat-content-width pb-2 pt-1">
     <div class="rounded-lg border border-amber-500/30 bg-background shadow-lg animate-fade-in">
       {#if isSingle}
         <!-- Single permission: compact card -->
@@ -292,6 +293,7 @@
           </div>
         </div>
       {/if}
+    </div>
     </div>
   </div>
 {/if}

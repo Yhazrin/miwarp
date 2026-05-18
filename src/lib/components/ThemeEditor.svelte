@@ -13,6 +13,11 @@
   let importJson = $state("");
   let exportJson = $derived(themeStore.exportConfig());
 
+  // Read computed CSS vars directly — theme is already applied before this component mounts
+  function getColor(varName: string): string {
+    return getComputedHsl(varName);
+  }
+
   const colorGroups = [
     {
       label: "Backgrounds",
@@ -44,10 +49,13 @@
     {
       label: "Status",
       vars: [
-        { key: "--miwarp-status-success", label: "Success" },
-        { key: "--miwarp-status-warning", label: "Warning" },
-        { key: "--miwarp-status-error", label: "Error" },
-        { key: "--miwarp-status-info", label: "Info" },
+        { key: "--miwarp-status-running", label: "Running" },
+        { key: "--miwarp-status-done", label: "Completed" },
+        { key: "--miwarp-status-failed", label: "Failed" },
+        { key: "--miwarp-status-pending", label: "Pending" },
+        { key: "--miwarp-status-paused", label: "Paused" },
+        { key: "--miwarp-status-blocked", label: "Blocked" },
+        { key: "--miwarp-status-idle", label: "Idle" },
       ],
     },
   ];
@@ -112,7 +120,7 @@
 
   function setVariable(varName: string, hex: string) {
     const hsl = hexToHsl(hex);
-    document.documentElement.style.setProperty(varName, hsl);
+    themeStore.setThemeOverride(themeStore.currentTheme, varName, hsl);
   }
 
   function handleThemeSelect(themeId: ThemeId) {
@@ -129,6 +137,38 @@
     showImportExport = false;
     onChange?.();
   }
+
+  function isVariableOverridden(varName: string): boolean {
+    const overrides = themeStore.getThemeOverrides(themeStore.currentTheme);
+    return varName in overrides;
+  }
+
+  function handleResetVariable(varName: string) {
+    const overrides = themeStore.getThemeOverrides(themeStore.currentTheme);
+    delete overrides[varName];
+    // Trigger by re-applying the theme
+    themeStore.setTheme(themeStore.currentTheme);
+  }
+
+  let showSaveDialog = $state(false);
+  let customThemeName = $state("");
+
+  function handleResetCurrentTheme() {
+    if (confirm(t("theme_resetConfirm"))) {
+      themeStore.resetThemeOverrides(themeStore.currentTheme);
+    }
+  }
+
+  function handleSaveAsCustomTheme() {
+    showSaveDialog = true;
+  }
+
+  function handleCreateCustomTheme() {
+    if (!customThemeName.trim()) return;
+    themeStore.createCustomThemeFromOverrides(themeStore.currentTheme, customThemeName.trim());
+    showSaveDialog = false;
+    customThemeName = "";
+  }
 </script>
 
 <div class="theme-editor space-y-4 p-4">
@@ -137,6 +177,7 @@
     <h3 class="text-sm font-semibold text-miwarp-text-primary">{t("theme_title")}</h3>
     <div class="grid grid-cols-3 gap-2">
       {#each themeStore.themes as theme}
+        {@const hasOverrides = themeStore.hasThemeOverrides(theme.id)}
         <button
           class="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-all"
           class:border-primary={themeStore.currentTheme === theme.id}
@@ -150,6 +191,12 @@
             style="background: {theme.accent};"
           ></span>
           <span class="text-miwarp-text-primary">{theme.name}</span>
+          {#if hasOverrides}
+            <span
+              class="h-1.5 w-1.5 rounded-full bg-miwarp-accent-primary shrink-0"
+              title={t("theme_hasOverrides")}
+            ></span>
+          {/if}
         </button>
       {/each}
     </div>
@@ -161,7 +208,8 @@
       <h4 class="text-xs font-medium text-miwarp-text-secondary">{group.label}</h4>
       <div class="grid grid-cols-2 gap-2">
         {#each group.vars as colorVar}
-          {@const currentValue = getComputedHsl(colorVar.key)}
+          {@const currentValue = getColor(colorVar.key)}
+          {@const isOverridden = isVariableOverridden(colorVar.key)}
           <div
             class="flex items-center gap-2 rounded-md border border-border bg-miwarp-bg-elevated px-2 py-1.5"
           >
@@ -172,11 +220,68 @@
               oninput={(e) => setVariable(colorVar.key, (e.target as HTMLInputElement).value)}
             />
             <span class="text-xs text-miwarp-text-tertiary">{colorVar.label}</span>
+            {#if isOverridden}
+              <button
+                class="ml-auto text-miwarp-text-tertiary hover:text-miwarp-text-primary shrink-0"
+                onclick={() => handleResetVariable(colorVar.key)}
+                title={t("theme_resetVariable")}
+              >
+                ↺
+              </button>
+            {/if}
           </div>
         {/each}
       </div>
     </div>
   {/each}
+
+  <!-- Theme action buttons -->
+  {#if themeStore.hasThemeOverrides(themeStore.currentTheme)}
+    <div class="flex gap-2">
+      <button
+        class="rounded-md border border-border bg-miwarp-bg-surface px-3 py-1.5 text-xs text-miwarp-text-secondary hover:bg-miwarp-bg-hover"
+        onclick={handleResetCurrentTheme}
+      >
+        {t("theme_resetToDefaults")}
+      </button>
+      <button
+        class="rounded-md accent-gradient px-3 py-1.5 text-xs text-white"
+        onclick={handleSaveAsCustomTheme}
+      >
+        {t("theme_saveAsCustom")}
+      </button>
+    </div>
+
+    <!-- Save as Custom Theme Dialog -->
+    {#if showSaveDialog}
+      <div class="space-y-2 border-t border-border pt-3">
+        <input
+          type="text"
+          class="w-full rounded-md border border-border bg-miwarp-bg-elevated px-3 py-1.5 text-xs text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+          placeholder={t("theme_customThemeNamePlaceholder")}
+          bind:value={customThemeName}
+        />
+        <div class="flex gap-2">
+          <button
+            class="rounded-md border border-border bg-miwarp-bg-surface px-3 py-1.5 text-xs text-miwarp-text-secondary hover:bg-miwarp-bg-hover"
+            onclick={() => {
+              showSaveDialog = false;
+              customThemeName = "";
+            }}
+          >
+            {t("theme_cancel")}
+          </button>
+          <button
+            class="rounded-md accent-gradient px-3 py-1.5 text-xs text-white disabled:opacity-40"
+            onclick={handleCreateCustomTheme}
+            disabled={!customThemeName.trim()}
+          >
+            {t("theme_create")}
+          </button>
+        </div>
+      </div>
+    {/if}
+  {/if}
 
   <!-- Import/Export -->
   <div class="border-t border-border pt-3 space-y-2">

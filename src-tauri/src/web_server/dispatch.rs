@@ -482,6 +482,94 @@ pub async fn dispatch_command(
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
 
+        // ── Skill sources (Feishu / GitHub / folder — MVP: Feishu doc URL)
+        "list_skill_sources" => {
+            let result = crate::commands::skill_sources::list_skill_sources()?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
+        "create_skill_source" => {
+            let config_val = params
+                .get("config")
+                .ok_or_else(|| "Missing required parameter: config".to_string())?;
+            let config: crate::models::SkillSourceConfig =
+                serde_json::from_value(config_val.clone()).map_err(|e| format!("Bad config: {}", e))?;
+            let result = crate::commands::skill_sources::create_skill_source(config)?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
+        "update_skill_source" => {
+            let id = extract_str(&params, "id")?;
+            let patch_val = params
+                .get("patch")
+                .ok_or_else(|| "Missing required parameter: patch".to_string())?;
+            let patch: crate::models::SkillSourceConfig =
+                serde_json::from_value(patch_val.clone()).map_err(|e| format!("Bad patch: {}", e))?;
+            let result = crate::commands::skill_sources::update_skill_source(id, patch)?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
+        "delete_skill_source" => {
+            let id = extract_str(&params, "id")?;
+            crate::commands::skill_sources::delete_skill_source(id)?;
+            Ok(json!(true))
+        }
+        "test_skill_source" => {
+            let id = extract_str(&params, "id")?;
+            let result = crate::commands::skill_sources::test_skill_source(id).await?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
+        "sync_skill_source" => {
+            let id = extract_str(&params, "id")?;
+            let result = crate::commands::skill_sources::sync_skill_source(id).await?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
+        "preview_feishu_skill_doc" => {
+            let doc_url = extract_str(&params, "doc_url")?;
+            let auth_profile = params
+                .get("auth_profile")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let parser_mode = params
+                .get("parser_mode")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let source_id_hint = params
+                .get("source_id_hint")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let result = crate::commands::skill_sources::preview_feishu_skill_doc(
+                doc_url,
+                auth_profile,
+                parser_mode,
+                source_id_hint,
+            )
+            .await?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
+        "install_remote_skill" => {
+            let candidate_id = extract_str(&params, "candidate_id")?;
+            let scope = params
+                .get("scope")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let cwd = params.get("cwd").and_then(|v| v.as_str()).map(String::from);
+            let conflict_resolution = params
+                .get("conflict_resolution")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let result = crate::commands::skill_sources::install_remote_skill(
+                candidate_id,
+                scope,
+                cwd,
+                conflict_resolution,
+            )?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
+        "check_skill_source_updates" => {
+            let id = extract_str(&params, "id")?;
+            let cwd = params.get("cwd").and_then(|v| v.as_str()).map(String::from);
+            let result = crate::commands::skill_sources::check_skill_source_updates(id, cwd).await?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
+
         // ── CLI Config ──
         "get_cli_config" => {
             let result = crate::commands::cli_config::get_cli_config()?;

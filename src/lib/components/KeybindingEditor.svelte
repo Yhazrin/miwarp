@@ -74,9 +74,9 @@
   }
 </script>
 
-<div class="flex items-center gap-3 py-1.5 group">
+<div class="-mx-3 px-3 flex items-center gap-3 py-1.5 group">
   <!-- Label -->
-  <span class="text-sm text-foreground min-w-[140px]">{binding.label}</span>
+  <span class="flex-1 min-w-0 truncate text-sm text-foreground">{binding.label}</span>
 
   <!-- Key display / recording -->
   {#if recording}
@@ -95,7 +95,7 @@
     </button>
   {:else}
     <span
-      class="inline-flex items-center rounded-md border bg-muted/50 px-2.5 py-1 text-xs font-mono text-foreground min-w-[60px] justify-center {isOverridden
+      class="inline-flex items-center rounded-md border bg-muted/50 px-2 py-0.5 text-xs font-mono text-foreground shrink-0 {isOverridden
         ? 'border-primary/30 bg-primary/5'
         : ''}"
     >

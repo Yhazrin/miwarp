@@ -33,6 +33,8 @@
   import type { SlashCommandGroups } from "$lib/utils/slash-commands";
   import type { MessageKey } from "$lib/i18n/types";
   import { dbg, dbgWarn } from "$lib/utils/debug";
+  import type { ProcessVisibility } from "$lib/utils/process-visibility";
+  import { shouldShowContextDetails } from "$lib/utils/process-visibility";
   import { IS_MAC } from "$lib/utils/platform";
   import { t } from "$lib/i18n/index.svelte";
   import { formatPasteSize } from "$lib/utils/format";
@@ -113,6 +115,7 @@
     runId = "",
     onValueChange,
     contextWindow = 0,
+    processVisibility = "developer" as ProcessVisibility,
     inputStore,
   }: {
     agent?: string;
@@ -159,6 +162,7 @@
     runId?: string;
     onValueChange?: (value: string) => void;
     contextWindow?: number;
+    processVisibility?: ProcessVisibility;
     inputStore?: PromptInputStore;
   } = $props();
 
@@ -319,7 +323,7 @@
     if (modeBtnEl) {
       const rect = modeBtnEl.getBoundingClientRect();
       // Open upward (input is at bottom of screen)
-      modeDropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:50;`;
+      modeDropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:9999;`;
     }
   }
 
@@ -1684,6 +1688,9 @@
   );
   const tokenWarning = $derived(tokenPercent > 80);
   const showTokenEstimate = $derived(tokenEstimate > 0);
+  const showTokenEstimateUi = $derived(
+    showTokenEstimate && shouldShowContextDetails(processVisibility),
+  );
 
   // ── Mode dropdown outside-click + Escape ──
   onMount(() => {
@@ -2080,25 +2087,6 @@
         {:else if !hasRun}
           <div class="w-1"></div>
         {/if}
-        <button
-          class="flex items-center gap-1 rounded-full border border-transparent px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-border/40 hover:bg-accent/15 hover:text-foreground"
-          onclick={() => window.dispatchEvent(new CustomEvent("ocv:open-permissions"))}
-          title={t("permissions_title")}
-        >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-          {t("permissions_rules")}
-        </button>
         {#if showAuthBadge && !hasRun}
           <AuthSourceBadge
             {authOverview}
@@ -2144,7 +2132,7 @@
 
       <!-- Right: actions -->
       <div class="flex items-center gap-0.5">
-        {#if showTokenEstimate}
+        {#if showTokenEstimateUi}
           <span
             class="text-[10px] tabular-nums px-1.5 shrink-0 {tokenWarning
               ? 'text-miwarp-status-warning'

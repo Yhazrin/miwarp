@@ -3609,3 +3609,9 @@ export class SessionStore {
     }
   }
 }
+
+// ── Singleton instance ──
+// Module-level singleton so the store survives across SvelteKit page navigations.
+// The store is a leaf in the component tree — no other stores reference it, so
+// there is no risk of stale cross-session state leakage.
+export const sessionStore = new SessionStore();

@@ -1,4 +1,4 @@
-export { SessionStore } from "./session-store.svelte";
+export { SessionStore, sessionStore } from "./session-store.svelte";
 export { TeamStore } from "./team-store.svelte";
 export { KeybindingStore } from "./keybindings.svelte";
 export { memoryStore, useMemoryStore } from "./memory-store.svelte";

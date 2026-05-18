@@ -1,4 +1,4 @@
-use crate::models::{MarketplaceInfo, MarketplacePlugin, PluginComponents, StandaloneSkill};
+use crate::models::{MarketplaceInfo, MarketplacePlugin, PluginComponents, SkillRemoteRef, StandaloneSkill};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -331,13 +331,22 @@ fn scan_skills_dir(dir: &Path, scope: &str, skills: &mut Vec<StandaloneSkill>) {
             name
         };
 
+        let remote_ref = read_skill_remote_meta(&path);
+
         skills.push(StandaloneSkill {
             name,
             description,
             path: skill_md.to_string_lossy().to_string(),
             scope: scope.to_string(),
+            remote_ref,
         });
     }
+}
+
+fn read_skill_remote_meta(skill_dir: &Path) -> Option<SkillRemoteRef> {
+    let p = skill_dir.join(".miwarp_remote.json");
+    let data = std::fs::read_to_string(p).ok()?;
+    serde_json::from_str(&data).ok()
 }
 
 /// Parse YAML frontmatter from a SKILL.md file.
@@ -545,7 +554,7 @@ pub fn validate_skill_name(name: &str) -> Result<(), String> {
 /// Resolve the skills base directory for a given scope.
 /// - "user" -> ~/.claude/skills/
 /// - "project" -> {cwd}/.claude/skills/
-fn resolve_skill_dir(scope: &str, cwd: &str) -> Result<PathBuf, String> {
+pub(crate) fn resolve_skill_dir(scope: &str, cwd: &str) -> Result<PathBuf, String> {
     match scope {
         "user" => Ok(skills_dir()),
         "project" => {
@@ -648,6 +657,7 @@ pub fn create_skill(
         description: description.to_string(),
         path: skill_md.to_string_lossy().to_string(),
         scope: scope.to_string(),
+        remote_ref: None,
     })
 }
 

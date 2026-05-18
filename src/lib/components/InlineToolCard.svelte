@@ -29,6 +29,13 @@
   import { viewModeStore } from "$lib/stores/view-mode-store.svelte";
   import PhaseIndicator from "$lib/components/PhaseIndicator.svelte";
   import { detectPhase } from "$lib/utils/phase-detection";
+  import type { ProcessVisibility } from "$lib/utils/process-visibility";
+  import {
+    shouldMountFullToolCardInOutputMode,
+    shouldHideToolCards,
+    shouldUseCompactToolCards,
+    shouldShowFullToolPayload,
+  } from "$lib/utils/process-visibility";
 
   let {
     tool,
@@ -45,6 +52,8 @@
     showPermissionInPanel,
     onPreviewFile,
     isLastTool,
+    processVisibility = "developer" as ProcessVisibility,
+    permissionMode = "default",
   }: {
     tool: BusToolItem;
     subTimeline?: TimelineEntry[];
@@ -77,6 +86,9 @@
     onPreviewFile?: (path: string) => void;
     /** Whether this is the last tool in the timeline (for reviewing phase detection). */
     isLastTool?: boolean;
+    processVisibility?: ProcessVisibility;
+    /** Current permission mode to determine skip-permission option in ExitPlanMode. */
+    permissionMode?: string;
   } = $props();
 
   // Look up the task notification for this specific Task tool
@@ -154,6 +166,9 @@
 
   // ── View mode: determine if this tool card should be visible ──
   let shouldShowInMode = $derived.by(() => {
+    if (shouldHideToolCards(processVisibility) && !shouldMountFullToolCardInOutputMode(tool)) {
+      return false;
+    }
     if (viewModeStore.isVerbose) return true;
     if (viewModeStore.isSummary) {
       // Only show significant tools in summary mode
@@ -193,7 +208,9 @@
     userExpanded ??
       (viewModeStore.isVerbose
         ? true
-        : renderLevel === 2 || (isPlan && latestPlanTool) || isInputStreaming),
+        : shouldUseCompactToolCards(processVisibility)
+          ? false
+          : renderLevel === 2 || (isPlan && latestPlanTool) || isInputStreaming),
   );
 
   let hasSubTimeline = $derived((subTimeline?.length ?? 0) > 0);
@@ -268,6 +285,9 @@
 
   // Task (subagent) meta: extract agent type + model for enhanced header
   let taskMeta = $derived(tool.tool_name === "Task" ? extractTaskToolMeta(tool.input) : null);
+
+  // Whether current permission mode already skips permission prompts
+  let skipPermissionMode = $derived(permissionMode === "acceptEdits" || permissionMode === "bypassPermissions");
 
   // Status display
   let statusKind = $derived(
@@ -625,6 +645,11 @@
 
 <!-- Inline tool card: three-level rendering -->
 {#if shouldShowInMode}
+  {#if shouldShowFullToolPayload(processVisibility)}
+    <div class="mb-0.5 px-1 font-mono text-[10px] text-muted-foreground/55">
+      tool_use_id {tool.tool_use_id}
+    </div>
+  {/if}
   <div
     class="motion-slide-up {renderLevel === 1 ? 'mb-0.5' : 'mb-2'} {tool.status === 'running'
       ? 'motion-sweep'
@@ -1387,6 +1412,26 @@
 
             {#if onPermissionRespond}
               <div class="flex flex-col gap-1.5">
+                {#if skipPermissionMode}
+                  <!-- Skip-permission option: session already configured to skip permission prompts -->
+                  <button
+                    class="w-full rounded-md border border-[hsl(var(--miwarp-status-success)/0.4)] bg-[hsl(var(--miwarp-status-success)/0.15)] px-3 py-2 text-left text-xs font-medium text-[hsl(var(--miwarp-status-success))] hover:bg-[hsl(var(--miwarp-status-success)/0.25)] transition-all disabled:opacity-50"
+                    disabled={submitting}
+                    onclick={() => {
+                      submitting = true;
+                      safePermissionRespond(
+                        tool.permission_request_id!,
+                        "deny",
+                        undefined,
+                        undefined,
+                        undefined,
+                        false,
+                      );
+                    }}
+                  >
+                    {t("plan_skipPermission")}
+                  </button>
+                {:else}
                 <!-- Option 1: Clear context + auto-accept -->
                 <button
                   class="w-full rounded-md border border-[hsl(var(--miwarp-accent-primary)/0.3)] bg-[hsl(var(--miwarp-accent-primary)/0.1)] px-3 py-1.5 text-left text-xs font-medium text-[hsl(var(--miwarp-accent-primary))] hover:bg-[hsl(var(--miwarp-accent-primary)/0.2)] transition-all disabled:opacity-50"
@@ -1475,6 +1520,7 @@
                     {t("plan_keepPlanning")}
                   </button>
                 </div>
+                {/if}
               </div>
             {/if}
           </div>
@@ -1811,7 +1857,12 @@
               </button>
             {/if}
           {:else}
-            <ToolDetailView tool={enrichedTool} {isInputStreaming} {onPreviewFile} />
+            <ToolDetailView
+              tool={enrichedTool}
+              {isInputStreaming}
+              {onPreviewFile}
+              expertPayload={shouldShowFullToolPayload(processVisibility)}
+            />
           {/if}
         </div>
       {/if}
@@ -1851,9 +1902,34 @@
         {#each subTimeline as subEntry (subEntry.id)}
           {#if subEntry.kind === "assistant"}
             <div class="text-sm text-muted-foreground py-1">
-              {#if subEntry.thinkingText}
-                <pre
-                  class="text-xs font-mono whitespace-pre-wrap break-words text-[hsl(var(--miwarp-status-info)/0.7)] italic mb-1 leading-relaxed">{subEntry.thinkingText.trimEnd()}</pre>
+              {#if subEntry.thinkingText && processVisibility !== "output"}
+                <details
+                  class="mb-1 rounded-md border border-[hsl(var(--miwarp-status-info)/0.12)] bg-[hsl(var(--miwarp-status-info)/0.04)] overflow-hidden"
+                >
+                  <summary
+                    class="flex cursor-pointer list-none items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-info)/0.9)] hover:bg-[hsl(var(--miwarp-status-info)/0.08)] [&::-webkit-details-marker]:hidden"
+                  >
+                    <svg
+                      class="h-3 w-3 shrink-0 opacity-60"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M12 2a8 8 0 0 1 8 8c0 5-8 13-8 13S4 15 4 10a8 8 0 0 1 8-8z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    {t("chat_thoughtProcess")}
+                  </summary>
+                  <div
+                    class="max-h-[min(40vh,18rem)] min-h-0 overflow-y-auto overscroll-y-contain border-t border-[hsl(var(--miwarp-status-info)/0.12)] px-2 py-1.5"
+                  >
+                    <pre
+                      class="text-xs font-mono whitespace-pre-wrap break-words text-[hsl(var(--miwarp-status-info)/0.7)] italic leading-relaxed">{subEntry.thinkingText.trimEnd()}</pre>
+                  </div>
+                </details>
               {/if}
               <MarkdownContent
                 text={subEntry.content}
@@ -1872,6 +1948,7 @@
               {taskNotifications}
               {showPermissionInPanel}
               {onPreviewFile}
+              {processVisibility}
             />
           {/if}
         {/each}

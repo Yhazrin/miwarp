@@ -1,3 +1,5 @@
+import type { SkillRemoteRef } from "./types/skill";
+
 export interface MemoryFileCandidate {
   path: string;
   label: string;
@@ -202,8 +204,24 @@ export interface UserSettings {
   auto_cleanup_worktree?: boolean;
   /** Show per-turn token usage report below each AI response. Default true. */
   show_token_usage_report?: boolean;
+  /** Process visibility for chat (output | guided | developer | expert). Default developer. */
+  process_visibility?: "output" | "guided" | "developer" | "expert";
+  /** Custom session status colors. */
+  session_status_colors?: SessionStatusColors;
   updated_at: string;
 }
+
+export interface SessionStatusColors {
+  running?: string;
+  done?: string;
+  failed?: string;
+  pending?: string;
+  paused?: string;
+  blocked?: string;
+  idle?: string;
+}
+
+// ── Remote SSH types ──
 
 // ── Remote SSH types ──
 
@@ -773,6 +791,7 @@ export interface StandaloneSkill {
   description: string;
   path: string;
   scope?: string;
+  remoteRef?: SkillRemoteRef;
 }
 
 export interface InstalledPlugin {
