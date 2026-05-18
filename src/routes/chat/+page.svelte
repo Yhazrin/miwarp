@@ -58,6 +58,7 @@
   import ToolActivity from "$lib/components/ToolActivity.svelte";
   import ShortcutHelpPanel from "$lib/components/ShortcutHelpPanel.svelte";
   import type { PromptInputSnapshot } from "$lib/types";
+  import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
   import HookReviewCard from "$lib/components/HookReviewCard.svelte";
   import ViewModeToggle from "$lib/components/ViewModeToggle.svelte";
@@ -369,9 +370,9 @@
   let shortcutHelpOpen = $state(false);
   let statusBarRef: SessionStatusBar | undefined = $state();
   let stashedInput: PromptInputSnapshot | null = $state(null);
-  let sidebarRequestedTab = $state<
-    "workspace" | "tools" | "context" | "files" | "info" | "tasks" | "preview" | null
-  >(null);
+  let sidebarRequestedTab = $state<ToolActivityPanelTab | null>(null);
+  let toolPanelActiveTab = $state<ToolActivityPanelTab>("workspace");
+  let toolPanelIndicators = $state({ context: false, files: false, tasks: false });
   let requestedPreviewPath = $state<string | null>(null);
   let requestedPreviewUrl = $state<string | null>(null);
 
@@ -3879,6 +3880,13 @@
         sidebarRequestedTab = "info";
       }}
       onExportHtml={store.run ? () => void handleExportHtml() : undefined}
+      fuseToolRailCapsule={true}
+      {toolPanelActiveTab}
+      onToolPanelTabChange={(tab) => {
+        toolPanelActiveTab = tab;
+        if (sidebarCollapsed) sidebarCollapsed = false;
+      }}
+      {toolPanelIndicators}
     />
 
     <!-- MCP panel (floating below status bar) -->
@@ -4964,6 +4972,9 @@
     persistedFiles={store.persistedFiles}
     sessionInfo={currentSessionInfo}
     collapsed={sidebarCollapsed}
+    bind:activeTab={toolPanelActiveTab}
+    bind:panelIndicators={toolPanelIndicators}
+    underUnifiedCapsule={true}
     onToggle={toggleSidebar}
     onScrollToTool={scrollToTool}
     onScrollToTurn={(anchorId) => scrollToMessage(anchorId)}

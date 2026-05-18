@@ -1,16 +1,11 @@
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite";
-import path from "path";
+import path from "node:path";
 
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
   plugins: [sveltekit()],
-  resolve: {
-    alias: {
-      $messages: path.resolve("./messages"),
-    },
-  },
   build: {
     target: ["safari16", "chrome105", "edge105"],
     rollupOptions: {
@@ -29,7 +24,11 @@ export default defineConfig({
     strictPort: true,
     host: host || false,
     fs: {
-      allow: [".", "messages"],
+      allow: [
+        path.resolve("."), // cwd + subtree (includes node_modules)
+        path.resolve("messages"),
+        path.resolve("node_modules/@sveltejs/kit"),
+      ],
     },
     hmr: host
       ? {

@@ -2275,6 +2275,17 @@
   "sessionStatus_plan": "计划",
   "sessionStatus_auto": "自动",
 
+  "sessionControl_panelWorkspace": "会话上下文",
+  "sessionControl_panelActivity": "近期活动",
+  "sessionControl_panelUsage": "上下文用量",
+  "sessionControl_panelFiles": "文件",
+  "sessionControl_panelPreview": "预览",
+  "sessionControl_panelInfo": "信息",
+  "sessionControl_panelTasks": "任务",
+  "sessionControl_panelMore": "更多",
+  "sessionControl_panelOverflowMenu": "更多面板（用量与任务）",
+  "sessionControl_panelTabsAria": "侧栏面板标签",
+
   "skillCard_options": "技能选项",
   "sidebarSearch_clear": "清除搜索",
   "phaseIndicator_agentPhase": "Agent 阶段: {phase}",

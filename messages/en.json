@@ -2275,6 +2275,17 @@
   "sessionStatus_plan": "plan",
   "sessionStatus_auto": "auto",
 
+  "sessionControl_panelWorkspace": "Session context",
+  "sessionControl_panelActivity": "Activity",
+  "sessionControl_panelUsage": "Context usage",
+  "sessionControl_panelFiles": "Files",
+  "sessionControl_panelPreview": "Preview",
+  "sessionControl_panelInfo": "Info",
+  "sessionControl_panelTasks": "Tasks",
+  "sessionControl_panelMore": "More",
+  "sessionControl_panelOverflowMenu": "More panels (usage & tasks)",
+  "sessionControl_panelTabsAria": "Side panel tabs",
+
   "skillCard_options": "Skill options",
   "sidebarSearch_clear": "Clear search",
   "phaseIndicator_agentPhase": "Agent phase: {phase}",

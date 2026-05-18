@@ -9,6 +9,8 @@
   import { fmtNumber } from "$lib/i18n/format";
   import { truncate, formatTokenCount, formatDuration, formatCostDisplay } from "$lib/utils/format";
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
+  import SessionPanelTabs from "$lib/components/chat/SessionPanelTabs.svelte";
+  import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
 
   let {
     run = null,
@@ -58,6 +60,10 @@
     onEffortChange,
     onStatusClick,
     onExportHtml,
+    toolPanelActiveTab,
+    onToolPanelTabChange,
+    toolPanelIndicators,
+    fuseToolRailCapsule = false,
   }: {
     run?: TaskRun | null;
     agent?: string;
@@ -106,6 +112,11 @@
     onEffortChange?: (effort: string) => void;
     onStatusClick?: () => void;
     onExportHtml?: () => void;
+    toolPanelActiveTab?: ToolActivityPanelTab;
+    onToolPanelTabChange?: (tab: ToolActivityPanelTab) => void;
+    toolPanelIndicators?: { context: boolean; files: boolean; tasks: boolean };
+    /** Widen the top capsule so fused panel tabs align with the unified control row. */
+    fuseToolRailCapsule?: boolean;
   } = $props();
 
   $effect(() => {
@@ -452,7 +463,9 @@
   spacers below are kept for Linux/Windows where the JS handler is needed.
 -->
 <div
-  class="session-status-drag relative mx-4 mt-3 rounded-full border border-white/10 bg-background/55 font-mono text-xs text-foreground/70 backdrop-blur-2xl shadow-[0_2px_16px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.08)]"
+  class="session-status-drag relative mt-3 rounded-full border border-white/10 bg-background/55 font-mono text-xs text-foreground/70 backdrop-blur-2xl shadow-[0_2px_16px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.08)] {fuseToolRailCapsule
+    ? 'mx-2 sm:mx-3'
+    : 'mx-4'}"
   data-tauri-drag-region
 >
   <!-- Left drag spacer (Linux/Windows JS fallback) -->
@@ -460,7 +473,7 @@
   <!-- Right drag spacer (Linux/Windows JS fallback) -->
   <WindowDragArea class="absolute right-0 top-0 bottom-0 w-24 rounded-r-full" />
   <!-- Tier 1: Always visible (h-9) -->
-  <div class="relative z-10 flex h-9 items-center justify-between px-3">
+  <div class="relative z-10 flex h-9 min-w-0 items-center gap-1.5 px-3">
     <!-- Left: core info -->
     <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
       {#if onToggleSidebar}
@@ -631,8 +644,22 @@
       {/if}
     </div>
 
+    {#if onToolPanelTabChange && toolPanelActiveTab}
+      <div
+        class="hidden h-5 w-px shrink-0 self-center bg-border/50 min-[480px]:block"
+        aria-hidden="true"
+      ></div>
+      <div class="flex h-9 min-w-0 shrink items-center overflow-hidden">
+        <SessionPanelTabs
+          active={toolPanelActiveTab}
+          onSelect={onToolPanelTabChange}
+          indicators={toolPanelIndicators ?? { context: false, files: false, tasks: false }}
+        />
+      </div>
+    {/if}
+
     <!-- Right: tools count + More menu + chevron -->
-    <div class="flex items-center gap-2">
+    <div class="ml-auto flex shrink-0 items-center gap-2">
       {#if toolsCount && toolsCount > 0 && onToolsClick}
         <button
           class="text-xs text-muted-foreground hover:text-foreground transition-colors"
