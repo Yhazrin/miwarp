@@ -682,6 +682,9 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
       clean.searchParams.delete("resume");
       clean.searchParams.delete("scrollTo");
       replaceState(clean, {});
+      // IMPORTANT: update _prevRunUrl before returning so the replaceState-triggered
+      // callback doesn't process the same URL again as a new load.
+      _prevRunUrl = id;
       sessionLifecycle.handleResume(resumeMode, id);
       return;
     }
@@ -692,6 +695,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
       const clean = new URL(url);
       clean.searchParams.delete("scrollTo");
       replaceState(clean, {});
+      _prevRunUrl = id;
       tick().then(() => scrollToMessage(scrollTo));
       return;
     }
