@@ -177,9 +177,10 @@
     switch (scheduleType) {
       case "daily":
         return `${schedHour.toString().padStart(2, "0")}:${schedMinute.toString().padStart(2, "0")} ${t("sched_daily")}`;
-      case "weekly":
+      case "weekly": {
         const days = schedWeekdays.map((d) => WEEKDAY_LABELS[d]).join("");
         return `${schedHour.toString().padStart(2, "0")}:${schedMinute.toString().padStart(2, "0")} ${t("sched_weekly")} ${days}`;
+      }
       case "interval":
         return `${t("sched_every")} ${schedIntervalMin} ${t("sched_minutes")}`;
       case "one-time":

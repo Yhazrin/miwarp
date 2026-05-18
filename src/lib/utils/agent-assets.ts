@@ -3,6 +3,8 @@
  * Maps agent kind to display name, mascot, and icon paths.
  */
 
+import { APP_LOGO_LIGHT_URL, staticAsset } from "$lib/utils/brand-assets";
+
 export type AgentKind =
   | "claude"
   | "codex"
@@ -33,89 +35,89 @@ export const AGENT_ASSETS: Record<string, AgentAsset> = {
   claude: {
     kind: "claude",
     displayName: "Claude",
-    mascot: "/vendor/codeisland/mascots/claude.gif",
-    icon: "/vendor/codeisland/cli-icons/claude.png",
-    fallback: "/logo-light.png",
+    mascot: staticAsset("/vendor/codeisland/mascots/claude.gif"),
+    icon: staticAsset("/vendor/codeisland/cli-icons/claude.png"),
+    fallback: APP_LOGO_LIGHT_URL,
   },
   codex: {
     kind: "codex",
     displayName: "Codex",
-    mascot: "/vendor/codeisland/mascots/codex.gif",
-    icon: "/vendor/codeisland/cli-icons/codex.png",
-    fallback: "/logo-light.png",
+    mascot: staticAsset("/vendor/codeisland/mascots/codex.gif"),
+    icon: staticAsset("/vendor/codeisland/cli-icons/codex.png"),
+    fallback: APP_LOGO_LIGHT_URL,
   },
   gemini: {
     kind: "gemini",
     displayName: "Gemini",
-    mascot: "/vendor/codeisland/mascots/gemini.gif",
-    icon: "/vendor/codeisland/cli-icons/gemini.png",
-    fallback: "/logo-light.png",
+    mascot: staticAsset("/vendor/codeisland/mascots/gemini.gif"),
+    icon: staticAsset("/vendor/codeisland/cli-icons/gemini.png"),
+    fallback: APP_LOGO_LIGHT_URL,
   },
   cursor: {
     kind: "cursor",
     displayName: "Cursor",
-    mascot: "/vendor/codeisland/mascots/cursor.gif",
-    icon: "/vendor/codeisland/cli-icons/cursor.png",
-    fallback: "/logo-light.png",
+    mascot: staticAsset("/vendor/codeisland/mascots/cursor.gif"),
+    icon: staticAsset("/vendor/codeisland/cli-icons/cursor.png"),
+    fallback: APP_LOGO_LIGHT_URL,
   },
   trae: {
     kind: "trae",
     displayName: "Trae",
-    icon: "/vendor/codeisland/cli-icons/trae.png",
-    fallback: "/logo-light.png",
+    icon: staticAsset("/vendor/codeisland/cli-icons/trae.png"),
+    fallback: APP_LOGO_LIGHT_URL,
   },
   traecli: {
     kind: "traecli",
     displayName: "Trae CLI",
-    icon: "/vendor/codeisland/cli-icons/trae.png",
-    fallback: "/logo-light.png",
+    icon: staticAsset("/vendor/codeisland/cli-icons/trae.png"),
+    fallback: APP_LOGO_LIGHT_URL,
   },
   qoder: {
     kind: "qoder",
     displayName: "Qoder",
-    mascot: "/vendor/codeisland/mascots/qoder.gif",
-    icon: "/vendor/codeisland/cli-icons/qoder.png",
-    fallback: "/logo-light.png",
+    mascot: staticAsset("/vendor/codeisland/mascots/qoder.gif"),
+    icon: staticAsset("/vendor/codeisland/cli-icons/qoder.png"),
+    fallback: APP_LOGO_LIGHT_URL,
   },
   copilot: {
     kind: "copilot",
     displayName: "Copilot",
-    icon: "/vendor/codeisland/cli-icons/copilot.png",
-    fallback: "/logo-light.png",
+    icon: staticAsset("/vendor/codeisland/cli-icons/copilot.png"),
+    fallback: APP_LOGO_LIGHT_URL,
   },
   factory: {
     kind: "factory",
     displayName: "Factory",
-    mascot: "/vendor/codeisland/mascots/factory.gif",
-    icon: "/vendor/codeisland/cli-icons/factory.png",
-    fallback: "/logo-light.png",
+    mascot: staticAsset("/vendor/codeisland/mascots/factory.gif"),
+    icon: staticAsset("/vendor/codeisland/cli-icons/factory.png"),
+    fallback: APP_LOGO_LIGHT_URL,
   },
   codebuddy: {
     kind: "codebuddy",
     displayName: "CodeBuddy",
-    mascot: "/vendor/codeisland/mascots/codebuddy.gif",
-    icon: "/vendor/codeisland/cli-icons/codebuddy.png",
-    fallback: "/logo-light.png",
+    mascot: staticAsset("/vendor/codeisland/mascots/codebuddy.gif"),
+    icon: staticAsset("/vendor/codeisland/cli-icons/codebuddy.png"),
+    fallback: APP_LOGO_LIGHT_URL,
   },
   kimi: {
     kind: "kimi",
     displayName: "Kimi",
-    icon: "/vendor/codeisland/cli-icons/kimi.png",
-    fallback: "/logo-light.png",
+    icon: staticAsset("/vendor/codeisland/cli-icons/kimi.png"),
+    fallback: APP_LOGO_LIGHT_URL,
   },
   opencode: {
     kind: "opencode",
     displayName: "OpenCode",
-    mascot: "/vendor/codeisland/mascots/opencode.gif",
-    icon: "/vendor/codeisland/cli-icons/opencode.png",
-    fallback: "/logo-light.png",
+    mascot: staticAsset("/vendor/codeisland/mascots/opencode.gif"),
+    icon: staticAsset("/vendor/codeisland/cli-icons/opencode.png"),
+    fallback: APP_LOGO_LIGHT_URL,
   },
   cline: {
     kind: "cline",
     displayName: "Cline",
-    mascot: "/vendor/codeisland/mascots/cline.gif",
-    icon: "/vendor/codeisland/cli-icons/cline.png",
-    fallback: "/logo-light.png",
+    mascot: staticAsset("/vendor/codeisland/mascots/cline.gif"),
+    icon: staticAsset("/vendor/codeisland/cli-icons/cline.png"),
+    fallback: APP_LOGO_LIGHT_URL,
   },
 };
 
@@ -151,7 +153,7 @@ export function getAgentAsset(agent?: string | null, platformId?: string | null)
     AGENT_ASSETS[key] ?? {
       kind: "unknown" as AgentKind,
       displayName: agent || platformId || "Agent",
-      fallback: "/logo-light.png",
+      fallback: APP_LOGO_LIGHT_URL,
     }
   );
 }

@@ -69,6 +69,7 @@
   import type { ContextSnapshot } from "$lib/types";
   import ReleaseNotesCard from "$lib/components/ReleaseNotesCard.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import { APP_LOGO_URL } from "$lib/utils/brand-assets";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { yieldToMain } from "$lib/utils/yield";
   import {
@@ -4140,7 +4141,7 @@
               <div class="flex h-full items-center justify-center">
                 <div class="flex flex-col items-center max-w-lg w-full px-4 animate-slide-up">
                   <!-- Logo + title -->
-                  <img src="/light.png" alt="MiWarp" class="mx-auto mb-3 h-8 w-8 rounded-lg" />
+                  <img src={APP_LOGO_URL} alt="MiWarp" class="mx-auto mb-3 h-8 w-8 rounded-lg" />
                   <h2 class="text-base font-medium text-foreground mb-1">
                     {t("chat_welcomeTitle")}
                   </h2>
@@ -4906,7 +4907,7 @@
           <!-- CLI mode: welcome state -->
           <div class="flex h-full items-center justify-center">
             <div class="text-center max-w-md animate-slide-up">
-              <img src="/light.png" alt="MiWarp" class="mx-auto mb-4 h-10 w-10 rounded-xl" />
+              <img src={APP_LOGO_URL} alt="MiWarp" class="mx-auto mb-4 h-10 w-10 rounded-xl" />
               <h2 class="text-lg font-semibold text-primary mb-2">{t("layout_appName")}</h2>
               <p class="text-sm text-muted-foreground mb-4">
                 {store.run ? t("chat_typeToStartSession") : t("chat_startSessionHint")}

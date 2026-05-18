@@ -33,6 +33,17 @@ jobs:
 
       - run: npm ci
 
+      - name: Verify package.json version matches git tag
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          echo "tag=v${TAG} package.json=${PKG}"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Version mismatch: git tag v${TAG} but package.json is ${PKG}. Run: npm run release ${TAG}"
+            exit 1
+          fi
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target == 'universal-apple-darwin' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.target }}

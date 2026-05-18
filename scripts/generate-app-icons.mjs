@@ -19,7 +19,7 @@ const __filename = process.argv[1] ? path.resolve(process.argv[1]) : fileURLToPa
 const __dirname = path.dirname(__filename);
 const rootDir = path.join(__dirname, '..');
 const iconsDir = path.join(rootDir, 'src-tauri', 'icons');
-const sourceLogo = path.join(rootDir, 'static', 'light.png');
+const sourceLogo = path.join(rootDir, "static", "logo.png");
 
 const WINDOWS_SIZES = [16, 24, 32, 48, 64, 128, 256];
 const MACOS_SIZE = 1024;

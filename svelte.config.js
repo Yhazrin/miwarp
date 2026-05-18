@@ -13,8 +13,9 @@ const config = {
     alias: {
       $messages: path.resolve(__dirname, "messages"),
     },
+    // Required for Tauri: absolute "/asset" URLs break after client-side routing.
     paths: {
-      relative: false,
+      relative: true,
     },
   },
 };

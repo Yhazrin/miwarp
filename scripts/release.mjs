@@ -52,6 +52,11 @@ if (next === current) {
 
 console.log(`  ${current} → ${next}\n`);
 
+if (!/^\d+\.\d+\.\d+$/.test(next)) {
+  console.error(`Invalid version: "${next}". Expected format: x.y.z`);
+  process.exit(1);
+}
+
 // ── Update package.json (single source of truth) ─────────────────────
 pkg.version = next;
 writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
