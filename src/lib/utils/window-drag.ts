@@ -3,13 +3,23 @@
 const INTERACTIVE_SELECTOR = [
   "button",
   "a",
+  "summary",
   "input",
   "textarea",
   "select",
   "[role='button']",
+  "[role='tab']",
+  "[role='menuitem']",
+  "[role='option']",
+  "[role='switch']",
+  '[tabindex]:not([tabindex="-1"])',
+  "[data-clickable]",
+  "[aria-haspopup]",
   "[data-no-drag]",
   "[contenteditable='true']",
   ".no-drag",
+  ".cm-editor",
+  ".cm-content",
 ].join(",");
 
 let currentWindowPromise: Promise<import("@tauri-apps/api/window").Window> | null = null;

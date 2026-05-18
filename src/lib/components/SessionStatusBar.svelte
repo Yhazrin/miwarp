@@ -507,21 +507,16 @@
 
 <!--
   Four-tier shell (see app.css miwarp-shell-tier-*): sidebar → main → tool rail → this capsule.
-  With fuseToolRailCapsule, the island stretches across chat + tool rail (panel tabs read as part of one bar).
-  data-tauri-drag-region + .session-status-drag class on the OUTER shell makes
-  the *entire* status-bar background a window drag region (not just the left
-  and right spacers). Buttons, inputs and anchors inside are already marked
-  `-webkit-app-region: no-drag` globally (see src/app.css), so the model
-  selector, sidebar toggle, more menu etc. still work normally. The two
-  spacers below are kept for Linux/Windows where the JS handler is needed.
+  The outer shell deliberately does NOT use data-tauri-drag-region / CSS app-region drag:
+  WKWebView on macOS frequently dropped real clicks onto custom controls underneath.
+  Use WindowDragArea spacers plus global TopWindowDrag (JS capture) instead.
 
   Inside the island: Tier 1 = primary controls row; Tier 2 = expandable detail row.
 -->
 <div
-  class="session-status-drag session-island-shell relative mt-3 w-full min-w-0 border border-border/55 dark:border-white/[0.13] bg-background/[0.42] dark:bg-background/[0.34] font-mono text-xs text-foreground/70 backdrop-blur-2xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.38)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[border-radius,background-color,border-color,box-shadow] duration-[520ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:duration-150 motion-reduce:ease-linear {fuseToolRailCapsule
+  class="session-island-shell relative mt-3 w-full min-w-0 border border-border/55 dark:border-white/[0.13] bg-background/[0.42] dark:bg-background/[0.34] font-mono text-xs text-foreground/70 backdrop-blur-2xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.38)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[border-radius,background-color,border-color,box-shadow] duration-[520ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:duration-150 motion-reduce:ease-linear {fuseToolRailCapsule
     ? 'max-w-none'
     : 'mx-auto max-w-[1100px]'} {showIslandExpanded ? 'rounded-[1.28rem]' : 'rounded-full'}"
-  data-tauri-drag-region
   onpointerenter={onIslandPointerEnter}
   onpointerleave={onIslandPointerLeave}
   aria-label={t("statusbar_islandRegion")}

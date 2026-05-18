@@ -1598,6 +1598,25 @@
     goto("/chat");
   }
 
+  function chatRunHref(runId: string): string {
+    const params = new URLSearchParams({ run: runId });
+    return `/chat?${params.toString()}`;
+  }
+
+  function selectConversation(runId: string) {
+    const href = chatRunHref(runId);
+    const current = `${$page.url.pathname}${$page.url.search}`;
+    if (current === href) {
+      window.dispatchEvent(
+        new CustomEvent("ocv:chat-route-reconcile", {
+          detail: { runId, reason: "sidebar-same-url-click" },
+        }),
+      );
+      return;
+    }
+    goto(href);
+  }
+
   function newChatInFolder(cwd: string) {
     projectCwd = cwd;
     goto(`/chat?folder=${encodeURIComponent(cwd)}`);
@@ -1683,7 +1702,8 @@
     _prevAutoExpandRunId = runId;
     _prevAutoExpandRunsLen = runsLen;
     if (!runId) return;
-    const next = autoExpandForRun(runId, enrichedProjectFolders, expandedProjects);
+    const currentExpanded = untrack(() => expandedProjects);
+    const next = autoExpandForRun(runId, enrichedProjectFolders, currentExpanded);
     if (next) {
       dbg("layout", "auto-expand for run", { selectedRunId: runId });
       expandedProjects = next;
@@ -1698,7 +1718,8 @@
     _prevAutoExpandCwd = cwd;
     if (!cwd) return;
     const folderKey = `cwd:${cwd}`;
-    const next = expandForProjectChange(folderKey, expandedProjects);
+    const currentExpanded = untrack(() => expandedProjects);
+    const next = expandForProjectChange(folderKey, currentExpanded);
     if (next) {
       dbg("layout", "auto-expand for cwd change", { cwd });
       expandedProjects = next;
@@ -1706,12 +1727,18 @@
   });
 
   // Persist expandedProjects + prune stale keys (only after first successful load)
+  let pruneExpandedQueued = false;
   $effect(() => {
     if (!runsLoadSucceededOnce) return;
     const validKeys = new Set(enrichedProjectFolders.map((f) => f.folderKey));
     const pruned = [...expandedProjects].filter((k) => validKeys.has(k));
-    if (pruned.length !== expandedProjects.size) {
-      expandedProjects = new Set(pruned);
+    const shouldPrune = pruned.length !== expandedProjects.size;
+    if (shouldPrune && !pruneExpandedQueued) {
+      pruneExpandedQueued = true;
+      queueMicrotask(() => {
+        pruneExpandedQueued = false;
+        expandedProjects = new Set(pruned);
+      });
     }
     localStorage.setItem("ocv:expanded-projects", JSON.stringify(pruned));
   });
@@ -2718,7 +2745,7 @@
                       expanded={expandedProjects.has(folder.folderKey)}
                       {selectedRunId}
                       onToggle={() => toggleProject(folder.folderKey)}
-                      onSelectConversation={(runId) => goto(`/chat?run=${runId}`)}
+                      onSelectConversation={selectConversation}
                       onResume={(runId, mode) => goto(`/chat?run=${runId}&resume=${mode}`)}
                       onDelete={requestDeleteConversation}
                       onMoveToFolder={requestMoveToFolder}
@@ -2815,22 +2842,6 @@
       class="app-main-shell miwarp-shell-tier-2 relative z-10 flex flex-col overflow-hidden"
       class:miwarp-chrome-frost={rootWallpaper.show}
     >
-      <!--
-      macOS drag region for the main pane.
-      Uses pointer-events: none + -webkit-app-region: drag so native macOS
-      window drag works WITHOUT blocking any button clicks. TopWindowDrag
-      (below) is the global safety net; this element adds redundancy in the
-      main content area without interfering with interactive elements.
-      Linux/Windows: pointer-events:none means the JS drag handler won't
-      fire here, but sidebar spacers still provide drag handles on those
-      platforms.
-    -->
-      <div
-        class="absolute top-0 left-0 right-0 h-11 pointer-events-none"
-        data-tauri-drag-region
-        aria-hidden="true"
-        style="-webkit-app-region: drag; z-index: 0;"
-      ></div>
       <UpdateBanner />
       <!-- Page content — full-bleed, no top bar on non-chat pages -->
       <main

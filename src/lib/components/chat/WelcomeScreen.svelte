@@ -146,9 +146,16 @@
     {/if}
     <div class="relative inline-flex items-center">
       {#if targetDropdownOpen}
-        <div class="fixed inset-0 z-40" onclick={onTargetDropdownClose}></div>
+        <div
+          class="fixed inset-0 z-40"
+          data-no-drag
+          data-clickable
+          role="presentation"
+          onclick={onTargetDropdownClose}
+        ></div>
       {/if}
       <button
+        type="button"
         class="inline-flex items-center gap-1 cursor-pointer text-xs {remoteHostName
           ? 'text-blue-400/70 hover:text-blue-400'
           : 'text-muted-foreground hover:text-foreground'} transition-colors"

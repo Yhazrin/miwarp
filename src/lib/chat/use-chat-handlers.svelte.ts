@@ -894,6 +894,12 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
 
   // ── Drag-drop ──
 
+  /** Resets transient drag UI state — page overlay must never block clicks if left stuck. */
+  function clearDragState() {
+    pageDragActive = false;
+    dragProcessingCount = 0;
+  }
+
   /** Concurrency-limited parallel map returning PromiseSettledResult for each item. */
   async function handleTauriDrop(payload: { paths: string[] }) {
     pageDragActive = false;
@@ -999,7 +1005,8 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
         input.showToast(parts.join(t("common_listSeparator")));
       }
     } finally {
-      dragProcessingCount--;
+      dragProcessingCount = Math.max(0, dragProcessingCount - 1);
+      pageDragActive = false;
     }
   }
 
@@ -1388,6 +1395,7 @@ export function useChatHandlers(opts: UseChatHandlersOptions) {
     pageDragActive,
     dragProcessingCount,
     dragProcessing,
+    clearDragState,
     resuming,
     autoNameDone,
     timelineIdIndex,

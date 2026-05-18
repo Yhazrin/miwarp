@@ -60,7 +60,6 @@
 
 <div
   class="top-window-drag"
-  data-tauri-drag-region
   aria-hidden="true"
   style="height: {height}px; left: {leftInset}px; right: {rightInset}px; z-index: {zIndex};"
 ></div>
@@ -70,11 +69,8 @@
     position: fixed;
     top: 0;
     pointer-events: none;
-    -webkit-app-region: drag;
-    /* Tauri/Electron also accept the unprefixed form. svelte-check warns it's
-       non-standard CSS — silenced via the global rule in src/app.css where
-       app-region: no-drag is already used for buttons. We omit it here on
-       purpose to keep the component warning-free. */
+    /* Drag is handled solely via capture-phase mousedown + Tauri startDragging().
+       Do not set -webkit-app-region: drag — on macOS/WKWebView it can still steal clicks. */
     background: transparent;
   }
 </style>

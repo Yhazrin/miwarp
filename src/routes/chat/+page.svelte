@@ -198,6 +198,7 @@
     getRemoteHosts: () => lifecycleRef.current?.remoteHosts ?? [],
     getSettings: () => lifecycleRef.current?.settings ?? null,
     onBeforeLoadRun: () => {
+      handlers.clearDragState();
       lifecycleRef.current?.setToolFilter(null);
       folderCwdOverride = "";
     },
@@ -279,6 +280,10 @@
         return handlers.dragProcessing;
       },
       handleTauriDrop: handlers.handleTauriDrop,
+      clearDragState: handlers.clearDragState,
+      getDragProcessingCount() {
+        return handlers.dragProcessingCount;
+      },
     },
     exportCtrl: { handleExportHtml: handlers.handleExportHtml },
     keybindingStore,
@@ -404,10 +409,12 @@
   <!-- Page-level drag overlay -->
   {#if handlers.pageDragActive || handlers.dragProcessing}
     <div
-      class="absolute inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-[2px]"
+      data-chat-drag-overlay=""
+      aria-hidden="true"
+      class="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-[2px]"
     >
       <div
-        class="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/50 bg-primary/5 px-12 py-8"
+        class="pointer-events-none flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/50 bg-primary/5 px-12 py-8"
       >
         {#if handlers.dragProcessing}
           <svg
