@@ -720,8 +720,11 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   }
 
   page.subscribe((p) => {
-    if (!middleware.isStarted) {
+    const started = middleware.isStarted;
+    console.log("[lifecycle] page.subscribe fired", { url: p.url.href, started, _deferredLoad });
+    if (!started) {
       _deferredLoad = true;
+      console.log("[lifecycle] middleware not started, deferring load");
       return;
     }
     _deferredLoad = false;
@@ -729,11 +732,13 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   });
 
   // Deferred load: when middleware becomes ready, fire the pending URL load.
-  // This is a one-shot effect — only fires when transitioning from false→true.
   $effect(() => {
-    if (!middlewareReady || !_deferredLoad) return;
+    const ready = middlewareReady;
+    console.log("[lifecycle] $effect fired", { ready, _deferredLoad });
+    if (!ready || !_deferredLoad) return;
     _deferredLoad = false;
     const url = new URL(window.location.href);
+    console.log("[lifecycle] deferred load triggered", url.href);
     _tryLoadFromUrl(url);
   });
 
