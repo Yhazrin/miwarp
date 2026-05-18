@@ -1,45 +1,76 @@
 <script lang="ts">
-  import { checkForUpdates } from "$lib/api";
-  import { dbg, dbgWarn } from "$lib/utils/debug";
-  import { t } from "$lib/i18n/index.svelte";
   import { onMount } from "svelte";
+  import { t } from "$lib/i18n/index.svelte";
+  import { dbg, dbgWarn } from "$lib/utils/debug";
+  import {
+    discoverAppUpdate,
+    installInAppUpdate,
+    openExternalUpdateUrl,
+    type AppUpdateOffer,
+    type AppUpdateProgress,
+  } from "$lib/utils/app-updater";
 
-  let hasUpdate = $state(false);
-  let latestVersion = $state("");
-  let downloadUrl = $state("");
+  let offer = $state<AppUpdateOffer | null>(null);
+  let busy = $state(false);
+  let progress = $state<AppUpdateProgress>({ phase: "idle", percent: null });
 
   function isDismissed(version: string): boolean {
     return sessionStorage.getItem(`ocv:update-dismissed:${version}`) === "1";
   }
 
   function dismiss() {
-    dbg("update-banner", "dismissed", latestVersion);
-    sessionStorage.setItem(`ocv:update-dismissed:${latestVersion}`, "1");
-    hasUpdate = false;
+    if (!offer) return;
+    dbg("update-banner", "dismissed", offer.version);
+    sessionStorage.setItem(`ocv:update-dismissed:${offer.version}`, "1");
+    offer = null;
   }
 
-  async function openDownload() {
-    dbg("update-banner", "opening download", downloadUrl);
+  async function applyUpdate() {
+    if (!offer || busy) return;
+    busy = true;
     try {
-      const { open } = await import("@tauri-apps/plugin-shell");
-      await open(downloadUrl);
-    } catch {
-      window.open(downloadUrl, "_blank");
+      if (offer.kind === "in_app") {
+        dbg("update-banner", "installing in-app", offer.version);
+        await installInAppUpdate((p) => {
+          progress = p;
+        });
+      } else {
+        dbg("update-banner", "opening external download", offer.downloadUrl);
+        await openExternalUpdateUrl(offer.downloadUrl);
+      }
+    } catch (e) {
+      dbgWarn("update-banner", "update failed", e);
+    } finally {
+      busy = false;
+      progress = { phase: "idle", percent: null };
     }
   }
+
+  const actionLabel = $derived.by(() => {
+    if (!offer || !busy) {
+      return offer?.kind === "in_app" ? t("appUpdate_install") : t("appUpdate_download");
+    }
+    switch (progress.phase) {
+      case "downloading":
+        return progress.percent != null
+          ? t("appUpdate_downloading", { percent: String(progress.percent) })
+          : t("appUpdate_downloading", { percent: "0" });
+      case "installing":
+        return t("appUpdate_installing");
+      case "relaunching":
+        return t("appUpdate_relaunching");
+      default:
+        return t("appUpdate_install");
+    }
+  });
 
   onMount(() => {
     const timerId = setTimeout(async () => {
       try {
-        const info = await checkForUpdates();
-        dbg("update-banner", "check result", info);
-        if (info.error) {
-          dbgWarn("update-banner", "check error:", info.error);
-        }
-        if (info.hasUpdate && !isDismissed(info.latestVersion)) {
-          hasUpdate = true;
-          latestVersion = info.latestVersion;
-          downloadUrl = info.downloadUrl;
+        const found = await discoverAppUpdate();
+        dbg("update-banner", "check result", found);
+        if (found && !isDismissed(found.version)) {
+          offer = found;
         }
       } catch (e) {
         dbgWarn("update-banner", "check failed", e);
@@ -49,23 +80,23 @@
   });
 </script>
 
-{#if hasUpdate}
-  <div
-    class="flex items-center justify-between gap-2 border-b border-primary/30 bg-primary/10 px-4 py-1.5 text-sm"
-  >
-    <span class="text-foreground">
-      {t("appUpdate_available", { version: latestVersion })}
+{#if offer}
+  <div class="flex items-center justify-between gap-2 border-b border-primary/30 bg-primary/10 px-4 py-1.5 text-sm">
+    <span class="min-w-0 truncate text-foreground">
+      {t("appUpdate_available", { version: offer.version })}
     </span>
-    <div class="flex items-center gap-2">
+    <div class="flex shrink-0 items-center gap-2">
       <button
-        class="rounded-md bg-primary px-3 py-0.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        onclick={openDownload}
+        class="rounded-md bg-primary px-3 py-0.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+        onclick={applyUpdate}
+        disabled={busy}
       >
-        {t("appUpdate_download")}
+        {actionLabel}
       </button>
       <button
-        class="rounded-md px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        class="rounded-md px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
         onclick={dismiss}
+        disabled={busy}
         title={t("appUpdate_dismiss")}
       >
         <svg

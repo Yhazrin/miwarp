@@ -1,6 +1,11 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { checkForUpdates } from "$lib/api";
+  import {
+    checkAppUpdateStatus,
+    installInAppUpdate,
+    openExternalUpdateUrl,
+    type AppUpdateProgress,
+  } from "$lib/utils/app-updater";
   import { renderMarkdown } from "$lib/utils/markdown";
   import { currentLocale, t } from "$lib/i18n/index.svelte";
   import readmeEn from "../../../README.md?raw";
@@ -10,6 +15,23 @@
 
   let appVersion = $state("");
   let checkingUpdate = $state(false);
+  let updateProgress = $state<AppUpdateProgress>({ phase: "idle", percent: null });
+
+  const updateButtonLabel = $derived.by(() => {
+    if (!checkingUpdate) return t("appUpdate_manual");
+    switch (updateProgress.phase) {
+      case "downloading":
+        return updateProgress.percent != null
+          ? t("appUpdate_downloading", { percent: String(updateProgress.percent) })
+          : t("appUpdate_checking");
+      case "installing":
+        return t("appUpdate_installing");
+      case "relaunching":
+        return t("appUpdate_relaunching");
+      default:
+        return t("appUpdate_checking");
+    }
+  });
   onMount(async () => {
     try {
       const { getVersion } = await import("@tauri-apps/api/app");
@@ -48,32 +70,32 @@
   async function updateToLatest() {
     if (checkingUpdate) return;
     checkingUpdate = true;
+    updateProgress = { phase: "checking", percent: null };
     try {
-      const info = await checkForUpdates();
-      if (info.error) {
-        window.alert(`${t("appUpdate_checkFailed")}\n\n${info.error}`);
+      const { offer, error, upToDateVersion } = await checkAppUpdateStatus();
+      if (error) {
+        window.alert(`${t("appUpdate_checkFailed")}\n\n${error}`);
         return;
       }
-      if (!info.hasUpdate) {
+      if (!offer) {
         window.alert(
-          t("appUpdate_upToDate", { version: info.currentVersion || appVersion || "-" }),
+          t("appUpdate_upToDate", { version: upToDateVersion || appVersion || "-" }),
         );
         return;
       }
-      if (!info.downloadUrl) {
-        window.alert(t("appUpdate_checkFailed"));
+      if (offer.kind === "in_app") {
+        await installInAppUpdate((p) => {
+          updateProgress = p;
+        });
         return;
       }
-      try {
-        const { open } = await import("@tauri-apps/plugin-shell");
-        await open(info.downloadUrl);
-      } catch {
-        window.open(info.downloadUrl, "_blank");
-      }
+      await openExternalUpdateUrl(offer.downloadUrl);
+      window.alert(t("appUpdate_externalOpened"));
     } catch {
       window.alert(t("appUpdate_checkFailed"));
     } finally {
       checkingUpdate = false;
+      updateProgress = { phase: "idle", percent: null };
     }
   }
 </script>
@@ -100,7 +122,7 @@
             onclick={updateToLatest}
             disabled={checkingUpdate}
           >
-            {checkingUpdate ? t("appUpdate_checking") : t("appUpdate_manual")}
+            {updateButtonLabel}
           </button>
         </div>
         <button

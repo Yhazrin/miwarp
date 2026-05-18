@@ -12,16 +12,16 @@ jobs:
   build:
     name: Build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-latest
             target: universal-apple-darwin
-            asset_glob: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            asset_glob: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.zip
 
     steps:
       - uses: actions/checkout@v4
@@ -42,48 +42,18 @@ jobs:
           workspaces: src-tauri
           key: ${{ matrix.target }}
 
-      - name: Build Tauri app
+      # Set repository secret TAURI_SIGNING_PRIVATE_KEY to the contents of src-tauri/miwarp.key
+      # (generate locally: npm run tauri signer generate -- -w src-tauri/miwarp.key -p "")
+      - name: Build Tauri app and upload release assets
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
+          tagName: ${{ github.ref_name }}
+          releaseName: MiWarp ${{ github.ref_name }}
+          generateReleaseNotes: true
+          uploadUpdaterJson: true
+          updaterJsonPreferNsis: true
           args: --target ${{ matrix.target }}
-
-      - name: Zip Windows installer
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $exeDir = "src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis"
-          $exe = Get-ChildItem "$exeDir/*.exe" | Select-Object -First 1
-          $zipName = [System.IO.Path]::ChangeExtension($exe.Name, ".zip")
-          Compress-Archive -Path $exe.FullName -DestinationPath "$exeDir/$zipName"
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-${{ matrix.target }}
-          path: ${{ matrix.asset_glob }}
-          if-no-files-found: error
-
-  publish:
-    name: Publish Release
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: List artifacts
-        run: find artifacts -type f | sort
-
-      - name: Upload to release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: artifacts/*
-          tag_name: ${{ github.ref_name }}
-          generate_release_notes: true

@@ -9,6 +9,8 @@
     "dialog:default",
     "notification:default",
     "global-shortcut:default",
+    "updater:default",
+    "process:allow-restart",
     "core:webview:default",
     "core:webview:allow-create-webview",
     "core:webview:allow-set-webview-position",

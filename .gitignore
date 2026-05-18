@@ -12,6 +12,8 @@ build/
 # Rust / Tauri
 src-tauri/target/
 src-tauri/gen/
+src-tauri/*.key
+!src-tauri/*.key.pub
 
 # OS files
 .DS_Store
