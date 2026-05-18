@@ -181,6 +181,7 @@ export interface UseChatLifecycleOptions {
 // ── Main composable ──
 
 export function useChatLifecycle(options: UseChatLifecycleOptions) {
+  console.log("[DEBUG useChatLifecycle] CALLED");
   const {
     store,
     middleware,
@@ -655,7 +656,9 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
   // ── Watch runId changes → load run + subscribe middleware ──
   // Uses page.subscribe to manually track URL changes without reactive effect dependencies.
   let _prevRunUrl = "";
+  console.log("[DEBUG PAGE_SUBSCRIBE] page.subscribe registered, _prevRunUrl=", _prevRunUrl);
   const unsubscribe = page.subscribe((p) => {
+    console.log("[DEBUG PAGE_SUBSCRIBE] callback FIRED! url=", p.url.href, "prev=" + _prevRunUrl);
     const url = p.url;
     const id = url.searchParams.get("run") ?? "";
     const resumeMode = url.searchParams.get("resume") as import("$lib/types").SessionMode | null;
