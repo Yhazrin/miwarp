@@ -11,5 +11,5 @@
 <div
   class={`window-drag-area ${className}`}
   data-tauri-drag-region
-  onpointerdown={startWindowDragFromEvent}
+  onmousedown={startWindowDragFromEvent}
 ></div>

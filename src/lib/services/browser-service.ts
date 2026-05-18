@@ -5,22 +5,83 @@
  * via the mcp__Claude_in_Chrome__ MCP tools.
  */
 
+// ── MCP Response Types ──
+
+interface McpBrowserInfo {
+  deviceId: string;
+  displayName: string;
+  platform: string;
+  isThisComputer: boolean;
+}
+
+interface McpTab {
+  id: number;
+  url?: string;
+  title?: string;
+}
+
+interface McpTabContext {
+  tabs: McpTab[];
+}
+
+interface McpNavigationResult {
+  url: string;
+  tabId: number;
+  success: boolean;
+}
+
+interface McpElement {
+  ref: string;
+  tag?: string;
+  text?: string;
+  attributes?: Record<string, string>;
+  visible?: boolean;
+}
+
+interface McpNetworkRequest {
+  url?: string;
+  method?: string;
+  status?: number;
+}
+
 // ── MCP Function Declarations ──
-declare function mcp__Claude_in_Chrome__list_connected_browsers(): Promise<any[]>;
-declare function mcp__Claude_in_Chrome__select_browser(args: any): Promise<any>;
-declare function mcp__Claude_in_Chrome__switch_browser(): Promise<any>;
-declare function mcp__Claude_in_Chrome__tabs_context_mcp(args: any): Promise<any>;
-declare function mcp__Claude_in_Chrome__tabs_create_mcp(args: any): Promise<any>;
-declare function mcp__Claude_in_Chrome__tabs_close_mcp(args: any): Promise<any>;
-declare function mcp__Claude_in_Chrome__navigate(args: any): Promise<any>;
-declare function mcp__Claude_in_Chrome__find(args: any): Promise<any>;
-declare function mcp__Claude_in_Chrome__computer(args: any): Promise<any>;
-declare function mcp__Claude_in_Chrome__get_page_text(args: any): Promise<any>;
-declare function mcp__Claude_in_Chrome__read_page(args: any): Promise<any>;
-declare function mcp__Claude_in_Chrome__read_network_requests(args: any): Promise<any>;
-declare function mcp__Claude_in_Chrome__read_console_messages(args: any): Promise<any>;
-declare function mcp__Claude_in_Chrome__resize_window(args: any): Promise<any>;
-declare function mcp__Claude_in_Chrome__javascript_tool(args: any): Promise<any>;
+declare function mcp__Claude_in_Chrome__list_connected_browsers(): Promise<McpBrowserInfo[]>;
+declare function mcp__Claude_in_Chrome__select_browser(
+  args: Record<string, unknown>,
+): Promise<void>;
+declare function mcp__Claude_in_Chrome__switch_browser(): Promise<void>;
+declare function mcp__Claude_in_Chrome__tabs_context_mcp(
+  args: Record<string, unknown>,
+): Promise<McpTabContext>;
+declare function mcp__Claude_in_Chrome__tabs_create_mcp(
+  args: Record<string, unknown>,
+): Promise<McpTab>;
+declare function mcp__Claude_in_Chrome__tabs_close_mcp(
+  args: Record<string, unknown>,
+): Promise<void>;
+declare function mcp__Claude_in_Chrome__navigate(
+  args: Record<string, unknown>,
+): Promise<McpNavigationResult>;
+declare function mcp__Claude_in_Chrome__find(args: Record<string, unknown>): Promise<McpElement[]>;
+declare function mcp__Claude_in_Chrome__computer(
+  args: Record<string, unknown>,
+): Promise<{ imageUrl?: string; width?: number; height?: number } | void>;
+declare function mcp__Claude_in_Chrome__get_page_text(
+  args: Record<string, unknown>,
+): Promise<string>;
+declare function mcp__Claude_in_Chrome__read_page(
+  args: Record<string, unknown>,
+): Promise<McpElement[]>;
+declare function mcp__Claude_in_Chrome__read_network_requests(
+  args: Record<string, unknown>,
+): Promise<McpNetworkRequest[]>;
+declare function mcp__Claude_in_Chrome__read_console_messages(
+  args: Record<string, unknown>,
+): Promise<string[]>;
+declare function mcp__Claude_in_Chrome__resize_window(args: Record<string, unknown>): Promise<void>;
+declare function mcp__Claude_in_Chrome__javascript_tool(
+  args: Record<string, unknown>,
+): Promise<unknown>;
 
 // ── Types ──
 
@@ -104,7 +165,7 @@ export async function switchToBrowser(): Promise<boolean> {
 export async function getTabs(): Promise<TabInfo[]> {
   try {
     const context = await mcp__Claude_in_Chrome__tabs_context_mcp({ createIfEmpty: true });
-    return context.tabs.map((t: any) => ({
+    return context.tabs.map((t) => ({
       id: t.id,
       url: t.url,
       title: t.title,
@@ -187,7 +248,7 @@ export async function goForward(tabId: number): Promise<boolean> {
 export async function findElement(query: string, tabId: number): Promise<PageElement[]> {
   try {
     const elements = await mcp__Claude_in_Chrome__find({ query, tabId });
-    return elements.map((el: any) => ({
+    return elements.map((el) => ({
       ref: el.ref,
       tag: el.tag ?? "unknown",
       text: el.text,
@@ -301,7 +362,7 @@ export async function getPageContent(tabId: number): Promise<PageContent> {
     const text = await mcp__Claude_in_Chrome__get_page_text({ tabId });
     const page = await mcp__Claude_in_Chrome__read_page({ tabId });
 
-    const elements: PageElement[] = page.map((el: any) => ({
+    const elements: PageElement[] = page.map((el) => ({
       ref: el.ref ?? "",
       tag: el.tag ?? "unknown",
       text: el.text ?? "",
@@ -394,7 +455,7 @@ export async function getNetworkRequests(
       urlPattern,
     });
 
-    return requests.map((req: any) => ({
+    return requests.map((req) => ({
       url: req.url ?? "",
       method: req.method ?? "GET",
       status: req.status ?? 0,

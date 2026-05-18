@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg } from "$lib/utils/debug";
 
@@ -27,22 +27,26 @@
 
   let isEmpty = $derived(skills.length === 0 && agents.length === 0);
 
+  function clampPopoverLeft(left: number, width: number, pad = 12) {
+    return Math.min(Math.max(left, pad), window.innerWidth - width - pad);
+  }
+
   function toggleDropdown() {
     if (disabled) return;
     dropdownOpen = !dropdownOpen;
     dbg("skill-selector", "toggle", { open: dropdownOpen });
-    if (dropdownOpen && buttonEl) updateDropdownPosition();
+    if (dropdownOpen && buttonEl) {
+      void tick().then(() => requestAnimationFrame(updateDropdownPosition));
+    }
   }
 
   function updateDropdownPosition() {
     if (!buttonEl) return;
     const rect = buttonEl.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    if (spaceBelow < 300) {
-      dropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:50;`;
-    } else {
-      dropdownStyle = `position:fixed; top:${rect.bottom + 4}px; left:${rect.left}px; z-index:50;`;
-    }
+    const width = 320;
+    const left = clampPopoverLeft(rect.left - 8, width);
+    const bottom = window.innerHeight - rect.top + 10;
+    dropdownStyle = `position:fixed; bottom:${bottom}px; left:${left}px; width:${width}px; z-index:520;`;
   }
 
   function selectSkill(name: string) {
@@ -62,11 +66,18 @@
         dropdownOpen = false;
       }
     }
+    function onWindowMove() {
+      if (dropdownOpen) updateDropdownPosition();
+    }
     document.addEventListener("mousedown", onDocClick, true);
     document.addEventListener("keydown", onDocKeydown);
+    window.addEventListener("resize", onWindowMove);
+    window.addEventListener("scroll", onWindowMove, true);
     return () => {
       document.removeEventListener("mousedown", onDocClick, true);
       document.removeEventListener("keydown", onDocKeydown);
+      window.removeEventListener("resize", onWindowMove);
+      window.removeEventListener("scroll", onWindowMove, true);
     };
   });
 </script>
@@ -112,7 +123,7 @@
 
   {#if dropdownOpen}
     <div
-      class="w-80 max-h-96 overflow-y-auto rounded-lg border bg-background shadow-lg animate-fade-in"
+      class="max-h-96 overflow-y-auto rounded-xl border border-border/45 bg-background/95 shadow-xl backdrop-blur-xl animate-fade-in"
       style={dropdownStyle}
     >
       {#if isEmpty}

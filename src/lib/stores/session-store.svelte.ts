@@ -32,6 +32,7 @@ import {
   SESSION_ALIVE_PHASES,
   assertTransition,
 } from "./types";
+import type { SessionEventSink } from "./session-event-sink";
 import { getEventMiddleware } from "./event-middleware";
 import { updateInstalledVersion, getCliCommands } from "./cli-info.svelte";
 import * as snapshotCache from "$lib/utils/snapshot-cache";
@@ -179,7 +180,7 @@ export interface TaskNotificationItem {
 
 // ── Store ──
 
-export class SessionStore {
+export class SessionStore implements SessionEventSink {
   // ── State fields ──
   phase: SessionPhase = $state("empty");
   run: TaskRun | null = $state(null);
@@ -1738,6 +1739,8 @@ export class SessionStore {
     this.error = "";
     this._setPhase("spawning");
 
+    let useWorktreeOverride: boolean | null = null;
+
     try {
       // Refresh platformId and permissionMode from latest settings for new sessions.
       // Both may be stale (carried over from a previous run / earlier user selection)
@@ -1753,6 +1756,9 @@ export class SessionStore {
             });
             this.platformId = freshPid;
           }
+        }
+        if (!this.remoteHostName && freshSettings.default_session_mode === "ask_on_new_branch") {
+          useWorktreeOverride = confirm(t("settings_newSessionWorktreeConfirm"));
         }
         // Settings stores app-internal names (auto_all, auto_read, etc.)
         // Store uses CLI names (bypassPermissions, acceptEdits, etc.)
@@ -1796,6 +1802,7 @@ export class SessionStore {
         this.remoteHostName || undefined,
         this.platformId || undefined,
         executionPath,
+        useWorktreeOverride,
       );
       this.run = run;
 

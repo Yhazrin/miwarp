@@ -6,7 +6,8 @@
    */
   import { t } from "$lib/i18n/index.svelte";
   import type { MarketplaceSkill, MarketplaceCategory } from "$lib/types/marketplace";
-  import { SKILL_CATEGORIES } from "$lib/types/skill";
+  import Spinner from "./Spinner.svelte";
+  import { fmtDateYear } from "$lib/i18n/format";
 
   interface Props {
     onInstall?: (skill: MarketplaceSkill) => void;
@@ -21,7 +22,6 @@
   let skills = $state<MarketplaceSkill[]>([]);
   let categories = $state<MarketplaceCategory[]>([]);
   let loading = $state(true);
-  let selectedSkill = $state<MarketplaceSkill | null>(null);
   let installing = $state<string | null>(null);
   let error = $state<string | null>(null);
 
@@ -164,7 +164,6 @@ Analyze your test coverage...`,
   }
 
   function previewSkill(skill: MarketplaceSkill) {
-    selectedSkill = skill;
     onPreview?.(skill);
   }
 
@@ -173,14 +172,6 @@ Analyze your test coverage...`,
       return (num / 1000).toFixed(1) + "k";
     }
     return num.toString();
-  }
-
-  function formatDate(dateStr: string): string {
-    return new Date(dateStr).toLocaleDateString("zh-CN", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
   }
 
   // Load on mount
@@ -248,9 +239,7 @@ Analyze your test coverage...`,
   <!-- Loading State -->
   {#if loading}
     <div class="flex h-40 items-center justify-center">
-      <div
-        class="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"
-      ></div>
+      <Spinner size="xl" class="text-primary" />
     </div>
   {:else if error}
     <!-- Error State -->
@@ -336,7 +325,7 @@ Analyze your test coverage...`,
               {skill.rating.toFixed(1)}
             </span>
             <span class="ml-auto">
-              {formatDate(skill.updatedAt)}
+              {fmtDateYear(skill.updatedAt)}
             </span>
           </div>
 
@@ -357,9 +346,7 @@ Analyze your test coverage...`,
               disabled={installing !== null}
             >
               {#if installing === skill.id}
-                <span
-                  class="inline-block h-3 w-3 animate-spin rounded-full border border-primary-foreground border-t-transparent"
-                ></span>
+                <Spinner size="xs" class="text-primary-foreground" />
               {:else}
                 {t("skillMarketplace_install")}
               {/if}

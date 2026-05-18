@@ -170,7 +170,7 @@ export function satisfiesVersion(installedVersion: string, constraint: string): 
     return installedVersion === cons.slice(1).trim();
   }
   if (cons.startsWith("^")) {
-    const [ca = 0, cb = 0, cc = 0] = parse(cons.slice(1));
+    const [ca = 0, cb = 0] = parse(cons.slice(1));
     return a === ca && b >= cb;
   }
   if (cons.startsWith("~")) {

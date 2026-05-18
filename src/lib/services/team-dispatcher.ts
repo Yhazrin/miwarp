@@ -5,8 +5,8 @@
  * Handles @team / /team detection, preset selection, and member run dispatch.
  */
 import * as api from "$lib/api";
-import type { TeamPreset, TeamRun, TeamMemberRun } from "$lib/types";
-import { dbg, dbgWarn } from "$lib/utils/debug";
+import type { TeamPreset, TeamRun } from "$lib/types";
+import { dbg } from "$lib/utils/debug";
 
 // ── Trigger detection ──
 

@@ -1,23 +1,24 @@
 <script lang="ts">
   import { getAgentAsset } from "$lib/utils/agent-assets";
+  import { getMascotOverrides } from "$lib/stores/mascot-overrides.svelte";
 
   let {
     agent,
     platformId,
     model,
     size = "md",
-    animated = false,
     showName = true,
     showModel = false,
+    animated: _animated = false,
     class: className = "",
   }: {
     agent?: string;
     platformId?: string;
     model?: string;
     size?: "sm" | "md" | "lg";
-    animated?: boolean;
     showName?: boolean;
     showModel?: boolean;
+    animated?: boolean;
     class?: string;
   } = $props();
 
@@ -26,8 +27,16 @@
   const sizeMap = { sm: 20, md: 28, lg: 40 };
   const px = $derived(sizeMap[size]);
 
-  // Always use mascot (GIF) when available — GIFs display correctly both animated and static
-  const imgSrc = $derived(asset.mascot ? asset.mascot : (asset.icon ?? asset.fallback));
+  // Check if there's a user-defined override for this agent kind
+  const overrideSrc = $derived(getMascotOverrides()[asset.kind] ?? null);
+
+  // Override > mascot GIF > icon > fallback
+  const imgSrc = $derived(
+    overrideSrc ? overrideSrc : asset.mascot ? asset.mascot : (asset.icon ?? asset.fallback),
+  );
+
+  // Whether the current src is a mascot/GIF (affects image-rendering)
+  const isMascot = $derived(overrideSrc !== null || !!asset.mascot);
 
   let imgFailed = $state(false);
   const displaySrc = $derived(imgFailed ? asset.fallback : imgSrc);
@@ -52,7 +61,7 @@
       src={displaySrc}
       alt={asset.displayName}
       class="h-full w-full object-contain"
-      style="image-rendering: {asset.mascot ? 'auto' : 'pixelated'};"
+      style="image-rendering: {isMascot ? 'auto' : 'pixelated'};"
       onerror={handleError}
     />
   </div>

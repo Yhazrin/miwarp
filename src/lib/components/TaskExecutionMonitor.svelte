@@ -5,8 +5,9 @@
   Based on Claude Cowork design patterns.
 -->
 <script lang="ts">
-  import type { TaskExecutionMonitor, ExecutionLog } from "$lib/types/task-execution-monitor";
-  import { t } from "$lib/i18n/index.svelte";
+  import type { ExecutionLog } from "$lib/types/task-execution-monitor";
+
+  import { fmtFull } from "$lib/i18n/format";
 
   interface Props {
     taskId?: string;
@@ -65,21 +66,6 @@
   };
 
   let config = $derived(statusConfig[status] || statusConfig.queued);
-
-  // Format timestamp
-  function formatTime(timestamp: string): string {
-    try {
-      const date = new Date(timestamp);
-      return date.toLocaleTimeString("en-US", {
-        hour12: false,
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      });
-    } catch {
-      return timestamp;
-    }
-  }
 
   // Get log level icon
   function getLogIcon(level: string): string {
@@ -221,7 +207,7 @@
       <div class="space-y-1">
         {#each logs as log}
           <div class="flex items-start gap-2 py-1 {getLogColor(log.level)}">
-            <span class="shrink-0 opacity-50">{formatTime(log.timestamp)}</span>
+            <span class="shrink-0 opacity-50">{fmtFull(log.timestamp)}</span>
             <span>{getLogIcon(log.level)}</span>
             <span class="flex-1 break-all">{log.message}</span>
             {#if log.stepId}

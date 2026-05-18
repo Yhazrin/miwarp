@@ -6,8 +6,7 @@
  * what a skill will do before executing it.
  */
 import type { Skill } from "$lib/types/skill";
-import type { SkillExecution } from "$lib/types/skill";
-import { dbg, dbgWarn } from "$lib/utils/debug";
+import { dbg } from "$lib/utils/debug";
 
 export interface PreviewStep {
   order: number;
@@ -127,7 +126,7 @@ export function generateSkillPreview(skill: Skill, args: string = ""): SkillPrev
  */
 function parseSkillContent(
   content: string,
-  args: string,
+  _args: string,
 ): { steps: PreviewStep[]; sideEffects: string[] } {
   const steps: PreviewStep[] = [];
   const sideEffects: string[] = [];

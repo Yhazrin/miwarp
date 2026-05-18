@@ -193,6 +193,44 @@
   }
 }
 
+/* ── Skeleton / shimmer animations ── */
+
+.motion-skeleton-pulse {
+  animation: m-skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-shimmer {
+  height: 0.75rem;
+  border-radius: 0.25rem;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted) / 0.4) 0%,
+    hsl(var(--muted) / 0.2) 50%,
+    hsl(var(--muted) / 0.4) 100%
+  );
+  background-size: 200% 100%;
+  animation: m-skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes m-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes m-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 /* ── Reduced motion: kill all animations ── */
 
 @media (prefers-reduced-motion: reduce) {

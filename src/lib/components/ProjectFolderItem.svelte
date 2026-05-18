@@ -19,7 +19,6 @@
     label: string;
     expanded?: boolean;
     onToggle: () => void;
-    showCount?: boolean;
     onRemove?: () => void;
     isDragOver?: boolean;
     onDragOver?: (e: DragEvent) => void;
@@ -34,9 +33,9 @@
     onDeleteSubFolder?: (sf: SessionFolderGroup) => void;
     /** Drag-over state for a specific sub-folder (folderKey). */
     dragOverSubFolderKey?: string | null;
-    onDragOverSubFolder?: (folderKey: string, folderId: string) => void;
+    onDragOverSubFolder?: (folderKey: string, folderId: string, e: DragEvent) => void;
     onDragLeaveSubFolder?: () => void;
-    onDropOnSubFolder?: (folderId: string) => void;
+    onDropOnSubFolder?: (folderId: string, e: DragEvent) => void;
   };
 
   type ChatProps = BaseProps & {
@@ -48,8 +47,9 @@
     onMoveToFolder?: (runIds: string[]) => void;
     onNewChat?: () => void;
     selectedGroupKeys?: Set<string>;
+    draggingRunIds?: string[];
     onBatchClick?: (groupKey: string, e: MouseEvent) => void;
-    onDragStartConversation?: (e: DragEvent, runId: string) => void;
+    onDragStartConversation?: (e: DragEvent, runIds: string[], groupKey: string) => void;
     onDragEndConversation?: () => void;
   };
 
@@ -62,6 +62,7 @@
     onMoveToFolder?: never;
     onNewChat?: never;
     selectedGroupKeys?: never;
+    draggingRunIds?: never;
     onBatchClick?: never;
     onDragStartConversation?: never;
     onDragEndConversation?: never;
@@ -72,7 +73,6 @@
     label,
     expanded = false,
     onToggle,
-    showCount = true,
     onRemove,
     children,
     selectedRunId = "",
@@ -82,6 +82,7 @@
     onMoveToFolder,
     onNewChat,
     selectedGroupKeys,
+    draggingRunIds = [],
     onBatchClick,
     isDragOver = false,
     onDragOver,
@@ -134,6 +135,12 @@
     return conv.runs.some((r) => r.id === selectedRunId);
   }
 
+  function handleSubFolderDragLeave(e: DragEvent) {
+    const nextTarget = e.relatedTarget as Node | null;
+    if (nextTarget && (e.currentTarget as HTMLElement).contains(nextTarget)) return;
+    onDragLeaveSubFolder?.();
+  }
+
   // Warn once if conversation-mode callbacks are missing
   let warnedMissingCallbacks = false;
   $effect(() => {
@@ -154,7 +161,7 @@
 <div class="group/folder mb-0.5">
   <!-- Folder header (also serves as drop target) -->
   <div
-    class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors cursor-pointer
+    class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-sidebar-foreground text-[13px] font-semibold tracking-tight hover:bg-sidebar-accent/35 transition-colors cursor-pointer
       {isDragOver ? 'bg-primary/15 ring-1 ring-primary/40' : ''}"
     role="button"
     tabindex="0"
@@ -185,7 +192,7 @@
   >
     <!-- Chevron -->
     <svg
-      class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded
+      class="h-3.5 w-3.5 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded
         ? 'rotate-90'
         : ''}"
       viewBox="0 0 24 24"
@@ -228,46 +235,104 @@
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
       </svg>
     {/if}
-    <!-- Label -->
-    <span class="truncate">{label}</span>
-    <!-- Count badge -->
-    {#if showCount && folder.conversationCount > 0}
-      <span
-        class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground {onRemove
-          ? ''
-          : 'ml-auto'}"
-      >
-        {folder.conversationCount}
-      </span>
-    {/if}
-    <!-- Remove button (×) -->
-    {#if onRemove}
-      <button
-        class="ml-auto shrink-0 flex h-4 w-4 items-center justify-center rounded opacity-0 text-muted-foreground hover:text-destructive hover:opacity-100 focus-visible:opacity-100 group-hover/folder:opacity-100 transition-opacity"
-        aria-label={t("sidebar_removeProject")}
-        onclick={(e) => {
-          e.stopPropagation();
-          onRemove?.();
-        }}
-        onkeydown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
+    <!-- Label + row actions -->
+    <span class="truncate min-w-0 flex-1">{label}</span>
+    <div
+      class="shrink-0 flex items-center gap-0.5 rounded-sm group-hover/folder:bg-sidebar-accent/30"
+    >
+      {#if onCreateSubFolder}
+        <button
+          type="button"
+          class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-sidebar-accent/60 hover:text-sidebar-foreground group-hover/folder:opacity-100 focus-visible:opacity-100"
+          title={t("sidebar_createFolder")}
+          aria-label={t("sidebar_createFolder")}
+          onclick={(e) => {
             e.stopPropagation();
-            e.preventDefault();
-            onRemove?.();
-          }
-        }}
-      >
-        <svg
-          class="h-3 w-3"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
+            onCreateSubFolder?.();
+          }}
+          onkeydown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.stopPropagation();
+              e.preventDefault();
+              onCreateSubFolder?.();
+            }
+          }}
         >
-      </button>
-    {/if}
+          <svg
+            class="h-3.5 w-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M12 5v14" /><path d="M5 12h14" />
+          </svg>
+        </button>
+      {/if}
+      {#if onNewChat}
+        <button
+          type="button"
+          class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-sidebar-accent/60 hover:text-sidebar-foreground group-hover/folder:opacity-100 focus-visible:opacity-100"
+          title={t("sidebar_newChatInFolder")}
+          aria-label={t("sidebar_newChatInFolder")}
+          onclick={(e) => {
+            e.stopPropagation();
+            onNewChat?.();
+          }}
+          onkeydown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.stopPropagation();
+              e.preventDefault();
+              onNewChat?.();
+            }
+          }}
+        >
+          <svg
+            class="h-3.5 w-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M7 8h10" /><path d="M7 12h4" /><path
+              d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+            /></svg
+          >
+        </button>
+      {/if}
+      {#if onRemove}
+        <button
+          type="button"
+          class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/15 hover:text-destructive group-hover/folder:opacity-100 focus-visible:opacity-100"
+          aria-label={t("sidebar_removeProject")}
+          onclick={(e) => {
+            e.stopPropagation();
+            onRemove?.();
+          }}
+          onkeydown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.stopPropagation();
+              e.preventDefault();
+              onRemove?.();
+            }
+          }}
+        >
+          <svg
+            class="h-3 w-3"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
+          >
+        </button>
+      {/if}
+    </div>
   </div>
 
   <!-- Expanded children -->
@@ -277,15 +342,41 @@
         {@render children()}
       {:else}
         <!-- Sub-folders (logical folders nested inside this project) -->
-        {#if subFolders.length > 0 || onCreateSubFolder}
+        {#if subFolders.length > 0}
           <div class="mb-1">
             {#each subFolders as sf (sf.folderKey)}
               {@const sfExpanded = expandedSubFolders.has(sf.folderKey)}
               {@const sfDragOver = dragOverSubFolderKey === sf.folderKey}
-              <div class="group/sf mb-0.5">
+              <div
+                class="group/sf mb-0.5 rounded-md"
+                ondragenter={onDragOverSubFolder
+                  ? (e) => {
+                      e.preventDefault();
+                      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+                      onDragOverSubFolder!(sf.folderKey, sf.folderId, e);
+                    }
+                  : undefined}
+                ondragover={onDragOverSubFolder
+                  ? (e) => {
+                      e.preventDefault();
+                      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+                      onDragOverSubFolder!(sf.folderKey, sf.folderId, e);
+                    }
+                  : undefined}
+                ondragleave={handleSubFolderDragLeave}
+                ondrop={onDropOnSubFolder
+                  ? (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onDropOnSubFolder!(sf.folderId, e);
+                    }
+                  : undefined}
+              >
                 <div
-                  class="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs text-sidebar-foreground hover:bg-sidebar-accent/40 transition-colors cursor-pointer
-                    {sfDragOver ? 'bg-primary/15 ring-1 ring-primary/40' : ''}"
+                  class="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium text-sidebar-foreground/95 hover:bg-sidebar-accent/40 transition-[background-color,box-shadow,transform,color] duration-150 cursor-pointer
+                    {sfDragOver
+                    ? 'translate-x-0.5 bg-primary/15 ring-1 ring-primary/45 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)]'
+                    : ''}"
                   role="button"
                   tabindex="0"
                   onclick={() => onToggleSubFolder?.(sf.folderKey)}
@@ -295,19 +386,6 @@
                       onToggleSubFolder?.(sf.folderKey);
                     }
                   }}
-                  ondragover={onDragOverSubFolder
-                    ? (e) => {
-                        e.preventDefault();
-                        onDragOverSubFolder!(sf.folderKey, sf.folderId!);
-                      }
-                    : undefined}
-                  ondragleave={onDragLeaveSubFolder}
-                  ondrop={onDropOnSubFolder
-                    ? (e) => {
-                        e.preventDefault();
-                        onDropOnSubFolder!(sf.folderId!);
-                      }
-                    : undefined}
                 >
                   <svg
                     class="h-2.5 w-2.5 shrink-0 text-muted-foreground/50 transition-transform duration-150 {sfExpanded
@@ -334,11 +412,22 @@
                     /><circle cx="7" cy="7" r="1" /></svg
                   >
                   <span class="truncate flex-1">{sf.name}</span>
-                  {#if sf.conversationCount > 0}
+                  {#if sfDragOver}
                     <span
-                      class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground"
+                      class="shrink-0 rounded bg-primary/15 p-1 text-primary"
+                      aria-hidden="true"
                     >
-                      {sf.conversationCount}
+                      <svg
+                        class="h-3 w-3"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M12 5v14" /><path d="m19 12-7 7-7-7" />
+                      </svg>
                     </span>
                   {/if}
                   <!-- Hover actions -->
@@ -404,6 +493,7 @@
                         ondelete={onDelete}
                         onmovetofolder={onMoveToFolder}
                         {onBatchClick}
+                        isDragging={conv.runs.some((r) => draggingRunIds.includes(r.id))}
                         ondragstart={onDragStartConversation}
                         ondragend={onDragEndConversation}
                       />
@@ -417,56 +507,12 @@
                 {/if}
               </div>
             {/each}
-            <!-- Create sub-folder button -->
-            {#if onCreateSubFolder}
-              <button
-                class="flex w-full items-center gap-1.5 px-2 py-1 text-[11px] text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/40 rounded-md transition-colors"
-                onclick={(e) => {
-                  e.stopPropagation();
-                  onCreateSubFolder?.();
-                }}
-              >
-                <svg
-                  class="h-3 w-3 shrink-0"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M12 5v14" /><path d="M5 12h14" />
-                </svg>
-                <span>{t("sidebar_createFolder") || "新建逻辑文件夹"}</span>
-              </button>
-            {/if}
           </div>
-        {/if}
-
-        {#if onNewChat}
-          <button
-            class="flex w-full items-center gap-1.5 px-3 py-1 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md transition-colors"
-            onclick={(e) => {
-              e.stopPropagation();
-              onNewChat?.();
-            }}
-          >
-            <svg
-              class="h-3 w-3 shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg
-            >
-            <span>{t("sidebar_newChatInFolder")}</span>
-          </button>
         {/if}
         <!-- Unfoldered sessions in this project -->
         {#if folder.conversations.length > 0 && subFolders.length > 0}
           <div class="flex items-center px-2 py-0.5 mt-0.5 mb-0.5">
-            <span class="text-[10px] text-muted-foreground/50 uppercase tracking-wider"
+            <span class="text-[11px] font-semibold text-muted-foreground/55 uppercase tracking-wide"
               >{t("sidebar_uncategorized") || "未归类"}</span
             >
           </div>
@@ -483,6 +529,7 @@
                 ondelete={onDelete}
                 onmovetofolder={onMoveToFolder}
                 {onBatchClick}
+                isDragging={conv.runs.some((r) => draggingRunIds.includes(r.id))}
                 ondragstart={onDragStartConversation}
                 ondragend={onDragEndConversation}
               />
@@ -499,6 +546,7 @@
               ondelete={onDelete}
               onmovetofolder={onMoveToFolder}
               {onBatchClick}
+              isDragging={conv.runs.some((r) => draggingRunIds.includes(r.id))}
               ondragstart={onDragStartConversation}
               ondragend={onDragEndConversation}
             />

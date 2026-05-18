@@ -1,4 +1,5 @@
 import { dbg } from "./debug";
+import { DEBUG_KEY } from "./storage-keys";
 
 /**
  * Compile-time guard: in production builds, the bundler dead-code-eliminates
@@ -18,7 +19,7 @@ const PROD = import.meta.env.PROD;
 export function isPerfEnabled(): boolean {
   if (PROD) return false;
   if (typeof window === "undefined") return false;
-  if (localStorage.getItem("ocv:debug")) return true;
+  if (localStorage.getItem(DEBUG_KEY)) return true;
   return window.location.search.includes("debug");
 }
 

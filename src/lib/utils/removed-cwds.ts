@@ -6,9 +6,10 @@
  */
 
 import { normalizeCwd } from "./sidebar-groups";
+import { HIDDEN_CWDS_KEY } from "./storage-keys";
 
 const STORAGE_KEY = "ocv:removed-cwds";
-const LEGACY_KEY = "ocv:hidden-cwds";
+const LEGACY_KEY = HIDDEN_CWDS_KEY;
 
 /** Parse a JSON array from localStorage, returning [] on any error. */
 function safeParseArray(key: string): string[] {

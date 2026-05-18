@@ -37,7 +37,6 @@
   const time = $derived(relativeTime(run.last_activity_at ?? run.started_at));
   const canResume = $derived(canResumeNow(run, run.status, getNoSessionPersistence(run.agent)));
   const canDelete = $derived(conversation.runs.every((r) => TERMINAL_PHASES.includes(r.status)));
-  const runCount = $derived(conversation.runs.length);
   const needsAttention = $derived(hasAttention(run.id));
 
   // Compact status dot for non-selected items
@@ -60,10 +59,10 @@
 </script>
 
 <div
-  class="group/item w-full text-left px-2.5 py-1.5 rounded-md transition-colors cursor-pointer
+  class="group/item w-full text-left rounded-md py-1.5 pr-2.5 pl-2 transition-colors cursor-pointer text-[11px]
     {selected
-    ? 'bg-sidebar-accent/70 text-sidebar-accent-foreground'
-    : 'hover:bg-sidebar-accent/30 text-sidebar-foreground'}"
+    ? 'bg-sidebar-accent/25 text-sidebar-foreground'
+    : 'hover:bg-sidebar-accent/28 text-sidebar-foreground'}"
   role="button"
   tabindex="0"
   onclick={() => onclick?.()}
@@ -77,6 +76,7 @@
           attention={needsAttention}
           compact={false}
           shortLabel={true}
+          subtle={true}
           class="shrink-0"
         />
       {:else}
@@ -88,7 +88,7 @@
           title={run.status}
         ></span>
       {/if}
-      <span class="truncate text-[13px] leading-tight font-medium">{label}</span>
+      <span class="truncate leading-snug font-medium text-sidebar-foreground">{label}</span>
     </div>
     <div class="flex items-center gap-0.5 shrink-0">
       {#if pinned}
@@ -103,14 +103,6 @@
             d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
           />
         </svg>
-      {/if}
-      {#if runCount > 1}
-        <span
-          class="inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted/70 px-1 text-[10px] font-normal text-muted-foreground/70"
-          title={t("sidebar_runs", { count: String(runCount) })}
-        >
-          {runCount}
-        </span>
       {/if}
       {#if onpin}
         <button
@@ -188,14 +180,16 @@
     </div>
   </div>
   <!-- Preview / meta row -->
-  <div class="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground/50 pl-[14px]">
-    <div class="flex items-center gap-1 min-w-0">
-      <span class="shrink-0">{run.agent}</span>
+  <div
+    class="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground/32 leading-none pl-1"
+  >
+    <div class="flex items-center gap-1 min-w-0 flex-1">
+      <span class="shrink-0 text-muted-foreground/38">{run.agent}</span>
       {#if run.platform_id && run.platform_id !== "anthropic"}
-        <span class="shrink-0">&middot;</span>
-        <span class="truncate">{platformLabel(run.platform_id)}</span>
+        <span class="shrink-0 text-muted-foreground/22">&middot;</span>
+        <span class="truncate text-muted-foreground/35">{platformLabel(run.platform_id)}</span>
       {/if}
     </div>
-    <span class="ml-auto shrink-0">{time}</span>
+    <span class="shrink-0 tabular-nums text-muted-foreground/26 ml-auto text-right">{time}</span>
   </div>
 </div>

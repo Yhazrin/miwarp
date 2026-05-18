@@ -4,6 +4,7 @@
   import SidebarSearch from "./SidebarSearch.svelte";
   import SidebarSessionItem from "./SidebarSessionItem.svelte";
   import SidebarProjectGroup from "./SidebarProjectGroup.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { t } from "$lib/i18n/index.svelte";
 
   interface Props {
@@ -164,9 +165,7 @@
         <!-- Searching indicator -->
         {#if searching && searchResultCount === 0}
           <div class="flex items-center justify-center py-10">
-            <div
-              class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-            ></div>
+            <Spinner size="md" class="text-primary" />
           </div>
         {:else if !searching && searchResultCount === 0}
           <div class="flex flex-col items-center gap-2 px-3 py-10 text-center">
@@ -232,7 +231,7 @@
               <path d="M12 5v14" />
               <path d="M5 12h14" />
             </svg>
-            <span>Open folder...</span>
+            <span>{t("project_openFolder")}</span>
           </button>
         {/if}
 
@@ -251,7 +250,7 @@
               <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
             </svg>
             <p class="text-xs text-muted-foreground">
-              No conversations yet.<br />Start a new chat to get going.
+              {t("sidebar_noConversationsYet")}<br />{t("sidebar_startNewChat")}
             </p>
           </div>
         {/if}

@@ -600,6 +600,66 @@ pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, St
             v.as_str().filter(|s| !s.is_empty()).map(|s| s.to_string())
         };
     }
+    if let Some(v) = patch.get("feishu_webhook_card_img_key") {
+        all.user.feishu_webhook_card_img_key = if v.is_null() {
+            None
+        } else {
+            v.as_str().filter(|s| !s.is_empty()).map(|s| s.to_string())
+        };
+    }
+    if let Some(v) = patch.get("feishu_webhook_card_image_url") {
+        all.user.feishu_webhook_card_image_url = if v.is_null() {
+            None
+        } else {
+            v.as_str().filter(|s| !s.is_empty()).map(|s| s.to_string())
+        };
+    }
+    if let Some(v) = patch.get("feishu_webhook_card_mascot") {
+        all.user.feishu_webhook_card_mascot = if v.is_null() {
+            None
+        } else {
+            v.as_str().filter(|s| !s.is_empty()).map(|s| s.to_string())
+        };
+    }
+    if let Some(v) = patch.get("default_session_mode").and_then(|v| v.as_str()) {
+        all.user.default_session_mode = v.to_string();
+    }
+    if let Some(v) = patch
+        .get("auto_commit_on_complete")
+        .and_then(|v| v.as_bool())
+    {
+        all.user.auto_commit_on_complete = v;
+    }
+    if let Some(v) = patch.get("auto_pr_on_complete").and_then(|v| v.as_bool()) {
+        all.user.auto_pr_on_complete = v;
+    }
+    if let Some(v) = patch.get("auto_cleanup_worktree").and_then(|v| v.as_bool()) {
+        all.user.auto_cleanup_worktree = v;
+    }
+    // Chat display settings
+    if let Some(v) = patch
+        .get("show_token_usage_report")
+        .and_then(|v| v.as_bool())
+    {
+        all.user.show_token_usage_report = v;
+    }
+    if let Some(v) = patch.get("process_visibility").and_then(|v| v.as_str()) {
+        let allowed = ["output", "guided", "developer", "expert"];
+        if allowed.contains(&v) {
+            all.user.process_visibility = v.to_string();
+        } else {
+            return Err(format!("Invalid process_visibility: {}", v));
+        }
+    }
+    // Mascot overrides
+    if let Some(v) = patch.get("mascot_overrides") {
+        if v.is_null() {
+            all.user.mascot_overrides.clear();
+        } else {
+            all.user.mascot_overrides = serde_json::from_value(v.clone())
+                .map_err(|e| format!("Invalid mascot_overrides: {}", e))?;
+        }
+    }
     all.user.updated_at = crate::models::now_iso();
     save(&all)?;
     Ok(all.user)

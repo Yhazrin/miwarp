@@ -122,6 +122,8 @@ export const commandIconMap: Record<string, IconName> = {
   "go-memory": "brain",
   "go-usage": "barChart",
   "go-plugins": "puzzle",
+  "open-project-folder": "folderOpen",
+  "go-history-advanced": "search",
   "set-model": "bot",
   "set-cwd": "folderOpen",
   "configure-tools": "wrench",

@@ -324,7 +324,7 @@
 </script>
 
 <div bind:this={shellRoot} class="flex h-full min-h-0 flex-col gap-2 bg-transparent p-2">
-  <div class="rounded-2xl border border-border/40 bg-background/40 px-3 py-2 backdrop-blur-xl">
+  <div class="rounded-2xl border border-border/40 bg-transparent px-3 py-2 backdrop-blur-xl">
     <!-- URL bar -->
     <div class="flex items-center gap-2">
       <!-- Globe icon -->
@@ -346,7 +346,7 @@
         type="text"
         bind:value={urlInput}
         placeholder="输入网址或 localhost:3000"
-        class="min-w-0 flex-1 rounded-xl border border-border/50 bg-background/40 px-3 py-1.5 text-xs text-foreground outline-none transition-colors focus:border-primary/50"
+        class="min-w-0 flex-1 rounded-xl border border-border/50 bg-transparent px-3 py-1.5 text-xs text-foreground outline-none transition-colors focus:border-primary/50"
         onkeydown={(event) => {
           if (event.key === "Enter") {
             event.preventDefault();
@@ -355,7 +355,7 @@
         }}
       />
       <button
-        class="rounded-xl border border-border/50 bg-background/30 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent/20 disabled:opacity-50"
+        class="rounded-xl border border-border/50 bg-transparent px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent/20 disabled:opacity-50"
         onclick={handleGo}
         disabled={creating}
       >
@@ -363,7 +363,7 @@
       </button>
       {#if hasLoaded}
         <button
-          class="rounded-xl border border-border/50 bg-background/30 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent/20 hover:text-foreground"
+          class="rounded-xl border border-border/50 bg-transparent px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent/20 hover:text-foreground"
           onclick={() => void handleResetSession()}
           title={t("preview_resetSession")}
         >
@@ -374,31 +374,23 @@
     {#if lastError}
       <p class="mt-1.5 text-[11px] text-destructive">{lastError}</p>
     {/if}
-    <!-- Native webview hint -->
-    <div class="mt-1.5 flex items-center gap-2">
-      <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
-        >原生预览</span
-      >
-      <span class="text-[10px] text-muted-foreground/60">支持任意网址 · 保持 Cookie 和登录状态</span
-      >
-    </div>
   </div>
 
   {#if !desktopAvailable}
     <div
-      class="flex flex-1 items-center justify-center rounded-2xl border border-border/30 bg-background/30 px-6 text-center text-sm text-muted-foreground backdrop-blur-xl"
+      class="flex flex-1 items-center justify-center rounded-2xl border border-border/30 bg-transparent px-6 text-center text-sm text-muted-foreground backdrop-blur-xl"
     >
       {t("preview_desktopOnly")}
     </div>
   {:else}
     <div
-      class="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/30 bg-background/20 backdrop-blur-xl"
+      class="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/30 bg-transparent backdrop-blur-xl"
     >
       <div bind:this={viewportEl} class="absolute inset-1 rounded-xl"></div>
 
       {#if !hasLoaded}
         <div
-          class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-2xl bg-background/70 px-6 backdrop-blur-xl"
+          class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-2xl bg-transparent px-6 backdrop-blur-xl"
         >
           <div class="text-center">
             <svg
@@ -421,7 +413,7 @@
             <span class="text-[10px] text-muted-foreground/50">本地端口：</span>
             {#each QUICK_PORTS as qp}
               <button
-                class="rounded-lg border border-border/50 bg-background/40 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent/20 hover:text-foreground font-mono"
+                class="rounded-lg border border-border/50 bg-transparent px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent/20 hover:text-foreground font-mono"
                 onclick={() => handleQuickPort(qp.url)}
               >
                 {qp.label}
@@ -433,7 +425,7 @@
 
       {#if hasLoaded && !active}
         <div
-          class="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-background/70 text-sm text-muted-foreground"
+          class="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-transparent text-sm text-muted-foreground backdrop-blur-md"
         >
           {t("preview_switchHint")}
         </div>

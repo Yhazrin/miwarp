@@ -49,6 +49,9 @@ pub async fn dispatch_command(
                 .get("execution_path")
                 .and_then(|v| v.as_str())
                 .map(String::from);
+            let use_worktree_override = params
+                .get("use_worktree_override")
+                .and_then(|v| v.as_bool());
             let run = crate::commands::runs::start_run(
                 prompt,
                 cwd,
@@ -57,6 +60,7 @@ pub async fn dispatch_command(
                 remote_host_name,
                 platform_id,
                 execution_path,
+                use_worktree_override,
             )?;
             serde_json::to_value(run).map_err(|e| e.to_string())
         }
@@ -344,6 +348,10 @@ pub async fn dispatch_command(
             let name = extract_str(&params, "name")?;
             crate::commands::teams::delete_team(name)?;
             Ok(json!(true))
+        }
+        "list_team_presets" => {
+            let result = crate::commands::team_runs::list_team_presets()?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
         }
 
         // ── Plugins / Skills ──
@@ -716,6 +724,10 @@ pub async fn dispatch_command(
         "remove_cli_api_key" => {
             crate::commands::onboarding::remove_cli_api_key().await?;
             Ok(json!(true))
+        }
+        "run_claude_self_update" => {
+            let result = crate::commands::onboarding::run_claude_self_update().await?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
         }
 
         // ── Agents ──

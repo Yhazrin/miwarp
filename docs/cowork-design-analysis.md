@@ -1,270 +1,235 @@
-# Codex Claude Cowork 设计分析报告
+# MiWarp × Cowork 设计对比与改进建议
 
-**日期**: 2026-05-13
-**项目**: MiWarp vs Codex Claude Cowork 功能对比与设计借鉴
-
----
-
-## 一、整体架构对比
-
-### Codex Claude Cowork 核心设计
-Codex Claude Cowork 是一个基于 Claude Code 的桌面应用，专注于：
-- **Skill 系统**: 可扩展的任务/技能定义，使用 Markdown + YAML frontmatter
-- **MCP (Model Context Protocol)**: 插件化的工具和连接器
-- **Scheduled Tasks**: 基于 cron 的自动化任务
-- **Memory Consolidation**: 内存文件整合与去重
-- **Plugin Marketplace**: 插件和技能的市场
-
-### MiWarp 核心设计
-MiWarp 是一个本地优先的 AI 辅助编程桌面应用：
-- **Agent 通信层**: 支持 Claude Code 和 Codex CLI
-- **可视化工具卡片**: 渲染工具调用为内联卡片
-- **多 Provider 支持**: 15+ API 平台
-- **Session 管理**: 历史记录、回放、恢复
+> 基于 Claude Code Cowork 模式的学习与 MiWarp 落地建议
 
 ---
 
-## 二、已实现的相似功能
+## 一、Cowork 核心设计模式总结
 
-MiWarp 已经实现了 Codex Claude Cowork 的许多核心设计：
+### 1. Skill 系统 (技能系统)
 
-| 功能 | Codex Cowork | MiWarp | 状态 |
-|------|-------------|--------|------|
-| Skill 定义格式 | YAML frontmatter + Markdown | ✅ 相同格式 | ✅ 已实现 |
-| Schedule Task | Cron/ISO timestamp | ✅ 完整支持 | ✅ 已实现 |
-| Consolidate Memory | 去重、固定、索引 | ✅ 完整支持 | ✅ 已实现 |
-| Setup Wizard | 引导式初始化 | ✅ 完整支持 | ✅ 已实现 |
-| Plugin Store | 插件市场 | ✅ 完整支持 | ✅ 已实现 |
-| MCP 管理 | MCP 服务器管理 | ✅ 完整支持 | ✅ 已实现 |
+Cowork 的技能系统采用简洁的 SKILL.md 格式，特点如下：
 
+- **自包含**: 每个 skill 包含完整指令，不依赖外部上下文
+- **触发式调用**: 通过 `/name` 命令调用
+- **结构化元数据**: 包含 `name`、`description`、`location`
+- **分步骤引导**: 使用编号步骤引导用户完成复杂任务
+
+示例结构：
+```markdown
+---
+name: schedule
+description: "创建或更新定时任务..."
 ---
 
-## 三、Codex Cowork 值得借鉴的设计模式
+# Schedule
 
-### 3.1 Skill 系统的 Handler 模式
+## Step 1 — 分析会话
+...
 
-**Codex 实现**:
-```typescript
-export interface SkillHandler {
-  name: string;
-  canHandle: (skill: Skill, args: string) => boolean;
-  execute: (skill: Skill, args: string) => Promise<ExecutionResult>;
-}
+## Step 2 — 编写提示
+...
 ```
 
-**借鉴价值**: MiWarp 可以将硬编码的 handler (schedule, consolidate-memory, setup-cowork) 改为可插拔的插件架构。
+### 2. Plugin 系统 (插件系统)
 
-**落地建议**:
-1. 在 `src/lib/services/skill-executor.ts` 中添加 `registerHandler` 的持久化
-2. 支持从插件动态加载 handler
-3. 允许用户定义自定义 handler
+Cowork 的插件是 skills 的打包容器：
 
-### 3.2 Memory Consolidation 的智能合并策略
+- **领域聚合**: 一个插件包含多个相关 skills
+- **市场发现**: 通过 `search_plugins` 发现和安装
+- **快速试用**: 安装后可直接点击 "Try it" 体验
+- **Connector 集成**: 插件可关联外部工具（邮件、日历、文档等）
 
-**Codex 实现要点**:
-- 基于 label 的文件分组
-- 内容相似度检测 (>100 字符才值得合并)
-- 备份机制
-- 详细的合并报告
+### 3. Scheduled Task (定时任务)
 
-**MiWarp 当前实现** (`memory-store.svelte.ts`):
-- 基础的重复文件检测
-- 缺少内容级别的合并逻辑
+Cowork 的定时任务系统特点：
 
-**落地建议**:
-```typescript
-// 增强 consolidateMemory 方法
-interface ConsolidationResult {
-  duplicatesMerged: number;
-  staleEntriesRemoved: number;
-  indexUpdated: boolean;
-  errors: string[];
-  backupCreated: boolean;
-  mergedFiles: Array<{
-    source: string;
-    target: string;
-    sizeBefore: number;
-    sizeAfter: number;
-  }>;
-}
-```
+- **cron 表达式**: 本地时区的 5 字段 cron 格式
+- **一次性触发**: `fireAt` 支持单次未来时刻
+- **自包含提示**: 每次运行使用完整 prompt，无会话记忆
+- **完成通知**: 可选的通知机制
 
-### 3.3 统一的任务执行状态追踪
+### 4. Memory Consolidation (记忆整合)
 
-**Codex 实现**:
-```typescript
-interface SkillExecution {
-  id: string;
-  skillId: string;
-  status: ExecutionStatus;
-  startedAt: string;
-  completedAt?: string;
-  result?: string;
-  error?: string;
-  sessionId?: string;
-}
-```
+Cowork 的记忆整合模式：
 
-**MiWarp 当前实现**: 有相似结构，但执行历史没有持久化。
+- **定期整理**: 主动合并重复、修复过时信息
+- **分区索引**: 使用 MEMORY.md 作为入口
+- **实用优先**: 保留难重推导的信息，删除易重查的内容
+- **时间引用规范化**: 将相对时间转为绝对日期
 
-**落地建议**:
-1. 在 `~/.miwarp/executions/` 目录持久化执行历史
-2. 添加执行统计和趋势分析
-3. 支持执行结果导出
+### 5. Setup Wizard (引导设置)
 
-### 3.4 Plugin 搜索与安装的 UX
+Cowork 的设置向导采用分步引导：
 
-**Codex 实现**:
-- 基于 capabilities 的插件发现
-- Skills/Commands/Connectors 三维度匹配
-- 一键安装和试用
-
-**MiWarp 当前实现**: 已有插件市场组件 (`plugin-marketplace.ts`)
-
-**落地建议**:
-1. 添加基于上下文的插件推荐 (根据当前项目类型)
-2. 插件使用统计和评分
-3. 插件依赖解析
+- **角色选择**: 通过 UI 组件让用户选择工作角色
+- **插件推荐**: 基于角色推荐匹配插件
+- **技能试用**: 让用户亲自体验技能
+- **Connector 连接**: 引导连接实际工具
 
 ---
 
-## 四、Codex Cowork 独特设计值得引入
+## 二、MiWarp 现有能力评估
 
-### 4.1 反射式 Memory 整合
-
-Codex 的 `consolidate-memory` skill 强调:
-- **Merge Duplicates**: 合并重复内容
-- **Fix Stale Facts**: 更新过时信息
-- **Prune Index**: 清理索引
-
-**落地建议**:
-```typescript
-// 新增 memory-consolidation.service.ts
-export interface MemoryConsolidationConfig {
-  similarityThreshold: number;  // 相似度阈值 (0-1)
-  minContentLength: number;     // 最小内容长度
-  createBackup: boolean;        // 是否创建备份
-  updateReferences: boolean;    // 是否更新引用
-}
-
-// 新增前端组件
-// - ConsolidationWizard.svelte: 分步引导
-// - ConsolidationPreview.svelte: 预览变更
-// - ConsolidationReport.svelte: 详细报告
-```
-
-### 4.2 MCP Server 状态管理与重连
-
-**落地建议**:
-```typescript
-// 增强 MCP 管理
-interface MCPConnectionState {
-  serverId: string;
-  status: 'connected' | 'disconnected' | 'error' | 'reconnecting';
-  lastError?: string;
-  reconnectAttempts: number;
-  autoReconnect: boolean;
-}
-
-// 添加自动重连逻辑
-```
-
-### 4.3 Setup Wizard 的模块化
-
-**落地建议**:
-```typescript
-// 将 setup 拆分为独立模块
-interface SetupStep {
-  id: string;
-  title: string;
-  description: string;
-  component: Component;
-  validate: () => Promise<boolean>;
-  skip?: boolean;
-}
-
-// 支持从任何步骤继续
-```
+| 功能 | MiWarp 实现情况 | 对标 Cowork |
+|------|----------------|------------|
+| Skill 系统 | ✅ 有 `src/routes/skills` 和 `SkillStore` | 80% 覆盖 |
+| Plugin 系统 | ✅ 有 `src/routes/plugins` 和插件市场 | 70% 覆盖 |
+| Scheduled Tasks | ✅ 有完整的后端调度 + 前端管理 UI | 90% 覆盖 |
+| Memory Store | ✅ 有 `memory-store.svelte.ts` | 60% 覆盖 |
+| Multi-Agent | ✅ 有 `multi-agent-service.ts` | 85% 覆盖 |
+| Setup Wizard | ✅ 有 `SetupWizard.svelte` | 50% 覆盖 |
 
 ---
 
-## 五、具体的落地建议清单
+## 三、具体改进建议
 
-### 5.1 高优先级 (可在当前版本实现)
+### P0 — 立即可实施
 
-1. **Skill Handler 插件化**
-   - 文件: `src/lib/services/skill-executor.ts`
-   - 改动: 添加动态 handler 注册机制
+#### 1. 增强 Skill 的自包含性
 
-2. **Memory Consolidation 增强**
-   - 文件: `src/lib/stores/memory-store.svelte.ts`, `src/lib/services/memory-service.ts`
-   - 改动: 添加内容级合并、备份、详细报告
+**现状**: MiWarp 的 skill 依赖外部 store 和上下文
+**改进**: 参考 Cowork 的 SKILL.md 格式，让 skill 提示完全自包含
 
-3. **执行历史持久化**
-   - 文件: `src/lib/stores/skill-store.svelte.ts`
-   - 改动: 添加执行日志落盘
+建议新增: `src/lib/skills/skill-template.ts`
+- 提供标准 skill 元数据接口
+- 包含步骤引导和错误处理提示
+- 支持 `{{cwd}}`、`{{agent}}` 等占位符
 
-### 5.2 中优先级 (需要较大改动)
+#### 2. 添加 Memory Consolidation 功能
 
-4. **上下文感知的插件推荐**
-   - 文件: `src/lib/services/plugin-marketplace.ts`
-   - 改动: 添加基于项目上下文的推荐算法
+**现状**: MiWarp 有 `memory-store.svelte.ts` 但无定期整合机制
+**改进**: 添加 `consolidate-memory` skill，支持：
+- 合并重复记忆
+- 修复过时引用
+- 保持索引精简（< 200 行）
 
-5. **MCP 连接状态监控**
-   - 文件: 新增 `src/lib/services/mcp-monitor.ts`
-   - 改动: 添加自动重连、状态可视化
+建议新增: `src/lib/skills/consolidate-memory.ts`
+- Phase 1: 盘点现有记忆文件
+- Phase 2: 合并重叠、删除过时
+- Phase 3: 更新索引
 
-### 5.3 低优先级 (未来规划)
+#### 3. 增强 Setup Wizard 交互性
 
-6. **Skill 市场国际化**
-7. **团队协作功能** (参考 Codex 的 team 功能)
-8. **A/B Testing 框架**
+**现状**: MiWarp 的 setup 是单页表单
+**改进**: 改为分步向导，类似 Cowork：
+1. 角色选择 → 推荐插件
+2. 插件安装 → 试用技能
+3. Connector 连接 → 完成
+
+建议改进: `src/lib/components/SetupWizard.svelte`
+- 添加步骤进度指示
+- 集成插件市场推荐
+- 添加技能试用环节
+
+### P1 — 短期优化
+
+#### 4. 提升 Skill 执行器的健壮性
+
+**现状**: `skill-executor.ts` 相对简单
+**改进**: 参考 Cowork 的 skill 执行模式：
+- 完整的状态管理（idle → running → completed/failed）
+- 详细的执行日志
+- 支持中断和重试
+
+#### 5. 增强 Scheduled Task 的 Skill 集成
+
+**现状**: Scheduled Task 使用独立 prompt
+**改进**: 支持从 Skill 模板创建任务：
+- 选择 skill → 自动填充 prompt
+- 支持参数化（`{{date}}`、`{{project}}`）
+- Skill 市场直接创建定时任务
+
+建议改进: `src/lib/services/scheduled-tasks-service.ts`
+- 添加 createFromSkill() 方法
+- 支持参数模板解析
+
+#### 6. 增强 Multi-Agent 与 Skill 的协同
+
+**现状**: Multi-agent 有 presets 但不能使用 Skills
+**改进**: Multi-agent 配置可引用 Skills：
+- 选择多个 Skills 并行执行
+- Skills 共享上下文
+- 结果聚合输出
+
+建议改进: `src/lib/services/multi-agent-service.ts`
+- 添加 useSkills() 配置选项
+- 支持 skill 间的上下文传递
+
+### P2 — 中期增强
+
+#### 7. 添加 Plugin 的快速试用机制
+
+**现状**: 安装插件后需要手动探索
+**改进**: 插件安装后显示 "Try it" 按钮：
+- 点击直接进入 skill 引导
+- 示例输入预填充
+- 结果预览
+
+#### 8. 增强 Context Usage 可视化
+
+**现状**: MiWarp 有 `ContextUsageGrid.svelte` 但较基础
+**改进**: 参考 Claude Code 的彩色比例条：
+- 分段着色：系统 / 环境 / CLAUDE.md / 文件 / 工具输出
+- 实时刷新
+- 溢出警告
+
+建议改进: `src/lib/components/ContextUsageGrid.svelte`
+- 添加分段着色
+- 集成到 SessionStatusBar
+- 添加 token 计数
+
+#### 9. 添加转录视图模式切换
+
+**现状**: 工具调用显示方式固定
+**改进**: 添加三种密度模式：
+- 普通：工具折叠为摘要
+- 详细：每个步骤展开
+- 摘要：仅最终响应
+
+建议新增: `src/lib/stores/view-mode-store.svelte.ts` (已存在)
+- 完善三种模式的切换逻辑
+- 集成到 ToolActivity 组件
+
+### P3 — 长期愿景
+
+#### 10. 云端 Agent 支持（参考 Cursor）
+
+- 远程 agent 产出截图/视频/日志
+- Web / Desktop / API 多入口
+- 制品交付与验收
+
+#### 11. Flow 感知（参考 Windsurf）
+
+- 从隐式信号推断用户意图
+- 主动建议下一步操作
+- 上下文预测
 
 ---
 
-## 六、技术债务与改进
+## 四、实施优先级建议
 
-### 6.1 类型定义统一
-当前存在类型分散在多个文件，建议:
-- `src/lib/types/` 统一管理所有类型
-- 移除 `skill-store.svelte.ts` 中的内联类型
-
-### 6.2 Store 模式规范化
-当前每个 store 独立实现，建议:
-- 统一使用 `$state` rune
-- 统一的错误处理模式
-- 统一的加载状态管理
-
-### 6.3 测试覆盖
-- `memory-service.ts`: 已有部分测试
-- `skill-executor.ts`: 需要添加单元测试
-- `scheduled-tasks-service.ts`: 需要添加集成测试
+优先级 | 改进项 | 工作量 | 用户感知
+------- | ------ | ------ | --------
+P0 | 增强 Skill 自包含性 | 小 | 高
+P0 | 添加 Memory Consolidation | 中 | 中
+P0 | 增强 Setup Wizard | 中 | 高
+P1 | 提升 Skill 执行器健壮性 | 小 | 中
+P1 | Task ↔ Skill 集成 | 中 | 高
+P1 | Multi-Agent ↔ Skill 协同 | 中 | 高
+P2 | Plugin 快速试用 | 小 | 高
+P2 | Context 可视化增强 | 中 | 中
+P2 | 转录视图模式 | 小 | 高
 
 ---
 
-## 七、结论
+## 五、总结
 
-MiWarp 已经实现了 Codex Claude Cowork 的核心功能集，这是一个很好的基础。主要的改进方向是:
+MiWarp 的核心架构已经相当完善，与 Cowork 在设计理念上有很多共鸣。主要差距在于：
 
-1. **深化现有功能**: Memory consolidation、Skill handler 可扩展性
-2. **提升 UX**: 更详细的报告、更智能的推荐
-3. **增强稳定性**: 执行历史持久化、MCP 状态管理
-4. **技术债务**: 类型统一、测试覆盖
+1. **Skill 的自包含性**：Cowork 的 skill 是完全独立的提示单元，MiWarp 可以借鉴
+2. **Setup Wizard 的引导性**：分步引导比单页表单用户体验更好
+3. **记忆整合机制**：主动整理比被动累积更有价值
+4. **技能间的协同**：Skill ↔ Scheduled Task ↔ Multi-Agent 的深度集成
 
-这些改进不需要大的架构调整，可以在当前框架内逐步迭代。
-
----
-
-## 附录: 相关文件路径
-
-| 文件 | 用途 |
-|------|------|
-| `src/lib/stores/skill-store.svelte.ts` | Skill 状态管理 |
-| `src/lib/stores/memory-store.svelte.ts` | Memory 状态管理 |
-| `src/lib/stores/scheduled-tasks-store.svelte.ts` | 定时任务状态管理 |
-| `src/lib/services/skill-executor.ts` | Skill 执行器 |
-| `src/lib/services/memory-service.ts` | Memory 服务 |
-| `src/lib/services/plugin-marketplace.ts` | 插件市场 |
-| `src/lib/services/scheduled-tasks-service.ts` | 定时任务服务 |
-| `src/lib/types/skill.ts` | Skill 类型定义 |
-| `src/lib/types/scheduled-task.ts` | 定时任务类型定义 |
+这些改进可以逐步推进，不需要大规模重构。核心是在现有架构上增强模块间的协作和数据流的整合。

@@ -15,26 +15,27 @@
 </script>
 
 <label
-  class="flex items-center justify-between gap-4 py-1.5 cursor-pointer {disabled
+  class="flex items-start justify-between gap-4 py-1.5 cursor-pointer select-none {disabled
     ? 'opacity-50 pointer-events-none'
     : ''}"
 >
-  {#if label || description}
-    <div class="min-w-0 flex-1">
-      {#if label}
-        <span class="text-sm font-medium">{label}</span>
-      {/if}
-      {#if description}
-        <p class="text-xs text-muted-foreground mt-0.5">{description}</p>
-      {/if}
-    </div>
-  {/if}
+  <div class="min-w-0 flex-1">
+    {#if label}
+      <span class="text-sm font-medium leading-snug">{label}</span>
+    {/if}
+    {#if description}
+      <p class="text-xs text-muted-foreground mt-0.5 leading-snug">{description}</p>
+    {/if}
+  </div>
   <button
     role="switch"
     aria-checked={checked}
     class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50
       {checked ? 'bg-primary' : 'bg-input'}"
-    onclick={() => onchange(!checked)}
+    onclick={(e) => {
+      e.stopPropagation();
+      onchange(!checked);
+    }}
     {disabled}
   >
     <span

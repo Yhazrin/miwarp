@@ -1,12 +1,13 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { goto } from "$app/navigation";
+  import { goto, afterNavigate } from "$app/navigation";
   import { page } from "$app/stores";
   import { searchRuns } from "$lib/api";
   import type { RunSearchFilters, RunSearchResponse } from "$lib/types";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { formatCostDisplay } from "$lib/utils/format";
+  import Spinner from "$lib/components/Spinner.svelte";
 
   let filters = $state<RunSearchFilters>({});
   let response = $state<RunSearchResponse | null>(null);
@@ -211,13 +212,26 @@
     goto(`/chat?run=${runId}`);
   }
 
-  onMount(() => {
-    // Read initial query from URL
+  function readUrlHints() {
     const q = $page.url.searchParams.get("q");
-    if (q) {
+    const advanced = $page.url.searchParams.get("advanced");
+    if (q != null) {
       searchInput = q;
-      filters = { query: q };
+      filters = { ...filters, query: q || undefined };
     }
+    if (advanced === "1" || advanced === "true") {
+      showAdvancedFilters = true;
+    }
+  }
+
+  onMount(() => {
+    readUrlHints();
+    loadData();
+  });
+
+  afterNavigate((n) => {
+    if (n.to?.url.pathname !== "/history" || !n.from) return;
+    readUrlHints();
     loadData();
   });
 </script>
@@ -500,9 +514,7 @@
     <!-- Initial loading spinner (only when no data yet) -->
     {#if loading && !response}
       <div class="flex items-center justify-center py-20">
-        <div
-          class="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"
-        ></div>
+        <Spinner size="lg" class="text-primary" />
       </div>
     {:else if error}
       <div class="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400">
@@ -603,9 +615,7 @@
             disabled={loading}
           >
             {#if loading}
-              <span
-                class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"
-              ></span>
+              <Spinner size="sm" class="text-primary" />
             {:else}
               {t("history_loadMore")}
             {/if}

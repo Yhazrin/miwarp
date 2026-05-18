@@ -8,6 +8,8 @@
   import CodeEditor from "$lib/components/CodeEditor.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbgWarn } from "$lib/utils/debug";
+  import { PROJECT_CWD_KEY, PROJECT_CHANGED_KEY } from "$lib/utils/storage-keys";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { memoryStore } from "$lib/stores/memory-store.svelte";
   import { getMemoryStats } from "$lib/services/memory-service";
 
@@ -31,7 +33,7 @@
   let selectedFile = $state("");
 
   let projectCwd = $state(
-    typeof window !== "undefined" ? (localStorage.getItem("ocv:project-cwd") ?? "") : "",
+    typeof window !== "undefined" ? (localStorage.getItem(PROJECT_CWD_KEY) ?? "") : "",
   );
 
   // Memory stats display
@@ -267,8 +269,8 @@
       }
       guardedProjectChange(cwd);
     }
-    window.addEventListener("ocv:project-changed", onProjectChanged);
-    return () => window.removeEventListener("ocv:project-changed", onProjectChanged);
+    window.addEventListener(PROJECT_CHANGED_KEY, onProjectChanged);
+    return () => window.removeEventListener(PROJECT_CHANGED_KEY, onProjectChanged);
   });
 
   // Warn before navigating away with unsaved changes
@@ -471,9 +473,7 @@
     </div>
   {:else if loading}
     <div class="flex flex-1 items-center justify-center">
-      <div
-        class="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-      ></div>
+      <Spinner size="lg" class="text-primary" />
     </div>
   {:else if viewMode === "preview" && isMarkdown}
     <div class="flex-1 overflow-y-auto p-4">

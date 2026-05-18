@@ -9,7 +9,7 @@
  * - Auto _subscribe/_unsubscribe for run-scoped events
  */
 import { dbg, dbgWarn } from "$lib/utils/debug";
-import type { Transport } from "./index";
+import type { Transport } from "./transport-types";
 
 interface PendingRequest {
   resolve: (value: unknown) => void;

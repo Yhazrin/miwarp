@@ -13,6 +13,7 @@
     copyToClipboard,
   } from "$lib/utils/tool-rendering";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
+  import StreamingSkeleton from "$lib/components/StreamingSkeleton.svelte";
   import TeamToolDetail from "$lib/components/TeamToolDetail.svelte";
   import { hljs } from "$lib/utils/hljs-init";
   import { structuredPatch } from "diff";
@@ -1386,6 +1387,14 @@
             : t("common_showAllLines", { count: String(outputLineCount) })}
         </button>
       {/if}
+    {:else if isInputStreaming && tool.status === "running"}
+      <div class="px-4 py-3">
+        <StreamingSkeleton lines={3} />
+        <div class="mt-2 flex items-center gap-2 text-xs text-muted-foreground/50">
+          <div class="h-1.5 w-1.5 rounded-full bg-muted-foreground/30 animate-pulse"></div>
+          <span>{t("tool_processingOutput")}</span>
+        </div>
+      </div>
     {/if}
   {/if}
 </div>

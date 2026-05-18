@@ -49,12 +49,12 @@
         fontSize: 13,
         fontFamily: "'SF Mono', 'Menlo', 'Consolas', monospace",
         theme: {
-          background: "#0a0a0a",
-          foreground: "#e5e5e5",
-          cursor: "#e5e5e5",
-          cursorAccent: "#0a0a0a",
+          background: "#141518",
+          foreground: "#e8e8ea",
+          cursor: "#e8e8ea",
+          cursorAccent: "#141518",
           selectionBackground: "rgba(255,255,255,0.2)",
-          black: "#0a0a0a",
+          black: "#141518",
           red: "#ef4444",
           green: "#22c55e",
           yellow: "#eab308",
@@ -122,7 +122,7 @@
 <div
   bind:this={containerEl}
   class="xterm-container {className}"
-  style="width: 100%; height: 100%; background: #0a0a0a;"
+  style="width: 100%; height: 100%; background: #141518;"
 ></div>
 
 <style>

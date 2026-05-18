@@ -7,6 +7,7 @@
   import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
   import { t } from "$lib/i18n/index.svelte";
   import { hasAttention } from "$lib/stores/attention-store.svelte";
+  import { RUNS_CHANGED_KEY } from "$lib/utils/storage-keys";
 
   function platformLabel(id: string): string {
     return PLATFORM_PRESETS.find((p) => p.id === id)?.name ?? id;
@@ -52,7 +53,7 @@
       try {
         const { renameRun } = await import("$lib/api");
         await renameRun(run.id, trimmed);
-        window.dispatchEvent(new Event("ocv:runs-changed"));
+        window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       } catch {
         // runs will refresh on next poll
       }

@@ -98,6 +98,16 @@ Double quotes, semicolons, trailing commas, 100 char print width, 2-space tabs. 
 
 Use [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `chore:`, etc.
 
+### Commit After Every Change
+
+**Every change must be committed and pushed immediately after completion.** Do not accumulate multiple changes into a single commit. After each task or logical change:
+
+1. Run `git add <files>` to stage the changed files
+2. Run `git commit -m "<conventional commit message>"` to commit
+3. Run `git push` to push to remote
+
+This prevents work from being lost. If a change is too trivial for a meaningful commit message, use `chore: <brief description>`.
+
 ### Branch Naming
 
 `fix/xxx` for bug fixes, `feat/xxx` for features. Branch from `master`.

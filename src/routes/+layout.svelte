@@ -3,6 +3,13 @@
   import "$lib/styles/sidebar-animations.css";
   import { escapeHtml } from "$lib/utils/ansi";
   import {
+    PROJECT_CWD_KEY,
+    RUNS_CHANGED_KEY,
+    PROJECT_CHANGED_KEY,
+    FAVORITES_CHANGED_KEY,
+    EXPLORER_FILE_SELECTED_KEY,
+  } from "$lib/utils/storage-keys";
+  import {
     listRuns,
     listRunsSince,
     getUserSettings,
@@ -14,12 +21,10 @@
     listMemoryFiles,
     softDeleteRuns,
     hardDeleteRuns,
-    listSessionFolders,
-    createSessionFolder,
-    renameSessionFolder,
-    deleteSessionFolder,
+    listAllSessionFolders,
     moveRunToFolder,
     batchMoveToFolder,
+    checkForUpdates,
   } from "$lib/api";
   import ProjectFolderItem from "$lib/components/ProjectFolderItem.svelte";
   import CommandPalette from "$lib/components/CommandPalette.svelte";
@@ -30,8 +35,12 @@
   import CliSessionBrowser from "$lib/components/CliSessionBrowser.svelte";
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
+  import FolderCrudDialogs from "$lib/components/FolderCrudDialogs.svelte";
+  import MemorySidebarGroup from "$lib/components/MemorySidebarGroup.svelte";
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import TopWindowDrag from "$lib/components/TopWindowDrag.svelte";
+  import SidebarProjectContextStrip from "$lib/components/sidebar/SidebarProjectContextStrip.svelte";
   import type {
     TaskRun,
     UserSettings,
@@ -46,13 +55,10 @@
   import { filterVisibleCandidates } from "$lib/utils/memory-helpers";
   import {
     buildEnrichedProjectFolders,
-    buildSessionFolderGroups,
     autoExpandForRun,
     expandForProjectChange,
     normalizeCwd,
     type ConversationGroup,
-    type SessionFolderGroup,
-    type EnrichedProjectFolder,
   } from "$lib/utils/sidebar-groups";
   import { loadRemovedCwds } from "$lib/utils/removed-cwds";
   import {
@@ -66,6 +72,8 @@
   import { onMount, setContext, untrack } from "svelte";
   import { installPreventRootOverscroll } from "$lib/utils/prevent-root-overscroll";
   import { dbg, dbgWarn } from "$lib/utils/debug";
+  import { setMascotOverrides } from "$lib/stores/mascot-overrides.svelte";
+  import { backgroundStore } from "$lib/stores/background-store.svelte";
   import { fpsCounter } from "$lib/utils/perf";
   import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
   import { loadAgentSettingsCache } from "$lib/stores/agent-settings-cache.svelte";
@@ -122,13 +130,9 @@
 
   // ── Session folders ──
   let sessionFolders = $state<SessionFolder[]>([]);
-  let sessionFolderGroups = $state<SessionFolderGroup[]>([]);
-  let unassignedRuns = $state<TaskRun[]>([]);
 
   // Sub-folder expand state (folderKey → expanded)
   let expandedSubFolders = $state(new Set<string>());
-  // Which project cwd is a "create sub-folder" dialog targeting
-  let folderCreateCwd = $state<string>("");
 
   function toggleSubFolder(folderKey: string) {
     const next = new Set(expandedSubFolders);
@@ -137,53 +141,148 @@
     expandedSubFolders = next;
   }
 
-  // Folder CRUD dialogs
-  let folderCreateOpen = $state(false);
-  let folderCreateName = $state("");
-  let folderRenameOpen = $state(false);
-  let folderRenameTarget = $state<SessionFolder | null>(null);
-  let folderRenameName = $state("");
-  let folderDeleteOpen = $state(false);
-  let folderDeleteTarget = $state<SessionFolder | null>(null);
+  // Folder CRUD dialogs (extracted component)
+  let folderDialogs: FolderCrudDialogs;
 
   // Move-to-folder dialog
   let moveToFolderOpen = $state(false);
   let moveToFolderRunIds = $state<string[]>([]);
+  let moveToFolderWorkspaceId = $state<string>("");
   let moveToFolderSelectedId = $state<string | null>(null);
 
   // ── Drag-and-drop for sessions → folders ──
-  let dragRunId = $state<string | null>(null);
+  const RUN_DRAG_MIME = "application/x-miwarp-run-ids";
+  let dragRunIds = $state<string[]>([]);
   let dragOverFolderId = $state<string | null>(null);
+  let dragExpandTimer: ReturnType<typeof setTimeout> | null = null;
 
-  function handleDragStartConversation(e: DragEvent, runId: string) {
-    dragRunId = runId;
+  function parseDragRunIdsFromDataTransfer(dt: DataTransfer | null): string[] {
+    if (!dt) return [];
+    let customRaw = "";
+    try {
+      customRaw = dt.getData(RUN_DRAG_MIME);
+    } catch {
+      customRaw = "";
+    }
+    if (customRaw) {
+      try {
+        const parsed = JSON.parse(customRaw);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((id): id is string => typeof id === "string" && id.length > 0);
+        }
+      } catch {
+        // Fall back to text/plain below for older drag payloads.
+      }
+    }
+
+    const raw = dt.getData("text/plain").trim();
+    if (!raw) return [];
+    return raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  function getSelectedRunIdsForDrag(groupKey: string, fallbackRunIds: string[]): string[] {
+    if (!selectedGroupKeys.has(groupKey)) return fallbackRunIds;
+
+    const selectedRunIds: string[] = [];
+    for (const folder of enrichedProjectFolders) {
+      for (const conv of folder.conversations) {
+        if (selectedGroupKeys.has(conv.groupKey)) {
+          selectedRunIds.push(...conv.runs.map((r) => r.id));
+        }
+      }
+      for (const sf of folder.subFolders ?? []) {
+        for (const conv of sf.conversations) {
+          if (selectedGroupKeys.has(conv.groupKey)) {
+            selectedRunIds.push(...conv.runs.map((r) => r.id));
+          }
+        }
+      }
+    }
+
+    return selectedRunIds.length > 0 ? Array.from(new Set(selectedRunIds)) : fallbackRunIds;
+  }
+
+  function handleDragStartConversation(e: DragEvent, runIds: string[], groupKey: string) {
+    const ids = getSelectedRunIdsForDrag(groupKey, runIds);
+    dragRunIds = ids;
     if (e.dataTransfer) {
       e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", runId);
+      try {
+        e.dataTransfer.setData(RUN_DRAG_MIME, JSON.stringify(ids));
+      } catch {
+        // Some WebViews only preserve text/plain for internal drags.
+      }
+      e.dataTransfer.setData("text/plain", ids.join(","));
     }
   }
 
   function handleDragEndConversation() {
-    dragRunId = null;
-    dragOverFolderId = null;
+    if (dragExpandTimer) {
+      clearTimeout(dragExpandTimer);
+      dragExpandTimer = null;
+    }
+    setTimeout(() => {
+      dragRunIds = [];
+      dragOverFolderId = null;
+    }, 0);
   }
 
-  function handleDragOverFolder(folderId: string) {
-    if (dragRunId) dragOverFolderId = folderId;
+  function hasRunDragPayload(e?: DragEvent): boolean {
+    const fromState = dragRunIds.length > 0;
+    const types = e?.dataTransfer?.types;
+    const fromTypes =
+      !!types && Array.from(types).some((type) => type === RUN_DRAG_MIME || type === "text/plain");
+    return fromState || fromTypes;
+  }
+
+  function handleDragOverFolder(folderId: string, e?: DragEvent, folderKey?: string) {
+    if (!hasRunDragPayload(e)) return;
+    if (e?.dataTransfer) e.dataTransfer.dropEffect = "move";
+    dragOverFolderId = folderId;
+
+    if (folderKey && !expandedSubFolders.has(folderKey) && !dragExpandTimer) {
+      dragExpandTimer = setTimeout(() => {
+        const next = new Set(expandedSubFolders);
+        next.add(folderKey);
+        expandedSubFolders = next;
+        dragExpandTimer = null;
+      }, 450);
+    }
   }
 
   function handleDragLeaveFolder() {
     dragOverFolderId = null;
+    if (dragExpandTimer) {
+      clearTimeout(dragExpandTimer);
+      dragExpandTimer = null;
+    }
   }
 
-  async function handleDropOnFolder(folderId: string) {
-    const runId = dragRunId;
-    dragRunId = null;
+  async function handleDropOnFolder(folderId: string, e?: DragEvent) {
+    const fromTransfer = parseDragRunIdsFromDataTransfer(e?.dataTransfer ?? null);
+    const ids = fromTransfer.length > 0 ? fromTransfer : dragRunIds.slice();
+    const folderByRunId = new Map(runs.map((r) => [r.id, r.folder_id ?? null]));
+    const idsToMove = ids.filter((id) => folderByRunId.get(id) !== folderId);
+    dragRunIds = [];
     dragOverFolderId = null;
-    if (!runId) return;
+    if (dragExpandTimer) {
+      clearTimeout(dragExpandTimer);
+      dragExpandTimer = null;
+    }
+    if (idsToMove.length === 0) return;
     try {
-      await moveRunToFolder(runId, folderId);
+      if (idsToMove.length === 1) {
+        await moveRunToFolder(idsToMove[0], folderId);
+      } else {
+        await batchMoveToFolder(idsToMove, folderId);
+      }
+      runs = runs.map((r) => (idsToMove.includes(r.id) ? { ...r, folder_id: folderId } : r));
       await loadSessionFolders();
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
+      dbg("layout", "drag-drop move to folder", { count: idsToMove.length, folderId });
     } catch (e) {
       dbgWarn("layout", "drag-drop moveRunToFolder failed", e);
     }
@@ -191,81 +290,17 @@
 
   async function loadSessionFolders() {
     try {
-      sessionFolders = await listSessionFolders(projectCwd || "default");
+      sessionFolders = await listAllSessionFolders();
     } catch {
       // silently fail
-    }
-  }
-
-  function refreshFolderGroups() {
-    const result = buildSessionFolderGroups(runs, sessionFolders, favoriteRunIds);
-    sessionFolderGroups = result.folderGroups;
-    unassignedRuns = result.unassignedRuns;
-  }
-
-  async function doCreateFolder() {
-    const name = folderCreateName.trim();
-    if (!name) return;
-    folderCreateOpen = false;
-    folderCreateName = "";
-    try {
-      const folder = await createSessionFolder(name, projectCwd || "default");
-      sessionFolders = [...sessionFolders, folder];
-      dbg("layout", "createFolder success", { id: folder.id, name });
-    } catch (e) {
-      dbgWarn("layout", "createFolder failed", e);
-    }
-  }
-
-  function requestRenameFolder(folder: SessionFolder) {
-    folderRenameTarget = folder;
-    folderRenameName = folder.name;
-    folderRenameOpen = true;
-  }
-
-  async function doRenameFolder() {
-    const target = folderRenameTarget;
-    const newName = folderRenameName.trim();
-    if (!target || !newName) return;
-    folderRenameOpen = false;
-    folderRenameTarget = null;
-    try {
-      await renameSessionFolder(target.id, newName);
-      sessionFolders = sessionFolders.map((f) =>
-        f.id === target.id ? { ...f, name: newName } : f,
-      );
-      dbg("layout", "renameFolder success", { id: target.id, newName });
-    } catch (e) {
-      dbgWarn("layout", "renameFolder failed", e);
-    }
-  }
-
-  function requestDeleteFolder(folder: SessionFolder) {
-    folderDeleteTarget = folder;
-    folderDeleteOpen = true;
-  }
-
-  async function doDeleteFolder(cascade: boolean) {
-    const target = folderDeleteTarget;
-    folderDeleteOpen = false;
-    folderDeleteTarget = null;
-    if (!target) return;
-    try {
-      await deleteSessionFolder(target.id, cascade);
-      sessionFolders = sessionFolders.filter((f) => f.id !== target.id);
-      if (cascade) {
-        // Reload runs to reflect folder_id changes
-        await loadRuns();
-      }
-      dbg("layout", "deleteFolder success", { id: target.id, cascade });
-    } catch (e) {
-      dbgWarn("layout", "deleteFolder failed", e);
     }
   }
 
   function requestMoveToFolder(runIds: string[]) {
     moveToFolderRunIds = runIds;
     moveToFolderSelectedId = null;
+    const first = runs.find((r) => r.id === runIds[0]);
+    moveToFolderWorkspaceId = normalizeCwd(first?.parent_cwd ?? first?.cwd ?? "") || "";
     moveToFolderOpen = true;
   }
 
@@ -283,7 +318,7 @@
       }
       // Optimistic update
       runs = runs.map((r) => (ids.includes(r.id) ? { ...r, folder_id: folderId ?? undefined } : r));
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       dbg("layout", "moveToFolder success", { count: ids.length, folderId });
     } catch (e) {
       dbgWarn("layout", "moveToFolder failed", e);
@@ -527,13 +562,22 @@
   let memoryLoading = $state(false);
   let memoryScopeExpanded = $state<Record<string, boolean>>({
     global: false,
+    project: false,
+    memory: false,
   });
 
   let memoryScopeProject = $derived(memoryCandidates.filter((c) => c.scope === "project"));
   let memoryScopeGlobal = $derived(memoryCandidates.filter((c) => c.scope === "global"));
   let memoryScopeMemory = $derived(memoryCandidates.filter((c) => c.scope === "memory"));
-  // Merged project + auto memory for flat folder view
-  let memoryScopeFolder = $derived([...memoryScopeProject, ...memoryScopeMemory]);
+  let visibleMemoryProject = $derived(
+    filterVisibleCandidates(memoryScopeProject, true, memorySelectedFile),
+  );
+  let visibleMemoryGlobal = $derived(
+    filterVisibleCandidates(memoryScopeGlobal, true, memorySelectedFile),
+  );
+  let visibleMemoryAuto = $derived(
+    filterVisibleCandidates(memoryScopeMemory, true, memorySelectedFile),
+  );
 
   let memoryCandidateSeq = 0;
 
@@ -571,6 +615,14 @@
 
   function toggleMemoryScope(scope: string) {
     memoryScopeExpanded = { ...memoryScopeExpanded, [scope]: !memoryScopeExpanded[scope] };
+  }
+
+  function memoryScopeHasSelected(files: MemoryFileCandidate[]) {
+    return files.some((file) => file.path === memorySelectedFile);
+  }
+
+  function memoryScopeIsExpanded(scope: string, files: MemoryFileCandidate[]) {
+    return !!memoryScopeExpanded[scope] || memoryScopeHasSelected(files);
   }
 
   // Load tree when switching to explorer page or changing project
@@ -649,7 +701,7 @@
     { path: "/memory", label: () => t("nav_memory"), icon: "book", group: "workspace" },
     { path: "/history", label: () => t("nav_history"), icon: "clock", group: "workspace" },
     // Extensions
-    { path: "/plugins", label: () => t("nav_extend"), icon: "zap", group: "extensions" },
+    { path: "/plugins", label: () => t("sidebar_plugins"), icon: "zap", group: "extensions" },
     // System
     { path: "/usage", label: () => t("nav_usage"), icon: "chart", group: "system" },
     { path: "/settings", label: () => t("nav_settings"), icon: "settings", group: "system" },
@@ -732,6 +784,7 @@
   async function loadSettings() {
     try {
       settings = await getUserSettings();
+      setMascotOverrides(settings.mascot_overrides ?? {});
       const normalizedWd = normalizeCwd(settings.working_directory);
       if (normalizedWd) {
         localStorage.setItem("ocv:settings-cwd", normalizedWd);
@@ -756,7 +809,12 @@
     const factor = Math.min(1.5, Math.max(0.75, zoom ?? 1.0));
     import("@tauri-apps/api/webviewWindow")
       .then(({ getCurrentWebviewWindow }) => {
-        getCurrentWebviewWindow()
+        const win = getCurrentWebviewWindow();
+        if (!win) {
+          dbgWarn("layout", "applyZoom: no webview window");
+          return;
+        }
+        win
           .setZoom(factor)
           .then(() => dbg("layout", "applyZoom success", { factor }))
           .catch((e) => dbgWarn("layout", "setZoom failed", e));
@@ -818,35 +876,41 @@
     loadSessionFolders();
     loadAgentSettingsCache();
     themeStore.init();
+    void backgroundStore.init();
 
-    // Fetch app version and check for updates
-    import("@tauri-apps/api/app")
-      .then(({ getVersion }) => getVersion())
-      .then(async (v) => {
-        sidebarVersion = `v${v}`;
-        sidebarVersionChecked = false;
-        try {
-          const res = await fetch(
-            "https://api.github.com/repos/miwarp-app/miwarp/releases/latest",
-            { signal: AbortSignal.timeout(5000) },
-          );
-          if (res.ok) {
-            const data = await res.json();
-            const latest = ((data.tag_name as string) || "").replace(/^v/, "");
-            const current = v.replace(/^v/, "");
-            sidebarUpdateAvailable = latest !== "" && latest !== current;
+    // App version + update badge: use the same backend path as About / UpdateBanner
+    // (avoids wrong GitHub repo URL in client fetch + WebView/CORS quirks).
+    void (async () => {
+      sidebarVersionChecked = false;
+      try {
+        const info = await checkForUpdates();
+        const cur = info.currentVersion?.replace(/^v/, "") ?? "";
+        if (cur) sidebarVersion = `v${cur}`;
+        sidebarUpdateAvailable = Boolean(info.hasUpdate && !info.error);
+        if (info.error) {
+          if (/\brate\s*limit\b/i.test(info.error)) {
+            dbg("layout", "checkForUpdates: GitHub rate limited; cached result or retry later");
+          } else {
+            dbgWarn("layout", "checkForUpdates:", info.error);
           }
-        } catch {
-          // ignore network errors, just show "up to date"
         }
+      } catch (e) {
+        dbgWarn("layout", "checkForUpdates failed", e);
+        try {
+          const { getVersion } = await import("@tauri-apps/api/app");
+          const v = await getVersion();
+          sidebarVersion = `v${v.replace(/^v/, "")}`;
+        } catch {
+          /* vite preview / non-Tauri */
+        }
+        sidebarUpdateAvailable = false;
+      } finally {
         sidebarVersionChecked = true;
-      })
-      .catch(() => {
-        sidebarVersionChecked = true;
-      });
+      }
+    })();
 
     // Load saved CWD and pinned folders from localStorage
-    const saved = localStorage.getItem("ocv:project-cwd");
+    const saved = localStorage.getItem(PROJECT_CWD_KEY);
     if (saved) projectCwd = normalizeCwd(saved) || "";
 
     // Load expanded projects from localStorage (defensive parse)
@@ -971,13 +1035,13 @@
         loadGitSummary();
       }
     }
-    window.addEventListener("ocv:runs-changed", onRunsChanged);
+    window.addEventListener(RUNS_CHANGED_KEY, onRunsChanged);
 
     // Refresh sidebar favorites when /runs page changes them
     function onFavoritesChanged() {
       loadSidebarFavorites();
     }
-    window.addEventListener("ocv:favorites-changed", onFavoritesChanged);
+    window.addEventListener(FAVORITES_CHANGED_KEY, onFavoritesChanged);
 
     // Listen for Settings page requesting wizard re-open
     function onShowWizard() {
@@ -1000,7 +1064,7 @@
 
     // Sync projectCwd when chat page picks a folder via dialog
     function handleCwdChanged() {
-      const newCwd = normalizeCwd(localStorage.getItem("ocv:project-cwd") ?? "") || "";
+      const newCwd = normalizeCwd(localStorage.getItem(PROJECT_CWD_KEY) ?? "") || "";
       if (newCwd !== projectCwd) {
         projectCwd = newCwd;
       }
@@ -1057,7 +1121,7 @@
     function onExplorerFileSelected(e: Event) {
       explorerSelectedFile = (e as CustomEvent).detail?.path ?? "";
     }
-    window.addEventListener("ocv:explorer-file-selected", onExplorerFileSelected);
+    window.addEventListener(EXPLORER_FILE_SELECTED_KEY, onExplorerFileSelected);
 
     // Listen for run status changes (idle↔running) from backend
     let unlistenStatus: (() => void) | undefined;
@@ -1088,15 +1152,15 @@
       keybindingStore.unregisterCallback("app:toggleSidebar");
       keybindingStore.unregisterCallback("app:commandPalette");
       keybindingStore.unregisterCallback("app:newChat");
-      window.removeEventListener("ocv:runs-changed", onRunsChanged);
-      window.removeEventListener("ocv:favorites-changed", onFavoritesChanged);
+      window.removeEventListener(RUNS_CHANGED_KEY, onRunsChanged);
+      window.removeEventListener(FAVORITES_CHANGED_KEY, onFavoritesChanged);
       window.removeEventListener("ocv:show-wizard", onShowWizard);
       window.removeEventListener("ocv:cwd-changed", handleCwdChanged);
       window.removeEventListener("ocv:memory-file-selected", onMemoryFileSelected);
       window.removeEventListener("ocv:memory-file-saved", onMemoryFileSaved);
       window.removeEventListener("ocv:open-permissions", onOpenPermissions);
       document.removeEventListener("click", handleExternalLink, true);
-      window.removeEventListener("ocv:explorer-file-selected", onExplorerFileSelected);
+      window.removeEventListener(EXPLORER_FILE_SELECTED_KEY, onExplorerFileSelected);
       cleanupOverscroll();
     };
   });
@@ -1106,17 +1170,17 @@
   $effect(() => {
     if (typeof window !== "undefined") {
       if (projectCwd) {
-        localStorage.setItem("ocv:project-cwd", projectCwd);
+        localStorage.setItem(PROJECT_CWD_KEY, projectCwd);
         // Pin this cwd so it stays in the dropdown after switching away
         if (projectCwd !== "/" && !pinnedCwds.includes(projectCwd)) {
           pinnedCwds = [...pinnedCwds, projectCwd];
           localStorage.setItem("ocv:pinned-cwds", JSON.stringify(pinnedCwds));
         }
       } else {
-        localStorage.removeItem("ocv:project-cwd");
+        localStorage.removeItem(PROJECT_CWD_KEY);
       }
       // Notify child pages (e.g. Memory) that project cwd changed
-      window.dispatchEvent(new CustomEvent("ocv:project-changed", { detail: { cwd: projectCwd } }));
+      window.dispatchEvent(new CustomEvent(PROJECT_CHANGED_KEY, { detail: { cwd: projectCwd } }));
     }
   });
 
@@ -1172,7 +1236,7 @@
       const ids = conv.runs.map((r) => r.id);
       await softDeleteRuns(ids);
       dbg("layout", "deleteConversation success", { ids });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       if (conv.runs.some((r) => r.id === selectedRunId)) {
         goto("/chat");
       }
@@ -1193,7 +1257,7 @@
       const idSet = new Set(ids);
       runs = runs.filter((r) => !idSet.has(r.id));
       dbg("layout", "hardDeleteConversation success", { ids });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       if (ids.some((id) => id === selectedRunId)) {
         goto("/chat");
       }
@@ -1275,7 +1339,6 @@
   }
 
   async function batchDelete() {
-    const keys = new Set(selectedGroupKeys);
     batchDeleteConfirmOpen = false;
     clearBatchSelection();
     const ids = collectSelectedRunIds();
@@ -1283,7 +1346,7 @@
     try {
       await softDeleteRuns(ids);
       dbg("layout", "batchDelete success", { count: ids.length });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       if (ids.includes(selectedRunId)) goto("/chat");
     } catch (e) {
       dbgWarn("layout", "batchDelete failed", e);
@@ -1300,7 +1363,7 @@
       const idSet = new Set(ids);
       runs = runs.filter((r) => !idSet.has(r.id));
       dbg("layout", "batchHardDelete success", { count: ids.length });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       if (ids.includes(selectedRunId)) goto("/chat");
     } catch (e) {
       dbgWarn("layout", "batchHardDelete failed", e);
@@ -1356,13 +1419,6 @@
   let enrichedProjectFolders = $derived.by(() =>
     buildEnrichedProjectFolders(runs, sessionFolders, favoriteRunIds, pinnedCwds, removedCwds),
   );
-
-  // Keep sessionFolderGroups synced for compatibility (move-to-folder dialog etc.)
-  $effect(() => {
-    const result = buildSessionFolderGroups(runs, sessionFolders, favoriteRunIds);
-    sessionFolderGroups = result.folderGroups;
-    unassignedRuns = result.unassignedRuns;
-  });
 
   // Reload session folders when project context changes
   $effect(() => {
@@ -1574,6 +1630,42 @@
     localStorage.setItem("ocv:expanded-projects", JSON.stringify(pruned));
   });
 
+  /** Touch every wallpaper field so Svelte tracks edits immediately (hot update). */
+  function wallpaperConfigSnapshot() {
+    const aid = backgroundStore.activeSessionId;
+    const ps = backgroundStore.perSession;
+    const g = backgroundStore.global;
+    const cfg = aid && ps[aid] ? ps[aid] : g;
+    void cfg.mode;
+    void cfg.imageUrl;
+    void cfg.opacity;
+    void cfg.blur;
+    void cfg.chromeOpacity;
+    void cfg.chromeBlur;
+    void cfg.solidColor;
+    void cfg.colorOverlay;
+    void cfg.overlayOpacity;
+    void cfg.positionX;
+    void cfg.positionY;
+    void cfg.sizingMode;
+    return cfg;
+  }
+
+  let rootWallpaper = $derived.by(() => {
+    wallpaperConfigSnapshot();
+    return backgroundStore.getRootWallpaperDescriptor();
+  });
+
+  $effect(() => {
+    const on = rootWallpaper.show;
+    document.documentElement.toggleAttribute("data-miwarp-wallpaper", on);
+    const cfg = wallpaperConfigSnapshot();
+    const mul = (cfg.chromeOpacity ?? 100) / 100;
+    const blurPx = cfg.chromeBlur ?? 28;
+    document.documentElement.style.setProperty("--miwarp-chrome-opacity-mul", String(mul));
+    document.documentElement.style.setProperty("--miwarp-chrome-blur", `${blurPx}px`);
+  });
+
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === "Escape" && selectedGroupKeys.size > 0) {
       clearBatchSelection();
@@ -1641,503 +1733,135 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="flex h-screen w-screen overflow-hidden">
-  <!-- Sidebar: Icon Rail + Content Panel -->
-  <aside
-    class="sidebar-container shrink-0 glass-sidebar text-sidebar-foreground"
-    class:sidebar-collapsed={!sidebarOpen || !needsLayoutContentPanel}
-    class:sidebar-no-transition={sidebarResizing}
-    style="width: {sidebarOpen && needsLayoutContentPanel
-      ? 44 + sidebarWidth
-      : 44}px; --sidebar-inner-width: {sidebarWidth}px"
-  >
-    <!-- A. Icon Rail -->
-    <div class="flex w-[44px] flex-col items-center bg-[hsl(var(--miwarp-bg-deepest)/0.88)]">
-      <!-- Rail logo (OC) -->
-      <div class="relative flex h-14 w-full items-center justify-center pt-[42px]">
-        <!-- Left drag area -->
-        <WindowDragArea class="absolute left-0 top-0 bottom-0 w-8" />
-        <!-- Logo (not draggable) -->
-        <img src="/light.png" alt="MiWarp" class="no-drag relative z-10 h-8 w-8 rounded-lg" />
-        <!-- Right drag area -->
-        <WindowDragArea class="absolute right-0 top-0 bottom-0 w-8" />
-      </div>
-
-      <!-- Rail nav icons -->
-      <nav class="flex flex-1 flex-col items-center gap-1 py-2">
-        {#each navItems as item, idx}
-          {#if idx > 0 && item.group !== navItems[idx - 1].group}
-            <div class="my-1 h-px w-5 bg-border/40"></div>
-          {/if}
-          {@const isActive = currentPath.startsWith(item.path)}
-          <a
-            href={item.path}
-            class="relative flex h-9 w-9 items-center justify-center rounded-md transition-colors duration-150 no-underline
-                {isActive
-              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-              : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"
-            title={item.label()}
-          >
-            <!-- Active indicator bar -->
-            {#if isActive}
-              <span class="absolute left-0 top-1.5 h-5 w-[3px] rounded-r-full bg-primary"></span>
-            {/if}
-            {#if item.icon === "message"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg
-              >
-            {:else if item.icon === "folder"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><path
-                  d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
-                /></svg
-              >
-            {:else if item.icon === "zap"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg
-              >
-            {:else if item.icon === "book"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg
-              >
-            {:else if item.icon === "chart"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg
-              >
-            {:else if item.icon === "clock"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg
-              >
-            {:else if item.icon === "settings"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><path
-                  d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-                /><circle cx="12" cy="12" r="3" /></svg
-              >
-            {:else if item.icon === "schedule"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg
-              >
-            {:else if item.icon === "users"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle
-                  cx="9"
-                  cy="7"
-                  r="4"
-                /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg
-              >
-            {/if}
-            <!-- team count badge removed by user request -->
-            <span class="sr-only">{item.label()}</span>
-          </a>
-        {/each}
-      </nav>
-
-      <!-- Rail version + locale + dark mode toggle -->
-      <div class="py-2">
-        <div class="flex items-center justify-center pb-1">
-          <button
-            class="flex h-7 w-7 items-center justify-center rounded-md transition-colors cursor-pointer
-              {sidebarUpdateAvailable
-              ? 'text-amber-400 hover:text-amber-300 hover:bg-amber-400/10'
-              : 'text-muted-foreground/60 hover:text-muted-foreground hover:bg-sidebar-accent/50'}"
-            onclick={() => (showAbout = true)}
-            title={sidebarUpdateAvailable
-              ? `有新版本可用 (当前 ${sidebarVersion})`
-              : `已是最新版本 ${sidebarVersion}`}
-          >
-            {#if !sidebarVersionChecked}
-              <!-- Loading spinner -->
-              <svg class="h-3.5 w-3.5 animate-spin opacity-50" viewBox="0 0 24 24" fill="none">
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="3"
-                  stroke-dasharray="31.4"
-                  stroke-dashoffset="10"
-                  stroke-linecap="round"
-                />
-              </svg>
-            {:else if sidebarUpdateAvailable}
-              <!-- Update available: arrow-up-circle -->
-              <svg
-                class="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="16 12 12 8 8 12" />
-                <line x1="12" y1="16" x2="12" y2="8" />
-              </svg>
-            {:else}
-              <!-- Up to date: check-circle -->
-              <svg
-                class="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                <polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
-            {/if}
-          </button>
+<div
+  class="miwarp-layout-root relative flex h-screen w-screen min-h-0 min-w-0"
+  class:bg-background={!rootWallpaper.show}
+>
+  {#if rootWallpaper.show}
+    <div class="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
+      {#if rootWallpaper.solidStyle}
+        <div class="absolute inset-0" style={rootWallpaper.solidStyle}></div>
+      {/if}
+      {#if rootWallpaper.imageInnerStyle}
+        <div class="absolute inset-0 overflow-hidden">
+          <div class="absolute inset-0" style={rootWallpaper.imageInnerStyle}></div>
         </div>
-        <div class="mx-auto mb-0.5">
-          <button
-            class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-            onclick={toggleLocale}
-            title={getEntry(currentLocale())?.nativeName ?? currentLocale()}
-          >
-            <span class="text-xs font-medium"
-              >{getEntry(currentLocale())?.shortLabel ?? currentLocale()}</span
-            >
-          </button>
-        </div>
-        <button
-          class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-          onclick={() => themeStore.cycleTheme()}
-          title={themeStore.isDark ? t("layout_themeTitle_dark") : t("layout_themeTitle_light")}
-        >
-          {#if themeStore.isDark}
-            <!-- Moon icon (dark mode active) -->
-            <svg
-              class="h-[18px] w-[18px]"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg
-            >
-          {:else}
-            <!-- Sun icon (light mode active) -->
-            <svg
-              class="h-[18px] w-[18px]"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              ><circle cx="12" cy="12" r="4" /><path
-                d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
-              /></svg
-            >
-          {/if}
-        </button>
-        <button
-          class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-          onclick={() =>
-            themeStore.setColorScheme(themeStore.colorScheme === "warm" ? "neutral" : "warm")}
-          title={themeStore.colorScheme === "warm"
-            ? t("layout_schemeTitle_warm")
-            : t("layout_schemeTitle_neutral")}
-        >
-          <!-- Palette icon -->
-          <svg
-            class="h-[18px] w-[18px]"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /><circle
-              cx="17.5"
-              cy="10.5"
-              r=".5"
-              fill="currentColor"
-            /><circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /><circle
-              cx="6.5"
-              cy="12"
-              r=".5"
-              fill="currentColor"
-            /><path
-              d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"
-            /></svg
-          >
-        </button>
-      </div>
+      {/if}
+      {#if rootWallpaper.overlayStyle}
+        <div class="absolute inset-0" style={rootWallpaper.overlayStyle}></div>
+      {/if}
     </div>
+  {/if}
+  <div class="relative z-10 flex min-h-0 min-w-0 flex-1 overflow-hidden">
+    <!-- Sidebar: Icon Rail + Content Panel -->
+    <aside
+      class="sidebar-container relative z-10 shrink-0 glass-sidebar text-sidebar-foreground"
+      class:sidebar-collapsed={!sidebarOpen || !needsLayoutContentPanel}
+      class:sidebar-no-transition={sidebarResizing}
+      style="width: {sidebarOpen && needsLayoutContentPanel
+        ? 44 + sidebarWidth
+        : 44}px; --sidebar-inner-width: {sidebarWidth}px"
+    >
+      <!-- A. Icon Rail -->
+      <div class="flex w-[44px] flex-col items-center bg-[hsl(var(--miwarp-bg-deepest)/0.88)]">
+        <!-- Rail logo (OC) -->
+        <div class="relative flex h-14 w-full items-center justify-center pt-[42px]">
+          <!-- Left drag area -->
+          <WindowDragArea class="absolute left-0 top-0 bottom-0 w-8" />
+          <!-- Logo (not draggable) -->
+          <img src="/light.png" alt="MiWarp" class="no-drag relative z-10 h-8 w-8 rounded-lg" />
+          <!-- Right drag area -->
+          <WindowDragArea class="absolute right-0 top-0 bottom-0 w-8" />
+        </div>
 
-    <!-- B. Content Panel (only rendered for pages that use it) -->
-    {#if needsLayoutContentPanel}
-      <div class="sidebar-content-panel">
-        <div
-          class="sidebar-inner flex flex-col h-full relative"
-          class:sidebar-inner-collapsed={!sidebarOpen}
-        >
-          <!-- Panel header: Project selector + new chat -->
-          <div class="relative flex h-14 items-center gap-1.5 px-3 pt-[42px]">
-            <!-- Left drag spacer -->
-            <WindowDragArea class="absolute left-0 top-0 bottom-0 w-16" />
-            <!-- Right drag spacer -->
-            <WindowDragArea class="absolute right-0 top-0 bottom-0 w-16" />
-            <!-- Clickable content -->
-            <div class="no-drag relative z-10 flex items-center gap-1.5 flex-1 min-w-0">
-              <span class="flex-1 min-w-0 truncate text-sm font-medium text-sidebar-foreground"
-                >{pageName}</span
-              >
-              <button
-                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-                onclick={() => (showCliBrowser = true)}
-                title={t("cliSync_title")}
-              >
+        <!-- Rail nav icons -->
+        <nav class="flex flex-1 flex-col items-center gap-1 py-2">
+          {#each navItems as item, idx}
+            {#if idx > 0 && item.group !== navItems[idx - 1].group}
+              <div class="my-1 h-px w-5 bg-border/40"></div>
+            {/if}
+            {@const isActive = currentPath.startsWith(item.path)}
+            <a
+              href={item.path}
+              class="relative flex h-9 w-9 items-center justify-center rounded-md transition-colors duration-150 no-underline
+                {isActive
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"
+              title={item.label()}
+            >
+              <!-- Active indicator bar -->
+              {#if isActive}
+                <span class="absolute left-0 top-1.5 h-5 w-[3px] rounded-r-full bg-primary"></span>
+              {/if}
+              {#if item.icon === "message"}
                 <svg
-                  class="h-4 w-4"
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg
+                >
+              {:else if item.icon === "folder"}
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><path
+                    d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+                  /></svg
+                >
+              {:else if item.icon === "zap"}
+                <svg
+                  class="h-[18px] w-[18px]"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  ><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path
-                    d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"
-                  /></svg
+                  ><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg
                 >
-              </button>
-              <button
-                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-                onclick={newChat}
-                title={t("layout_newConversation")}
-              >
+              {:else if item.icon === "book"}
                 <svg
-                  class="h-4 w-4"
+                  class="h-[18px] w-[18px]"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
                   stroke-linecap="round"
-                  stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg
+                  stroke-linejoin="round"
+                  ><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg
                 >
-              </button>
-            </div>
-          </div>
-
-          {#if isPluginsPage}
-            <!-- Plugin section navigation (replaces Chats/Files when on /plugins) -->
-            <div class="flex-1 overflow-y-auto py-2">
-              {#each pluginSections as section, i}
-                {#if i === 1}
-                  <div class="mx-3 my-1 border-t border-sidebar-border"></div>
-                {/if}
-                {@const isActive = pluginActiveSection === section.id}
-                <button
-                  class="flex w-full items-center gap-2 py-2 px-3 text-xs font-medium transition-colors
-                  {isActive
-                    ? 'bg-sidebar-accent text-sidebar-foreground'
-                    : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
-                  onclick={() => {
-                    pluginActiveSection = section.id;
-                    goto(`/plugins?section=${section.id}`, { replaceState: true, noScroll: true });
-                  }}
-                >
-                  {#if section.icon === "overview"}
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><rect width="7" height="7" x="3" y="3" rx="1" /><rect
-                        width="7"
-                        height="7"
-                        x="14"
-                        y="3"
-                        rx="1"
-                      /><rect width="7" height="7" x="14" y="14" rx="1" /><rect
-                        width="7"
-                        height="7"
-                        x="3"
-                        y="14"
-                        rx="1"
-                      /></svg
-                    >
-                  {:else if section.icon === "sparkles"}
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><path
-                        d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"
-                      /></svg
-                    >
-                  {:else if section.icon === "server"}
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><rect width="20" height="8" x="2" y="2" rx="2" ry="2" /><rect
-                        width="20"
-                        height="8"
-                        x="2"
-                        y="14"
-                        rx="2"
-                        ry="2"
-                      /><line x1="6" x2="6.01" y1="6" y2="6" /><line
-                        x1="6"
-                        x2="6.01"
-                        y1="18"
-                        y2="18"
-                      /></svg
-                    >
-                  {:else if section.icon === "webhook"}
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><path
-                        d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"
-                      /><path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06" /><path
-                        d="m12 6 3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8H12"
-                      /></svg
-                    >
-                  {:else if section.icon === "package"}
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><path d="m7.5 4.27 9 5.15" /><path
-                        d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
-                      /><path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" /></svg
-                    >
-                  {:else if section.icon === "agents"}
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><path d="M12 8V4H8" /><rect width="16" height="12" x="4" y="8" rx="2" /><path
-                        d="M2 14h2"
-                      /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" /></svg
-                    >
-                  {/if}
-                  <span class="min-w-0 truncate">{section.label()}</span>
-                </button>
-              {/each}
-            </div>
-          {:else if isExplorerPage}
-            <!-- Explorer tab bar: Files / Git -->
-            <div class="flex shrink-0 border-b border-sidebar-border">
-              <button
-                class="flex-1 py-1.5 text-xs font-medium text-center transition-colors
-              {explorerTab === 'files'
-                  ? 'text-sidebar-foreground border-b-2 border-primary'
-                  : 'text-muted-foreground hover:text-sidebar-foreground'}"
-                onclick={() => (explorerTab = "files")}>{t("sidebar_files")}</button
-              >
-              <button
-                class="relative flex-1 py-1.5 text-xs font-medium text-center transition-colors
-              {explorerTab === 'git'
-                  ? 'text-sidebar-foreground border-b-2 border-primary'
-                  : 'text-muted-foreground hover:text-sidebar-foreground'}"
-                onclick={() => (explorerTab = "git")}
-                >{t("sidebar_git")}
-                {#if gitSummary && gitSummary.total_files > 0}
-                  <span
-                    class="ml-0.5 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-blue-500/80 px-1 text-[10px] font-bold text-white"
-                    >{gitSummary.total_files}</span
-                  >
-                {/if}
-              </button>
-            </div>
-
-            <!-- Compact project picker (below tabs) -->
-            <div class="relative shrink-0 border-b border-sidebar-border">
-              <button
-                class="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-xs transition-colors hover:bg-sidebar-accent/50"
-                onclick={() => (explorerProjectOpen = !explorerProjectOpen)}
-              >
+              {:else if item.icon === "chart"}
                 <svg
-                  class="h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg
+                >
+              {:else if item.icon === "clock"}
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg
+                >
+              {:else if item.icon === "settings"}
+                <svg
+                  class="h-[18px] w-[18px]"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -2145,557 +1869,220 @@
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   ><path
-                    d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
-                  /></svg
+                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+                  /><circle cx="12" cy="12" r="3" /></svg
                 >
-                <span class="min-w-0 truncate text-sidebar-foreground"
-                  >{projectCwd
-                    ? cwdDisplayLabel(projectCwd)
-                    : t("sidebar_selectProjectBrowse")}</span
-                >
+              {:else if item.icon === "schedule"}
                 <svg
-                  class="ml-auto h-3 w-3 shrink-0 text-muted-foreground/50 transition-transform {explorerProjectOpen
-                    ? 'rotate-180'
-                    : ''}"
+                  class="h-[18px] w-[18px]"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="2"
                   stroke-linecap="round"
-                  stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg
+                  stroke-linejoin="round"
+                  ><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg
                 >
-              </button>
-              {#if explorerProjectOpen}
-                <div class="border-b border-sidebar-border bg-sidebar">
-                  {#each selectableFolders as folder (folder.folderKey)}
-                    <button
-                      class="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-xs transition-colors
-                      {folder.cwd === projectCwd
-                        ? 'bg-sidebar-accent text-sidebar-foreground'
-                        : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
-                      onclick={() => {
-                        projectCwd = folder.cwd;
-                        explorerProjectOpen = false;
-                      }}
-                    >
-                      <svg
-                        class="h-3 w-3 shrink-0 text-muted-foreground/70"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        ><path
-                          d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
-                        /></svg
-                      >
-                      <span class="min-w-0 truncate">{cwdDisplayLabel(folder.cwd)}</span>
-                    </button>
-                  {/each}
-                  <button
-                    class="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-                    onclick={() => {
-                      pickFolder();
-                      explorerProjectOpen = false;
-                    }}
-                  >
-                    <svg
-                      class="h-3 w-3 shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg
-                    >
-                    <span>{t("project_openFolder")}</span>
-                  </button>
-                </div>
+              {:else if item.icon === "users"}
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle
+                    cx="9"
+                    cy="7"
+                    r="4"
+                  /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path
+                    d="M16 3.13a4 4 0 0 1 0 7.75"
+                  /></svg
+                >
               {/if}
-            </div>
+              <!-- team count badge removed by user request -->
+              <span class="sr-only">{item.label()}</span>
+            </a>
+          {/each}
+        </nav>
 
-            <!-- Explorer tab content -->
-            {#if explorerTab === "files"}
-              <div class="flex-1 overflow-y-auto px-1 py-1">
-                {#if !projectCwd}
-                  {@const lastRemote = getLastTarget()}
-                  <div class="flex items-center justify-center px-3 py-12">
-                    <p class="text-xs text-muted-foreground text-center">
-                      {lastRemote
-                        ? t("layout_remoteFileTreeUnavailable")
-                        : t("sidebar_selectProjectBrowse")}
-                    </p>
-                  </div>
-                {:else if treeLoading}
-                  <div class="flex items-center justify-center py-12">
-                    <div
-                      class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                    ></div>
-                  </div>
-                {:else if fileTree.length === 0}
-                  <p class="px-2 py-8 text-xs text-muted-foreground text-center">
-                    {t("sidebar_emptyDirectory")}
-                  </p>
-                {:else}
-                  {@render treeNodes(fileTree)}
-                {/if}
-              </div>
-            {:else}
-              <!-- Git tab -->
-              {#if !projectCwd}
-                <div class="flex-1 flex items-center justify-center px-3">
-                  <p class="text-xs text-muted-foreground text-center">
-                    {t("sidebar_selectProjectGit")}
-                  </p>
-                </div>
-              {:else if gitLoading}
-                <div class="flex-1 flex items-center justify-center">
-                  <div
-                    class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                  ></div>
-                </div>
-              {:else if !gitSummary}
-                <div class="flex-1 flex items-center justify-center px-3">
-                  <p class="text-xs text-muted-foreground text-center">{t("sidebar_notGitRepo")}</p>
-                </div>
+        <!-- Rail version + locale + dark mode toggle -->
+        <div class="py-2">
+          <div class="flex items-center justify-center pb-1">
+            <button
+              class="flex h-7 w-7 items-center justify-center rounded-md transition-colors cursor-pointer
+              {sidebarUpdateAvailable
+                ? 'text-amber-400 hover:text-amber-300 hover:bg-amber-400/10'
+                : 'text-muted-foreground/60 hover:text-muted-foreground hover:bg-sidebar-accent/50'}"
+              onclick={() => (showAbout = true)}
+              title={sidebarUpdateAvailable
+                ? `有新版本可用 (当前 ${sidebarVersion})`
+                : `已是最新版本 ${sidebarVersion}`}
+            >
+              {#if !sidebarVersionChecked}
+                <!-- Loading spinner -->
+                <svg class="h-3.5 w-3.5 animate-spin opacity-50" viewBox="0 0 24 24" fill="none">
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-dasharray="31.4"
+                    stroke-dashoffset="10"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              {:else if sidebarUpdateAvailable}
+                <!-- Update available: arrow-up-circle -->
+                <svg
+                  class="h-3.5 w-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="16 12 12 8 8 12" />
+                  <line x1="12" y1="16" x2="12" y2="8" />
+                </svg>
               {:else}
-                <!-- Branch info -->
-                <div
-                  class="flex items-center gap-1.5 px-3 py-2 border-b border-sidebar-border shrink-0"
+                <!-- Up to date: check-circle -->
+                <svg
+                  class="h-3.5 w-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+              {/if}
+            </button>
+          </div>
+          <div class="mx-auto mb-0.5">
+            <button
+              class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
+              onclick={toggleLocale}
+              title={getEntry(currentLocale())?.nativeName ?? currentLocale()}
+            >
+              <span class="text-xs font-medium"
+                >{getEntry(currentLocale())?.shortLabel ?? currentLocale()}</span
+              >
+            </button>
+          </div>
+          <button
+            class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
+            onclick={() => themeStore.cycleTheme()}
+            title={themeStore.isDark ? t("layout_themeTitle_dark") : t("layout_themeTitle_light")}
+          >
+            {#if themeStore.isDark}
+              <!-- Moon icon (dark mode active) -->
+              <svg
+                class="h-[18px] w-[18px]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg
+              >
+            {:else}
+              <!-- Sun icon (light mode active) -->
+              <svg
+                class="h-[18px] w-[18px]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                ><circle cx="12" cy="12" r="4" /><path
+                  d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
+                /></svg
+              >
+            {/if}
+          </button>
+          <button
+            class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
+            onclick={() =>
+              themeStore.setColorScheme(themeStore.colorScheme === "warm" ? "neutral" : "warm")}
+            title={themeStore.colorScheme === "warm"
+              ? t("layout_schemeTitle_warm")
+              : t("layout_schemeTitle_neutral")}
+          >
+            <!-- Palette icon -->
+            <svg
+              class="h-[18px] w-[18px]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              ><circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /><circle
+                cx="17.5"
+                cy="10.5"
+                r=".5"
+                fill="currentColor"
+              /><circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /><circle
+                cx="6.5"
+                cy="12"
+                r=".5"
+                fill="currentColor"
+              /><path
+                d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"
+              /></svg
+            >
+          </button>
+        </div>
+      </div>
+
+      <!-- B. Content Panel (only rendered for pages that use it) -->
+      {#if needsLayoutContentPanel}
+        <div class="sidebar-content-panel">
+          <div
+            class="sidebar-inner flex flex-col h-full relative"
+            class:sidebar-inner-collapsed={!sidebarOpen}
+          >
+            <!-- Panel header: Project selector + new chat -->
+            <div class="relative flex h-14 items-center gap-1.5 px-3 pt-[42px]">
+              <!-- Left drag spacer -->
+              <WindowDragArea class="absolute left-0 top-0 bottom-0 w-16" />
+              <!-- Right drag spacer -->
+              <WindowDragArea class="absolute right-0 top-0 bottom-0 w-16" />
+              <!-- Clickable content -->
+              <div class="no-drag relative z-10 flex items-center gap-1.5 flex-1 min-w-0">
+                <span class="flex-1 min-w-0 truncate text-sm font-medium text-sidebar-foreground"
+                  >{pageName}</span
+                >
+                <button
+                  class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
+                  onclick={() => (showCliBrowser = true)}
+                  title={t("cliSync_title")}
                 >
                   <svg
-                    class="h-3 w-3 shrink-0 text-muted-foreground"
+                    class="h-4 w-4"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
                     stroke-width="2"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    ><circle cx="12" cy="12" r="3" /><line x1="3" x2="9" y1="12" y2="12" /><line
-                      x1="15"
-                      x2="21"
-                      y1="12"
-                      y2="12"
+                    ><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path
+                      d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"
                     /></svg
                   >
-                  <span class="text-[12px] font-medium text-sidebar-foreground min-w-0 truncate"
-                    >{gitSummary.branch || t("sidebar_detached")}</span
-                  >
-                  <button
-                    class="ml-auto flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-                    onclick={loadGitSummary}
-                    title={t("sidebar_refresh")}
-                  >
-                    <svg
-                      class="h-3 w-3"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path
-                        d="M3 3v5h5"
-                      /><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" /><path
-                        d="M16 16h5v5"
-                      /></svg
-                    >
-                  </button>
-                </div>
-                <!-- Summary -->
-                {#if gitSummary.total_files > 0}
-                  <div
-                    class="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground border-b border-sidebar-border shrink-0"
-                  >
-                    <span class="tabular-nums"
-                      >{gitSummary.total_files !== 1
-                        ? t("sidebar_changedFiles", { count: String(gitSummary.total_files) })
-                        : t("sidebar_changedFile", { count: String(gitSummary.total_files) })}</span
-                    >
-                    {#if gitSummary.total_insertions > 0}
-                      <span class="text-green-500 tabular-nums">+{gitSummary.total_insertions}</span
-                      >
-                    {/if}
-                    {#if gitSummary.total_deletions > 0}
-                      <span class="text-red-400 tabular-nums">-{gitSummary.total_deletions}</span>
-                    {/if}
-                  </div>
-                  <!-- Changed files list -->
-                  <div class="flex-1 overflow-y-auto">
-                    {#each gitSummary.files as file}
-                      <button
-                        class="flex w-full items-center gap-1.5 px-3 py-1 text-[12px] hover:bg-sidebar-accent/50 transition-colors"
-                        onclick={() => selectDiffFile(file.path)}
-                      >
-                        <span
-                          class="w-3 shrink-0 text-center font-mono text-[10px] font-bold {GIT_STATUS_COLORS[
-                            file.status
-                          ] ?? 'text-muted-foreground'}">{file.status}</span
-                        >
-                        <span class="flex-1 min-w-0 truncate text-sidebar-foreground text-left"
-                          >{file.path}</span
-                        >
-                        {#if file.insertions > 0}
-                          <span class="text-[10px] text-green-500">+{file.insertions}</span>
-                        {/if}
-                        {#if file.deletions > 0}
-                          <span class="text-[10px] text-red-400">-{file.deletions}</span>
-                        {/if}
-                      </button>
-                    {/each}
-                  </div>
-                {:else}
-                  <div class="flex-1 flex items-center justify-center px-3">
-                    <div class="flex flex-col items-center gap-1.5 text-center">
-                      <svg
-                        class="h-6 w-6 text-muted-foreground/30"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"><path d="M20 6 9 17l-5-5" /></svg
-                      >
-                      <p class="text-xs text-muted-foreground">{t("sidebar_workingTreeClean")}</p>
-                    </div>
-                  </div>
-                {/if}
-              {/if}
-            {/if}
-          {:else if isMemoryPage}
-            <!-- Memory file tree -->
-            <div class="flex-1 overflow-y-auto py-1">
-              <!-- Project folders (accordion: only one expanded at a time) -->
-              {#each selectableFolders as folder (folder.folderKey)}
-                <ProjectFolderItem
-                  {folder}
-                  label={cwdDisplayLabel(folder.cwd)}
-                  expanded={folder.cwd === projectCwd}
-                  showCount={false}
-                  onToggle={() => {
-                    projectCwd = projectCwd === folder.cwd ? "" : folder.cwd;
-                  }}
-                >
-                  {#if memoryLoading}
-                    <div class="flex items-center justify-center py-6">
-                      <div
-                        class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                      ></div>
-                    </div>
-                  {:else if memoryScopeFolder.length > 0}
-                    {#each filterVisibleCandidates(memoryScopeFolder, true, memorySelectedFile) as file}
-                      <button
-                        class="flex w-full items-center gap-1.5 py-1 pl-4 pr-3 text-xs transition-colors
-                        {memorySelectedFile === file.path
-                          ? 'bg-sidebar-accent text-sidebar-foreground'
-                          : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
-                        onclick={() => selectMemoryFile(file)}
-                        title={file.path}
-                      >
-                        <svg
-                          class="h-3 w-3 shrink-0 {file.scope === 'memory'
-                            ? 'text-amber-400'
-                            : file.exists
-                              ? 'text-blue-400'
-                              : 'text-muted-foreground/40'}"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          ><path
-                            d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"
-                          /><path d="M14 2v4a2 2 0 0 0 2 2h4" /></svg
-                        >
-                        <span class="min-w-0 truncate">{file.label}</span>
-                        {#if !file.exists}
-                          <span class="ml-auto text-[10px] text-muted-foreground shrink-0"
-                            >{t("memory_new")}</span
-                          >
-                        {/if}
-                      </button>
-                    {/each}
-                  {:else}
-                    <p class="px-2 py-3 text-xs text-muted-foreground">
-                      {t("memory_noProjectFiles")}
-                    </p>
-                  {/if}
-                </ProjectFolderItem>
-              {/each}
-              <!-- Global scope (same style as project folders, globe icon) -->
-              {#if memoryScopeGlobal.length > 0}
-                <div class="mb-0.5">
-                  <button
-                    class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-                    onclick={() => toggleMemoryScope("global")}
-                  >
-                    <svg
-                      class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform duration-150 {memoryScopeExpanded[
-                        'global'
-                      ]
-                        ? 'rotate-90'
-                        : ''}"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"><path d="M9 18l6-6-6-6" /></svg
-                    >
-                    <!-- Globe icon -->
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path
-                        d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
-                      /></svg
-                    >
-                    <span class="truncate">{t("memory_tabGlobal")}</span>
-                  </button>
-                  {#if memoryScopeExpanded["global"]}
-                    <div class="pl-3">
-                      {#each filterVisibleCandidates(memoryScopeGlobal, true, memorySelectedFile) as file}
-                        <button
-                          class="flex w-full items-center gap-1.5 py-1 pl-4 pr-3 text-xs transition-colors
-                          {memorySelectedFile === file.path
-                            ? 'bg-sidebar-accent text-sidebar-foreground'
-                            : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
-                          onclick={() => selectMemoryFile(file)}
-                          title={file.path}
-                        >
-                          <svg
-                            class="h-3 w-3 shrink-0 {file.exists
-                              ? 'text-blue-400'
-                              : 'text-muted-foreground/40'}"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            ><path
-                              d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"
-                            /><path d="M14 2v4a2 2 0 0 0 2 2h4" /></svg
-                          >
-                          <span class="min-w-0 truncate">{file.label}</span>
-                          {#if !file.exists}
-                            <span class="ml-auto text-[10px] text-muted-foreground shrink-0"
-                              >{t("memory_new")}</span
-                            >
-                          {/if}
-                        </button>
-                      {/each}
-                    </div>
-                  {/if}
-                </div>
-              {/if}
-
-              <!-- Open folder button -->
-              <button
-                class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-                onclick={pickFolder}
-              >
-                <svg
-                  class="h-3.5 w-3.5 shrink-0"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg
-                >
-                <span>+ {t("project_openFolder")}</span>
-              </button>
-            </div>
-          {:else if isTeamsPage}
-            <!-- Teams sidebar -->
-            <div class="px-2 pt-2 pb-1 shrink-0">
-              <p class="px-1 pb-1.5 text-xs font-semibold text-sidebar-foreground">
-                {t("sidebar_teams")}
-              </p>
-              <input
-                type="text"
-                bind:value={teamStoreSearchQuery}
-                placeholder={t("sidebar_searchTeams")}
-                class="w-full rounded-md border border-sidebar-border bg-sidebar px-2 py-1 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
-              />
-            </div>
-            <div class="flex-1 overflow-y-auto px-2 py-1">
-              {#if teamStore.loading}
-                <div class="flex items-center justify-center py-6">
-                  <div
-                    class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                  ></div>
-                </div>
-              {:else if filteredTeams.length === 0}
-                <div class="flex flex-col items-center gap-1 px-3 py-6 text-center">
-                  <p class="text-xs text-muted-foreground">{t("sidebar_noActiveTeams")}</p>
-                  <p class="text-[10px] text-muted-foreground/60">{t("sidebar_startTeamHint")}</p>
-                </div>
-              {:else}
-                {#each filteredTeams as team}
-                  <button
-                    class="flex w-full flex-col gap-0.5 rounded-md px-2.5 py-2 text-left transition-colors mb-0.5
-                      {teamStore.selectedTeam === team.name
-                      ? 'bg-sidebar-accent text-sidebar-foreground'
-                      : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"
-                    onclick={() => teamStore.selectTeam(team.name)}
-                  >
-                    <div class="flex items-center gap-1.5">
-                      <span class="h-2 w-2 rounded-full bg-teal-500 shrink-0"></span>
-                      <span class="text-[13px] font-medium min-w-0 truncate">{team.name}</span>
-                    </div>
-                    {#if team.description}
-                      <p class="text-xs text-muted-foreground truncate pl-3.5">
-                        {team.description}
-                      </p>
-                    {/if}
-                    <div class="flex items-center gap-2 pl-3.5 text-xs text-muted-foreground">
-                      <span>{t("sidebar_members", { count: String(team.member_count) })}</span>
-                      <span>{t("sidebar_tasks", { count: String(team.task_count) })}</span>
-                    </div>
-                  </button>
-                {/each}
-              {/if}
-            </div>
-          {:else if isChatPage}
-            <!-- Chats sidebar -->
-            <div class="px-2 pt-2 pb-1 shrink-0">
-              <input
-                type="text"
-                bind:value={runSearchQuery}
-                oninput={onDeepQueryInput}
-                placeholder={t("sidebar_searchChats")}
-                class="w-full rounded-md border border-sidebar-border bg-sidebar px-2 py-1 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
-              />
-              {#if runSearchQuery.trim()}
-                {#if searching}
-                  <p class="text-xs text-muted-foreground px-1 pt-0.5">
-                    {t("runs_searching")}
-                  </p>
-                {:else if visibleSearchResults.length > 0}
-                  <p
-                    class="flex items-center justify-between text-xs text-muted-foreground px-1 pt-0.5"
-                  >
-                    <span
-                      >{t("runs_resultsCount", {
-                        count: String(visibleSearchResults.length),
-                      })}</span
-                    >
-                    <a
-                      href="/history?q={encodeURIComponent(runSearchQuery)}"
-                      class="text-primary/70 hover:text-primary transition-colors"
-                      >{t("history_advancedSearch")}</a
-                    >
-                  </p>
-                {/if}
-              {/if}
-            </div>
-
-            {#if runSearchQuery.trim()}
-              <!-- Search results -->
-              <div class="flex-1 overflow-y-auto">
-                {#if searching && visibleSearchResults.length === 0}
-                  <div class="flex items-center justify-center py-10">
-                    <div
-                      class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                    ></div>
-                  </div>
-                {:else if !searching && visibleSearchResults.length === 0}
-                  <div class="flex items-center justify-center px-3 py-10 text-center">
-                    <p class="text-xs text-muted-foreground">{t("runs_noMatching")}</p>
-                  </div>
-                {:else}
-                  {#each visibleSearchResults as result}
-                    <button
-                      class="w-full text-left flex flex-col gap-0.5 px-3 py-2 hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground"
-                      onclick={() => {
-                        runSearchQuery = "";
-                        searchResults = [];
-                        goto(
-                          `/chat?run=${result.runId}&scrollTo=${encodeURIComponent(result.matchedEventId || result.matchedTs)}`,
-                        );
-                      }}
-                    >
-                      <p class="text-[12px] min-w-0 line-clamp-2 break-all">
-                        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                        {@html highlightMatch(
-                          snippetAround(result.matchedText, runSearchQuery, 80),
-                          runSearchQuery,
-                        )}
-                      </p>
-                      <div class="flex items-center gap-1 text-xs text-muted-foreground min-w-0">
-                        <span class="flex-1 min-w-0 truncate"
-                          >{result.runName || truncate(result.runPrompt, 30)}</span
-                        >
-                        <span class="ml-auto shrink-0">{relativeTime(result.matchedTs)}</span>
-                      </div>
-                    </button>
-                  {/each}
-                {/if}
-              </div>
-            {:else}
-              <!-- Unified project + sub-folder tree -->
-              <div class="flex-1 overflow-y-auto px-2 py-1">
-                {#each enrichedProjectFolders as folder (folder.folderKey)}
-                  <ProjectFolderItem
-                    {folder}
-                    label={folder.isUncategorized
-                      ? t("sidebar_uncategorized")
-                      : cwdDisplayLabel(folder.cwd)}
-                    expanded={expandedProjects.has(folder.folderKey)}
-                    {selectedRunId}
-                    onToggle={() => toggleProject(folder.folderKey)}
-                    onSelectConversation={(runId) => goto(`/chat?run=${runId}`)}
-                    onResume={(runId, mode) => goto(`/chat?run=${runId}&resume=${mode}`)}
-                    onDelete={requestDeleteConversation}
-                    onMoveToFolder={requestMoveToFolder}
-                    {selectedGroupKeys}
-                    onBatchClick={toggleSelectConversation}
-                    onRemove={folder.isUncategorized
-                      ? undefined
-                      : () => requestRemoveProject(folder.cwd)}
-                    onNewChat={folder.isUncategorized
-                      ? undefined
-                      : () => newChatInFolder(folder.cwd)}
-                    onDragStartConversation={handleDragStartConversation}
-                    onDragEndConversation={handleDragEndConversation}
-                    subFolders={folder.subFolders ?? []}
-                    {expandedSubFolders}
-                    onToggleSubFolder={toggleSubFolder}
-                    onCreateSubFolder={folder.isUncategorized
-                      ? undefined
-                      : () => {
-                          folderCreateCwd = folder.cwd;
-                          folderCreateOpen = true;
-                          folderCreateName = "";
-                        }}
-                    onRenameSubFolder={(sf) => {
-                      const f = sessionFolders.find((x) => x.id === sf.folderId);
-                      if (f) requestRenameFolder(f);
-                    }}
-                    onDeleteSubFolder={(sf) => {
-                      const f = sessionFolders.find((x) => x.id === sf.folderId);
-                      if (f) requestDeleteFolder(f);
-                    }}
-                    dragOverSubFolderKey={dragOverFolderId ? `sf:${dragOverFolderId}` : null}
-                    onDragOverSubFolder={(_key, folderId) => handleDragOverFolder(folderId)}
-                    onDragLeaveSubFolder={handleDragLeaveFolder}
-                    onDropOnSubFolder={(folderId) => handleDropOnFolder(folderId)}
-                  />
-                {/each}
-                <!-- Open folder... -->
+                </button>
                 <button
-                  class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-                  onclick={pickFolder}
+                  class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
+                  onclick={newChat}
+                  title={t("layout_newConversation")}
                 >
                   <svg
-                    class="h-3.5 w-3.5 shrink-0"
+                    class="h-4 w-4"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -2703,64 +2090,634 @@
                     stroke-linecap="round"
                     stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg
                   >
-                  <span>{t("project_openFolder")}</span>
                 </button>
+              </div>
+            </div>
 
-                {#if enrichedProjectFolders.length === 0}
-                  <div class="flex flex-col items-center gap-2 px-3 py-6 text-center">
-                    <p class="text-xs text-muted-foreground">
-                      {t("sidebar_noConversationsYet")}<br />{t("sidebar_startNewChat")}
+            {#if isPluginsPage}
+              <!-- Plugin section navigation (replaces Chats/Files when on /plugins) -->
+              <div class="flex-1 overflow-y-auto py-2">
+                {#each pluginSections as section, i}
+                  {#if i === 1}
+                    <div class="mx-3 my-1 border-t border-sidebar-border"></div>
+                  {/if}
+                  {@const isActive = pluginActiveSection === section.id}
+                  <button
+                    class="flex w-full items-center gap-2 py-2 px-3 text-xs font-medium transition-colors
+                  {isActive
+                      ? 'bg-sidebar-accent text-sidebar-foreground'
+                      : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
+                    onclick={() => {
+                      pluginActiveSection = section.id;
+                      goto(`/plugins?section=${section.id}`, {
+                        replaceState: true,
+                        noScroll: true,
+                      });
+                    }}
+                  >
+                    {#if section.icon === "overview"}
+                      <svg
+                        class="h-3.5 w-3.5 shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><rect width="7" height="7" x="3" y="3" rx="1" /><rect
+                          width="7"
+                          height="7"
+                          x="14"
+                          y="3"
+                          rx="1"
+                        /><rect width="7" height="7" x="14" y="14" rx="1" /><rect
+                          width="7"
+                          height="7"
+                          x="3"
+                          y="14"
+                          rx="1"
+                        /></svg
+                      >
+                    {:else if section.icon === "sparkles"}
+                      <svg
+                        class="h-3.5 w-3.5 shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><path
+                          d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"
+                        /></svg
+                      >
+                    {:else if section.icon === "server"}
+                      <svg
+                        class="h-3.5 w-3.5 shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><rect width="20" height="8" x="2" y="2" rx="2" ry="2" /><rect
+                          width="20"
+                          height="8"
+                          x="2"
+                          y="14"
+                          rx="2"
+                          ry="2"
+                        /><line x1="6" x2="6.01" y1="6" y2="6" /><line
+                          x1="6"
+                          x2="6.01"
+                          y1="18"
+                          y2="18"
+                        /></svg
+                      >
+                    {:else if section.icon === "webhook"}
+                      <svg
+                        class="h-3.5 w-3.5 shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><path
+                          d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"
+                        /><path
+                          d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06"
+                        /><path
+                          d="m12 6 3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8H12"
+                        /></svg
+                      >
+                    {:else if section.icon === "package"}
+                      <svg
+                        class="h-3.5 w-3.5 shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><path d="m7.5 4.27 9 5.15" /><path
+                          d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+                        /><path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" /></svg
+                      >
+                    {:else if section.icon === "agents"}
+                      <svg
+                        class="h-3.5 w-3.5 shrink-0"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><path d="M12 8V4H8" /><rect
+                          width="16"
+                          height="12"
+                          x="4"
+                          y="8"
+                          rx="2"
+                        /><path d="M2 14h2" /><path d="M20 14h2" /><path d="M15 13v2" /><path
+                          d="M9 13v2"
+                        /></svg
+                      >
+                    {/if}
+                    <span class="min-w-0 truncate">{section.label()}</span>
+                  </button>
+                {/each}
+                <p class="mx-3 mt-2 text-[10px] leading-snug text-muted-foreground/75">
+                  {t("sidebar_pluginsNavHint")}
+                </p>
+              </div>
+            {:else if isExplorerPage}
+              <!-- Explorer tab bar: Files / Git -->
+              <div class="flex shrink-0 border-b border-sidebar-border">
+                <button
+                  class="flex-1 py-1.5 text-xs font-medium text-center transition-colors
+              {explorerTab === 'files'
+                    ? 'text-sidebar-foreground border-b-2 border-primary'
+                    : 'text-muted-foreground hover:text-sidebar-foreground'}"
+                  onclick={() => (explorerTab = "files")}>{t("sidebar_files")}</button
+                >
+                <button
+                  class="relative flex-1 py-1.5 text-xs font-medium text-center transition-colors
+              {explorerTab === 'git'
+                    ? 'text-sidebar-foreground border-b-2 border-primary'
+                    : 'text-muted-foreground hover:text-sidebar-foreground'}"
+                  onclick={() => (explorerTab = "git")}
+                  >{t("sidebar_git")}
+                  {#if gitSummary && gitSummary.total_files > 0}
+                    <span
+                      class="ml-0.5 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-blue-500/80 px-1 text-[10px] font-bold text-white"
+                      >{gitSummary.total_files}</span
+                    >
+                  {/if}
+                </button>
+              </div>
+
+              <p
+                class="shrink-0 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80"
+              >
+                {t("sidebar_explorerRepoHint")}
+              </p>
+
+              <SidebarProjectContextStrip
+                variant="compact-picker"
+                bind:pickerOpen={explorerProjectOpen}
+                folders={selectableFolders}
+                {projectCwd}
+                cwdLabel={cwdDisplayLabel}
+                onSelectFolder={(cwd) => {
+                  projectCwd = cwd;
+                }}
+                onPickFolder={pickFolder}
+              />
+
+              <!-- Explorer tab content -->
+              {#if explorerTab === "files"}
+                <div class="flex-1 overflow-y-auto px-1 py-1">
+                  {#if !projectCwd}
+                    {@const lastRemote = getLastTarget()}
+                    <div class="flex items-center justify-center px-3 py-12">
+                      <p class="text-xs text-muted-foreground text-center">
+                        {lastRemote
+                          ? t("layout_remoteFileTreeUnavailable")
+                          : t("sidebar_selectProjectBrowse")}
+                      </p>
+                    </div>
+                  {:else if treeLoading}
+                    <div class="flex items-center justify-center py-12">
+                      <Spinner size="sm" class="text-primary" />
+                    </div>
+                  {:else if fileTree.length === 0}
+                    <p class="px-2 py-8 text-xs text-muted-foreground text-center">
+                      {t("sidebar_emptyDirectory")}
+                    </p>
+                  {:else}
+                    {@render treeNodes(fileTree)}
+                  {/if}
+                </div>
+              {:else}
+                <!-- Git tab -->
+                {#if !projectCwd}
+                  <div class="flex-1 flex items-center justify-center px-3">
+                    <p class="text-xs text-muted-foreground text-center">
+                      {t("sidebar_selectProjectGit")}
                     </p>
                   </div>
+                {:else if gitLoading}
+                  <div class="flex-1 flex items-center justify-center">
+                    <Spinner size="sm" class="text-primary" />
+                  </div>
+                {:else if !gitSummary}
+                  <div class="flex-1 flex items-center justify-center px-3">
+                    <p class="text-xs text-muted-foreground text-center">
+                      {t("sidebar_notGitRepo")}
+                    </p>
+                  </div>
+                {:else}
+                  <!-- Branch info -->
+                  <div
+                    class="flex items-center gap-1.5 px-3 py-2 border-b border-sidebar-border shrink-0"
+                  >
+                    <svg
+                      class="h-3 w-3 shrink-0 text-muted-foreground"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      ><circle cx="12" cy="12" r="3" /><line x1="3" x2="9" y1="12" y2="12" /><line
+                        x1="15"
+                        x2="21"
+                        y1="12"
+                        y2="12"
+                      /></svg
+                    >
+                    <span class="text-[12px] font-medium text-sidebar-foreground min-w-0 truncate"
+                      >{gitSummary.branch || t("sidebar_detached")}</span
+                    >
+                    <button
+                      class="ml-auto flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+                      onclick={loadGitSummary}
+                      title={t("sidebar_refresh")}
+                    >
+                      <svg
+                        class="h-3 w-3"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path
+                          d="M3 3v5h5"
+                        /><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" /><path
+                          d="M16 16h5v5"
+                        /></svg
+                      >
+                    </button>
+                  </div>
+                  <!-- Summary -->
+                  {#if gitSummary.total_files > 0}
+                    <div
+                      class="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground border-b border-sidebar-border shrink-0"
+                    >
+                      <span class="tabular-nums"
+                        >{gitSummary.total_files !== 1
+                          ? t("sidebar_changedFiles", { count: String(gitSummary.total_files) })
+                          : t("sidebar_changedFile", {
+                              count: String(gitSummary.total_files),
+                            })}</span
+                      >
+                      {#if gitSummary.total_insertions > 0}
+                        <span class="text-green-500 tabular-nums"
+                          >+{gitSummary.total_insertions}</span
+                        >
+                      {/if}
+                      {#if gitSummary.total_deletions > 0}
+                        <span class="text-red-400 tabular-nums">-{gitSummary.total_deletions}</span>
+                      {/if}
+                    </div>
+                    <!-- Changed files list -->
+                    <div class="flex-1 overflow-y-auto">
+                      {#each gitSummary.files as file}
+                        <button
+                          class="flex w-full items-center gap-1.5 px-3 py-1 text-[12px] hover:bg-sidebar-accent/50 transition-colors"
+                          onclick={() => selectDiffFile(file.path)}
+                        >
+                          <span
+                            class="w-3 shrink-0 text-center font-mono text-[10px] font-bold {GIT_STATUS_COLORS[
+                              file.status
+                            ] ?? 'text-muted-foreground'}">{file.status}</span
+                          >
+                          <span class="flex-1 min-w-0 truncate text-sidebar-foreground text-left"
+                            >{file.path}</span
+                          >
+                          {#if file.insertions > 0}
+                            <span class="text-[10px] text-green-500">+{file.insertions}</span>
+                          {/if}
+                          {#if file.deletions > 0}
+                            <span class="text-[10px] text-red-400">-{file.deletions}</span>
+                          {/if}
+                        </button>
+                      {/each}
+                    </div>
+                  {:else}
+                    <div class="flex-1 flex items-center justify-center px-3">
+                      <div class="flex flex-col items-center gap-1.5 text-center">
+                        <svg
+                          class="h-6 w-6 text-muted-foreground/30"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"><path d="M20 6 9 17l-5-5" /></svg
+                        >
+                        <p class="text-xs text-muted-foreground">{t("sidebar_workingTreeClean")}</p>
+                      </div>
+                    </div>
+                  {/if}
+                {/if}
+              {/if}
+            {:else if isMemoryPage}
+              <!-- Memory file tree -->
+              <div class="flex-1 overflow-y-auto py-1">
+                <p
+                  class="px-2 pb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80"
+                >
+                  {t("sidebar_memoryProjectHint")}
+                </p>
+                <!-- Project folders (accordion: only one expanded at a time) -->
+                {#each selectableFolders as folder (folder.folderKey)}
+                  <ProjectFolderItem
+                    {folder}
+                    label={cwdDisplayLabel(folder.cwd)}
+                    expanded={folder.cwd === projectCwd}
+                    onToggle={() => {
+                      projectCwd = projectCwd === folder.cwd ? "" : folder.cwd;
+                    }}
+                  >
+                    {#if memoryLoading}
+                      <div class="flex items-center justify-center py-6">
+                        <Spinner size="sm" class="text-primary" />
+                      </div>
+                    {:else if visibleMemoryProject.length > 0 || visibleMemoryAuto.length > 0}
+                      <div class="space-y-0.5">
+                        <MemorySidebarGroup
+                          label={t("memory_tabProject")}
+                          files={visibleMemoryProject}
+                          selectedPath={memorySelectedFile}
+                          expanded={memoryScopeIsExpanded("project", visibleMemoryProject)}
+                          tone="project"
+                          onToggle={() => toggleMemoryScope("project")}
+                          onSelect={selectMemoryFile}
+                        />
+                        <MemorySidebarGroup
+                          label={t("memory_tabMemory")}
+                          files={visibleMemoryAuto}
+                          selectedPath={memorySelectedFile}
+                          expanded={memoryScopeIsExpanded("memory", visibleMemoryAuto)}
+                          tone="memory"
+                          onToggle={() => toggleMemoryScope("memory")}
+                          onSelect={selectMemoryFile}
+                        />
+                      </div>
+                    {:else}
+                      <p class="px-2 py-3 text-xs text-muted-foreground">
+                        {t("memory_noProjectFiles")}
+                      </p>
+                    {/if}
+                  </ProjectFolderItem>
+                {/each}
+                <!-- Global scope (same style as project folders, globe icon) -->
+                <MemorySidebarGroup
+                  label={t("memory_tabGlobal")}
+                  files={visibleMemoryGlobal}
+                  selectedPath={memorySelectedFile}
+                  expanded={memoryScopeIsExpanded("global", visibleMemoryGlobal)}
+                  tone="global"
+                  onToggle={() => toggleMemoryScope("global")}
+                  onSelect={selectMemoryFile}
+                />
+
+                <SidebarProjectContextStrip variant="open-folder-row" onPickFolder={pickFolder} />
+              </div>
+            {:else if isTeamsPage}
+              <!-- Teams sidebar -->
+              <div class="px-2 pt-2 pb-1 shrink-0">
+                <input
+                  type="text"
+                  bind:value={teamStoreSearchQuery}
+                  placeholder={t("sidebar_searchTeams")}
+                  class="w-full rounded-md border border-sidebar-border bg-sidebar px-2 py-1 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
+                />
+              </div>
+              <div class="flex-1 overflow-y-auto px-2 py-1">
+                {#if teamStore.loading}
+                  <div class="flex items-center justify-center py-6">
+                    <Spinner size="sm" class="text-primary" />
+                  </div>
+                {:else if filteredTeams.length === 0}
+                  <div class="flex flex-col items-center gap-1 px-3 py-6 text-center">
+                    <p class="text-xs text-muted-foreground">{t("sidebar_noActiveTeams")}</p>
+                    <p class="text-[10px] text-muted-foreground/60">{t("sidebar_startTeamHint")}</p>
+                  </div>
+                {:else}
+                  {#each filteredTeams as team}
+                    <button
+                      class="flex w-full flex-col gap-0.5 rounded-md px-2.5 py-2 text-left transition-colors mb-0.5
+                      {teamStore.selectedTeam === team.name
+                        ? 'bg-sidebar-accent text-sidebar-foreground'
+                        : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"
+                      onclick={() => teamStore.selectTeam(team.name)}
+                    >
+                      <div class="flex items-center gap-1.5">
+                        <span class="h-2 w-2 rounded-full bg-teal-500 shrink-0"></span>
+                        <span class="text-[13px] font-medium min-w-0 truncate">{team.name}</span>
+                      </div>
+                      {#if team.description}
+                        <p class="text-xs text-muted-foreground truncate pl-3.5">
+                          {team.description}
+                        </p>
+                      {/if}
+                      <div class="flex items-center gap-2 pl-3.5 text-xs text-muted-foreground">
+                        <span>{t("sidebar_members", { count: String(team.member_count) })}</span>
+                        <span>{t("sidebar_tasks", { count: String(team.task_count) })}</span>
+                      </div>
+                    </button>
+                  {/each}
                 {/if}
               </div>
-              {#if selectedGroupKeys.size > 0}
-                <div class="flex items-center gap-1 border-t px-2 py-1.5 bg-sidebar-accent/30">
-                  <span class="text-[11px] text-muted-foreground px-1">
-                    {t("sidebar_batchSelected", { count: String(selectedGroupKeys.size) })}
-                  </span>
-                  <button
-                    class="ml-auto rounded px-1.5 py-0.5 text-[11px] text-destructive hover:bg-destructive/10 transition-colors"
-                    onclick={() => (batchDeleteConfirmOpen = true)}
-                    title={t("sidebar_batchDelete")}
-                  >
-                    {t("sidebar_batchDelete")}
-                  </button>
-                  <button
-                    class="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent transition-colors"
-                    onclick={clearBatchSelection}
-                    title={t("sidebar_batchClear")}
-                  >
-                    {t("sidebar_batchClear")}
-                  </button>
+            {:else if isChatPage}
+              <!-- Chats sidebar -->
+              <p
+                class="shrink-0 px-2 pt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80"
+              >
+                {t("sidebar_chatSessionsHint")}
+              </p>
+              <div class="px-2 pt-1 pb-1 shrink-0">
+                <input
+                  type="text"
+                  bind:value={runSearchQuery}
+                  oninput={onDeepQueryInput}
+                  placeholder={t("sidebar_searchChats")}
+                  class="w-full rounded-md border border-sidebar-border bg-sidebar px-2 py-1 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
+                />
+                {#if runSearchQuery.trim()}
+                  {#if searching}
+                    <p class="text-xs text-muted-foreground px-1 pt-0.5">
+                      {t("runs_searching")}
+                    </p>
+                  {:else if visibleSearchResults.length > 0}
+                    <p
+                      class="flex items-center justify-between text-xs text-muted-foreground px-1 pt-0.5"
+                    >
+                      <span
+                        >{t("runs_resultsCount", {
+                          count: String(visibleSearchResults.length),
+                        })}</span
+                      >
+                      <a
+                        href="/history?q={encodeURIComponent(runSearchQuery)}"
+                        class="text-primary/70 hover:text-primary transition-colors"
+                        >{t("history_advancedSearch")}</a
+                      >
+                    </p>
+                  {/if}
+                {/if}
+              </div>
+
+              {#if runSearchQuery.trim()}
+                <!-- Search results -->
+                <div class="flex-1 overflow-y-auto">
+                  {#if searching && visibleSearchResults.length === 0}
+                    <div class="flex items-center justify-center py-10">
+                      <Spinner size="sm" class="text-primary" />
+                    </div>
+                  {:else if !searching && visibleSearchResults.length === 0}
+                    <div class="flex items-center justify-center px-3 py-10 text-center">
+                      <p class="text-xs text-muted-foreground">{t("runs_noMatching")}</p>
+                    </div>
+                  {:else}
+                    {#each visibleSearchResults as result}
+                      <button
+                        class="w-full text-left flex flex-col gap-0.5 px-3 py-2 hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground"
+                        onclick={() => {
+                          runSearchQuery = "";
+                          searchResults = [];
+                          goto(
+                            `/chat?run=${result.runId}&scrollTo=${encodeURIComponent(result.matchedEventId || result.matchedTs)}`,
+                          );
+                        }}
+                      >
+                        <p class="text-[12px] min-w-0 line-clamp-2 break-all">
+                          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+                          {@html highlightMatch(
+                            snippetAround(result.matchedText, runSearchQuery, 80),
+                            runSearchQuery,
+                          )}
+                        </p>
+                        <div class="flex items-center gap-1 text-xs text-muted-foreground min-w-0">
+                          <span class="flex-1 min-w-0 truncate"
+                            >{result.runName || truncate(result.runPrompt, 30)}</span
+                          >
+                          <span class="ml-auto shrink-0">{relativeTime(result.matchedTs)}</span>
+                        </div>
+                      </button>
+                    {/each}
+                  {/if}
                 </div>
+              {:else}
+                <!-- Unified project + sub-folder tree -->
+                <div class="flex-1 overflow-y-auto px-2 py-1">
+                  {#each enrichedProjectFolders as folder (folder.folderKey)}
+                    <ProjectFolderItem
+                      {folder}
+                      label={folder.isUncategorized
+                        ? t("sidebar_uncategorized")
+                        : cwdDisplayLabel(folder.cwd)}
+                      expanded={expandedProjects.has(folder.folderKey)}
+                      {selectedRunId}
+                      onToggle={() => toggleProject(folder.folderKey)}
+                      onSelectConversation={(runId) => goto(`/chat?run=${runId}`)}
+                      onResume={(runId, mode) => goto(`/chat?run=${runId}&resume=${mode}`)}
+                      onDelete={requestDeleteConversation}
+                      onMoveToFolder={requestMoveToFolder}
+                      {selectedGroupKeys}
+                      draggingRunIds={dragRunIds}
+                      onBatchClick={toggleSelectConversation}
+                      onRemove={folder.isUncategorized
+                        ? undefined
+                        : () => requestRemoveProject(folder.cwd)}
+                      onNewChat={folder.isUncategorized
+                        ? undefined
+                        : () => newChatInFolder(folder.cwd)}
+                      onDragStartConversation={handleDragStartConversation}
+                      onDragEndConversation={handleDragEndConversation}
+                      subFolders={folder.subFolders ?? []}
+                      {expandedSubFolders}
+                      onToggleSubFolder={toggleSubFolder}
+                      onCreateSubFolder={() => {
+                        folderDialogs.openCreateFolder(folder.isUncategorized ? null : folder.cwd);
+                      }}
+                      onRenameSubFolder={(sf) => {
+                        const f = sessionFolders.find((x) => x.id === sf.folderId);
+                        if (f) folderDialogs.openRenameFolder(f);
+                      }}
+                      onDeleteSubFolder={(sf) => {
+                        const f = sessionFolders.find((x) => x.id === sf.folderId);
+                        if (f) folderDialogs.openDeleteFolder(f);
+                      }}
+                      dragOverSubFolderKey={dragOverFolderId ? `sf:${dragOverFolderId}` : null}
+                      onDragOverSubFolder={(key, folderId, e) =>
+                        handleDragOverFolder(folderId, e, key)}
+                      onDragLeaveSubFolder={handleDragLeaveFolder}
+                      onDropOnSubFolder={(folderId, e) => handleDropOnFolder(folderId, e)}
+                    />
+                  {/each}
+                  <SidebarProjectContextStrip variant="open-folder-row" onPickFolder={pickFolder} />
+
+                  {#if enrichedProjectFolders.length === 0}
+                    <div class="flex flex-col items-center gap-2 px-3 py-6 text-center">
+                      <p class="text-xs text-muted-foreground">
+                        {t("sidebar_noConversationsYet")}<br />{t("sidebar_startNewChat")}
+                      </p>
+                    </div>
+                  {/if}
+                </div>
+                {#if selectedGroupKeys.size > 0}
+                  <div class="flex items-center gap-1 border-t px-2 py-1.5 bg-sidebar-accent/30">
+                    <span class="text-[11px] text-muted-foreground px-1">
+                      {t("sidebar_batchSelected", { count: String(selectedGroupKeys.size) })}
+                    </span>
+                    <button
+                      class="ml-auto rounded px-1.5 py-0.5 text-[11px] text-destructive hover:bg-destructive/10 transition-colors"
+                      onclick={() => (batchDeleteConfirmOpen = true)}
+                      title={t("sidebar_batchDelete")}
+                    >
+                      {t("sidebar_batchDelete")}
+                    </button>
+                    <button
+                      class="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent transition-colors"
+                      onclick={clearBatchSelection}
+                      title={t("sidebar_batchClear")}
+                    >
+                      {t("sidebar_batchClear")}
+                    </button>
+                  </div>
+                {/if}
               {/if}
             {/if}
-          {/if}
+          </div>
+          <!-- Resize handle -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[hsl(var(--miwarp-accent-primary)/0.3)] active:bg-[hsl(var(--miwarp-accent-primary)/0.5)] transition-colors z-10"
+            onpointerdown={startResize}
+          ></div>
         </div>
-        <!-- Resize handle -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div
-          class="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-[hsl(var(--miwarp-accent-primary)/0.3)] active:bg-[hsl(var(--miwarp-accent-primary)/0.5)] transition-colors z-10"
-          onpointerdown={startResize}
-        ></div>
-      </div>
+      {/if}
+    </aside>
+
+    <!-- Ghost line during sidebar drag (zero-reflow preview) -->
+    {#if sidebarResizing}
+      <div
+        bind:this={sidebarGhostEl}
+        class="fixed top-0 bottom-0 z-[9999] pointer-events-none bg-primary"
+        style="left: {sidebarGhostX -
+          1}px; width: 3px; box-shadow: 0 0 8px hsl(var(--primary) / 0.6);"
+      ></div>
     {/if}
-  </aside>
 
-  <!-- Ghost line during sidebar drag (zero-reflow preview) -->
-  {#if sidebarResizing}
+    <!-- Main content -->
     <div
-      bind:this={sidebarGhostEl}
-      class="fixed top-0 bottom-0 z-[9999] pointer-events-none bg-primary"
-      style="left: {sidebarGhostX -
-        1}px; width: 3px; box-shadow: 0 0 8px hsl(var(--primary) / 0.6);"
-    ></div>
-  {/if}
-
-  <!-- Main content -->
-  <div class="app-main-shell flex flex-col overflow-hidden relative">
-    <!--
+      class="app-main-shell relative z-10 flex flex-col overflow-hidden"
+      class:miwarp-chrome-frost={rootWallpaper.show}
+    >
+      <!--
       macOS drag region for the main pane.
       Uses pointer-events: none + -webkit-app-region: drag so native macOS
       window drag works WITHOUT blocking any button clicks. TopWindowDrag
@@ -2770,30 +2727,31 @@
       fire here, but sidebar spacers still provide drag handles on those
       platforms.
     -->
-    <div
-      class="absolute top-0 left-0 right-0 h-11 pointer-events-none"
-      data-tauri-drag-region
-      aria-hidden="true"
-      style="-webkit-app-region: drag; z-index: 0;"
-    ></div>
-    <UpdateBanner />
-    <!-- Page content — full-bleed, no top bar on non-chat pages -->
-    <main class="flex-1 min-h-0 overflow-y-auto flex flex-col">
-      {@render children()}
-    </main>
+      <div
+        class="absolute top-0 left-0 right-0 h-11 pointer-events-none"
+        data-tauri-drag-region
+        aria-hidden="true"
+        style="-webkit-app-region: drag; z-index: 0;"
+      ></div>
+      <UpdateBanner />
+      <!-- Page content — full-bleed, no top bar on non-chat pages -->
+      <main
+        class="flex-1 min-h-0 overflow-y-auto flex flex-col"
+        class:bg-background={!rootWallpaper.show}
+      >
+        {@render children()}
+      </main>
+    </div>
   </div>
 </div>
 
 <!--
   Global top-of-window drag safety net.
 
-  Sits ABOVE everything as a fixed bar, but is click-through (pointer-events:
-  none). On macOS the system reads `-webkit-app-region: drag` before pointer
-  events fire, so the window drags from anywhere along the top 36px even when
-  there are buttons underneath. On Linux/Windows this is a no-op overlay and
-  the legacy <WindowDragArea> spacers continue to do the work.
+  It listens to top-band mouse starts and asks Tauri to drag only when the
+  target is not interactive, so buttons and inputs keep their normal behavior.
 -->
-<TopWindowDrag height={36} />
+<TopWindowDrag height={56} />
 
 <CommandPalette
   bind:open={commandPaletteOpen}
@@ -2879,7 +2837,9 @@
 </Modal>
 
 <Modal bind:open={removeProjectConfirmOpen} title={t("sidebar_removeProjectConfirm")}>
-  <p class="text-sm text-muted-foreground mb-4">{t("sidebar_removeProjectDesc")}</p>
+  <p class="text-sm text-muted-foreground mb-4">
+    {t("sidebar_removeProjectDesc", { openFolder: t("project_openFolderVerb") })}
+  </p>
   <div class="flex justify-end gap-2">
     <button
       class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
@@ -2896,93 +2856,14 @@
   </div>
 </Modal>
 
-<!-- Create folder dialog -->
-<Modal bind:open={folderCreateOpen} title={t("sidebar_createFolder")}>
-  <p class="text-sm text-muted-foreground mb-3">{t("sidebar_createFolderDesc")}</p>
-  <input
-    type="text"
-    class="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring mb-4"
-    placeholder={t("sidebar_folderNamePlaceholder")}
-    bind:value={folderCreateName}
-    onkeydown={(e) => e.key === "Enter" && doCreateFolder()}
-    autofocus
-  />
-  <div class="flex justify-end gap-2">
-    <button
-      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
-      onclick={() => {
-        folderCreateOpen = false;
-        folderCreateName = "";
-      }}
-    >
-      {t("sidebar_deleteCancel")}
-    </button>
-    <button
-      class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-      onclick={doCreateFolder}
-    >
-      {t("sidebar_createFolderOk")}
-    </button>
-  </div>
-</Modal>
-
-<!-- Rename folder dialog -->
-<Modal bind:open={folderRenameOpen} title={t("sidebar_renameFolder")}>
-  <input
-    type="text"
-    class="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring mb-4"
-    bind:value={folderRenameName}
-    onkeydown={(e) => e.key === "Enter" && doRenameFolder()}
-    autofocus
-  />
-  <div class="flex justify-end gap-2">
-    <button
-      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
-      onclick={() => {
-        folderRenameOpen = false;
-        folderRenameTarget = null;
-      }}
-    >
-      {t("sidebar_deleteCancel")}
-    </button>
-    <button
-      class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-      onclick={doRenameFolder}
-    >
-      {t("sidebar_renameFolderOk")}
-    </button>
-  </div>
-</Modal>
-
-<!-- Delete folder dialog -->
-<Modal bind:open={folderDeleteOpen} title={t("sidebar_deleteFolder")}>
-  <p class="text-sm text-muted-foreground mb-4">
-    {t("sidebar_deleteFolderDesc", { name: folderDeleteTarget?.name ?? "" })}
-  </p>
-  <div class="flex justify-end gap-2">
-    <button
-      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
-      onclick={() => {
-        folderDeleteOpen = false;
-        folderDeleteTarget = null;
-      }}
-    >
-      {t("sidebar_deleteCancel")}
-    </button>
-    <button
-      class="px-3 py-1.5 text-sm rounded-md border border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors"
-      onclick={() => doDeleteFolder(false)}
-    >
-      {t("sidebar_deleteFolderKeep")}
-    </button>
-    <button
-      class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
-      onclick={() => doDeleteFolder(true)}
-    >
-      {t("sidebar_deleteFolderCascade")}
-    </button>
-  </div>
-</Modal>
+<!-- Folder CRUD dialogs (create, rename, delete) -->
+<FolderCrudDialogs
+  bind:this={folderDialogs}
+  {sessionFolders}
+  {projectCwd}
+  onFoldersChanged={(f) => (sessionFolders = f)}
+  onCascadeDelete={loadRuns}
+/>
 
 <!-- Move to folder dialog -->
 <Modal bind:open={moveToFolderOpen} title={t("sidebar_moveToFolder")}>
@@ -2999,7 +2880,7 @@
     >
       {t("sidebar_uncategorized")}
     </button>
-    {#each sessionFolders as folder}
+    {#each sessionFolders.filter((f) => f.workspaceId === moveToFolderWorkspaceId) as folder (folder.id)}
       <button
         class="text-left px-3 py-2 text-sm rounded-md transition-colors"
         class:bg-primary={moveToFolderSelectedId === folder.id}

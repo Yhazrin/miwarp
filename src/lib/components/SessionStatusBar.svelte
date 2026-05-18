@@ -9,6 +9,14 @@
   import { fmtNumber } from "$lib/i18n/format";
   import { truncate, formatTokenCount, formatDuration, formatCostDisplay } from "$lib/utils/format";
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
+  import SessionPanelTabs from "$lib/components/chat/SessionPanelTabs.svelte";
+  import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
+  import type { ProcessVisibility } from "$lib/utils/process-visibility";
+  import {
+    PROCESS_VISIBILITY_LEVELS,
+    normalizeProcessVisibility,
+  } from "$lib/utils/process-visibility";
+  import type { MessageKey } from "$lib/i18n/types";
 
   let {
     run = null,
@@ -58,6 +66,11 @@
     onEffortChange,
     onStatusClick,
     onExportHtml,
+    toolPanelActiveTab,
+    onToolPanelTabChange,
+    toolPanelIndicators,
+    processVisibility: processVisibilityProp,
+    onProcessVisibilityChange,
   }: {
     run?: TaskRun | null;
     agent?: string;
@@ -106,6 +119,11 @@
     onEffortChange?: (effort: string) => void;
     onStatusClick?: () => void;
     onExportHtml?: () => void;
+    toolPanelActiveTab?: ToolActivityPanelTab;
+    onToolPanelTabChange?: (tab: ToolActivityPanelTab) => void;
+    toolPanelIndicators?: { context: boolean; files: boolean; tasks: boolean };
+    processVisibility?: ProcessVisibility | string;
+    onProcessVisibilityChange?: (v: ProcessVisibility) => void;
   } = $props();
 
   $effect(() => {
@@ -231,19 +249,50 @@
     );
   });
 
-  // More menu state
+  // ── Dynamic Island hover (peek extra row without toggling persisted expanded) ──
+  let islandHover = $state(false);
+  let islandLeaveTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function onIslandPointerEnter() {
+    clearTimeout(islandLeaveTimer);
+    islandHover = true;
+  }
+
+  function onIslandPointerLeave() {
+    islandLeaveTimer = setTimeout(() => {
+      islandHover = false;
+    }, 140);
+  }
+
   let moreMenuOpen = $state(false);
   let moreMenuBtnEl: HTMLButtonElement | undefined = $state();
   let moreMenuEl: HTMLDivElement | undefined = $state();
+
+  let processVisOpen = $state(false);
+  let processVisBtnEl: HTMLButtonElement | undefined = $state();
+  let processVisMenuEl: HTMLDivElement | undefined = $state();
+
+  let processVisibility = $derived(normalizeProcessVisibility(processVisibilityProp));
+
+  const PV_LABEL: Record<ProcessVisibility, MessageKey> = {
+    output: "processVisibility_output",
+    guided: "processVisibility_guided",
+    developer: "processVisibility_developer",
+    expert: "processVisibility_expert",
+  };
+
+  let showIslandExpanded = $derived(
+    expanded || islandHover || dropdownOpen || moreMenuOpen || processVisOpen || titleEditing,
+  );
 
   function positionDropdown() {
     if (!modelBtnEl) return;
     const rect = modelBtnEl.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
     if (spaceBelow < 200) {
-      dropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:50;`;
+      dropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:99;`;
     } else {
-      dropdownStyle = `position:fixed; top:${rect.bottom + 4}px; left:${rect.left}px; z-index:50;`;
+      dropdownStyle = `position:fixed; top:${rect.bottom + 4}px; left:${rect.left}px; z-index:99;`;
     }
   }
 
@@ -345,6 +394,15 @@
       ) {
         moreMenuOpen = false;
       }
+      if (
+        processVisOpen &&
+        processVisBtnEl &&
+        !processVisBtnEl.contains(e.target as Node) &&
+        processVisMenuEl &&
+        !processVisMenuEl.contains(e.target as Node)
+      ) {
+        processVisOpen = false;
+      }
     }
     function onDocKeydown(e: KeyboardEvent) {
       if (dropdownOpen && e.key === "Escape") {
@@ -364,6 +422,7 @@
   onDestroy(() => {
     clearTimeout(compactTimer);
     clearTimeout(confirmTimer);
+    clearTimeout(islandLeaveTimer);
   });
 
   // ── End Session confirmation ──
@@ -452,20 +511,26 @@
   spacers below are kept for Linux/Windows where the JS handler is needed.
 -->
 <div
-  class="session-status-drag relative mx-4 mt-3 rounded-full border border-white/10 bg-background/55 font-mono text-xs text-foreground/70 backdrop-blur-2xl shadow-[0_2px_16px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.08)]"
+  class="session-status-drag session-island-shell relative mt-3 w-full min-w-0 max-w-[1100px] border border-border/55 dark:border-white/[0.13] bg-background/[0.42] dark:bg-background/[0.34] font-mono text-xs text-foreground/70 backdrop-blur-2xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.38)] dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[border-radius,background-color,border-color,box-shadow] duration-[520ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:duration-150 motion-reduce:ease-linear {showIslandExpanded
+    ? 'rounded-[1.28rem]'
+    : 'rounded-full'}"
   data-tauri-drag-region
+  onpointerenter={onIslandPointerEnter}
+  onpointerleave={onIslandPointerLeave}
+  aria-label={t("statusbar_islandRegion")}
 >
   <!-- Left drag spacer (Linux/Windows JS fallback) -->
   <WindowDragArea class="absolute left-0 top-0 bottom-0 w-24 rounded-l-full" />
   <!-- Right drag spacer (Linux/Windows JS fallback) -->
   <WindowDragArea class="absolute right-0 top-0 bottom-0 w-24 rounded-r-full" />
-  <!-- Tier 1: Always visible (h-9) -->
-  <div class="relative z-10 flex h-9 items-center justify-between px-3">
-    <!-- Left: core info -->
-    <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+  <!-- Tier 1: session status + panel tabs + actions -->
+  <div class="relative z-10 flex h-9 min-w-0 items-center gap-1.5 px-3">
+    <!-- Left: core session status (segment 1) -->
+    <div class="flex min-h-0 min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
       {#if onToggleSidebar}
         <button
-          class="rounded p-1 -ml-1 mr-0.5 hover:bg-accent transition-colors"
+          type="button"
+          class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md -ml-1 mr-0.5 hover:bg-accent transition-colors"
           onclick={onToggleSidebar}
           title={t("statusbar_toggleSidebar")}
         >
@@ -485,7 +550,8 @@
       <!-- Pulse indicator + agent name (clickable for status) -->
       {#if onStatusClick}
         <button
-          class="inline-flex items-center gap-1.5 shrink-0 rounded px-1 -mx-1 hover:bg-accent/50 transition-colors"
+          type="button"
+          class="inline-flex h-7 min-w-0 shrink-0 items-center gap-1.5 rounded-md px-1 -mx-1 hover:bg-accent/50 transition-colors"
           onclick={onStatusClick}
           title={t("toolActivity_tabInfo")}
         >
@@ -548,20 +614,41 @@
         </span>
       {/if}
 
+      {#if run?.worktree_branch}
+        <span
+          class="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400"
+        >
+          <svg
+            class="h-3 w-3 inline-block mr-0.5 -mt-0.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <line x1="6" y1="3" x2="6" y2="15" />
+            <circle cx="18" cy="6" r="3" />
+            <circle cx="6" cy="18" r="3" />
+            <path d="M18 9a9 9 0 0 1-9 9" />
+          </svg>
+          {run.worktree_branch}
+        </span>
+      {/if}
+
       {#if model}
         <span class="text-foreground/30">&middot;</span>
         {#if onModelChange}
           <button
             bind:this={modelBtnEl}
-            class="flex items-center gap-1 shrink-0 rounded border border-transparent px-1.5 py-0.5 -my-0.5 text-foreground/80 hover:text-foreground hover:bg-accent hover:border-border transition-colors"
+            class="inline-flex h-7 max-w-[min(11rem,30vw)] min-w-0 shrink-0 items-center gap-1 rounded-md border border-transparent px-1.5 text-foreground/80 transition-colors hover:border-border hover:bg-accent hover:text-foreground"
             onclick={toggleModelDropdown}
+            title={modelLabel}
           >
-            {modelLabel}
+            <span class="truncate">{modelLabel}</span>
             {#if !effortDisabled && effort}
-              <span class="text-foreground/60 text-[10px]">{effort}</span>
+              <span class="text-foreground/60 text-[10px] shrink-0">{effort}</span>
             {/if}
             <svg
-              class="h-3 w-3 text-foreground/40"
+              class="h-3 w-3 text-foreground/40 shrink-0"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -569,7 +656,9 @@
             >
           </button>
         {:else}
-          <span class="truncate text-foreground/80">{model}</span>
+          <span class="truncate max-w-[min(11rem,30vw)] text-foreground/80" title={model}
+            >{model}</span
+          >
         {/if}
       {/if}
 
@@ -578,38 +667,38 @@
         {@const pct = Math.round(contextUtilization * 100)}
         {@const barColor =
           contextWarningLevel === "critical"
-            ? "bg-orange-500"
+            ? "bg-amber-600/85"
             : contextWarningLevel === "high"
-              ? "bg-orange-500"
+              ? "bg-amber-500/70"
               : contextWarningLevel === "moderate"
-                ? "bg-amber-500"
-                : "bg-emerald-500"}
+                ? "bg-amber-400/55"
+                : "bg-emerald-500/45"}
         {@const textColor =
-          contextWarningLevel === "critical"
-            ? "text-miwarp-status-warning"
-            : contextWarningLevel === "high"
-              ? "text-miwarp-status-warning"
-              : contextWarningLevel === "moderate"
-                ? "text-miwarp-status-warning"
-                : "text-foreground/60"}
+          contextWarningLevel === "critical" || contextWarningLevel === "high"
+            ? "text-amber-800/80 dark:text-amber-200/75"
+            : contextWarningLevel === "moderate"
+              ? "text-amber-900/55 dark:text-amber-100/55"
+              : "text-muted-foreground/55"}
         <span class="text-foreground/30">&middot;</span>
         <span
-          class="flex items-center gap-1.5 shrink-0 {textColor}"
+          class="inline-flex items-center gap-1.5 shrink-0 rounded-full border border-border/30 bg-muted/25 px-2 py-0.5 {textColor}"
           title={t("statusbar_contextTitle", {
             pct: String(pct),
             tokens: contextWindow ? fmtNumber(contextWindow) : "",
           })}
         >
-          <span class="inline-flex h-1.5 w-12 rounded-full bg-foreground/10 overflow-hidden">
+          <span class="inline-flex h-1 w-[2.75rem] rounded-full bg-foreground/8 overflow-hidden">
             <span
               class="h-full rounded-full transition-all duration-700 ease-out {barColor}"
               style="width: {pct}%"
             ></span>
           </span>
-          <span class="hidden sm:inline">{t("statusbar_ctx", { pct: String(pct) })}</span>
+          <span class="hidden sm:inline text-[10px] tabular-nums text-muted-foreground/70"
+            >{t("statusbar_ctx", { pct: String(pct) })}</span
+          >
           {#if compactVisible}
             <span
-              class="text-[10px] text-miwarp-status-info font-medium animate-pulse"
+              class="text-[10px] text-miwarp-status-info/80 font-medium animate-pulse"
               title={t("statusbar_compactDetail", {
                 full: String(compactCount),
                 micro: String(microcompactCount),
@@ -631,9 +720,23 @@
       {/if}
     </div>
 
+    {#if onToolPanelTabChange && toolPanelActiveTab && processVisibility !== "output"}
+      <div
+        class="hidden h-5 w-px shrink-0 self-center bg-border/50 min-[480px]:block"
+        aria-hidden="true"
+      ></div>
+      <div class="flex h-9 min-w-0 shrink items-center">
+        <SessionPanelTabs
+          active={toolPanelActiveTab}
+          onSelect={onToolPanelTabChange}
+          indicators={toolPanelIndicators ?? { context: false, files: false, tasks: false }}
+        />
+      </div>
+    {/if}
+
     <!-- Right: tools count + More menu + chevron -->
-    <div class="flex items-center gap-2">
-      {#if toolsCount && toolsCount > 0 && onToolsClick}
+    <div class="ml-auto flex h-9 shrink-0 items-center gap-1.5">
+      {#if toolsCount && toolsCount > 0 && onToolsClick && processVisibility !== "output"}
         <button
           class="text-xs text-muted-foreground hover:text-foreground transition-colors"
           onclick={onToolsClick}
@@ -643,12 +746,69 @@
         </button>
       {/if}
 
+      {#if onProcessVisibilityChange}
+        <div class="relative">
+          <button
+            type="button"
+            bind:this={processVisBtnEl}
+            class="hidden sm:inline-flex h-7 max-w-[9.5rem] min-w-0 items-center gap-1 rounded-md border border-transparent px-2 text-[10px] font-medium text-muted-foreground transition-colors hover:border-border/40 hover:bg-accent/20 hover:text-foreground"
+            onclick={() => (processVisOpen = !processVisOpen)}
+            title={t("statusbar_processVisibilityTitle")}
+          >
+            <span class="shrink-0 opacity-80">{t("statusbar_processVisibility")}</span>
+            <span class="min-w-0 truncate text-foreground/90">{t(PV_LABEL[processVisibility])}</span
+            >
+            <svg
+              class="h-2.5 w-2.5 shrink-0 opacity-50"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"><path d="m6 9 6 6 6-6" /></svg
+            >
+          </button>
+          {#if processVisOpen}
+            <div
+              bind:this={processVisMenuEl}
+              class="absolute right-0 top-full z-50 mt-1 w-64 max-w-[80vw] rounded-md border border-border/40 bg-popover p-1 text-xs shadow-lg"
+            >
+              {#each PROCESS_VISIBILITY_LEVELS as level (level)}
+                <button
+                  type="button"
+                  class="flex w-full flex-col items-start gap-0.5 rounded px-2 py-2 text-left transition-colors hover:bg-accent {processVisibility ===
+                  level
+                    ? 'bg-accent/40'
+                    : ''}"
+                  onclick={() => {
+                    onProcessVisibilityChange?.(level);
+                    processVisOpen = false;
+                  }}
+                >
+                  <span class="font-medium text-foreground">{t(PV_LABEL[level])}</span>
+                  <span class="text-[10px] leading-snug text-muted-foreground"
+                    >{t(
+                      level === "output"
+                        ? "processVisibility_outputDesc"
+                        : level === "guided"
+                          ? "processVisibility_guidedDesc"
+                          : level === "developer"
+                            ? "processVisibility_developerDesc"
+                            : "processVisibility_expertDesc",
+                    )}</span
+                  >
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {/if}
+
       <!-- More menu -->
       {#if hasMoreActions}
         <div class="relative">
           <button
+            type="button"
             bind:this={moreMenuBtnEl}
-            class="rounded p-0.5 text-foreground/40 hover:text-foreground/70 hover:bg-accent transition-colors"
+            class="inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground/40 hover:bg-accent hover:text-foreground/70 transition-colors"
             onclick={() => (moreMenuOpen = !moreMenuOpen)}
             title={t("statusbar_moreMenu")}
           >
@@ -788,7 +948,8 @@
 
       <!-- Expand/collapse chevron -->
       <button
-        class="rounded p-0.5 text-foreground/30 hover:text-foreground/60 hover:bg-accent transition-colors"
+        type="button"
+        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-foreground/30 hover:bg-accent hover:text-foreground/60 transition-colors"
         onclick={() => (expanded = !expanded)}
         title={expanded ? t("statusbar_collapse") : t("statusbar_expand")}
       >
@@ -807,169 +968,178 @@
     </div>
   </div>
 
-  <!-- Tier 2: Collapsible details (h-7) -->
-  {#if expanded}
-    <div class="flex h-7 items-center justify-between border-t border-border/20 px-3">
-      <!-- Left: details -->
-      <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
-        {#if cwdShort}
-          <span class="truncate" title={cwd || run?.cwd || ""}>{cwdShort}</span>
-        {/if}
+  <!-- Tier 2: expands on hover (peek) or when pinned open via chevron -->
+  <div
+    class="grid transition-[grid-template-rows] duration-[520ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:duration-150 motion-reduce:ease-linear"
+    style="grid-template-rows: {showIslandExpanded ? '1fr' : '0fr'};"
+    aria-hidden={!showIslandExpanded}
+  >
+    <div class="min-h-0 overflow-hidden {showIslandExpanded ? '' : 'pointer-events-none'}">
+      <div
+        class="flex h-7 min-h-[1.75rem] items-center justify-between border-t border-border/20 px-3"
+      >
+        <!-- Left: details -->
+        <div class="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+          {#if cwdShort}
+            <span class="truncate" title={cwd || run?.cwd || ""}>{cwdShort}</span>
+          {/if}
 
-        {#if sessionIdShort}
-          <span class="text-foreground/30">&middot;</span>
-          <button
-            class="text-foreground/40 hover:text-foreground/70 transition-colors"
-            title="{t('statusbar_sessionLabel', {
-              id: run?.session_id ?? '',
-            })}\n{t('statusbar_clickToCopy')}"
-            onclick={copySessionId}
-          >
-            {sidCopied ? t("statusbar_copied") : sessionIdShort}
-          </button>
-        {/if}
-
-        {#if parentRunId && onNavigateParent}
-          <span class="text-foreground/30">&middot;</span>
-          <button
-            class="flex items-center gap-1 text-miwarp-status-info/70 hover:text-miwarp-status-info transition-colors"
-            onclick={onNavigateParent}
-            title={t("statusbar_viewParent")}
-          >
-            <svg
-              class="h-3 w-3"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
+          {#if sessionIdShort}
+            <span class="text-foreground/30">&middot;</span>
+            <button
+              class="text-foreground/40 hover:text-foreground/70 transition-colors"
+              title="{t('statusbar_sessionLabel', {
+                id: run?.session_id ?? '',
+              })}\n{t('statusbar_clickToCopy')}"
+              onclick={copySessionId}
             >
-              <circle cx="12" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><circle
-                cx="18"
-                cy="6"
-                r="3"
-              />
-              <path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9" /><path d="M12 12v3" />
-            </svg>
-            <span>{t("statusbar_forked")}</span>
-          </button>
-        {/if}
+              {sidCopied ? t("statusbar_copied") : sessionIdShort}
+            </button>
+          {/if}
 
-        {#if cost > 0}
-          <span class="text-foreground/30 shrink-0">&middot;</span>
-          <span class="shrink-0">{formatCost(cost)}</span>
-        {/if}
+          {#if parentRunId && onNavigateParent}
+            <span class="text-foreground/30">&middot;</span>
+            <button
+              class="flex items-center gap-1 text-miwarp-status-info/70 hover:text-miwarp-status-info transition-colors"
+              onclick={onNavigateParent}
+              title={t("statusbar_viewParent")}
+            >
+              <svg
+                class="h-3 w-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><circle
+                  cx="18"
+                  cy="6"
+                  r="3"
+                />
+                <path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9" /><path d="M12 12v3" />
+              </svg>
+              <span>{t("statusbar_forked")}</span>
+            </button>
+          {/if}
 
-        {#if inputTokens > 0 || outputTokens > 0}
-          <span class="text-foreground/30 shrink-0">&middot;</span>
-          <span
-            class="shrink-0"
-            title={`${t("statusbar_inputLabel")}: ${fmtNumber(inputTokens)} / ${t("statusbar_outputLabel")}: ${fmtNumber(outputTokens)}${cacheReadTokens ? `\n${t("statusbar_cacheReadLabel")}: ${fmtNumber(cacheReadTokens)}` : ""}${cacheWriteTokens ? `\n${t("statusbar_cacheWriteLabel")}: ${fmtNumber(cacheWriteTokens)}` : ""}`}
-            >{formatTokenCount(inputTokens)} / {formatTokenCount(outputTokens)}
-            {t("statusbar_tok")}</span
-          >
-          {#if cacheReadTokens > 0 || cacheWriteTokens > 0}
-            <span class="text-foreground/60 text-[10px] shrink-0"
-              >{t("statusbar_cacheRW", {
-                read: formatTokenCount(cacheReadTokens),
-                write: formatTokenCount(cacheWriteTokens),
-              })}</span
+          {#if cost > 0}
+            <span class="text-foreground/30 shrink-0">&middot;</span>
+            <span class="shrink-0">{formatCost(cost)}</span>
+          {/if}
+
+          {#if inputTokens > 0 || outputTokens > 0}
+            <span class="text-foreground/30 shrink-0">&middot;</span>
+            <span
+              class="shrink-0"
+              title={`${t("statusbar_inputLabel")}: ${fmtNumber(inputTokens)} / ${t("statusbar_outputLabel")}: ${fmtNumber(outputTokens)}${cacheReadTokens ? `\n${t("statusbar_cacheReadLabel")}: ${fmtNumber(cacheReadTokens)}` : ""}${cacheWriteTokens ? `\n${t("statusbar_cacheWriteLabel")}: ${fmtNumber(cacheWriteTokens)}` : ""}`}
+              >{formatTokenCount(inputTokens)} / {formatTokenCount(outputTokens)}
+              {t("statusbar_tok")}</span
+            >
+            {#if cacheReadTokens > 0 || cacheWriteTokens > 0}
+              <span class="text-foreground/60 text-[10px] shrink-0"
+                >{t("statusbar_cacheRW", {
+                  read: formatTokenCount(cacheReadTokens),
+                  write: formatTokenCount(cacheWriteTokens),
+                })}</span
+              >
+            {/if}
+          {/if}
+
+          {#if mcpServers && mcpServers.length > 0 && onMcpToggle}
+            <span class="text-foreground/30">&middot;</span>
+            <button
+              class="flex items-center gap-1 shrink-0 rounded border border-transparent px-1.5 py-0.5 -my-0.5 text-foreground/70 hover:text-foreground hover:bg-accent hover:border-border transition-colors"
+              onclick={onMcpToggle}
+              title={t("statusbar_mcpTitle", { count: String(mcpServers.length) })}
+            >
+              <span class="inline-block h-1.5 w-1.5 rounded-full {mcpDotClass}"></span>
+              <span>{t("statusbar_mcpLabel", { count: String(mcpServers.length) })}</span>
+            </button>
+          {/if}
+
+          {#if numTurns && numTurns > 0}
+            <span class="text-foreground/30 shrink-0">&middot;</span>
+            <span class="shrink-0" title={t("statusbar_turnsTitle")}
+              >{t("statusbar_turns", { count: String(numTurns) })}</span
             >
           {/if}
-        {/if}
 
-        {#if mcpServers && mcpServers.length > 0 && onMcpToggle}
-          <span class="text-foreground/30">&middot;</span>
-          <button
-            class="flex items-center gap-1 shrink-0 rounded border border-transparent px-1.5 py-0.5 -my-0.5 text-foreground/70 hover:text-foreground hover:bg-accent hover:border-border transition-colors"
-            onclick={onMcpToggle}
-            title={t("statusbar_mcpTitle", { count: String(mcpServers.length) })}
-          >
-            <span class="inline-block h-1.5 w-1.5 rounded-full {mcpDotClass}"></span>
-            <span>{t("statusbar_mcpLabel", { count: String(mcpServers.length) })}</span>
-          </button>
-        {/if}
+          {#if durationMs && durationMs > 0}
+            {@const turnDetail = turnUsages
+              .filter((tu) => tu.durationMs && tu.durationMs > 0)
+              .map((tu) => `T${tu.turnIndex}: ${formatDuration(tu.durationMs!)}`)
+              .join(", ")}
+            <span class="text-foreground/30 shrink-0">&middot;</span>
+            <span
+              class="shrink-0"
+              title={t("statusbar_durationTitle") +
+                (turnDetail ? `\n${t("statusbar_durationPerTurn")}: ${turnDetail}` : "")}
+              >{formatDuration(durationMs)}</span
+            >
+          {/if}
+        </div>
 
-        {#if numTurns && numTurns > 0}
-          <span class="text-foreground/30 shrink-0">&middot;</span>
-          <span class="shrink-0" title={t("statusbar_turnsTitle")}
-            >{t("statusbar_turns", { count: String(numTurns) })}</span
-          >
-        {/if}
+        <!-- Right: secondary controls -->
+        <div class="flex items-center gap-1.5 shrink-0">
+          {#if permissionBadge}
+            <span
+              class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {permissionBadge.cls}"
+              title={t("statusbar_permissionMode", { mode: permissionMode ?? "" })}
+              >{permissionBadge.label}</span
+            >
+          {/if}
 
-        {#if durationMs && durationMs > 0}
-          {@const turnDetail = turnUsages
-            .filter((tu) => tu.durationMs && tu.durationMs > 0)
-            .map((tu) => `T${tu.turnIndex}: ${formatDuration(tu.durationMs!)}`)
-            .join(", ")}
-          <span class="text-foreground/30 shrink-0">&middot;</span>
-          <span
-            class="shrink-0"
-            title={t("statusbar_durationTitle") +
-              (turnDetail ? `\n${t("statusbar_durationPerTurn")}: ${turnDetail}` : "")}
-            >{formatDuration(durationMs)}</span
-          >
-        {/if}
-      </div>
+          {#if fastModeState === "on"}
+            <span
+              class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-miwarp-status-warning/15 text-miwarp-status-warning"
+              title={t("statusbar_fastModeTitle")}>{t("statusbar_fastMode")}</span
+            >
+          {/if}
 
-      <!-- Right: secondary controls -->
-      <div class="flex items-center gap-1.5 shrink-0">
-        {#if permissionBadge}
-          <span
-            class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {permissionBadge.cls}"
-            title={t("statusbar_permissionMode", { mode: permissionMode ?? "" })}
-            >{permissionBadge.label}</span
-          >
-        {/if}
+          {#if verbose}
+            <span
+              class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-sky-500/15 text-sky-400 hidden sm:inline"
+              title={t("statusbar_verboseTitle")}>{t("statusbar_verbose")}</span
+            >
+          {/if}
 
-        {#if fastModeState === "on"}
-          <span
-            class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-miwarp-status-warning/15 text-miwarp-status-warning"
-            title={t("statusbar_fastModeTitle")}>{t("statusbar_fastMode")}</span
-          >
-        {/if}
+          {#if authSourceLabel}
+            {@const authBadgeColor =
+              authSourceCategory === "login"
+                ? "bg-emerald-500/15 text-emerald-500"
+                : authSourceCategory === "env_key"
+                  ? "bg-miwarp-status-info/15 text-miwarp-status-info"
+                  : authSourceCategory === "none"
+                    ? "bg-miwarp-status-warning/15 text-miwarp-status-warning"
+                    : "bg-foreground/10 text-foreground/60"}
+            <span
+              class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {authBadgeColor}"
+              title={t("statusbar_authTitle", { source: apiKeySource ?? "" })}
+              >{authSourceLabel}</span
+            >
+          {/if}
 
-        {#if verbose}
-          <span
-            class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-sky-500/15 text-sky-400 hidden sm:inline"
-            title={t("statusbar_verboseTitle")}>{t("statusbar_verbose")}</span
-          >
-        {/if}
+          {#if remoteHostName}
+            <span
+              class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-miwarp-status-info/15 text-miwarp-status-info"
+              title={t("statusbar_sshTitle", { name: remoteHostName ?? "" })}
+              >{t("statusbar_sshLabel", { name: remoteHostName ?? "" })}</span
+            >
+          {/if}
 
-        {#if authSourceLabel}
-          {@const authBadgeColor =
-            authSourceCategory === "login"
-              ? "bg-emerald-500/15 text-emerald-500"
-              : authSourceCategory === "env_key"
-                ? "bg-miwarp-status-info/15 text-miwarp-status-info"
-                : authSourceCategory === "none"
-                  ? "bg-miwarp-status-warning/15 text-miwarp-status-warning"
-                  : "bg-foreground/10 text-foreground/60"}
-          <span
-            class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium {authBadgeColor}"
-            title={t("statusbar_authTitle", { source: apiKeySource ?? "" })}>{authSourceLabel}</span
-          >
-        {/if}
-
-        {#if remoteHostName}
-          <span
-            class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-miwarp-status-info/15 text-miwarp-status-info"
-            title={t("statusbar_sshTitle", { name: remoteHostName ?? "" })}
-            >{t("statusbar_sshLabel", { name: remoteHostName ?? "" })}</span
-          >
-        {/if}
-
-        {#if cliVersion}
-          <button
-            class="text-foreground/30 hover:text-foreground/60 transition-colors hidden sm:inline"
-            title={t("statusbar_cliVersionTitle", { version: cliVersion ?? "" })}
-            onclick={() => goto("/release-notes")}>CLI v{cliVersion}</button
-          >
-        {/if}
+          {#if cliVersion}
+            <button
+              class="text-foreground/30 hover:text-foreground/60 transition-colors hidden sm:inline"
+              title={t("statusbar_cliVersionTitle", { version: cliVersion ?? "" })}
+              onclick={() => goto("/release-notes")}>CLI v{cliVersion}</button
+            >
+          {/if}
+        </div>
       </div>
     </div>
-  {/if}
+  </div>
 </div>
 
 {#if dropdownOpen}

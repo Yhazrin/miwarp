@@ -1,28 +1,26 @@
 <script lang="ts">
-  // Pass-through, CSS-only top window-drag region.
+  import { onMount } from "svelte";
+  import {
+    isWindowDragInteractiveTarget,
+    preloadWindowDrag,
+    startWindowDragFromEvent,
+  } from "$lib/utils/window-drag";
+
+  // Global top window-drag region.
   //
   // Why this exists
   // ───────────────
   // The legacy <WindowDragArea> components are placed as left/right *spacers*
   // around interactive widgets (logo, status bar, project picker…). They rely
-  // on a JS pointerdown handler that calls Tauri's startDragging(). That works
+  // on a JS mousedown handler that calls Tauri's startDragging(). That works
   // — but every spacer must avoid covering interactive elements, otherwise the
   // overlay swallows the click before the button can see it.
   //
-  // This component instead leans on the platform's *native* drag region:
-  //   -webkit-app-region: drag   →   macOS WebKit handles the drag without
-  //                                  ever firing JS pointer events.
-  // Combined with pointer-events: none, the bar is fully click-through:
-  //   • macOS: WebKit grabs the mouse before pointer-events runs, so window
-  //     drag works even though pointer-events is none. Buttons underneath
-  //     stay fully clickable.
-  //   • Linux/Windows: -webkit-app-region is a no-op there, so we additionally
-  //     attach data-tauri-drag-region. Tauri's runtime watches for mousedown
-  //     on elements with this attribute and calls startDragging(). Because
-  //     pointer-events is none, mousedown reaches the *underlying* element,
-  //     not this bar — meaning Linux/Win still need the legacy spacers for
-  //     the empty regions. That's fine: this bar is a *bonus* safety net for
-  //     macOS where the overwhelming majority of users live.
+  // This component does not rely on an overlay receiving pointer events.
+  // Instead, it listens in the capture phase and asks Tauri to start dragging
+  // when the mouse starts inside the top band and not on an interactive target.
+  // That keeps buttons, inputs, links, menus, and contenteditable regions fully
+  // usable while making the remaining top chrome reliably draggable.
   //
   // Layout
   // ──────
@@ -41,6 +39,23 @@
     rightInset?: number;
     zIndex?: number;
   } = $props();
+
+  onMount(() => {
+    preloadWindowDrag();
+
+    function onMouseDown(event: MouseEvent) {
+      if (event.button !== 0 || event.defaultPrevented) return;
+      if (event.clientY > height) return;
+      if (event.clientX < leftInset) return;
+      if (rightInset > 0 && event.clientX > window.innerWidth - rightInset) return;
+      if (isWindowDragInteractiveTarget(event.target)) return;
+
+      void startWindowDragFromEvent(event);
+    }
+
+    window.addEventListener("mousedown", onMouseDown, true);
+    return () => window.removeEventListener("mousedown", onMouseDown, true);
+  });
 </script>
 
 <div

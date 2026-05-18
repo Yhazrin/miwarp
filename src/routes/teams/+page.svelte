@@ -3,8 +3,7 @@
   import { goto } from "$app/navigation";
   import { getTeamTask, listTeamRuns, getTeamRun, cancelTeamRun } from "$lib/api";
   import type { TeamStore } from "$lib/stores/team-store.svelte";
-  import type { TeamTask, TeamInboxMessage, TeamRun, TeamRunStatus } from "$lib/types";
-  import { dbg } from "$lib/utils/debug";
+  import type { TeamTask, TeamInboxMessage, TeamRun, TeamRunStatus, TeamMember } from "$lib/types";
   import { t } from "$lib/i18n/index.svelte";
 
   const teamStore = getContext<TeamStore>("teamStore");
@@ -29,17 +28,101 @@
   let runsLoading = $state(true);
   let runsError = $state("");
 
-  // ── Team Chat state ──
+  // ── Team Chat state (local notes + merged team inbox = room timeline) ──
   let chatInput = $state("");
   let chatMessages = $state<
-    Array<{ id: string; role: string; content: string; createdAt: string }>
+    Array<{ id: string; role: "user"; content: string; createdAt: string }>
   >([]);
+
+  const TEAM_AVATAR_FALLBACKS = [
+    "/vendor/codeisland/cli-icons/pi.png",
+    "/vendor/codeisland/cli-icons/stepfun.png",
+    "/light.png",
+    "/dark.png",
+  ] as const;
+
+  function hashName(s: string): number {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+    return Math.abs(h);
+  }
+
+  /** Try GIF first (`static/team-avatars/{slug}.gif`), then PNG, then bundled icons. */
+  function memberAvatarUrls(member: TeamMember): string[] {
+    const slug = member.name
+      .trim()
+      .replace(/[^\p{L}\p{N}]+/gu, "-")
+      .replace(/^-|-$/g, "")
+      .toLowerCase();
+    const base = slug ? `/team-avatars/${slug}` : "";
+    const list: string[] = [];
+    if (base) {
+      list.push(`${base}.gif`, `${base}.png`);
+    }
+    list.push(TEAM_AVATAR_FALLBACKS[hashName(member.name) % TEAM_AVATAR_FALLBACKS.length]);
+    return list;
+  }
+
+  function memberForSender(from: string): TeamMember | undefined {
+    const m = teamStore.teamConfig?.members;
+    if (!m) return undefined;
+    return m.find((x) => x.name === from || x.agentId === from);
+  }
+
+  function parseRoomTime(iso: string): number {
+    const n = new Date(iso).getTime();
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  type RoomRow =
+    | { kind: "user"; id: string; content: string; createdAt: string }
+    | {
+        kind: "inbox";
+        id: string;
+        from: string;
+        content: string;
+        createdAt: string;
+        color: string;
+      };
+
+  let roomTimeline = $derived.by((): RoomRow[] => {
+    const userRows: RoomRow[] = chatMessages.map((msg) => ({
+      kind: "user",
+      id: msg.id,
+      content: msg.content,
+      createdAt: msg.createdAt,
+    }));
+    const inboxRows: RoomRow[] = (teamStore.allInbox ?? []).map(
+      (m: TeamInboxMessage, i: number) => ({
+        kind: "inbox",
+        id: `inbox-${m.timestamp}-${m.from}-${i}`,
+        from: m.from,
+        content: m.text?.trim() ? m.text : m.summary,
+        createdAt: m.timestamp,
+        color: m.color,
+      }),
+    );
+    return [...userRows, ...inboxRows].sort(
+      (a, b) => parseRoomTime(a.createdAt) - parseRoomTime(b.createdAt),
+    );
+  });
+
+  function onMemberAvatarError(ev: Event, urls: string[]) {
+    const img = ev.currentTarget as HTMLImageElement;
+    const step = Number(img.dataset.fallbackStep ?? "0") + 1;
+    img.dataset.fallbackStep = String(step);
+    if (step < urls.length) {
+      img.src = urls[step]!;
+    } else {
+      img.style.display = "none";
+    }
+  }
 
   function handleChatSend() {
     if (!chatInput.trim() || !teamStore.selectedTeam) return;
     const msg = {
       id: crypto.randomUUID(),
-      role: "user",
+      role: "user" as const,
       content: chatInput.trim(),
       createdAt: new Date().toISOString(),
     };
@@ -405,10 +488,46 @@
           <p class="text-[11px] text-muted-foreground mt-0.5">{t("teamRun_chatDesc")}</p>
         </div>
 
-        <!-- Messages area -->
-        <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2">
-          {#if chatMessages.length === 0}
-            <div class="flex flex-col items-center justify-center h-full text-center">
+        {#if teamStore.teamConfig && teamStore.teamConfig.members.length > 0}
+          <div class="shrink-0 border-b border-border/60 bg-muted/15 px-4 py-2.5">
+            <div
+              class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-2"
+            >
+              {t("teamRun_roomRoster")}
+            </div>
+            <div class="flex gap-4 overflow-x-auto pb-0.5">
+              {#each teamStore.teamConfig.members as member (member.agentId)}
+                {@const urls = memberAvatarUrls(member)}
+                <div class="flex w-16 shrink-0 flex-col items-center gap-1">
+                  <div
+                    class="rounded-full p-0.5"
+                    style="background: linear-gradient(135deg, {member.color}, transparent)"
+                  >
+                    <img
+                      src={urls[0]}
+                      alt=""
+                      class="h-10 w-10 rounded-full bg-background object-cover ring-2 ring-background"
+                      data-fallback-step=""
+                      title={member.name}
+                      onerror={(e) => onMemberAvatarError(e, [...urls])}
+                    />
+                  </div>
+                  <span class="w-full truncate text-center text-[10px] text-foreground/80"
+                    >{member.name}</span
+                  >
+                </div>
+              {/each}
+            </div>
+            <p class="mt-2 text-[10px] leading-snug text-muted-foreground/90">
+              {t("teamRun_roomAvatarHint")}
+            </p>
+          </div>
+        {/if}
+
+        <!-- Messages area: local notes + inbox timeline -->
+        <div class="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+          {#if roomTimeline.length === 0}
+            <div class="flex h-full flex-col items-center justify-center text-center">
               <div
                 class="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted"
               >
@@ -424,29 +543,74 @@
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
               </div>
-              <p class="text-xs text-muted-foreground max-w-sm mb-2">
+              <p class="mb-1 max-w-sm text-xs text-muted-foreground">{t("teamRun_roomEmpty")}</p>
+              <p class="max-w-sm text-[10px] text-muted-foreground/80">
                 {t("teamRun_chatEngineNotReady")}
               </p>
             </div>
           {:else}
-            {#each chatMessages as msg (msg.id)}
-              <div class="flex {msg.role === 'user' ? 'justify-end' : 'justify-start'}">
-                <div
-                  class="max-w-[80%] rounded-lg px-3 py-2 text-xs {msg.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-foreground'}"
-                >
-                  {#if msg.role !== "user"}
-                    <span class="text-[10px] font-medium text-muted-foreground block mb-0.5"
-                      >{msg.role}</span
+            {#each roomTimeline as row (`${row.kind}-${row.id}`)}
+              {#if row.kind === "user"}
+                <div class="flex justify-end gap-2">
+                  <div class="order-1 max-w-[min(32rem,85%)]">
+                    <div
+                      class="rounded-2xl rounded-br-md bg-primary px-3 py-2 text-xs text-primary-foreground shadow-sm"
                     >
-                  {/if}
-                  <p class="whitespace-pre-wrap">{msg.content}</p>
-                  <span class="text-[9px] opacity-60 block mt-1 text-right"
-                    >{new Date(msg.createdAt).toLocaleTimeString()}</span
+                      <p class="whitespace-pre-wrap">{row.content}</p>
+                      <span class="mt-1 block text-right text-[9px] opacity-80"
+                        >{new Date(row.createdAt).toLocaleTimeString()}</span
+                      >
+                    </div>
+                  </div>
+                  <div
+                    class="order-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground ring-2 ring-border/40"
+                    title={t("teamRun_roomYou")}
                   >
+                    {t("teamRun_roomYouAbbr")}
+                  </div>
                 </div>
-              </div>
+              {:else}
+                {@const mem = memberForSender(row.from)}
+                {@const urls = mem
+                  ? memberAvatarUrls(mem)
+                  : [TEAM_AVATAR_FALLBACKS[hashName(row.from) % TEAM_AVATAR_FALLBACKS.length]]}
+                <div class="flex justify-start gap-2">
+                  <div class="shrink-0">
+                    {#if mem}
+                      <img
+                        src={urls[0]}
+                        alt=""
+                        class="h-9 w-9 rounded-full object-cover ring-2 ring-border/50"
+                        style="box-shadow: 0 0 0 2px {row.color}33"
+                        data-fallback-step=""
+                        title={row.from}
+                        onerror={(e) => onMemberAvatarError(e, [...urls])}
+                      />
+                    {:else}
+                      <div
+                        class="flex h-9 w-9 items-center justify-center rounded-full text-[10px] font-semibold text-white ring-2 ring-border/40"
+                        style="background-color: {row.color || 'hsl(var(--muted-foreground))'}"
+                        title={row.from}
+                      >
+                        {row.from.slice(0, 1).toUpperCase()}
+                      </div>
+                    {/if}
+                  </div>
+                  <div class="max-w-[min(32rem,85%)]">
+                    <div
+                      class="rounded-2xl rounded-bl-md border border-border/40 bg-muted/40 px-3 py-2 text-xs text-foreground shadow-sm"
+                    >
+                      <span class="mb-0.5 block text-[10px] font-semibold text-foreground/70"
+                        >{row.from}</span
+                      >
+                      <p class="whitespace-pre-wrap">{row.content}</p>
+                      <span class="mt-1 block text-[9px] text-muted-foreground"
+                        >{new Date(row.createdAt).toLocaleTimeString()}</span
+                      >
+                    </div>
+                  </div>
+                </div>
+              {/if}
             {/each}
           {/if}
         </div>
@@ -551,10 +715,10 @@
             <div class="py-1">
               {#each teamRuns as run (run.id)}
                 <button
-                  class="w-full text-left px-3 py-2.5 hover:bg-accent/30 transition-colors border-l-2 {selectedRunId ===
+                  class="w-full text-left px-3 py-2.5 hover:bg-accent/30 transition-colors {selectedRunId ===
                   run.id
-                    ? 'border-l-primary bg-accent/20'
-                    : 'border-l-transparent'}"
+                    ? 'bg-accent/20'
+                    : ''}"
                   onclick={() => selectRun(run.id)}
                 >
                   <div class="flex items-center gap-2 mb-1">

@@ -9,6 +9,7 @@
     "dialog:default",
     "notification:default",
     "global-shortcut:default",
+    "core:window:allow-start-dragging",
     "core:webview:default",
     "core:webview:allow-create-webview",
     "core:webview:allow-set-webview-position",

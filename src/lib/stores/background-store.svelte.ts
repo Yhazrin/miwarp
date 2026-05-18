@@ -1,27 +1,22 @@
 /**
- * MiWarp Background Store
- *
- * Manages terminal/chat area background images with full customization.
- * Supports global defaults and per-session overrides.
+ * MiWarp full-window wallpaper (global + per-session override).
  */
 
 import {
   DEFAULT_BACKGROUND,
+  migrateBackgroundConfig,
   type BackgroundConfig,
   type BackgroundSettings,
+  type RootWallpaperDescriptor,
 } from "../types/background";
 
 class BackgroundStore {
-  /** Global background configuration */
   global = $state<BackgroundConfig>({ ...DEFAULT_BACKGROUND });
 
-  /** Per-session background overrides */
   perSession = $state<Record<string, BackgroundConfig>>({});
 
-  /** Current active session ID (set by the app) */
   activeSessionId = $state<string>("");
 
-  /** Get the effective background for the current session */
   get current(): BackgroundConfig {
     if (this.activeSessionId && this.perSession[this.activeSessionId]) {
       return this.perSession[this.activeSessionId];
@@ -29,27 +24,24 @@ class BackgroundStore {
     return this.global;
   }
 
-  /** Get background for a specific session */
   getForSession(sessionId: string): BackgroundConfig {
     return this.perSession[sessionId] ?? this.global;
   }
 
-  /** Update global background */
   setGlobal(config: Partial<BackgroundConfig>) {
-    this.global = { ...this.global, ...config, scope: "global" };
+    this.global = migrateBackgroundConfig({ ...this.global, ...config, scope: "global" });
     this._persist();
   }
 
-  /** Update session-specific background */
   setSession(sessionId: string, config: Partial<BackgroundConfig>) {
+    const base = migrateBackgroundConfig({ ...this.global, ...this.perSession[sessionId] });
     this.perSession = {
       ...this.perSession,
-      [sessionId]: { ...this.global, ...config, scope: "session" },
+      [sessionId]: migrateBackgroundConfig({ ...base, ...config, scope: "session" }),
     };
     this._persist();
   }
 
-  /** Remove session override (falls back to global) */
   clearSession(sessionId: string) {
     const next = { ...this.perSession };
     delete next[sessionId];
@@ -57,13 +49,11 @@ class BackgroundStore {
     this._persist();
   }
 
-  /** Reset global to defaults */
   resetGlobal() {
     this.global = { ...DEFAULT_BACKGROUND };
     this._persist();
   }
 
-  /** Export settings as JSON string */
   exportSettings(): string {
     return JSON.stringify(
       {
@@ -75,29 +65,28 @@ class BackgroundStore {
     );
   }
 
-  /** Import settings from JSON string */
   importSettings(json: string) {
     try {
       const settings: BackgroundSettings = JSON.parse(json);
-      if (settings.global) this.global = settings.global;
-      if (settings.perSession) this.perSession = settings.perSession;
+      if (settings.global) this.global = migrateBackgroundConfig(settings.global);
+      if (settings.perSession) {
+        const next: Record<string, BackgroundConfig> = {};
+        for (const [k, v] of Object.entries(settings.perSession)) {
+          next[k] = migrateBackgroundConfig(v);
+        }
+        this.perSession = next;
+      }
       this._persist();
     } catch {
       console.warn("Failed to import background settings");
     }
   }
 
-  /** Generate CSS style string for the current background */
-  getStyle(sessionId?: string): string {
+  /** CSS for BackgroundPicker image preview (inner div). */
+  getImagePreviewInnerStyle(sessionId?: string): string {
     const bg = sessionId ? this.getForSession(sessionId) : this.current;
-    if (!bg.imageUrl) return "";
+    if (bg.mode !== "image" || !bg.imageUrl) return "";
 
-    const parts: string[] = [];
-
-    // Background image layer
-    parts.push(`background-image: url('${bg.imageUrl}')`);
-
-    // Sizing mode mapping
     const sizeMap: Record<string, string> = {
       stretch: "100% 100%",
       fill: "cover",
@@ -105,51 +94,122 @@ class BackgroundStore {
       tile: "auto",
       cover: "cover",
     };
-    parts.push(`background-size: ${sizeMap[bg.sizingMode] || "cover"}`);
+    const size = sizeMap[bg.sizingMode] || "cover";
+    const pos = `${bg.positionX}% ${bg.positionY}%`;
+    const repeat = bg.sizingMode === "tile" ? "repeat" : "no-repeat";
 
-    // Position
-    parts.push(`background-position: ${bg.positionX}% ${bg.positionY}%`);
-
-    // Repeat for tile mode
-    if (bg.sizingMode === "tile") {
-      parts.push("background-repeat: repeat");
-    } else {
-      parts.push("background-repeat: no-repeat");
-    }
-
-    // Opacity and blur via filter
     const filters: string[] = [];
     if (bg.blur > 0) filters.push(`blur(${bg.blur}px)`);
-    if (filters.length) parts.push(`filter: ${filters.join(" ")}`);
+    const filterCss = filters.length ? `filter: ${filters.join(" ")}` : "";
 
-    parts.push(`opacity: ${bg.opacity / 100}`);
+    const scale = bg.blur > 0 ? "transform: scale(1.08); transform-origin: center center;" : "";
 
-    return parts.join("; ");
+    return [
+      `background-image: url(${JSON.stringify(bg.imageUrl)})`,
+      `background-size: ${size}`,
+      `background-position: ${pos}`,
+      `background-repeat: ${repeat}`,
+      filterCss,
+      scale,
+      `opacity: ${bg.opacity / 100}`,
+    ]
+      .filter(Boolean)
+      .join("; ");
   }
 
-  /** Get color overlay style */
+  getSolidPreviewStyle(sessionId?: string): string {
+    const bg = sessionId ? this.getForSession(sessionId) : this.current;
+    if (bg.mode !== "solid") return "";
+    return `background-color: ${bg.solidColor}; opacity: ${bg.opacity / 100}`;
+  }
+
   getOverlayStyle(sessionId?: string): string {
     const bg = sessionId ? this.getForSession(sessionId) : this.current;
     if (!bg.colorOverlay) return "";
-    return `background: ${bg.colorOverlay}; opacity: 0.3;`;
+    return `background: ${bg.colorOverlay}; opacity: ${bg.overlayOpacity / 100}`;
   }
 
-  /** Check if a session has a custom background */
+  /** Full-window layers behind the UI (fixed inset-0). */
+  getRootWallpaperDescriptor(): RootWallpaperDescriptor {
+    const bg = this.current;
+
+    if (bg.mode === "none") {
+      return { show: false, solidStyle: "", imageInnerStyle: "", overlayStyle: "" };
+    }
+
+    if (bg.mode === "solid") {
+      return {
+        show: true,
+        solidStyle: `background-color: ${bg.solidColor}; opacity: ${bg.opacity / 100}`,
+        imageInnerStyle: "",
+        overlayStyle: bg.colorOverlay
+          ? `background: ${bg.colorOverlay}; opacity: ${bg.overlayOpacity / 100}`
+          : "",
+      };
+    }
+
+    if (!bg.imageUrl) {
+      return { show: false, solidStyle: "", imageInnerStyle: "", overlayStyle: "" };
+    }
+
+    const sizeMap: Record<string, string> = {
+      stretch: "100% 100%",
+      fill: "cover",
+      fit: "contain",
+      tile: "auto",
+      cover: "cover",
+    };
+    const size = sizeMap[bg.sizingMode] || "cover";
+    const pos = `${bg.positionX}% ${bg.positionY}%`;
+    const repeat = bg.sizingMode === "tile" ? "repeat" : "no-repeat";
+
+    const filters: string[] = [];
+    if (bg.blur > 0) filters.push(`blur(${bg.blur}px)`);
+    const filterCss = filters.length ? `filter: ${filters.join(" ")}` : "";
+    const scale = bg.blur > 0 ? "transform: scale(1.1); transform-origin: center center;" : "";
+
+    const imageInnerStyle = [
+      `background-image: url(${JSON.stringify(bg.imageUrl)})`,
+      `background-size: ${size}`,
+      `background-position: ${pos}`,
+      `background-repeat: ${repeat}`,
+      filterCss,
+      scale,
+      `opacity: ${bg.opacity / 100}`,
+    ]
+      .filter(Boolean)
+      .join("; ");
+
+    return {
+      show: true,
+      solidStyle: "",
+      imageInnerStyle,
+      overlayStyle: bg.colorOverlay
+        ? `background: ${bg.colorOverlay}; opacity: ${bg.overlayOpacity / 100}`
+        : "",
+    };
+  }
+
   hasSessionOverride(sessionId: string): boolean {
     return sessionId in this.perSession;
   }
 
-  /** Initialize from localStorage */
   async init() {
     try {
       const stored = localStorage.getItem("miwarp-background");
       if (stored) {
         const settings: BackgroundSettings = JSON.parse(stored);
-        if (settings.global) this.global = settings.global;
-        if (settings.perSession) this.perSession = settings.perSession;
+        if (settings.global) this.global = migrateBackgroundConfig(settings.global);
+        if (settings.perSession) {
+          const next: Record<string, BackgroundConfig> = {};
+          for (const [k, v] of Object.entries(settings.perSession)) {
+            next[k] = migrateBackgroundConfig(v);
+          }
+          this.perSession = next;
+        }
       }
     } catch {
-      // Use defaults
+      // keep defaults
     }
   }
 
@@ -163,7 +223,7 @@ class BackgroundStore {
         } as BackgroundSettings),
       );
     } catch {
-      // localStorage may be unavailable
+      // quota / private mode
     }
   }
 }

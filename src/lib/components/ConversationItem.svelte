@@ -8,6 +8,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { hasAttention } from "$lib/stores/attention-store.svelte";
+  import { RUNS_CHANGED_KEY } from "$lib/utils/storage-keys";
 
   function platformLabel(id: string): string {
     return PLATFORM_PRESETS.find((p) => p.id === id)?.name ?? id;
@@ -17,6 +18,7 @@
     conversation,
     selected = false,
     batchSelected = false,
+    isDragging = false,
     onclick,
     onresume,
     ondelete,
@@ -28,12 +30,13 @@
     conversation: ConversationGroup;
     selected?: boolean;
     batchSelected?: boolean;
+    isDragging?: boolean;
     onclick?: () => void;
     onresume?: (runId: string, mode: "resume") => void;
     ondelete?: (conversation: ConversationGroup) => void;
     onmovetofolder?: (runIds: string[]) => void;
     onBatchClick?: (groupKey: string, e: MouseEvent) => void;
-    ondragstart?: (e: DragEvent, runId: string) => void;
+    ondragstart?: (e: DragEvent, runIds: string[], groupKey: string) => void;
     ondragend?: () => void;
   } = $props();
 
@@ -42,7 +45,6 @@
   const time = $derived(relativeTime(run.last_activity_at ?? run.started_at));
   const canResume = $derived(canResumeNow(run, run.status, getNoSessionPersistence(run.agent)));
   const canDelete = $derived(conversation.runs.every((r) => TERMINAL_PHASES.includes(r.status)));
-  const runCount = $derived(conversation.runs.length);
   const needsAttention = $derived(hasAttention(run.id));
 
   // Compact status dot for non-selected items
@@ -81,7 +83,7 @@
           runId: conversation.latestRun.id,
           name: trimmed,
         });
-        window.dispatchEvent(new Event("ocv:runs-changed"));
+        window.dispatchEvent(new Event(RUNS_CHANGED_KEY));
       } catch (e) {
         dbgWarn("conv-item", "rename failed", e);
         // runs will refresh on next poll
@@ -112,18 +114,25 @@
 </script>
 
 <div
-  class="group w-full text-left px-3 py-1.5 rounded-md transition-colors text-xs cursor-pointer
+  class="group w-full text-left rounded-md py-1.5 pr-3 pl-2 transition-[background-color,border-color,box-shadow,opacity,transform] duration-150 text-[11px] cursor-pointer
     {selected
-    ? 'bg-sidebar-accent/70 text-sidebar-accent-foreground'
-    : 'hover:bg-sidebar-accent/30 text-sidebar-foreground'} {batchSelected
+    ? 'bg-sidebar-accent/25 text-sidebar-foreground'
+    : 'hover:bg-sidebar-accent/28 text-sidebar-foreground'} {batchSelected
     ? 'ring-1 ring-primary/50'
-    : ''}"
+    : ''} {isDragging ? 'scale-[0.985] opacity-45 shadow-sm' : ''}"
   role="button"
   tabindex="0"
   draggable={!!ondragstart}
   onclick={handleClick}
   onkeydown={handleKeydown}
-  ondragstart={ondragstart ? (e) => ondragstart!(e, conversation.latestRun.id) : undefined}
+  ondragstart={ondragstart
+    ? (e) =>
+        ondragstart!(
+          e,
+          conversation.runs.map((r) => r.id),
+          conversation.groupKey,
+        )
+    : undefined}
   {ondragend}
 >
   <div class="flex items-center justify-between gap-2">
@@ -164,7 +173,7 @@
         />
       {:else}
         <span
-          class="truncate text-[13px] leading-tight font-medium"
+          class="truncate leading-snug font-medium text-sidebar-foreground"
           ondblclick={(e) => {
             e.stopPropagation();
             startRename();
@@ -173,12 +182,6 @@
       {/if}
     </div>
     <div class="flex items-center gap-0.5 shrink-0">
-      {#if runCount > 1}
-        <span
-          class="inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted/70 px-1 text-[10px] font-normal text-muted-foreground/70"
-          title={t("sidebar_conversations", { count: String(runCount) })}>{runCount}</span
-        >
-      {/if}
       {#if canResume && onresume}
         <button
           class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-accent/20 transition-opacity"
@@ -254,6 +257,7 @@
           attention={needsAttention}
           compact={false}
           shortLabel={true}
+          subtle={true}
           class="shrink-0"
         />
       {:else}
@@ -268,12 +272,12 @@
     </div>
   </div>
   <!-- Meta row: branch / platform / remote / time — no agent CLI name -->
-  <div class="mt-0.5 flex items-center gap-1 text-[10.5px] text-muted-foreground/45 leading-none">
+  <div class="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground/32 leading-none">
     <!-- Left: branch + remote + platform -->
     <div class="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
       {#if run.worktree_branch}
         <span
-          class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-violet-500/10 text-violet-400/80 font-mono text-[10px] max-w-[110px] truncate"
+          class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-violet-500/8 text-violet-500/55 font-mono text-[10px] max-w-[110px] truncate"
           title={run.worktree_branch}
         >
           <svg
@@ -310,10 +314,10 @@
         </svg>
       {/if}
       {#if run.platform_id && run.platform_id !== "anthropic"}
-        <span class="truncate opacity-70">{platformLabel(run.platform_id)}</span>
+        <span class="truncate text-muted-foreground/40">{platformLabel(run.platform_id)}</span>
       {/if}
     </div>
     <!-- Right: time -->
-    <span class="shrink-0 tabular-nums">{time}</span>
+    <span class="shrink-0 tabular-nums text-muted-foreground/28 ml-auto text-right">{time}</span>
   </div>
 </div>

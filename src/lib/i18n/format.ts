@@ -46,6 +46,17 @@ export function fmtDate(d: Date | string): string {
   }).format(date);
 }
 
+/** Date with year: "Feb 20, 2026" / "2026年2月20日". Invalid Date → "—". */
+export function fmtDateYear(d: Date | string): string {
+  const date = toDate(d);
+  if (!isValidDate(date)) return "—";
+  return new Intl.DateTimeFormat(currentLocale(), {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
 /** Date + time: "2/20 12:30". Invalid Date → "—". */
 export function fmtDateTime(d: Date | string): string {
   const date = toDate(d);

@@ -295,7 +295,15 @@ pub struct UserSettings {
     pub feishu_webhook_triggers: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub feishu_webhook_template: Option<String>,
-    // Notification settings (OS-level + feishu)
+    /// Optional Feishu interactive card image (`img` element). From image upload API (`img_key`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub feishu_webhook_card_img_key: Option<String>,
+    /// Optional HTTPS image URL shown via Markdown in the card (fallback if no img_key).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub feishu_webhook_card_image_url: Option<String>,
+    /// CodeIsland mascot key for card image (e.g. claude → public GIF URL).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub feishu_webhook_card_mascot: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notifications_enabled: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -322,11 +330,24 @@ pub struct UserSettings {
     /// Cleanup worktree directory when session is deleted.
     #[serde(default = "default_true")]
     pub auto_cleanup_worktree: bool,
+    /// Show per-turn token usage report below each AI response. Default true.
+    #[serde(default = "default_true")]
+    pub show_token_usage_report: bool,
+    /// Transcript process density: output | guided | developer | expert.
+    #[serde(default = "default_process_visibility")]
+    pub process_visibility: String,
+    /// Per-agent mascot overrides. Maps agent kind → image URL or data URI.
+    #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+    pub mascot_overrides: std::collections::HashMap<String, String>,
     pub updated_at: String,
 }
 
 fn default_auth_mode() -> String {
     "cli".to_string()
+}
+
+fn default_process_visibility() -> String {
+    "developer".to_string()
 }
 
 fn default_ssh_port() -> u16 {
@@ -422,6 +443,9 @@ impl Default for UserSettings {
             feishu_webhook_enabled: false,
             feishu_webhook_triggers: vec![],
             feishu_webhook_template: None,
+            feishu_webhook_card_img_key: None,
+            feishu_webhook_card_image_url: None,
+            feishu_webhook_card_mascot: None,
             notifications_enabled: None,
             notify_on_run_completed: None,
             notify_on_run_failed: None,
@@ -433,6 +457,9 @@ impl Default for UserSettings {
             auto_commit_on_complete: false,
             auto_pr_on_complete: false,
             auto_cleanup_worktree: true,
+            show_token_usage_report: true,
+            process_visibility: default_process_visibility(),
+            mascot_overrides: std::collections::HashMap::new(),
             updated_at: now_iso(),
         }
     }

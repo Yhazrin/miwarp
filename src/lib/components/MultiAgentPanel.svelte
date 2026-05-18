@@ -3,6 +3,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import Button from "./Button.svelte";
   import Modal from "./Modal.svelte";
+  import Spinner from "./Spinner.svelte";
 
   let {
     open = $bindable(false),
@@ -115,9 +116,7 @@
         <div class="space-y-2">
           {#each [...progress.entries()] as [agentId, status]}
             <div class="flex items-center gap-3">
-              <div
-                class="animate-spin w-4 h-4 border-2 border-[hsl(var(--primary))] border-t-transparent rounded-full"
-              ></div>
+              <Spinner size="sm" class="text-primary" />
               <span class="text-sm">{agentId}</span>
               <span class="text-xs text-muted-foreground">{status}</span>
             </div>

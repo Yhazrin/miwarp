@@ -5,7 +5,6 @@
   import { getTransport } from "$lib/transport";
   import * as api from "$lib/api";
   import {
-    SessionStore,
     KeybindingStore,
     getEventMiddleware,
     loadCliInfo,
@@ -18,6 +17,7 @@
     loadCliVersionInfo,
     getCliVersionInfo_cached,
   } from "$lib/stores";
+  import { getChatSessionStore } from "$lib/stores/chat-page-singletons";
   import type {
     Attachment,
     BusToolItem,
@@ -65,6 +65,7 @@
   import CostSummaryView from "$lib/components/CostSummaryView.svelte";
   import { parseContextMarkdown } from "$lib/utils/context-parser";
   import type { ContextSnapshot } from "$lib/types";
+  import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
   import ReleaseNotesCard from "$lib/components/ReleaseNotesCard.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
@@ -114,8 +115,8 @@
   const toggleLayoutSidebar = getContext<() => void>("toggleSidebar");
   const keybindingStore = getContext<KeybindingStore>("keybindings");
 
-  // ── Store + Middleware ──
-  const store = new SessionStore();
+  // ── Store + Middleware (singleton — must align with master's middleware.subscribeCurrent semantics) ──
+  const store = getChatSessionStore();
   const middleware = getEventMiddleware();
 
   // ── UI-only state (not in store) ──
@@ -369,9 +370,9 @@
   let shortcutHelpOpen = $state(false);
   let statusBarRef: SessionStatusBar | undefined = $state();
   let stashedInput: PromptInputSnapshot | null = $state(null);
-  let sidebarRequestedTab = $state<
-    "workspace" | "tools" | "context" | "files" | "info" | "tasks" | "preview" | null
-  >(null);
+  let sidebarRequestedTab = $state<ToolActivityPanelTab | null>(null);
+  let toolPanelActiveTab = $state<ToolActivityPanelTab>("workspace");
+  let toolPanelIndicators = $state({ context: false, files: false, tasks: false });
   let requestedPreviewPath = $state<string | null>(null);
   let requestedPreviewUrl = $state<string | null>(null);
 
@@ -678,12 +679,6 @@
     };
   });
 
-  // ── Sidebar data ──
-  let sidebarToolsCount = $derived(
-    store.timeline.some((e) => e.kind === "tool")
-      ? store.timeline.filter((e) => e.kind === "tool").length
-      : store.tools.filter((e) => e.tool_name).length,
-  );
   // ── CLI version info (reactive — ensures heroMetaFooter re-renders after async load) ──
   let cliVersionInfo = $derived(getCliVersionInfo_cached());
 
@@ -1433,8 +1428,11 @@
     return () => window.removeEventListener("ocv:runs-changed", onRunsChanged);
   });
 
-  // Start middleware + register handlers
+  // Start middleware + register handlers — keep middleware alive across /chat mounts
+  // (must match composable lifecycle: tearing down listeners breaks resume/auto-continue flows).
   onMount(() => {
+    if (middleware.isStarted) middlewareReady = true;
+
     let destroyed = false;
     (async () => {
       try {
@@ -1486,7 +1484,8 @@
         api.stopSession(store.run.id).catch(() => {});
       }
       store.unmountGuards();
-      middleware.destroy();
+      middleware.setPipeHandler(null);
+      middleware.setRunEventHandler(null);
     };
   });
 
@@ -1518,6 +1517,24 @@
       // If store already holds an active session for this run, skip redundant loadRun
       if (store.run?.id === id && store.sessionAlive) {
         dbg("effect", "skip loadRun — session already alive for", id);
+        const scrollTo = $page.url.searchParams.get("scrollTo");
+        if (scrollTo) {
+          const clean = new URL($page.url);
+          clean.searchParams.delete("scrollTo");
+          replaceState(clean, {});
+          tick().then(() => scrollToMessage(scrollTo));
+        }
+        return;
+      }
+
+      // If singleton already holds this run (cold revisit / SPA), skip redundant IPC load.
+      // Still allows scrollTo handling below.
+      if (
+        store.run?.id === id &&
+        store.phase !== "empty" &&
+        store.phase !== "loading"
+      ) {
+        dbg("effect", "skip loadRun — run already in store", id, store.phase);
         const scrollTo = $page.url.searchParams.get("scrollTo");
         if (scrollTo) {
           const clean = new URL($page.url);
@@ -3277,8 +3294,13 @@
     }
   }
 
-  function toggleSidebar() {
-    sidebarCollapsed = !sidebarCollapsed;
+  function selectToolPanelTab(tab: ToolActivityPanelTab) {
+    if (!sidebarCollapsed && toolPanelActiveTab === tab) {
+      sidebarCollapsed = true;
+      return;
+    }
+    toolPanelActiveTab = tab;
+    sidebarCollapsed = false;
   }
 
   async function scrollToTool(toolUseId: string) {
@@ -3867,8 +3889,6 @@
       turnUsages={store.turnUsages}
       activeTaskCount={store.activeBackgroundTasks.length}
       mode={store.run ? (store.useStreamSession ? "Stream" : "CLI") : ""}
-      toolsCount={sidebarCollapsed ? sidebarToolsCount : 0}
-      onToolsClick={sidebarCollapsed ? toggleSidebar : undefined}
       remoteHostName={store.remoteHostName}
       onRename={store.run ? handleRename : undefined}
       authSourceLabel={store.authSourceLabel}
@@ -3879,6 +3899,9 @@
         sidebarRequestedTab = "info";
       }}
       onExportHtml={store.run ? () => void handleExportHtml() : undefined}
+      toolPanelActiveTab={toolPanelActiveTab}
+      onToolPanelTabChange={selectToolPanelTab}
+      toolPanelIndicators={toolPanelIndicators}
     />
 
     <!-- MCP panel (floating below status bar) -->
@@ -4889,9 +4912,6 @@
               folderCwdOverride ||
               localStorage.getItem("ocv:project-cwd") ||
               ""}
-            authMode={store.authMode}
-            platformId={store.platformId ?? "anthropic"}
-            platformCredentials={settings?.platform_credentials ?? []}
             onSend={sendMessage}
             onBtwSend={handleBtwSend}
             onAgentChange={undefined}
@@ -4903,14 +4923,6 @@
             onVirtualCommand={handleVirtualCommand}
             fastModeState={store.fastModeState}
             onFastModeSwitch={handleFastModeSwitch}
-            onPlatformChange={handlePlatformChange}
-            {authOverview}
-            authSourceLabel={store.authSourceLabel}
-            authSourceCategory={store.authSourceCategory}
-            apiKeySource={store.apiKeySource}
-            onAuthModeChange={handleAuthModeChange}
-            {localProxyStatuses}
-            showAuthBadge={!welcomeVisible}
             onShortcutHelp={() => (shortcutHelpOpen = !shortcutHelpOpen)}
             availableSkills={store.availableSkills}
             {skillItems}
@@ -4955,27 +4967,36 @@
     {/if}
   </div>
 
-  <!-- Tool Activity sidebar -->
-  <ToolActivity
-    timeline={store.timeline}
-    tools={store.tools}
-    turnUsages={store.turnUsages}
-    {contextHistory}
-    persistedFiles={store.persistedFiles}
-    sessionInfo={currentSessionInfo}
-    collapsed={sidebarCollapsed}
-    onToggle={toggleSidebar}
-    onScrollToTool={scrollToTool}
-    onScrollToTurn={(anchorId) => scrollToMessage(anchorId)}
-    bind:requestedTab={sidebarRequestedTab}
-    backgroundTasks={store.taskNotifications}
-    activeBackgroundTasks={store.activeBackgroundTasks}
-    cwd={store.effectiveCwd}
-    runId={store.run?.id ?? ""}
-    isRemote={store.isRemote}
-    bind:requestedPreviewPath
-    bind:requestedPreviewUrl
-  />
+  <!-- Tool Activity sidebar (wired to unified status-bar capsule) -->
+  <div
+    class="miwarp-shell-tier-3 relative z-0 flex h-full min-h-0 shrink-0 flex-col bg-transparent"
+  >
+    <ToolActivity
+      timeline={store.timeline}
+      tools={store.tools}
+      turnUsages={store.turnUsages}
+      {contextHistory}
+      persistedFiles={store.persistedFiles}
+      sessionInfo={currentSessionInfo}
+      collapsed={sidebarCollapsed}
+      onScrollToTool={scrollToTool}
+      onScrollToTurn={(anchorId) => scrollToMessage(anchorId)}
+      bind:requestedTab={sidebarRequestedTab}
+      bind:activeTab={toolPanelActiveTab}
+      bind:panelIndicators={toolPanelIndicators}
+      backgroundTasks={store.taskNotifications}
+      activeBackgroundTasks={store.activeBackgroundTasks}
+      cwd={store.effectiveCwd}
+      runId={store.run?.id ?? ""}
+      isRemote={store.isRemote}
+      worktreePath={store.run?.worktree_path}
+      worktreeBranch={store.run?.worktree_branch}
+      creationMode={store.run?.creation_mode}
+      parentCwd={store.run?.parent_cwd}
+      bind:requestedPreviewPath
+      bind:requestedPreviewUrl
+    />
+  </div>
 
   <RewindModal
     bind:open={rewindModalOpen}

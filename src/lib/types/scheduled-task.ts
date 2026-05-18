@@ -58,6 +58,9 @@ export interface ScheduledTask {
   provider?: string;
   nextRunAt?: string;
   lastRunAt?: string;
+  notifyOnCompletion?: boolean; // Enable/disable completion notifications (default: true)
+  maxRetries?: number; // Maximum retry attempts for failed tasks (0 = no retries)
+  retryBackoffSecs?: number; // Backoff delay between retries in seconds
   createdAt: string;
   updatedAt: string;
 
@@ -111,6 +114,9 @@ export interface ScheduledTaskInput {
   permissionMode?: string;
   model?: string;
   provider?: string;
+  notifyOnCompletion?: boolean; // Enable/disable completion notifications (default: true)
+  maxRetries?: number; // Maximum retry attempts for failed tasks (0 = no retries)
+  retryBackoffSecs?: number; // Backoff delay between retries in seconds
   // New fields
   dependencies?: TaskDependency[];
   triggerOnEvent?: TaskEventTrigger;
@@ -131,6 +137,9 @@ export interface ScheduledTaskPatch {
   model?: string | null;
   provider?: string | null;
   // New fields
+  notifyOnCompletion?: boolean | null;
+  maxRetries?: number | null;
+  retryBackoffSecs?: number | null;
   dependencies?: TaskDependency[] | null;
   triggerOnEvent?: TaskEventTrigger | null;
   retryConfig?: RetryConfig | null;

@@ -115,9 +115,9 @@
     const rect = buttonEl.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
     if (spaceBelow < 300) {
-      dropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:50;`;
+      dropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:99;`;
     } else {
-      dropdownStyle = `position:fixed; top:${rect.bottom + 4}px; left:${rect.left}px; z-index:50;`;
+      dropdownStyle = `position:fixed; top:${rect.bottom + 4}px; left:${rect.left}px; z-index:99;`;
     }
   }
 

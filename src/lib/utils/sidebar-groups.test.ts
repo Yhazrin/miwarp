@@ -1,13 +1,26 @@
 import { describe, it, expect } from "vitest";
-import type { TaskRun } from "$lib/types";
+import type { TaskRun, SessionFolder } from "$lib/types";
 import {
   buildProjectFolders,
   autoExpandForRun,
   expandForProjectChange,
   normalizeCwd,
+  buildEnrichedProjectFolders,
+  logicalFolderParentCwd,
 } from "./sidebar-groups";
 
 // ── Test helpers ──
+
+function makeSessionFolder(overrides: Partial<SessionFolder> = {}): SessionFolder {
+  return {
+    id: "folder-1",
+    name: "Logical",
+    workspaceId: "/project",
+    createdAt: "2024-01-01T00:00:00Z",
+    updatedAt: "2024-01-01T00:00:00Z",
+    ...overrides,
+  };
+}
 
 function makeRun(overrides: Partial<TaskRun> = {}): TaskRun {
   return {
@@ -368,5 +381,71 @@ describe("expandForProjectChange", () => {
     const folders = buildProjectFolders(runs, NO_FAVS, NO_PINS);
     const uncatFolder = folders.find((f) => f.isUncategorized);
     expect(uncatFolder?.folderKey).toBe("uncategorized");
+  });
+});
+
+describe("logicalFolderParentCwd", () => {
+  it("uses_normalized_workspace_path", () => {
+    expect(logicalFolderParentCwd(makeSessionFolder({ workspaceId: "/foo/bar/" }))).toBe(
+      "/foo/bar",
+    );
+  });
+
+  it("maps_default_and_empty_to_uncategorized", () => {
+    expect(logicalFolderParentCwd(makeSessionFolder({ workspaceId: "" }))).toBe("");
+    expect(logicalFolderParentCwd(makeSessionFolder({ workspaceId: "default" }))).toBe("");
+    expect(logicalFolderParentCwd(makeSessionFolder({ workspaceId: "DEFAULT" }))).toBe("");
+  });
+});
+
+describe("buildEnrichedProjectFolders", () => {
+  it("empty_logical_folder_stays_under_declared_workspace", () => {
+    const runs: TaskRun[] = [];
+    const sessionFolders: SessionFolder[] = [
+      makeSessionFolder({
+        id: "folder-empty",
+        name: "Empty bin",
+        workspaceId: "/my/repo",
+      }),
+    ];
+    const enriched = buildEnrichedProjectFolders(runs, sessionFolders, NO_FAVS, ["/my/repo"], []);
+    const proj = enriched.find((f) => f.cwd === "/my/repo");
+    expect(proj).toBeDefined();
+    expect(proj?.subFolders.some((s) => s.folderId === "folder-empty")).toBe(true);
+    expect(
+      enriched.some(
+        (f) => f.isUncategorized && f.subFolders.some((s) => s.folderId === "folder-empty"),
+      ),
+    ).toBe(false);
+  });
+
+  it("infers_parent_from_runs_when_workspace_is_placeholder", () => {
+    const runs = [
+      makeRun({
+        id: "r1",
+        cwd: "/proj/z",
+        folder_id: "fid",
+      }),
+    ];
+    const sessionFolders = [makeSessionFolder({ id: "fid", workspaceId: "default" })];
+    const enriched = buildEnrichedProjectFolders(runs, sessionFolders, NO_FAVS, NO_PINS);
+    const proj = enriched.find((f) => f.cwd === "/proj/z");
+    expect(proj?.subFolders.some((s) => s.folderId === "fid")).toBe(true);
+  });
+
+  it("declared_workspace_wins_over_majority_run_cwd", () => {
+    const runs = [makeRun({ id: "r1", cwd: "/other", folder_id: "fid" })];
+    const sessionFolders = [makeSessionFolder({ id: "fid", workspaceId: "/home/proj" })];
+    const enriched = buildEnrichedProjectFolders(
+      runs,
+      sessionFolders,
+      NO_FAVS,
+      ["/home/proj", "/other"],
+      [],
+    );
+    expect(
+      enriched.find((f) => f.cwd === "/home/proj")?.subFolders.some((s) => s.folderId === "fid"),
+    ).toBe(true);
+    expect(enriched.find((f) => f.cwd === "/other")?.subFolders ?? []).toHaveLength(0);
   });
 });

@@ -34,7 +34,11 @@
         const info = await checkForUpdates();
         dbg("update-banner", "check result", info);
         if (info.error) {
-          dbgWarn("update-banner", "check error:", info.error);
+          if (/\brate\s*limit\b/i.test(info.error)) {
+            dbg("update-banner", "check skipped: GitHub rate limited (cached)");
+          } else {
+            dbgWarn("update-banner", "check error:", info.error);
+          }
         }
         if (info.hasUpdate && !isDismissed(info.latestVersion)) {
           hasUpdate = true;

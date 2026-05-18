@@ -9,6 +9,7 @@
   import { formatTokenCount, formatDuration, formatCost } from "$lib/utils/format";
   import { getColor, getIcon, computeContextDelta } from "$lib/utils/context-parser";
   import { t } from "$lib/i18n/index.svelte";
+  import { fmtTime } from "$lib/i18n/format";
 
   let {
     history = [],
@@ -91,15 +92,6 @@
     return "text-muted-foreground/50";
   }
 
-  function formatTime(ts: string): string {
-    try {
-      const d = new Date(ts);
-      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    } catch {
-      return "";
-    }
-  }
-
   // Latest turn usage (for showing deltas in resource summary)
   let latestTurnUsage = $derived(turnUsages.length > 0 ? turnUsages[turnUsages.length - 1] : null);
 
@@ -141,7 +133,7 @@
   {#if !latest && !hasResourceData}
     <!-- Empty state -->
     <div
-      class="flex items-center justify-center h-32 text-xs text-muted-foreground/50 px-4 text-center"
+      class="flex flex-col items-center justify-center py-4 px-4 text-center text-[11px] text-muted-foreground/45"
     >
       {t("contextPanel_noData")}
     </div>
@@ -351,7 +343,7 @@
                   {t("contextPanel_turn", { index: String(entry.turnIndex) })}
                 </span>
                 {#if entry.ts}
-                  <span class="text-muted-foreground/50">{formatTime(entry.ts)}</span>
+                  <span class="text-muted-foreground/50">{fmtTime(entry.ts)}</span>
                 {/if}
                 {#if entry.snap}
                   <span class="ml-auto tabular-nums text-foreground/70"
@@ -375,7 +367,7 @@
               {/if}
             </button>
             {#if isExpanded}
-              <div class="px-4 py-1.5 bg-muted/20 border-b border-border/20">
+              <div class="px-4 py-1.5 bg-transparent border-b border-border/20">
                 {#if entry.snap}
                   {#each entry.snap.data.categories as cat}
                     <div class="flex items-center gap-1.5 text-[10px] py-0.5">

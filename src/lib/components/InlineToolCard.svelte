@@ -29,6 +29,8 @@
   import { viewModeStore } from "$lib/stores/view-mode-store.svelte";
   import PhaseIndicator from "$lib/components/PhaseIndicator.svelte";
   import { detectPhase } from "$lib/utils/phase-detection";
+  import type { ProcessVisibility } from "$lib/utils/process-visibility";
+  import { normalizeProcessVisibility } from "$lib/utils/process-visibility";
 
   let {
     tool,
@@ -45,6 +47,7 @@
     showPermissionInPanel,
     onPreviewFile,
     isLastTool,
+    processVisibility: processVisibilityProp,
   }: {
     tool: BusToolItem;
     subTimeline?: TimelineEntry[];
@@ -77,9 +80,11 @@
     onPreviewFile?: (path: string) => void;
     /** Whether this is the last tool in the timeline (for reviewing phase detection). */
     isLastTool?: boolean;
+    /** User setting: transcript density — defaults to developer. */
+    processVisibility?: ProcessVisibility | string;
   } = $props();
 
-  // Look up the task notification for this specific Task tool
+  let processVisibility = $derived(normalizeProcessVisibility(processVisibilityProp));
   let taskNotification = $derived.by(() => {
     if (tool.tool_name !== "Task" || !taskNotifications) return undefined;
     for (const n of taskNotifications.values()) {
@@ -187,13 +192,45 @@
       Object.keys(tool.input).length > 0 &&
       (tool as Record<string, unknown>)._inputJsonAccum != null,
   );
+
+  // Delayed expansion: wait 300ms before auto-expanding on streaming input
+  // This allows the skeleton placeholder to render first, preventing height jitter
+  let pendingExpand = $state(false);
+  let expandTimer: ReturnType<typeof setTimeout> | null = null;
+
+  $effect(() => {
+    const streaming = isInputStreaming;
+    const userWantsExpand = userExpanded !== null;
+
+    if (streaming && !userWantsExpand) {
+      // Start delay timer
+      if (!expandTimer) {
+        expandTimer = setTimeout(() => {
+          pendingExpand = true;
+          expandTimer = null;
+        }, 300);
+      }
+    } else {
+      // Cancel pending expansion
+      if (expandTimer) {
+        clearTimeout(expandTimer);
+        expandTimer = null;
+      }
+      if (!streaming) {
+        pendingExpand = false;
+      }
+    }
+  });
+
   let renderLevel = $derived(getToolRenderLevel(tool.tool_name, tool.status));
   let isPlan = $derived(isPlanFilePath(String(tool.input?.file_path ?? tool.input?.path ?? "")));
   let expanded = $derived(
     userExpanded ??
-      (viewModeStore.isVerbose
+      (viewModeStore.isVerbose || processVisibility === "expert"
         ? true
-        : renderLevel === 2 || (isPlan && latestPlanTool) || isInputStreaming),
+        : processVisibility === "guided"
+          ? false
+          : renderLevel === 2 || (isPlan && latestPlanTool) || pendingExpand),
   );
 
   let hasSubTimeline = $derived((subTimeline?.length ?? 0) > 0);
@@ -626,9 +663,9 @@
 <!-- Inline tool card: three-level rendering -->
 {#if shouldShowInMode}
   <div
-    class="motion-slide-up {renderLevel === 1 ? 'mb-0.5' : 'mb-2'} {tool.status === 'running'
-      ? 'motion-sweep'
-      : ''} {tool.status === 'error' ||
+    class="{processVisibility === 'guided' ? '' : 'motion-slide-up'} {renderLevel === 1
+      ? 'mb-0.5'
+      : 'mb-2'} {tool.status === 'running' ? 'motion-sweep' : ''} {tool.status === 'error' ||
     tool.status === 'denied' ||
     tool.status === 'permission_denied'
       ? 'motion-status-error'
