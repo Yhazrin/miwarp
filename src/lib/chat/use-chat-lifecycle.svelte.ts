@@ -668,6 +668,8 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
       currentPhase: store.phase,
       currentRunId: store.run?.id,
       timelineLen: store.timeline.length,
+      resumeInFlight: store.resumeInFlight,
+      resuming: sessionLifecycle.resuming.get(),
     });
 
     // Handle ?resume= first (must clean URL before loadRun)
@@ -694,12 +696,12 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
     // Skip if URL hasn't changed
     const key = id;
     if (key === _prevRunUrl) {
-      console.log("[DEBUG loadRun] skipping - URL unchanged, id=", id);
+      console.log("[DEBUG loadRun] skipping - URL unchanged, id=", id, "prev=" + _prevRunUrl);
       return;
     }
     _prevRunUrl = key;
 
-    console.log("[DEBUG loadRun] new run ID detected, id=", id, "prev=" + _prevRunUrl);
+    console.log("[DEBUG loadRun] new run ID detected, id=", id);
 
     middleware.subscribeCurrent(id, store);
 
@@ -735,6 +737,7 @@ export function useChatLifecycle(options: UseChatLifecycleOptions) {
       timelineLen: store.timeline.length,
       toolsLen: store.tools.length,
       turnUsagesLen: store.turnUsages.length,
+      sessionAlive: store.sessionAlive,
     });
 
     if (

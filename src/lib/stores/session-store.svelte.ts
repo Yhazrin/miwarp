@@ -1499,7 +1499,14 @@ export class SessionStore implements SessionEventSink {
   ): Promise<void> {
     const gen = ++this._loadGen;
     const loadStart = performance.now();
-    console.log("[DEBUG store.loadRun] START id=", id, "gen=", gen);
+    console.log(
+      "[DEBUG store.loadRun] START id=",
+      id,
+      "gen=",
+      gen,
+      "currentLoadGen=",
+      this._loadGen,
+    );
     dbg("store", "loadRun id=", id, "gen=", gen);
 
     if (!id) {
@@ -1512,6 +1519,7 @@ export class SessionStore implements SessionEventSink {
     this._setPhase("loading");
     this.run = null;
     this._clearContentState();
+    console.log("[DEBUG store.loadRun] state reset done, phase=", this.phase, "gen=", gen);
 
     if (xtermRef) {
       xtermRef.clear();

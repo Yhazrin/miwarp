@@ -165,15 +165,27 @@ export class EventMiddleware {
 
   /** Subscribe a store for a run_id. Clears previous subscription (single-session mode). */
   subscribeCurrent(runId: string, store: SessionEventSink): void {
+    console.log("[DEBUG middleware] subscribeCurrent called", {
+      runId,
+      currentRunId: this._currentRunId,
+      hasStore: !!this._currentStore,
+    });
     // Idempotent: skip if already subscribed for the same run + store.
     // Re-subscribing for the same pair would clear the batch buffer,
     // dropping in-flight events (e.g. RunState(idle) after resume).
     if (runId && this._currentRunId === runId && this._currentStore === store) {
+      console.log(
+        "[DEBUG middleware] subscribeCurrent skipped - already subscribed for same run+store",
+        { runId },
+      );
       return;
     }
 
     // Clear old subscription (different run or different store)
     if (this._currentRunId) {
+      console.log("[DEBUG middleware] subscribeCurrent unsubscribing old run", {
+        oldRunId: this._currentRunId,
+      });
       getTransport().unsubscribeRun(this._currentRunId);
       this._subscriptions.delete(this._currentRunId);
       this._batchBuffer.delete(this._currentRunId);
@@ -182,10 +194,12 @@ export class EventMiddleware {
       this._currentRunId = runId;
       this._currentStore = store;
       this._subscriptions.set(runId, store);
+      console.log("[DEBUG middleware] subscribeCurrent set new subscription", { runId });
     } else {
       // Empty runId = clear all (navigating to new chat)
       this._currentRunId = null;
       this._currentStore = null;
+      console.log("[DEBUG middleware] subscribeCurrent cleared (empty runId)");
     }
     dbg("middleware", "subscribeCurrent", runId || "(cleared)");
   }
