@@ -541,10 +541,19 @@
     () => store.run?.id,
   );
 
-  // Sync visual states whenever bursts change
+  // Sync visual states when burst *content* changes — not on every new Map reference.
+  let toolBurstSig = $derived.by(() => {
+    const parts: string[] = [];
+    for (const [idx, burst] of toolBursts) {
+      const statuses = burst.tools.map((tool) => tool.status).join(",");
+      parts.push(`${idx}:${burst.key}:${burst.stats.running}:${burst.stats.total}:${statuses}`);
+    }
+    return parts.join("|");
+  });
+
   $effect(() => {
-    const _ = toolBursts; // track dependency
-    burstCollapse.syncStates();
+    const _ = toolBurstSig;
+    untrack(() => burstCollapse.syncStates());
   });
 
   // Reset on run switch — only when runId actually changes
@@ -1663,6 +1672,11 @@
     const dragLeaveUnlisten = chatTransport.listen("tauri://drag-leave", () => {
       pageDragActive = false;
     });
+    const clearPageDrag = () => {
+      pageDragActive = false;
+    };
+    window.addEventListener("dragend", clearPageDrag);
+    window.addEventListener("drop", clearPageDrag);
     const dragDropUnlisten = chatTransport.listen<{ paths: string[] }>(
       "tauri://drag-drop",
       handleTauriDrop,
@@ -1686,6 +1700,8 @@
       dragEnterUnlisten.then((fn) => fn());
       dragLeaveUnlisten.then((fn) => fn());
       dragDropUnlisten.then((fn) => fn());
+      window.removeEventListener("dragend", clearPageDrag);
+      window.removeEventListener("drop", clearPageDrag);
       // Clean up verbose retry timer
       if (verboseRetryTimer) clearTimeout(verboseRetryTimer);
       // Clean up progressive rendering timer
@@ -3917,6 +3933,7 @@
   {#if pageDragActive || dragProcessing}
     <div
       class="absolute inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-[2px]"
+      class:pointer-events-none={pageDragActive && !dragProcessing}
     >
       <div
         class="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/50 bg-primary/5 px-12 py-8"

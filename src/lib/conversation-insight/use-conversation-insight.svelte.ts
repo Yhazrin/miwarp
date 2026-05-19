@@ -53,9 +53,12 @@ export function useConversationInsight(
     insightCardOpen = false;
   }
 
+  let prevInsightRunId: string | undefined = undefined;
+
   $effect(() => {
     const runId = options.getRun()?.id;
-    void runId;
+    if (runId === prevInsightRunId) return;
+    prevInsightRunId = runId;
     untrack(resetInsight);
   });
 

@@ -27,3 +27,4 @@ export {
 export type { CliVersionInfo } from "./cli-info.svelte";
 export { PromptInputStore } from "./prompt-input-store.svelte";
 export type { PendingAttachment, PastedBlock, PathRef } from "./prompt-input-store.svelte";
+export { workflowStore } from "./workflow-store.svelte";

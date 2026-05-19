@@ -11,9 +11,7 @@
  * - collapsed:   only header visible, tool cards unmounted
  */
 
-import { tick } from "svelte";
 import type { ToolBurst } from "$lib/utils/tool-rendering";
-import { dbg, dbgWarn } from "$lib/utils/debug";
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -182,8 +180,9 @@ export function useToolBurstCollapse(
       switch (currentState) {
         case "expanded":
           if (allDone) {
-            // Start settling timer
-            startSettlingTimer(key);
+            if (!settlingTimers.has(key)) {
+              startSettlingTimer(key);
+            }
             nextStates.set(key, "settling");
           } else {
             nextStates.set(key, "expanded");
@@ -219,13 +218,24 @@ export function useToolBurstCollapse(
       }
     }
 
-    visualStates = nextStates;
+    let changed = nextStates.size !== currentStates.size;
+    if (!changed) {
+      for (const [key, state] of nextStates) {
+        if (currentStates.get(key) !== state) {
+          changed = true;
+          break;
+        }
+      }
+    }
+    if (changed) {
+      visualStates = nextStates;
+    }
   }
 
   // ── Timer management ──────────────────────────────────────────────────────
 
   function startSettlingTimer(key: string) {
-    cancelTimersForKey(key);
+    if (settlingTimers.has(key)) return;
     const timer = setTimeout(() => {
       if (visualStates.get(key) === "settling") {
         startCollapsingTimer(key);
