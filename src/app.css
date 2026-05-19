@@ -1036,3 +1036,40 @@ pre,
   overflow-x: auto;
   overscroll-behavior: contain;
 }
+
+/* ── Tool Burst Collapse Animation ─────────────────────────────────────────────
+   Smoothly animate tool cards when a burst collapses into its header.
+   State machine: expanded → settling → collapsing → collapsed
+   During collapsing, tool cards fade/slide out before being removed from DOM.
+*/
+
+.collapsing-burst-tool {
+  animation: burst-collapse-out 260ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+@keyframes burst-collapse-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 200px;
+  }
+  60% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px);
+    max-height: 0;
+  }
+}
+
+/* Reduced motion: skip animation, go straight to hidden */
+@media (prefers-reduced-motion: reduce) {
+  .collapsing-burst-tool {
+    animation: none;
+    opacity: 0;
+    max-height: 0;
+  }
+}

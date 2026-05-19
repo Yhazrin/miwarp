@@ -31,6 +31,7 @@
   } from "$lib/types";
   import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
   import { isPlanFilePath, planFileName, extractPlanContent } from "$lib/utils/tool-rendering";
+  import { useToolBurstCollapse } from "$lib/chat/use-tool-burst-collapse.svelte";
   import {
     computeTimelinePresentation,
     getInitialRenderLimit,
@@ -531,69 +532,33 @@
     }
   });
 
-  // ── Tool burst groups (excludes Task — handled by BatchProgressBar) ──
+  // ── Tool burst visual state management ─────────────────────────────────
+  // Replaces pure $derived autoCollapse with staged transitions:
+  // expanded → settling (400ms) → collapsing (260ms) → collapsed
 
-  // Layer 1: Auto-collapse — completed + no interaction needed → collapsed (derived, pure)
-  let autoCollapsed = $derived.by(() => {
-    const keys = new Set<string>();
-    for (const [, burst] of toolBursts) {
-      const needsInteraction = burst.tools.some(
-        (t) => t.status === "permission_prompt" || t.status === "ask_pending",
-      );
-      if (burst.stats.running === 0 && burst.stats.total > 0 && !needsInteraction) {
-        keys.add(burst.key);
-      }
-    }
-    return keys;
+  let burstCollapse = useToolBurstCollapse(
+    () => toolBursts,
+    () => store.run?.id,
+  );
+
+  // Sync visual states whenever bursts change
+  $effect(() => {
+    const _ = toolBursts; // track dependency
+    burstCollapse.syncStates();
   });
 
-  // Layer 2: Manual overrides — user explicitly toggled (state, survives re-renders)
-  // true = user forced expand, false = user forced collapse, absent = follow auto
-  let manualOverrides = $state(new Map<string, boolean>());
-
-  function toggleBurst(key: string) {
-    const next = new Map(manualOverrides);
-    const currentlyCollapsed = effectiveCollapsed.has(key);
-    next.set(key, currentlyCollapsed); // if collapsed → override to expanded (true), vice versa
-    manualOverrides = next;
-  }
-
-  // Layer 3: Effective collapsed set — merge auto + manual (derived)
-  // Priority: needsInteraction (force expand) > manual > auto
-  let effectiveCollapsed = $derived.by(() => {
-    const result = new Set<string>();
-    for (const [, burst] of toolBursts) {
-      // Highest priority: interaction needed → always expand, ignore everything else
-      const needsInteraction = burst.tools.some(
-        (t) => t.status === "permission_prompt" || t.status === "ask_pending",
-      );
-      if (needsInteraction) continue;
-
-      const manual = manualOverrides.get(burst.key);
-      if (manual === true) continue; // user forced expand → skip
-      if (manual === false) {
-        // user forced collapse → add
-        result.add(burst.key);
-        continue;
-      }
-      if (autoCollapsed.has(burst.key)) {
-        // no override → follow auto
-        result.add(burst.key);
-      }
-    }
-    return result;
+  // Reset on run switch
+  $effect(() => {
+    const runId = store.run?.id;
+    if (!runId) return;
+    burstCollapse.reset();
   });
 
-  // Indices hidden by collapsed bursts (for skipping render)
-  let burstHiddenIndices = $derived.by(() => {
-    const hidden = new Set<number>();
-    for (const [, burst] of toolBursts) {
-      if (effectiveCollapsed.has(burst.key)) {
-        for (let j = burst.startIndex; j <= burst.endIndex; j++) hidden.add(j);
-      }
-    }
-    return hidden;
-  });
+  // Convenience refs to helper state
+  let effectiveCollapsed = burstCollapse.effectiveCollapsed;
+  let collapsingIndices = burstCollapse.collapsingIndices;
+  let collapsedIndices = burstCollapse.collapsedIndices;
+  let toggleBurst = burstCollapse.toggleBurst;
 
   // ── Auto-context tracking ──
   // Map<runId, snapshots> — persists across run switches within the session
@@ -782,12 +747,10 @@
    * Caller must pass an index in the visibleTimeline namespace, not filteredTimeline.
    */
   async function ensureBurstExpandedFor(visibleIdx: number) {
-    if (!burstHiddenIndices.has(visibleIdx)) return;
+    if (!collapsedIndices.has(visibleIdx)) return;
     for (const [, burst] of toolBursts) {
       if (visibleIdx >= burst.startIndex && visibleIdx <= burst.endIndex) {
-        const next = new Map(manualOverrides);
-        next.set(burst.key, true);
-        manualOverrides = next;
+        burstCollapse.toggleBurst(burst.key);
         await tick();
         return;
       }
@@ -912,9 +875,7 @@
           if (disabledNames.length > 0) {
             const disabledSet = new Set(disabledNames);
             const patched = store.mcpServers.map((s) =>
-              disabledSet.has(s.name) && s.status !== "disabled"
-                ? { ...s, status: "disabled" }
-                : s,
+              disabledSet.has(s.name) && s.status !== "disabled" ? { ...s, status: "disabled" } : s,
             );
             if (patched.some((s, i) => s !== store.mcpServers[i])) {
               store.updateMcpServers(patched);
@@ -1007,10 +968,10 @@
     const vt = visibleTimeline;
     for (let i = 0; i < vt.length; i++) {
       if (vt[i].kind !== "tool") continue;
-      if (burstHiddenIndices.has(i)) continue;
+      if (collapsedIndices.has(i)) continue;
       // Look back for the previous visible non-tool entry
       for (let j = i - 1; j >= 0; j--) {
-        if (burstHiddenIndices.has(j)) continue;
+        if (collapsedIndices.has(j)) continue;
         if (vt[j].kind === "tool") continue;
         if (vt[j].kind === "user") starts.add(i);
         break;
@@ -4338,7 +4299,7 @@
                   <div bind:this={topSentinel} aria-hidden="true" class="h-px w-full"></div>
                 {/if}
                 {#each visibleTimeline as entry, i (entry.id)}
-                  {#if !(burstHiddenIndices.has(i) && !toolBursts.has(i))}
+                  {#if !(collapsedIndices.has(i) && !toolBursts.has(i))}
                     <div
                       id="msg-{entry.anchorId}"
                       data-entry-id={entry.id}
@@ -4439,7 +4400,7 @@
                         {#if claudeTurnStarts.has(i)}
                           <div class="pt-3"></div>
                         {/if}
-                        {#if !burstHiddenIndices.has(i)}
+                        {#if !collapsedIndices.has(i)}
                           {#if processVisibility === "output" && !shouldMountFullToolCardInOutputMode(entry.tool)}
                             <div
                               id="tool-{entry.tool.tool_use_id}"
@@ -4453,7 +4414,11 @@
                               </div>
                             </div>
                           {:else}
-                            <div class="w-full py-1" id="tool-{entry.tool.tool_use_id}">
+                            <div
+                              class="w-full py-1"
+                              id="tool-{entry.tool.tool_use_id}"
+                              class:collapsing-burst-tool={collapsingIndices.has(i)}
+                            >
                               <div class="chat-content-width">
                                 <InlineToolCard
                                   tool={entry.tool}
