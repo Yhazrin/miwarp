@@ -1,17 +1,18 @@
 <script lang="ts">
   /**
-   * Git + worktree 可视化：会话内 Git 状态、同款 worktree 列表、Project Root → 当前 worktree 的链路。
-   * 设计沿袭历史 GitWorktreePanel（会话侧栏上下文），改用 i18n 与稍加强化的排版。
+   * Git / Worktree panel — high-density commit timeline for the active worktree.
+   * Optimized for narrow right-side panel with compact rows and minimal vertical space.
    */
+  import type { GitTimelineEntry, GitTimelineResponse } from "$lib/types";
   import type { WorktreeEntry } from "$lib/api";
   import {
     autoCommit as apiAutoCommit,
     createPullRequest as apiCreatePr,
-    getGitBranch,
-    getGitStatus,
-    getGitSummary,
+    getGitTimeline,
     listWorktrees,
   } from "$lib/api";
+  import GitWorktreeTimeline from "$lib/components/git/GitWorktreeTimeline.svelte";
+  import GitBranchPill from "$lib/components/git/GitBranchPill.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { showToast } from "$lib/stores/toast-store.svelte";
 
@@ -21,6 +22,7 @@
     parentCwd?: string | null;
     worktreeBranch?: string | null;
     creationMode?: "single" | "worktree" | string | null;
+    onViewChanges?: () => void;
   }
 
   let {
@@ -29,101 +31,114 @@
     parentCwd = null,
     worktreeBranch = null,
     creationMode = null,
+    onViewChanges,
   }: Props = $props();
 
-  interface GitState {
+  interface PanelState {
+    isRepo: boolean;
     branch: string;
+    isDetached: boolean;
     isClean: boolean;
     changedFiles: number;
+    timeline: GitTimelineEntry[];
     worktrees: WorktreeEntry[];
     loading: boolean;
+    error: string | null;
   }
 
-  let gitState = $state<GitState>({
+  let panelState = $state<PanelState>({
+    isRepo: true,
     branch: "",
+    isDetached: false,
     isClean: true,
     changedFiles: 0,
+    timeline: [],
     worktrees: [],
     loading: false,
+    error: null,
   });
 
   const effectiveCwd = $derived((worktreePath || cwd || "").trim());
   const listAnchor = $derived((parentCwd || cwd || "").trim());
   const isWorktreeSession = $derived(creationMode === "worktree");
+  const displayedBranch = $derived(
+    panelState.branch || worktreeBranch?.trim() || "",
+  );
+  const isDetached = $derived(panelState.isDetached);
 
   let showWorktreeList = $state(false);
-  let commitMessage = $state("");
-  let commitInputOpen = $state(false);
   let prBusy = $state(false);
   let commitBusy = $state(false);
+  let commitMessage = $state("");
+  let showCommitInput = $state(false);
 
-  function pathTail(p: string): string {
-    if (!p) return "";
-    const norm = p.replace(/\\/g, "/");
-    const segs = norm.split("/").filter(Boolean);
-    return segs[segs.length - 1] ?? p;
-  }
+  let loadGen = 0;
+  let _lastLoadKey = "";
 
-  const displayedBranch = $derived(gitState.branch || worktreeBranch?.trim() || "");
-
-  const cardClass =
-    "rounded-xl border border-border/35 bg-transparent overflow-hidden backdrop-blur-[2px]";
-  const cardHdClass = "flex items-center gap-2 px-3 py-2 border-b border-border/25";
-
-  async function loadGitState(path: string) {
+  async function loadPanel(path: string, listPath: string) {
     if (!path) return;
-    gitState = { ...gitState, loading: true };
+    const gen = ++loadGen;
+    panelState = { ...panelState, loading: true, error: null };
+
     try {
-      const [branch, summary, statusOutput, worktrees] = await Promise.all([
-        getGitBranch(path).catch(() => ""),
-        getGitSummary(path).catch(() => null),
-        getGitStatus(path).catch(() => ""),
-        listAnchor
-          ? listWorktrees(listAnchor).catch(() => [] as WorktreeEntry[])
-          : Promise.resolve([]),
+      const [timelineRes, worktrees] = await Promise.all([
+        getGitTimeline(path, 12).catch((e) => {
+          throw e instanceof Error ? e : new Error(String(e));
+        }),
+        listPath
+          ? listWorktrees(listPath).catch(() => [] as WorktreeEntry[])
+          : Promise.resolve([] as WorktreeEntry[]),
       ]);
 
-      const isClean = !statusOutput.trim();
-      const changedFiles = summary?.total_files ?? 0;
+      if (gen !== loadGen) return;
 
-      gitState = {
-        branch,
-        isClean,
-        changedFiles,
+      panelState = {
+        isRepo: timelineRes.is_repo,
+        branch: timelineRes.branch,
+        isDetached: timelineRes.is_detached,
+        isClean: timelineRes.is_clean,
+        changedFiles: timelineRes.changed_files,
+        timeline: timelineRes.entries,
         worktrees,
         loading: false,
+        error: null,
       };
-    } catch {
-      gitState = { ...gitState, loading: false };
+    } catch (e) {
+      if (gen !== loadGen) return;
+      panelState = {
+        ...panelState,
+        loading: false,
+        error: e instanceof Error ? e.message : String(e),
+      };
     }
   }
 
-  let _lastLoadKey = "";
+  function refresh() {
+    if (effectiveCwd) void loadPanel(effectiveCwd, listAnchor);
+  }
 
-  /** effective cwd / 列表锚点 / worktree 元数据变化时都刷新（避免只靠 cwd） */
   $effect(() => {
     const eff = effectiveCwd;
     const key = `${eff}|${listAnchor}|${String(creationMode ?? "")}|${worktreePath ?? ""}`;
     if (!eff || key === _lastLoadKey) return;
     _lastLoadKey = key;
-    loadGitState(eff);
+    void loadPanel(eff, listAnchor);
   });
 
   async function handleAutoCommit() {
     if (!effectiveCwd || commitBusy) return;
-    const msg =
-      commitMessage.trim() || `feat: update from MiWarp (${new Date().toISOString().slice(0, 10)})`;
+    const msg = commitMessage.trim() || `feat: update from MiWarp (${new Date().toISOString().slice(0, 10)})`;
     commitBusy = true;
     try {
       const res = await apiAutoCommit(effectiveCwd, msg);
       commitMessage = "";
-      commitInputOpen = false;
+      showCommitInput = false;
       if (res.committed) {
         showToast(t("gitWorktree_commit_ok"), "success");
       } else {
         showToast(res.message || t("gitWorktree_commit_skip"), "info");
       }
-      await loadGitState(effectiveCwd);
+      await loadPanel(effectiveCwd, listAnchor);
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), "error");
     } finally {
@@ -132,9 +147,9 @@
   }
 
   async function handleCreatePr() {
-    const br = displayedBranch || gitState.branch;
+    const br = displayedBranch || panelState.branch;
     if (!effectiveCwd || !br || prBusy) return;
-    if (br.includes("(detached")) {
+    if (isDetached) {
       showToast(t("gitWorktree_pr_detached"), "error");
       return;
     }
@@ -145,19 +160,34 @@
       if (url.trim() && typeof window !== "undefined" && /^https?:\/\//i.test(url.trim())) {
         window.open(url.trim(), "_blank", "noopener,noreferrer");
       }
+      await loadPanel(effectiveCwd, listAnchor);
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), "error");
     } finally {
       prBusy = false;
     }
   }
+
+  const statusText = $derived.by(() => {
+    if (panelState.loading) return t("gitWorktree_loading");
+    if (!panelState.isRepo) return t("gitWorktree_not_repo");
+    if (panelState.isClean) return t("gitWorktree_summary_clean");
+    return t("gitWorktree_summary_dirty", { count: String(panelState.changedFiles) });
+  });
+
+  const statusClass = $derived.by(() => {
+    if (panelState.loading || !panelState.isRepo) return "text-muted-foreground";
+    return panelState.isClean ? "text-emerald-500" : "text-amber-500";
+  });
 </script>
 
 {#if effectiveCwd}
-  <div class="space-y-2.5">
-    <!-- Git -->
-    <div class={cardClass}>
-      <div class={cardHdClass}>
+  <div class="space-y-1.5">
+    <!-- Compact header with flexible layout -->
+    <div class="px-3 py-2 border-b border-border/30">
+      <!-- Row 1: icon + heading + branch + WT badge + refresh -->
+      <div class="flex items-center gap-2">
+        <!-- Git icon -->
         <svg
           class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
           viewBox="0 0 24 24"
@@ -173,151 +203,156 @@
           <circle cx="6" cy="18" r="3" />
           <path d="M18 9a9 9 0 0 1-9 9" />
         </svg>
-        <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+
+        <!-- Heading -->
+        <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">
           {t("gitWorktree_heading")}
         </span>
+
+        <!-- Branch pill -->
+        {#if displayedBranch && panelState.isRepo}
+          <GitBranchPill name={displayedBranch} variant="current" maxWidth="5rem" />
+        {/if}
+
+        <!-- Worktree badge -->
         {#if isWorktreeSession}
-          <span
-            class="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-medium"
-          >
-            {t("gitWorktree_badge_worktree")}
+          <span class="text-[9px] px-1 py-0.5 rounded bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 font-medium shrink-0">
+            WT
           </span>
         {/if}
+
+        <!-- Refresh button -->
+        <button
+          type="button"
+          class="ml-auto rounded p-0.5 text-muted-foreground/60 hover:text-foreground hover:bg-accent/40 transition-colors disabled:opacity-40 shrink-0"
+          title={t("gitWorktree_refresh")}
+          disabled={panelState.loading}
+          onclick={refresh}
+        >
+          <svg
+            class="h-3 w-3 {panelState.loading ? 'animate-spin' : ''}"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M21 12a9 9 0 0 0-9-9 3 3 0 0 0-2.83 2" />
+            <path d="M3 12a9 9 0 0 0 9 9 3 3 0 0 0 2.83-2" />
+            <path d="M12 3v4" />
+            <path d="M12 21v-4" />
+          </svg>
+        </button>
       </div>
 
-      <div class="px-3 py-2 space-y-1.5">
-        <div class="flex items-center gap-2">
-          <span class="text-[11px] text-muted-foreground w-14 shrink-0"
-            >{t("gitWorktree_branch")}</span
-          >
-          <span class="flex items-center gap-1.5 text-[11px] font-mono text-foreground min-w-0">
-            {#if isWorktreeSession}
-              <svg
-                class="h-3 w-3 text-emerald-500 shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                aria-hidden="true"
-              >
-                <line x1="6" y1="3" x2="6" y2="15" />
-                <circle cx="18" cy="6" r="3" />
-                <circle cx="6" cy="18" r="3" />
-                <path d="M18 9a9 9 0 0 1-9 9" />
-              </svg>
-            {/if}
-            <span class="truncate">{displayedBranch || "—"}</span>
-          </span>
-        </div>
-
-        {#if isWorktreeSession && worktreePath}
-          <div class="flex items-center gap-2">
-            <span class="text-[11px] text-muted-foreground w-14 shrink-0"
-              >{t("gitWorktree_path")}</span
-            >
-            <span
-              class="text-[10px] font-mono text-foreground/60 truncate flex-1"
-              title={worktreePath}
-            >
-              {worktreePath}
-            </span>
-          </div>
-        {/if}
-
-        <div class="flex items-center gap-2">
-          <span class="text-[11px] text-muted-foreground w-14 shrink-0"
-            >{t("gitWorktree_status")}</span
-          >
-          <span class="flex flex-wrap items-center gap-1.5">
-            {#if gitState.loading}
-              <span class="flex items-center gap-1 text-[11px] text-muted-foreground">
-                <span class="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-pulse"></span>
-                {t("gitWorktree_loading")}
-              </span>
-            {:else if gitState.isClean}
-              <span class="flex items-center gap-1 text-[11px] text-emerald-500">
-                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                {t("gitWorktree_clean")}
-              </span>
-            {:else}
-              <span class="flex items-center gap-1 text-[11px] text-amber-500">
-                <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
-                {t("gitWorktree_modified")}
-              </span>
-              {#if gitState.changedFiles > 0}
-                <span class="text-[10px] text-muted-foreground">
-                  ({gitState.changedFiles}
-                  {gitState.changedFiles === 1
-                    ? t("gitWorktree_file_one")
-                    : t("gitWorktree_file_many")})
-                </span>
-              {/if}
-            {/if}
-          </span>
-        </div>
-      </div>
-
-      {#if !gitState.loading}
-        <div class="flex flex-wrap items-center gap-1 px-3 py-2 border-t border-border/25">
-          {#if !gitState.isClean}
-            {#if commitInputOpen}
-              <input
-                bind:value={commitMessage}
-                placeholder={t("gitWorktree_commit_placeholder")}
-                class="flex-1 min-w-[8rem] text-[10px] px-2 py-1 rounded border border-border bg-background"
-              />
-              <button
-                type="button"
-                class="text-[10px] px-2 py-1 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/30 transition-colors disabled:opacity-40"
-                onclick={handleAutoCommit}
-                disabled={commitBusy}
-              >
-                {t("gitWorktree_commit_btn")}
-              </button>
-              <button
-                type="button"
-                class="text-[10px] px-2 py-1 rounded text-muted-foreground hover:bg-accent transition-colors"
-                onclick={() => (commitInputOpen = false)}
-              >
-                ✕
-              </button>
-            {:else}
-              <button
-                type="button"
-                class="text-[10px] px-2 py-1 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/30 transition-colors"
-                onclick={() => (commitInputOpen = true)}
-              >
-                {t("gitWorktree_auto_commit")}
-              </button>
-            {/if}
+      <!-- Row 2: status line (when dirty or loading) -->
+      {#if panelState.loading || !panelState.isClean}
+        <div class="flex items-center justify-center gap-1.5 mt-1.5 text-[10px] {statusClass}">
+          {#if panelState.loading}
+            <span class="h-1.5 w-1.5 rounded-full bg-current animate-pulse"></span>
+          {:else}
+            <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
           {/if}
-
-          {#if displayedBranch && !displayedBranch.includes("(detached)")}
-            <button
-              type="button"
-              class="ml-auto text-[10px] px-2 py-1 rounded bg-blue-500/15 text-blue-600 dark:text-blue-400 hover:bg-blue-500/25 transition-colors disabled:opacity-40"
-              onclick={handleCreatePr}
-              disabled={prBusy}
-            >
-              {prBusy ? "…" : t("gitWorktree_create_pr")}
-            </button>
-          {/if}
+          {statusText}
         </div>
       {/if}
     </div>
 
-    <!-- Worktree 列表 -->
-    {#if gitState.worktrees.length > 0}
-      <div class={cardClass}>
+    <!-- Timeline section -->
+    {#if !panelState.isRepo && !panelState.loading}
+      <div class="px-3 py-3">
+        <p class="text-[11px] text-muted-foreground">{t("gitWorktree_not_repo")}</p>
+      </div>
+    {:else}
+      <GitWorktreeTimeline
+        entries={panelState.timeline}
+        loading={panelState.loading}
+        error={panelState.error}
+      />
+
+      <!-- Bottom action bar: unified layout -->
+      {#if panelState.isRepo && !panelState.loading}
+        <div class="px-3 py-2 border-t border-border/20">
+          <!-- Commit input row (when showing) -->
+          {#if showCommitInput && !panelState.isClean}
+            <div class="flex items-center gap-1.5 mb-2">
+              <input
+                type="text"
+                bind:value={commitMessage}
+                placeholder={t("gitWorktree_commit_placeholder")}
+                class="flex-1 min-w-0 h-7 rounded-md border border-border/50 bg-background px-2 text-[10px]"
+              />
+              <button
+                type="button"
+                class="h-7 rounded-md bg-emerald-500/15 px-2.5 text-[10px] font-medium text-emerald-600 hover:bg-emerald-500/25 transition-colors disabled:opacity-40"
+                onclick={handleAutoCommit}
+                disabled={commitBusy}
+              >
+                {commitBusy ? "…" : t("gitWorktree_commit_btn")}
+              </button>
+              <button
+                type="button"
+                class="h-7 rounded-md px-1.5 text-[10px] text-muted-foreground hover:bg-accent/50 transition-colors"
+                onclick={() => (showCommitInput = false)}
+              >
+                ✕
+              </button>
+            </div>
+          {/if}
+
+          <!-- Action buttons row -->
+          <div class="flex items-center gap-1.5">
+            <!-- View changes (only when dirty) -->
+            {#if !panelState.isClean && onViewChanges}
+              <button
+                type="button"
+                class="h-7 rounded-md border border-border/50 bg-background/70 px-2.5 text-[10px] font-medium text-foreground/80 hover:bg-accent/50 transition-colors"
+                onclick={onViewChanges}
+              >
+                {t("gitWorktree_view_changes")}
+              </button>
+            {/if}
+
+            <!-- Auto commit (only when dirty) -->
+            {#if !panelState.isClean}
+              <button
+                type="button"
+                class="h-7 rounded-md bg-emerald-500/12 px-2.5 text-[10px] font-medium text-emerald-600 hover:bg-emerald-500/20 transition-colors disabled:opacity-40"
+                onclick={() => (showCommitInput = !showCommitInput)}
+                disabled={commitBusy}
+              >
+                {showCommitInput ? "✕" : t("gitWorktree_auto_commit")}
+              </button>
+            {/if}
+
+            <!-- Create PR (always available when on a branch) -->
+            {#if displayedBranch && !isDetached}
+              <button
+                type="button"
+                class="h-7 rounded-md bg-blue-500/12 px-2.5 text-[10px] font-medium text-blue-600 hover:bg-blue-500/20 transition-colors disabled:opacity-40 ml-auto"
+                onclick={handleCreatePr}
+                disabled={prBusy}
+              >
+                {prBusy ? "…" : t("gitWorktree_create_pr")}
+              </button>
+            {/if}
+          </div>
+        </div>
+      {/if}
+    {/if}
+
+    <!-- Worktree list: collapsible -->
+    {#if panelState.worktrees.length > 0}
+      <div class="border-t border-border/20">
         <button
           type="button"
-          class="{cardHdClass} w-full text-left hover:bg-accent/15 transition-colors"
+          class="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-accent/20 transition-colors"
           onclick={() => (showWorktreeList = !showWorktreeList)}
         >
           <svg
-            class="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform {showWorktreeList
-              ? 'rotate-90'
-              : ''}"
+            class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform {showWorktreeList ? 'rotate-90' : ''}"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -326,131 +361,30 @@
           >
             <path d="m9 18 6-6-6-6" />
           </svg>
-          <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t("gitWorktree_all_worktrees", { count: String(gitState.worktrees.length) })}
+          <span class="text-[10px] font-medium text-muted-foreground/70">
+            {t("gitWorktree_all_worktrees", { count: String(panelState.worktrees.length) })}
           </span>
         </button>
 
         {#if showWorktreeList}
-          <ul class="px-2.5 py-2 space-y-1 list-none">
-            {#each gitState.worktrees as wt (wt.path)}
+          <ul class="px-3 pb-1.5 space-y-0.5 list-none">
+            {#each panelState.worktrees as wt (wt.path)}
               {@const cur = !!(worktreePath && wt.path === worktreePath)}
               <li
-                class="flex items-center gap-2 rounded-md px-2 py-1.5 text-[11px] {cur
-                  ? 'bg-primary/15 ring-1 ring-primary/25'
-                  : 'hover:bg-accent/20'} transition-colors"
+                class="flex items-center gap-2 rounded px-1.5 py-1 text-[10px] {cur
+                  ? 'bg-primary/10 text-primary'
+                  : 'hover:bg-accent/20 text-muted-foreground/70'} transition-colors"
               >
-                <span
-                  class="h-2 w-2 rounded-full shrink-0 {cur
-                    ? 'bg-primary'
-                    : 'bg-muted-foreground/35'}"
-                ></span>
-                <span class="flex-1 min-w-0">
-                  <span class="font-mono text-foreground/85 truncate block">{wt.branch}</span>
-                  <span class="text-[10px] text-muted-foreground/60 truncate block">{wt.path}</span>
-                </span>
+                <span class="h-1.5 w-1.5 rounded-full shrink-0 {cur ? 'bg-primary' : 'bg-muted-foreground/30'}"></span>
+                <span class="font-mono truncate flex-1">{wt.branch}</span>
+                <span class="text-muted-foreground/40 truncate">{wt.path.split("/").pop()}</span>
                 {#if cur}
-                  <span class="text-[9px] text-primary font-medium shrink-0"
-                    >{t("gitWorktree_here")}</span
-                  >
+                  <span class="text-[9px] font-medium shrink-0">here</span>
                 {/if}
               </li>
             {/each}
           </ul>
         {/if}
-      </div>
-    {/if}
-
-    <!-- 会话链路：根目录 → 当前 worktree -->
-    {#if isWorktreeSession && parentCwd && worktreePath}
-      <div class={cardClass}>
-        <div class={cardHdClass}>
-          <svg
-            class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            aria-hidden="true"
-          >
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-          </svg>
-          <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t("gitWorktree_session_chain")}
-          </span>
-        </div>
-        <div class="px-3 py-2 relative">
-          <!-- 竖向导轨 -->
-          <div
-            class="absolute left-[1.125rem] top-3 bottom-3 w-px bg-border/50"
-            aria-hidden="true"
-          ></div>
-          <!-- Project root -->
-          <div class="relative flex items-center gap-2 text-[11px] pl-6">
-            <span
-              class="absolute left-2 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-blue-400 ring-2 ring-background"
-              aria-hidden="true"
-            ></span>
-            <svg
-              class="h-3 w-3 shrink-0 text-blue-400 -ml-0.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              aria-hidden="true"
-            >
-              <path
-                d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
-              />
-            </svg>
-            <span class="text-muted-foreground truncate">{t("gitWorktree_project_root")}</span>
-            <span
-              class="text-[10px] text-muted-foreground/50 truncate font-mono ml-auto"
-              title={parentCwd}>{pathTail(parentCwd)}</span
-            >
-          </div>
-
-          <div class="relative flex justify-center py-1 pl-6">
-            <svg
-              class="h-3 w-3 text-muted-foreground/45"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              aria-hidden="true"
-            >
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </div>
-
-          <!-- Current worktree -->
-          <div class="relative flex items-center gap-2 text-[11px] pl-6">
-            <span
-              class="absolute left-2 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-background"
-              aria-hidden="true"
-            ></span>
-            <svg
-              class="h-3 w-3 shrink-0 text-emerald-400 -ml-0.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              aria-hidden="true"
-            >
-              <line x1="6" y1="3" x2="6" y2="15" />
-              <circle cx="18" cy="6" r="3" />
-              <circle cx="6" cy="18" r="3" />
-              <path d="M18 9a9 9 0 0 1-9 9" />
-            </svg>
-            <span class="text-foreground font-mono truncate flex-1 min-w-0"
-              >{displayedBranch || "—"}</span
-            >
-            <span class="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 shrink-0"
-              >{t("gitWorktree_this_session")}</span
-            >
-          </div>
-        </div>
       </div>
     {/if}
   </div>

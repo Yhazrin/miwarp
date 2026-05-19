@@ -2569,9 +2569,6 @@
           {:else if isTeamsPage}
             <!-- Teams sidebar -->
             <div class="px-2 pt-2 pb-1 shrink-0">
-              <p class="px-1 pb-1.5 text-xs font-semibold text-sidebar-foreground">
-                {t("sidebar_teams")}
-              </p>
               <input
                 type="text"
                 bind:value={teamStoreSearchQuery}
@@ -2625,7 +2622,7 @@
                 bind:value={runSearchQuery}
                 oninput={onDeepQueryInput}
                 placeholder={t("sidebar_searchChats")}
-                class="w-full rounded-md border border-sidebar-border bg-sidebar px-2 py-1 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
+                class="w-full rounded-full border border-sidebar-border bg-sidebar px-3 py-1 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
               />
               {#if runSearchQuery.trim()}
                 {#if searching}
