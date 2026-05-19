@@ -2,6 +2,7 @@
   /**
    * Reusable context menu component.
    * Features:
+   * - Portaled to document.body (escapes sidebar stacking context)
    * - Fixed positioning at x/y
    * - Auto-repositions to stay within viewport
    * - Click outside / Esc to close
@@ -9,6 +10,8 @@
    * - Danger variant for destructive actions
    * - Separator support
    */
+
+  import { portal } from "$lib/utils/portal";
 
   export interface MenuItem {
     id: string;
@@ -125,8 +128,9 @@
 
 <div
   bind:this={menuEl}
+  use:portal
   data-context-menu
-  class="fixed z-[9999] min-w-[160px] rounded-xl border border-border/50 bg-background/95
+  class="fixed z-[45] min-w-[160px] rounded-xl border border-border/50 bg-background/95
          backdrop-blur-sm shadow-lg p-1"
   style="left: {adjustedX}px; top: {adjustedY}px;"
   role="menu"

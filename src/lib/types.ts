@@ -208,6 +208,8 @@ export interface UserSettings {
   process_visibility?: "output" | "guided" | "developer" | "expert";
   /** Custom session status colors. */
   session_status_colors?: SessionStatusColors;
+  /** Workspace display aliases: normalized_cwd → display_name */
+  workspace_aliases?: Record<string, string>;
   updated_at: string;
 }
 
