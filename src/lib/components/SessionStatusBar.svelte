@@ -813,164 +813,167 @@
   </div>
 
   <!-- Tier 2: Details shown on hover (h-8) -->
-  {#if islandHover}
-    <div class="flex h-8 shrink-0 items-center justify-between border-t border-border/20 px-3">
-      <!-- Left: session info -->
-      <div class="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-        <!-- Session title (inline editable) -->
-        {#if run && onRename}
-          {#if titleEditing}
-            <input
-              bind:this={titleInputEl}
-              bind:value={titleEditValue}
-              class="w-40 bg-transparent border-b border-primary outline-none text-foreground font-medium px-0.5 text-xs leading-8"
-              onkeydown={(e) => {
-                if (e.key === "Enter") commitTitleEdit();
-                else if (e.key === "Escape") cancelTitleEdit();
-              }}
-              onblur={commitTitleEdit}
+  <!-- max-height animates from 0→32px in sync with capsule expansion -->
+  <div
+    class="tier-2-content flex h-8 shrink-0 items-center justify-between border-t border-border/20 px-3 overflow-hidden {islandHover
+      ? 'max-h-8'
+      : 'max-h-0'}"
+  >
+    <!-- Left: session info -->
+    <div class="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+      <!-- Session title (inline editable) -->
+      {#if run && onRename}
+        {#if titleEditing}
+          <input
+            bind:this={titleInputEl}
+            bind:value={titleEditValue}
+            class="w-40 bg-transparent border-b border-primary outline-none text-foreground font-medium px-0.5 text-xs leading-8"
+            onkeydown={(e) => {
+              if (e.key === "Enter") commitTitleEdit();
+              else if (e.key === "Escape") cancelTitleEdit();
+            }}
+            onblur={commitTitleEdit}
+          />
+        {:else}
+          <button
+            class="max-w-[240px] truncate text-xs leading-8 text-foreground/70 hover:text-foreground transition-colors {run.name
+              ? 'font-medium'
+              : 'italic text-foreground/40'}"
+            onclick={startTitleEdit}
+            title={run.name || run.prompt || t("statusbar_sessionTitle")}
+          >
+            {truncate(run.name || run.prompt, 40)}
+          </button>
+        {/if}
+        <span class="text-xs leading-8 text-foreground/30">&middot;</span>
+      {/if}
+
+      {#if cwdShort}
+        <span class="truncate text-xs leading-8" title={cwd || run?.cwd || ""}>{cwdShort}</span>
+      {/if}
+
+      {#if sessionIdShort}
+        <span class="text-xs leading-8 text-foreground/30">&middot;</span>
+        <button
+          class="inline-flex h-8 items-center text-xs leading-8 text-foreground/40 hover:text-foreground/70 transition-colors"
+          title="{t('statusbar_sessionLabel', {
+            id: run?.session_id ?? '',
+          })}\n{t('statusbar_clickToCopy')}"
+          onclick={copySessionId}
+        >
+          {sidCopied ? t("statusbar_copied") : sessionIdShort}
+        </button>
+      {/if}
+
+      {#if parentRunId && onNavigateParent}
+        <span class="text-xs leading-8 text-foreground/30">&middot;</span>
+        <button
+          class="inline-flex h-8 items-center gap-1 text-xs leading-8 text-miwarp-status-info/70 hover:text-miwarp-status-info transition-colors"
+          onclick={onNavigateParent}
+          title={t("statusbar_viewParent")}
+        >
+          <svg
+            class="h-3 w-3"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><circle
+              cx="18"
+              cy="6"
+              r="3"
             />
-          {:else}
-            <button
-              class="max-w-[240px] truncate text-xs leading-8 text-foreground/70 hover:text-foreground transition-colors {run.name
-                ? 'font-medium'
-                : 'italic text-foreground/40'}"
-              onclick={startTitleEdit}
-              title={run.name || run.prompt || t("statusbar_sessionTitle")}
-            >
-              {truncate(run.name || run.prompt, 40)}
-            </button>
-          {/if}
-          <span class="text-xs leading-8 text-foreground/30">&middot;</span>
-        {/if}
+            <path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9" /><path d="M12 12v3" />
+          </svg>
+          <span>{t("statusbar_forked")}</span>
+        </button>
+      {/if}
 
-        {#if cwdShort}
-          <span class="truncate text-xs leading-8" title={cwd || run?.cwd || ""}>{cwdShort}</span>
-        {/if}
-
-        {#if sessionIdShort}
-          <span class="text-xs leading-8 text-foreground/30">&middot;</span>
-          <button
-            class="inline-flex h-8 items-center text-xs leading-8 text-foreground/40 hover:text-foreground/70 transition-colors"
-            title="{t('statusbar_sessionLabel', {
-              id: run?.session_id ?? '',
-            })}\n{t('statusbar_clickToCopy')}"
-            onclick={copySessionId}
-          >
-            {sidCopied ? t("statusbar_copied") : sessionIdShort}
-          </button>
-        {/if}
-
-        {#if parentRunId && onNavigateParent}
-          <span class="text-xs leading-8 text-foreground/30">&middot;</span>
-          <button
-            class="inline-flex h-8 items-center gap-1 text-xs leading-8 text-miwarp-status-info/70 hover:text-miwarp-status-info transition-colors"
-            onclick={onNavigateParent}
-            title={t("statusbar_viewParent")}
-          >
-            <svg
-              class="h-3 w-3"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <circle cx="12" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><circle
-                cx="18"
-                cy="6"
-                r="3"
-              />
-              <path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9" /><path d="M12 12v3" />
-            </svg>
-            <span>{t("statusbar_forked")}</span>
-          </button>
-        {/if}
-
-        {#if shouldShowContextDetails(processVisibility) && (inputTokens > 0 || outputTokens > 0)}
-          <span class="shrink-0 text-xs leading-8 text-foreground/30">&middot;</span>
+      {#if shouldShowContextDetails(processVisibility) && (inputTokens > 0 || outputTokens > 0)}
+        <span class="shrink-0 text-xs leading-8 text-foreground/30">&middot;</span>
+        <span
+          class="inline-flex h-8 shrink-0 items-center text-xs leading-8"
+          title={`${t("statusbar_inputLabel")}: ${fmtNumber(inputTokens)} / ${t("statusbar_outputLabel")}: ${fmtNumber(outputTokens)}${cacheReadTokens ? `\n${t("statusbar_cacheReadLabel")}: ${fmtNumber(cacheReadTokens)}` : ""}${cacheWriteTokens ? `\n${t("statusbar_cacheWriteLabel")}: ${fmtNumber(cacheWriteTokens)}` : ""}`}
+          >{formatTokenCount(inputTokens)} / {formatTokenCount(outputTokens)}
+          {t("statusbar_tok")}</span
+        >
+        {#if cacheReadTokens > 0 || cacheWriteTokens > 0}
           <span
-            class="inline-flex h-8 shrink-0 items-center text-xs leading-8"
-            title={`${t("statusbar_inputLabel")}: ${fmtNumber(inputTokens)} / ${t("statusbar_outputLabel")}: ${fmtNumber(outputTokens)}${cacheReadTokens ? `\n${t("statusbar_cacheReadLabel")}: ${fmtNumber(cacheReadTokens)}` : ""}${cacheWriteTokens ? `\n${t("statusbar_cacheWriteLabel")}: ${fmtNumber(cacheWriteTokens)}` : ""}`}
-            >{formatTokenCount(inputTokens)} / {formatTokenCount(outputTokens)}
-            {t("statusbar_tok")}</span
+            class="inline-flex h-8 shrink-0 items-center text-[10px] leading-8 text-foreground/60"
+            >{t("statusbar_cacheRW", {
+              read: formatTokenCount(cacheReadTokens),
+              write: formatTokenCount(cacheWriteTokens),
+            })}</span
           >
-          {#if cacheReadTokens > 0 || cacheWriteTokens > 0}
-            <span
-              class="inline-flex h-8 shrink-0 items-center text-[10px] leading-8 text-foreground/60"
-              >{t("statusbar_cacheRW", {
-                read: formatTokenCount(cacheReadTokens),
-                write: formatTokenCount(cacheWriteTokens),
-              })}</span
-            >
-          {/if}
         {/if}
+      {/if}
 
-        {#if mcpServers && mcpServers.length > 0 && onMcpToggle}
-          <span class="text-xs leading-8 text-foreground/30">&middot;</span>
-          <button
-            class="inline-flex h-8 shrink-0 items-center gap-1 text-xs leading-8 text-foreground/70 hover:text-foreground transition-colors"
-            onclick={onMcpToggle}
-            title={t("statusbar_mcpTitle", { count: String(mcpServers.length) })}
-          >
-            <span class="inline-block h-1.5 w-1.5 rounded-full {mcpDotClass}"></span>
-            <span>{t("statusbar_mcpLabel", { count: String(mcpServers.length) })}</span>
-          </button>
-        {/if}
+      {#if mcpServers && mcpServers.length > 0 && onMcpToggle}
+        <span class="text-xs leading-8 text-foreground/30">&middot;</span>
+        <button
+          class="inline-flex h-8 shrink-0 items-center gap-1 text-xs leading-8 text-foreground/70 hover:text-foreground transition-colors"
+          onclick={onMcpToggle}
+          title={t("statusbar_mcpTitle", { count: String(mcpServers.length) })}
+        >
+          <span class="inline-block h-1.5 w-1.5 rounded-full {mcpDotClass}"></span>
+          <span>{t("statusbar_mcpLabel", { count: String(mcpServers.length) })}</span>
+        </button>
+      {/if}
 
-        {#if numTurns && numTurns > 0}
-          <span class="shrink-0 text-xs leading-8 text-foreground/30">&middot;</span>
-          <span
-            class="inline-flex h-8 shrink-0 items-center text-xs leading-8"
-            title={t("statusbar_turnsTitle")}
-            >{t("statusbar_turns", { count: String(numTurns) })}</span
-          >
-        {/if}
-      </div>
-
-      <!-- Right: badges -->
-      <div class="flex shrink-0 items-center gap-1.5">
-        {#if permissionBadge}
-          <span
-            class="inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[10px] font-medium leading-none {permissionBadge.cls}"
-            title={t("statusbar_permissionMode", { mode: permissionMode ?? "" })}
-            >{permissionBadge.label}</span
-          >
-        {/if}
-
-        {#if fastModeState === "on"}
-          <span
-            class="inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[10px] font-medium leading-none bg-miwarp-status-warning/15 text-miwarp-status-warning"
-            title={t("statusbar_fastModeTitle")}>{t("statusbar_fastMode")}</span
-          >
-        {/if}
-
-        {#if authSourceLabel}
-          {@const authBadgeColor =
-            authSourceCategory === "login"
-              ? "bg-emerald-500/15 text-emerald-500"
-              : authSourceCategory === "env_key"
-                ? "bg-miwarp-status-info/15 text-miwarp-status-info"
-                : authSourceCategory === "none"
-                  ? "bg-miwarp-status-warning/15 text-miwarp-status-warning"
-                  : "bg-foreground/10 text-foreground/60"}
-          <span
-            class="inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[10px] font-medium leading-none {authBadgeColor}"
-            title={t("statusbar_authTitle", { source: apiKeySource ?? "" })}>{authSourceLabel}</span
-          >
-        {/if}
-
-        {#if remoteHostName}
-          <span
-            class="inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[10px] font-medium leading-none bg-miwarp-status-info/15 text-miwarp-status-info"
-            title={t("statusbar_sshTitle", { name: remoteHostName ?? "" })}
-            >{t("statusbar_sshLabel", { name: remoteHostName ?? "" })}</span
-          >
-        {/if}
-      </div>
+      {#if numTurns && numTurns > 0}
+        <span class="shrink-0 text-xs leading-8 text-foreground/30">&middot;</span>
+        <span
+          class="inline-flex h-8 shrink-0 items-center text-xs leading-8"
+          title={t("statusbar_turnsTitle")}
+          >{t("statusbar_turns", { count: String(numTurns) })}</span
+        >
+      {/if}
     </div>
-  {/if}
+
+    <!-- Right: badges -->
+    <div class="flex shrink-0 items-center gap-1.5">
+      {#if permissionBadge}
+        <span
+          class="inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[10px] font-medium leading-none {permissionBadge.cls}"
+          title={t("statusbar_permissionMode", { mode: permissionMode ?? "" })}
+          >{permissionBadge.label}</span
+        >
+      {/if}
+
+      {#if fastModeState === "on"}
+        <span
+          class="inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[10px] font-medium leading-none bg-miwarp-status-warning/15 text-miwarp-status-warning"
+          title={t("statusbar_fastModeTitle")}>{t("statusbar_fastMode")}</span
+        >
+      {/if}
+
+      {#if authSourceLabel}
+        {@const authBadgeColor =
+          authSourceCategory === "login"
+            ? "bg-emerald-500/15 text-emerald-500"
+            : authSourceCategory === "env_key"
+              ? "bg-miwarp-status-info/15 text-miwarp-status-info"
+              : authSourceCategory === "none"
+                ? "bg-miwarp-status-warning/15 text-miwarp-status-warning"
+                : "bg-foreground/10 text-foreground/60"}
+        <span
+          class="inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[10px] font-medium leading-none {authBadgeColor}"
+          title={t("statusbar_authTitle", { source: apiKeySource ?? "" })}>{authSourceLabel}</span
+        >
+      {/if}
+
+      {#if remoteHostName}
+        <span
+          class="inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[10px] font-medium leading-none bg-miwarp-status-info/15 text-miwarp-status-info"
+          title={t("statusbar_sshTitle", { name: remoteHostName ?? "" })}
+          >{t("statusbar_sshLabel", { name: remoteHostName ?? "" })}</span
+        >
+      {/if}
+    </div>
+  </div>
 </div>
 
 {#if pvMenuOpen}

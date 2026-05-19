@@ -928,12 +928,12 @@ textarea,
 
   /* Continuous morph animation - all parameters sync together */
   transition:
-    border-radius 650ms cubic-bezier(0.4, 0, 0.2, 1),
-    min-height 650ms cubic-bezier(0.4, 0, 0.2, 1),
-    width 650ms cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 350ms ease,
-    backdrop-filter 650ms cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 600ms cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius 560ms cubic-bezier(0.4, 0, 0.2, 1),
+    min-height 560ms cubic-bezier(0.4, 0, 0.2, 1),
+    width 560ms cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 300ms ease,
+    backdrop-filter 560ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 520ms cubic-bezier(0.4, 0, 0.2, 1);
   will-change: border-radius, min-height, width, background-color, backdrop-filter, box-shadow;
 
   /* Compact state defaults - uses REAL border-radius for smooth transition */
@@ -1007,9 +1007,15 @@ textarea,
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
+/* Tier 2 content animation - slides in/out with capsule expansion */
+.tier-2-content {
+  transition: max-height 560ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
-  .session-island-shell {
+  .session-island-shell,
+  .tier-2-content {
     transition-duration: 180ms;
   }
 }

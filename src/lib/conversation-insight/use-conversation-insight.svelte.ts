@@ -55,7 +55,7 @@ export function useConversationInsight(
 
   $effect(() => {
     const runId = options.getRun()?.id;
-    runId;
+    void runId;
     untrack(resetInsight);
   });
 

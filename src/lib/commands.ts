@@ -1,3 +1,5 @@
+import type { SessionPhase } from "./stores/types";
+
 export type CommandCategory =
   | "chat"
   | "tools"
@@ -36,6 +38,13 @@ export interface CommandDef {
   usageCount?: number; // Track usage for sorting
   icon?: string; // Command icon
   preview?: (payload?: string) => Promise<string>; // Preview function
+  // Context-aware fields
+  /** Session phases when this command should be shown. If undefined, shown in all phases. */
+  contextPhases?: SessionPhase[];
+  /** Whether this command is only available when session is running. */
+  showDuringRun?: boolean;
+  /** Whether this command is only available when session is idle/completed. */
+  showWhenIdle?: boolean;
 }
 
 // Command usage statistics storage key
@@ -121,6 +130,7 @@ export const commands: CommandDef[] = [
       "Review my recent changes. Look at the git diff and provide feedback on code quality, potential bugs, and improvements.",
     icon: "🔍",
     fuzzyKeywords: ["review", "code review", "pr", "pull request", "feedback"],
+    showWhenIdle: true, // Only relevant when session is idle
   },
   {
     id: "export-chat",
@@ -167,6 +177,7 @@ export const commands: CommandDef[] = [
     payload: "stop_run",
     icon: "⏹",
     fuzzyKeywords: ["stop", "cancel", "abort", "interrupt"],
+    showDuringRun: true, // Only show during running
   },
 
   // Tools
@@ -589,4 +600,147 @@ export function getRecentCommands(agent?: string): CommandDef[] {
       commands.find((c) => c.id === id && (!agent || c.agent === "both" || c.agent === agent)),
     )
     .filter((c): c is CommandDef => !!c);
+}
+
+// ── Context-aware command filtering ──
+
+export interface ContextFilter {
+  phase?: SessionPhase;
+  cwd?: string;
+  recentFiles?: string[];
+  activeAgent?: string;
+}
+
+/**
+ * Get commands filtered by session context.
+ * This provides smarter command suggestions based on current state.
+ */
+export function getContextAwareCommands(context: ContextFilter): CommandDef[] {
+  const { phase, cwd = "/", recentFiles = [], activeAgent = "both" } = context;
+  const usageStats = getCommandUsageStats();
+
+  // Base commands filtered by agent
+  const filtered = commands.filter((cmd) => {
+    // Agent filter
+    if (cmd.agent !== "both" && cmd.agent !== activeAgent) {
+      return false;
+    }
+
+    // Phase-based filtering
+    if (cmd.contextPhases && phase) {
+      if (!cmd.contextPhases.includes(phase)) {
+        return false;
+      }
+    }
+
+    // Special handling for running/idle phases
+    if (phase === "running") {
+      // Only show commands marked for running
+      if (cmd.showDuringRun === false) {
+        return false;
+      }
+    } else if (
+      phase === "idle" ||
+      phase === "completed" ||
+      phase === "failed" ||
+      phase === "stopped"
+    ) {
+      // Only show commands marked for idle state
+      if (cmd.showWhenIdle === false) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  // Add dynamic context-specific commands
+  const contextCommands: CommandDef[] = [];
+
+  // Add recent files command if there are recent files
+  if (recentFiles.length > 0) {
+    contextCommands.push({
+      id: "recent-files",
+      name: "Recent Files",
+      description: `Open ${Math.min(recentFiles.length, 5)} recently edited files`,
+      category: "navigation",
+      agent: "both",
+      action: "open_modal",
+      payload: "recent-files",
+      icon: "📄",
+      fuzzyKeywords: ["recent", "files", "edited", "open"],
+    });
+  }
+
+  // Add git-related commands based on cwd
+  if (cwd !== "/") {
+    contextCommands.push({
+      id: "git-log",
+      name: "Git Log",
+      description: "Show recent git commits",
+      category: "tools",
+      agent: "both",
+      action: "ipc_command",
+      payload: "get_git_log",
+      icon: "📜",
+      fuzzyKeywords: ["git", "log", "commits", "history"],
+      showWhenIdle: true,
+    });
+  }
+
+  // Combine and sort by usage
+  const allCommands = [...filtered, ...contextCommands];
+  return allCommands.sort((a, b) => {
+    const aUsage = usageStats[a.id] || a.usageCount || 0;
+    const bUsage = usageStats[b.id] || b.usageCount || 0;
+    if (bUsage !== aUsage) {
+      return bUsage - aUsage;
+    }
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/**
+ * Get commands that should be prominently displayed based on current context.
+ * Used for quick access bar and smart suggestions.
+ */
+export function getProminentCommands(context: ContextFilter): CommandDef[] {
+  const allCommands = getContextAwareCommands(context);
+
+  // Get top 5 commands by usage
+  return allCommands.slice(0, 5);
+}
+
+/**
+ * Check if a command should be shown in the given context.
+ */
+export function isCommandVisibleInContext(cmd: CommandDef, context: ContextFilter): boolean {
+  const { phase, activeAgent = "both" } = context;
+
+  // Agent check
+  if (cmd.agent !== "both" && cmd.agent !== activeAgent) {
+    return false;
+  }
+
+  // Phase check
+  if (cmd.contextPhases && phase) {
+    if (!cmd.contextPhases.includes(phase)) {
+      return false;
+    }
+  }
+
+  // Running state check
+  if (phase === "running" && cmd.showDuringRun === false) {
+    return false;
+  }
+
+  // Idle state check
+  if (
+    (phase === "idle" || phase === "completed" || phase === "failed" || phase === "stopped") &&
+    cmd.showWhenIdle === false
+  ) {
+    return false;
+  }
+
+  return true;
 }
