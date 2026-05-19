@@ -47,7 +47,6 @@
   import McpStatusPanel from "$lib/components/McpStatusPanel.svelte";
   import PromptInput from "$lib/components/PromptInput.svelte";
   import CreatedFiles from "$lib/components/CreatedFiles.svelte";
-  import PermissionPanel from "$lib/components/PermissionPanel.svelte";
   import ElicitationDialog from "$lib/components/ElicitationDialog.svelte";
   import AuthSourceBadge from "$lib/components/AuthSourceBadge.svelte";
 
@@ -57,7 +56,6 @@
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
   import HookReviewCard from "$lib/components/HookReviewCard.svelte";
-  import ViewModeToggle from "$lib/components/ViewModeToggle.svelte";
   import GuidedToolTimelineRow from "$lib/components/GuidedToolTimelineRow.svelte";
   import ContextUsageGrid from "$lib/components/ContextUsageGrid.svelte";
   import CostSummaryView from "$lib/components/CostSummaryView.svelte";
@@ -933,7 +931,6 @@
 
   let inputBlockedByPermission = $derived(store.hasPendingPermission || store.hasElicitation);
   let pendingToolPermissions = $derived(store.pendingToolPermissions);
-  let showPermissionPanel = $derived(pendingToolPermissions.length > 0 && store.sessionAlive);
 
   /** Skill info for SkillSelector: merge preloaded details with session skill names. */
   let skillItems = $derived.by(() => {
@@ -4309,12 +4306,6 @@
                     </div>
                   </div>
                 {/if}
-                {#if processVisibility !== "output"}
-                  <!-- View mode toggle (Normal / Verbose / Summary) -->
-                  <div class="chat-content-width pb-1" data-export-exclude>
-                    <ViewModeToggle />
-                  </div>
-                {/if}
                 {#if filteredTimeline.length - renderLimit > 0}
                   <div bind:this={topSentinel} aria-hidden="true" class="h-px w-full"></div>
                 {/if}
@@ -4462,7 +4453,6 @@
                                     : undefined}
                                   latestPlanTool={entry.kind === "tool" &&
                                     entry.tool.tool_use_id === latestPlanToolId}
-                                  showPermissionInPanel={showPermissionPanel}
                                   permissionMode={store.permissionMode}
                                   onPreviewFile={openPreviewForPath}
                                 />
@@ -4623,10 +4613,23 @@
 
                 <!-- Pending hook callbacks (runtime UI — excluded from export) -->
                 {#each store.hookEvents.filter((h) => h.status === "hook_pending") as hookEvent (hookEvent.request_id)}
-                  <div class="chat-content-width pl-7" data-export-exclude>
-                    <HookReviewCard {hookEvent} onRespond={handleHookCallbackRespond} />
+                  <div class="w-full py-1">
+                    <div class="chat-content-width pl-7" data-export-exclude>
+                      <HookReviewCard {hookEvent} onRespond={handleHookCallbackRespond} />
+                    </div>
                   </div>
                 {/each}
+
+                {#if store.hasElicitation && store.sessionAlive}
+                  <div class="w-full py-1">
+                    <div class="chat-content-width pl-7" data-export-exclude>
+                      <ElicitationDialog
+                        elicitations={store.pendingElicitations}
+                        onRespond={handleElicitationRespond}
+                      />
+                    </div>
+                  </div>
+                {/if}
 
                 <!-- Thinking panel (extended thinking) -->
                 {#if store.thinkingText}
@@ -5023,26 +5026,6 @@
             class="pointer-events-auto mx-3 mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-400"
           >
             {getResumeWarning(store.run)}
-          </div>
-        {/if}
-
-        <!-- Floating permission panel (above input bar) -->
-        {#if showPermissionPanel}
-          <div class="pointer-events-auto px-2 pb-2">
-            <PermissionPanel
-              pendingTools={pendingToolPermissions}
-              onPermissionRespond={handlePermissionRespond}
-            />
-          </div>
-        {/if}
-
-        <!-- MCP Elicitation dialog (above input bar) -->
-        {#if store.hasElicitation && store.sessionAlive}
-          <div class="pointer-events-auto px-2 pb-2">
-            <ElicitationDialog
-              elicitations={store.pendingElicitations}
-              onRespond={handleElicitationRespond}
-            />
           </div>
         {/if}
 
