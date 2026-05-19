@@ -103,6 +103,8 @@
   function openContextMenu(e: MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    // Close all other context menus first
+    window.dispatchEvent(new CustomEvent("close-all-context-menus"));
     contextMenuX = e.clientX;
     contextMenuY = e.clientY;
     contextMenuOpen = true;
@@ -110,6 +112,7 @@
 
   function openContextMenuFromButton(e: MouseEvent) {
     e.stopPropagation();
+    window.dispatchEvent(new CustomEvent("close-all-context-menus"));
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     contextMenuX = rect.left;
     contextMenuY = rect.bottom + 4;
@@ -119,6 +122,17 @@
   function closeContextMenu() {
     contextMenuOpen = false;
   }
+
+  // Listen for close-all event from other context menus
+  $effect(() => {
+    if (contextMenuOpen) {
+      const handler = () => {
+        contextMenuOpen = false;
+      };
+      window.addEventListener("close-all-context-menus", handler);
+      return () => window.removeEventListener("close-all-context-menus", handler);
+    }
+  });
 
   function handleContextMenuSelect(id: string) {
     switch (id) {
