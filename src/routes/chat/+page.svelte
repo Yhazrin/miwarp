@@ -20,7 +20,6 @@
   } from "$lib/stores";
   import type {
     Attachment,
-    BusToolItem,
     UserSettings,
     AgentSettings,
     SessionMode,
@@ -36,10 +35,11 @@
     computeTimelinePresentation,
     getInitialRenderLimit,
   } from "$lib/chat/selectors/timeline-presentation";
+  import { CLI_TO_APP_MODE, APP_TO_CLI_MODE } from "$lib/chat/utils/permission-modes";
+  import { buildSummaryHtml } from "$lib/chat/utils/summary-html";
   import { useConversationInsight } from "$lib/conversation-insight/use-conversation-insight.svelte";
   import XTerminal from "$lib/components/XTerminal.svelte";
   import ChatMessage from "$lib/components/ChatMessage.svelte";
-  import AgentIdentity from "$lib/components/AgentIdentity.svelte";
   import InlineToolCard from "$lib/components/InlineToolCard.svelte";
   import BatchProgressBar from "$lib/components/BatchProgressBar.svelte";
   import ToolBurstHeader from "$lib/components/ToolBurstHeader.svelte";
@@ -49,7 +49,6 @@
   import CreatedFiles from "$lib/components/CreatedFiles.svelte";
   import PermissionPanel from "$lib/components/PermissionPanel.svelte";
   import ElicitationDialog from "$lib/components/ElicitationDialog.svelte";
-  import AuthSourceBadge from "$lib/components/AuthSourceBadge.svelte";
 
   import ToolActivity from "$lib/components/ToolActivity.svelte";
   import ShortcutHelpPanel from "$lib/components/ShortcutHelpPanel.svelte";
@@ -76,10 +75,9 @@
   } from "$lib/utils/remote-cwd";
   import { shouldAutoName } from "$lib/utils/auto-name";
   import { resolvePermissionOptimistic } from "$lib/utils/resolve-permission";
-  import { getToolColor } from "$lib/utils/tool-colors";
   import { ansiToHtml, hasAnsiCodes } from "$lib/utils/ansi";
   import { randomSpinnerVerb } from "$lib/utils/spinner-verbs";
-  import { type TurnUsage, classifyError } from "$lib/stores/types";
+  import { type TurnUsage } from "$lib/stores/types";
   import {
     normalizeProcessVisibility,
     getCachedProcessVisibility,
@@ -96,15 +94,29 @@
     mergeWithVirtual,
     mergeProjectCommands,
     buildHelpText,
-    CONTEXT_CLEARED_MARKER,
     parseRalphArgs,
   } from "$lib/utils/slash-commands";
   import { executeAddDir } from "$lib/utils/add-dir";
   import { buildDoctorReport } from "$lib/utils/doctor";
   import type { RewindCandidate, RewindMarker } from "$lib/utils/rewind";
-  import { truncate, formatTokenCount, relativeTime } from "$lib/utils/format";
+  import { truncate } from "$lib/utils/format";
   import { mapSettled } from "$lib/utils/async-utils";
   import { uuid } from "$lib/utils/uuid";
+  import ChatForkOverlay from "$lib/components/ChatForkOverlay.svelte";
+  import ChatThinkingIndicator from "$lib/components/ChatThinkingIndicator.svelte";
+  import ChatThinkingPanel from "$lib/components/ChatThinkingPanel.svelte";
+  import ChatStreamingText from "$lib/components/ChatStreamingText.svelte";
+  import ChatRewindMarkers from "$lib/components/ChatRewindMarkers.svelte";
+  import ChatForkedBanner from "$lib/components/ChatForkedBanner.svelte";
+  import ChatNotificationBanner from "$lib/components/ChatNotificationBanner.svelte";
+  import ChatErrorCard from "$lib/components/ChatErrorCard.svelte";
+  import ChatToolFilterBar from "$lib/components/ChatToolFilterBar.svelte";
+  import ChatOutputWorkingHint from "$lib/components/ChatOutputWorkingHint.svelte";
+  import ChatBtwDrawer from "$lib/components/ChatBtwDrawer.svelte";
+  import ChatDragOverlay from "$lib/components/ChatDragOverlay.svelte";
+  import ChatUsageAnnotation from "$lib/components/ChatUsageAnnotation.svelte";
+  import ChatRalphLoopBar from "$lib/components/ChatRalphLoopBar.svelte";
+  import ChatWelcomeScreen from "$lib/components/ChatWelcomeScreen.svelte";
   import RewindModal from "$lib/components/RewindModal.svelte";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import TeamDispatchConfirm from "$lib/components/TeamDispatchConfirm.svelte";
@@ -646,7 +658,7 @@
   });
 
   // ── Sidebar data ──
-  let sidebarToolsCount = $derived(timelinePresentation.sidebarToolsCount);
+
   // ── CLI version info (reactive — ensures heroMetaFooter re-renders after async load) ──
   let cliVersionInfo = $derived(getCliVersionInfo_cached());
 
@@ -1114,13 +1126,6 @@
     }, 5000);
     return () => clearTimeout(timer);
   });
-
-  function formatElapsed(seconds: number): string {
-    if (seconds < 60) return `${seconds}s`;
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  }
 
   // ── URL-derived (primitive values only — avoids $effect re-trigger on unrelated URL changes) ──
   let runId = $derived($page.url.searchParams.get("run") ?? "");
@@ -2170,23 +2175,6 @@
   }
 
   // ── Permission mode name translation ──
-  // Store/dropdown use CLI names; UserSettings uses app names; adapter.rs maps app→CLI.
-  const CLI_TO_APP_MODE: Record<string, string> = {
-    default: "ask",
-    acceptEdits: "auto_read",
-    bypassPermissions: "auto_all",
-    plan: "plan",
-    auto: "auto",
-    dontAsk: "dont_ask",
-  };
-  const APP_TO_CLI_MODE: Record<string, string> = {
-    ask: "default",
-    auto_read: "acceptEdits",
-    auto_all: "bypassPermissions",
-    plan: "plan",
-    auto: "auto",
-    dont_ask: "dontAsk",
-  };
 
   function getPermModeLabel(mode: string): string {
     const map: Record<string, () => string> = {
@@ -2339,197 +2327,6 @@
       dbgWarn("chat", "handleSummarize failed", e);
       showChatToast(t("summarize_failed"));
     }
-  }
-
-  function buildSummaryHtml(
-    title: string,
-    data: {
-      summary: string;
-      markdown: string;
-      model: string;
-      cwd: string;
-      startedAt: string;
-      turnCount: number;
-    },
-  ): string {
-    const escapedTitle = title.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const escapedSummary = data.summary.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const escapedMarkdown = data.markdown
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/\n/g, "<br>");
-    const date = data.startedAt
-      ? new Date(data.startedAt).toLocaleString()
-      : new Date().toLocaleString();
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapedTitle}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-      min-height: 100vh;
-      padding: 40px 20px;
-      color: #e4e4e7;
-    }
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-    }
-    .card {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 24px;
-      padding: 48px;
-      backdrop-filter: blur(20px);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
-    .header {
-      text-align: center;
-      margin-bottom: 40px;
-      padding-bottom: 32px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    .badge {
-      display: inline-block;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 6px 16px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 16px;
-    }
-    h1 {
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 12px;
-      background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .meta {
-      display: flex;
-      justify-content: center;
-      gap: 24px;
-      flex-wrap: wrap;
-      font-size: 13px;
-      color: #a1a1aa;
-    }
-    .meta-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .summary-section {
-      margin-bottom: 32px;
-    }
-    .summary-label {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: #a78bfa;
-      margin-bottom: 16px;
-    }
-    .summary-text {
-      font-size: 18px;
-      line-height: 1.8;
-      color: #d4d4d8;
-    }
-    .details-label {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: #a78bfa;
-      margin-bottom: 16px;
-    }
-    .details-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 32px;
-    }
-    .detail-item {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 12px;
-      padding: 16px;
-    }
-    .detail-label {
-      font-size: 11px;
-      color: #71717a;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
-    }
-    .detail-value {
-      font-size: 14px;
-      font-weight: 500;
-      color: #e4e4e7;
-    }
-    .footer {
-      text-align: center;
-      padding-top: 24px;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-      font-size: 12px;
-      color: #71717a;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="card">
-      <div class="header">
-        <div class="badge">AI Conversation Summary</div>
-        <h1>${escapedTitle}</h1>
-        <div class="meta">
-          <div class="meta-item">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-            </svg>
-            ${date}
-          </div>
-          <div class="meta-item">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-            ${data.turnCount} turns
-          </div>
-          <div class="meta-item">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-            </svg>
-            ${data.model}
-          </div>
-        </div>
-      </div>
-
-      <div class="summary-section">
-        <div class="summary-label">Summary</div>
-        <p class="summary-text">${escapedSummary}</p>
-      </div>
-
-      <div class="details-section">
-        <div class="details-label">Conversation Highlights</div>
-        <p style="font-size: 14px; line-height: 1.8; color: #a1a1aa;">${escapedMarkdown}</p>
-      </div>
-
-      <div class="footer">
-        Generated by MiWarp &bull; ${date}
-      </div>
-    </div>
-  </div>
-</body>
-</html>`;
   }
 
   async function handleModelChange(newModel: string) {
@@ -3930,46 +3727,7 @@
 
 <div class="relative flex h-full overflow-hidden bg-background">
   <!-- Page-level drag overlay (drag-hover or processing spinner) -->
-  {#if pageDragActive || dragProcessing}
-    <div
-      class="absolute inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-[2px]"
-      class:pointer-events-none={pageDragActive && !dragProcessing}
-    >
-      <div
-        class="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-primary/50 bg-primary/5 px-12 py-8"
-      >
-        {#if dragProcessing}
-          <svg
-            class="h-8 w-8 text-primary/60 animate-spin"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-          </svg>
-          <span class="text-sm font-medium text-primary/70">{t("drag_processing")}</span>
-        {:else}
-          <svg
-            class="h-8 w-8 text-primary/60"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" x2="12" y1="3" y2="15" />
-          </svg>
-          <span class="text-sm font-medium text-primary/70">{t("prompt_dropFiles")}</span>
-        {/if}
-      </div>
-    </div>
-  {/if}
+  <ChatDragOverlay {pageDragActive} {dragProcessing} />
 
   <!-- Main content area -->
   <div class="flex flex-1 flex-col min-w-0 relative">
@@ -4069,148 +3827,31 @@
           >
             {#if welcomeVisible}
               <!-- Welcome state -->
-              <div class="flex h-full items-center justify-center">
-                <div class="flex flex-col items-center max-w-lg w-full px-4 animate-slide-up">
-                  <!-- Logo + title -->
-                  <img src={APP_LOGO_URL} alt="MiWarp" class="mx-auto mb-3 h-8 w-8 rounded-lg" />
-                  <h2 class="text-base font-medium text-foreground mb-1">
-                    {t("chat_welcomeTitle")}
-                  </h2>
-                  <p class="text-xs text-muted-foreground mb-5">{t("chat_welcomeSubtitle")}</p>
-
-                  <!-- Quick actions -->
-                  <div class="w-full max-w-sm space-y-2">
-                    {#if lastContinuableRun}
-                      <button
-                        class="w-full flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 px-3.5 py-2.5 text-sm text-foreground hover:bg-muted/50 hover:border-border transition-all duration-150 text-left"
-                        onclick={() => goto(`/chat?run=${lastContinuableRun!.id}&resume=continue`)}
-                      >
-                        <svg
-                          class="h-4 w-4 shrink-0 text-primary/70"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          ><polyline points="9 17 4 12 9 7" /><path
-                            d="M20 18v-2a4 4 0 0 0-4-4H4"
-                          /></svg
-                        >
-                        <span class="truncate">{t("chat_continueLastSession")}</span>
-                        <span class="ml-auto text-[11px] text-muted-foreground/60 shrink-0"
-                          >{relativeTime(
-                            lastContinuableRun.last_activity_at || lastContinuableRun.started_at,
-                          )}</span
-                        >
-                      </button>
-                    {/if}
-                    <button
-                      class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                      onclick={() => sendMessage(t("chat_quickAnalyzePrompt"), [])}
-                    >
-                      <svg
-                        class="h-4 w-4 shrink-0 text-blue-400/70"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        ><path d="M21 12a9 9 0 1 1-6.219-8.56" /><circle
-                          cx="12"
-                          cy="12"
-                          r="1"
-                        /></svg
-                      >
-                      <span>{t("chat_quickAnalyze")}</span>
-                    </button>
-                    <button
-                      class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                      onclick={() => fillPrompt(t("chat_quickFixPrompt"))}
-                    >
-                      <svg
-                        class="h-4 w-4 shrink-0 text-amber-400/70"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        ><path
-                          d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
-                        /></svg
-                      >
-                      <span>{t("chat_quickFix")}</span>
-                    </button>
-                    <button
-                      class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                      onclick={() => sendMessage(t("chat_quickDailyPrompt"), [])}
-                    >
-                      <svg
-                        class="h-4 w-4 shrink-0 text-green-400/70"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        ><path
-                          d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-                        /><polyline points="14 2 14 8 20 8" /><line
-                          x1="16"
-                          y1="13"
-                          x2="8"
-                          y2="13"
-                        /><line x1="16" y1="17" x2="8" y2="17" /></svg
-                      >
-                      <span>{t("chat_quickDaily")}</span>
-                    </button>
-                    <button
-                      class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
-                      onclick={() => goto("/scheduled-tasks")}
-                    >
-                      <svg
-                        class="h-4 w-4 shrink-0 text-violet-400/70"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        ><circle cx="12" cy="12" r="10" /><polyline
-                          points="12 6 12 12 16 14"
-                        /></svg
-                      >
-                      <span>{t("chat_quickSchedule")}</span>
-                    </button>
-                  </div>
-
+              <ChatWelcomeScreen
+                {lastContinuableRun}
+                onContinueSession={(id) => goto(`/chat?run=${id}&resume=continue`)}
+                onQuickAnalyze={() => sendMessage(t("chat_quickAnalyzePrompt"), [])}
+                onQuickFix={() => fillPrompt(t("chat_quickFixPrompt"))}
+                onQuickDaily={() => sendMessage(t("chat_quickDailyPrompt"), [])}
+                onGotoSchedule={() => goto("/scheduled-tasks")}
+                {authOverview}
+                authSourceLabel={store.authSourceLabel}
+                authSourceCategory={store.authSourceCategory}
+                apiKeySource={store.apiKeySource}
+                authMode={store.authMode}
+                platformCredentials={settings?.platform_credentials ?? []}
+                platformId={store.platformId ?? "anthropic"}
+                onAuthModeChange={handleAuthModeChange}
+                onPlatformChange={handlePlatformChange}
+                {localProxyStatuses}
+              >
+                {#snippet initHint()}
                   {@render initHintCard()}
-
-                  <!-- Footer meta -->
-                  <div
-                    class="mt-5 flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/30"
-                  >
-                    <AuthSourceBadge
-                      {authOverview}
-                      authSourceLabel={store.authSourceLabel}
-                      authSourceCategory={store.authSourceCategory}
-                      apiKeySource={store.apiKeySource}
-                      hasRun={false}
-                      authMode={store.authMode}
-                      platformCredentials={settings?.platform_credentials ?? []}
-                      platformId={store.platformId ?? "anthropic"}
-                      onAuthModeChange={handleAuthModeChange}
-                      onPlatformChange={handlePlatformChange}
-                      {localProxyStatuses}
-                      variant="hero"
-                    />
-                    <span class="text-muted-foreground/30">·</span>
-                    {@render heroMetaItems()}
-                  </div>
-                </div>
-              </div>
+                {/snippet}
+                {#snippet heroMeta()}
+                  {@render heroMetaItems()}
+                {/snippet}
+              </ChatWelcomeScreen>
             {:else if routeRunLoadFailed}
               <div class="flex h-full flex-col items-center justify-center gap-3 px-4">
                 <p class="text-sm text-destructive">{t("chat_sessionLoadFailed")}</p>
@@ -4235,79 +3876,22 @@
               <!-- Timeline: chat messages + inline tool cards -->
               <div data-conversation-root>
                 {#if store.run?.parent_run_id}
-                  <div class="chat-content-width py-2" data-export-exclude>
-                    <div
-                      class="flex items-center gap-2 rounded-md border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-xs text-blue-400"
-                    >
-                      <svg
-                        class="h-3.5 w-3.5 shrink-0"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <circle cx="12" cy="18" r="3" /><circle cx="6" cy="6" r="3" /><circle
-                          cx="18"
-                          cy="6"
-                          r="3"
-                        />
-                        <path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9" /><path d="M12 12v3" />
-                      </svg>
-                      <span class="text-foreground/60">{t("chat_forkedBanner")}</span>
-                      <button
-                        class="ml-auto shrink-0 text-blue-400 hover:text-blue-300 underline underline-offset-2"
-                        onclick={() => goto(`/chat?run=${store.run!.parent_run_id}`)}
-                        >{t("chat_viewParent")}</button
-                      >
-                    </div>
-                  </div>
+                  <ChatForkedBanner
+                    onViewParent={() => goto(`/chat?run=${store.run!.parent_run_id}`)}
+                  />
                 {/if}
                 {#if notificationVisible && latestNotification}
-                  <div class="chat-content-width py-1" data-export-exclude>
-                    <div
-                      class="flex items-center gap-2 text-xs text-muted-foreground bg-teal-500/5 border border-teal-500/20 rounded px-3 py-1.5 animate-fade-in"
-                    >
-                      <span class="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse"></span>
-                      Task #{latestNotification.task_id}: {latestNotification.status}
-                    </div>
-                  </div>
+                  <ChatNotificationBanner
+                    taskId={latestNotification.task_id}
+                    status={latestNotification.status}
+                  />
                 {/if}
                 {#if toolNamesInTimeline.length >= 2 && processVisibility !== "output"}
-                  <div class="chat-content-width py-2" data-export-exclude>
-                    <div class="flex flex-wrap items-center gap-1.5">
-                      <button
-                        class="rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors {!toolFilter
-                          ? 'bg-foreground/10 text-foreground'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'}"
-                        onclick={() => (toolFilter = null)}>{t("chat_filterAll")}</button
-                      >
-                      {#each toolNamesInTimeline as name}
-                        {@const style = getToolColor(name)}
-                        <button
-                          class="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors {toolFilter ===
-                          name
-                            ? style.bg + ' ' + style.text
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'}"
-                          onclick={() => (toolFilter = toolFilter === name ? null : name)}
-                        >
-                          <svg
-                            class="h-2.5 w-2.5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          >
-                            <path d={style.icon} />
-                          </svg>
-                          {name}
-                        </button>
-                      {/each}
-                    </div>
-                  </div>
+                  <ChatToolFilterBar
+                    toolNames={toolNamesInTimeline}
+                    activeFilter={toolFilter}
+                    onFilterChange={(f) => (toolFilter = f)}
+                  />
                 {/if}
                 {#if processVisibility !== "output"}
                   <!-- View mode toggle (Normal / Verbose / Summary) -->
@@ -4356,25 +3940,7 @@
                       {#if usageAnnotations.has(i)}
                         {@const tu = usageAnnotations.get(i)}
                         {#if tu && settings?.show_token_usage_report !== false && shouldShowContextDetails(processVisibility)}
-                          <div class="w-full py-1.5">
-                            <div class="chat-content-width">
-                              <div class="flex items-center gap-3">
-                                <div class="h-px flex-1 bg-border/40"></div>
-                                <span class="text-[10px] tabular-nums text-muted-foreground">
-                                  {formatTokenCount(tu.inputTokens)}
-                                  {t("chat_usageIn")} · {formatTokenCount(tu.outputTokens)}
-                                  {t("chat_usageOut")}
-                                  {#if tu.cacheReadTokens > 0 || tu.cacheWriteTokens > 0}
-                                    · {t("chat_usageCache", {
-                                      read: formatTokenCount(tu.cacheReadTokens),
-                                      write: formatTokenCount(tu.cacheWriteTokens),
-                                    })}
-                                  {/if}
-                                </span>
-                                <div class="h-px flex-1 bg-border/40"></div>
-                              </div>
-                            </div>
-                          </div>
+                          <ChatUsageAnnotation usage={tu} />
                         {/if}
                       {/if}
                       {#if entry.kind === "user"}
@@ -4518,98 +4084,15 @@
 
                 <!-- Output mode: single friendly placeholder while routine tools run (no per-tool cards). -->
                 {#if processVisibility === "output" && store.isRunning && timelineHasHiddenRoutineWorkRunning(store.timeline)}
-                  <div class="w-full py-2 animate-fade-in">
-                    <div class="chat-content-width pl-7">
-                      <div
-                        class="flex items-center gap-2.5 rounded-lg border border-border/40 bg-muted/25 px-3 py-2.5 text-xs text-muted-foreground"
-                        data-output-working-hint
-                      >
-                        <span
-                          class="h-2 w-2 shrink-0 rounded-full bg-primary/70 animate-pulse"
-                          aria-hidden="true"
-                        ></span>
-                        <span>{t("chat_outputWorkingHint")}</span>
-                      </div>
-                    </div>
-                  </div>
+                  <ChatOutputWorkingHint />
                 {/if}
 
                 <!-- Rewind markers (independent array, not in store.timeline) -->
-                {#each rewindMarkers as marker, mi (marker.id)}
-                  <div
-                    class="w-full py-3"
-                    id={mi === rewindMarkers.length - 1 ? "rewind-marker-latest" : undefined}
-                  >
-                    <div class="chat-content-width">
-                      <div class="flex items-center gap-3">
-                        <div class="h-px flex-1 bg-blue-500/20"></div>
-                        <div class="flex items-center gap-2 text-xs text-blue-500/80 font-medium">
-                          <svg
-                            class="h-3.5 w-3.5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          >
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                            <path d="M3 3v5h5" />
-                          </svg>
-                          <span
-                            >{t("rewind_separatorLabel", {
-                              count: String(marker.filesReverted.length),
-                            })}</span
-                          >
-                        </div>
-                        <div class="h-px flex-1 bg-blue-500/20"></div>
-                      </div>
-                      <div class="mt-1 ml-8 text-[11px] text-muted-foreground/60 truncate">
-                        &ldquo;{marker.targetContent}&rdquo;
-                      </div>
-                      {#if marker.filesReverted.length > 0}
-                        <details class="mt-1 ml-8">
-                          <summary
-                            class="cursor-pointer text-[10px] text-blue-500/50 hover:text-blue-500/80"
-                          >
-                            {t("rewind_separatorFiles", {
-                              count: String(marker.filesReverted.length),
-                            })}
-                          </summary>
-                          <div class="mt-1 rounded bg-muted/30 px-2 py-1">
-                            {#each marker.filesReverted as file}
-                              <div class="truncate font-mono text-[10px] text-muted-foreground">
-                                {file}
-                              </div>
-                            {/each}
-                          </div>
-                        </details>
-                      {/if}
-                    </div>
-                  </div>
-                {/each}
+                <ChatRewindMarkers markers={rewindMarkers} />
 
                 <!-- Last turn usage annotation (after all entries) -->
                 {#if lastTurnUsage && !store.isRunning && settings?.show_token_usage_report !== false}
-                  <div class="w-full py-1.5">
-                    <div class="chat-content-width">
-                      <div class="flex items-center gap-3">
-                        <div class="h-px flex-1 bg-border/40"></div>
-                        <span class="text-[10px] tabular-nums text-muted-foreground">
-                          {formatTokenCount(lastTurnUsage.inputTokens)}
-                          {t("chat_usageIn")} · {formatTokenCount(lastTurnUsage.outputTokens)}
-                          {t("chat_usageOut")}
-                          {#if lastTurnUsage.cacheReadTokens > 0 || lastTurnUsage.cacheWriteTokens > 0}
-                            · {t("chat_usageCache", {
-                              read: formatTokenCount(lastTurnUsage.cacheReadTokens),
-                              write: formatTokenCount(lastTurnUsage.cacheWriteTokens),
-                            })}
-                          {/if}
-                        </span>
-                        <div class="h-px flex-1 bg-border/40"></div>
-                      </div>
-                    </div>
-                  </div>
+                  <ChatUsageAnnotation usage={lastTurnUsage} />
                 {/if}
 
                 <!-- Active team runs -->
@@ -4630,106 +4113,21 @@
 
                 <!-- Thinking panel (extended thinking) -->
                 {#if store.thinkingText}
-                  {#if thinkingExpanded}
-                    <div class="w-full animate-fade-in">
-                      <div class="chat-content-width py-1">
-                        <div
-                          class="max-h-28 overflow-hidden rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.18)] bg-[hsl(var(--miwarp-bg-deep)/0.6)]"
-                        >
-                          <div
-                            class="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] text-[hsl(var(--miwarp-status-info))]"
-                          >
-                            <svg
-                              class="h-2.5 w-2.5 shrink-0 opacity-70"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-width="2"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                            >
-                              <path
-                                d="M12 2a8 8 0 0 0-8 8c0 3.4 2.1 6.3 5 7.4V19a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1.6c2.9-1.1 5-4 5-7.4a8 8 0 0 0-8-8z"
-                              />
-                              <path d="M10 22h4" />
-                            </svg>
-                            <span class="font-medium">{t("chat_thinking")}</span>
-                            <button
-                              class="ml-auto opacity-50 hover:opacity-100 transition-opacity"
-                              onclick={() => (thinkingExpanded = false)}
-                            >
-                              <svg
-                                class="h-2.5 w-2.5"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                              >
-                                <path d="m18 15-6-6-6 6" />
-                              </svg>
-                            </button>
-                          </div>
-                          <div
-                            class="border-t border-[hsl(var(--miwarp-accent-primary)/0.12)] px-2.5 py-2 overflow-y-auto overscroll-y-contain max-h-[calc(7rem-2.25rem)]"
-                          >
-                            <pre
-                              class="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-[hsl(var(--miwarp-status-info)/0.7)]">{store.thinkingText.trimEnd()}</pre>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  {:else}
-                    <div class="w-full animate-fade-in">
-                      <div class="chat-content-width py-1">
-                        <button
-                          class="inline-flex items-center gap-1.5 rounded-full px-2 py-px text-[10px] text-[hsl(var(--miwarp-status-info))] opacity-70 hover:opacity-100 hover:bg-[hsl(var(--miwarp-status-info)/0.08)] transition-all"
-                          onclick={() => (thinkingExpanded = true)}
-                        >
-                          <svg
-                            class="h-2.5 w-2.5 shrink-0"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          >
-                            <path
-                              d="M12 2a8 8 0 0 0-8 8c0 3.4 2.1 6.3 5 7.4V19a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1.6c2.9-1.1 5-4 5-7.4a8 8 0 0 0-8-8z"
-                            />
-                            <path d="M10 22h4" />
-                          </svg>
-                          <span>{t("chat_thinking")}</span>
-                          <span class="opacity-50">·</span>
-                          <span class="opacity-50">{t("common_expand")}</span>
-                        </button>
-                      </div>
-                    </div>
-                  {/if}
+                  <ChatThinkingPanel
+                    thinkingText={store.thinkingText}
+                    expanded={thinkingExpanded}
+                    onToggleExpand={() => (thinkingExpanded = !thinkingExpanded)}
+                  />
                 {/if}
 
                 <!-- Streaming text -->
                 {#if store.streamingText}
-                  <div class="w-full animate-fade-in">
-                    <div class="chat-content-width py-4">
-                      <div class="mb-1.5 flex items-center gap-2">
-                        <AgentIdentity
-                          agent={store.agent}
-                          platformId={store.platformId ?? undefined}
-                          model={store.run?.model ?? store.model}
-                          size="md"
-                          animated={true}
-                          showName={true}
-                          showModel={false}
-                        />
-                      </div>
-                      <div class="pl-7 prose-chat">
-                        <MarkdownContent text={store.streamingText} streaming={true} />
-                      </div>
-                    </div>
-                  </div>
+                  <ChatStreamingText
+                    text={store.streamingText}
+                    agent={store.agent}
+                    platformId={store.platformId ?? undefined}
+                    model={store.run?.model ?? store.model}
+                  />
                 {/if}
 
                 <!-- Slash command processing indicator (before thinking kicks in) -->
@@ -4748,79 +4146,14 @@
 
                 <!-- Thinking indicator (debounced 300ms to avoid flash on fast CLI commands) -->
                 {#if thinkingVisible && !store.thinkingText}
-                  <div class="w-full animate-fade-in" data-export-exclude>
-                    <div class="chat-content-width py-4">
-                      <div class="mb-1.5 flex items-center gap-2">
-                        <div
-                          class="flex h-5 w-5 items-center justify-center rounded-sm bg-orange-500/10 text-orange-500"
-                        >
-                          <svg
-                            class="h-3 w-3"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          >
-                            <path
-                              d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"
-                            />
-                          </svg>
-                        </div>
-                        <span class="text-sm font-semibold text-foreground">{t("chat_claude")}</span
-                        >
-                        {#if thinkingElapsed > 0}
-                          <span class="ml-auto text-[10px] tabular-nums text-muted-foreground"
-                            >{formatElapsed(thinkingElapsed)}</span
-                          >
-                        {/if}
-                      </div>
-                      <div class="pl-7">
-                        {#if store.activeToolName}
-                          <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                            <div
-                              class="h-3.5 w-3.5 rounded-full border-2 border-border border-t-muted-foreground animate-spin"
-                            ></div>
-                            <span
-                              >{t("chat_usingTool")}
-                              <span class="text-foreground font-medium">{store.activeToolName}</span
-                              ></span
-                            >
-                            {#if store.thinkingEndMs && store.thinkingDurationSec > 0}
-                              <span class="text-xs tabular-nums"
-                                >· thought for {store.thinkingDurationSec}s</span
-                              >
-                            {/if}
-                          </div>
-                        {:else if approving}
-                          <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                            <div
-                              class="h-3.5 w-3.5 rounded-full border-2 border-border border-t-muted-foreground animate-spin"
-                            ></div>
-                            <span>{t("chat_restartingApproved")}</span>
-                          </div>
-                        {:else if sending}
-                          <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                            <div
-                              class="h-3.5 w-3.5 rounded-full border-2 border-border border-t-muted-foreground animate-spin"
-                            ></div>
-                            <span>{t("chat_startingSession")}</span>
-                          </div>
-                        {:else}
-                          <div class="flex items-center gap-2 text-sm">
-                            <span class="spinner-star">✦</span>
-                            <span class="spinner-shimmer">{spinnerVerb}…</span>
-                            {#if store.thinkingEndMs && store.thinkingDurationSec > 0}
-                              <span class="text-muted-foreground text-xs tabular-nums"
-                                >· thought for {store.thinkingDurationSec}s</span
-                              >
-                            {/if}
-                          </div>
-                        {/if}
-                      </div>
-                    </div>
-                  </div>
+                  <ChatThinkingIndicator
+                    elapsed={thinkingElapsed}
+                    activeToolName={store.activeToolName}
+                    thinkingDurationSec={store.thinkingEndMs ? store.thinkingDurationSec : null}
+                    {approving}
+                    {sending}
+                    {spinnerVerb}
+                  />
                 {/if}
               </div>
             {/if}
@@ -4869,146 +4202,27 @@
 
         <!-- Fork overlay -->
         {#if forkOverlay}
-          <div
-            class="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-fade-in"
-          >
-            {#if forkOverlay.error}
-              <!-- Error state -->
-              <div class="flex flex-col items-center gap-4 max-w-sm text-center animate-slide-up">
-                <div
-                  class="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10"
-                >
-                  <svg
-                    class="h-6 w-6 text-destructive"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="text-sm font-semibold text-foreground mb-1">{t("chat_forkFailed")}</h3>
-                  <p class="text-xs text-muted-foreground">{forkOverlay.error}</p>
-                </div>
-                <div class="flex items-center gap-2">
-                  <button
-                    class="rounded-lg border border-border bg-muted px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
-                    onclick={handleForkCancel}>{t("common_cancel")}</button
-                  >
-                  <button
-                    class="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-                    disabled={resuming}
-                    onclick={handleForkRetry}>{t("common_retry")}</button
-                  >
-                </div>
-              </div>
-            {:else}
-              <!-- In-progress state -->
-              <div class="flex flex-col items-center gap-4 max-w-sm text-center animate-slide-up">
-                <div class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10">
-                  <svg
-                    class="h-6 w-6 text-blue-400 animate-spin"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 class="text-sm font-semibold text-foreground mb-1">
-                    {t("chat_forkingSession")}
-                  </h3>
-                  <p class="text-xs text-muted-foreground">
-                    {t("chat_forkingDesc")}
-                  </p>
-                </div>
-                {#if forkElapsed > 0}
-                  <span class="text-xs tabular-nums text-muted-foreground"
-                    >{formatElapsed(forkElapsed)}</span
-                  >
-                {/if}
-                <button
-                  class="rounded-lg border border-border bg-muted px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
-                  onclick={handleForkCancel}>{t("common_cancel")}</button
-                >
-              </div>
-            {/if}
-          </div>
+          <ChatForkOverlay
+            error={forkOverlay.error}
+            elapsed={forkElapsed}
+            {resuming}
+            onCancel={handleForkCancel}
+            onRetry={handleForkRetry}
+          />
         {/if}
 
         <!-- Classified error card -->
         {#if store.error && !forkOverlay}
-          {@const classified = classifyError(store.run?.result_subtype, store.error)}
-          {@const catIcon =
-            classified.category === "context_limit"
-              ? "⚠"
-              : classified.category === "auth_issue"
-                ? "🔑"
-                : classified.category === "budget_limit"
-                  ? "💰"
-                  : classified.category === "server_issue"
-                    ? "☁"
-                    : classified.category === "session_timeout"
-                      ? "⏱"
-                      : classified.category === "tool_issue"
-                        ? "🔧"
-                        : "❌"}
-          <div
-            class="absolute left-3 right-3 z-10"
-            style="bottom: calc(var(--chat-input-dock-offset, 13rem) + 0.5rem)"
-          >
-            <div
-              class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm backdrop-blur-sm animate-fade-in"
-            >
-              <div class="flex items-start gap-2">
-                <span class="shrink-0 text-base leading-none mt-0.5">{catIcon}</span>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-1">
-                    <span
-                      class="text-[10px] font-medium uppercase tracking-wider text-destructive/70"
-                      >{t(`error_category_${classified.category}`)}</span
-                    >
-                  </div>
-                  <p class="text-destructive text-xs leading-relaxed break-words">{store.error}</p>
-                  <p class="text-destructive/60 text-[10px] mt-1">
-                    {t(`error_guidance_${classified.category}`)}
-                  </p>
-                </div>
-                <button
-                  class="shrink-0 text-destructive/50 hover:text-destructive text-xs"
-                  onclick={() => (store.error = "")}>{t("common_dismiss")}</button
-                >
-              </div>
-              <div class="flex items-center gap-2 mt-2 pl-6">
-                {#if classified.canRetry && store.phase === "failed" && store.run?.session_id}
-                  <button
-                    class="rounded px-2.5 py-1 text-xs bg-destructive/20 hover:bg-destructive/30 text-destructive transition-colors"
-                    onclick={() => handleResume("continue")}>{t("common_retry")}</button
-                  >
-                {/if}
-                {#if classified.canFork && store.run?.session_id}
-                  <button
-                    class="rounded px-2.5 py-1 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors"
-                    onclick={() => handleResume("fork")}>{t("statusbar_fork")}</button
-                  >
-                {/if}
-                {#if classified.settingsLink}
-                  <button
-                    class="rounded px-2.5 py-1 text-xs bg-destructive/20 hover:bg-destructive/30 text-destructive transition-colors"
-                    onclick={() => goto(classified.settingsLink)}>{t("chat_checkSettings")}</button
-                  >
-                {/if}
-              </div>
-            </div>
-          </div>
+          <ChatErrorCard
+            error={store.error}
+            resultSubtype={store.run?.result_subtype}
+            sessionId={store.run?.session_id}
+            phase={store.phase}
+            onDismiss={() => (store.error = "")}
+            onRetry={() => handleResume("continue")}
+            onFork={() => handleResume("fork")}
+            onGotoSettings={goto}
+          />
         {/if}
       </div>
 
@@ -5048,44 +4262,13 @@
 
         <!-- BTW side question drawer -->
         {#if btwState.active}
-          <div
-            class="pointer-events-auto border-t border-blue-500/30 bg-blue-500/5"
-            style="max-height: 40vh; overflow-y: auto;"
-          >
-            <div class="flex items-center justify-between px-4 py-2 border-b border-border/50">
-              <span class="text-xs font-medium text-blue-400">{t("chat_btw")}</span>
-              <button
-                onclick={() => (btwState = { ...btwState, active: false })}
-                title="Close side question"
-                class="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <svg
-                  class="h-3.5 w-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-                </svg>
-              </button>
-            </div>
-            <div class="px-4 py-3 space-y-2">
-              <p class="text-xs text-muted-foreground">Q: {btwState.question}</p>
-              <div class="text-sm">
-                {#if btwState.error}
-                  <p class="text-destructive">{btwState.error}</p>
-                {:else if btwState.answer}
-                  <MarkdownContent text={btwState.answer} streaming={btwState.loading} />
-                {/if}
-                {#if btwState.loading}
-                  <span class="inline-block w-2 h-4 bg-blue-400 animate-pulse rounded-sm"></span>
-                {/if}
-              </div>
-            </div>
-          </div>
+          <ChatBtwDrawer
+            question={btwState.question}
+            answer={btwState.answer}
+            error={btwState.error}
+            loading={btwState.loading}
+            onClose={() => (btwState = { ...btwState, active: false })}
+          />
         {/if}
 
         <!-- Created Files Panel -->
@@ -5115,30 +4298,12 @@
         <!-- Input bar -->
         <!-- Ralph Loop status bar -->
         {#if store.ralphLoop?.active}
-          <div class="mx-auto w-full max-w-3xl px-4 pb-2">
-            <div
-              class="flex items-center justify-between rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm"
-            >
-              <div class="flex items-center gap-2 text-blue-400">
-                <span class="animate-pulse">🔄</span>
-                <span class="font-medium">{t("chat_ralphLoop")}</span>
-                <span class="text-blue-400/70">
-                  iteration {store.ralphLoop.iteration}/{store.ralphLoop.maxIterations || "∞"}
-                </span>
-                {#if store.ralphLoop.completionPromise}
-                  <span class="text-blue-400/50">
-                    · promise: "{store.ralphLoop.completionPromise}"
-                  </span>
-                {/if}
-              </div>
-              <button
-                class="rounded px-2 py-0.5 text-xs text-red-400 hover:bg-red-500/20 transition-colors"
-                onclick={handleRalphCancel}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+          <ChatRalphLoopBar
+            iteration={store.ralphLoop.iteration}
+            maxIterations={store.ralphLoop.maxIterations}
+            completionPromise={store.ralphLoop.completionPromise}
+            onCancel={handleRalphCancel}
+          />
         {/if}
 
         {#if store.sessionAlive || !store.run || store.phase === "empty" || store.phase === "ready" || TERMINAL_PHASES.includes(store.phase)}
@@ -5261,14 +4426,9 @@
     activeBackgroundTasks={store.activeBackgroundTasks}
     cwd={store.effectiveCwd}
     runId={store.run?.id ?? ""}
-    worktreePath={store.run?.worktree_path ?? null}
-    parentCwd={store.run?.parent_cwd ?? null}
-    worktreeBranch={store.run?.worktree_branch ?? null}
-    creationMode={store.run?.creation_mode ?? null}
     isRemote={store.isRemote}
     bind:requestedPreviewPath
     bind:requestedPreviewUrl
-    {processVisibility}
   />
 
   <RewindModal

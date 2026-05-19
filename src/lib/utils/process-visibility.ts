@@ -103,6 +103,11 @@ export function shouldMountFullToolCardInGuidedMode(tool: BusToolItem): boolean 
   return isProcessVisibilityCriticalTool(tool) || isProcessVisibilityStructuralTool(tool);
 }
 
+/** Whether the separator content represents a meaningful timeline boundary (e.g. context cleared). */
+export function isTimelineSeparatorContent(content: string | undefined): boolean {
+  return content === "__context_cleared__";
+}
+
 export function timelineHasHiddenRoutineWorkRunning(entries: TimelineEntry[]): boolean {
   for (const e of entries) {
     if (e.kind !== "tool") continue;

@@ -487,6 +487,21 @@ export function renderInsightHtml(report: InsightReport, context: InsightContext
 </html>`;
 }
 
+/**
+ * Async wrapper that yields to the main thread before rendering.
+ * Prevents long HTML generation from blocking the UI.
+ */
+export async function renderInsightHtmlAsync(
+  report: InsightReport,
+  context: InsightContext,
+): Promise<string> {
+  // Yield so the browser can paint before the heavy string build
+  if (typeof requestAnimationFrame === "function") {
+    await new Promise<void>((r) => requestAnimationFrame(() => r()));
+  }
+  return renderInsightHtml(report, context);
+}
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")

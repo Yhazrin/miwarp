@@ -92,7 +92,6 @@ export function useConversationInsight(
         options.getTimeline(),
         options.getUsage(),
         options.getNumTurns() || 0,
-        { isStale: () => isStale(gen, runId) },
       );
 
       if (isStale(gen, runId)) return;

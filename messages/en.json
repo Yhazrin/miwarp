@@ -541,6 +541,8 @@
   "chat_usingTool": "Using",
   "chat_restartingApproved": "Restarting with tool approved...",
   "chat_startingSession": "Starting session...",
+  "chat_sessionLoadFailed": "Failed to load session",
+  "chat_loadingSession": "Loading session...",
   "chat_newMessages": "New messages",
   "chat_typeToStartSession": "Type a message below to start the session",
   "chat_startSessionHint": "Start a session with an AI coding agent",

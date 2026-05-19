@@ -80,7 +80,7 @@
         workflowStore.recordUsage(selectedTemplateId!);
         selectedTemplateId = null;
       },
-      onError: (error: string) => {
+      onError: (error: Error) => {
         console.error("Workflow execution error:", error);
         selectedTemplateId = null;
       },

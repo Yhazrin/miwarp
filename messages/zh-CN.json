@@ -541,6 +541,8 @@
   "chat_usingTool": "正在使用",
   "chat_restartingApproved": "正在重启并批准工具...",
   "chat_startingSession": "正在启动会话...",
+  "chat_sessionLoadFailed": "加载会话失败",
+  "chat_loadingSession": "正在加载会话...",
   "chat_newMessages": "新消息",
   "chat_typeToStartSession": "在下方输入消息以启动会话",
   "chat_startSessionHint": "启动一个 AI 编码助手会话",

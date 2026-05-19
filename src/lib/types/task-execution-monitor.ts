@@ -18,6 +18,9 @@ export interface TaskExecutionMonitor {
   // Execution context
   startTime?: string;
   endTime?: string;
+  startedAt?: string;
+  endedAt?: string;
+  estimatedDuration?: string;
 
   // Logs
   logs: ExecutionLog[];
@@ -41,6 +44,7 @@ export type TaskExecutionStatus =
   | "cancelled";
 
 export interface ExecutionLog {
+  id?: string;
   timestamp: string;
   level: LogLevel;
   message: string;

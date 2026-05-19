@@ -1,0 +1,196 @@
+/**
+ * Pure HTML generation for conversation summary export.
+ * Extracted from ChatPage — no side effects, no store access.
+ */
+
+function escapeHtml(s: string): string {
+  return s.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+export function buildSummaryHtml(
+  title: string,
+  data: {
+    summary: string;
+    markdown: string;
+    model: string;
+    cwd: string;
+    startedAt: string;
+    turnCount: number;
+  },
+): string {
+  const escapedTitle = escapeHtml(title);
+  const escapedSummary = escapeHtml(data.summary);
+  const escapedMarkdown = escapeHtml(data.markdown).replace(/\n/g, "<br>");
+  const date = data.startedAt
+    ? new Date(data.startedAt).toLocaleString()
+    : new Date().toLocaleString();
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapedTitle}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      padding: 40px 20px;
+      color: #e4e4e7;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 48px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .meta {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: #a1a1aa;
+    }
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .summary-section {
+      margin-bottom: 32px;
+    }
+    .summary-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #a78bfa;
+      margin-bottom: 16px;
+    }
+    .summary-text {
+      font-size: 18px;
+      line-height: 1.8;
+      color: #d4d4d8;
+    }
+    .details-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #a78bfa;
+      margin-bottom: 16px;
+    }
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .detail-item {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .detail-label {
+      font-size: 11px;
+      color: #71717a;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .detail-value {
+      font-size: 14px;
+      font-weight: 500;
+      color: #e4e4e7;
+    }
+    .footer {
+      text-align: center;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 12px;
+      color: #71717a;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div class="badge">AI Conversation Summary</div>
+        <h1>${escapedTitle}</h1>
+        <div class="meta">
+          <div class="meta-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+            </svg>
+            ${date}
+          </div>
+          <div class="meta-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            ${data.turnCount} turns
+          </div>
+          <div class="meta-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+            ${data.model}
+          </div>
+        </div>
+      </div>
+
+      <div class="summary-section">
+        <div class="summary-label">Summary</div>
+        <p class="summary-text">${escapedSummary}</p>
+      </div>
+
+      <div class="details-section">
+        <div class="details-label">Conversation Highlights</div>
+        <p style="font-size: 14px; line-height: 1.8; color: #a1a1aa;">${escapedMarkdown}</p>
+      </div>
+
+      <div class="footer">
+        Generated by MiWarp &bull; ${date}
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
