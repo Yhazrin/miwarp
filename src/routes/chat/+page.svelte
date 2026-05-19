@@ -30,17 +30,12 @@
     TimelineEntry,
   } from "$lib/types";
   import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
+  import { isPlanFilePath, planFileName, extractPlanContent } from "$lib/utils/tool-rendering";
   import {
-    detectBatchGroups,
-    detectToolBursts,
-    isPlanFilePath,
-    planFileName,
-    extractPlanContent,
-  } from "$lib/utils/tool-rendering";
-  import type { ToolBurst } from "$lib/utils/tool-rendering";
-
-  const EMPTY_BATCH_MAP = new Map();
-  const EMPTY_BURST_MAP = new Map() as Map<number, ToolBurst>;
+    computeTimelinePresentation,
+    getInitialRenderLimit,
+  } from "$lib/chat/selectors/timeline-presentation";
+  import { useConversationInsight } from "$lib/conversation-insight/use-conversation-insight.svelte";
   import XTerminal from "$lib/components/XTerminal.svelte";
   import ChatMessage from "$lib/components/ChatMessage.svelte";
   import AgentIdentity from "$lib/components/AgentIdentity.svelte";
@@ -89,6 +84,7 @@
     getCachedProcessVisibility,
     persistCachedProcessVisibility,
     shouldShowTimelineCommandOutput,
+    isTimelineSeparatorContent,
     shouldShowContextDetails,
     shouldMountFullToolCardInOutputMode,
     shouldMountFullToolCardInGuidedMode,
@@ -123,13 +119,6 @@
     shouldShowTeamHint,
   } from "$lib/services/team-dispatcher";
   import type { TeamRun, TeamPreset } from "$lib/types";
-  import { buildInsightContext } from "$lib/conversation-insight/insight-context-builder";
-  import {
-    renderInsightHtml,
-    buildInsightPrompt,
-    redactSensitiveData,
-  } from "$lib/conversation-insight/insight-html-renderer";
-  import type { InsightReport, InsightCardState } from "$lib/conversation-insight/insight-types";
 
   // ── Helpers ──
 
@@ -146,31 +135,6 @@
   let settings = $state<UserSettings | null>(null);
   let xtermRef: XTerminal | undefined = $state();
   let promptRef: PromptInput | undefined = $state();
-  // Created files tracking
-  const createdFiles = $derived.by(() => {
-    const files: { path: string; name: string; tool: string; timestamp: number }[] = [];
-    const seen = new Set<string>();
-    for (const entry of store.timeline) {
-      if (entry.kind !== "tool") continue;
-      const tool = entry.tool;
-      if (tool.status !== "success") continue;
-      const output = tool.output as Record<string, unknown> | undefined;
-      if (!output) continue;
-      const path =
-        (output.path as string) || (output.file_path as string) || (output.created_path as string);
-      if (path && !seen.has(path)) {
-        seen.add(path);
-        files.push({
-          path,
-          name: path.split("/").pop() ?? path,
-          tool: tool.tool_name,
-          timestamp: ((entry as Record<string, unknown>).seq as number) ?? Date.now(),
-        });
-      }
-    }
-    return files.sort((a, b) => a.timestamp - b.timestamp);
-  });
-  const hasCreatedFiles = $derived(createdFiles.length > 0);
   let sidebarCollapsed = $state(false);
 
   /** Use server settings when loaded; until then last-known cache avoids a dev-mode flash for Output users. */
@@ -473,15 +437,35 @@
 
   // ── Timeline rendering ──
   // Progressive render: start with the most recent N entries, grow on upward scroll.
-  // Switching to a multi-thousand-entry run with `Infinity` would mount thousands of
-  // ChatMessage components in one frame and freeze the WebView (issue #119).
-  const INITIAL_RENDER_LIMIT = 100;
   const RENDER_GROWTH_STEP = 100;
-  let renderLimit = $state(INITIAL_RENDER_LIMIT);
-  let progressiveGen = 0; // generation counter for stale-callback protection
+  let toolFilter = $state<string | null>(null);
+  let renderLimit = $state(getInitialRenderLimit(getCachedProcessVisibility(), []));
+  let progressiveGen = 0;
+  let loadingRunId = $state<string | null>(null);
   let loadingMore = $state(false);
-  let loadMoreArmed = $state(true); // throttle: re-armed by handleChatScroll
-  let _suppressLoadMoreRearm = false; // raised during programmatic scrollTop adjustment
+  let loadMoreArmed = $state(true);
+  let _suppressLoadMoreRearm = false;
+
+  let timelinePresentation = $derived.by(() =>
+    computeTimelinePresentation(
+      store.timeline,
+      toolFilter,
+      renderLimit,
+      store.tools.filter((e) => e.tool_name).length,
+    ),
+  );
+
+  let filteredTimeline = $derived(timelinePresentation.filteredTimeline);
+  let visibleTimeline = $derived(timelinePresentation.visibleTimeline);
+  let toolNamesInTimeline = $derived(timelinePresentation.toolNames);
+  let timelineIdIndex = $derived(timelinePresentation.timelineIdIndex);
+  let lastClearSepId = $derived(timelinePresentation.lastClearSepId);
+  let latestPlanToolId = $derived(timelinePresentation.latestPlanToolId);
+  let createdFiles = $derived(timelinePresentation.createdFiles);
+  let hasCreatedFiles = $derived(createdFiles.length > 0);
+  let batchGroups = $derived(timelinePresentation.batchGroups);
+  let toolBursts = $derived(timelinePresentation.toolBursts);
+  let userCountPrefix = $derived(timelinePresentation.userCountPrefix);
 
   async function syncVerboseState(runId: string | undefined) {
     const key = runId ?? "__no_run__";
@@ -519,8 +503,12 @@
       : true,
   );
 
-  // ── Tool filtering ──
-  let toolFilter = $state<string | null>(null);
+  let lastAssistantIdx = $derived.by(() => {
+    for (let j = visibleTimeline.length - 1; j >= 0; j--) {
+      if (visibleTimeline[j].kind === "assistant") return j;
+    }
+    return -1;
+  });
 
   // ── Input history (most recent first) ──
   let userHistory = $derived.by(() =>
@@ -530,40 +518,7 @@
       .reverse(),
   );
 
-  let toolNamesInTimeline = $derived.by(() => {
-    const names = new Set<string>();
-    for (const entry of store.timeline) {
-      if (entry.kind === "tool") names.add(entry.tool.tool_name);
-    }
-    return [...names].sort();
-  });
-
-  let filteredTimeline = $derived.by(() => {
-    if (!toolFilter) return store.timeline;
-    return store.timeline.filter((e) => e.kind !== "tool" || e.tool.tool_name === toolFilter);
-  });
-
-  let visibleTimeline = $derived.by(() => {
-    const ft = filteredTimeline;
-    if (renderLimit >= ft.length) return ft;
-    return ft.slice(ft.length - renderLimit);
-  });
-
-  let lastAssistantIdx = $derived.by(() => {
-    for (let j = visibleTimeline.length - 1; j >= 0; j--) {
-      if (visibleTimeline[j].kind === "assistant") return j;
-    }
-    return -1;
-  });
-
   // ── Batch groups (consecutive ≥3 Task tools) ──
-  // Skip batch detection when tool filter is active — filtering removes non-Task
-  // entries, causing originally non-consecutive Tasks to merge into false batches.
-  let batchGroups = $derived(
-    toolFilter
-      ? (EMPTY_BATCH_MAP as Map<number, BusToolItem[]>)
-      : detectBatchGroups(visibleTimeline),
-  );
 
   let _lastBatchSig = "";
   $effect(() => {
@@ -577,7 +532,6 @@
   });
 
   // ── Tool burst groups (excludes Task — handled by BatchProgressBar) ──
-  let toolBursts = $derived(toolFilter ? EMPTY_BURST_MAP : detectToolBursts(visibleTimeline));
 
   // Layer 1: Auto-collapse — completed + no interaction needed → collapsed (derived, pure)
   let autoCollapsed = $derived.by(() => {
@@ -715,11 +669,7 @@
   });
 
   // ── Sidebar data ──
-  let sidebarToolsCount = $derived(
-    store.timeline.some((e) => e.kind === "tool")
-      ? store.timeline.filter((e) => e.kind === "tool").length
-      : store.tools.filter((e) => e.tool_name).length,
-  );
+  let sidebarToolsCount = $derived(timelinePresentation.sidebarToolsCount);
   // ── CLI version info (reactive — ensures heroMetaFooter re-renders after async load) ──
   let cliVersionInfo = $derived(getCliVersionInfo_cached());
 
@@ -805,6 +755,8 @@
   /** Invalidate any in-flight async load so its post-await side effects bail out. */
   function cancelProgressive() {
     progressiveGen++;
+    loadingRunId = null;
+    _scrollToInFlight = false;
   }
 
   /** Bump the load generation and return it — caller compares against `progressiveGen`. */
@@ -924,7 +876,7 @@
 
   /**
    * Load a run and render its timeline progressively.
-   * Starts with the most recent `INITIAL_RENDER_LIMIT` entries; the top sentinel
+   * Starts with the most recent render limit entries; the top sentinel
    * grows `renderLimit` as the user scrolls up.
    */
   async function loadRunProgressive(
@@ -932,75 +884,79 @@
     xtermRef?: { clear(): void; writeText(s: string): void },
   ) {
     toolFilter = null;
-    // Reset progressive state so a previous run's expanded renderLimit (e.g. after
-    // an anchor jump) doesn't leak into the new run.
-    renderLimit = INITIAL_RENDER_LIMIT;
+    renderLimit = getInitialRenderLimit(processVisibility, store.timeline);
     loadingMore = false;
     loadMoreArmed = true;
     const gen = nextProgressiveGen();
+    loadingRunId = id;
 
-    // Capture scrollTo BEFORE loadRun — URL may change during async load
     const scrollTo = $page.url.searchParams.get("scrollTo");
-
-    // Flag suppresses auto-scroll reset during loadRun (non-reactive, won't trigger effects)
     if (scrollTo) _scrollToInFlight = true;
 
-    await store.loadRun(id, xtermRef);
-    if (id) folderCwdOverride = ""; // clear folder override when a real run loads
+    try {
+      await store.loadRun(id, xtermRef);
+      if (gen !== progressiveGen) return;
+      if (id) folderCwdOverride = "";
 
-    // Reload project data with the run's cwd
-    if (id && store.effectiveCwd) {
-      reloadProjectData(store.effectiveCwd);
-    }
+      renderLimit = getInitialRenderLimit(processVisibility, store.timeline);
 
-    // Cross-reference MCP servers with config disabled state
-    // (session_init event carries stale status from session start time)
-    if (store.mcpServers.length > 0) {
-      try {
-        const disabledNames = await api.getDisabledMcpServers();
-        if (disabledNames.length > 0) {
-          const disabledSet = new Set(disabledNames);
-          const patched = store.mcpServers.map((s) =>
-            disabledSet.has(s.name) && s.status !== "disabled" ? { ...s, status: "disabled" } : s,
-          );
-          if (patched.some((s, i) => s !== store.mcpServers[i])) {
-            store.updateMcpServers(patched);
-            dbg("chat", "patched MCP disabled state", { disabledNames });
+      if (id && store.effectiveCwd) {
+        reloadProjectData(store.effectiveCwd);
+      }
+      if (gen !== progressiveGen) return;
+
+      if (store.mcpServers.length > 0) {
+        try {
+          const disabledNames = await api.getDisabledMcpServers();
+          if (gen !== progressiveGen) return;
+          if (disabledNames.length > 0) {
+            const disabledSet = new Set(disabledNames);
+            const patched = store.mcpServers.map((s) =>
+              disabledSet.has(s.name) && s.status !== "disabled"
+                ? { ...s, status: "disabled" }
+                : s,
+            );
+            if (patched.some((s, i) => s !== store.mcpServers[i])) {
+              store.updateMcpServers(patched);
+              dbg("chat", "patched MCP disabled state", { disabledNames });
+            }
           }
+        } catch {
+          // non-critical
         }
-      } catch {
-        // non-critical, ignore
+      }
+
+      if (gen !== progressiveGen) return;
+      dbg("chat", "loadRun complete", {
+        timeline: filteredTimeline.length,
+        renderLimit,
+        gen,
+      });
+
+      if (scrollTo) {
+        await tick();
+        if (gen !== progressiveGen) return;
+        scrollToMessage(scrollTo);
+        const clean = new URL($page.url);
+        clean.searchParams.delete("scrollTo");
+        replaceState(clean, {});
+      } else {
+        await tick();
+        if (gen !== progressiveGen) return;
+        requestAnimationFrame(() => {
+          if (gen !== progressiveGen || !chatAreaRef) return;
+          chatAreaRef.scrollTop = chatAreaRef.scrollHeight;
+        });
+      }
+    } finally {
+      if (gen === progressiveGen) {
+        loadingRunId = null;
+        if (scrollTo) _scrollToInFlight = false;
+      } else if (scrollTo) {
+        _scrollToInFlight = false;
       }
     }
-
-    if (gen !== progressiveGen) return;
-    dbg("chat", "loadRun complete", {
-      timeline: filteredTimeline.length,
-      renderLimit,
-      gen,
-    });
-
-    if (scrollTo) {
-      await tick();
-      scrollToMessage(scrollTo);
-      _scrollToInFlight = false;
-      // Clean scrollTo from URL — safe because $effect depends on
-      // runId and hasResumeParam (primitives), not the full $page.url.
-      const clean = new URL($page.url);
-      clean.searchParams.delete("scrollTo");
-      replaceState(clean, {});
-    } else {
-      // Scroll to bottom after DOM update — ensures content-visibility triggers re-layout
-      await tick();
-      requestAnimationFrame(() => {
-        if (chatAreaRef) chatAreaRef.scrollTop = chatAreaRef.scrollHeight;
-      });
-    }
   }
-
-  let welcomeVisible = $derived(
-    store.timeline.length === 0 && !store.streamingText && !store.run && store.phase !== "loading",
-  );
 
   let inputBlockedByPermission = $derived(store.hasPendingPermission || store.hasElicitation);
   let pendingToolPermissions = $derived(store.pendingToolPermissions);
@@ -1022,16 +978,6 @@
   // ── Per-turn usage annotations in timeline ──
 
   let usageByTurn = $derived(new Map(store.turnUsages.map((tu) => [tu.turnIndex, tu])));
-
-  /** Prefix-sum of user message count across filteredTimeline (for progressive rendering offset). */
-  let userCountPrefix = $derived.by(() => {
-    const ft = filteredTimeline;
-    const arr = new Int32Array(ft.length + 1);
-    for (let i = 0; i < ft.length; i++) {
-      arr[i + 1] = arr[i] + (ft[i].kind === "user" ? 1 : 0);
-    }
-    return arr;
-  });
 
   /** Map of visibleTimeline index → TurnUsage to show BEFORE this entry (turn boundary). */
   let usageAnnotations = $derived.by(() => {
@@ -1208,6 +1154,23 @@
   let hasResumeParam = $derived($page.url.searchParams.has("resume"));
   let folderParam = $derived($page.url.searchParams.get("folder"));
   let hostParam = $derived($page.url.searchParams.get("host"));
+
+  let routeRunPending = $derived(
+    !!runId && loadingRunId === runId && store.run?.id !== runId && !store.error,
+  );
+
+  let routeRunLoadFailed = $derived(
+    !!runId && store.run?.id !== runId && store.phase === "failed" && !!store.error,
+  );
+
+  let welcomeVisible = $derived(
+    !runId &&
+      !loadingRunId &&
+      store.timeline.length === 0 &&
+      !store.streamingText &&
+      !store.run &&
+      store.phase !== "loading",
+  );
 
   // Consume ?folder= and/or ?host= params: switch target/folder, then clean URL.
   $effect(() => {
@@ -2589,250 +2552,6 @@
 </html>`;
   }
 
-  // ── Share / Insight Report ──
-
-  let insightState = $state<InsightCardState>({ status: "idle" });
-
-  async function handleShare() {
-    if (!store.run) {
-      dbgWarn("chat", "handleShare: no run");
-      showChatToast(t("export_noConversation"));
-      return;
-    }
-
-    // Show generating state in card
-    insightState = { status: "generating" };
-    insightCardOpen = true;
-    dbg("chat", "handleShare: start");
-
-    try {
-      // Build compact insight context from session
-      const context = await buildInsightContext(
-        store.run,
-        store.timeline,
-        store.usage,
-        store.numTurns || 0,
-      );
-
-      // Redact sensitive data
-      const redactedContext = redactSensitiveData(context);
-
-      // Build prompt for AI to generate report
-      const prompt = buildInsightPrompt(redactedContext);
-
-      // Call backend to generate the insight report using Claude
-      // Use the existing summarize mechanism but with a custom prompt
-      const summaryResult = await api.summarizeConversation(store.run.id);
-      const { summary } = summaryResult;
-
-      // For MVP: Use the backend summary as a base, but we'll generate a more structured report
-      // The model generates a JSON report structure
-      const title = store.run.name || store.run.prompt?.slice(0, 80) || "Session Report";
-
-      // Generate the structured report using the AI
-      // For now, create a basic report structure from available data
-      const report: InsightReport = {
-        title,
-        oneSentenceSummary: summary || "This session accomplished various development tasks.",
-        background: `Work in ${redactedContext.session.cwd} using ${redactedContext.session.agent} agent.`,
-        goals: redactedContext.session.prompt || "General development and coding tasks.",
-        keyDecisions: extractKeyDecisions(redactedContext),
-        processSteps: extractProcessSteps(redactedContext),
-        fileImpact: extractFileImpact(redactedContext),
-        finalResult: summary || "Session completed with various changes made.",
-        risksAndNextSteps: extractRisksAndNextSteps(redactedContext),
-        appendix: {
-          toolCallSummary: extractToolCallSummary(redactedContext),
-          keyCommands: extractKeyCommands(redactedContext),
-          errorsAndFixes: extractErrorsAndFixes(redactedContext),
-        },
-      };
-
-      // Render as HTML
-      const html = renderInsightHtml(report, redactedContext);
-
-      insightState = {
-        status: "ready",
-        report,
-        html,
-      };
-      insightHtml = html;
-
-      dbg("chat", "handleShare: done");
-    } catch (e) {
-      dbgWarn("chat", "handleShare failed", e);
-      insightState = {
-        status: "error",
-        error: e instanceof Error ? e.message : String(e),
-      };
-      showChatToast(t("insight_error_default"));
-    }
-  }
-
-  function extractKeyDecisions(ctx: ReturnType<typeof redactSensitiveData>): string[] {
-    const decisions: string[] = [];
-    // Extract decisions from tool calls
-    for (const tc of ctx.toolCalls.slice(0, 20)) {
-      if (tc.name === "Read" || tc.name === "Edit" || tc.name === "Write") {
-        if (!decisions.includes("Code implementation approach")) {
-          decisions.push("Code implementation approach");
-        }
-      }
-      if (tc.name === "Bash" && tc.input.includes("git commit")) {
-        if (!decisions.includes("Git commit for changes")) {
-          decisions.push("Git commit for changes");
-        }
-      }
-    }
-    return decisions.length > 0 ? decisions : ["Various development tasks were completed."];
-  }
-
-  function extractProcessSteps(
-    ctx: ReturnType<typeof redactSensitiveData>,
-  ): { phase: string; description: string }[] {
-    const steps: { phase: string; description: string }[] = [];
-    const msgCount = ctx.messages.length;
-
-    steps.push({
-      phase: "Initiation",
-      description: `Session started with ${ctx.session.agent} in ${ctx.session.cwd}`,
-    });
-
-    if (msgCount > 2) {
-      steps.push({
-        phase: "Analysis",
-        description: `User messages processed: ${ctx.messages.filter((m) => m.role === "user").length}`,
-      });
-    }
-
-    if (ctx.fileChanges.length > 0) {
-      steps.push({
-        phase: "Implementation",
-        description: `${ctx.fileChanges.length} file(s) modified: ${ctx.fileChanges
-          .map((f) => f.path.split("/").pop())
-          .slice(0, 3)
-          .join(", ")}${ctx.fileChanges.length > 3 ? "..." : ""}`,
-      });
-    }
-
-    if (ctx.errors.length > 0) {
-      steps.push({
-        phase: "Debugging",
-        description: `${ctx.errors.length} error(s) encountered and addressed`,
-      });
-    }
-
-    steps.push({
-      phase: "Completion",
-      description: `Session ended with status: ${ctx.session.status}`,
-    });
-
-    return steps;
-  }
-
-  function extractFileImpact(
-    ctx: ReturnType<typeof redactSensitiveData>,
-  ): { path: string; type: "created" | "modified" | "deleted"; responsibility: string }[] {
-    return ctx.fileChanges.slice(0, 10).map((fc) => ({
-      path: fc.path,
-      type: fc.type,
-      responsibility: `${fc.type} file`,
-    }));
-  }
-
-  function extractRisksAndNextSteps(ctx: ReturnType<typeof redactSensitiveData>): string[] {
-    const items: string[] = [];
-
-    if (ctx.errors.length > 0) {
-      items.push(`Risk: ${ctx.errors.length} error(s) were encountered during the session`);
-    }
-
-    if (ctx.fileChanges.length > 0) {
-      items.push(`Next: Review the ${ctx.fileChanges.length} changed file(s) for correctness`);
-    }
-
-    if (!ctx.session.endedAt) {
-      items.push("Next: Session may be continued to complete remaining tasks");
-    }
-
-    items.push("Next: Run tests to verify changes work correctly");
-
-    return items.length > 0 ? items : ["No immediate risks or next steps identified."];
-  }
-
-  function extractToolCallSummary(
-    ctx: ReturnType<typeof redactSensitiveData>,
-  ): { name: string; count: number }[] {
-    const counts = new Map<string, number>();
-    for (const tc of ctx.toolCalls) {
-      counts.set(tc.name, (counts.get(tc.name) || 0) + 1);
-    }
-    return Array.from(counts.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-  }
-
-  function extractKeyCommands(ctx: ReturnType<typeof redactSensitiveData>): string[] {
-    const commands: string[] = [];
-    for (const tc of ctx.toolCalls) {
-      if (tc.name === "Bash") {
-        try {
-          const input = JSON.parse(tc.input);
-          if (input.command && !commands.includes(input.command)) {
-            commands.push(input.command);
-          }
-        } catch {
-          // ignore parse errors
-        }
-      }
-    }
-    return commands.slice(0, 5);
-  }
-
-  function extractErrorsAndFixes(
-    ctx: ReturnType<typeof redactSensitiveData>,
-  ): { error: string; fix: string }[] {
-    return ctx.errors.slice(0, 5).map((e) => ({
-      error: e.message.slice(0, 100),
-      fix: e.resolved ? "Resolved during session" : "May require attention",
-    }));
-  }
-
-  async function handleInsightCopy() {
-    if (!insightHtml) return;
-    try {
-      await navigator.clipboard.writeText(insightHtml);
-      showChatToast(t("insight_copied"));
-    } catch {
-      showChatToast(t("insight_copy_failed"));
-    }
-  }
-
-  async function handleInsightExport() {
-    if (!insightHtml || !store.run) return;
-    try {
-      const { save } = await import("@tauri-apps/plugin-dialog");
-      const title = store.run.name || store.run.prompt?.slice(0, 40) || "session";
-      const date = new Date().toISOString().slice(0, 10);
-      const path = await save({
-        defaultPath: `miwarp-insight-${title.replace(/[^a-zA-Z0-9]/g, "-")}-${date}.html`,
-        filters: [{ name: "HTML", extensions: ["html"] }],
-      });
-      if (!path) return;
-      await api.writeHtmlExport(path, insightHtml);
-      showChatToast(t("summarize_success"));
-    } catch (e) {
-      dbgWarn("chat", "handleInsightExport failed", e);
-      showChatToast(t("insight_export_failed"));
-    }
-  }
-
-  async function handleInsightRegenerate() {
-    insightState = { status: "idle" };
-    await handleShare();
-  }
-
   async function handleModelChange(newModel: string) {
     dbg("chat", "model change", { from: store.model, to: newModel });
     store.model = newModel;
@@ -3590,10 +3309,13 @@
     }, 2500);
   }
 
-  // ── Insight / HTML Report ──
-  let insightCardOpen = $state(false);
-  let insightPreviewOpen = $state(false);
-  let insightHtml = $state<string | null>(null);
+  const insight = useConversationInsight({
+    getRun: () => store.run,
+    getTimeline: () => store.timeline,
+    getUsage: () => store.usage,
+    getNumTurns: () => store.numTurns || 0,
+    showToast: showChatToast,
+  });
 
   async function toggleCliConfigBool(key: string) {
     try {
@@ -3951,37 +3673,6 @@
       store.error = String(e);
     }
   }
-
-  // O(1) lookup: timeline entry id → index
-  let timelineIdIndex = $derived.by(() => {
-    const map = new Map<string, number>();
-    for (let i = 0; i < store.timeline.length; i++) {
-      map.set(store.timeline[i].id, i);
-    }
-    return map;
-  });
-
-  // ID of the last context-cleared separator (for dimming messages above it)
-  let lastClearSepId = $derived.by(() => {
-    for (let i = store.timeline.length - 1; i >= 0; i--) {
-      const e = store.timeline[i];
-      if (e.kind === "separator" && e.content === CONTEXT_CLEARED_MARKER) return e.id;
-    }
-    return null;
-  });
-
-  // Latest plan tool card's tool_use_id (for auto-expand)
-  let latestPlanToolId = $derived.by(() => {
-    for (let i = store.timeline.length - 1; i >= 0; i--) {
-      const e = store.timeline[i];
-      if (e.kind !== "tool" || !e.tool) continue;
-      const fp = String(e.tool.input?.file_path ?? e.tool.input?.path ?? "");
-      if ((e.tool.tool_name === "Write" || e.tool.tool_name === "Edit") && isPlanFilePath(fp)) {
-        return e.tool.tool_use_id;
-      }
-    }
-    return null;
-  });
 
   function getPlanContentForExitPlan(
     entryId: string,
@@ -4353,7 +4044,7 @@
         sidebarRequestedTab = "info";
       }}
       onSummarize={store.run ? () => void handleSummarize() : undefined}
-      onShare={store.run ? () => void handleShare() : undefined}
+      onShare={store.run ? () => void insight.generate() : undefined}
       fuseToolRailCapsule={true}
       {toolPanelActiveTab}
       onToolPanelTabChange={(tab) => {
@@ -4539,12 +4230,25 @@
                   </div>
                 </div>
               </div>
-            {:else if store.phase === "loading" && store.timeline.length === 0}
-              <!-- Loading state — avoids welcome page flash during loadRun -->
-              <div class="flex h-full items-center justify-center">
+            {:else if routeRunLoadFailed}
+              <div class="flex h-full flex-col items-center justify-center gap-3 px-4">
+                <p class="text-sm text-destructive">{t("chat_sessionLoadFailed")}</p>
+                <p class="text-xs text-muted-foreground max-w-md text-center break-words">
+                  {store.error}
+                </p>
+                <button
+                  class="rounded-lg border border-border bg-muted px-4 py-2 text-sm hover:bg-accent transition-colors"
+                  onclick={() => loadRunProgressive(runId, xtermRef)}
+                >
+                  {t("common_retry")}
+                </button>
+              </div>
+            {:else if routeRunPending || (store.phase === "loading" && store.timeline.length === 0 && !!runId)}
+              <div class="flex h-full flex-col items-center justify-center gap-3">
                 <div
                   class="h-5 w-5 rounded-full border-2 border-muted-foreground/30 border-t-primary animate-spin"
                 ></div>
+                <p class="text-xs text-muted-foreground">{t("chat_loadingSession")}</p>
               </div>
             {:else}
               <!-- Timeline: chat messages + inline tool cards -->
@@ -4781,8 +4485,22 @@
                             </div>
                           {/if}
                         {/if}
-                      {:else if entry.kind === "command_output"}
-                        {#if shouldShowTimelineCommandOutput(processVisibility, entry.content)}
+                      {:else if entry.kind === "command_output" || entry.kind === "separator"}
+                        {#if isTimelineSeparatorContent(entry.content)}
+                          <div class="w-full py-3">
+                            <div class="chat-content-width">
+                              <div class="flex items-center gap-3">
+                                <div class="h-px flex-1 bg-amber-500/20"></div>
+                                <span
+                                  class="text-xs text-amber-500/70 font-medium whitespace-nowrap"
+                                >
+                                  {t("chat_contextCleared")}
+                                </span>
+                                <div class="h-px flex-1 bg-amber-500/20"></div>
+                              </div>
+                            </div>
+                          </div>
+                        {:else if shouldShowTimelineCommandOutput(processVisibility, entry.content)}
                           <div class="w-full py-2">
                             <div class="chat-content-width pl-7">
                               <div
@@ -4808,19 +4526,6 @@
                             </div>
                           </div>
                         {/if}
-                        <div class="w-full py-3">
-                          <div class="chat-content-width">
-                            <div class="flex items-center gap-3">
-                              <div class="h-px flex-1 bg-amber-500/20"></div>
-                              <span class="text-xs text-amber-500/70 font-medium whitespace-nowrap">
-                                {entry.content === CONTEXT_CLEARED_MARKER
-                                  ? t("chat_contextCleared")
-                                  : entry.content}
-                              </span>
-                              <div class="h-px flex-1 bg-amber-500/20"></div>
-                            </div>
-                          </div>
-                        </div>
                       {/if}
                     </div>
                   {/if}
@@ -5406,16 +5111,18 @@
         {/if}
 
         <!-- Insight / HTML Report Card -->
-        {#if insightCardOpen}
+        {#if insight.insightCardOpen}
           <div class="chat-content-width pb-2">
             <ConversationInsightCard
-              status={insightState.status}
-              report={insightState.report}
-              error={insightState.error}
-              onPreview={() => (insightPreviewOpen = true)}
-              onCopy={handleInsightCopy}
-              onExport={handleInsightExport}
-              onRegenerate={handleInsightRegenerate}
+              status={insight.insightState.status}
+              report={insight.insightState.report}
+              error={insight.insightState.error}
+              onPreview={() => {
+                insight.insightPreviewOpen = true;
+              }}
+              onCopy={() => void insight.copyHtml()}
+              onExport={() => void insight.exportHtml()}
+              onRegenerate={() => void insight.regenerate()}
             />
           </div>
         {/if}
@@ -5611,11 +5318,13 @@
 
   <ShortcutHelpPanel bind:open={shortcutHelpOpen} />
 
-  <HtmlReportPreview
-    bind:open={insightPreviewOpen}
-    html={insightHtml || ""}
-    title={t("insight_preview_title")}
-  />
+  {#if insight.insightPreviewOpen && insight.insightHtml}
+    <HtmlReportPreview
+      bind:open={insight.insightPreviewOpen}
+      html={insight.insightHtml}
+      title={t("insight_preview_title")}
+    />
+  {/if}
 
   <FolderPicker
     bind:open={folderPickerOpen}
