@@ -3,13 +3,11 @@
   import { t } from "$lib/i18n/index.svelte";
 
   const modeLabels: Record<ViewMode, string> = {
-    normal: "Normal",
     verbose: "Verbose",
     summary: "Summary",
   };
 
   const modeIcons: Record<ViewMode, string> = {
-    normal: "M4 6h16M4 12h16M4 18h10", // list
     verbose: "M4 6h16M4 10h16M4 14h16M4 18h16", // dense list
     summary: "M4 6h16M4 18h16", // top+bottom only
   };
