@@ -928,12 +928,12 @@ textarea,
 
   /* Continuous morph animation - all parameters sync together */
   transition:
-    border-radius 460ms cubic-bezier(0.32, 0.72, 0, 1),
-    min-height 460ms cubic-bezier(0.32, 0.72, 0, 1),
-    width 460ms cubic-bezier(0.32, 0.72, 0, 1),
-    background-color 260ms ease,
-    backdrop-filter 460ms cubic-bezier(0.32, 0.72, 0, 1),
-    box-shadow 420ms cubic-bezier(0.32, 0.72, 0, 1);
+    border-radius 650ms cubic-bezier(0.4, 0, 0.2, 1),
+    min-height 650ms cubic-bezier(0.4, 0, 0.2, 1),
+    width 650ms cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 350ms ease,
+    backdrop-filter 650ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 600ms cubic-bezier(0.4, 0, 0.2, 1);
   will-change: border-radius, min-height, width, background-color, backdrop-filter, box-shadow;
 
   /* Compact state defaults - uses REAL border-radius for smooth transition */
@@ -1010,7 +1010,7 @@ textarea,
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   .session-island-shell {
-    transition-duration: 120ms;
+    transition-duration: 180ms;
   }
 }
 
