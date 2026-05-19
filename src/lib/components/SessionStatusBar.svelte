@@ -61,6 +61,7 @@
     onEffortChange,
     onStatusClick,
     onSummarize,
+    onShare,
     toolPanelActiveTab,
     onToolPanelTabChange,
     toolPanelIndicators,
@@ -112,6 +113,7 @@
     onEffortChange?: (effort: string) => void;
     onStatusClick?: () => void;
     onSummarize?: () => void;
+    onShare?: () => void;
     toolPanelActiveTab?: ToolActivityPanelTab;
     onToolPanelTabChange?: (tab: ToolActivityPanelTab) => void;
     toolPanelIndicators?: { context: boolean; files: boolean; tasks: boolean };
@@ -761,6 +763,30 @@
             <line x1="16" x2="8" y1="13" y2="13" />
             <line x1="16" x2="8" y1="17" y2="17" />
             <line x1="10" x2="8" y1="9" y2="9" />
+          </svg>
+        </button>
+      {/if}
+
+      {#if onShare}
+        <button
+          class="flex items-center gap-1.5 rounded p-1.5 text-foreground/60 hover:text-foreground hover:bg-muted/60 transition-colors"
+          onclick={onShare}
+          title={t("statusbar_share")}
+        >
+          <svg
+            class="h-3.5 w-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
           </svg>
         </button>
       {/if}

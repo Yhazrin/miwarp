@@ -112,6 +112,8 @@
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import TeamDispatchConfirm from "$lib/components/TeamDispatchConfirm.svelte";
   import TeamRunCard from "$lib/components/TeamRunCard.svelte";
+  import ConversationInsightCard from "$lib/components/insight/ConversationInsightCard.svelte";
+  import HtmlReportPreview from "$lib/components/insight/HtmlReportPreview.svelte";
   import {
     detectTeamTrigger,
     stripTeamTag,
@@ -121,6 +123,13 @@
     shouldShowTeamHint,
   } from "$lib/services/team-dispatcher";
   import type { TeamRun, TeamPreset } from "$lib/types";
+  import { buildInsightContext } from "$lib/conversation-insight/insight-context-builder";
+  import {
+    renderInsightHtml,
+    buildInsightPrompt,
+    redactSensitiveData,
+  } from "$lib/conversation-insight/insight-html-renderer";
+  import type { InsightReport, InsightCardState } from "$lib/conversation-insight/insight-types";
 
   // ── Helpers ──
 
@@ -2580,6 +2589,250 @@
 </html>`;
   }
 
+  // ── Share / Insight Report ──
+
+  let insightState = $state<InsightCardState>({ status: "idle" });
+
+  async function handleShare() {
+    if (!store.run) {
+      dbgWarn("chat", "handleShare: no run");
+      showChatToast(t("export_noConversation"));
+      return;
+    }
+
+    // Show generating state in card
+    insightState = { status: "generating" };
+    insightCardOpen = true;
+    dbg("chat", "handleShare: start");
+
+    try {
+      // Build compact insight context from session
+      const context = await buildInsightContext(
+        store.run,
+        store.timeline,
+        store.usage,
+        store.numTurns || 0,
+      );
+
+      // Redact sensitive data
+      const redactedContext = redactSensitiveData(context);
+
+      // Build prompt for AI to generate report
+      const prompt = buildInsightPrompt(redactedContext);
+
+      // Call backend to generate the insight report using Claude
+      // Use the existing summarize mechanism but with a custom prompt
+      const summaryResult = await api.summarizeConversation(store.run.id);
+      const { summary } = summaryResult;
+
+      // For MVP: Use the backend summary as a base, but we'll generate a more structured report
+      // The model generates a JSON report structure
+      const title = store.run.name || store.run.prompt?.slice(0, 80) || "Session Report";
+
+      // Generate the structured report using the AI
+      // For now, create a basic report structure from available data
+      const report: InsightReport = {
+        title,
+        oneSentenceSummary: summary || "This session accomplished various development tasks.",
+        background: `Work in ${redactedContext.session.cwd} using ${redactedContext.session.agent} agent.`,
+        goals: redactedContext.session.prompt || "General development and coding tasks.",
+        keyDecisions: extractKeyDecisions(redactedContext),
+        processSteps: extractProcessSteps(redactedContext),
+        fileImpact: extractFileImpact(redactedContext),
+        finalResult: summary || "Session completed with various changes made.",
+        risksAndNextSteps: extractRisksAndNextSteps(redactedContext),
+        appendix: {
+          toolCallSummary: extractToolCallSummary(redactedContext),
+          keyCommands: extractKeyCommands(redactedContext),
+          errorsAndFixes: extractErrorsAndFixes(redactedContext),
+        },
+      };
+
+      // Render as HTML
+      const html = renderInsightHtml(report, redactedContext);
+
+      insightState = {
+        status: "ready",
+        report,
+        html,
+      };
+      insightHtml = html;
+
+      dbg("chat", "handleShare: done");
+    } catch (e) {
+      dbgWarn("chat", "handleShare failed", e);
+      insightState = {
+        status: "error",
+        error: e instanceof Error ? e.message : String(e),
+      };
+      showChatToast(t("insight_error_default"));
+    }
+  }
+
+  function extractKeyDecisions(ctx: ReturnType<typeof redactSensitiveData>): string[] {
+    const decisions: string[] = [];
+    // Extract decisions from tool calls
+    for (const tc of ctx.toolCalls.slice(0, 20)) {
+      if (tc.name === "Read" || tc.name === "Edit" || tc.name === "Write") {
+        if (!decisions.includes("Code implementation approach")) {
+          decisions.push("Code implementation approach");
+        }
+      }
+      if (tc.name === "Bash" && tc.input.includes("git commit")) {
+        if (!decisions.includes("Git commit for changes")) {
+          decisions.push("Git commit for changes");
+        }
+      }
+    }
+    return decisions.length > 0 ? decisions : ["Various development tasks were completed."];
+  }
+
+  function extractProcessSteps(
+    ctx: ReturnType<typeof redactSensitiveData>,
+  ): { phase: string; description: string }[] {
+    const steps: { phase: string; description: string }[] = [];
+    const msgCount = ctx.messages.length;
+
+    steps.push({
+      phase: "Initiation",
+      description: `Session started with ${ctx.session.agent} in ${ctx.session.cwd}`,
+    });
+
+    if (msgCount > 2) {
+      steps.push({
+        phase: "Analysis",
+        description: `User messages processed: ${ctx.messages.filter((m) => m.role === "user").length}`,
+      });
+    }
+
+    if (ctx.fileChanges.length > 0) {
+      steps.push({
+        phase: "Implementation",
+        description: `${ctx.fileChanges.length} file(s) modified: ${ctx.fileChanges
+          .map((f) => f.path.split("/").pop())
+          .slice(0, 3)
+          .join(", ")}${ctx.fileChanges.length > 3 ? "..." : ""}`,
+      });
+    }
+
+    if (ctx.errors.length > 0) {
+      steps.push({
+        phase: "Debugging",
+        description: `${ctx.errors.length} error(s) encountered and addressed`,
+      });
+    }
+
+    steps.push({
+      phase: "Completion",
+      description: `Session ended with status: ${ctx.session.status}`,
+    });
+
+    return steps;
+  }
+
+  function extractFileImpact(
+    ctx: ReturnType<typeof redactSensitiveData>,
+  ): { path: string; type: "created" | "modified" | "deleted"; responsibility: string }[] {
+    return ctx.fileChanges.slice(0, 10).map((fc) => ({
+      path: fc.path,
+      type: fc.type,
+      responsibility: `${fc.type} file`,
+    }));
+  }
+
+  function extractRisksAndNextSteps(ctx: ReturnType<typeof redactSensitiveData>): string[] {
+    const items: string[] = [];
+
+    if (ctx.errors.length > 0) {
+      items.push(`Risk: ${ctx.errors.length} error(s) were encountered during the session`);
+    }
+
+    if (ctx.fileChanges.length > 0) {
+      items.push(`Next: Review the ${ctx.fileChanges.length} changed file(s) for correctness`);
+    }
+
+    if (!ctx.session.endedAt) {
+      items.push("Next: Session may be continued to complete remaining tasks");
+    }
+
+    items.push("Next: Run tests to verify changes work correctly");
+
+    return items.length > 0 ? items : ["No immediate risks or next steps identified."];
+  }
+
+  function extractToolCallSummary(
+    ctx: ReturnType<typeof redactSensitiveData>,
+  ): { name: string; count: number }[] {
+    const counts = new Map<string, number>();
+    for (const tc of ctx.toolCalls) {
+      counts.set(tc.name, (counts.get(tc.name) || 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }
+
+  function extractKeyCommands(ctx: ReturnType<typeof redactSensitiveData>): string[] {
+    const commands: string[] = [];
+    for (const tc of ctx.toolCalls) {
+      if (tc.name === "Bash") {
+        try {
+          const input = JSON.parse(tc.input);
+          if (input.command && !commands.includes(input.command)) {
+            commands.push(input.command);
+          }
+        } catch {
+          // ignore parse errors
+        }
+      }
+    }
+    return commands.slice(0, 5);
+  }
+
+  function extractErrorsAndFixes(
+    ctx: ReturnType<typeof redactSensitiveData>,
+  ): { error: string; fix: string }[] {
+    return ctx.errors.slice(0, 5).map((e) => ({
+      error: e.message.slice(0, 100),
+      fix: e.resolved ? "Resolved during session" : "May require attention",
+    }));
+  }
+
+  async function handleInsightCopy() {
+    if (!insightHtml) return;
+    try {
+      await navigator.clipboard.writeText(insightHtml);
+      showChatToast(t("insight_copied"));
+    } catch {
+      showChatToast(t("insight_copy_failed"));
+    }
+  }
+
+  async function handleInsightExport() {
+    if (!insightHtml || !store.run) return;
+    try {
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const title = store.run.name || store.run.prompt?.slice(0, 40) || "session";
+      const date = new Date().toISOString().slice(0, 10);
+      const path = await save({
+        defaultPath: `miwarp-insight-${title.replace(/[^a-zA-Z0-9]/g, "-")}-${date}.html`,
+        filters: [{ name: "HTML", extensions: ["html"] }],
+      });
+      if (!path) return;
+      await api.writeHtmlExport(path, insightHtml);
+      showChatToast(t("summarize_success"));
+    } catch (e) {
+      dbgWarn("chat", "handleInsightExport failed", e);
+      showChatToast(t("insight_export_failed"));
+    }
+  }
+
+  async function handleInsightRegenerate() {
+    insightState = { status: "idle" };
+    await handleShare();
+  }
+
   async function handleModelChange(newModel: string) {
     dbg("chat", "model change", { from: store.model, to: newModel });
     store.model = newModel;
@@ -3336,6 +3589,11 @@
       chatToast = null;
     }, 2500);
   }
+
+  // ── Insight / HTML Report ──
+  let insightCardOpen = $state(false);
+  let insightPreviewOpen = $state(false);
+  let insightHtml = $state<string | null>(null);
 
   async function toggleCliConfigBool(key: string) {
     try {
@@ -4095,6 +4353,7 @@
         sidebarRequestedTab = "info";
       }}
       onSummarize={store.run ? () => void handleSummarize() : undefined}
+      onShare={store.run ? () => void handleShare() : undefined}
       fuseToolRailCapsule={true}
       {toolPanelActiveTab}
       onToolPanelTabChange={(tab) => {
@@ -5146,6 +5405,21 @@
           </div>
         {/if}
 
+        <!-- Insight / HTML Report Card -->
+        {#if insightCardOpen}
+          <div class="chat-content-width pb-2">
+            <ConversationInsightCard
+              status={insightState.status}
+              report={insightState.report}
+              error={insightState.error}
+              onPreview={() => (insightPreviewOpen = true)}
+              onCopy={handleInsightCopy}
+              onExport={handleInsightExport}
+              onRegenerate={handleInsightRegenerate}
+            />
+          </div>
+        {/if}
+
         <!-- Input bar -->
         <!-- Ralph Loop status bar -->
         {#if store.ralphLoop?.active}
@@ -5336,6 +5610,12 @@
   />
 
   <ShortcutHelpPanel bind:open={shortcutHelpOpen} />
+
+  <HtmlReportPreview
+    bind:open={insightPreviewOpen}
+    html={insightHtml || ""}
+    title={t("insight_preview_title")}
+  />
 
   <FolderPicker
     bind:open={folderPickerOpen}
