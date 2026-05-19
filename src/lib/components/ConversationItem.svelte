@@ -258,19 +258,6 @@
           >
         </button>
       {/if}
-      <!-- More button — opens context menu -->
-      <button
-        class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-accent/20 transition-opacity text-muted-foreground"
-        onclick={openContextMenuFromButton}
-        title={t("moreOptions") ?? "More options"}
-        aria-label={t("moreOptions") ?? "More options"}
-      >
-        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-          <circle cx="12" cy="5" r="1.5" />
-          <circle cx="12" cy="12" r="1.5" />
-          <circle cx="12" cy="19" r="1.5" />
-        </svg>
-      </button>
       {#if selected}
         <StatusBadge
           status={run.status}
