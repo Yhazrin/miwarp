@@ -2527,5 +2527,10 @@
   "sidebar_rename": "重命名",
   "sidebar_archive": "归档",
   "sidebar_deleteConfirmMsg": "确定删除此对话吗？此操作无法撤销。",
+  "sidebar_openDirectory": "打开目录",
+  "sidebar_renameWorkspace": "重命名 Workspace",
+  "workspace_settings": "Workspace 设置",
+  "sidebar_moreOptions": "更多选项",
+  "sidebar_noConversationsInFolder": "暂无会话，点击 + 新建",
   "moreOptions": "更多选项"
 }

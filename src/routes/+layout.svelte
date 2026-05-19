@@ -2708,6 +2708,18 @@
                     onDragOverSubFolder={(_key, folderId) => handleDragOverFolder(folderId)}
                     onDragLeaveSubFolder={handleDragLeaveFolder}
                     onDropOnSubFolder={(folderId) => handleDropOnFolder(folderId)}
+                    onOpenDirectory={folder.isUncategorized
+                      ? undefined
+                      : async () => {
+                          try {
+                            const { open } = await import("@tauri-apps/plugin-shell");
+                            await open(folder.cwd);
+                          } catch (e) {
+                            dbgWarn("layout", "openDirectory failed", e);
+                          }
+                        }}
+                    onRenameWorkspace={undefined}
+                    onWorkspaceSettings={undefined}
                   />
                 {/each}
                 <!-- Open folder... -->

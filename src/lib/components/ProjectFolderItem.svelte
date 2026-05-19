@@ -7,6 +7,7 @@
   } from "$lib/utils/sidebar-groups";
   import ConversationItem from "./ConversationItem.svelte";
   import VirtualList from "./VirtualList.svelte";
+  import ContextMenu from "./ContextMenu.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbgWarn } from "$lib/utils/debug";
 
@@ -37,6 +38,10 @@
     onDragOverSubFolder?: (folderKey: string, folderId: string) => void;
     onDragLeaveSubFolder?: () => void;
     onDropOnSubFolder?: (folderId: string) => void;
+    /** Workspace-level actions */
+    onOpenDirectory?: () => void;
+    onRenameWorkspace?: () => void;
+    onWorkspaceSettings?: () => void;
   };
 
   type ChatProps = BaseProps & {
@@ -99,9 +104,127 @@
     onDragOverSubFolder,
     onDragLeaveSubFolder,
     onDropOnSubFolder,
+    onOpenDirectory,
+    onRenameWorkspace,
+    onWorkspaceSettings,
   }: ChatProps | CustomProps = $props();
 
   let visibleCount = $state(PAGE_SIZE);
+
+  // Header action menus
+  let addMenuOpen = $state(false);
+  let addMenuX = $state(0);
+  let addMenuY = $state(0);
+  let moreMenuOpen = $state(false);
+  let moreMenuX = $state(0);
+  let moreMenuY = $state(0);
+
+  function openAddMenu(e: MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    // Close more menu first
+    if (moreMenuOpen) moreMenuOpen = false;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    addMenuX = rect.right - 80; // align right edge of menu to button right
+    addMenuY = rect.bottom + 2;
+    addMenuOpen = true;
+  }
+
+  function openMoreMenu(e: MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    // Close add menu first
+    if (addMenuOpen) addMenuOpen = false;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    moreMenuX = rect.right - 100;
+    moreMenuY = rect.bottom + 2;
+    moreMenuOpen = true;
+  }
+
+  function closeAllMenus() {
+    addMenuOpen = false;
+    moreMenuOpen = false;
+  }
+
+  // Close menus when right-clicking elsewhere
+  $effect(() => {
+    if (addMenuOpen || moreMenuOpen) {
+      const handler = () => closeAllMenus();
+      window.addEventListener("close-all-context-menus", handler);
+      window.addEventListener("click", handler, { once: true });
+      return () => {
+        window.removeEventListener("close-all-context-menus", handler);
+        window.removeEventListener("click", handler);
+      };
+    }
+  });
+
+  // Menu items
+  const addMenuItems = $derived([
+    {
+      id: "new-chat",
+      label: t("sidebar_newChatInFolder") ?? "新对话",
+      icon: "play" as const,
+    },
+    ...(onCreateSubFolder
+      ? [
+          {
+            id: "new-folder",
+            label: t("sidebar_createFolder") ?? "新建文件夹",
+            icon: "folder" as const,
+          },
+        ]
+      : []),
+  ]);
+
+  const moreMenuItems = $derived([
+    {
+      id: "open-dir",
+      label: t("sidebar_openDirectory") ?? "打开目录",
+      icon: "folder" as const,
+      disabled: !onOpenDirectory,
+    },
+    {
+      id: "rename",
+      label: t("sidebar_renameWorkspace") ?? "重命名 Workspace",
+      icon: "rename" as const,
+      disabled: !onRenameWorkspace,
+    },
+    {
+      id: "settings",
+      label: t("workspace_settings") ?? "Workspace 设置",
+      icon: "more" as const,
+      disabled: !onWorkspaceSettings,
+      separatorBefore: true,
+    },
+  ]);
+
+  function handleAddMenuSelect(id: string) {
+    addMenuOpen = false;
+    switch (id) {
+      case "new-chat":
+        onNewChat?.();
+        break;
+      case "new-folder":
+        onCreateSubFolder?.();
+        break;
+    }
+  }
+
+  function handleMoreMenuSelect(id: string) {
+    moreMenuOpen = false;
+    switch (id) {
+      case "open-dir":
+        onOpenDirectory?.();
+        break;
+      case "rename":
+        onRenameWorkspace?.();
+        break;
+      case "settings":
+        onWorkspaceSettings?.();
+        break;
+    }
+  }
 
   // Reset visible count when folder collapses
   $effect(() => {
@@ -233,42 +356,101 @@
     <!-- Count badge -->
     {#if showCount && folder.conversationCount > 0}
       <span
-        class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground {onRemove
-          ? ''
-          : 'ml-auto'}"
+        class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground"
       >
         {folder.conversationCount}
       </span>
     {/if}
-    <!-- Remove button (×) -->
-    {#if onRemove}
-      <button
-        class="ml-auto shrink-0 flex h-4 w-4 items-center justify-center rounded opacity-0 text-muted-foreground hover:text-destructive hover:opacity-100 focus-visible:opacity-100 group-hover/folder:opacity-100 transition-opacity"
-        aria-label={t("sidebar_removeProject")}
-        onclick={(e) => {
-          e.stopPropagation();
-          onRemove?.();
-        }}
-        onkeydown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.stopPropagation();
-            e.preventDefault();
-            onRemove?.();
-          }
-        }}
-      >
-        <svg
-          class="h-3 w-3"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
+
+    <!-- Action buttons (low opacity, visible on hover) -->
+    <div
+      class="ml-auto flex items-center gap-0.5 opacity-0 group-hover/folder:opacity-100 transition-opacity shrink-0"
+    >
+      <!-- + button (new chat/folder) -->
+      {#if onNewChat || onCreateSubFolder}
+        <button
+          class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+          aria-label={t("sidebar_newChat")}
+          onclick={openAddMenu}
         >
+          <svg
+            class="h-3 w-3"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M12 5v14" />
+            <path d="M5 12h14" />
+          </svg>
+        </button>
+      {/if}
+      <!-- ⋯ button (more options) -->
+      <button
+        class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+        aria-label={t("sidebar_moreOptions")}
+        onclick={openMoreMenu}
+      >
+        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="5" r="1.5" />
+          <circle cx="12" cy="12" r="1.5" />
+          <circle cx="12" cy="19" r="1.5" />
+        </svg>
       </button>
-    {/if}
+      <!-- Remove button (×) -->
+      {#if onRemove}
+        <button
+          class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          aria-label={t("sidebar_removeProject")}
+          onclick={(e) => {
+            e.stopPropagation();
+            onRemove?.();
+          }}
+          onkeydown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.stopPropagation();
+              e.preventDefault();
+              onRemove?.();
+            }
+          }}
+        >
+          <svg
+            class="h-3 w-3"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
+          >
+        </button>
+      {/if}
+    </div>
   </div>
+
+  <!-- Add menu -->
+  {#if addMenuOpen}
+    <ContextMenu
+      x={addMenuX}
+      y={addMenuY}
+      items={addMenuItems}
+      onSelect={handleAddMenuSelect}
+      onClose={() => (addMenuOpen = false)}
+    />
+  {/if}
+
+  <!-- More menu -->
+  {#if moreMenuOpen}
+    <ContextMenu
+      x={moreMenuX}
+      y={moreMenuY}
+      items={moreMenuItems}
+      onSelect={handleMoreMenuSelect}
+      onClose={() => (moreMenuOpen = false)}
+    />
+  {/if}
 
   <!-- Expanded children -->
   {#if expanded}
@@ -417,52 +599,16 @@
                 {/if}
               </div>
             {/each}
-            <!-- Create sub-folder button -->
-            {#if onCreateSubFolder}
-              <button
-                class="flex w-full items-center gap-1.5 px-2 py-1 text-[11px] text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/40 rounded-md transition-colors"
-                onclick={(e) => {
-                  e.stopPropagation();
-                  onCreateSubFolder?.();
-                }}
-              >
-                <svg
-                  class="h-3 w-3 shrink-0"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M12 5v14" /><path d="M5 12h14" />
-                </svg>
-                <span>{t("sidebar_createFolder") || "新建逻辑文件夹"}</span>
-              </button>
-            {/if}
           </div>
         {/if}
 
-        {#if onNewChat}
-          <button
-            class="flex w-full items-center gap-1.5 px-3 py-1 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md transition-colors"
-            onclick={(e) => {
-              e.stopPropagation();
-              onNewChat?.();
-            }}
-          >
-            <svg
-              class="h-3 w-3 shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg
-            >
-            <span>{t("sidebar_newChatInFolder")}</span>
-          </button>
+        <!-- Empty state -->
+        {#if folder.conversations.length === 0 && subFolders.length === 0}
+          <p class="px-3 py-2 text-[11px] text-muted-foreground/40 italic">
+            {t("sidebar_noConversationsInFolder") || "暂无会话，点击 + 新建"}
+          </p>
         {/if}
+
         <!-- Unfoldered sessions in this project -->
         {#if folder.conversations.length > 0 && subFolders.length > 0}
           <div class="flex items-center px-2 py-0.5 mt-0.5 mb-0.5">
