@@ -476,12 +476,14 @@
           return `${nf} file${nf !== 1 ? "s" : ""}, ${nl} match${nl !== 1 ? "es" : ""}`;
         return `${nf} file${nf !== 1 ? "s" : ""}`;
       }
-      // Edit: patch line count
+      // Edit: patch line count — skip expensive lines traversal when collapsed
       if ("structuredPatch" in tur) {
         // Backend pre-computed counts (summary mode — lines array stripped)
         if ("_patchAdded" in tur || "_patchRemoved" in tur) {
           return `+${(tur._patchAdded as number) ?? 0} -${(tur._patchRemoved as number) ?? 0}`;
         }
+        // Only traverse patches when expanded (expensive operation)
+        if (!expanded) return "edited";
         // Fallback: original lines traversal (live mode / small payload not truncated)
         const patches = tur.structuredPatch as Array<{ lines: string[] }> | undefined;
         if (patches?.length) {
@@ -531,12 +533,15 @@
         return `${n} item${n !== 1 ? "s" : ""}`;
       }
     }
-    // Fallback: count output lines
-    const output = extractOutputText(tool.output);
-    if (!output) return "";
-    const lines = output.split("\n").length;
-    if (lines <= 1) return "";
-    return `${lines} lines`;
+    // Fallback: count output lines — only when expanded (expensive split)
+    if (expanded) {
+      const output = extractOutputText(tool.output);
+      if (!output) return "";
+      const lines = output.split("\n").length;
+      if (lines <= 1) return "";
+      return `${lines} lines`;
+    }
+    return "";
   });
 
   function multiCount(): number {

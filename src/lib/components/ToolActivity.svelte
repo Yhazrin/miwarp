@@ -353,8 +353,19 @@
     anchorId?: string;
   }
 
+  /** Whether we need full turns computation (tools tab active and panel visible). */
+  let needsFullTurns = $derived(!collapsed && activeTab === "tools" && useTimeline);
+
   let turns = $derived.by(() => {
-    if (!useTimeline) return [];
+    if (!needsFullTurns) {
+      // Lightweight: return count-only indicator, no tree building
+      if (!useTimeline) return [];
+      let count = 0;
+      for (const e of timeline) {
+        if (e.kind === "tool") count++;
+      }
+      return count > 0 ? [] : []; // empty but truthful
+    }
     const result: ToolTurn[] = [];
     let currentTools: ToolNode[] = [];
     let currentPreview = "";
@@ -408,8 +419,25 @@
   let hookToolEvents = $derived(tools.filter((e) => e.tool_name));
 
   // ── File entries (dual-source + persisted merge) ──
+  // Only compute full fileEntries when files tab is active and panel is visible
 
   let fileEntries: FileEntry[] = $derived.by(() => {
+    if (collapsed || activeTab !== "files") {
+      // Lightweight: just check if any files exist for indicator dot
+      if (useTimeline) {
+        for (const e of timeline) {
+          if (
+            e.kind === "tool" &&
+            (e.tool.tool_name === "Write" ||
+              e.tool.tool_name === "Edit" ||
+              e.tool.tool_name === "Bash")
+          ) {
+            return []; // has files but we don't need details
+          }
+        }
+      }
+      return [];
+    }
     const timelineFiles = useTimeline
       ? extractFilesFromTimeline(timeline)
       : extractFilesFromHooks(hookToolEvents);
@@ -421,9 +449,24 @@
   });
 
   $effect(() => {
+    // Lightweight check for indicators - don't build full fileEntries
+    let hasFiles = false;
+    if (useTimeline) {
+      for (const e of timeline) {
+        if (
+          e.kind === "tool" &&
+          (e.tool.tool_name === "Write" ||
+            e.tool.tool_name === "Edit" ||
+            e.tool.tool_name === "Bash")
+        ) {
+          hasFiles = true;
+          break;
+        }
+      }
+    }
     panelIndicators = {
       context: contextHistory.length > 0,
-      files: fileEntries.length > 0,
+      files: hasFiles || (persistedFiles?.length ?? 0) > 0,
       tasks: activeBackgroundTasks.length > 0,
     };
   });
@@ -439,6 +482,8 @@
   }
 
   let subagents: SubagentInfo[] = $derived.by(() => {
+    // Only compute when info tab is active and panel is visible
+    if (collapsed || activeTab !== "info") return [];
     if (!useTimeline) return [];
     const result: SubagentInfo[] = [];
     for (const turn of turns) {
@@ -497,6 +542,7 @@
   }
 
   // ── Summary + status counts (single-pass) ──
+  // Only do full scan when tools tab is active; otherwise return lightweight indicator
 
   let toolStats = $derived.by(() => {
     const counts: Record<string, number> = {};
@@ -508,6 +554,39 @@
       searches = 0,
       bashCmds = 0,
       writes = 0;
+
+    // Lightweight path: when collapsed or not on tools tab, just count total
+    if (collapsed || (activeTab !== "tools" && activeTab !== "workspace")) {
+      if (!useTimeline) {
+        return {
+          summary: [],
+          doneCount: 0,
+          runningCount: 0,
+          errorCount: 0,
+          totalToolCount: 0,
+          reads: 0,
+          searches: 0,
+          bash: 0,
+          writes: 0,
+        };
+      }
+      // Quick count without building trees
+      for (const entry of timeline) {
+        if (entry.kind === "tool") total++;
+      }
+      return {
+        summary: [],
+        doneCount: 0,
+        runningCount: 0,
+        errorCount: 0,
+        totalToolCount: total,
+        reads: 0,
+        searches: 0,
+        bash: 0,
+        writes: 0,
+      };
+    }
+
     if (useTimeline) {
       for (const turn of turns) {
         for (const t of flattenNodes(turn.tools)) {
@@ -620,6 +699,7 @@
   }
 
   $effect(() => {
+    if (!isPerfEnabled()) return;
     dbg("tools", "sidebar updated", {
       useTimeline,
       turns: turns.length,

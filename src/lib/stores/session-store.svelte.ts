@@ -1334,11 +1334,35 @@ export class SessionStore {
 
   // ── Snapshot cache helpers ──
 
-  /** Serialize current store state into a JSON string for IDB caching. */
+  /** Maximum tool_use_result size to serialize (bytes). Larger results are skipped in snapshot. */
+  private static readonly SNAPSHOT_MAX_TOOL_RESULT = 50_000;
+
+  /** Serialize current store state into a JSON string for IDB caching.
+   *  Large tool_use_result fields are skipped to keep snapshot size manageable. */
   private _buildSnapshot(): string {
+    // Clone timeline with large tool results pruned to keep snapshot small
+    const prunedTimeline = this.timeline.map((entry) => {
+      if (entry.kind !== "tool") return entry;
+      const tur = entry.tool.tool_use_result;
+      if (tur && typeof tur === "object") {
+        const size = JSON.stringify(tur).length;
+        if (size > SessionStore.SNAPSHOT_MAX_TOOL_RESULT) {
+          // Keep metadata but skip the large result body
+          return {
+            ...entry,
+            tool: {
+              ...entry.tool,
+              tool_use_result: { _truncated: true, _size: size },
+            },
+          };
+        }
+      }
+      return entry;
+    });
+
     const obj: Record<string, unknown> = {
       // A group (ReduceCtx-derived)
-      timeline: this.timeline,
+      timeline: prunedTimeline,
       tools: this.tools,
       hookEvents: this.hookEvents,
       streamingText: this.streamingText,
@@ -1719,9 +1743,12 @@ export class SessionStore {
       }
     } catch (e) {
       if (gen !== this._loadGen) return;
-      this._isLoadingReplay = false;
       this.error = String(e);
       this._setPhase("failed");
+    } finally {
+      if (gen === this._loadGen) {
+        this._isLoadingReplay = false;
+      }
     }
   }
 
