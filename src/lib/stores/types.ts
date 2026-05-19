@@ -38,7 +38,7 @@ export interface TurnUsage {
 }
 
 export const ACTIVE_PHASES: readonly string[] = ["spawning", "running"];
-export const TERMINAL_PHASES: readonly string[] = ["completed", "failed", "stopped"];
+export const TERMINAL_PHASES: readonly string[] = ["completed", "failed", "stopped", "error"];
 export const SESSION_ALIVE_PHASES: readonly string[] = ["spawning", "running", "idle"];
 
 /**
