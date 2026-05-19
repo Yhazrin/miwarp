@@ -547,17 +547,20 @@
     burstCollapse.syncStates();
   });
 
-  // Reset on run switch
+  // Reset on run switch — only when runId actually changes
+  let prevRunId: string | undefined = undefined;
   $effect(() => {
     const runId = store.run?.id;
-    if (!runId) return;
-    burstCollapse.reset();
+    if (runId !== prevRunId) {
+      prevRunId = runId;
+      burstCollapse.reset();
+    }
   });
 
-  // Convenience refs to helper state
-  let effectiveCollapsed = burstCollapse.effectiveCollapsed;
-  let collapsingIndices = burstCollapse.collapsingIndices;
-  let collapsedIndices = burstCollapse.collapsedIndices;
+  // Note: we access burstCollapse state directly in the template via reactive getters,
+  // not through local let bindings (which would not be reactive).
+  // burstCollapse.effectiveCollapsed, .collapsingIndices, .collapsedIndices are all
+  // reactive $derived getters — always access through burstCollapse in templates.
   let toggleBurst = burstCollapse.toggleBurst;
 
   // ── Auto-context tracking ──
@@ -747,7 +750,7 @@
    * Caller must pass an index in the visibleTimeline namespace, not filteredTimeline.
    */
   async function ensureBurstExpandedFor(visibleIdx: number) {
-    if (!collapsedIndices.has(visibleIdx)) return;
+    if (!burstCollapse.collapsedIndices.has(visibleIdx)) return;
     for (const [, burst] of toolBursts) {
       if (visibleIdx >= burst.startIndex && visibleIdx <= burst.endIndex) {
         burstCollapse.toggleBurst(burst.key);
@@ -968,10 +971,10 @@
     const vt = visibleTimeline;
     for (let i = 0; i < vt.length; i++) {
       if (vt[i].kind !== "tool") continue;
-      if (collapsedIndices.has(i)) continue;
+      if (burstCollapse.collapsedIndices.has(i)) continue;
       // Look back for the previous visible non-tool entry
       for (let j = i - 1; j >= 0; j--) {
-        if (collapsedIndices.has(j)) continue;
+        if (burstCollapse.collapsedIndices.has(j)) continue;
         if (vt[j].kind === "tool") continue;
         if (vt[j].kind === "user") starts.add(i);
         break;
@@ -4299,7 +4302,7 @@
                   <div bind:this={topSentinel} aria-hidden="true" class="h-px w-full"></div>
                 {/if}
                 {#each visibleTimeline as entry, i (entry.id)}
-                  {#if !(collapsedIndices.has(i) && !toolBursts.has(i))}
+                  {#if !(burstCollapse.collapsedIndices.has(i) && !toolBursts.has(i))}
                     <div
                       id="msg-{entry.anchorId}"
                       data-entry-id={entry.id}
@@ -4326,7 +4329,7 @@
                             <div class="chat-content-width pl-7">
                               <ToolBurstHeader
                                 {burst}
-                                collapsed={effectiveCollapsed.has(burst.key)}
+                                collapsed={burstCollapse.effectiveCollapsed.has(burst.key)}
                                 onToggle={() => toggleBurst(burst.key)}
                               />
                             </div>
@@ -4400,7 +4403,7 @@
                         {#if claudeTurnStarts.has(i)}
                           <div class="pt-3"></div>
                         {/if}
-                        {#if !collapsedIndices.has(i)}
+                        {#if !burstCollapse.collapsedIndices.has(i)}
                           {#if processVisibility === "output" && !shouldMountFullToolCardInOutputMode(entry.tool)}
                             <div
                               id="tool-{entry.tool.tool_use_id}"
@@ -4417,7 +4420,7 @@
                             <div
                               class="w-full py-1"
                               id="tool-{entry.tool.tool_use_id}"
-                              class:collapsing-burst-tool={collapsingIndices.has(i)}
+                              class:collapsing-burst-tool={burstCollapse.collapsingIndices.has(i)}
                             >
                               <div class="chat-content-width">
                                 <InlineToolCard

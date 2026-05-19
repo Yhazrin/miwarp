@@ -277,12 +277,11 @@ export function useToolBurstCollapse(
     syncStates();
   }
 
-  async function reset() {
+  function reset() {
     clearAllTimers();
     activeRunId = undefined;
     visualStates = new Map();
     manualOverrides = new Map();
-    await tick();
   }
 
   return {
