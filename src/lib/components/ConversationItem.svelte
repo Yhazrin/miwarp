@@ -8,6 +8,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { hasAttention } from "$lib/stores/attention-store.svelte";
+  import ContextMenu from "./ContextMenu.svelte";
 
   function platformLabel(id: string): string {
     return PLATFORM_PRESETS.find((p) => p.id === id)?.name ?? id;
@@ -56,7 +57,7 @@
     return { color: "hsl(var(--muted-foreground))", animated: false };
   });
 
-  // ── Inline rename (self-contained, mirrors RunListItem) ──
+  // ── Inline rename ──────────────────────────────────────────────────────────
 
   let editing = $state(false);
   let editValue = $state("");
@@ -77,14 +78,10 @@
       try {
         const { renameRun } = await import("$lib/api");
         await renameRun(conversation.latestRun.id, trimmed);
-        dbg("conv-item", "renamed", {
-          runId: conversation.latestRun.id,
-          name: trimmed,
-        });
+        dbg("conv-item", "renamed", { runId: conversation.latestRun.id, name: trimmed });
         window.dispatchEvent(new Event("ocv:runs-changed"));
       } catch (e) {
         dbgWarn("conv-item", "rename failed", e);
-        // runs will refresh on next poll
       }
     }
   }
@@ -109,6 +106,67 @@
     }
     onclick?.();
   }
+
+  // ── Context menu ──────────────────────────────────────────────────────────
+
+  let contextMenuOpen = $state(false);
+  let contextMenuX = $state(0);
+  let contextMenuY = $state(0);
+
+  function openContextMenu(e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    contextMenuX = e.clientX;
+    contextMenuY = e.clientY;
+    contextMenuOpen = true;
+  }
+
+  function openContextMenuFromButton(e: MouseEvent) {
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    contextMenuX = rect.left;
+    contextMenuY = rect.bottom + 4;
+    contextMenuOpen = true;
+  }
+
+  function closeContextMenu() {
+    contextMenuOpen = false;
+  }
+
+  async function handleContextMenuSelect(id: string) {
+    switch (id) {
+      case "rename":
+        startRename();
+        break;
+      case "movetofolder":
+        onmovetofolder?.(conversation.runs.map((r) => r.id));
+        break;
+      case "archive":
+        // Archive = move to uncategorized / null folder
+        onmovetofolder?.(conversation.runs.map((r) => r.id));
+        break;
+      case "delete":
+        if (confirm(t("sidebar_deleteConfirmMsg") ?? "Delete this conversation?")) {
+          ondelete?.(conversation);
+        }
+        break;
+    }
+  }
+
+  // Context menu items
+  const contextMenuItems = $derived([
+    { id: "rename", label: t("sidebar_rename"), icon: "rename" as const },
+    { id: "movetofolder", label: t("sidebar_moveToFolder"), icon: "folder" as const },
+    { id: "archive", label: t("sidebar_archive"), icon: "archive" as const },
+    {
+      id: "delete",
+      label: t("sidebar_delete"),
+      icon: "trash" as const,
+      danger: true,
+      separatorBefore: true,
+      disabled: !canDelete,
+    },
+  ]);
 </script>
 
 <div
@@ -123,6 +181,7 @@
   draggable={!!ondragstart}
   onclick={handleClick}
   onkeydown={handleKeydown}
+  oncontextmenu={openContextMenu}
   ondragstart={ondragstart ? (e) => ondragstart!(e, conversation.latestRun.id) : undefined}
   {ondragend}
 >
@@ -195,59 +254,23 @@
             stroke="currentColor"
             stroke-width="2"
             stroke-linecap="round"
-            stroke-linejoin="round"
-            ><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path
-              d="M21 3v5h-5"
-            /></svg
+            stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3" /></svg
           >
         </button>
       {/if}
-      {#if canDelete && ondelete}
-        <button
-          class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-opacity"
-          onclick={(e) => {
-            e.stopPropagation();
-            ondelete(conversation);
-          }}
-          title={t("sidebar_deleteConfirm")}
-        >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path
-              d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"
-            /></svg
-          >
-        </button>
-      {/if}
-      {#if onmovetofolder}
-        <button
-          class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-accent/20 text-muted-foreground hover:text-sidebar-foreground transition-opacity"
-          onclick={(e) => {
-            e.stopPropagation();
-            onmovetofolder(conversation.runs.map((r) => r.id));
-          }}
-          title={t("sidebar_moveToFolder")}
-        >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><path
-              d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
-            /><path d="m9 13 2 2 4-4" /></svg
-          >
-        </button>
-      {/if}
+      <!-- More button — opens context menu -->
+      <button
+        class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-accent/20 transition-opacity text-muted-foreground"
+        onclick={openContextMenuFromButton}
+        title={t("moreOptions") ?? "More options"}
+        aria-label={t("moreOptions") ?? "More options"}
+      >
+        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+          <circle cx="12" cy="5" r="1.5" />
+          <circle cx="12" cy="12" r="1.5" />
+          <circle cx="12" cy="19" r="1.5" />
+        </svg>
+      </button>
       {#if selected}
         <StatusBadge
           status={run.status}
@@ -267,9 +290,8 @@
       {/if}
     </div>
   </div>
-  <!-- Meta row: branch / platform / remote / time — no agent CLI name -->
+  <!-- Meta row: branch / platform / remote / time -->
   <div class="mt-0.5 flex items-center gap-1 text-[10.5px] text-muted-foreground/45 leading-none">
-    <!-- Left: branch + remote + platform -->
     <div class="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
       {#if run.worktree_branch}
         <span
@@ -313,7 +335,16 @@
         <span class="truncate opacity-70">{platformLabel(run.platform_id)}</span>
       {/if}
     </div>
-    <!-- Right: time -->
     <span class="shrink-0 tabular-nums">{time}</span>
   </div>
 </div>
+
+{#if contextMenuOpen}
+  <ContextMenu
+    x={contextMenuX}
+    y={contextMenuY}
+    items={contextMenuItems}
+    onSelect={handleContextMenuSelect}
+    onClose={closeContextMenu}
+  />
+{/if}
