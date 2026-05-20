@@ -21,6 +21,7 @@ import type { TurnUsage } from "$lib/stores/types";
 import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
 import { getCliVersionInfo_cached, getCliModels } from "$lib/stores/cli-info.svelte";
 import type { CliVersionInfo } from "$lib/stores/cli-info.svelte";
+import type { TimelineAnnotationsHandle } from "$lib/chat/use-timeline-annotations.svelte";
 
 // ── Context (dependency injection) ──
 
@@ -33,6 +34,8 @@ export interface SessionDerivedContext {
   getUserCountPrefix: () => Int32Array;
   getCollapsedIndices: () => Set<number>;
   getPreloadedSkills: () => StandaloneSkill[];
+  /** Optional: when provided, annotation getters delegate to this handle. */
+  timelineAnnotations?: TimelineAnnotationsHandle;
 }
 
 // ── Return type ──
@@ -79,6 +82,7 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
     getUserCountPrefix,
     getCollapsedIndices,
     getPreloadedSkills,
+    timelineAnnotations,
   } = ctx;
 
   // ── Mutable state ──
@@ -193,10 +197,12 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
   });
 
   // ── Derived: per-turn usage annotations in timeline ──
+  // Delegates to timelineAnnotations handle when provided; otherwise computes inline.
 
   const usageByTurn = $derived(new Map(store.turnUsages.map((tu) => [tu.turnIndex, tu])));
 
   const usageAnnotations = $derived.by(() => {
+    if (timelineAnnotations) return timelineAnnotations.usageAnnotations;
     const map = new Map<number, TurnUsage>();
     if (usageByTurn.size === 0) return map;
     const vt = getVisibleTimeline();
@@ -216,6 +222,7 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
   });
 
   const claudeTurnStarts = $derived.by(() => {
+    if (timelineAnnotations) return timelineAnnotations.claudeTurnStarts;
     const starts = new Set<number>();
     const vt = getVisibleTimeline();
     const collapsed = getCollapsedIndices();
@@ -233,8 +240,9 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
   });
 
   const lastTurnUsage = $derived.by(() => {
-    const filtered = getFilteredTimeline();
-    const userCount = filtered.filter((e) => e.kind === "user").length;
+    if (timelineAnnotations) return timelineAnnotations.lastTurnUsage;
+    const prefix = getUserCountPrefix();
+    const userCount = prefix[prefix.length - 1] ?? 0;
     if (userCount === 0) return null;
     return usageByTurn.get(userCount) ?? null;
   });

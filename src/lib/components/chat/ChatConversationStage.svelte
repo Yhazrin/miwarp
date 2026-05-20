@@ -1,13 +1,16 @@
 <script lang="ts">
   import type { SessionStore } from "$lib/stores/session-store.svelte";
-  import type { UserSettings, TimelineEntry, TeamRun, AuthOverview, BusToolItem } from "$lib/types";
+  import type { UserSettings } from "$lib/types";
   import type { ProcessVisibility } from "$lib/utils/process-visibility";
-  import type { ToolBurst } from "$lib/utils/tool-rendering";
-  import type { BurstCollapseHandle } from "$lib/chat/use-tool-burst-collapse.svelte";
-  import type { TurnUsage } from "$lib/stores/types";
-  import type { RewindMarker } from "$lib/utils/rewind";
-  import type { TaskRun } from "$lib/types";
   import type XTerminal from "$lib/components/XTerminal.svelte";
+  import type {
+    TimelineVm,
+    SessionVm,
+    LoadingVm,
+    ThinkingVm,
+    ForkVm,
+    StageHandlers,
+  } from "./conversation-stage-types";
   import ChatWelcomeScreen from "$lib/components/ChatWelcomeScreen.svelte";
   import ChatForkedBanner from "$lib/components/ChatForkedBanner.svelte";
   import ChatNotificationBanner from "$lib/components/ChatNotificationBanner.svelte";
@@ -27,7 +30,6 @@
   import ChatInitHint from "$lib/components/ChatInitHint.svelte";
   import ChatHeroMeta from "$lib/components/ChatHeroMeta.svelte";
   import XTerminalComponent from "$lib/components/XTerminal.svelte";
-  import MarkdownContent from "$lib/components/MarkdownContent.svelte";
   import { timelineHasHiddenRoutineWorkRunning } from "$lib/utils/process-visibility";
   import { APP_LOGO_URL } from "$lib/utils/brand-assets";
   import { t as tFn } from "$lib/i18n/index.svelte";
@@ -38,7 +40,48 @@
     store,
     settings,
     processVisibility,
-    // Timeline state
+    // Grouped view models
+    timelineVm,
+    sessionVm,
+    loadingVm,
+    thinkingVm,
+    forkVm,
+    handlers,
+    // Bindable state (not groupable into VMs)
+    thinkingExpanded = $bindable(false),
+    // Team dispatch
+    teamDispatchPrompt = $bindable(""),
+    teamDispatchOpen = $bindable(false),
+    // Refs
+    xtermRef = $bindable<XTerminal | undefined>(),
+    chatAreaRef = $bindable<HTMLDivElement | undefined>(),
+    // Local UI state
+    showChatScrollHint,
+    // Snippets
+    heroMetaFooter,
+    inputDock,
+  }: {
+    store: SessionStore;
+    settings: UserSettings | null;
+    processVisibility: ProcessVisibility;
+    timelineVm: TimelineVm;
+    sessionVm: SessionVm;
+    loadingVm: LoadingVm;
+    thinkingVm: ThinkingVm;
+    forkVm: ForkVm;
+    handlers: StageHandlers;
+    thinkingExpanded?: boolean;
+    teamDispatchPrompt?: string;
+    teamDispatchOpen?: boolean;
+    xtermRef?: XTerminal;
+    chatAreaRef?: HTMLDivElement;
+    showChatScrollHint: boolean;
+    heroMetaFooter: import("svelte").Snippet;
+    inputDock: import("svelte").Snippet;
+  } = $props();
+
+  // Destructure VMs so template references stay flat (no behavior change).
+  const {
     visibleTimeline,
     filteredTimeline,
     toolNamesInTimeline,
@@ -59,7 +102,9 @@
     fetchToolResult,
     topSentinelRef,
     setTopSentinel,
-    // Welcome state
+  } = $derived(timelineVm);
+
+  const {
     welcomeVisible,
     lastContinuableRun,
     authOverview,
@@ -68,28 +113,24 @@
     cliVersionInfo,
     channelLatest,
     remoteHosts,
-    // Loading state
+  } = $derived(sessionVm);
+
+  const {
     routeRunLoadFailed,
     routeRunPending,
     runId,
-    // Timeline items
     notificationVisible,
     latestNotification,
     rewindMarkers,
     activeTeamRuns,
-    // Thinking/streaming
-    thinkingExpanded = $bindable(false),
-    thinkingElapsed,
-    thinkingVisible,
-    spinnerVerb,
-    processingSlashCmd,
-    approving,
-    sending,
-    // Fork overlay
-    forkOverlay,
-    forkElapsed,
-    resuming,
-    // Handlers
+  } = $derived(loadingVm);
+
+  const { thinkingElapsed, thinkingVisible, spinnerVerb, processingSlashCmd, approving, sending } =
+    $derived(thinkingVm);
+
+  const { forkOverlay, forkElapsed, resuming } = $derived(forkVm);
+
+  const {
     goto,
     sendMessage,
     fillPrompt,
@@ -113,113 +154,7 @@
     dismissInitHint,
     loadRunProgressive,
     setLastTarget,
-    // Team dispatch
-    teamDispatchPrompt = $bindable(""),
-    teamDispatchOpen = $bindable(false),
-    // Refs
-    xtermRef = $bindable<XTerminal | undefined>(),
-    chatAreaRef = $bindable<HTMLDivElement | undefined>(),
-    // Local UI state
-    showChatScrollHint,
-    // Snippets
-    heroMetaFooter,
-    inputDock,
-  }: {
-    store: SessionStore;
-    settings: UserSettings | null;
-    processVisibility: ProcessVisibility;
-    visibleTimeline: TimelineEntry[];
-    filteredTimeline: TimelineEntry[];
-    toolNamesInTimeline: string[];
-    toolFilter: string | null;
-    setToolFilter: (v: string | null) => void;
-    renderLimit: number;
-    timelineIdIndex: Map<string, number>;
-    lastClearSepId: string | null;
-    latestPlanToolId: string | null;
-    batchGroups: Map<number, BusToolItem[]>;
-    toolBursts: Map<number, ToolBurst>;
-    burstCollapse: BurstCollapseHandle;
-    lastAssistantIdx: number;
-    usageAnnotations: Map<number, TurnUsage>;
-    lastTurnUsage: TurnUsage | null;
-    claudeTurnStarts: Set<number>;
-    showPermissionPanel: boolean;
-    fetchToolResult: (runId: string, toolUseId: string) => Promise<Record<string, unknown> | null>;
-    topSentinelRef: HTMLDivElement | null;
-    setTopSentinel: (el: HTMLDivElement | null) => void;
-    welcomeVisible: boolean;
-    lastContinuableRun: TaskRun | null;
-    authOverview: AuthOverview | null;
-    localProxyStatuses: Record<string, { running: boolean; needsAuth: boolean }>;
-    showInitHint: boolean;
-    cliVersionInfo: import("$lib/stores").CliVersionInfo | null;
-    channelLatest: string | undefined;
-    remoteHosts: import("$lib/types").RemoteHost[];
-    routeRunLoadFailed: boolean;
-    routeRunPending: boolean;
-    runId: string;
-    notificationVisible: boolean;
-    latestNotification: { task_id: string; status: string } | null;
-    rewindMarkers: RewindMarker[];
-    activeTeamRuns: TeamRun[];
-    thinkingExpanded?: boolean;
-    thinkingElapsed: number;
-    thinkingVisible: boolean;
-    spinnerVerb: string;
-    processingSlashCmd: string | null;
-    approving: boolean;
-    sending: boolean;
-    forkOverlay: {
-      active: boolean;
-      sourceRunId: string;
-      startedAt: number;
-      error: string | null;
-    } | null;
-    forkElapsed: number;
-    resuming: boolean;
-    goto: (path: string, opts?: { replaceState?: boolean }) => void;
-    sendMessage: (text: string, attachments: import("$lib/types").Attachment[]) => Promise<void>;
-    fillPrompt: (text: string) => void;
-    handleAuthModeChange: (mode: string) => void;
-    handlePlatformChange: (id: string) => void;
-    handleRewindToMessage: (entry: { cliUuid: string; content: string; ts: string }) => void;
-    handleToolAnswer: (toolUseId: string, answer: string) => void;
-    handleToolApprove: (toolUseId: string) => void;
-    handlePermissionRespond: (
-      requestId: string,
-      behavior: "allow" | "deny",
-      updatedPermissions?: import("$lib/types").PermissionSuggestion[],
-      updatedInput?: Record<string, unknown>,
-      denyMessage?: string,
-      interrupt?: boolean,
-    ) => Promise<void>;
-    handleExitPlanClearContext: (toolUseId: string) => void;
-    getPlanContentForExitPlan: (entryId: string) => { content: string; fileName: string } | null;
-    openPreviewForPath: (path: string) => void;
-    handleHookCallbackRespond: (requestId: string, decision: "allow" | "deny") => Promise<void>;
-    handleElicitationRespond: (
-      requestId: string,
-      action: "accept" | "decline" | "cancel",
-      content?: Record<string, unknown>,
-    ) => void | Promise<void>;
-    handleChatScroll: () => void;
-    scrollChatToBottom: () => void;
-    handleTermResize: (cols: number, rows: number) => void;
-    handleTermReady: (cols: number, rows: number) => void;
-    handleForkCancel: () => void;
-    handleForkRetry: () => void;
-    dismissInitHint: () => void;
-    loadRunProgressive: (id: string, xtermRef: XTerminal | undefined) => void;
-    setLastTarget: (hostName: string | null) => void;
-    teamDispatchPrompt?: string;
-    teamDispatchOpen?: boolean;
-    xtermRef?: XTerminal;
-    chatAreaRef?: HTMLDivElement;
-    showChatScrollHint: boolean;
-    heroMetaFooter: import("svelte").Snippet;
-    inputDock: import("svelte").Snippet;
-  } = $props();
+  } = $derived(handlers);
 
   function onTopSentinelMount(el: HTMLDivElement) {
     setTopSentinel(el);

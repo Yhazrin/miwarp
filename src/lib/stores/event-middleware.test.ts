@@ -68,6 +68,8 @@ function mockStore() {
     applyEventBatch: vi.fn(),
     applyHookEvent: vi.fn(),
     applyHookUsage: vi.fn(),
+    applyHookEventBatch: vi.fn(),
+    applyHookUsageBatch: vi.fn(),
     loadRun: vi.fn().mockResolvedValue(undefined),
   };
 }
@@ -171,7 +173,9 @@ describe("EventMiddleware", () => {
       const handler = _transportListeners.get("hook-event")!;
       handler({ run_id: "run-1", hook_type: "PreToolUse", tool_name: "Bash" });
 
-      expect(store.applyHookEvent).toHaveBeenCalledOnce();
+      // Hook events are now batched — flush to apply
+      vi.advanceTimersByTime(16);
+      expect(store.applyHookEventBatch).toHaveBeenCalledOnce();
     });
 
     it("routes hook-usage to subscribed store", async () => {
@@ -182,7 +186,9 @@ describe("EventMiddleware", () => {
       const handler = _transportListeners.get("hook-usage")!;
       handler({ run_id: "run-1", input_tokens: 100, output_tokens: 50, cost: 0.01 });
 
-      expect(store.applyHookUsage).toHaveBeenCalledOnce();
+      // Hook usage is now batched — flush to apply
+      vi.advanceTimersByTime(16);
+      expect(store.applyHookUsageBatch).toHaveBeenCalledOnce();
     });
   });
 

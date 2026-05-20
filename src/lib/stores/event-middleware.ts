@@ -37,7 +37,13 @@ export class EventMiddleware {
 
   // Microbatch buffer for bus events
   private _batchBuffer = new Map<string, BusEvent[]>();
+  private _hookBatchBuffer = new Map<string, HookEvent[]>();
+  private _usageBatchBuffer = new Map<
+    string,
+    Array<{ run_id: string; input_tokens: number; output_tokens: number; cost: number }>
+  >();
   private _flushScheduled = false;
+  private _flushTimer: ReturnType<typeof setTimeout> | null = null;
   private _BATCH_INTERVAL = 16; // ~1 frame
   private _MAX_BUFFER_SIZE = 500; // per-run overflow threshold
 
@@ -153,6 +159,12 @@ export class EventMiddleware {
     this._currentRunId = null;
     this._currentStore = null;
     this._batchBuffer.clear();
+    this._hookBatchBuffer.clear();
+    this._usageBatchBuffer.clear();
+    if (this._flushTimer !== null) {
+      clearTimeout(this._flushTimer);
+      this._flushTimer = null;
+    }
     this._reloadingRuns.clear();
     this._started = false;
   }
@@ -173,6 +185,8 @@ export class EventMiddleware {
       getTransport().unsubscribeRun(this._currentRunId);
       this._subscriptions.delete(this._currentRunId);
       this._batchBuffer.delete(this._currentRunId);
+      this._hookBatchBuffer.delete(this._currentRunId);
+      this._usageBatchBuffer.delete(this._currentRunId);
     }
     if (runId) {
       this._currentRunId = runId;
@@ -196,6 +210,8 @@ export class EventMiddleware {
     getTransport().unsubscribeRun(runId);
     this._subscriptions.delete(runId);
     this._batchBuffer.delete(runId);
+    this._hookBatchBuffer.delete(runId);
+    this._usageBatchBuffer.delete(runId);
     if (this._currentRunId === runId) {
       this._currentRunId = null;
       this._currentStore = null;
@@ -289,7 +305,13 @@ export class EventMiddleware {
   private _handleHookEvent(event: HookEvent): void {
     const store = this._subscriptions.get(event.run_id);
     if (!store) return;
-    store.applyHookEvent(event);
+    let buf = this._hookBatchBuffer.get(event.run_id);
+    if (!buf) {
+      buf = [];
+      this._hookBatchBuffer.set(event.run_id, buf);
+    }
+    buf.push(event);
+    this._scheduleFlush();
   }
 
   private _handleHookUsage(usage: {
@@ -300,21 +322,37 @@ export class EventMiddleware {
   }): void {
     const store = this._subscriptions.get(usage.run_id);
     if (!store) return;
-    store.applyHookUsage(usage);
+    let buf = this._usageBatchBuffer.get(usage.run_id);
+    if (!buf) {
+      buf = [];
+      this._usageBatchBuffer.set(usage.run_id, buf);
+    }
+    buf.push(usage);
+    this._scheduleFlush();
   }
 
   private _scheduleFlush(): void {
     if (this._flushScheduled) return;
     this._flushScheduled = true;
+    // Dual-bail: RAF for visual cadence, setTimeout as safety net when
+    // the tab is backgrounded or WebView2 throttles RAF (Windows power-saving).
     if (typeof requestAnimationFrame !== "undefined") {
       requestAnimationFrame(() => this._flush());
+      this._flushTimer = setTimeout(() => this._flush(), this._BATCH_INTERVAL);
     } else {
       setTimeout(() => this._flush(), this._BATCH_INTERVAL);
     }
   }
 
   private _flush(): void {
+    if (!this._flushScheduled) return; // dedup: RAF + setTimeout may both fire
     this._flushScheduled = false;
+    if (this._flushTimer !== null) {
+      clearTimeout(this._flushTimer);
+      this._flushTimer = null;
+    }
+
+    // Flush bus events
     for (const [runId, events] of this._batchBuffer) {
       const store = this._subscriptions.get(runId);
       if (!store) continue;
@@ -329,6 +367,30 @@ export class EventMiddleware {
       }
     }
     this._batchBuffer.clear();
+
+    // Flush hook events
+    for (const [runId, events] of this._hookBatchBuffer) {
+      const store = this._subscriptions.get(runId);
+      if (!store) continue;
+      try {
+        store.applyHookEventBatch(events);
+      } catch (e) {
+        dbgWarn("middleware", `hook flush error for run ${runId}:`, e);
+      }
+    }
+    this._hookBatchBuffer.clear();
+
+    // Flush hook usage
+    for (const [runId, usages] of this._usageBatchBuffer) {
+      const store = this._subscriptions.get(runId);
+      if (!store) continue;
+      try {
+        store.applyHookUsageBatch(usages);
+      } catch (e) {
+        dbgWarn("middleware", `usage flush error for run ${runId}:`, e);
+      }
+    }
+    this._usageBatchBuffer.clear();
   }
 }
 

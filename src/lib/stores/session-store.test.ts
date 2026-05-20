@@ -4024,8 +4024,8 @@ describe("SessionStore reducer", () => {
 
         expect(mockReadSnapshot).toHaveBeenCalledWith("run-snap-2", "stopped");
         expect(mockGetBusEvents).toHaveBeenCalledWith("run-snap-2");
-        // Flush deferred _saveSnapshotToIdb (setTimeout(0))
-        vi.advanceTimersByTime(1);
+        // Flush deferred _saveSnapshotToIdb (setTimeout(50))
+        vi.advanceTimersByTime(100);
         // Should have written snapshot after reducer
         expect(mockWriteSnapshot).toHaveBeenCalled();
         expect(testStore.timeline.length).toBeGreaterThan(0);
@@ -4080,8 +4080,8 @@ describe("SessionStore reducer", () => {
         const testStore = new SessionStore();
         await testStore.loadRun("run-wg-2");
 
-        // Flush deferred _saveSnapshotToIdb (setTimeout(0))
-        vi.advanceTimersByTime(1);
+        // Flush deferred _saveSnapshotToIdb (setTimeout(50))
+        vi.advanceTimersByTime(100);
         // 0 busEvents + 0 timeline → legit empty session → write allowed
         expect(mockWriteSnapshot).toHaveBeenCalled();
         vi.useRealTimers();
@@ -4236,8 +4236,8 @@ describe("SessionStore reducer", () => {
         // Full replay via getBusEvents
         expect(mockGetBusEvents).toHaveBeenCalledWith("run-idle-2");
         expect(testStore.timeline.length).toBeGreaterThan(0);
-        // Flush deferred _saveSnapshotToIdb
-        vi.advanceTimersByTime(1);
+        // Flush deferred _saveSnapshotToIdb (setTimeout(50))
+        vi.advanceTimersByTime(100);
         vi.useRealTimers();
         warnSpy.mockClear();
       });
@@ -4252,8 +4252,8 @@ describe("SessionStore reducer", () => {
         const testStore = new SessionStore();
         await testStore.loadRun("run-idle-3");
 
-        // Flush deferred _saveSnapshotToIdb
-        vi.advanceTimersByTime(1);
+        // Flush deferred _saveSnapshotToIdb (setTimeout(50))
+        vi.advanceTimersByTime(100);
         expect(mockWriteSnapshot).toHaveBeenCalled();
         expect(testStore.timeline.length).toBeGreaterThan(0);
         vi.useRealTimers();

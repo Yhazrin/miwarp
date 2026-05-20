@@ -7,8 +7,31 @@ use crate::process_ext::HideConsole;
 use crate::storage;
 use crate::web_server::broadcaster::BroadcastEmitter;
 use std::sync::Arc;
+use std::time::Duration;
 use tauri::State;
 use tokio_util::sync::CancellationToken;
+
+/// Await an actor oneshot reply with a timeout.
+/// Returns the inner Result<T, String> or a timeout/drop error.
+async fn await_actor_reply<T>(
+    rx: tokio::sync::oneshot::Receiver<Result<T, String>>,
+    label: &str,
+    timeout_ms: u64,
+) -> Result<T, String> {
+    match tokio::time::timeout(Duration::from_millis(timeout_ms), rx).await {
+        Ok(Ok(Ok(v))) => Ok(v),
+        Ok(Ok(Err(e))) => Err(e),
+        Ok(Err(_)) => Err(format!("Actor dropped reply: {}", label)),
+        Err(_) => Err(format!("Actor reply timeout ({timeout_ms}ms): {label}")),
+    }
+}
+
+/// Default timeout for actor replies (permission, elicitation, hook callback, etc.)
+const ACTOR_REPLY_TIMEOUT_MS: u64 = 30_000;
+/// Timeout for send_message actor replies (may need to wait for turn dispatch)
+const ACTOR_SEND_TIMEOUT_MS: u64 = 45_000;
+/// Timeout for WaitReady after actor spawn
+const ACTOR_READY_TIMEOUT_MS: u64 = 5_000;
 
 /// Truncate a string to at most `max` bytes, snapping to a char boundary.
 fn truncate_str(s: &str, max: usize) -> &str {
@@ -703,9 +726,7 @@ pub(crate) async fn start_session_impl(
             })
             .await
             .map_err(|_| "Actor dead before initial message".to_string())?;
-        reply_rx
-            .await
-            .map_err(|_| "Actor dropped initial message reply".to_string())??;
+        await_actor_reply(reply_rx, "initial_message", ACTOR_SEND_TIMEOUT_MS).await?;
         log::debug!(
             "[session] initial message sent through actor for run_id={}",
             run_id
@@ -804,9 +825,7 @@ pub async fn send_session_message(
         })
         .await
         .map_err(|_| "Actor dead".to_string())?;
-    reply_rx
-        .await
-        .map_err(|_| "Actor dropped reply".to_string())??;
+    await_actor_reply(reply_rx, "send_message", ACTOR_SEND_TIMEOUT_MS).await?;
 
     // Turn Transaction Engine: actor's start_user_turn now handles
     // UserMessage + RunState(running) emission. No post-emit needed here.
@@ -894,9 +913,8 @@ pub async fn send_session_control(
         .await
         .map_err(|_| "Actor dead".to_string())?;
 
-    let (request_id, response_rx) = reply_rx
-        .await
-        .map_err(|_| "Actor dropped reply".to_string())??;
+    let (request_id, response_rx) =
+        await_actor_reply(reply_rx, "send_control", ACTOR_REPLY_TIMEOUT_MS).await?;
 
     // Phase 2: await response outside actor (no lock held)
     match tokio::time::timeout(std::time::Duration::from_secs(10), response_rx).await {
@@ -1275,9 +1293,17 @@ pub(crate) async fn approve_session_tool_impl(
     );
     sessions.lock().await.insert(run_id.clone(), actor_handle);
 
-    // 9. Wait briefly for CLI to be ready.
-    // TODO: Replace with event-based approach (WaitForReady actor command).
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    // 9. Wait for CLI to be ready (event-based, no fixed sleep).
+    let cmd_tx = get_cmd_tx(sessions, &run_id).await?;
+    let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+    cmd_tx
+        .send(ActorCommand::WaitReady { reply: ready_tx })
+        .await
+        .map_err(|_| "Actor dead before wait_ready".to_string())?;
+    if let Err(e) = await_actor_reply(ready_rx, "wait_ready", ACTOR_READY_TIMEOUT_MS).await {
+        log::warn!("[session] WaitReady failed for run_id={}: {}", run_id, e);
+        return Err(format!("Actor not ready after spawn: {e}"));
+    }
 
     // 10. Send retry guidance message via actor.
     // Turn Transaction Engine: actor's start_user_turn handles UserMessage + RunState(running).
@@ -1295,9 +1321,7 @@ pub(crate) async fn approve_session_tool_impl(
         })
         .await
         .map_err(|_| "Actor dead after approve restart".to_string())?;
-    reply_rx
-        .await
-        .map_err(|_| "Actor dropped reply".to_string())??;
+    await_actor_reply(reply_rx, "approve_retry_message", ACTOR_SEND_TIMEOUT_MS).await?;
 
     log::debug!(
         "[session] approve_session_tool completed for run_id={}",
@@ -1390,9 +1414,7 @@ pub async fn respond_permission(
         })
         .await
         .map_err(|_| "Actor dead".to_string())?;
-    reply_rx
-        .await
-        .map_err(|_| "Actor dropped reply".to_string())??;
+    await_actor_reply(reply_rx, "respond_permission", ACTOR_REPLY_TIMEOUT_MS).await?;
 
     log::debug!(
         "[session] respond_permission: delivered req_id={}",
@@ -1439,9 +1461,7 @@ pub async fn respond_hook_callback(
         })
         .await
         .map_err(|_| "Actor dead".to_string())?;
-    reply_rx
-        .await
-        .map_err(|_| "Actor dropped reply".to_string())??;
+    await_actor_reply(reply_rx, "respond_hook_callback", ACTOR_REPLY_TIMEOUT_MS).await?;
 
     log::debug!(
         "[session] respond_hook_callback: delivered req_id={}",
@@ -1473,9 +1493,7 @@ pub async fn cancel_control_request(
         })
         .await
         .map_err(|_| "Actor dead".to_string())?;
-    reply_rx
-        .await
-        .map_err(|_| "Actor dropped reply".to_string())??;
+    await_actor_reply(reply_rx, "cancel_control_request", ACTOR_REPLY_TIMEOUT_MS).await?;
 
     Ok(())
 }
@@ -1523,15 +1541,28 @@ pub async fn respond_elicitation(
         })
         .await
         .map_err(|_| "Actor dead".to_string())?;
-    reply_rx
-        .await
-        .map_err(|_| "Actor dropped reply".to_string())??;
+    await_actor_reply(reply_rx, "respond_elicitation", ACTOR_REPLY_TIMEOUT_MS).await?;
 
     log::debug!(
         "[session] respond_elicitation: delivered req_id={}",
         request_id
     );
     Ok(())
+}
+
+/// Check the runtime health of a session's actor.
+/// Returns whether the actor is alive and the last processed event sequence.
+#[tauri::command]
+pub async fn get_session_runtime_status(
+    sessions: State<'_, ActorSessionMap>,
+    run_id: String,
+) -> Result<serde_json::Value, String> {
+    let map = sessions.lock().await;
+    let actor_alive = map.contains_key(&run_id);
+    Ok(serde_json::json!({
+        "actor_alive": actor_alive,
+        "run_id": run_id,
+    }))
 }
 
 // ── Shell config auth injection (CLI mode only) ──
@@ -2168,9 +2199,7 @@ pub async fn start_ralph_loop(
         .await
         .map_err(|_| "Actor dead".to_string())?;
 
-    reply_rx
-        .await
-        .map_err(|_| "Actor dropped reply".to_string())?
+    await_actor_reply(reply_rx, "start_ralph_loop", ACTOR_REPLY_TIMEOUT_MS).await
 }
 
 #[tauri::command]
@@ -2188,9 +2217,7 @@ pub async fn cancel_ralph_loop(
         .await
         .map_err(|_| "Actor dead".to_string())?;
 
-    reply_rx
-        .await
-        .map_err(|_| "Actor dropped reply".to_string())?
+    await_actor_reply(reply_rx, "cancel_ralph_loop", ACTOR_REPLY_TIMEOUT_MS).await
 }
 
 #[cfg(test)]

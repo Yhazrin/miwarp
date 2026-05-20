@@ -2,7 +2,6 @@
   import { page } from "$app/stores";
   import { goto, replaceState } from "$app/navigation";
   import { tick, onMount, untrack, getContext } from "svelte";
-  import { getTransport } from "$lib/transport";
   import * as api from "$lib/api";
   import {
     sessionStore,
@@ -10,19 +9,9 @@
     getEventMiddleware,
     loadCliInfo,
     getCliCurrentModel,
-    getCliCommands,
-    canResumeNow,
-    TERMINAL_PHASES,
-    getResumeWarning,
     loadCliVersionInfo,
   } from "$lib/stores";
-  import type {
-    Attachment,
-    UserSettings,
-    AgentSettings,
-    SessionMode,
-    TimelineEntry,
-  } from "$lib/types";
+  import type { UserSettings, AgentSettings, SessionMode, TimelineEntry } from "$lib/types";
   import { useToolBurstCollapse } from "$lib/chat/use-tool-burst-collapse.svelte";
   import { useTimelineState } from "$lib/chat/use-timeline-state.svelte";
   import { useThinkingTimer } from "$lib/chat/use-thinking-timer.svelte";
@@ -31,28 +20,19 @@
   import SessionStatusBar from "$lib/components/SessionStatusBar.svelte";
   import McpStatusPanel from "$lib/components/McpStatusPanel.svelte";
   import PromptInput from "$lib/components/PromptInput.svelte";
-  import CreatedFiles from "$lib/components/CreatedFiles.svelte";
 
   import ToolActivity from "$lib/components/ToolActivity.svelte";
   import ShortcutHelpPanel from "$lib/components/ShortcutHelpPanel.svelte";
   import type { PromptInputSnapshot } from "$lib/types";
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
   import { t } from "$lib/i18n/index.svelte";
-  import { APP_LOGO_URL } from "$lib/utils/brand-assets";
   import { dbg, dbgWarn } from "$lib/utils/debug";
-  import {
-    getLastTarget,
-    setLastTarget,
-    getStoredRemoteCwd,
-    setStoredRemoteCwd,
-  } from "$lib/utils/remote-cwd";
+  import { setLastTarget, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
   import { shouldAutoName } from "$lib/utils/auto-name";
-  import { randomSpinnerVerb } from "$lib/utils/spinner-verbs";
   import {
     normalizeProcessVisibility,
     getCachedProcessVisibility,
   } from "$lib/utils/process-visibility";
-  import { mergeProjectCommands } from "$lib/utils/slash-commands";
   import {
     handleVirtualCommand as execVirtualCommand,
     type VirtualCommandContext,
@@ -68,6 +48,7 @@
   import { createSendMessage } from "$lib/chat/use-send-message";
   import { createProjectData } from "$lib/chat/use-project-data";
   import { createSessionDerived } from "$lib/chat/use-session-derived.svelte";
+  import { createTimelineAnnotations } from "$lib/chat/use-timeline-annotations.svelte";
   import { createTeamDispatch } from "$lib/chat/use-team-dispatch.svelte";
   import { createVerboseState } from "$lib/chat/use-verbose-state.svelte";
   import { createToolResultCache } from "$lib/chat/use-tool-result-cache";
@@ -76,19 +57,13 @@
   import type { RewindCandidate, RewindMarker } from "$lib/utils/rewind";
   import { truncate } from "$lib/utils/format";
   import { uuid } from "$lib/utils/uuid";
-  import ChatBtwDrawer from "$lib/components/ChatBtwDrawer.svelte";
   import ChatDragOverlay from "$lib/components/ChatDragOverlay.svelte";
-  import ChatTimelineEntries from "$lib/components/chat/ChatTimelineEntries.svelte";
   import ChatConversationStage from "$lib/components/chat/ChatConversationStage.svelte";
   import ChatInputDock from "$lib/components/chat/ChatInputDock.svelte";
-  import ChatRalphLoopBar from "$lib/components/ChatRalphLoopBar.svelte";
   import ChatHeroMeta from "$lib/components/ChatHeroMeta.svelte";
-  import ChatInitHint from "$lib/components/ChatInitHint.svelte";
   import RewindModal from "$lib/components/RewindModal.svelte";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import TeamDispatchConfirm from "$lib/components/TeamDispatchConfirm.svelte";
-  import TeamRunCard from "$lib/components/TeamRunCard.svelte";
-  import ConversationInsightCard from "$lib/components/insight/ConversationInsightCard.svelte";
   import HtmlReportPreview from "$lib/components/insight/HtmlReportPreview.svelte";
   import { getPresets } from "$lib/services/team-dispatcher";
 
@@ -310,6 +285,15 @@
     loadMoreEarlier: () => loadMoreEarlierRef(),
   });
 
+  // ── Timeline annotations (composable) ──
+  const ta = createTimelineAnnotations({
+    store,
+    getVisibleTimeline: () => tl.visibleTimeline,
+    getFilteredTimeline: () => tl.filteredTimeline,
+    getUserCountPrefix: () => tl.userCountPrefix,
+    getCollapsedIndices: () => burstCollapse.collapsedIndices,
+  });
+
   // ── Session-derived state (composable) ──
   const sd = createSessionDerived({
     store,
@@ -320,6 +304,7 @@
     getUserCountPrefix: () => tl.userCountPrefix,
     getCollapsedIndices: () => burstCollapse.collapsedIndices,
     getPreloadedSkills: () => preloadedSkills,
+    timelineAnnotations: ta,
   });
 
   // ── MCP panel ──
@@ -1189,77 +1174,89 @@
       {store}
       {settings}
       {processVisibility}
-      visibleTimeline={tl.visibleTimeline}
-      filteredTimeline={tl.filteredTimeline}
-      toolNamesInTimeline={tl.toolNamesInTimeline}
-      toolFilter={tl.toolFilter}
-      setToolFilter={tl.setToolFilter}
-      renderLimit={tl.renderLimit}
-      timelineIdIndex={tl.timelineIdIndex}
-      lastClearSepId={tl.lastClearSepId}
-      latestPlanToolId={tl.latestPlanToolId}
-      batchGroups={tl.batchGroups}
-      toolBursts={tl.toolBursts}
-      {burstCollapse}
-      lastAssistantIdx={sd.lastAssistantIdx}
-      usageAnnotations={sd.usageAnnotations}
-      lastTurnUsage={sd.lastTurnUsage}
-      claudeTurnStarts={sd.claudeTurnStarts}
-      showPermissionPanel={sd.showPermissionPanel}
-      fetchToolResult={toolResultCache.fetchToolResult}
-      topSentinelRef={tl.topSentinel}
-      setTopSentinel={tl.setTopSentinel}
-      {welcomeVisible}
-      {lastContinuableRun}
-      {authOverview}
-      {localProxyStatuses}
-      {showInitHint}
-      cliVersionInfo={sd.cliVersionInfo}
-      channelLatest={sd.channelLatest}
-      {remoteHosts}
-      {routeRunLoadFailed}
-      {routeRunPending}
-      {runId}
-      {notificationVisible}
-      {latestNotification}
-      {rewindMarkers}
-      activeTeamRuns={team.activeTeamRuns}
+      timelineVm={{
+        visibleTimeline: tl.visibleTimeline,
+        filteredTimeline: tl.filteredTimeline,
+        toolNamesInTimeline: tl.toolNamesInTimeline,
+        toolFilter: tl.toolFilter,
+        setToolFilter: tl.setToolFilter,
+        renderLimit: tl.renderLimit,
+        timelineIdIndex: tl.timelineIdIndex,
+        lastClearSepId: tl.lastClearSepId,
+        latestPlanToolId: tl.latestPlanToolId,
+        batchGroups: tl.batchGroups,
+        toolBursts: tl.toolBursts,
+        burstCollapse,
+        lastAssistantIdx: sd.lastAssistantIdx,
+        usageAnnotations: ta.usageAnnotations,
+        lastTurnUsage: ta.lastTurnUsage,
+        claudeTurnStarts: ta.claudeTurnStarts,
+        showPermissionPanel: sd.showPermissionPanel,
+        fetchToolResult: toolResultCache.fetchToolResult,
+        topSentinelRef: tl.topSentinel,
+        setTopSentinel: tl.setTopSentinel,
+      }}
+      sessionVm={{
+        welcomeVisible,
+        lastContinuableRun,
+        authOverview,
+        localProxyStatuses,
+        showInitHint,
+        cliVersionInfo: sd.cliVersionInfo,
+        channelLatest: sd.channelLatest,
+        remoteHosts,
+      }}
+      loadingVm={{
+        routeRunLoadFailed,
+        routeRunPending,
+        runId,
+        notificationVisible,
+        latestNotification,
+        rewindMarkers,
+        activeTeamRuns: team.activeTeamRuns,
+      }}
+      thinkingVm={{
+        thinkingElapsed: thinking.thinkingElapsed,
+        thinkingVisible: thinking.thinkingVisible,
+        spinnerVerb: thinking.spinnerVerb,
+        processingSlashCmd: thinking.processingSlashCmd,
+        approving,
+        sending,
+      }}
+      forkVm={{
+        forkOverlay: fork.forkOverlay,
+        forkElapsed: fork.forkElapsed,
+        resuming,
+      }}
+      handlers={{
+        goto,
+        sendMessage,
+        fillPrompt,
+        handleAuthModeChange,
+        handlePlatformChange,
+        handleRewindToMessage,
+        handleToolAnswer,
+        handleToolApprove,
+        handlePermissionRespond,
+        handleExitPlanClearContext,
+        getPlanContentForExitPlan,
+        openPreviewForPath,
+        handleHookCallbackRespond,
+        handleElicitationRespond,
+        handleChatScroll,
+        scrollChatToBottom,
+        handleTermResize,
+        handleTermReady,
+        handleForkCancel,
+        handleForkRetry,
+        dismissInitHint,
+        loadRunProgressive,
+        setLastTarget,
+      }}
       bind:thinkingExpanded={thinking.thinkingExpanded}
-      thinkingElapsed={thinking.thinkingElapsed}
-      thinkingVisible={thinking.thinkingVisible}
-      spinnerVerb={thinking.spinnerVerb}
-      processingSlashCmd={thinking.processingSlashCmd}
-      {approving}
-      {sending}
-      forkOverlay={fork.forkOverlay}
-      forkElapsed={fork.forkElapsed}
-      {resuming}
-      {showChatScrollHint}
-      {goto}
-      {sendMessage}
-      {fillPrompt}
-      {handleAuthModeChange}
-      {handlePlatformChange}
-      {handleRewindToMessage}
-      {handleToolAnswer}
-      {handleToolApprove}
-      {handlePermissionRespond}
-      {handleExitPlanClearContext}
-      {getPlanContentForExitPlan}
-      {openPreviewForPath}
-      {handleHookCallbackRespond}
-      {handleElicitationRespond}
-      {handleChatScroll}
-      {scrollChatToBottom}
-      {handleTermResize}
-      {handleTermReady}
-      {handleForkCancel}
-      {handleForkRetry}
-      {dismissInitHint}
-      {loadRunProgressive}
-      {setLastTarget}
       bind:teamDispatchPrompt={team.teamDispatchPrompt}
       bind:teamDispatchOpen={team.teamDispatchOpen}
+      {showChatScrollHint}
       bind:xtermRef
       bind:chatAreaRef
     >
@@ -1270,43 +1267,51 @@
         <ChatInputDock
           {store}
           {settings}
-          {processVisibility}
-          {agentSettings}
-          showPermissionPanel={sd.showPermissionPanel}
-          pendingToolPermissions={sd.pendingToolPermissions}
-          {btwState}
-          {insight}
-          effectiveModels={sd.effectiveModels}
-          {folderCwdOverride}
-          {welcomeVisible}
-          skillItems={sd.skillItems}
-          {preloadedAgents}
-          bind:stashedInput
-          teamHintVisible={team.teamHintVisible}
-          bind:shortcutHelpOpen
-          userHistory={sd.userHistory}
-          {projectCommands}
-          inputBlockedByPermission={sd.inputBlockedByPermission}
-          {authOverview}
-          {localProxyStatuses}
-          hasCreatedFiles={tl.hasCreatedFiles}
-          createdFiles={tl.createdFiles}
-          setBtwState={(v) => {
-            btwState = v;
+          inputVm={{
+            processVisibility,
+            agentSettings,
+            effectiveModels: sd.effectiveModels,
+            folderCwdOverride,
+            welcomeVisible,
+            skillItems: sd.skillItems,
+            preloadedAgents,
+            teamHintVisible: team.teamHintVisible,
+            userHistory: sd.userHistory,
+            projectCommands,
+            authOverview,
+            localProxyStatuses,
           }}
-          {sendMessage}
-          {handleModelChange}
-          {handlePermissionModeChange}
-          {handleVirtualCommand}
-          {handleFastModeSwitch}
-          {handlePlatformChange}
-          {handleAuthModeChange}
-          handleInputValueChange={team.handleInputValueChange}
-          {handlePermissionRespond}
-          {handleElicitationRespond}
-          {handleBtwSend}
-          {handleRalphCancel}
-          {showChatToast}
+          permissionVm={{
+            showPermissionPanel: sd.showPermissionPanel,
+            pendingToolPermissions: sd.pendingToolPermissions,
+            inputBlockedByPermission: sd.inputBlockedByPermission,
+          }}
+          sidePanelsVm={{
+            btwState,
+            insight,
+            hasCreatedFiles: tl.hasCreatedFiles,
+            createdFiles: tl.createdFiles,
+            setBtwState: (v) => {
+              btwState = v;
+            },
+          }}
+          handlers={{
+            sendMessage,
+            handleModelChange,
+            handlePermissionModeChange,
+            handleVirtualCommand,
+            handleFastModeSwitch,
+            handlePlatformChange,
+            handleAuthModeChange,
+            handleInputValueChange: team.handleInputValueChange,
+            handlePermissionRespond,
+            handleElicitationRespond,
+            handleBtwSend,
+            handleRalphCancel,
+            showChatToast,
+          }}
+          bind:stashedInput
+          bind:shortcutHelpOpen
           bind:promptRef
         />
       {/snippet}

@@ -474,27 +474,54 @@ export class SessionStore {
     return this.tools.filter((e) => e.status === "running").at(-1)?.tool_name ?? "";
   }
 
-  /** Recursive walk: short-circuit check for any permission_prompt in timeline + subTimelines. */
-  private _hasPermission(predicate?: (t: BusToolItem) => boolean): boolean {
-    function walk(entries: TimelineEntry[]): boolean {
+  /** Cached permission scan — invalidated when timeline changes. */
+  private _permScan: {
+    timelineRef: TimelineEntry[];
+    hasPending: boolean;
+    hasInline: boolean;
+    pendingTools: Array<{ tool: BusToolItem; requestId: string }>;
+  } | null = null;
+
+  /** Single-walk scan for all permission state. Result is cached per timeline reference. */
+  private _getPermissionScan() {
+    if (this._permScan && this._permScan.timelineRef === this.timeline) {
+      return this._permScan;
+    }
+    let hasPending = false;
+    let hasInline = false;
+    const toolMap = new Map<string, BusToolItem>();
+
+    const walk = (entries: TimelineEntry[]) => {
       for (const entry of entries) {
         if (entry.kind !== "tool") continue;
-        if (
-          entry.tool.status === "permission_prompt" &&
-          entry.tool.permission_request_id &&
-          (!predicate || predicate(entry.tool))
-        )
-          return true;
-        if (entry.subTimeline && walk(entry.subTimeline)) return true;
+        if (entry.tool.status === "permission_prompt" && entry.tool.permission_request_id) {
+          hasPending = true;
+          const name = entry.tool.tool_name;
+          if (name === "AskUserQuestion" || name === "ExitPlanMode") {
+            hasInline = true;
+          } else {
+            const rid = entry.tool.permission_request_id;
+            toolMap.delete(rid);
+            toolMap.set(rid, entry.tool);
+          }
+        }
+        if (entry.subTimeline) walk(entry.subTimeline);
       }
-      return false;
-    }
-    return walk(this.timeline);
+    };
+    walk(this.timeline);
+
+    this._permScan = {
+      timelineRef: this.timeline,
+      hasPending,
+      hasInline,
+      pendingTools: Array.from(toolMap, ([requestId, tool]) => ({ tool, requestId })),
+    };
+    return this._permScan;
   }
 
   /** Whether any permission prompt is pending user approval (recursive, includes subTimelines). */
   get hasPendingPermission(): boolean {
-    return this._hasPermission();
+    return this._getPermissionScan().hasPending;
   }
 
   /** Whether any MCP elicitation prompt is pending user response. */
@@ -504,32 +531,12 @@ export class SessionStore {
 
   /** Whether an inline-only permission (AskUserQuestion / ExitPlanMode) is pending. */
   get hasInlinePermission(): boolean {
-    return this._hasPermission(
-      (t) => t.tool_name === "AskUserQuestion" || t.tool_name === "ExitPlanMode",
-    );
+    return this._getPermissionScan().hasInline;
   }
 
   /** Pending generic tool permission prompts (recursive, excludes AskUserQuestion/ExitPlanMode). */
   get pendingToolPermissions(): Array<{ tool: BusToolItem; requestId: string }> {
-    const map = new Map<string, BusToolItem>();
-    function walk(entries: TimelineEntry[]) {
-      for (const entry of entries) {
-        if (entry.kind !== "tool") continue;
-        if (
-          entry.tool.status === "permission_prompt" &&
-          entry.tool.permission_request_id &&
-          entry.tool.tool_name !== "AskUserQuestion" &&
-          entry.tool.tool_name !== "ExitPlanMode"
-        ) {
-          const rid = entry.tool.permission_request_id;
-          map.delete(rid);
-          map.set(rid, entry.tool);
-        }
-        if (entry.subTimeline) walk(entry.subTimeline);
-      }
-    }
-    walk(this.timeline);
-    return Array.from(map, ([requestId, tool]) => ({ tool, requestId }));
+    return this._getPermissionScan().pendingTools;
   }
 
   get isThinking(): boolean {
@@ -1236,6 +1243,64 @@ export class SessionStore {
     };
   }
 
+  /** Apply a batch of hook events (single reactive update instead of N). */
+  applyHookEventBatch(events: HookEvent[]): void {
+    if (!this.run) return;
+    let tools = this.tools;
+    for (const event of events) {
+      if (event.run_id !== this.run.id) continue;
+      if (
+        (this.useStreamSession || this.sessionAlive) &&
+        (event.hook_type === "PreToolUse" || event.hook_type === "PostToolUse")
+      ) {
+        continue;
+      }
+      if (event.hook_type === "PostToolUse" && event.tool_name) {
+        const idx = tools.findLastIndex(
+          (e) =>
+            e.tool_name === event.tool_name &&
+            e.hook_type === "PreToolUse" &&
+            e.status === "running",
+        );
+        if (idx >= 0) {
+          tools = [...tools];
+          tools[idx] = {
+            ...tools[idx],
+            status: "done",
+            hook_type: "PostToolUse",
+            tool_output: event.tool_output,
+          };
+          continue;
+        }
+      }
+      tools = [...tools, event];
+    }
+    if (tools !== this.tools) this.tools = tools;
+  }
+
+  /** Apply a batch of hook usage (single reactive update, cumulative). */
+  applyHookUsageBatch(
+    usages: Array<{ run_id: string; input_tokens: number; output_tokens: number; cost: number }>,
+  ): void {
+    if (!this.run) return;
+    let dInput = 0,
+      dOutput = 0,
+      dCost = 0;
+    for (const u of usages) {
+      if (u.run_id !== this.run.id) continue;
+      dInput += u.input_tokens;
+      dOutput += u.output_tokens;
+      dCost += u.cost;
+    }
+    if (dInput === 0 && dOutput === 0 && dCost === 0) return;
+    this.usage = {
+      ...this.usage,
+      inputTokens: this.usage.inputTokens + dInput,
+      outputTokens: this.usage.outputTokens + dOutput,
+      cost: this.usage.cost + dCost,
+    };
+  }
+
   // ── Actions ──
 
   /** Clear all content/display state fields. Does not touch phase, run, or agent. */
@@ -1340,8 +1405,19 @@ export class SessionStore {
   /** Serialize current store state into a JSON string for IDB caching.
    *  Large tool_use_result fields are skipped to keep snapshot size manageable. */
   private _buildSnapshot(): string {
-    // Clone timeline with large tool results pruned to keep snapshot small
+    // Clone timeline with large tool results and image base64 pruned to keep snapshot small
     const prunedTimeline = this.timeline.map((entry) => {
+      // Strip contentBase64 from user message attachments (images, screenshots)
+      if (entry.kind === "user" && entry.attachments?.length) {
+        return {
+          ...entry,
+          attachments: entry.attachments.map((a) => ({
+            name: a.name,
+            type: a.type,
+            size: a.size,
+          })),
+        };
+      }
       if (entry.kind !== "tool") return entry;
       const tur = entry.tool.tool_use_result;
       if (tur && typeof tur === "object") {
@@ -1495,7 +1571,7 @@ export class SessionStore {
     if (!this.run) return;
     const runStatus = this.run.status;
     const gen = this._loadGen;
-    setTimeout(() => {
+    const doSave = () => {
       // Guard: still viewing the same run (user may have navigated away)
       if (this._loadGen !== gen || this.run?.id !== runId) return;
       // Guard: status must still match (prevents stale write after idle→running transition)
@@ -1512,7 +1588,13 @@ export class SessionStore {
       snapshotCache
         .writeSnapshot(runId, runStatus, body)
         .catch((e) => dbgWarn("snapshot", "write failed", e));
-    }, 0);
+    };
+    // Use requestIdleCallback when available to avoid blocking main thread
+    if (typeof requestIdleCallback !== "undefined") {
+      requestIdleCallback(doSave, { timeout: 2000 });
+    } else {
+      setTimeout(doSave, 50);
+    }
   }
 
   /** Load a run by ID. Handles replay of bus events / run events. */
@@ -1580,7 +1662,23 @@ export class SessionStore {
       // Determine phase from run status
       const st = this.run.status;
       if (st === "running") {
-        this._setPhase("running");
+        // Health check: verify actor is actually alive for "running" runs.
+        // Prevents UI from showing a fake running state when the actor crashed
+        // but the run metadata still says "running".
+        try {
+          const status = await api.getSessionRuntimeStatus(id);
+          if (gen !== this._loadGen) return;
+          if (!status.actor_alive) {
+            dbg("store", "loadRun: actor dead for running run, downgrading to ready", { id });
+            this._setPhase("ready");
+          } else {
+            this._setPhase("running");
+          }
+        } catch {
+          // Health check failed — assume actor is alive (optimistic)
+          if (gen !== this._loadGen) return;
+          this._setPhase("running");
+        }
       } else if (st === "completed" || st === "failed" || st === "stopped") {
         this._setPhase(st as SessionPhase);
       } else {
@@ -3105,10 +3203,6 @@ export class SessionStore {
         // Preserve modelUsage/durationApiMs even on zero-token update (error results may still have them)
         if (!hasTokens && u.modelUsage) merged.modelUsage = u.modelUsage;
         if (!hasTokens && u.durationApiMs) merged.durationApiMs = u.durationApiMs;
-        // Preserve previous modelUsage if the new one is missing (contextWindow must not reset to 0)
-        if (hasTokens && !merged.modelUsage && prev.modelUsage) {
-          merged.modelUsage = prev.modelUsage;
-        }
         if (ctx) ctx.usage = merged;
         else this.usage = merged;
         // Store duration_ms and num_turns from result events
