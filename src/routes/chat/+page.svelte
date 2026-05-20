@@ -10,11 +10,7 @@
     getEventMiddleware,
     loadCliInfo,
     getCliCurrentModel,
-    getCliCommands,
     getCliModels,
-    canResumeNow,
-    TERMINAL_PHASES,
-    getResumeWarning,
     loadCliVersionInfo,
     getCliVersionInfo_cached,
   } from "$lib/stores";
@@ -37,55 +33,29 @@
   import { APP_TO_CLI_MODE } from "$lib/chat/utils/permission-modes";
   import { useConversationInsight } from "$lib/conversation-insight/use-conversation-insight.svelte";
   import XTerminal from "$lib/components/XTerminal.svelte";
-  import ChatMessage from "$lib/components/ChatMessage.svelte";
-  import InlineToolCard from "$lib/components/InlineToolCard.svelte";
-  import BatchProgressBar from "$lib/components/BatchProgressBar.svelte";
-  import ToolBurstHeader from "$lib/components/ToolBurstHeader.svelte";
+  import type PromptInput from "$lib/components/PromptInput.svelte";
   import SessionStatusBar from "$lib/components/SessionStatusBar.svelte";
   import McpStatusPanel from "$lib/components/McpStatusPanel.svelte";
-  import PromptInput from "$lib/components/PromptInput.svelte";
-  import CreatedFiles from "$lib/components/CreatedFiles.svelte";
-  import PermissionPanel from "$lib/components/PermissionPanel.svelte";
-  import ElicitationDialog from "$lib/components/ElicitationDialog.svelte";
-
   import ToolActivity from "$lib/components/ToolActivity.svelte";
   import ShortcutHelpPanel from "$lib/components/ShortcutHelpPanel.svelte";
   import type { PromptInputSnapshot } from "$lib/types";
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
-  import MarkdownContent from "$lib/components/MarkdownContent.svelte";
-  import HookReviewCard from "$lib/components/HookReviewCard.svelte";
-  import ViewModeToggle from "$lib/components/ViewModeToggle.svelte";
-  import GuidedToolTimelineRow from "$lib/components/GuidedToolTimelineRow.svelte";
-  import ContextUsageGrid from "$lib/components/ContextUsageGrid.svelte";
-  import CostSummaryView from "$lib/components/CostSummaryView.svelte";
+  import ChatTimelineEntries from "$lib/components/chat/ChatTimelineEntries.svelte";
+  import ChatInputDock from "$lib/components/chat/ChatInputDock.svelte";
   import { parseContextMarkdown } from "$lib/utils/context-parser";
   import type { ContextSnapshot } from "$lib/types";
-  import ReleaseNotesCard from "$lib/components/ReleaseNotesCard.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { APP_LOGO_URL } from "$lib/utils/brand-assets";
   import { dbg, dbgWarn } from "$lib/utils/debug";
-  import {
-    getLastTarget,
-    setLastTarget,
-    getStoredRemoteCwd,
-    setStoredRemoteCwd,
-  } from "$lib/utils/remote-cwd";
+  import { getLastTarget, setLastTarget, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
   import { shouldAutoName } from "$lib/utils/auto-name";
-  import { ansiToHtml, hasAnsiCodes } from "$lib/utils/ansi";
-  import { randomSpinnerVerb } from "$lib/utils/spinner-verbs";
   import { type TurnUsage } from "$lib/stores/types";
   import {
     normalizeProcessVisibility,
     getCachedProcessVisibility,
     persistCachedProcessVisibility,
-    shouldShowTimelineCommandOutput,
-    isTimelineSeparatorContent,
-    shouldShowContextDetails,
-    shouldMountFullToolCardInOutputMode,
-    shouldMountFullToolCardInGuidedMode,
     timelineHasHiddenRoutineWorkRunning,
   } from "$lib/utils/process-visibility";
-  import { mergeProjectCommands } from "$lib/utils/slash-commands";
   import {
     handleVirtualCommand as execVirtualCommand,
     type VirtualCommandContext,
@@ -97,6 +67,15 @@
   import { createChatActions } from "$lib/chat/use-chat-actions";
   import { createForkLifecycle } from "$lib/chat/use-fork-lifecycle";
   import { createScrollNavigation } from "$lib/chat/use-scroll-navigation";
+  import { createSendMessage } from "$lib/chat/use-send-message";
+  import { useThinkingTimer } from "$lib/chat/use-thinking-timer.svelte";
+  import { createTeamDispatch } from "$lib/chat/use-team-dispatch";
+  import { createProjectInit } from "$lib/chat/use-project-init";
+  import { useModelPlatform } from "$lib/chat/use-model-platform.svelte";
+  import { createVerboseSync } from "$lib/chat/use-verbose-sync";
+  import { createToolResultCache } from "$lib/chat/use-tool-result-cache";
+  import { useTimelineState } from "$lib/chat/use-timeline-state.svelte";
+  import ChatConversationStage from "$lib/components/chat/ChatConversationStage.svelte";
   import type { RewindCandidate, RewindMarker } from "$lib/utils/rewind";
   import { truncate } from "$lib/utils/format";
   import { uuid } from "$lib/utils/uuid";
@@ -110,27 +89,18 @@
   import ChatErrorCard from "$lib/components/ChatErrorCard.svelte";
   import ChatToolFilterBar from "$lib/components/ChatToolFilterBar.svelte";
   import ChatOutputWorkingHint from "$lib/components/ChatOutputWorkingHint.svelte";
-  import ChatBtwDrawer from "$lib/components/ChatBtwDrawer.svelte";
   import ChatDragOverlay from "$lib/components/ChatDragOverlay.svelte";
   import ChatUsageAnnotation from "$lib/components/ChatUsageAnnotation.svelte";
-  import ChatRalphLoopBar from "$lib/components/ChatRalphLoopBar.svelte";
   import ChatWelcomeScreen from "$lib/components/ChatWelcomeScreen.svelte";
   import ChatHeroMeta from "$lib/components/ChatHeroMeta.svelte";
   import ChatInitHint from "$lib/components/ChatInitHint.svelte";
+  import ViewModeToggle from "$lib/components/ViewModeToggle.svelte";
+  import HookReviewCard from "$lib/components/HookReviewCard.svelte";
+  import TeamRunCard from "$lib/components/TeamRunCard.svelte";
   import RewindModal from "$lib/components/RewindModal.svelte";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import TeamDispatchConfirm from "$lib/components/TeamDispatchConfirm.svelte";
-  import TeamRunCard from "$lib/components/TeamRunCard.svelte";
-  import ConversationInsightCard from "$lib/components/insight/ConversationInsightCard.svelte";
   import HtmlReportPreview from "$lib/components/insight/HtmlReportPreview.svelte";
-  import {
-    detectTeamTrigger,
-    stripTeamTag,
-    dispatchTeamRun,
-    executeTeamRun,
-    getPresets,
-    shouldShowTeamHint,
-  } from "$lib/services/team-dispatcher";
   import type { TeamRun, TeamPreset } from "$lib/types";
 
   // ── Helpers ──
@@ -212,32 +182,6 @@
   /** Local proxy running statuses for AuthSourceBadge. */
   let localProxyStatuses = $state<Record<string, { running: boolean; needsAuth: boolean }>>({});
 
-  // ── Model contamination helpers ──
-
-  /** Cache of last confirmed-clean Anthropic model, used as final fallback. */
-  let lastKnownGoodAnthropicModel: string | undefined;
-
-  /** Detect if default_model was contaminated by a third-party platform model.
-   *  Returns:
-   *  - true  = confirmed contaminated (in third-party models, not in CLI models)
-   *  - false = confirmed clean (in CLI known models)
-   *  - null  = unknown (CLI not loaded, or model not found in any list)
-   */
-  function isContaminatedDefaultModel(dm: string): boolean | null {
-    const cliModels = getCliModels();
-    if (!cliModels.length) return null; // CLI models not loaded yet
-    if (cliModels.some((m) => m.value === dm)) return false; // in CLI model list = clean
-
-    const inThirdParty =
-      PLATFORM_PRESETS.some(
-        (p) => p.id !== "anthropic" && p.id !== "custom" && p.models?.includes(dm),
-      ) ||
-      (settings?.platform_credentials ?? []).some(
-        (c) => c.platform_id !== "anthropic" && c.models?.includes(dm),
-      );
-    return inThirdParty ? true : null; // not in CLI + not in third-party = unknown
-  }
-
   // ── Project init detection ──
   let projectInitStatus = $state<import("$lib/types").ProjectInitStatus | null>(null);
   let initCheckSeq = 0;
@@ -261,64 +205,7 @@
   let teamDispatchPrompt = $state("");
   let activeTeamRuns = $state<TeamRun[]>([]);
   let teamHintVisible = $state(false);
-
-  function handleInputValueChange(value: string) {
-    teamHintVisible = shouldShowTeamHint(value);
-  }
   let teamPresets = $state<TeamPreset[]>([]);
-
-  // Load presets on mount
-  onMount(() => {
-    getPresets()
-      .then((p) => (teamPresets = p))
-      .catch(() => {});
-  });
-
-  async function handleTeamDispatch(presetId: string) {
-    const prompt = teamDispatchPrompt;
-    teamDispatchOpen = false;
-    if (!prompt) return;
-
-    const preset = teamPresets.find((p) => p.id === presetId);
-    if (!preset) return;
-
-    const cwd = store.effectiveCwd || "";
-
-    // Create TeamRun record
-    const teamRun = await dispatchTeamRun({
-      prompt,
-      presetId,
-      cwd,
-    });
-
-    // Add to active list so TeamRunCard renders in chat
-    activeTeamRuns = [...activeTeamRuns, teamRun];
-
-    // Execute in background — uses existing startRun infrastructure
-    executeTeamRun(
-      teamRun,
-      preset,
-      (prompt: string, runCwd: string, agent: string) => api.startRun(prompt, runCwd, agent),
-      (updated: TeamRun) => {
-        activeTeamRuns = activeTeamRuns.map((r) => (r.id === updated.id ? updated : r));
-      },
-    ).catch((err) => {
-      console.error("Team run failed:", err);
-    });
-  }
-
-  function handleUseSingleClaude() {
-    const stripped = stripTeamTag(teamDispatchPrompt);
-    teamDispatchOpen = false;
-    if (stripped) {
-      sendMessage(stripped, []);
-    }
-  }
-
-  function handleCancelTeamDispatch() {
-    teamDispatchOpen = false;
-    teamDispatchPrompt = "";
-  }
 
   // Auto-name one-shot latch: reset only on actual run ID change
   let prevAutoNameRunId = "";
@@ -403,102 +290,28 @@
     }
   });
 
-  // ── Verbose state (chat page level) ──
+  // ── Verbose state (from composable) ──
   let verboseEnabled = $state(false);
-  let verboseSeq = 0;
-  let lastSyncedRunId = "__unset__"; // sentinel ≠ "__no_run__", ensures first-screen trigger
   let verboseRetryTick = $state(0);
-  let verboseRetryCount = 0;
-  let verboseRetryTimer: ReturnType<typeof setTimeout> | null = null;
-  const VERBOSE_MAX_RETRIES = 3;
-
-  // ── Tool result lazy-load cache (Phase 2) ──
-  let toolResultCache = new Map<string, Record<string, unknown>>();
-  let toolResultInflight = new Map<string, Promise<Record<string, unknown> | null>>();
-  // Clear cache on run switch
-  $effect(() => {
-    const _ = store.run?.id;
-    toolResultCache = new Map();
-    toolResultInflight = new Map();
+  const { syncVerboseState, cleanup: cleanupVerbose } = createVerboseSync({
+    getVerboseEnabled: () => verboseEnabled,
+    setVerboseEnabled: (v) => {
+      verboseEnabled = v;
+    },
+    getVerboseRetryTick: () => verboseRetryTick,
+    setVerboseRetryTick: (v) => {
+      verboseRetryTick = v;
+    },
   });
 
-  async function fetchToolResult(
-    runId: string,
-    toolUseId: string,
-  ): Promise<Record<string, unknown> | null> {
-    const key = `${runId}:${toolUseId}`;
-    const cached = toolResultCache.get(key);
-    if (cached) return cached;
-    let pending = toolResultInflight.get(key);
-    if (!pending) {
-      pending = api.getToolResult(runId, toolUseId);
-      toolResultInflight.set(key, pending);
-    }
-    try {
-      const result = await pending;
-      // Run-gen check: don't write stale results into a different run's cache
-      if (result && store.run?.id === runId) {
-        toolResultCache.set(key, result);
-      }
-      return result;
-    } finally {
-      toolResultInflight.delete(key);
-    }
-  }
-
-  // ── Timeline rendering ──
-  // Progressive render: start with the most recent N entries, grow on upward scroll.
-  let toolFilter = $state<string | null>(null);
-  let renderLimit = $state(getInitialRenderLimit(getCachedProcessVisibility(), []));
-  let loadingRunId = $state<string | null>(null);
-  let loadingMore = $state(false);
-  let loadMoreArmed = $state(true);
-  let _suppressLoadMoreRearm = false;
-
-  let timelinePresentation = $derived.by(() =>
-    computeTimelinePresentation(
-      store.timeline,
-      toolFilter,
-      renderLimit,
-      store.tools.filter((e) => e.tool_name).length,
-    ),
-  );
-
-  let filteredTimeline = $derived(timelinePresentation.filteredTimeline);
-  let visibleTimeline = $derived(timelinePresentation.visibleTimeline);
-  let toolNamesInTimeline = $derived(timelinePresentation.toolNames);
-  let timelineIdIndex = $derived(timelinePresentation.timelineIdIndex);
-  let lastClearSepId = $derived(timelinePresentation.lastClearSepId);
-  let latestPlanToolId = $derived(timelinePresentation.latestPlanToolId);
-  let createdFiles = $derived(timelinePresentation.createdFiles);
-  let hasCreatedFiles = $derived(createdFiles.length > 0);
-  let batchGroups = $derived(timelinePresentation.batchGroups);
-  let toolBursts = $derived(timelinePresentation.toolBursts);
-  let userCountPrefix = $derived(timelinePresentation.userCountPrefix);
-
-  async function syncVerboseState(runId: string | undefined) {
-    const key = runId ?? "__no_run__";
-    if (key === lastSyncedRunId) return; // same run — skip
-    const seq = ++verboseSeq;
-    // New run resets retry counter
-    verboseRetryCount = 0;
-    try {
-      const cfg = await api.getCliConfig();
-      if (seq !== verboseSeq) return; // stale response
-      lastSyncedRunId = key; // mark synced on success only
-      verboseEnabled = cfg.verbose === true;
-      dbg("chat", "verbose state synced", { verbose: verboseEnabled, runId, seq });
-    } catch {
-      // Don't mark synced — retry via tick++ after 3s (up to max)
-      if (seq === verboseSeq && verboseRetryCount < VERBOSE_MAX_RETRIES) {
-        verboseRetryCount++;
-        verboseRetryTimer = setTimeout(() => {
-          verboseRetryTimer = null;
-          verboseRetryTick++;
-        }, 3000);
-      }
-    }
-  }
+  // ── Tool result cache (from composable) ──
+  const { fetchToolResult, clearCache: clearToolResultCache } = createToolResultCache({
+    getRunId: () => store.run?.id,
+  });
+  $effect(() => {
+    const _ = store.run?.id;
+    clearToolResultCache();
+  });
 
   // ── MCP panel ──
   let mcpPanelOpen = $state(false);
@@ -664,62 +477,20 @@
     return cliVersionInfo.channel === "stable" ? cliVersionInfo.stable : cliVersionInfo.latest;
   });
 
-  // ── Platform display name ──
-  let platformDisplayName = $derived.by(() => {
-    const pid = store.platformId;
-    if (!pid) return undefined;
-    const preset = PLATFORM_PRESETS.find((p) => p.id === pid);
-    return preset?.name ?? authOverview?.app_platform_name ?? pid;
+  // ── Model platform (from composable) ──
+  const modelPlatform = useModelPlatform({
+    store,
+    getSettings: () => settings,
+    getAuthOverview: () => authOverview,
   });
-
-  // ── Provider-aware model list ──
-  // When a third-party platform is active and has a models list, use that instead of CLI models.
-  // Priority: credential.models (user-configured) > preset.models (static defaults)
-  let platformModels = $derived.by((): CliModelInfo[] => {
-    const pid = store.platformId;
-    if (!pid || pid === "anthropic") return [];
-    const cred = findCredential(settings?.platform_credentials ?? [], pid);
-    const preset = PLATFORM_PRESETS.find((p) => p.id === pid);
-    const models = cred?.models?.length ? cred.models : preset?.models;
-    if (!models?.length) return [];
-    return models.map((m, i) => ({
-      value: m,
-      displayName: m,
-      description: i === 0 ? "Default" : "",
-    }));
-  });
-
-  let effectiveModels = $derived(platformModels.length > 0 ? platformModels : getCliModels());
-  let currentEffort = $state("");
-
-  // Effort guard: auto-clear effort when model doesn't support it;
-  // also auto-populate default effort ("high") when empty and model supports it.
-  $effect(() => {
-    if (store.agent !== "claude") return;
-
-    const pid = store.platformId;
-    // Third-party platform: don't touch effort
-    if (pid && pid !== "anthropic") return;
-
-    const modelInfo = effectiveModels.find((m) => m.value === store.model);
-    if (!modelInfo) return; // models not loaded yet
-
-    if (currentEffort && modelInfo.supportsEffort === false) {
-      // Model doesn't support effort → clear
-      dbg("chat", "effort-guard: clearing for unsupported model", { model: store.model });
-      currentEffort = "";
-      api.updateCliConfig({ effortLevel: null }).catch((e) => {
-        dbgWarn("chat", "effort-guard: CLI config clear failed", e);
-      });
-    } else if (!currentEffort && modelInfo.supportsEffort === true) {
-      // No effort set but model supports it → default to "high" (CLI default)
-      dbg("chat", "effort-guard: defaulting to high", { model: store.model });
-      currentEffort = "high";
-      api.updateCliConfig({ effortLevel: "high" }).catch((e) => {
-        dbgWarn("chat", "effort-guard: CLI config default failed", e);
-      });
-    }
-  });
+  const {
+    currentEffort: effortProxy,
+    platformDisplayName,
+    platformModels,
+    effectiveModels,
+    isContaminatedDefaultModel,
+    setLastKnownGoodModel,
+  } = modelPlatform;
 
   // Reset filter on run change & auto-focus input
   $effect(() => {
@@ -843,20 +614,8 @@
   let forkElapsed = $state(0);
 
   // ── Thinking timer + panel ──
-  let thinkingElapsed = $state(0);
-  let thinkingExpanded = $state(false);
-  let spinnerVerb = $state(randomSpinnerVerb());
-  /** Plain flag (not $state) — avoids $effect dependency cycle with thinkingElapsed. */
-  let thinkingVerbPicked = false;
-  /** Debounced visibility — prevents spinner flash on fast CLI commands (/context, /cost). */
-  let thinkingVisible = $state(false);
-
-  /** Next thinking stream starts collapsed; also fold when a turn ends and text clears. */
-  $effect(() => {
-    if (!store.thinkingText) {
-      thinkingExpanded = false;
-    }
-  });
+  const thinkingTimer = useThinkingTimer(store);
+  const { thinkingElapsed, thinkingExpanded, spinnerVerb, thinkingVisible } = thinkingTimer;
 
   /** Slash command processing indicator — shown before thinkingVisible kicks in. */
   let processingSlashCmd = $state<string | null>(null);
@@ -864,9 +623,7 @@
 
   $effect(() => {
     if (!processingSlashCmd) return;
-    // Track: phase was "running" at some point since flag was set
     if (store.isRunning) slashCmdSeenRunning = true;
-    // Clear when content arrives, error set, or turn completed (idle after running)
     if (
       store.streamingText ||
       store.thinkingText ||
@@ -878,36 +635,6 @@
     ) {
       processingSlashCmd = null;
       slashCmdSeenRunning = false;
-    }
-  });
-
-  $effect(() => {
-    if (store.isThinking) {
-      // Use store.thinkingStartMs as the authoritative start time.
-      // During replay it holds the original event timestamp, so the timer
-      // survives session switches without resetting to 0.
-      const base = store.thinkingStartMs || Date.now();
-      if (!thinkingVerbPicked) {
-        spinnerVerb = randomSpinnerVerb();
-        thinkingVerbPicked = true;
-      }
-      // Debounce: only show spinner after 300ms to avoid flash on fast commands
-      const showTimer = setTimeout(() => {
-        thinkingVisible = true;
-      }, 300);
-      // Immediately compute elapsed (don't wait 1s for first update)
-      thinkingElapsed = Math.max(0, Math.floor((Date.now() - base) / 1000));
-      const interval = setInterval(() => {
-        thinkingElapsed = Math.max(0, Math.floor((Date.now() - base) / 1000));
-      }, 1000);
-      return () => {
-        clearTimeout(showTimer);
-        clearInterval(interval);
-      };
-    } else {
-      thinkingElapsed = 0;
-      thinkingVisible = false;
-      thinkingVerbPicked = false;
     }
   });
 
@@ -1086,9 +813,9 @@
       try {
         const cliCfg = await api.getCliConfig();
         const cliEffort = cliCfg.effortLevel;
-        currentEffort = typeof cliEffort === "string" && cliEffort ? cliEffort : "";
+        modelPlatform.currentEffort = typeof cliEffort === "string" && cliEffort ? cliEffort : "";
       } catch {
-        currentEffort = "";
+        modelPlatform.currentEffort = "";
       }
       // One-time migration: clear stale agentSettings.effort to prevent --effort at spawn
       if (agentSettings?.effort) {
@@ -1147,7 +874,7 @@
               .updateUserSettings({ default_model: healModel })
               .then(() => {
                 settings!.default_model = healModel;
-                lastKnownGoodAnthropicModel = healModel;
+                setLastKnownGoodModel(healModel);
                 selfHealDone = true;
                 dbg("chat", "self-heal: persist succeeded");
               })
@@ -1169,7 +896,7 @@
       const isThirdParty = store.platformId && store.platformId !== "anthropic";
       // Update lastKnownGoodAnthropicModel when CLI model is available
       if (cliModel && !isThirdParty) {
-        lastKnownGoodAnthropicModel = cliModel;
+        setLastKnownGoodModel(cliModel);
       }
       // Only for genuinely new chats: no run loaded/loading, no URL run param
       if (cliModel && !store.run && !runId && store.phase !== "loading" && !isThirdParty) {
@@ -1641,62 +1368,6 @@
     prevSt = 0;
   });
 
-  // Restore model when store.model is empty (e.g. after reset/loadRun):
-  // For third-party platforms, use the platform's default model.
-  // For Anthropic, prefer CC's current active model, fall back to our saved default_model
-  // (only if confirmed clean via three-state contamination check).
-  $effect(() => {
-    if (!store.model) {
-      // Don't overwrite model during loadRun async gap — loadRun will set it
-      if (store.phase === "loading") return;
-
-      const isThirdParty = store.platformId && store.platformId !== "anthropic";
-      if (isThirdParty) {
-        const restoreCred = findCredential(
-          settings?.platform_credentials ?? [],
-          store.platformId ?? "",
-        );
-        const restorePreset = PLATFORM_PRESETS.find((p) => p.id === store.platformId);
-        const restoreModels = restoreCred?.models?.length
-          ? restoreCred.models
-          : restorePreset?.models;
-        if (restoreModels?.[0]) {
-          dbg("chat", "restore model from credential/preset", {
-            platform: store.platformId,
-            model: restoreModels[0],
-          });
-          store.model = restoreModels[0];
-          return;
-        }
-      }
-      // Only fall back to default_model for Anthropic platform — otherwise
-      // default_model may belong to a different platform (cross-pollution).
-      const cliModel = getCliCurrentModel();
-      const isAnthropicPlatform = !store.platformId || store.platformId === "anthropic";
-      const rawFallback = isAnthropicPlatform ? settings?.default_model : undefined;
-      const contaminated = rawFallback ? isContaminatedDefaultModel(rawFallback) : null;
-      // Only use default_model when confirmed clean (false). true/null → skip.
-      const fallback = contaminated === false ? rawFallback : undefined;
-      // Last resort: cached last-known-good Anthropic model (only for Anthropic platform)
-      const model =
-        cliModel || fallback || (isAnthropicPlatform ? lastKnownGoodAnthropicModel : undefined);
-      if (model) {
-        // Update cache when we have a trusted source
-        if (isAnthropicPlatform && (cliModel || contaminated === false)) {
-          lastKnownGoodAnthropicModel = model;
-        }
-        dbg("chat", "restore model", {
-          cliModel,
-          rawFallback,
-          contaminated,
-          lastKnownGood: lastKnownGoodAnthropicModel,
-          using: model,
-        });
-        store.model = model;
-      }
-    }
-  });
-
   // ── Terminal helpers ──
 
   function handleTermReady(_cols: number, _rows: number) {
@@ -1747,224 +1418,10 @@
     }
   });
 
-  // ── Send message ──
-
-  async function sendMessage(text: string, attachments: Attachment[]) {
-    if (!text.trim()) return;
-
-    store.error = "";
-    // Follow to new reply when sending a message
-    isChatAutoScroll = true;
-    showChatScrollHint = false;
-
-    // Detect slash command (same check as store timeout skip)
-    const isSlash = store.isKnownSlashCommand(text);
-    const slashCmd = isSlash ? (text.match(/^\/\S+/)?.[0] ?? null) : null;
-
-    // ── @team / /team detection: intercept before creating a run ──
-    if (!store.run && !slashCmd) {
-      const teamResult = detectTeamTrigger(text);
-      if (teamResult) {
-        teamDispatchPrompt = teamResult.prompt;
-        teamDispatchOpen = true;
-        return;
-      }
-    }
-
-    try {
-      if (!store.run) {
-        // First message: create run.
-        //
-        // Validate the remote target up-front. The host could have been
-        // removed/renamed since the chat tab was opened (or since
-        // `ocv:last-target` was persisted). Without this check, every
-        // downstream path — `getStoredRemoteCwd`, the folder picker (which
-        // silently falls back to local UI when its `loadRemoteHosts` clears
-        // the unknown host), and `startSession` — would still run with the
-        // stale `store.remoteHostName`, and the backend `start_run` would
-        // fail with an opaque "Remote host '...' not found".
-        if (
-          store.remoteHostName &&
-          remoteHosts.length > 0 &&
-          !remoteHosts.some((h) => h.name === store.remoteHostName)
-        ) {
-          dbgWarn("chat", "remote host no longer in settings — clearing target", {
-            host: store.remoteHostName,
-          });
-          showChatToast(t("toast_remoteHostMissing"));
-          store.remoteHostName = null;
-          setLastTarget(null);
-          return;
-        }
-        const isRemote = !!store.remoteHostName;
-        let cwd = "";
-        if (typeof window !== "undefined") {
-          if (isRemote) {
-            cwd = getStoredRemoteCwd(store.remoteHostName!);
-          } else {
-            cwd =
-              localStorage.getItem("ocv:project-cwd") ||
-              localStorage.getItem("ocv:settings-cwd") ||
-              "";
-          }
-        }
-
-        if (!cwd || cwd === "/") {
-          const transport = getTransport();
-          if (isRemote) {
-            // Remote: open FolderPicker for the selected host
-            const result = await openFolderPicker({
-              initialHost: store.remoteHostName,
-              hideTargetSelector: true,
-            });
-            if (!result || !result.path) return; // cancelled
-            cwd = result.path;
-            if (result.hostName) setStoredRemoteCwd(result.hostName, cwd);
-          } else if (transport.isDesktop()) {
-            // Desktop local: native folder picker (fast path)
-            const { open } = await import("@tauri-apps/plugin-dialog");
-            const selected = await open({
-              directory: true,
-              title: t("layout_selectProjectFolder"),
-            });
-            if (!selected) return; // user cancelled → don't send
-            cwd = selected as string;
-            localStorage.setItem("ocv:project-cwd", cwd);
-            window.dispatchEvent(new Event("ocv:cwd-changed"));
-          } else {
-            // Browser local: open FolderPicker (allows manual path or switching to remote)
-            const result = await openFolderPicker({ initialHost: null });
-            if (!result || !result.path) return;
-            cwd = result.path;
-            if (result.hostName) {
-              store.remoteHostName = result.hostName;
-              setLastTarget(result.hostName);
-              setStoredRemoteCwd(result.hostName, cwd);
-            } else {
-              localStorage.setItem("ocv:project-cwd", cwd);
-              window.dispatchEvent(new Event("ocv:cwd-changed"));
-            }
-          }
-        }
-
-        // Set indicator AFTER all early-return points
-        if (slashCmd) {
-          processingSlashCmd = slashCmd;
-          slashCmdSeenRunning = false;
-        }
-
-        const runId = await store.startSession(text, cwd, attachments);
-        goto(`/chat?run=${runId}`, { replaceState: true });
-        window.dispatchEvent(new Event("ocv:runs-changed"));
-        // Re-detect CLI version on new session (picks up external updates)
-        loadCliVersionInfo();
-      } else if (store.useStreamSession && !store.sessionAlive && store.run.session_id) {
-        // Stopped stream session: atomic resume + send (message written to CLI stdin at spawn)
-        dbg("chat", "auto-resume on send", {
-          runId: store.run.id,
-          sessionId: store.run.session_id,
-        });
-        if (slashCmd) {
-          processingSlashCmd = slashCmd;
-          slashCmdSeenRunning = false;
-        }
-        await handleResume("resume", undefined, text, attachments);
-      } else {
-        // Subsequent message
-        if (slashCmd) {
-          processingSlashCmd = slashCmd;
-          slashCmdSeenRunning = false;
-        }
-        await store.sendMessage(text, attachments);
-        requestAnimationFrame(() => promptRef?.focus());
-      }
-    } catch (e) {
-      store.error = String(e);
-      processingSlashCmd = null;
-    }
-  }
-
   // ── Project init detection ──
   let showInitHint = $derived(
     projectInitStatus !== null && !projectInitStatus.has_claude_md && !store.run,
   );
-
-  /** Reload project-level data (skills, agents, commands) with race guard. */
-  function reloadProjectData(cwd: string) {
-    const gen = ++preloadGen;
-    preloadedSkills = [];
-    preloadedAgents = [];
-    projectCommands = [];
-    if (!cwd) return;
-    api
-      .listStandaloneSkills(cwd)
-      .then((skills) => {
-        if (gen !== preloadGen) return;
-        preloadedSkills = skills;
-        if (skills.length > 0 && store.availableSkills.length === 0) {
-          store.availableSkills = skills.map((s) => s.name);
-        }
-        dbg("chat", "preloaded skills", { count: skills.length });
-      })
-      .catch((e) => dbgWarn("chat", "failed to preload skills", e));
-    api
-      .listAgents(cwd)
-      .then((agents) => {
-        if (gen !== preloadGen) return;
-        preloadedAgents = agents;
-        dbg("chat", "preloaded agents", { count: agents.length });
-      })
-      .catch((e) => dbgWarn("chat", "failed to preload agents", e));
-    api
-      .listProjectCommands(cwd)
-      .then((cmds) => {
-        if (gen !== preloadGen) return;
-        projectCommands = cmds;
-        dbg("chat", "preloaded project commands", { count: cmds.length });
-      })
-      .catch((e) => dbgWarn("chat", "failed to preload project commands", e));
-  }
-
-  async function checkProjectInit() {
-    const cwd = localStorage.getItem("ocv:project-cwd") || "";
-    if (!cwd || cwd === "/") {
-      projectInitStatus = null;
-      dbg("chat", "checkProjectInit: skip (no cwd)");
-      return;
-    }
-    const seq = ++initCheckSeq;
-    try {
-      const status = await api.checkProjectInit(cwd);
-      dbg("chat", "checkProjectInit result", {
-        cwd,
-        status,
-        seq,
-        currentSeq: initCheckSeq,
-        hasRun: !!store.run,
-        isApiMode: store.isApiMode,
-      });
-      if (seq !== initCheckSeq) return;
-      const dismissKey = `ocv:init-dismissed:${status.cwd}`;
-      const dismissed = localStorage.getItem(dismissKey);
-      if (dismissed) {
-        projectInitStatus = null;
-        dbg("chat", "checkProjectInit: dismissed", dismissKey);
-        return;
-      }
-      projectInitStatus = status;
-    } catch (e) {
-      dbgWarn("chat", "checkProjectInit failed", e);
-      if (seq === initCheckSeq) projectInitStatus = null;
-    }
-  }
-
-  function dismissInitHint() {
-    if (projectInitStatus?.cwd) {
-      localStorage.setItem(`ocv:init-dismissed:${projectInitStatus.cwd}`, "1");
-    }
-    projectInitStatus = null;
-    dbg("chat", "init hint dismissed");
-  }
 
   // ── Permission mode name translation ──
 
@@ -2015,12 +1472,12 @@
   } = createPlatformHandlers({
     store,
     getSettings: () => settings,
-    getCurrentEffort: () => currentEffort,
+    getCurrentEffort: () => modelPlatform.currentEffort,
     setCurrentEffort: (v: string) => {
-      currentEffort = v;
+      modelPlatform.currentEffort = v;
     },
     setLastKnownGoodModel: (v: string) => {
-      lastKnownGoodAnthropicModel = v;
+      setLastKnownGoodModel(v);
     },
     setAuthOverview: (v) => {
       authOverview = v;
@@ -2030,6 +1487,32 @@
     },
     getCliCurrentModel,
   });
+
+  const projectInit = createProjectInit({
+    store,
+    getPreloadGen: () => preloadGen,
+    setPreloadGen: (v) => {
+      preloadGen = v;
+    },
+    setPreloadedSkills: (v) => {
+      preloadedSkills = v;
+    },
+    setPreloadedAgents: (v) => {
+      preloadedAgents = v;
+    },
+    setProjectCommands: (v) => {
+      projectCommands = v;
+    },
+    setProjectInitStatus: (v) => {
+      projectInitStatus = v;
+    },
+    getProjectInitStatus: () => projectInitStatus,
+    getInitCheckSeq: () => initCheckSeq,
+    setInitCheckSeq: (v) => {
+      initCheckSeq = v;
+    },
+  });
+  const { reloadProjectData, checkProjectInit, dismissInitHint } = projectInit;
 
   const scrollNav = createScrollNavigation({
     store,
@@ -2154,6 +1637,68 @@
   });
 
   const { handleResume, handleForkCancel, handleForkRetry } = forkLifecycle;
+
+  const { sendMessage } = createSendMessage({
+    store,
+    t: t as unknown as (key: string) => string,
+    showToast: showChatToast,
+    goto,
+    handleResume,
+    openFolderPicker,
+    getRemoteHosts: () => remoteHosts,
+    setRemoteHostName: (v) => {
+      store.remoteHostName = v;
+    },
+    setLastTarget,
+    getPromptRef: () => promptRef,
+    setProcessingSlashCmd: (v) => {
+      processingSlashCmd = v;
+    },
+    setSlashCmdSeenRunning: (v) => {
+      slashCmdSeenRunning = v;
+    },
+    setTeamDispatchPrompt: (v) => {
+      teamDispatchPrompt = v;
+    },
+    setTeamDispatchOpen: (v) => {
+      teamDispatchOpen = v;
+    },
+    setIsChatAutoScroll: (v) => {
+      isChatAutoScroll = v;
+    },
+    setShowChatScrollHint: (v) => {
+      showChatScrollHint = v;
+    },
+    loadCliVersionInfo,
+  });
+
+  const teamDispatch = createTeamDispatch({
+    store,
+    setTeamDispatchOpen: (v) => {
+      teamDispatchOpen = v;
+    },
+    setTeamDispatchPrompt: (v) => {
+      teamDispatchPrompt = v;
+    },
+    getActiveTeamRuns: () => activeTeamRuns,
+    setActiveTeamRuns: (v) => {
+      activeTeamRuns = v;
+    },
+    setTeamHintVisible: (v) => {
+      teamHintVisible = v;
+    },
+    setTeamPresets: (v) => {
+      teamPresets = v;
+    },
+    sendMessage,
+  });
+  const {
+    handleInputValueChange,
+    loadTeamPresets,
+    handleTeamDispatch,
+    handleUseSingleClaude,
+    handleCancelTeamDispatch,
+  } = teamDispatch;
 
   // Auto-name: on first idle, generate title from prompt (one-shot per run)
   $effect(() => {
@@ -2476,185 +2021,35 @@
                 {#if filteredTimeline.length - renderLimit > 0}
                   <div bind:this={topSentinel} aria-hidden="true" class="h-px w-full"></div>
                 {/if}
-                {#each visibleTimeline as entry, i (entry.id)}
-                  {#if !(burstCollapse.collapsedIndices.has(i) && !toolBursts.has(i))}
-                    <div
-                      id="msg-{entry.anchorId}"
-                      data-entry-id={entry.id}
-                      class:cv-auto={true}
-                      class="group/msg"
-                      class:opacity-40={lastClearSepId !== null &&
-                        (timelineIdIndex.get(entry.id) ?? 0) <
-                          (timelineIdIndex.get(lastClearSepId) ?? 0)}
-                    >
-                      {#if batchGroups.has(i) && processVisibility !== "output"}
-                        {@const batch = batchGroups.get(i)}
-                        {#if batch}
-                          <div class="w-full py-1">
-                            <div class="chat-content-width pl-7">
-                              <BatchProgressBar tools={batch} />
-                            </div>
-                          </div>
-                        {/if}
-                      {/if}
-                      {#if toolBursts.has(i) && processVisibility !== "output"}
-                        {@const burst = toolBursts.get(i)}
-                        {#if burst}
-                          <div class="w-full py-1">
-                            <div class="chat-content-width pl-7">
-                              <ToolBurstHeader
-                                {burst}
-                                collapsed={burstCollapse.effectiveCollapsed.has(burst.key)}
-                                onToggle={() => toggleBurst(burst.key)}
-                              />
-                            </div>
-                          </div>
-                        {/if}
-                      {/if}
-                      {#if usageAnnotations.has(i)}
-                        {@const tu = usageAnnotations.get(i)}
-                        {#if tu && settings?.show_token_usage_report !== false && shouldShowContextDetails(processVisibility)}
-                          <ChatUsageAnnotation usage={tu} />
-                        {/if}
-                      {/if}
-                      {#if entry.kind === "user"}
-                        <ChatMessage
-                          message={{
-                            id: entry.id,
-                            role: "user",
-                            content: entry.content,
-                            timestamp: entry.ts,
-                          }}
-                          attachments={entry.attachments}
-                          onRewind={entry.cliUuid && store.sessionAlive && !store.isRunning
-                            ? () =>
-                                handleRewindToMessage({
-                                  cliUuid: entry.cliUuid!,
-                                  content: entry.content,
-                                  ts: entry.ts,
-                                })
-                            : undefined}
-                          onDispatchToTeam={() => {
-                            teamDispatchPrompt = entry.content;
-                            teamDispatchOpen = true;
-                          }}
-                        />
-                      {:else if entry.kind === "assistant"}
-                        <ChatMessage
-                          message={{
-                            id: entry.id,
-                            role: "assistant",
-                            content: entry.content,
-                            timestamp: entry.ts,
-                          }}
-                          thinkingText={entry.thinkingText}
-                          agent={store.agent}
-                          platformId={store.platformId ?? undefined}
-                          model={store.run?.model ?? store.model}
-                          animated={i === lastAssistantIdx && store.isRunning}
-                          {processVisibility}
-                          debugRunId={store.run?.id}
-                          debugSessionId={store.run?.session_id ?? undefined}
-                        />
-                      {:else if entry.kind === "tool"}
-                        {#if claudeTurnStarts.has(i)}
-                          <div class="pt-3"></div>
-                        {/if}
-                        {#if !burstCollapse.collapsedIndices.has(i)}
-                          {#if processVisibility === "output" && !shouldMountFullToolCardInOutputMode(entry.tool)}
-                            <div
-                              id="tool-{entry.tool.tool_use_id}"
-                              class="pointer-events-none h-0 w-full scroll-mt-24 overflow-hidden"
-                              aria-hidden="true"
-                            ></div>
-                          {:else if processVisibility === "guided" && !shouldMountFullToolCardInGuidedMode(entry.tool)}
-                            <div class="w-full py-1" id="tool-{entry.tool.tool_use_id}">
-                              <div class="chat-content-width">
-                                <GuidedToolTimelineRow tool={entry.tool} />
-                              </div>
-                            </div>
-                          {:else}
-                            <div
-                              class="w-full py-1"
-                              id="tool-{entry.tool.tool_use_id}"
-                              class:collapsing-burst-tool={burstCollapse.collapsingIndices.has(i)}
-                            >
-                              <div class="chat-content-width">
-                                <InlineToolCard
-                                  tool={entry.tool}
-                                  subTimeline={entry.subTimeline}
-                                  runId={store.run?.id ?? ""}
-                                  {fetchToolResult}
-                                  {processVisibility}
-                                  onAnswer={entry.tool.tool_name === "AskUserQuestion" &&
-                                  (entry.tool.status === "running" ||
-                                    entry.tool.status === "ask_pending")
-                                    ? (answer) => handleToolAnswer(entry.tool.tool_use_id, answer)
-                                    : undefined}
-                                  onApprove={handleToolApprove}
-                                  onPermissionRespond={handlePermissionRespond}
-                                  onExitPlanClearContext={handleExitPlanClearContext}
-                                  taskNotifications={store.taskNotifications}
-                                  planContent={entry.tool.tool_name === "ExitPlanMode" &&
-                                  (entry.tool.status === "permission_prompt" ||
-                                    entry.tool.status === "success")
-                                    ? getPlanContentForExitPlan(entry.id)
-                                    : undefined}
-                                  latestPlanTool={entry.kind === "tool" &&
-                                    entry.tool.tool_use_id === latestPlanToolId}
-                                  showPermissionInPanel={showPermissionPanel}
-                                  permissionMode={store.permissionMode}
-                                  onPreviewFile={openPreviewForPath}
-                                />
-                              </div>
-                            </div>
-                          {/if}
-                        {/if}
-                      {:else if entry.kind === "command_output" || entry.kind === "separator"}
-                        {#if isTimelineSeparatorContent(entry.content)}
-                          <div class="w-full py-3">
-                            <div class="chat-content-width">
-                              <div class="flex items-center gap-3">
-                                <div class="h-px flex-1 bg-amber-500/20"></div>
-                                <span
-                                  class="text-xs text-amber-500/70 font-medium whitespace-nowrap"
-                                >
-                                  {t("chat_contextCleared")}
-                                </span>
-                                <div class="h-px flex-1 bg-amber-500/20"></div>
-                              </div>
-                            </div>
-                          </div>
-                        {:else if shouldShowTimelineCommandOutput(processVisibility, entry.content)}
-                          <div class="w-full py-2">
-                            <div class="chat-content-width pl-7">
-                              <div
-                                class="command-output rounded-lg border border-border/40 bg-[#1a1b26] px-4 py-3 text-sm overflow-x-auto"
-                              >
-                                {#if entry.content.includes("## Context Usage")}
-                                  <ContextUsageGrid text={entry.content} />
-                                {:else if entry.content.includes("Total cost:") && entry.content.includes("Total duration")}
-                                  <CostSummaryView text={entry.content} />
-                                {:else if entry.content
-                                  .trimStart()
-                                  .startsWith("Version ") && entry.content.includes("•")}
-                                  <ReleaseNotesCard text={entry.content} />
-                                {:else if hasAnsiCodes(entry.content)}
-                                  <pre
-                                    class="whitespace-pre font-mono text-xs leading-relaxed text-[#c0caf5] m-0">{@html ansiToHtml(
-                                      entry.content,
-                                    )}</pre>
-                                {:else}
-                                  <MarkdownContent text={entry.content} />
-                                {/if}
-                              </div>
-                            </div>
-                          </div>
-                        {/if}
-                      {/if}
-                    </div>
-                  {/if}
-                {/each}
+                <ChatTimelineEntries
+                  {visibleTimeline}
+                  {store}
+                  {burstCollapse}
+                  {toolBursts}
+                  {lastClearSepId}
+                  {timelineIdIndex}
+                  {batchGroups}
+                  {processVisibility}
+                  {usageAnnotations}
+                  {settings}
+                  {lastAssistantIdx}
+                  {claudeTurnStarts}
+                  {latestPlanToolId}
+                  {showPermissionPanel}
+                  {fetchToolResult}
+                  {handleRewindToMessage}
+                  {handleToolAnswer}
+                  {handleToolApprove}
+                  {handlePermissionRespond}
+                  {handleExitPlanClearContext}
+                  {getPlanContentForExitPlan}
+                  {openPreviewForPath}
+                  toggleBurst={burstCollapse.toggleBurst}
+                  onDispatchToTeam={(content) => {
+                    teamDispatchPrompt = content;
+                    teamDispatchOpen = true;
+                  }}
+                />
 
                 <!-- Output mode: single friendly placeholder while routine tools run (no per-tool cards). -->
                 {#if processVisibility === "output" && store.isRunning && timelineHasHiddenRoutineWorkRunning(store.timeline)}
@@ -2806,181 +2201,56 @@
 
       <div class="chat-scroll-fade" aria-hidden="true"></div>
 
-      <div
-        class="chat-input-dock pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col"
-      >
-        <!-- Resume warning (if applicable) -->
-        {#if canResumeNow(store.run, store.phase, agentSettings?.no_session_persistence ?? false) && getResumeWarning(store.run)}
-          <div
-            class="pointer-events-auto mx-3 mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-400"
-          >
-            {getResumeWarning(store.run)}
-          </div>
-        {/if}
-
-        <!-- Floating permission panel (above input bar) -->
-        {#if showPermissionPanel}
-          <div class="pointer-events-auto px-2 pb-2">
-            <PermissionPanel
-              pendingTools={pendingToolPermissions}
-              onPermissionRespond={handlePermissionRespond}
-            />
-          </div>
-        {/if}
-
-        <!-- MCP Elicitation dialog (above input bar) -->
-        {#if store.hasElicitation && store.sessionAlive}
-          <div class="pointer-events-auto px-2 pb-2">
-            <ElicitationDialog
-              elicitations={store.pendingElicitations}
-              onRespond={handleElicitationRespond}
-            />
-          </div>
-        {/if}
-
-        <!-- BTW side question drawer -->
-        {#if btwState.active}
-          <ChatBtwDrawer
-            question={btwState.question}
-            answer={btwState.answer}
-            error={btwState.error}
-            loading={btwState.loading}
-            onClose={() => (btwState = { ...btwState, active: false })}
-          />
-        {/if}
-
-        <!-- Created Files Panel -->
-        {#if store.phase === "completed" && hasCreatedFiles}
-          <div class="chat-content-width pb-2">
-            <CreatedFiles files={createdFiles} onOpenFile={(path) => dbg("open", path)} />
-          </div>
-        {/if}
-
-        <!-- Insight / HTML Report Card -->
-        {#if insight.insightCardOpen}
-          <div class="chat-content-width pb-2">
-            <ConversationInsightCard
-              status={insight.insightState.status}
-              report={insight.insightState.report}
-              error={insight.insightState.error}
-              onPreview={() => {
-                insight.insightPreviewOpen = true;
-              }}
-              onCopy={() => void insight.copyHtml()}
-              onExport={() => void insight.exportHtml()}
-              onRegenerate={() => void insight.regenerate()}
-            />
-          </div>
-        {/if}
-
-        <!-- Input bar -->
-        <!-- Ralph Loop status bar -->
-        {#if store.ralphLoop?.active}
-          <ChatRalphLoopBar
-            iteration={store.ralphLoop.iteration}
-            maxIterations={store.ralphLoop.maxIterations}
-            completionPromise={store.ralphLoop.completionPromise}
-            onCancel={handleRalphCancel}
-          />
-        {/if}
-
-        {#if store.sessionAlive || !store.run || store.phase === "empty" || store.phase === "ready" || TERMINAL_PHASES.includes(store.phase)}
-          <div
-            class="pointer-events-auto relative z-10 px-2 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-1"
-          >
-            <div class="pointer-events-auto">
-              <PromptInput
-                bind:this={promptRef}
-                agent={store.agent}
-                running={store.isActivelyRunning}
-                disabled={inputBlockedByPermission}
-                pendingPermission={store.hasInlinePermission}
-                hasRun={!!store.run}
-                sessionAlive={store.sessionAlive}
-                canResume={!store.sessionAlive &&
-                  canResumeNow(
-                    store.run,
-                    store.phase,
-                    agentSettings?.no_session_persistence ?? false,
-                  )}
-                useStreamSession={store.useStreamSession}
-                isRemote={store.isRemote}
-                cliCommands={store.sessionInitReceived && store.sessionCommands.length > 0
-                  ? store.sessionCommands
-                  : mergeProjectCommands(getCliCommands(), projectCommands)}
-                models={effectiveModels}
-                currentModel={store.model}
-                permissionMode={store.permissionMode}
-                cwd={store.effectiveCwd ||
-                  folderCwdOverride ||
-                  localStorage.getItem("ocv:project-cwd") ||
-                  ""}
-                authMode={store.authMode}
-                platformId={store.platformId ?? "anthropic"}
-                platformCredentials={settings?.platform_credentials ?? []}
-                onSend={sendMessage}
-                onBtwSend={handleBtwSend}
-                onAgentChange={undefined}
-                onInterrupt={() => store.interrupt()}
-                onModelSwitch={handleModelChange}
-                onPermissionModeChange={store.features.permissionModeSwitch
-                  ? handlePermissionModeChange
-                  : undefined}
-                onVirtualCommand={handleVirtualCommand}
-                fastModeState={store.fastModeState}
-                onFastModeSwitch={handleFastModeSwitch}
-                onPlatformChange={handlePlatformChange}
-                {authOverview}
-                authSourceLabel={store.authSourceLabel}
-                authSourceCategory={store.authSourceCategory}
-                apiKeySource={store.apiKeySource}
-                onAuthModeChange={handleAuthModeChange}
-                {localProxyStatuses}
-                showAuthBadge={!welcomeVisible}
-                onShortcutHelp={() => (shortcutHelpOpen = !shortcutHelpOpen)}
-                availableSkills={store.availableSkills}
-                {skillItems}
-                agents={preloadedAgents.map((a) => ({ name: a.name, description: a.description }))}
-                hasStash={!!stashedInput}
-                {userHistory}
-                runId={store.run?.id ?? ""}
-                onRestoreStash={() => {
-                  if (stashedInput) {
-                    promptRef?.restoreSnapshot(stashedInput);
-                    stashedInput = null;
-                    showChatToast(t("toast_stashRestored"));
-                    dbg("chat", "stash restored via badge click");
-                  }
-                }}
-                onValueChange={handleInputValueChange}
-                contextWindow={store.contextWindow}
-                {processVisibility}
-              />
-              {#if teamHintVisible}
-                <div
-                  class="mx-2 mb-1 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-muted-foreground animate-in fade-in slide-in-from-bottom-1 duration-150"
-                >
-                  <svg
-                    class="h-3.5 w-3.5 shrink-0 text-primary"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                  <span>{t("teamRun_teamHint")}</span>
-                </div>
-              {/if}
-            </div>
-          </div>
-        {/if}
-      </div>
+      <ChatInputDock
+        {store}
+        {showPermissionPanel}
+        {pendingToolPermissions}
+        {handlePermissionRespond}
+        {handleElicitationRespond}
+        {btwState}
+        {handleBtwSend}
+        setBtwState={(v) => {
+          btwState = v;
+        }}
+        {hasCreatedFiles}
+        {createdFiles}
+        {insight}
+        {inputBlockedByPermission}
+        {agentSettings}
+        {effectiveModels}
+        {skillItems}
+        {preloadedAgents}
+        {stashedInput}
+        {userHistory}
+        {processVisibility}
+        {authOverview}
+        {localProxyStatuses}
+        {folderCwdOverride}
+        {teamHintVisible}
+        {projectCommands}
+        {settings}
+        showAuthBadge={!welcomeVisible}
+        {sendMessage}
+        {handleModelChange}
+        {handlePermissionModeChange}
+        {handleFastModeSwitch}
+        {handleVirtualCommand}
+        {handleAuthModeChange}
+        {handlePlatformChange}
+        {handleInputValueChange}
+        {handleRalphCancel}
+        onShortcutHelp={() => (shortcutHelpOpen = !shortcutHelpOpen)}
+        onRestoreStash={() => {
+          if (stashedInput) {
+            promptRef?.restoreSnapshot(stashedInput);
+            stashedInput = null;
+            showChatToast(t("toast_stashRestored"));
+          }
+        }}
+        onInterrupt={() => store.interrupt()}
+        onAgentChange={undefined}
+        bind:promptRef
+      />
     </div>
   </div>
 

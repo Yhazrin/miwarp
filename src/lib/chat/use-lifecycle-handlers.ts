@@ -1,0 +1,733 @@
+import { onMount } from "svelte";
+import { getTransport } from "$lib/transport";
+import * as api from "$lib/api";
+import { dbg, dbgWarn } from "$lib/utils/debug";
+import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
+import { APP_TO_CLI_MODE } from "$lib/chat/utils/permission-modes";
+import {
+  normalizeProcessVisibility,
+  persistCachedProcessVisibility,
+} from "$lib/utils/process-visibility";
+import { parseContextMarkdown } from "$lib/utils/context-parser";
+import { handleTauriDrop as execTauriDrop } from "$lib/chat/handle-tauri-drop";
+import type { ForkOverlayState } from "$lib/chat/use-fork-lifecycle";
+import { getLastTarget } from "$lib/utils/remote-cwd";
+import type { BtwStateData } from "$lib/chat/use-chat-actions";
+import type { SessionStore } from "$lib/stores/session-store.svelte";
+import type { EventMiddleware } from "$lib/stores/event-middleware";
+import type { KeybindingStore } from "$lib/stores/keybindings.svelte";
+import type {
+  UserSettings,
+  AgentSettings,
+  RemoteHost,
+  AuthOverview,
+  ScreenshotPayload,
+  ContextSnapshot,
+  TaskRun,
+  BtwDelta,
+  BtwComplete,
+  BtwError,
+} from "$lib/types";
+import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
+
+// ── Component ref types (minimum interface needed by lifecycle handlers) ──
+
+export interface XTerminalRef {
+  writeText(s: string): void;
+  clear(): void;
+}
+
+export interface PromptInputRef {
+  focus(): void;
+  triggerSend(): void;
+  getInputSnapshot(): import("$lib/types").PromptInputSnapshot | null;
+  restoreSnapshot(snap: import("$lib/types").PromptInputSnapshot): void;
+  clearAll(): void;
+  addFiles(files: File[]): Promise<void>;
+  setValue(text: string): void;
+  showToast(msg: string): void;
+  addPathRefs(refs: { path: string; name: string; isDir: boolean }[]): void;
+}
+
+export interface StatusBarRef {
+  openModelDropdown(): void;
+}
+
+// ── Context interface ──
+
+export interface LifecycleHandlerContext {
+  // Core stores
+  store: SessionStore;
+  middleware: EventMiddleware;
+  keybindingStore: KeybindingStore;
+
+  // ── Settings & config state ──
+  getSettings: () => UserSettings | null;
+  setSettings: (v: UserSettings | null) => void;
+  setRemoteHosts: (v: RemoteHost[]) => void;
+  setAuthOverview: (v: AuthOverview | null) => void;
+  checkAllLocalProxies: () => void;
+
+  // ── Agent settings state ──
+  getAgentSettings: () => AgentSettings | null;
+  setAgentSettings: (v: AgentSettings | null) => void;
+  setCurrentEffort: (v: string) => void;
+
+  // ── Permission mode ──
+  handlePermissionModeChange: (mode: string) => void;
+  getPermModeLabel: (mode: string) => string;
+
+  // ── CLI info & model contamination ──
+  loadCliInfo: () => Promise<unknown>;
+  getCliCurrentModel: () => string | undefined;
+  loadCliVersionInfo: () => void;
+  isContaminatedDefaultModel: (dm: string) => boolean | null;
+  setLastKnownGoodModel: (v: string) => void;
+
+  // ── Project init ──
+  checkProjectInit: () => void;
+  reloadProjectData: (cwd: string) => void;
+
+  // ── UI state ──
+  getShortcutHelpOpen: () => boolean;
+  setShortcutHelpOpen: (v: boolean) => void;
+  getStatusBarRef: () => StatusBarRef | undefined;
+  getStashedInput: () => import("$lib/types").PromptInputSnapshot | null;
+  setStashedInput: (v: import("$lib/types").PromptInputSnapshot | null) => void;
+  getPromptRef: () => PromptInputRef | undefined;
+  setStatusBarExpanded: (v: boolean) => void;
+  getSidebarCollapsed: () => boolean;
+  setSidebarCollapsed: (v: boolean) => void;
+  setSidebarRequestedTab: (v: ToolActivityPanelTab | null) => void;
+  setShowChatToast: (msg: string) => void;
+  setPageDragActive: (v: boolean) => void;
+  setDragProcessingCount: (fn: (prev: number) => number) => void;
+  getXtermRef: () => XTerminalRef | undefined;
+
+  // ── BTW state ──
+  getBtwState: () => BtwStateData;
+  setBtwState: (v: BtwStateData) => void;
+
+  // ── Context history ──
+  contextHistoryMap: Map<string, ContextSnapshot[]>;
+  triggerContextHistoryReactivity: () => void;
+
+  // ── Run state ──
+  getRunId: () => string;
+  setLastContinuableRun: (v: TaskRun | null) => void;
+  setMiddlewareReady: (v: boolean) => void;
+  setAutoNameDone: (v: boolean) => void;
+
+  // ── Fork overlay ──
+  getForkOverlay: () => ForkOverlayState | null;
+
+  // ── Verbose ──
+  cleanupVerbose: () => void;
+  cancelProgressive: () => void;
+
+  // ── Actions ──
+  handleSummarize: () => Promise<void>;
+  handleRewind: () => void;
+  toggleCliConfigBool: (key: string) => Promise<void>;
+  goto: (path: string, opts?: { replaceState?: boolean }) => void;
+
+  // ── i18n ──
+  t: (key: string, params?: Record<string, string>) => string;
+}
+
+// ── Composable ──
+
+export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
+  const {
+    store,
+    middleware,
+    keybindingStore,
+    getSettings,
+    setSettings,
+    setRemoteHosts,
+    setAuthOverview,
+    checkAllLocalProxies,
+    getAgentSettings,
+    setAgentSettings,
+    setCurrentEffort,
+    handlePermissionModeChange,
+    loadCliInfo,
+    getCliCurrentModel,
+    loadCliVersionInfo,
+    isContaminatedDefaultModel,
+    setLastKnownGoodModel,
+    checkProjectInit,
+    reloadProjectData,
+    getShortcutHelpOpen,
+    setShortcutHelpOpen,
+    getStatusBarRef,
+    getStashedInput,
+    setStashedInput,
+    getPromptRef,
+    setStatusBarExpanded,
+    getSidebarCollapsed,
+    setSidebarCollapsed,
+    setSidebarRequestedTab,
+    setShowChatToast,
+    setPageDragActive,
+    setDragProcessingCount,
+    getXtermRef,
+    getBtwState,
+    setBtwState,
+    contextHistoryMap,
+    triggerContextHistoryReactivity,
+    getRunId,
+    setLastContinuableRun,
+    setMiddlewareReady,
+    setAutoNameDone,
+    getForkOverlay,
+    cleanupVerbose,
+    cancelProgressive,
+    handleSummarize,
+    handleRewind,
+    toggleCliConfigBool,
+    goto,
+    t,
+  } = ctx;
+
+  // ════════════════════════════════════════════════════════════════════
+  // Block 1: Settings loading onMount
+  // ════════════════════════════════════════════════════════════════════
+  onMount(async () => {
+    const runId = getRunId();
+    // Phase 1: load settings (required by everything else)
+    try {
+      const loadedSettings = await api.getUserSettings();
+      setSettings(loadedSettings);
+      persistCachedProcessVisibility(normalizeProcessVisibility(loadedSettings.process_visibility));
+      store.authMode = loadedSettings.auth_mode ?? "cli";
+      const hosts = loadedSettings.remote_hosts ?? [];
+      setRemoteHosts(hosts);
+      // Restore last target selection (must validate against current settings — a
+      // configured host may have been removed since the value was persisted).
+      if (!store.run && hosts.length > 0) {
+        const lastTarget = getLastTarget();
+        if (lastTarget && hosts.some((h) => h.name === lastTarget)) {
+          store.remoteHostName = lastTarget;
+        }
+      }
+      // Initialize per-session platform from global active
+      // Only use active_platform_id in App API Key mode; CLI Auth manages its own connection
+      if (!store.platformId) {
+        store.platformId =
+          loadedSettings.auth_mode === "api"
+            ? (loadedSettings.active_platform_id ?? "anthropic")
+            : "anthropic";
+      }
+      // Initialize model: for third-party platforms, use credential > preset default model
+      // Only for new sessions — if runId is set, loadRun will handle model restoration.
+      if (!store.model && !runId && store.phase !== "loading") {
+        const initCred = findCredential(
+          loadedSettings.platform_credentials ?? [],
+          store.platformId ?? "",
+        );
+        const initPreset = PLATFORM_PRESETS.find((p) => p.id === store.platformId);
+        const initModels = initCred?.models?.length ? initCred.models : initPreset?.models;
+        if (store.platformId !== "anthropic" && initModels?.[0]) {
+          store.model = initModels[0];
+        } else if (store.platformId === "anthropic" && loadedSettings.default_model) {
+          // default_model is global — only valid for Anthropic native platform.
+          // Third-party platforms without a models list leave model unset.
+          store.model = loadedSettings.default_model;
+        }
+      }
+      // Load auth overview for AuthSourceBadge (fire-and-forget)
+      api
+        .getAuthOverview()
+        .then((ov) => setAuthOverview(ov))
+        .catch(() => {});
+      // Detect local proxy statuses for AuthSourceBadge
+      checkAllLocalProxies();
+    } catch (e) {
+      dbgWarn("chat", "failed to load settings:", e);
+    }
+
+    // Phase 2: parallel fetch of independent data
+    const [agentResult, runsResult] = await Promise.allSettled([
+      api.getAgentSettings("claude"),
+      api.listRuns(),
+    ]);
+
+    if (agentResult.status === "fulfilled") {
+      setAgentSettings(agentResult.value);
+      // Read effort from CLI config (~/.claude/settings.json) — the authoritative source.
+      // NOT from agentSettings.effort (that would cause --effort flag at spawn, which
+      // locks effort in memory and prevents live switching via settings.json).
+      try {
+        const cliCfg = await api.getCliConfig();
+        const cliEffort = cliCfg.effortLevel;
+        setCurrentEffort(typeof cliEffort === "string" && cliEffort ? cliEffort : "");
+      } catch {
+        setCurrentEffort("");
+      }
+      // One-time migration: clear stale agentSettings.effort to prevent --effort at spawn
+      if (agentResult.value?.effort) {
+        api.updateAgentSettings("claude", { effort: "" }).catch(() => {});
+      }
+    } else {
+      dbgWarn("chat", "failed to load agent settings:", agentResult.reason);
+    }
+
+    if (runsResult.status === "fulfilled") {
+      const continuable =
+        runsResult.value.find(
+          (r) =>
+            r.session_id &&
+            (r.status === "completed" || r.status === "stopped" || r.status === "failed"),
+        ) ?? null;
+      setLastContinuableRun(continuable);
+
+      // Auto-load last session if no runId is specified, instead of showing welcome screen
+      if (!runId && continuable) {
+        goto(`/chat?run=${continuable.id}&resume=continue`, { replaceState: true });
+        return;
+      }
+    } else {
+      dbgWarn("chat", "failed to load runs for continue:", runsResult.reason);
+    }
+
+    // Phase 3: permission mode init (depends on settings + agentSettings)
+    // Initialize permission mode from saved settings (before session_init arrives)
+    // Agent plan_mode=true overrides user permission_mode (legacy compat)
+    if (!store.permissionModeSetByUser) {
+      const currentSettings = getSettings();
+      const currentAgentSettings = getAgentSettings();
+      if (currentAgentSettings?.plan_mode) {
+        store.permissionMode = "plan";
+        store.permissionModeSetByUser = true;
+      } else if (currentSettings?.permission_mode) {
+        const cliName =
+          APP_TO_CLI_MODE[currentSettings.permission_mode] ?? currentSettings.permission_mode;
+        store.permissionMode = cliName;
+        store.permissionModeSetByUser = true;
+      }
+    }
+    let selfHealDone = false;
+    let selfHealInFlight = false;
+    loadCliInfo().then(() => {
+      const currentSettings = getSettings();
+      // Self-heal: detect and fix contaminated default_model
+      if (currentSettings?.default_model && !selfHealDone && !selfHealInFlight) {
+        const dm = currentSettings.default_model;
+        const contaminated = isContaminatedDefaultModel(dm);
+        if (contaminated === true) {
+          const healModel = getCliCurrentModel();
+          if (healModel) {
+            selfHealInFlight = true;
+            dbg("chat", "self-heal: default_model contaminated, persisting fix", {
+              old: dm,
+              new: healModel,
+            });
+            api
+              .updateUserSettings({ default_model: healModel })
+              .then(() => {
+                const s = getSettings();
+                if (s) setSettings({ ...s, default_model: healModel });
+                setLastKnownGoodModel(healModel);
+                selfHealDone = true;
+                dbg("chat", "self-heal: persist succeeded");
+              })
+              .catch((e) => {
+                dbgWarn("chat", "self-heal persist failed, will retry next loadCliInfo", e);
+              })
+              .finally(() => {
+                selfHealInFlight = false;
+              });
+          } else {
+            dbg("chat", "self-heal: contaminated but CLI model unavailable, deferring", { dm });
+          }
+        } else if (contaminated === false) {
+          selfHealDone = true;
+        }
+      }
+
+      const cliModel = getCliCurrentModel();
+      const isThirdParty = store.platformId && store.platformId !== "anthropic";
+      // Update lastKnownGoodAnthropicModel when CLI model is available
+      if (cliModel && !isThirdParty) {
+        setLastKnownGoodModel(cliModel);
+      }
+      // Only for genuinely new chats: no run loaded/loading, no URL run param
+      if (cliModel && !store.run && !getRunId() && store.phase !== "loading" && !isThirdParty) {
+        dbg("chat", "set model from CLI after loadCliInfo", { cliModel, prev: store.model });
+        store.model = cliModel;
+      }
+    });
+    loadCliVersionInfo();
+    checkProjectInit();
+    // Preload project data from filesystem (no session needed)
+    if (!runId) {
+      const cwd = localStorage.getItem("ocv:project-cwd") || "";
+      reloadProjectData(cwd);
+    }
+  });
+
+  // ════════════════════════════════════════════════════════════════════
+  // Block 2: Project folder change listener onMount
+  // ════════════════════════════════════════════════════════════════════
+  onMount(() => {
+    const handler = () => {
+      checkProjectInit();
+      if (!getRunId() && !store.run) {
+        const cwd = localStorage.getItem("ocv:project-cwd") || "";
+        reloadProjectData(cwd);
+      }
+    };
+    window.addEventListener("ocv:project-changed", handler);
+    return () => window.removeEventListener("ocv:project-changed", handler);
+  });
+
+  // ════════════════════════════════════════════════════════════════════
+  // Block 3: File IPC warmup onMount
+  // ════════════════════════════════════════════════════════════════════
+  onMount(() => {
+    const cwd = localStorage.getItem("ocv:project-cwd") || "";
+    if (!cwd) return;
+    const t0 = performance.now();
+    api
+      .statTextFile(cwd, cwd)
+      .then(() => dbg("file-ipc", "warmup done", { ms: +(performance.now() - t0).toFixed(0) }))
+      .catch((e) =>
+        dbg("file-ipc", "warmup err (still warmed)", {
+          ms: +(performance.now() - t0).toFixed(0),
+          err: String(e),
+        }),
+      );
+  });
+
+  // ════════════════════════════════════════════════════════════════════
+  // Block 4: Runs-changed sync onMount
+  // ════════════════════════════════════════════════════════════════════
+  onMount(() => {
+    function onRunsChanged() {
+      if (!store.run) return;
+      const id = store.run.id;
+      api
+        .getRun(id)
+        .then((fresh) => {
+          if (fresh && store.run?.id === id && fresh.name !== store.run.name) {
+            dbg("chat", "runs-changed: syncing name", { id, name: fresh.name });
+            store.run = { ...store.run, name: fresh.name ?? undefined };
+            if (fresh.name) setAutoNameDone(true);
+          }
+        })
+        .catch((e) => {
+          dbgWarn("chat", "runs-changed: failed to sync name", e);
+        });
+    }
+    window.addEventListener("ocv:runs-changed", onRunsChanged);
+    return () => window.removeEventListener("ocv:runs-changed", onRunsChanged);
+  });
+
+  // ════════════════════════════════════════════════════════════════════
+  // Block 5: Middleware start onMount
+  // ════════════════════════════════════════════════════════════════════
+  onMount(() => {
+    let destroyed = false;
+    (async () => {
+      try {
+        await middleware.start();
+      } catch (e) {
+        console.error("[chat] middleware.start() failed:", e);
+        store.error = t("chat_eventSystemFailed");
+      }
+      // Start notification listener (piggybacks on same transport)
+      try {
+        const { startNotificationListener } = await import("$lib/services/notification-listener");
+        await startNotificationListener();
+      } catch {
+        // Non-critical: notifications are best-effort
+      }
+      if (!destroyed) setMiddlewareReady(true);
+    })();
+
+    // Pipe handler: chat-delta / chat-done (Codex pipe mode)
+    middleware.setPipeHandler({
+      onDelta(delta) {
+        store.handleChatDelta(delta.text, getXtermRef());
+      },
+      onDone(done) {
+        store.handleChatDone(done);
+      },
+    });
+
+    // Run event handler: stderr for Codex pipe mode
+    middleware.setRunEventHandler({
+      onRunEvent(event) {
+        const xtermRef = getXtermRef();
+        if (
+          store.run?.execution_path === "pipe_exec" &&
+          store.run &&
+          event.run_id === store.run.id &&
+          xtermRef
+        ) {
+          if (event.type === "stderr") {
+            xtermRef.writeText(`\x1b[31m${event.text}\x1b[0m\r\n`);
+          }
+        }
+      },
+    });
+
+    return () => {
+      destroyed = true;
+      // Kill fork run process on unmount (but not the source run)
+      const forkOverlay = getForkOverlay();
+      if (forkOverlay?.active && store.run && store.run.id !== forkOverlay.sourceRunId) {
+        api.stopSession(store.run.id).catch(() => {});
+      }
+      store.unmountGuards();
+      middleware.destroy();
+    };
+  });
+
+  // ════════════════════════════════════════════════════════════════════
+  // Block 6: Keybinding registration onMount
+  // ════════════════════════════════════════════════════════════════════
+  onMount(() => {
+    requestAnimationFrame(() => getPromptRef()?.focus());
+    function onStatusBarToggle(e: Event) {
+      setStatusBarExpanded((e as CustomEvent).detail.expanded);
+    }
+    window.addEventListener("ocv:statusbar-toggle", onStatusBarToggle);
+
+    // Register chat-context keybinding callbacks
+    keybindingStore.registerCallback("chat:interrupt", () => {
+      if (getShortcutHelpOpen()) {
+        setShortcutHelpOpen(false);
+        return;
+      }
+      if (store.isRunning) {
+        store.interrupt();
+      }
+    });
+    keybindingStore.registerCallback("chat:sendGlobal", () => {
+      if (!store.isRunning) {
+        getPromptRef()?.triggerSend();
+      }
+    });
+    keybindingStore.registerCallback("app:shortcutHelp", () => {
+      setShortcutHelpOpen(!getShortcutHelpOpen());
+    });
+    keybindingStore.registerCallback("app:modelPicker", () => {
+      getStatusBarRef()?.openModelDropdown();
+    });
+    keybindingStore.registerCallback("chat:cyclePermission", () => {
+      // Guard: if focus is on a focusable interactive control, don't cycle (preserve Shift+Tab navigation)
+      const active = document.activeElement;
+      if (active && active !== document.body) {
+        const el = active as HTMLElement;
+        const isFocusable =
+          el.tagName === "BUTTON" ||
+          el.tagName === "SELECT" ||
+          el.tagName === "A" ||
+          (el.hasAttribute("tabindex") && el.getAttribute("tabindex") !== "-1") ||
+          el.closest("[role='menu']") ||
+          el.closest("[role='listbox']") ||
+          el.closest("[role='dialog']") ||
+          (el.hasAttribute("role") &&
+            ["button", "link", "menuitem", "option", "tab"].includes(
+              el.getAttribute("role") ?? "",
+            ));
+        if (isFocusable) return;
+      }
+      const modes = ["default", "acceptEdits", "bypassPermissions", "plan", "auto", "dontAsk"];
+      const idx = modes.indexOf(store.permissionMode);
+      const next = modes[(idx + 1) % modes.length];
+      handlePermissionModeChange(next);
+    });
+    keybindingStore.registerCallback("chat:stashPrompt", () => {
+      const stashedInput = getStashedInput();
+      const promptRef = getPromptRef();
+      if (stashedInput) {
+        promptRef?.restoreSnapshot(stashedInput);
+        setStashedInput(null);
+        setShowChatToast(t("toast_stashRestored"));
+      } else {
+        const snapshot = promptRef?.getInputSnapshot();
+        if (
+          snapshot &&
+          (snapshot.text.trim() ||
+            snapshot.attachments.length ||
+            snapshot.pastedBlocks.length ||
+            (snapshot.pathRefs?.length ?? 0) > 0)
+        ) {
+          setStashedInput(snapshot);
+          promptRef?.clearAll();
+          setShowChatToast(t("toast_stashSaved"));
+        }
+      }
+    });
+    keybindingStore.registerCallback("app:toggleFastMode", () => {
+      toggleCliConfigBool("fastMode");
+    });
+    keybindingStore.registerCallback("chat:toggleVerbose", () => {
+      toggleCliConfigBool("verbose");
+    });
+    keybindingStore.registerCallback("chat:toggleTasks", () => {
+      if (store.hasBackgroundTasks) {
+        if (getSidebarCollapsed()) setSidebarCollapsed(false);
+        setSidebarRequestedTab("tasks");
+      }
+    });
+    keybindingStore.registerCallback("chat:undoLastTurn", () => {
+      handleRewind();
+    });
+    keybindingStore.registerCallback("app:summarizeChat", () => void handleSummarize());
+    const onSummarizeEvent = () => {
+      window.dispatchEvent(new CustomEvent("ocv:summarize-chat-ack"));
+      void handleSummarize();
+    };
+    window.addEventListener("ocv:summarize-chat", onSummarizeEvent);
+
+    // Screenshot event listener (global hotkey → attachment injection)
+    const chatTransport = getTransport();
+    const screenshotUnlisten = chatTransport.listen<ScreenshotPayload>(
+      "screenshot-taken",
+      (payload) => {
+        dbg("chat", "screenshot-taken", { filename: payload.filename });
+        const { contentBase64, mediaType, filename } = payload;
+        const bytes = Uint8Array.from(atob(contentBase64), (c) => c.charCodeAt(0));
+        const file = new File([bytes], filename, { type: mediaType });
+        getPromptRef()?.addFiles([file]);
+      },
+    );
+
+    // Tauri native drag-drop listeners (dragDropEnabled: true in tauri.conf.json)
+    const dragEnterUnlisten = chatTransport.listen<{ paths: string[] }>(
+      "tauri://drag-enter",
+      () => {
+        setPageDragActive(true);
+      },
+    );
+    const dragLeaveUnlisten = chatTransport.listen("tauri://drag-leave", () => {
+      setPageDragActive(false);
+    });
+    const clearPageDrag = () => {
+      setPageDragActive(false);
+    };
+    window.addEventListener("dragend", clearPageDrag);
+    window.addEventListener("drop", clearPageDrag);
+    const dragDropUnlisten = chatTransport.listen<{ paths: string[] }>(
+      "tauri://drag-drop",
+      (payload) => {
+        const promptRef = getPromptRef();
+        if (!promptRef) return;
+        execTauriDrop(
+          {
+            promptRef,
+            t: t as unknown as (key: string, params?: Record<string, string>) => string,
+            onDragEnd: () => setPageDragActive(false),
+            onProcessingStart: () => setDragProcessingCount((prev) => prev + 1),
+            onProcessingEnd: () => setDragProcessingCount((prev) => prev - 1),
+          },
+          payload,
+        );
+      },
+    );
+
+    return () => {
+      window.removeEventListener("ocv:statusbar-toggle", onStatusBarToggle);
+      keybindingStore.unregisterCallback("chat:interrupt");
+      keybindingStore.unregisterCallback("chat:sendGlobal");
+      keybindingStore.unregisterCallback("app:shortcutHelp");
+      keybindingStore.unregisterCallback("app:modelPicker");
+      keybindingStore.unregisterCallback("chat:cyclePermission");
+      keybindingStore.unregisterCallback("chat:stashPrompt");
+      keybindingStore.unregisterCallback("app:toggleFastMode");
+      keybindingStore.unregisterCallback("chat:toggleVerbose");
+      keybindingStore.unregisterCallback("chat:toggleTasks");
+      keybindingStore.unregisterCallback("chat:undoLastTurn");
+      keybindingStore.unregisterCallback("app:summarizeChat");
+      window.removeEventListener("ocv:summarize-chat", onSummarizeEvent);
+      screenshotUnlisten.then((fn) => fn());
+      dragEnterUnlisten.then((fn) => fn());
+      dragLeaveUnlisten.then((fn) => fn());
+      dragDropUnlisten.then((fn) => fn());
+      window.removeEventListener("dragend", clearPageDrag);
+      window.removeEventListener("drop", clearPageDrag);
+      // Clean up verbose retry timer
+      cleanupVerbose();
+      // Clean up progressive rendering timer
+      cancelProgressive();
+    };
+  });
+
+  // ════════════════════════════════════════════════════════════════════
+  // Block 7: Context snapshot listener onMount
+  // ════════════════════════════════════════════════════════════════════
+  onMount(() => {
+    const unlisten = getTransport().listen<{
+      runId: string;
+      content: string;
+      turnIndex: number;
+      ts: string;
+    }>("context-snapshot", (payload) => {
+      const { runId, content, turnIndex, ts } = payload;
+      dbg("chat", "context-snapshot-recv", { runId, turnIndex, len: content.length });
+      if (runId !== store.run?.id) return;
+      const data = parseContextMarkdown(content);
+      if (!data) {
+        dbgWarn("chat", "context-parse-failed", {
+          runId,
+          turnIndex,
+          head: content.slice(0, 200),
+        });
+        return;
+      }
+      // Upsert by turnIndex: same turn overwrites (not appends)
+      const prev = contextHistoryMap.get(runId) ?? [];
+      const existingIdx = prev.findIndex((s) => s.turnIndex === turnIndex);
+      const replaced = existingIdx >= 0;
+      const updated = replaced
+        ? prev.map((s, i) => (i === existingIdx ? { runId, turnIndex, ts, data } : s))
+        : [...prev, { runId, turnIndex, ts, data }];
+      contextHistoryMap.set(runId, updated);
+      triggerContextHistoryReactivity();
+      dbg("chat", "context-snapshot", { turn: turnIndex, pct: data.percentage, replaced });
+    });
+    return () => {
+      unlisten.then((f) => f());
+    };
+  });
+
+  // ════════════════════════════════════════════════════════════════════
+  // Block 8: BTW event listeners onMount
+  // ════════════════════════════════════════════════════════════════════
+  // NOTE: Don't filter by btw_id — events may arrive before the IPC call returns
+  // the btw_id (race condition). Only one BTW is active at a time, so checking
+  // btwState.active is sufficient.
+  onMount(() => {
+    const transport = getTransport();
+    const deltaUnlisten = transport.listen<BtwDelta>("btw-delta", (ev) => {
+      const btwState = getBtwState();
+      if (btwState.active) {
+        dbg("chat", "btw-delta", { len: ev.text.length });
+        setBtwState({ ...btwState, answer: btwState.answer + ev.text });
+      }
+    });
+    const completeUnlisten = transport.listen<BtwComplete>("btw-complete", (ev) => {
+      const btwState = getBtwState();
+      if (btwState.active) {
+        dbg("chat", "btw-complete", { btwId: ev.btw_id });
+        setBtwState({ ...btwState, loading: false });
+      }
+    });
+    const errorUnlisten = transport.listen<BtwError>("btw-error", (ev) => {
+      const btwState = getBtwState();
+      if (btwState.active) {
+        dbgWarn("chat", "btw-error", { error: ev.error });
+        setBtwState({ ...btwState, error: ev.error, loading: false });
+      }
+    });
+    return () => {
+      deltaUnlisten.then((f) => f());
+      completeUnlisten.then((f) => f());
+      errorUnlisten.then((f) => f());
+    };
+  });
+}
