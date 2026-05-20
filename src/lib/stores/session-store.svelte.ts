@@ -1247,6 +1247,7 @@ export class SessionStore {
   applyHookEventBatch(events: HookEvent[]): void {
     if (!this.run) return;
     let tools = this.tools;
+    let mutated = false;
     for (const event of events) {
       if (event.run_id !== this.run.id) continue;
       if (
@@ -1263,7 +1264,10 @@ export class SessionStore {
             e.status === "running",
         );
         if (idx >= 0) {
-          tools = [...tools];
+          if (!mutated) {
+            tools = [...tools];
+            mutated = true;
+          }
           tools[idx] = {
             ...tools[idx],
             status: "done",
@@ -1273,9 +1277,13 @@ export class SessionStore {
           continue;
         }
       }
-      tools = [...tools, event];
+      if (!mutated) {
+        tools = [...tools];
+        mutated = true;
+      }
+      tools.push(event);
     }
-    if (tools !== this.tools) this.tools = tools;
+    if (mutated) this.tools = tools;
   }
 
   /** Apply a batch of hook usage (single reactive update, cumulative). */

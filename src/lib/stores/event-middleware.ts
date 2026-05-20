@@ -161,6 +161,7 @@ export class EventMiddleware {
     this._batchBuffer.clear();
     this._hookBatchBuffer.clear();
     this._usageBatchBuffer.clear();
+    this._flushScheduled = false;
     if (this._flushTimer !== null) {
       clearTimeout(this._flushTimer);
       this._flushTimer = null;
