@@ -354,7 +354,9 @@
   }
 
   /** Whether we need full turns computation (tools or info tab active and panel visible). */
-  let needsFullTurns = $derived(!collapsed && (activeTab === "tools" || activeTab === "info") && useTimeline);
+  let needsFullTurns = $derived(
+    !collapsed && (activeTab === "tools" || activeTab === "info") && useTimeline,
+  );
 
   let turns = $derived.by(() => {
     if (!needsFullTurns) {

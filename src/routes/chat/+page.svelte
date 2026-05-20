@@ -1312,32 +1312,32 @@
         />
       {/snippet}
     </ChatConversationStage>
-
-    <!-- Tool Activity sidebar -->
-    <ToolActivity
-      timeline={store.timeline}
-      tools={store.tools}
-      turnUsages={store.turnUsages}
-      contextHistory={sd.contextHistory}
-      persistedFiles={store.persistedFiles}
-      sessionInfo={sd.currentSessionInfo}
-      collapsed={sidebarCollapsed}
-      bind:activeTab={toolPanelActiveTab}
-      bind:panelIndicators={toolPanelIndicators}
-      underUnifiedCapsule={true}
-      onToggle={toggleSidebar}
-      onScrollToTool={scrollToTool}
-      onScrollToTurn={(anchorId) => scrollToMessage(anchorId)}
-      bind:requestedTab={sidebarRequestedTab}
-      backgroundTasks={store.taskNotifications}
-      activeBackgroundTasks={store.activeBackgroundTasks}
-      cwd={store.effectiveCwd}
-      runId={store.run?.id ?? ""}
-      isRemote={store.isRemote}
-      bind:requestedPreviewPath
-      bind:requestedPreviewUrl
-    />
   </div>
+
+  <!-- Tool Activity sidebar -->
+  <ToolActivity
+    timeline={store.timeline}
+    tools={store.tools}
+    turnUsages={store.turnUsages}
+    contextHistory={sd.contextHistory}
+    persistedFiles={store.persistedFiles}
+    sessionInfo={sd.currentSessionInfo}
+    collapsed={sidebarCollapsed}
+    bind:activeTab={toolPanelActiveTab}
+    bind:panelIndicators={toolPanelIndicators}
+    underUnifiedCapsule={true}
+    onToggle={toggleSidebar}
+    onScrollToTool={scrollToTool}
+    onScrollToTurn={(anchorId) => scrollToMessage(anchorId)}
+    bind:requestedTab={sidebarRequestedTab}
+    backgroundTasks={store.taskNotifications}
+    activeBackgroundTasks={store.activeBackgroundTasks}
+    cwd={store.effectiveCwd}
+    runId={store.run?.id ?? ""}
+    isRemote={store.isRemote}
+    bind:requestedPreviewPath
+    bind:requestedPreviewUrl
+  />
 
   <RewindModal
     bind:open={rewindModalOpen}

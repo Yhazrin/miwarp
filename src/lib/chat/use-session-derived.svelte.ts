@@ -87,7 +87,7 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
 
   // ── Derived: last assistant entry index ──
 
-  let lastAssistantIdx = $derived.by(() => {
+  const lastAssistantIdx = $derived.by(() => {
     const vt = getVisibleTimeline();
     for (let j = vt.length - 1; j >= 0; j--) {
       if (vt[j].kind === "assistant") return j;
@@ -97,7 +97,7 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
 
   // ── Derived: input history (most recent first) ──
 
-  let userHistory = $derived.by(() =>
+  const userHistory = $derived.by(() =>
     store.timeline
       .filter((e): e is Extract<TimelineEntry, { kind: "user" }> => e.kind === "user")
       .map((e) => e.content)
@@ -106,11 +106,11 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
 
   // ── Derived: context history for current run ──
 
-  let contextHistory = $derived(contextHistoryMap.get(store.run?.id ?? "") ?? []);
+  const contextHistory = $derived(contextHistoryMap.get(store.run?.id ?? "") ?? []);
 
   // ── Derived: cumulative session token totals ──
 
-  let cumulativeTokens = $derived.by(() => {
+  const cumulativeTokens = $derived.by(() => {
     const mu = store.usage.modelUsage;
     if (!mu || Object.keys(mu).length === 0) {
       return {
@@ -135,18 +135,18 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
 
   // ── Derived: CLI version info (reactive) ──
 
-  let cliVersionInfo = $derived(getCliVersionInfo_cached());
+  const cliVersionInfo = $derived(getCliVersionInfo_cached());
 
   // ── Derived: CLI update channel ──
 
-  let channelLatest = $derived.by(() => {
+  const channelLatest = $derived.by(() => {
     if (!cliVersionInfo?.installed) return undefined;
     return cliVersionInfo.channel === "stable" ? cliVersionInfo.stable : cliVersionInfo.latest;
   });
 
   // ── Derived: platform display name ──
 
-  let platformDisplayName = $derived.by(() => {
+  const platformDisplayName = $derived.by(() => {
     const pid = store.platformId;
     if (!pid) return undefined;
     const preset = PLATFORM_PRESETS.find((p) => p.id === pid);
@@ -156,7 +156,7 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
 
   // ── Derived: provider-aware model list ──
 
-  let platformModels = $derived.by((): CliModelInfo[] => {
+  const platformModels = $derived.by((): CliModelInfo[] => {
     const pid = store.platformId;
     if (!pid || pid === "anthropic") return [];
     const settings = getSettings();
@@ -171,15 +171,15 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
     }));
   });
 
-  let effectiveModels = $derived(platformModels.length > 0 ? platformModels : getCliModels());
+  const effectiveModels = $derived(platformModels.length > 0 ? platformModels : getCliModels());
 
   // ── Derived: permission and skill state ──
 
-  let inputBlockedByPermission = $derived(store.hasPendingPermission || store.hasElicitation);
-  let pendingToolPermissions = $derived(store.pendingToolPermissions);
-  let showPermissionPanel = $derived(pendingToolPermissions.length > 0 && store.sessionAlive);
+  const inputBlockedByPermission = $derived(store.hasPendingPermission || store.hasElicitation);
+  const pendingToolPermissions = $derived(store.pendingToolPermissions);
+  const showPermissionPanel = $derived(pendingToolPermissions.length > 0 && store.sessionAlive);
 
-  let skillItems = $derived.by(() => {
+  const skillItems = $derived.by(() => {
     const preloadedSkills = getPreloadedSkills();
     const detailMap = new Map(preloadedSkills.map((s) => [s.name, s]));
     const names = store.availableSkills;
@@ -194,9 +194,9 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
 
   // ── Derived: per-turn usage annotations in timeline ──
 
-  let usageByTurn = $derived(new Map(store.turnUsages.map((tu) => [tu.turnIndex, tu])));
+  const usageByTurn = $derived(new Map(store.turnUsages.map((tu) => [tu.turnIndex, tu])));
 
-  let usageAnnotations = $derived.by(() => {
+  const usageAnnotations = $derived.by(() => {
     const map = new Map<number, TurnUsage>();
     if (usageByTurn.size === 0) return map;
     const vt = getVisibleTimeline();
@@ -215,7 +215,7 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
     return map;
   });
 
-  let claudeTurnStarts = $derived.by(() => {
+  const claudeTurnStarts = $derived.by(() => {
     const starts = new Set<number>();
     const vt = getVisibleTimeline();
     const collapsed = getCollapsedIndices();
@@ -232,7 +232,7 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
     return starts;
   });
 
-  let lastTurnUsage = $derived.by(() => {
+  const lastTurnUsage = $derived.by(() => {
     const filtered = getFilteredTimeline();
     const userCount = filtered.filter((e) => e.kind === "user").length;
     if (userCount === 0) return null;
@@ -241,7 +241,7 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
 
   // ── Derived: session info for InfoPanel ──
 
-  let currentSessionInfo = $derived.by((): SessionInfoData | null => {
+  const currentSessionInfo = $derived.by((): SessionInfoData | null => {
     if (!store.run) return null;
     return {
       sessionId: store.run.session_id,

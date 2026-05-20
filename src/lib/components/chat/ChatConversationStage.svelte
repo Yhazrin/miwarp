@@ -1,11 +1,6 @@
 <script lang="ts">
   import type { SessionStore } from "$lib/stores/session-store.svelte";
-  import type {
-    UserSettings,
-    TimelineEntry,
-    TeamRun,
-    AuthOverview,
-  } from "$lib/types";
+  import type { UserSettings, TimelineEntry, TeamRun, AuthOverview, BusToolItem } from "$lib/types";
   import type { ProcessVisibility } from "$lib/utils/process-visibility";
   import type { ToolBurst } from "$lib/utils/tool-rendering";
   import type { BurstCollapseHandle } from "$lib/chat/use-tool-burst-collapse.svelte";
@@ -83,7 +78,7 @@
     rewindMarkers,
     activeTeamRuns,
     // Thinking/streaming
-    thinkingExpanded,
+    thinkingExpanded = $bindable(false),
     thinkingElapsed,
     thinkingVisible,
     spinnerVerb,
@@ -141,7 +136,7 @@
     timelineIdIndex: Map<string, number>;
     lastClearSepId: string | null;
     latestPlanToolId: string | null;
-    batchGroups: Map<number, unknown[]>;
+    batchGroups: Map<number, BusToolItem[]>;
     toolBursts: Map<number, ToolBurst>;
     burstCollapse: BurstCollapseHandle;
     lastAssistantIdx: number;
@@ -167,7 +162,7 @@
     latestNotification: { task_id: string; status: string } | null;
     rewindMarkers: RewindMarker[];
     activeTeamRuns: TeamRun[];
-    thinkingExpanded: boolean;
+    thinkingExpanded?: boolean;
     thinkingElapsed: number;
     thinkingVisible: boolean;
     spinnerVerb: string;
@@ -190,11 +185,18 @@
     handleRewindToMessage: (entry: { cliUuid: string; content: string; ts: string }) => void;
     handleToolAnswer: (toolUseId: string, answer: string) => void;
     handleToolApprove: (toolUseId: string) => void;
-    handlePermissionRespond: (toolUseId: string, response: string) => void;
+    handlePermissionRespond: (
+      requestId: string,
+      behavior: "allow" | "deny",
+      updatedPermissions?: import("$lib/types").PermissionSuggestion[],
+      updatedInput?: Record<string, unknown>,
+      denyMessage?: string,
+      interrupt?: boolean,
+    ) => Promise<void>;
     handleExitPlanClearContext: (toolUseId: string) => void;
-    getPlanContentForExitPlan: (entryId: string) => string | undefined;
+    getPlanContentForExitPlan: (entryId: string) => { content: string; fileName: string } | null;
     openPreviewForPath: (path: string) => void;
-    handleHookCallbackRespond: (requestId: string, response: string) => void;
+    handleHookCallbackRespond: (requestId: string, decision: "allow" | "deny") => Promise<void>;
     handleChatScroll: () => void;
     scrollChatToBottom: () => void;
     handleTermResize: (cols: number, rows: number) => void;
@@ -215,7 +217,7 @@
 
   function onTopSentinelMount(el: HTMLDivElement) {
     setTopSentinel(el);
-    return () => setTopSentinel(null);
+    return { destroy: () => setTopSentinel(null) };
   }
 </script>
 
