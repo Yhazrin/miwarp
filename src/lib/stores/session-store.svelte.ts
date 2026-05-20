@@ -2004,9 +2004,11 @@ export class SessionStore {
   /** Send a slash command silently — no optimistic user message, no response timeout.
    *  Used for internal hot-update commands like /model and /effort. */
   async sendSilentCommand(command: string): Promise<void> {
-    if (!this.run || !this.sessionAlive) return;
-    dbg("store", "sendSilentCommand", { command });
-    await api.sendSessionMessage(this.run.id, command);
+    if (!this.run || !this.sessionAlive || !this.useStreamSession) return;
+    const trimmed = command.trim();
+    if (!trimmed) return;
+    dbg("store", "sendSilentCommand", { command: trimmed });
+    await api.sendSessionMessage(this.run.id, trimmed);
   }
 
   /** Interrupt current turn. Falls back to kill if interrupt fails. */

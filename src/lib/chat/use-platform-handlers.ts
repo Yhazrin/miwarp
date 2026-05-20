@@ -66,7 +66,7 @@ export function createPlatformHandlers(ctx: PlatformHandlerContext) {
     setCurrentEffort(newEffort);
 
     try {
-      if (store.sessionAlive && store.run) {
+      if (newEffort && store.sessionAlive && store.run) {
         await store.sendSilentCommand(`/effort ${newEffort}`);
         dbg("chat", "effort hot-switched via /effort command");
       }
