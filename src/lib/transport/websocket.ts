@@ -10,6 +10,7 @@
  */
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import type { Transport } from "./index";
+import { getInvokeTimeoutMs } from "./index";
 
 interface PendingRequest {
   resolve: (value: unknown) => void;
@@ -232,17 +233,37 @@ export class WsTransport implements Transport {
     }
   }
 
-  async invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  async invoke<T>(
+    cmd: string,
+    args?: Record<string, unknown>,
+    options?: { timeoutMs?: number },
+  ): Promise<T> {
     await this.ensureConnected();
 
     const id = `req_${++this.reqId}`;
-    dbg("transport", "ws.invoke", { cmd, id });
+    const timeoutMs = options?.timeoutMs ?? getInvokeTimeoutMs(cmd);
+    dbg("transport", "ws.invoke", { cmd, id, timeoutMs });
 
     return new Promise<T>((resolve, reject) => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+
       this.pending.set(id, {
-        resolve: resolve as (v: unknown) => void,
-        reject,
+        resolve: (v: unknown) => {
+          if (timer) clearTimeout(timer);
+          resolve(v as T);
+        },
+        reject: (e: Error) => {
+          if (timer) clearTimeout(timer);
+          reject(e);
+        },
       });
+
+      if (timeoutMs > 0) {
+        timer = setTimeout(() => {
+          this.pending.delete(id);
+          reject(new Error(`IPC_TIMEOUT: ${cmd} did not respond in ${timeoutMs}ms`));
+        }, timeoutMs);
+      }
 
       const message = JSON.stringify({
         id,
@@ -253,6 +274,7 @@ export class WsTransport implements Transport {
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.ws.send(message);
       } else {
+        if (timer) clearTimeout(timer);
         this.pending.delete(id);
         reject(new Error("WebSocket not connected"));
       }

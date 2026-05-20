@@ -820,6 +820,13 @@ export async function respondElicitation(
   });
 }
 
+export async function getSessionRuntimeStatus(
+  runId: string,
+): Promise<{ actor_alive: boolean; run_id: string }> {
+  dbg("api", "getSessionRuntimeStatus", { runId });
+  return invoke("get_session_runtime_status", { runId });
+}
+
 // ── Teams ──
 
 export async function listTeams(): Promise<TeamSummary[]> {

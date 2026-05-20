@@ -8,11 +8,26 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen as tauriListen } from "@tauri-apps/api/event";
 import { dbg } from "$lib/utils/debug";
 import type { Transport } from "./index";
+import { getInvokeTimeoutMs } from "./index";
 
 export class TauriTransport implements Transport {
-  async invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  async invoke<T>(
+    cmd: string,
+    args?: Record<string, unknown>,
+    options?: { timeoutMs?: number },
+  ): Promise<T> {
     dbg("transport", "tauri.invoke", { cmd });
-    return invoke<T>(cmd, args);
+    const timeoutMs = options?.timeoutMs ?? getInvokeTimeoutMs(cmd);
+    const tauriPromise = invoke<T>(cmd, args);
+    if (!timeoutMs) return tauriPromise;
+    let timer: ReturnType<typeof setTimeout>;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`IPC_TIMEOUT: ${cmd} did not respond in ${timeoutMs}ms`)),
+        timeoutMs,
+      );
+    });
+    return Promise.race([tauriPromise, timeoutPromise]).finally(() => clearTimeout(timer));
   }
 
   async listen<T>(event: string, handler: (payload: T) => void): Promise<() => void> {

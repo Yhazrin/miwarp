@@ -28,7 +28,7 @@ use std::time::Duration;
 use std::time::Instant;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout};
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::{mpsc, oneshot, watch};
 use tokio_util::sync::CancellationToken;
 
 /// Extract content from `<promise>...</promise>` tag in text.
@@ -158,6 +158,11 @@ pub enum ActorCommand {
     CancelRalphLoop {
         reply: oneshot::Sender<Result<RalphCancelResult, String>>,
     },
+    /// Wait until the CLI has produced its first output (proving it's alive and initialized).
+    /// Used after spawning a resume actor to replace fixed sleeps.
+    WaitReady {
+        reply: oneshot::Sender<Result<(), String>>,
+    },
 }
 
 /// External handle held in SessionMap. Provides the channel sender + metadata.
@@ -234,6 +239,10 @@ struct SessionActor {
     /// Set when emitting PermissionPrompt / HookCallback(PreToolUse) / ElicitationPrompt.
     /// Cleared when the response is received. Retained during quarantine for diagnostics.
     pending_interactive_request: Option<PendingInteractiveRequest>,
+
+    // ── Readiness signal ──
+    /// Sends `true` on first CLI output (stdout line). WaitReady commands clone a receiver.
+    ready_tx: watch::Sender<bool>,
 }
 
 // ── Spawn entry point ──
@@ -263,6 +272,8 @@ pub fn spawn_actor(
     let tag = Arc::new(());
     let (cmd_tx, cmd_rx) = mpsc::channel::<ActorCommand>(64);
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
+    let (ready_tx, _ready_rx) = tokio::sync::watch::channel(false);
+    drop(_ready_rx); // WaitReady commands create their own receivers from ready_tx
 
     log::debug!(
         "[actor] spawn: run_id={}, is_resume={}, initial_turn_index={}, initial_auto_ctx_id={}",
@@ -304,6 +315,7 @@ pub fn spawn_actor(
         ralph_loop: None,
         ralph_needs_dispatch: false,
         pending_interactive_request: None,
+        ready_tx,
     };
 
     let join_handle = tokio::spawn(async move {
@@ -443,6 +455,19 @@ impl SessionActor {
                                 let _ = reply.send(Err("No active ralph loop".into()));
                             }
                         }
+                        Some(ActorCommand::WaitReady { reply }) => {
+                            let mut rx = self.ready_tx.subscribe();
+                            if *rx.borrow() {
+                                // Already ready
+                                let _ = reply.send(Ok(()));
+                            } else {
+                                // Wait for first stdout line
+                                tokio::spawn(async move {
+                                    let _ = rx.changed().await;
+                                    let _ = reply.send(Ok(()));
+                                });
+                            }
+                        }
                         None => {
                             // All senders dropped — actor should exit
                             log::debug!("[actor] cmd_rx closed, exiting: run_id={}", self.run_id);
@@ -455,6 +480,8 @@ impl SessionActor {
                     match result {
                         Ok(Some(text)) => {
                             line_count += 1;
+                            // Signal readiness on first CLI output (replaces fixed sleeps).
+                            let _ = self.ready_tx.send(true);
                             self.handle_stdout_line(&text, line_count).await;
                         }
                         Ok(None) => {
