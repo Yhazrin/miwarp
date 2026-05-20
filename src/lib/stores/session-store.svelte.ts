@@ -2493,11 +2493,13 @@ export class SessionStore {
     if (!this.run) return;
 
     if (!this.useStreamSession) {
+      const runId = this.run.id;
       this._setPhase("completed");
       api
-        .getRun(this.run.id)
+        .getRun(runId)
         .then((r) => {
-          this.run = r;
+          // Guard: only apply if we're still on the same run
+          if (this.run?.id === runId) this.run = r;
         })
         .catch((e) => dbgWarn("store", "getRun after pipe-exec done failed:", e));
     }
