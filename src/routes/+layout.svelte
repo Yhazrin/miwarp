@@ -2754,6 +2754,13 @@
                     onWorkspaceSettings={folder.isUncategorized
                       ? undefined
                       : () => openWorkspaceSettings(folder.cwd)}
+                    isRunning={folder.isUncategorized
+                      ? false
+                      : runs.some(
+                          (r) =>
+                            normalizeCwd(r.parent_cwd ?? r.cwd) === normalizeCwd(folder.cwd) &&
+                            r.status === "running",
+                        )}
                   />
                 {/each}
                 <!-- Open folder... -->

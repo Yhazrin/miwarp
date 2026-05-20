@@ -154,6 +154,129 @@ pub(crate) fn validate_file_path(
     ))
 }
 
+/// Sensitive path patterns that are never allowed for inline preview.
+const SENSITIVE_PATTERNS: &[&str] = &[
+    ".env",
+    ".ssh/",
+    ".aws/",
+    ".npmrc",
+    ".gitconfig",
+    "id_rsa",
+    "id_ed25519",
+    ".pgpass",
+    ".mysql_history",
+    ".bash_history",
+];
+
+/// Size limits per artifact kind (bytes).
+const ARTIFACT_SIZE_LIMITS: &[(&str, u64)] = &[
+    ("image", 0), // no limit
+    ("pdf", 20 * 1024 * 1024),    // 20MB
+    ("video", 100 * 1024 * 1024), // 100MB
+    ("audio", 50 * 1024 * 1024),  // 50MB
+    ("html", 10 * 1024 * 1024),    // 10MB
+    ("file", 10 * 1024 * 1024),    // 10MB
+];
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaArtifactMetadata {
+    pub path: String,
+    pub name: String,
+    pub size: u64,
+    pub mime: String,
+    pub kind: String,
+    pub previewable: bool,
+}
+
+#[tauri::command]
+pub fn validate_media_file(
+    path: String,
+    cwd: Option<String>,
+) -> Result<MediaArtifactMetadata, String> {
+    log::debug!(
+        "[files] validate_media_file: path={}, cwd={:?}",
+        path,
+        cwd
+    );
+
+    // Reject path traversal
+    if path.contains("..") {
+        return Err("Path traversal not allowed".into());
+    }
+
+    // Check for sensitive paths
+    let path_lower = path.to_lowercase();
+    for pattern in SENSITIVE_PATTERNS {
+        if path_lower.contains(pattern) {
+            log::warn!("[files] sensitive path rejected: {}", path);
+            return Err(format!(
+                "Access denied: sensitive path pattern '{}'",
+                pattern
+            ));
+        }
+    }
+
+    // Validate path bounds using existing validator
+    let validated = validate_file_path(&path, cwd.as_deref())?;
+
+    // Check file exists and is a file
+    if !validated.exists() {
+        return Err("File not found".into());
+    }
+    let meta = std::fs::metadata(&validated)
+        .map_err(|e| format!("Cannot stat {}: {}", path, e))?;
+    if !meta.is_file() {
+        return Err("Not a file".into());
+    }
+
+    // Determine artifact kind from extension
+    let ext = validated
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+        .unwrap_or_default();
+
+    let kind = match ext.as_str() {
+        "png" | "jpg" | "jpeg" | "webp" | "gif" | "svg" | "bmp" | "ico" | "avif" => "image",
+        "mp4" | "mov" | "webm" | "m4v" => "video",
+        "mp3" | "wav" | "m4a" | "aac" | "ogg" => "audio",
+        "html" | "htm" => "html",
+        "pdf" => "pdf",
+        _ => "file",
+    };
+
+    // Size limit check
+    let size_limit = ARTIFACT_SIZE_LIMITS
+        .iter()
+        .find(|(k, _)| *k == kind)
+        .map(|(_, limit)| *limit)
+        .unwrap_or(10 * 1024 * 1024);
+
+    if size_limit > 0 && meta.len() > size_limit {
+        return Err(format!(
+            "File too large ({} MB, max {} MB)",
+            meta.len() / (1024 * 1024),
+            size_limit / (1024 * 1024)
+        ));
+    }
+
+    // MIME detection
+    let mime = super::fs::mime_guess_from_path(&validated);
+
+    Ok(MediaArtifactMetadata {
+        path: validated.display().to_string(),
+        name: validated
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default(),
+        size: meta.len(),
+        mime,
+        kind: kind.to_string(),
+        previewable: matches!(kind, "image" | "pdf" | "html"),
+    })
+}
+
 #[tauri::command]
 pub fn read_text_file(path: String, cwd: Option<String>) -> Result<String, String> {
     log::debug!("[files] read_text_file: path={}, cwd={:?}", path, cwd);

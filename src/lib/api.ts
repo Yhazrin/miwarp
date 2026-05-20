@@ -138,6 +138,11 @@ export async function listSessionFolders(workspaceId: string): Promise<SessionFo
   return invoke<SessionFolder[]>("list_session_folders", { workspaceId });
 }
 
+export async function listAllSessionFolders(): Promise<SessionFolder[]> {
+  dbg("api", "listAllSessionFolders");
+  return invoke<SessionFolder[]>("list_all_session_folders");
+}
+
 export async function createSessionFolder(
   name: string,
   workspaceId: string,
@@ -343,6 +348,26 @@ export async function readFileBase64(path: string, cwd?: string): Promise<[strin
   );
 }
 
+export interface MediaArtifactMetadata {
+  path: string;
+  name: string;
+  size: number;
+  mime: string;
+  kind: string;
+  previewable: boolean;
+}
+
+export async function validateMediaFile(
+  path: string,
+  cwd?: string,
+): Promise<MediaArtifactMetadata> {
+  dbg("api", "validateMediaFile", { path, cwd });
+  return invoke<MediaArtifactMetadata>("validate_media_file", {
+    path,
+    cwd: cwd ?? null,
+  });
+}
+
 // Git
 export async function getGitSummary(cwd: string): Promise<GitSummary> {
   dbg("api", "getGitSummary", cwd);
@@ -366,6 +391,14 @@ export async function getGitDiff(cwd: string, staged: boolean, file?: string): P
 export async function getGitStatus(cwd: string): Promise<string> {
   dbg("api", "getGitStatus", cwd);
   return invoke<string>("get_git_status", { cwd });
+}
+
+export async function getGitTimeline(
+  cwd: string,
+  limit = 12,
+): Promise<import("./types").GitTimelineResponse> {
+  dbg("api", "getGitTimeline", { cwd, limit });
+  return invoke<import("./types").GitTimelineResponse>("get_git_timeline", { cwd, limit });
 }
 
 // Export

@@ -120,7 +120,7 @@ pub fn read_file_base64(path: String, cwd: Option<String>) -> Result<(String, St
 ///
 /// Office formats are checked first (hardcoded table for accuracy),
 /// then falls back to mime_guess library for all other formats.
-fn mime_guess_from_path(path: &std::path::Path) -> String {
+pub(crate) fn mime_guess_from_path(path: &std::path::Path) -> String {
     // Office formats first — mime_guess is inaccurate for some of these
     if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
         if let Some(mime) = office_mime(ext) {

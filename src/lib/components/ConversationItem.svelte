@@ -18,6 +18,7 @@
     conversation,
     selected = false,
     batchSelected = false,
+    density = "default",
     onclick,
     onresume,
     ondelete,
@@ -29,6 +30,8 @@
     conversation: ConversationGroup;
     selected?: boolean;
     batchSelected?: boolean;
+    /** Compact typography for sidebar tree (level 3). */
+    density?: "default" | "sidebar";
     onclick?: () => void;
     onresume?: (runId: string, mode: "resume") => void;
     ondelete?: (conversation: ConversationGroup) => void;
@@ -37,6 +40,8 @@
     ondragstart?: (e: DragEvent, runId: string) => void;
     ondragend?: () => void;
   } = $props();
+
+  const isSidebar = $derived(density === "sidebar");
 
   const run = $derived(conversation.latestRun);
   const label = $derived(truncate(conversation.title, 28));
@@ -184,7 +189,8 @@
 </script>
 
 <div
-  class="group w-full text-left px-3 py-1.5 rounded-md transition-colors text-xs cursor-pointer
+  class="group w-full text-left rounded-md transition-colors cursor-pointer
+    {isSidebar ? 'px-2 py-1 text-[11px]' : 'px-3 py-1.5 text-xs'}
     {selected
     ? 'bg-sidebar-accent/70 text-sidebar-accent-foreground'
     : 'hover:bg-sidebar-accent/30 text-sidebar-foreground'} {batchSelected
@@ -237,7 +243,9 @@
         />
       {:else}
         <span
-          class="truncate text-[13px] leading-tight font-medium"
+          class="truncate leading-tight {isSidebar
+            ? 'text-[11px] font-normal text-sidebar-foreground/85'
+            : 'text-[13px] font-medium'}"
           ondblclick={(e) => {
             e.stopPropagation();
             startRename();
@@ -292,7 +300,11 @@
     </div>
   </div>
   <!-- Meta row: branch / platform / remote / time -->
-  <div class="mt-0.5 flex items-center gap-1 text-[10.5px] text-muted-foreground/45 leading-none">
+  <div
+    class="mt-0.5 flex items-center gap-1 text-muted-foreground/45 leading-none {isSidebar
+      ? 'text-[10px]'
+      : 'text-[10.5px]'}"
+  >
     <div class="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
       {#if run.worktree_branch}
         <span

@@ -4,10 +4,16 @@
   import MarkdownContent from "./MarkdownContent.svelte";
   import FileAttachment from "./FileAttachment.svelte";
   import { IMAGE_TYPES } from "$lib/utils/file-types";
-  import type { ChatMessage, Attachment } from "$lib/types";
+  import type { ChatMessage, Attachment, MediaArtifact } from "$lib/types";
   import AgentIdentity from "./AgentIdentity.svelte";
   import type { ProcessVisibility } from "$lib/utils/process-visibility";
   import { shouldShowRawDebug } from "$lib/utils/process-visibility";
+  import { resolveArtifactsFromText } from "$lib/media-resolver";
+  import ImageArtifactCard from "./media/ImageArtifactCard.svelte";
+  import VideoArtifactCard from "./media/VideoArtifactCard.svelte";
+  import AudioArtifactCard from "./media/AudioArtifactCard.svelte";
+  import HtmlArtifactCard from "./media/HtmlArtifactCard.svelte";
+  import FileArtifactCard from "./media/FileArtifactCard.svelte";
 
   let {
     message,
@@ -50,6 +56,23 @@
 
   const lineCount = $derived(message.content.split("\n").length);
   const isLong = $derived(isUser && lineCount > 10);
+
+  // Artifact resolution for assistant messages
+  let artifacts = $state<MediaArtifact[]>([]);
+
+  $effect(() => {
+    if (!isUser && message.content && message.content.length < 50000) {
+      resolveArtifactsFromText(message.content)
+        .then((results) => {
+          artifacts = Array.from(results.values()).filter(Boolean) as MediaArtifact[];
+        })
+        .catch(() => {
+          artifacts = [];
+        });
+    } else {
+      artifacts = [];
+    }
+  });
 
   function formatTime(ts: string): string {
     const d = new Date(ts);
@@ -384,6 +407,23 @@
             <div class="prose-chat">
               <MarkdownContent text={message.content} />
             </div>
+            {#if artifacts.length > 0}
+              <div class="mt-3 flex flex-wrap gap-3">
+                {#each artifacts as artifact (artifact.id)}
+                  {#if artifact.kind === "image"}
+                    <ImageArtifactCard {artifact} />
+                  {:else if artifact.kind === "video"}
+                    <VideoArtifactCard {artifact} />
+                  {:else if artifact.kind === "audio"}
+                    <AudioArtifactCard {artifact} />
+                  {:else if artifact.kind === "html"}
+                    <HtmlArtifactCard {artifact} />
+                  {:else}
+                    <FileArtifactCard {artifact} />
+                  {/if}
+                {/each}
+              </div>
+            {/if}
             {#if shouldShowRawDebug(processVisibility) && (!!debugRunId || !!debugSessionId)}
               <div class="mt-2 font-mono text-[10px] text-muted-foreground/50 space-y-0.5">
                 {#if debugRunId}<div>run_id {debugRunId}</div>{/if}

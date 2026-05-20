@@ -19,12 +19,8 @@
   let visibleCount = $state(DEFAULT_VISIBLE);
   let isExpanded = $state(false);
 
-  const visibleEntries = $derived(
-    isExpanded ? entries : entries.slice(0, visibleCount)
-  );
-  const remainingCount = $derived(
-    isExpanded ? 0 : Math.max(0, entries.length - visibleCount)
-  );
+  const visibleEntries = $derived(isExpanded ? entries : entries.slice(0, visibleCount));
+  const remainingCount = $derived(isExpanded ? 0 : Math.max(0, entries.length - visibleCount));
   const hasMore = $derived(remainingCount > 0);
 
   function showMore() {
@@ -58,10 +54,7 @@
     <!-- No internal scroll - use "show more" button instead -->
     <div class="git-timeline-list space-y-0" role="list">
       {#each visibleEntries as entry, i (entry.id)}
-        <GitTimelineNode
-          {entry}
-          isLast={i === visibleEntries.length - 1 && !hasMore}
-        />
+        <GitTimelineNode {entry} isLast={i === visibleEntries.length - 1 && !hasMore} />
       {/each}
     </div>
 
@@ -72,7 +65,9 @@
         class="mt-2 w-full py-1.5 text-[10px] text-muted-foreground/60 hover:text-muted-foreground hover:bg-accent/30 rounded-md transition-colors"
         onclick={showMore}
       >
-        {isExpanded ? t("gitWorktree_collapse") : t("gitWorktree_show_more", { count: String(remainingCount) })}
+        {isExpanded
+          ? t("gitWorktree_collapse")
+          : t("gitWorktree_show_more", { count: String(remainingCount) })}
       </button>
     {/if}
   {/if}

@@ -36,15 +36,21 @@
 
   const title = $derived.by(() => {
     if (entry.type === "working_tree") {
-      return entry.is_dirty ? t("gitWorktree_timeline_working") : t("gitWorktree_timeline_working_clean");
+      return entry.is_dirty
+        ? t("gitWorktree_timeline_working")
+        : t("gitWorktree_timeline_working_clean");
     }
     return entry.label;
   });
 
   const pillVariant = $derived(
-    entry.type === "remote_ref" ? "remote" :
-    entry.type === "base" ? "base" :
-    entry.type === "branch_ref" ? "current" : "default",
+    entry.type === "remote_ref"
+      ? "remote"
+      : entry.type === "base"
+        ? "base"
+        : entry.type === "branch_ref"
+          ? "current"
+          : "default",
   );
 
   async function copyHash() {
@@ -79,7 +85,7 @@
     <!-- Node dot: 8px -->
     <div
       class="relative mt-1.5 rounded-full {dotClass} w-2 h-2"
-      style="left: {RAIL_LEFT - NODE_SIZE/2 + 1}px;"
+      style="left: {RAIL_LEFT - NODE_SIZE / 2 + 1}px;"
       aria-hidden="true"
     ></div>
   </div>
@@ -103,7 +109,9 @@
         <button
           type="button"
           class="text-left text-[11px] font-medium text-foreground/85 truncate hover:text-foreground cursor-pointer min-w-0 flex-1"
-          title="{title}{entry.author ? '\n' + entry.author + ' · ' : ''}{entry.date ? relativeTime(entry.date) : ''}"
+          title="{title}{entry.author ? '\n' + entry.author + ' · ' : ''}{entry.date
+            ? relativeTime(entry.date)
+            : ''}"
           onclick={copyHash}
         >
           {title}

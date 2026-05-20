@@ -61,9 +61,7 @@
   const effectiveCwd = $derived((worktreePath || cwd || "").trim());
   const listAnchor = $derived((parentCwd || cwd || "").trim());
   const isWorktreeSession = $derived(creationMode === "worktree");
-  const displayedBranch = $derived(
-    panelState.branch || worktreeBranch?.trim() || "",
-  );
+  const displayedBranch = $derived(panelState.branch || worktreeBranch?.trim() || "");
   const isDetached = $derived(panelState.isDetached);
 
   let showWorktreeList = $state(false);
@@ -127,7 +125,8 @@
 
   async function handleAutoCommit() {
     if (!effectiveCwd || commitBusy) return;
-    const msg = commitMessage.trim() || `feat: update from MiWarp (${new Date().toISOString().slice(0, 10)})`;
+    const msg =
+      commitMessage.trim() || `feat: update from MiWarp (${new Date().toISOString().slice(0, 10)})`;
     commitBusy = true;
     try {
       const res = await apiAutoCommit(effectiveCwd, msg);
@@ -205,7 +204,9 @@
         </svg>
 
         <!-- Heading -->
-        <span class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">
+        <span
+          class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0"
+        >
           {t("gitWorktree_heading")}
         </span>
 
@@ -216,7 +217,9 @@
 
         <!-- Worktree badge -->
         {#if isWorktreeSession}
-          <span class="text-[9px] px-1 py-0.5 rounded bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 font-medium shrink-0">
+          <span
+            class="text-[9px] px-1 py-0.5 rounded bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 font-medium shrink-0"
+          >
             WT
           </span>
         {/if}
@@ -352,7 +355,9 @@
           onclick={() => (showWorktreeList = !showWorktreeList)}
         >
           <svg
-            class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform {showWorktreeList ? 'rotate-90' : ''}"
+            class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform {showWorktreeList
+              ? 'rotate-90'
+              : ''}"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -375,7 +380,11 @@
                   ? 'bg-primary/10 text-primary'
                   : 'hover:bg-accent/20 text-muted-foreground/70'} transition-colors"
               >
-                <span class="h-1.5 w-1.5 rounded-full shrink-0 {cur ? 'bg-primary' : 'bg-muted-foreground/30'}"></span>
+                <span
+                  class="h-1.5 w-1.5 rounded-full shrink-0 {cur
+                    ? 'bg-primary'
+                    : 'bg-muted-foreground/30'}"
+                ></span>
                 <span class="font-mono truncate flex-1">{wt.branch}</span>
                 <span class="text-muted-foreground/40 truncate">{wt.path.split("/").pop()}</span>
                 {#if cur}

@@ -7,13 +7,14 @@
   } from "$lib/utils/sidebar-groups";
   import ConversationItem from "./ConversationItem.svelte";
   import VirtualList from "./VirtualList.svelte";
-  import ContextMenu from "./ContextMenu.svelte";
+  import ContextMenu, { type MenuItem } from "./ContextMenu.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbgWarn } from "$lib/utils/debug";
+  import { staticAsset } from "$lib/utils/brand-assets";
 
   const PAGE_SIZE = 20;
   const VIRTUAL_THRESHOLD = 40;
-  const ITEM_HEIGHT = 52;
+  const ITEM_HEIGHT = 44;
 
   type BaseProps = {
     folder: ProjectFolder;
@@ -42,6 +43,8 @@
     onOpenDirectory?: () => void;
     onRenameWorkspace?: () => void;
     onWorkspaceSettings?: () => void;
+    /** Whether this workspace has a running project */
+    isRunning?: boolean;
   };
 
   type ChatProps = BaseProps & {
@@ -107,6 +110,7 @@
     onOpenDirectory,
     onRenameWorkspace,
     onWorkspaceSettings,
+    isRunning = false,
   }: ChatProps | CustomProps = $props();
 
   let visibleCount = $state(PAGE_SIZE);
@@ -118,6 +122,142 @@
   let moreMenuOpen = $state(false);
   let moreMenuX = $state(0);
   let moreMenuY = $state(0);
+
+  // Sub-folder context menu
+  let sfContextMenuOpen = $state(false);
+  let sfContextMenuX = $state(0);
+  let sfContextMenuY = $state(0);
+  let sfContextMenuTarget = $state<SessionFolderGroup | null>(null);
+
+  // Workspace (project) context menu — same interaction pattern as sub-folders
+  let wsContextMenuOpen = $state(false);
+  let wsContextMenuX = $state(0);
+  let wsContextMenuY = $state(0);
+
+  function openWsContextMenu(e: MouseEvent) {
+    if (wsContextMenuItems.length === 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    window.dispatchEvent(new CustomEvent("close-all-context-menus"));
+    wsContextMenuX = e.clientX;
+    wsContextMenuY = e.clientY;
+    wsContextMenuOpen = true;
+  }
+
+  function closeWsContextMenu() {
+    wsContextMenuOpen = false;
+  }
+
+  function handleWsContextMenuSelect(id: string) {
+    switch (id) {
+      case "new-chat":
+        onNewChat?.();
+        break;
+      case "new-folder":
+        onCreateSubFolder?.();
+        break;
+      case "open-dir":
+        onOpenDirectory?.();
+        break;
+      case "rename":
+        onRenameWorkspace?.();
+        break;
+      case "settings":
+        onWorkspaceSettings?.();
+        break;
+      case "remove":
+        onRemove?.();
+        break;
+    }
+    closeWsContextMenu();
+  }
+
+  const wsContextMenuItems = $derived.by(() => {
+    const items: MenuItem[] = [];
+    if (onNewChat) {
+      items.push({
+        id: "new-chat",
+        label: t("sidebar_newChatInFolder") ?? "新对话",
+        icon: "play",
+      });
+    }
+    if (onCreateSubFolder) {
+      items.push({
+        id: "new-folder",
+        label: t("sidebar_createFolder") ?? "新建文件夹",
+        icon: "folder",
+      });
+    }
+    if (onOpenDirectory) {
+      items.push({
+        id: "open-dir",
+        label: t("sidebar_openDirectory") ?? "打开目录",
+        icon: "folder",
+        separatorBefore: items.length > 0,
+      });
+    }
+    if (onRenameWorkspace) {
+      items.push({
+        id: "rename",
+        label: t("sidebar_renameWorkspace") ?? "重命名 Workspace",
+        icon: "rename",
+        separatorBefore: items.length > 0 && !onOpenDirectory,
+      });
+    }
+    if (onWorkspaceSettings) {
+      items.push({
+        id: "settings",
+        label: t("workspace_settings") ?? "Workspace 设置",
+        icon: "more",
+        separatorBefore: items.length > 0 && !onRenameWorkspace && !onOpenDirectory,
+      });
+    }
+    if (onRemove) {
+      items.push({
+        id: "remove",
+        label: t("sidebar_removeProject") ?? "从侧边栏收纳",
+        icon: "archive",
+        danger: true,
+        separatorBefore: true,
+      });
+    }
+    return items;
+  });
+
+  function openSfContextMenu(e: MouseEvent, sf: SessionFolderGroup) {
+    e.preventDefault();
+    e.stopPropagation();
+    window.dispatchEvent(new CustomEvent("close-all-context-menus"));
+    sfContextMenuX = e.clientX;
+    sfContextMenuY = e.clientY;
+    sfContextMenuTarget = sf;
+    sfContextMenuOpen = true;
+  }
+
+  function closeSfContextMenu() {
+    sfContextMenuOpen = false;
+    sfContextMenuTarget = null;
+  }
+
+  function handleSfContextMenuSelect(id: string) {
+    if (!sfContextMenuTarget) return;
+    if (id === "rename") {
+      onRenameSubFolder?.(sfContextMenuTarget);
+    } else if (id === "delete") {
+      onDeleteSubFolder?.(sfContextMenuTarget);
+    }
+    closeSfContextMenu();
+  }
+
+  const sfContextMenuItems = [
+    { id: "rename", label: t("sidebar_renameFolder") ?? "重命名", icon: "rename" as const },
+    {
+      id: "delete",
+      label: t("sidebar_removeFolder") ?? "删除文件夹",
+      icon: "trash" as const,
+      danger: true,
+    },
+  ];
 
   function openAddMenu(e: MouseEvent) {
     e.stopPropagation();
@@ -144,12 +284,16 @@
   function closeAllMenus() {
     addMenuOpen = false;
     moreMenuOpen = false;
+    closeWsContextMenu();
   }
 
   // Close menus when right-clicking elsewhere
   $effect(() => {
-    if (addMenuOpen || moreMenuOpen) {
-      const handler = () => closeAllMenus();
+    if (addMenuOpen || moreMenuOpen || sfContextMenuOpen || wsContextMenuOpen) {
+      const handler = () => {
+        closeAllMenus();
+        closeSfContextMenu();
+      };
       window.addEventListener("close-all-context-menus", handler);
       window.addEventListener("click", handler, { once: true });
       return () => {
@@ -274,10 +418,10 @@
   });
 </script>
 
-<div class="group/folder mb-0.5">
-  <!-- Folder header (also serves as drop target) -->
+<div class="group/folder mb-1">
+  <!-- Workspace row (level 1) -->
   <div
-    class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors cursor-pointer
+    class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-[13px] font-semibold tracking-tight text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors cursor-pointer
       {isDragOver ? 'bg-primary/15 ring-1 ring-primary/40' : ''}"
     role="button"
     tabindex="0"
@@ -289,6 +433,7 @@
         onToggle();
       }
     }}
+    oncontextmenu={openWsContextMenu}
     title={folder.isUncategorized ? label : folder.cwd}
     aria-expanded={expanded}
     aria-label={label}
@@ -308,7 +453,7 @@
   >
     <!-- Chevron -->
     <svg
-      class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded
+      class="h-3.5 w-3.5 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded
         ? 'rotate-90'
         : ''}"
       viewBox="0 0 24 24"
@@ -324,7 +469,7 @@
     {#if folder.isUncategorized}
       <!-- Inbox icon -->
       <svg
-        class="h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
+        class="h-4 w-4 shrink-0 text-muted-foreground/70"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -340,7 +485,7 @@
     {:else}
       <!-- Folder icon -->
       <svg
-        class="h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
+        class="h-4 w-4 shrink-0 text-muted-foreground/70"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -353,81 +498,16 @@
     {/if}
     <!-- Label -->
     <span class="truncate">{label}</span>
-    <!-- Count badge -->
-    {#if showCount && folder.conversationCount > 0}
-      <span
-        class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground"
-      >
-        {folder.conversationCount}
-      </span>
-    {/if}
 
-    <!-- Action buttons (low opacity, visible on hover) -->
-    <div
-      class="ml-auto flex items-center gap-0.5 opacity-0 group-hover/folder:opacity-100 transition-opacity shrink-0"
-    >
-      <!-- + button (new chat/folder) -->
-      {#if onNewChat || onCreateSubFolder}
-        <button
-          class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-          aria-label={t("sidebar_newChat")}
-          onclick={openAddMenu}
-        >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M12 5v14" />
-            <path d="M5 12h14" />
-          </svg>
-        </button>
-      {/if}
-      <!-- ⋯ button (more options) -->
-      <button
-        class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-        aria-label={t("sidebar_moreOptions")}
-        onclick={openMoreMenu}
-      >
-        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="12" cy="5" r="1.5" />
-          <circle cx="12" cy="12" r="1.5" />
-          <circle cx="12" cy="19" r="1.5" />
-        </svg>
-      </button>
-      <!-- Remove button (×) -->
-      {#if onRemove}
-        <button
-          class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-          aria-label={t("sidebar_removeProject")}
-          onclick={(e) => {
-            e.stopPropagation();
-            onRemove?.();
-          }}
-          onkeydown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.stopPropagation();
-              e.preventDefault();
-              onRemove?.();
-            }
-          }}
-        >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
-          >
-        </button>
-      {/if}
-    </div>
+    <!-- Running indicator GIF -->
+    {#if isRunning}
+      <img
+        src={staticAsset("/vendor/codeisland/mascots/claude.gif")}
+        alt="running"
+        class="ml-auto h-4 w-4 shrink-0 object-contain"
+        style="image-rendering: auto;"
+      />
+    {/if}
   </div>
 
   <!-- Add menu -->
@@ -454,7 +534,7 @@
 
   <!-- Expanded children -->
   {#if expanded}
-    <div class="pl-3">
+    <div class="ml-1.5 mt-0.5 border-l border-border/25 pl-2">
       {#if children}
         {@render children()}
       {:else}
@@ -466,7 +546,7 @@
               {@const sfDragOver = dragOverSubFolderKey === sf.folderKey}
               <div class="group/sf mb-0.5">
                 <div
-                  class="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs text-sidebar-foreground hover:bg-sidebar-accent/40 transition-colors cursor-pointer
+                  class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[12px] font-medium text-sidebar-foreground/90 hover:bg-sidebar-accent/40 transition-colors cursor-pointer
                     {sfDragOver ? 'bg-primary/15 ring-1 ring-primary/40' : ''}"
                   role="button"
                   tabindex="0"
@@ -490,9 +570,10 @@
                         onDropOnSubFolder!(sf.folderId!);
                       }
                     : undefined}
+                  oncontextmenu={(e) => openSfContextMenu(e, sf)}
                 >
                   <svg
-                    class="h-2.5 w-2.5 shrink-0 text-muted-foreground/50 transition-transform duration-150 {sfExpanded
+                    class="h-3 w-3 shrink-0 text-muted-foreground/50 transition-transform duration-150 {sfExpanded
                       ? 'rotate-90'
                       : ''}"
                     viewBox="0 0 24 24"
@@ -502,18 +583,16 @@
                     stroke-linecap="round"
                     stroke-linejoin="round"><path d="M9 18l6-6-6-6" /></svg
                   >
-                  <!-- Tag icon for logical sub-folder -->
+                  <!-- Bookmark icon for logical sub-folder -->
                   <svg
-                    class="h-3 w-3 shrink-0 text-muted-foreground/60"
+                    class="h-3.5 w-3.5 shrink-0 text-muted-foreground/60"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
                     stroke-width="2"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    ><path
-                      d="M12 2H2v10l9.29 9.29a1 1 0 0 0 1.41 0l9.29-9.29a1 1 0 0 0 0-1.41z"
-                    /><circle cx="7" cy="7" r="1" /></svg
+                    ><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg
                   >
                   <span class="truncate flex-1">{sf.name}</span>
                   {#if sf.conversationCount > 0}
@@ -523,62 +602,14 @@
                       {sf.conversationCount}
                     </span>
                   {/if}
-                  <!-- Hover actions -->
-                  <div
-                    class="shrink-0 flex gap-0.5 opacity-0 group-hover/sf:opacity-100 transition-opacity ml-0.5"
-                  >
-                    {#if onRenameSubFolder}
-                      <button
-                        class="flex h-4 w-4 items-center justify-center rounded hover:bg-sidebar-accent/80 text-muted-foreground hover:text-sidebar-foreground"
-                        title={t("sidebar_renameFolder")}
-                        onclick={(e) => {
-                          e.stopPropagation();
-                          onRenameSubFolder?.(sf);
-                        }}
-                      >
-                        <svg
-                          class="h-2.5 w-2.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        >
-                          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                        </svg>
-                      </button>
-                    {/if}
-                    {#if onDeleteSubFolder}
-                      <button
-                        class="flex h-4 w-4 items-center justify-center rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
-                        title={t("sidebar_removeFolder") || "删除文件夹"}
-                        onclick={(e) => {
-                          e.stopPropagation();
-                          onDeleteSubFolder?.(sf);
-                        }}
-                      >
-                        <svg
-                          class="h-2.5 w-2.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        >
-                          <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-                        </svg>
-                      </button>
-                    {/if}
-                  </div>
                 </div>
                 <!-- Sub-folder sessions -->
                 {#if sfExpanded}
-                  <div class="pl-3">
+                  <div class="ml-1 border-l border-border/20 pl-1.5">
                     {#each sf.conversations as conv (conv.groupKey)}
                       <ConversationItem
                         conversation={conv}
+                        density="sidebar"
                         selected={conv.runs.some((r) => r.id === selectedRunId)}
                         batchSelected={selectedGroupKeys?.has(conv.groupKey) ?? false}
                         onclick={() => onSelectConversation?.(conv.latestRun.id)}
@@ -622,6 +653,7 @@
             {#snippet item(conv)}
               <ConversationItem
                 conversation={conv}
+                density="sidebar"
                 selected={isConvSelected(conv)}
                 batchSelected={selectedGroupKeys?.has(conv.groupKey) ?? false}
                 onclick={() => onSelectConversation?.(conv.latestRun.id)}
@@ -638,6 +670,7 @@
           {#each visibleConversations as conv (conv.groupKey)}
             <ConversationItem
               conversation={conv}
+              density="sidebar"
               selected={isConvSelected(conv)}
               batchSelected={selectedGroupKeys?.has(conv.groupKey) ?? false}
               onclick={() => onSelectConversation?.(conv.latestRun.id)}
@@ -660,5 +693,27 @@
         {/if}
       {/if}
     </div>
+  {/if}
+
+  <!-- Workspace context menu -->
+  {#if wsContextMenuOpen}
+    <ContextMenu
+      x={wsContextMenuX}
+      y={wsContextMenuY}
+      items={wsContextMenuItems}
+      onSelect={handleWsContextMenuSelect}
+      onClose={closeWsContextMenu}
+    />
+  {/if}
+
+  <!-- Sub-folder context menu -->
+  {#if sfContextMenuOpen}
+    <ContextMenu
+      x={sfContextMenuX}
+      y={sfContextMenuY}
+      items={sfContextMenuItems}
+      onSelect={handleSfContextMenuSelect}
+      onClose={closeSfContextMenu}
+    />
   {/if}
 </div>
