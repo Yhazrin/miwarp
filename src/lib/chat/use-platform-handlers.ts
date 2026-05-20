@@ -29,41 +29,53 @@ export function createPlatformHandlers(ctx: PlatformHandlerContext) {
 
   async function handleModelChange(newModel: string): Promise<void> {
     dbg("chat", "model change", { from: store.model, to: newModel });
+    const prev = store.model;
     store.model = newModel;
 
     const isThirdParty = store.platformId && store.platformId !== "anthropic";
 
-    if (!isThirdParty && store.sessionAlive && store.run) {
-      try {
-        await api.sendSessionControl(store.run.id, "set_model", { model: newModel });
-        dbg("chat", "model hot-switched via control protocol");
-      } catch (e) {
-        dbgWarn("chat", "model hot-switch failed, will use new model on next session", e);
+    try {
+      if (store.sessionAlive && store.run) {
+        await store.sendSilentCommand(`/model ${newModel}`);
+        dbg("chat", "model hot-switched via /model command");
       }
-    }
 
-    if (store.run) {
-      api.updateRunModel(store.run.id, newModel).catch((e) => {
-        dbgWarn("chat", "failed to persist run model", e);
-      });
-    }
-
-    if (!isThirdParty) {
-      setLastKnownGoodModel(newModel);
-      try {
-        await api.updateUserSettings({ default_model: newModel });
-      } catch (e) {
-        dbgWarn("chat", "failed to persist model change", e);
+      if (store.run) {
+        api.updateRunModel(store.run.id, newModel).catch((e) => {
+          dbgWarn("chat", "failed to persist run model", e);
+        });
       }
+
+      if (!isThirdParty) {
+        setLastKnownGoodModel(newModel);
+        try {
+          await api.updateUserSettings({ default_model: newModel });
+        } catch (e) {
+          dbgWarn("chat", "failed to persist model change", e);
+        }
+      }
+    } catch (e) {
+      store.model = prev;
+      dbgWarn("chat", "model hot update failed, rolled back", e);
     }
   }
 
   async function handleEffortChange(newEffort: string): Promise<void> {
     dbg("chat", "effort change", { from: getCurrentEffort(), to: newEffort });
+    const prev = getCurrentEffort();
     setCurrentEffort(newEffort);
-    api.updateCliConfig({ effortLevel: newEffort || null }).catch((e) => {
-      dbgWarn("chat", "failed to persist effort to CLI config", e);
-    });
+
+    try {
+      if (store.sessionAlive && store.run) {
+        await store.sendSilentCommand(`/effort ${newEffort}`);
+        dbg("chat", "effort hot-switched via /effort command");
+      }
+
+      await api.updateCliConfig({ effortLevel: newEffort || null });
+    } catch (e) {
+      setCurrentEffort(prev);
+      dbgWarn("chat", "effort hot update failed, rolled back", e);
+    }
   }
 
   async function handleAuthModeChange(mode: string): Promise<void> {
