@@ -95,9 +95,9 @@
     handleVirtualCommand as execVirtualCommand,
     type VirtualCommandContext,
   } from "$lib/chat/use-virtual-commands";
+  import { handleTauriDrop as execTauriDrop } from "$lib/chat/handle-tauri-drop";
   import type { RewindCandidate, RewindMarker } from "$lib/utils/rewind";
   import { truncate } from "$lib/utils/format";
-  import { mapSettled } from "$lib/utils/async-utils";
   import { uuid } from "$lib/utils/uuid";
   import ChatForkOverlay from "$lib/components/ChatForkOverlay.svelte";
   import ChatThinkingIndicator from "$lib/components/ChatThinkingIndicator.svelte";
@@ -2746,113 +2746,19 @@
   let dragProcessingCount = $state(0);
   let dragProcessing = $derived(dragProcessingCount > 0);
 
-  /** Concurrency-limited parallel map returning PromiseSettledResult for each item. */
   async function handleTauriDrop(payload: { paths: string[] }) {
-    pageDragActive = false;
-    const paths = payload.paths;
     const input = promptRef; // cache ref — promptRef may become undefined after awaits
-    if (!paths?.length || !input) return;
-
-    dragProcessingCount++;
-    dbg("chat", "tauri-drop", { count: paths.length });
-
-    try {
-      // Phase 1: parallel classify (concurrency=5 to avoid IPC flood on large batches)
-      const classified = await mapSettled(
-        paths,
-        async (p) => {
-          const name = p.split(/[/\\]/).pop() || "file";
-          const isDir = await api.checkIsDirectory(p);
-          return { p, name, isDir };
-        },
-        5,
-      );
-
-      const dirRefs: Array<{ path: string; name: string; isDir: true }> = [];
-      const fileEntries: Array<{ p: string; name: string }> = [];
-
-      for (let i = 0; i < classified.length; i++) {
-        const result = classified[i];
-        const p = paths[i];
-        const name = p.split(/[/\\]/).pop() || "file";
-        if (result.status === "fulfilled") {
-          if (result.value.isDir) {
-            dirRefs.push({ path: p, name, isDir: true });
-            dbg("chat", "tauri-drop: dir", { name });
-          } else {
-            fileEntries.push({ p, name });
-          }
-        } else {
-          // checkIsDirectory IPC failed — conservatively treat as file
-          fileEntries.push({ p, name });
-          dbgWarn("chat", "tauri-drop: classify failed, treating as file", {
-            name,
-            error: result.reason,
-          });
-        }
-      }
-
-      // Phase 2: parallel file read (concurrency=2 to limit memory)
-      const fileResults = await mapSettled(
-        fileEntries,
-        async ({ p, name }) => {
-          const [base64, mime] = await api.readFileBase64(p);
-          const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-          return { file: new File([bytes], name, { type: mime }), name, mime, size: bytes.length };
-        },
-        2,
-      );
-
-      const filesToProcess: File[] = [];
-      const fileRefs: Array<{ path: string; name: string; isDir: false }> = [];
-
-      for (let i = 0; i < fileResults.length; i++) {
-        const result = fileResults[i];
-        const { p, name } = fileEntries[i];
-        if (result.status === "fulfilled") {
-          filesToProcess.push(result.value.file);
-          dbg("chat", "tauri-drop: file", {
-            name: result.value.name,
-            mime: result.value.mime,
-            size: result.value.size,
-          });
-        } else {
-          fileRefs.push({ path: p, name, isDir: false });
-          dbgWarn("chat", "tauri-drop: fallback to path ref", { name, error: result.reason });
-        }
-      }
-
-      // Guard: if page navigated away during processing, promptRef is stale
-      if (promptRef !== input) {
-        dbgWarn("chat", "tauri-drop: promptRef stale after processing, discarding");
-        return;
-      }
-
-      // Add path refs (dirs + failed files)
-      const allPathRefs = [...dirRefs, ...fileRefs];
-      if (allPathRefs.length > 0) {
-        input.addPathRefs(allPathRefs);
-      }
-
-      // Normal files → existing addFiles pipeline (await so spinner covers processFiles)
-      if (filesToProcess.length > 0) {
-        await input.addFiles(filesToProcess);
-      }
-
-      // Single summary toast
-      if (allPathRefs.length > 0) {
-        const parts: string[] = [];
-        if (dirRefs.length > 0) {
-          parts.push(t("drag_foldersInserted", { count: String(dirRefs.length) }));
-        }
-        if (fileRefs.length > 0) {
-          parts.push(t("drag_filesAsPathRef", { count: String(fileRefs.length) }));
-        }
-        input.showToast(parts.join(t("common_listSeparator")));
-      }
-    } finally {
-      dragProcessingCount--;
-    }
+    if (!input) return;
+    await execTauriDrop(
+      {
+        promptRef: input,
+        t: t as unknown as (key: string, params?: Record<string, string>) => string,
+        onDragEnd: () => (pageDragActive = false),
+        onProcessingStart: () => dragProcessingCount++,
+        onProcessingEnd: () => dragProcessingCount--,
+      },
+      payload,
+    );
   }
 
   function toggleSidebar() {
