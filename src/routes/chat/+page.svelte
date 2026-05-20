@@ -52,7 +52,6 @@
   } from "$lib/utils/remote-cwd";
   import { shouldAutoName } from "$lib/utils/auto-name";
   import { randomSpinnerVerb } from "$lib/utils/spinner-verbs";
-  import { type TurnUsage } from "$lib/stores/types";
   import {
     normalizeProcessVisibility,
     getCachedProcessVisibility,
@@ -346,6 +345,9 @@
     getSettings: () => settings,
     getAuthOverview: () => authOverview,
     getVisibleTimeline: () => tl.visibleTimeline,
+    getFilteredTimeline: () => tl.filteredTimeline,
+    getUserCountPrefix: () => tl.userCountPrefix,
+    getCollapsedIndices: () => burstCollapse.collapsedIndices,
     getPreloadedSkills: () => preloadedSkills,
   });
 
@@ -404,56 +406,7 @@
     verbose.syncVerboseState(store.run?.id);
   });
 
-  // ── Per-turn usage annotations in timeline ──
-
-  let usageByTurn = $derived(new Map(store.turnUsages.map((tu) => [tu.turnIndex, tu])));
-
-  /** Map of visibleTimeline index → TurnUsage to show BEFORE this entry (turn boundary). */
-  let usageAnnotations = $derived.by(() => {
-    const map = new Map<number, TurnUsage>();
-    if (usageByTurn.size === 0) return map;
-    const vt = tl.visibleTimeline;
-    const hidden = tl.filteredTimeline.length - vt.length;
-    let userCount = tl.userCountPrefix[hidden];
-    for (let i = 0; i < vt.length; i++) {
-      if (vt[i].kind === "user") {
-        if (userCount > 0) {
-          const tu = usageByTurn.get(userCount);
-          if (tu) map.set(i, tu);
-        }
-        userCount++;
-      }
-    }
-    return map;
-  });
-
-  /**
-   * Indices where a Claude turn starts (first tool after a user message).
-   * Used to render a "Claude" header before tool cards.
-   */
-  let claudeTurnStarts = $derived.by(() => {
-    const starts = new Set<number>();
-    const vt = tl.visibleTimeline;
-    for (let i = 0; i < vt.length; i++) {
-      if (vt[i].kind !== "tool") continue;
-      if (burstCollapse.collapsedIndices.has(i)) continue;
-      // Look back for the previous visible non-tool entry
-      for (let j = i - 1; j >= 0; j--) {
-        if (burstCollapse.collapsedIndices.has(j)) continue;
-        if (vt[j].kind === "tool") continue;
-        if (vt[j].kind === "user") starts.add(i);
-        break;
-      }
-    }
-    return starts;
-  });
-
-  /** Usage for the last (current/latest) turn — shown after all entries. */
-  let lastTurnUsage = $derived.by(() => {
-    const userCount = tl.filteredTimeline.filter((e) => e.kind === "user").length;
-    if (userCount === 0) return null;
-    return usageByTurn.get(userCount) ?? null;
-  });
+  // (usage annotations derived values moved to createSessionDerived)
 
   // ── Fork overlay (composable) ──
   const fork = createForkOverlay({
@@ -1331,9 +1284,9 @@
       toolBursts={tl.toolBursts}
       {burstCollapse}
       lastAssistantIdx={sd.lastAssistantIdx}
-      {usageAnnotations}
-      {lastTurnUsage}
-      {claudeTurnStarts}
+      usageAnnotations={sd.usageAnnotations}
+      lastTurnUsage={sd.lastTurnUsage}
+      claudeTurnStarts={sd.claudeTurnStarts}
       showPermissionPanel={sd.showPermissionPanel}
       fetchToolResult={toolResultCache.fetchToolResult}
       topSentinelRef={tl.topSentinel}

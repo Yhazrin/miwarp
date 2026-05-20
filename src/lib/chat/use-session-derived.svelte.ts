@@ -17,6 +17,7 @@ import type {
   TimelineEntry,
   UserSettings,
 } from "$lib/types";
+import type { TurnUsage } from "$lib/stores/types";
 import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
 import { getCliVersionInfo_cached, getCliModels } from "$lib/stores/cli-info.svelte";
 import type { CliVersionInfo } from "$lib/stores/cli-info.svelte";
@@ -28,6 +29,9 @@ export interface SessionDerivedContext {
   getSettings: () => UserSettings | null;
   getAuthOverview: () => AuthOverview | null;
   getVisibleTimeline: () => TimelineEntry[];
+  getFilteredTimeline: () => TimelineEntry[];
+  getUserCountPrefix: () => Int32Array;
+  getCollapsedIndices: () => Set<number>;
   getPreloadedSkills: () => StandaloneSkill[];
 }
 
@@ -55,6 +59,9 @@ export interface SessionDerivedHandle {
   pendingToolPermissions: Array<{ tool: BusToolItem; requestId: string }>;
   showPermissionPanel: boolean;
   skillItems: Array<{ name: string; description: string }>;
+  usageAnnotations: Map<number, TurnUsage>;
+  claudeTurnStarts: Set<number>;
+  lastTurnUsage: TurnUsage | null;
 
   // Mutable state setter
   setContextHistoryMap: (v: Map<string, ContextSnapshot[]>) => void;
@@ -63,7 +70,16 @@ export interface SessionDerivedHandle {
 // ── Composable ──
 
 export function createSessionDerived(ctx: SessionDerivedContext): SessionDerivedHandle {
-  const { store, getSettings, getAuthOverview, getVisibleTimeline, getPreloadedSkills } = ctx;
+  const {
+    store,
+    getSettings,
+    getAuthOverview,
+    getVisibleTimeline,
+    getFilteredTimeline,
+    getUserCountPrefix,
+    getCollapsedIndices,
+    getPreloadedSkills,
+  } = ctx;
 
   // ── Mutable state ──
 
@@ -176,6 +192,53 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
     return preloadedSkills.map((s) => ({ name: s.name, description: s.description }));
   });
 
+  // ── Derived: per-turn usage annotations in timeline ──
+
+  let usageByTurn = $derived(new Map(store.turnUsages.map((tu) => [tu.turnIndex, tu])));
+
+  let usageAnnotations = $derived.by(() => {
+    const map = new Map<number, TurnUsage>();
+    if (usageByTurn.size === 0) return map;
+    const vt = getVisibleTimeline();
+    const filtered = getFilteredTimeline();
+    const hidden = filtered.length - vt.length;
+    let userCount = getUserCountPrefix()[hidden];
+    for (let i = 0; i < vt.length; i++) {
+      if (vt[i].kind === "user") {
+        if (userCount > 0) {
+          const tu = usageByTurn.get(userCount);
+          if (tu) map.set(i, tu);
+        }
+        userCount++;
+      }
+    }
+    return map;
+  });
+
+  let claudeTurnStarts = $derived.by(() => {
+    const starts = new Set<number>();
+    const vt = getVisibleTimeline();
+    const collapsed = getCollapsedIndices();
+    for (let i = 0; i < vt.length; i++) {
+      if (vt[i].kind !== "tool") continue;
+      if (collapsed.has(i)) continue;
+      for (let j = i - 1; j >= 0; j--) {
+        if (collapsed.has(j)) continue;
+        if (vt[j].kind === "tool") continue;
+        if (vt[j].kind === "user") starts.add(i);
+        break;
+      }
+    }
+    return starts;
+  });
+
+  let lastTurnUsage = $derived.by(() => {
+    const filtered = getFilteredTimeline();
+    const userCount = filtered.filter((e) => e.kind === "user").length;
+    if (userCount === 0) return null;
+    return usageByTurn.get(userCount) ?? null;
+  });
+
   // ── Derived: session info for InfoPanel ──
 
   let currentSessionInfo = $derived.by((): SessionInfoData | null => {
@@ -266,6 +329,15 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
     },
     get skillItems() {
       return skillItems;
+    },
+    get usageAnnotations() {
+      return usageAnnotations;
+    },
+    get claudeTurnStarts() {
+      return claudeTurnStarts;
+    },
+    get lastTurnUsage() {
+      return lastTurnUsage;
     },
     setContextHistoryMap: (v: Map<string, ContextSnapshot[]>) => {
       contextHistoryMap = v;
