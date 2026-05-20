@@ -31,6 +31,7 @@
     timeline = [],
     tools = [],
     turnUsages = [],
+    usageByTurn: usageByTurnProp = undefined,
     contextHistory = [],
     persistedFiles = [],
     sessionInfo = null,
@@ -58,6 +59,7 @@
     timeline: TimelineEntry[];
     tools: HookEvent[];
     turnUsages?: TurnUsage[];
+    usageByTurn?: Map<number, TurnUsage>;
     contextHistory?: ContextSnapshot[];
     persistedFiles?: unknown[];
     sessionInfo?: SessionInfoData | null;
@@ -662,7 +664,9 @@
 
   // ── Per-turn usage lookup ──
 
-  let usageByTurn = $derived(new Map(turnUsages.map((tu) => [tu.turnIndex, tu])));
+  let usageByTurn = $derived(
+    usageByTurnProp ?? new Map(turnUsages.map((tu) => [tu.turnIndex, tu])),
+  );
 
   // ── Collapsible turn state ──
   // Default: collapse all turns except the latest to reduce initial DOM count

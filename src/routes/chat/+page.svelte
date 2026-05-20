@@ -1320,6 +1320,7 @@
     timeline={store.timeline}
     tools={store.tools}
     turnUsages={store.turnUsages}
+    usageByTurn={sd.usageByTurn}
     contextHistory={sd.contextHistory}
     persistedFiles={store.persistedFiles}
     sessionInfo={sd.currentSessionInfo}

@@ -222,14 +222,19 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
     }
   }
 
+  let _scrollRafId = 0;
   function handleChatScroll() {
-    const chatArea = getChatAreaRef();
-    if (!chatArea) return;
-    const dist = chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight;
-    const nearBottom = dist < SCROLL_BOTTOM_THRESHOLD;
-    setIsChatAutoScroll(nearBottom);
-    if (nearBottom) setShowChatScrollHint(false);
-    if (!getLoadMoreArmed() && !getSuppressLoadMoreRearm()) setLoadMoreArmed(true);
+    if (_scrollRafId) return; // coalesce multiple scroll events per frame
+    _scrollRafId = requestAnimationFrame(() => {
+      _scrollRafId = 0;
+      const chatArea = getChatAreaRef();
+      if (!chatArea) return;
+      const dist = chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight;
+      const nearBottom = dist < SCROLL_BOTTOM_THRESHOLD;
+      setIsChatAutoScroll(nearBottom);
+      if (nearBottom) setShowChatScrollHint(false);
+      if (!getLoadMoreArmed() && !getSuppressLoadMoreRearm()) setLoadMoreArmed(true);
+    });
   }
 
   function scrollChatToBottom() {

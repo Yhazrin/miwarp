@@ -2007,18 +2007,20 @@ export class SessionStore {
   }
 
   /** Send a slash command silently — no optimistic user message, no response timeout.
-   *  Only whitelisted commands (/model, /effort) are allowed. */
-  async sendSilentCommand(command: string): Promise<void> {
-    if (!this.run || !this.sessionAlive || !this.useStreamSession) return;
+   *  Only whitelisted commands (/model, /effort) are allowed.
+   *  Returns true if the command was sent, false if skipped. */
+  async sendSilentCommand(command: string): Promise<boolean> {
+    if (!this.run || !this.sessionAlive || !this.useStreamSession) return false;
     const trimmed = command.trim();
-    if (!trimmed) return;
+    if (!trimmed) return false;
     const cmd = trimmed.split(/\s+/)[0].toLowerCase();
     if (cmd !== "/model" && cmd !== "/effort") {
       dbgWarn("store", "sendSilentCommand rejected non-whitelisted command", { cmd });
-      return;
+      return false;
     }
     dbg("store", "sendSilentCommand", { command: trimmed });
     await api.sendSessionMessage(this.run.id, trimmed);
+    return true;
   }
 
   /** Interrupt current turn. Falls back to kill if interrupt fails. */

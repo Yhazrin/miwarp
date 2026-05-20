@@ -18,6 +18,7 @@ export interface TimelineAnnotationsContext {
 }
 
 export interface TimelineAnnotationsHandle {
+  usageByTurn: Map<number, TurnUsage>;
   usageAnnotations: Map<number, TurnUsage>;
   claudeTurnStarts: Set<number>;
   lastTurnUsage: TurnUsage | null;
@@ -80,6 +81,9 @@ export function createTimelineAnnotations(
   });
 
   return {
+    get usageByTurn() {
+      return usageByTurn;
+    },
     get usageAnnotations() {
       return usageAnnotations;
     },

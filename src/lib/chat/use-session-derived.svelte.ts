@@ -58,6 +58,7 @@ export interface SessionDerivedHandle {
   pendingToolPermissions: Array<{ tool: BusToolItem; requestId: string }>;
   showPermissionPanel: boolean;
   skillItems: Array<{ name: string; description: string }>;
+  usageByTurn: Map<number, TurnUsage>;
   usageAnnotations: Map<number, TurnUsage>;
   claudeTurnStarts: Set<number>;
   lastTurnUsage: TurnUsage | null;
@@ -194,6 +195,7 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
   // ── Derived: per-turn usage annotations in timeline ──
   // Delegates directly to timelineAnnotations handle.
 
+  const usageByTurn = $derived(timelineAnnotations.usageByTurn);
   const usageAnnotations = $derived(timelineAnnotations.usageAnnotations);
   const claudeTurnStarts = $derived(timelineAnnotations.claudeTurnStarts);
   const lastTurnUsage = $derived(timelineAnnotations.lastTurnUsage);
@@ -288,6 +290,9 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
     },
     get skillItems() {
       return skillItems;
+    },
+    get usageByTurn() {
+      return usageByTurn;
     },
     get usageAnnotations() {
       return usageAnnotations;
