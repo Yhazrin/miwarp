@@ -1997,6 +1997,11 @@ export class SessionStore {
       }
     } catch (e) {
       this.error = String(e);
+      // Pipe mode sets phase to "running" before the await; reset on failure
+      // so the UI isn't stuck with isRunning=true and canSend=false.
+      if (!this.useStreamSession && this.phase === "running") {
+        this._setPhase("idle");
+      }
       throw e;
     }
   }
@@ -2377,6 +2382,7 @@ export class SessionStore {
   unmountGuards(): void {
     this._resumeGuard.unmount();
     this._clearSpawnTimeout();
+    this._clearResponseTimeout();
   }
 
   /** Update MCP servers (e.g. after getMcpStatus refresh). Deduplicates by name. */

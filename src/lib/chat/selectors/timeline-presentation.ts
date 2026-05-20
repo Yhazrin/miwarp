@@ -56,7 +56,6 @@ export function computeTimelinePresentation(
   timeline: TimelineEntry[],
   toolFilter: string | null,
   renderLimit: number,
-  _toolCount: number,
 ): TimelinePresentation {
   // ── Filtered timeline ──
   const filteredTimeline = toolFilter

@@ -91,7 +91,6 @@ export function useTimelineState(ctx: TimelineStateContext): TimelineStateHandle
       store.timeline,
       toolFilter,
       renderLimit,
-      store.tools.filter((e) => e.tool_name).length,
     ),
   );
 

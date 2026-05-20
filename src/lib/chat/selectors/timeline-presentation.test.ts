@@ -67,13 +67,13 @@ describe("computeTimelinePresentation", () => {
   ];
 
   it("returns full timeline when no filter and renderLimit >= length", () => {
-    const result = computeTimelinePresentation(timeline, null, 999, 0);
+    const result = computeTimelinePresentation(timeline, null, 999);
     expect(result.filteredTimeline).toHaveLength(7);
     expect(result.visibleTimeline).toHaveLength(7);
   });
 
   it("slices visibleTimeline when renderLimit < length", () => {
-    const result = computeTimelinePresentation(timeline, null, 3, 0);
+    const result = computeTimelinePresentation(timeline, null, 3);
     expect(result.filteredTimeline).toHaveLength(7);
     expect(result.visibleTimeline).toHaveLength(3);
     // Last 3 entries: t2 (Write), t3 (Bash), a2 (assistant)
@@ -83,7 +83,7 @@ describe("computeTimelinePresentation", () => {
   });
 
   it("filters by tool name", () => {
-    const result = computeTimelinePresentation(timeline, "Read", 999, 0);
+    const result = computeTimelinePresentation(timeline, "Read", 999);
     // user + assistant entries are kept; only tool entries are filtered by name
     const toolEntries = result.filteredTimeline.filter((e) => e.kind === "tool");
     expect(toolEntries).toHaveLength(1);
@@ -91,12 +91,12 @@ describe("computeTimelinePresentation", () => {
   });
 
   it("returns correct toolNames sorted", () => {
-    const result = computeTimelinePresentation(timeline, null, 999, 0);
+    const result = computeTimelinePresentation(timeline, null, 999);
     expect(result.toolNames).toEqual(["Bash", "Read", "Write"]);
   });
 
   it("builds timelineIdIndex correctly", () => {
-    const result = computeTimelinePresentation(timeline, null, 999, 0);
+    const result = computeTimelinePresentation(timeline, null, 999);
     expect(result.timelineIdIndex.get("u1")).toBe(0);
     expect(result.timelineIdIndex.get("t1")).toBe(1);
     expect(result.timelineIdIndex.get("a2")).toBe(6);
@@ -104,7 +104,7 @@ describe("computeTimelinePresentation", () => {
   });
 
   it("computes userCountPrefix correctly", () => {
-    const result = computeTimelinePresentation(timeline, null, 999, 0);
+    const result = computeTimelinePresentation(timeline, null, 999);
     // [0, 1, 1, 1, 2, 2, 2, 2] — prefix sum of user entries
     expect(result.userCountPrefix[0]).toBe(0);
     expect(result.userCountPrefix[1]).toBe(1); // after u1
@@ -121,12 +121,12 @@ describe("computeTimelinePresentation", () => {
       separatorEntry("s2", CONTEXT_CLEARED_MARKER),
       userEntry("u2"),
     ];
-    const result = computeTimelinePresentation(withSep, null, 999, 0);
+    const result = computeTimelinePresentation(withSep, null, 999);
     expect(result.lastClearSepId).toBe("s2");
   });
 
   it("returns null lastClearSepId when no context-cleared separator", () => {
-    const result = computeTimelinePresentation(timeline, null, 999, 0);
+    const result = computeTimelinePresentation(timeline, null, 999);
     expect(result.lastClearSepId).toBeNull();
   });
 
@@ -139,12 +139,12 @@ describe("computeTimelinePresentation", () => {
       }),
       assistantEntry("a1"),
     ];
-    const result = computeTimelinePresentation(withPlan, null, 999, 0);
+    const result = computeTimelinePresentation(withPlan, null, 999);
     expect(result.latestPlanToolId).toBe("tu-plan");
   });
 
   it("returns null latestPlanToolId when no plan file tool", () => {
-    const result = computeTimelinePresentation(timeline, null, 999, 0);
+    const result = computeTimelinePresentation(timeline, null, 999);
     expect(result.latestPlanToolId).toBeNull();
   });
 
@@ -163,19 +163,19 @@ describe("computeTimelinePresentation", () => {
         output: { path: "/c.ts" },
       }),
     ];
-    const result = computeTimelinePresentation(withDupes, null, 999, 0);
+    const result = computeTimelinePresentation(withDupes, null, 999);
     expect(result.createdFiles).toHaveLength(2);
     expect(result.createdFiles.map((f) => f.path)).toEqual(["/b.ts", "/c.ts"]);
   });
 
   it("returns empty batchGroups and toolBursts when toolFilter is active", () => {
-    const result = computeTimelinePresentation(timeline, "Read", 999, 0);
+    const result = computeTimelinePresentation(timeline, "Read", 999);
     expect(result.batchGroups.size).toBe(0);
     expect(result.toolBursts.size).toBe(0);
   });
 
   it("handles empty timeline", () => {
-    const result = computeTimelinePresentation([], null, 100, 0);
+    const result = computeTimelinePresentation([], null, 100);
     expect(result.filteredTimeline).toHaveLength(0);
     expect(result.visibleTimeline).toHaveLength(0);
     expect(result.toolNames).toHaveLength(0);

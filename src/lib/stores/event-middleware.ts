@@ -313,6 +313,7 @@ export class EventMiddleware {
     buf.push(event);
     if (buf.length >= this._MAX_BUFFER_SIZE) {
       dbgWarn("middleware", `hook buffer overflow for ${event.run_id} (${buf.length}), flushing`);
+      this._flushScheduled = true; // ensure _flush() proceeds past dedup guard
       this._flush();
     } else {
       this._scheduleFlush();
@@ -335,6 +336,7 @@ export class EventMiddleware {
     buf.push(usage);
     if (buf.length >= this._MAX_BUFFER_SIZE) {
       dbgWarn("middleware", `usage buffer overflow for ${usage.run_id} (${buf.length}), flushing`);
+      this._flushScheduled = true; // ensure _flush() proceeds past dedup guard
       this._flush();
     } else {
       this._scheduleFlush();

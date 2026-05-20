@@ -44,6 +44,9 @@
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
+        // Revoke previous blob URL to avoid memory leak
+        const prev = config?.imageUrl;
+        if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
         const url = URL.createObjectURL(file);
         update({ imageUrl: url });
       }
