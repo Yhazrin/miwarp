@@ -35,11 +35,27 @@ pub fn load_tasks() -> Vec<ScheduledTask> {
     serde_json::from_str(&data).unwrap_or_default()
 }
 
+/// Load a single task by ID.
+pub fn load_task(id: &str) -> Option<ScheduledTask> {
+    load_tasks().into_iter().find(|t| t.id == id)
+}
+
 /// Save all scheduled tasks to disk.
 pub fn save_tasks(tasks: &[ScheduledTask]) -> Result<(), String> {
     ensure_dirs()?;
     let json = serde_json::to_string_pretty(tasks).map_err(|e| format!("serialize tasks: {e}"))?;
     fs::write(tasks_file(), json).map_err(|e| format!("write tasks.json: {e}"))
+}
+
+/// Save a single task (find-and-replace in the tasks list).
+pub fn save_task(task: &ScheduledTask) -> Result<(), String> {
+    let mut tasks = load_tasks();
+    if let Some(pos) = tasks.iter().position(|t| t.id == task.id) {
+        tasks[pos] = task.clone();
+    } else {
+        tasks.push(task.clone());
+    }
+    save_tasks(&tasks)
 }
 
 /// Load a single task run from disk.
