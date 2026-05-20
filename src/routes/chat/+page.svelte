@@ -35,7 +35,6 @@
     getInitialRenderLimit,
   } from "$lib/chat/selectors/timeline-presentation";
   import { APP_TO_CLI_MODE } from "$lib/chat/utils/permission-modes";
-  import { buildSummaryHtml } from "$lib/chat/utils/summary-html";
   import { useConversationInsight } from "$lib/conversation-insight/use-conversation-insight.svelte";
   import XTerminal from "$lib/components/XTerminal.svelte";
   import ChatMessage from "$lib/components/ChatMessage.svelte";
@@ -65,7 +64,6 @@
   import { t } from "$lib/i18n/index.svelte";
   import { APP_LOGO_URL } from "$lib/utils/brand-assets";
   import { dbg, dbgWarn } from "$lib/utils/debug";
-  import { yieldToMain } from "$lib/utils/yield";
   import {
     getLastTarget,
     setLastTarget,
@@ -86,7 +84,6 @@
     shouldMountFullToolCardInOutputMode,
     shouldMountFullToolCardInGuidedMode,
     timelineHasHiddenRoutineWorkRunning,
-    type ProcessVisibility,
   } from "$lib/utils/process-visibility";
   import { mergeProjectCommands } from "$lib/utils/slash-commands";
   import {
@@ -97,6 +94,9 @@
   import { createPermissionModeHandler } from "$lib/chat/use-permission-mode";
   import { createPermissionHandlers } from "$lib/chat/use-permission-handlers";
   import { createPlatformHandlers } from "$lib/chat/use-platform-handlers";
+  import { createChatActions } from "$lib/chat/use-chat-actions";
+  import { createForkLifecycle } from "$lib/chat/use-fork-lifecycle";
+  import { createScrollNavigation } from "$lib/chat/use-scroll-navigation";
   import type { RewindCandidate, RewindMarker } from "$lib/utils/rewind";
   import { truncate } from "$lib/utils/format";
   import { uuid } from "$lib/utils/uuid";
@@ -448,10 +448,8 @@
 
   // ── Timeline rendering ──
   // Progressive render: start with the most recent N entries, grow on upward scroll.
-  const RENDER_GROWTH_STEP = 100;
   let toolFilter = $state<string | null>(null);
   let renderLimit = $state(getInitialRenderLimit(getCachedProcessVisibility(), []));
-  let progressiveGen = 0;
   let loadingRunId = $state<string | null>(null);
   let loadingMore = $state(false);
   let loadMoreArmed = $state(true);
@@ -737,48 +735,6 @@
     syncVerboseState(store.run?.id);
   });
 
-  // ── Progressive timeline rendering ── helpers
-
-  /** Invalidate any in-flight async load so its post-await side effects bail out. */
-  function cancelProgressive() {
-    progressiveGen++;
-    loadingRunId = null;
-    _scrollToInFlight = false;
-  }
-
-  /** Bump the load generation and return it — caller compares against `progressiveGen`. */
-  function nextProgressiveGen(): number {
-    return ++progressiveGen;
-  }
-
-  /**
-   * Expand `renderLimit` enough that `targetIndex` (in `filteredTimeline`) is mounted,
-   * with `margin` extra entries above for context. No-op if already covered.
-   */
-  function expandRenderLimitTo(targetIndex: number, margin = 50) {
-    const ft = filteredTimeline;
-    if (targetIndex < 0 || targetIndex >= ft.length) return;
-    if (renderLimit === Infinity) return;
-    const needed = ft.length - targetIndex + margin;
-    if (renderLimit < needed) renderLimit = Math.min(needed, ft.length);
-  }
-
-  /**
-   * If `visibleIdx` (visibleTimeline-local) sits inside a collapsed tool burst,
-   * force-expand that burst via `manualOverrides` so the entry's DOM mounts.
-   * Caller must pass an index in the visibleTimeline namespace, not filteredTimeline.
-   */
-  async function ensureBurstExpandedFor(visibleIdx: number) {
-    if (!burstCollapse.collapsedIndices.has(visibleIdx)) return;
-    for (const [, burst] of toolBursts) {
-      if (visibleIdx >= burst.startIndex && visibleIdx <= burst.endIndex) {
-        burstCollapse.toggleBurst(burst.key);
-        await tick();
-        return;
-      }
-    }
-  }
-
   // Sentinel above the visible list — when it intersects the chat viewport, grow renderLimit.
   let topSentinel = $state<HTMLDivElement | null>(null);
   let _topObserver: IntersectionObserver | null = null;
@@ -808,138 +764,6 @@
       _topObserver = null;
     };
   });
-
-  /**
-   * Grow `renderLimit` by `RENDER_GROWTH_STEP` and preserve the user's scroll position.
-   * Browser-native scroll anchoring is unreliable on WKWebView with content-visibility,
-   * so we measure the first rendered entry's offset before/after and adjust scrollTop
-   * by the delta.
-   */
-  async function loadMoreEarlier() {
-    if (loadingMore || !loadMoreArmed) return;
-    loadingMore = true;
-    loadMoreArmed = false; // re-armed by handleChatScroll on next user scroll
-    try {
-      const anchor = chatAreaRef?.querySelector<HTMLElement>("[data-entry-id]") ?? null;
-      const anchorId = anchor?.dataset.entryId ?? null;
-      const beforeTop = anchor?.getBoundingClientRect().top ?? 0;
-      const beforeScroll = chatAreaRef?.scrollTop ?? 0;
-
-      renderLimit = Math.min(renderLimit + RENDER_GROWTH_STEP, filteredTimeline.length);
-      await tick();
-      await yieldToMain();
-
-      if (anchorId && chatAreaRef) {
-        let after: HTMLElement | null = null;
-        try {
-          after = chatAreaRef.querySelector<HTMLElement>(
-            `[data-entry-id="${CSS.escape(anchorId)}"]`,
-          );
-        } catch {
-          after =
-            Array.from(chatAreaRef.querySelectorAll<HTMLElement>("[data-entry-id]")).find(
-              (el) => el.dataset.entryId === anchorId,
-            ) ?? null;
-        }
-        if (after) {
-          const afterTop = after.getBoundingClientRect().top;
-          // Suppress re-arm so the programmatic scrollTop write doesn't immediately
-          // rearm the observer — the sentinel may still be in view post-prepend.
-          _suppressLoadMoreRearm = true;
-          chatAreaRef.scrollTop = beforeScroll + (afterTop - beforeTop);
-          // Clear suppression after the scroll event has dispatched + been handled.
-          // yieldToMain has a 50ms timeout fallback so a backgrounded WebView with
-          // throttled rAF can't strand the suppression flag.
-          await yieldToMain();
-          _suppressLoadMoreRearm = false;
-        }
-      }
-    } finally {
-      loadingMore = false;
-    }
-  }
-
-  /**
-   * Load a run and render its timeline progressively.
-   * Starts with the most recent render limit entries; the top sentinel
-   * grows `renderLimit` as the user scrolls up.
-   */
-  async function loadRunProgressive(
-    id: string,
-    xtermRef?: { clear(): void; writeText(s: string): void },
-  ) {
-    toolFilter = null;
-    renderLimit = getInitialRenderLimit(processVisibility, store.timeline);
-    loadingMore = false;
-    loadMoreArmed = true;
-    const gen = nextProgressiveGen();
-    loadingRunId = id;
-
-    const scrollTo = $page.url.searchParams.get("scrollTo");
-    if (scrollTo) _scrollToInFlight = true;
-
-    try {
-      await store.loadRun(id, xtermRef);
-      if (gen !== progressiveGen) return;
-      if (id) folderCwdOverride = "";
-
-      renderLimit = getInitialRenderLimit(processVisibility, store.timeline);
-
-      if (id && store.effectiveCwd) {
-        reloadProjectData(store.effectiveCwd);
-      }
-      if (gen !== progressiveGen) return;
-
-      if (store.mcpServers.length > 0) {
-        try {
-          const disabledNames = await api.getDisabledMcpServers();
-          if (gen !== progressiveGen) return;
-          if (disabledNames.length > 0) {
-            const disabledSet = new Set(disabledNames);
-            const patched = store.mcpServers.map((s) =>
-              disabledSet.has(s.name) && s.status !== "disabled" ? { ...s, status: "disabled" } : s,
-            );
-            if (patched.some((s, i) => s !== store.mcpServers[i])) {
-              store.updateMcpServers(patched);
-              dbg("chat", "patched MCP disabled state", { disabledNames });
-            }
-          }
-        } catch {
-          // non-critical
-        }
-      }
-
-      if (gen !== progressiveGen) return;
-      dbg("chat", "loadRun complete", {
-        timeline: filteredTimeline.length,
-        renderLimit,
-        gen,
-      });
-
-      if (scrollTo) {
-        await tick();
-        if (gen !== progressiveGen) return;
-        scrollToMessage(scrollTo);
-        const clean = new URL($page.url);
-        clean.searchParams.delete("scrollTo");
-        replaceState(clean, {});
-      } else {
-        await tick();
-        if (gen !== progressiveGen) return;
-        requestAnimationFrame(() => {
-          if (gen !== progressiveGen || !chatAreaRef) return;
-          chatAreaRef.scrollTop = chatAreaRef.scrollHeight;
-        });
-      }
-    } finally {
-      if (gen === progressiveGen) {
-        loadingRunId = null;
-        if (scrollTo) _scrollToInFlight = false;
-      } else if (scrollTo) {
-        _scrollToInFlight = false;
-      }
-    }
-  }
 
   let inputBlockedByPermission = $derived(store.hasPendingPermission || store.hasElicitation);
   let pendingToolPermissions = $derived(store.pendingToolPermissions);
@@ -1883,32 +1707,6 @@
     // Codex pipe mode doesn't need resize — terminal is output-only
   }
 
-  // ── Chat scroll ──
-
-  /** Threshold (px) for "near bottom" detection. Shared concept with TerminalPane. */
-  const SCROLL_BOTTOM_THRESHOLD = 40;
-
-  function handleChatScroll() {
-    if (!chatAreaRef) return;
-    const dist = chatAreaRef.scrollHeight - chatAreaRef.scrollTop - chatAreaRef.clientHeight;
-    isChatAutoScroll = dist < SCROLL_BOTTOM_THRESHOLD;
-    if (isChatAutoScroll) showChatScrollHint = false;
-    // Re-arm progressive load-more after a user-initiated scroll. The IntersectionObserver
-    // fires once per arm; this prevents short timelines from runaway-expanding while the
-    // sentinel remains in view after a prepend. Programmatic scrollTop adjustments
-    // (loadMoreEarlier's anchor compensation) raise `_suppressLoadMoreRearm` so the
-    // anchor-correction scroll doesn't immediately re-arm the observer.
-    if (!loadMoreArmed && !_suppressLoadMoreRearm) loadMoreArmed = true;
-  }
-
-  function scrollChatToBottom() {
-    if (chatAreaRef) {
-      chatAreaRef.scrollTop = chatAreaRef.scrollHeight;
-      showChatScrollHint = false;
-      isChatAutoScroll = true;
-    }
-  }
-
   // ── Permission pending auto-scroll (only for inline AskUserQuestion/ExitPlanMode) ──
   let prevPermissionRunId = "";
   let prevHadPermission = false;
@@ -2086,10 +1884,6 @@
     }
   }
 
-  function fillPrompt(text: string) {
-    promptRef?.setValue(text);
-  }
-
   // ── Project init detection ──
   let showInitHint = $derived(
     projectInitStatus !== null && !projectInitStatus.has_claude_md && !store.run,
@@ -2237,79 +2031,129 @@
     getCliCurrentModel,
   });
 
-  // ── Summarize & Export ──
+  const scrollNav = createScrollNavigation({
+    store,
+    tick,
+    getChatAreaRef: () => chatAreaRef,
+    getFilteredTimeline: () => filteredTimeline,
+    getVisibleTimeline: () => visibleTimeline,
+    getToolBursts: () => toolBursts,
+    burstCollapse,
+    getProcessVisibility: () => processVisibility,
+    getRenderLimit: () => renderLimit,
+    setRenderLimit: (v: number) => {
+      renderLimit = v;
+    },
+    getToolFilter: () => toolFilter,
+    setToolFilter: (v: string | null) => {
+      toolFilter = v;
+    },
+    getLoadingRunId: () => loadingRunId,
+    setLoadingRunId: (v: string | null) => {
+      loadingRunId = v;
+    },
+    getLoadingMore: () => loadingMore,
+    setLoadingMore: (v: boolean) => {
+      loadingMore = v;
+    },
+    getLoadMoreArmed: () => loadMoreArmed,
+    setLoadMoreArmed: (v: boolean) => {
+      loadMoreArmed = v;
+    },
+    setIsChatAutoScroll: (v: boolean) => {
+      isChatAutoScroll = v;
+    },
+    getIsChatAutoScroll: () => isChatAutoScroll,
+    setShowChatScrollHint: (v: boolean) => {
+      showChatScrollHint = v;
+    },
+    getScrollToInFlight: () => _scrollToInFlight,
+    setScrollToInFlight: (v: boolean) => {
+      _scrollToInFlight = v;
+    },
+    getSuppressLoadMoreRearm: () => _suppressLoadMoreRearm,
+    setSuppressLoadMoreRearm: (v: boolean) => {
+      _suppressLoadMoreRearm = v;
+    },
+    setFolderCwdOverride: (v: string) => {
+      folderCwdOverride = v;
+    },
+    reloadProjectData,
+    getPageUrl: () => $page.url,
+    replaceState,
+  });
 
-  async function handleSummarize() {
-    if (!store.run) {
-      dbgWarn("chat", "handleSummarize: no run");
-      showChatToast(t("export_noConversation"));
-      return;
-    }
-    dbg("chat", "handleSummarize: start");
+  const {
+    cancelProgressive,
+    loadMoreEarlier,
+    loadRunProgressive,
+    handleChatScroll,
+    scrollChatToBottom,
+    scrollToTool,
+    scrollToMessage,
+  } = scrollNav;
 
-    try {
-      // Show loading toast
-      showChatToast(t("summarize_generating"));
+  const chatActions = createChatActions({
+    store,
+    t: t as unknown as (key: string, params?: Record<string, string>) => string,
+    showToast: showChatToast,
+    setBtwState: (v) => {
+      btwState = v;
+    },
+    setVerboseEnabled: (v) => {
+      verboseEnabled = v;
+    },
+    setRequestedPreviewUrl: (v) => {
+      requestedPreviewUrl = v;
+    },
+    setSidebarRequestedTab: (v) => {
+      sidebarRequestedTab = v;
+    },
+    getSidebarCollapsed: () => sidebarCollapsed,
+    setSidebarCollapsed: (v) => {
+      sidebarCollapsed = v;
+    },
+    getSettings: () => settings,
+    setSettings: (v) => {
+      settings = v;
+    },
+    getPromptRef: () => promptRef,
+  });
 
-      // Call backend to generate summary using Claude
-      const summaryResult = await api.summarizeConversation(store.run.id);
-      const { summary, markdown } = summaryResult;
+  const {
+    appendCommandOutput,
+    handleSummarize,
+    handleRename,
+    handleFastModeSwitch,
+    handleBtwSend,
+    openPreviewInSidebar,
+    handleRalphCancel,
+    handleStop,
+    fillPrompt,
+    toggleCliConfigBool,
+    handleProcessVisibilityChange,
+  } = chatActions;
 
-      // Build a beautiful HTML poster with the summary
-      const title = store.run.name ?? store.run.prompt?.slice(0, 80) ?? "Conversation Summary";
-      const html = buildSummaryHtml(title, {
-        summary,
-        markdown,
-        model: store.model,
-        cwd: store.effectiveCwd,
-        startedAt: store.run.started_at,
-        turnCount: store.numTurns || 0,
-      });
+  const forkLifecycle = createForkLifecycle({
+    store,
+    middleware,
+    goto,
+    loadRunProgressive,
+    getResuming: () => resuming,
+    setResuming: (v: boolean) => {
+      resuming = v;
+    },
+    getForkOverlay: () => forkOverlay,
+    setForkOverlay: (v) => {
+      forkOverlay = v;
+    },
+    setLastContinuableRun: (v) => {
+      lastContinuableRun = v;
+    },
+    t: t as unknown as (key: string, params?: Record<string, string>) => string,
+  });
 
-      const { save } = await import("@tauri-apps/plugin-dialog");
-      const path = await save({
-        defaultPath: `summary-${Date.now()}.html`,
-        filters: [{ name: "HTML", extensions: ["html"] }],
-      });
-      if (!path) {
-        dbg("chat", "handleSummarize: user cancelled");
-        return;
-      }
-
-      await api.writeHtmlExport(path, html);
-      dbg("chat", "handleSummarize: done", { path });
-      showChatToast(t("summarize_success"));
-    } catch (e) {
-      dbgWarn("chat", "handleSummarize failed", e);
-      showChatToast(t("summarize_failed"));
-    }
-  }
-
-  function appendCommandOutput(text: string) {
-    const cmdId = uuid();
-    store.timeline = [
-      ...store.timeline,
-      {
-        kind: "command_output",
-        id: cmdId,
-        anchorId: cmdId,
-        content: text,
-        ts: new Date().toISOString(),
-      },
-    ];
-  }
-
-  async function handleRename(name: string) {
-    if (!store.run) return;
-    try {
-      await api.renameRun(store.run.id, name);
-      store.run = { ...store.run, name };
-      window.dispatchEvent(new Event("ocv:runs-changed"));
-      dbg("chat", "renamed run", { id: store.run.id, name });
-    } catch (e) {
-      dbgWarn("chat", "rename failed", e);
-    }
-  }
+  const { handleResume, handleForkCancel, handleForkRetry } = forkLifecycle;
 
   // Auto-name: on first idle, generate title from prompt (one-shot per run)
   $effect(() => {
@@ -2325,69 +2169,6 @@
       handleRename(result.autoName);
     }
   });
-
-  async function handleFastModeSwitch(mode: "on" | "off") {
-    const enabling = mode === "on";
-    const current = store.fastModeState === "on";
-    if (enabling === current) {
-      appendCommandOutput(t(enabling ? "fast_alreadyOn" : "fast_alreadyOff"));
-      return;
-    }
-    try {
-      await api.updateCliConfig({ fastMode: enabling });
-      store.fastModeState = enabling ? "on" : "";
-      dbg("chat", "fastMode set", { mode });
-      showChatToast(t(enabling ? "toast_fastModeOn" : "toast_fastModeOff"));
-      appendCommandOutput(t(enabling ? "fast_enabled" : "fast_disabled"));
-    } catch (e) {
-      dbgWarn("chat", "fastMode set failed:", e);
-    }
-  }
-
-  async function handleBtwSend(question: string) {
-    if (!store.run?.id) return;
-    dbg("chat", "btwSend", { runId: store.run.id, question: question.slice(0, 50) });
-    btwState = { active: true, btwId: null, question, answer: "", error: null, loading: true };
-    try {
-      const btwId = await api.sideQuestion(store.run.id, question);
-      btwState.btwId = btwId;
-    } catch (e) {
-      btwState.error = String(e);
-      btwState.loading = false;
-    }
-  }
-
-  // ── Preview helpers ──
-
-  function openPreviewInSidebar(url?: string) {
-    const targetUrl = url?.trim() || localStorage.getItem("ocv:preview-url") || "";
-    if (!targetUrl) {
-      appendCommandOutput(t("preview_usage"));
-      return;
-    }
-    requestedPreviewUrl = targetUrl;
-    sidebarRequestedTab = "preview";
-    if (sidebarCollapsed) sidebarCollapsed = false;
-    appendCommandOutput(t("preview_opened"));
-  }
-
-  async function handleRalphCancel() {
-    if (!store.run?.id) return;
-    try {
-      const result = await api.cancelRalphLoop(store.run.id);
-      if (result.immediate) {
-        appendCommandOutput(`Loop cancelled (iteration ${result.iteration})`);
-      } else {
-        appendCommandOutput(
-          `Loop will stop after current iteration (iteration ${result.iteration})`,
-        );
-      }
-    } catch (err) {
-      appendCommandOutput(
-        `Failed to cancel loop: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-  }
 
   async function handleVirtualCommand(action: string, args: string) {
     const ctx: VirtualCommandContext = {
@@ -2420,115 +2201,6 @@
     await execVirtualCommand(ctx, action, args);
   }
 
-  async function handleStop() {
-    await store.stop();
-    window.dispatchEvent(new Event("ocv:runs-changed"));
-  }
-
-  async function handleResume(
-    mode: SessionMode,
-    overrideRunId?: string,
-    initialMessage?: string,
-    initialAttachments?: Attachment[],
-  ) {
-    const targetRunId = overrideRunId ?? store.run?.id;
-    if (!targetRunId || resuming) return;
-    resuming = true;
-
-    // Per-session platform: resume automatically uses run's saved platform_id
-    // via backend resolve_auth_env_for_platform() — no mismatch dialog needed.
-
-    // Fork: activate overlay immediately for progress feedback
-    if (mode === "fork") {
-      forkOverlay = { active: true, sourceRunId: targetRunId, startedAt: Date.now(), error: null };
-    }
-
-    try {
-      // Fork: don't subscribe to source — backend emits RunState(stopped)
-      // for the source which would interfere with the fork state machine.
-      if (mode !== "fork") {
-        middleware.subscribeCurrent(targetRunId, store);
-      }
-      const resultId = await store.resumeSession(
-        targetRunId,
-        mode,
-        initialMessage,
-        initialAttachments,
-      );
-      if (resultId) {
-        middleware.subscribeCurrent(resultId, store);
-        if (mode === "fork") {
-          // Check if user cancelled during fork_oneshot
-          if (!forkOverlay) {
-            dbg("chat", "fork: cancelled during fork_oneshot, skipping step 2");
-          } else {
-            // Step 1 complete — dismiss overlay, use normal session startup UI for step 2
-            forkOverlay = null;
-            goto(`/chat?run=${resultId}`, { replaceState: true });
-            // Step 2: establish stream-json connection (shows "Starting session..." spinner)
-            try {
-              await store.connectSession(resultId);
-            } catch (e) {
-              store.error = String(e);
-            }
-          }
-        } else {
-          goto(`/chat?run=${resultId}`, { replaceState: true });
-        }
-      } else if (mode === "fork") {
-        // Fork failed — don't clear overlay or navigate away.
-        // The phase watcher $effect will show the error in the overlay.
-        // User can Retry or Cancel from there.
-        dbg("chat", "fork failed, keeping overlay for retry/cancel");
-      } else {
-        // Non-fork resume failed — stay on the target run's view instead of
-        // navigating to blank new-session page (the run's history is still useful).
-        lastContinuableRun = null;
-        goto(`/chat?run=${targetRunId}`, { replaceState: true });
-      }
-      window.dispatchEvent(new Event("ocv:runs-changed"));
-    } catch (e) {
-      // Fork sync failure → show error in overlay instead of error bar
-      if (mode === "fork" && forkOverlay) {
-        forkOverlay = { ...forkOverlay, error: String(e) };
-      }
-    } finally {
-      resuming = false;
-    }
-  }
-
-  /** Stop the fork run's process (if it exists and isn't the source run). */
-  async function stopForkProcess(sourceRunId: string) {
-    if (store.run && store.run.id !== sourceRunId) {
-      try {
-        await api.stopSession(store.run.id);
-      } catch {
-        /* best-effort */
-      }
-    }
-  }
-
-  async function handleForkCancel() {
-    if (!forkOverlay) return;
-    const sourceRunId = forkOverlay.sourceRunId;
-    await stopForkProcess(sourceRunId);
-    forkOverlay = null;
-    store.error = "";
-    goto(`/chat?run=${sourceRunId}`, { replaceState: true });
-    // Explicit reload — URL may not change if we're returning to the same run
-    await loadRunProgressive(sourceRunId);
-    window.dispatchEvent(new Event("ocv:runs-changed"));
-  }
-
-  async function handleForkRetry() {
-    if (!forkOverlay || resuming) return;
-    const sourceRunId = forkOverlay.sourceRunId;
-    await stopForkProcess(sourceRunId);
-    forkOverlay = { active: true, sourceRunId, startedAt: Date.now(), error: null };
-    store.error = "";
-    await handleResume("fork", sourceRunId);
-  }
-
   // ── Chat-level toast (same pattern as PromptInput's showFileToast) ──
   let chatToast = $state<string | null>(null);
   let chatToastTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -2547,34 +2219,6 @@
     getNumTurns: () => store.numTurns || 0,
     showToast: showChatToast,
   });
-
-  async function toggleCliConfigBool(key: string) {
-    try {
-      const config = await api.getCliConfig();
-      const current = config[key] === true;
-      await api.updateCliConfig({ [key]: !current });
-      dbg("chat", `toggled ${key}`, { from: current, to: !current });
-      // Immediately mirror UI state
-      if (key === "fastMode") {
-        store.fastModeState = !current ? "on" : "";
-        dbg("chat", "fastMode UI mirrored", { state: store.fastModeState });
-      } else if (key === "verbose") {
-        verboseEnabled = !current;
-        dbg("chat", "verbose UI mirrored", { verbose: verboseEnabled });
-      }
-      const label =
-        key === "fastMode"
-          ? !current
-            ? "toast_fastModeOn"
-            : "toast_fastModeOff"
-          : !current
-            ? "toast_verboseOn"
-            : "toast_verboseOff";
-      showChatToast(t(label as Parameters<typeof t>[0]));
-    } catch (e) {
-      dbgWarn("chat", `toggle ${key} failed:`, e);
-    }
-  }
 
   // Chat keybinding callbacks — registered/unregistered via keybindingStore in onMount below
 
@@ -2600,104 +2244,6 @@
 
   function toggleSidebar() {
     sidebarCollapsed = !sidebarCollapsed;
-  }
-
-  async function handleProcessVisibilityChange(mode: ProcessVisibility) {
-    const prev = settings;
-    persistCachedProcessVisibility(mode);
-    if (settings) settings = { ...settings, process_visibility: mode };
-    try {
-      settings = await api.updateUserSettings({ process_visibility: mode });
-      persistCachedProcessVisibility(normalizeProcessVisibility(settings.process_visibility));
-    } catch {
-      settings = prev;
-      if (prev) {
-        persistCachedProcessVisibility(normalizeProcessVisibility(prev.process_visibility));
-      }
-    }
-  }
-
-  async function scrollToTool(toolUseId: string) {
-    // Clear filter first — target may be filtered out, and burst/visible indices
-    // depend on the unfiltered timeline.
-    if (toolFilter) {
-      toolFilter = null;
-      await tick();
-    }
-    // Locate target in the data layer (DOM may not be mounted yet under progressive render).
-    const ft = filteredTimeline;
-    const ftIdx = ft.findIndex((e) => e.kind === "tool" && e.tool.tool_use_id === toolUseId);
-    if (ftIdx < 0) return;
-    expandRenderLimitTo(ftIdx);
-    await tick();
-    // Re-map to visibleTimeline-local index for burst expansion.
-    const visibleIdx = visibleTimeline.findIndex(
-      (e) => e.kind === "tool" && e.tool.tool_use_id === toolUseId,
-    );
-    if (visibleIdx >= 0) await ensureBurstExpandedFor(visibleIdx);
-    const el = document.getElementById("tool-" + toolUseId);
-    if (el) {
-      // Temporarily disable content-visibility so the browser knows real heights and
-      // scrollIntoView lands at the correct offset (mirrors scrollToMessage).
-      const container = chatAreaRef;
-      const cvEls = container
-        ? Array.from(container.querySelectorAll<HTMLElement>(".cv-auto"))
-        : [];
-      for (const c of cvEls) c.style.contentVisibility = "visible";
-      el.getBoundingClientRect();
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("ring-2", "ring-primary/50");
-      requestAnimationFrame(() => {
-        for (const c of cvEls) c.style.contentVisibility = "";
-      });
-      setTimeout(() => el.classList.remove("ring-2", "ring-primary/50"), 2000);
-    }
-  }
-
-  async function scrollToMessage(ts: string) {
-    dbg("chat", "scrollToMessage", { ts });
-    if (toolFilter) {
-      toolFilter = null;
-      await tick();
-    }
-    // Resolve target from data — `ts` may be ts, anchorId, cliUuid, or id.
-    const match = store.timeline.find(
-      (e) =>
-        e.ts === ts || e.anchorId === ts || (e.kind === "user" && e.cliUuid === ts) || e.id === ts,
-    );
-    if (!match) return;
-    const ft = filteredTimeline;
-    const ftIdx = ft.findIndex((e) => e.id === match.id);
-    if (ftIdx < 0) return;
-    expandRenderLimitTo(ftIdx);
-    await tick();
-    const visibleIdx = visibleTimeline.findIndex((e) => e.id === match.id);
-    if (visibleIdx >= 0) await ensureBurstExpandedFor(visibleIdx);
-    // DOM id uses anchorId (see `id="msg-{entry.anchorId}"` in the each block).
-    const el = document.getElementById("msg-" + match.anchorId);
-    if (el) {
-      // Temporarily disable content-visibility on ALL entries so the browser
-      // knows real heights and scrollIntoView lands at the correct offset.
-      const container = chatAreaRef;
-      const cvEls = container
-        ? Array.from(container.querySelectorAll<HTMLElement>(".cv-auto"))
-        : [];
-      for (const c of cvEls) c.style.contentVisibility = "visible";
-
-      el.getBoundingClientRect(); // force reflow
-      el.scrollIntoView({ behavior: "instant", block: "center" });
-      el.classList.add("ring-2", "ring-primary/50");
-
-      // Restore content-visibility after scroll settles
-      requestAnimationFrame(() => {
-        for (const c of cvEls) c.style.contentVisibility = "";
-      });
-      setTimeout(() => {
-        el!.classList.remove("ring-2", "ring-primary/50");
-      }, 2000);
-    } else {
-      dbg("chat", "scrollToMessage: element not found", { anchor: ts });
-    }
   }
 
   async function handleToolAnswer(toolUseId: string, answer: string) {
