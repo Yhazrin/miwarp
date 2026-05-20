@@ -1669,8 +1669,8 @@ export class SessionStore {
           const status = await api.getSessionRuntimeStatus(id);
           if (gen !== this._loadGen) return;
           if (!status.actor_alive) {
-            dbg("store", "loadRun: actor dead for running run, downgrading to idle", { id });
-            this._setPhase("idle");
+            dbg("store", "loadRun: actor dead for running run, downgrading to ready", { id });
+            this._setPhase("ready");
           } else {
             this._setPhase("running");
           }

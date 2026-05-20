@@ -1301,11 +1301,8 @@ pub(crate) async fn approve_session_tool_impl(
         .await
         .map_err(|_| "Actor dead before wait_ready".to_string())?;
     if let Err(e) = await_actor_reply(ready_rx, "wait_ready", ACTOR_READY_TIMEOUT_MS).await {
-        log::warn!(
-            "[session] WaitReady failed for run_id={}: {} (proceeding anyway)",
-            run_id,
-            e
-        );
+        log::warn!("[session] WaitReady failed for run_id={}: {}", run_id, e);
+        return Err(format!("Actor not ready after spawn: {e}"));
     }
 
     // 10. Send retry guidance message via actor.

@@ -463,8 +463,17 @@ impl SessionActor {
                             } else {
                                 // Wait for first stdout line
                                 tokio::spawn(async move {
-                                    let _ = rx.changed().await;
-                                    let _ = reply.send(Ok(()));
+                                    match rx.changed().await {
+                                        Ok(_) if *rx.borrow() => {
+                                            let _ = reply.send(Ok(()));
+                                        }
+                                        Ok(_) => {
+                                            let _ = reply.send(Err("WaitReady changed but not ready".into()));
+                                        }
+                                        Err(_) => {
+                                            let _ = reply.send(Err("Actor ready channel closed".into()));
+                                        }
+                                    }
                                 });
                             }
                         }
