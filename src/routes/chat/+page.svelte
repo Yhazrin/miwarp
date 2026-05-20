@@ -16,15 +16,12 @@
     TERMINAL_PHASES,
     getResumeWarning,
     loadCliVersionInfo,
-    getCliVersionInfo_cached,
   } from "$lib/stores";
   import type {
     Attachment,
     UserSettings,
     AgentSettings,
     SessionMode,
-    CliModelInfo,
-    SessionInfoData,
     TimelineEntry,
   } from "$lib/types";
   import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
@@ -44,7 +41,6 @@
   import ShortcutHelpPanel from "$lib/components/ShortcutHelpPanel.svelte";
   import type { PromptInputSnapshot } from "$lib/types";
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
-  import type { ContextSnapshot } from "$lib/types";
   import { t } from "$lib/i18n/index.svelte";
   import { APP_LOGO_URL } from "$lib/utils/brand-assets";
   import { dbg, dbgWarn } from "$lib/utils/debug";
@@ -76,6 +72,11 @@
   import { createScrollNavigation } from "$lib/chat/use-scroll-navigation";
   import { createSendMessage } from "$lib/chat/use-send-message";
   import { createProjectData } from "$lib/chat/use-project-data";
+  import { createSessionDerived } from "$lib/chat/use-session-derived.svelte";
+  import { createTeamDispatch } from "$lib/chat/use-team-dispatch.svelte";
+  import { createVerboseState } from "$lib/chat/use-verbose-state.svelte";
+  import { createToolResultCache } from "$lib/chat/use-tool-result-cache";
+  import { createForkOverlay } from "$lib/chat/use-fork-overlay.svelte";
   import type { RewindCandidate, RewindMarker } from "$lib/utils/rewind";
   import { truncate } from "$lib/utils/format";
   import { uuid } from "$lib/utils/uuid";
@@ -93,14 +94,7 @@
   import TeamRunCard from "$lib/components/TeamRunCard.svelte";
   import ConversationInsightCard from "$lib/components/insight/ConversationInsightCard.svelte";
   import HtmlReportPreview from "$lib/components/insight/HtmlReportPreview.svelte";
-  import {
-    stripTeamTag,
-    dispatchTeamRun,
-    executeTeamRun,
-    getPresets,
-    shouldShowTeamHint,
-  } from "$lib/services/team-dispatcher";
-  import type { TeamRun, TeamPreset } from "$lib/types";
+  import { getPresets } from "$lib/services/team-dispatcher";
 
   // ── Helpers ──
 
@@ -222,69 +216,18 @@
     if (!rewindModalOpen) rewindDirectTarget = null;
   });
 
-  // ── Team dispatch ──
-  let teamDispatchOpen = $state(false);
-  let teamDispatchPrompt = $state("");
-  let activeTeamRuns = $state<TeamRun[]>([]);
-  let teamHintVisible = $state(false);
-
-  function handleInputValueChange(value: string) {
-    teamHintVisible = shouldShowTeamHint(value);
-  }
-  let teamPresets = $state<TeamPreset[]>([]);
+  // ── Team dispatch (composable) ──
+  const team = createTeamDispatch({
+    store,
+    getSendMessage: () => sendMessage,
+  });
 
   // Load presets on mount
   onMount(() => {
     getPresets()
-      .then((p) => (teamPresets = p))
+      .then((p) => team.setTeamPresets(p))
       .catch(() => {});
   });
-
-  async function handleTeamDispatch(presetId: string) {
-    const prompt = teamDispatchPrompt;
-    teamDispatchOpen = false;
-    if (!prompt) return;
-
-    const preset = teamPresets.find((p) => p.id === presetId);
-    if (!preset) return;
-
-    const cwd = store.effectiveCwd || "";
-
-    // Create TeamRun record
-    const teamRun = await dispatchTeamRun({
-      prompt,
-      presetId,
-      cwd,
-    });
-
-    // Add to active list so TeamRunCard renders in chat
-    activeTeamRuns = [...activeTeamRuns, teamRun];
-
-    // Execute in background — uses existing startRun infrastructure
-    executeTeamRun(
-      teamRun,
-      preset,
-      (prompt: string, runCwd: string, agent: string) => api.startRun(prompt, runCwd, agent),
-      (updated: TeamRun) => {
-        activeTeamRuns = activeTeamRuns.map((r) => (r.id === updated.id ? updated : r));
-      },
-    ).catch((err) => {
-      console.error("Team run failed:", err);
-    });
-  }
-
-  function handleUseSingleClaude() {
-    const stripped = stripTeamTag(teamDispatchPrompt);
-    teamDispatchOpen = false;
-    if (stripped) {
-      sendMessage(stripped, []);
-    }
-  }
-
-  function handleCancelTeamDispatch() {
-    teamDispatchOpen = false;
-    teamDispatchPrompt = "";
-  }
 
   // Auto-name one-shot latch: reset only on actual run ID change
   let prevAutoNameRunId = "";
@@ -369,48 +312,16 @@
     }
   });
 
-  // ── Verbose state (chat page level) ──
-  let verboseEnabled = $state(false);
-  let verboseSeq = 0;
-  let lastSyncedRunId = "__unset__"; // sentinel ≠ "__no_run__", ensures first-screen trigger
-  let verboseRetryTick = $state(0);
-  let verboseRetryCount = 0;
-  let verboseRetryTimer: ReturnType<typeof setTimeout> | null = null;
-  const VERBOSE_MAX_RETRIES = 3;
+  // ── Verbose state (composable) ──
+  const verbose = createVerboseState();
 
-  // ── Tool result lazy-load cache (Phase 2) ──
-  let toolResultCache = new Map<string, Record<string, unknown>>();
-  let toolResultInflight = new Map<string, Promise<Record<string, unknown> | null>>();
+  // ── Tool result lazy-load cache (composable) ──
+  const toolResultCache = createToolResultCache(() => store.run?.id);
   // Clear cache on run switch
   $effect(() => {
     const _ = store.run?.id;
-    toolResultCache = new Map();
-    toolResultInflight = new Map();
+    toolResultCache.clearCache();
   });
-
-  async function fetchToolResult(
-    runId: string,
-    toolUseId: string,
-  ): Promise<Record<string, unknown> | null> {
-    const key = `${runId}:${toolUseId}`;
-    const cached = toolResultCache.get(key);
-    if (cached) return cached;
-    let pending = toolResultInflight.get(key);
-    if (!pending) {
-      pending = api.getToolResult(runId, toolUseId);
-      toolResultInflight.set(key, pending);
-    }
-    try {
-      const result = await pending;
-      // Run-gen check: don't write stale results into a different run's cache
-      if (result && store.run?.id === runId) {
-        toolResultCache.set(key, result);
-      }
-      return result;
-    } finally {
-      toolResultInflight.delete(key);
-    }
-  }
 
   // ── Timeline rendering (composable) ──
   let _suppressLoadMoreRearm = false;
@@ -429,33 +340,14 @@
     loadMoreEarlier: () => loadMoreEarlierRef(),
   });
 
-  async function syncVerboseState(runId: string | undefined) {
-    const key = runId ?? "__no_run__";
-    if (key === lastSyncedRunId) return; // same run — skip
-    const seq = ++verboseSeq;
-    // New run resets retry counter
-    verboseRetryCount = 0;
-    try {
-      const cfg = await api.getCliConfig();
-      if (seq !== verboseSeq) return; // stale response
-      lastSyncedRunId = key; // mark synced on success only
-      verboseEnabled = cfg.verbose === true;
-      dbg("chat", "verbose state synced", { verbose: verboseEnabled, runId, seq });
-    } catch {
-      // Don't mark synced — retry via tick++ after 3s (up to max)
-      if (seq === verboseSeq && verboseRetryCount < VERBOSE_MAX_RETRIES) {
-        verboseRetryCount++;
-        verboseRetryTimer = setTimeout(() => {
-          verboseRetryTimer = null;
-          verboseRetryTick++;
-        }, 3000);
-      }
-    }
-  }
-
-  function cleanupVerbose() {
-    if (verboseRetryTimer) clearTimeout(verboseRetryTimer);
-  }
+  // ── Session-derived state (composable) ──
+  const sd = createSessionDerived({
+    store,
+    getSettings: () => settings,
+    getAuthOverview: () => authOverview,
+    getVisibleTimeline: () => tl.visibleTimeline,
+    getPreloadedSkills: () => preloadedSkills,
+  });
 
   // ── MCP panel ──
   let mcpPanelOpen = $state(false);
@@ -469,132 +361,6 @@
       : true,
   );
 
-  let lastAssistantIdx = $derived.by(() => {
-    const vt = tl.visibleTimeline;
-    for (let j = vt.length - 1; j >= 0; j--) {
-      if (vt[j].kind === "assistant") return j;
-    }
-    return -1;
-  });
-
-  // ── Input history (most recent first) ──
-  let userHistory = $derived.by(() =>
-    store.timeline
-      .filter((e): e is Extract<TimelineEntry, { kind: "user" }> => e.kind === "user")
-      .map((e) => e.content)
-      .reverse(),
-  );
-
-  // ── Auto-context tracking ──
-  // Map<runId, snapshots> — persists across run switches within the session
-  let contextHistoryMap = $state<Map<string, ContextSnapshot[]>>(new Map());
-  let contextHistory = $derived(contextHistoryMap.get(store.run?.id ?? "") ?? []);
-
-  // ── Cumulative session token totals (from modelUsage, which is session-cumulative) ──
-  // status bar shows session totals; per-turn values are in the turn separator annotations.
-  let cumulativeTokens = $derived.by(() => {
-    const mu = store.usage.modelUsage;
-    if (!mu || Object.keys(mu).length === 0) {
-      // No modelUsage yet — fall back to per-turn values (better than zero)
-      return {
-        input: store.usage.inputTokens,
-        output: store.usage.outputTokens,
-        cacheRead: store.usage.cacheReadTokens,
-        cacheWrite: store.usage.cacheWriteTokens,
-      };
-    }
-    let input = 0,
-      output = 0,
-      cacheRead = 0,
-      cacheWrite = 0;
-    for (const entry of Object.values(mu)) {
-      input += entry.input_tokens;
-      output += entry.output_tokens;
-      cacheRead += entry.cache_read_tokens;
-      cacheWrite += entry.cache_write_tokens;
-    }
-    return { input, output, cacheRead, cacheWrite };
-  });
-
-  // ── Session info for InfoPanel ──
-  let currentSessionInfo: SessionInfoData | null = $derived.by(() => {
-    if (!store.run) return null;
-    return {
-      sessionId: store.run.session_id,
-      runId: store.run.id,
-      runName: store.run.name,
-      cwd: store.sessionCwd || store.run.cwd,
-      numTurns: store.numTurns,
-      status: store.run.status ?? "pending",
-      startedAt: store.run.started_at ?? null,
-      endedAt: store.run.ended_at ?? null,
-      lastTurnDurationMs: store.durationMs,
-      tokensEstimated: !store.usage.modelUsage || Object.keys(store.usage.modelUsage).length === 0,
-      model: store.run.model ?? store.model,
-      agent: store.run.agent ?? store.agent,
-      cliVersion: store.cliVersion,
-      permissionMode: store.permissionMode,
-      fastModeState: store.fastModeState,
-      cost: store.usage.cost,
-      inputTokens: cumulativeTokens.input,
-      outputTokens: cumulativeTokens.output,
-      cacheReadTokens: cumulativeTokens.cacheRead,
-      cacheWriteTokens: cumulativeTokens.cacheWrite,
-      contextWindow: store.contextWindow,
-      contextUtilization: store.contextUtilization,
-      compactCount: store.compactCount,
-      microcompactCount: store.microcompactCount,
-      mcpServers: store.mcpServers,
-      remoteHostName: store.remoteHostName,
-      platformId: store.platformId,
-      cliUsageIncomplete: store.run.cli_usage_incomplete ?? false,
-      runSource: store.run.source,
-      authSourceLabel: store.authSourceLabel || undefined,
-      platformName: platformDisplayName || undefined,
-      cliUpdateAvailable:
-        store.cliVersion && channelLatest && channelLatest !== store.cliVersion
-          ? channelLatest
-          : undefined,
-    };
-  });
-
-  // ── Sidebar data ──
-
-  // ── CLI version info (reactive — ensures heroMetaFooter re-renders after async load) ──
-  let cliVersionInfo = $derived(getCliVersionInfo_cached());
-
-  // ── CLI update channel ──
-  let channelLatest = $derived.by(() => {
-    if (!cliVersionInfo?.installed) return undefined;
-    return cliVersionInfo.channel === "stable" ? cliVersionInfo.stable : cliVersionInfo.latest;
-  });
-
-  // ── Platform display name ──
-  let platformDisplayName = $derived.by(() => {
-    const pid = store.platformId;
-    if (!pid) return undefined;
-    const preset = PLATFORM_PRESETS.find((p) => p.id === pid);
-    return preset?.name ?? authOverview?.app_platform_name ?? pid;
-  });
-
-  // ── Provider-aware model list ──
-  // When a third-party platform is active and has a models list, use that instead of CLI models.
-  // Priority: credential.models (user-configured) > preset.models (static defaults)
-  let platformModels = $derived.by((): CliModelInfo[] => {
-    const pid = store.platformId;
-    if (!pid || pid === "anthropic") return [];
-    const cred = findCredential(settings?.platform_credentials ?? [], pid);
-    const preset = PLATFORM_PRESETS.find((p) => p.id === pid);
-    const models = cred?.models?.length ? cred.models : preset?.models;
-    if (!models?.length) return [];
-    return models.map((m, i) => ({
-      value: m,
-      displayName: m,
-      description: i === 0 ? "Default" : "",
-    }));
-  });
-
-  let effectiveModels = $derived(platformModels.length > 0 ? platformModels : getCliModels());
   let currentEffort = $state("");
 
   // Effort guard: auto-clear effort when model doesn't support it;
@@ -606,7 +372,7 @@
     // Third-party platform: don't touch effort
     if (pid && pid !== "anthropic") return;
 
-    const modelInfo = effectiveModels.find((m) => m.value === store.model);
+    const modelInfo = sd.effectiveModels.find((m) => m.value === store.model);
     if (!modelInfo) return; // models not loaded yet
 
     if (currentEffort && modelInfo.supportsEffort === false) {
@@ -634,25 +400,8 @@
 
   // Sync verbose state from CLI config when run changes (or on retry)
   $effect(() => {
-    const _tick = verboseRetryTick; // extra dep: drives retry on failure
-    syncVerboseState(store.run?.id);
-  });
-
-  let inputBlockedByPermission = $derived(store.hasPendingPermission || store.hasElicitation);
-  let pendingToolPermissions = $derived(store.pendingToolPermissions);
-  let showPermissionPanel = $derived(pendingToolPermissions.length > 0 && store.sessionAlive);
-
-  /** Skill info for SkillSelector: merge preloaded details with session skill names. */
-  let skillItems = $derived.by(() => {
-    const detailMap = new Map(preloadedSkills.map((s) => [s.name, s]));
-    const names = store.availableSkills;
-    if (names.length > 0) {
-      return names.map((name) => ({
-        name,
-        description: detailMap.get(name)?.description ?? "",
-      }));
-    }
-    return preloadedSkills.map((s) => ({ name: s.name, description: s.description }));
+    const _tick = verbose.verboseRetryTick; // extra dep: drives retry on failure
+    verbose.syncVerboseState(store.run?.id);
   });
 
   // ── Per-turn usage annotations in timeline ──
@@ -706,41 +455,14 @@
     return usageByTurn.get(userCount) ?? null;
   });
 
-  // ── Fork overlay ──
-  let forkOverlay = $state<{
-    active: boolean;
-    sourceRunId: string;
-    startedAt: number;
-    error: string | null;
-  } | null>(null);
-  let forkElapsed = $state(0);
+  // ── Fork overlay (composable) ──
+  const fork = createForkOverlay({
+    store,
+    t: t as unknown as (key: string) => string,
+  });
 
   // ── Thinking timer + slash command processing (composable) ──
   const thinking = useThinkingTimer({ store });
-
-  // Fork overlay timer: tick elapsed seconds while active
-  $effect(() => {
-    if (forkOverlay?.active && !forkOverlay.error) {
-      const interval = setInterval(() => {
-        forkElapsed = Math.floor((Date.now() - forkOverlay!.startedAt) / 1000);
-      }, 1000);
-      return () => clearInterval(interval);
-    } else {
-      forkElapsed = 0;
-    }
-  });
-
-  // Fork overlay phase watcher: show error on failure during step 1 (fork_oneshot).
-  // Overlay is dismissed explicitly by handleResume after step 1 succeeds.
-  // Guard `!forkOverlay.error`: only set error once to prevent infinite $effect loop —
-  // writing `forkOverlay = { ...spread }` creates a new object ref that re-triggers the effect.
-  $effect(() => {
-    if (!forkOverlay?.active) return;
-    const phase = store.phase;
-    if ((phase === "failed" || phase === "stopped") && !forkOverlay.error) {
-      forkOverlay = { ...forkOverlay, error: store.error || t("chat_forkFailedFallback") };
-    }
-  });
 
   // Task notification: auto-show and dismiss after 5s
   $effect(() => {
@@ -1038,13 +760,13 @@
   // ── Permission panel visibility log ──
   let _prevPanelCount = 0;
   $effect(() => {
-    const count = pendingToolPermissions.length;
+    const count = sd.pendingToolPermissions.length;
     if (count !== _prevPanelCount) {
       if (count > 0)
         dbg("chat", "permissionPanel visible", {
           count,
-          ids: pendingToolPermissions.map((p) => p.requestId),
-          tools: pendingToolPermissions.map((p) => p.tool.tool_name),
+          ids: sd.pendingToolPermissions.map((p) => p.requestId),
+          tools: sd.pendingToolPermissions.map((p) => p.tool.tool_name),
         });
       else if (_prevPanelCount > 0) dbg("chat", "permissionPanel hidden");
       _prevPanelCount = count;
@@ -1203,7 +925,7 @@
       btwState = v;
     },
     setVerboseEnabled: (v) => {
-      verboseEnabled = v;
+      verbose.verboseEnabled = v;
     },
     setRequestedPreviewUrl: (v) => {
       requestedPreviewUrl = v;
@@ -1245,9 +967,9 @@
     setResuming: (v: boolean) => {
       resuming = v;
     },
-    getForkOverlay: () => forkOverlay,
+    getForkOverlay: () => fork.forkOverlay,
     setForkOverlay: (v) => {
-      forkOverlay = v;
+      fork.setForkOverlay(v);
     },
     setLastContinuableRun: (v) => {
       lastContinuableRun = v;
@@ -1339,10 +1061,10 @@
       showChatScrollHint = v;
     },
     setTeamDispatchPrompt: (v) => {
-      teamDispatchPrompt = v;
+      team.setTeamDispatchPrompt(v);
     },
     setTeamDispatchOpen: (v) => {
-      teamDispatchOpen = v;
+      team.setTeamDispatchOpen(v);
     },
     t: t as unknown as (key: string, params?: Record<string, string>) => string,
   });
@@ -1461,9 +1183,9 @@
     setBtwState: (v) => {
       btwState = v;
     },
-    contextHistoryMap,
+    contextHistoryMap: sd.contextHistoryMap,
     triggerContextHistoryReactivity: () => {
-      contextHistoryMap = new Map(contextHistoryMap);
+      sd.setContextHistoryMap(new Map(sd.contextHistoryMap));
     },
     getRunId: () => runId,
     setLastContinuableRun: (v) => {
@@ -1475,10 +1197,8 @@
     setAutoNameDone: (v) => {
       autoNameDone = v;
     },
-    getForkOverlay: () => forkOverlay,
-    cleanupVerbose: () => {
-      if (verboseRetryTimer) clearTimeout(verboseRetryTimer);
-    },
+    getForkOverlay: () => fork.forkOverlay,
+    cleanupVerbose: () => verbose.cleanupVerbose(),
     cancelProgressive,
     handleSummarize,
     handleRewind,
@@ -1491,8 +1211,8 @@
 {#snippet heroMetaFooter()}
   <div class="mt-4 flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/40">
     <ChatHeroMeta
-      {cliVersionInfo}
-      {channelLatest}
+      cliVersionInfo={sd.cliVersionInfo}
+      channelLatest={sd.channelLatest}
       {remoteHosts}
       currentRemoteHostName={store.remoteHostName}
       onTargetChange={(hostName) => {
@@ -1518,10 +1238,10 @@
       agent={store.run?.agent ?? store.agent}
       model={store.model}
       cost={store.usage.cost}
-      inputTokens={cumulativeTokens.input}
-      outputTokens={cumulativeTokens.output}
-      cacheReadTokens={cumulativeTokens.cacheRead}
-      cacheWriteTokens={cumulativeTokens.cacheWrite}
+      inputTokens={sd.cumulativeTokens.input}
+      outputTokens={sd.cumulativeTokens.output}
+      cacheReadTokens={sd.cumulativeTokens.cacheRead}
+      cacheWriteTokens={sd.cumulativeTokens.cacheWrite}
       parentRunId={store.run?.parent_run_id}
       onEndSession={handleStop}
       onModelChange={handleModelChange}
@@ -1536,9 +1256,9 @@
       onMcpToggle={() => (mcpPanelOpen = !mcpPanelOpen)}
       cliVersion={store.cliVersion}
       permissionMode={store.permissionMode}
-      {platformModels}
+      platformModels={sd.platformModels}
       fastModeState={store.fastModeState}
-      verbose={verboseEnabled}
+      verbose={verbose.verboseEnabled}
       numTurns={store.numTurns}
       durationMs={store.durationMs}
       persistedFiles={store.persistedFiles}
@@ -1610,12 +1330,12 @@
       batchGroups={tl.batchGroups}
       toolBursts={tl.toolBursts}
       {burstCollapse}
-      {lastAssistantIdx}
+      lastAssistantIdx={sd.lastAssistantIdx}
       {usageAnnotations}
       {lastTurnUsage}
       {claudeTurnStarts}
-      {showPermissionPanel}
-      {fetchToolResult}
+      showPermissionPanel={sd.showPermissionPanel}
+      fetchToolResult={toolResultCache.fetchToolResult}
       topSentinelRef={tl.topSentinel}
       setTopSentinel={tl.setTopSentinel}
       {welcomeVisible}
@@ -1623,8 +1343,8 @@
       {authOverview}
       {localProxyStatuses}
       {showInitHint}
-      {cliVersionInfo}
-      {channelLatest}
+      cliVersionInfo={sd.cliVersionInfo}
+      channelLatest={sd.channelLatest}
       {remoteHosts}
       {routeRunLoadFailed}
       {routeRunPending}
@@ -1632,7 +1352,7 @@
       {notificationVisible}
       {latestNotification}
       {rewindMarkers}
-      {activeTeamRuns}
+      activeTeamRuns={team.activeTeamRuns}
       bind:thinkingExpanded={thinking.thinkingExpanded}
       thinkingElapsed={thinking.thinkingElapsed}
       thinkingVisible={thinking.thinkingVisible}
@@ -1640,8 +1360,8 @@
       processingSlashCmd={thinking.processingSlashCmd}
       {approving}
       {sending}
-      {forkOverlay}
-      {forkElapsed}
+      forkOverlay={fork.forkOverlay}
+      forkElapsed={fork.forkElapsed}
       {resuming}
       {showChatScrollHint}
       {goto}
@@ -1666,8 +1386,8 @@
       {dismissInitHint}
       {loadRunProgressive}
       {setLastTarget}
-      bind:teamDispatchPrompt
-      bind:teamDispatchOpen
+      bind:teamDispatchPrompt={team.teamDispatchPrompt}
+      bind:teamDispatchOpen={team.teamDispatchOpen}
       bind:xtermRef
       bind:chatAreaRef
     >
@@ -1680,21 +1400,21 @@
           {settings}
           {processVisibility}
           {agentSettings}
-          {showPermissionPanel}
-          {pendingToolPermissions}
+          showPermissionPanel={sd.showPermissionPanel}
+          pendingToolPermissions={sd.pendingToolPermissions}
           {btwState}
           {insight}
-          {effectiveModels}
+          effectiveModels={sd.effectiveModels}
           {folderCwdOverride}
           {welcomeVisible}
-          {skillItems}
+          skillItems={sd.skillItems}
           {preloadedAgents}
           bind:stashedInput
-          {teamHintVisible}
+          teamHintVisible={team.teamHintVisible}
           bind:shortcutHelpOpen
-          {userHistory}
+          userHistory={sd.userHistory}
           {projectCommands}
-          {inputBlockedByPermission}
+          inputBlockedByPermission={sd.inputBlockedByPermission}
           {authOverview}
           {localProxyStatuses}
           hasCreatedFiles={tl.hasCreatedFiles}
@@ -1709,7 +1429,7 @@
           {handleFastModeSwitch}
           {handlePlatformChange}
           {handleAuthModeChange}
-          {handleInputValueChange}
+          handleInputValueChange={team.handleInputValueChange}
           {handlePermissionRespond}
           {handleElicitationRespond}
           {handleBtwSend}
@@ -1725,9 +1445,9 @@
       timeline={store.timeline}
       tools={store.tools}
       turnUsages={store.turnUsages}
-      {contextHistory}
+      contextHistory={sd.contextHistory}
       persistedFiles={store.persistedFiles}
-      sessionInfo={currentSessionInfo}
+      sessionInfo={sd.currentSessionInfo}
       collapsed={sidebarCollapsed}
       bind:activeTab={toolPanelActiveTab}
       bind:panelIndicators={toolPanelIndicators}
@@ -1804,12 +1524,12 @@
   />
 
   <TeamDispatchConfirm
-    bind:open={teamDispatchOpen}
-    prompt={teamDispatchPrompt}
+    bind:open={team.teamDispatchOpen}
+    prompt={team.teamDispatchPrompt}
     cwd={store.effectiveCwd || ""}
-    onDispatch={handleTeamDispatch}
-    onUseSingleClaude={handleUseSingleClaude}
-    onCancel={handleCancelTeamDispatch}
+    onDispatch={team.handleTeamDispatch}
+    onUseSingleClaude={team.handleUseSingleClaude}
+    onCancel={team.handleCancelTeamDispatch}
   />
 
   <!-- Chat toast (fixed bottom-center, auto-dismiss) -->
