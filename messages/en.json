@@ -151,6 +151,9 @@
   "settings_chatDisplay": "Chat display",
   "settings_showTokenReport": "Show Token Usage Report",
   "settings_showTokenReportDesc": "Display input/output/cache token statistics at the bottom of each chat after a question-answer exchange",
+  "settings_mascotEnabled": "Animated Mascot",
+  "settings_mascotEnabledDesc": "Show a pixel-art animated mascot for Claude Code sessions in the sidebar",
+  "mascot_clickToOpen": "View running status",
   "settings_sessionStatusColors": "Session Status Colors",
   "settings_sessionStatusColorsDesc": "Customize the colors used for session, tool, and task states in the chat, status bar, and activity panels.",
   "settings_sessionStatusColors_running": "Running",
@@ -422,10 +425,23 @@
   "sidebar_moveToFolder": "Move to folder",
   "sidebar_moveToFolderDesc": "Move {count} conversation(s) to a folder.",
   "sidebar_moveToFolderOk": "Move",
-  "sidebar_uncategorized": "Uncategorized",
+  "sidebar_rename": "Rename",
+  "sidebar_archive": "Archive",
+  "sidebar_openDirectory": "Open directory",
+  "sidebar_renameWorkspace": "Rename Workspace",
+  "workspace_settings": "Workspace Settings",
+  "workspace_displayName": "Display name",
+  "workspace_aliasPlaceholder": "Leave empty to use default name",
+  "workspace_aliasHint": "Only modifies the sidebar display name, not the actual folder.",
+  "workspace_localPath": "Local path",
+  "workspace_openDir": "Open",
+  "sidebar_moreOptions": "More options",
+  "sidebar_noConversationsInFolder": "No conversations yet, click + to create",
+  "sidebar_deleteConfirmMsg": "Delete this conversation? This cannot be undone.",
   "sidebar_removeProject": "Remove project",
   "sidebar_removeProjectConfirm": "Remove project folder",
   "sidebar_removeProjectDesc": "This project will be removed from sidebar. Data is kept on disk. Use 'Open folder' to add it back.",
+  "moreOptions": "More options",
   "statusbar_toggleSidebar": "Toggle sidebar (Ctrl+B)",
   "statusbar_contextTitle": "Context usage for the latest turn ({pct}% of {tokens} tokens). The CLI automatically compacts context when approaching the limit.",
   "statusbar_ctx": "ctx {pct}%",
@@ -520,6 +536,8 @@
   "chat_orTypeToStart": "or type a message below to start a new chat",
   "chat_typeToStart": "Type a message below to start",
   "chat_welcomeTitle": "What can MiWarp help you build?",
+  "chat_loadingSession": "Loading session…",
+  "chat_sessionLoadFailed": "Failed to load session",
   "chat_welcomeSubtitle": "Choose a project, describe a task, or continue your last session.",
   "chat_quickAnalyze": "Analyze this project",
   "chat_quickFix": "Fix a bug or issue",
@@ -815,7 +833,6 @@
   "team_minutesAgo": "{count}m ago",
   "team_hoursAgo": "{count}h ago",
   "team_daysAgo": "{count}d ago",
-
   "teamRun_dispatchTitle": "Dispatch to Team",
   "teamRun_dispatchDesc": "Send this task to a team of specialists instead of a single Claude session.",
   "teamRun_selectPreset": "Select Team",
@@ -864,7 +881,6 @@
   "teamRun_done": "done",
   "teamRun_failed": "failed",
   "teamRun_pending": "pending",
-
   "usage_title": "Usage",
   "usage_subtitle": "Token costs and run statistics",
   "usage_scopeGlobal": "Global",
@@ -1211,7 +1227,22 @@
   "gitWorktree_session_chain": "Session chain",
   "gitWorktree_project_root": "Project root",
   "gitWorktree_this_session": "This session",
+  "gitWorktree_not_repo": "This directory is not a Git repository.",
+  "gitWorktree_refresh": "Refresh",
+  "gitWorktree_timeline_working": "Current changes",
+  "gitWorktree_timeline_working_clean": "Working tree clean",
+  "gitWorktree_timeline_files_pending": "{count} files pending commit",
+  "gitWorktree_timeline_empty": "No timeline data yet.",
+  "gitWorktree_view_changes": "View changes",
+  "gitWorktree_show_more": "Show {count} more",
+  "gitWorktree_collapse": "Show less",
+  "gitWorktree_summary_clean": "Clean",
+  "gitWorktree_summary_dirty": "Modified · {count} files changed",
+  "gitWorktree_hash_copied": "Commit hash copied.",
+  "gitWorktree_detached_tooltip": "Cannot create a PR from detached HEAD.",
   "workspaceContext_noWorkspace": "Select a workspace to see CLAUDE.md and project memory.",
+  "workspaceContext_dragSection": "Drag to reorder",
+  "workspaceContext_reorderHint": "Drag the handle on the left to reorder sections.",
   "workspaceContext_claudeMd": "Instructions",
   "workspaceContext_active": "Active",
   "workspaceContext_noClaudeMd": "No CLAUDE.md found. Consider adding project rules.",
@@ -1500,6 +1531,8 @@
   "toast_permissionPersistFailed": "Mode active for this session only — save failed",
   "toast_permissionChangeFailed": "Permission mode change failed — save error",
   "toast_rewindSuccess": "Changes reverted",
+  "toast_openDirFailed": "Cannot open directory. Please confirm the path still exists.",
+  "toast_settingsSaveFailed": "Failed to save settings",
   "error_rewindNoCheckpoint": "No file checkpoint found to rewind to",
   "error_rewindFailed": "Failed to rewind files",
   "rewind_modalTitle": "Rewind to Checkpoint",
@@ -1732,6 +1765,8 @@
   "elicitation_open_url": "Open authentication URL",
   "elicitation_accept": "Submit",
   "elicitation_decline": "Decline",
+  "elicitation_waiting": "waiting",
+  "elicitation_ready": "ready",
   "preview_label": "Preview",
   "preview_opened": "Preview pane opened",
   "preview_closed": "Preview window closed",
@@ -1794,7 +1829,6 @@
   "multiAgent_desc_test": "Unit + Integration + E2E",
   "multiAgent_desc_docs": "API + README + CHANGELOG",
   "command_multi": "Multi-agent parallel execution",
-
   "workflow_selectTemplate": "Select Workflow Template",
   "workflow_startFromTemplate": "Select a template to start a workflow",
   "workflow_browseTemplates": "Browse Templates",
@@ -1833,7 +1867,6 @@
   "workflow_intervention_unknown": "Unknown",
   "workflow_templateNotFound": "Template not found",
   "workflow_stepLabel": "Step",
-
   "wf_fullstack_name": "Fullstack Development",
   "wf_fullstack_desc": "Frontend + Backend + Database complete development flow",
   "wf_fullstack_time": "2-4 hours",
@@ -1852,7 +1885,6 @@
   "wf_fullstack_step5_title": "Integration Testing",
   "wf_fullstack_step5_instruction": "End-to-end testing, bug fixes, and performance optimization",
   "wf_fullstack_step5_time": "30-60 min",
-
   "wf_review_name": "Code Review",
   "wf_review_desc": "Security + Performance + Code Style comprehensive review",
   "wf_review_time": "30-60 min",
@@ -1868,7 +1900,6 @@
   "wf_review_step4_title": "Review Report",
   "wf_review_step4_instruction": "Summarize all issues, categorized by severity",
   "wf_review_step4_time": "5-10 min",
-
   "wf_testing_name": "Comprehensive Testing",
   "wf_testing_desc": "Unit + Integration + E2E complete testing flow",
   "wf_testing_time": "1-2 hours",
@@ -1881,7 +1912,6 @@
   "wf_testing_step3_title": "E2E Tests",
   "wf_testing_step3_instruction": "End-to-end user scenario testing",
   "wf_testing_step3_time": "20-30 min",
-
   "wf_docs_name": "Documentation Generation",
   "wf_docs_desc": "API Docs + README + CHANGELOG complete documentation",
   "wf_docs_time": "30-60 min",
@@ -1894,7 +1924,6 @@
   "wf_docs_step3_title": "CHANGELOG",
   "wf_docs_step3_instruction": "Generate version changelog",
   "wf_docs_step3_time": "10-15 min",
-
   "wf_deploy_name": "Deployment",
   "wf_deploy_desc": "Build + Test + Deploy complete CI/CD flow",
   "wf_deploy_time": "20-40 min",
@@ -1910,7 +1939,6 @@
   "wf_deploy_step4_title": "Deploy Verification",
   "wf_deploy_step4_instruction": "Verify deployment results",
   "wf_deploy_step4_time": "5-10 min",
-
   "cmd_name_switchModel": "Switch Model",
   "cmd_desc_switchModel": "Change the AI model for the next message",
   "cmd_name_compact": "Compact Conversation",
@@ -1969,7 +1997,6 @@
   "cmd_implementAll_desc": "Implement multiple feature modules",
   "cmd_testAll_desc": "Comprehensive testing (Unit + Integration + E2E)",
   "cmd_docsAll_desc": "Generate all documentation (API + README + CHANGELOG)",
-
   "slash_desc_agents": "Manage agent configurations",
   "slash_desc_clear": "Clear conversation history and free up context",
   "slash_desc_color": "Set the prompt bar color for this session",
@@ -2041,7 +2068,6 @@
   "slash_help_tableHeader": "| Command | Description |",
   "slash_help_tableDivider": "|---------|-------------|",
   "slash_help_hint": "Type `/` to open the command menu with fuzzy search.",
-
   "tool_ran": "Ran: {cmd}",
   "tool_failed": "Failed (exit {code}): {cmd}",
   "tool_running": "Running: {cmd}",
@@ -2067,7 +2093,6 @@
   "tool_status_failed": "Failed",
   "tool_status_waiting": "Waiting",
   "tool_status_approval": "Needs approval",
-
   "multiAgent_customTask": "Custom Task",
   "multiAgent_agentsParallel": "{count} agents in parallel",
   "multiAgent_executionPlan": "Execution Plan",
@@ -2081,7 +2106,6 @@
   "multiAgent_executeCustom": "Execute Custom Task",
   "multiAgent_execResults": "Execution Results",
   "multiAgent_taskComplete": "[{name}] Task complete",
-
   "sched_title": "Scheduled Tasks",
   "sched_description": "Manage automated tasks that run on a schedule",
   "scheduledTasks_title": "Scheduled Tasks",
@@ -2111,7 +2135,6 @@
   "sched_refresh": "Refresh",
   "sched_noExecutions": "No executions yet",
   "sched_selectTask": "Select a task to view details",
-
   "schedEditor_quickStart": "Quick start templates:",
   "schedTpl_dailyCheck_name": "Daily Project Check",
   "schedTpl_dailyCheck_desc": "Review git status, recent commits, and outstanding issues",
@@ -2183,7 +2206,6 @@
   "sched_runFailed": "Failed",
   "sched_runCancelled": "Cancelled",
   "sched_runQueued": "Queued",
-
   "cron_everyMinute": "Every minute",
   "cron_everyMinutes": "Every {n} minutes",
   "cron_everyHour": "Every hour",
@@ -2201,7 +2223,6 @@
   "cron_everyDayAt": "Every day at {time}",
   "cron_everyAt": "Every {days} at {time}",
   "cron_schedule": "Schedule: {expr}",
-
   "browser_title": "Browser - MiWarp",
   "browser_automation": "Browser Automation",
   "browser_description": "Control browsers, automate web tasks, and extract data",
@@ -2237,7 +2258,6 @@
   "browser_loading": "Loading...",
   "browser_connected": "Connected",
   "browser_disconnected": "Disconnected",
-
   "webfetch_title": "Web Fetch",
   "webfetch_subtitle": "Fetch and analyze web content",
   "webfetch_enterUrl": "Enter URL to fetch...",
@@ -2253,7 +2273,6 @@
   "webfetch_fetchingContent": "Fetching content...",
   "webfetch_failed": "Failed to fetch URL",
   "webfetch_unknownError": "Unknown error occurred",
-
   "sidebar_newConversation": "New conversation",
   "sidebar_searching": "Searching...",
   "sidebar_noSessions": "No matching sessions found",
@@ -2261,26 +2280,18 @@
   "sidebar_runs": "{count} runs",
   "sidebar_resume": "Resume",
   "sidebar_delete": "Delete",
-
   "atMention_noMatches": "No matches",
   "atMention_searching": "Searching...",
-
   "slashMenu_noCommands": "No matching commands",
   "slashMenu_noModels": "No models available",
-
   "toolTimeline_noToolCalls": "No tool calls yet",
-
   "inlineTool_retry": "Retry",
   "inlineTool_copyPath": "Copy path: {path}",
-
   "common_noMatches": "No matches",
   "common_searching": "Searching...",
-
   "promptInput_sendSideQuestion": "Send side question",
   "promptInput_sideQuestion": "Side question (btw)",
-
   "viewMode_label": "View mode: {mode} (Ctrl+O to cycle)",
-
   "background_blur": "Blur",
   "background_urlPlaceholder": "https://... or /path/to/image.png",
   "background_cover": "Cover",
@@ -2288,7 +2299,6 @@
   "background_fit": "Fit",
   "background_stretch": "Stretch",
   "background_tile": "Tile",
-
   "theme_title": "Theme",
   "theme_importExport": "Import / Export Theme",
   "theme_hide": "Hide",
@@ -2302,7 +2312,6 @@
   "theme_create": "Create",
   "theme_resetConfirm": "Reset all color customizations for this theme?",
   "theme_resetVariable": "Reset this color to default",
-
   "skillEditor_name": "Name",
   "skillEditor_description": "Description",
   "skillEditor_category": "Category",
@@ -2315,9 +2324,7 @@
   "skillEditor_fixErrors": "Please fix the following errors:",
   "skillEditor_markdownHint": "Write your skill content in Markdown format",
   "skillEditor_charCount": "{count} characters",
-
   "agentEditor_scope": "Scope",
-
   "pluginInstaller_preparing": "Preparing installation...",
   "pluginInstaller_validating": "Validating plugin...",
   "pluginInstaller_downloading": "Downloading plugin package...",
@@ -2325,20 +2332,15 @@
   "pluginInstaller_enabling": "Enabling plugin...",
   "pluginInstaller_complete": "Installation complete!",
   "pluginInstaller_failed": "Installation failed",
-
   "skills_title": "Skills",
   "skills_searchPlaceholder": "Search skills...",
   "skills_noHistory": "No execution history yet",
   "skills_deleteTitle": "Delete Skill",
   "skills_cannotUndo": "This action cannot be undone",
-
   "memory_consolidateConfirm": "Consolidate memory files? This will merge duplicates and update the index.",
-
   "workflow_pageTitle": "Guided Workflows - MiWarp",
-
   "chat_btw": "BTW",
   "chat_ralphLoop": "Ralph Loop",
-
   "contextCat_systemPrompt": "System prompt",
   "contextCat_systemTools": "System tools",
   "contextCat_systemToolsDeferred": "System tools (deferred)",
@@ -2350,7 +2352,6 @@
   "contextCat_messages": "Messages",
   "contextCat_freeSpace": "Free space",
   "contextCat_autocompact": "Autocompact buffer",
-
   "agentEditor_nameRequired": "Name is required",
   "agentEditor_nameFormat": "Must match [a-z0-9][a-z0-9-]{{0,63}}",
   "agentEditor_nameConflict": "Conflicts with a built-in agent",
@@ -2361,14 +2362,11 @@
   "agentEditor_positiveInteger": "Must be a positive integer",
   "agentEditor_lowMedHigh": "Must be low, medium, or high",
   "agentEditor_toolNameEmpty": "Tool name cannot be empty",
-
   "fileConvert_emptyDoc": "Document appears to be empty",
   "fileConvert_readFailed": "Failed to read Word document: {error}",
   "fileConvert_emptySheet": "Spreadsheet appears to be empty",
-
   "session_stillRunning": "Session is still running",
   "session_noId": "No session_id available for resume",
-
   "onboard_installPlugin": "1. Install Plugin",
   "onboard_installPluginDesc": "The Cowork plugin provides file system access, browser automation, scheduled tasks, and skill execution.",
   "onboard_installAction": "Install Plugin",
@@ -2383,7 +2381,6 @@
   "onboard_exploreMarket": "4. Explore the Marketplace",
   "onboard_exploreMarketDesc": "Discover more skills and integrations in the Skill Marketplace.",
   "onboard_openMarketplace": "Open Marketplace",
-
   "keybind_toggleSidebar": "Toggle Sidebar",
   "keybind_commandPalette": "Command Palette",
   "keybind_newChat": "New Chat",
@@ -2406,7 +2403,6 @@
   "keybind_themeToggle": "Theme Toggle",
   "keybind_verboseToggle": "Verbose Toggle",
   "keybind_debugPanel": "Debug Panel",
-
   "skillCat_productivity": "Productivity",
   "skillCat_development": "Development",
   "skillCat_automation": "Automation",
@@ -2414,7 +2410,6 @@
   "skillCat_organization": "Organization",
   "skillCat_integrations": "Integrations",
   "skillCat_custom": "Custom",
-
   "theme_codexDark": "Codex Dark",
   "theme_codexLight": "Codex Light",
   "theme_midnight": "Midnight",
@@ -2425,25 +2420,21 @@
   "theme_morandiLight": "Morandi Light",
   "theme_devPreview": "Dev Preview",
   "theme_devPreviewLight": "Dev Preview Light",
-
   "platform_custom": "Custom",
   "platform_customEndpoint": "Custom endpoint",
   "platform_catProvider": "LLM Providers",
   "platform_catProxy": "API Proxy",
   "platform_catLocal": "Local",
   "platform_catCustom": "Custom",
-
   "pluginCard_skills": "Skills",
   "pluginCard_commands": "Commands",
   "pluginCard_agents": "Agents",
   "pluginCard_hooks": "Hooks",
   "pluginCard_mcp": "MCP",
   "pluginCard_lsp": "LSP",
-
   "sessionStatus_bypass": "bypass",
   "sessionStatus_plan": "plan",
   "sessionStatus_auto": "auto",
-
   "sessionControl_panelWorkspace": "Session context",
   "sessionControl_panelActivity": "Activity",
   "sessionControl_panelUsage": "Context usage",
@@ -2455,22 +2446,18 @@
   "sessionControl_panelMore": "More",
   "sessionControl_panelOverflowMenu": "More panels (usage & tasks)",
   "sessionControl_panelTabsAria": "Side panel tabs",
-
   "skillCard_options": "Skill options",
   "sidebarSearch_clear": "Clear search",
   "phaseIndicator_agentPhase": "Agent phase: {phase}",
   "toolActivity_scrollTo": "Scroll to tool",
-
   "mcp_registry": "registry",
   "mcp_repository": "Repository",
   "agents_statuslineDesc": "Agent to configure the user's Claude Code status line setting.",
   "agents_yes": "Yes",
-
   "settings_aboutMiWarp": "About MiWarp",
   "settings_debugMode": "Debug mode",
   "settings_bearer": "Bearer",
   "memory_hasFrontmatter": "Has frontmatter",
-
   "plugins_refresh": "Refresh",
   "plugins_updatePlugin": "Update plugin",
   "plugins_keySaved": "Key saved",
@@ -2530,16 +2517,12 @@
   "extensions_projectSkills": "Project skills",
   "extensions_projectPlugins": "Project plugins",
   "extensions_openWorkspace": "Open workspace",
-
   "wf_templateNotFound": "Template not found",
-
   "cron_at": "At {time}",
-
   "browser_quickScreenshot": "Screenshot",
   "browser_quickFindElements": "Find Elements",
   "browser_quickNetwork": "Network",
   "browser_quickConsole": "Console",
-
   "schedCard_noCron": "No cron expression",
   "schedCard_interval": "Every {minutes} minutes",
   "schedCard_oneTime": "One-time: {time}",
@@ -2555,12 +2538,10 @@
   "schedCard_pause": "Pause",
   "schedCard_resume": "Resume",
   "schedCard_delete": "Delete",
-
   "sidebar_pin": "Pin",
   "sidebar_unpin": "Unpin",
   "sidebar_pinSession": "Pin session",
   "sidebar_unpinSession": "Unpin session",
-
   "skillMarketplace_title": "Marketplace",
   "skillMarketplace_description": "Discover and install community skills",
   "skillMarketplace_search": "Search skills...",
@@ -2570,12 +2551,9 @@
   "skillMarketplace_noSkills": "No skills available",
   "skillMarketplace_preview": "Preview",
   "skillMarketplace_install": "Install",
-
   "cmd_cat_recent": "Recent",
-
   "modelFilter_placeholder": "Filter models...",
   "modelFilter_noResults": "No models match",
-
   "sidebar_batchSelected": "{count} selected",
   "sidebar_batchDelete": "Delete selected",
   "sidebar_batchDeleteConfirm": "Delete {count} conversations?",
@@ -2583,8 +2561,17 @@
   "sidebar_batchUnstar": "Unstar selected",
   "sidebar_batchArchive": "Archive selected",
   "sidebar_batchClear": "Clear selection",
-
   "prompt_tokenEstimate": "~{tokens} tokens",
   "prompt_tokenPercent": "{pct}% of context",
-  "prompt_tokenWarning": "Input may exceed context window"
+  "prompt_tokenWarning": "Input may exceed context window",
+  "workflow_all": "All",
+  "workflow_steps": "Steps",
+  "workflow_searchPlaceholder": "Search workflows...",
+  "go_chat": "Go to Chat",
+  "cat_development": "Development",
+  "cat_review": "Review",
+  "cat_documentation": "Documentation",
+  "cat_testing": "Testing",
+  "cat_maintenance": "Maintenance",
+  "cat_custom": "Custom"
 }

@@ -3105,6 +3105,10 @@ export class SessionStore {
         // Preserve modelUsage/durationApiMs even on zero-token update (error results may still have them)
         if (!hasTokens && u.modelUsage) merged.modelUsage = u.modelUsage;
         if (!hasTokens && u.durationApiMs) merged.durationApiMs = u.durationApiMs;
+        // Preserve previous modelUsage if the new one is missing (contextWindow must not reset to 0)
+        if (hasTokens && !merged.modelUsage && prev.modelUsage) {
+          merged.modelUsage = prev.modelUsage;
+        }
         if (ctx) ctx.usage = merged;
         else this.usage = merged;
         // Store duration_ms and num_turns from result events

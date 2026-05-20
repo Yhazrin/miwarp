@@ -32,8 +32,6 @@
   import McpStatusPanel from "$lib/components/McpStatusPanel.svelte";
   import PromptInput from "$lib/components/PromptInput.svelte";
   import CreatedFiles from "$lib/components/CreatedFiles.svelte";
-  import PermissionPanel from "$lib/components/PermissionPanel.svelte";
-  import ElicitationDialog from "$lib/components/ElicitationDialog.svelte";
 
   import ToolActivity from "$lib/components/ToolActivity.svelte";
   import ShortcutHelpPanel from "$lib/components/ShortcutHelpPanel.svelte";
@@ -1250,6 +1248,7 @@
       {getPlanContentForExitPlan}
       {openPreviewForPath}
       {handleHookCallbackRespond}
+      {handleElicitationRespond}
       {handleChatScroll}
       {scrollChatToBottom}
       {handleTermResize}

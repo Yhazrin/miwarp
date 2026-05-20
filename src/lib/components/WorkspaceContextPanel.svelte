@@ -202,7 +202,7 @@
   }
 </script>
 
-<div class="flex flex-col h-full overflow-y-auto">
+<div class="flex flex-col h-full overflow-y-auto scrollbar-hide">
   {#if !cwd}
     <!-- No workspace selected -->
     <div class="flex flex-col items-center justify-center h-full px-6 text-center">
@@ -339,7 +339,7 @@
               <div class="h-3 w-2/3 rounded bg-muted/50 animate-pulse"></div>
             </div>
           {:else if memoryItems.length > 0}
-            <div class="px-2.5 pb-2 space-y-1 max-h-60 overflow-y-auto">
+            <div class="px-2.5 pb-2 space-y-1 max-h-60 overflow-y-auto scrollbar-hide">
               {#each memoryItems as item (item.id)}
                 <div
                   class="group flex items-start gap-1.5 rounded-lg px-2 py-1.5 hover:bg-accent/30 transition-colors"

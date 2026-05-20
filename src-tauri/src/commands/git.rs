@@ -281,3 +281,231 @@ pub async fn get_git_status(cwd: String) -> Result<String, String> {
     }
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
+
+#[derive(Serialize)]
+pub struct GitTimelineEntry {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub entry_type: String,
+    pub label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hash: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub short_hash: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub author: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub date: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remote: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_current: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_dirty: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub changed_files: Option<u32>,
+}
+
+#[derive(Serialize)]
+pub struct GitTimelineResponse {
+    pub is_repo: bool,
+    pub branch: String,
+    pub is_detached: bool,
+    pub is_clean: bool,
+    pub changed_files: u32,
+    pub entries: Vec<GitTimelineEntry>,
+}
+
+fn is_git_repo(cwd: &str) -> bool {
+    Command::new("git")
+        .current_dir(cwd)
+        .args(["rev-parse", "--is-inside-work-tree"])
+        .hide_console()
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim() == "true")
+        .unwrap_or(false)
+}
+
+fn git_output_ok(cwd: &str, args: &[&str]) -> Option<String> {
+    let output = Command::new("git")
+        .current_dir(cwd)
+        .args(args)
+        .hide_console()
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let value = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if value.is_empty() {
+        None
+    } else {
+        Some(value)
+    }
+}
+
+#[tauri::command]
+pub async fn get_git_timeline(
+    cwd: String,
+    limit: Option<u32>,
+) -> Result<GitTimelineResponse, String> {
+    log::debug!("[git] get_git_timeline: cwd={}, limit={:?}", cwd, limit);
+    let limit = limit.unwrap_or(12).clamp(1, 30) as usize;
+
+    if !is_git_repo(&cwd) {
+        return Ok(GitTimelineResponse {
+            is_repo: false,
+            branch: String::new(),
+            is_detached: false,
+            is_clean: true,
+            changed_files: 0,
+            entries: vec![],
+        });
+    }
+
+    let branch_raw = git_output_ok(&cwd, &["branch", "--show-current"]).unwrap_or_default();
+    let is_detached = branch_raw.is_empty();
+    let branch = if is_detached {
+        git_output_ok(&cwd, &["rev-parse", "--short", "HEAD"]).unwrap_or_default()
+    } else {
+        branch_raw.clone()
+    };
+
+    let status_output = Command::new("git")
+        .current_dir(&cwd)
+        .args(["status", "--short"])
+        .hide_console()
+        .output()
+        .map_err(|e| format!("Failed to run git status: {}", e))?;
+    let status_str = String::from_utf8_lossy(&status_output.stdout);
+    let changed_files = status_str.lines().filter(|l| !l.trim().is_empty()).count() as u32;
+    let is_clean = changed_files == 0;
+
+    let mut entries = Vec::new();
+    entries.push(GitTimelineEntry {
+        id: "working_tree".to_string(),
+        entry_type: "working_tree".to_string(),
+        label: if is_clean {
+            "Working tree clean".to_string()
+        } else {
+            "Current changes".to_string()
+        },
+        description: None,
+        hash: None,
+        short_hash: None,
+        author: None,
+        date: None,
+        branch: Some(branch.clone()),
+        remote: None,
+        is_current: Some(true),
+        is_dirty: Some(!is_clean),
+        changed_files: if is_clean { None } else { Some(changed_files) },
+    });
+
+    let log_output = Command::new("git")
+        .current_dir(&cwd)
+        .args([
+            "log",
+            &format!("-n{}", limit),
+            "--format=%H\x1f%h\x1f%s\x1f%an\x1f%aI",
+        ])
+        .hide_console()
+        .output()
+        .map_err(|e| format!("Failed to run git log: {}", e))?;
+
+    if log_output.status.success() {
+        let log_str = String::from_utf8_lossy(&log_output.stdout);
+        for (i, line) in log_str.lines().enumerate() {
+            if line.trim().is_empty() {
+                continue;
+            }
+            let parts: Vec<&str> = line.split('\x1f').collect();
+            if parts.len() < 5 {
+                continue;
+            }
+            let hash = parts[0].to_string();
+            entries.push(GitTimelineEntry {
+                id: format!("commit-{}", hash),
+                entry_type: "commit".to_string(),
+                label: parts[2].to_string(),
+                description: None,
+                hash: Some(hash.clone()),
+                short_hash: Some(parts[1].to_string()),
+                author: Some(parts[3].to_string()),
+                date: Some(parts[4].to_string()),
+                branch: if i == 0 && !is_detached {
+                    Some(branch.clone())
+                } else {
+                    None
+                },
+                remote: None,
+                is_current: if i == 0 { Some(true) } else { None },
+                is_dirty: None,
+                changed_files: None,
+            });
+        }
+    }
+
+    if !is_detached {
+        if let Some(upstream) = git_output_ok(
+            &cwd,
+            &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+        ) {
+            entries.push(GitTimelineEntry {
+                id: format!("remote-{}", upstream.replace('/', "-")),
+                entry_type: "remote_ref".to_string(),
+                label: upstream.clone(),
+                description: Some("Tracking remote".to_string()),
+                hash: None,
+                short_hash: None,
+                author: None,
+                date: None,
+                branch: None,
+                remote: Some(upstream),
+                is_current: None,
+                is_dirty: None,
+                changed_files: None,
+            });
+        }
+
+        let base_branch = if git_output_ok(&cwd, &["rev-parse", "--verify", "main"]).is_some() {
+            "main"
+        } else if git_output_ok(&cwd, &["rev-parse", "--verify", "master"]).is_some() {
+            "master"
+        } else {
+            ""
+        };
+        if !base_branch.is_empty() && base_branch != branch {
+            entries.push(GitTimelineEntry {
+                id: format!("base-{}", base_branch),
+                entry_type: "base".to_string(),
+                label: base_branch.to_string(),
+                description: Some("Base branch".to_string()),
+                hash: None,
+                short_hash: None,
+                author: None,
+                date: None,
+                branch: None,
+                remote: None,
+                is_current: None,
+                is_dirty: None,
+                changed_files: None,
+            });
+        }
+    }
+
+    Ok(GitTimelineResponse {
+        is_repo: true,
+        branch,
+        is_detached,
+        is_clean,
+        changed_files,
+        entries,
+    })
+}

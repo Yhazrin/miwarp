@@ -71,6 +71,8 @@ pub struct ScheduledTask {
     pub model: Option<String>,
     #[serde(default)]
     pub provider: Option<String>,
+    #[serde(default = "default_true")]
+    pub notify_on_completion: bool,
     #[serde(default)]
     pub next_run_at: Option<String>,
     #[serde(default)]
@@ -132,6 +134,8 @@ pub struct ScheduledTaskInput {
     pub model: Option<String>,
     #[serde(default)]
     pub provider: Option<String>,
+    #[serde(default = "default_true")]
+    pub notify_on_completion: bool,
 }
 
 /// Partial update for an existing scheduled task.
@@ -158,4 +162,6 @@ pub struct ScheduledTaskPatch {
     pub model: Option<Option<String>>,
     #[serde(default)]
     pub provider: Option<Option<String>>,
+    #[serde(default)]
+    pub notify_on_completion: Option<bool>,
 }

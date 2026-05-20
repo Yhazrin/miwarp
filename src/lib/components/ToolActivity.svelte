@@ -1013,7 +1013,7 @@
         class="mt-3 mx-1.5 mb-1.5 rounded-2xl border border-border/40 bg-background/40 px-2 py-1.5 backdrop-blur-xl"
       >
         <div class="flex items-center justify-between">
-          <div class="flex items-center gap-0.5 overflow-x-auto pr-1">
+          <div class="flex items-center gap-0.5 overflow-x-auto pr-1 scrollbar-hide">
             <!-- Workspace icon -->
             <button
               class="p-1.5 rounded-xl transition-colors {activeTab === 'workspace'
@@ -1204,7 +1204,7 @@
          Tab content is absolutely positioned within this relative wrapper so all mounted tabs share
          the same layout slot but only the active one is visible/interactive. -->
     <div
-      class="relative mx-1.5 mb-1.5 mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/30 bg-background/30 backdrop-blur-xl"
+      class="relative mx-1.5 my-1.5 flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/30 bg-background/30 backdrop-blur-xl"
     >
       {#if mountedTabs.has("workspace")}
         <div

@@ -30,6 +30,7 @@
   import SetupWizard from "$lib/components/SetupWizard.svelte";
   import AboutModal from "$lib/components/AboutModal.svelte";
   import PermissionsModal from "$lib/components/PermissionsModal.svelte";
+  import WorkspaceSettingsModal from "$lib/components/WorkspaceSettingsModal.svelte";
   import Modal from "$lib/components/Modal.svelte";
   import CliSessionBrowser from "$lib/components/CliSessionBrowser.svelte";
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
@@ -151,6 +152,11 @@
   let folderRenameName = $state("");
   let folderDeleteOpen = $state(false);
   let folderDeleteTarget = $state<SessionFolder | null>(null);
+
+  // Workspace settings modal
+  let workspaceSettingsOpen = $state(false);
+  let workspaceSettingsCwd = $state("");
+  let workspaceSettingsAlias = $state("");
 
   // Move-to-folder dialog
   let moveToFolderOpen = $state(false);
@@ -1359,6 +1365,33 @@
     removeProjectTarget = "";
   }
 
+  // Workspace settings modal
+  function openWorkspaceSettings(cwd: string) {
+    const normalized = normalizeCwd(cwd);
+    const alias = settings?.workspace_aliases?.[normalized] ?? "";
+    workspaceSettingsCwd = cwd;
+    workspaceSettingsAlias = alias;
+    workspaceSettingsOpen = true;
+  }
+
+  async function saveWorkspaceAlias(cwd: string, alias: string) {
+    const normalized = normalizeCwd(cwd);
+    const current = settings?.workspace_aliases ?? {};
+    const updated = { ...current };
+    if (alias.trim()) {
+      updated[normalized] = alias.trim();
+    } else {
+      delete updated[normalized];
+    }
+    try {
+      const newSettings = await updateUserSettings({ workspace_aliases: updated });
+      settings = newSettings;
+      dbg("layout", "workspace alias saved", { cwd: normalized, alias });
+    } catch (e) {
+      dbgWarn("layout", "save workspace alias failed", e);
+    }
+  }
+
   // Build enriched project folder tree (project paths with nested logical sub-folders)
   let enrichedProjectFolders = $derived.by(() =>
     buildEnrichedProjectFolders(runs, sessionFolders, favoriteRunIds, pinnedCwds, removedCwds),
@@ -2536,9 +2569,6 @@
           {:else if isTeamsPage}
             <!-- Teams sidebar -->
             <div class="px-2 pt-2 pb-1 shrink-0">
-              <p class="px-1 pb-1.5 text-xs font-semibold text-sidebar-foreground">
-                {t("sidebar_teams")}
-              </p>
               <input
                 type="text"
                 bind:value={teamStoreSearchQuery}
@@ -2592,7 +2622,7 @@
                 bind:value={runSearchQuery}
                 oninput={onDeepQueryInput}
                 placeholder={t("sidebar_searchChats")}
-                class="w-full rounded-md border border-sidebar-border bg-sidebar px-2 py-1 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
+                class="w-full rounded-full border border-sidebar-border bg-sidebar px-3 py-1 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
               />
               {#if runSearchQuery.trim()}
                 {#if searching}
@@ -2708,6 +2738,50 @@
                     onDragOverSubFolder={(_key, folderId) => handleDragOverFolder(folderId)}
                     onDragLeaveSubFolder={handleDragLeaveFolder}
                     onDropOnSubFolder={(folderId) => handleDropOnFolder(folderId)}
+                    onOpenDirectory={folder.isUncategorized
+                      ? undefined
+                      : async () => {
+                          try {
+                            const { open } = await import("@tauri-apps/plugin-shell");
+                            await open(folder.cwd);
+                          } catch (e) {
+                            dbgWarn("layout", "openDirectory failed", e);
+                          }
+                        }}
+                    onRenameWorkspace={folder.isUncategorized
+                      ? undefined
+                      : () => openWorkspaceSettings(folder.cwd)}
+                    onWorkspaceSettings={folder.isUncategorized
+                      ? undefined
+                      : () => openWorkspaceSettings(folder.cwd)}
+                    isRunning={folder.isUncategorized
+                      ? false
+                      : runs.some(
+                          (r) =>
+                            normalizeCwd(r.parent_cwd ?? r.cwd) === normalizeCwd(folder.cwd) &&
+                            r.status === "running",
+                        )}
+                    mascotStatus={folder.isUncategorized
+                      ? "idle"
+                      : (() => {
+                          const folderRuns = runs.filter(
+                            (r) => normalizeCwd(r.parent_cwd ?? r.cwd) === normalizeCwd(folder.cwd),
+                          );
+                          if (folderRuns.some((r) => r.status === "running")) return "running";
+                          if (folderRuns.some((r) => r.status === "completed")) return "done";
+                          return "idle";
+                        })()}
+                    showMascot={settings?.mascot_enabled !== false}
+                    onMascotClick={folder.isUncategorized
+                      ? undefined
+                      : () => {
+                          const runningRun = runs.find(
+                            (r) =>
+                              normalizeCwd(r.parent_cwd ?? r.cwd) === normalizeCwd(folder.cwd) &&
+                              r.status === "running",
+                          );
+                          if (runningRun) goto(`/chat?run=${runningRun.id}`);
+                        }}
                   />
                 {/each}
                 <!-- Open folder... -->
@@ -2946,6 +3020,20 @@
     </button>
   </div>
 </Modal>
+
+<!-- Workspace settings modal -->
+<WorkspaceSettingsModal
+  bind:open={workspaceSettingsOpen}
+  cwd={workspaceSettingsCwd}
+  currentAlias={workspaceSettingsAlias}
+  onClose={() => {
+    workspaceSettingsOpen = false;
+    workspaceSettingsCwd = "";
+    workspaceSettingsAlias = "";
+  }}
+  onSave={(alias) => saveWorkspaceAlias(workspaceSettingsCwd, alias)}
+  onRemove={workspaceSettingsCwd ? () => requestRemoveProject(workspaceSettingsCwd) : undefined}
+/>
 
 <!-- Rename folder dialog -->
 <Modal bind:open={folderRenameOpen} title={t("sidebar_renameFolder")}>

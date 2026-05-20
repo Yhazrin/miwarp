@@ -8,6 +8,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { hasAttention } from "$lib/stores/attention-store.svelte";
+  import ContextMenu from "./ContextMenu.svelte";
 
   function platformLabel(id: string): string {
     return PLATFORM_PRESETS.find((p) => p.id === id)?.name ?? id;
@@ -17,6 +18,7 @@
     conversation,
     selected = false,
     batchSelected = false,
+    density = "default",
     onclick,
     onresume,
     ondelete,
@@ -28,6 +30,8 @@
     conversation: ConversationGroup;
     selected?: boolean;
     batchSelected?: boolean;
+    /** Compact typography for sidebar tree (level 3). */
+    density?: "default" | "sidebar";
     onclick?: () => void;
     onresume?: (runId: string, mode: "resume") => void;
     ondelete?: (conversation: ConversationGroup) => void;
@@ -36,6 +40,8 @@
     ondragstart?: (e: DragEvent, runId: string) => void;
     ondragend?: () => void;
   } = $props();
+
+  const isSidebar = $derived(density === "sidebar");
 
   const run = $derived(conversation.latestRun);
   const label = $derived(truncate(conversation.title, 28));
@@ -56,7 +62,7 @@
     return { color: "hsl(var(--muted-foreground))", animated: false };
   });
 
-  // ── Inline rename (self-contained, mirrors RunListItem) ──
+  // ── Inline rename ──────────────────────────────────────────────────────────
 
   let editing = $state(false);
   let editValue = $state("");
@@ -77,14 +83,10 @@
       try {
         const { renameRun } = await import("$lib/api");
         await renameRun(conversation.latestRun.id, trimmed);
-        dbg("conv-item", "renamed", {
-          runId: conversation.latestRun.id,
-          name: trimmed,
-        });
+        dbg("conv-item", "renamed", { runId: conversation.latestRun.id, name: trimmed });
         window.dispatchEvent(new Event("ocv:runs-changed"));
       } catch (e) {
         dbgWarn("conv-item", "rename failed", e);
-        // runs will refresh on next poll
       }
     }
   }
@@ -109,10 +111,86 @@
     }
     onclick?.();
   }
+
+  // ── Context menu ──────────────────────────────────────────────────────────
+
+  let contextMenuOpen = $state(false);
+  let contextMenuX = $state(0);
+  let contextMenuY = $state(0);
+
+  function openContextMenu(e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    // Close all other context menus first
+    window.dispatchEvent(new CustomEvent("close-all-context-menus"));
+    contextMenuX = e.clientX;
+    contextMenuY = e.clientY;
+    contextMenuOpen = true;
+  }
+
+  function openContextMenuFromButton(e: MouseEvent) {
+    e.stopPropagation();
+    window.dispatchEvent(new CustomEvent("close-all-context-menus"));
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    contextMenuX = rect.left;
+    contextMenuY = rect.bottom + 4;
+    contextMenuOpen = true;
+  }
+
+  function closeContextMenu() {
+    contextMenuOpen = false;
+  }
+
+  // Listen for close-all event from other context menus
+  $effect(() => {
+    if (contextMenuOpen) {
+      const handler = () => {
+        contextMenuOpen = false;
+      };
+      window.addEventListener("close-all-context-menus", handler);
+      return () => window.removeEventListener("close-all-context-menus", handler);
+    }
+  });
+
+  async function handleContextMenuSelect(id: string) {
+    switch (id) {
+      case "rename":
+        startRename();
+        break;
+      case "movetofolder":
+        onmovetofolder?.(conversation.runs.map((r) => r.id));
+        break;
+      case "archive":
+        // Archive = move to uncategorized / null folder
+        onmovetofolder?.(conversation.runs.map((r) => r.id));
+        break;
+      case "delete":
+        if (confirm(t("sidebar_deleteConfirmMsg") ?? "Delete this conversation?")) {
+          ondelete?.(conversation);
+        }
+        break;
+    }
+  }
+
+  // Context menu items
+  const contextMenuItems = $derived([
+    { id: "rename", label: t("sidebar_rename"), icon: "rename" as const },
+    { id: "movetofolder", label: t("sidebar_moveToFolder"), icon: "folder" as const },
+    { id: "archive", label: t("sidebar_archive"), icon: "archive" as const },
+    {
+      id: "delete",
+      label: t("sidebar_delete"),
+      icon: "trash" as const,
+      danger: true,
+      separatorBefore: true,
+      disabled: !canDelete,
+    },
+  ]);
 </script>
 
 <div
-  class="group w-full text-left px-3 py-1.5 rounded-md transition-colors text-xs cursor-pointer
+  class="group w-full text-left rounded-md transition-colors cursor-pointer
+    {isSidebar ? 'px-2 py-1 text-[11px]' : 'px-3 py-1.5 text-xs'}
     {selected
     ? 'bg-sidebar-accent/70 text-sidebar-accent-foreground'
     : 'hover:bg-sidebar-accent/30 text-sidebar-foreground'} {batchSelected
@@ -123,6 +201,7 @@
   draggable={!!ondragstart}
   onclick={handleClick}
   onkeydown={handleKeydown}
+  oncontextmenu={openContextMenu}
   ondragstart={ondragstart ? (e) => ondragstart!(e, conversation.latestRun.id) : undefined}
   {ondragend}
 >
@@ -164,7 +243,9 @@
         />
       {:else}
         <span
-          class="truncate text-[13px] leading-tight font-medium"
+          class="truncate leading-tight {isSidebar
+            ? 'text-[11px] font-normal text-sidebar-foreground/85'
+            : 'text-[13px] font-medium'}"
           ondblclick={(e) => {
             e.stopPropagation();
             startRename();
@@ -195,56 +276,7 @@
             stroke="currentColor"
             stroke-width="2"
             stroke-linecap="round"
-            stroke-linejoin="round"
-            ><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path
-              d="M21 3v5h-5"
-            /></svg
-          >
-        </button>
-      {/if}
-      {#if canDelete && ondelete}
-        <button
-          class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-opacity"
-          onclick={(e) => {
-            e.stopPropagation();
-            ondelete(conversation);
-          }}
-          title={t("sidebar_deleteConfirm")}
-        >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path
-              d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"
-            /></svg
-          >
-        </button>
-      {/if}
-      {#if onmovetofolder}
-        <button
-          class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-accent/20 text-muted-foreground hover:text-sidebar-foreground transition-opacity"
-          onclick={(e) => {
-            e.stopPropagation();
-            onmovetofolder(conversation.runs.map((r) => r.id));
-          }}
-          title={t("sidebar_moveToFolder")}
-        >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><path
-              d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
-            /><path d="m9 13 2 2 4-4" /></svg
+            stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3" /></svg
           >
         </button>
       {/if}
@@ -267,9 +299,12 @@
       {/if}
     </div>
   </div>
-  <!-- Meta row: branch / platform / remote / time — no agent CLI name -->
-  <div class="mt-0.5 flex items-center gap-1 text-[10.5px] text-muted-foreground/45 leading-none">
-    <!-- Left: branch + remote + platform -->
+  <!-- Meta row: branch / platform / remote / time -->
+  <div
+    class="mt-0.5 flex items-center gap-1 text-muted-foreground/45 leading-none {isSidebar
+      ? 'text-[10px]'
+      : 'text-[10.5px]'}"
+  >
     <div class="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
       {#if run.worktree_branch}
         <span
@@ -313,7 +348,16 @@
         <span class="truncate opacity-70">{platformLabel(run.platform_id)}</span>
       {/if}
     </div>
-    <!-- Right: time -->
     <span class="shrink-0 tabular-nums">{time}</span>
   </div>
 </div>
+
+{#if contextMenuOpen}
+  <ContextMenu
+    x={contextMenuX}
+    y={contextMenuY}
+    items={contextMenuItems}
+    onSelect={handleContextMenuSelect}
+    onClose={closeContextMenu}
+  />
+{/if}

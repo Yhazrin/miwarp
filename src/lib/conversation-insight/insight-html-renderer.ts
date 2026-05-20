@@ -4,6 +4,7 @@
 
 import type { InsightReport, InsightContext, InsightSession } from "./insight-types";
 import { buildInsightPromptContext } from "./insight-context-builder";
+import { yieldToMain } from "$lib/utils/yield";
 
 /**
  * Renders the insight report as a single-file HTML string.
@@ -487,19 +488,15 @@ export function renderInsightHtml(report: InsightReport, context: InsightContext
 </html>`;
 }
 
-/**
- * Async wrapper that yields to the main thread before rendering.
- * Prevents long HTML generation from blocking the UI.
- */
+/** Yields to the main thread before building large HTML strings. */
 export async function renderInsightHtmlAsync(
   report: InsightReport,
   context: InsightContext,
 ): Promise<string> {
-  // Yield so the browser can paint before the heavy string build
-  if (typeof requestAnimationFrame === "function") {
-    await new Promise<void>((r) => requestAnimationFrame(() => r()));
-  }
-  return renderInsightHtml(report, context);
+  await yieldToMain();
+  const html = renderInsightHtml(report, context);
+  await yieldToMain();
+  return html;
 }
 
 function escapeHtml(str: string): string {

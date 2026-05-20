@@ -702,11 +702,18 @@
 
 /* Scrollbar-hide utility (for horizontal pill rows) */
 .scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+  scrollbar-color: transparent transparent !important;
 }
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;
+  display: none !important;
+}
+.scrollbar-hide::-webkit-scrollbar-track {
+  display: none !important;
+}
+.scrollbar-hide::-webkit-scrollbar-thumb {
+  display: none !important;
 }
 
 /* Scrollbar styling */

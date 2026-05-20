@@ -56,6 +56,8 @@ export interface ScheduledTask {
   permissionMode?: string;
   model?: string;
   provider?: string;
+  notifyOnCompletion?: boolean; // Send notification on completion
+  // Additional task settings
   nextRunAt?: string;
   lastRunAt?: string;
   createdAt: string;
@@ -111,6 +113,7 @@ export interface ScheduledTaskInput {
   permissionMode?: string;
   model?: string;
   provider?: string;
+  notifyOnCompletion?: boolean;
   // New fields
   dependencies?: TaskDependency[];
   triggerOnEvent?: TaskEventTrigger;
@@ -130,6 +133,7 @@ export interface ScheduledTaskPatch {
   permissionMode?: string | null;
   model?: string | null;
   provider?: string | null;
+  notifyOnCompletion?: boolean | null;
   // New fields
   dependencies?: TaskDependency[] | null;
   triggerOnEvent?: TaskEventTrigger | null;

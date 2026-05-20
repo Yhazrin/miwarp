@@ -1,5 +1,6 @@
 import type { BusToolItem, TimelineEntry } from "$lib/types";
 import { formatDuration } from "$lib/utils/format";
+import { CONTEXT_CLEARED_MARKER } from "$lib/utils/slash-commands";
 
 export type ProcessVisibility = "output" | "guided" | "developer" | "expert";
 
@@ -101,11 +102,6 @@ export function shouldMountFullToolCardInOutputMode(tool: BusToolItem): boolean 
 /** Guided: routine tools use compact timeline row; critical/structural use full card. */
 export function shouldMountFullToolCardInGuidedMode(tool: BusToolItem): boolean {
   return isProcessVisibilityCriticalTool(tool) || isProcessVisibilityStructuralTool(tool);
-}
-
-/** Whether the separator content represents a meaningful timeline boundary (e.g. context cleared). */
-export function isTimelineSeparatorContent(content: string | undefined): boolean {
-  return content === "__context_cleared__";
 }
 
 export function timelineHasHiddenRoutineWorkRunning(entries: TimelineEntry[]): boolean {
@@ -246,5 +242,14 @@ export function shouldShowTimelineCommandOutput(mode: ProcessVisibility, content
   if (c.includes("## Context Usage")) return true;
   if (c.includes("Total cost:") && c.includes("Total duration")) return true;
   if (c.startsWith("Version ") && c.includes("•")) return true;
+  return false;
+}
+
+/** Context-reset divider (not compaction / Ralph / command output blocks). */
+export function isTimelineSeparatorContent(content: string): boolean {
+  const c = content.trim();
+  if (!c) return false;
+  if (c.includes(CONTEXT_CLEARED_MARKER)) return true;
+  if (/^context cleared\b/i.test(c)) return true;
   return false;
 }

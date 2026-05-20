@@ -307,6 +307,15 @@ pub async fn dispatch_command(
             let result = crate::commands::git::get_git_status(cwd).await?;
             Ok(json!(result))
         }
+        "get_git_timeline" => {
+            let cwd = extract_str(&params, "cwd")?;
+            let limit = params
+                .get("limit")
+                .and_then(|v| v.as_u64())
+                .map(|v| v as u32);
+            let result = crate::commands::git::get_git_timeline(cwd, limit).await?;
+            serde_json::to_value(result).map_err(|e| e.to_string())
+        }
 
         // ── Teams ──
         "list_teams" => {

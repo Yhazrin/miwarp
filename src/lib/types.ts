@@ -208,6 +208,12 @@ export interface UserSettings {
   process_visibility?: "output" | "guided" | "developer" | "expert";
   /** Custom session status colors. */
   session_status_colors?: SessionStatusColors;
+  /** Workspace display aliases: normalized_cwd → display_name */
+  workspace_aliases?: Record<string, string>;
+  /** Path to user's avatar image */
+  avatar_path?: string;
+  /** Enable canvas mascot animation in sidebar. Default true. */
+  mascot_enabled?: boolean;
   updated_at: string;
 }
 
@@ -479,6 +485,69 @@ export interface GitSummary {
   total_insertions: number;
   total_deletions: number;
 }
+
+export type GitTimelineEntryType = "working_tree" | "commit" | "branch_ref" | "remote_ref" | "base";
+
+export interface GitTimelineEntry {
+  id: string;
+  type: GitTimelineEntryType;
+  label: string;
+  description?: string;
+  hash?: string;
+  short_hash?: string;
+  author?: string;
+  date?: string;
+  branch?: string;
+  remote?: string;
+  is_current?: boolean;
+  is_dirty?: boolean;
+  changed_files?: number;
+}
+
+export interface GitTimelineResponse {
+  is_repo: boolean;
+  branch: string;
+  is_detached: boolean;
+  is_clean: boolean;
+  changed_files: number;
+  entries: GitTimelineEntry[];
+}
+
+// ── Media Artifact types ──
+
+export type MediaArtifactKind = "image" | "video" | "audio" | "html" | "pdf" | "file";
+
+export interface MediaArtifact {
+  id: string;
+  kind: MediaArtifactKind;
+  path: string;
+  name: string;
+  size: number;
+  mimeType: string;
+  contentBase64?: string;
+  previewable: boolean;
+}
+
+export type ArtifactFailureCode =
+  | "NOT_FOUND"
+  | "FORBIDDEN"
+  | "TOO_LARGE"
+  | "UNSUPPORTED_TYPE"
+  | "SENSITIVE_PATH";
+
+export interface ArtifactResolutionResult {
+  ok: true;
+  artifact: MediaArtifact;
+}
+
+export interface ArtifactResolutionFailure {
+  ok: false;
+  path: string;
+  reason: string;
+  code: ArtifactFailureCode;
+}
+
+export type ArtifactResolution = ArtifactResolutionResult | ArtifactResolutionFailure;
 
 // ── CLI Control Protocol types ──
 

@@ -11,6 +11,12 @@ pub fn list_session_folders(workspace_id: String) -> Result<Vec<SessionFolder>, 
 }
 
 #[tauri::command]
+pub fn list_all_session_folders() -> Result<Vec<SessionFolder>, String> {
+    log::debug!("[cmd/folders] list_all_session_folders");
+    Ok(storage::folders::list_all_folders())
+}
+
+#[tauri::command]
 pub fn create_session_folder(name: String, workspace_id: String) -> Result<SessionFolder, String> {
     log::debug!(
         "[cmd/folders] create_session_folder: name={}, workspace={}",

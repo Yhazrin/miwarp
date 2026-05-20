@@ -7,6 +7,8 @@
   import { hasAttention } from "$lib/stores/attention-store.svelte";
   import StatusBadge from "./StatusBadge.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import { dbg, dbgWarn } from "$lib/utils/debug";
+  import ContextMenu from "./ContextMenu.svelte";
 
   function platformLabel(id: string): string {
     return PLATFORM_PRESETS.find((p) => p.id === id)?.name ?? id;
@@ -20,6 +22,8 @@
     onpin?: () => void;
     onresume?: (runId: string, mode: "resume") => void;
     ondelete?: (conversation: ConversationGroup) => void;
+    onmovetofolder?: (runIds: string[]) => void;
+    onrename?: (conversation: ConversationGroup) => void;
   }
 
   let {
@@ -30,6 +34,8 @@
     onpin,
     onresume,
     ondelete,
+    onmovetofolder,
+    onrename,
   }: Props = $props();
 
   const run = $derived(conversation.latestRun);
@@ -51,7 +57,118 @@
     return { color: "hsl(var(--muted-foreground))", animated: false };
   });
 
+  // ── Inline rename ──────────────────────────────────────────────────────────
+
+  let editing = $state(false);
+  let editValue = $state("");
+  let editInputEl: HTMLInputElement | undefined = $state();
+
+  function startRename() {
+    if (onrename) {
+      onrename(conversation);
+    } else {
+      editValue = conversation.title;
+      editing = true;
+      requestAnimationFrame(() => {
+        editInputEl?.select();
+      });
+    }
+  }
+
+  async function commitRename() {
+    editing = false;
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== conversation.title) {
+      try {
+        const { renameRun } = await import("$lib/api");
+        await renameRun(conversation.latestRun.id, trimmed);
+        dbg("sidebar-item", "renamed", { runId: conversation.latestRun.id, name: trimmed });
+        window.dispatchEvent(new Event("ocv:runs-changed"));
+      } catch (e) {
+        dbgWarn("sidebar-item", "rename failed", e);
+      }
+    }
+  }
+
+  function cancelRename() {
+    editing = false;
+  }
+
+  // ── Context menu ──────────────────────────────────────────────────────────
+
+  let contextMenuOpen = $state(false);
+  let contextMenuX = $state(0);
+  let contextMenuY = $state(0);
+
+  function openContextMenu(e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    // Close all other context menus first
+    window.dispatchEvent(new CustomEvent("close-all-context-menus"));
+    contextMenuX = e.clientX;
+    contextMenuY = e.clientY;
+    contextMenuOpen = true;
+  }
+
+  function openContextMenuFromButton(e: MouseEvent) {
+    e.stopPropagation();
+    window.dispatchEvent(new CustomEvent("close-all-context-menus"));
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    contextMenuX = rect.left;
+    contextMenuY = rect.bottom + 4;
+    contextMenuOpen = true;
+  }
+
+  function closeContextMenu() {
+    contextMenuOpen = false;
+  }
+
+  // Listen for close-all event from other context menus
+  $effect(() => {
+    if (contextMenuOpen) {
+      const handler = () => {
+        contextMenuOpen = false;
+      };
+      window.addEventListener("close-all-context-menus", handler);
+      return () => window.removeEventListener("close-all-context-menus", handler);
+    }
+  });
+
+  function handleContextMenuSelect(id: string) {
+    switch (id) {
+      case "rename":
+        startRename();
+        break;
+      case "movetofolder":
+        onmovetofolder?.(conversation.runs.map((r) => r.id));
+        break;
+      case "delete":
+        if (confirm(t("sidebar_deleteConfirmMsg") ?? "Delete this conversation?")) {
+          ondelete?.(conversation);
+        }
+        break;
+    }
+  }
+
+  const contextMenuItems = $derived([
+    { id: "rename", label: t("sidebar_rename") ?? "Rename", icon: "rename" as const },
+    {
+      id: "movetofolder",
+      label: t("sidebar_moveToFolder") ?? "Move to folder",
+      icon: "folder" as const,
+    },
+    {
+      id: "delete",
+      label: t("sidebar_delete") ?? "Delete",
+      icon: "trash" as const,
+      danger: true,
+      separatorBefore: true,
+      disabled: !canDelete,
+    },
+  ]);
+
   function handleKeydown(e: KeyboardEvent) {
+    if (editing) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onclick?.();
@@ -68,6 +185,7 @@
   tabindex="0"
   onclick={() => onclick?.()}
   onkeydown={handleKeydown}
+  oncontextmenu={openContextMenu}
 >
   <div class="flex items-center justify-between gap-1.5">
     <div class="flex items-center gap-1.5 min-w-0">
@@ -88,7 +206,34 @@
           title={run.status}
         ></span>
       {/if}
-      <span class="truncate text-[13px] leading-tight font-medium">{label}</span>
+      {#if editing}
+        <input
+          bind:this={editInputEl}
+          bind:value={editValue}
+          class="min-w-0 flex-1 bg-transparent text-xs outline-none border-b border-primary"
+          onblur={commitRename}
+          onkeydown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commitRename();
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              cancelRename();
+            }
+            e.stopPropagation();
+          }}
+          onclick={(e) => e.stopPropagation()}
+        />
+      {:else}
+        <span
+          class="truncate text-[13px] leading-tight font-medium"
+          ondblclick={(e) => {
+            e.stopPropagation();
+            startRename();
+          }}>{label}</span
+        >
+      {/if}
     </div>
     <div class="flex items-center gap-0.5 shrink-0">
       {#if pinned}
@@ -161,30 +306,6 @@
           </svg>
         </button>
       {/if}
-      {#if canDelete && ondelete}
-        <button
-          class="opacity-0 group-hover/item:opacity-100 p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-opacity"
-          onclick={(e) => {
-            e.stopPropagation();
-            ondelete?.(conversation);
-          }}
-          title={t("sidebar_delete")}
-        >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M3 6h18" />
-            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-          </svg>
-        </button>
-      {/if}
     </div>
   </div>
   <!-- Preview / meta row -->
@@ -199,3 +320,13 @@
     <span class="ml-auto shrink-0">{time}</span>
   </div>
 </div>
+
+{#if contextMenuOpen}
+  <ContextMenu
+    x={contextMenuX}
+    y={contextMenuY}
+    items={contextMenuItems}
+    onSelect={handleContextMenuSelect}
+    onClose={closeContextMenu}
+  />
+{/if}

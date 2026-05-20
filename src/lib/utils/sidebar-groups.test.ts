@@ -1,10 +1,13 @@
 import { describe, it, expect } from "vitest";
-import type { TaskRun } from "$lib/types";
+import type { TaskRun, SessionFolder } from "$lib/types";
 import {
   buildProjectFolders,
+  buildEnrichedProjectFolders,
   autoExpandForRun,
   expandForProjectChange,
   normalizeCwd,
+  normalizeSessionFolderList,
+  resolveSessionFolderWorkspaceId,
 } from "./sidebar-groups";
 
 // ── Test helpers ──
@@ -368,5 +371,57 @@ describe("expandForProjectChange", () => {
     const folders = buildProjectFolders(runs, NO_FAVS, NO_PINS);
     const uncatFolder = folders.find((f) => f.isUncategorized);
     expect(uncatFolder?.folderKey).toBe("uncategorized");
+  });
+});
+
+describe("buildEnrichedProjectFolders", () => {
+  it("empty_session_folder_stays_in_workspace_not_uncategorized", () => {
+    const runs: TaskRun[] = [makeRun({ id: "r1", cwd: "/project/miwarp", session_id: "s1" })];
+    const sessionFolders: SessionFolder[] = [
+      {
+        id: "f-empty",
+        name: "My Folder",
+        workspaceId: "/project/miwarp",
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+    const enriched = buildEnrichedProjectFolders(runs, sessionFolders, NO_FAVS, NO_PINS);
+    const miwarp = enriched.find((f) => f.cwd === "/project/miwarp");
+    expect(miwarp).toBeDefined();
+    expect(miwarp!.subFolders.some((sf) => sf.folderId === "f-empty")).toBe(true);
+    const uncategorized = enriched.find((f) => f.isUncategorized);
+    expect(uncategorized?.subFolders.some((sf) => sf.folderId === "f-empty") ?? false).toBe(false);
+  });
+
+  it("legacy_default_workspaceId_goes_to_uncategorized", () => {
+    const sessionFolders: SessionFolder[] = [
+      {
+        id: "f-default",
+        name: "Legacy",
+        workspaceId: "default",
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+    const enriched = buildEnrichedProjectFolders([], sessionFolders, NO_FAVS, NO_PINS);
+    const uncategorized = enriched.find((f) => f.isUncategorized);
+    expect(uncategorized?.subFolders.some((sf) => sf.folderId === "f-default")).toBe(true);
+  });
+
+  it("workspace_with_only_empty_subfolders_has_nonzero_count", () => {
+    const sessionFolders: SessionFolder[] = [
+      {
+        id: "f1",
+        name: "Empty",
+        workspaceId: "/project/miwarp",
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+    const enriched = buildEnrichedProjectFolders([], sessionFolders, NO_FAVS, ["/project/miwarp"]);
+    const miwarp = enriched.find((f) => f.cwd === "/project/miwarp");
+    expect(miwarp?.conversationCount).toBeGreaterThan(0);
+    expect(miwarp?.subFolders.length).toBe(1);
   });
 });

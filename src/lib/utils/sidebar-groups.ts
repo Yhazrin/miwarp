@@ -36,7 +36,30 @@ export interface SessionFolderGroup {
   latestActivityAt: string;
 }
 
-// ── normalizeCwd ──
+const LEGACY_DEFAULT_WORKSPACE = "default";
+
+/** Normalize folder workspace id from API/storage (handles legacy `default` + snake_case). */
+export function resolveSessionFolderWorkspaceId(folder: SessionFolder): string {
+  const raw = normalizeCwd(
+    folder.workspaceId ?? (folder as SessionFolder & { workspace_id?: string }).workspace_id ?? "",
+  );
+  if (raw === LEGACY_DEFAULT_WORKSPACE) return "";
+  return raw;
+}
+
+export function normalizeSessionFolderList(folders: SessionFolder[]): SessionFolder[] {
+  return folders.map((folder) => ({
+    ...folder,
+    workspaceId: resolveSessionFolderWorkspaceId(folder),
+  }));
+}
+
+function subFolderDisplayCount(subFolders: SessionFolderGroup[]): number {
+  return subFolders.reduce(
+    (sum, sf) => sum + (sf.conversationCount > 0 ? sf.conversationCount : 1),
+    0,
+  );
+}
 
 /** Normalize cwd: unify separators + strip trailing + uppercase drive; empty/"/"/"\" → "" */
 export function normalizeCwd(cwd: string | undefined): string {
@@ -294,7 +317,7 @@ export interface EnrichedProjectFolder extends ProjectFolder {
  * Builds project folders enriched with nested logical sub-folders.
  * - Sessions assigned to a SessionFolder are excluded from `conversations` (they appear in `subFolders`).
  * - Each SessionFolderGroup is assigned to the project path that its sessions belong to.
- * - Empty SessionFolders go to the uncategorized bucket.
+ * - Empty SessionFolders stay under their `workspaceId` (not uncategorized).
  */
 export function buildEnrichedProjectFolders(
   runs: TaskRun[],
@@ -324,7 +347,7 @@ export function buildEnrichedProjectFolders(
   for (const folder of sessionFolders) {
     const bucketRuns = folderRunMap.get(folder.id) ?? [];
     if (bucketRuns.length === 0) {
-      folderCwdMap.set(folder.id, ""); // empty → uncategorized
+      folderCwdMap.set(folder.id, resolveSessionFolderWorkspaceId(folder));
       continue;
     }
     // Count cwd occurrences
@@ -365,8 +388,15 @@ export function buildEnrichedProjectFolders(
   for (const cwd of cleanPinned) {
     if (!cwdBuckets.has(cwd)) cwdBuckets.set(cwd, []);
   }
-  // Also ensure any cwd that has session folders appears
-  for (const [folderId, cwd] of folderCwdMap) {
+  // Ensure every logical folder's workspace appears (including empty folders)
+  for (const folder of sessionFolders) {
+    const cwd = resolveSessionFolderWorkspaceId(folder);
+    if (cwd !== "" && !removedSet.has(cwd) && !cwdBuckets.has(cwd)) {
+      cwdBuckets.set(cwd, []);
+    }
+  }
+  // Also ensure any cwd that has session folders appears (from run-majority vote)
+  for (const [, cwd] of folderCwdMap) {
     if (cwd !== "" && !removedSet.has(cwd) && !cwdBuckets.has(cwd)) {
       cwdBuckets.set(cwd, []);
     }
@@ -402,6 +432,17 @@ export function buildEnrichedProjectFolders(
     arr.sort((a, b) => b.latestActivityAt.localeCompare(a.latestActivityAt));
   }
 
+  // Attach sub-folder workspaces even if they only have logical folders (no unfoldered runs)
+  for (const cwd of cwdSubFolders.keys()) {
+    if (cwd === "") {
+      if (!cwdBuckets.has("")) cwdBuckets.set("", []);
+      continue;
+    }
+    if (!removedSet.has(cwd) && !cwdBuckets.has(cwd)) {
+      cwdBuckets.set(cwd, []);
+    }
+  }
+
   // 5. Build EnrichedProjectFolders
   const folders: EnrichedProjectFolder[] = [];
   for (const [cwd, bucketRuns] of cwdBuckets) {
@@ -416,8 +457,7 @@ export function buildEnrichedProjectFolders(
       .sort()
       .reverse();
     const latestActivityAt = allLatest[0] ?? "";
-    const totalCount =
-      conversations.length + subFolders.reduce((s, sf) => s + sf.conversationCount, 0);
+    const totalCount = conversations.length + subFolderDisplayCount(subFolders);
 
     folders.push({
       cwd,

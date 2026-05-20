@@ -12,7 +12,6 @@
   import ChatForkedBanner from "$lib/components/ChatForkedBanner.svelte";
   import ChatNotificationBanner from "$lib/components/ChatNotificationBanner.svelte";
   import ChatToolFilterBar from "$lib/components/ChatToolFilterBar.svelte";
-  import ViewModeToggle from "$lib/components/ViewModeToggle.svelte";
   import ChatTimelineEntries from "$lib/components/chat/ChatTimelineEntries.svelte";
   import ChatOutputWorkingHint from "$lib/components/ChatOutputWorkingHint.svelte";
   import ChatRewindMarkers from "$lib/components/ChatRewindMarkers.svelte";
@@ -24,6 +23,7 @@
   import ChatThinkingIndicator from "$lib/components/ChatThinkingIndicator.svelte";
   import ChatForkOverlay from "$lib/components/ChatForkOverlay.svelte";
   import ChatErrorCard from "$lib/components/ChatErrorCard.svelte";
+  import ElicitationDialog from "$lib/components/ElicitationDialog.svelte";
   import ChatInitHint from "$lib/components/ChatInitHint.svelte";
   import ChatHeroMeta from "$lib/components/ChatHeroMeta.svelte";
   import XTerminalComponent from "$lib/components/XTerminal.svelte";
@@ -103,6 +103,7 @@
     getPlanContentForExitPlan,
     openPreviewForPath,
     handleHookCallbackRespond,
+    handleElicitationRespond,
     handleChatScroll,
     scrollChatToBottom,
     handleTermResize,
@@ -197,6 +198,11 @@
     getPlanContentForExitPlan: (entryId: string) => { content: string; fileName: string } | null;
     openPreviewForPath: (path: string) => void;
     handleHookCallbackRespond: (requestId: string, decision: "allow" | "deny") => Promise<void>;
+    handleElicitationRespond: (
+      requestId: string,
+      action: "accept" | "decline" | "cancel",
+      content?: Record<string, unknown>,
+    ) => void | Promise<void>;
     handleChatScroll: () => void;
     scrollChatToBottom: () => void;
     handleTermResize: (cols: number, rows: number) => void;
@@ -311,11 +317,6 @@
                 onFilterChange={(f) => setToolFilter(f)}
               />
             {/if}
-            {#if processVisibility !== "output"}
-              <div class="chat-content-width pb-1" data-export-exclude>
-                <ViewModeToggle />
-              </div>
-            {/if}
             {#if filteredTimeline.length - renderLimit > 0}
               <div use:onTopSentinelMount aria-hidden="true" class="h-px w-full"></div>
             {/if}
@@ -368,10 +369,23 @@
             {/each}
 
             {#each store.hookEvents.filter((h) => h.status === "hook_pending") as hookEvent (hookEvent.request_id)}
-              <div class="chat-content-width pl-7" data-export-exclude>
-                <HookReviewCard {hookEvent} onRespond={handleHookCallbackRespond} />
+              <div class="w-full py-1">
+                <div class="chat-content-width pl-7" data-export-exclude>
+                  <HookReviewCard {hookEvent} onRespond={handleHookCallbackRespond} />
+                </div>
               </div>
             {/each}
+
+            {#if store.hasElicitation && store.sessionAlive}
+              <div class="w-full py-1">
+                <div class="chat-content-width pl-7" data-export-exclude>
+                  <ElicitationDialog
+                    elicitations={store.pendingElicitations}
+                    onRespond={handleElicitationRespond}
+                  />
+                </div>
+              </div>
+            {/if}
 
             {#if store.thinkingText}
               <ChatThinkingPanel

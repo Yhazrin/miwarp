@@ -82,6 +82,15 @@ async fn tick(app: &AppHandle) {
         updated_task.last_run_at = Some(task_run.started_at.clone());
         updated_task.next_run_at = compute_next_run(&updated_task.schedule);
 
+        // Auto-disable one-time tasks after execution completes
+        if matches!(task.schedule.schedule_type, ScheduleType::OneTime) {
+            updated_task.enabled = false;
+            log::info!(
+                "[scheduler] one-time task '{}' completed and disabled",
+                task.name
+            );
+        }
+
         // Persist updated task
         let mut all_tasks = store::load_tasks();
         if let Some(t) = all_tasks.iter_mut().find(|t| t.id == task.id) {
@@ -171,6 +180,7 @@ pub fn create_scheduled_task(mut input: ScheduledTaskInput) -> Result<ScheduledT
         permission_mode: input.permission_mode,
         model: input.model,
         provider: input.provider,
+        notify_on_completion: input.notify_on_completion,
         next_run_at: next_run,
         last_run_at: None,
         created_at: now.clone(),
@@ -240,6 +250,9 @@ pub fn update_scheduled_task(
     if let Some(provider) = patch.provider {
         task.provider = provider;
     }
+    if let Some(notify) = patch.notify_on_completion {
+        task.notify_on_completion = notify;
+    }
 
     task.updated_at = Utc::now().to_rfc3339();
     let updated = task.clone();
@@ -277,6 +290,7 @@ pub fn set_scheduled_task_enabled(id: String, enabled: bool) -> Result<Scheduled
             permission_mode: None,
             model: None,
             provider: None,
+            notify_on_completion: None,
         },
     )
 }
@@ -316,6 +330,16 @@ pub async fn run_scheduled_task_now(
     if let Some(t) = all_tasks.iter_mut().find(|t| t.id == id) {
         t.last_run_at = Some(task_run.started_at.clone());
         t.next_run_at = compute_next_run(&t.schedule);
+
+        // Auto-disable one-time tasks after manual execution
+        if matches!(t.schedule.schedule_type, ScheduleType::OneTime) {
+            t.enabled = false;
+            log::info!(
+                "[scheduler] one-time task '{}' completed and disabled",
+                t.name
+            );
+        }
+
         t.updated_at = Utc::now().to_rfc3339();
     }
     if let Err(e) = store::save_tasks(&all_tasks) {
