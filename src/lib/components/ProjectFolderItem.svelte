@@ -11,6 +11,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { dbgWarn } from "$lib/utils/debug";
   import { staticAsset } from "$lib/utils/brand-assets";
+  import ClaudeCanvas from "./ClaudeCanvas.svelte";
 
   const PAGE_SIZE = 20;
   const VIRTUAL_THRESHOLD = 40;
@@ -45,6 +46,12 @@
     onWorkspaceSettings?: () => void;
     /** Whether this workspace has a running project */
     isRunning?: boolean;
+    /** Mascot animation status: idle, running, waiting, done */
+    mascotStatus?: "idle" | "running" | "waiting" | "done";
+    /** Whether to show the canvas mascot */
+    showMascot?: boolean;
+    /** Callback when mascot is clicked — e.g. to open a panel */
+    onMascotClick?: () => void;
   };
 
   type ChatProps = BaseProps & {
@@ -111,6 +118,9 @@
     onRenameWorkspace,
     onWorkspaceSettings,
     isRunning = false,
+    mascotStatus = "idle",
+    showMascot = false,
+    onMascotClick,
   }: ChatProps | CustomProps = $props();
 
   let visibleCount = $state(PAGE_SIZE);
@@ -499,14 +509,16 @@
     <!-- Label -->
     <span class="truncate">{label}</span>
 
-    <!-- Running indicator GIF -->
-    {#if isRunning}
-      <img
-        src={staticAsset("/vendor/codeisland/mascots/claude.gif")}
-        alt="running"
-        class="ml-auto h-4 w-4 shrink-0 object-contain"
-        style="image-rendering: auto;"
-      />
+    <!-- Running indicator GIF / Canvas mascot -->
+    {#if (isRunning || mascotStatus === "done") && showMascot}
+      <button
+        class="ml-auto shrink-0 cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity rounded"
+        onclick={onMascotClick}
+        title={t("mascot_clickToOpen") ?? "查看运行状态"}
+        aria-label={t("mascot_clickToOpen") ?? "查看运行状态"}
+      >
+        <ClaudeCanvas status={mascotStatus} size={16} />
+      </button>
     {/if}
   </div>
 

@@ -2353,6 +2353,17 @@
                 description={t("settings_showTokenReportDesc") ||
                   "每次问答结束后在对话底部显示输入/输出/缓存Token统计"}
               />
+              <SettingsToggle
+                checked={settings?.mascot_enabled !== false}
+                onchange={async (v) => {
+                  settings = await api.updateUserSettings({
+                    mascot_enabled: v,
+                  } as Partial<UserSettings>);
+                }}
+                label={t("settings_mascotEnabled") || "侧边栏动画吉祥物"}
+                description={t("settings_mascotEnabledDesc") ||
+                  "在侧边栏工作区行显示 Claude Code 像素动画吉祥物"}
+              />
             </Card>
           </div>
 

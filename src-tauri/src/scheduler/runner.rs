@@ -151,8 +151,11 @@ pub async fn execute_task(
             // when the session completes or fails.
             let task_run_id = task_run.id.clone();
             let run_id = run_uuid.clone();
+            let notify_on_completion = task.notify_on_completion;
+            let task_name = task.name.clone();
             tokio::spawn(async move {
-                monitor_run_completion(&task_run_id, &run_id).await;
+                monitor_run_completion(&task_run_id, &run_id, notify_on_completion, &task_name)
+                    .await;
             });
 
             task_run
@@ -173,7 +176,12 @@ pub async fn execute_task(
 
 /// Poll the MiWarp run status and update the ScheduledTaskRun when it finishes.
 /// Times out after 24 hours.
-async fn monitor_run_completion(task_run_id: &str, run_id: &str) {
+async fn monitor_run_completion(
+    task_run_id: &str,
+    run_id: &str,
+    notify_on_completion: bool,
+    task_name: &str,
+) {
     let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(24 * 3600);
 
     // Wait a bit before first check — session needs time to start
@@ -210,8 +218,28 @@ async fn monitor_run_completion(task_run_id: &str, run_id: &str) {
                 task_run.ended_at = Some(Utc::now().to_rfc3339());
                 let _ = store::save_run(&task_run);
 
-                // Send Feishu webhook notification for scheduled task completion
-                send_feishu_schedule_notification(task_run_id, status);
+                // Send notification if enabled
+                if notify_on_completion {
+                    send_feishu_schedule_notification(task_name, status);
+                }
+
+                // Auto-disable one-time tasks after completion
+                if let Some(mut task) = store::load_task(&task_run.task_id) {
+                    if task.schedule.schedule_type == super::model::ScheduleType::OneTime {
+                        task.enabled = false;
+                        if let Err(e) = store::save_task(&task) {
+                            log::error!(
+                                "[scheduler] failed to disable one-time task {}: {e}",
+                                task_run.task_id
+                            );
+                        } else {
+                            log::info!(
+                                "[scheduler] one-time task {} auto-disabled after completion",
+                                task.name
+                            );
+                        }
+                    }
+                }
             }
             return;
         }
@@ -228,12 +256,7 @@ pub fn has_running_run(task_id: &str) -> bool {
 }
 
 /// Send a Feishu webhook notification when a scheduled task finishes.
-fn send_feishu_schedule_notification(task_run_id: &str, status: RunStatus) {
-    let task_name = store::load_run(task_run_id)
-        .and_then(|tr| store::load_tasks().into_iter().find(|t| t.id == tr.task_id))
-        .map(|t| t.name)
-        .unwrap_or_else(|| "Scheduled Task".to_string());
-
+fn send_feishu_schedule_notification(task_name: &str, status: RunStatus) {
     let status_str = match status {
         RunStatus::Completed => "completed",
         RunStatus::Failed => "failed",
@@ -243,7 +266,7 @@ fn send_feishu_schedule_notification(task_run_id: &str, status: RunStatus) {
 
     crate::commands::notification::dispatch_feishu_card(
         "定时任务完成",
-        &task_name,
+        task_name,
         status_str,
         None,
     );

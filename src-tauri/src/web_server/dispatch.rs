@@ -309,7 +309,10 @@ pub async fn dispatch_command(
         }
         "get_git_timeline" => {
             let cwd = extract_str(&params, "cwd")?;
-            let limit = params.get("limit").and_then(|v| v.as_u64()).map(|v| v as u32);
+            let limit = params
+                .get("limit")
+                .and_then(|v| v.as_u64())
+                .map(|v| v as u32);
             let result = crate::commands::git::get_git_timeline(cwd, limit).await?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }

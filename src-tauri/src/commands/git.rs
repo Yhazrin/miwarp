@@ -333,7 +333,12 @@ fn is_git_repo(cwd: &str) -> bool {
 }
 
 fn git_output_ok(cwd: &str, args: &[&str]) -> Option<String> {
-    let output = Command::new("git").current_dir(cwd).args(args).hide_console().output().ok()?;
+    let output = Command::new("git")
+        .current_dir(cwd)
+        .args(args)
+        .hide_console()
+        .output()
+        .ok()?;
     if !output.status.success() {
         return None;
     }
@@ -346,7 +351,10 @@ fn git_output_ok(cwd: &str, args: &[&str]) -> Option<String> {
 }
 
 #[tauri::command]
-pub async fn get_git_timeline(cwd: String, limit: Option<u32>) -> Result<GitTimelineResponse, String> {
+pub async fn get_git_timeline(
+    cwd: String,
+    limit: Option<u32>,
+) -> Result<GitTimelineResponse, String> {
     log::debug!("[git] get_git_timeline: cwd={}, limit={:?}", cwd, limit);
     let limit = limit.unwrap_or(12).clamp(1, 30) as usize;
 
@@ -445,9 +453,10 @@ pub async fn get_git_timeline(cwd: String, limit: Option<u32>) -> Result<GitTime
     }
 
     if !is_detached {
-        if let Some(upstream) =
-            git_output_ok(&cwd, &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
-        {
+        if let Some(upstream) = git_output_ok(
+            &cwd,
+            &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+        ) {
             entries.push(GitTimelineEntry {
                 id: format!("remote-{}", upstream.replace('/', "-")),
                 entry_type: "remote_ref".to_string(),

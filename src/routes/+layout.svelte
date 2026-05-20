@@ -2761,6 +2761,27 @@
                             normalizeCwd(r.parent_cwd ?? r.cwd) === normalizeCwd(folder.cwd) &&
                             r.status === "running",
                         )}
+                    mascotStatus={folder.isUncategorized
+                      ? "idle"
+                      : (() => {
+                          const folderRuns = runs.filter(
+                            (r) => normalizeCwd(r.parent_cwd ?? r.cwd) === normalizeCwd(folder.cwd),
+                          );
+                          if (folderRuns.some((r) => r.status === "running")) return "running";
+                          if (folderRuns.some((r) => r.status === "completed")) return "done";
+                          return "idle";
+                        })()}
+                    showMascot={settings?.mascot_enabled !== false}
+                    onMascotClick={folder.isUncategorized
+                      ? undefined
+                      : () => {
+                          const runningRun = runs.find(
+                            (r) =>
+                              normalizeCwd(r.parent_cwd ?? r.cwd) === normalizeCwd(folder.cwd) &&
+                              r.status === "running",
+                          );
+                          if (runningRun) goto(`/chat?run=${runningRun.id}`);
+                        }}
                   />
                 {/each}
                 <!-- Open folder... -->

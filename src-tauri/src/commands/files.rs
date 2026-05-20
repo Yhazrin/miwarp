@@ -170,12 +170,12 @@ const SENSITIVE_PATTERNS: &[&str] = &[
 
 /// Size limits per artifact kind (bytes).
 const ARTIFACT_SIZE_LIMITS: &[(&str, u64)] = &[
-    ("image", 0), // no limit
+    ("image", 0),                 // no limit
     ("pdf", 20 * 1024 * 1024),    // 20MB
     ("video", 100 * 1024 * 1024), // 100MB
     ("audio", 50 * 1024 * 1024),  // 50MB
-    ("html", 10 * 1024 * 1024),    // 10MB
-    ("file", 10 * 1024 * 1024),    // 10MB
+    ("html", 10 * 1024 * 1024),   // 10MB
+    ("file", 10 * 1024 * 1024),   // 10MB
 ];
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -194,11 +194,7 @@ pub fn validate_media_file(
     path: String,
     cwd: Option<String>,
 ) -> Result<MediaArtifactMetadata, String> {
-    log::debug!(
-        "[files] validate_media_file: path={}, cwd={:?}",
-        path,
-        cwd
-    );
+    log::debug!("[files] validate_media_file: path={}, cwd={:?}", path, cwd);
 
     // Reject path traversal
     if path.contains("..") {
@@ -224,8 +220,7 @@ pub fn validate_media_file(
     if !validated.exists() {
         return Err("File not found".into());
     }
-    let meta = std::fs::metadata(&validated)
-        .map_err(|e| format!("Cannot stat {}: {}", path, e))?;
+    let meta = std::fs::metadata(&validated).map_err(|e| format!("Cannot stat {}: {}", path, e))?;
     if !meta.is_file() {
         return Err("Not a file".into());
     }

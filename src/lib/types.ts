@@ -212,6 +212,8 @@ export interface UserSettings {
   workspace_aliases?: Record<string, string>;
   /** Path to user's avatar image */
   avatar_path?: string;
+  /** Enable canvas mascot animation in sidebar. Default true. */
+  mascot_enabled?: boolean;
   updated_at: string;
 }
 
