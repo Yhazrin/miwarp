@@ -35,7 +35,7 @@
     computeTimelinePresentation,
     getInitialRenderLimit,
   } from "$lib/chat/selectors/timeline-presentation";
-  import { CLI_TO_APP_MODE, APP_TO_CLI_MODE } from "$lib/chat/utils/permission-modes";
+  import { APP_TO_CLI_MODE } from "$lib/chat/utils/permission-modes";
   import { buildSummaryHtml } from "$lib/chat/utils/summary-html";
   import { useConversationInsight } from "$lib/conversation-insight/use-conversation-insight.svelte";
   import XTerminal from "$lib/components/XTerminal.svelte";
@@ -96,6 +96,7 @@
     type VirtualCommandContext,
   } from "$lib/chat/use-virtual-commands";
   import { handleTauriDrop as execTauriDrop } from "$lib/chat/handle-tauri-drop";
+  import { createPermissionModeHandler } from "$lib/chat/use-permission-mode";
   import type { RewindCandidate, RewindMarker } from "$lib/utils/rewind";
   import { truncate } from "$lib/utils/format";
   import { uuid } from "$lib/utils/uuid";
@@ -2185,98 +2186,12 @@
     return map[mode]?.() ?? mode;
   }
 
-  let permissionModeChangeSeq = 0;
-  let pendingPersist: Promise<void> = Promise.resolve();
-
-  async function handlePermissionModeChange(
-    newMode: string,
-    opts?: { toast?: boolean },
-  ): Promise<boolean> {
-    const seq = ++permissionModeChangeSeq;
-    const oldMode = store.permissionMode;
-    const oldFlag = store.permissionModeSetByUser;
-    const oldPersistFailed = store.permissionModePersistFailed;
-    const hadActiveSession = store.sessionAlive; // capture at entry, before awaits
-    dbg("chat", "permission mode change", { from: oldMode, to: newMode, seq, hadActiveSession });
-
-    // Optimistic UI + protect from session_init during awaits
-    store.permissionMode = newMode;
-    store.permissionModeSetByUser = true;
-    store.permissionModePersistFailed = false;
-
-    if (hadActiveSession && store.run) {
-      // Active session: hot-switch via control protocol (CLI expects CLI names)
-      try {
-        await api.setPermissionMode(store.run.id, newMode);
-        dbg("chat", "permission mode changed via control protocol", { newMode });
-      } catch (e) {
-        if (seq !== permissionModeChangeSeq) return false;
-        // Restore mode, flag, AND persistFailed
-        store.permissionMode = oldMode;
-        store.permissionModeSetByUser = oldFlag;
-        store.permissionModePersistFailed = oldPersistFailed;
-        dbgWarn("chat", "permission mode change failed:", e);
-        store.error = t("chat_permModeFailed", { mode: newMode, error: String(e) });
-        if (opts?.toast !== false) {
-          showChatToast(t("toast_permissionFailed"));
-        }
-        return false;
-      }
-    }
-
-    if (seq !== permissionModeChangeSeq) return false;
-
-    if (opts?.toast !== false) {
-      showChatToast(t("toast_permissionMode", { mode: getPermModeLabel(newMode) }));
-    }
-
-    // Persist — serialized to prevent concurrent writes overwriting each other.
-    // persistFailed flag signals whether the no-active-session branch reverted.
-    let persistFailed = false;
-    const appName = CLI_TO_APP_MODE[newMode] ?? newMode;
-
-    pendingPersist = pendingPersist
-      .then(async () => {
-        if (seq !== permissionModeChangeSeq) return;
-        try {
-          await api.updateUserSettings({ permission_mode: appName });
-          dbg("chat", "permission mode persisted", { appName });
-        } catch (e) {
-          if (seq !== permissionModeChangeSeq) return;
-          dbgWarn("chat", "permission mode persist failed:", e);
-          if (hadActiveSession) {
-            // CLI was already switched via control protocol → current session correct.
-            // Mark persist-failed so _clearContentState() resets flag on next run,
-            // allowing new session's session_init to re-sync from CLI's startup mode.
-            store.permissionModePersistFailed = true;
-            if (opts?.toast !== false) showChatToast(t("toast_permissionPersistFailed"));
-          } else {
-            // No active session → persist was ONLY path for mode to take effect.
-            // Revert everything.
-            persistFailed = true;
-            store.permissionMode = oldMode;
-            store.permissionModeSetByUser = oldFlag;
-            store.permissionModePersistFailed = oldPersistFailed;
-            dbgWarn("chat", "no active session — reverting UI to match persisted settings");
-            if (opts?.toast !== false) showChatToast(t("toast_permissionChangeFailed"));
-          }
-        }
-      })
-      .catch(() => {}); // ensure chain never breaks
-
-    await pendingPersist;
-
-    if (persistFailed) return false;
-
-    // Sync legacy plan_mode (fire-and-forget)
-    if (seq === permissionModeChangeSeq) {
-      api.updateAgentSettings("claude", { plan_mode: newMode === "plan" }).catch((e) => {
-        dbgWarn("chat", "plan_mode sync failed:", e);
-      });
-    }
-
-    return seq === permissionModeChangeSeq;
-  }
+  const handlePermissionModeChange = createPermissionModeHandler({
+    store,
+    t: t as unknown as (key: string, params?: Record<string, string>) => string,
+    showToast: showChatToast,
+    getPermModeLabel,
+  });
 
   // ── Summarize & Export ──
 
