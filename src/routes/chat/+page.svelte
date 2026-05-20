@@ -2225,15 +2225,12 @@
     setCurrentEffort: (v: string) => {
       currentEffort = v;
     },
-    getLastKnownGoodModel: () => lastKnownGoodAnthropicModel,
     setLastKnownGoodModel: (v: string) => {
       lastKnownGoodAnthropicModel = v;
     },
-    getAuthOverview: () => authOverview,
     setAuthOverview: (v) => {
       authOverview = v;
     },
-    getLocalProxyStatuses: () => localProxyStatuses,
     setLocalProxyStatuses: (v) => {
       localProxyStatuses = v;
     },

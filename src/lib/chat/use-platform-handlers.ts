@@ -9,11 +9,8 @@ export interface PlatformHandlerContext {
   getSettings: () => UserSettings | null;
   getCurrentEffort: () => string;
   setCurrentEffort: (v: string) => void;
-  getLastKnownGoodModel: () => string | undefined;
   setLastKnownGoodModel: (v: string) => void;
-  getAuthOverview: () => AuthOverview | null;
   setAuthOverview: (v: AuthOverview | null) => void;
-  getLocalProxyStatuses: () => Record<string, { running: boolean; needsAuth: boolean }>;
   setLocalProxyStatuses: (v: Record<string, { running: boolean; needsAuth: boolean }>) => void;
   getCliCurrentModel: () => string | undefined;
 }
@@ -24,11 +21,8 @@ export function createPlatformHandlers(ctx: PlatformHandlerContext) {
     getSettings,
     getCurrentEffort,
     setCurrentEffort,
-    getLastKnownGoodModel,
     setLastKnownGoodModel,
-    getAuthOverview,
     setAuthOverview,
-    getLocalProxyStatuses,
     setLocalProxyStatuses,
     getCliCurrentModel,
   } = ctx;
