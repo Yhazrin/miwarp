@@ -1114,6 +1114,13 @@
         unlistenStatus = fn;
       });
 
+    // Visual performance mode hot-update (dispatched from settings page)
+    const onPerfModeChanged = (e: Event) => {
+      const mode = (e as CustomEvent).detail?.mode;
+      if (mode) applyVisualPerformance(mode);
+    };
+    window.addEventListener("miwarp:visual-performance-changed", onPerfModeChanged);
+
     return () => {
       resizeCleanup?.(); // Clean up resize drag if component unmounts mid-drag
       unlistenStatus?.();
@@ -1137,6 +1144,7 @@
       window.removeEventListener("ocv:open-permissions", onOpenPermissions);
       document.removeEventListener("click", handleExternalLink, true);
       window.removeEventListener("ocv:explorer-file-selected", onExplorerFileSelected);
+      window.removeEventListener("miwarp:visual-performance-changed", onPerfModeChanged);
       cleanupOverscroll();
     };
   });

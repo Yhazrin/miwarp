@@ -2369,6 +2369,11 @@
                           settings = await api.updateUserSettings({
                             visual_performance_mode: mode,
                           } as Partial<UserSettings>);
+                          window.dispatchEvent(
+                            new CustomEvent("miwarp:visual-performance-changed", {
+                              detail: { mode },
+                            }),
+                          );
                         } catch {
                           settings = prev;
                         }
