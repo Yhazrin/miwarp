@@ -29,7 +29,6 @@
     TimelineEntry,
   } from "$lib/types";
   import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
-  import { isPlanFilePath, planFileName, extractPlanContent } from "$lib/utils/tool-rendering";
   import { useToolBurstCollapse } from "$lib/chat/use-tool-burst-collapse.svelte";
   import {
     computeTimelinePresentation,
@@ -74,7 +73,6 @@
     setStoredRemoteCwd,
   } from "$lib/utils/remote-cwd";
   import { shouldAutoName } from "$lib/utils/auto-name";
-  import { resolvePermissionOptimistic } from "$lib/utils/resolve-permission";
   import { ansiToHtml, hasAnsiCodes } from "$lib/utils/ansi";
   import { randomSpinnerVerb } from "$lib/utils/spinner-verbs";
   import { type TurnUsage } from "$lib/stores/types";
@@ -97,6 +95,8 @@
   } from "$lib/chat/use-virtual-commands";
   import { handleTauriDrop as execTauriDrop } from "$lib/chat/handle-tauri-drop";
   import { createPermissionModeHandler } from "$lib/chat/use-permission-mode";
+  import { createPermissionHandlers } from "$lib/chat/use-permission-handlers";
+  import { createPlatformHandlers } from "$lib/chat/use-platform-handlers";
   import type { RewindCandidate, RewindMarker } from "$lib/utils/rewind";
   import { truncate } from "$lib/utils/format";
   import { uuid } from "$lib/utils/uuid";
@@ -2193,6 +2193,53 @@
     getPermModeLabel,
   });
 
+  const {
+    handleToolApprove,
+    handlePermissionRespond,
+    handleElicitationRespond,
+    getPlanContentForExitPlan,
+    handleExitPlanClearContext,
+    handleHookCallbackRespond,
+  } = createPermissionHandlers({
+    store,
+    get timelineIdIndex() {
+      return timelineIdIndex;
+    },
+    setApproving: (v: boolean) => {
+      approving = v;
+    },
+    goto,
+    tick,
+  });
+
+  const {
+    handleModelChange,
+    handleEffortChange,
+    handleAuthModeChange,
+    checkAllLocalProxies,
+    handlePlatformChange,
+  } = createPlatformHandlers({
+    store,
+    getSettings: () => settings,
+    getCurrentEffort: () => currentEffort,
+    setCurrentEffort: (v: string) => {
+      currentEffort = v;
+    },
+    getLastKnownGoodModel: () => lastKnownGoodAnthropicModel,
+    setLastKnownGoodModel: (v: string) => {
+      lastKnownGoodAnthropicModel = v;
+    },
+    getAuthOverview: () => authOverview,
+    setAuthOverview: (v) => {
+      authOverview = v;
+    },
+    getLocalProxyStatuses: () => localProxyStatuses,
+    setLocalProxyStatuses: (v) => {
+      localProxyStatuses = v;
+    },
+    getCliCurrentModel,
+  });
+
   // ── Summarize & Export ──
 
   async function handleSummarize() {
@@ -2239,128 +2286,6 @@
       dbgWarn("chat", "handleSummarize failed", e);
       showChatToast(t("summarize_failed"));
     }
-  }
-
-  async function handleModelChange(newModel: string) {
-    dbg("chat", "model change", { from: store.model, to: newModel });
-    store.model = newModel;
-
-    const isThirdParty = store.platformId && store.platformId !== "anthropic";
-
-    // Hot-switch model if session is alive (only for Anthropic — third-party models
-    // are set via ANTHROPIC_MODEL env var at spawn time, not via control protocol)
-    if (!isThirdParty && store.sessionAlive && store.run) {
-      try {
-        await api.sendSessionControl(store.run.id, "set_model", { model: newModel });
-        dbg("chat", "model hot-switched via control protocol");
-      } catch (e) {
-        dbgWarn("chat", "model hot-switch failed, will use new model on next session", e);
-      }
-    }
-
-    // Persist model to run meta (per-run model memory)
-    if (store.run) {
-      api.updateRunModel(store.run.id, newModel).catch((e) => {
-        dbgWarn("chat", "failed to persist run model", e);
-      });
-    }
-
-    // Only persist default_model for Anthropic — third-party models managed per-credential
-    if (!isThirdParty) {
-      lastKnownGoodAnthropicModel = newModel;
-      try {
-        await api.updateUserSettings({ default_model: newModel });
-      } catch (e) {
-        dbgWarn("chat", "failed to persist model change", e);
-      }
-    }
-  }
-
-  async function handleEffortChange(newEffort: string) {
-    dbg("chat", "effort change", { from: currentEffort, to: newEffort });
-    currentEffort = newEffort;
-    // Write to CLI config (~/.claude/settings.json) — the CLI reads effortLevel
-    // per-request, so changes take effect immediately within a running session.
-    // Deliberately NOT writing to agentSettings.effort — that would cause --effort
-    // to be passed at spawn, which locks the CLI's in-memory effort and prevents
-    // settings.json changes from being picked up during the session.
-    api.updateCliConfig({ effortLevel: newEffort || null }).catch((e) => {
-      dbgWarn("chat", "failed to persist effort to CLI config", e);
-    });
-  }
-
-  async function handleAuthModeChange(mode: string) {
-    dbg("chat", "auth mode change", { from: store.authMode, to: mode });
-    store.authMode = mode;
-    try {
-      await api.updateUserSettings({ auth_mode: mode } as Partial<UserSettings>);
-      // Refresh auth overview after mode change
-      authOverview = await api.getAuthOverview();
-    } catch (e) {
-      dbgWarn("chat", "failed to persist auth mode change", e);
-    }
-  }
-
-  async function checkAllLocalProxies() {
-    const localPresets = PLATFORM_PRESETS.filter((p) => p.category === "local");
-    const results = await Promise.allSettled(
-      localPresets.map((p) => {
-        const cred = findCredential(settings?.platform_credentials ?? [], p.id);
-        const url = cred?.base_url || p.base_url;
-        return api.detectLocalProxy(p.id, url);
-      }),
-    );
-    const statuses: Record<string, { running: boolean; needsAuth: boolean }> = {};
-    results.forEach((r, i) => {
-      if (r.status === "fulfilled") {
-        statuses[localPresets[i].id] = { running: r.value.running, needsAuth: r.value.needsAuth };
-      } else {
-        statuses[localPresets[i].id] = { running: false, needsAuth: false };
-      }
-    });
-    localProxyStatuses = statuses;
-    dbg("chat", "checkAllLocalProxies", statuses);
-  }
-
-  async function handlePlatformChange(platformId: string) {
-    dbg("chat", "platform change", { from: store.platformId, to: platformId });
-    store.platformId = platformId;
-
-    // Auto-switch model to provider's default when switching to a third-party platform
-    // Priority: credential.models (user-configured) > preset.models (static defaults)
-    const cred = findCredential(settings?.platform_credentials ?? [], platformId);
-    const preset = PLATFORM_PRESETS.find((p) => p.id === platformId);
-    const models = cred?.models?.length ? cred.models : preset?.models;
-    if (models?.length) {
-      const defaultModel = models[0];
-      dbg("chat", "auto-switch model for platform", { platformId, model: defaultModel });
-      store.model = defaultModel;
-    } else if (platformId === "anthropic") {
-      // Switching back to Anthropic: always overwrite — don't keep third-party model;
-      // don't fallback to settings.default_model which might be contaminated.
-      const cliModel = getCliCurrentModel();
-      store.model = cliModel || "";
-      dbg("chat", "restore model on switch to anthropic", { cliModel, using: store.model });
-    } else {
-      // Custom/unknown platform without preset models: clear model
-      // (let CLI use whatever default it has, or the user can set manually)
-      store.model = "";
-    }
-
-    // Only persist default_model when switching to Anthropic with a validated CLI model.
-    // Don't persist empty or potentially-stale model values.
-    const persistUpdate: Partial<UserSettings> = { active_platform_id: platformId };
-    if (platformId === "anthropic") {
-      const validated = getCliCurrentModel();
-      if (validated) persistUpdate.default_model = validated;
-    }
-    try {
-      await api.updateUserSettings(persistUpdate);
-    } catch (e) {
-      dbgWarn("chat", "failed to persist platform change", e);
-    }
-    // Refresh local proxy statuses after platform switch
-    checkAllLocalProxies();
   }
 
   function appendCommandOutput(text: string) {
@@ -2798,215 +2723,6 @@
       ),
     };
     rewindModalOpen = true;
-  }
-
-  async function handleToolApprove(toolName: string) {
-    if (!store.run) return;
-    approving = true;
-    dbg("chat", "approving tool", { runId: store.run.id, toolName });
-    try {
-      await api.approveSessionTool(store.run.id, toolName);
-    } catch (e) {
-      dbgWarn("chat", "approve failed:", e);
-      store.error = String(e);
-    } finally {
-      // approving resets when new RunState events arrive (spawning/running)
-      setTimeout(() => {
-        approving = false;
-      }, 3000);
-    }
-  }
-
-  async function handlePermissionRespond(
-    requestId: string,
-    behavior: "allow" | "deny",
-    updatedPermissions?: import("$lib/types").PermissionSuggestion[],
-    updatedInput?: Record<string, unknown>,
-    denyMessage?: string,
-    interrupt?: boolean,
-  ) {
-    if (!store.run || !store.sessionAlive) return;
-    const runId = store.run.id; // snapshot — store.run may change after await
-    dbg("chat", "inline permission respond", {
-      runId,
-      requestId,
-      behavior,
-      updatedPermissions,
-      updatedInput,
-      denyMessage,
-      interrupt,
-    });
-    try {
-      // Set pending mode override BEFORE responding (so reducer picks it up)
-      if (behavior === "allow" && updatedPermissions) {
-        const modePerm = updatedPermissions.find((p) => p.type === "setMode");
-        if (modePerm && modePerm.mode) {
-          store.pendingPermissionModeOverride = modePerm.mode;
-          dbg("chat", "set pendingPermissionModeOverride", { mode: modePerm.mode });
-        }
-      }
-
-      await api.respondPermission(
-        runId,
-        requestId,
-        behavior,
-        updatedPermissions,
-        updatedInput,
-        denyMessage,
-        interrupt,
-      );
-      // Optimistic resolve + clear attention flag
-      resolvePermissionOptimistic(store, runId, requestId, behavior);
-    } catch (e) {
-      dbgWarn("chat", "permission respond failed:", e);
-      // If the CLI rejected the response (e.g. session already idle after interrupt),
-      // still resolve the card locally so buttons are removed.
-      if (behavior === "deny") {
-        resolvePermissionOptimistic(store, runId, requestId, "deny");
-      }
-      // allow failure: don't change status — submitting timeout auto-resets (§5)
-      store.error = String(e);
-      throw e; // Let component-side wrapper catch and unlock buttons
-    }
-  }
-
-  async function handleElicitationRespond(
-    requestId: string,
-    action: "accept" | "decline" | "cancel",
-    content?: Record<string, unknown>,
-  ) {
-    if (!store.run || !store.sessionAlive) return;
-    const runId = store.run.id;
-    dbg("chat", "elicitation respond", { runId, requestId, action });
-    try {
-      await api.respondElicitation(runId, requestId, action, content);
-      // Cleanup after successful response — not optimistic, avoids card loss on failure
-      const { resolveElicitationOptimistic } = await import("$lib/utils/resolve-elicitation");
-      resolveElicitationOptimistic(store, runId, requestId);
-    } catch (e) {
-      dbgWarn("chat", "elicitation respond failed:", e);
-      store.error = String(e);
-    }
-  }
-
-  function getPlanContentForExitPlan(
-    entryId: string,
-  ): { content: string; fileName: string } | null {
-    const idx = timelineIdIndex.get(entryId);
-    if (idx == null) {
-      dbgWarn("chat", "ExitPlanMode entry not found in timeline index", { id: entryId });
-      return null;
-    }
-    const result = extractPlanContent(store.timeline, idx);
-    if (result) return result;
-    // Fallback: use tool_use_result.plan (--permission-mode=plan auto-approves
-    // ExitPlanMode without Write, plan content is in the result directly)
-    const entry = store.timeline[idx];
-    if (entry?.kind === "tool" && entry.tool.status === "success") {
-      const toolResult = entry.tool.tool_use_result as
-        | { plan?: string; filePath?: string }
-        | undefined;
-      if (toolResult?.plan && typeof toolResult.plan === "string") {
-        const fp = String(toolResult.filePath ?? "");
-        const name = isPlanFilePath(fp) ? (planFileName(fp) ?? "plan") : "plan";
-        return { content: toolResult.plan, fileName: name };
-      }
-    }
-    return null;
-  }
-
-  /** Get the latest plan content for an approved ExitPlanMode card.
-   *  Applies subsequent Edits to the approved plan content. */
-  async function handleExitPlanClearContext() {
-    if (!store.run) return;
-    const runId = store.run.id;
-    const cwd = localStorage.getItem("ocv:project-cwd") || "";
-    dbg("chat", "ExitPlanMode: clear context + auto-accept");
-
-    // Find the ExitPlanMode tool's permission request ID from timeline
-    const exitPlanEntry = store.timeline.find(
-      (e) =>
-        e.kind === "tool" &&
-        e.tool.tool_name === "ExitPlanMode" &&
-        e.tool.status === "permission_prompt" &&
-        e.tool.permission_request_id,
-    );
-    if (!exitPlanEntry || exitPlanEntry.kind !== "tool") return;
-    const requestId = exitPlanEntry.tool.permission_request_id!;
-
-    try {
-      // 1. Set flags BEFORE responding
-      store.pendingPermissionModeOverride = "acceptEdits";
-      store.pendingClearContextPlan = "__pending__"; // marker: waiting for tool_end
-
-      // 2. Allow ExitPlanMode (with setMode) — satisfies the control_response requirement
-      await api.respondPermission(
-        runId,
-        requestId,
-        "allow",
-        [{ type: "setMode", mode: "acceptEdits", destination: "session" }],
-        exitPlanEntry.tool.input,
-      );
-      resolvePermissionOptimistic(store, runId, requestId, "allow");
-
-      // 3. Wait for tool_end to deliver plan content (via pendingClearContextPlan)
-      //    Poll briefly — tool_end should arrive within a few hundred ms
-      let planContent: string | null = null;
-      for (let i = 0; i < 20; i++) {
-        await new Promise((r) => setTimeout(r, 200));
-        if (store.pendingClearContextPlan && store.pendingClearContextPlan !== "__pending__") {
-          planContent = store.pendingClearContextPlan;
-          break;
-        }
-      }
-      store.pendingClearContextPlan = null;
-
-      if (!planContent) {
-        dbgWarn("chat", "ExitPlanMode: timed out waiting for plan content");
-        // Fallback: continue in current session (ExitPlanMode already allowed)
-        return;
-      }
-
-      // 4. Interrupt + stop current session
-      await api.interruptSession(runId).catch(() => {});
-      await api.stopSession(runId);
-      dbg("chat", "ExitPlanMode: session stopped");
-
-      // 5. Navigate to fresh chat URL, then start a new session inline.
-      //    Using sessionStorage + onMount doesn't work: /chat?run=X → /chat
-      //    is the same route component and onMount won't re-fire.
-      //    permissionModeOverride threads through api.startSession → backend
-      //    adapter_settings, so the CLI spawns with --permission-mode acceptEdits
-      //    and the first "Implement..." turn runs in auto-accept (not plan).
-      const planPrompt = `Implement the following plan:\n\n${planContent}`;
-      await goto("/chat", { replaceState: true });
-      await tick(); // let runId effect run loadRun("") → store.reset()
-      const newRunId = await store.startSession(planPrompt, cwd, [], "acceptEdits");
-      await goto(`/chat?run=${newRunId}`, { replaceState: true });
-      dbg("chat", "ExitPlanMode: new session started", { newRunId });
-    } catch (e) {
-      dbgWarn("chat", "ExitPlanMode clear context failed:", e);
-      store.pendingClearContextPlan = null;
-      store.error = String(e);
-      throw e; // Let component-side wrapper catch and unlock buttons
-    }
-  }
-
-  async function handleHookCallbackRespond(requestId: string, decision: "allow" | "deny") {
-    if (!store.run) return;
-    dbg("chat", "hook callback respond", { runId: store.run.id, requestId, decision });
-    try {
-      await api.respondHookCallback(store.run.id, requestId, decision);
-      // Update hook event status in store
-      store.hookEvents = store.hookEvents.map((h) =>
-        h.request_id === requestId
-          ? { ...h, status: decision === "allow" ? ("allowed" as const) : ("denied" as const) }
-          : h,
-      );
-    } catch (e) {
-      dbgWarn("chat", "hook callback respond failed:", e);
-      store.error = String(e);
-    }
   }
 </script>
 
