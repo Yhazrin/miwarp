@@ -328,6 +328,9 @@ pub struct UserSettings {
     /// Process visibility: output | guided | developer | expert (default developer).
     #[serde(default = "default_process_visibility")]
     pub process_visibility: String,
+    /// Visual performance mode: auto | quality | balanced | performance (default auto).
+    #[serde(default = "default_visual_performance_mode")]
+    pub visual_performance_mode: String,
     /// Custom session status colors.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_status_colors: Option<SessionStatusColors>,
@@ -365,6 +368,10 @@ fn default_ssh_port() -> u16 {
 
 fn default_process_visibility() -> String {
     "developer".to_string()
+}
+
+fn default_visual_performance_mode() -> String {
+    "auto".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -469,6 +476,7 @@ impl Default for UserSettings {
             auto_cleanup_worktree: true,
             show_token_usage_report: true,
             process_visibility: "developer".to_string(),
+            visual_performance_mode: "auto".to_string(),
             session_status_colors: None,
             avatar_path: None,
             updated_at: now_iso(),

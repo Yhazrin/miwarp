@@ -2342,6 +2342,65 @@
                   {/each}
                 </div>
               </div>
+
+              <!-- Visual Performance Mode -->
+              <div class="space-y-2">
+                <div>
+                  <p class="text-sm font-medium text-foreground">
+                    {t("settings_visualPerfMode") || "Visual Performance Mode"}
+                  </p>
+                  <p class="text-xs text-muted-foreground mt-0.5">
+                    {t("settings_visualPerfModeDesc") ||
+                      "Controls visual effects like blur and shadows. Auto adapts to your platform."}
+                  </p>
+                </div>
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-4">
+                  {#each ["auto", "quality", "balanced", "performance"] as mode (mode)}
+                    {@const active = (settings?.visual_performance_mode ?? "auto") === mode}
+                    <button
+                      type="button"
+                      class="rounded-lg border p-3 text-left transition-colors {active
+                        ? 'border-border bg-muted/55 shadow-sm'
+                        : 'border-border/40 bg-background/40 hover:bg-muted/30'}"
+                      onclick={async () => {
+                        const prev = settings;
+                        if (settings) settings = { ...settings, visual_performance_mode: mode as "auto" | "quality" | "balanced" | "performance" };
+                        try {
+                          settings = await api.updateUserSettings({
+                            visual_performance_mode: mode,
+                          } as Partial<UserSettings>);
+                        } catch {
+                          settings = prev;
+                        }
+                      }}
+                    >
+                      <div class="text-sm font-medium text-foreground">
+                        {#if mode === "auto"}
+                          {t("settings_visualPerfMode_auto") || "Auto"}
+                        {:else if mode === "quality"}
+                          {t("settings_visualPerfMode_quality") || "Quality"}
+                        {:else if mode === "balanced"}
+                          {t("settings_visualPerfMode_balanced") || "Balanced"}
+                        {:else}
+                          {t("settings_visualPerfMode_performance") || "Performance"}
+                        {/if}
+                      </div>
+                      <p class="mt-1 text-[11px] leading-snug text-muted-foreground">
+                        {#if mode === "auto"}
+                          {t("settings_visualPerfMode_autoDesc") || "Platform default (macOS=quality, Windows=performance)"}
+                        {:else if mode === "quality"}
+                          {t("settings_visualPerfMode_qualityDesc") || "Full blur, shadows, and animations"}
+                        {:else if mode === "balanced"}
+                          {t("settings_visualPerfMode_balancedDesc") || "Reduced blur, lighter effects"}
+                        {:else}
+                          {t("settings_visualPerfMode_performanceDesc") || "No blur/shadow, minimal animations"}
+                        {/if}
+                      </p>
+                    </button>
+                  {/each}
+                </div>
+              </div>
+
               <SettingsToggle
                 checked={settings?.show_token_usage_report !== false}
                 onchange={async (v) => {

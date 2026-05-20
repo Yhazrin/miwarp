@@ -608,6 +608,11 @@ pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, St
             all.user.process_visibility = v.to_string();
         }
     }
+    if let Some(v) = patch.get("visual_performance_mode").and_then(|v| v.as_str()) {
+        if matches!(v, "auto" | "quality" | "balanced" | "performance") {
+            all.user.visual_performance_mode = v.to_string();
+        }
+    }
     if let Some(v) = patch.get("session_status_colors") {
         if v.is_null() {
             all.user.session_status_colors = None;

@@ -206,6 +206,8 @@ export interface UserSettings {
   show_token_usage_report?: boolean;
   /** Process visibility for chat (output | guided | developer | expert). Default developer. */
   process_visibility?: "output" | "guided" | "developer" | "expert";
+  /** Visual performance mode: auto (platform default), quality, balanced, performance. */
+  visual_performance_mode?: "auto" | "quality" | "balanced" | "performance";
   /** Custom session status colors. */
   session_status_colors?: SessionStatusColors;
   /** Workspace display aliases: normalized_cwd → display_name */

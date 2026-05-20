@@ -760,6 +760,7 @@
       // create an initial credential from current settings
       await migrateCredentialsIfNeeded(settings);
       applyZoom(settings.ui_zoom);
+      applyVisualPerformance(settings.visual_performance_mode);
     } catch {
       // Silently fail
     }
@@ -775,6 +776,32 @@
           .catch((e) => dbgWarn("layout", "setZoom failed", e));
       })
       .catch((e) => dbgWarn("layout", "import webviewWindow failed", e));
+  }
+
+  /** Apply platform class and visual performance mode class to <html>. */
+  function applyVisualPerformance(mode?: string) {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+
+    // Platform class
+    const platform =
+      navigator.platform.startsWith("Win") || navigator.userAgent.includes("Windows")
+        ? "platform-windows"
+        : navigator.platform.startsWith("Mac")
+          ? "platform-macos"
+          : "platform-linux";
+    for (const cls of ["platform-windows", "platform-macos", "platform-linux"]) {
+      root.classList.toggle(cls, cls === platform);
+    }
+
+    // Resolved performance mode
+    let resolved = mode ?? "auto";
+    if (resolved === "auto") {
+      resolved = platform === "platform-windows" ? "performance" : platform === "platform-linux" ? "balanced" : "quality";
+    }
+    for (const cls of ["perf-quality", "perf-balanced", "perf-performance"]) {
+      root.classList.toggle(cls, cls === `perf-${resolved}`);
+    }
   }
 
   /** Migrate existing api_key into platform_credentials (one-time). */

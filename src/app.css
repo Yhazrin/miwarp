@@ -1080,3 +1080,37 @@ pre,
     max-height: 0;
   }
 }
+
+/* ═══════════════════════════════════════════════════
+   Visual Performance Tiers
+   Applied via documentElement class by layout.
+   .perf-quality = defaults (no overrides)
+   .perf-balanced = reduced blur/shadow
+   .perf-performance = no blur/shadow, minimal animations
+   ═══════════════════════════════════════════════════ */
+
+/* Performance: strip all expensive visual effects */
+.perf-performance * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  animation-duration: 0s !important;
+  transition-duration: 0.08s !important;
+}
+
+/* Balanced: reduce blur radius, keep lighter shadows */
+.perf-balanced * {
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+}
+
+/* Balanced: lighter box shadows (half opacity) */
+.perf-balanced *::before,
+.perf-balanced *::after {
+  box-shadow: inherit;
+}
+
+/* Platform-specific: Windows WebView2 gets will-change stripped */
+.platform-windows.perf-performance * {
+  will-change: auto !important;
+}
