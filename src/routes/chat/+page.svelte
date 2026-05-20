@@ -24,7 +24,6 @@
     AgentSettings,
     SessionMode,
     CliModelInfo,
-    ScreenshotPayload,
     SessionInfoData,
     TimelineEntry,
   } from "$lib/types";
@@ -34,7 +33,6 @@
     computeTimelinePresentation,
     getInitialRenderLimit,
   } from "$lib/chat/selectors/timeline-presentation";
-  import { APP_TO_CLI_MODE } from "$lib/chat/utils/permission-modes";
   import { useConversationInsight } from "$lib/conversation-insight/use-conversation-insight.svelte";
   import XTerminal from "$lib/components/XTerminal.svelte";
   import ChatMessage from "$lib/components/ChatMessage.svelte";
@@ -58,7 +56,6 @@
   import GuidedToolTimelineRow from "$lib/components/GuidedToolTimelineRow.svelte";
   import ContextUsageGrid from "$lib/components/ContextUsageGrid.svelte";
   import CostSummaryView from "$lib/components/CostSummaryView.svelte";
-  import { parseContextMarkdown } from "$lib/utils/context-parser";
   import type { ContextSnapshot } from "$lib/types";
   import ReleaseNotesCard from "$lib/components/ReleaseNotesCard.svelte";
   import { t } from "$lib/i18n/index.svelte";
@@ -77,7 +74,6 @@
   import {
     normalizeProcessVisibility,
     getCachedProcessVisibility,
-    persistCachedProcessVisibility,
     shouldShowTimelineCommandOutput,
     isTimelineSeparatorContent,
     shouldShowContextDetails,
@@ -96,6 +92,7 @@
   import { createPlatformHandlers } from "$lib/chat/use-platform-handlers";
   import { createChatActions } from "$lib/chat/use-chat-actions";
   import { createForkLifecycle } from "$lib/chat/use-fork-lifecycle";
+  import { initLifecycleHandlers } from "$lib/chat/use-lifecycle-handlers";
   import { createScrollNavigation } from "$lib/chat/use-scroll-navigation";
   import type { RewindCandidate, RewindMarker } from "$lib/utils/rewind";
   import { truncate } from "$lib/utils/format";
@@ -498,6 +495,10 @@
         }, 3000);
       }
     }
+  }
+
+  function cleanupVerbose() {
+    if (verboseRetryTimer) clearTimeout(verboseRetryTimer);
   }
 
   // ── MCP panel ──
@@ -1020,282 +1021,6 @@
   // ── Computed (thin wrappers for template convenience) ──
   let sending = $derived(store.phase === "spawning");
 
-  // ── Lifecycle ──
-
-  // Load settings
-  onMount(async () => {
-    // Phase 1: load settings (required by everything else)
-    try {
-      settings = await api.getUserSettings();
-      persistCachedProcessVisibility(normalizeProcessVisibility(settings.process_visibility));
-      store.authMode = settings.auth_mode ?? "cli";
-      remoteHosts = settings.remote_hosts ?? [];
-      // Restore last target selection (must validate against current settings — a
-      // configured host may have been removed since the value was persisted).
-      if (!store.run && remoteHosts.length > 0) {
-        const lastTarget = getLastTarget();
-        if (lastTarget && remoteHosts.some((h) => h.name === lastTarget)) {
-          store.remoteHostName = lastTarget;
-        }
-      }
-      // Initialize per-session platform from global active
-      // Only use active_platform_id in App API Key mode; CLI Auth manages its own connection
-      if (!store.platformId) {
-        store.platformId =
-          settings.auth_mode === "api" ? (settings.active_platform_id ?? "anthropic") : "anthropic";
-      }
-      // Initialize model: for third-party platforms, use credential > preset default model
-      // Only for new sessions — if runId is set, loadRun will handle model restoration.
-      if (!store.model && !runId && store.phase !== "loading") {
-        const initCred = findCredential(
-          settings.platform_credentials ?? [],
-          store.platformId ?? "",
-        );
-        const initPreset = PLATFORM_PRESETS.find((p) => p.id === store.platformId);
-        const initModels = initCred?.models?.length ? initCred.models : initPreset?.models;
-        if (store.platformId !== "anthropic" && initModels?.[0]) {
-          store.model = initModels[0];
-        } else if (store.platformId === "anthropic" && settings.default_model) {
-          // default_model is global — only valid for Anthropic native platform.
-          // Third-party platforms without a models list leave model unset.
-          store.model = settings.default_model;
-        }
-      }
-      // Load auth overview for AuthSourceBadge (fire-and-forget)
-      api
-        .getAuthOverview()
-        .then((ov) => (authOverview = ov))
-        .catch(() => {});
-      // Detect local proxy statuses for AuthSourceBadge
-      checkAllLocalProxies();
-    } catch (e) {
-      dbgWarn("chat", "failed to load settings:", e);
-    }
-
-    // Phase 2: parallel fetch of independent data
-    const [agentResult, runsResult] = await Promise.allSettled([
-      api.getAgentSettings("claude"),
-      api.listRuns(),
-    ]);
-
-    if (agentResult.status === "fulfilled") {
-      agentSettings = agentResult.value;
-      // Read effort from CLI config (~/.claude/settings.json) — the authoritative source.
-      // NOT from agentSettings.effort (that would cause --effort flag at spawn, which
-      // locks effort in memory and prevents live switching via settings.json).
-      try {
-        const cliCfg = await api.getCliConfig();
-        const cliEffort = cliCfg.effortLevel;
-        currentEffort = typeof cliEffort === "string" && cliEffort ? cliEffort : "";
-      } catch {
-        currentEffort = "";
-      }
-      // One-time migration: clear stale agentSettings.effort to prevent --effort at spawn
-      if (agentSettings?.effort) {
-        api.updateAgentSettings("claude", { effort: "" }).catch(() => {});
-      }
-    } else {
-      dbgWarn("chat", "failed to load agent settings:", agentResult.reason);
-    }
-
-    if (runsResult.status === "fulfilled") {
-      lastContinuableRun =
-        runsResult.value.find(
-          (r) =>
-            r.session_id &&
-            (r.status === "completed" || r.status === "stopped" || r.status === "failed"),
-        ) ?? null;
-
-      // Auto-load last session if no runId is specified, instead of showing welcome screen
-      if (!runId && lastContinuableRun) {
-        goto(`/chat?run=${lastContinuableRun.id}&resume=continue`, { replaceState: true });
-        return;
-      }
-    } else {
-      dbgWarn("chat", "failed to load runs for continue:", runsResult.reason);
-    }
-
-    // Phase 3: permission mode init (depends on settings + agentSettings)
-    // Initialize permission mode from saved settings (before session_init arrives)
-    // Agent plan_mode=true overrides user permission_mode (legacy compat)
-    if (!store.permissionModeSetByUser) {
-      if (agentSettings?.plan_mode) {
-        store.permissionMode = "plan";
-        store.permissionModeSetByUser = true;
-      } else if (settings?.permission_mode) {
-        const cliName = APP_TO_CLI_MODE[settings.permission_mode] ?? settings.permission_mode;
-        store.permissionMode = cliName;
-        store.permissionModeSetByUser = true;
-      }
-    }
-    let selfHealDone = false;
-    let selfHealInFlight = false;
-    loadCliInfo().then(() => {
-      // Self-heal: detect and fix contaminated default_model
-      if (settings?.default_model && !selfHealDone && !selfHealInFlight) {
-        const dm = settings.default_model;
-        const contaminated = isContaminatedDefaultModel(dm);
-        if (contaminated === true) {
-          const healModel = getCliCurrentModel();
-          if (healModel) {
-            selfHealInFlight = true;
-            dbg("chat", "self-heal: default_model contaminated, persisting fix", {
-              old: dm,
-              new: healModel,
-            });
-            api
-              .updateUserSettings({ default_model: healModel })
-              .then(() => {
-                settings!.default_model = healModel;
-                lastKnownGoodAnthropicModel = healModel;
-                selfHealDone = true;
-                dbg("chat", "self-heal: persist succeeded");
-              })
-              .catch((e) => {
-                dbgWarn("chat", "self-heal persist failed, will retry next loadCliInfo", e);
-              })
-              .finally(() => {
-                selfHealInFlight = false;
-              });
-          } else {
-            dbg("chat", "self-heal: contaminated but CLI model unavailable, deferring", { dm });
-          }
-        } else if (contaminated === false) {
-          selfHealDone = true;
-        }
-      }
-
-      const cliModel = getCliCurrentModel();
-      const isThirdParty = store.platformId && store.platformId !== "anthropic";
-      // Update lastKnownGoodAnthropicModel when CLI model is available
-      if (cliModel && !isThirdParty) {
-        lastKnownGoodAnthropicModel = cliModel;
-      }
-      // Only for genuinely new chats: no run loaded/loading, no URL run param
-      if (cliModel && !store.run && !runId && store.phase !== "loading" && !isThirdParty) {
-        dbg("chat", "set model from CLI after loadCliInfo", { cliModel, prev: store.model });
-        store.model = cliModel;
-      }
-    });
-    loadCliVersionInfo();
-    checkProjectInit();
-    // Preload project data from filesystem (no session needed)
-    if (!runId) {
-      const cwd = localStorage.getItem("ocv:project-cwd") || "";
-      reloadProjectData(cwd);
-    }
-  });
-
-  // Listen for project folder changes to re-check project init + reload project data
-  onMount(() => {
-    const handler = () => {
-      checkProjectInit();
-      if (!runId && !store.run) {
-        const cwd = localStorage.getItem("ocv:project-cwd") || "";
-        reloadProjectData(cwd);
-      }
-    };
-    window.addEventListener("ocv:project-changed", handler);
-    return () => window.removeEventListener("ocv:project-changed", handler);
-  });
-
-  // Warm up file IPC chain: validate_file_path's first invocation walks several
-  // canonicalize() calls (data dir, claude dir, agents' working dirs, project cwd).
-  // Firing one stat at chat-page mount primes the OS FS cache so the user's first
-  // file click doesn't pay the cold-cache cost.
-  onMount(() => {
-    const cwd = localStorage.getItem("ocv:project-cwd") || "";
-    if (!cwd) return;
-    const t0 = performance.now();
-    api
-      .statTextFile(cwd, cwd)
-      .then(() => dbg("file-ipc", "warmup done", { ms: +(performance.now() - t0).toFixed(0) }))
-      .catch((e) =>
-        dbg("file-ipc", "warmup err (still warmed)", {
-          ms: +(performance.now() - t0).toFixed(0),
-          err: String(e),
-        }),
-      );
-  });
-
-  // Sync run name when sidebar/history renames the current run
-  onMount(() => {
-    function onRunsChanged() {
-      if (!store.run) return;
-      const id = store.run.id;
-      api
-        .getRun(id)
-        .then((fresh) => {
-          if (fresh && store.run?.id === id && fresh.name !== store.run.name) {
-            dbg("chat", "runs-changed: syncing name", { id, name: fresh.name });
-            store.run = { ...store.run, name: fresh.name ?? undefined };
-            if (fresh.name) autoNameDone = true;
-          }
-        })
-        .catch((e) => {
-          dbgWarn("chat", "runs-changed: failed to sync name", e);
-        });
-    }
-    window.addEventListener("ocv:runs-changed", onRunsChanged);
-    return () => window.removeEventListener("ocv:runs-changed", onRunsChanged);
-  });
-
-  // Start middleware + register handlers
-  onMount(() => {
-    let destroyed = false;
-    (async () => {
-      try {
-        await middleware.start();
-      } catch (e) {
-        console.error("[chat] middleware.start() failed:", e);
-        store.error = t("chat_eventSystemFailed");
-      }
-      // Start notification listener (piggybacks on same transport)
-      try {
-        const { startNotificationListener } = await import("$lib/services/notification-listener");
-        await startNotificationListener();
-      } catch {
-        // Non-critical: notifications are best-effort
-      }
-      if (!destroyed) middlewareReady = true;
-    })();
-
-    // Pipe handler: chat-delta / chat-done (Codex pipe mode)
-    middleware.setPipeHandler({
-      onDelta(delta) {
-        store.handleChatDelta(delta.text, xtermRef);
-      },
-      onDone(done) {
-        store.handleChatDone(done);
-      },
-    });
-
-    // Run event handler: stderr for Codex pipe mode
-    middleware.setRunEventHandler({
-      onRunEvent(event) {
-        if (
-          store.run?.execution_path === "pipe_exec" &&
-          store.run &&
-          event.run_id === store.run.id &&
-          xtermRef
-        ) {
-          if (event.type === "stderr") {
-            xtermRef.writeText(`\x1b[31m${event.text}\x1b[0m\r\n`);
-          }
-        }
-      },
-    });
-
-    return () => {
-      destroyed = true;
-      // Kill fork run process on unmount (but not the source run)
-      if (forkOverlay?.active && store.run && store.run.id !== forkOverlay.sourceRunId) {
-        api.stopSession(store.run.id).catch(() => {});
-      }
-      store.unmountGuards();
-      middleware.destroy();
-    };
-  });
 
   // Watch runId changes → load run + subscribe middleware
   // Gated on middlewareReady to ensure listeners are registered before subscribing
@@ -1381,231 +1106,6 @@
     }
   });
 
-  // Auto-focus prompt input on mount + listen for status bar toggle + register chat keybindings
-  onMount(() => {
-    requestAnimationFrame(() => promptRef?.focus());
-    function onStatusBarToggle(e: Event) {
-      statusBarExpanded = (e as CustomEvent).detail.expanded;
-    }
-    window.addEventListener("ocv:statusbar-toggle", onStatusBarToggle);
-
-    // Register chat-context keybinding callbacks
-    keybindingStore.registerCallback("chat:interrupt", () => {
-      if (shortcutHelpOpen) {
-        shortcutHelpOpen = false;
-        return;
-      }
-      if (store.isRunning) {
-        store.interrupt();
-      }
-    });
-    keybindingStore.registerCallback("chat:sendGlobal", () => {
-      if (!store.isRunning) {
-        promptRef?.triggerSend();
-      }
-    });
-    keybindingStore.registerCallback("app:shortcutHelp", () => {
-      shortcutHelpOpen = !shortcutHelpOpen;
-    });
-    keybindingStore.registerCallback("app:modelPicker", () => {
-      statusBarRef?.openModelDropdown();
-    });
-    keybindingStore.registerCallback("chat:cyclePermission", () => {
-      // Guard: if focus is on a focusable interactive control, don't cycle (preserve Shift+Tab navigation)
-      const active = document.activeElement;
-      if (active && active !== document.body) {
-        const el = active as HTMLElement;
-        const isFocusable =
-          el.tagName === "BUTTON" ||
-          el.tagName === "SELECT" ||
-          el.tagName === "A" ||
-          (el.hasAttribute("tabindex") && el.getAttribute("tabindex") !== "-1") ||
-          el.closest("[role='menu']") ||
-          el.closest("[role='listbox']") ||
-          el.closest("[role='dialog']") ||
-          (el.hasAttribute("role") &&
-            ["button", "link", "menuitem", "option", "tab"].includes(
-              el.getAttribute("role") ?? "",
-            ));
-        if (isFocusable) return;
-      }
-      const modes = ["default", "acceptEdits", "bypassPermissions", "plan", "auto", "dontAsk"];
-      const idx = modes.indexOf(store.permissionMode);
-      const next = modes[(idx + 1) % modes.length];
-      handlePermissionModeChange(next);
-    });
-    keybindingStore.registerCallback("chat:stashPrompt", () => {
-      if (stashedInput) {
-        promptRef?.restoreSnapshot(stashedInput);
-        stashedInput = null;
-        showChatToast(t("toast_stashRestored"));
-      } else {
-        const snapshot = promptRef?.getInputSnapshot();
-        if (
-          snapshot &&
-          (snapshot.text.trim() ||
-            snapshot.attachments.length ||
-            snapshot.pastedBlocks.length ||
-            (snapshot.pathRefs?.length ?? 0) > 0)
-        ) {
-          stashedInput = snapshot;
-          promptRef?.clearAll();
-          showChatToast(t("toast_stashSaved"));
-        }
-      }
-    });
-    keybindingStore.registerCallback("app:toggleFastMode", () => {
-      toggleCliConfigBool("fastMode");
-    });
-    keybindingStore.registerCallback("chat:toggleVerbose", () => {
-      toggleCliConfigBool("verbose");
-    });
-    keybindingStore.registerCallback("chat:toggleTasks", () => {
-      if (store.hasBackgroundTasks) {
-        if (sidebarCollapsed) sidebarCollapsed = false;
-        sidebarRequestedTab = "tasks";
-      }
-    });
-    keybindingStore.registerCallback("chat:undoLastTurn", () => {
-      handleRewind();
-    });
-    keybindingStore.registerCallback("app:summarizeChat", () => void handleSummarize());
-    const onSummarizeEvent = () => {
-      window.dispatchEvent(new CustomEvent("ocv:summarize-chat-ack"));
-      void handleSummarize();
-    };
-    window.addEventListener("ocv:summarize-chat", onSummarizeEvent);
-
-    // Screenshot event listener (global hotkey → attachment injection)
-    const chatTransport = getTransport();
-    const screenshotUnlisten = chatTransport.listen<ScreenshotPayload>(
-      "screenshot-taken",
-      (payload) => {
-        dbg("chat", "screenshot-taken", { filename: payload.filename });
-        const { contentBase64, mediaType, filename } = payload;
-        const bytes = Uint8Array.from(atob(contentBase64), (c) => c.charCodeAt(0));
-        const file = new File([bytes], filename, { type: mediaType });
-        promptRef?.addFiles([file]);
-      },
-    );
-
-    // Tauri native drag-drop listeners (dragDropEnabled: true in tauri.conf.json)
-    const dragEnterUnlisten = chatTransport.listen<{ paths: string[] }>(
-      "tauri://drag-enter",
-      () => {
-        pageDragActive = true;
-      },
-    );
-    const dragLeaveUnlisten = chatTransport.listen("tauri://drag-leave", () => {
-      pageDragActive = false;
-    });
-    const clearPageDrag = () => {
-      pageDragActive = false;
-    };
-    window.addEventListener("dragend", clearPageDrag);
-    window.addEventListener("drop", clearPageDrag);
-    const dragDropUnlisten = chatTransport.listen<{ paths: string[] }>(
-      "tauri://drag-drop",
-      handleTauriDrop,
-    );
-
-    return () => {
-      window.removeEventListener("ocv:statusbar-toggle", onStatusBarToggle);
-      keybindingStore.unregisterCallback("chat:interrupt");
-      keybindingStore.unregisterCallback("chat:sendGlobal");
-      keybindingStore.unregisterCallback("app:shortcutHelp");
-      keybindingStore.unregisterCallback("app:modelPicker");
-      keybindingStore.unregisterCallback("chat:cyclePermission");
-      keybindingStore.unregisterCallback("chat:stashPrompt");
-      keybindingStore.unregisterCallback("app:toggleFastMode");
-      keybindingStore.unregisterCallback("chat:toggleVerbose");
-      keybindingStore.unregisterCallback("chat:toggleTasks");
-      keybindingStore.unregisterCallback("chat:undoLastTurn");
-      keybindingStore.unregisterCallback("app:summarizeChat");
-      window.removeEventListener("ocv:summarize-chat", onSummarizeEvent);
-      screenshotUnlisten.then((fn) => fn());
-      dragEnterUnlisten.then((fn) => fn());
-      dragLeaveUnlisten.then((fn) => fn());
-      dragDropUnlisten.then((fn) => fn());
-      window.removeEventListener("dragend", clearPageDrag);
-      window.removeEventListener("drop", clearPageDrag);
-      // Clean up verbose retry timer
-      if (verboseRetryTimer) clearTimeout(verboseRetryTimer);
-      // Clean up progressive rendering timer
-      cancelProgressive();
-    };
-  });
-
-  // Listen for auto-context snapshots from Rust backend
-  onMount(() => {
-    const unlisten = getTransport().listen<{
-      runId: string;
-      content: string;
-      turnIndex: number;
-      ts: string;
-    }>("context-snapshot", (payload) => {
-      const { runId, content, turnIndex, ts } = payload;
-      dbg("chat", "context-snapshot-recv", { runId, turnIndex, len: content.length });
-      if (runId !== store.run?.id) return;
-      const data = parseContextMarkdown(content);
-      if (!data) {
-        dbgWarn("chat", "context-parse-failed", {
-          runId,
-          turnIndex,
-          head: content.slice(0, 200),
-        });
-        return;
-      }
-      // Upsert by turnIndex: same turn overwrites (not appends)
-      const prev = contextHistoryMap.get(runId) ?? [];
-      const existingIdx = prev.findIndex((s) => s.turnIndex === turnIndex);
-      const replaced = existingIdx >= 0;
-      const updated = replaced
-        ? prev.map((s, i) => (i === existingIdx ? { runId, turnIndex, ts, data } : s))
-        : [...prev, { runId, turnIndex, ts, data }];
-      contextHistoryMap.set(runId, updated);
-      contextHistoryMap = new Map(contextHistoryMap); // trigger reactivity
-      dbg("chat", "context-snapshot", { turn: turnIndex, pct: data.percentage, replaced });
-    });
-    return () => {
-      unlisten.then((f) => f());
-    };
-  });
-
-  // ── BTW event listeners ──
-  // NOTE: Don't filter by btw_id — events may arrive before the IPC call returns
-  // the btw_id (race condition). Only one BTW is active at a time, so checking
-  // btwState.active is sufficient.
-  onMount(() => {
-    const transport = getTransport();
-    const deltaUnlisten = transport.listen<import("$lib/types").BtwDelta>("btw-delta", (ev) => {
-      if (btwState.active) {
-        dbg("chat", "btw-delta", { len: ev.text.length });
-        btwState.answer += ev.text;
-      }
-    });
-    const completeUnlisten = transport.listen<import("$lib/types").BtwComplete>(
-      "btw-complete",
-      (ev) => {
-        if (btwState.active) {
-          dbg("chat", "btw-complete", { btwId: ev.btw_id });
-          btwState.loading = false;
-        }
-      },
-    );
-    const errorUnlisten = transport.listen<import("$lib/types").BtwError>("btw-error", (ev) => {
-      if (btwState.active) {
-        dbgWarn("chat", "btw-error", { error: ev.error });
-        btwState.error = ev.error;
-        btwState.loading = false;
-      }
-    });
-    return () => {
-      deltaUnlisten.then((f) => f());
-      completeUnlisten.then((f) => f());
-      errorUnlisten.then((f) => f());
-    };
-  });
 
   // Auto-scroll chat (only when user is near bottom)
   let prevTl = 0;
@@ -2267,6 +1767,60 @@
     };
     rewindModalOpen = true;
   }
+
+  // ── Initialize lifecycle handlers (replaces 8 onMount blocks) ──
+  initLifecycleHandlers({
+    store,
+    middleware,
+    keybindingStore,
+    getSettings: () => settings,
+    setSettings: (v) => { settings = v; },
+    setRemoteHosts: (v) => { remoteHosts = v; },
+    setAuthOverview: (v) => { authOverview = v; },
+    checkAllLocalProxies,
+    getAgentSettings: () => agentSettings,
+    setAgentSettings: (v) => { agentSettings = v; },
+    setCurrentEffort: (v) => { currentEffort = v; },
+    handlePermissionModeChange,
+    getPermModeLabel,
+    loadCliInfo,
+    getCliCurrentModel,
+    loadCliVersionInfo,
+    isContaminatedDefaultModel,
+    setLastKnownGoodModel: (v) => { lastKnownGoodAnthropicModel = v; },
+    checkProjectInit,
+    reloadProjectData,
+    getShortcutHelpOpen: () => shortcutHelpOpen,
+    setShortcutHelpOpen: (v) => { shortcutHelpOpen = v; },
+    getStatusBarRef: () => statusBarRef,
+    getStashedInput: () => stashedInput,
+    setStashedInput: (v) => { stashedInput = v; },
+    getPromptRef: () => promptRef,
+    setStatusBarExpanded: (v) => { statusBarExpanded = v; },
+    getSidebarCollapsed: () => sidebarCollapsed,
+    setSidebarCollapsed: (v) => { sidebarCollapsed = v; },
+    setSidebarRequestedTab: (v) => { sidebarRequestedTab = v; },
+    setShowChatToast: showChatToast,
+    setPageDragActive: (v) => { pageDragActive = v; },
+    setDragProcessingCount: (fn) => { dragProcessingCount = fn(dragProcessingCount); },
+    getXtermRef: () => xtermRef,
+    getBtwState: () => btwState,
+    setBtwState: (v) => { btwState = v; },
+    contextHistoryMap,
+    triggerContextHistoryReactivity: () => { contextHistoryMap = new Map(contextHistoryMap); },
+    getRunId: () => runId,
+    setLastContinuableRun: (v) => { lastContinuableRun = v; },
+    setMiddlewareReady: (v) => { middlewareReady = v; },
+    setAutoNameDone: (v) => { autoNameDone = v; },
+    getForkOverlay: () => forkOverlay,
+    cleanupVerbose: () => { if (verboseRetryTimer) clearTimeout(verboseRetryTimer); },
+    cancelProgressive,
+    handleSummarize,
+    handleRewind,
+    toggleCliConfigBool,
+    goto,
+    t: t as unknown as (key: string, params?: Record<string, string>) => string,
+  });
 </script>
 
 {#snippet heroMetaFooter()}
