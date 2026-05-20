@@ -1267,43 +1267,51 @@
         <ChatInputDock
           {store}
           {settings}
-          {processVisibility}
-          {agentSettings}
-          showPermissionPanel={sd.showPermissionPanel}
-          pendingToolPermissions={sd.pendingToolPermissions}
-          {btwState}
-          {insight}
-          effectiveModels={sd.effectiveModels}
-          {folderCwdOverride}
-          {welcomeVisible}
-          skillItems={sd.skillItems}
-          {preloadedAgents}
-          bind:stashedInput
-          teamHintVisible={team.teamHintVisible}
-          bind:shortcutHelpOpen
-          userHistory={sd.userHistory}
-          {projectCommands}
-          inputBlockedByPermission={sd.inputBlockedByPermission}
-          {authOverview}
-          {localProxyStatuses}
-          hasCreatedFiles={tl.hasCreatedFiles}
-          createdFiles={tl.createdFiles}
-          setBtwState={(v) => {
-            btwState = v;
+          inputVm={{
+            processVisibility,
+            agentSettings,
+            effectiveModels: sd.effectiveModels,
+            folderCwdOverride,
+            welcomeVisible,
+            skillItems: sd.skillItems,
+            preloadedAgents,
+            teamHintVisible: team.teamHintVisible,
+            userHistory: sd.userHistory,
+            projectCommands,
+            authOverview,
+            localProxyStatuses,
           }}
-          {sendMessage}
-          {handleModelChange}
-          {handlePermissionModeChange}
-          {handleVirtualCommand}
-          {handleFastModeSwitch}
-          {handlePlatformChange}
-          {handleAuthModeChange}
-          handleInputValueChange={team.handleInputValueChange}
-          {handlePermissionRespond}
-          {handleElicitationRespond}
-          {handleBtwSend}
-          {handleRalphCancel}
-          {showChatToast}
+          permissionVm={{
+            showPermissionPanel: sd.showPermissionPanel,
+            pendingToolPermissions: sd.pendingToolPermissions,
+            inputBlockedByPermission: sd.inputBlockedByPermission,
+          }}
+          sidePanelsVm={{
+            btwState,
+            insight,
+            hasCreatedFiles: tl.hasCreatedFiles,
+            createdFiles: tl.createdFiles,
+            setBtwState: (v) => {
+              btwState = v;
+            },
+          }}
+          handlers={{
+            sendMessage,
+            handleModelChange,
+            handlePermissionModeChange,
+            handleVirtualCommand,
+            handleFastModeSwitch,
+            handlePlatformChange,
+            handleAuthModeChange,
+            handleInputValueChange: team.handleInputValueChange,
+            handlePermissionRespond,
+            handleElicitationRespond,
+            handleBtwSend,
+            handleRalphCancel,
+            showChatToast,
+          }}
+          bind:stashedInput
+          bind:shortcutHelpOpen
           bind:promptRef
         />
       {/snippet}

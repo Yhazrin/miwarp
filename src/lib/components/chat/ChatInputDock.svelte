@@ -1,17 +1,7 @@
 <script lang="ts">
   import type { SessionStore } from "$lib/stores/session-store.svelte";
-  import type {
-    UserSettings,
-    AgentSettings,
-    AuthOverview,
-    CliModelInfo,
-    CliCommand,
-    AgentDefinitionSummary,
-    PromptInputSnapshot,
-    Attachment,
-  } from "$lib/types";
-  import type { ProcessVisibility } from "$lib/utils/process-visibility";
-  import type { ConversationInsightHandle } from "$lib/conversation-insight/use-conversation-insight.svelte";
+  import type { UserSettings, PromptInputSnapshot } from "$lib/types";
+  import type { InputVm, PermissionVm, SidePanelsVm, InputDockHandlers } from "./input-dock-types";
   import { canResumeNow, getResumeWarning, TERMINAL_PHASES, getCliCommands } from "$lib/stores";
   import { mergeProjectCommands } from "$lib/utils/slash-commands";
   import { dbg } from "$lib/utils/debug";
@@ -29,27 +19,49 @@
   let {
     store,
     settings,
+    // Grouped view models
+    inputVm,
+    permissionVm,
+    sidePanelsVm,
+    handlers,
+    // Bindable state (not groupable into VMs)
+    stashedInput = $bindable(null),
+    shortcutHelpOpen = $bindable(false),
+    promptRef = $bindable<PromptInput | undefined>(),
+  }: {
+    store: SessionStore;
+    settings: UserSettings | null;
+    inputVm: InputVm;
+    permissionVm: PermissionVm;
+    sidePanelsVm: SidePanelsVm;
+    handlers: InputDockHandlers;
+    stashedInput?: PromptInputSnapshot | null;
+    shortcutHelpOpen?: boolean;
+    promptRef?: PromptInput;
+  } = $props();
+
+  // Destructure VMs so template references stay flat (no behavior change).
+  const {
     processVisibility,
-    // UI state
     agentSettings,
-    showPermissionPanel,
-    pendingToolPermissions,
-    btwState,
-    insight,
     effectiveModels,
     folderCwdOverride,
     welcomeVisible,
     skillItems,
     preloadedAgents,
-    stashedInput = $bindable(null),
     teamHintVisible,
-    shortcutHelpOpen = $bindable(false),
     userHistory,
     projectCommands,
-    inputBlockedByPermission,
     authOverview,
     localProxyStatuses,
-    // Handlers
+  } = $derived(inputVm);
+
+  const { showPermissionPanel, pendingToolPermissions, inputBlockedByPermission } =
+    $derived(permissionVm);
+
+  const { btwState, insight, hasCreatedFiles, createdFiles, setBtwState } = $derived(sidePanelsVm);
+
+  const {
     sendMessage,
     handleModelChange,
     handlePermissionModeChange,
@@ -63,78 +75,7 @@
     handleBtwSend,
     handleRalphCancel,
     showChatToast,
-    // Created files
-    hasCreatedFiles,
-    createdFiles,
-    // BTW state setter
-    setBtwState,
-    // Refs
-    promptRef = $bindable<PromptInput | undefined>(),
-  }: {
-    store: SessionStore;
-    settings: UserSettings | null;
-    processVisibility: ProcessVisibility;
-    agentSettings: AgentSettings | null;
-    showPermissionPanel: boolean;
-    pendingToolPermissions: Array<{ tool: import("$lib/types").BusToolItem; requestId: string }>;
-    btwState: {
-      active: boolean;
-      btwId: string | null;
-      question: string;
-      answer: string;
-      error: string | null;
-      loading: boolean;
-    };
-    insight: ConversationInsightHandle;
-    effectiveModels: CliModelInfo[];
-    folderCwdOverride: string;
-    welcomeVisible: boolean;
-    skillItems: Array<{ name: string; description: string }>;
-    preloadedAgents: AgentDefinitionSummary[];
-    stashedInput?: PromptInputSnapshot | null;
-    teamHintVisible: boolean;
-    shortcutHelpOpen?: boolean;
-    userHistory: string[];
-    projectCommands: CliCommand[];
-    inputBlockedByPermission: boolean;
-    authOverview: AuthOverview | null;
-    localProxyStatuses: Record<string, { running: boolean; needsAuth: boolean }>;
-    hasCreatedFiles: boolean;
-    createdFiles: Array<{ path: string; name: string; tool: string; timestamp: number }>;
-    setBtwState: (v: {
-      active: boolean;
-      btwId: string | null;
-      question: string;
-      answer: string;
-      error: string | null;
-      loading: boolean;
-    }) => void;
-    sendMessage: (text: string, attachments: import("$lib/types").Attachment[]) => Promise<void>;
-    handleModelChange: (model: string) => void;
-    handlePermissionModeChange: ((mode: string) => void) | undefined;
-    handleVirtualCommand: (action: string, args: string) => Promise<void>;
-    handleFastModeSwitch: (mode: "on" | "off") => Promise<void>;
-    handlePlatformChange: (id: string) => void;
-    handleAuthModeChange: (mode: string) => void;
-    handleInputValueChange: (value: string) => void;
-    handlePermissionRespond: (
-      requestId: string,
-      behavior: "allow" | "deny",
-      updatedPermissions?: import("$lib/types").PermissionSuggestion[],
-      updatedInput?: Record<string, unknown>,
-      denyMessage?: string,
-      interrupt?: boolean,
-    ) => Promise<void>;
-    handleElicitationRespond: (
-      requestId: string,
-      action: "accept" | "decline" | "cancel",
-      content?: Record<string, unknown>,
-    ) => Promise<void>;
-    handleBtwSend: (text: string) => void;
-    handleRalphCancel: () => void;
-    showChatToast: (msg: string) => void;
-    promptRef?: PromptInput;
-  } = $props();
+  } = $derived(handlers);
 </script>
 
 <div class="chat-input-dock pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col">
