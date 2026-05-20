@@ -2002,11 +2002,16 @@ export class SessionStore {
   }
 
   /** Send a slash command silently — no optimistic user message, no response timeout.
-   *  Used for internal hot-update commands like /model and /effort. */
+   *  Only whitelisted commands (/model, /effort) are allowed. */
   async sendSilentCommand(command: string): Promise<void> {
     if (!this.run || !this.sessionAlive || !this.useStreamSession) return;
     const trimmed = command.trim();
     if (!trimmed) return;
+    const cmd = trimmed.split(/\s+/)[0].toLowerCase();
+    if (cmd !== "/model" && cmd !== "/effort") {
+      dbgWarn("store", "sendSilentCommand rejected non-whitelisted command", { cmd });
+      return;
+    }
     dbg("store", "sendSilentCommand", { command: trimmed });
     await api.sendSessionMessage(this.run.id, trimmed);
   }

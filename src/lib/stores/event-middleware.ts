@@ -311,7 +311,12 @@ export class EventMiddleware {
       this._hookBatchBuffer.set(event.run_id, buf);
     }
     buf.push(event);
-    this._scheduleFlush();
+    if (buf.length >= this._MAX_BUFFER_SIZE) {
+      dbgWarn("middleware", `hook buffer overflow for ${event.run_id} (${buf.length}), flushing`);
+      this._flush();
+    } else {
+      this._scheduleFlush();
+    }
   }
 
   private _handleHookUsage(usage: {
@@ -328,7 +333,12 @@ export class EventMiddleware {
       this._usageBatchBuffer.set(usage.run_id, buf);
     }
     buf.push(usage);
-    this._scheduleFlush();
+    if (buf.length >= this._MAX_BUFFER_SIZE) {
+      dbgWarn("middleware", `usage buffer overflow for ${usage.run_id} (${buf.length}), flushing`);
+      this._flush();
+    } else {
+      this._scheduleFlush();
+    }
   }
 
   private _scheduleFlush(): void {

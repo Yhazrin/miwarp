@@ -300,9 +300,6 @@
     getSettings: () => settings,
     getAuthOverview: () => authOverview,
     getVisibleTimeline: () => tl.visibleTimeline,
-    getFilteredTimeline: () => tl.filteredTimeline,
-    getUserCountPrefix: () => tl.userCountPrefix,
-    getCollapsedIndices: () => burstCollapse.collapsedIndices,
     getPreloadedSkills: () => preloadedSkills,
     timelineAnnotations: ta,
   });

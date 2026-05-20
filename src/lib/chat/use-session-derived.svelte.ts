@@ -30,12 +30,8 @@ export interface SessionDerivedContext {
   getSettings: () => UserSettings | null;
   getAuthOverview: () => AuthOverview | null;
   getVisibleTimeline: () => TimelineEntry[];
-  getFilteredTimeline: () => TimelineEntry[];
-  getUserCountPrefix: () => Int32Array;
-  getCollapsedIndices: () => Set<number>;
   getPreloadedSkills: () => StandaloneSkill[];
-  /** Optional: when provided, annotation getters delegate to this handle. */
-  timelineAnnotations?: TimelineAnnotationsHandle;
+  timelineAnnotations: TimelineAnnotationsHandle;
 }
 
 // ── Return type ──
@@ -78,9 +74,6 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
     getSettings,
     getAuthOverview,
     getVisibleTimeline,
-    getFilteredTimeline,
-    getUserCountPrefix,
-    getCollapsedIndices,
     getPreloadedSkills,
     timelineAnnotations,
   } = ctx;
@@ -101,12 +94,14 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
 
   // ── Derived: input history (most recent first) ──
 
-  const userHistory = $derived.by(() =>
-    store.timeline
-      .filter((e): e is Extract<TimelineEntry, { kind: "user" }> => e.kind === "user")
-      .map((e) => e.content)
-      .reverse(),
-  );
+  const userHistory = $derived.by(() => {
+    const tl = store.timeline;
+    const result: string[] = [];
+    for (let i = tl.length - 1; i >= 0 && result.length < 50; i--) {
+      if (tl[i].kind === "user") result.push((tl[i] as Extract<TimelineEntry, { kind: "user" }>).content);
+    }
+    return result;
+  });
 
   // ── Derived: context history for current run ──
 
@@ -197,55 +192,11 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
   });
 
   // ── Derived: per-turn usage annotations in timeline ──
-  // Delegates to timelineAnnotations handle when provided; otherwise computes inline.
+  // Delegates directly to timelineAnnotations handle.
 
-  const usageByTurn = $derived(new Map(store.turnUsages.map((tu) => [tu.turnIndex, tu])));
-
-  const usageAnnotations = $derived.by(() => {
-    if (timelineAnnotations) return timelineAnnotations.usageAnnotations;
-    const map = new Map<number, TurnUsage>();
-    if (usageByTurn.size === 0) return map;
-    const vt = getVisibleTimeline();
-    const filtered = getFilteredTimeline();
-    const hidden = filtered.length - vt.length;
-    let userCount = getUserCountPrefix()[hidden];
-    for (let i = 0; i < vt.length; i++) {
-      if (vt[i].kind === "user") {
-        if (userCount > 0) {
-          const tu = usageByTurn.get(userCount);
-          if (tu) map.set(i, tu);
-        }
-        userCount++;
-      }
-    }
-    return map;
-  });
-
-  const claudeTurnStarts = $derived.by(() => {
-    if (timelineAnnotations) return timelineAnnotations.claudeTurnStarts;
-    const starts = new Set<number>();
-    const vt = getVisibleTimeline();
-    const collapsed = getCollapsedIndices();
-    for (let i = 0; i < vt.length; i++) {
-      if (vt[i].kind !== "tool") continue;
-      if (collapsed.has(i)) continue;
-      for (let j = i - 1; j >= 0; j--) {
-        if (collapsed.has(j)) continue;
-        if (vt[j].kind === "tool") continue;
-        if (vt[j].kind === "user") starts.add(i);
-        break;
-      }
-    }
-    return starts;
-  });
-
-  const lastTurnUsage = $derived.by(() => {
-    if (timelineAnnotations) return timelineAnnotations.lastTurnUsage;
-    const prefix = getUserCountPrefix();
-    const userCount = prefix[prefix.length - 1] ?? 0;
-    if (userCount === 0) return null;
-    return usageByTurn.get(userCount) ?? null;
-  });
+  const usageAnnotations = $derived(timelineAnnotations.usageAnnotations);
+  const claudeTurnStarts = $derived(timelineAnnotations.claudeTurnStarts);
+  const lastTurnUsage = $derived(timelineAnnotations.lastTurnUsage);
 
   // ── Derived: session info for InfoPanel ──
 
