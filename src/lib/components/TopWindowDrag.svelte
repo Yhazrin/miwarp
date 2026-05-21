@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+  import { startWindowDragFromEvent } from "$lib/utils/window-drag";
+
   // Pass-through, CSS-only top window-drag region.
   //
   // Why this exists
@@ -26,12 +29,11 @@
   //
   // Layout
   // ──────
-  // Fixed, full-width, configurable height. Default height matches the
-  // standard macOS title-bar overlay (36px) so it lines up with the
-  // traffic-light vertical band.
+  // Fixed, full-width, configurable height. Default height gives the top
+  // chrome a little extra grab area without reaching into the next row.
 
   let {
-    height = 36,
+    height = 40,
     leftInset = 0,
     rightInset = 0,
     zIndex = 1,
@@ -41,6 +43,19 @@
     rightInset?: number;
     zIndex?: number;
   } = $props();
+
+  onMount(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.clientY > height) return;
+      if (event.clientX < leftInset) return;
+      if (event.clientX > window.innerWidth - rightInset) return;
+
+      startWindowDragFromEvent(event);
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown, { capture: true });
+    return () => window.removeEventListener("pointerdown", handlePointerDown, { capture: true });
+  });
 </script>
 
 <div

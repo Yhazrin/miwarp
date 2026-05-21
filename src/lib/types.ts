@@ -140,6 +140,42 @@ export interface SyncResult {
   usageIncomplete: boolean;
 }
 
+export interface ExportReport {
+  sessionCount: number;
+  totalBytes: number;
+  failures: string[];
+}
+
+export interface ImportDetail {
+  sessionId: string;
+  cwd: string;
+  runId?: string;
+  status: string;
+  error?: string;
+}
+
+export interface ImportReport {
+  imported: number;
+  skipped: number;
+  duplicates: number;
+  failed: number;
+  missingCwd: number;
+  details: ImportDetail[];
+}
+
+export interface CliSessionInfo {
+  sessionId: string;
+  cwd: string;
+  relativePath: string;
+  firstPrompt?: string;
+  startedAt?: string;
+  lastActivityAt?: string;
+  messageCount: number;
+  model?: string;
+  alreadyImported: boolean;
+  existingRunId?: string;
+}
+
 export interface RunEvent {
   id: string;
   task_id: string;

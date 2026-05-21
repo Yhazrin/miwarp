@@ -2,6 +2,14 @@
 @import "./lib/styles/design-tokens.css";
 @import "./lib/styles/motion.css";
 
+/* Custom font for running/done states */
+@font-face {
+  font-family: 'FonWorker';
+  src: url('/fonts/fon-W-o-s-k-e-r(1).iso') format('iso');
+  font-weight: normal;
+  font-style: normal;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -925,6 +933,16 @@ textarea,
    Floating above content, not pushing it
    ═══════════════════════════════════════════════════════════ */
 
+:root {
+  /* Shared island motion — shell .session-island-active drives inner + outer together */
+  --session-island-duration: 560ms;
+  --session-island-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --context-pill-width-rest: 56px;
+  --context-pill-width-hover: 120px;
+  --context-pill-width-compact: 100px;
+  --context-pill-gap: 4px;
+}
+
 .session-island-shell {
   /* Fixed so expanded hover state stacks above sidebar (not clipped by main overflow) */
   position: fixed;
@@ -933,20 +951,25 @@ textarea,
   transform: translateX(-50%);
   z-index: 35;
 
-  /* Continuous morph animation - all parameters sync together */
-  transition:
-    border-radius 560ms cubic-bezier(0.4, 0, 0.2, 1),
-    min-height 560ms cubic-bezier(0.4, 0, 0.2, 1),
-    width 560ms cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 300ms ease,
-    backdrop-filter 560ms cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 520ms cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: border-radius, min-height, width, background-color, backdrop-filter, box-shadow;
+  box-sizing: border-box;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: max-content;
+  max-width: min(calc(100vw - 80px), 560px);
+  padding-inline: 6px;
 
-  /* Compact state defaults - uses REAL border-radius for smooth transition */
+  transition:
+    border-radius var(--session-island-duration) var(--session-island-ease),
+    min-height var(--session-island-duration) var(--session-island-ease),
+    background-color 300ms ease,
+    backdrop-filter var(--session-island-duration) var(--session-island-ease),
+    box-shadow 520ms var(--session-island-ease);
+  will-change: border-radius, min-height, background-color, backdrop-filter, box-shadow;
+
+  /* Compact state defaults */
   min-height: 36px;
   border-radius: 18px;
-  width: min(520px, calc(100vw - 320px));
   background-color: hsl(var(--background) / 0.6);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -954,6 +977,209 @@ textarea,
     0 4px 24px rgba(0, 0, 0, 0.12),
     0 0 0 1px rgba(255, 255, 255, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Tier 1: left icons | context pill | right icons */
+.session-island-tier1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  width: max-content;
+  padding: 0;
+}
+
+/* Pill pinned to tier1 center — width grows symmetrically, flanking icons move apart */
+.session-island-tier1--centered-pill {
+  position: relative;
+}
+
+.session-island-tier1--centered-pill > .session-island-tab-group:first-of-type {
+  margin-right: calc(var(--context-pill-width-rest) / 2 + var(--context-pill-gap));
+  transition: margin-right var(--session-island-duration) var(--session-island-ease);
+}
+
+.session-island-tier1--centered-pill > .session-island-tab-group:last-of-type {
+  margin-left: calc(var(--context-pill-width-rest) / 2 + var(--context-pill-gap));
+  transition: margin-left var(--session-island-duration) var(--session-island-ease);
+}
+
+.session-island-shell.session-island-active
+  .session-island-tier1--centered-pill
+  > .session-island-tab-group:first-of-type {
+  margin-right: calc(var(--context-pill-width-hover) / 2 + var(--context-pill-gap));
+}
+
+.session-island-shell.session-island-active
+  .session-island-tier1--centered-pill
+  > .session-island-tab-group:last-of-type {
+  margin-left: calc(var(--context-pill-width-hover) / 2 + var(--context-pill-gap));
+}
+
+.session-island-shell.session-island-compact-pill
+  .session-island-tier1--centered-pill
+  > .session-island-tab-group:first-of-type {
+  margin-right: calc(var(--context-pill-width-compact) / 2 + var(--context-pill-gap));
+}
+
+.session-island-shell.session-island-compact-pill
+  .session-island-tier1--centered-pill
+  > .session-island-tab-group:last-of-type {
+  margin-left: calc(var(--context-pill-width-compact) / 2 + var(--context-pill-gap));
+}
+
+.session-context-pill-anchor {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  width: var(--context-pill-width-rest);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: width var(--session-island-duration) var(--session-island-ease);
+}
+
+.session-island-shell.session-island-active .session-context-pill-anchor {
+  width: var(--context-pill-width-hover);
+}
+
+.session-island-shell.session-island-compact-pill .session-context-pill-anchor {
+  width: var(--context-pill-width-compact);
+}
+
+.session-island-tab-group {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.session-island-tab {
+  display: inline-flex;
+  height: 28px;
+  width: 28px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+}
+
+/* Context pill fills anchor — width lives on anchor so center axis stays fixed */
+.session-context-pill {
+  pointer-events: auto;
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 100%;
+  height: 18px;
+  margin: 0;
+  border-radius: 9999px;
+  overflow: hidden;
+  transition: background-color 300ms ease;
+}
+
+.session-context-ctx-label {
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition:
+    max-width var(--session-island-duration) var(--session-island-ease),
+    margin-left var(--session-island-duration) var(--session-island-ease),
+    opacity var(--session-island-duration) var(--session-island-ease);
+}
+
+.session-island-shell.session-island-active .session-context-ctx-label {
+  max-width: 2rem;
+  margin-left: 0.125rem;
+  opacity: 1;
+}
+
+.session-context-pill-inner {
+  display: flex;
+  height: 18px;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  transition: background-color 300ms ease;
+}
+
+/* Fat capsule morph — status overlay; context width transition disabled */
+.session-island-running,
+.session-island-done,
+.session-island-waiting,
+.session-island-stopped {
+  transition:
+    border-radius var(--session-island-duration) var(--session-island-ease),
+    min-height var(--session-island-duration) var(--session-island-ease),
+    width var(--session-island-duration) var(--session-island-ease),
+    background-color 300ms ease,
+    box-shadow 520ms var(--session-island-ease);
+}
+
+.session-island-running {
+  min-height: 48px;
+  width: min(180px, calc(100vw - 400px));
+  border-radius: 24px;
+  background-color: hsl(217 91% 55%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow:
+    0 8px 32px hsl(217 91% 55% / 0.35),
+    0 0 0 1px hsl(217 91% 45% / 0.4);
+}
+
+.session-island-done {
+  min-height: 48px;
+  width: min(180px, calc(100vw - 400px));
+  border-radius: 24px;
+  background-color: hsl(142 80% 45%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow:
+    0 8px 32px hsl(142 80% 45% / 0.3),
+    0 0 0 1px hsl(142 70% 38% / 0.35);
+}
+
+.session-island-waiting {
+  min-height: 48px;
+  width: min(180px, calc(100vw - 400px));
+  border-radius: 24px;
+  background-color: hsl(45 93% 47%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow:
+    0 8px 32px hsl(45 93% 47% / 0.35),
+    0 0 0 1px hsl(45 80% 40% / 0.4);
+  animation: session-island-waiting-glow 2.4s var(--session-island-ease) infinite;
+}
+
+@keyframes session-island-waiting-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 8px 32px hsl(45 93% 47% / 0.35),
+      0 0 0 1px hsl(45 80% 40% / 0.4);
+  }
+  50% {
+    box-shadow:
+      0 10px 36px hsl(45 93% 47% / 0.48),
+      0 0 0 1px hsl(45 80% 40% / 0.55);
+  }
+}
+
+.session-island-stopped {
+  min-height: 48px;
+  width: min(180px, calc(100vw - 400px));
+  border-radius: 24px;
+  background-color: hsl(0 72% 51%);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow:
+    0 8px 32px hsl(0 72% 51% / 0.35),
+    0 0 0 1px hsl(0 65% 42% / 0.4);
 }
 
 /* Chat: full-height scroll; bottom fade overlay (not a dock background panel) */
@@ -1000,11 +1226,10 @@ textarea,
     inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
-/* Expanded state - taller rounded rectangle (h-9 tier1 + h-8 tier2 + border) */
+/* Expanded state — height only; width stays content-driven to avoid icon jitter */
 .session-island-expanded {
   min-height: 69px;
   border-radius: 22px;
-  width: min(900px, calc(100vw - 160px));
   background-color: hsl(var(--background) / 0.75);
   backdrop-filter: blur(32px) saturate(180%);
   -webkit-backdrop-filter: blur(32px) saturate(180%);
@@ -1016,7 +1241,49 @@ textarea,
 
 /* Tier 2 content animation - slides in/out with capsule expansion */
 .tier-2-content {
-  transition: max-height 560ms cubic-bezier(0.4, 0, 0.2, 1);
+  align-self: stretch;
+  box-sizing: border-box;
+  transition:
+    max-height var(--session-island-duration) var(--session-island-ease),
+    opacity 300ms ease,
+    border-color 300ms ease;
+}
+
+.session-island-tier2-closed {
+  max-height: 0 !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  border-color: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.session-island-tier2-open {
+  max-height: 2rem;
+  width: 100%;
+}
+
+.session-island-tier2 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+  width: max-content;
+  max-width: 100%;
+  margin-inline: auto;
+  padding: 0 2px;
+  font-size: 11px;
+  line-height: 1;
+  color: hsl(var(--foreground) / 0.72);
+}
+
+.session-island-tier2-divider {
+  color: hsl(var(--foreground) / 0.18);
+  user-select: none;
 }
 
 /* Reduced motion preference */

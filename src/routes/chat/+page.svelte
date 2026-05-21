@@ -1087,6 +1087,9 @@
     <SessionStatusBar
       bind:this={statusBarRef}
       running={store.sessionAlive}
+      taskRunning={store.isRunning}
+      taskWaiting={store.taskWaiting}
+      sessionPhase={store.phase}
       run={store.run}
       agent={store.run?.agent ?? store.agent}
       model={store.model}
@@ -1104,7 +1107,6 @@
         ? () => goto(`/chat?run=${store.run!.parent_run_id}`)
         : undefined}
       cwd={store.effectiveCwd}
-      onToggleSidebar={toggleLayoutSidebar}
       mcpServers={store.mcpServers}
       onMcpToggle={() => (mcpPanelOpen = !mcpPanelOpen)}
       cliVersion={store.cliVersion}

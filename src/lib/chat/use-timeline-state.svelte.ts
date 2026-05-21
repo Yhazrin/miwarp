@@ -87,11 +87,7 @@ export function useTimelineState(ctx: TimelineStateContext): TimelineStateHandle
   // ── Derived: timeline presentation ──
 
   const timelinePresentation = $derived.by(() =>
-    computeTimelinePresentation(
-      store.timeline,
-      toolFilter,
-      renderLimit,
-    ),
+    computeTimelinePresentation(store.timeline, toolFilter, renderLimit),
   );
 
   const filteredTimeline = $derived(timelinePresentation.filteredTimeline);

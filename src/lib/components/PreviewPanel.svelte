@@ -374,14 +374,6 @@
     {#if lastError}
       <p class="mt-1.5 text-[11px] text-destructive">{lastError}</p>
     {/if}
-    <!-- Native webview hint -->
-    <div class="mt-1.5 flex items-center gap-2">
-      <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary"
-        >原生预览</span
-      >
-      <span class="text-[10px] text-muted-foreground/60">支持任意网址 · 保持 Cookie 和登录状态</span
-      >
-    </div>
   </div>
 
   {#if !desktopAvailable}

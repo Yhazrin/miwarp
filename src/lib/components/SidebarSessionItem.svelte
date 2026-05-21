@@ -18,24 +18,30 @@
     conversation: ConversationGroup;
     selected?: boolean;
     pinned?: boolean;
+    isDragging?: boolean;
     onclick?: () => void;
     onpin?: () => void;
     onresume?: (runId: string, mode: "resume") => void;
     ondelete?: (conversation: ConversationGroup) => void;
-    onmovetofolder?: (runIds: string[]) => void;
+    onmovetofolder?: (runIds: string[], folderId?: string | null) => void;
     onrename?: (conversation: ConversationGroup) => void;
+    ondragstart?: (e: DragEvent, runId: string) => void;
+    ondragend?: () => void;
   }
 
   let {
     conversation,
     selected = false,
     pinned = false,
+    isDragging = false,
     onclick,
     onpin,
     onresume,
     ondelete,
     onmovetofolder,
     onrename,
+    ondragstart,
+    ondragend,
   }: Props = $props();
 
   const run = $derived(conversation.latestRun);
@@ -180,12 +186,30 @@
   class="group/item w-full text-left px-2.5 py-1.5 rounded-md transition-colors cursor-pointer
     {selected
     ? 'bg-sidebar-accent/70 text-sidebar-accent-foreground'
-    : 'hover:bg-sidebar-accent/30 text-sidebar-foreground'}"
+    : 'hover:bg-sidebar-accent/30 text-sidebar-foreground'} {isDragging ? 'opacity-40' : ''}"
   role="button"
   tabindex="0"
+  draggable={!!ondragstart}
   onclick={() => onclick?.()}
   onkeydown={handleKeydown}
   oncontextmenu={openContextMenu}
+  ondragstart={ondragstart
+    ? (e) => {
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("application/x-miwarp-run", conversation.latestRun.id);
+          const ghost = document.createElement("div");
+          ghost.textContent = conversation.title;
+          ghost.style.cssText =
+            "position:fixed;top:-9999px;left:-9999px;padding:4px 8px;background:#3b82f6;color:white;font-size:12px;border-radius:4px;white-space:nowrap;pointer-events:none;font-family:system-ui,sans-serif;";
+          document.body.appendChild(ghost);
+          e.dataTransfer.setDragImage(ghost, 0, 0);
+          requestAnimationFrame(() => document.body.removeChild(ghost));
+        }
+        ondragstart!(e, conversation.latestRun.id);
+      }
+    : undefined}
+  {ondragend}
 >
   <div class="flex items-center justify-between gap-1.5">
     <div class="flex items-center gap-1.5 min-w-0">

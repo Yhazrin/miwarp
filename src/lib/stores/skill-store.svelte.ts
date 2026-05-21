@@ -391,6 +391,83 @@ export class SkillStore {
   }
 
   /**
+   * Execute a skill with enhanced progress tracking
+   */
+  async executeSkillEnhanced(
+    skillName: string,
+    args: string = "",
+    onProgress?: (progress: number, currentStep: string) => void,
+  ): Promise<boolean> {
+    const skill = this.getSkillByName(skillName);
+    if (!skill) {
+      this.error = `Skill not found: ${skillName}`;
+      return false;
+    }
+
+    const execution: SkillExecution = {
+      id: `exec-${Date.now()}`,
+      skillId: skill.id,
+      skillName: skill.name,
+      args,
+      status: "running",
+      startedAt: new Date().toISOString(),
+    };
+
+    this.currentExecution = execution;
+    this.executions = [...this.executions, execution];
+
+    try {
+      // Simulate progress for now - in real implementation, this would come from SSE or websocket
+      if (onProgress) {
+        onProgress(10, "Initializing skill...");
+        setTimeout(() => onProgress(30, "Loading dependencies..."), 500);
+        setTimeout(() => onProgress(60, "Executing main logic..."), 1000);
+        setTimeout(() => onProgress(90, "Finalizing..."), 1500);
+      }
+
+      const response = await fetch("/api/skills/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          skillId: skill.id,
+          skillName: skill.name,
+          args,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Update execution with result
+      this.updateExecution(execution.id, {
+        status: "completed",
+        completedAt: new Date().toISOString(),
+        result: data.result,
+      });
+
+      if (onProgress) {
+        onProgress(100, "Completed");
+      }
+
+      dbg("skill-store", "executeSkillEnhanced", { skillName, args });
+      this.currentExecution = null;
+      return true;
+    } catch (e) {
+      dbgWarn("skill-store", "executeSkillEnhanced error", e);
+      this.updateExecution(execution.id, {
+        status: "failed",
+        completedAt: new Date().toISOString(),
+        error: e instanceof Error ? e.message : "Execution failed",
+      });
+      this.currentExecution = null;
+      return false;
+    }
+  }
+
+  /**
    * Clear execution history
    */
   clearExecutionHistory(): void {

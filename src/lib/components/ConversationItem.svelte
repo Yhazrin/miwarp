@@ -19,6 +19,7 @@
     selected = false,
     batchSelected = false,
     density = "default",
+    isDragging = false,
     onclick,
     onresume,
     ondelete,
@@ -32,10 +33,12 @@
     batchSelected?: boolean;
     /** Compact typography for sidebar tree (level 3). */
     density?: "default" | "sidebar";
+    /** True when this conversation is currently being dragged. */
+    isDragging?: boolean;
     onclick?: () => void;
     onresume?: (runId: string, mode: "resume") => void;
     ondelete?: (conversation: ConversationGroup) => void;
-    onmovetofolder?: (runIds: string[]) => void;
+    onmovetofolder?: (runIds: string[], folderId?: string | null) => void;
     onBatchClick?: (groupKey: string, e: MouseEvent) => void;
     ondragstart?: (e: DragEvent, runId: string) => void;
     ondragend?: () => void;
@@ -160,10 +163,6 @@
       case "movetofolder":
         onmovetofolder?.(conversation.runs.map((r) => r.id));
         break;
-      case "archive":
-        // Archive = move to uncategorized / null folder
-        onmovetofolder?.(conversation.runs.map((r) => r.id));
-        break;
       case "delete":
         if (confirm(t("sidebar_deleteConfirmMsg") ?? "Delete this conversation?")) {
           ondelete?.(conversation);
@@ -176,7 +175,6 @@
   const contextMenuItems = $derived([
     { id: "rename", label: t("sidebar_rename"), icon: "rename" as const },
     { id: "movetofolder", label: t("sidebar_moveToFolder"), icon: "folder" as const },
-    { id: "archive", label: t("sidebar_archive"), icon: "archive" as const },
     {
       id: "delete",
       label: t("sidebar_delete"),
@@ -195,14 +193,30 @@
     ? 'bg-sidebar-accent/70 text-sidebar-accent-foreground'
     : 'hover:bg-sidebar-accent/30 text-sidebar-foreground'} {batchSelected
     ? 'ring-1 ring-primary/50'
-    : ''}"
+    : ''} {isDragging ? 'opacity-40' : ''}"
   role="button"
   tabindex="0"
   draggable={!!ondragstart}
   onclick={handleClick}
   onkeydown={handleKeydown}
   oncontextmenu={openContextMenu}
-  ondragstart={ondragstart ? (e) => ondragstart!(e, conversation.latestRun.id) : undefined}
+  ondragstart={ondragstart
+    ? (e) => {
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("application/x-miwarp-run", conversation.latestRun.id);
+          // Set custom drag image to avoid browser file-drag preview
+          const ghost = document.createElement("div");
+          ghost.textContent = conversation.title;
+          ghost.style.cssText =
+            "position:fixed;top:-9999px;left:-9999px;padding:4px 8px;background:#3b82f6;color:white;font-size:12px;border-radius:4px;white-space:nowrap;pointer-events:none;font-family:system-ui,sans-serif;";
+          document.body.appendChild(ghost);
+          e.dataTransfer.setDragImage(ghost, 0, 0);
+          requestAnimationFrame(() => document.body.removeChild(ghost));
+        }
+        ondragstart!(e, conversation.latestRun.id);
+      }
+    : undefined}
   {ondragend}
 >
   <div class="flex items-center justify-between gap-2">

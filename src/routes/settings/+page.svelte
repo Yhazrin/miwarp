@@ -55,7 +55,8 @@
     | "remote"
     | "notifications"
     | "debug"
-    | "theme";
+    | "theme"
+    | "data";
   const VALID_TABS: SettingsTab[] = [
     "general",
     "connection",
@@ -65,6 +66,7 @@
     "notifications",
     "debug",
     "theme",
+    "data",
   ];
   const urlTab = $page.url.searchParams.get("tab");
   const initialTab: SettingsTab = VALID_TABS.includes(urlTab as SettingsTab)
@@ -88,6 +90,7 @@
     notifications: () => t("settings_tab_notifications") || "Notifications",
     debug: () => t("settings_tab_debug"),
     theme: () => t("settings_tab_theme") || "Theme",
+    data: () => t("settings_tab_data") || "Data",
   };
 
   const tabs: { id: SettingsTab; icon: string }[] = [
@@ -119,6 +122,10 @@
     {
       id: "theme",
       icon: "M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z",
+    },
+    {
+      id: "data",
+      icon: "M3 6h18M3 12h18M3 18h18",
     },
   ];
 
@@ -173,6 +180,81 @@
   let notifTeamCompleted = $state(true);
   let notifMinDuration = $state(10);
   let notifSaved = $state(false);
+
+  // ── Claude Code History Migration ──
+  let scanningHistory = $state(false);
+  let exportingHistory = $state(false);
+  let importingHistory = $state(false);
+  let scanResult = $state<import("$lib/types").CliSessionInfo[] | null>(null);
+  let importReport = $state<import("$lib/types").ImportReport | null>(null);
+  let historyError = $state<string | null>(null);
+
+  async function scanHistory() {
+    scanningHistory = true;
+    historyError = null;
+    scanResult = null;
+    importReport = null;
+    try {
+      scanResult = await api.scanClaudeCodeHistory();
+    } catch (e) {
+      historyError = String(e);
+    } finally {
+      scanningHistory = false;
+    }
+  }
+
+  async function exportHistory() {
+    exportingHistory = true;
+    historyError = null;
+    try {
+      const { open: openDialog } = await import("@tauri-apps/plugin-dialog");
+      const { documentDir } = await import("@tauri-apps/api/path");
+      const defaultPath = await documentDir();
+      const selected = await openDialog({
+        title: "Export Claude Code History",
+        defaultPath: `${defaultPath}/claude-code-history.zip`,
+        filters: [{ name: "ZIP Archive", extensions: ["zip"] }],
+      });
+      if (!selected) {
+        exportingHistory = false;
+        return;
+      }
+      const result = await api.exportClaudeCodeHistoryArchive(selected as string);
+      alert(
+        `Exported ${result.sessionCount} sessions (${(result.totalBytes / 1024).toFixed(1)} KB)${
+          result.failures.length > 0 ? `\n${result.failures.length} failures` : ""
+        }`,
+      );
+    } catch (e) {
+      historyError = String(e);
+    } finally {
+      exportingHistory = false;
+    }
+  }
+
+  async function importHistory() {
+    importingHistory = true;
+    historyError = null;
+    importReport = null;
+    try {
+      const { open: openDialog } = await import("@tauri-apps/plugin-dialog");
+      const selected = await openDialog({
+        title: "Import Claude Code History",
+        filters: [{ name: "ZIP Archive", extensions: ["zip"] }],
+        multiple: false,
+      });
+      if (!selected) {
+        importingHistory = false;
+        return;
+      }
+      importReport = await api.importClaudeCodeHistoryArchive(selected as string);
+      await scanHistory();
+    } catch (e) {
+      historyError = String(e);
+    } finally {
+      importingHistory = false;
+    }
+  }
 
   // ── Feishu webhook settings ──
   let feishuWebhookUrl = $state("");
@@ -1571,7 +1653,7 @@
         >
           {t("settings_nav_system") || "System"}
         </p>
-        {#each ["notifications", "theme", "debug"] as tabId (tabId)}
+        {#each ["notifications", "theme", "debug", "data"] as tabId (tabId)}
           {@const tab = tabs.find((t) => t.id === tabId)}
           {#if tab}
             <button
@@ -2364,7 +2446,15 @@
                         : 'border-border/40 bg-background/40 hover:bg-muted/30'}"
                       onclick={async () => {
                         const prev = settings;
-                        if (settings) settings = { ...settings, visual_performance_mode: mode as "auto" | "quality" | "balanced" | "performance" };
+                        if (settings)
+                          settings = {
+                            ...settings,
+                            visual_performance_mode: mode as
+                              | "auto"
+                              | "quality"
+                              | "balanced"
+                              | "performance",
+                          };
                         try {
                           settings = await api.updateUserSettings({
                             visual_performance_mode: mode,
@@ -2392,13 +2482,17 @@
                       </div>
                       <p class="mt-1 text-[11px] leading-snug text-muted-foreground">
                         {#if mode === "auto"}
-                          {t("settings_visualPerfMode_autoDesc") || "Platform default (macOS=quality, Windows=performance)"}
+                          {t("settings_visualPerfMode_autoDesc") ||
+                            "Platform default (macOS=quality, Windows=performance)"}
                         {:else if mode === "quality"}
-                          {t("settings_visualPerfMode_qualityDesc") || "Full blur, shadows, and animations"}
+                          {t("settings_visualPerfMode_qualityDesc") ||
+                            "Full blur, shadows, and animations"}
                         {:else if mode === "balanced"}
-                          {t("settings_visualPerfMode_balancedDesc") || "Reduced blur, lighter effects"}
+                          {t("settings_visualPerfMode_balancedDesc") ||
+                            "Reduced blur, lighter effects"}
                         {:else}
-                          {t("settings_visualPerfMode_performanceDesc") || "No blur/shadow, minimal animations"}
+                          {t("settings_visualPerfMode_performanceDesc") ||
+                            "No blur/shadow, minimal animations"}
                         {/if}
                       </p>
                     </button>
@@ -4365,6 +4459,124 @@
         {:else if activeTab === "theme"}
           <ThemeEditor />
           <BackgroundPicker />
+
+          <!-- ═══ Data tab ═══ -->
+        {:else if activeTab === "data"}
+          <Card class="p-6 space-y-4">
+            <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              {t("settings_data_claude_code_history") || "Claude Code History"}
+            </h2>
+            <p class="text-sm text-muted-foreground">
+              {t("settings_data_claude_code_history_desc") ||
+                "Export or import Claude Code native history sessions between machines."}
+            </p>
+
+            <!-- Scan -->
+            <div class="flex flex-wrap gap-2">
+              <Button variant="secondary" onclick={scanHistory} disabled={scanningHistory}>
+                {scanningHistory
+                  ? t("settings_data_scanning") || "Scanning..."
+                  : t("settings_data_scan") || "Scan"}
+              </Button>
+            </div>
+
+            {#if scanResult}
+              <div class="text-sm text-muted-foreground">
+                {t("settings_data_found") || "Found"}
+                {scanResult.length}
+                {t("settings_data_sessions") || "sessions"}
+              </div>
+            {/if}
+
+            <!-- Sessions list -->
+            {#if scanResult && scanResult.length > 0}
+              <div class="max-h-64 overflow-y-auto border rounded-md">
+                {#each scanResult as session}
+                  <div class="flex items-center justify-between px-3 py-2 border-b last:border-b-0">
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm font-medium truncate">
+                        {session.firstPrompt || session.sessionId}
+                      </div>
+                      <div class="text-xs text-muted-foreground truncate">
+                        {session.cwd}
+                      </div>
+                      <div class="text-xs text-muted-foreground">
+                        {session.messageCount} messages
+                        {#if session.model}· {session.model}{/if}
+                      </div>
+                    </div>
+                    <div class="ml-2 text-xs">
+                      {#if session.alreadyImported}
+                        <span class="text-green-600">
+                          {t("settings_data_imported") || "Imported"}
+                        </span>
+                      {:else}
+                        <span class="text-muted-foreground">
+                          {t("settings_data_not_imported") || "Not imported"}
+                        </span>
+                      {/if}
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+
+            <!-- Export -->
+            <div class="flex flex-wrap gap-2 pt-2 border-t">
+              <Button variant="secondary" onclick={exportHistory} disabled={exportingHistory}>
+                {exportingHistory
+                  ? t("settings_data_exporting") || "Exporting..."
+                  : t("settings_data_export") || "Export Archive"}
+              </Button>
+              <span class="text-xs text-muted-foreground self-center">
+                {t("settings_data_export_desc") ||
+                  "Creates a portable .zip archive of all Claude Code sessions"}
+              </span>
+            </div>
+
+            <!-- Import -->
+            <div class="flex flex-wrap gap-2 pt-2 border-t">
+              <Button variant="secondary" onclick={importHistory} disabled={importingHistory}>
+                {importingHistory
+                  ? t("settings_data_importing") || "Importing..."
+                  : t("settings_data_import") || "Import Archive"}
+              </Button>
+              <span class="text-xs text-muted-foreground self-center">
+                {t("settings_data_import_desc") ||
+                  "Import a previously exported Claude Code history archive"}
+              </span>
+            </div>
+
+            <!-- Report -->
+            {#if importReport}
+              <div class="mt-4 p-3 bg-muted rounded-md text-sm">
+                <div class="font-medium mb-1">
+                  {t("settings_data_import_report") || "Import Report"}
+                </div>
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  <span>{t("settings_data_imported_count") || "Imported"}:</span>
+                  <span class="text-green-600">{importReport.imported}</span>
+                  <span>{t("settings_data_duplicates") || "Duplicates"}:</span>
+                  <span class="text-yellow-600">{importReport.duplicates}</span>
+                  <span>{t("settings_data_skipped") || "Skipped"}:</span>
+                  <span class="text-yellow-600">{importReport.skipped}</span>
+                  <span>{t("settings_data_failed") || "Failed"}:</span>
+                  <span class="text-red-600">{importReport.failed}</span>
+                  <span>{t("settings_data_missing_cwd") || "Missing CWD"}:</span>
+                  <span class="text-orange-600">{importReport.missingCwd}</span>
+                </div>
+              </div>
+            {/if}
+
+            <!-- Error -->
+            {#if historyError}
+              <div
+                class="p-3 bg-red-500/10 border border-red-500/30 rounded-md text-sm text-red-600"
+              >
+                {historyError}
+              </div>
+            {/if}
+          </Card>
         {/if}
       </div>
     </main>

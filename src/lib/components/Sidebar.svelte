@@ -40,6 +40,9 @@
     onClearSearch?: () => void;
     onPickFolder?: () => void;
     onPinSession?: (groupKey: string) => void;
+    /** Drag-and-drop for moving sessions between folders */
+    onDragStartConversation?: (e: DragEvent, runId: string) => void;
+    onDragEndConversation?: () => void;
     /** Label function for folder names */
     folderLabel?: (folder: ProjectFolder) => string;
     /** Default search placeholder */
@@ -75,6 +78,8 @@
     onClearSearch,
     onPickFolder,
     onPinSession,
+    onDragStartConversation,
+    onDragEndConversation,
     folderLabel,
     searchPlaceholder,
     headerContent,
@@ -209,6 +214,8 @@
                 onresume={onResume}
                 ondelete={onDeleteConversation}
                 onpin={onPinSession ? () => onPinSession(conv.groupKey) : undefined}
+                ondragstart={onDragStartConversation}
+                ondragend={onDragEndConversation}
               />
             {/each}
           </SidebarProjectGroup>

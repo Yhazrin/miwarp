@@ -37,8 +37,9 @@
     onDeleteSubFolder?: (sf: SessionFolderGroup) => void;
     /** Drag-over state for a specific sub-folder (folderKey). */
     dragOverSubFolderKey?: string | null;
+    /** ID of the run currently being dragged (used to dim the dragged conversation). */
+    dragRunId?: string | null;
     onDragOverSubFolder?: (folderKey: string, folderId: string) => void;
-    onDragLeaveSubFolder?: () => void;
     onDropOnSubFolder?: (folderId: string) => void;
     /** Workspace-level actions */
     onOpenDirectory?: () => void;
@@ -60,7 +61,7 @@
     onSelectConversation: (runId: string) => void;
     onResume: (runId: string, mode: "resume") => void;
     onDelete?: (conversation: ConversationGroup) => void;
-    onMoveToFolder?: (runIds: string[]) => void;
+    onMoveToFolder?: (runIds: string[], folderId?: string | null) => void;
     onNewChat?: () => void;
     selectedGroupKeys?: Set<string>;
     onBatchClick?: (groupKey: string, e: MouseEvent) => void;
@@ -111,8 +112,8 @@
     onRenameSubFolder,
     onDeleteSubFolder,
     dragOverSubFolderKey = null,
+    dragRunId = null,
     onDragOverSubFolder,
-    onDragLeaveSubFolder,
     onDropOnSubFolder,
     onOpenDirectory,
     onRenameWorkspace,
@@ -569,13 +570,18 @@
                       onToggleSubFolder?.(sf.folderKey);
                     }
                   }}
+                  ondragenter={onDragOverSubFolder
+                    ? (e) => {
+                        e.preventDefault();
+                        onDragOverSubFolder!(sf.folderKey, sf.folderId!);
+                      }
+                    : undefined}
                   ondragover={onDragOverSubFolder
                     ? (e) => {
                         e.preventDefault();
                         onDragOverSubFolder!(sf.folderKey, sf.folderId!);
                       }
                     : undefined}
-                  ondragleave={onDragLeaveSubFolder}
                   ondrop={onDropOnSubFolder
                     ? (e) => {
                         e.preventDefault();
@@ -624,6 +630,7 @@
                         density="sidebar"
                         selected={conv.runs.some((r) => r.id === selectedRunId)}
                         batchSelected={selectedGroupKeys?.has(conv.groupKey) ?? false}
+                        isDragging={dragRunId === conv.latestRun.id}
                         onclick={() => onSelectConversation?.(conv.latestRun.id)}
                         onresume={onResume}
                         ondelete={onDelete}
@@ -668,6 +675,7 @@
                 density="sidebar"
                 selected={isConvSelected(conv)}
                 batchSelected={selectedGroupKeys?.has(conv.groupKey) ?? false}
+                isDragging={dragRunId === conv.latestRun.id}
                 onclick={() => onSelectConversation?.(conv.latestRun.id)}
                 onresume={onResume}
                 ondelete={onDelete}
@@ -685,6 +693,7 @@
               density="sidebar"
               selected={isConvSelected(conv)}
               batchSelected={selectedGroupKeys?.has(conv.groupKey) ?? false}
+              isDragging={dragRunId === conv.latestRun.id}
               onclick={() => onSelectConversation?.(conv.latestRun.id)}
               onresume={onResume}
               ondelete={onDelete}

@@ -99,7 +99,8 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
     const tl = store.timeline;
     const result: string[] = [];
     for (let i = tl.length - 1; i >= 0 && result.length < 50; i--) {
-      if (tl[i].kind === "user") result.push((tl[i] as Extract<TimelineEntry, { kind: "user" }>).content);
+      if (tl[i].kind === "user")
+        result.push((tl[i] as Extract<TimelineEntry, { kind: "user" }>).content);
     }
     return result;
   });

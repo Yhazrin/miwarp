@@ -4,6 +4,18 @@
   import ScheduledTaskCard from "$lib/components/ScheduledTaskCard.svelte";
   import ScheduledTaskEditorPanel from "$lib/components/ScheduledTaskEditorPanel.svelte";
 
+  let { cwd = "" }: { cwd?: string } = $props();
+
+  // Filter tasks by workspace when cwd is provided
+  let filteredTasks = $derived(
+    cwd
+      ? scheduledTasksStore.tasks.filter((t) => t.workspace.cwd === cwd)
+      : scheduledTasksStore.tasks,
+  );
+
+  let filteredActiveTasks = $derived(filteredTasks.filter((t) => t.enabled));
+  let filteredInactiveTasks = $derived(filteredTasks.filter((t) => !t.enabled));
+
   function handleCreateNew() {
     scheduledTasksStore.editingTask = null;
     scheduledTasksStore.editorMode = "create";
@@ -47,7 +59,7 @@
         <div class="flex items-center justify-center h-32 text-xs text-muted-foreground/50">
           {t("scheduledTasks_loading")}
         </div>
-      {:else if scheduledTasksStore.tasks.length === 0}
+      {:else if filteredTasks.length === 0}
         <div
           class="flex flex-col items-center justify-center h-32 gap-2 text-xs text-muted-foreground/50"
         >
@@ -61,18 +73,18 @@
             <circle cx="12" cy="12" r="10" />
             <polyline points="12 6 12 12 16 14" />
           </svg>
-          <span>{t("scheduledTasks_empty")}</span>
+          <span>{cwd ? t("scheduledTasks_empty") : t("scheduledTasks_empty")}</span>
         </div>
       {:else}
         <div class="p-2 space-y-2">
-          {#if scheduledTasksStore.activeTasks.length > 0}
+          {#if filteredActiveTasks.length > 0}
             <div class="mb-3">
               <p
                 class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-1 mb-1.5"
               >
                 {t("scheduledTasks_active")}
               </p>
-              {#each scheduledTasksStore.activeTasks as task (task.id)}
+              {#each filteredActiveTasks as task (task.id)}
                 <button class="w-full text-left" onclick={() => handleCardClick(task)}>
                   <ScheduledTaskCard
                     {task}
@@ -83,14 +95,14 @@
             </div>
           {/if}
 
-          {#if scheduledTasksStore.inactiveTasks.length > 0}
+          {#if filteredInactiveTasks.length > 0}
             <div>
               <p
                 class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-1 mb-1.5"
               >
                 {t("scheduledTasks_inactive")}
               </p>
-              {#each scheduledTasksStore.inactiveTasks as task (task.id)}
+              {#each filteredInactiveTasks as task (task.id)}
                 <button class="w-full text-left" onclick={() => handleCardClick(task)}>
                   <ScheduledTaskCard
                     {task}

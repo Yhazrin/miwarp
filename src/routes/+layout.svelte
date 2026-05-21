@@ -275,7 +275,29 @@
     }
   }
 
-  function requestMoveToFolder(runIds: string[]) {
+  function requestMoveToFolder(runIds: string[], folderId?: string | null) {
+    // If folderId is provided (including null for archive), execute immediately without modal
+    if (folderId !== undefined) {
+      const doMove = async () => {
+        try {
+          if (runIds.length === 1) {
+            await moveRunToFolder(runIds[0], folderId);
+          } else {
+            await batchMoveToFolder(runIds, folderId);
+          }
+          runs = runs.map((r) =>
+            runIds.includes(r.id) ? { ...r, folder_id: folderId ?? undefined } : r,
+          );
+          window.dispatchEvent(new Event("ocv:runs-changed"));
+          dbg("layout", "moveToFolder immediate success", { count: runIds.length, folderId });
+        } catch (e) {
+          dbgWarn("layout", "moveToFolder immediate failed", e);
+        }
+      };
+      doMove();
+      return;
+    }
+    // Otherwise open modal for user to choose folder
     moveToFolderRunIds = runIds;
     moveToFolderSelectedId = null;
     moveToFolderOpen = true;
@@ -797,7 +819,12 @@
     // Resolved performance mode
     let resolved = mode ?? "auto";
     if (resolved === "auto") {
-      resolved = platform === "platform-windows" ? "performance" : platform === "platform-linux" ? "balanced" : "quality";
+      resolved =
+        platform === "platform-windows"
+          ? "performance"
+          : platform === "platform-linux"
+            ? "balanced"
+            : "quality";
     }
     for (const cls of ["perf-quality", "perf-balanced", "perf-performance"]) {
       root.classList.toggle(cls, cls === `perf-${resolved}`);
@@ -2770,8 +2797,8 @@
                       if (f) requestDeleteFolder(f);
                     }}
                     dragOverSubFolderKey={dragOverFolderId ? `sf:${dragOverFolderId}` : null}
+                    {dragRunId}
                     onDragOverSubFolder={(_key, folderId) => handleDragOverFolder(folderId)}
-                    onDragLeaveSubFolder={handleDragLeaveFolder}
                     onDropOnSubFolder={(folderId) => handleDropOnFolder(folderId)}
                     onOpenDirectory={folder.isUncategorized
                       ? undefined
@@ -2919,11 +2946,11 @@
 
   Sits ABOVE everything as a fixed bar, but is click-through (pointer-events:
   none). On macOS the system reads `-webkit-app-region: drag` before pointer
-  events fire, so the window drags from anywhere along the top 36px even when
+  events fire, so the window drags from anywhere along the top chrome band even when
   there are buttons underneath. On Linux/Windows this is a no-op overlay and
   the legacy <WindowDragArea> spacers continue to do the work.
 -->
-<TopWindowDrag height={36} />
+<TopWindowDrag height={40} />
 
 <CommandPalette
   bind:open={commandPaletteOpen}

@@ -14,7 +14,6 @@
   import PreviewPanel from "$lib/components/PreviewPanel.svelte";
   import { onMount } from "svelte";
   import { fpsCounter, isPerfEnabled } from "$lib/utils/perf";
-  import SessionInfoPanel from "$lib/components/SessionInfoPanel.svelte";
   import ScheduledTasksPanel from "$lib/components/ScheduledTasksPanel.svelte";
   import StatusIcon from "$lib/components/StatusIcon.svelte";
   import {
@@ -23,7 +22,6 @@
     extractFilesFromPersisted,
     mergeFileEntries,
   } from "$lib/utils/file-entries";
-  import { extractTaskToolMeta, type TaskToolMeta } from "$lib/utils/tool-rendering";
   import type { TaskNotificationItem } from "$lib/stores/session-store.svelte";
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
 
@@ -355,10 +353,8 @@
     anchorId?: string;
   }
 
-  /** Whether we need full turns computation (tools or info tab active and panel visible). */
-  let needsFullTurns = $derived(
-    !collapsed && (activeTab === "tools" || activeTab === "info") && useTimeline,
-  );
+  /** Whether we need full turns computation (tools tab active and panel visible). */
+  let needsFullTurns = $derived(!collapsed && activeTab === "tools" && useTimeline);
 
   let turns = $derived.by(() => {
     if (!needsFullTurns) {
@@ -473,47 +469,6 @@
       files: hasFiles || (persistedFiles?.length ?? 0) > 0,
       tasks: activeBackgroundTasks.length > 0,
     };
-  });
-
-  // ── Subagent extraction (for info tab) ──
-
-  interface SubagentInfo {
-    toolUseId: string;
-    meta: TaskToolMeta;
-    status: string;
-    durationMs?: number;
-    toolCount: number;
-  }
-
-  let subagents: SubagentInfo[] = $derived.by(() => {
-    // Only compute when info tab is active and panel is visible
-    if (collapsed || activeTab !== "info") return [];
-    if (!useTimeline) return [];
-    const result: SubagentInfo[] = [];
-    for (const turn of turns) {
-      for (const node of flattenNodes(turn.tools)) {
-        if (node.tool_name === "Task") {
-          const meta = extractTaskToolMeta(node.input);
-          if (!meta) continue;
-          // Count nested tools from the result
-          let toolCount = 0;
-          let durationMs: number | undefined;
-          const tur = node.tool_use_result as Record<string, unknown> | undefined;
-          if (tur && typeof tur === "object") {
-            if ("totalToolUseCount" in tur) toolCount = tur.totalToolUseCount as number;
-            if ("totalDurationMs" in tur) durationMs = tur.totalDurationMs as number;
-          }
-          result.push({
-            toolUseId: node.tool_use_id,
-            meta,
-            status: node.status,
-            durationMs,
-            toolCount,
-          });
-        }
-      }
-    }
-    return result;
   });
 
   // ── Tool category grouping ──
@@ -922,28 +877,6 @@
         </svg>
       </button>
       <button
-        class="flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
-        'info'
-          ? 'bg-accent/30 text-foreground'
-          : 'text-muted-foreground hover:bg-accent/20 hover:text-foreground'}"
-        onclick={() => openCollapsedTab("info")}
-        title={t("toolActivity_tabInfo")}
-      >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="16" x2="12" y2="12" />
-          <line x1="12" y1="8" x2="12.01" y2="8" />
-        </svg>
-      </button>
-      <button
         class="relative flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
         'tasks'
           ? 'bg-accent/30 text-foreground'
@@ -968,6 +901,27 @@
             class="absolute right-1 top-1 h-1.5 w-1.5 animate-pulse rounded-full bg-[hsl(var(--miwarp-status-info))]"
           ></span>
         {/if}
+      </button>
+      <button
+        class="flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
+        'scheduled-tasks'
+          ? 'bg-accent/30 text-foreground'
+          : 'text-muted-foreground hover:bg-accent/20 hover:text-foreground'}"
+        onclick={() => openCollapsedTab("scheduled-tasks")}
+        title={t("sessionControl_panelScheduledTasks")}
+      >
+        <svg
+          class="h-3.5 w-3.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
       </button>
       <button
         class="mt-auto flex h-8 w-8 items-center justify-center rounded-xl bg-accent/20 text-foreground transition-colors hover:bg-accent/30"
@@ -1134,28 +1088,6 @@
                 <path d="M8 21h8M12 17v4" />
               </svg>
             </button>
-            <!-- Info icon -->
-            <button
-              class="p-1.5 rounded-xl transition-colors {activeTab === 'info'
-                ? 'bg-accent/30 text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
-              onclick={() => (activeTab = "info")}
-              title={t("toolActivity_tabInfo")}
-            >
-              <svg
-                class="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="16" x2="12" y2="12" />
-                <line x1="12" y1="8" x2="12.01" y2="8" />
-              </svg>
-            </button>
             <!-- Tasks icon -->
             <button
               class="p-1.5 rounded-xl transition-colors relative {activeTab === 'tasks'
@@ -1181,6 +1113,27 @@
                   class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"
                 ></span>
               {/if}
+            </button>
+            <!-- Scheduled Tasks icon -->
+            <button
+              class="p-1.5 rounded-xl transition-colors {activeTab === 'scheduled-tasks'
+                ? 'bg-accent/30 text-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
+              onclick={() => (activeTab = "scheduled-tasks")}
+              title={t("sessionControl_panelScheduledTasks")}
+            >
+              <svg
+                class="h-3.5 w-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
             </button>
           </div>
           <button
@@ -1353,73 +1306,6 @@
           />
         </div>
       {/if}
-      {#if mountedTabs.has("info")}
-        <div
-          class="absolute inset-0 flex flex-col overflow-y-auto scrollbar-hide"
-          style="visibility: {activeTab === 'info'
-            ? 'visible'
-            : 'hidden'}; pointer-events: {activeTab === 'info' ? 'auto' : 'none'};"
-        >
-          <!-- Subagents section (shown above session info when Task tools exist) -->
-          {#if subagents.length > 0}
-            <div class="px-3 py-2 border-b border-border/50">
-              <div
-                class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
-              >
-                {t("tool_subagents", { count: String(subagents.length) })}
-              </div>
-              <div class="space-y-1.5">
-                {#each subagents as sa (sa.toolUseId)}
-                  {@const isDone = sa.status === "success"}
-                  {@const isError = sa.status === "error" || sa.status === "denied"}
-                  {@const isRunning = !isDone && !isError}
-                  <button
-                    class="w-full text-left rounded-md border border-border/50 bg-background/50 px-2.5 py-1.5 hover:bg-accent/30 transition-colors"
-                    onclick={() => onScrollToTool?.(sa.toolUseId)}
-                    title={t("toolActivity_scrollTo")}
-                  >
-                    <div class="flex items-center gap-1.5">
-                      <span class="text-[11px] font-medium text-foreground"
-                        >{sa.meta.subagentType}</span
-                      >
-                      {#if sa.meta.model}
-                        <span
-                          class="text-[10px] px-1 py-0.5 rounded bg-[hsl(var(--miwarp-status-info)/0.15)] text-[hsl(var(--miwarp-status-info))] font-medium"
-                          >{sa.meta.model}</span
-                        >
-                      {/if}
-                      <span class="ml-auto">
-                        {#if isDone}
-                          <StatusIcon status="done" size="sm" />
-                        {:else if isError}
-                          <StatusIcon status="error" size="sm" />
-                        {:else if isRunning}
-                          <StatusIcon status="running" size="sm" />
-                        {/if}
-                      </span>
-                    </div>
-                    {#if sa.meta.description}
-                      <div class="text-[10px] text-muted-foreground truncate mt-0.5">
-                        {sa.meta.description}
-                      </div>
-                    {/if}
-                    {#if sa.toolCount > 0 || sa.durationMs != null}
-                      <div class="text-[10px] text-muted-foreground/60 mt-0.5">
-                        {#if sa.toolCount > 0}{sa.toolCount} tools{/if}
-                        {#if sa.toolCount > 0 && sa.durationMs != null}
-                          ·
-                        {/if}
-                        {#if sa.durationMs != null}{formatDuration(sa.durationMs)}{/if}
-                      </div>
-                    {/if}
-                  </button>
-                {/each}
-              </div>
-            </div>
-          {/if}
-          <SessionInfoPanel info={sessionInfo} {activeTab} />
-        </div>
-      {/if}
       {#if mountedTabs.has("scheduled-tasks")}
         <div
           class="absolute inset-0 flex flex-col"
@@ -1427,7 +1313,7 @@
             ? 'visible'
             : 'hidden'}; pointer-events: {activeTab === 'scheduled-tasks' ? 'auto' : 'none'};"
         >
-          <ScheduledTasksPanel />
+          <ScheduledTasksPanel {cwd} />
         </div>
       {/if}
       {#if mountedTabs.has("tools")}
@@ -1841,30 +1727,6 @@
         </svg>
       </button>
       <button
-        class="p-1 rounded transition-colors {activeTab === 'info'
-          ? 'text-foreground bg-accent'
-          : 'text-muted-foreground/50 hover:text-muted-foreground'}"
-        onclick={() => {
-          activeTab = "info";
-          onToggle();
-        }}
-        title={t("toolActivity_tabInfo")}
-      >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="16" x2="12" y2="12" />
-          <line x1="12" y1="8" x2="12.01" y2="8" />
-        </svg>
-      </button>
-      <button
         class="p-1 rounded transition-colors relative {activeTab === 'tasks'
           ? 'text-foreground bg-accent'
           : 'text-muted-foreground/50 hover:text-muted-foreground'}"
@@ -1891,6 +1753,29 @@
             class="absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"
           ></span>
         {/if}
+      </button>
+      <button
+        class="p-1 rounded transition-colors {activeTab === 'scheduled-tasks'
+          ? 'text-foreground bg-accent'
+          : 'text-muted-foreground/50 hover:text-muted-foreground'}"
+        onclick={() => {
+          activeTab = "scheduled-tasks";
+          onToggle();
+        }}
+        title={t("sessionControl_panelScheduledTasks")}
+      >
+        <svg
+          class="h-3.5 w-3.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
+        </svg>
       </button>
       {#if toolStats.totalToolCount > 0}
         <span class="mt-1 text-[10px] text-muted-foreground" style="writing-mode: vertical-rl;"

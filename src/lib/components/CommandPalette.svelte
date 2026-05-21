@@ -7,6 +7,8 @@
     getRecentCommands,
     recordRecentCommand,
     getCommandUsageStats,
+    matchNLQuery,
+    getNLCandidates,
     type CommandDef,
     type CommandCategory,
   } from "$lib/commands";
@@ -33,7 +35,7 @@
     onSendPrompt?: (prompt: string) => void;
     onTogglePlanMode?: () => void;
     onOpenModelSelector?: () => void;
-    onOpenFolderBrowser?: () => void;
+    onFolderBrowser?: () => void;
   } = $props();
 
   let query = $state("");
@@ -41,13 +43,27 @@
   let inputEl: HTMLInputElement | undefined = $state();
   let previewContent = $state<string | null>(null);
   let hoveredCmdId = $state<string | null>(null);
-  let searchMode = $state<"basic" | "fuzzy">("basic");
+  let searchMode = $state<"basic" | "fuzzy" | "nl">("basic");
   let isLoadingFuzzy = $state(false);
+  let nlMatchResult = $state<CommandDef | null>(null);
 
   // Compute flat list with fuzzy scores
   let flatListWithScores = $derived.by(() => {
     const q = query.trim();
     const usageStats = getCommandUsageStats();
+
+    // Check for natural language match first
+    if (q && searchMode === "nl") {
+      const nlMatch = matchNLQuery(q);
+      if (nlMatch) {
+        nlMatchResult = nlMatch;
+        return [{ cmd: nlMatch, score: 100 }]; // Highest priority for NL match
+      }
+      nlMatchResult = null;
+    }
+
+    // Get NL candidates for suggestions
+    const nlCandidates = searchMode === "nl" ? getNLCandidates(q) : [];
 
     // Get base filtered commands
     let cmds = filterCommands(q, agent);
@@ -78,10 +94,13 @@
       const result = multiFieldFuzzyMatch(q, fields, { weights, threshold: 0.2 });
       const usage = usageStats[cmd.id] || 0;
 
-      // Combined score: fuzzy score + usage bonus
+      // Boost score if this command appears in NL candidates
+      const nlBoost = nlCandidates.find((c) => c.id === cmd.id) ? 20 : 0;
+
+      // Combined score: fuzzy score + usage bonus + NL boost
       return {
         cmd,
-        score: result.matched ? result.score * 10 + usage * 0.5 : 0,
+        score: result.matched ? result.score * 10 + usage * 0.5 + nlBoost : 0,
       };
     });
   });
@@ -106,6 +125,7 @@
       hoveredCmdId = null;
       searchMode = "basic";
       isLoadingFuzzy = false;
+      nlMatchResult = null;
       requestAnimationFrame(() => inputEl?.focus());
     }
   });
@@ -149,10 +169,15 @@
       );
       return;
     }
-    // Toggle fuzzy mode with Ctrl+F
+    // Toggle fuzzy mode with Ctrl+F, NL mode with Ctrl+N
     if (e.key === "f" && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
-      searchMode = searchMode === "basic" ? "fuzzy" : "basic";
+      searchMode = searchMode === "fuzzy" ? "basic" : "fuzzy";
+      return;
+    }
+    if (e.key === "n" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      searchMode = searchMode === "nl" ? "basic" : "nl";
       return;
     }
   }
@@ -435,7 +460,16 @@
   }
 
   // Helper to get search mode label
-  let searchModeLabel = $derived(searchMode === "fuzzy" ? "模糊搜索" : "精确搜索");
+  let searchModeLabel = $derived.by(() => {
+    switch (searchMode) {
+      case "fuzzy":
+        return "模糊搜索";
+      case "nl":
+        return "语义搜索";
+      default:
+        return "精确搜索";
+    }
+  });
 
   // Get usage count for a command
   function getCommandUsageCount(cmdId: string): number {
@@ -490,8 +524,13 @@
             <!-- Search mode indicator -->
             <button
               class="text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-0.5 hover:bg-accent transition-colors"
-              onclick={() => (searchMode = searchMode === "basic" ? "fuzzy" : "basic")}
-              title="点击切换搜索模式 (Ctrl+F)"
+              onclick={() => {
+                // Cycle through: basic -> fuzzy -> nl -> basic
+                const modes: Array<"basic" | "fuzzy" | "nl"> = ["basic", "fuzzy", "nl"];
+                const currentIdx = modes.indexOf(searchMode);
+                searchMode = modes[(currentIdx + 1) % modes.length];
+              }}
+              title="切换搜索模式 (Ctrl+F 模糊, Ctrl+N 语义)"
             >
               {searchModeLabel}
             </button>
@@ -619,7 +658,7 @@
         <div
           class="border-t px-4 py-2 flex items-center justify-between text-xs text-muted-foreground"
         >
-          <span>↑↓ 导航 · Enter 执行 · Tab 预览 · Ctrl+F 切换搜索模式</span>
+          <span>↑↓ 导航 · Enter 执行 · Tab 预览 · Ctrl+F 模糊 · Ctrl+N 语义</span>
           {#if displayList.length > 0}
             <span>{displayList.length} 条命令</span>
           {/if}
@@ -657,6 +696,18 @@
         >
           <span>📜</span>
           <span>历史</span>
+        </button>
+        <!-- Natural language shortcut -->
+        <button
+          class="flex items-center gap-1.5 rounded-md bg-[hsl(var(--miwarp-accent-primary)/0.15)] px-3 py-1.5 text-xs text-[hsl(var(--miwarp-accent-primary))] hover:bg-[hsl(var(--miwarp-accent-primary)/0.25)] transition-colors"
+          onclick={() => {
+            searchMode = "nl";
+            inputEl?.focus();
+          }}
+          title="切换到语义搜索模式，用自然语言描述你想做什么"
+        >
+          <span>✨</span>
+          <span>语义搜索</span>
         </button>
       </div>
     </div>

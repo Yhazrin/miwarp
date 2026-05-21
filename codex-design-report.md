@@ -1,206 +1,218 @@
-# Codex/Claude Code 设计模式学习报告
+# MiWarp x Codex Claude Cowork 设计学习报告
 
-## 研究目标
-从 Claude Code/Cowork 设计中学习有用的设计，落地到 MiWarp 项目中。
-
----
-
-## 一、核心架构设计
-
-### 1. 事件中间件架构 (EventMiddleware) ✅ 已实现
-**现状**: MiWarp 已有 `src/lib/stores/event-middleware.ts`，实现了微批次处理（16ms）、Tauri/WebSocket 统一传输、run_id 路由分发。
-
-**可增强**:
-- 添加事件优先级队列，区分高优先级（tool_end）与低优先级（delta）事件
-- 实现事件去重（deduplication），避免重复处理同一条消息
-
-### 2. Session Actor 模式 ✅ 已实现
-**现状**: `src-tauri/src/agent/session_actor.rs` 已实现 tokio actor + bounded mpsc mailbox。
-
-**可优化**:
-- 添加 actor 状态快照（snapshot），支持断点重连
-- 实现 actor 级别的内存估算与自动回收
+**生成日期**: 2026-05-21
+**分析目标**: 从 Codex Claude Cowork 的设计模式中提取有价值的设计，落地到 MiWarp 项目
 
 ---
 
-## 二、计划任务 (Scheduled Tasks) 设计
+## 一、代码库现状分析
 
-### 3. 任务依赖与触发器 ⭐ 建议实现
+### 1.1 核心架构
 
-Claude Code/Cowork 支持任务依赖和事件触发，MiWarp 已定义类型但未实现：
+MiWarp 是一个基于 Tauri v2 的桌面应用，采用前后分离架构：
+
+| 层级 | 技术栈 |
+|------|--------|
+| 框架 | Tauri v2 (Rust 后端 + WebView) |
+| 前端 | Svelte 5 + SvelteKit |
+| 终端 | xterm.js |
+| 测试 | Vitest |
+
+### 1.2 已实现的核心功能
+
+- **会话管理**: `session_actor.rs` 管理 CLI 生命周期
+- **协议解析**: `claude_protocol.rs` / `codex_parser.rs` 处理流式 JSON
+- **命令面板**: `CommandPalette.svelte` 带模糊搜索和历史记录
+- **多 Agent**: `multi-agent-service.ts` 支持并行执行预设任务
+- **工作流**: `workflow-store.svelte.ts` 预置开发/审查/自动化模板
+- **Fork 机制**: `use-fork-lifecycle.ts` 支持会话分支和重试
+
+---
+
+## 二、Codex Claude Cowork 设计模式分析
+
+### 2.1 流式协议设计
+
+**Codex v0.98+ 的 NDJSON 格式**:
+
+```json
+{"type":"thread.started","thread_id":"..."}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"type":"agent_message","text":"..."}}
+{"type":"item.completed","item":{"type":"command_execution","command":"ls","output":"..."}}
+{"type":"turn.completed","usage":{"input_tokens":N,"output_tokens":N}}
+```
+
+**MiWarp 已实现**:
+- `codex_parser.rs` 已支持 `item.completed` 类型的解析
+- 支持 `agent_message` 和 `command_execution` 两种类型
+
+**改进建议**:
+1. 增加 `thinking` 类型的渲染 (Claude Code 的思考过程)
+2. 添加 `context_block` 类型的展示 (上下文块信息)
+3. 支持 `tool_use` 类型的细粒度解析
+
+### 2.2 命令面板增强
+
+**当前实现**:
+- 模糊搜索 + 使用频率排序
+- 按类别分组 (chat/tools/navigation/settings/diagnostics)
+- 最近使用命令优先
+
+**Codex 风格增强方向**:
+1. **自然语言理解**: 支持中文描述匹配，如输入"帮我审查代码"匹配 review 命令
+2. **智能补全**: Tab 键预览命令效果，结合 AI 意图识别
+3. **快捷操作栏**: 参考 Command Palette 的快速操作按钮 (工作流/技能/历史)
+
+### 2.3 多 Agent 并行执行
+
+**当前实现**:
+- `multi-agent-service.ts` 支持预设配置
+- 支持 agent 间的 `dependsOn` 依赖关系
+- 进度实时反馈
+
+**可借鉴的设计**:
+1. **动态任务分解**: 输入自然语言任务，自动拆分为多个子任务
+2. **结果汇总**: 多个 agent 结果自动合并，减少重复内容
+3. **冲突检测**: 检测并提示多个 agent 操作的冲突文件
+
+### 2.4 工作流模板
+
+**当前实现**:
+- 预置 10+ 工作流模板 (code-review, bug-fix, refactor 等)
+- 支持自定义工作流创建
+- 使用频率和最近使用排序
+
+**可借鉴的设计**:
+1. **工作流市场**: 社区工作流分享和评分系统
+2. **变量插值**: 工作流步骤中支持 `{cwd}`, `{selected_file}` 等变量
+3. **条件分支**: 根据执行结果决定下一步骤
+
+---
+
+## 三、落地建议
+
+### 3.1 高优先级 (P0)
+
+| 特性 | 当前状态 | 改进方案 | 工作量 |
+|------|----------|----------|--------|
+| 命令面板语义搜索 | 基础模糊匹配 | 集成 embedding 模型做语义匹配 | 中 |
+| 思考过程可视化 | 无 | 新增 `thinking` 类型的 timeline 渲染 | 小 |
+| 多 Agent 自然语言输入 | 需手动配置 | 实现 `/multi "帮我做XXX"` 语法 | 中 |
+
+### 3.2 中优先级 (P1)
+
+| 特性 | 当前状态 | 改进方案 | 工作量 |
+|------|----------|----------|--------|
+| 工作流变量 | 固定模板 | 支持 `{context}` 变量插值 | 中 |
+| 结果冲突检测 | 无 | 多 agent 执行时检测文件修改冲突 | 中 |
+| 上下文窗口可视化 | 基础数据 | 实时图表展示 context 使用情况 | 小 |
+
+### 3.3 低优先级 (P2)
+
+| 特性 | 当前状态 | 改进方案 | 工作量 |
+|------|----------|----------|--------|
+| 社区工作流市场 | 静态数据 | 接入后端 API 获取社区工作流 | 大 |
+| 工作流条件分支 | 线性执行 | 支持 If-Else 条件逻辑 | 中 |
+| Agent 角色定义 | 固定预设 | 支持自定义 agent 角色配置 | 中 |
+
+---
+
+## 四、具体实现示例
+
+### 4.1 增强命令面板语义搜索
 
 ```typescript
-// src/lib/types/scheduled-task.ts 已定义
-interface TaskDependency {
-  taskId: string;
-  type: "complete" | "failed" | "any";
+// src/lib/commands.ts 新增
+export interface SemanticCommand {
+  id: string;
+  name: string;
+  description: string;
+  embedding?: number[]; // 语义向量
+  exampleQueries: string[]; // 示例查询
 }
 
-interface TaskEventTrigger {
-  type: "file_change" | "task_complete" | "schedule";
-  pattern?: string;
-  sourceTaskId?: string;
+// 语义搜索增强
+export async function semanticFilterCommands(
+  query: string,
+  agent?: string
+): Promise<CommandDef[]> {
+  const { embeddings } = await import("$lib/services/embedding-service");
+  const queryEmbedding = await embeddings.embed(query);
+  
+  return commands
+    .filter(cmd => !agent || cmd.agent === agent || cmd.agent === "both")
+    .map(cmd => ({
+      cmd,
+      score: cosineSimilarity(queryEmbedding, cmd.embedding || cmd.exampleEmbeddings)
+    }))
+    .filter(r => r.score > 0.7)
+    .sort((a, b) => b.score - a.score)
+    .map(r => r.cmd);
 }
 ```
 
-**落地建议**:
-1. 后端: `src-tauri/src/scheduler/` 添加依赖图（dependency graph）
-2. 前端: 任务创建 UI 添加依赖选择器
-3. 调度器: 支持文件变化监控（fs watcher）
+### 4.2 思考过程渲染组件
 
-### 4. 重试配置 ⭐ 建议实现
+```svelte
+<!-- src/lib/components/ThinkingBlock.svelte -->
+<script lang="ts">
+  let { thinking, elapsed }: { thinking: string; elapsed: number } = $props();
+</script>
+
+<div class="thinking-block">
+  <div class="thinking-header">
+    <span class="animate-pulse">🤔 思考中...</span>
+    <span class="elapsed">{elapsed}s</span>
+  </div>
+  <div class="thinking-content">
+    {#each thinking.split('\n') as line}
+      <p>{line}</p>
+    {/each}
+  </div>
+</div>
+
+<style>
+.thinking-block {
+  background: linear-gradient(135deg, hsl(var(--primary)/0.1), hsl(var(--accent)/0.1));
+  border-left: 3px solid hsl(var(--primary));
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+</style>
+```
+
+### 4.3 多 Agent 自然语言解析
 
 ```typescript
-interface RetryConfig {
-  maxRetries: number;
-  backoff: "linear" | "exponential" | "fixed";
-  initialDelayMs?: number;  // Default: 1000
-  maxDelayMs?: number;      // Default: 60000
+// src/lib/services/multi-agent-service.ts 新增
+public parseNaturalLanguage(input: string): MultiAgentConfig | null {
+  // 使用 AI 解析自然语言为 agent 配置
+  const prompt = `将以下自然语言任务分解为多个 agent 子任务:
+任务: ${input}
+输出 JSON 格式:
+{
+  "name": "任务名称",
+  "description": "任务描述", 
+  "agents": [
+    { "id": "agent1", "name": "角色名", "prompt": "具体指令", "dependsOn": [] }
+  ]
+}`;
+
+  // 调用 AI 解析或使用规则匹配
+  return this.applyRuleBasedParsing(input);
 }
 ```
 
-**落地建议**:
-- 在任务执行失败时自动应用重试策略
-- 前端 UI 显示重试状态与剩余次数
-
-### 5. 任务通知系统 ⭐ 建议实现
-
-```typescript
-interface ScheduledTask {
-  notifications?: {
-    onStart?: boolean;
-    onComplete?: boolean;
-    onFailure?: boolean;
-  };
-}
-```
-
-**落地建议**:
-- 实现系统通知（via Tauri notification API）
-- 任务运行面板添加通知开关
-
 ---
 
-## 三、命令面板 (Command Palette) 增强
+## 五、总结
 
-### 6. 命令使用统计 ⭐ 建议实现
+MiWarp 已经具备扎实的基础架构，从 Codex Claude Cowork 可以学习的主要方向:
 
-当前 `src/lib/commands.ts` 已有使用统计基础设施：
+1. **用户体验**: 命令面板语义搜索、智能补全
+2. **可视化**: 思考过程渲染、上下文窗口图表
+3. **智能化**: 多 Agent 自然语言输入、工作流变量插值
+4. **协作**: 社区工作流市场、结果冲突检测
 
-```typescript
-interface CommandDef {
-  fuzzyKeywords?: string[];   // 模糊匹配关键词
-  usageCount?: number;        // 使用次数
-  icon?: string;              // 命令图标
-  contextPhases?: SessionPhase[];
-  showDuringRun?: boolean;
-  showWhenIdle?: boolean;
-}
-```
-
-**落地建议**:
-1. 命令排序按使用频率（usageCount）提升优先级
-2. 实现"最近使用"智能排序
-3. 添加命令预览（preview function）
-4. 根据当前会话阶段动态过滤可用命令
-
-### 7. 命令模糊搜索优化
-
-**现状**: 已有 `fuzzyKeywords` 支持。
-
-**可增强**:
-- 使用 Fuse.js 实现更智能的模糊匹配
-- 支持中文拼音首字母搜索（中文用户友好）
-
----
-
-## 四、Git Worktree 集成
-
-### 8. 工作树（Worktree）管理 ✅ 已实现
-
-`src/lib/components/GitWorktreePanel.svelte` 已完整实现：
-- 提交时间线
-- 分支切换
-- 自动提交
-- PR 创建
-
-**可增强**:
-- 添加工作树冲突检测与可视化
-- 支持工作树之间的任务分配
-
----
-
-## 五、Session 生命周期管理
-
-### 9. Subagent 路由 ⭐ 建议优化
-
-当前 `session-store.svelte.ts` 已支持 subagent thinking 路由。
-
-**可增强**:
-- 支持 subagent 并行执行可视化
-- 添加 subagent 状态追踪面板
-
-### 10. 会话持久化与恢复 ⭐ 建议实现
-
-**落地建议**:
-- 实现会话快照（snapshot）保存
-- 支持断点重连（resume from checkpoint）
-- 添加"Rewind"功能（时间旅行）
-
----
-
-## 六、UI/UX 最佳实践
-
-### 11. 实时状态指示器
-
-**建议实现**:
-- 添加 AI"思考中"状态动画
-- 工具执行进度可视化
-- 上下文窗口使用量实时显示
-
-### 12. 消息折叠与摘要
-
-当前 `ChatMessage.svelte` 已有 `collapsed` 状态。
-
-**可增强**:
-- AI 回复长输出自动折叠，显示"Show more"
-- Tool burst 批量折叠（已部分实现）
-
----
-
-## 七、优先级建议
-
-| 优先级 | 功能 | 复杂度 | 价值 |
-|--------|------|--------|------|
-| P0 | 命令使用统计与智能排序 | 低 | 高 |
-| P0 | 任务依赖与触发器 | 中 | 高 |
-| P1 | 重试配置与通知系统 | 低 | 中 |
-| P1 | 会话快照与 Rewind | 高 | 高 |
-| P2 | 虚拟滚动优化 | 中 | 中 |
-| P2 | Subagent 可视化 | 中 | 中 |
-| P3 | 模糊搜索优化（拼音） | 低 | 中 |
-
----
-
-## 八、代码规范遵循
-
-以下设计已符合 MiWarp 代码规范：
-
-- ✅ 使用 Svelte 5 runes ($state, $derived, $effect)
-- ✅ 通过 `getTransport()` 访问 Tauri API
-- ✅ i18n 使用 `t('key')`
-- ✅ Commit messages 使用 Conventional Commits
-- ✅ Rust 使用 cargo fmt + clippy
-
----
-
-## 结论
-
-MiWarp 已经是一个设计良好的应用，Claude Code/Cowork 的设计理念大部分已被吸收。主要改进方向：
-
-1. **增强计划任务系统** - 依赖、触发器、重试、通知
-2. **优化命令面板** - 使用统计、模糊搜索、智能排序
-3. **提升会话管理** - 快照、Rewind、Subagent 可视化
-4. **性能优化** - 虚拟滚动、自适应批次
-
-建议从 P0 优先级开始迭代开发。
+建议从 P0 级别的命令面板语义搜索和思考过程可视化开始实施，这两个特性投入产出比最高。

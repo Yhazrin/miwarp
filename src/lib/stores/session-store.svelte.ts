@@ -554,6 +554,11 @@ export class SessionStore {
     return this.isRunning && !this.hasPendingPermission && !this.hasElicitation;
   }
 
+  /** Agent blocked on permission, elicitation, or inline user choice. */
+  get taskWaiting(): boolean {
+    return this.hasPendingPermission || this.hasElicitation || this.hasInlinePermission;
+  }
+
   /** Duration of extended thinking in seconds (0 if no thinking happened). */
   get thinkingDurationSec(): number {
     if (!this.thinkingStartMs) return 0;

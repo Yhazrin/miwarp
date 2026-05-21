@@ -2,6 +2,7 @@ pub mod agents;
 pub mod artifacts;
 pub mod background;
 pub mod chat;
+pub mod claude_history_migration;
 pub mod cli_config;
 pub mod cli_settings;
 pub mod cli_sync;

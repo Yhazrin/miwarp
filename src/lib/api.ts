@@ -44,6 +44,9 @@ import type {
   AgentDefinitionSummary,
   RunSearchFilters,
   RunSearchResponse,
+  ExportReport,
+  ImportReport,
+  CliSessionInfo,
 } from "./types";
 
 // Runs
@@ -539,6 +542,22 @@ export async function testApiConnectivity(
 export async function runDiagnostics(cwd: string): Promise<DiagnosticsReport> {
   dbg("api", "runDiagnostics", { cwd });
   return invoke<DiagnosticsReport>("run_diagnostics", { cwd });
+}
+
+// Claude Code History Migration
+export async function exportClaudeCodeHistoryArchive(outputPath: string): Promise<ExportReport> {
+  dbg("api", "exportClaudeCodeHistoryArchive", { outputPath });
+  return invoke<ExportReport>("export_claude_code_history_archive", { outputPath });
+}
+
+export async function importClaudeCodeHistoryArchive(archivePath: string): Promise<ImportReport> {
+  dbg("api", "importClaudeCodeHistoryArchive", { archivePath });
+  return invoke<ImportReport>("import_claude_code_history_archive", { archivePath });
+}
+
+export async function scanClaudeCodeHistory(): Promise<CliSessionInfo[]> {
+  dbg("api", "scanClaudeCodeHistory");
+  return invoke<CliSessionInfo[]>("scan_claude_code_history", {});
 }
 
 export async function testRemoteHost(
