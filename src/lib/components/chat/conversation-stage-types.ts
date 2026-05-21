@@ -109,6 +109,7 @@ export interface StageHandlers {
     interrupt?: boolean,
   ) => Promise<void>;
   handleExitPlanClearContext: (toolUseId: string) => void;
+  handleExitPlanBypass: () => void;
   getPlanContentForExitPlan: (entryId: string) => { content: string; fileName: string } | null;
   openPreviewForPath: (path: string) => void;
   handleHookCallbackRespond: (requestId: string, decision: "allow" | "deny") => Promise<void>;

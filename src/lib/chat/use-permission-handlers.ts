@@ -122,6 +122,40 @@ export function createPermissionHandlers(ctx: PermissionHandlerContext) {
     return null;
   }
 
+  async function handleExitPlanBypass(): Promise<void> {
+    if (!store.run) return;
+    const runId = store.run.id;
+    dbg("chat", "ExitPlanMode: bypass approvals");
+
+    const exitPlanEntry = store.timeline.find(
+      (e) =>
+        e.kind === "tool" &&
+        e.tool.tool_name === "ExitPlanMode" &&
+        e.tool.status === "permission_prompt" &&
+        e.tool.permission_request_id,
+    );
+    if (!exitPlanEntry || exitPlanEntry.kind !== "tool") return;
+    const requestId = exitPlanEntry.tool.permission_request_id!;
+
+    try {
+      store.pendingPermissionModeOverride = "bypassPermissions";
+      await api.respondPermission(
+        runId,
+        requestId,
+        "allow",
+        [{ type: "setMode", mode: "bypassPermissions", destination: "session" }],
+        exitPlanEntry.tool.input,
+      );
+      resolvePermissionOptimistic(store, runId, requestId, "allow");
+      dbg("chat", "ExitPlanMode: bypass response sent");
+    } catch (e) {
+      dbgWarn("chat", "ExitPlanMode bypass failed:", e);
+      store.pendingPermissionModeOverride = null;
+      store.error = String(e);
+      throw e;
+    }
+  }
+
   async function handleExitPlanClearContext(): Promise<void> {
     if (!store.run) return;
     const runId = store.run.id;
@@ -209,6 +243,7 @@ export function createPermissionHandlers(ctx: PermissionHandlerContext) {
     handleElicitationRespond,
     getPlanContentForExitPlan,
     handleExitPlanClearContext,
+    handleExitPlanBypass,
     handleHookCallbackRespond,
   };
 }

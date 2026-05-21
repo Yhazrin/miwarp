@@ -46,6 +46,7 @@
     onApprove,
     onPermissionRespond,
     onExitPlanClearContext,
+    onExitPlanBypass,
     taskNotifications,
     planContent,
     latestPlanTool,
@@ -74,6 +75,8 @@
     ) => void | Promise<void>;
     /** ExitPlanMode "clear context" handler. */
     onExitPlanClearContext?: () => void | Promise<void>;
+    /** ExitPlanMode "bypass" handler — sets bypassPermissions for current run only. */
+    onExitPlanBypass?: () => void | Promise<void>;
     /** Background task notifications map (keyed by task_id, matched via tool_use_id). */
     taskNotifications?: Map<string, TaskNotificationItem>;
     /** Plan content to display inline (for ExitPlanMode cards). */
@@ -640,6 +643,14 @@
   async function safeClearContext() {
     try {
       await onExitPlanClearContext?.();
+    } catch {
+      submitting = false;
+    }
+  }
+
+  async function safeExitPlanBypass() {
+    try {
+      await onExitPlanBypass?.();
     } catch {
       submitting = false;
     }
@@ -1298,12 +1309,13 @@
             {/if}
           </div>
         {:else if tool.status === "permission_prompt" && tool.permission_request_id && tool.tool_name === "ExitPlanMode"}
-          <!-- ExitPlanMode: 4-option plan approval card (indigo theme) -->
+          <!-- ExitPlanMode: 3-option execution card + continue planning -->
           <div
-            class="glass-card rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.3)] bg-[hsl(var(--miwarp-accent-primary)/0.05)] px-4 py-3"
+            class="glass-card rounded-xl border border-[hsl(var(--miwarp-accent-primary)/0.3)] bg-[hsl(var(--miwarp-accent-primary)/0.04)] px-4 py-3"
             style="border-left: 3px solid; border-image: linear-gradient(180deg, hsl(var(--miwarp-accent-primary)), hsl(var(--miwarp-accent-violet))) 1;"
           >
-            <div class="flex items-center gap-2 mb-2">
+            <!-- Header -->
+            <div class="flex items-center gap-2 mb-1.5">
               <div
                 class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[hsl(var(--miwarp-accent-primary)/0.1)]"
               >
@@ -1321,7 +1333,7 @@
                   />
                 </svg>
               </div>
-              <span class="text-xs font-medium text-foreground">{t("plan_readyToCode")}</span>
+              <span class="text-xs font-semibold text-foreground">{t("planConfirm_title")}</span>
               <PhaseIndicator phase={currentPhase} elapsed={tool.elapsed_time_seconds} />
               <div class="h-3 w-3 shrink-0 ml-auto">
                 <div
@@ -1330,8 +1342,12 @@
               </div>
             </div>
 
-            <p class="text-xs text-muted-foreground mb-3">{t("plan_approvalDesc")}</p>
+            <!-- Subtitle -->
+            <p class="text-xs text-muted-foreground mb-3">
+              {planContent ? t("planConfirm_subtitle") : t("planConfirm_missingPlan")}
+            </p>
 
+            <!-- Plan content block -->
             {#if planContent}
               <div
                 class="mb-3 rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.15)] bg-background/50 overflow-hidden"
@@ -1355,17 +1371,13 @@
                     >{planContent.fileName}</span
                   >
                 </div>
-                <div class="px-4 py-3 max-h-96 overflow-y-auto prose-chat">
+                <div class="px-4 py-3 max-h-72 overflow-y-auto prose-chat">
                   <MarkdownContent text={planContent.content} />
                 </div>
               </div>
-            {:else if planContent === null && tool.tool_name === "ExitPlanMode"}
-              <p class="mb-3 text-[11px] text-muted-foreground/70 italic">
-                {t("plan_cannotRebuild")}
-              </p>
             {/if}
 
-            <!-- allowedPrompts (from tool.input, set during tool_start) -->
+            <!-- allowedPrompts -->
             {#if tool.input?.allowedPrompts && Array.isArray(tool.input.allowedPrompts) && tool.input.allowedPrompts.length > 0}
               <div
                 class="mb-3 rounded border border-[hsl(var(--miwarp-accent-primary)/0.1)] bg-[hsl(var(--miwarp-accent-primary)/0.05)] px-2.5 py-2"
@@ -1392,7 +1404,7 @@
               </div>
             {/if}
 
-            <!-- pushToRemote link (from tool.input, when ExitPlanMode sends remote session info) -->
+            <!-- pushToRemote link -->
             {#if tool.input?.pushToRemote && tool.input?.remoteSessionUrl}
               <a
                 href={String(tool.input.remoteSessionUrl)}
@@ -1418,41 +1430,31 @@
             {/if}
 
             {#if onPermissionRespond}
-              <div class="flex flex-col gap-1.5">
-                {#if skipPermissionMode}
-                  <!-- Skip-permission option: session already configured to skip permission prompts -->
+              {#if skipPermissionMode}
+                <!-- Session already in skip-permission mode -->
+                <button
+                  class="w-full rounded-lg border border-[hsl(var(--miwarp-status-success)/0.4)] bg-[hsl(var(--miwarp-status-success)/0.12)] px-3 py-2 text-xs font-medium text-[hsl(var(--miwarp-status-success))] hover:bg-[hsl(var(--miwarp-status-success)/0.22)] transition-all disabled:opacity-50"
+                  disabled={submitting}
+                  onclick={() => {
+                    submitting = true;
+                    safePermissionRespond(
+                      tool.permission_request_id!,
+                      "deny",
+                      undefined,
+                      undefined,
+                      undefined,
+                      false,
+                    );
+                  }}
+                >
+                  {t("plan_skipPermission")}
+                </button>
+              {:else}
+                <!-- 3 execution option cards -->
+                <div class="grid grid-cols-3 gap-2 mb-3">
+                  <!-- Card 1: Auto-accept edits (recommended) -->
                   <button
-                    class="w-full rounded-md border border-[hsl(var(--miwarp-status-success)/0.4)] bg-[hsl(var(--miwarp-status-success)/0.15)] px-3 py-2 text-left text-xs font-medium text-[hsl(var(--miwarp-status-success))] hover:bg-[hsl(var(--miwarp-status-success)/0.25)] transition-all disabled:opacity-50"
-                    disabled={submitting}
-                    onclick={() => {
-                      submitting = true;
-                      safePermissionRespond(
-                        tool.permission_request_id!,
-                        "deny",
-                        undefined,
-                        undefined,
-                        undefined,
-                        false,
-                      );
-                    }}
-                  >
-                    {t("plan_skipPermission")}
-                  </button>
-                {:else}
-                  <!-- Option 1: Clear context + auto-accept -->
-                  <button
-                    class="w-full rounded-md border border-[hsl(var(--miwarp-accent-primary)/0.3)] bg-[hsl(var(--miwarp-accent-primary)/0.1)] px-3 py-1.5 text-left text-xs font-medium text-[hsl(var(--miwarp-accent-primary))] hover:bg-[hsl(var(--miwarp-accent-primary)/0.2)] transition-all disabled:opacity-50"
-                    disabled={submitting}
-                    onclick={() => {
-                      submitting = true;
-                      safeClearContext();
-                    }}
-                  >
-                    {t("plan_clearContextAutoAccept")}
-                  </button>
-                  <!-- Option 2: Auto-accept (keep context) -->
-                  <button
-                    class="w-full rounded-md border border-[hsl(var(--miwarp-status-success)/0.3)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-left text-xs font-medium text-[hsl(var(--miwarp-status-success))] hover:bg-[hsl(var(--miwarp-status-success)/0.2)] transition-all disabled:opacity-50"
+                    class="flex flex-col items-start rounded-xl border-2 border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.08)] hover:bg-[hsl(var(--miwarp-status-success)/0.16)] hover:border-[hsl(var(--miwarp-status-success)/0.7)] transition-all disabled:opacity-50 p-2.5 text-left"
                     disabled={submitting}
                     onclick={() => {
                       submitting = true;
@@ -1464,11 +1466,52 @@
                       );
                     }}
                   >
-                    {t("plan_autoAcceptEdits")}
+                    <span
+                      class="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--miwarp-status-success)/0.2)] px-1.5 py-0.5 mb-1.5"
+                    >
+                      <span
+                        class="text-[9px] font-semibold uppercase tracking-wider text-[hsl(var(--miwarp-status-success))]"
+                        >{t("planConfirm_autoBadge")}</span
+                      >
+                    </span>
+                    <span
+                      class="text-xs font-semibold text-[hsl(var(--miwarp-status-success))] leading-tight mb-1"
+                      >{t("planConfirm_autoTitle")}</span
+                    >
+                    <span class="text-[10px] text-muted-foreground leading-snug"
+                      >{t("planConfirm_autoDesc")}</span
+                    >
                   </button>
-                  <!-- Option 3: Manually approve -->
+
+                  <!-- Card 2: Bypass (fast) -->
                   <button
-                    class="w-full rounded-md border border-border px-3 py-1.5 text-left text-xs font-medium text-foreground hover:bg-accent transition-all disabled:opacity-50"
+                    class="flex flex-col items-start rounded-xl border-2 border-[hsl(var(--miwarp-status-warning)/0.45)] bg-[hsl(var(--miwarp-status-warning)/0.07)] hover:bg-[hsl(var(--miwarp-status-warning)/0.15)] hover:border-[hsl(var(--miwarp-status-warning)/0.65)] transition-all disabled:opacity-50 p-2.5 text-left"
+                    disabled={submitting}
+                    onclick={() => {
+                      submitting = true;
+                      safeExitPlanBypass();
+                    }}
+                  >
+                    <span
+                      class="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--miwarp-status-warning)/0.2)] px-1.5 py-0.5 mb-1.5"
+                    >
+                      <span
+                        class="text-[9px] font-semibold uppercase tracking-wider text-[hsl(var(--miwarp-status-warning))]"
+                        >{t("planConfirm_bypassBadge")}</span
+                      >
+                    </span>
+                    <span
+                      class="text-xs font-semibold text-[hsl(var(--miwarp-status-warning))] leading-tight mb-1"
+                      >{t("planConfirm_bypassTitle")}</span
+                    >
+                    <span class="text-[10px] text-muted-foreground leading-snug"
+                      >{t("planConfirm_bypassDesc")}</span
+                    >
+                  </button>
+
+                  <!-- Card 3: Manual approve (safe) -->
+                  <button
+                    class="flex flex-col items-start rounded-xl border-2 border-border bg-muted/20 hover:bg-muted/40 hover:border-foreground/30 transition-all disabled:opacity-50 p-2.5 text-left"
                     disabled={submitting}
                     onclick={() => {
                       submitting = true;
@@ -1480,39 +1523,38 @@
                       );
                     }}
                   >
-                    {t("plan_manuallyApprove")}
+                    <span
+                      class="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 mb-1.5"
+                    >
+                      <span
+                        class="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground"
+                        >{t("planConfirm_manualBadge")}</span
+                      >
+                    </span>
+                    <span class="text-xs font-semibold text-foreground leading-tight mb-1"
+                      >{t("planConfirm_manualTitle")}</span
+                    >
+                    <span class="text-[10px] text-muted-foreground leading-snug"
+                      >{t("planConfirm_manualDesc")}</span
+                    >
                   </button>
-                  <!-- Option 4: Keep planning (with feedback) -->
-                  <div class="flex gap-1.5 items-end">
-                    <textarea
-                      bind:value={planFeedback}
-                      placeholder={t("plan_feedbackPlaceholder")}
-                      rows="1"
-                      class="flex-1 rounded-md border border-border bg-transparent px-2 py-1.5 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none overflow-hidden"
-                      oninput={(e) => {
-                        const el = e.currentTarget;
-                        el.style.height = "auto";
-                        el.style.height = Math.min(el.scrollHeight, 120) + "px";
-                      }}
-                      onkeydown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey && !submitting) {
-                          e.preventDefault();
-                          submitting = true;
-                          const msg = planFeedback.trim() || undefined;
-                          safePermissionRespond(
-                            tool.permission_request_id!,
-                            "deny",
-                            undefined,
-                            undefined,
-                            msg,
-                          );
-                        }
-                      }}
-                    ></textarea>
-                    <button
-                      class="shrink-0 rounded-md border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-warning))] hover:bg-[hsl(var(--miwarp-status-warning)/0.2)] transition-all disabled:opacity-50"
-                      disabled={submitting}
-                      onclick={() => {
+                </div>
+
+                <!-- Continue planning input -->
+                <div class="flex gap-2 items-end">
+                  <textarea
+                    bind:value={planFeedback}
+                    placeholder={t("planConfirm_continuePlaceholder")}
+                    rows="1"
+                    class="flex-1 rounded-lg border border-border bg-transparent px-3 py-2 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring resize-none overflow-hidden"
+                    oninput={(e) => {
+                      const el = e.currentTarget;
+                      el.style.height = "auto";
+                      el.style.height = Math.min(el.scrollHeight, 120) + "px";
+                    }}
+                    onkeydown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey && !submitting) {
+                        e.preventDefault();
                         submitting = true;
                         const msg = planFeedback.trim() || undefined;
                         safePermissionRespond(
@@ -1522,13 +1564,28 @@
                           undefined,
                           msg,
                         );
-                      }}
-                    >
-                      {t("plan_keepPlanning")}
-                    </button>
-                  </div>
-                {/if}
-              </div>
+                      }
+                    }}
+                  ></textarea>
+                  <button
+                    class="shrink-0 rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.3)] bg-[hsl(var(--miwarp-accent-primary)/0.08)] hover:bg-[hsl(var(--miwarp-accent-primary)/0.16)] px-3 py-2 text-xs font-medium text-[hsl(var(--miwarp-accent-primary))] transition-all disabled:opacity-50"
+                    disabled={submitting}
+                    onclick={() => {
+                      submitting = true;
+                      const msg = planFeedback.trim() || undefined;
+                      safePermissionRespond(
+                        tool.permission_request_id!,
+                        "deny",
+                        undefined,
+                        undefined,
+                        msg,
+                      );
+                    }}
+                  >
+                    {t("planConfirm_continueButton")}
+                  </button>
+                </div>
+              {/if}
             {/if}
           </div>
         {:else if showPermissionInPanel && tool.status === "permission_prompt" && tool.permission_request_id && tool.tool_name !== "AskUserQuestion" && tool.tool_name !== "ExitPlanMode"}

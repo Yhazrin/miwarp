@@ -46,6 +46,7 @@
     handleToolApprove,
     handlePermissionRespond,
     handleExitPlanClearContext,
+    handleExitPlanBypass,
     getPlanContentForExitPlan,
     openPreviewForPath,
     toggleBurst,
@@ -78,6 +79,7 @@
       interrupt?: boolean,
     ) => Promise<void>;
     handleExitPlanClearContext: (toolUseId: string) => void;
+    handleExitPlanBypass: () => void;
     getPlanContentForExitPlan: (entryId: string) => { content: string; fileName: string } | null;
     openPreviewForPath: (path: string) => void;
     toggleBurst: (key: string) => void;
@@ -200,6 +202,7 @@
                   onApprove={handleToolApprove}
                   onPermissionRespond={handlePermissionRespond}
                   onExitPlanClearContext={() => handleExitPlanClearContext(entry.tool.tool_use_id)}
+                  onExitPlanBypass={handleExitPlanBypass}
                   taskNotifications={store.taskNotifications}
                   planContent={entry.tool.tool_name === "ExitPlanMode" &&
                   (entry.tool.status === "permission_prompt" || entry.tool.status === "success")

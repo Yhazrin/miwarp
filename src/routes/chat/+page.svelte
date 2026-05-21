@@ -590,42 +590,42 @@
     // Codex pipe mode doesn't need resize — terminal is output-only
   }
 
-  // ── Permission pending auto-scroll (only for inline AskUserQuestion/ExitPlanMode) ──
+  // ── Permission pending auto-scroll (inline cards in timeline) ──
   let prevPermissionRunId = "";
   let prevHadPermission = false;
 
   $effect(() => {
     const runId = store.run?.id ?? "";
-    const hasInline = store.hasInlinePermission;
+    const needsApproval = store.hasPendingPermission;
 
     if (runId !== prevPermissionRunId) {
       prevPermissionRunId = runId;
       prevHadPermission = false;
     }
 
-    if (hasInline && !prevHadPermission) {
+    if (needsApproval && !prevHadPermission) {
       if (!chatAreaRef) return;
       requestAnimationFrame(() => {
         scrollChatToBottom();
       });
-      dbg("chat", "inline permission pending -> autoscroll", { runId });
+      dbg("chat", "permission pending -> autoscroll to inline card", { runId });
     }
 
-    prevHadPermission = hasInline;
+    prevHadPermission = needsApproval;
   });
 
-  // ── Permission panel visibility log ──
+  // ── Pending tool permission log ──
   let _prevPanelCount = 0;
   $effect(() => {
     const count = sd.pendingToolPermissions.length;
     if (count !== _prevPanelCount) {
       if (count > 0)
-        dbg("chat", "permissionPanel visible", {
+        dbg("chat", "inline tool permissions pending", {
           count,
           ids: sd.pendingToolPermissions.map((p) => p.requestId),
           tools: sd.pendingToolPermissions.map((p) => p.tool.tool_name),
         });
-      else if (_prevPanelCount > 0) dbg("chat", "permissionPanel hidden");
+      else if (_prevPanelCount > 0) dbg("chat", "inline tool permissions cleared");
       _prevPanelCount = count;
     }
   });
@@ -681,6 +681,7 @@
     handleElicitationRespond,
     getPlanContentForExitPlan,
     handleExitPlanClearContext,
+    handleExitPlanBypass,
     handleHookCallbackRespond,
   } = createPermissionHandlers({
     store,
@@ -1238,6 +1239,7 @@
         handleToolApprove,
         handlePermissionRespond,
         handleExitPlanClearContext,
+        handleExitPlanBypass,
         getPlanContentForExitPlan,
         openPreviewForPath,
         handleHookCallbackRespond,

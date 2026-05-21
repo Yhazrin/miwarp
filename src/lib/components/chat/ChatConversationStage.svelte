@@ -141,6 +141,7 @@
     handleToolApprove,
     handlePermissionRespond,
     handleExitPlanClearContext,
+    handleExitPlanBypass,
     getPlanContentForExitPlan,
     openPreviewForPath,
     handleHookCallbackRespond,
@@ -276,6 +277,7 @@
               {handleToolApprove}
               {handlePermissionRespond}
               {handleExitPlanClearContext}
+              {handleExitPlanBypass}
               {getPlanContentForExitPlan}
               {openPreviewForPath}
               toggleBurst={burstCollapse.toggleBurst}
