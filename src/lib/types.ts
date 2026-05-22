@@ -1136,6 +1136,8 @@ export type BusEvent =
       /** Backend-authoritative turn index (1-based). Present for user turns. */
       turn_index?: number;
       model_usage?: Record<string, ModelUsageEntry>;
+      context_window_used_percentage?: number;
+      context_window_remaining_percentage?: number;
       duration_api_ms?: number;
       duration_ms?: number;
       num_turns?: number;

@@ -533,6 +533,41 @@ pub fn list_memory_files(
     Ok(files)
 }
 
+/// Reveal a file in the system file browser (Finder on macOS, Explorer on Windows).
+#[tauri::command]
+pub fn reveal_file_in_finder(path: String) -> Result<(), String> {
+    let validated = validate_file_path(&path, None)?;
+    let path_str = validated.display().to_string();
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .args(["-R", &path_str])
+            .spawn()
+            .map_err(|e| format!("failed to open Finder: {}", e))?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .args(["/select,", &path_str])
+            .spawn()
+            .map_err(|e| format!("failed to open Explorer: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // Try xdg-open first (opens parent folder with file selected if supported)
+        std::process::Command::new("xdg-open")
+            .arg(&path_str)
+            .spawn()
+            .map_err(|e| format!("failed to open file browser: {}", e))?;
+    }
+
+    log::debug!("[files] revealed in file browser: {}", path_str);
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

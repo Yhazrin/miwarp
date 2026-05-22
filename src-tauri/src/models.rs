@@ -1236,6 +1236,12 @@ pub enum BusEvent {
         turn_index: Option<u32>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         model_usage: Option<HashMap<String, ModelUsageEntry>>,
+        /// Official CLI context window used percentage, when provided by status/result payloads.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        context_window_used_percentage: Option<f64>,
+        /// Official CLI context window remaining percentage, when provided by status/result payloads.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        context_window_remaining_percentage: Option<f64>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         duration_api_ms: Option<u64>,
         /// Total duration including hooks/overhead (from result event).

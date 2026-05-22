@@ -2,6 +2,8 @@
   import type { FileEntry } from "$lib/types";
   import { splitPath } from "$lib/utils/format";
   import { t } from "$lib/i18n/index.svelte";
+  import ContextMenu, { type MenuItem } from "$lib/components/ContextMenu.svelte";
+  import * as api from "$lib/api";
 
   let {
     fileEntries = [],
@@ -17,7 +19,7 @@
 
   function shortPath(p: string): string {
     const parts = splitPath(p);
-    return parts.length > 2 ? "\u2026/" + parts.slice(-2).join("/") : p;
+    return parts.length > 2 ? "…/" + parts.slice(-2).join("/") : p;
   }
 
   function actionColor(action: FileEntry["action"]): { bg: string; text: string } {
@@ -45,6 +47,43 @@
         return "P";
     }
   }
+
+  // ── Context menu ──
+  let ctxMenu = $state<{ x: number; y: number; path: string } | null>(null);
+
+  function openCtxMenu(e: MouseEvent, path: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    ctxMenu = { x: e.clientX, y: e.clientY, path };
+  }
+
+  function closeCtxMenu() {
+    ctxMenu = null;
+  }
+
+  async function handleCtxSelect(id: string) {
+    if (!ctxMenu) return;
+    const { path } = ctxMenu;
+    if (id === "reveal") {
+      await api.revealFileInFinder(path);
+    } else if (id === "copy") {
+      await navigator.clipboard.writeText(path);
+    }
+    closeCtxMenu();
+  }
+
+  let ctxMenuItems = $derived<MenuItem[]>([
+    {
+      id: "reveal",
+      label: t("filesPanel_openInFinder") || "Open in Finder",
+      icon: "folder",
+    },
+    {
+      id: "copy",
+      label: t("filesPanel_copyPath") || "Copy Path",
+      icon: "copy",
+    },
+  ]);
 </script>
 
 <div class="flex-1 overflow-y-auto py-1">
@@ -59,16 +98,11 @@
       {@const isSelected = selectedPath !== undefined && entry.path === selectedPath}
       {@const isClickable = !!onPreview || canJump}
       {#if isClickable}
-        <!--
-          Row click = preview only (no chat re-render). Use a small "jump" icon button at
-          the end (only when canJump && onScrollToTool) to scroll the chat to that tool card.
-          Splitting these prevents the chat from re-rendering every time the user just wants
-          to peek at a file.
-        -->
         <div
           class="group flex items-center gap-1 px-2.5 py-1 rounded-sm transition-colors {isSelected
             ? 'bg-accent'
             : 'hover:bg-accent/50'}"
+          oncontextmenu={(e) => openCtxMenu(e, entry.path)}
         >
           <button
             type="button"
@@ -111,7 +145,7 @@
           {/if}
         </div>
       {:else}
-        <div class="px-2.5 py-1 cursor-default">
+        <div class="px-2.5 py-1 cursor-default" oncontextmenu={(e) => openCtxMenu(e, entry.path)}>
           <div class="flex items-center gap-1.5">
             <span
               class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] font-bold {color.bg} {color.text}"
@@ -142,3 +176,13 @@
     {/each}
   {/if}
 </div>
+
+{#if ctxMenu}
+  <ContextMenu
+    x={ctxMenu.x}
+    y={ctxMenu.y}
+    items={ctxMenuItems}
+    onSelect={handleCtxSelect}
+    onClose={closeCtxMenu}
+  />
+{/if}

@@ -14,13 +14,11 @@
   <div class="w-full animate-fade-in">
     <div class="chat-content-width py-1">
       <div
-        class="max-h-28 overflow-hidden rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.18)] bg-[hsl(var(--miwarp-bg-deep)/0.6)]"
+        class="max-h-28 overflow-hidden rounded-lg border border-[hsl(var(--miwarp-glass-border)/0.5)] bg-[hsl(var(--miwarp-bg-deep)/0.6)]"
       >
-        <div
-          class="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] text-[hsl(var(--miwarp-status-info))]"
-        >
+        <div class="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] text-muted-foreground">
           <svg
-            class="h-2.5 w-2.5 shrink-0 opacity-70"
+            class="h-2.5 w-2.5 shrink-0"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -52,10 +50,10 @@
           </button>
         </div>
         <div
-          class="border-t border-[hsl(var(--miwarp-accent-primary)/0.12)] px-2.5 py-2 overflow-y-auto overscroll-y-contain max-h-[calc(7rem-2.25rem)]"
+          class="border-t border-[hsl(var(--miwarp-glass-border)/0.3)] px-2.5 py-2 overflow-y-auto overscroll-y-contain max-h-[calc(7rem-2.25rem)]"
         >
           <pre
-            class="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-[hsl(var(--miwarp-status-info)/0.7)]">{thinkingText.trimEnd()}</pre>
+            class="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-muted-foreground/70">{thinkingText.trimEnd()}</pre>
         </div>
       </div>
     </div>
@@ -64,7 +62,7 @@
   <div class="w-full animate-fade-in">
     <div class="chat-content-width py-1">
       <button
-        class="inline-flex items-center gap-1.5 rounded-full px-2 py-px text-[10px] text-[hsl(var(--miwarp-status-info))] opacity-70 hover:opacity-100 hover:bg-[hsl(var(--miwarp-status-info)/0.08)] transition-all"
+        class="inline-flex items-center gap-1.5 rounded-full px-2 py-px text-[10px] text-muted-foreground hover:bg-muted/50 transition-all"
         onclick={onToggleExpand}
       >
         <svg
@@ -81,9 +79,7 @@
           />
           <path d="M10 22h4" />
         </svg>
-        <span>{t("chat_thinking")}</span>
-        <span class="opacity-50">·</span>
-        <span class="opacity-50">{t("common_expand")}</span>
+        <span class="thinking-shimmer">{t("chat_thinking")}</span>
       </button>
     </div>
   </div>

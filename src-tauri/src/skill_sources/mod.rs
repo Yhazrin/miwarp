@@ -314,7 +314,7 @@ pub async fn sync_source(id: &str) -> Result<SkillSourceSyncResult, String> {
 }
 
 fn annotate_install_status(cand: &mut RemoteSkillCandidate, cwd: &str) -> Result<(), String> {
-    let skills = crate::storage::plugins::list_standalone_skills(cwd);
+    let skills = crate::storage::plugins::list_standalone_skills(cwd)?;
     annotate_with_skills(cand, &skills)
 }
 
@@ -452,7 +452,7 @@ fn conflict_by_name(
 }
 
 fn flatten_all_skills(cwd: &str) -> Result<Vec<crate::models::StandaloneSkill>, String> {
-    Ok(crate::storage::plugins::list_standalone_skills(cwd))
+    crate::storage::plugins::list_standalone_skills(cwd)
 }
 
 fn skill_install_path(scope: &str, cwd: &str, name: &str) -> Result<PathBuf, String> {

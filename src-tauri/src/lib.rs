@@ -196,6 +196,7 @@ pub fn run() {
             commands::files::write_text_file,
             commands::files::read_task_output,
             commands::files::list_memory_files,
+            commands::files::reveal_file_in_finder,
             commands::stats::get_usage_overview,
             commands::stats::get_global_usage_overview,
             commands::stats::clear_usage_cache,

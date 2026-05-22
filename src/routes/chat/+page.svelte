@@ -63,7 +63,6 @@
   import ChatHeroMeta from "$lib/components/ChatHeroMeta.svelte";
   import RewindModal from "$lib/components/RewindModal.svelte";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
-  import TeamDispatchConfirm from "$lib/components/TeamDispatchConfirm.svelte";
   import HtmlReportPreview from "$lib/components/insight/HtmlReportPreview.svelte";
   import { getPresets } from "$lib/services/team-dispatcher";
 
@@ -1062,7 +1061,7 @@
   });
 </script>
 
-{#snippet heroMetaFooter()}
+{#snippet heroMetaFooterContent()}
   <div class="mt-4 flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/40">
     <ChatHeroMeta
       cliVersionInfo={sd.cliVersionInfo}
@@ -1191,7 +1190,7 @@
         usageAnnotations: ta.usageAnnotations,
         lastTurnUsage: ta.lastTurnUsage,
         claudeTurnStarts: ta.claudeTurnStarts,
-        showPermissionPanel: sd.showPermissionPanel,
+        showPermissionPanel: false,
         fetchToolResult: toolResultCache.fetchToolResult,
         topSentinelRef: tl.topSentinel,
         setTopSentinel: tl.setTopSentinel,
@@ -1255,14 +1254,12 @@
         setLastTarget,
       }}
       bind:thinkingExpanded={thinking.thinkingExpanded}
-      bind:teamDispatchPrompt={team.teamDispatchPrompt}
-      bind:teamDispatchOpen={team.teamDispatchOpen}
       {showChatScrollHint}
       bind:xtermRef
       bind:chatAreaRef
     >
       {#snippet heroMetaFooter()}
-        {@render heroMetaFooter()}
+        {@render heroMetaFooterContent()}
       {/snippet}
       {#snippet inputDock()}
         <ChatInputDock
@@ -1283,7 +1280,6 @@
             localProxyStatuses,
           }}
           permissionVm={{
-            showPermissionPanel: sd.showPermissionPanel,
             pendingToolPermissions: sd.pendingToolPermissions,
             inputBlockedByPermission: sd.inputBlockedByPermission,
           }}
@@ -1400,15 +1396,6 @@
       folderPickerResolve = null;
       fn?.(null);
     }}
-  />
-
-  <TeamDispatchConfirm
-    bind:open={team.teamDispatchOpen}
-    prompt={team.teamDispatchPrompt}
-    cwd={store.effectiveCwd || ""}
-    onDispatch={team.handleTeamDispatch}
-    onUseSingleClaude={team.handleUseSingleClaude}
-    onCancel={team.handleCancelTeamDispatch}
   />
 
   <!-- Chat toast (fixed bottom-center, auto-dismiss) -->

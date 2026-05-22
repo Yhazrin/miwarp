@@ -6,7 +6,6 @@
   import { mergeProjectCommands } from "$lib/utils/slash-commands";
   import { dbg } from "$lib/utils/debug";
   import { t as tFn } from "$lib/i18n/index.svelte";
-  import PermissionPanel from "$lib/components/PermissionPanel.svelte";
   import ElicitationDialog from "$lib/components/ElicitationDialog.svelte";
   import CreatedFiles from "$lib/components/CreatedFiles.svelte";
   import ConversationInsightCard from "$lib/components/insight/ConversationInsightCard.svelte";
@@ -56,8 +55,7 @@
     localProxyStatuses,
   } = $derived(inputVm);
 
-  const { showPermissionPanel, pendingToolPermissions, inputBlockedByPermission } =
-    $derived(permissionVm);
+  const { inputBlockedByPermission } = $derived(permissionVm);
 
   const { btwState, insight, hasCreatedFiles, createdFiles, setBtwState } = $derived(sidePanelsVm);
 
@@ -70,7 +68,6 @@
     handlePlatformChange,
     handleAuthModeChange,
     handleInputValueChange,
-    handlePermissionRespond,
     handleElicitationRespond,
     handleBtwSend,
     handleRalphCancel,
@@ -84,15 +81,6 @@
       class="pointer-events-auto mx-3 mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-400"
     >
       {getResumeWarning(store.run)}
-    </div>
-  {/if}
-
-  {#if showPermissionPanel}
-    <div class="pointer-events-auto px-2 pb-2">
-      <PermissionPanel
-        pendingTools={pendingToolPermissions}
-        onPermissionRespond={handlePermissionRespond}
-      />
     </div>
   {/if}
 

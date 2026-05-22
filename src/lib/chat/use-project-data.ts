@@ -30,6 +30,12 @@ export function createProjectData(ctx: ProjectDataContext) {
   let preloadGen = 0;
   let initCheckSeq = 0;
 
+  /** Clears stored project cwd on access failure to avoid repeated permission prompts. */
+  function clearProjectCwd() {
+    localStorage.removeItem("ocv:project-cwd");
+    window.dispatchEvent(new Event("ocv:cwd-changed"));
+  }
+
   function reloadProjectData(cwd: string) {
     const gen = ++preloadGen;
     setPreloadedSkills([]);
@@ -46,7 +52,20 @@ export function createProjectData(ctx: ProjectDataContext) {
         }
         dbg("chat", "preloaded skills", { count: skills.length });
       })
-      .catch((e) => dbgWarn("chat", "failed to preload skills", e));
+      .catch((e) => {
+        dbgWarn("chat", "failed to preload skills", e);
+        // Permission denied or path inaccessible — clear stored path to avoid repeated prompts
+        if (
+          String(e).includes("permission") ||
+          String(e).includes("access") ||
+          String(e).includes("denied") ||
+          String(e).includes("ENOENT") ||
+          String(e).includes("not found")
+        ) {
+          dbg("chat", "clearing inaccessible project cwd", { cwd });
+          clearProjectCwd();
+        }
+      });
     api
       .listAgents(cwd)
       .then((agents) => {
@@ -95,6 +114,17 @@ export function createProjectData(ctx: ProjectDataContext) {
     } catch (e) {
       dbgWarn("chat", "checkProjectInit failed", e);
       if (seq === initCheckSeq) setProjectInitStatus(null);
+      // Permission denied or path inaccessible — clear stored path to avoid repeated prompts
+      if (
+        String(e).includes("permission") ||
+        String(e).includes("access") ||
+        String(e).includes("denied") ||
+        String(e).includes("ENOENT") ||
+        String(e).includes("not found")
+      ) {
+        dbg("chat", "clearing inaccessible project cwd in checkProjectInit", { cwd });
+        clearProjectCwd();
+      }
     }
   }
 

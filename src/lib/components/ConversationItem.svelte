@@ -2,7 +2,6 @@
   import type { ConversationGroup } from "$lib/utils/sidebar-groups";
   import { TERMINAL_PHASES, canResumeNow } from "$lib/stores";
   import { getNoSessionPersistence } from "$lib/stores/agent-settings-cache.svelte";
-  import StatusBadge from "./StatusBadge.svelte";
   import { relativeTime, truncate } from "$lib/utils/format";
   import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
   import { t } from "$lib/i18n/index.svelte";
@@ -294,23 +293,13 @@
           >
         </button>
       {/if}
-      {#if selected}
-        <StatusBadge
-          status={run.status}
-          attention={needsAttention}
-          compact={false}
-          shortLabel={true}
-          class="shrink-0"
-        />
-      {:else}
-        <span
-          class="inline-block h-[5px] w-[5px] rounded-full shrink-0 {statusDot.animated
-            ? 'animate-slow-pulse'
-            : ''}"
-          style:background-color={statusDot.color}
-          title={run.status}
-        ></span>
-      {/if}
+      <span
+        class="inline-block h-[6px] w-[6px] rounded-full shrink-0 {statusDot.animated
+          ? 'animate-slow-pulse'
+          : ''}"
+        style:background-color={statusDot.color}
+        title={run.status}
+      ></span>
     </div>
   </div>
   <!-- Meta row: branch / platform / remote / time -->

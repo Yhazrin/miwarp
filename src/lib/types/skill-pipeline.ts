@@ -11,6 +11,7 @@ export interface SkillPipelineStep {
   skillName: string;
   args?: Record<string, unknown>;
   condition?: string;
+  dependsOn?: string[]; // 前置步骤的 stepId 数组
   onSuccess?: string; // 下一步的 stepId
   onFailure?: string; // 失败时跳转的 stepId
   retryPolicy?: RetryPolicy;

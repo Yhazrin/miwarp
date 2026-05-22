@@ -1,270 +1,552 @@
-# Codex Claude Cowork 设计分析报告
+# MiWarp × Claude Code Cowork 设计对标分析
 
-**日期**: 2026-05-13
-**项目**: MiWarp vs Codex Claude Cowork 功能对比与设计借鉴
+## 一、项目现状概览
 
----
+### MiWarp 架构特点
+| 层级 | 技术选型 | 说明 |
+|------|---------|------|
+| 框架 | Tauri v2 | Rust 后端 + WebView 前端 |
+| 前端 | Svelte 5 + SvelteKit | 全面采用 runes (`$state`, `$derived`, `$effect`) |
+| 状态管理 | SessionStore (145KB+) | 单例模式，事件驱动的状态机 |
+| Agent 系统 | Rust session_actor.rs | tokio actor 模型，mpsc 邮箱 |
+| 团队协作 | team-store.svelte.ts | 轮询 + 监听器双重刷新 |
+| Skill 系统 | skill-store.svelte.ts | 内置 3 个 skill，支持 CRUD |
+| 多 Agent | multi-agent-service.ts | 预设 + 自然语言分解 |
 
-## 一、整体架构对比
-
-### Codex Claude Cowork 核心设计
-Codex Claude Cowork 是一个基于 Claude Code 的桌面应用，专注于：
-- **Skill 系统**: 可扩展的任务/技能定义，使用 Markdown + YAML frontmatter
-- **MCP (Model Context Protocol)**: 插件化的工具和连接器
-- **Scheduled Tasks**: 基于 cron 的自动化任务
-- **Memory Consolidation**: 内存文件整合与去重
-- **Plugin Marketplace**: 插件和技能的市场
-
-### MiWarp 核心设计
-MiWarp 是一个本地优先的 AI 辅助编程桌面应用：
-- **Agent 通信层**: 支持 Claude Code 和 Codex CLI
-- **可视化工具卡片**: 渲染工具调用为内联卡片
-- **多 Provider 支持**: 15+ API 平台
-- **Session 管理**: 历史记录、回放、恢复
+### 现有痛点
+1. **SessionStore 过大** - 145KB 单文件难以维护
+2. **团队协作浅** - 仅支持 @team 触发，无实时协作
+3. **Skill 系统弱** - 内置 skill 有限，缺少技能市场
+4. **Memory 割裂** - 各 session 独立，无跨会话记忆
+5. **多 Agent 初级** - 预设固定，无智能任务分解
 
 ---
 
-## 二、已实现的相似功能
+## 二、Cowork 设计模式分析
 
-MiWarp 已经实现了 Codex Claude Cowork 的许多核心设计：
+### 2.1 核心设计原则
 
-| 功能 | Codex Cowork | MiWarp | 状态 |
-|------|-------------|--------|------|
-| Skill 定义格式 | YAML frontmatter + Markdown | ✅ 相同格式 | ✅ 已实现 |
-| Schedule Task | Cron/ISO timestamp | ✅ 完整支持 | ✅ 已实现 |
-| Consolidate Memory | 去重、固定、索引 | ✅ 完整支持 | ✅ 已实现 |
-| Setup Wizard | 引导式初始化 | ✅ 完整支持 | ✅ 已实现 |
-| Plugin Store | 插件市场 | ✅ 完整支持 | ✅ 已实现 |
-| MCP 管理 | MCP 服务器管理 | ✅ 完整支持 | ✅ 已实现 |
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Cowork Architecture                   │
+├─────────────────────────────────────────────────────────┤
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐           │
+│  │ Claude A │    │ Claude B │    │ Claude C │   ...     │
+│  └────┬─────┘    └────┬─────┘    └────┬─────┘           │
+│       │              │              │                  │
+│       └──────────────┼──────────────┘                  │
+│                      ▼                                 │
+│            ┌─────────────────┐                         │
+│            │   Shared State  │                         │
+│            │  ┌───────────┐  │                         │
+│            │  │ Memory    │  │  ← Cross-session memory │
+│            │  │ Skills    │  │  ← Skill marketplace   │
+│            │  │ Context   │  │  ← Shared context      │
+│            │  └───────────┘  │                         │
+│            └─────────────────┘                         │
+└─────────────────────────────────────────────────────────┘
+```
 
----
+### 2.2 关键设计模式
 
-## 三、Codex Cowork 值得借鉴的设计模式
-
-### 3.1 Skill 系统的 Handler 模式
-
-**Codex 实现**:
+#### Pattern 1: 插件化架构 (Plugin Architecture)
 ```typescript
-export interface SkillHandler {
+// Cowork 使用插件封装工作流
+interface Plugin {
+  id: string;
   name: string;
-  canHandle: (skill: Skill, args: string) => boolean;
-  execute: (skill: Skill, args: string) => Promise<ExecutionResult>;
+  skills: Skill[];           // 技能集合
+  commands: Command[];       // 可用命令
+  connectors: Connector[];  // 外部连接器 (Slack, Asana, etc.)
+  onInstall?: () => void;
+}
+
+// 示例: sales plugin
+{
+  id: "sales",
+  name: "Sales",
+  skills: ["deal-review", "pipeline-sync", "contract-draft"],
+  commands: ["/deals", "/pipeline"],
+  connectors: ["salesforce"]
 }
 ```
 
-**借鉴价值**: MiWarp 可以将硬编码的 handler (schedule, consolidate-memory, setup-cowork) 改为可插拔的插件架构。
+**MiWarp 可借鉴**:
+- 现有 `plugin-store.svelte.ts` 基础良好
+- 需增强 `skills` 属性 (当前为空)
+- 需添加 `connectors` 支持 (Slack/Asana 等)
 
-**落地建议**:
-1. 在 `src/lib/services/skill-executor.ts` 中添加 `registerHandler` 的持久化
-2. 支持从插件动态加载 handler
-3. 允许用户定义自定义 handler
-
-### 3.2 Memory Consolidation 的智能合并策略
-
-**Codex 实现要点**:
-- 基于 label 的文件分组
-- 内容相似度检测 (>100 字符才值得合并)
-- 备份机制
-- 详细的合并报告
-
-**MiWarp 当前实现** (`memory-store.svelte.ts`):
-- 基础的重复文件检测
-- 缺少内容级别的合并逻辑
-
-**落地建议**:
+#### Pattern 2: 技能市场 (Skill Marketplace)
 ```typescript
-// 增强 consolidateMemory 方法
-interface ConsolidationResult {
-  duplicatesMerged: number;
-  staleEntriesRemoved: number;
-  indexUpdated: boolean;
-  errors: string[];
-  backupCreated: boolean;
-  mergedFiles: Array<{
-    source: string;
-    target: string;
-    sizeBefore: number;
-    sizeAfter: number;
-  }>;
-}
-```
-
-### 3.3 统一的任务执行状态追踪
-
-**Codex 实现**:
-```typescript
-interface SkillExecution {
+// Skill 完整结构
+interface Skill {
   id: string;
-  skillId: string;
-  status: ExecutionStatus;
-  startedAt: string;
-  completedAt?: string;
-  result?: string;
-  error?: string;
-  sessionId?: string;
+  name: string;              // kebab-case: "meeting-notes-to-jira"
+  description: string;       // 一行描述触发场景
+  content: string;           // SKILL.md 内容
+  category: string;          // "automation" | "integration" | "productivity"
+  source: string;            // "community" | "builtin" | "custom"
+  triggers: string[];        // 触发关键词
+  icon?: string;
+  isInstalled: boolean;
 }
 ```
 
-**MiWarp 当前实现**: 有相似结构，但执行历史没有持久化。
+**MiWarp 可借鉴**:
+- 当前 `skill-store.svelte.ts` 缺少 `triggers` 和 `source`
+- 需实现技能市场 UI (`SkillMarketplace.svelte` 已存在)
+- 需添加社区技能发现机制
 
-**落地建议**:
-1. 在 `~/.miwarp/executions/` 目录持久化执行历史
-2. 添加执行统计和趋势分析
-3. 支持执行结果导出
+#### Pattern 3: 实时上下文共享 (Real-time Context Sharing)
+```typescript
+// Session 间的上下文同步
+interface SharedContext {
+  sessionId: string;
+  cwd: string;                // 工作目录
+  recentFiles: string[];      // 最近访问的文件
+  activeTasks: Task[];        // 进行中的任务
+  memory: MemoryItem[];       // 共享记忆
+}
 
-### 3.4 Plugin 搜索与安装的 UX
+// 事件流
+context-updated: { type: "file", path: "src/main.ts", action: "edit" }
+memory-added: { content: "用户偏好 dark mode", ttl: "24h" }
+task-created: { id: "T-123", assignee: "Claude B" }
+```
 
-**Codex 实现**:
-- 基于 capabilities 的插件发现
-- Skills/Commands/Connectors 三维度匹配
-- 一键安装和试用
+**MiWarp 可借鉴**:
+- 现有 `memory-store.svelte.ts` 需增强跨 session 同步
+- 需添加 WebSocket 实时推送 (已在 `web_server/` 中)
+- 需实现 `context-updated` 事件类型
 
-**MiWarp 当前实现**: 已有插件市场组件 (`plugin-marketplace.ts`)
+#### Pattern 4: 智能任务分解 (Intelligent Task Decomposition)
+```typescript
+// 自然语言 → 任务结构
+interface DecomposedTask {
+  name: string;
+  subTasks: {
+    id: string;
+    description: string;
+    priority: number;
+    dependsOn: string[];
+    assignedTo?: string;
+  }[];
+  estimatedDuration?: string;
+}
 
-**落地建议**:
-1. 添加基于上下文的插件推荐 (根据当前项目类型)
-2. 插件使用统计和评分
-3. 插件依赖解析
+// 示例: "帮我审查这个 PR 并更新文档"
+{
+  name: "PR审查+文档更新",
+  subTasks: [
+    { id: "1", description: "代码审查", priority: 1 },
+    { id: "2", description: "安全检查", priority: 1, dependsOn: ["1"] },
+    { id: "3", description: "更新 CHANGELOG", priority: 2, dependsOn: ["1"] },
+    { id: "4", description: "更新 API 文档", priority: 2, dependsOn: ["2"] }
+  ]
+}
+```
+
+**MiWarp 可借鉴**:
+- 现有 `multi-agent-service.ts` 的 `parseNaturalLanguage` 过于简单
+- 需集成 LLM 进行智能分解
+- 需支持任务依赖图 (DAG)
+
+#### Pattern 5: 多 Agent 协调 (Multi-Agent Coordination)
+```typescript
+// Agent 协作协议
+interface AgentProtocol {
+  // 状态同步
+  broadcastState(state: AgentState): void;
+  
+  // 任务分发
+  dispatch(task: Task, agent: Agent): Promise<TaskResult>;
+  
+  // 结果聚合
+  aggregate(results: TaskResult[]): AggregatedResult;
+  
+  // 冲突解决
+  resolveConflict(a: AgentState, b: AgentState): Resolution;
+}
+
+// Agent 状态
+interface AgentState {
+  agentId: string;
+  status: "idle" | "thinking" | "working" | "blocked";
+  currentTask?: string;
+  progress: number;           // 0-100
+  blockers: string[];
+  output: string;
+}
+```
+
+**MiWarp 可借鉴**:
+- 现有 `team-dispatcher.ts` 需增强状态广播
+- 需实现 Agent 状态 UI (`TeamDispatchConfirm.svelte` 已存在)
+- 需添加 `progress` 实时更新
 
 ---
 
-## 四、Codex Cowork 独特设计值得引入
+## 三、落地建议 (按优先级)
 
-### 4.1 反射式 Memory 整合
+### P0 - 立即可落地 (1-2周)
 
-Codex 的 `consolidate-memory` skill 强调:
-- **Merge Duplicates**: 合并重复内容
-- **Fix Stale Facts**: 更新过时信息
-- **Prune Index**: 清理索引
-
-**落地建议**:
+#### 1. 增强 Skill 系统
 ```typescript
-// 新增 memory-consolidation.service.ts
-export interface MemoryConsolidationConfig {
-  similarityThreshold: number;  // 相似度阈值 (0-1)
-  minContentLength: number;     // 最小内容长度
-  createBackup: boolean;        // 是否创建备份
-  updateReferences: boolean;    // 是否更新引用
+// src/lib/types/skill.ts 扩展
+interface Skill {
+  // 新增字段
+  triggers: string[];        // 触发词
+  source: "builtin" | "local" | "community";
+  matchedCapabilities?: string[];  // 匹配的能力
 }
 
-// 新增前端组件
-// - ConsolidationWizard.svelte: 分步引导
-// - ConsolidationPreview.svelte: 预览变更
-// - ConsolidationReport.svelte: 详细报告
+// src/lib/stores/skill-store.svelte.ts 扩展
+class SkillStore {
+  // 新增方法
+  async searchCommunitySkills(query: string): Promise<Skill[]>;
+  async installSkill(skill: Skill): Promise<void>;
+  async getSkillRecommendations(context: Context): Promise<Skill[]>;
+}
 ```
 
-### 4.2 MCP Server 状态管理与重连
+**改动点**:
+- `src/lib/types/skill.ts` - 添加 triggers/source
+- `src/lib/stores/skill-store.svelte.ts` - 添加市场方法
+- `src/lib/components/SkillMarketplace.svelte` - 完善 UI
 
-**落地建议**:
+#### 2. 增强多 Agent 任务分解
 ```typescript
-// 增强 MCP 管理
-interface MCPConnectionState {
-  serverId: string;
-  status: 'connected' | 'disconnected' | 'error' | 'reconnecting';
-  lastError?: string;
-  reconnectAttempts: number;
-  autoReconnect: boolean;
+// src/lib/services/multi-agent-service.ts 改进
+class MultiAgentService {
+  // 新增: LLM 驱动的任务分解
+  async decomposeWithLLM(task: string, context: Context): Promise<MultiAgentConfig>;
+  
+  // 新增: 依赖图支持
+  buildDependencyGraph(tasks: Task[]): DAG;
+  
+  // 新增: 任务执行可视化
+  getExecutionProgress(runId: string): AgentProgress[];
+}
+```
+
+**改动点**:
+- `src/lib/services/multi-agent-service.ts` - 重写任务分解逻辑
+- `src/routes/multi-agent/+page.svelte` - 添加执行进度 UI
+
+#### 3. 添加跨 Session 记忆
+```typescript
+// src/lib/stores/memory-store.svelte.ts 扩展
+interface SharedMemory {
+  sessionId: string;
+  content: string;
+  tags: string[];
+  createdAt: Date;
+  expiresAt?: Date;          // TTL 支持
+  sharingLevel: "private" | "team" | "public";
 }
 
-// 添加自动重连逻辑
+// 新增方法
+class MemoryStore {
+  async shareMemory(item: MemoryItem, level: SharingLevel): Promise<void>;
+  async getTeamMemory(teamId: string): Promise<MemoryItem[]>;
+  async searchMemory(query: string, filters: MemoryFilters): Promise<MemoryItem[]>;
+}
 ```
 
-### 4.3 Setup Wizard 的模块化
+**改动点**:
+- `src/lib/stores/memory-store.svelte.ts` - 添加共享方法
+- Rust backend: `src-tauri/src/storage/` - 添加 team memory 表
 
-**落地建议**:
+### P1 - 中期改进 (1个月)
+
+#### 4. 插件架构增强
 ```typescript
-// 将 setup 拆分为独立模块
-interface SetupStep {
+// 插件市场数据结构
+interface Plugin {
   id: string;
-  title: string;
+  name: string;
   description: string;
-  component: Component;
-  validate: () => Promise<boolean>;
-  skip?: boolean;
+  skills: Skill[];
+  commands: Command[];
+  connectors: {
+    type: "slack" | "asana" | "github" | "salesforce";
+    config: Record<string, string>;
+  }[];
+  matchedCapabilities: string[];
 }
 
-// 支持从任何步骤继续
+// 插件搜索
+interface PluginSearchResult {
+  plugin: Plugin;
+  matchScore: number;
+  matchedCapabilities: string[];
+}
+```
+
+**改动点**:
+- `src/lib/stores/plugin-store.svelte.ts` - 重构数据结构
+- `src/lib/components/SkillMarketplace.svelte` - 复用为插件市场
+- Rust: 新增 plugin registry 命令
+
+#### 5. 实时状态同步
+```typescript
+// WebSocket 事件扩展
+type RealtimeEvent = 
+  | { type: "agent-state"; agentId: string; state: AgentState }
+  | { type: "task-progress"; taskId: string; progress: number }
+  | { type: "memory-update"; memoryId: string; action: "create" | "update" }
+  | { type: "context-sync"; files: string[] };
+
+// 状态广播器
+class StateBroadcaster {
+  broadcast(event: RealtimeEvent): void;
+  subscribe(callback: (event: RealtimeEvent) => void): Unsubscribe;
+}
+```
+
+**改动点**:
+- `src-tauri/src/web_server/` - 增强 WebSocket 协议
+- `src/lib/stores/event-middleware.ts` - 添加实时事件路由
+- `src/lib/components/` - 添加实时状态 UI
+
+#### 6. 智能团队协调
+```typescript
+// 团队协调器
+interface TeamCoordinator {
+  // 智能任务分配
+  assignTask(task: Task, agents: Agent[]): Promise<Assignment>;
+  
+  // 冲突检测与解决
+  detectConflicts(): Conflict[];
+  resolveConflict(conflict: Conflict): Resolution;
+  
+  // 结果聚合
+  aggregateResults(results: TaskResult[]): Summary;
+}
+```
+
+**改动点**:
+- `src/lib/services/team-dispatcher.ts` - 重写协调逻辑
+- `src/routes/teams/+page.svelte` - 添加协调 UI
+- Rust: 新增 team_coordinator 模块
+
+### P2 - 长期演进 (2-3个月)
+
+#### 7. Cowork Mode 集成
+```typescript
+// 与 Claude Code Cowork 的互操作
+interface CoworkIntegration {
+  // 注册为 Cowork 插件
+  registerAsPlugin(): Promise<void>;
+  
+  // 暴露技能给 Cowork
+  exposeSkills(skills: Skill[]): void;
+  
+  // 接收 Cowork 指令
+  onCoworkCommand(command: CoworkCommand): void;
+}
+
+// 命令类型
+type CoworkCommand = 
+  | { type: "delegate-task"; task: Task; callback: string }
+  | { type: "share-memory"; memory: MemoryItem }
+  | { type: "invoke-skill"; skillId: string; args: any };
+```
+
+#### 8. 工作流自动化
+```typescript
+// 工作流定义
+interface Workflow {
+  id: string;
+  name: string;
+  steps: WorkflowStep[];
+  triggers: Trigger[];
+  conditions?: Condition[];
+}
+
+interface WorkflowStep {
+  id: string;
+  type: "skill" | "agent" | "http" | "condition";
+  config: Record<string, any>;
+  onSuccess?: string;    // 下一步
+  onFailure?: string;    // 失败处理
+}
 ```
 
 ---
 
-## 五、具体的落地建议清单
+## 四、具体实现示例
 
-### 5.1 高优先级 (可在当前版本实现)
+### 示例 1: 智能 Skill 推荐
+```typescript
+// src/lib/chat/use-skill-recommendation.svelte.ts
+export function createSkillRecommender(ctx: {
+  store: SessionStore;
+  getTimeline: () => TimelineEntry[];
+}) {
+  let recommendations = $state<Skill[]>([]);
+  
+  // 基于上下文的推荐
+  $effect(() => {
+    const context = analyzeContext(ctx.getTimeline());
+    recommendations = ctx.store.availableSkills
+      .map(skillId => ctx.store.getSkill(skillId))
+      .filter(skill => matchContext(skill, context))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+  });
+  
+  function analyzeContext(timeline: TimelineEntry[]): Context {
+    // 分析最近对话，提取意图和需求
+    const recent = timeline.slice(-10);
+    const hasSecurity = recent.some(e => e.kind === "tool" && e.name === "read_file");
+    const hasApi = recent.some(e => e.content?.includes("API"));
+    return { hasSecurity, hasApi, intent: "review" };
+  }
+  
+  return { recommendations };
+}
+```
 
-1. **Skill Handler 插件化**
-   - 文件: `src/lib/services/skill-executor.ts`
-   - 改动: 添加动态 handler 注册机制
+### 示例 2: 多 Agent 进度可视化
+```typescript
+// src/lib/components/MultiAgentProgress.svelte
+<script lang="ts">
+  interface Props {
+    runId: string;
+  }
+  let { runId }: Props = $props();
+  
+  let agents = $state<AgentState[]>([]);
+  let progress = $derived(
+    agents.reduce((sum, a) => sum + a.progress, 0) / agents.length
+  );
+  
+  // 实时订阅
+  onMount(() => {
+    return subscribeToAgentUpdates(runId, (state) => {
+      agents = agents.map(a => a.id === state.id ? state : a);
+    });
+  });
+</script>
 
-2. **Memory Consolidation 增强**
-   - 文件: `src/lib/stores/memory-store.svelte.ts`, `src/lib/services/memory-service.ts`
-   - 改动: 添加内容级合并、备份、详细报告
+<div class="flex flex-col gap-2">
+  <div class="text-sm text-muted-foreground">
+    Overall: {progress.toFixed(0)}%
+  </div>
+  
+  {#each agents as agent (agent.id)}
+    <div class="flex items-center gap-3">
+      <StatusIcon status={agent.status} />
+      <span class="text-sm">{agent.name}</span>
+      <div class="flex-1 h-2 bg-muted rounded overflow-hidden">
+        <div 
+          class="h-full bg-primary transition-all"
+          style="width: {agent.progress}%"
+        />
+      </div>
+      <span class="text-xs text-muted-foreground">
+        {agent.progress}%
+      </span>
+    </div>
+  {/each}
+</div>
+```
 
-3. **执行历史持久化**
-   - 文件: `src/lib/stores/skill-store.svelte.ts`
-   - 改动: 添加执行日志落盘
-
-### 5.2 中优先级 (需要较大改动)
-
-4. **上下文感知的插件推荐**
-   - 文件: `src/lib/services/plugin-marketplace.ts`
-   - 改动: 添加基于项目上下文的推荐算法
-
-5. **MCP 连接状态监控**
-   - 文件: 新增 `src/lib/services/mcp-monitor.ts`
-   - 改动: 添加自动重连、状态可视化
-
-### 5.3 低优先级 (未来规划)
-
-6. **Skill 市场国际化**
-7. **团队协作功能** (参考 Codex 的 team 功能)
-8. **A/B Testing 框架**
+### 示例 3: 跨 Session 记忆同步
+```typescript
+// src/lib/stores/shared-memory.svelte.ts
+class SharedMemoryStore {
+  memories = $state<SharedMemory[]>([]);
+  
+  async shareToTeam(memory: MemoryItem, teamId: string) {
+    const shared: SharedMemory = {
+      id: uuid(),
+      sessionId: this.currentSessionId,
+      content: memory.content,
+      tags: memory.tags,
+      createdAt: new Date(),
+      sharingLevel: "team"
+    };
+    
+    // 持久化
+    await api.saveSharedMemory(teamId, shared);
+    
+    // 广播给其他 session
+    this.broadcast({
+      type: "memory-shared",
+      memory: shared
+    });
+  }
+  
+  async getTeamMemories(teamId: string): Promise<SharedMemory[]> {
+    const cached = this.memories.filter(m => 
+      m.sharingLevel === "team" && m.teamId === teamId
+    );
+    
+    if (cached.length > 0) return cached;
+    
+    // 从后端获取
+    const fresh = await api.getTeamMemories(teamId);
+    this.memories = [...this.memories, ...fresh];
+    return fresh;
+  }
+}
+```
 
 ---
 
-## 六、技术债务与改进
+## 五、技术债务清理建议
 
-### 6.1 类型定义统一
-当前存在类型分散在多个文件，建议:
-- `src/lib/types/` 统一管理所有类型
-- 移除 `skill-store.svelte.ts` 中的内联类型
+### 1. SessionStore 拆分
+```
+当前: session-store.svelte.ts (145KB+)
+目标: 按职责拆分
+├── session-state.ts      # 状态定义
+├── session-reducers.ts   # 状态更新逻辑
+├── session-effects.ts    # $effect 副作用
+└── session-commands.ts   # 命令处理
+```
 
-### 6.2 Store 模式规范化
-当前每个 store 独立实现，建议:
-- 统一使用 `$state` rune
-- 统一的错误处理模式
-- 统一的加载状态管理
+### 2. 统一事件总线
+```
+当前: event-middleware.ts (13KB) + 散落各处的监听
+目标: 统一事件总线
+├── EventBus.ts           # 单例事件总线
+├── events/               # 事件类型定义
+│   ├── agent-events.ts
+│   ├── memory-events.ts
+│   └── team-events.ts
+└── middleware/           # 中间件
+    ├── logger.ts
+    └── analytics.ts
+```
 
-### 6.3 测试覆盖
-- `memory-service.ts`: 已有部分测试
-- `skill-executor.ts`: 需要添加单元测试
-- `scheduled-tasks-service.ts`: 需要添加集成测试
+### 3. 组件库整理
+```
+当前: 50+ 组件散落
+目标: 按功能分类
+├── chat/                 # 聊天相关
+├── team/                 # 团队协作
+├── skill/                # 技能相关
+├── settings/            # 设置相关
+└── common/               # 通用组件
+```
 
 ---
 
-## 七、结论
+## 六、总结
 
-MiWarp 已经实现了 Codex Claude Cowork 的核心功能集，这是一个很好的基础。主要的改进方向是:
+MiWarp 已有良好的架构基础，特别是:
+- ✅ Svelte 5 runes 现代化
+- ✅ Rust actor 模型稳定
+- ✅ 团队系统初具雏形
+- ✅ Skill 系统基础完备
 
-1. **深化现有功能**: Memory consolidation、Skill handler 可扩展性
-2. **提升 UX**: 更详细的报告、更智能的推荐
-3. **增强稳定性**: 执行历史持久化、MCP 状态管理
-4. **技术债务**: 类型统一、测试覆盖
+Cowork 模式的核心价值在于**跨 Agent 协作**和**智能任务编排**，MiWarp 需要:
 
-这些改进不需要大的架构调整，可以在当前框架内逐步迭代。
+1. **短期**: 增强 Skill 推荐、任务分解、跨 Session 记忆
+2. **中期**: 完善插件架构、实时同步、团队协调
+3. **长期**: 集成 Cowork 生态、实现工作流自动化
 
----
-
-## 附录: 相关文件路径
-
-| 文件 | 用途 |
-|------|------|
-| `src/lib/stores/skill-store.svelte.ts` | Skill 状态管理 |
-| `src/lib/stores/memory-store.svelte.ts` | Memory 状态管理 |
-| `src/lib/stores/scheduled-tasks-store.svelte.ts` | 定时任务状态管理 |
-| `src/lib/services/skill-executor.ts` | Skill 执行器 |
-| `src/lib/services/memory-service.ts` | Memory 服务 |
-| `src/lib/services/plugin-marketplace.ts` | 插件市场 |
-| `src/lib/services/scheduled-tasks-service.ts` | 定时任务服务 |
-| `src/lib/types/skill.ts` | Skill 类型定义 |
-| `src/lib/types/scheduled-task.ts` | 定时任务类型定义 |
+建议从 **P0** 优先级开始，选择 1-2 个模块试点，积累经验后再推广。

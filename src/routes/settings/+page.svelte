@@ -207,21 +207,14 @@
     exportingHistory = true;
     historyError = null;
     try {
-      const { open: openDialog } = await import("@tauri-apps/plugin-dialog");
-      const { documentDir } = await import("@tauri-apps/api/path");
-      const defaultPath = await documentDir();
-      const selected = await openDialog({
-        title: "Export Claude Code History",
-        defaultPath: `${defaultPath}/claude-code-history.zip`,
-        filters: [{ name: "ZIP Archive", extensions: ["zip"] }],
-      });
-      if (!selected) {
-        exportingHistory = false;
+      const { pickClaudeHistoryExportPath } = await import("$lib/utils/claude-history-archive");
+      const outputPath = await pickClaudeHistoryExportPath();
+      if (!outputPath) {
         return;
       }
-      const result = await api.exportClaudeCodeHistoryArchive(selected as string);
+      const result = await api.exportClaudeCodeHistoryArchive(outputPath);
       alert(
-        `Exported ${result.sessionCount} sessions (${(result.totalBytes / 1024).toFixed(1)} KB)${
+        `Exported ${result.sessionCount} sessions (${(result.totalBytes / 1024).toFixed(1)} KB) to:\n${outputPath}${
           result.failures.length > 0 ? `\n${result.failures.length} failures` : ""
         }`,
       );
@@ -237,17 +230,14 @@
     historyError = null;
     importReport = null;
     try {
-      const { open: openDialog } = await import("@tauri-apps/plugin-dialog");
-      const selected = await openDialog({
-        title: "Import Claude Code History",
-        filters: [{ name: "ZIP Archive", extensions: ["zip"] }],
-        multiple: false,
-      });
-      if (!selected) {
-        importingHistory = false;
+      const { pickClaudeHistoryImportPath, notifyRunsChanged } =
+        await import("$lib/utils/claude-history-archive");
+      const archivePath = await pickClaudeHistoryImportPath();
+      if (!archivePath) {
         return;
       }
-      importReport = await api.importClaudeCodeHistoryArchive(selected as string);
+      importReport = await api.importClaudeCodeHistoryArchive(archivePath);
+      notifyRunsChanged();
       await scanHistory();
     } catch (e) {
       historyError = String(e);

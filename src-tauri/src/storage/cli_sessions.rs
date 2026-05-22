@@ -384,6 +384,8 @@ impl TranscriptImporter {
                 total_cost_usd: cost,
                 turn_index: Some(self.turn_counter),
                 model_usage: None,
+                context_window_used_percentage: None,
+                context_window_remaining_percentage: None,
                 duration_api_ms: None,
                 duration_ms: None,
                 num_turns: None,

@@ -381,7 +381,7 @@
   const POPOVER_Z = 45;
   const VIEWPORT_PAD = 8;
   const POPOVER_GAP = 6;
-  const PV_MENU_WIDTH = 184;
+  const PV_MENU_WIDTH = 200;
 
   function clampPopoverLeft(left: number, width: number): number {
     return Math.max(VIEWPORT_PAD, Math.min(left, window.innerWidth - width - VIEWPORT_PAD));
@@ -756,7 +756,7 @@
 
   <!-- Tier 1: icon rail -->
   <div
-    class="relative inline-flex h-9 w-max items-center transition-opacity duration-300 {morphHidesContent
+    class="session-island-tier1-frame relative inline-flex h-9 w-full items-center transition-opacity duration-300 {morphHidesContent
       ? 'opacity-0'
       : ''}"
   >
@@ -774,7 +774,9 @@
         contextWindow > 0 &&
         contextUtilization != null}
       <div
-        class="session-island-tier1 {showContextPill ? 'session-island-tier1--centered-pill' : ''}"
+        class="session-island-tier1 {showContextPill
+          ? 'session-island-tier1-has-context'
+          : 'session-island-tier1-no-context'}"
       >
         <div class="session-island-tab-group">
           {#each leftTabs as tab (tab)}
@@ -844,35 +846,32 @@
                 : contextWarningLevel === "moderate"
                   ? "bg-amber-500"
                   : "bg-emerald-500"}
-          <div class="session-context-pill-anchor">
+          <span
+            class="session-context-pill text-foreground/60"
+            title={t("statusbar_contextTitle", {
+              pct: String(pct),
+              tokens: contextWindow ? fmtNumber(contextWindow) : "",
+            })}
+          >
             <span
-              class="session-context-pill text-foreground/60"
-              title={t("statusbar_contextTitle", {
-                pct: String(pct),
-                tokens: contextWindow ? fmtNumber(contextWindow) : "",
-              })}
+              class="session-context-pill-inner {compactVisible
+                ? 'bg-orange-500/80 animate-pulse'
+                : barColor}"
             >
-              <span
-                class="session-context-pill-inner {compactVisible
-                  ? 'bg-orange-500/80 animate-pulse'
-                  : barColor}"
-              >
-                {#if compactVisible}
-                  <span
-                    class="text-[10px] font-bold text-white animate-pulse whitespace-nowrap px-2"
-                    >{t("statusbar_compacted")}</span
+              {#if compactVisible}
+                <span class="text-[10px] font-bold text-white animate-pulse whitespace-nowrap px-2"
+                  >{t("statusbar_compacted")}</span
+                >
+              {:else}
+                <span class="flex items-center justify-center whitespace-nowrap">
+                  <span class="text-[10px] font-bold text-white/90 w-8 text-center">{pct}%</span>
+                  <span class="session-context-ctx-label text-[10px] font-bold text-white/70"
+                    >ctx</span
                   >
-                {:else}
-                  <span class="flex items-center justify-center whitespace-nowrap">
-                    <span class="text-[10px] font-bold text-white/90 w-8 text-center">{pct}%</span>
-                    <span class="session-context-ctx-label text-[10px] font-bold text-white/70"
-                      >ctx</span
-                    >
-                  </span>
-                {/if}
-              </span>
+                </span>
+              {/if}
             </span>
-          </div>
+          </span>
         {/if}
 
         <div class="session-island-tab-group">
@@ -945,7 +944,7 @@
 
   <!-- Tier 2: status + model + session id -->
   <div
-    class="tier-2-content flex h-8 shrink-0 items-center justify-center overflow-hidden border-t border-border/20 transition-opacity duration-300 {islandExpanded
+    class="tier-2-content flex h-8 shrink-0 items-center justify-start overflow-hidden border-t border-border/20 transition-opacity duration-300 {islandExpanded
       ? 'session-island-tier2-open border-border/20'
       : 'session-island-tier2-closed border-transparent'} {morphHidesContent ? 'opacity-0' : ''}"
   >
@@ -983,14 +982,8 @@
           <span>{t("bgTask_active", { count: String(activeTaskCount) })}</span>
         </span>
         <span class="session-island-tier2-divider" aria-hidden="true">|</span>
-      {/if}
-
-      {#if permissionBadge}
-        <span
-          class="inline-flex h-5 shrink-0 items-center rounded-full px-1.5 text-[10px] font-medium leading-none {permissionBadge.cls}"
-          title={t("statusbar_permissionMode", { mode: permissionMode ?? "" })}
-          >{permissionBadge.label}</span
-        >
+      {:else}
+        <span class="text-[10px] text-muted-foreground/50">{t("statusbar_noIdleTasks")}</span>
         <span class="session-island-tier2-divider" aria-hidden="true">|</span>
       {/if}
 
@@ -1027,24 +1020,11 @@
         {/if}
       {/if}
 
-      {#if sessionIdShort}
-        <span class="session-island-tier2-divider" aria-hidden="true">|</span>
-        <button
-          class="inline-flex items-center font-mono text-[10px] text-foreground/45 hover:text-foreground/75 transition-colors"
-          title="{t('statusbar_sessionLabel', {
-            id: run?.session_id ?? '',
-          })}\n{t('statusbar_clickToCopy')}"
-          onclick={copySessionId}
-        >
-          {sidCopied ? t("statusbar_copied") : sessionIdShort}
-        </button>
-      {/if}
-
       {#if onProcessVisibilityChange}
         <span class="session-island-tier2-divider" aria-hidden="true">|</span>
         <button
           bind:this={pvMenuBtnEl}
-          class="inline-flex max-w-[7rem] items-center gap-0.5 truncate rounded-md border border-transparent px-1.5 py-0.5 text-foreground/65 hover:border-border/50 hover:bg-muted/50 hover:text-foreground transition-colors {pvMenuOpen
+          class="inline-flex w-fit items-center gap-1 truncate rounded-md border border-transparent px-2 py-1 text-foreground/65 hover:border-border/50 hover:bg-muted/50 hover:text-foreground transition-colors {pvMenuOpen
             ? 'border-border/60 bg-muted/60 text-foreground'
             : ''}"
           onclick={(e) => {
@@ -1056,15 +1036,6 @@
           title={t("settings_processVisibility")}
         >
           <span class="truncate font-medium">{processVisibilityShort(processVisibility)}</span>
-          <svg
-            class="h-2.5 w-2.5 shrink-0 text-foreground/35 transition-transform duration-200 {pvMenuOpen
-              ? 'rotate-180'
-              : ''}"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"><path d="m6 9 6 6 6-6" /></svg
-          >
         </button>
       {/if}
     </div>

@@ -178,7 +178,6 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
 
   const inputBlockedByPermission = $derived(store.hasPendingPermission || store.hasElicitation);
   const pendingToolPermissions = $derived(store.pendingToolPermissions);
-  const showPermissionPanel = $derived(pendingToolPermissions.length > 0 && store.sessionAlive);
 
   const skillItems = $derived.by(() => {
     const preloadedSkills = getPreloadedSkills();
@@ -287,7 +286,8 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
       return pendingToolPermissions;
     },
     get showPermissionPanel() {
-      return showPermissionPanel;
+      // Inline in timeline — never use floating PermissionPanel (see InlineToolCard).
+      return false;
     },
     get skillItems() {
       return skillItems;

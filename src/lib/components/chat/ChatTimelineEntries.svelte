@@ -50,7 +50,6 @@
     getPlanContentForExitPlan,
     openPreviewForPath,
     toggleBurst,
-    onDispatchToTeam,
   }: {
     visibleTimeline: TimelineEntry[];
     store: SessionStore;
@@ -83,7 +82,6 @@
     getPlanContentForExitPlan: (entryId: string) => { content: string; fileName: string } | null;
     openPreviewForPath: (path: string) => void;
     toggleBurst: (key: string) => void;
-    onDispatchToTeam: (content: string) => void;
   } = $props();
 
   const t = tFn;
@@ -146,7 +144,6 @@
                   ts: entry.ts,
                 })
             : undefined}
-          onDispatchToTeam={() => onDispatchToTeam(entry.content)}
         />
       {:else if entry.kind === "assistant"}
         <ChatMessage

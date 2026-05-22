@@ -5,7 +5,6 @@
   import { relativeTime, truncate } from "$lib/utils/format";
   import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
   import { hasAttention } from "$lib/stores/attention-store.svelte";
-  import StatusBadge from "./StatusBadge.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import ContextMenu from "./ContextMenu.svelte";
@@ -213,23 +212,13 @@
 >
   <div class="flex items-center justify-between gap-1.5">
     <div class="flex items-center gap-1.5 min-w-0">
-      {#if selected}
-        <StatusBadge
-          status={run.status}
-          attention={needsAttention}
-          compact={false}
-          shortLabel={true}
-          class="shrink-0"
-        />
-      {:else}
-        <span
-          class="inline-block h-[5px] w-[5px] rounded-full shrink-0 {statusDot.animated
-            ? 'animate-slow-pulse'
-            : ''}"
-          style:background-color={statusDot.color}
-          title={run.status}
-        ></span>
-      {/if}
+      <span
+        class="inline-block h-[6px] w-[6px] rounded-full shrink-0 {statusDot.animated
+          ? 'animate-slow-pulse'
+          : ''}"
+        style:background-color={statusDot.color}
+        title={run.status}
+      ></span>
       {#if editing}
         <input
           bind:this={editInputEl}

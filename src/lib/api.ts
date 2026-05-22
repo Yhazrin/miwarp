@@ -433,6 +433,12 @@ export async function listMemoryFiles(
   return invoke<import("./types").MemoryFileCandidate[]>("list_memory_files", { cwd: cwd ?? null });
 }
 
+// Reveal a file in the system file browser (Finder/Explorer)
+export async function revealFileInFinder(path: string): Promise<void> {
+  dbg("api", "revealFileInFinder", path);
+  return invoke<void>("reveal_file_in_finder", { path });
+}
+
 // Files
 export async function readTextFile(path: string, cwd?: string): Promise<string> {
   dbg("api", "readTextFile", path, { cwd });

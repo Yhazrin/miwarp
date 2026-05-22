@@ -1920,8 +1920,10 @@
           {#each quickActions as cmd (cmd.name)}
             <button
               class="shrink-0 rounded-md border border-border/50 px-2 py-0.5 text-[11px]
-                bg-background/30 text-muted-foreground/70 hover:text-foreground hover:bg-accent/20
-                hover:border-border transition-colors whitespace-nowrap"
+                bg-background/60 backdrop-blur-sm text-muted-foreground/70
+                hover:text-foreground hover:bg-background/80 hover:border-border/50
+                active:bg-background/50 active:scale-[0.97]
+                transition-all whitespace-nowrap"
               onclick={() => handleQuickAction(cmd)}
               title={cmd.description}
             >
@@ -1930,8 +1932,10 @@
           {/each}
           <button
             class="shrink-0 rounded-md border border-border/50 px-2 py-0.5 text-[11px]
-              bg-background/30 text-muted-foreground/70 hover:text-foreground hover:bg-accent/20
-              hover:border-border transition-colors whitespace-nowrap"
+              bg-background/60 backdrop-blur-sm text-muted-foreground/70
+              hover:text-foreground hover:bg-background/80 hover:border-border/50
+              active:bg-background/50 active:scale-[0.97]
+              transition-all whitespace-nowrap"
             onclick={openSlashMenuFromButton}
             title={t("quickAction_moreTitle")}
           >

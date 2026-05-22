@@ -287,34 +287,41 @@ fn scan_commands_dir(
 
 /// List standalone skills from ~/.claude/skills/*/SKILL.md
 /// and optionally from {cwd}/.claude/skills/*/SKILL.md.
-pub fn list_standalone_skills(cwd: &str) -> Vec<StandaloneSkill> {
+/// Returns an error if the cwd directory cannot be accessed (permission denied).
+pub fn list_standalone_skills(cwd: &str) -> Result<Vec<StandaloneSkill>, String> {
     let mut skills = Vec::new();
 
-    // User-scope skills (~/.claude/skills/)
-    scan_skills_dir(&skills_dir(), "user", &mut skills);
+    // User-scope skills (~/.claude/skills/) - non-critical, ignore errors
+    let _ = scan_skills_dir(&skills_dir(), "user", &mut skills);
 
     // Project-scope skills ({cwd}/.claude/skills/)
     if !cwd.is_empty() {
         let project_dir = PathBuf::from(cwd).join(".claude").join("skills");
-        scan_skills_dir(&project_dir, "project", &mut skills);
+        if let Err(e) = scan_skills_dir(&project_dir, "project", &mut skills) {
+            // Return error for project dir access failures (e.g., permission denied on Desktop)
+            return Err(format!(
+                "cannot access project skills directory '{}': {}",
+                project_dir.display(),
+                e
+            ));
+        }
     }
 
     log::debug!(
         "[plugins] list_standalone_skills: found {} skills",
         skills.len()
     );
-    skills
+    Ok(skills)
 }
 
 /// Scan a directory for skills and append to the result vector.
-fn scan_skills_dir(dir: &Path, scope: &str, skills: &mut Vec<StandaloneSkill>) {
-    let entries = match std::fs::read_dir(dir) {
-        Ok(e) => e,
-        Err(e) => {
-            log::debug!("[plugins] cannot read skills dir {}: {}", dir.display(), e);
-            return;
-        }
-    };
+/// Returns Err if the directory cannot be read due to permission issues.
+fn scan_skills_dir(
+    dir: &Path,
+    scope: &str,
+    skills: &mut Vec<StandaloneSkill>,
+) -> Result<(), std::io::Error> {
+    let entries = std::fs::read_dir(dir)?;
 
     for entry in entries.flatten() {
         let path = entry.path();
@@ -343,6 +350,7 @@ fn scan_skills_dir(dir: &Path, scope: &str, skills: &mut Vec<StandaloneSkill>) {
             remote_ref,
         });
     }
+    Ok(())
 }
 
 fn read_skill_remote_meta(skill_dir: &Path) -> Option<SkillRemoteRef> {

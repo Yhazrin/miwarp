@@ -20,6 +20,27 @@ fn opt_str(v: &Value, key: &str) -> Option<String> {
     v.get(key).and_then(|v| v.as_str()).map(String::from)
 }
 
+/// Extract official context window percentages from Claude CLI payloads.
+///
+/// Claude CLI 2.1.6+ exposes status-line input as:
+///   context_window.used_percentage / remaining_percentage
+/// Keep the parser tolerant so result/status payloads with camelCase variants also work.
+#[inline]
+fn context_window_percentages(v: &Value) -> (Option<f64>, Option<f64>) {
+    let Some(ctx) = v.get("context_window").or_else(|| v.get("contextWindow")) else {
+        return (None, None);
+    };
+    let used = ctx
+        .get("used_percentage")
+        .or_else(|| ctx.get("usedPercentage"))
+        .and_then(|v| v.as_f64());
+    let remaining = ctx
+        .get("remaining_percentage")
+        .or_else(|| ctx.get("remainingPercentage"))
+        .and_then(|v| v.as_f64());
+    (used, remaining)
+}
+
 /// Parsing statistics for Claude protocol — accumulated per-session, never reset.
 /// Codex stats are NOT included here; Codex path only logs, no counters
 /// (codex_parser lives in a separate stream.rs path, not ProtocolState).
@@ -443,6 +464,33 @@ impl ProtocolState {
                         status,
                         data: raw.clone(),
                     });
+                    let (context_window_used_percentage, context_window_remaining_percentage) =
+                        context_window_percentages(raw);
+                    if context_window_used_percentage.is_some()
+                        || context_window_remaining_percentage.is_some()
+                    {
+                        events.push(BusEvent::UsageUpdate {
+                            run_id: run_id.to_string(),
+                            input_tokens: 0,
+                            output_tokens: 0,
+                            cache_read_tokens: None,
+                            cache_write_tokens: None,
+                            total_cost_usd: 0.0,
+                            turn_index: None,
+                            model_usage: None,
+                            context_window_used_percentage,
+                            context_window_remaining_percentage,
+                            duration_api_ms: None,
+                            duration_ms: None,
+                            num_turns: None,
+                            stop_reason: None,
+                            service_tier: None,
+                            speed: None,
+                            web_fetch_requests: None,
+                            cache_creation_5m: None,
+                            cache_creation_1h: None,
+                        });
+                    }
                 } else if subtype == "hook_started" {
                     let hook_event = raw
                         .get("hook_event")
@@ -1066,6 +1114,8 @@ impl ProtocolState {
                         .get("stop_reason")
                         .and_then(|v| v.as_str())
                         .map(String::from);
+                    let (context_window_used_percentage, context_window_remaining_percentage) =
+                        context_window_percentages(raw);
 
                     // Extract from usage sub-fields
                     let service_tier = usage
@@ -1107,6 +1157,8 @@ impl ProtocolState {
                         total_cost_usd: cost,
                         turn_index: None, // Injected by session_actor for user turns
                         model_usage,
+                        context_window_used_percentage,
+                        context_window_remaining_percentage,
                         duration_api_ms,
                         duration_ms,
                         num_turns,
@@ -1452,6 +1504,38 @@ mod tests {
                 assert_eq!(status.as_deref(), Some("compacting"));
             }
             other => panic!("expected SystemStatus, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_system_status_with_context_window_percentages() {
+        let mut ps = ProtocolState::new(false);
+        let raw = json!({
+            "type": "system",
+            "subtype": "status",
+            "status": "running",
+            "context_window": {
+                "used_percentage": 42.5,
+                "remaining_percentage": 57.5
+            }
+        });
+        let events = ps.map_event(RUN, &raw);
+        assert_eq!(events.len(), 2);
+        assert!(matches!(events[0], BusEvent::SystemStatus { .. }));
+        match &events[1] {
+            BusEvent::UsageUpdate {
+                input_tokens,
+                output_tokens,
+                context_window_used_percentage,
+                context_window_remaining_percentage,
+                ..
+            } => {
+                assert_eq!(*input_tokens, 0);
+                assert_eq!(*output_tokens, 0);
+                assert_eq!(*context_window_used_percentage, Some(42.5));
+                assert_eq!(*context_window_remaining_percentage, Some(57.5));
+            }
+            other => panic!("expected UsageUpdate, got {:?}", other),
         }
     }
 
@@ -2149,6 +2233,36 @@ mod tests {
                 let entry = &mu["opus-4"];
                 assert_eq!(entry.input_tokens, 80);
                 assert_eq!(entry.output_tokens, 40);
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn test_result_with_context_window_percentages() {
+        let mut ps = ProtocolState::new(false);
+        let raw = json!({
+            "type": "result",
+            "subtype": "success",
+            "usage": {"input_tokens": 100, "output_tokens": 50},
+            "context_window": {
+                "used_percentage": 42.5,
+                "remaining_percentage": 57.5
+            }
+        });
+        let events = ps.map_event(RUN, &raw);
+        let usage = events
+            .iter()
+            .find(|e| matches!(e, BusEvent::UsageUpdate { .. }))
+            .unwrap();
+        match usage {
+            BusEvent::UsageUpdate {
+                context_window_used_percentage,
+                context_window_remaining_percentage,
+                ..
+            } => {
+                assert_eq!(*context_window_used_percentage, Some(42.5));
+                assert_eq!(*context_window_remaining_percentage, Some(57.5));
             }
             _ => unreachable!(),
         }

@@ -20,6 +20,8 @@ export interface UsageState {
   cacheWriteTokens: number;
   cost: number;
   modelUsage?: Record<string, import("$lib/types").ModelUsageEntry>;
+  contextWindowUsedPercentage?: number;
+  contextWindowRemainingPercentage?: number;
   durationApiMs?: number;
 }
 

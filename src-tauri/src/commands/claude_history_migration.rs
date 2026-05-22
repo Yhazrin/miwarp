@@ -442,50 +442,97 @@ fn tempfile_tempdir() -> Result<tempfile::TempDir, String> {
     tempfile::tempdir().map_err(|e| format!("create temp dir: {}", e))
 }
 
+fn reject_unsafe_zip_entry_name(name: &str) -> Result<(), String> {
+    if name.is_empty() || name.contains('\0') {
+        return Err(format!("invalid zip entry name: {:?}", name));
+    }
+
+    let normalized = name.replace('\\', "/");
+    if normalized.starts_with('/') {
+        return Err(format!("absolute path in zip: {}", name));
+    }
+    if normalized.split('/').any(|part| part == "..") {
+        return Err(format!("path traversal in zip: {}", name));
+    }
+    let bytes = normalized.as_bytes();
+    if bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' {
+        return Err(format!("windows drive path in zip: {}", name));
+    }
+
+    Ok(())
+}
+
+/// Ensure a zip `relative` path stays inside `canonical_base` (lexical; target need not exist).
+fn ensure_within_dir(canonical_base: &Path, relative: &Path) -> Result<(), String> {
+    let mut joined = canonical_base.to_path_buf();
+    for component in relative.components() {
+        match component {
+            std::path::Component::ParentDir => {
+                return Err(format!(
+                    "zip-slip attempt detected: parent segment in {}",
+                    relative.display()
+                ));
+            }
+            std::path::Component::RootDir | std::path::Component::Prefix(_) => {
+                return Err(format!(
+                    "zip-slip attempt detected: absolute segment in {}",
+                    relative.display()
+                ));
+            }
+            std::path::Component::Normal(part) => {
+                joined.push(part);
+            }
+            std::path::Component::CurDir => {}
+        }
+    }
+
+    if !joined.starts_with(canonical_base) {
+        return Err(format!(
+            "zip-slip attempt detected: {} resolves outside {}",
+            relative.display(),
+            canonical_base.display()
+        ));
+    }
+
+    Ok(())
+}
+
 fn extract_zip(archive_path: &Path, dest_dir: &Path) -> Result<(), String> {
+    fs::create_dir_all(dest_dir)
+        .map_err(|e| format!("create dest dir {}: {}", dest_dir.display(), e))?;
+
+    let canonical_dest = dest_dir
+        .canonicalize()
+        .map_err(|e| format!("canonicalize dest: {}", e))?;
+
     let file = File::open(archive_path).map_err(|e| format!("open archive: {}", e))?;
     let mut archive = ZipArchive::new(file).map_err(|e| format!("parse zip: {}", e))?;
 
     for i in 0..archive.len() {
-        let mut file = archive
+        let mut zip_file = archive
             .by_index(i)
             .map_err(|e| format!("read zip entry {}: {}", i, e))?;
 
-        let outpath = dest_dir.join(file.name());
+        let entry_name = zip_file.name().to_string();
+        reject_unsafe_zip_entry_name(&entry_name)?;
 
-        // Zip-slip protection: ensure the extracted path is within dest_dir
-        let canonical_dest = dest_dir
-            .canonicalize()
-            .map_err(|e| format!("canonicalize dest: {}", e))?;
-        let canonical_out = outpath
-            .canonicalize()
-            .map_err(|e| format!("canonicalize outpath (may not exist yet): {}", e))?;
-        if !canonical_out.starts_with(&canonical_dest) {
-            return Err(format!(
-                "zip-slip attempt detected: {} -> {}",
-                file.name(),
-                outpath.display()
-            ));
-        }
+        let relative = zip_file
+            .enclosed_name()
+            .ok_or_else(|| format!("unsafe or invalid zip entry: {}", entry_name))?;
+        ensure_within_dir(&canonical_dest, &relative)?;
+        let outpath = canonical_dest.join(&relative);
 
-        // Also check for path traversal patterns in name
-        if file.name().contains("..") || file.name().starts_with('/') {
-            return Err(format!("path traversal attempt detected: {}", file.name()));
-        }
-
-        if file.name().ends_with('/') {
+        if entry_name.ends_with('/') {
             fs::create_dir_all(&outpath)
                 .map_err(|e| format!("create dir {}: {}", outpath.display(), e))?;
         } else {
-            if let Some(p) = outpath.parent() {
-                if !p.exists() {
-                    fs::create_dir_all(p)
-                        .map_err(|e| format!("create parent dir {}: {}", p.display(), e))?;
-                }
+            if let Some(parent) = outpath.parent() {
+                fs::create_dir_all(parent)
+                    .map_err(|e| format!("create parent dir {}: {}", parent.display(), e))?;
             }
             let mut outfile = File::create(&outpath)
                 .map_err(|e| format!("create file {}: {}", outpath.display(), e))?;
-            std::io::copy(&mut file, &mut outfile)
+            std::io::copy(&mut zip_file, &mut outfile)
                 .map_err(|e| format!("copy to {}: {}", outpath.display(), e))?;
         }
     }
@@ -1018,6 +1065,8 @@ fn flush_turn_usage(
             total_cost_usd: cost,
             turn_index: Some(turn_counter),
             model_usage: None,
+            context_window_used_percentage: None,
+            context_window_remaining_percentage: None,
             duration_api_ms: None,
             duration_ms: None,
             num_turns: None,
@@ -1176,4 +1225,90 @@ fn extract_session_info(path: &Path) -> Result<CliSessionInfo, String> {
         already_imported,
         existing_run_id,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+    use zip::write::SimpleFileOptions;
+    use zip::ZipWriter;
+
+    fn write_test_zip(path: &Path, entries: &[(&str, &[u8])]) {
+        let file = File::create(path).expect("create zip");
+        let mut zip = ZipWriter::new(file);
+        let options = SimpleFileOptions::default();
+        for (name, data) in entries {
+            zip.start_file(*name, options).expect("start file");
+            zip.write_all(data).expect("write file");
+        }
+        zip.finish().expect("finish zip");
+    }
+
+    fn write_test_zip_in_memory(entries: &[(&str, &[u8])]) -> Vec<u8> {
+        let mut buf = Cursor::new(Vec::new());
+        {
+            let mut zip = ZipWriter::new(&mut buf);
+            let options = SimpleFileOptions::default();
+            for (name, data) in entries {
+                zip.start_file(*name, options).expect("start file");
+                zip.write_all(data).expect("write file");
+            }
+            zip.finish().expect("finish zip");
+        }
+        buf.into_inner()
+    }
+
+    #[test]
+    fn extract_zip_writes_manifest_and_session() {
+        let dest = tempfile::tempdir().expect("tempdir");
+        let archive = dest.path().join("archive.zip");
+        write_test_zip(
+            &archive,
+            &[
+                ("manifest.json", br#"{"version":"1.0"}"#),
+                ("project-a/session-1.jsonl", br#"{"type":"user"}"#),
+            ],
+        );
+
+        extract_zip(&archive, dest.path()).expect("extract");
+
+        assert!(dest.path().join("manifest.json").is_file());
+        assert!(dest.path().join("project-a/session-1.jsonl").is_file());
+    }
+
+    #[test]
+    fn extract_zip_rejects_path_traversal_entries() {
+        let dest = tempfile::tempdir().expect("tempdir");
+        for entry in ["../evil.jsonl", "/tmp/evil.jsonl", "C:\\evil.jsonl"] {
+            let archive = dest
+                .path()
+                .join(format!("bad-{}.zip", entry.replace('/', "_")));
+            write_test_zip(&archive, &[(entry, b"{}")]);
+            let err = extract_zip(&archive, dest.path()).unwrap_err();
+            assert!(
+                err.contains("path traversal")
+                    || err.contains("absolute path")
+                    || err.contains("windows drive")
+                    || err.contains("unsafe or invalid"),
+                "unexpected error for {entry}: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn reject_unsafe_zip_entry_name_blocks_dotdot() {
+        assert!(reject_unsafe_zip_entry_name("../evil.jsonl").is_err());
+        assert!(reject_unsafe_zip_entry_name("/tmp/evil.jsonl").is_err());
+        assert!(reject_unsafe_zip_entry_name("C:\\evil.jsonl").is_err());
+        assert!(reject_unsafe_zip_entry_name("project-a/session.jsonl").is_ok());
+    }
+
+    #[test]
+    fn enclosed_name_rejects_traversal_in_memory_zip() {
+        let bytes = write_test_zip_in_memory(&[("../evil.jsonl", b"{}")]);
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).expect("parse in-memory zip");
+        let entry = archive.by_index(0).expect("entry");
+        assert!(entry.enclosed_name().is_none());
+    }
 }

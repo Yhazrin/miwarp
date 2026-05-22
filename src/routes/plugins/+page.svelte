@@ -900,7 +900,7 @@
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-rose-500/10 text-rose-500"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-rose-600 text-white"
               >
                 <svg
                   class="h-3 w-3"
@@ -925,7 +925,7 @@
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-green-500/10 text-green-500"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-green-600 text-white"
               >
                 <svg
                   class="h-3 w-3"
@@ -950,7 +950,7 @@
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-teal-500/10 text-teal-500"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-teal-600 text-white"
               >
                 <svg
                   class="h-3 w-3"
@@ -980,7 +980,7 @@
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-amber-500/10 text-amber-500"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-amber-600 text-white"
               >
                 <svg
                   class="h-3 w-3"
@@ -1005,7 +1005,7 @@
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-purple-500/10 text-purple-500"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-purple-600 text-white"
               >
                 <svg
                   class="h-3 w-3"
@@ -1101,10 +1101,10 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-600 text-white"
             >
               <svg
-                class="h-4 w-4 text-rose-500"
+                class="h-4 w-4"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -1123,10 +1123,10 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/10"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white"
             >
               <svg
-                class="h-4 w-4 text-blue-500"
+                class="h-4 w-4"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -1145,10 +1145,10 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-500/10"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-600 text-white"
             >
               <svg
-                class="h-4 w-4 text-teal-500"
+                class="h-4 w-4"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -1174,10 +1174,10 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-white"
             >
               <svg
-                class="h-4 w-4 text-amber-500"
+                class="h-4 w-4"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -1197,10 +1197,10 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-500/10"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-600 text-white"
             >
               <svg
-                class="h-4 w-4 text-green-500"
+                class="h-4 w-4"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -1228,7 +1228,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-600 text-white"
             >
               <svg
                 class="h-4 w-4"
@@ -1255,7 +1255,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-600 text-white"
             >
               <svg
                 class="h-4 w-4"
@@ -1282,7 +1282,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-600 text-white"
             >
               <svg
                 class="h-4 w-4"
@@ -1319,7 +1319,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-white"
             >
               <svg
                 class="h-4 w-4"
@@ -1348,7 +1348,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-500/10 text-green-600 dark:text-green-400"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-600 text-white"
             >
               <svg
                 class="h-4 w-4"

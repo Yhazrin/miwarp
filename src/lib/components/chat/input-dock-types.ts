@@ -35,7 +35,6 @@ export interface InputVm {
 // ── Permission / elicitation panel ──
 
 export interface PermissionVm {
-  showPermissionPanel: boolean;
   pendingToolPermissions: Array<{ tool: import("$lib/types").BusToolItem; requestId: string }>;
   inputBlockedByPermission: boolean;
 }

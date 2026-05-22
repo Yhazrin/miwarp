@@ -3,6 +3,11 @@
   import type { ExportReport, ImportReport, CliSessionInfo } from "$lib/types";
   import Card from "$lib/components/Card.svelte";
   import Button from "$lib/components/Button.svelte";
+  import {
+    pickClaudeHistoryExportPath,
+    pickClaudeHistoryImportPath,
+    notifyRunsChanged,
+  } from "$lib/utils/claude-history-archive";
 
   let scannedSessions = $state<CliSessionInfo[]>([]);
   let isScanning = $state(false);
@@ -10,6 +15,7 @@
 
   let isExporting = $state(false);
   let exportResult = $state<ExportReport | null>(null);
+  let exportPath = $state<string | null>(null);
   let exportError = $state<string | null>(null);
 
   let isImporting = $state(false);
@@ -33,8 +39,13 @@
     isExporting = true;
     exportError = null;
     exportResult = null;
+    exportPath = null;
     try {
-      const outputPath = `/tmp/claude-history-export-${Date.now()}.zip`;
+      const outputPath = await pickClaudeHistoryExportPath();
+      if (!outputPath) {
+        return;
+      }
+      exportPath = outputPath;
       exportResult = await api.exportClaudeCodeHistoryArchive(outputPath);
     } catch (e) {
       exportError = e instanceof Error ? e.message : String(e);
@@ -44,10 +55,22 @@
   }
 
   async function handleImport() {
-    // For import, we would use a file picker dialog
-    // For now, show a placeholder - actual file picking would be done via Tauri dialog
-    importError =
-      "Import requires selecting an archive file. Use the Export button to create one first.";
+    isImporting = true;
+    importError = null;
+    importResult = null;
+    try {
+      const archivePath = await pickClaudeHistoryImportPath();
+      if (!archivePath) {
+        return;
+      }
+      importResult = await api.importClaudeCodeHistoryArchive(archivePath);
+      notifyRunsChanged();
+      await handleScan();
+    } catch (e) {
+      importError = e instanceof Error ? e.message : String(e);
+    } finally {
+      isImporting = false;
+    }
   }
 
   function formatBytes(bytes: number): string {
@@ -66,7 +89,7 @@
         Claude Code History
       </h2>
       <p class="text-xs text-muted-foreground mt-1">
-        Export and import Claude Code session history
+        Export and import Claude Code session history into MiWarp runs
       </p>
     </div>
   </div>
@@ -94,7 +117,6 @@
     </Button>
   </div>
 
-  <!-- Scan Results -->
   {#if scanError}
     <div class="rounded-md bg-red-500/10 border border-red-500/20 p-3">
       <p class="text-sm text-red-400">{scanError}</p>
@@ -110,11 +132,11 @@
         {#each scannedSessions.slice(0, 10) as session}
           <div class="text-xs text-muted-foreground flex justify-between">
             <span class="truncate max-w-[200px]" title={session.sessionId}>
-              {session.sessionId}
+              {session.firstPrompt || session.sessionId}
             </span>
             <span class="shrink-0 ml-2">
               {#if session.alreadyImported}
-                <span class="text-amber-400">✓</span>
+                <span class="text-amber-400">imported</span>
               {:else}
                 <span class="text-green-400">new</span>
               {/if}
@@ -130,7 +152,6 @@
     </div>
   {/if}
 
-  <!-- Export Results -->
   {#if exportError}
     <div class="rounded-md bg-red-500/10 border border-red-500/20 p-3">
       <p class="text-sm text-red-400">{exportError}</p>
@@ -141,6 +162,9 @@
     <div class="rounded-md bg-green-500/10 border border-green-500/20 p-3">
       <p class="text-sm text-green-400 font-medium">Export complete</p>
       <div class="mt-2 text-xs text-muted-foreground space-y-1">
+        {#if exportPath}
+          <p class="break-all">Saved to: {exportPath}</p>
+        {/if}
         <p>Sessions: {exportResult.sessionCount}</p>
         <p>Total size: {formatBytes(exportResult.totalBytes)}</p>
         {#if exportResult.failures.length > 0}
@@ -152,7 +176,6 @@
     </div>
   {/if}
 
-  <!-- Import Results -->
   {#if importError}
     <div class="rounded-md bg-red-500/10 border border-red-500/20 p-3">
       <p class="text-sm text-red-400">{importError}</p>
@@ -169,6 +192,16 @@
         <p>Failed: {importResult.failed}</p>
         <p>Missing cwd: {importResult.missingCwd}</p>
       </div>
+      {#if importResult.details.length > 0}
+        <div class="mt-2 max-h-32 overflow-y-auto space-y-1">
+          {#each importResult.details.slice(0, 12) as detail}
+            <div class="text-xs flex justify-between gap-2">
+              <span class="truncate" title={detail.sessionId}>{detail.sessionId}</span>
+              <span class="shrink-0">{detail.status}</span>
+            </div>
+          {/each}
+        </div>
+      {/if}
     </div>
   {/if}
 </Card>

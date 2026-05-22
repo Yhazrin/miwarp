@@ -20,7 +20,6 @@
     attachments,
     thinkingText,
     onRewind,
-    onDispatchToTeam,
     agent,
     platformId,
     model,
@@ -33,7 +32,6 @@
     attachments?: Attachment[];
     thinkingText?: string;
     onRewind?: () => void;
-    onDispatchToTeam?: () => void;
     agent?: string;
     platformId?: string;
     model?: string;
@@ -175,31 +173,6 @@
                 </svg>
               </button>
             {/if}
-            {#if onDispatchToTeam}
-              <button
-                class="rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered
-                  ? 'opacity-100'
-                  : 'opacity-0'}"
-                onclick={onDispatchToTeam}
-                title={t("teamRun_dispatchToTeam")}
-                data-export-exclude
-              >
-                <svg
-                  class="h-3.5 w-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              </button>
-            {/if}
             <div
               class="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground"
             >
@@ -337,7 +310,7 @@
             {#if thinkingText && processVisibility !== "output"}
               {#if thinkingCollapsed}
                 <button
-                  class="mb-2 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] text-[hsl(var(--miwarp-status-info))] opacity-70 hover:opacity-100 transition-opacity"
+                  class="mb-2 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] text-[hsl(var(--miwarp-text-secondary))] opacity-70 hover:opacity-100 transition-opacity"
                   onclick={() => (thinkingCollapsed = false)}
                   title={t("common_expand")}
                 >
@@ -353,16 +326,14 @@
                     <path d="M12 2a8 8 0 0 1 8 8c0 5-8 13-8 13S4 15 4 10a8 8 0 0 1 8-8z" />
                     <circle cx="12" cy="10" r="3" />
                   </svg>
-                  <span>{t("chat_thoughtProcess")}</span>
-                  <span class="opacity-50">·</span>
-                  <span class="opacity-50">{t("common_expand")}</span>
+                  <span class="thinking-shimmer">{t("chat_thoughtProcess")}</span>
                 </button>
               {:else}
                 <div
                   class="mb-2 max-h-28 overflow-hidden rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.18)] bg-[hsl(var(--miwarp-bg-deep)/0.6)]"
                 >
                   <div
-                    class="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] text-[hsl(var(--miwarp-status-info))]"
+                    class="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] text-[hsl(var(--miwarp-text-secondary))]"
                   >
                     <svg
                       class="h-2.5 w-2.5 shrink-0 opacity-70"
@@ -376,7 +347,7 @@
                       <path d="M12 2a8 8 0 0 1 8 8c0 5-8 13-8 13S4 15 4 10a8 8 0 0 1 8-8z" />
                       <circle cx="12" cy="10" r="3" />
                     </svg>
-                    <span class="font-medium">{t("chat_thoughtProcess")}</span>
+                    <span class="font-medium thinking-shimmer">{t("chat_thoughtProcess")}</span>
                     <button
                       class="ml-auto opacity-50 hover:opacity-100 transition-opacity"
                       onclick={() => (thinkingCollapsed = true)}

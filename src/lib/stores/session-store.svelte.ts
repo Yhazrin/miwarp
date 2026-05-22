@@ -586,13 +586,34 @@ export class SessionStore {
   }
 
   get contextUtilization(): number {
-    // Total tokens sent to the model in the latest API call:
+    if (this.usage.contextWindowUsedPercentage != null) {
+      const pct = this.usage.contextWindowUsedPercentage;
+      const normalized = pct > 1 ? pct / 100 : pct;
+      if (Number.isFinite(normalized)) return Math.min(Math.max(normalized, 0), 1);
+    }
+
+    // Approximate tokens sent to the model in the latest API call:
     //   input_tokens (new non-cached) + cache_read (from cache) + cache_write (first-time cached)
-    // All three are part of the context window. Divide by contextWindow for fill %.
-    // These are per-turn values (usage_update replaces, not accumulates).
+    // Claude Code native usage_update events are session-cumulative, so raw cache_read can exceed
+    // the context window after a few turns. When that happens, derive latest-call usage from the
+    // delta between the last two snapshots; otherwise fall back to the raw value.
     const cw = this.contextWindow;
     if (cw <= 0) return 0;
-    const used = this.usage.inputTokens + this.usage.cacheReadTokens + this.usage.cacheWriteTokens;
+    const rawUsed =
+      this.usage.inputTokens + this.usage.cacheReadTokens + this.usage.cacheWriteTokens;
+    let used = rawUsed;
+
+    if (rawUsed > cw && this.turnUsages.length >= 2) {
+      const last = this.turnUsages[this.turnUsages.length - 1];
+      const prev = this.turnUsages[this.turnUsages.length - 2];
+      const lastUsed = last.inputTokens + last.cacheReadTokens + last.cacheWriteTokens;
+      const prevUsed = prev.inputTokens + prev.cacheReadTokens + prev.cacheWriteTokens;
+      const delta = lastUsed - prevUsed;
+      const looksCumulative =
+        lastUsed >= prevUsed && last.cost >= prev.cost && delta > 0 && delta <= cw * 1.25;
+      if (looksCumulative) used = delta;
+    }
+
     if (used <= 0) return 0;
     return Math.min(used / cw, 1);
   }
@@ -3227,6 +3248,8 @@ export class SessionStore {
           cacheWriteTokens: ev.cache_write_tokens ?? 0,
           cost: ev.total_cost_usd,
           modelUsage: ev.model_usage,
+          contextWindowUsedPercentage: ev.context_window_used_percentage,
+          contextWindowRemainingPercentage: ev.context_window_remaining_percentage,
           durationApiMs: ev.duration_api_ms,
         };
         // Don't let an all-zero-token usage (from error results) overwrite real data.
@@ -3241,11 +3264,26 @@ export class SessionStore {
         // Preserve modelUsage/durationApiMs even on zero-token update (error results may still have them)
         if (!hasTokens && u.modelUsage) merged.modelUsage = u.modelUsage;
         if (!hasTokens && u.durationApiMs) merged.durationApiMs = u.durationApiMs;
+        if (!hasTokens && u.contextWindowUsedPercentage != null) {
+          merged.contextWindowUsedPercentage = u.contextWindowUsedPercentage;
+        }
+        if (!hasTokens && u.contextWindowRemainingPercentage != null) {
+          merged.contextWindowRemainingPercentage = u.contextWindowRemainingPercentage;
+        }
         if (ctx) ctx.usage = merged;
         else this.usage = merged;
         // Store duration_ms and num_turns from result events
         if (ev.duration_ms != null) this.durationMs = ev.duration_ms;
         if (ev.num_turns != null) this.numTurns = ev.num_turns;
+
+        const shouldRecordTurnUsage =
+          hasTokens ||
+          u.cost > 0 ||
+          u.durationApiMs != null ||
+          ev.duration_ms != null ||
+          ev.num_turns != null ||
+          ev.model_usage != null;
+        if (!shouldRecordTurnUsage) break;
 
         // Append per-turn usage snapshot (raw event data, not merged)
         // Use backend-authoritative turn_index when available; fall back to counting
@@ -3440,7 +3478,14 @@ export class SessionStore {
           // usage so the progress bar does not flash 90%→0%→85%.
           dbg("store", "compact: reset context usage", { preTokens: ev.pre_tokens });
           const prev = ctx ? ctx.usage : this.usage;
-          const reset = { ...prev, inputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
+          const reset = {
+            ...prev,
+            inputTokens: 0,
+            cacheReadTokens: 0,
+            cacheWriteTokens: 0,
+            contextWindowUsedPercentage: undefined,
+            contextWindowRemainingPercentage: undefined,
+          };
           if (ctx) ctx.usage = reset;
           else this.usage = reset;
         }

@@ -10,11 +10,13 @@
     createPullRequest as apiCreatePr,
     getGitTimeline,
     listWorktrees,
+    sendSessionMessage,
   } from "$lib/api";
   import GitWorktreeTimeline from "$lib/components/git/GitWorktreeTimeline.svelte";
   import GitBranchPill from "$lib/components/git/GitBranchPill.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { showToast } from "$lib/stores/toast-store.svelte";
+  import { formatTokenCount } from "$lib/utils/format";
 
   interface Props {
     cwd?: string;
@@ -22,7 +24,16 @@
     parentCwd?: string | null;
     worktreeBranch?: string | null;
     creationMode?: "single" | "worktree" | string | null;
+    runId?: string;
     onViewChanges?: () => void;
+    sessionInfo?: {
+      model?: string;
+      agent?: string;
+      remoteHostName?: string | null;
+      inputTokens?: number;
+      outputTokens?: number;
+      contextUtilization?: number;
+    } | null;
   }
 
   let {
@@ -31,7 +42,9 @@
     parentCwd = null,
     worktreeBranch = null,
     creationMode = null,
+    runId = "",
     onViewChanges,
+    sessionInfo = null,
   }: Props = $props();
 
   interface PanelState {
@@ -64,14 +77,38 @@
   const displayedBranch = $derived(panelState.branch || worktreeBranch?.trim() || "");
   const isDetached = $derived(panelState.isDetached);
 
+  // Session context items derived from sessionInfo
+  const sessionContextItems = $derived.by(() => {
+    const items: Array<{ label: string; value: string }> = [];
+    if (sessionInfo?.model) items.push({ label: "model", value: sessionInfo.model });
+    if (sessionInfo?.agent) items.push({ label: "agent", value: sessionInfo.agent });
+    if (sessionInfo?.remoteHostName)
+      items.push({ label: "remote", value: sessionInfo.remoteHostName });
+    if (sessionInfo?.inputTokens || sessionInfo?.outputTokens) {
+      items.push({
+        label: "tokens",
+        value: `${formatTokenCount((sessionInfo?.inputTokens ?? 0) + (sessionInfo?.outputTokens ?? 0))}`,
+      });
+    }
+    if (sessionInfo?.contextUtilization != null) {
+      items.push({
+        label: "context",
+        value: `${Math.round(sessionInfo.contextUtilization * 100)}%`,
+      });
+    }
+    return items;
+  });
+
   let showWorktreeList = $state(false);
   let prBusy = $state(false);
   let commitBusy = $state(false);
+  let commitAndPushBusy = $state(false);
   let commitMessage = $state("");
   let showCommitInput = $state(false);
 
   let loadGen = 0;
   let _lastLoadKey = "";
+  let _refreshInterval: ReturnType<typeof setInterval> | null = null;
 
   async function loadPanel(path: string, listPath: string) {
     if (!path) return;
@@ -123,6 +160,17 @@
     void loadPanel(eff, listAnchor);
   });
 
+  // Periodic refresh every 30 seconds (not high-frequency, just keeping status updated)
+  $effect(() => {
+    if (!effectiveCwd) return;
+    _refreshInterval = setInterval(() => {
+      if (effectiveCwd) void loadPanel(effectiveCwd, listAnchor);
+    }, 30_000);
+    return () => {
+      if (_refreshInterval) clearInterval(_refreshInterval);
+    };
+  });
+
   async function handleAutoCommit() {
     if (!effectiveCwd || commitBusy) return;
     const msg =
@@ -142,6 +190,27 @@
       showToast(e instanceof Error ? e.message : String(e), "error");
     } finally {
       commitBusy = false;
+    }
+  }
+
+  async function handleCommitAndPush() {
+    if (!effectiveCwd || !runId || commitAndPushBusy) return;
+    commitAndPushBusy = true;
+    try {
+      // Ask Claude to commit and push the changes via session message
+      await sendSessionMessage(
+        runId,
+        `请对这个工作区的变更进行提交并推送。\n\n请执行以下步骤：\n1. 查看当前的变更状态（git status）\n2. 分析变更内容\n3. 根据变更内容撰写合适的提交信息（使用中文）\n4. 执行 git add、git commit（使用你撰写的提交信息）、git push\n\n如果没有任何变更需要提交，请直接说明。`,
+      );
+      showToast(t("gitWorktree_commit_push_started") || "提交并推送已启动", "success");
+      // Refresh after a short delay to show the new commit
+      setTimeout(() => {
+        if (effectiveCwd) void loadPanel(effectiveCwd, listAnchor);
+      }, 2000);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), "error");
+    } finally {
+      commitAndPushBusy = false;
     }
   }
 
@@ -261,6 +330,18 @@
           {statusText}
         </div>
       {/if}
+
+      <!-- Row 3: session context items (model, agent, tokens, context) -->
+      {#if sessionContextItems.length > 0}
+        <div class="flex items-center gap-2 px-1 py-0.5 flex-wrap">
+          {#each sessionContextItems as ctx (ctx.label)}
+            <div class="flex items-center gap-1 text-[10px]">
+              <span class="text-muted-foreground/40">{ctx.label}</span>
+              <span class="text-foreground/60">{ctx.value}</span>
+            </div>
+          {/each}
+        </div>
+      {/if}
     </div>
 
     <!-- Timeline section -->
@@ -306,7 +387,7 @@
           {/if}
 
           <!-- Action buttons row -->
-          <div class="flex items-center gap-1.5">
+          <div class="flex items-center justify-center gap-1.5 flex-wrap">
             <!-- View changes (only when dirty) -->
             {#if !panelState.isClean && onViewChanges}
               <button
@@ -330,11 +411,23 @@
               </button>
             {/if}
 
+            <!-- Commit and Push via Claude (only when dirty and has active session) -->
+            {#if !panelState.isClean && runId}
+              <button
+                type="button"
+                class="h-7 rounded-md bg-indigo-500/12 px-2.5 text-[10px] font-medium text-indigo-600 hover:bg-indigo-500/20 transition-colors disabled:opacity-40"
+                onclick={handleCommitAndPush}
+                disabled={commitAndPushBusy}
+              >
+                {commitAndPushBusy ? "…" : t("gitWorktree_commit_push")}
+              </button>
+            {/if}
+
             <!-- Create PR (always available when on a branch) -->
             {#if displayedBranch && !isDetached}
               <button
                 type="button"
-                class="h-7 rounded-md bg-blue-500/12 px-2.5 text-[10px] font-medium text-blue-600 hover:bg-blue-500/20 transition-colors disabled:opacity-40 ml-auto"
+                class="h-7 rounded-md bg-blue-500/12 px-2.5 text-[10px] font-medium text-blue-600 hover:bg-blue-500/20 transition-colors disabled:opacity-40"
                 onclick={handleCreatePr}
                 disabled={prBusy}
               >

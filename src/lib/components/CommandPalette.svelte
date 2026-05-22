@@ -35,7 +35,7 @@
     onSendPrompt?: (prompt: string) => void;
     onTogglePlanMode?: () => void;
     onOpenModelSelector?: () => void;
-    onFolderBrowser?: () => void;
+    onOpenFolderBrowser?: () => void;
   } = $props();
 
   let query = $state("");

@@ -49,9 +49,6 @@
     handlers,
     // Bindable state (not groupable into VMs)
     thinkingExpanded = $bindable(false),
-    // Team dispatch
-    teamDispatchPrompt = $bindable(""),
-    teamDispatchOpen = $bindable(false),
     // Refs
     xtermRef = $bindable<XTerminal | undefined>(),
     chatAreaRef = $bindable<HTMLDivElement | undefined>(),
@@ -71,8 +68,6 @@
     forkVm: ForkVm;
     handlers: StageHandlers;
     thinkingExpanded?: boolean;
-    teamDispatchPrompt?: string;
-    teamDispatchOpen?: boolean;
     xtermRef?: XTerminal;
     chatAreaRef?: HTMLDivElement;
     showChatScrollHint: boolean;
@@ -161,6 +156,56 @@
     setTopSentinel(el);
     return { destroy: () => setTopSentinel(null) };
   }
+
+  // ── Text selection toolbar ──
+  let selectionText = $state("");
+  let selectionX = $state(0);
+  let selectionY = $state(0);
+  let showSelectionToolbar = $state(false);
+
+  $effect(() => {
+    function handleSelectionChange() {
+      const sel = window.getSelection();
+      const text = sel?.toString().trim() ?? "";
+      if (!text || text.length < 2) {
+        showSelectionToolbar = false;
+        return;
+      }
+      const anchorNode = sel?.anchorNode;
+      if (!anchorNode) {
+        showSelectionToolbar = false;
+        return;
+      }
+      const container = document.querySelector("[data-conversation-root]");
+      if (!container?.contains(anchorNode)) {
+        showSelectionToolbar = false;
+        return;
+      }
+      const range = sel?.getRangeAt(0);
+      if (!range) return;
+      const rect = range.getBoundingClientRect();
+      selectionText = text;
+      selectionX = rect.left + rect.width / 2;
+      selectionY = rect.top + window.scrollY - 8;
+      showSelectionToolbar = true;
+    }
+
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => document.removeEventListener("selectionchange", handleSelectionChange);
+  });
+
+  function copySelection() {
+    navigator.clipboard.writeText(selectionText);
+    showSelectionToolbar = false;
+    window.getSelection()?.removeAllRanges();
+  }
+
+  function forwardSelection() {
+    navigator.clipboard.writeText(selectionText);
+    fillPrompt(selectionText);
+    showSelectionToolbar = false;
+    window.getSelection()?.removeAllRanges();
+  }
 </script>
 
 <div class="chat-conversation-stage relative flex flex-1 min-h-0 overflow-hidden">
@@ -246,13 +291,6 @@
                 status={latestNotification.status}
               />
             {/if}
-            {#if toolNamesInTimeline.length >= 2 && processVisibility !== "output"}
-              <ChatToolFilterBar
-                toolNames={toolNamesInTimeline}
-                activeFilter={toolFilter}
-                onFilterChange={(f) => setToolFilter(f)}
-              />
-            {/if}
             {#if filteredTimeline.length - renderLimit > 0}
               <div use:onTopSentinelMount aria-hidden="true" class="h-px w-full"></div>
             {/if}
@@ -281,10 +319,6 @@
               {getPlanContentForExitPlan}
               {openPreviewForPath}
               toggleBurst={burstCollapse.toggleBurst}
-              onDispatchToTeam={(content) => {
-                teamDispatchPrompt = content;
-                teamDispatchOpen = true;
-              }}
             />
 
             {#if processVisibility === "output" && store.isRunning && timelineHasHiddenRoutineWorkRunning(store.timeline)}
@@ -386,7 +420,54 @@
           </svg>
         </button>
       {/if}
-    {:else if store.run && store.run.status !== "pending"}
+    {/if}
+
+    {#if showSelectionToolbar}
+      <div
+        class="fixed z-50 flex items-center gap-1 rounded-lg border border-border bg-popover px-2 py-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-150"
+        style="left: {selectionX}px; top: {selectionY}px; transform: translate(-50%, -100%);"
+      >
+        <button
+          class="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+          onclick={copySelection}
+        >
+          <svg
+            class="h-3.5 w-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect width="14" height="14" x="8" y="8" rx="2" />
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+          </svg>
+          {t("common_copy")}
+        </button>
+        <div class="h-4 w-px bg-border"></div>
+        <button
+          class="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+          onclick={forwardSelection}
+        >
+          <svg
+            class="h-3.5 w-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M5 12h14" />
+            <path d="m12 5 7 7-7 7" />
+          </svg>
+          {t("common_forward")}
+        </button>
+      </div>
+    {/if}
+
+    {#if store.run && store.run.status !== "pending"}
       <XTerminalComponent
         bind:this={xtermRef}
         onResize={handleTermResize}

@@ -2873,6 +2873,105 @@ describe("SessionStore reducer", () => {
       expect(store.usage.modelUsage).toBeUndefined();
       expect(store.usage.durationApiMs).toBeUndefined();
     });
+
+    it("uses latest usage delta for cumulative context utilization", () => {
+      store.run = makeRun("run-1");
+      store.phase = "running";
+      const events: BusEvent[] = [
+        {
+          type: "usage_update",
+          run_id: "run-1",
+          input_tokens: 50_000,
+          output_tokens: 1_000,
+          cache_read_tokens: 100_000,
+          cache_write_tokens: 0,
+          total_cost_usd: 0.1,
+          model_usage: {
+            "claude-sonnet-4-5-20250929": {
+              input_tokens: 50_000,
+              output_tokens: 1_000,
+              cache_read_tokens: 100_000,
+              cache_write_tokens: 0,
+              web_search_requests: 0,
+              cost_usd: 0.1,
+              context_window: 200_000,
+            },
+          },
+        },
+        {
+          type: "usage_update",
+          run_id: "run-1",
+          input_tokens: 80_000,
+          output_tokens: 2_000,
+          cache_read_tokens: 170_000,
+          cache_write_tokens: 0,
+          total_cost_usd: 0.2,
+          model_usage: {
+            "claude-sonnet-4-5-20250929": {
+              input_tokens: 80_000,
+              output_tokens: 2_000,
+              cache_read_tokens: 170_000,
+              cache_write_tokens: 0,
+              web_search_requests: 0,
+              cost_usd: 0.2,
+              context_window: 200_000,
+            },
+          },
+        },
+      ];
+
+      store.applyEventBatch(events);
+
+      // Raw cumulative input would be (80k + 170k) / 200k = 125% -> clamped to 100%.
+      // The latest call delta is (250k - 150k) / 200k = 50%.
+      expect(store.contextUtilization).toBe(0.5);
+    });
+
+    it("prefers official context window percentage when provided", () => {
+      store.run = makeRun("run-1");
+      store.phase = "running";
+      store.applyEvent({
+        type: "usage_update",
+        run_id: "run-1",
+        input_tokens: 80_000,
+        output_tokens: 2_000,
+        cache_read_tokens: 170_000,
+        cache_write_tokens: 0,
+        total_cost_usd: 0.2,
+        context_window_used_percentage: 42,
+        model_usage: {
+          "claude-sonnet-4-5-20250929": {
+            input_tokens: 80_000,
+            output_tokens: 2_000,
+            cache_read_tokens: 170_000,
+            cache_write_tokens: 0,
+            web_search_requests: 0,
+            cost_usd: 0.2,
+            context_window: 200_000,
+          },
+        },
+      });
+
+      expect(store.contextUtilization).toBe(0.42);
+    });
+
+    it("accepts official context percentage without recording a token turn", () => {
+      store.run = makeRun("run-1");
+      store.phase = "running";
+      store.applyEvent({
+        type: "usage_update",
+        run_id: "run-1",
+        input_tokens: 0,
+        output_tokens: 0,
+        cache_read_tokens: 0,
+        cache_write_tokens: 0,
+        total_cost_usd: 0,
+        context_window_used_percentage: 42,
+      });
+
+      expect(store.contextUtilization).toBe(0.42);
+      expect(store.turnUsages).toHaveLength(0);
+    });
   });
 
   // ── applyHookUsage preserves new fields ──

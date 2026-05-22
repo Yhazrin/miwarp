@@ -48,7 +48,7 @@ pub fn list_project_commands(cwd: Option<String>) -> Result<Vec<CliCommand>, Str
 pub fn list_standalone_skills(cwd: Option<String>) -> Result<Vec<StandaloneSkill>, String> {
     let cwd = cwd.unwrap_or_default();
     log::debug!("[plugins] list_standalone_skills: cwd={}", cwd);
-    Ok(crate::storage::plugins::list_standalone_skills(&cwd))
+    crate::storage::plugins::list_standalone_skills(&cwd).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

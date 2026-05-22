@@ -4,11 +4,9 @@
   import { memoryStore } from "$lib/stores/memory-store.svelte";
   import { parseMemoryItems } from "$lib/utils/memory-items";
   import { sortByDisplayPriority } from "$lib/utils/memory-helpers";
-  import { formatTokenCount } from "$lib/utils/format";
   import * as api from "$lib/api";
   import GitWorktreePanel from "$lib/components/GitWorktreePanel.svelte";
   import type { ProcessVisibility } from "$lib/utils/process-visibility";
-  import { shouldShowContextDetails } from "$lib/utils/process-visibility";
 
   let {
     cwd = "",
@@ -158,35 +156,6 @@
       }
     }
     return summary;
-  });
-
-  // ── Derived: session context info ──
-  let sessionContextItems = $derived.by(() => {
-    const items: Array<{ label: string; value: string }> = [];
-    if (cwd) items.push({ label: "cwd", value: cwd });
-    if (runId) items.push({ label: "run", value: runId.slice(0, 8) });
-    if (sessionInfo?.model) items.push({ label: "model", value: sessionInfo.model });
-    if (sessionInfo?.agent) items.push({ label: "agent", value: sessionInfo.agent });
-    if (sessionInfo?.remoteHostName)
-      items.push({ label: "remote", value: sessionInfo.remoteHostName });
-    if (sessionInfo?.inputTokens || sessionInfo?.outputTokens) {
-      items.push({
-        label: "tokens",
-        value: `${formatTokenCount((sessionInfo?.inputTokens ?? 0) + (sessionInfo?.outputTokens ?? 0))}`,
-      });
-    }
-    if (sessionInfo?.contextUtilization != null) {
-      items.push({
-        label: "context",
-        value: `${Math.round(sessionInfo.contextUtilization * 100)}%`,
-      });
-    }
-    return items;
-  });
-
-  let sessionContextItemsVisible = $derived.by(() => {
-    if (shouldShowContextDetails(processVisibility)) return sessionContextItems;
-    return sessionContextItems.filter((x) => x.label === "cwd" || x.label === "run");
   });
 
   let minimalOutputWorkspace = $derived(processVisibility === "output");
@@ -401,39 +370,15 @@
         </div>
       {/if}
 
-      <GitWorktreePanel {cwd} {worktreePath} {parentCwd} {worktreeBranch} {creationMode} />
-
-      <!-- Session Context card -->
-      {#if sessionContextItemsVisible.length > 0}
-        <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
-          <div class="flex items-center gap-2 px-3 py-2">
-            <svg
-              class="h-3.5 w-3.5 text-muted-foreground shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="16" x2="12" y2="12" />
-              <line x1="12" y1="8" x2="12.01" y2="8" />
-            </svg>
-            <span class="text-[11px] font-semibold text-foreground">
-              {t("workspaceContext_sessionContext")}
-            </span>
-          </div>
-          <div class="px-3 pb-2 space-y-1">
-            {#each sessionContextItemsVisible as ctx (ctx.label)}
-              <div class="flex items-center gap-2 text-[11px]">
-                <span class="text-muted-foreground/50 shrink-0 w-12 text-right">{ctx.label}</span>
-                <span class="text-foreground/70 truncate">{ctx.value}</span>
-              </div>
-            {/each}
-          </div>
-        </div>
-      {/if}
+      <GitWorktreePanel
+        {cwd}
+        {worktreePath}
+        {parentCwd}
+        {worktreeBranch}
+        {creationMode}
+        {runId}
+        {sessionInfo}
+      />
 
       <!-- Recent Activity summary -->
       {#if !minimalOutputWorkspace}
