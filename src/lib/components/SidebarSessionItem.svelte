@@ -188,27 +188,9 @@
     : 'hover:bg-sidebar-accent/30 text-sidebar-foreground'} {isDragging ? 'opacity-40' : ''}"
   role="button"
   tabindex="0"
-  draggable={!!ondragstart}
   onclick={() => onclick?.()}
   onkeydown={handleKeydown}
   oncontextmenu={openContextMenu}
-  ondragstart={ondragstart
-    ? (e) => {
-        if (e.dataTransfer) {
-          e.dataTransfer.effectAllowed = "move";
-          e.dataTransfer.setData("application/x-miwarp-run", conversation.latestRun.id);
-          const ghost = document.createElement("div");
-          ghost.textContent = conversation.title;
-          ghost.style.cssText =
-            "position:fixed;top:-9999px;left:-9999px;padding:4px 8px;background:#3b82f6;color:white;font-size:12px;border-radius:4px;white-space:nowrap;pointer-events:none;font-family:system-ui,sans-serif;";
-          document.body.appendChild(ghost);
-          e.dataTransfer.setDragImage(ghost, 0, 0);
-          requestAnimationFrame(() => document.body.removeChild(ghost));
-        }
-        ondragstart!(e, conversation.latestRun.id);
-      }
-    : undefined}
-  {ondragend}
 >
   <div class="flex items-center justify-between gap-1.5">
     <div class="flex items-center gap-1.5 min-w-0">

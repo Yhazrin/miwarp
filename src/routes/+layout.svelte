@@ -34,6 +34,11 @@
   import Modal from "$lib/components/Modal.svelte";
   import CliSessionBrowser from "$lib/components/CliSessionBrowser.svelte";
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
+  import VersionMismatchBanner from "$lib/components/VersionMismatchBanner.svelte";
+  import {
+    initBackendCapabilities,
+    useIncrementalRunsSync,
+  } from "$lib/backend-capabilities.svelte";
   import { APP_LOGO_URL } from "$lib/utils/brand-assets";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
@@ -60,7 +65,9 @@
     type SessionFolderGroup,
     type EnrichedProjectFolder,
   } from "$lib/utils/sidebar-groups";
+  import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
   import { loadRemovedCwds } from "$lib/utils/removed-cwds";
+  import { findSessionFolderDropTarget, setSessionDragActive } from "$lib/utils/session-drag-state";
   import {
     getLastTarget,
     setLastTarget,
@@ -163,41 +170,41 @@
   let moveToFolderRunIds = $state<string[]>([]);
   let moveToFolderSelectedId = $state<string | null>(null);
 
-  // ── Drag-and-drop for sessions → folders ──
+  // ── Pointer drag for sessions → folders (avoids Tauri file-drop conflict) ──
   let dragRunId = $state<string | null>(null);
   let dragOverFolderId = $state<string | null>(null);
+  let sessionDragLabel = $state("");
+  let sessionDragX = $state(0);
+  let sessionDragY = $state(0);
 
-  function handleDragStartConversation(e: DragEvent, runId: string) {
+  function handleSessionDragStart(runId: string, label: string, e: PointerEvent) {
     dragRunId = runId;
-    if (e.dataTransfer) {
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", runId);
-    }
+    sessionDragLabel = label;
+    sessionDragX = e.clientX;
+    sessionDragY = e.clientY;
+    setSessionDragActive(true);
   }
 
-  function handleDragEndConversation() {
-    dragRunId = null;
-    dragOverFolderId = null;
+  function handleSessionDragMove(e: PointerEvent) {
+    sessionDragX = e.clientX;
+    sessionDragY = e.clientY;
+    const folderId = findSessionFolderDropTarget(e.clientX, e.clientY);
+    dragOverFolderId = folderId;
   }
 
-  function handleDragOverFolder(folderId: string) {
-    if (dragRunId) dragOverFolderId = folderId;
-  }
-
-  function handleDragLeaveFolder() {
-    dragOverFolderId = null;
-  }
-
-  async function handleDropOnFolder(folderId: string) {
+  async function handleSessionDragEnd(e: PointerEvent) {
     const runId = dragRunId;
+    const folderId = findSessionFolderDropTarget(e.clientX, e.clientY);
     dragRunId = null;
     dragOverFolderId = null;
-    if (!runId) return;
+    sessionDragLabel = "";
+    setSessionDragActive(false);
+    if (!runId || !folderId) return;
     try {
       await moveRunToFolder(runId, folderId);
       await loadSessionFolders();
-    } catch (e) {
-      dbgWarn("layout", "drag-drop moveRunToFolder failed", e);
+    } catch (err) {
+      dbgWarn("layout", "session pointer-drop moveRunToFolder failed", err);
     }
   }
 
@@ -692,7 +699,7 @@
   // Load initial data
   async function loadRuns() {
     try {
-      if (lastRunsSync && runsLoadSucceededOnce) {
+      if (lastRunsSync && runsLoadSucceededOnce && useIncrementalRunsSync()) {
         // Incremental: only fetch runs changed since last sync
         const changed = await listRunsSince(lastRunsSync);
         if (changed.length > 0) {
@@ -879,11 +886,16 @@
       setTimeout(() => splash.remove(), 300);
     }
 
-    loadRuns();
+    void (async () => {
+      await initBackendCapabilities();
+      loadRuns();
+    })();
     loadSettings();
     loadSidebarFavorites();
     loadSessionFolders();
     loadAgentSettingsCache();
+    void scheduledTasksStore.loadTasks();
+    void scheduledTasksStore.loadAllRuns();
     themeStore.init();
 
     // Fetch app version and check for updates
@@ -1204,6 +1216,17 @@
         pluginActiveSection = section;
       }
     }
+    // Expand workspace folder when opening a scheduled task hub
+    const hubMatch = to?.url.pathname.match(/^\/scheduled-tasks\/([^/]+)/);
+    if (hubMatch) {
+      const hubTaskId = hubMatch[1];
+      const hubFolder = enrichedProjectFolders.find((folder) =>
+        folder.scheduledTaskHubs.some((hub) => hub.taskId === hubTaskId),
+      );
+      if (hubFolder) {
+        expandedProjects = new Set([...expandedProjects, hubFolder.folderKey]);
+      }
+    }
   });
 
   // Catch unhandled errors that could break the router
@@ -1285,8 +1308,22 @@
   // ── Batch selection for conversations ──
   let selectedGroupKeys = $state(new Set<string>());
   let lastSelectedKey = $state("");
+  let batchModeActive = $derived(selectedGroupKeys.size > 0);
+
+  function enterBatchMode(groupKey: string) {
+    selectedGroupKeys = new Set([groupKey]);
+    lastSelectedKey = groupKey;
+  }
 
   function toggleSelectConversation(groupKey: string, e: MouseEvent) {
+    if (batchModeActive && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+      const newSet = new Set(selectedGroupKeys);
+      if (newSet.has(groupKey)) newSet.delete(groupKey);
+      else newSet.add(groupKey);
+      selectedGroupKeys = newSet;
+      lastSelectedKey = groupKey;
+      return;
+    }
     if (e.shiftKey && lastSelectedKey) {
       // Range select: find all conversations between lastSelected and current
       const allKeys: string[] = [];
@@ -1456,9 +1493,16 @@
 
   // Build enriched project folder tree (project paths with nested logical sub-folders)
   let enrichedProjectFolders = $derived.by(() =>
-    buildEnrichedProjectFolders(runs, sessionFolders, favoriteRunIds, pinnedCwds, removedCwds),
+    buildEnrichedProjectFolders(
+      runs,
+      sessionFolders,
+      favoriteRunIds,
+      pinnedCwds,
+      removedCwds,
+      scheduledTasksStore.tasks,
+      scheduledTasksStore.runs,
+    ),
   );
-
   // Keep sessionFolderGroups synced for compatibility (move-to-folder dialog etc.)
   $effect(() => {
     const result = buildSessionFolderGroups(runs, sessionFolders, favoriteRunIds);
@@ -1516,6 +1560,9 @@
 
   // Current page detection
   let currentPath = $derived($page.url.pathname);
+  let selectedScheduledTaskId = $derived(
+    currentPath.startsWith("/scheduled-tasks/") && $page.params.taskId ? $page.params.taskId : "",
+  );
   let isChatPage = $derived(currentPath === "/chat" || currentPath === "/");
   let isPluginsPage = $derived(currentPath.startsWith("/plugins"));
   let isExplorerPage = $derived(currentPath.startsWith("/explorer"));
@@ -2769,16 +2816,22 @@
                     onDelete={requestDeleteConversation}
                     onMoveToFolder={requestMoveToFolder}
                     {selectedGroupKeys}
+                    {batchModeActive}
                     onBatchClick={toggleSelectConversation}
+                    onLongPressSelect={enterBatchMode}
+                    onSessionDragStart={handleSessionDragStart}
+                    onSessionDragMove={handleSessionDragMove}
+                    onSessionDragEnd={handleSessionDragEnd}
                     onRemove={folder.isUncategorized
                       ? undefined
                       : () => requestRemoveProject(folder.cwd)}
                     onNewChat={folder.isUncategorized
                       ? undefined
                       : () => newChatInFolder(folder.cwd)}
-                    onDragStartConversation={handleDragStartConversation}
-                    onDragEndConversation={handleDragEndConversation}
                     subFolders={folder.subFolders ?? []}
+                    scheduledTaskHubs={folder.scheduledTaskHubs ?? []}
+                    {selectedScheduledTaskId}
+                    onSelectScheduledHub={(taskId) => goto(`/scheduled-tasks/${taskId}`)}
                     {expandedSubFolders}
                     onToggleSubFolder={toggleSubFolder}
                     onCreateSubFolder={folder.isUncategorized
@@ -2798,8 +2851,6 @@
                     }}
                     dragOverSubFolderKey={dragOverFolderId ? `sf:${dragOverFolderId}` : null}
                     {dragRunId}
-                    onDragOverSubFolder={(_key, folderId) => handleDragOverFolder(folderId)}
-                    onDropOnSubFolder={(folderId) => handleDropOnFolder(folderId)}
                     onOpenDirectory={folder.isUncategorized
                       ? undefined
                       : async () => {
@@ -2872,24 +2923,29 @@
                 {/if}
               </div>
               {#if selectedGroupKeys.size > 0}
-                <div class="flex items-center gap-1 border-t px-2 py-1.5 bg-sidebar-accent/30">
-                  <span class="text-[11px] text-muted-foreground px-1">
-                    {t("sidebar_batchSelected", { count: String(selectedGroupKeys.size) })}
-                  </span>
-                  <button
-                    class="ml-auto rounded px-1.5 py-0.5 text-[11px] text-destructive hover:bg-destructive/10 transition-colors"
-                    onclick={() => (batchDeleteConfirmOpen = true)}
-                    title={t("sidebar_batchDelete")}
-                  >
-                    {t("sidebar_batchDelete")}
-                  </button>
-                  <button
-                    class="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent transition-colors"
-                    onclick={clearBatchSelection}
-                    title={t("sidebar_batchClear")}
-                  >
-                    {t("sidebar_batchClear")}
-                  </button>
+                <div class="flex flex-col gap-0.5 border-t px-2 py-1.5 bg-sidebar-accent/30">
+                  <div class="flex items-center gap-1">
+                    <span class="text-[11px] text-muted-foreground px-1">
+                      {t("sidebar_batchSelected", { count: String(selectedGroupKeys.size) })}
+                    </span>
+                    <button
+                      class="ml-auto rounded px-1.5 py-0.5 text-[11px] text-destructive hover:bg-destructive/10 transition-colors"
+                      onclick={() => (batchDeleteConfirmOpen = true)}
+                      title={t("sidebar_batchDelete")}
+                    >
+                      {t("sidebar_batchDelete")}
+                    </button>
+                    <button
+                      class="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent transition-colors"
+                      onclick={clearBatchSelection}
+                      title={t("sidebar_batchClear")}
+                    >
+                      {t("sidebar_batchClear")}
+                    </button>
+                  </div>
+                  <p class="px-1 text-[10px] text-muted-foreground/60">
+                    {t("sidebar_batchModeHint")}
+                  </p>
                 </div>
               {/if}
             {/if}
@@ -2915,6 +2971,16 @@
     ></div>
   {/if}
 
+  <!-- Session pointer-drag ghost (not OS file drag — avoids Tauri drag-drop) -->
+  {#if dragRunId}
+    <div
+      class="fixed z-[9999] pointer-events-none max-w-[220px] truncate rounded-md bg-primary px-2.5 py-1.5 text-xs font-medium text-primary-foreground shadow-lg"
+      style="left: {sessionDragX + 12}px; top: {sessionDragY + 12}px;"
+    >
+      {sessionDragLabel}
+    </div>
+  {/if}
+
   <!-- Main content -->
   <div class="app-main-shell flex flex-col overflow-hidden relative">
     <!--
@@ -2933,6 +2999,7 @@
       aria-hidden="true"
       style="-webkit-app-region: drag; z-index: 0;"
     ></div>
+    <VersionMismatchBanner />
     <UpdateBanner />
     <!-- Page content: overflow-hidden so route pages own scrolling (chat keeps input in normal flow). -->
     <main class="flex-1 min-h-0 overflow-hidden flex flex-col">

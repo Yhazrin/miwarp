@@ -13,7 +13,12 @@
 import { readdirSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 
-const BASE = "src-tauri/target/universal-apple-darwin/release/bundle";
+const target =
+  process.env.TAURI_TARGET?.trim() ||
+  process.env.CARGO_BUILD_TARGET?.trim() ||
+  "aarch64-apple-darwin";
+
+const BASE = `src-tauri/target/${target}/release/bundle`;
 
 const cleanups = [
   { dir: join(BASE, "dmg"), pattern: /^MiWarp_.*\.dmg$/ },

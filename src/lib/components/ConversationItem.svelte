@@ -9,6 +9,9 @@
   import { hasAttention } from "$lib/stores/attention-store.svelte";
   import ContextMenu from "./ContextMenu.svelte";
 
+  const LONG_PRESS_MS = 480;
+  const DRAG_THRESHOLD_PX = 10;
+
   function platformLabel(id: string): string {
     return PLATFORM_PRESETS.find((p) => p.id === id)?.name ?? id;
   }
@@ -17,6 +20,7 @@
     conversation,
     selected = false,
     batchSelected = false,
+    batchModeActive = false,
     density = "default",
     isDragging = false,
     onclick,
@@ -24,12 +28,16 @@
     ondelete,
     onmovetofolder,
     onBatchClick,
-    ondragstart,
-    ondragend,
+    onLongPressSelect,
+    onSessionDragStart,
+    onSessionDragMove,
+    onSessionDragEnd,
   }: {
     conversation: ConversationGroup;
     selected?: boolean;
     batchSelected?: boolean;
+    /** When true, tap toggles batch selection instead of navigating. */
+    batchModeActive?: boolean;
     /** Compact typography for sidebar tree (level 3). */
     density?: "default" | "sidebar";
     /** True when this conversation is currently being dragged. */
@@ -39,8 +47,10 @@
     ondelete?: (conversation: ConversationGroup) => void;
     onmovetofolder?: (runIds: string[], folderId?: string | null) => void;
     onBatchClick?: (groupKey: string, e: MouseEvent) => void;
-    ondragstart?: (e: DragEvent, runId: string) => void;
-    ondragend?: () => void;
+    onLongPressSelect?: (groupKey: string) => void;
+    onSessionDragStart?: (runId: string, label: string, e: PointerEvent) => void;
+    onSessionDragMove?: (e: PointerEvent) => void;
+    onSessionDragEnd?: (e: PointerEvent) => void;
   } = $props();
 
   const isSidebar = $derived(density === "sidebar");
@@ -106,13 +116,98 @@
   }
 
   function handleClick(e: MouseEvent) {
-    if (editing) return;
+    if (editing || suppressNextClick) {
+      suppressNextClick = false;
+      return;
+    }
+    if (batchModeActive && onBatchClick) {
+      onBatchClick(conversation.groupKey, e);
+      return;
+    }
     if ((e.shiftKey || e.metaKey || e.ctrlKey) && onBatchClick) {
       onBatchClick(conversation.groupKey, e);
       return;
     }
     onclick?.();
   }
+
+  // ── Pointer gestures: long-press → batch select; drag → move to folder ──
+
+  let suppressNextClick = $state(false);
+  let pointerStartX = 0;
+  let pointerStartY = 0;
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  let longPressFired = false;
+  let pointerDragging = false;
+  let activePointerId: number | null = null;
+
+  function clearPointerGesture() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+    window.removeEventListener("pointermove", handlePointerMove);
+    window.removeEventListener("pointerup", handlePointerUp);
+    window.removeEventListener("pointercancel", handlePointerUp);
+    activePointerId = null;
+    longPressFired = false;
+    pointerDragging = false;
+  }
+
+  function handlePointerDown(e: PointerEvent) {
+    if (editing || e.button !== 0) return;
+    // Ignore if starting on interactive child (resume button, rename input)
+    const target = e.target as HTMLElement;
+    if (target.closest("button, input, textarea, a")) return;
+
+    pointerStartX = e.clientX;
+    pointerStartY = e.clientY;
+    longPressFired = false;
+    pointerDragging = false;
+    activePointerId = e.pointerId;
+
+    longPressTimer = setTimeout(() => {
+      longPressFired = true;
+      suppressNextClick = true;
+      onLongPressSelect?.(conversation.groupKey);
+    }, LONG_PRESS_MS);
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+  }
+
+  function handlePointerMove(e: PointerEvent) {
+    if (activePointerId !== e.pointerId || longPressFired) return;
+    const dx = e.clientX - pointerStartX;
+    const dy = e.clientY - pointerStartY;
+    if (Math.abs(dx) < DRAG_THRESHOLD_PX && Math.abs(dy) < DRAG_THRESHOLD_PX) return;
+
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+    if (!onSessionDragStart) return;
+
+    pointerDragging = true;
+    suppressNextClick = true;
+    onSessionDragStart(conversation.latestRun.id, conversation.title, e);
+    onSessionDragMove?.(e);
+  }
+
+  function handlePointerUp(e: PointerEvent) {
+    if (activePointerId !== e.pointerId) return;
+    if (pointerDragging) {
+      onSessionDragEnd?.(e);
+    } else if (longPressFired) {
+      suppressNextClick = true;
+    }
+    clearPointerGesture();
+  }
+
+  $effect(() => {
+    return () => clearPointerGesture();
+  });
 
   // ── Context menu ──────────────────────────────────────────────────────────
 
@@ -195,28 +290,12 @@
     : ''} {isDragging ? 'opacity-40' : ''}"
   role="button"
   tabindex="0"
-  draggable={!!ondragstart}
+  class:select-none={pointerDragging || isDragging}
+  style:touch-action="pan-y"
   onclick={handleClick}
   onkeydown={handleKeydown}
   oncontextmenu={openContextMenu}
-  ondragstart={ondragstart
-    ? (e) => {
-        if (e.dataTransfer) {
-          e.dataTransfer.effectAllowed = "move";
-          e.dataTransfer.setData("application/x-miwarp-run", conversation.latestRun.id);
-          // Set custom drag image to avoid browser file-drag preview
-          const ghost = document.createElement("div");
-          ghost.textContent = conversation.title;
-          ghost.style.cssText =
-            "position:fixed;top:-9999px;left:-9999px;padding:4px 8px;background:#3b82f6;color:white;font-size:12px;border-radius:4px;white-space:nowrap;pointer-events:none;font-family:system-ui,sans-serif;";
-          document.body.appendChild(ghost);
-          e.dataTransfer.setDragImage(ghost, 0, 0);
-          requestAnimationFrame(() => document.body.removeChild(ghost));
-        }
-        ondragstart!(e, conversation.latestRun.id);
-      }
-    : undefined}
-  {ondragend}
+  onpointerdown={handlePointerDown}
 >
   <div class="flex items-center justify-between gap-2">
     <div class="flex items-center gap-1.5 min-w-0">

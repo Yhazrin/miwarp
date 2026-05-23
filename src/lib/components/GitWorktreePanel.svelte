@@ -254,7 +254,7 @@
     <!-- Compact header with flexible layout -->
     <div class="px-3 py-2 border-b border-border/30">
       <!-- Row 1: icon + heading + branch + WT badge + refresh -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 h-[36px]">
         <!-- Git icon -->
         <svg
           class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
@@ -333,7 +333,7 @@
 
       <!-- Row 3: session context items (model, agent, tokens, context) -->
       {#if sessionContextItems.length > 0}
-        <div class="flex items-center gap-2 px-1 py-0.5 flex-wrap">
+        <div class="flex items-center gap-2 px-1 py-1 h-[28px] flex-wrap">
           {#each sessionContextItems as ctx (ctx.label)}
             <div class="flex items-center gap-1 text-[10px]">
               <span class="text-muted-foreground/40">{ctx.label}</span>

@@ -214,6 +214,12 @@ pub struct TaskRun {
     /// Original project cwd before worktree redirection (for sidebar grouping).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_cwd: Option<String>,
+    /// Scheduled task definition id when this run was created by the scheduler.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scheduled_task_id: Option<String>,
+    /// Scheduler execution record id (`scheduler/runs/<id>.json`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scheduled_task_run_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -671,6 +677,12 @@ pub struct RunMeta {
     /// Unified resume identity. None = not resumable. Written by runtime events (session_init / thread.started).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conversation_ref: Option<ConversationRef>,
+    /// Scheduled task definition id when this run was created by the scheduler.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scheduled_task_id: Option<String>,
+    /// Scheduler execution record id (`scheduler/runs/<id>.json`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scheduled_task_run_id: Option<String>,
 }
 
 impl RunMeta {
@@ -738,6 +750,8 @@ impl RunMeta {
             worktree_path: self.worktree_path.clone(),
             worktree_branch: self.worktree_branch.clone(),
             parent_cwd: self.parent_cwd.clone(),
+            scheduled_task_id: self.scheduled_task_id.clone(),
+            scheduled_task_run_id: self.scheduled_task_run_id.clone(),
         }
     }
 }

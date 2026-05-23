@@ -1,5 +1,11 @@
 import type { SkillRemoteRef } from "./types/skill";
 
+export interface BackendCapabilities {
+  appVersion: string;
+  schemaVersion: number;
+  supportedCommands: string[];
+}
+
 export interface MemoryFileCandidate {
   path: string;
   label: string;
@@ -86,6 +92,10 @@ export interface TaskRun {
   worktree_branch?: string;
   /** Original project cwd (for sidebar grouping of worktree sessions). */
   parent_cwd?: string;
+  /** Scheduled task definition id (runs hidden from flat session list). */
+  scheduled_task_id?: string;
+  /** Scheduler execution record id. */
+  scheduled_task_run_id?: string;
 }
 
 export interface ImportWatermark {

@@ -143,3 +143,29 @@ pub fn load_all_runs(limit: Option<u32>) -> Vec<ScheduledTaskRun> {
 
     runs
 }
+
+/// Backfill `RunMeta.scheduled_task_*` from scheduler execution records (historical migration).
+pub fn backfill_scheduled_run_metadata() -> u32 {
+    let mut updated = 0u32;
+    for task_run in load_all_runs(None) {
+        let Some(miwarp_run_id) = task_run.run_id.clone() else {
+            continue;
+        };
+        let result = crate::storage::runs::with_meta(&miwarp_run_id, |meta| {
+            if meta.scheduled_task_id.is_some() {
+                return Ok(());
+            }
+            meta.scheduled_task_id = Some(task_run.task_id.clone());
+            meta.scheduled_task_run_id = Some(task_run.id.clone());
+            updated += 1;
+            Ok(())
+        });
+        if result.is_err() {
+            continue;
+        }
+    }
+    if updated > 0 {
+        log::info!("[scheduler] backfilled scheduled_task tags on {updated} run(s)");
+    }
+    updated
+}

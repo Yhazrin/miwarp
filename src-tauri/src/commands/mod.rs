@@ -1,6 +1,7 @@
 pub mod agents;
 pub mod artifacts;
 pub mod background;
+pub mod capabilities;
 pub mod chat;
 pub mod claude_history_migration;
 pub mod cli_config;

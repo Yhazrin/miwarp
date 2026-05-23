@@ -1188,13 +1188,13 @@
             : 'hidden'}; pointer-events: {activeTab === 'tasks' ? 'auto' : 'none'};"
         >
           <!-- Background tasks panel -->
-          <div class="flex-1 overflow-y-auto scrollbar-hide">
+          <div class="flex-1 overflow-y-auto scrollbar-hide p-4">
             {#if backgroundTasks.size === 0}
               <div class="flex items-center justify-center h-32 text-xs text-muted-foreground/50">
                 {t("bgTask_empty")}
               </div>
             {:else}
-              <div class="py-1 space-y-0.5">
+              <div class="py-1 space-y-1">
                 {#each sortedBgTasks as item (item.task_id)}
                   {@const isDone = item.status === "completed"}
                   {@const isFailed = item.status === "failed" || item.status === "error"}

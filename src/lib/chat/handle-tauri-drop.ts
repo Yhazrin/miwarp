@@ -1,6 +1,7 @@
 import * as api from "$lib/api";
-import { dbg, dbgWarn } from "$lib/utils/debug";
+import { isSessionDragActive } from "$lib/utils/session-drag-state";
 import { mapSettled } from "$lib/utils/async-utils";
+import { dbg, dbgWarn } from "$lib/utils/debug";
 
 interface PathRef {
   path: string;
@@ -29,6 +30,7 @@ export async function handleTauriDrop(
   const { promptRef: input, t, onProcessingStart, onProcessingEnd, onDragEnd } = ctx;
 
   onDragEnd();
+  if (isSessionDragActive()) return;
   const paths = payload.paths;
   if (!paths?.length || !input) return;
 

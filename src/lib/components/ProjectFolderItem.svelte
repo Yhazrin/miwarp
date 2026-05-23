@@ -4,11 +4,14 @@
     ProjectFolder,
     ConversationGroup,
     SessionFolderGroup,
+    ScheduledTaskHubGroup,
   } from "$lib/utils/sidebar-groups";
   import ConversationItem from "./ConversationItem.svelte";
+  import SidebarScheduledTaskHubItem from "./SidebarScheduledTaskHubItem.svelte";
   import VirtualList from "./VirtualList.svelte";
   import ContextMenu, { type MenuItem } from "./ContextMenu.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import { SESSION_DROP_FOLDER_ATTR } from "$lib/utils/session-drag-state";
   import { dbgWarn } from "$lib/utils/debug";
   import { staticAsset } from "$lib/utils/brand-assets";
   import ClaudeCanvas from "./ClaudeCanvas.svelte";
@@ -30,6 +33,10 @@
     onDrop?: (e: DragEvent) => void;
     /** Nested logical sub-folders inside this project path. */
     subFolders?: SessionFolderGroup[];
+    /** Scheduled task hubs grouped under this workspace. */
+    scheduledTaskHubs?: ScheduledTaskHubGroup[];
+    selectedScheduledTaskId?: string;
+    onSelectScheduledHub?: (taskId: string) => void;
     expandedSubFolders?: Set<string>;
     onToggleSubFolder?: (folderKey: string) => void;
     onCreateSubFolder?: () => void;
@@ -65,8 +72,11 @@
     onNewChat?: () => void;
     selectedGroupKeys?: Set<string>;
     onBatchClick?: (groupKey: string, e: MouseEvent) => void;
-    onDragStartConversation?: (e: DragEvent, runId: string) => void;
-    onDragEndConversation?: () => void;
+    batchModeActive?: boolean;
+    onLongPressSelect?: (groupKey: string) => void;
+    onSessionDragStart?: (runId: string, label: string, e: PointerEvent) => void;
+    onSessionDragMove?: (e: PointerEvent) => void;
+    onSessionDragEnd?: (e: PointerEvent) => void;
   };
 
   type CustomProps = BaseProps & {
@@ -79,8 +89,11 @@
     onNewChat?: never;
     selectedGroupKeys?: never;
     onBatchClick?: never;
-    onDragStartConversation?: never;
-    onDragEndConversation?: never;
+    batchModeActive?: never;
+    onLongPressSelect?: never;
+    onSessionDragStart?: never;
+    onSessionDragMove?: never;
+    onSessionDragEnd?: never;
   };
 
   let {
@@ -99,13 +112,19 @@
     onNewChat,
     selectedGroupKeys,
     onBatchClick,
+    batchModeActive = false,
+    onLongPressSelect,
+    onSessionDragStart,
+    onSessionDragMove,
+    onSessionDragEnd,
     isDragOver = false,
     onDragOver,
     onDragLeave,
     onDrop,
-    onDragStartConversation,
-    onDragEndConversation,
     subFolders = [],
+    scheduledTaskHubs = [],
+    selectedScheduledTaskId = "",
+    onSelectScheduledHub,
     expandedSubFolders = new Set(),
     onToggleSubFolder,
     onCreateSubFolder,
@@ -563,6 +582,7 @@
                     {sfDragOver ? 'bg-primary/15 ring-1 ring-primary/40' : ''}"
                   role="button"
                   tabindex="0"
+                  {...{ [SESSION_DROP_FOLDER_ATTR]: sf.folderId }}
                   onclick={() => onToggleSubFolder?.(sf.folderKey)}
                   onkeydown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -570,24 +590,6 @@
                       onToggleSubFolder?.(sf.folderKey);
                     }
                   }}
-                  ondragenter={onDragOverSubFolder
-                    ? (e) => {
-                        e.preventDefault();
-                        onDragOverSubFolder!(sf.folderKey, sf.folderId!);
-                      }
-                    : undefined}
-                  ondragover={onDragOverSubFolder
-                    ? (e) => {
-                        e.preventDefault();
-                        onDragOverSubFolder!(sf.folderKey, sf.folderId!);
-                      }
-                    : undefined}
-                  ondrop={onDropOnSubFolder
-                    ? (e) => {
-                        e.preventDefault();
-                        onDropOnSubFolder!(sf.folderId!);
-                      }
-                    : undefined}
                   oncontextmenu={(e) => openSfContextMenu(e, sf)}
                 >
                   <svg
@@ -630,14 +632,17 @@
                         density="sidebar"
                         selected={conv.runs.some((r) => r.id === selectedRunId)}
                         batchSelected={selectedGroupKeys?.has(conv.groupKey) ?? false}
+                        {batchModeActive}
                         isDragging={dragRunId === conv.latestRun.id}
                         onclick={() => onSelectConversation?.(conv.latestRun.id)}
                         onresume={onResume}
                         ondelete={onDelete}
                         onmovetofolder={onMoveToFolder}
                         {onBatchClick}
-                        ondragstart={onDragStartConversation}
-                        ondragend={onDragEndConversation}
+                        {onLongPressSelect}
+                        {onSessionDragStart}
+                        {onSessionDragMove}
+                        {onSessionDragEnd}
                       />
                     {/each}
                     {#if sf.conversations.length === 0}
@@ -652,8 +657,25 @@
           </div>
         {/if}
 
+        {#if scheduledTaskHubs.length > 0}
+          <div class="mb-1">
+            <div class="flex items-center px-2 py-0.5 mb-0.5">
+              <span class="text-[10px] text-muted-foreground/50 uppercase tracking-wider">
+                {t("sidebar_scheduledTasks")}
+              </span>
+            </div>
+            {#each scheduledTaskHubs as hub (hub.hubKey)}
+              <SidebarScheduledTaskHubItem
+                {hub}
+                selected={selectedScheduledTaskId === hub.taskId}
+                onclick={() => onSelectScheduledHub?.(hub.taskId)}
+              />
+            {/each}
+          </div>
+        {/if}
+
         <!-- Empty state -->
-        {#if folder.conversations.length === 0 && subFolders.length === 0}
+        {#if folder.conversations.length === 0 && subFolders.length === 0 && scheduledTaskHubs.length === 0}
           <p class="px-3 py-2 text-[11px] text-muted-foreground/40 italic">
             {t("sidebar_noConversationsInFolder") || "暂无会话，点击 + 新建"}
           </p>
@@ -675,14 +697,17 @@
                 density="sidebar"
                 selected={isConvSelected(conv)}
                 batchSelected={selectedGroupKeys?.has(conv.groupKey) ?? false}
+                {batchModeActive}
                 isDragging={dragRunId === conv.latestRun.id}
                 onclick={() => onSelectConversation?.(conv.latestRun.id)}
                 onresume={onResume}
                 ondelete={onDelete}
                 onmovetofolder={onMoveToFolder}
                 {onBatchClick}
-                ondragstart={onDragStartConversation}
-                ondragend={onDragEndConversation}
+                {onLongPressSelect}
+                {onSessionDragStart}
+                {onSessionDragMove}
+                {onSessionDragEnd}
               />
             {/snippet}
           </VirtualList>
@@ -693,14 +718,17 @@
               density="sidebar"
               selected={isConvSelected(conv)}
               batchSelected={selectedGroupKeys?.has(conv.groupKey) ?? false}
+              {batchModeActive}
               isDragging={dragRunId === conv.latestRun.id}
               onclick={() => onSelectConversation?.(conv.latestRun.id)}
               onresume={onResume}
               ondelete={onDelete}
               onmovetofolder={onMoveToFolder}
               {onBatchClick}
-              ondragstart={onDragStartConversation}
-              ondragend={onDragEndConversation}
+              {onLongPressSelect}
+              {onSessionDragStart}
+              {onSessionDragMove}
+              {onSessionDragEnd}
             />
           {/each}
         {/if}

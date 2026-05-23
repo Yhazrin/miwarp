@@ -1300,6 +1300,8 @@ pub fn import_session(
         worktree_path: None,
         worktree_branch: None,
         parent_cwd: None,
+        scheduled_task_id: None,
+        scheduled_task_run_id: None,
     };
 
     let run_dir = super::run_dir(&run_id);

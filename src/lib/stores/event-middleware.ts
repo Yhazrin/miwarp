@@ -52,6 +52,8 @@ export class EventMiddleware {
 
   // Debounce guard for _full_reload
   private _reloadingRuns = new Set<string>();
+  private _recoveringRuns = new Map<string, number>();
+  private _RECOVER_DEBOUNCE_MS = 2000;
 
   // ── Lifecycle ──
 
@@ -246,6 +248,14 @@ export class EventMiddleware {
     }
     buf.push(ev);
 
+    dbg("middleware", "bus-event buffered", {
+      type: ev.type,
+      run_id: ev.run_id,
+      ...(ev.type === "message_delta" ? { textLen: ev.text.length } : {}),
+      ...(ev.type === "message_complete" ? { textLen: ev.text.length } : {}),
+      bufferSize: buf.length,
+    });
+
     // Overflow protection: flush synchronously if buffer grows too large
     if (buf.length >= this._MAX_BUFFER_SIZE) {
       dbgWarn(
@@ -357,6 +367,44 @@ export class EventMiddleware {
     }
   }
 
+  private async recoverRunFromDisk(runId: string, reason: string): Promise<void> {
+    const now = Date.now();
+    const last = this._recoveringRuns.get(runId) ?? 0;
+    if (now - last < this._RECOVER_DEBOUNCE_MS) return;
+    this._recoveringRuns.set(runId, now);
+    const store = this._subscriptions.get(runId);
+    if (!store) return;
+    dbgWarn("middleware", "recoverRunFromDisk", { runId, reason });
+    await store.recoverFromEventLog("Recovered from persisted event log");
+  }
+
+  private _applyBufferedEvents(runId: string, store: SessionStore, events: BusEvent[]): void {
+    if (events.length === 0) return;
+    if (events.length === 1) {
+      store.applyEvent(events[0]);
+      return;
+    }
+    try {
+      store.applyEventBatch(events);
+    } catch (batchErr) {
+      dbgWarn("middleware", "batch apply failed, falling back to per-event", { runId, batchErr });
+      for (let i = 0; i < events.length; i++) {
+        try {
+          store.applyEvent(events[i]);
+        } catch (evErr) {
+          dbgWarn("middleware", "poison event during flush", {
+            runId,
+            index: i,
+            type: events[i].type,
+            evErr,
+          });
+          void this.recoverRunFromDisk(runId, "poison event");
+          return;
+        }
+      }
+    }
+  }
+
   private _flush(): void {
     if (!this._flushScheduled) return; // dedup: RAF + setTimeout may both fire
     this._flushScheduled = false;
@@ -369,14 +417,12 @@ export class EventMiddleware {
     for (const [runId, events] of this._batchBuffer) {
       const store = this._subscriptions.get(runId);
       if (!store) continue;
+      const batch = [...events];
       try {
-        if (events.length === 1) {
-          store.applyEvent(events[0]);
-        } else if (events.length > 1) {
-          store.applyEventBatch(events);
-        }
+        this._applyBufferedEvents(runId, store, batch);
       } catch (e) {
         dbgWarn("middleware", `flush error for run ${runId}:`, e);
+        void this.recoverRunFromDisk(runId, "flush error");
       }
     }
     this._batchBuffer.clear();

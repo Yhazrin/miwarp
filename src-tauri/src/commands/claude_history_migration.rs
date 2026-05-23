@@ -766,6 +766,8 @@ fn run_import_pipeline(
         worktree_path: None,
         worktree_branch: None,
         parent_cwd: None,
+        scheduled_task_id: None,
+        scheduled_task_run_id: None,
     };
 
     let run_dir = run_dir(&run_id);

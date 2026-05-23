@@ -12,6 +12,10 @@ use tokio_util::sync::CancellationToken;
 /// Start the background scheduler loop.
 /// Runs every 30 seconds, checks for tasks that need to fire.
 pub fn start_scheduler_loop(app: AppHandle, cancel: CancellationToken) {
+    let backfilled = store::backfill_scheduled_run_metadata();
+    if backfilled > 0 {
+        log::info!("[scheduler] startup backfill complete: {backfilled} runs tagged");
+    }
     tauri::async_runtime::spawn(async move {
         log::info!("[scheduler] loop started");
         loop {

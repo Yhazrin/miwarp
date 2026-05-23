@@ -5095,4 +5095,87 @@ describe("SessionStore reducer", () => {
       expect(s.pendingToolPermissions[1].requestId).toBe("req-synth-2");
     });
   });
+
+  describe("empty message_complete recovery", () => {
+    beforeEach(() => {
+      store.run = makeRun("run-recover");
+      store.phase = "running";
+      warnSpy.mockClear();
+    });
+
+    it("uses streamingText when message_complete text is empty", () => {
+      store.applyEventBatch([
+        { type: "message_delta", run_id: "run-recover", text: "streamed answer" },
+        {
+          type: "message_complete",
+          run_id: "run-recover",
+          message_id: "m-empty",
+          text: "",
+        },
+      ] as BusEvent[]);
+      expect(store.streamingText).toBe("");
+      const assistant = store.timeline.find((e) => e.kind === "assistant");
+      expect(assistant && assistant.kind === "assistant" ? assistant.content : "").toBe(
+        "streamed answer",
+      );
+    });
+
+    it("materializes synthetic assistant on idle when message_complete never arrives", () => {
+      store.applyEventBatch([
+        { type: "message_delta", run_id: "run-recover", text: "orphan stream" },
+        { type: "run_state", run_id: "run-recover", state: "idle" },
+      ] as BusEvent[]);
+      expect(store.streamingText).toBe("");
+      const assistant = store.timeline.find((e) => e.kind === "assistant");
+      expect(assistant && assistant.kind === "assistant" ? assistant.content : "").toBe(
+        "orphan stream",
+      );
+    });
+
+    it("patches empty assistant when duplicate message_complete arrives with content", () => {
+      store.applyEvent({
+        type: "message_complete",
+        run_id: "run-recover",
+        message_id: "m-dup",
+        text: "",
+      });
+      expect((store.timeline[0] as { content: string }).content).toBe("");
+      store.applyEvent({
+        type: "message_complete",
+        run_id: "run-recover",
+        message_id: "m-dup",
+        text: "final text",
+      });
+      expect((store.timeline[0] as { content: string }).content).toBe("final text");
+    });
+
+    it("subagent message_complete with empty text uses synthetic stream content", () => {
+      store.applyEventBatch([
+        {
+          type: "tool_start",
+          run_id: "run-recover",
+          tool_use_id: "parent-1",
+          tool_name: "Task",
+          input: {},
+        },
+        {
+          type: "message_delta",
+          run_id: "run-recover",
+          text: "sub streamed",
+          parent_tool_use_id: "parent-1",
+        },
+        {
+          type: "message_complete",
+          run_id: "run-recover",
+          message_id: "sub-msg",
+          text: "",
+          parent_tool_use_id: "parent-1",
+        },
+      ] as BusEvent[]);
+      const parent = store.timeline.find(
+        (e) => e.kind === "tool" && e.id === "parent-1",
+      ) as Extract<TimelineEntry, { kind: "tool" }>;
+      expect((parent.subTimeline![0] as { content: string }).content).toBe("sub streamed");
+    });
+  });
 });

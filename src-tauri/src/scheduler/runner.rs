@@ -93,6 +93,9 @@ pub async fn execute_task(
             meta.execution_path = Some(execution_path);
             // Tag as scheduled task
             meta.source = Some(crate::models::RunSource::Native);
+            meta.scheduled_task_id = Some(task.id.clone());
+            meta.scheduled_task_run_id = Some(task_run.id.clone());
+            meta.name = Some(format!("⏱ {}", task.name));
             if let Err(e) = storage::runs::save_meta(&meta) {
                 log::error!("[scheduler] failed to save run meta: {e}");
             }

@@ -10,6 +10,7 @@ import {
 } from "$lib/utils/process-visibility";
 import { parseContextMarkdown } from "$lib/utils/context-parser";
 import { handleTauriDrop as execTauriDrop } from "$lib/chat/handle-tauri-drop";
+import { isSessionDragActive } from "$lib/utils/session-drag-state";
 import type { ForkOverlayState } from "$lib/chat/use-fork-lifecycle";
 import { getLastTarget } from "$lib/utils/remote-cwd";
 import type { SessionStore } from "$lib/stores/session-store.svelte";
@@ -594,6 +595,7 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
     const dragEnterUnlisten = chatTransport.listen<{ paths: string[] }>(
       "tauri://drag-enter",
       () => {
+        if (isSessionDragActive()) return;
         setPageDragActive(true);
       },
     );

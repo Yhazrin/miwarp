@@ -8,7 +8,9 @@ import {
   normalizeCwd,
   normalizeSessionFolderList,
   resolveSessionFolderWorkspaceId,
+  isScheduledTaskRun,
 } from "./sidebar-groups";
+import type { ScheduledTask } from "$lib/types/scheduled-task";
 
 // ── Test helpers ──
 
@@ -423,5 +425,89 @@ describe("buildEnrichedProjectFolders", () => {
     const miwarp = enriched.find((f) => f.cwd === "/project/miwarp");
     expect(miwarp?.conversationCount).toBeGreaterThan(0);
     expect(miwarp?.subFolders.length).toBe(1);
+  });
+
+  it("scheduled_runs_grouped_into_hub_not_flat_conversations", () => {
+    const cwd = "/project/miwarp";
+    const taskId = "task-daily";
+    const runs: TaskRun[] = [
+      makeRun({
+        id: "r-sched-1",
+        cwd,
+        scheduled_task_id: taskId,
+        started_at: "2024-01-02T00:00:00Z",
+        name: "⏱ Daily check",
+      }),
+      makeRun({
+        id: "r-sched-2",
+        cwd,
+        scheduled_task_id: taskId,
+        started_at: "2024-01-03T00:00:00Z",
+      }),
+      makeRun({ id: "r-manual", cwd, started_at: "2024-01-04T00:00:00Z" }),
+    ];
+    const scheduledTasks: ScheduledTask[] = [
+      {
+        id: taskId,
+        name: "Daily check",
+        prompt: "Check logs",
+        workspace: { cwd },
+        agent: "claude",
+        schedule: { type: "cron", cronExpression: "0 9 * * *" },
+        enabled: true,
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+    const enriched = buildEnrichedProjectFolders(
+      runs,
+      [],
+      NO_FAVS,
+      NO_PINS,
+      [],
+      scheduledTasks,
+      [],
+    );
+    const folder = enriched.find((f) => f.cwd === cwd);
+    expect(folder).toBeDefined();
+    expect(folder!.conversations).toHaveLength(1);
+    expect(folder!.conversations[0].latestRun.id).toBe("r-manual");
+    expect(folder!.scheduledTaskHubs).toHaveLength(1);
+    expect(folder!.scheduledTaskHubs[0].taskId).toBe(taskId);
+    expect(folder!.scheduledTaskHubs[0].executionCount).toBe(2);
+    expect(isScheduledTaskRun(runs[0])).toBe(true);
+  });
+
+  it("scheduled_only_workspace_still_appears_with_hub", () => {
+    const cwd = "/project/scheduled-only";
+    const taskId = "task-only";
+    const runs = [
+      makeRun({
+        id: "r1",
+        cwd,
+        scheduled_task_id: taskId,
+        started_at: "2024-01-02T00:00:00Z",
+      }),
+    ];
+    const scheduledTasks: ScheduledTask[] = [
+      {
+        id: taskId,
+        name: "Nightly",
+        prompt: "run tests",
+        workspace: { cwd },
+        agent: "claude",
+        schedule: { type: "interval", intervalMinutes: 60 },
+        enabled: false,
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+    const enriched = buildEnrichedProjectFolders(runs, [], NO_FAVS, [cwd], [], scheduledTasks, []);
+    const folder = enriched.find((f) => f.cwd === cwd);
+    expect(folder).toBeDefined();
+    expect(folder!.conversations).toHaveLength(0);
+    expect(folder!.scheduledTaskHubs).toHaveLength(1);
+    expect(folder!.scheduledTaskHubs[0].enabled).toBe(false);
+    expect(folder!.conversationCount).toBe(1);
   });
 });

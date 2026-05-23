@@ -92,12 +92,43 @@ impl BroadcastEmitter {
         let ts = crate::models::now_iso();
         match self.writer.write_bus_event_with_ts(run_id, event, &ts) {
             Ok(seq) => {
-                log::trace!(
-                    "[emitter] persist_and_emit: run_id={}, seq={}, type={:?}",
-                    run_id,
-                    seq,
-                    event_type_name(event)
-                );
+                match event {
+                    BusEvent::MessageDelta { text, .. } => {
+                        log::debug!(
+                            "[emitter] persist_and_emit: run_id={}, seq={}, type=message_delta, text.len={}",
+                            run_id,
+                            seq,
+                            text.len()
+                        );
+                    }
+                    BusEvent::MessageComplete {
+                        message_id, text, ..
+                    } => {
+                        log::debug!(
+                            "[emitter] persist_and_emit: run_id={}, seq={}, type=message_complete, message_id={}, text.len={}",
+                            run_id,
+                            seq,
+                            message_id,
+                            text.len()
+                        );
+                    }
+                    BusEvent::RunState { state, .. } => {
+                        log::debug!(
+                            "[emitter] persist_and_emit: run_id={}, seq={}, type=run_state, state={}",
+                            run_id,
+                            seq,
+                            state
+                        );
+                    }
+                    other => {
+                        log::debug!(
+                            "[emitter] persist_and_emit: run_id={}, seq={}, type={:?}",
+                            run_id,
+                            seq,
+                            event_type_name(other)
+                        );
+                    }
+                }
                 let _ = self.app.emit("bus-event", event);
                 let payload = match serde_json::to_value(event) {
                     Ok(v) => v,

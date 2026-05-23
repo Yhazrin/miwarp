@@ -15,6 +15,7 @@
   import CostSummaryView from "$lib/components/CostSummaryView.svelte";
   import ReleaseNotesCard from "$lib/components/ReleaseNotesCard.svelte";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
+  import ChatRenderBoundary from "$lib/components/chat/ChatRenderBoundary.svelte";
   import { ansiToHtml, hasAnsiCodes } from "$lib/utils/ansi";
   import {
     isTimelineSeparatorContent,
@@ -85,6 +86,10 @@
   } = $props();
 
   const t = tFn;
+
+  function reloadFromEventLog() {
+    return store.recoverFromEventLog();
+  }
 </script>
 
 {#each visibleTimeline as entry, i (entry.id)}
@@ -128,40 +133,54 @@
         {/if}
       {/if}
       {#if entry.kind === "user"}
-        <ChatMessage
-          message={{
-            id: entry.id,
-            role: "user",
-            content: entry.content,
-            timestamp: entry.ts,
-          }}
-          attachments={entry.attachments}
-          onRewind={entry.cliUuid && store.sessionAlive && !store.isRunning
-            ? () =>
-                handleRewindToMessage({
-                  cliUuid: entry.cliUuid!,
-                  content: entry.content,
-                  ts: entry.ts,
-                })
-            : undefined}
-        />
+        <ChatRenderBoundary
+          runId={store.run?.id ?? null}
+          entryId={entry.id}
+          componentName="ChatMessage"
+          onReload={reloadFromEventLog}
+        >
+          <ChatMessage
+            message={{
+              id: entry.id,
+              role: "user",
+              content: entry.content,
+              timestamp: entry.ts,
+            }}
+            attachments={entry.attachments}
+            onRewind={entry.cliUuid && store.sessionAlive && !store.isRunning
+              ? () =>
+                  handleRewindToMessage({
+                    cliUuid: entry.cliUuid!,
+                    content: entry.content,
+                    ts: entry.ts,
+                  })
+              : undefined}
+          />
+        </ChatRenderBoundary>
       {:else if entry.kind === "assistant"}
-        <ChatMessage
-          message={{
-            id: entry.id,
-            role: "assistant",
-            content: entry.content,
-            timestamp: entry.ts,
-          }}
-          thinkingText={entry.thinkingText}
-          agent={store.agent}
-          platformId={store.platformId ?? undefined}
-          model={store.run?.model ?? store.model}
-          animated={i === lastAssistantIdx && store.isRunning}
-          {processVisibility}
-          debugRunId={store.run?.id}
-          debugSessionId={store.run?.session_id ?? undefined}
-        />
+        <ChatRenderBoundary
+          runId={store.run?.id ?? null}
+          entryId={entry.id}
+          componentName="ChatMessage"
+          onReload={reloadFromEventLog}
+        >
+          <ChatMessage
+            message={{
+              id: entry.id,
+              role: "assistant",
+              content: entry.content,
+              timestamp: entry.ts,
+            }}
+            thinkingText={entry.thinkingText}
+            agent={store.agent}
+            platformId={store.platformId ?? undefined}
+            model={store.run?.model ?? store.model}
+            animated={i === lastAssistantIdx && store.isRunning}
+            {processVisibility}
+            debugRunId={store.run?.id}
+            debugSessionId={store.run?.session_id ?? undefined}
+          />
+        </ChatRenderBoundary>
       {:else if entry.kind === "tool"}
         {#if claudeTurnStarts.has(i)}
           <div class="pt-3"></div>
@@ -248,7 +267,14 @@
                       entry.content,
                     )}</pre>
                 {:else}
-                  <MarkdownContent text={entry.content} />
+                  <ChatRenderBoundary
+                    runId={store.run?.id ?? null}
+                    entryId={entry.id}
+                    componentName="MarkdownContent"
+                    onReload={reloadFromEventLog}
+                  >
+                    <MarkdownContent text={entry.content} />
+                  </ChatRenderBoundary>
                 {/if}
               </div>
             </div>

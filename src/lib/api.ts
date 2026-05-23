@@ -47,7 +47,13 @@ import type {
   ExportReport,
   ImportReport,
   CliSessionInfo,
+  BackendCapabilities,
 } from "./types";
+
+// Backend capabilities (version / IPC probe)
+export async function getBackendCapabilities(): Promise<BackendCapabilities> {
+  return invoke<BackendCapabilities>("get_backend_capabilities");
+}
 
 // Runs
 export async function listRuns(): Promise<TaskRun[]> {
@@ -63,13 +69,24 @@ export async function listRuns(): Promise<TaskRun[]> {
 }
 
 export async function listRunsSince(since: string): Promise<TaskRun[]> {
+  const { supportsCommand, warnListRunsSinceUnsupportedOnce } =
+    await import("$lib/backend-capabilities.svelte");
+  if (!supportsCommand("list_runs_since")) {
+    return listRuns();
+  }
+
   dbg("api", "listRunsSince", since);
   try {
     const runs = await invoke<TaskRun[]>("list_runs_since", { since });
     dbg("api", "listRunsSince →", runs.length);
     return runs;
   } catch (e) {
-    dbgWarn("api", "listRunsSince error, falling back to full list", e);
+    const msg = String(e);
+    if (msg.includes("unknown method")) {
+      warnListRunsSinceUnsupportedOnce();
+    } else {
+      dbgWarn("api", "listRunsSince failed, falling back to full list", e);
+    }
     return listRuns();
   }
 }

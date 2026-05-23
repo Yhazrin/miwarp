@@ -37,6 +37,8 @@
     "verify": "npm run lint && npm run format:check && npm run check && npm run i18n:check && npm run test && npm run build && npm run rust:check",
     "release": "node scripts/release.mjs",
     "prebuild:dmg": "node scripts/clean-dmg.mjs",
+    "build:dmg": "TAURI_TARGET=aarch64-apple-darwin npm run prebuild:dmg && npm run tauri build -- --target aarch64-apple-darwin",
+    "build:dmg:universal": "TAURI_TARGET=universal-apple-darwin npm run prebuild:dmg && npm run tauri build -- --target universal-apple-darwin",
     "prepare": "git config core.hooksPath .githooks"
   },
   "devDependencies": {

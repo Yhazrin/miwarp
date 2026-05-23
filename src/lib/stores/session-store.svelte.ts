@@ -201,6 +201,8 @@ export class SessionStore {
   });
   model: string = $state("");
   error: string = $state("");
+  /** Shown briefly after live recovery from persisted events.jsonl. */
+  recoveryNotice: string | null = $state(null);
   agent: string = $state("claude");
   authMode: string = $state("cli");
 
@@ -315,6 +317,11 @@ export class SessionStore {
 
   /** Highest _seq processed — used for WS checkpoint on reconnect/subscribe */
   private _lastProcessedSeq = 0;
+  /** Last bus event type applied by _reduce (for render error diagnostics). */
+  private _lastReduceEventType = "";
+  private _needsIdleHealthCheck = false;
+  private _lastRecoverAt = 0;
+  private static _RECOVER_DEBOUNCE_MS = 2000;
 
   // ── Reducer tool indexes (runtime-only, not serialized) ──
   /** tool_use_id → timeline[] index for tool entries (first-match, reducer fast-path). */
@@ -981,6 +988,131 @@ export class SessionStore {
     }
   }
 
+  /** Extract streamed assistant content from a parent tool's synthetic subTimeline entry. */
+  private _extractSubTimelineStreamingContent(
+    parentToolUseId: string,
+    ctx: ReduceCtx | null,
+  ): string {
+    const tl = ctx ? ctx.tl : this.timeline;
+    const pIdx = this._findParentToolIdx(ctx, parentToolUseId);
+    if (pIdx < 0) return "";
+    const parent = tl[pIdx] as Extract<TimelineEntry, { kind: "tool" }>;
+    const sub = parent.subTimeline ?? [];
+    const syntheticId = `__sub_stream_${parentToolUseId}`;
+    const entry = sub.find((e) => e.kind === "assistant" && e.id === syntheticId);
+    if (!entry || entry.kind !== "assistant") return "";
+    return entry.content;
+  }
+
+  private _patchAssistantContentIfEmpty(
+    ctx: ReduceCtx | null,
+    messageId: string,
+    content: string,
+  ): boolean {
+    if (!content.trim()) return false;
+    const tl = ctx ? ctx.tl : this.timeline;
+    const idx = tl.findIndex((e) => e.kind === "assistant" && e.id === messageId);
+    if (idx < 0) return false;
+    const old = tl[idx] as Extract<TimelineEntry, { kind: "assistant" }>;
+    if (old.content.trim()) return false;
+    const updated: TimelineEntry = { ...old, content };
+    if (ctx) ctx.tl[idx] = updated;
+    else {
+      const u = [...this.timeline];
+      u[idx] = updated;
+      this.timeline = u;
+    }
+    dbgWarn("store", "patched empty assistant entry", {
+      messageId,
+      contentLen: content.length,
+    });
+    return true;
+  }
+
+  private _materializeOrphanStreamingOnIdle(
+    ctx: ReduceCtx | null,
+    ev: Extract<BusEvent, { type: "run_state" }>,
+    replayOnly: boolean,
+    getTl: () => TimelineEntry[],
+  ): void {
+    if (replayOnly) return;
+    const streamText = ctx ? ctx.streamText : this.streamingText;
+    if (!streamText.trim()) return;
+    const id = `synthetic_assistant_${ev.run_id}_${this._lastProcessedSeq}`;
+    if (getTl().some((e) => e.kind === "assistant" && e.id === id)) {
+      if (ctx) ctx.streamText = "";
+      else this.streamingText = "";
+      return;
+    }
+    dbgWarn("store", "orphan streamingText materialized on idle", {
+      runId: ev.run_id,
+      len: streamText.length,
+      lastProcessedSeq: this._lastProcessedSeq,
+    });
+    const entry: TimelineEntry = {
+      kind: "assistant",
+      id,
+      anchorId: id,
+      content: streamText,
+      ts: eventTs(ev),
+    };
+    this._pushTimeline(ctx, entry);
+    if (ctx) ctx.streamText = "";
+    else this.streamingText = "";
+  }
+
+  private _runIdleHealthCheckIfNeeded(): void {
+    if (!this._needsIdleHealthCheck || !this.run) return;
+    this._needsIdleHealthCheck = false;
+
+    const lastAssistant = [...this.timeline]
+      .reverse()
+      .find((e): e is Extract<TimelineEntry, { kind: "assistant" }> => e.kind === "assistant");
+    if (lastAssistant && !lastAssistant.content.trim() && this.usage.outputTokens > 0) {
+      dbgWarn("store", "idle health: empty assistant with output tokens", {
+        runId: this.run.id,
+        messageId: lastAssistant.id,
+        outputTokens: this.usage.outputTokens,
+      });
+      void this.recoverFromEventLog("Recovered from persisted event log");
+      return;
+    }
+
+    if (this.streamingText.trim()) {
+      dbgWarn("store", "idle health: orphan streamingText remains", {
+        runId: this.run.id,
+        len: this.streamingText.length,
+      });
+      this._materializeOrphanStreamingOnIdle(
+        null,
+        { type: "run_state", run_id: this.run.id, state: "idle" },
+        false,
+        () => this.timeline,
+      );
+    }
+  }
+
+  /** Reload timeline from persisted events.jsonl (debounced live recovery). */
+  async recoverFromEventLog(notice?: string): Promise<void> {
+    const runId = this.run?.id;
+    if (!runId) return;
+    const now = Date.now();
+    if (now - this._lastRecoverAt < SessionStore._RECOVER_DEBOUNCE_MS) return;
+    this._lastRecoverAt = now;
+    dbgWarn("store", "recoverFromEventLog", { runId, notice });
+    this.recoveryNotice = notice ?? "Recovered from persisted event log";
+    try {
+      const { deleteSnapshot } = await import("$lib/utils/snapshot-cache");
+      await deleteSnapshot(runId);
+    } catch (e) {
+      dbgWarn("snapshot", "delete failed before recover", e);
+    }
+    await this.loadRun(runId);
+    setTimeout(() => {
+      if (this.recoveryNotice) this.recoveryNotice = null;
+    }, 5000);
+  }
+
   /** Accumulate partial JSON and try to parse. Returns merged tool fields. */
   private static _accumulateJsonInput(
     tool: Record<string, unknown>,
@@ -1042,6 +1174,7 @@ export class SessionStore {
       this._lastProcessedSeq = evSeq;
     }
     this._reduce(ev, null);
+    this._runIdleHealthCheckIfNeeded();
   }
 
   /** Build a reducer context snapshotted from current store state. Caller drives the
@@ -1161,6 +1294,7 @@ export class SessionStore {
       `applyEventBatch:sync: ${events.length} events in ${cpuMs.toFixed(1)}ms cpu, timeline=${ctx.tl.length}`,
     );
     this._commitReduceCtx(ctx, replayOnly);
+    this._runIdleHealthCheckIfNeeded();
     return cpuMs;
   }
 
@@ -2617,6 +2751,7 @@ export class SessionStore {
     const getHe = () => (ctx ? ctx.he : this.tools);
     const getSeenMsg = () => (ctx ? ctx.seenMessageIds : this._seenMessageIds);
     const getSeenTool = () => (ctx ? ctx.seenToolIds : this._seenToolIds);
+    this._lastReduceEventType = ev.type;
 
     switch (ev.type) {
       case "session_init":
@@ -2728,14 +2863,29 @@ export class SessionStore {
         this._clearTimeoutError();
         if (ev.parent_tool_use_id) {
           this._appendSubTimelineStreamingDelta(ev.parent_tool_use_id, "content", ev.text, ctx);
+          dbg("store", "message_delta subagent", {
+            parent: ev.parent_tool_use_id,
+            textLen: ev.text.length,
+            timelineLen: getTl().length,
+          });
           break;
         }
         // Mark thinking end: first text delta after thinking started
         if (this.thinkingStartMs && !this.thinkingEndMs) {
           this.thinkingEndMs = eventTsMs(ev);
         }
-        if (ctx) ctx.streamText += ev.text;
-        else this.streamingText += ev.text;
+        {
+          const beforeLen = ctx ? ctx.streamText.length : this.streamingText.length;
+          if (ctx) ctx.streamText += ev.text;
+          else this.streamingText += ev.text;
+          const afterLen = ctx ? ctx.streamText.length : this.streamingText.length;
+          dbg("store", "message_delta", {
+            textLen: ev.text.length,
+            beforeStreamingLen: beforeLen,
+            afterStreamingLen: afterLen,
+            timelineLen: getTl().length,
+          });
+        }
         break;
 
       case "thinking_delta":
@@ -2789,36 +2939,67 @@ export class SessionStore {
       }
 
       case "message_complete": {
-        // Dedup guard — but always clean up synthetic entry first to prevent leaks
+        const savedStreaming = ctx ? ctx.streamText : this.streamingText;
+        const finalText = ev.text && ev.text.length > 0 ? ev.text : savedStreaming;
+        if (!ev.text.trim() && savedStreaming.trim()) {
+          dbgWarn("store", "message_complete empty text recovered from streamingText", {
+            runId: ev.run_id,
+            messageId: ev.message_id,
+            streamingTextLen: savedStreaming.length,
+            thinkingTextLen: ctx ? ctx.thinkingText.length : this.thinkingText.length,
+            parentToolUseId: ev.parent_tool_use_id,
+            lastProcessedSeq: this._lastProcessedSeq,
+          });
+        } else if (!ev.text.trim()) {
+          dbgWarn("store", "message_complete with empty text", {
+            runId: ev.run_id,
+            messageId: ev.message_id,
+            streamingTextLen: savedStreaming.length,
+            thinkingTextLen: ctx ? ctx.thinkingText.length : this.thinkingText.length,
+            parentToolUseId: ev.parent_tool_use_id,
+            lastProcessedSeq: this._lastProcessedSeq,
+          });
+        }
+
+        // Dedup guard — patch empty entries; always clean up synthetic entry first
         if (getSeenMsg().has(ev.message_id)) {
+          this._patchAssistantContentIfEmpty(ctx, ev.message_id, finalText);
           if (ev.parent_tool_use_id)
             this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
+          break;
+        }
+        const existingAssistant = getTl().find(
+          (e) => e.kind === "assistant" && e.id === ev.message_id,
+        );
+        if (existingAssistant) {
+          this._patchAssistantContentIfEmpty(ctx, ev.message_id, finalText);
+          if (ev.parent_tool_use_id)
+            this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
+          getSeenMsg().add(ev.message_id);
           break;
         }
         getSeenMsg().add(ev.message_id);
-        if (getTl().some((e) => e.kind === "assistant" && e.id === ev.message_id)) {
-          if (ev.parent_tool_use_id)
-            this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
-          break;
-        }
 
-        // Subagent path: extract thinking → remove synthetic → create entry → append
+        // Subagent path: extract thinking + streaming content → remove synthetic → create entry
         if (ev.parent_tool_use_id) {
           const subThinking = this._extractSubTimelineThinking(ev.parent_tool_use_id, ctx);
+          const subStreaming = this._extractSubTimelineStreamingContent(ev.parent_tool_use_id, ctx);
+          const subFinalText = finalText.trim() ? finalText : subStreaming;
           this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
 
           const entry: TimelineEntry = {
             kind: "assistant",
             id: ev.message_id,
             anchorId: ev.message_id,
-            content: ev.text,
+            content: subFinalText,
             ts: eventTs(ev),
             ...(ev.model ? { model: ev.model } : {}),
             ...(subThinking ? { thinkingText: subThinking } : {}),
           };
-          dbg("store", "subagent thinking persisted", {
+          dbg("store", "message_complete subagent", {
             parent: ev.parent_tool_use_id,
-            len: subThinking?.length ?? 0,
+            textLen: subFinalText.length,
+            timelineLen: getTl().length,
           });
 
           const parentIdx = this._findParentToolIdx(ctx, ev.parent_tool_use_id);
@@ -2851,7 +3032,7 @@ export class SessionStore {
           kind: "assistant",
           id: ev.message_id,
           anchorId: ev.message_id,
-          content: ev.text,
+          content: finalText,
           ts: eventTs(ev),
           ...(ev.model ? { model: ev.model } : {}),
           ...(savedThinking ? { thinkingText: savedThinking } : {}),
@@ -2862,6 +3043,11 @@ export class SessionStore {
             len: savedThinking.length,
           });
 
+        dbg("store", "message_complete", {
+          messageId: ev.message_id,
+          textLen: finalText.length,
+          timelineLen: getTl().length + 1,
+        });
         this._pushTimeline(ctx, entry);
         break;
       }
@@ -3200,6 +3386,13 @@ export class SessionStore {
               (t.status === "running" && !!t.permission_request_id),
             ctx,
           );
+          this._materializeOrphanStreamingOnIdle(ctx, ev, replayOnly, getTl);
+          if (!replayOnly) this._needsIdleHealthCheck = true;
+          dbg("store", "run_state idle", {
+            runId: ev.run_id,
+            streamingTextLen: ctx ? ctx.streamText.length : this.streamingText.length,
+            timelineLen: getTl().length,
+          });
           // Write idle snapshot (live mode only, throttled by _lastSnapshotSeq)
           if (!ctx && !replayOnly && this.run) {
             if (this._lastProcessedSeq > this._lastSnapshotSeq) {

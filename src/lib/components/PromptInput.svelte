@@ -69,6 +69,91 @@
     getHistoryAction,
     hasMultipleVisualLines,
   } from "$lib/utils/input-history";
+  import { misencodedNavigationDirection, moveTextareaCaret } from "$lib/utils/prompt-text";
+
+  const PRIVATE_USE_KEYBOARD_MIN = 0xf700;
+  const PRIVATE_USE_KEYBOARD_MAX = 0xf8ff;
+
+  function isPrivateUseKeyboardChar(ch: string): boolean {
+    if (!ch) return false;
+    const cp = ch.codePointAt(0)!;
+    return cp >= PRIVATE_USE_KEYBOARD_MIN && cp <= PRIVATE_USE_KEYBOARD_MAX;
+  }
+
+  function isStrippedKeyboardChar(ch: string): boolean {
+    if (ch === "\n" || ch === "\t") return false;
+    const cp = ch.codePointAt(0)!;
+    if (cp < 0x20) return true;
+    if (cp >= 0x7f && cp <= 0x9f) return true;
+    if (cp >= PRIVATE_USE_KEYBOARD_MIN && cp <= PRIVATE_USE_KEYBOARD_MAX) return true;
+    return false;
+  }
+
+  function formatCodePoints(text: string): string[] {
+    const out: string[] = [];
+    for (const ch of text) {
+      const cp = ch.codePointAt(0)!;
+      out.push(`U+${cp.toString(16).toUpperCase().padStart(4, "0")}`);
+    }
+    return out;
+  }
+
+  function hasAnsiArrowEscape(text: string): boolean {
+    // eslint-disable-next-line no-control-regex
+    return /\x1b\[[ABCD]/.test(text);
+  }
+
+  function hasKeyboardControlChars(text: string): boolean {
+    if (hasAnsiArrowEscape(text)) return true;
+    for (const ch of text) {
+      if (isStrippedKeyboardChar(ch)) return true;
+    }
+    return false;
+  }
+
+  function mapIndexAfterStrip(raw: string, index: number): number {
+    let cleanPos = 0;
+    let i = 0;
+    while (i < raw.length && i < index) {
+      if (
+        raw.charCodeAt(i) === 0x1b &&
+        i + 2 < raw.length &&
+        raw[i + 1] === "[" &&
+        "ABCD".includes(raw[i + 2])
+      ) {
+        i += 3;
+        continue;
+      }
+      const cp = raw.codePointAt(i)!;
+      const chLen = cp > 0xffff ? 2 : 1;
+      const ch = raw.slice(i, i + chLen);
+      if (!isStrippedKeyboardChar(ch)) cleanPos += chLen;
+      i += chLen;
+    }
+    return cleanPos;
+  }
+
+  function stripKeyboardControlChars(text: string): string {
+    let out = "";
+    let i = 0;
+    while (i < text.length) {
+      if (
+        text.charCodeAt(i) === 0x1b &&
+        i + 2 < text.length &&
+        text[i + 1] === "[" &&
+        "ABCD".includes(text[i + 2])
+      ) {
+        i += 3;
+        continue;
+      }
+      const cp = text.codePointAt(i)!;
+      const chLen = cp > 0xffff ? 2 : 1;
+      const ch = text.slice(i, i + chLen);
+      if (!isStrippedKeyboardChar(ch)) out += ch;
+      i += chLen;
+    }
+    return out;
+  }
 
   let {
     agent = "claude",
@@ -738,7 +823,63 @@
     onSend(`/${cmd.name}`, []);
   }
 
-  function handleInput() {
+  function handleBeforeInput(e: InputEvent) {
+    if (e.isComposing) return;
+    const data = e.data;
+    if (data == null || data === "") return;
+
+    const codePoints = formatCodePoints(data);
+    const privateUse = codePoints.filter((cp) => {
+      const n = Number.parseInt(cp.slice(2), 16);
+      return n >= PRIVATE_USE_KEYBOARD_MIN && n <= PRIVATE_USE_KEYBOARD_MAX;
+    });
+    if (privateUse.length > 0) {
+      dbgWarn("prompt", "beforeinput-private-use", {
+        inputType: e.inputType,
+        codePoints: privateUse,
+      });
+    }
+
+    if (hasKeyboardControlChars(data)) {
+      e.preventDefault();
+      dbgWarn("prompt", "beforeinput-blocked", {
+        inputType: e.inputType,
+        codePoints,
+      });
+    }
+  }
+
+  function handleInput(e?: Event) {
+    const composing = (e as InputEvent | undefined)?.isComposing === true;
+    if (!composing) {
+      const raw = store.inputText;
+      if (hasKeyboardControlChars(raw)) {
+        dbgWarn("prompt", "input-keyboard-control-detected", {
+          codePoints: formatCodePoints(raw),
+          length: raw.length,
+        });
+      }
+      const cleaned = stripKeyboardControlChars(raw);
+      if (cleaned !== raw) {
+        const el = store.textareaEl;
+        const start = el?.selectionStart ?? cleaned.length;
+        const end = el?.selectionEnd ?? start;
+        store.inputText = cleaned;
+        if (el) {
+          el.selectionStart = mapIndexAfterStrip(raw, start);
+          el.selectionEnd = mapIndexAfterStrip(raw, end);
+        }
+        dbgWarn("prompt", "input-sanitized", {
+          rawCodePoints: formatCodePoints(raw),
+          cleanedLength: cleaned.length,
+          rawLength: raw.length,
+        });
+        autoResize();
+        onValueChange?.(store.inputText);
+        return;
+      }
+    }
+
     autoResize();
     onValueChange?.(store.inputText);
 
@@ -830,7 +971,7 @@
         resetHistory(histState);
         return;
       }
-      store.inputText = userHistory[histState.index];
+      store.inputText = stripKeyboardControlChars(userHistory[histState.index]);
       store.pendingAttachments = [];
       store.pastedBlocks = [];
     }
@@ -847,6 +988,31 @@
   function handleKeydown(e: KeyboardEvent) {
     // Skip during IME composition (e.g., Chinese input confirming with Enter)
     if (e.isComposing || e.keyCode === 229) return;
+
+    if (e.key.length === 1 && isPrivateUseKeyboardChar(e.key)) {
+      e.preventDefault();
+      dbgWarn("prompt", "keydown-private-use-blocked", {
+        codePoint: `U+${e.key.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")}`,
+        keyCode: e.keyCode,
+      });
+      return;
+    }
+
+    // WebView/Tauri quirk: Arrow keys may arrive as C0 controls (e.g. U+001D) and get inserted.
+    const misNav = misencodedNavigationDirection(e);
+    if (misNav && store.textareaEl) {
+      e.preventDefault();
+      moveTextareaCaret(store.textareaEl, misNav);
+      return;
+    }
+    if (e.key.length === 1 && hasKeyboardControlChars(e.key)) {
+      e.preventDefault();
+      dbgWarn("prompt", "keydown-control-blocked", {
+        codePoint: `U+${e.key.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")}`,
+        keyCode: e.keyCode,
+      });
+      return;
+    }
 
     // ── @-mention menu ──
     if (atMenuOpen) {
@@ -1394,7 +1560,29 @@
     }
 
     // Step 2: Text paste handling
-    const text = e.clipboardData?.getData("text/plain");
+    let text = e.clipboardData?.getData("text/plain");
+    if (text) {
+      const clean = stripKeyboardControlChars(text);
+      if (clean !== text) {
+        e.preventDefault();
+        text = clean;
+        if (!text) return;
+        const el = store.textareaEl;
+        const start = el?.selectionStart ?? store.inputText.length;
+        const end = el?.selectionEnd ?? start;
+        const before = store.inputText.slice(0, start);
+        const after = store.inputText.slice(end);
+        store.inputText = before + text + after;
+        requestAnimationFrame(() => {
+          if (!store.textareaEl) return;
+          const pos = start + text.length;
+          store.textareaEl.selectionStart = store.textareaEl.selectionEnd = pos;
+          autoResize();
+        });
+        onValueChange?.(store.inputText);
+        return;
+      }
+    }
 
     if (!text) {
       // Empty text — likely Finder file paste (macOS puts file URLs, not text)
@@ -1723,7 +1911,7 @@
   }
 
   export function setValue(text: string) {
-    store.inputText = text;
+    store.inputText = stripKeyboardControlChars(text);
     requestAnimationFrame(() => {
       autoResize();
       store.textareaEl?.focus();
@@ -1731,7 +1919,8 @@
   }
 
   export function appendText(text: string) {
-    store.inputText = store.inputText ? store.inputText + "\n" + text : text;
+    const clean = stripKeyboardControlChars(text);
+    store.inputText = store.inputText ? store.inputText + "\n" + clean : clean;
     requestAnimationFrame(() => {
       autoResize();
       store.textareaEl?.focus();
@@ -2006,12 +2195,13 @@
       bind:this={store.textareaEl}
       bind:value={store.inputText}
       onkeydown={handleKeydown}
+      onbeforeinput={handleBeforeInput}
       oninput={handleInput}
       onpaste={handlePaste}
       placeholder={effectivePlaceholder}
       rows={1}
       {disabled}
-      class="w-full resize-none bg-transparent px-4 pt-3 pb-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
+      class="no-drag w-full resize-none bg-transparent px-4 pt-3 pb-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
       style="min-height: 36px;"
     ></textarea>
 

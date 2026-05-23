@@ -149,7 +149,7 @@
     <div class="flex-1 overflow-y-auto">
       <!-- Context: Latest snapshot -->
       {#if latest}
-        <div class="px-3 py-2 border-b border-border/50">
+        <div class="px-4 py-3 border-b border-border/50">
           <div
             class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
           >
@@ -185,7 +185,7 @@
           {/if}
 
           <!-- Category breakdown -->
-          <div class="mt-2 space-y-0.5">
+          <div class="mt-2 space-y-1">
             {#each latest.data.categories as cat}
               {@const catDelta = delta?.categoryDeltas.find((d) => d.name === cat.name)}
               <div class="flex items-center gap-1.5 text-[11px]">
@@ -213,13 +213,13 @@
 
       <!-- Resource summary (cumulative cost/tokens) -->
       {#if sessionInfo && (sessionInfo.cost > 0 || sessionInfo.inputTokens > 0)}
-        <div class="px-3 py-2 border-b border-border/50">
+        <div class="px-4 py-3 border-b border-border/50">
           <div
             class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
           >
             {t("infoPanel_resources")}
           </div>
-          <div class="space-y-0.5">
+          <div class="space-y-1">
             <div class="flex items-center justify-between text-[11px]">
               <span class="text-muted-foreground">{t("infoPanel_cost")}</span>
               <span class="flex items-center gap-1">
@@ -330,7 +330,7 @@
            Context-only baseline (T0) is used for delta computation but not displayed.
            Single-turn sessions don't show HISTORY (LATEST + RESOURCES suffice). -->
       {#if displayHistory.length > 1}
-        <div class="px-3 py-2 border-b border-border/50">
+        <div class="px-4 py-3 border-b border-border/50">
           <div class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
             {t("contextPanel_history")}
           </div>
@@ -388,9 +388,7 @@
                   {/each}
                 {/if}
                 {#if entry.tu}
-                  <div
-                    class="{entry.snap ? 'mt-1 pt-1 border-t border-border/20' : ''} space-y-0.5"
-                  >
+                  <div class="{entry.snap ? 'mt-1 pt-1 border-t border-border/20' : ''} space-y-1">
                     <div class="flex items-center justify-between text-[10px]">
                       <span class="text-muted-foreground">{t("infoPanel_cost")}</span>
                       <span class="text-foreground/70 font-mono tabular-nums"

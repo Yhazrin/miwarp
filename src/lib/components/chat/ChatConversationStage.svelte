@@ -502,6 +502,15 @@
       />
     {/if}
 
+    {#if store.recoveryNotice}
+      <div
+        class="mx-4 mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+        role="status"
+      >
+        {store.recoveryNotice}
+      </div>
+    {/if}
+
     {#if store.error && !forkOverlay}
       <ChatErrorCard
         error={store.error}

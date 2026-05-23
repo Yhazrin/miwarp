@@ -6,7 +6,7 @@
 
 use crate::models::BusEvent;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Extract a string field from a JSON Value, returning "" if missing/non-string.
 #[inline]
@@ -151,6 +151,14 @@ pub struct ProtocolState {
     pub stats: ParserStats,
     /// Log the first stream_event unwrap only (avoid log spam).
     seen_stream_event_envelope: bool,
+    /// Current streaming assistant message id (from message_start).
+    current_message_id: Option<String>,
+    /// Accumulated text for the current assistant message (from text_delta).
+    current_message_text: String,
+    /// Model for the current assistant message.
+    current_message_model: Option<String>,
+    /// message_ids that already emitted MessageComplete this turn.
+    emitted_message_ids: HashSet<String>,
     /// When true, map_event panics on unknown/invalid events instead of degrading gracefully.
     /// Only available in test builds — production always degrades.
     #[cfg(test)]
@@ -197,9 +205,72 @@ impl ProtocolState {
             pending_slash_command: None,
             stats: ParserStats::default(),
             seen_stream_event_envelope: false,
+            current_message_id: None,
+            current_message_text: String::new(),
+            current_message_model: None,
+            emitted_message_ids: HashSet::new(),
             #[cfg(test)]
             strict_mode: false,
         }
+    }
+
+    fn emit_message_complete(
+        &mut self,
+        run_id: &str,
+        events: &mut Vec<BusEvent>,
+        message_id: String,
+        text: String,
+        parent_tool_use_id: &Option<String>,
+        model: Option<String>,
+        stop_reason: Option<String>,
+        message_usage: Option<Value>,
+    ) {
+        if text.is_empty() || self.emitted_message_ids.contains(&message_id) {
+            return;
+        }
+        self.emitted_message_ids.insert(message_id.clone());
+        log::debug!(
+            "[protocol] MessageComplete: message_id={}, text.len={}",
+            message_id,
+            text.len()
+        );
+        events.push(BusEvent::MessageComplete {
+            run_id: run_id.to_string(),
+            message_id,
+            text,
+            parent_tool_use_id: parent_tool_use_id.clone(),
+            model,
+            stop_reason,
+            message_usage,
+        });
+        self.current_message_text.clear();
+    }
+
+    fn flush_pending_message_complete(
+        &mut self,
+        run_id: &str,
+        parent_tool_use_id: &Option<String>,
+        events: &mut Vec<BusEvent>,
+    ) {
+        if self.current_message_text.is_empty() {
+            return;
+        }
+        let mid = self
+            .current_message_id
+            .clone()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| uuid::Uuid::new_v4().to_string()[..12].to_string());
+        let text = std::mem::take(&mut self.current_message_text);
+        self.emit_message_complete(
+            run_id,
+            events,
+            mid,
+            text,
+            parent_tool_use_id,
+            self.current_message_model.clone(),
+            None,
+            None,
+        );
     }
 
     /// Create a strict-mode parser that panics on unknown/invalid events.
@@ -670,6 +741,24 @@ impl ProtocolState {
             }
 
             // ── streaming events (partial messages) ──
+            "message_start" => {
+                let message = raw.get("message").unwrap_or(raw);
+                let mid = message
+                    .get("id")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let model = message
+                    .get("model")
+                    .and_then(|v| v.as_str())
+                    .map(String::from);
+                if !mid.is_empty() {
+                    self.current_message_id = Some(mid);
+                }
+                self.current_message_model = model;
+                self.current_message_text.clear();
+            }
+
             "content_block_start" => {
                 // From --include-partial-messages: content block starting
                 if let Some(content_block) = raw.get("content_block") {
@@ -730,6 +819,7 @@ impl ProtocolState {
                         "text_delta" => {
                             if let Some(text) = delta.get("text").and_then(|v| v.as_str()) {
                                 if !text.is_empty() {
+                                    self.current_message_text.push_str(text);
                                     events.push(BusEvent::MessageDelta {
                                         run_id: run_id.to_string(),
                                         text: text.to_string(),
@@ -783,7 +873,7 @@ impl ProtocolState {
             }
 
             "message_stop" => {
-                // No-op: wait for the full `assistant` message
+                self.flush_pending_message_complete(run_id, &parent_tool_use_id, &mut events);
             }
 
             // ── complete assistant message ──
@@ -859,22 +949,33 @@ impl ProtocolState {
                         }
                     }
 
-                    if !text_parts.is_empty() {
-                        let full_text = text_parts.join("");
+                    let full_text = if !text_parts.is_empty() {
+                        text_parts.join("")
+                    } else {
+                        self.current_message_text.clone()
+                    };
+
+                    if !full_text.is_empty() {
                         let mid = if message_id.is_empty() {
-                            uuid::Uuid::new_v4().to_string()[..12].to_string()
+                            self.current_message_id
+                                .clone()
+                                .filter(|s| !s.is_empty())
+                                .unwrap_or_else(|| {
+                                    uuid::Uuid::new_v4().to_string()[..12].to_string()
+                                })
                         } else {
                             message_id
                         };
-                        events.push(BusEvent::MessageComplete {
-                            run_id: run_id.to_string(),
-                            message_id: mid,
-                            text: full_text,
-                            parent_tool_use_id: parent_tool_use_id.clone(),
-                            model: msg_model.clone(),
-                            stop_reason: msg_stop_reason.clone(),
-                            message_usage: msg_usage.clone(),
-                        });
+                        self.emit_message_complete(
+                            run_id,
+                            &mut events,
+                            mid,
+                            full_text,
+                            &parent_tool_use_id,
+                            msg_model.clone(),
+                            msg_stop_reason.clone(),
+                            msg_usage.clone(),
+                        );
                     }
                 }
             }
@@ -1016,6 +1117,7 @@ impl ProtocolState {
 
             // ── result (turn complete) ──
             "result" => {
+                self.flush_pending_message_complete(run_id, &parent_tool_use_id, &mut events);
                 let subtype = str_field(raw, "subtype");
 
                 // Extract usage

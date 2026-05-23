@@ -22,6 +22,7 @@ import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
 import { getCliVersionInfo_cached, getCliModels } from "$lib/stores/cli-info.svelte";
 import type { CliVersionInfo } from "$lib/stores/cli-info.svelte";
 import type { TimelineAnnotationsHandle } from "$lib/chat/use-timeline-annotations.svelte";
+import { sanitizePromptText } from "$lib/utils/prompt-text";
 
 // ── Context (dependency injection) ──
 
@@ -99,8 +100,10 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
     const tl = store.timeline;
     const result: string[] = [];
     for (let i = tl.length - 1; i >= 0 && result.length < 50; i--) {
-      if (tl[i].kind === "user")
-        result.push((tl[i] as Extract<TimelineEntry, { kind: "user" }>).content);
+      if (tl[i].kind === "user") {
+        const content = (tl[i] as Extract<TimelineEntry, { kind: "user" }>).content;
+        result.push(sanitizePromptText(content));
+      }
     }
     return result;
   });

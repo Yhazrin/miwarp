@@ -190,7 +190,7 @@
       <p class="text-xs text-muted-foreground/60">{t("workspaceContext_noWorkspace")}</p>
     </div>
   {:else}
-    <div class="p-3 space-y-3">
+    <div class="p-4 space-y-4">
       {#if minimalOutputWorkspace}
         <p
           class="text-[11px] text-muted-foreground rounded-lg border border-border/30 bg-muted/20 px-2 py-1.5 leading-relaxed"
@@ -200,8 +200,8 @@
       {/if}
       <!-- Instructions / CLAUDE.md card -->
       {#if !minimalOutputWorkspace}
-        <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
-          <div class="flex items-center gap-2 px-3 py-2">
+        <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden px-3 pt-3">
+          <div class="flex items-center gap-2 h-[48px]">
             <svg
               class="h-3.5 w-3.5 text-muted-foreground shrink-0"
               viewBox="0 0 24 24"
@@ -275,8 +275,8 @@
         </div>
 
         <!-- Memory card -->
-        <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
-          <div class="flex items-center gap-2 px-3 py-2">
+        <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden px-3 pt-3">
+          <div class="flex items-center gap-2 h-[48px]">
             <svg
               class="h-3.5 w-3.5 text-muted-foreground shrink-0"
               viewBox="0 0 24 24"
@@ -382,8 +382,8 @@
 
       <!-- Recent Activity summary -->
       {#if !minimalOutputWorkspace}
-        <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden">
-          <div class="flex items-center gap-2 px-3 py-2">
+        <div class="rounded-xl border border-border/40 bg-background/40 overflow-hidden px-3 pt-3">
+          <div class="flex items-center gap-2 h-[48px]">
             <svg
               class="h-3.5 w-3.5 text-muted-foreground shrink-0"
               viewBox="0 0 24 24"

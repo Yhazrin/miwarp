@@ -6,6 +6,7 @@
  */
 
 import type { TaskRun, SessionFolder } from "$lib/types";
+import type { ScheduledTask, ScheduledTaskRun } from "$lib/types/scheduled-task";
 
 // ── Public types ──
 
@@ -33,6 +34,21 @@ export interface SessionFolderGroup {
   name: string;
   conversations: ConversationGroup[];
   conversationCount: number;
+  latestActivityAt: string;
+}
+
+/** One scheduled task hub per workspace — groups all execution runs for a task definition. */
+export interface ScheduledTaskHubGroup {
+  hubKey: string; // "sched:<taskId>:<cwd>"
+  taskId: string;
+  taskName: string;
+  cwd: string;
+  enabled: boolean;
+  runs: TaskRun[];
+  executions: ScheduledTaskRun[];
+  latestRun: TaskRun;
+  latestStatus: TaskRun["status"];
+  executionCount: number;
   latestActivityAt: string;
 }
 
@@ -309,8 +325,64 @@ function buildConversationsForRuns(
 export interface EnrichedProjectFolder extends ProjectFolder {
   /** Logical sub-folders that contain sessions from this project path. */
   subFolders: SessionFolderGroup[];
-  /** Only sessions NOT assigned to any sub-folder. */
+  /** Scheduled task hubs in this workspace (not shown as flat conversations). */
+  scheduledTaskHubs: ScheduledTaskHubGroup[];
+  /** Only sessions NOT assigned to any sub-folder or scheduled hub. */
   conversations: ConversationGroup[];
+}
+
+export function isScheduledTaskRun(run: TaskRun): boolean {
+  return !!run.scheduled_task_id;
+}
+
+function buildScheduledTaskHubsForCwd(
+  cwd: string,
+  scheduledRuns: TaskRun[],
+  scheduledTasks: ScheduledTask[],
+  scheduledTaskRuns: ScheduledTaskRun[],
+): ScheduledTaskHubGroup[] {
+  const byTask = new Map<string, TaskRun[]>();
+  for (const run of scheduledRuns) {
+    const taskId = run.scheduled_task_id;
+    if (!taskId) continue;
+    let bucket = byTask.get(taskId);
+    if (!bucket) {
+      bucket = [];
+      byTask.set(taskId, bucket);
+    }
+    bucket.push(run);
+  }
+
+  const hubs: ScheduledTaskHubGroup[] = [];
+  for (const [taskId, taskRuns] of byTask) {
+    taskRuns.sort((a, b) => sortKey(b).localeCompare(sortKey(a)));
+    const latestRun = taskRuns[0];
+    const task = scheduledTasks.find((t) => t.id === taskId);
+    const taskName =
+      task?.name?.trim() ||
+      latestRun.name?.replace(/^⏱\s*/, "").trim() ||
+      latestRun.prompt?.trim().slice(0, 40) ||
+      "Scheduled task";
+    const executions = scheduledTaskRuns
+      .filter((r) => r.taskId === taskId)
+      .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+    hubs.push({
+      hubKey: `sched:${taskId}:${cwd}`,
+      taskId,
+      taskName,
+      cwd,
+      enabled: task?.enabled ?? true,
+      runs: taskRuns,
+      executions,
+      latestRun,
+      latestStatus: latestRun.status,
+      executionCount: taskRuns.length,
+      latestActivityAt: sortKey(latestRun),
+    });
+  }
+
+  hubs.sort((a, b) => b.latestActivityAt.localeCompare(a.latestActivityAt));
+  return hubs;
 }
 
 /**
@@ -325,6 +397,8 @@ export function buildEnrichedProjectFolders(
   favoriteRunIds: Set<string>,
   pinnedCwds: string[],
   removedCwds: string[] = [],
+  scheduledTasks: ScheduledTask[] = [],
+  scheduledTaskRuns: ScheduledTaskRun[] = [],
 ): EnrichedProjectFolder[] {
   // 1. Partition runs: foldered vs unfoldered
   const folderRunMap = new Map<string, TaskRun[]>();
@@ -341,6 +415,9 @@ export function buildEnrichedProjectFolders(
       unfoldered.push(run);
     }
   }
+
+  const manualUnfoldered = unfoldered.filter((r) => !isScheduledTaskRun(r));
+  const scheduledUnfoldered = unfoldered.filter((r) => isScheduledTaskRun(r));
 
   // 2. Determine which cwd each SessionFolder belongs to (majority vote from its sessions)
   const folderCwdMap = new Map<string, string>();
@@ -374,13 +451,24 @@ export function buildEnrichedProjectFolders(
   const cleanPinned = pinnedCwds.map(normalizeCwd).filter((c) => c !== "" && !removedSet.has(c));
 
   const cwdBuckets = new Map<string, TaskRun[]>();
-  for (const run of unfoldered) {
+  const scheduledByCwd = new Map<string, TaskRun[]>();
+  for (const run of manualUnfoldered) {
     const cwd = normalizeCwd(run.parent_cwd ?? run.cwd);
     if (removedSet.has(cwd)) continue;
     let bucket = cwdBuckets.get(cwd);
     if (!bucket) {
       bucket = [];
       cwdBuckets.set(cwd, bucket);
+    }
+    bucket.push(run);
+  }
+  for (const run of scheduledUnfoldered) {
+    const cwd = normalizeCwd(run.parent_cwd ?? run.cwd);
+    if (removedSet.has(cwd)) continue;
+    let bucket = scheduledByCwd.get(cwd);
+    if (!bucket) {
+      bucket = [];
+      scheduledByCwd.set(cwd, bucket);
     }
     bucket.push(run);
   }
@@ -449,15 +537,23 @@ export function buildEnrichedProjectFolders(
     const isUncategorized = cwd === "";
     const folderKey = isUncategorized ? "uncategorized" : `cwd:${cwd}`;
     const conversations = buildConversationsForRuns(bucketRuns, favoriteRunIds);
+    const scheduledTaskHubs = buildScheduledTaskHubsForCwd(
+      cwd,
+      scheduledByCwd.get(cwd) ?? [],
+      scheduledTasks,
+      scheduledTaskRuns,
+    );
     const subFolders = cwdSubFolders.get(cwd) ?? [];
     const allLatest = [
       ...conversations.map((c) => sortKey(c.latestRun)),
       ...subFolders.map((sf) => sf.latestActivityAt),
+      ...scheduledTaskHubs.map((h) => h.latestActivityAt),
     ]
       .sort()
       .reverse();
     const latestActivityAt = allLatest[0] ?? "";
-    const totalCount = conversations.length + subFolderDisplayCount(subFolders);
+    const totalCount =
+      conversations.length + subFolderDisplayCount(subFolders) + scheduledTaskHubs.length;
 
     folders.push({
       cwd,
@@ -467,6 +563,38 @@ export function buildEnrichedProjectFolders(
       conversationCount: totalCount,
       latestActivityAt,
       subFolders,
+      scheduledTaskHubs,
+    });
+  }
+
+  // Workspaces that only have scheduled hubs (no manual runs yet)
+  for (const [cwd, schedRuns] of scheduledByCwd) {
+    if (cwdBuckets.has(cwd)) continue;
+    if (removedSet.has(cwd)) continue;
+    const isUncategorized = cwd === "";
+    const folderKey = isUncategorized ? "uncategorized" : `cwd:${cwd}`;
+    const scheduledTaskHubs = buildScheduledTaskHubsForCwd(
+      cwd,
+      schedRuns,
+      scheduledTasks,
+      scheduledTaskRuns,
+    );
+    const subFolders = cwdSubFolders.get(cwd) ?? [];
+    const allLatest = [
+      ...subFolders.map((sf) => sf.latestActivityAt),
+      ...scheduledTaskHubs.map((h) => h.latestActivityAt),
+    ]
+      .sort()
+      .reverse();
+    folders.push({
+      cwd,
+      folderKey,
+      isUncategorized,
+      conversations: [],
+      conversationCount: scheduledTaskHubs.length + subFolderDisplayCount(subFolders),
+      latestActivityAt: allLatest[0] ?? "",
+      subFolders,
+      scheduledTaskHubs,
     });
   }
 
