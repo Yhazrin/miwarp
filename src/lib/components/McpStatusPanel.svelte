@@ -306,6 +306,7 @@ diagnostics and history * - Quick reconnect with health check */
             <!-- Expand toggle -->
             <button
               onclick={() => toggleExpand(server.name)}
+              aria-label="Toggle server details"
               class="text-muted-foreground hover:text-foreground transition-colors"
             >
               <svg

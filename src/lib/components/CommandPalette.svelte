@@ -738,6 +738,7 @@
         <h2 class="text-lg font-semibold">{resultModalTitle}</h2>
         <button
           class="rounded-md p-1 hover:bg-accent transition-colors"
+          aria-label="Close"
           onclick={() => (resultModalOpen = false)}
         >
           <svg

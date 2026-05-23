@@ -82,7 +82,11 @@
             <p class="text-sm text-muted-foreground">/{preview.skillName}</p>
           </div>
         </div>
-        <button class="rounded-md p-1.5 hover:bg-accent transition-colors" onclick={handleCancel}>
+        <button
+          class="rounded-md p-1.5 hover:bg-accent transition-colors"
+          aria-label="Close"
+          onclick={handleCancel}
+        >
           <svg
             class="h-5 w-5"
             viewBox="0 0 24 24"

@@ -138,6 +138,8 @@
       {:else}
         <span
           class="truncate"
+          role="button"
+          tabindex={0}
           ondblclick={(e) => {
             e.stopPropagation();
             startRename();

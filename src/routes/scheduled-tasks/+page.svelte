@@ -519,6 +519,7 @@
     <span class="text-sm">{scheduledTasksStore.error}</span>
     <button
       class="ml-2 p-1 hover:bg-white/20 rounded"
+      aria-label="Dismiss error"
       onclick={() => scheduledTasksStore.clearError()}
     >
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

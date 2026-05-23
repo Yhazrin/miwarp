@@ -171,6 +171,7 @@
       </span>
       <button
         class="rounded-md p-1.5 hover:bg-accent transition-colors"
+        aria-label="Close"
         onclick={() => onClose?.()}
       >
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

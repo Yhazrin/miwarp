@@ -338,6 +338,8 @@
           class="truncate leading-tight {isSidebar
             ? 'text-[11px] font-normal text-sidebar-foreground/85'
             : 'text-[13px] font-medium'}"
+          role="button"
+          tabindex={0}
           ondblclick={(e) => {
             e.stopPropagation();
             startRename();

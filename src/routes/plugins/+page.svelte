@@ -1442,6 +1442,7 @@
               </h3>
               <button
                 class="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="Close"
                 onclick={cancelEditor}
               >
                 <svg

@@ -1769,6 +1769,9 @@
                     class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {webStatus?.enabled
                       ? 'bg-primary'
                       : 'bg-muted'}"
+                    role="switch"
+                    aria-checked={webStatus?.enabled ?? false}
+                    aria-label="Toggle web server"
                     disabled={webRestarting}
                     onclick={async () => {
                       const newEnabled = !webStatus?.enabled;
@@ -2110,6 +2113,7 @@
                                 {origin}
                                 <button
                                   class="text-muted-foreground hover:text-foreground"
+                                  aria-label="Remove origin"
                                   onclick={() => {
                                     webOrigins = webOrigins.filter((_, idx) => idx !== i);
                                   }}
@@ -2282,6 +2286,9 @@
                     class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {settings?.auto_commit_on_complete
                       ? 'bg-primary'
                       : 'bg-muted'}"
+                    role="switch"
+                    aria-checked={settings?.auto_commit_on_complete ?? false}
+                    aria-label="Toggle auto commit"
                     onclick={async () => {
                       settings = await api.updateUserSettings({
                         auto_commit_on_complete: !settings?.auto_commit_on_complete,
@@ -2306,6 +2313,9 @@
                       class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {settings?.auto_pr_on_complete
                         ? 'bg-primary'
                         : 'bg-muted'}"
+                      role="switch"
+                      aria-checked={settings?.auto_pr_on_complete ?? false}
+                      aria-label="Toggle auto PR"
                       onclick={async () => {
                         settings = await api.updateUserSettings({
                           auto_pr_on_complete: !settings?.auto_pr_on_complete,
@@ -2333,6 +2343,9 @@
                     false
                       ? 'bg-primary'
                       : 'bg-muted'}"
+                    role="switch"
+                    aria-checked={settings?.auto_cleanup_worktree !== false}
+                    aria-label="Toggle auto cleanup worktree"
                     onclick={async () => {
                       settings = await api.updateUserSettings({
                         auto_cleanup_worktree: settings?.auto_cleanup_worktree === false,

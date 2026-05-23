@@ -34,6 +34,7 @@
           <span class="font-medium">{t("chat_thinking")}</span>
           <button
             class="ml-auto opacity-50 hover:opacity-100 transition-opacity"
+            aria-label="Toggle thinking panel"
             onclick={onToggleExpand}
           >
             <svg

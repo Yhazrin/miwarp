@@ -614,6 +614,7 @@
         <div class="flex items-center gap-2">
           <button
             class="rounded-md p-1 hover:bg-accent transition-colors"
+            aria-label="Back"
             onclick={() => {
               step = "auth_choice";
               selectedPlatform = null;

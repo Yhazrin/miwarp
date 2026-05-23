@@ -190,6 +190,7 @@
       </h2>
       <button
         class="text-muted-foreground hover:text-foreground transition-colors"
+        aria-label="Close"
         onclick={handleClose}
       >
         <svg

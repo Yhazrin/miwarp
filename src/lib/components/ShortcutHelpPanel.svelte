@@ -61,6 +61,7 @@
         <h2 class="text-sm font-semibold text-foreground">{t("shortcutHelp_title")}</h2>
         <button
           class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          aria-label="Close"
           onclick={() => (open = false)}
         >
           <svg

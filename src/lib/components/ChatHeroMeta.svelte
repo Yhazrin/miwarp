@@ -53,7 +53,11 @@
   <div class="relative inline-flex items-center">
     {#if targetDropdownOpen}
       <!-- Invisible backdrop to close dropdown on outside click -->
-      <div class="fixed inset-0 z-40" onclick={() => (targetDropdownOpen = false)}></div>
+      <div
+        class="fixed inset-0 z-40"
+        role="presentation"
+        onclick={() => (targetDropdownOpen = false)}
+      ></div>
     {/if}
     <button
       class="inline-flex items-center gap-1 cursor-pointer text-xs {currentRemoteHostName
