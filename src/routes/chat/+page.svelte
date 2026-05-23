@@ -871,7 +871,7 @@
         return sidebarRequestedTab;
       },
       set sidebarRequestedTab(v: unknown) {
-        sidebarRequestedTab = v as any;
+        sidebarRequestedTab = v as ToolActivityPanelTab | null;
       },
       goto,
       projectCommands,

@@ -66,13 +66,11 @@
         break;
       }
       case "network": {
-        const requests = await browserStore.getNetworkRequests();
-        console.log("Network requests:", requests);
+        await browserStore.getNetworkRequests();
         break;
       }
       case "console": {
-        const messages = await browserStore.getConsoleMessages();
-        console.log("Console messages:", messages);
+        await browserStore.getConsoleMessages();
         break;
       }
     }

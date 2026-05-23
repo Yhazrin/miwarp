@@ -23,9 +23,7 @@
       const execResults = await multiAgentService.execute(
         config,
         { cwd: "", projectPath: "" },
-        (agentId, status) => {
-          console.log(`[${agentId}] ${status}`);
-        },
+        (_agentId, _status) => {},
       );
       results = execResults;
     } catch (e) {

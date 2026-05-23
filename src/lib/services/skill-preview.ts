@@ -14,6 +14,7 @@ export interface PreviewStep {
   icon: string;
   toolCalls?: string[];
   estimatedDuration?: string;
+  warnings?: string[];
 }
 
 export interface SkillPreview {
@@ -290,7 +291,7 @@ function getConsolidateMemorySteps(args: string): PreviewStep[] {
       description: "Dry run - no changes will be made",
       icon: STEP_ICONS.default,
       warnings: ["Preview only - run without --dry-run to apply changes"],
-    } as any);
+    });
   }
 
   return steps;

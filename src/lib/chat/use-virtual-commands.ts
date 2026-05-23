@@ -127,7 +127,7 @@ async function _handleVirtualCommand(
     }
   } else if (action === "show-status") {
     if (sidebarCollapsed) toggleSidebar();
-    ctx.sidebarRequestedTab = "info" as any;
+    ctx.sidebarRequestedTab = "info";
   } else if (action === "list-todos") {
     const esc = (s: string) => s.replace(/([\\*_~`[\]#>|])/g, "\\$1");
     const lastTodo = [...store.timeline]
