@@ -57,12 +57,10 @@
   import { filterVisibleCandidates } from "$lib/utils/memory-helpers";
   import {
     buildEnrichedProjectFolders,
-    buildSessionFolderGroups,
     autoExpandForRun,
     expandForProjectChange,
     normalizeCwd,
     type ConversationGroup,
-    type SessionFolderGroup,
     // type EnrichedProjectFolder,
   } from "$lib/utils/sidebar-groups";
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
@@ -141,8 +139,6 @@
 
   // ── Session folders ──
   let sessionFolders = $state<SessionFolder[]>([]);
-  let _sessionFolderGroups = $state<SessionFolderGroup[]>([]);
-  let _unassignedRuns = $state<TaskRun[]>([]);
 
   // Sub-folder expand state (folderKey → expanded)
   let expandedSubFolders = $state(new Set<string>());
@@ -219,12 +215,6 @@
     } catch {
       // silently fail
     }
-  }
-
-  function _refreshFolderGroups() {
-    const result = buildSessionFolderGroups(runs, sessionFolders, favoriteRunIds);
-    _sessionFolderGroups = result.folderGroups;
-    _unassignedRuns = result.unassignedRuns;
   }
 
   async function doCreateFolder() {
@@ -1508,12 +1498,6 @@
       scheduledTasksStore.runs,
     ),
   );
-  // Keep sessionFolderGroups synced for compatibility (move-to-folder dialog etc.)
-  $effect(() => {
-    const result = buildSessionFolderGroups(runs, sessionFolders, favoriteRunIds);
-    _sessionFolderGroups = result.folderGroups;
-    _unassignedRuns = result.unassignedRuns;
-  });
 
   // Reload session folders when project context changes
   $effect(() => {
@@ -1542,14 +1526,6 @@
       // "" = Uncategorized → always show
       if (!cwd) return true;
       return !removedCwdSet.has(cwd);
-    });
-  });
-
-  // Debug log when folder tree rebuilds
-  $effect(() => {
-    dbg("layout", "folders rebuilt", {
-      count: enrichedProjectFolders.length,
-      total: enrichedProjectFolders.reduce((s, f) => s + f.conversationCount, 0),
     });
   });
 
