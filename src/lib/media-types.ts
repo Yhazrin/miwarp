@@ -12,15 +12,15 @@ export const IMAGE_EXTENSIONS = new Set([
   "avif",
 ]);
 
-export const VIDEO_EXTENSIONS = new Set(["mp4", "mov", "webm", "m4v"]);
+const VIDEO_EXTENSIONS = new Set(["mp4", "mov", "webm", "m4v"]);
 
-export const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "m4a", "aac", "ogg"]);
+const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "m4a", "aac", "ogg"]);
 
-export const HTML_EXTENSIONS = new Set(["html", "htm"]);
+const HTML_EXTENSIONS = new Set(["html", "htm"]);
 
-export const PDF_EXTENSIONS = new Set(["pdf"]);
+const PDF_EXTENSIONS = new Set(["pdf"]);
 
-export const MEDIA_EXTENSIONS = new Set([
+const MEDIA_EXTENSIONS = new Set([
   ...IMAGE_EXTENSIONS,
   ...VIDEO_EXTENSIONS,
   ...AUDIO_EXTENSIONS,

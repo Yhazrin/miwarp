@@ -55,7 +55,7 @@ function enabled(): boolean {
 }
 
 /** Reset cached enabled state (call after toggling) */
-export function refreshDebugState(): void {
+function refreshDebugState(): void {
   _enabled = null;
 }
 
@@ -89,15 +89,10 @@ export function dbgWarn(tag: string, ...args: unknown[]): void {
 }
 
 /** Get all buffered log entries as a single string */
-export function getDebugLogs(): string {
+function getDebugLogs(): string {
   return logBuffer
     .map((e) => `[${e.ts}] [${e.level === "warn" ? "WARN:" : ""}${e.tag}] ${e.args}`)
     .join("\n");
-}
-
-/** Get structured log entries as JSON array */
-export function getDebugLogsJSON(): LogEntry[] {
-  return [...logBuffer];
 }
 
 /** Copy debug logs to clipboard, returns success */
