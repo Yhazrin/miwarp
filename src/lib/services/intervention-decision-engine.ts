@@ -248,7 +248,6 @@ export class InterventionDecisionEngine {
    * 获取技能配置的默认干预级别
    */
   private getSkillDefaultLevel(skill: Skill): InterventionLevel | null {
-    // @ts-expect-error - SkillMetadata 可能包含干预级别
     const metadata = skill.metadata as { interventionLevel?: InterventionLevel } | undefined;
     if (metadata?.interventionLevel) {
       return metadata.interventionLevel;

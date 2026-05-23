@@ -25,6 +25,7 @@ export interface Skill {
   rating?: number; // Marketplace rating (0-5)
   publishedAt?: string; // When published to marketplace
   remoteRef?: SkillRemoteRef;
+  metadata?: Record<string, unknown>;
 }
 
 export interface SkillDependency {
