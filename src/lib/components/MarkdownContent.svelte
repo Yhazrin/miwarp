@@ -25,7 +25,12 @@
   let lazyEl: HTMLElement | undefined = $state();
   /** Set to true once element has been intersection-observed near the viewport.
    *  Sticky — once true, stays true (so scrolling away doesn't un-parse content). */
-  let visibleOnce = $state(!lazy);
+  let visibleOnce = $state(false);
+
+  // Sync visibleOnce when lazy prop changes
+  $effect(() => {
+    if (!lazy) visibleOnce = true;
+  });
 
   // ── Lazy markdown rendering: skip parse until element is near viewport ──
   // Off-screen MarkdownContent shows raw <pre>{text}</pre>. When IntersectionObserver

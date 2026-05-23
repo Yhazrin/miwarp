@@ -30,7 +30,12 @@
   } = $props();
 
   // ── State ──
-  let editorMode = $state<"form" | "source">(mode === "create" ? "form" : "source");
+  let editorMode = $state<"form" | "source">("form");
+
+  // Sync editorMode when mode prop changes
+  $effect(() => {
+    editorMode = mode === "create" ? "form" : "source";
+  });
   let formData = $state<AgentFormData>(defaultFormData());
   let sourceContent = $state("");
   let scope = $state<"user" | "project">("user");

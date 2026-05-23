@@ -10,7 +10,7 @@
 
   let { placeholder = "Search sessions...", value = "", onSearch, onClear }: Props = $props();
 
-  let query = $state(value);
+  let query = $state("");
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let inputEl: HTMLInputElement | undefined = $state();
 

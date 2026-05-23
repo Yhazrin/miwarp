@@ -58,7 +58,7 @@
   class="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
   onclick={onClose}
   role="presentation"
-/>
+></div>
 
 <!-- Panel -->
 <div

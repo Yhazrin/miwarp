@@ -14,12 +14,24 @@
   let { skill = null, onSave, onCancel }: Props = $props();
 
   // Form state
-  let name = $state(skill?.name || "");
-  let description = $state(skill?.description || "");
-  let category = $state<SkillCategory>(skill?.category || "custom");
-  let icon = $state(skill?.icon || DEFAULT_SKILL_ICON);
-  let author = $state(skill?.author || "");
-  let content = $state(skill?.content || "");
+  let name = $state("");
+  let description = $state("");
+  let category = $state<SkillCategory>("custom");
+  let icon = $state(DEFAULT_SKILL_ICON);
+  let author = $state("");
+  let content = $state("");
+
+  // Sync form fields when skill prop changes
+  $effect(() => {
+    if (skill) {
+      name = skill.name || "";
+      description = skill.description || "";
+      category = skill.category || "custom";
+      icon = skill.icon || DEFAULT_SKILL_ICON;
+      author = skill.author || "";
+      content = skill.content || "";
+    }
+  });
 
   // Validation
   let errors = $state<string[]>([]);

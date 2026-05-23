@@ -138,7 +138,7 @@
   let pointerStartY = 0;
   let longPressTimer: ReturnType<typeof setTimeout> | null = null;
   let longPressFired = false;
-  let pointerDragging = false;
+  let pointerDragging = $state(false);
   let activePointerId: number | null = null;
 
   function clearPointerGesture() {

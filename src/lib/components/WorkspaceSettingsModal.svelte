@@ -21,7 +21,7 @@
     onRemove,
   }: Props = $props();
 
-  let aliasValue = $state(currentAlias);
+  let aliasValue = $state("");
   let saving = $state(false);
 
   $effect(() => {

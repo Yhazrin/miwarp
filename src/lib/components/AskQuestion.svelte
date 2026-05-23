@@ -33,7 +33,12 @@
     showCancel = true,
   }: Props = $props();
 
-  let selectedIndex = $state(defaultIndex);
+  let selectedIndex = $state(0);
+
+  // Sync when defaultIndex prop changes
+  $effect(() => {
+    selectedIndex = defaultIndex;
+  });
 
   function handleSelect(value: string) {
     onAnswer(value);

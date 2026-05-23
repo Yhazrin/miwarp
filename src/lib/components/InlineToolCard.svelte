@@ -1,4 +1,5 @@
 <script lang="ts">
+  import InlineToolCard from "./InlineToolCard.svelte";
   import type { BusToolItem, TimelineEntry, PermissionSuggestion } from "$lib/types";
   import type { TaskNotificationItem } from "$lib/stores/session-store.svelte";
   import { getToolColor } from "$lib/utils/tool-colors";
@@ -2001,7 +2002,7 @@
               />
             </div>
           {:else if subEntry.kind === "tool"}
-            <svelte:self
+            <InlineToolCard
               tool={subEntry.tool}
               subTimeline={subEntry.subTimeline}
               {runId}

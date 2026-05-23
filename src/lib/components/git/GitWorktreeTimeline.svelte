@@ -15,8 +15,8 @@
     initialVisibleCount?: number;
   } = $props();
 
-  const DEFAULT_VISIBLE = initialVisibleCount;
-  let visibleCount = $state(DEFAULT_VISIBLE);
+  const DEFAULT_VISIBLE = $derived(initialVisibleCount);
+  let visibleCount = $state(0);
   let isExpanded = $state(false);
 
   const visibleEntries = $derived(isExpanded ? entries : entries.slice(0, visibleCount));

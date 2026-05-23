@@ -17,10 +17,10 @@
   let { pipeline, executionState, compact = false }: Props = $props();
 
   // Layout constants
-  const NODE_WIDTH = compact ? 100 : 140;
-  const NODE_HEIGHT = compact ? 40 : 60;
-  const H_GAP = compact ? 30 : 50;
-  const V_GAP = compact ? 20 : 40;
+  const NODE_WIDTH = $derived(compact ? 100 : 140);
+  const NODE_HEIGHT = $derived(compact ? 40 : 60);
+  const H_GAP = $derived(compact ? 30 : 50);
+  const V_GAP = $derived(compact ? 20 : 40);
   const PADDING = 20;
 
   /**

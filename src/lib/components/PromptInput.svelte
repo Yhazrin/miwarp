@@ -252,7 +252,7 @@
   } = $props();
 
   // ── Store ──
-  const store = inputStore ?? new PromptInputStore();
+  const store = $derived(inputStore ?? new PromptInputStore());
 
   // Sync permissionMode prop → store
   $effect(() => {
