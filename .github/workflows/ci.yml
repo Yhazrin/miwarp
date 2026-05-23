@@ -22,6 +22,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Version alignment
+        run: npm run version:check
+
       - name: Sync SvelteKit
         run: npx svelte-kit sync
 

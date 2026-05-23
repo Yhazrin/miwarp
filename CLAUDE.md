@@ -21,6 +21,9 @@ npm run check            # Svelte type check (svelte-check)
 npm run i18n:check       # i18n key alignment + placeholder validation
 npm run rust:check       # cargo fmt --check + cargo clippy
 npm run verify           # Full CI gate: lint + format + check + i18n + test + build + rust
+npm run version:check    # package.json / tauri / cargo version alignment
+npm run version:sync     # Sync version from package.json to tauri + cargo
+npm run release:notes    # Markdown release notes from commits since last tag
 npm run fix              # Auto-fix everything: lint:fix + format + cargo fmt
 
 # Rust backend only

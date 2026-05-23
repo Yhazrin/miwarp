@@ -966,11 +966,13 @@ textarea,
 }
 
 .session-island-shell {
-  /* Fixed so expanded hover state stacks above sidebar (not clipped by main overflow) */
+  /* Fixed center anchor — width from CSS vars only, never content-driven */
   position: fixed;
   top: 12px; /* Match sidebar top margin */
   left: 50%;
+  right: auto;
   transform: translateX(-50%);
+  transform-origin: top center;
   z-index: 35;
 
   box-sizing: border-box;
@@ -1366,9 +1368,19 @@ pre,
   animation: none !important;
 }
 
-/* Reduce transition duration globally for snappier feel */
-.perf-performance * {
-  transition-duration: 0.08s !important;
+/* Session island: reduce blur/shadow in performance tier (Windows WebView2) */
+.perf-performance .session-island-shell,
+.perf-performance .session-island-expanded {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  transition-duration: 0.12s !important;
+}
+
+.perf-balanced .session-island-shell,
+.perf-balanced .session-island-expanded {
+  backdrop-filter: blur(12px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(140%) !important;
 }
 
 /* Windows WebView2: strip will-change on glass elements */

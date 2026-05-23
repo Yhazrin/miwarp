@@ -210,6 +210,7 @@ pub fn run() {
             commands::diagnostics::check_ssh_key,
             commands::diagnostics::generate_ssh_key,
             commands::diagnostics::run_diagnostics,
+            commands::diagnostics::get_data_directory,
             commands::diagnostics::detect_local_proxy,
             commands::diagnostics::test_api_connectivity,
             commands::session::start_session,

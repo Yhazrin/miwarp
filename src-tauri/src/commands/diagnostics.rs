@@ -1710,3 +1710,8 @@ pub fn generate_ssh_key() -> Result<SshKeyInfo, String> {
     // Return fresh check result
     check_ssh_key()
 }
+
+#[tauri::command]
+pub fn get_data_directory() -> String {
+    crate::storage::data_dir().to_string_lossy().into_owned()
+}

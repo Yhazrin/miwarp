@@ -905,10 +905,9 @@
         sidebarVersion = `v${v}`;
         sidebarVersionChecked = false;
         try {
-          const res = await fetch(
-            "https://api.github.com/repos/miwarp-app/miwarp/releases/latest",
-            { signal: AbortSignal.timeout(5000) },
-          );
+          const res = await fetch("https://api.github.com/repos/Yhazrin/miwarp/releases/latest", {
+            signal: AbortSignal.timeout(5000),
+          });
           if (res.ok) {
             const data = await res.json();
             const latest = ((data.tag_name as string) || "").replace(/^v/, "");
