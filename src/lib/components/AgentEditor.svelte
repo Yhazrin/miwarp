@@ -251,9 +251,11 @@
     <div class="space-y-3">
       <!-- Name -->
       <div>
-        <label class="text-[11px] font-medium text-foreground block mb-1">{t("agent_name")} *</label
+        <label for="agent-name" class="text-[11px] font-medium text-foreground block mb-1"
+          >{t("agent_name")} *</label
         >
         <input
+          id="agent-name"
           type="text"
           class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground
             focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
@@ -266,10 +268,11 @@
 
       <!-- Description -->
       <div>
-        <label class="text-[11px] font-medium text-foreground block mb-1"
+        <label for="agent-description" class="text-[11px] font-medium text-foreground block mb-1"
           >{t("agent_description")} *</label
         >
         <textarea
+          id="agent-description"
           class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground
             focus:outline-none focus:ring-1 focus:ring-primary resize-none disabled:opacity-50"
           rows="2"
@@ -282,8 +285,8 @@
       <!-- Scope (create only) -->
       {#if mode === "create"}
         <div>
-          <label class="text-[11px] font-medium text-foreground block mb-1"
-            >{t("agentEditor_scope")}</label
+          <span class="text-[11px] font-medium text-foreground block mb-1"
+            >{t("agentEditor_scope")}</span
           >
           <div class="flex gap-2">
             <button
@@ -310,8 +313,11 @@
 
       <!-- Model -->
       <div>
-        <label class="text-[11px] font-medium text-foreground block mb-1">{t("agent_model")}</label>
+        <label for="agent-model" class="text-[11px] font-medium text-foreground block mb-1"
+          >{t("agent_model")}</label
+        >
         <select
+          id="agent-model"
           class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground
             focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
           bind:value={formData.model}
@@ -326,7 +332,9 @@
 
       <!-- Tools -->
       <div>
-        <label class="text-[11px] font-medium text-foreground block mb-1">{t("agent_tools")}</label>
+        <label for="agent-tool-select" class="text-[11px] font-medium text-foreground block mb-1"
+          >{t("agent_tools")}</label
+        >
         {#if formData.tools.length > 0}
           <div class="flex flex-wrap gap-1 mb-1.5">
             {#each formData.tools as tool}
@@ -349,6 +357,7 @@
         {#if mode === "create"}
           <div class="flex gap-1">
             <select
+              id="agent-tool-select"
               class="flex-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
               bind:value={toolInput}
             >
@@ -368,10 +377,13 @@
 
       <!-- Permission Mode -->
       <div>
-        <label class="text-[11px] font-medium text-foreground block mb-1"
+        <label
+          for="agent-permission-mode"
+          class="text-[11px] font-medium text-foreground block mb-1"
           >{t("agent_permissionMode")}</label
         >
         <select
+          id="agent-permission-mode"
           class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground
             focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
           bind:value={formData.permissionMode}
@@ -387,10 +399,11 @@
 
       <!-- Max Turns -->
       <div>
-        <label class="text-[11px] font-medium text-foreground block mb-1"
+        <label for="agent-max-turns" class="text-[11px] font-medium text-foreground block mb-1"
           >{t("agent_maxTurns")}</label
         >
         <input
+          id="agent-max-turns"
           type="number"
           class="w-24 rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground
             focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
@@ -406,9 +419,11 @@
 
       <!-- Memory -->
       <div>
-        <label class="text-[11px] font-medium text-foreground block mb-1">{t("agent_memory")}</label
+        <label for="agent-memory" class="text-[11px] font-medium text-foreground block mb-1"
+          >{t("agent_memory")}</label
         >
         <input
+          id="agent-memory"
           type="text"
           class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground
             focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
@@ -440,10 +455,11 @@
 
       <!-- Initial Prompt -->
       <div>
-        <label class="text-[11px] font-medium text-foreground block mb-1"
+        <label for="agent-initial-prompt" class="text-[11px] font-medium text-foreground block mb-1"
           >{t("agent_initialPrompt")}</label
         >
         <input
+          id="agent-initial-prompt"
           type="text"
           class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground
             focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
@@ -455,10 +471,11 @@
 
       <!-- System Prompt -->
       <div>
-        <label class="text-[11px] font-medium text-foreground block mb-1"
+        <label for="agent-system-prompt" class="text-[11px] font-medium text-foreground block mb-1"
           >{t("agent_systemPrompt")}</label
         >
         <textarea
+          id="agent-system-prompt"
           class="w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground font-mono
             focus:outline-none focus:ring-1 focus:ring-primary resize-y disabled:opacity-50"
           rows="8"
@@ -473,8 +490,8 @@
     <div>
       {#if mode === "create"}
         <div class="mb-2">
-          <label class="text-[11px] font-medium text-foreground block mb-1"
-            >{t("agentEditor_scope")}</label
+          <span class="text-[11px] font-medium text-foreground block mb-1"
+            >{t("agentEditor_scope")}</span
           >
           <div class="flex gap-2">
             <button
