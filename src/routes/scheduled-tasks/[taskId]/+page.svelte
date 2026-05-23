@@ -12,7 +12,7 @@
   import { listRuns } from "$lib/api";
   import { relativeTime } from "$lib/utils/format";
 
-  let taskId = $derived($page.params.taskId);
+  let taskId = $derived(($page.params as Record<string, string>).taskId);
   let selectedRunId = $state<string | null>(null);
   let linkedRuns = $state<TaskRun[]>([]);
   let loadingRuns = $state(false);

@@ -1561,7 +1561,9 @@
   // Current page detection
   let currentPath = $derived($page.url.pathname);
   let selectedScheduledTaskId = $derived(
-    currentPath.startsWith("/scheduled-tasks/") && $page.params.taskId ? $page.params.taskId : "",
+    currentPath.startsWith("/scheduled-tasks/") && ($page.params as Record<string, string>).taskId
+      ? ($page.params as Record<string, string>).taskId
+      : "",
   );
   let isChatPage = $derived(currentPath === "/chat" || currentPath === "/");
   let isPluginsPage = $derived(currentPath.startsWith("/plugins"));
