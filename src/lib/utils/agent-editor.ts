@@ -288,7 +288,7 @@ export function validateAgentForm(data: AgentFormData): ValidationError[] {
       message: "agentEditor_nameFormat",
     });
   } else if (BUILTIN_AGENT_NAMES.includes(data.name.toLowerCase())) {
-    errors.push({ field: "name", message: "agentEditor_nameConflict" });
+    errors.push({ field: "name", message: "Name conflicts with a built-in agent" });
   }
 
   if (!data.description) {

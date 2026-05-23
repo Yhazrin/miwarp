@@ -213,7 +213,7 @@ pub async fn sync_source(id: &str) -> Result<SkillSourceSyncResult, String> {
         SkillParserMode::Strict
     };
 
-    let urls: Vec<String> = fe.doc_urls.iter().cloned().collect();
+    let urls: Vec<String> = fe.doc_urls.to_vec();
     if urls.is_empty() {
         result
             .errors
@@ -460,7 +460,7 @@ fn skill_install_path(scope: &str, cwd: &str, name: &str) -> Result<PathBuf, Str
     Ok(base.join(name))
 }
 
-fn write_remote_stub(dir: &PathBuf, meta: &SkillRemoteRef) -> Result<(), String> {
+fn write_remote_stub(dir: &std::path::Path, meta: &SkillRemoteRef) -> Result<(), String> {
     let p = dir.join(".miwarp_remote.json");
     let j = serde_json::to_string_pretty(meta).map_err(|e| e.to_string())?;
     std::fs::write(p, j).map_err(|e| e.to_string())

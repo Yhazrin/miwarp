@@ -146,9 +146,21 @@
       skillPrompt,
     );
 
-    if (skill && onComplete) {
-      // skillStore.createSkill returns boolean, not Skill — onComplete cannot receive the created skill
-      onComplete(null as unknown as Skill);
+    if (skill) {
+      onComplete?.({
+        id: `skill-${Date.now()}`,
+        name: skillName,
+        description: skillDescription,
+        category: selectedCategory || "custom",
+        source: "local",
+        isBuiltIn: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        author: "User",
+        tags: skillTags,
+        icon: skillIcon,
+        content: skillPrompt,
+      } as Skill);
     }
   }
 

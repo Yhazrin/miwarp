@@ -16,6 +16,7 @@ export interface SkillPipelineStep {
   onFailure?: string; // 失败时跳转的 stepId
   retryPolicy?: RetryPolicy;
   timeout?: number; // 超时时间（毫秒）
+  status?: PipelineStepStatus;
 }
 
 /**

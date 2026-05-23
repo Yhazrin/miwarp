@@ -4,7 +4,7 @@ use chrono::{DateTime, Datelike, Duration, Timelike, Utc};
 /// Fields: minute hour day-of-month month day-of-week
 /// Supports: *, N, N-M, N/M, N,M
 pub fn next_cron_time(expr: &str, after: DateTime<Utc>) -> Option<DateTime<Utc>> {
-    let fields: Vec<&str> = expr.trim().split_whitespace().collect();
+    let fields: Vec<&str> = expr.split_whitespace().collect();
     if fields.len() != 5 {
         return None;
     }
@@ -29,13 +29,13 @@ pub fn next_cron_time(expr: &str, after: DateTime<Utc>) -> Option<DateTime<Utc>>
     while t < limit {
         if minutes.contains(&t.minute())
             && hours.contains(&t.hour())
-            && days.contains(&(t.day() as u32))
-            && months.contains(&(t.month() as u32))
+            && days.contains(&t.day())
+            && months.contains(&t.month())
             && weekdays.contains(&(t.weekday().num_days_from_sunday()))
         {
             return Some(t);
         }
-        t = t + Duration::minutes(1);
+        t += Duration::minutes(1);
     }
 
     None
@@ -43,7 +43,7 @@ pub fn next_cron_time(expr: &str, after: DateTime<Utc>) -> Option<DateTime<Utc>>
 
 /// Validate a 5-field cron expression.
 pub fn validate_cron(expr: &str) -> bool {
-    let fields: Vec<&str> = expr.trim().split_whitespace().collect();
+    let fields: Vec<&str> = expr.split_whitespace().collect();
     if fields.len() != 5 {
         return false;
     }
@@ -82,7 +82,7 @@ fn format_weekdays(weekday: &str) -> Vec<String> {
 
 /// Generate a human-readable description of a cron expression.
 pub fn describe_cron(expr: &str) -> String {
-    let fields: Vec<&str> = expr.trim().split_whitespace().collect();
+    let fields: Vec<&str> = expr.split_whitespace().collect();
     if fields.len() != 5 {
         return format!("Invalid: {}", expr);
     }
@@ -93,11 +93,11 @@ pub fn describe_cron(expr: &str) -> String {
     if expr == "* * * * *" {
         return "Every minute".into();
     }
-    if minute.starts_with("*/") {
-        return format!("Every {} minutes", &minute[2..]);
+    if let Some(m) = minute.strip_prefix("*/") {
+        return format!("Every {} minutes", m);
     }
-    if hour.starts_with("*/") {
-        return format!("Every {} hours", &hour[2..]);
+    if let Some(h) = hour.strip_prefix("*/") {
+        return format!("Every {} hours", h);
     }
 
     // Single specific time

@@ -1,4 +1,4 @@
-use crate::models::{TeamMemberRun, TeamMemberStatus, TeamRun, TeamRunStatus};
+use crate::models::{TeamMemberStatus, TeamRun, TeamRunStatus};
 use crate::storage::{data_dir, ensure_dir};
 use std::fs;
 use std::path::PathBuf;

@@ -16,7 +16,7 @@ pub struct BackgroundConfig {
     pub scope: String,         // global|session
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct BackgroundSettings {
     pub global: BackgroundConfig,
@@ -34,15 +34,6 @@ impl Default for BackgroundConfig {
             sizing_mode: "cover".to_string(),
             color_overlay: String::new(),
             scope: "global".to_string(),
-        }
-    }
-}
-
-impl Default for BackgroundSettings {
-    fn default() -> Self {
-        Self {
-            global: BackgroundConfig::default(),
-            per_session: HashMap::new(),
         }
     }
 }

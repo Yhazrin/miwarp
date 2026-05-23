@@ -105,10 +105,21 @@ export function fuzzyMatch(query: string, target: string): FuzzyMatchResult {
     };
   }
 
-  // Strategy 3: Word boundary match - each query word starts at a word boundary
+  // Strategy 3: Word boundary match - each query word matches the start of a target word.
+  // For multi-word queries, allows fuzzy prefix matching (e.g. "hi" matches "hello").
   const words = t.split(/\s+|-/);
   const queryWords = q.split(/\s+/);
-  if (queryWords.every((qw) => words.some((w) => w.startsWith(qw)))) {
+  const multiWord = queryWords.length > 1;
+  if (
+    queryWords.every((qw) =>
+      words.some((w) => {
+        if (w.startsWith(qw)) return true;
+        if (!multiWord) return false;
+        const prefix = w.substring(0, qw.length);
+        return prefix.length > 0 && levenshteinDistance(qw, prefix) <= 1;
+      }),
+    )
+  ) {
     return {
       matched: true,
       score: 0.8,

@@ -1,6 +1,6 @@
 use crate::process_ext::HideConsole;
 use serde::Serialize;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 /// Info about a created worktree.

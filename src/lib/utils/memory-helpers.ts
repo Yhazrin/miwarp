@@ -220,9 +220,13 @@ export function parseMemoryPath(path: string): {
   const parts = path.split("/");
   const filename = parts.pop() ?? path;
 
-  const isGlobal = path.includes(".claude/") && !path.includes("projects/");
-  const isProject = parts.some((p) => p === ".claude" || p === "CLAUDE.md");
   const isMemory = path.includes("/memory/") || path.includes("\\memory\\");
+
+  // Detect home directory prefix to distinguish global (~/.claude/) from project paths
+  const isHomePath = /\/home\/|\/Users\//.test(path);
+  const isGlobal = isHomePath && path.includes(".claude/") && !path.includes("projects/");
+  const isProject =
+    !isGlobal && !isMemory && (parts.some((p) => p === ".claude") || filename === "CLAUDE.md");
 
   return {
     directory: parts.join("/"),

@@ -214,6 +214,7 @@ impl ProtocolState {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn emit_message_complete(
         &mut self,
         run_id: &str,

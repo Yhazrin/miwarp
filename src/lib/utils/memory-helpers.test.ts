@@ -51,7 +51,7 @@ const FILES = [
 describe("filterVisibleCandidates", () => {
   it("returns only existing files by default", () => {
     const result = filterVisibleCandidates(FILES, false, "");
-    expect(result).toHaveLength(3);
+    expect(result).toHaveLength(4);
     expect(result.every((f) => f.exists)).toBe(true);
   });
 
@@ -275,7 +275,7 @@ describe("summarizeMemoryFiles", () => {
 
   it("counts by scope correctly", () => {
     const result = summarizeMemoryFiles(FILES);
-    expect(result).toContain('"project":3');
+    expect(result).toContain('"project":4');
     expect(result).toContain('"global":1');
     expect(result).toContain('"memory":1');
   });

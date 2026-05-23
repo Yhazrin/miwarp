@@ -1,10 +1,12 @@
 import type { CliCommand } from "$lib/types";
+import { t } from "$lib/i18n/index.svelte";
+import type { MessageKey } from "$lib/i18n/types";
 import { dbg } from "$lib/utils/debug";
 
 // ── Fallback descriptions for known CLI commands ──
 // CLI system/init only sends command names (strings), not descriptions.
 // These are extracted from the CLI source (cli.js) to fill the gap.
-const KNOWN_COMMAND_DESCRIPTIONS: Record<string, string> = {
+const KNOWN_COMMAND_DESCRIPTIONS: Record<string, MessageKey> = {
   agents: "slash_desc_agents",
   clear: "slash_desc_clear",
   color: "slash_desc_color",
@@ -326,7 +328,7 @@ export function mergeWithVirtual(cliCommands: CliCommand[]): CliCommand[] {
     // Apply fallback description if empty (works for both virtual-merged and plain CLI commands)
     if (!merged.description) {
       const fallback = KNOWN_COMMAND_DESCRIPTIONS[merged.name];
-      if (fallback) merged = { ...merged, description: fallback };
+      if (fallback) merged = { ...merged, description: t(fallback) };
     }
     // Apply fallback argumentHint if missing (prevents immediate execution for commands that need args)
     const hintFallback = KNOWN_ARGUMENT_HINTS[merged.name];
@@ -597,7 +599,7 @@ export function groupSlashCommands(
 
 // ── Help text builder ──
 
-const CATEGORY_LABELS: Record<SlashCategory, string> = {
+const CATEGORY_LABELS: Record<SlashCategory, MessageKey> = {
   session: "slash_cat_session",
   coding: "slash_cat_coding",
   config: "slash_cat_config",
@@ -616,7 +618,7 @@ export function buildHelpText(commands: CliCommand[], skillNames?: Set<string>):
 
   for (const group of groups) {
     if (group.category === "skills") continue; // Skills accessed via SkillSelector
-    const label = CATEGORY_LABELS[group.category];
+    const label = t(CATEGORY_LABELS[group.category]);
     const lines: string[] = [
       `## ${label}`,
       "",

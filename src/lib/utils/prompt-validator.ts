@@ -32,7 +32,7 @@ const FORBIDDEN_PATTERNS = [
     suggestion: "Use explicit context parameters instead",
   },
   {
-    pattern: /the\s+above/i,
+    pattern: /the\s+above|mentioned\s+above/i,
     message: "References to 'the above' content are not allowed",
     type: "forbidden_reference" as const,
     suggestion: "Include the necessary context directly in the prompt",

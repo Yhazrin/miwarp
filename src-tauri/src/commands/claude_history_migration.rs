@@ -159,7 +159,7 @@ pub fn export_claude_code_history_archive(output_path: String) -> Result<ExportR
         });
     }
 
-    let total_input_bytes: u64 = jsonl_files.iter().map(|(_, s)| *s).sum();
+    let _total_input_bytes: u64 = jsonl_files.iter().map(|(_, s)| *s).sum();
 
     // Create zip archive
     let file = File::create(&output_path).map_err(|e| format!("create zip: {}", e))?;
@@ -646,8 +646,6 @@ fn run_import_pipeline(
     let mut result_is_error = false;
     let mut first_prompt = String::new();
     let mut model: Option<String> = None;
-    let mut file_size: u64 = 0;
-
     for line_result in reader.lines() {
         let line = line_result.map_err(|e| format!("read: {}", e))?;
         let trimmed = line.trim();
@@ -687,21 +685,18 @@ fn run_import_pipeline(
                 }
             }
 
-            if model.is_none() {
-                if etype == "progress" {
-                    if let Some(data) = json_val.get("data") {
-                        if data.get("type").and_then(|v| v.as_str()) == Some("init") {
-                            model = data.get("model").and_then(|v| v.as_str()).map(String::from);
-                        }
+            if model.is_none() && etype == "progress" {
+                if let Some(data) = json_val.get("data") {
+                    if data.get("type").and_then(|v| v.as_str()) == Some("init") {
+                        model = data.get("model").and_then(|v| v.as_str()).map(String::from);
                     }
                 }
             }
         }
-        file_size += (trimmed.len() as u64) + 1;
     }
 
     let file_meta = fs::metadata(jsonl_path).map_err(|e| format!("stat: {}", e))?;
-    file_size = file_meta.len();
+    let file_size = file_meta.len();
 
     // Create run
     let run_id = uuid::Uuid::new_v4().to_string();
@@ -780,7 +775,7 @@ fn run_import_pipeline(
     let mut _has_usage_update_this_turn = false;
     let mut pending_model: Option<String> = None;
     let mut last_user_is_command = false;
-    let known_usage_turns: HashSet<u64> = HashSet::new();
+    let _known_usage_turns: HashSet<u64> = HashSet::new();
 
     let index_path = run_dir.join("import-index.jsonl");
     let index_file = OpenOptions::new()

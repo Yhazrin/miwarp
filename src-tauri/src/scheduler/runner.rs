@@ -88,7 +88,7 @@ pub async fn execute_task(
         None, // platform_id
     );
 
-    let run_meta = match run_meta {
+    let _run_meta = match run_meta {
         Ok(mut meta) => {
             meta.execution_path = Some(execution_path);
             // Tag as scheduled task

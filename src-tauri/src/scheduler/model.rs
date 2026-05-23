@@ -1,30 +1,20 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "kebab-case")]
 pub enum Agent {
+    #[default]
     Claude,
     Codex,
 }
 
-impl Default for Agent {
-    fn default() -> Self {
-        Self::Claude
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "kebab-case")]
 pub enum ScheduleType {
+    #[default]
     Cron,
     OneTime,
     Interval,
-}
-
-impl Default for ScheduleType {
-    fn default() -> Self {
-        Self::Cron
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

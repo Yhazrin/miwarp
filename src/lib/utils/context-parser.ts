@@ -110,26 +110,26 @@ export function parseContextMarkdown(md: string): ContextData | null {
 // ── Color + Icon mapping ──
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  contextCat_systemPrompt: "#a78bfa",
-  contextCat_systemTools: "#f87171",
-  contextCat_systemToolsDeferred: "#fb923c",
-  contextCat_mcpTools: "#34d399",
-  contextCat_mcpToolsDeferred: "#2dd4bf",
-  contextCat_customAgents: "#60a5fa",
-  contextCat_memoryFiles: "#fbbf24",
-  contextCat_skills: "#facc15",
-  contextCat_messages: "#f472b6",
+  "System prompt": "#a78bfa",
+  "System tools": "#f87171",
+  "System tools (deferred)": "#fb923c",
+  "MCP tools": "#34d399",
+  "MCP tools (deferred)": "#2dd4bf",
+  "Custom agents": "#60a5fa",
+  "Memory files": "#fbbf24",
+  Skills: "#facc15",
+  Messages: "#f472b6",
 };
 
 export function getColor(name: string): string {
-  if (name === "contextCat_freeSpace") return "#6b7280";
-  if (name === "contextCat_autocompact") return "#4b5563";
+  if (name === "Free space") return "#6b7280";
+  if (name === "Autocompact buffer") return "#4b5563";
   return CATEGORY_COLORS[name] ?? "#9ca3af";
 }
 
 export function getIcon(name: string): string {
-  if (name === "contextCat_freeSpace") return "▢";
-  if (name === "contextCat_autocompact") return "⊠";
+  if (name === "Free space") return "▢";
+  if (name === "Autocompact buffer") return "⊠";
   return "⛁";
 }
 

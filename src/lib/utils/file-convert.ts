@@ -47,12 +47,12 @@ async function convertDocx(arrayBuffer: ArrayBuffer): Promise<string> {
     const result = await mammoth.convertToHtml({ arrayBuffer });
     const html = result.value;
     if (!html || html.trim().length === 0) {
-      throw new Error("fileConvert_emptyDoc");
+      throw new Error("Document appears to be empty");
     }
     const td = new TurndownService({ headingStyle: "atx" });
     return td.turndown(html);
   } catch (e) {
-    if (e instanceof Error && e.message === "fileConvert_emptyDoc") throw e;
+    if (e instanceof Error && e.message === "Document appears to be empty") throw e;
     throw new Error(`Failed to read Word document: ${e instanceof Error ? e.message : String(e)}`);
   }
 }
@@ -98,14 +98,15 @@ async function convertXlsx(arrayBuffer: ArrayBuffer): Promise<string> {
     });
 
     if (sections.length === 0) {
-      throw new Error("fileConvert_emptySheet");
+      throw new Error("Spreadsheet appears to be empty");
     }
 
     return sections.join("\n\n");
   } catch (e) {
     if (
       e instanceof Error &&
-      (e.message === "fileConvert_emptySheet" || e.message === "fileConvert_emptyDoc")
+      (e.message === "Spreadsheet appears to be empty" ||
+        e.message === "Document appears to be empty")
     )
       throw e;
     throw new Error(`Failed to read spreadsheet: ${e instanceof Error ? e.message : String(e)}`);

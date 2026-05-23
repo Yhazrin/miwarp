@@ -163,7 +163,7 @@ fn loose_parse(
 
 fn slug_from_remote(remote_id: &str, title: &str) -> String {
     let raw = remote_id
-        .rsplit(|c| c == '/' || c == ':')
+        .rsplit(['/', ':'])
         .next()
         .unwrap_or(remote_id)
         .to_lowercase()
@@ -257,13 +257,10 @@ fn split_yaml_frontmatter(doc: &str) -> Option<(&str, &str)> {
         return None;
     }
     let after = trimmed.strip_prefix("---").unwrap_or(trimmed);
-    let after = if let Some(r) = after.strip_prefix('\n') {
-        r
-    } else if let Some(r) = after.strip_prefix("\r\n") {
-        r
-    } else {
-        ""
-    };
+    let after = after
+        .strip_prefix('\n')
+        .or_else(|| after.strip_prefix("\r\n"))
+        .unwrap_or_default();
 
     let end = after.find("\n---")?;
     let (_, rest) = after.split_at(end);

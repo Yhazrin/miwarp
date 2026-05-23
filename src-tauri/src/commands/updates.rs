@@ -65,10 +65,7 @@ fn is_newer(current: &str, latest: &str) -> bool {
         return false;
     }
 
-    match (cur_pre, lat_pre) {
-        (true, false) => true,
-        _ => false,
-    }
+    matches!((cur_pre, lat_pre), (true, false))
 }
 
 fn select_download_url_for_exts(body: &serde_json::Value, preferred_exts: &[&str]) -> String {
@@ -110,6 +107,7 @@ fn select_download_url(body: &serde_json::Value) -> String {
 
 // ── Helpers ──
 
+#[allow(dead_code)]
 fn no_update(current_version: String) -> UpdateInfo {
     UpdateInfo {
         has_update: false,

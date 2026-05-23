@@ -26,6 +26,17 @@ function setupDocument() {
   } as unknown as Document;
 }
 
+// Stub navigator.languages to prevent system locale leaking into tests.
+// Node 21+ exposes a global `navigator` with the OS locale (e.g. zh-CN on
+// Chinese Windows), which initLocale() would detect before falling back to en.
+function setupNavigator() {
+  Object.defineProperty(globalThis, "navigator", {
+    value: { languages: ["en"] },
+    configurable: true,
+    writable: true,
+  });
+}
+
 function setupLocalStorage() {
   const store: Record<string, string> = {};
   const lsImpl = {
@@ -50,6 +61,7 @@ describe("i18n", () => {
 
   beforeEach(() => {
     setupDocument();
+    setupNavigator();
     lsStore = setupLocalStorage();
     // Reset to base locale by switching explicitly
     switchLocale("en");
