@@ -112,7 +112,7 @@ const HIGH_RISK_PATTERNS = [
 /**
  * 中等风险操作模式
  */
-const MEDIUM_RISK_PATTERNS = [
+const _MEDIUM_RISK_PATTERNS = [
   { pattern: /git\s+(add|commit|push|pull|merge)/i, risk: "low", message: "Git 操作" },
   {
     pattern: /npm\s+(install|update|remove)|yarn\s+(add|remove)/i,

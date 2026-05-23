@@ -50,12 +50,12 @@
     showPreview = true;
   }
 
-  function handleConfirm(skill: Skill, args: string) {
+  function handleConfirm(skill: Skill, _args: string) {
     showPreview = false;
     onSelect?.(skill);
   }
 
-  function formatDate(dateStr: string): string {
+  function _formatDate(dateStr: string): string {
     const date = new Date(dateStr);
     return date.toLocaleDateString("en-US", {
       month: "short",

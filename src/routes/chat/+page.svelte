@@ -69,7 +69,7 @@
   // ── Helpers ──
 
   // ── Layout context ──
-  const toggleLayoutSidebar = getContext<() => void>("toggleSidebar");
+  const _toggleLayoutSidebar = getContext<() => void>("toggleSidebar");
   const keybindingStore = getContext<KeybindingStore>("keybindings");
 
   // ── Store + Middleware ──
@@ -764,7 +764,7 @@
 
   const {
     cancelProgressive,
-    loadMoreEarlier,
+    loadMoreEarlier: _loadMoreEarlier,
     loadRunProgressive,
     handleChatScroll,
     scrollChatToBottom,
@@ -931,7 +931,7 @@
   let dragProcessingCount = $state(0);
   let dragProcessing = $derived(dragProcessingCount > 0);
 
-  async function handleTauriDrop(payload: { paths: string[] }) {
+  async function _handleTauriDrop(payload: { paths: string[] }) {
     const input = promptRef; // cache ref — promptRef may become undefined after awaits
     if (!input) return;
     await execTauriDrop(

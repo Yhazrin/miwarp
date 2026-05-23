@@ -640,7 +640,7 @@
     }
   }
 
-  async function safeClearContext() {
+  async function _safeClearContext() {
     try {
       await onExitPlanClearContext?.();
     } catch {

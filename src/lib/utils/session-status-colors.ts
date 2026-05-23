@@ -1,4 +1,4 @@
-import type { SessionStatusColors } from "$lib/types";
+// SessionStatusColors type removed — was unused
 
 export type SessionStatusColorKey =
   | "running"

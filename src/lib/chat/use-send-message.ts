@@ -4,12 +4,7 @@ import type { Attachment, SessionMode } from "$lib/types";
 import type { ThinkingTimerHandle } from "$lib/chat/use-thinking-timer.svelte";
 import { detectTeamTrigger } from "$lib/services/team-dispatcher";
 import { dbg, dbgWarn } from "$lib/utils/debug";
-import {
-  getLastTarget,
-  setLastTarget,
-  getStoredRemoteCwd,
-  setStoredRemoteCwd,
-} from "$lib/utils/remote-cwd";
+import { setLastTarget, getStoredRemoteCwd, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
 
 export interface SendMessageContext {
   store: SessionStore;

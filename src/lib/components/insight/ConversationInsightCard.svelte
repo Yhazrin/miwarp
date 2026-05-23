@@ -4,7 +4,7 @@
 
   let {
     report,
-    html,
+    html: _html,
     status,
     error,
     onPreview,

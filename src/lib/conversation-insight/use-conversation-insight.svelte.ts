@@ -12,7 +12,7 @@ import { yieldToMain } from "$lib/utils/yield";
 import { t } from "$lib/i18n/index.svelte";
 import { buildInsightContext } from "./insight-context-builder";
 import { renderInsightHtmlAsync, redactSensitiveData } from "./insight-html-renderer";
-import type { InsightContext, InsightReport, InsightCardState } from "./insight-types";
+import type { InsightReport, InsightCardState } from "./insight-types";
 
 type RedactedContext = ReturnType<typeof redactSensitiveData>;
 

@@ -101,7 +101,7 @@
   }
 
   // 渲染依赖边
-  function getDependencyEdges(config: MultiAgentConfig): Array<{ from: string; to: string }> {
+  function _getDependencyEdges(config: MultiAgentConfig): Array<{ from: string; to: string }> {
     const edges: Array<{ from: string; to: string }> = [];
     for (const agent of config.agents) {
       if (agent.dependsOn) {

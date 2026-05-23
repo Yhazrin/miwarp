@@ -31,7 +31,7 @@ const BUILTIN_THEMES: ThemeDefinition[] = [
 export type ThemeId = string;
 export type ColorScheme = "warm" | "neutral";
 
-const TOKEN_VARS = [
+const _TOKEN_VARS = [
   "--miwarp-bg-deepest",
   "--miwarp-bg-deep",
   "--miwarp-bg-base",

@@ -3,7 +3,7 @@
    * Git / Worktree panel — high-density commit timeline for the active worktree.
    * Optimized for narrow right-side panel with compact rows and minimal vertical space.
    */
-  import type { GitTimelineEntry, GitTimelineResponse } from "$lib/types";
+  import type { GitTimelineEntry } from "$lib/types";
   import type { WorktreeEntry } from "$lib/api";
   import {
     autoCommit as apiAutoCommit,

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { MediaArtifact } from "$lib/types";
-  import { t } from "$lib/i18n/index.svelte";
+  // import { t } from "$lib/i18n/index.svelte";
 
   let { artifact }: { artifact: MediaArtifact } = $props();
 

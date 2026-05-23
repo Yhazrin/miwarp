@@ -2,7 +2,7 @@
  * Renders an InsightReport into a single-file HTML document.
  */
 
-import type { InsightReport, InsightContext, InsightSession } from "./insight-types";
+import type { InsightReport, InsightContext } from "./insight-types";
 import { buildInsightPromptContext } from "./insight-context-builder";
 import { yieldToMain } from "$lib/utils/yield";
 

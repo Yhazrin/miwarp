@@ -2,7 +2,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import Button from "./Button.svelte";
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
-  import { ScheduledTasksService } from "$lib/services/scheduled-tasks-service";
+
   import type {
     Agent,
     ScheduleConfig,

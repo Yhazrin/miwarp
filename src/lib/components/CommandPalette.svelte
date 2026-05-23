@@ -12,7 +12,7 @@
     type CommandDef,
     type CommandCategory,
   } from "$lib/commands";
-  import { multiFieldFuzzyMatch, highlightMatches } from "$lib/utils/fuzzy";
+  import { multiFieldFuzzyMatch } from "$lib/utils/fuzzy";
   import * as api from "$lib/api";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
@@ -44,8 +44,8 @@
   let previewContent = $state<string | null>(null);
   let hoveredCmdId = $state<string | null>(null);
   let searchMode = $state<"basic" | "fuzzy" | "nl">("basic");
-  let isLoadingFuzzy = $state(false);
-  let nlMatchResult = $state<CommandDef | null>(null);
+  let _isLoadingFuzzy = $state(false);
+  let _nlMatchResult = $state<CommandDef | null>(null);
 
   // Compute flat list with fuzzy scores
   let flatListWithScores = $derived.by(() => {
@@ -56,10 +56,10 @@
     if (q && searchMode === "nl") {
       const nlMatch = matchNLQuery(q);
       if (nlMatch) {
-        nlMatchResult = nlMatch;
+        _nlMatchResult = nlMatch;
         return [{ cmd: nlMatch, score: 100 }]; // Highest priority for NL match
       }
-      nlMatchResult = null;
+      _nlMatchResult = null;
     }
 
     // Get NL candidates for suggestions
@@ -124,8 +124,7 @@
       previewContent = null;
       hoveredCmdId = null;
       searchMode = "basic";
-      isLoadingFuzzy = false;
-      nlMatchResult = null;
+      _nlMatchResult = null;
       requestAnimationFrame(() => inputEl?.focus());
     }
   });
@@ -550,7 +549,7 @@
                 {t("cmd_cat_recent")}
               </p>
               {#each recentCommands as cmd}
-                {@const idx = indexMap.get(cmd.id) ?? displayList.indexOf(cmd)}
+                {@const _idx = indexMap.get(cmd.id) ?? displayList.indexOf(cmd)}
                 {@const usage = getCommandUsageCount(cmd.id)}
                 <button
                   data-cmd-idx={displayList.indexOf(cmd)}

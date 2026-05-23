@@ -61,7 +61,7 @@
   const canResume = $derived(canResumeNow(run, run.status, getNoSessionPersistence(run.agent)));
   const canDelete = $derived(conversation.runs.every((r) => TERMINAL_PHASES.includes(r.status)));
   const runCount = $derived(conversation.runs.length);
-  const needsAttention = $derived(hasAttention(run.id));
+  const _needsAttention = $derived(hasAttention(run.id));
 
   // Compact status dot for non-selected items
   const statusDot = $derived.by(() => {
@@ -225,7 +225,7 @@
     contextMenuOpen = true;
   }
 
-  function openContextMenuFromButton(e: MouseEvent) {
+  function _openContextMenuFromButton(e: MouseEvent) {
     e.stopPropagation();
     window.dispatchEvent(new CustomEvent("close-all-context-menus"));
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();

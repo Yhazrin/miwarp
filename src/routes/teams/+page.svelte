@@ -4,7 +4,7 @@
   import { getTeamTask, listTeamRuns, getTeamRun, cancelTeamRun } from "$lib/api";
   import type { TeamStore } from "$lib/stores/team-store.svelte";
   import type { TeamTask, TeamInboxMessage, TeamRun, TeamRunStatus } from "$lib/types";
-  import { dbg } from "$lib/utils/debug";
+  // import { dbg } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
 
   const teamStore = getContext<TeamStore>("teamStore");

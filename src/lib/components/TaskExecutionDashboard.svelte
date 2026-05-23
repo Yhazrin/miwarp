@@ -1,12 +1,7 @@
 <script lang="ts">
-  import { t } from "$lib/i18n/index.svelte";
+  // import { t } from "$lib/i18n/index.svelte";
   import type { SkillExecutionEnhanced } from "$lib/types/skill-execution";
-  import {
-    createTaskDashboard,
-    type TaskDashboardStats,
-    type TaskHealthMetrics,
-    type TaskTrend,
-  } from "$lib/services/task-execution-dashboard";
+  import { createTaskDashboard } from "$lib/services/task-execution-dashboard";
 
   interface Props {
     executions?: SkillExecutionEnhanced[];

@@ -12,7 +12,7 @@ import type {
   InsightUsage,
   InsightMetadata,
 } from "./insight-types";
-import type { TaskRun, TimelineEntry, BusToolItem } from "$lib/types";
+import type { TaskRun, TimelineEntry } from "$lib/types";
 import type { UsageState } from "$lib/stores/types";
 
 /**
@@ -75,7 +75,7 @@ export async function buildInsightContext(
   };
 }
 
-type TimelineKind = TimelineEntry["kind"];
+type _TimelineKind = TimelineEntry["kind"];
 
 /**
  * Extracts structured data from the timeline.

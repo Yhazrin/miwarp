@@ -7,10 +7,7 @@
 
 import { untrack } from "svelte";
 import type { SessionStore } from "$lib/stores/session-store.svelte";
-import {
-  useToolBurstCollapse,
-  type BurstCollapseHandle,
-} from "$lib/chat/use-tool-burst-collapse.svelte";
+import { type BurstCollapseHandle } from "$lib/chat/use-tool-burst-collapse.svelte";
 import {
   computeTimelinePresentation,
   getInitialRenderLimit,
@@ -71,7 +68,7 @@ export interface TimelineStateHandle {
 // ── Composable ──
 
 export function useTimelineState(ctx: TimelineStateContext): TimelineStateHandle {
-  const { store, burstCollapse, getProcessVisibility, getChatAreaRef, loadMoreEarlier } = ctx;
+  const { store, burstCollapse, getChatAreaRef, loadMoreEarlier } = ctx;
 
   // ── Mutable state ──
 

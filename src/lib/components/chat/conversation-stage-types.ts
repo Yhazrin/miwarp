@@ -5,9 +5,7 @@
  * props to 7 semantic groups. Template code is unchanged — the component
  * destructures each VM at the top level.
  */
-import type { SessionStore } from "$lib/stores/session-store.svelte";
-import type { UserSettings, TimelineEntry, TeamRun, AuthOverview, BusToolItem } from "$lib/types";
-import type { ProcessVisibility } from "$lib/utils/process-visibility";
+import type { TimelineEntry, TeamRun, AuthOverview, BusToolItem } from "$lib/types";
 import type { ToolBurst } from "$lib/utils/tool-rendering";
 import type { BurstCollapseHandle } from "$lib/chat/use-tool-burst-collapse.svelte";
 import type { TurnUsage } from "$lib/stores/types";

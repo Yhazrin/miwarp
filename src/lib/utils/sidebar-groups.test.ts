@@ -6,8 +6,6 @@ import {
   autoExpandForRun,
   expandForProjectChange,
   normalizeCwd,
-  normalizeSessionFolderList,
-  resolveSessionFolderWorkspaceId,
   isScheduledTaskRun,
 } from "./sidebar-groups";
 import type { ScheduledTask } from "$lib/types/scheduled-task";

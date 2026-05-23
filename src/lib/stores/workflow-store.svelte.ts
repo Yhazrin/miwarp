@@ -6,7 +6,6 @@
  */
 
 import { dbg, dbgWarn } from "$lib/utils/debug";
-import { t } from "$lib/i18n/index.svelte";
 
 // ── Workflow Template Types ──
 

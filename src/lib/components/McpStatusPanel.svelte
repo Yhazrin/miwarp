@@ -392,7 +392,7 @@ diagnostics and history * - Quick reconnect with health check */
                       Latency History
                     </div>
                     <div class="flex items-end gap-0.5 h-6">
-                      {#each health.latencyHistory as latency, i}
+                      {#each health.latencyHistory as latency, _i}
                         {@const maxLatency = Math.max(...health.latencyHistory)}
                         {@const height = maxLatency > 0 ? (latency / maxLatency) * 24 : 0}
                         <div

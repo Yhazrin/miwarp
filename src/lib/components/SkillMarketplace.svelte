@@ -6,7 +6,7 @@
    */
   import { t } from "$lib/i18n/index.svelte";
   import type { MarketplaceSkill, MarketplaceCategory } from "$lib/types/marketplace";
-  import { SKILL_CATEGORIES } from "$lib/types/skill";
+  // import { SKILL_CATEGORIES } from "$lib/types/skill";
 
   interface Props {
     onInstall?: (skill: MarketplaceSkill) => void;
@@ -21,7 +21,7 @@
   let skills = $state<MarketplaceSkill[]>([]);
   let categories = $state<MarketplaceCategory[]>([]);
   let loading = $state(true);
-  let selectedSkill = $state<MarketplaceSkill | null>(null);
+  let _selectedSkill = $state<MarketplaceSkill | null>(null);
   let installing = $state<string | null>(null);
   let error = $state<string | null>(null);
 
@@ -164,7 +164,7 @@ Analyze your test coverage...`,
   }
 
   function previewSkill(skill: MarketplaceSkill) {
-    selectedSkill = skill;
+    _selectedSkill = skill;
     onPreview?.(skill);
   }
 

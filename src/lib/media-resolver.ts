@@ -1,5 +1,5 @@
 import { readFileBase64, validateMediaFile } from "$lib/api";
-import { isMediaPath, getExtension } from "./media-types";
+// media-types imports removed — were unused
 import { detectFilePaths, type DetectedPath } from "./media-detector";
 import type { MediaArtifact, MediaArtifactKind } from "$lib/types";
 

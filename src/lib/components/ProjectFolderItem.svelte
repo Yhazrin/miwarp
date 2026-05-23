@@ -13,7 +13,6 @@
   import { t } from "$lib/i18n/index.svelte";
   import { SESSION_DROP_FOLDER_ATTR } from "$lib/utils/session-drag-state";
   import { dbgWarn } from "$lib/utils/debug";
-  import { staticAsset } from "$lib/utils/brand-assets";
   import ClaudeCanvas from "./ClaudeCanvas.svelte";
 
   const PAGE_SIZE = 20;
@@ -101,7 +100,7 @@
     label,
     expanded = false,
     onToggle,
-    showCount = true,
+    showCount: _showCount = true,
     onRemove,
     children,
     selectedRunId = "",
@@ -132,8 +131,8 @@
     onDeleteSubFolder,
     dragOverSubFolderKey = null,
     dragRunId = null,
-    onDragOverSubFolder,
-    onDropOnSubFolder,
+    onDragOverSubFolder: _onDragOverSubFolder,
+    onDropOnSubFolder: _onDropOnSubFolder,
     onOpenDirectory,
     onRenameWorkspace,
     onWorkspaceSettings,
@@ -288,28 +287,6 @@
       danger: true,
     },
   ];
-
-  function openAddMenu(e: MouseEvent) {
-    e.stopPropagation();
-    e.preventDefault();
-    // Close more menu first
-    if (moreMenuOpen) moreMenuOpen = false;
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    addMenuX = rect.right - 80; // align right edge of menu to button right
-    addMenuY = rect.bottom + 2;
-    addMenuOpen = true;
-  }
-
-  function openMoreMenu(e: MouseEvent) {
-    e.stopPropagation();
-    e.preventDefault();
-    // Close add menu first
-    if (addMenuOpen) addMenuOpen = false;
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    moreMenuX = rect.right - 100;
-    moreMenuY = rect.bottom + 2;
-    moreMenuOpen = true;
-  }
 
   function closeAllMenus() {
     addMenuOpen = false;

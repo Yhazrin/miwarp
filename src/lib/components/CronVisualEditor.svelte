@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { t } from "$lib/i18n/index.svelte";
-
   interface Props {
     value: string;
     onchange: (expr: string) => void;
@@ -11,10 +9,10 @@
 
   // Parse cron expression: minute hour day month weekday
   let minute = $state("0");
-  let hour = $state("9");
-  let dayOfMonth = $state("*");
-  let month = $state("*");
-  let dayOfWeek = $state("*");
+  let _hour = $state("9");
+  let _dayOfMonth = $state("*");
+  let _month = $state("*");
+  let _dayOfWeek = $state("*");
 
   // UI state
   let activeTab = $state<"simple" | "advanced">("simple");
@@ -71,7 +69,7 @@
     const parts = value.trim().split(/\s+/);
     if (parts.length !== 5) return;
 
-    [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+    [minute, _hour, _dayOfMonth, _month, _dayOfWeek] = parts;
 
     // Determine which simple mode matches
     if (value === "* * * * *") {

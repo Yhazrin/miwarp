@@ -39,7 +39,7 @@ export class SkillSourcesStore {
   private startupRan = false;
 
   /** One-shot startup sync for sources with sync.mode === "startup" — call from onMount once. */
-  async runStartupSyncIfNeeded(projectCwd: string | undefined): Promise<void> {
+  async runStartupSyncIfNeeded(_projectCwd: string | undefined): Promise<void> {
     if (this.startupRan) return;
     this.startupRan = true;
     for (const s of this.sources) {

@@ -6,7 +6,7 @@
     platformId,
     model,
     size = "md",
-    animated = false,
+    animated: _animated = false,
     showName = true,
     showModel = false,
     class: className = "",

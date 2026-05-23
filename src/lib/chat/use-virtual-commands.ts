@@ -55,7 +55,7 @@ async function _handleVirtualCommand(
     openPreviewInSidebar,
     toggleSidebar,
     sidebarCollapsed,
-    sidebarRequestedTab,
+    /* sidebarRequestedTab removed — unused */
     goto,
     projectCommands,
     t,

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
   import Button from "./Button.svelte";
-  import Card from "./Card.svelte";
+  // import Card from "./Card.svelte";
   import type { Skill, SkillCategory } from "$lib/types/skill";
   import { skillStore } from "$lib/stores/skill-store.svelte";
 
@@ -11,7 +11,7 @@
     onCancel?: () => void;
   }
 
-  let { initialSkill, onComplete, onCancel }: Props = $props();
+  let { initialSkill: _initialSkill, onComplete, onCancel }: Props = $props();
 
   type WizardStep = "select-type" | "configure" | "parameters" | "test" | "complete";
 

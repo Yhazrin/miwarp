@@ -8,7 +8,6 @@ import type {
   SkillPipeline,
   SkillPipelineStep,
   PipelineExecution,
-  PipelineStepResult,
   PipelineStepStatus,
 } from "$lib/types/skill-pipeline";
 
@@ -142,7 +141,7 @@ export class PipelineOrchestrator {
 
     // 计算入度
     for (const step of steps) {
-      for (const dep of step.dependsOn || []) {
+      for (const _dep of step.dependsOn || []) {
         inDegree.set(step.skillName, (inDegree.get(step.skillName) || 0) + 1);
       }
     }

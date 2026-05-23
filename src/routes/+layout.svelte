@@ -63,7 +63,7 @@
     normalizeCwd,
     type ConversationGroup,
     type SessionFolderGroup,
-    type EnrichedProjectFolder,
+    // type EnrichedProjectFolder,
   } from "$lib/utils/sidebar-groups";
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
   import { loadRemovedCwds } from "$lib/utils/removed-cwds";
@@ -136,13 +136,13 @@
 
   // ── Session folders ──
   let sessionFolders = $state<SessionFolder[]>([]);
-  let sessionFolderGroups = $state<SessionFolderGroup[]>([]);
-  let unassignedRuns = $state<TaskRun[]>([]);
+  let _sessionFolderGroups = $state<SessionFolderGroup[]>([]);
+  let _unassignedRuns = $state<TaskRun[]>([]);
 
   // Sub-folder expand state (folderKey → expanded)
   let expandedSubFolders = $state(new Set<string>());
   // Which project cwd is a "create sub-folder" dialog targeting
-  let folderCreateCwd = $state<string>("");
+  let _folderCreateCwd = $state<string>("");
 
   function toggleSubFolder(folderKey: string) {
     const next = new Set(expandedSubFolders);
@@ -216,10 +216,10 @@
     }
   }
 
-  function refreshFolderGroups() {
+  function _refreshFolderGroups() {
     const result = buildSessionFolderGroups(runs, sessionFolders, favoriteRunIds);
-    sessionFolderGroups = result.folderGroups;
-    unassignedRuns = result.unassignedRuns;
+    _sessionFolderGroups = result.folderGroups;
+    _unassignedRuns = result.unassignedRuns;
   }
 
   async function doCreateFolder() {
@@ -1387,7 +1387,7 @@
   }
 
   async function batchDelete() {
-    const keys = new Set(selectedGroupKeys);
+    const _keys = new Set(selectedGroupKeys);
     batchDeleteConfirmOpen = false;
     clearBatchSelection();
     const ids = collectSelectedRunIds();
@@ -1506,8 +1506,8 @@
   // Keep sessionFolderGroups synced for compatibility (move-to-folder dialog etc.)
   $effect(() => {
     const result = buildSessionFolderGroups(runs, sessionFolders, favoriteRunIds);
-    sessionFolderGroups = result.folderGroups;
-    unassignedRuns = result.unassignedRuns;
+    _sessionFolderGroups = result.folderGroups;
+    _unassignedRuns = result.unassignedRuns;
   });
 
   // Reload session folders when project context changes
@@ -2839,7 +2839,7 @@
                     onCreateSubFolder={folder.isUncategorized
                       ? undefined
                       : () => {
-                          folderCreateCwd = folder.cwd;
+                          _folderCreateCwd = folder.cwd;
                           folderCreateOpen = true;
                           folderCreateName = "";
                         }}

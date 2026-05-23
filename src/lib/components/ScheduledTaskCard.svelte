@@ -63,7 +63,7 @@
     scheduledTasksStore.openEditEditor(task);
   }
 
-  function handleToggle() {
+  function _handleToggle() {
     scheduledTasksStore.toggleTaskEnabled(task.id);
   }
 

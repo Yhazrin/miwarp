@@ -23,7 +23,7 @@
   let startTime = 0;
 
   $effect(() => {
-    const s = status;
+    const _s = status;
     alive = false;
     setTimeout(() => {
       alive = true;

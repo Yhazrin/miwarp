@@ -34,7 +34,7 @@
     try {
       const { open: shellOpen } = await import("@tauri-apps/plugin-shell");
       await shellOpen(cwd);
-    } catch (e) {
+    } catch {
       showToast(
         t("toast_openDirFailed") ?? "Cannot open directory. Please confirm the path still exists.",
         "error",
@@ -48,7 +48,7 @@
       onSave?.(aliasValue.trim());
       saving = false;
       onClose();
-    } catch (e) {
+    } catch {
       saving = false;
       showToast(t("toast_settingsSaveFailed") ?? "Failed to save settings", "error");
     }

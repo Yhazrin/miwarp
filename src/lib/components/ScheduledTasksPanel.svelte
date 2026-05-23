@@ -22,7 +22,7 @@
     scheduledTasksStore.showEditor = true;
   }
 
-  function handleEdit(task: (typeof scheduledTasksStore.tasks)[0]) {
+  function _handleEdit(task: (typeof scheduledTasksStore.tasks)[0]) {
     scheduledTasksStore.editingTask = task;
     scheduledTasksStore.editorMode = "edit";
     scheduledTasksStore.showEditor = true;

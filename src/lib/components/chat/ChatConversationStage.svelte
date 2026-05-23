@@ -14,7 +14,7 @@
   import ChatWelcomeScreen from "$lib/components/ChatWelcomeScreen.svelte";
   import ChatForkedBanner from "$lib/components/ChatForkedBanner.svelte";
   import ChatNotificationBanner from "$lib/components/ChatNotificationBanner.svelte";
-  import ChatToolFilterBar from "$lib/components/ChatToolFilterBar.svelte";
+  // import ChatToolFilterBar from "$lib/components/ChatToolFilterBar.svelte";
   import ChatTimelineEntries from "$lib/components/chat/ChatTimelineEntries.svelte";
   import ChatOutputWorkingHint from "$lib/components/ChatOutputWorkingHint.svelte";
   import ChatRewindMarkers from "$lib/components/ChatRewindMarkers.svelte";
@@ -79,9 +79,9 @@
   const {
     visibleTimeline,
     filteredTimeline,
-    toolNamesInTimeline,
-    toolFilter,
-    setToolFilter,
+    toolNamesInTimeline: _toolNamesInTimeline,
+    toolFilter: _toolFilter,
+    setToolFilter: _setToolFilter,
     renderLimit,
     timelineIdIndex,
     lastClearSepId,
@@ -95,7 +95,7 @@
     claudeTurnStarts,
     showPermissionPanel,
     fetchToolResult,
-    topSentinelRef,
+    topSentinelRef: _topSentinelRef,
     setTopSentinel,
   } = $derived(timelineVm);
 

@@ -82,7 +82,7 @@ export class SkillUpdateChecker {
       this.cache.set(cacheKey, { result, timestamp: Date.now() });
 
       return result;
-    } catch (error) {
+    } catch {
       // 检查失败时返回默认结果
       return {
         hasUpdate: false,
@@ -108,7 +108,7 @@ export class SkillUpdateChecker {
     // Hash 比对
     if (config.checkHash) {
       checks.push(
-        this.compareHash(skill, remoteRef).then(({ hasUpdate }) => {
+        this.compareHash(skill, remoteRef).then(({ hasUpdate: _hasUpdate }) => {
           // hash 不同说明有更新
         }),
       );
@@ -117,7 +117,7 @@ export class SkillUpdateChecker {
     // 版本比较
     if (config.checkVersion && skill.version) {
       checks.push(
-        this.compareVersion(skill, remoteRef, config).then((versionResult) => {
+        this.compareVersion(skill, remoteRef, config).then((_versionResult) => {
           // 版本比较逻辑
         }),
       );

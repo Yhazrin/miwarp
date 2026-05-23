@@ -6,7 +6,7 @@
   import { getCliModels } from "$lib/stores/cli-info.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { fmtNumber } from "$lib/i18n/format";
-  import { truncate, formatTokenCount, formatDuration, formatCostDisplay } from "$lib/utils/format";
+  import { formatCostDisplay } from "$lib/utils/format";
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
   import type { ProcessVisibility } from "$lib/utils/process-visibility";
@@ -19,11 +19,11 @@
     run = null,
     agent = "claude",
     model = "",
-    cost = 0,
-    inputTokens = 0,
-    outputTokens = 0,
-    cacheReadTokens = 0,
-    cacheWriteTokens = 0,
+    cost: _cost = 0,
+    inputTokens: _inputTokens = 0,
+    outputTokens: _outputTokens = 0,
+    cacheReadTokens: _cacheReadTokens = 0,
+    cacheWriteTokens: _cacheWriteTokens = 0,
     running = false,
     /** True while the agent is actively working (spawning/running). Drives morph flash. */
     taskRunning = false,
@@ -31,45 +31,45 @@
     taskWaiting = false,
     /** Session phase — used to detect manual stop. */
     sessionPhase = "empty",
-    parentRunId,
+    parentRunId: _parentRunId,
     onEndSession,
     onModelChange,
-    onNavigateParent,
+    onNavigateParent: _onNavigateParent,
     mcpServers,
-    onMcpToggle,
-    cliVersion,
+    onMcpToggle: _onMcpToggle,
+    cliVersion: _cliVersion,
     permissionMode,
-    fastModeState,
-    numTurns,
-    durationMs,
-    persistedFiles,
-    onRewind,
+    fastModeState: _fastModeState,
+    numTurns: _numTurns,
+    durationMs: _durationMs,
+    persistedFiles: _persistedFiles,
+    onRewind: _onRewind,
     contextUtilization,
     contextWarningLevel,
     contextWindow,
     cwd = "",
     lastCompactedAt = 0,
-    compactCount = 0,
-    microcompactCount = 0,
-    turnUsages = [],
+    compactCount: _compactCount = 0,
+    microcompactCount: _microcompactCount = 0,
+    turnUsages: _turnUsages = [],
     activeTaskCount = 0,
-    mode = "",
-    remoteHostName,
+    mode: _mode = "",
+    remoteHostName: _remoteHostName,
     onRename,
     platformModels = [],
-    authSourceLabel,
-    authSourceCategory,
-    verbose = false,
-    apiKeySource,
+    authSourceLabel: _authSourceLabel,
+    authSourceCategory: _authSourceCategory,
+    verbose: _verbose = false,
+    apiKeySource: _apiKeySource,
     effort,
     onEffortChange,
     onStatusClick,
     onSummarize,
-    onShare,
+    onShare: _onShare,
     toolPanelActiveTab,
     onToolPanelTabChange,
     toolPanelIndicators,
-    fuseToolRailCapsule = false,
+    fuseToolRailCapsule: _fuseToolRailCapsule = false,
     processVisibility = "developer" as ProcessVisibility,
     onProcessVisibilityChange,
   }: {
@@ -281,7 +281,7 @@
     }, 8000);
   });
 
-  let cwdShort = $derived.by(() => {
+  let _cwdShort = $derived.by(() => {
     const val = cwd || run?.cwd || "";
     if (!val || val === "/") return "";
     const home = val
@@ -291,15 +291,15 @@
     return home.length > 30 ? "..." + home.slice(-27) : home;
   });
 
-  let sessionIdShort = $derived(run?.session_id ? run.session_id.slice(0, 8) : "");
-  let sidCopied = $state(false);
+  let _sessionIdShort = $derived(run?.session_id ? run.session_id.slice(0, 8) : "");
+  let _sidCopied = $state(false);
 
-  async function copySessionId() {
+  async function _copySessionId() {
     if (!run?.session_id) return;
     try {
       await navigator.clipboard.writeText(run.session_id);
-      sidCopied = true;
-      setTimeout(() => (sidCopied = false), 1500);
+      _sidCopied = true;
+      setTimeout(() => (_sidCopied = false), 1500);
     } catch {
       /* ignore */
     }
@@ -310,14 +310,14 @@
   let titleEditValue = $state("");
   let titleInputEl: HTMLInputElement | undefined = $state();
 
-  function startTitleEdit() {
+  function _startTitleEdit() {
     if (!onRename || !run) return;
     titleEditValue = run.name || run.prompt;
     titleEditing = true;
     requestAnimationFrame(() => titleInputEl?.select());
   }
 
-  function commitTitleEdit() {
+  function _commitTitleEdit() {
     titleEditing = false;
     const trimmed = titleEditValue.trim();
     if (trimmed && run && trimmed !== (run.name || run.prompt)) {
@@ -325,13 +325,13 @@
     }
   }
 
-  function cancelTitleEdit() {
+  function _cancelTitleEdit() {
     titleEditing = false;
   }
 
-  const formatCost = formatCostDisplay;
+  const _formatCost = formatCostDisplay;
 
-  let permissionBadge = $derived.by(() => {
+  let _permissionBadge = $derived.by(() => {
     if (!permissionMode || permissionMode === "default") return null;
     const map: Record<string, { label: string; cls: string }> = {
       acceptEdits: {
@@ -654,25 +654,25 @@
   });
 
   // ── End Session confirmation ──
-  let confirmingEnd = $state(false);
+  let _confirmingEnd = $state(false);
   let confirmTimer: ReturnType<typeof setTimeout> | undefined;
 
-  function requestEnd() {
-    confirmingEnd = true;
+  function _requestEnd() {
+    _confirmingEnd = true;
     confirmTimer = setTimeout(() => {
-      confirmingEnd = false;
+      _confirmingEnd = false;
     }, 3000);
   }
 
-  function confirmEnd() {
+  function _confirmEnd() {
     clearTimeout(confirmTimer);
-    confirmingEnd = false;
+    _confirmingEnd = false;
     onEndSession?.();
   }
 
-  function cancelEnd() {
+  function _cancelEnd() {
     clearTimeout(confirmTimer);
-    confirmingEnd = false;
+    _confirmingEnd = false;
   }
 
   let mcpAggregateStatus = $derived.by(() => {
@@ -686,7 +686,7 @@
     return "ok";
   });
 
-  let mcpDotClass = $derived(
+  let _mcpDotClass = $derived(
     mcpAggregateStatus === "error"
       ? "bg-destructive"
       : mcpAggregateStatus === "pending"
