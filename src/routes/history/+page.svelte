@@ -454,8 +454,8 @@
         <!-- Row 3: Tool chips -->
         {#if stableTools.length}
           <div class="mt-3 border-t border-border/50 pt-3">
-            <label class="mb-2 block text-xs font-medium text-muted-foreground"
-              >{t("history_tools")}</label
+            <span class="mb-2 block text-xs font-medium text-muted-foreground"
+              >{t("history_tools")}</span
             >
             <div class="flex flex-wrap gap-1.5">
               {#each stableTools as tool (tool.value)}

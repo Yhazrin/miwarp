@@ -282,9 +282,9 @@
 
             <!-- Scope selector -->
             <div>
-              <label class="block text-xs font-medium text-muted-foreground mb-2">
+              <span class="block text-xs font-medium text-muted-foreground mb-2">
                 {t("plugin_installScope")}
-              </label>
+              </span>
               <div class="flex rounded-md border border-border p-0.5">
                 <button
                   class="flex-1 rounded px-3 py-1.5 text-xs font-medium transition-colors {selectedScope ===

@@ -399,9 +399,12 @@
 
         <!-- Workspace -->
         <div class="space-y-1">
-          <label class="text-sm font-medium">{t("schedEditor_workspace")}</label>
+          <label for="sched-workspace" class="text-sm font-medium"
+            >{t("schedEditor_workspace")}</label
+          >
           <div class="flex gap-2">
             <input
+              id="sched-workspace"
               type="text"
               bind:value={workspaceCwd}
               placeholder={t("schedEditor_workspacePlaceholder")}
@@ -446,7 +449,7 @@
 
         <!-- Agent -->
         <div class="space-y-1">
-          <label class="text-sm font-medium">{t("schedEditor_agent")}</label>
+          <span class="text-sm font-medium">{t("schedEditor_agent")}</span>
           <div class="flex gap-3">
             <label class="flex items-center gap-2 cursor-pointer">
               <input
@@ -507,7 +510,7 @@
 
         <!-- Schedule Type -->
         <div class="space-y-2">
-          <label class="text-sm font-medium">{t("schedEditor_schedule")}</label>
+          <span class="text-sm font-medium">{t("schedEditor_schedule")}</span>
           <div class="flex gap-3">
             <label class="flex items-center gap-2 cursor-pointer">
               <input
@@ -547,8 +550,8 @@
           <div class="space-y-3 rounded-lg border border-border bg-muted/20 p-3">
             <!-- Frequency selector -->
             <div class="space-y-1.5">
-              <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
-                >执行频率</label
+              <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                >执行频率</span
               >
               <div class="flex flex-wrap gap-1.5">
                 {#each FREQUENCY_OPTIONS as opt}
@@ -585,7 +588,7 @@
             <!-- Weekday picker -->
             {#if frequency === "weekly"}
               <div class="space-y-1.5">
-                <label class="text-xs font-medium text-muted-foreground">执行日</label>
+                <span class="text-xs font-medium text-muted-foreground">执行日</span>
                 <div class="flex gap-1.5">
                   {#each [0, 1, 2, 3, 4, 5, 6] as day}
                     <button

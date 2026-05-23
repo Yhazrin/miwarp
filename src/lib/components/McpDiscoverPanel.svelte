@@ -541,6 +541,7 @@
                     {#each detail.packages[0].environmentVariables as envVar}
                       <div class="flex items-center gap-2">
                         <label
+                          for="mcp-env-{envVar.name}"
                           class="text-[11px] text-foreground font-mono w-40 truncate shrink-0"
                           title={envVar.description ?? envVar.name}
                         >
@@ -550,6 +551,7 @@
                           {/if}
                         </label>
                         <input
+                          id="mcp-env-{envVar.name}"
                           type={envVar.isSecret ? "password" : "text"}
                           placeholder={envVar.description ?? ""}
                           class="flex-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -570,6 +572,7 @@
                     {#each detail.remotes[0].headers as header}
                       <div class="flex items-center gap-2">
                         <label
+                          for="mcp-header-{header.name}"
                           class="text-[11px] text-foreground font-mono w-40 truncate shrink-0"
                           title={header.description ?? header.name}
                         >
@@ -579,6 +582,7 @@
                           {/if}
                         </label>
                         <input
+                          id="mcp-header-{header.name}"
                           type={header.isSecret ? "password" : "text"}
                           placeholder={header.description ?? ""}
                           class="flex-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"

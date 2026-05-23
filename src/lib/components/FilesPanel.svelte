@@ -102,6 +102,7 @@
           class="group flex items-center gap-1 px-2.5 py-1 rounded-sm transition-colors {isSelected
             ? 'bg-accent'
             : 'hover:bg-accent/50'}"
+          role="row"
           oncontextmenu={(e) => openCtxMenu(e, entry.path)}
         >
           <button
@@ -145,7 +146,11 @@
           {/if}
         </div>
       {:else}
-        <div class="px-2.5 py-1 cursor-default" oncontextmenu={(e) => openCtxMenu(e, entry.path)}>
+        <div
+          class="px-2.5 py-1 cursor-default"
+          role="row"
+          oncontextmenu={(e) => openCtxMenu(e, entry.path)}
+        >
           <div class="flex items-center gap-1.5">
             <span
               class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-[10px] font-bold {color.bg} {color.text}"
