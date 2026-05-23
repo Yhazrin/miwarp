@@ -108,6 +108,9 @@
     onclick={(e) => {
       if (e.target === e.currentTarget) handleClose();
     }}
+    onkeydown={(e) => {
+      if (e.key === "Escape") handleClose();
+    }}
     role="dialog"
     aria-modal="true"
     tabindex="-1"

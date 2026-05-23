@@ -103,6 +103,7 @@
             ? 'bg-accent'
             : 'hover:bg-accent/50'}"
           role="row"
+          tabindex="-1"
           oncontextmenu={(e) => openCtxMenu(e, entry.path)}
         >
           <button
@@ -149,6 +150,7 @@
         <div
           class="px-2.5 py-1 cursor-default"
           role="row"
+          tabindex="-1"
           oncontextmenu={(e) => openCtxMenu(e, entry.path)}
         >
           <div class="flex items-center gap-1.5">

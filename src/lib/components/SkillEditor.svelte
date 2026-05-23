@@ -207,8 +207,8 @@
 
         <!-- Category -->
         <div class="space-y-2">
-          <label id="skill-category-label" class="text-sm font-medium"
-            >{t("skillEditor_category")}</label
+          <span id="skill-category-label" class="text-sm font-medium"
+            >{t("skillEditor_category")}</span
           >
           <div class="grid grid-cols-2 gap-2" aria-labelledby="skill-category-label">
             {#each SKILL_CATEGORIES as cat}
@@ -228,7 +228,7 @@
 
         <!-- Icon -->
         <div class="space-y-2">
-          <label id="skill-icon-label" class="text-sm font-medium">{t("skillEditor_icon")}</label>
+          <span id="skill-icon-label" class="text-sm font-medium">{t("skillEditor_icon")}</span>
           <div class="flex flex-wrap gap-2" aria-labelledby="skill-icon-label">
             {#each iconOptions as iconOption}
               <button

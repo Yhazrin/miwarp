@@ -171,6 +171,7 @@
 >
   <div
     class="w-full max-w-lg rounded-lg border border-border bg-background shadow-xl"
+    role="presentation"
     onclick={(e) => e.stopPropagation()}
   >
     <!-- Header -->

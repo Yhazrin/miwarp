@@ -233,10 +233,12 @@
 {#if confirmAction}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay"
+    role="presentation"
     onclick={() => (confirmAction = null)}
   >
     <div
       class="rounded-lg border border-border bg-background p-6 shadow-xl max-w-sm"
+      role="presentation"
       onclick={(e) => e.stopPropagation()}
     >
       <h3 class="text-sm font-semibold text-foreground mb-2">{confirmAction.title}</h3>

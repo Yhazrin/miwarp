@@ -1987,6 +1987,8 @@
   ondragleave={handleDragLeave}
   ondragover={handleDragOver}
   ondrop={handleDrop}
+  role="region"
+  aria-label="File drop zone"
 >
   <!-- Drag overlay -->
   {#if dragActive}

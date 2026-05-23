@@ -100,11 +100,6 @@
     }
   }
 
-  function handleOpen(e: MouseEvent) {
-    e.stopPropagation();
-    onOpen?.();
-  }
-
   function handleCopy(e: MouseEvent) {
     e.stopPropagation();
     onCopy?.();
@@ -116,132 +111,147 @@
   }
 </script>
 
-<div
-  class="file-card group flex items-center gap-3 p-3 rounded-xl border border-border/40
-         bg-card/30 hover:bg-card/50 hover:border-border/60 transition-all
-         {compact ? 'p-2' : ''}"
-  class:cursor-pointer={onOpen}
-  role={onOpen ? "button" : undefined}
-  tabindex={onOpen ? 0 : undefined}
-  onclick={onOpen}
-  onkeydown={(e) => {
-    if (onOpen && (e.key === "Enter" || e.key === " ")) {
-      e.preventDefault();
-      onOpen();
-    }
-  }}
->
-  <!-- File Icon -->
+{#if onOpen}
   <button
-    class="file-icon shrink-0 flex items-center justify-center w-10 h-10 rounded-lg
-           bg-muted/50 hover:bg-muted transition-colors
-           {onOpen ? 'cursor-pointer' : 'cursor-default'}"
-    onclick={handleOpen}
-    disabled={!onOpen}
-    title={onOpen ? "打开文件" : file.name}
+    type="button"
+    class="file-card group flex items-center gap-3 p-3 rounded-xl border border-border/40
+           bg-card/30 hover:bg-card/50 hover:border-border/60 transition-all cursor-pointer
+           {compact ? 'p-2' : ''}"
+    onclick={onOpen}
   >
-    {#if fileType === "image" && file.path}
-      <img
-        src={file.path}
-        alt={file.name}
-        class="w-full h-full object-cover rounded-lg"
-        loading="lazy"
-      />
-    {:else}
-      <span class="text-xl">{iconMap[fileType]}</span>
-    {/if}
-  </button>
-
-  <!-- File Info -->
-  <div class="flex-1 min-w-0">
-    <span class="file-name block text-sm font-medium text-foreground truncate">
-      {file.name}
-    </span>
-    <span class="file-meta flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
-      {#if file.size}
-        <span>{formatSize(file.size)}</span>
-      {/if}
-      {#if file.size && file.modifiedAt}
-        <span class="opacity-50">·</span>
-      {/if}
-      {#if file.modifiedAt}
-        <span>{formatDate(file.modifiedAt)}</span>
-      {/if}
-    </span>
-  </div>
-
-  <!-- Actions -->
-  {#if showActions}
-    <div
-      class="file-actions flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+    <!-- File Icon -->
+    <span
+      class="file-icon shrink-0 flex items-center justify-center w-10 h-10 rounded-lg
+             bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
     >
-      {#if onOpen}
-        <button
-          class="action-btn flex items-center justify-center w-7 h-7 rounded-md
-                 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          onclick={handleOpen}
-          title="打开"
-        >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M3 2h6l3 3v9H3V2z"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linejoin="round"
-            />
-            <path d="M11 2v4h4" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-          </svg>
-        </button>
+      {#if fileType === "image" && file.path}
+        <img
+          src={file.path}
+          alt={file.name}
+          class="w-full h-full object-cover rounded-lg"
+          loading="lazy"
+        />
+      {:else}
+        <span class="text-xl">{iconMap[fileType]}</span>
       {/if}
+    </span>
 
-      {#if onCopy}
-        <button
-          class="action-btn flex items-center justify-center w-7 h-7 rounded-md
-                 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          onclick={handleCopy}
-          title="复制路径"
-        >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
-            <rect
-              x="5"
-              y="5"
-              width="8"
-              height="8"
-              rx="1.5"
-              stroke="currentColor"
-              stroke-width="1.5"
-            />
-            <path
-              d="M3 11V3a1 1 0 011-1h8"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-            />
-          </svg>
-        </button>
-      {/if}
+    <!-- File Info -->
+    <span class="flex-1 min-w-0">
+      <span class="file-name block text-sm font-medium text-foreground truncate">
+        {file.name}
+      </span>
+      <span class="file-meta flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+        {#if file.size}
+          <span>{formatSize(file.size)}</span>
+        {/if}
+        {#if file.size && file.modifiedAt}
+          <span class="opacity-50">·</span>
+        {/if}
+        {#if file.modifiedAt}
+          <span>{formatDate(file.modifiedAt)}</span>
+        {/if}
+      </span>
+    </span>
 
-      {#if onDelete}
-        <button
-          class="action-btn flex items-center justify-center w-7 h-7 rounded-md
-                 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-          onclick={handleDelete}
-          title="删除"
-        >
-          <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
-            <path
-              d="M2 4h12M5 4V2.5a.5.5 0 01.5-.5h5a.5.5 0 01.5.5V4M6.5 7v5M9.5 7v5M3.5 4l1 10h7l1-10"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-          </svg>
-        </button>
+    <!-- No separate action buttons when the card itself is the button -->
+  </button>
+{:else}
+  <div
+    class="file-card group flex items-center gap-3 p-3 rounded-xl border border-border/40
+           bg-card/30 hover:bg-card/50 hover:border-border/60 transition-all
+           {compact ? 'p-2' : ''}"
+  >
+    <!-- File Icon -->
+    <div
+      class="file-icon shrink-0 flex items-center justify-center w-10 h-10 rounded-lg
+             bg-muted/50 hover:bg-muted transition-colors"
+    >
+      {#if fileType === "image" && file.path}
+        <img
+          src={file.path}
+          alt={file.name}
+          class="w-full h-full object-cover rounded-lg"
+          loading="lazy"
+        />
+      {:else}
+        <span class="text-xl">{iconMap[fileType]}</span>
       {/if}
     </div>
-  {/if}
-</div>
+
+    <!-- File Info -->
+    <div class="flex-1 min-w-0">
+      <span class="file-name block text-sm font-medium text-foreground truncate">
+        {file.name}
+      </span>
+      <span class="file-meta flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+        {#if file.size}
+          <span>{formatSize(file.size)}</span>
+        {/if}
+        {#if file.size && file.modifiedAt}
+          <span class="opacity-50">·</span>
+        {/if}
+        {#if file.modifiedAt}
+          <span>{formatDate(file.modifiedAt)}</span>
+        {/if}
+      </span>
+    </div>
+
+    <!-- Actions -->
+    {#if showActions}
+      <div
+        class="file-actions flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        {#if onCopy}
+          <button
+            type="button"
+            class="action-btn flex items-center justify-center w-7 h-7 rounded-md
+                   text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            onclick={handleCopy}
+            title="复制路径"
+          >
+            <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
+              <rect
+                x="5"
+                y="5"
+                width="8"
+                height="8"
+                rx="1.5"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <path
+                d="M3 11V3a1 1 0 011-1h8"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+            </svg>
+          </button>
+        {/if}
+        {#if onDelete}
+          <button
+            type="button"
+            class="action-btn flex items-center justify-center w-7 h-7 rounded-md
+                   text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            onclick={handleDelete}
+            title="删除"
+          >
+            <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M2 4h12M5 4V2.5a.5.5 0 01.5-.5h5a.5.5 0 01.5.5V4M6.5 7v5M9.5 7v5M3.5 4l1 10h7l1-10"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        {/if}
+      </div>
+    {/if}
+  </div>
+{/if}
 
 <style>
   .file-card:focus-visible {

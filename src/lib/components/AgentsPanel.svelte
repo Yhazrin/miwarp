@@ -246,9 +246,7 @@
     <div
       class="rounded-lg border border-border bg-background p-6 shadow-xl max-w-sm"
       onclick={(e) => e.stopPropagation()}
-      onkeydown={() => {}}
-      role="document"
-      tabindex="-1"
+      role="presentation"
     >
       <h3 class="text-sm font-semibold text-foreground mb-2">{t("agent_deleteAgent")}</h3>
       <p class="text-xs text-muted-foreground mb-4">
@@ -581,9 +579,7 @@
     <div
       class="rounded-lg border border-border bg-background p-6 shadow-xl max-w-sm w-full"
       onclick={(e) => e.stopPropagation()}
-      onkeydown={() => {}}
-      role="document"
-      tabindex="-1"
+      role="presentation"
     >
       <h3 class="text-sm font-semibold text-foreground mb-3">{t("agent_renameTitle")}</h3>
       <input
@@ -634,9 +630,7 @@
     <div
       class="w-full max-w-lg bg-background border-l border-border shadow-xl overflow-y-auto p-6"
       onclick={(e) => e.stopPropagation()}
-      onkeydown={() => {}}
-      role="document"
-      tabindex="-1"
+      role="presentation"
     >
       <AgentEditor
         mode={editorState.mode}

@@ -63,87 +63,160 @@
   };
 </script>
 
-<div
-  class="rounded-2xl border border-border/40 bg-card/50 px-4 py-3 transition-all hover:bg-accent/10 hover:shadow-sm {onclick
-    ? 'cursor-pointer'
-    : ''}"
-  {onclick}
-  onkeydown={(e) => {
-    if (onclick && (e.key === "Enter" || e.key === " ")) onclick();
-  }}
-  role={onclick ? "button" : undefined}
-  tabindex={onclick ? 0 : undefined}
->
-  <div class="flex items-start justify-between gap-2">
-    <div class="flex-1 min-w-0">
-      <!-- Title row -->
-      <div class="flex items-center gap-2 flex-wrap">
-        <span class="text-sm font-medium text-foreground truncate">{title}</span>
-        {#if version}
-          <span class="text-[11px] text-muted-foreground shrink-0">v{version}</span>
-        {/if}
-        <!-- Type badge -->
-        <span
-          class="rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0 {typeConfig[type]
-            .color}"
-        >
-          {typeConfig[type].label}
-        </span>
-        <!-- Status dot -->
-        {#if installed}
+{#if onclick}
+  <button
+    type="button"
+    class="w-full text-left rounded-2xl border border-border/40 bg-card/50 px-4 py-3 transition-all hover:bg-accent/10 hover:shadow-sm cursor-pointer"
+    {onclick}
+  >
+    <div class="flex items-start justify-between gap-2">
+      <div class="flex-1 min-w-0">
+        <!-- Title row -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-sm font-medium text-foreground truncate">{title}</span>
+          {#if version}
+            <span class="text-[11px] text-muted-foreground shrink-0">v{version}</span>
+          {/if}
+          <!-- Type badge -->
           <span
-            class="inline-block h-1.5 w-1.5 rounded-full shrink-0 {enabled
-              ? 'bg-green-500'
-              : 'bg-muted-foreground/40'}"
-            title={enabled ? "Enabled" : "Disabled"}
-          ></span>
-        {/if}
-      </div>
-
-      <!-- Meta row -->
-      <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-        {#if scope && scopeConfig[scope]}
-          <span
-            class="rounded-full px-1.5 py-0.5 text-[10px] font-medium {scopeConfig[scope].color}"
-            >{scope}</span
+            class="rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0 {typeConfig[type]
+              .color}"
           >
-        {/if}
-        {#if source}
-          <span class="text-[10px] text-muted-foreground/60 truncate">{source}</span>
-        {/if}
-        {#if installCount != null && installCount > 0}
-          <span class="text-[10px] text-muted-foreground">{installCount} installs</span>
-        {/if}
-        {#if variant === "community"}
-          <span
-            class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-violet-500/10 text-violet-600 dark:text-violet-400"
-            >community</span
-          >
-        {/if}
-      </div>
+            {typeConfig[type].label}
+          </span>
+          <!-- Status dot -->
+          {#if installed}
+            <span
+              class="inline-block h-1.5 w-1.5 rounded-full shrink-0 {enabled
+                ? 'bg-green-500'
+                : 'bg-muted-foreground/40'}"
+              title={enabled ? "Enabled" : "Disabled"}
+            ></span>
+          {/if}
+        </div>
 
-      <!-- Description -->
-      {#if description}
-        <p class="text-xs text-muted-foreground mt-1 line-clamp-2">{description}</p>
-      {/if}
-
-      <!-- Tags -->
-      {#if tags.length > 0}
-        <div class="flex flex-wrap gap-1 mt-1.5">
-          {#each tags as tag}
-            <span class="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
-              >{tag}</span
+        <!-- Meta row -->
+        <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+          {#if scope && scopeConfig[scope]}
+            <span
+              class="rounded-full px-1.5 py-0.5 text-[10px] font-medium {scopeConfig[scope].color}"
+              >{scope}</span
             >
-          {/each}
+          {/if}
+          {#if source}
+            <span class="text-[10px] text-muted-foreground/60 truncate">{source}</span>
+          {/if}
+          {#if installCount != null && installCount > 0}
+            <span class="text-[10px] text-muted-foreground">{installCount} installs</span>
+          {/if}
+          {#if variant === "community"}
+            <span
+              class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-violet-500/10 text-violet-600 dark:text-violet-400"
+              >community</span
+            >
+          {/if}
+        </div>
+
+        <!-- Description -->
+        {#if description}
+          <p class="text-xs text-muted-foreground mt-1 line-clamp-2">{description}</p>
+        {/if}
+
+        <!-- Tags -->
+        {#if tags.length > 0}
+          <div class="flex flex-wrap gap-1 mt-1.5">
+            {#each tags as tag}
+              <span class="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                >{tag}</span
+              >
+            {/each}
+          </div>
+        {/if}
+      </div>
+
+      <!-- Actions slot -->
+      {#if actions}
+        <div class="flex items-center gap-1 shrink-0">
+          {@render actions()}
         </div>
       {/if}
     </div>
+  </button>
+{:else}
+  <div
+    class="rounded-2xl border border-border/40 bg-card/50 px-4 py-3 transition-all hover:bg-accent/10 hover:shadow-sm"
+  >
+    <div class="flex items-start justify-between gap-2">
+      <div class="flex-1 min-w-0">
+        <!-- Title row -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-sm font-medium text-foreground truncate">{title}</span>
+          {#if version}
+            <span class="text-[11px] text-muted-foreground shrink-0">v{version}</span>
+          {/if}
+          <!-- Type badge -->
+          <span
+            class="rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0 {typeConfig[type]
+              .color}"
+          >
+            {typeConfig[type].label}
+          </span>
+          <!-- Status dot -->
+          {#if installed}
+            <span
+              class="inline-block h-1.5 w-1.5 rounded-full shrink-0 {enabled
+                ? 'bg-green-500'
+                : 'bg-muted-foreground/40'}"
+              title={enabled ? "Enabled" : "Disabled"}
+            ></span>
+          {/if}
+        </div>
 
-    <!-- Actions slot -->
-    {#if actions}
-      <div class="flex items-center gap-1 shrink-0">
-        {@render actions()}
+        <!-- Meta row -->
+        <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+          {#if scope && scopeConfig[scope]}
+            <span
+              class="rounded-full px-1.5 py-0.5 text-[10px] font-medium {scopeConfig[scope].color}"
+              >{scope}</span
+            >
+          {/if}
+          {#if source}
+            <span class="text-[10px] text-muted-foreground/60 truncate">{source}</span>
+          {/if}
+          {#if installCount != null && installCount > 0}
+            <span class="text-[10px] text-muted-foreground">{installCount} installs</span>
+          {/if}
+          {#if variant === "community"}
+            <span
+              class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-violet-500/10 text-violet-600 dark:text-violet-400"
+              >community</span
+            >
+          {/if}
+        </div>
+
+        <!-- Description -->
+        {#if description}
+          <p class="text-xs text-muted-foreground mt-1 line-clamp-2">{description}</p>
+        {/if}
+
+        <!-- Tags -->
+        {#if tags.length > 0}
+          <div class="flex flex-wrap gap-1 mt-1.5">
+            {#each tags as tag}
+              <span class="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                >{tag}</span
+              >
+            {/each}
+          </div>
+        {/if}
       </div>
-    {/if}
+
+      <!-- Actions slot -->
+      {#if actions}
+        <div class="flex items-center gap-1 shrink-0">
+          {@render actions()}
+        </div>
+      {/if}
+    </div>
   </div>
-</div>
+{/if}

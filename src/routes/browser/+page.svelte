@@ -59,8 +59,8 @@
 
   <!-- Settings Panel -->
   {#if showSettings}
-    <div class="settings-overlay" onclick={() => (showSettings = false)}>
-      <div class="settings-panel" onclick={(e) => e.stopPropagation()}>
+    <div class="settings-overlay" role="presentation" onclick={() => (showSettings = false)}>
+      <div class="settings-panel" role="presentation" onclick={(e) => e.stopPropagation()}>
         <div class="settings-header">
           <h2>{t("browser_settings")}</h2>
           <button class="btn btn-icon" onclick={() => (showSettings = false)}> × </button>

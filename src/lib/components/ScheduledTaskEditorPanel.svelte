@@ -260,12 +260,12 @@
 
     <!-- Agent -->
     <div class="space-y-1">
-      <label
+      <span
         id="panel-agent-label"
         class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
       >
         {t("schedEditor_agent")}
-      </label>
+      </span>
       <div class="flex gap-3" aria-labelledby="panel-agent-label">
         <label class="flex items-center gap-1 cursor-pointer">
           <input
@@ -292,12 +292,12 @@
 
     <!-- Schedule Type -->
     <div class="space-y-1">
-      <label
+      <span
         id="panel-schedule-label"
         class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
       >
         {t("schedEditor_schedule")}
-      </label>
+      </span>
       <div class="grid grid-cols-4 gap-1" aria-labelledby="panel-schedule-label">
         {#each [{ value: "daily", label: t("sched_daily") }, { value: "weekly", label: t("sched_weekly") }, { value: "interval", label: t("sched_interval") }, { value: "one-time", label: t("sched_oneTime") }] as opt}
           <button

@@ -375,8 +375,8 @@
 
           <!-- Date range presets -->
           <div class="col-span-2">
-            <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
-              >{t("history_dateRange")}</label
+            <span class="mb-1.5 block text-xs font-medium text-muted-foreground"
+              >{t("history_dateRange")}</span
             >
             <div class="flex gap-1">
               {#each [{ key: "all", label: t("history_dateAll") }, { key: "today", label: t("history_dateToday") }, { key: "7d", label: t("history_date7d") }, { key: "30d", label: t("history_date30d") }, { key: "90d", label: t("history_date90d") }] as opt}

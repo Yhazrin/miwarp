@@ -105,6 +105,11 @@
     if (next) switchLocale(next.code);
   }
 
+  function focusOnMount(node: HTMLElement) {
+    node.focus();
+    return {};
+  }
+
   let commandPaletteOpen = $state(false);
   let showSetupWizard = $state(false);
   let showAbout = $state(false);
@@ -3131,7 +3136,7 @@
     placeholder={t("sidebar_folderNamePlaceholder")}
     bind:value={folderCreateName}
     onkeydown={(e) => e.key === "Enter" && doCreateFolder()}
-    autofocus
+    use:focusOnMount
   />
   <div class="flex justify-end gap-2">
     <button
@@ -3173,7 +3178,7 @@
     class="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring mb-4"
     bind:value={folderRenameName}
     onkeydown={(e) => e.key === "Enter" && doRenameFolder()}
-    autofocus
+    use:focusOnMount
   />
   <div class="flex justify-end gap-2">
     <button

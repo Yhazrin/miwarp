@@ -737,6 +737,7 @@
   data-tauri-drag-region
   onpointerenter={onShellPointerEnter}
   onpointerleave={onShellPointerLeave}
+  role="presentation"
 >
   {#if morphHidesContent}
     <div

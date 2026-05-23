@@ -12,4 +12,5 @@
   class={`window-drag-area ${className}`}
   data-tauri-drag-region
   onpointerdown={startWindowDragFromEvent}
+  role="presentation"
 ></div>
