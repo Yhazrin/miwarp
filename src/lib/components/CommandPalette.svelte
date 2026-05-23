@@ -488,6 +488,7 @@
     class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
     role="dialog"
     aria-modal="true"
+    tabindex="-1"
   >
     <!-- Backdrop -->
     <!-- svelte-ignore a11y_no_static_element_interactions -->

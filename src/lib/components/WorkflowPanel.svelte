@@ -110,6 +110,7 @@
     }}
     role="dialog"
     aria-modal="true"
+    tabindex="-1"
   >
     <div class="flex h-[70vh] w-[800px] flex-col rounded-lg bg-background shadow-xl">
       <!-- Header -->

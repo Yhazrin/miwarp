@@ -827,6 +827,7 @@
     }}
     role="dialog"
     aria-modal="true"
+    tabindex="-1"
   >
     <div
       class="rounded-2xl border border-border/40 bg-background/95 backdrop-blur-md p-6 shadow-2xl max-w-sm w-full mx-4"
@@ -1427,6 +1428,7 @@
           }}
           role="dialog"
           aria-modal="true"
+          tabindex="-1"
         >
           <div
             class="w-full max-w-lg rounded-2xl border border-border/40 bg-background/95 backdrop-blur-md shadow-2xl max-h-[85vh] flex flex-col mx-4"

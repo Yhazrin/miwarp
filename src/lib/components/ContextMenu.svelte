@@ -134,6 +134,7 @@
          backdrop-blur-sm shadow-lg p-1"
   style="left: {adjustedX}px; top: {adjustedY}px;"
   role="menu"
+  tabindex="-1"
   oncontextmenu={handleContextMenu}
 >
   {#each items as item, i (item.id)}
