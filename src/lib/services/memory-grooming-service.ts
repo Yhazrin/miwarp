@@ -5,7 +5,27 @@
  * 支持去重、压缩、过期清理、语义优化
  */
 
-import type { MemoryEntry, MemoryScope } from "$lib/stores/memory-store.svelte";
+import type { MemoryScope } from "$lib/stores/memory-store.svelte";
+
+/**
+ * Rich memory entry used internally by the grooming service.
+ * Note: This differs from the RichMemoryEntry in memory-store.svelte.ts which only has path/label/scope/exists.
+ */
+interface RichMemoryEntry {
+  id: string;
+  path: string;
+  label: string;
+  title?: string;
+  scope: MemoryScope;
+  exists: boolean;
+  content?: string;
+  lastAccessedAt?: string;
+  createdAt?: string;
+  expiresAt?: string;
+  lastModified?: string;
+  size?: number;
+  tags?: string[];
+}
 
 /**
  * 记忆整理配置
@@ -99,7 +119,7 @@ export class MemoryGroomingService {
   /**
    * 执行记忆整理
    */
-  async groom(memory: MemoryEntry[]): Promise<MemoryGroomingResult> {
+  async groom(memory: RichMemoryEntry[]): Promise<MemoryGroomingResult> {
     const actions: GroomingAction[] = [];
     let entries = [...memory];
 
@@ -154,7 +174,7 @@ export class MemoryGroomingService {
   /**
    * 查找过期条目
    */
-  private findExpiredEntries(memory: MemoryEntry[]): GroomingAction[] {
+  private findExpiredEntries(memory: RichMemoryEntry[]): GroomingAction[] {
     const actions: GroomingAction[] = [];
     const now = Date.now();
     const staleThreshold = this.config.staleThresholdDays * 24 * 60 * 60 * 1000;
@@ -162,13 +182,13 @@ export class MemoryGroomingService {
     for (const entry of memory) {
       const lastAccessed = entry.lastAccessedAt
         ? new Date(entry.lastAccessedAt).getTime()
-        : new Date(entry.createdAt).getTime();
+        : new Date(entry.createdAt ?? Date.now()).getTime();
 
       if (now - lastAccessed > staleThreshold) {
         actions.push({
           type: "expire",
           entryId: entry.id,
-          entryTitle: entry.title,
+          entryTitle: entry.title ?? entry.id,
           reason: `超过 ${this.config.staleThresholdDays} 天未访问`,
         });
       }
@@ -180,7 +200,7 @@ export class MemoryGroomingService {
           actions.push({
             type: "expire",
             entryId: entry.id,
-            entryTitle: entry.title,
+            entryTitle: entry.title ?? entry.id,
             reason: "已超过 TTL",
           });
         }
@@ -193,7 +213,7 @@ export class MemoryGroomingService {
   /**
    * 查找重复条目
    */
-  private findDuplicates(memory: MemoryEntry[]): GroomingAction[] {
+  private findDuplicates(memory: RichMemoryEntry[]): GroomingAction[] {
     const actions: GroomingAction[] = [];
     const processed = new Set<string>();
 
@@ -203,14 +223,15 @@ export class MemoryGroomingService {
         const entry2 = memory[j];
 
         if (processed.has(entry2.id)) continue;
+        if (!entry1.content || !entry2.content) continue;
 
         const similarity = this.calculateSimilarity(entry1.content, entry2.content);
         if (similarity >= this.config.similarityThreshold) {
           actions.push({
             type: "deduplicate",
             entryId: entry2.id,
-            entryTitle: entry2.title,
-            reason: `与 "${entry1.title}" 相似度 ${(similarity * 100).toFixed(1)}%`,
+            entryTitle: entry2.title ?? entry2.id,
+            reason: `与 "${entry1.title ?? entry1.id}" 相似度 ${(similarity * 100).toFixed(1)}%`,
             before: entry2.content.substring(0, 100),
           });
           processed.add(entry2.id);
@@ -224,7 +245,10 @@ export class MemoryGroomingService {
   /**
    * 移除重复条目
    */
-  private removeDuplicates(memory: MemoryEntry[], actions: GroomingAction[]): MemoryEntry[] {
+  private removeDuplicates(
+    memory: RichMemoryEntry[],
+    actions: GroomingAction[],
+  ): RichMemoryEntry[] {
     const duplicateIds = new Set(actions.map((a) => a.entryId));
     return memory.filter((e) => !duplicateIds.has(e.id));
   }
@@ -264,25 +288,24 @@ export class MemoryGroomingService {
   /**
    * 查找可压缩条目
    */
-  private findCompressibleEntries(memory: MemoryEntry[]): GroomingAction[] {
+  private findCompressibleEntries(memory: RichMemoryEntry[]): GroomingAction[] {
     const actions: GroomingAction[] = [];
 
     for (const entry of memory) {
-      if (entry.content.length > this.config.compressThreshold) {
-        const compressed = this.compressText(entry.content);
-        const savings = entry.content.length - compressed.length;
-        if (savings > 500) {
-          // 节省超过 500 字符才值得压缩
-          actions.push({
-            type: "compress",
-            entryId: entry.id,
-            entryTitle: entry.title,
-            reason: `可节省 ${savings} 字符`,
-            before: entry.content.substring(0, 100),
-            after: compressed.substring(0, 100),
-            savings,
-          });
-        }
+      if (!entry.content || entry.content.length <= this.config.compressThreshold) continue;
+      const compressed = this.compressText(entry.content);
+      const savings = entry.content.length - compressed.length;
+      if (savings > 500) {
+        // 节省超过 500 字符才值得压缩
+        actions.push({
+          type: "compress",
+          entryId: entry.id,
+          entryTitle: entry.title ?? entry.id,
+          reason: `可节省 ${savings} 字符`,
+          before: entry.content.substring(0, 100),
+          after: compressed.substring(0, 100),
+          savings,
+        });
       }
     }
 
@@ -305,10 +328,10 @@ export class MemoryGroomingService {
   /**
    * 压缩条目
    */
-  private compressEntries(memory: MemoryEntry[], actions: GroomingAction[]): MemoryEntry[] {
+  private compressEntries(memory: RichMemoryEntry[], actions: GroomingAction[]): RichMemoryEntry[] {
     const compressIds = new Set(actions.map((a) => a.entryId));
     return memory.map((e) => {
-      if (compressIds.has(e.id)) {
+      if (compressIds.has(e.id) && e.content) {
         return {
           ...e,
           content: this.compressText(e.content),
@@ -322,19 +345,18 @@ export class MemoryGroomingService {
   /**
    * 查找可合并条目
    */
-  private findMergeableEntries(memory: MemoryEntry[]): GroomingAction[] {
+  private findMergeableEntries(memory: RichMemoryEntry[]): GroomingAction[] {
     const actions: GroomingAction[] = [];
     const groups = this.groupByTopic(memory);
 
     for (const group of groups) {
       if (group.entries.length > 1) {
-        const mainEntry = group.entries[0];
         for (let i = 1; i < group.entries.length; i++) {
           const entry = group.entries[i];
           actions.push({
             type: "merge",
             entryId: entry.id,
-            entryTitle: entry.title,
+            entryTitle: entry.title ?? entry.id,
             reason: `可合并到主题 "${group.topic}"`,
           });
         }
@@ -347,8 +369,10 @@ export class MemoryGroomingService {
   /**
    * 按主题分组
    */
-  private groupByTopic(memory: MemoryEntry[]): Array<{ topic: string; entries: MemoryEntry[] }> {
-    const groups = new Map<string, MemoryEntry[]>();
+  private groupByTopic(
+    memory: RichMemoryEntry[],
+  ): Array<{ topic: string; entries: RichMemoryEntry[] }> {
+    const groups = new Map<string, RichMemoryEntry[]>();
 
     for (const entry of memory) {
       // 从标题或标签提取主题
@@ -364,14 +388,15 @@ export class MemoryGroomingService {
   /**
    * 提取主题
    */
-  private extractTopic(entry: MemoryEntry): string {
+  private extractTopic(entry: RichMemoryEntry): string {
     // 从标签提取
     if (entry.tags && entry.tags.length > 0) {
       return entry.tags[0];
     }
 
     // 从标题提取关键词
-    const words = entry.title
+    const title = entry.title ?? "";
+    const words = title
       .toLowerCase()
       .replace(/[^\w\s]/g, " ")
       .split(/\s+/)
@@ -383,7 +408,7 @@ export class MemoryGroomingService {
   /**
    * 合并条目
    */
-  private mergeEntries(memory: MemoryEntry[], actions: GroomingAction[]): MemoryEntry[] {
+  private mergeEntries(memory: RichMemoryEntry[], actions: GroomingAction[]): RichMemoryEntry[] {
     // 实际实现可能需要更复杂的合并逻辑
     const mergeIds = new Set(actions.map((a) => a.entryId));
     return memory.filter((e) => !mergeIds.has(e.id));
@@ -392,7 +417,7 @@ export class MemoryGroomingService {
   /**
    * 获取整理建议
    */
-  async getSuggestions(memory: MemoryEntry[]): Promise<string[]> {
+  async getSuggestions(memory: RichMemoryEntry[]): Promise<string[]> {
     const suggestions: string[] = [];
     const result = await this.groom(memory);
 
@@ -439,7 +464,7 @@ export function createMemoryGroomingService(
 /**
  * 快速整理
  */
-export async function quickGroom(memory: MemoryEntry[]): Promise<MemoryGroomingResult> {
+export async function quickGroom(memory: RichMemoryEntry[]): Promise<MemoryGroomingResult> {
   const service = createMemoryGroomingService({ dryRun: true });
   return service.groom(memory);
 }

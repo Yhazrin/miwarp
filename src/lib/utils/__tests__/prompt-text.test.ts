@@ -29,12 +29,12 @@ describe("misencodedNavigationDirection", () => {
       keyCode: 39,
       which: 39,
       length: 1,
-    } as KeyboardEvent;
+    } as unknown as KeyboardEvent;
     expect(misencodedNavigationDirection(e)).toBe("right");
   });
 
   it("does not treat printable keys as navigation", () => {
-    const e = { key: "a", keyCode: 65, which: 65, length: 1 } as KeyboardEvent;
+    const e = { key: "a", keyCode: 65, which: 65, length: 1 } as unknown as KeyboardEvent;
     expect(misencodedNavigationDirection(e)).toBeNull();
   });
 });

@@ -87,10 +87,10 @@ export class SkillUpdateChecker {
       return {
         hasUpdate: false,
         currentVersion: skill.version || "unknown",
-        latestVersion: remoteRef.version || "unknown",
+        latestVersion: "unknown",
         breakingChanges: false,
         checkedAt: new Date().toISOString(),
-        source: remoteRef.source || "unknown",
+        source: remoteRef.sourceId || "unknown",
       };
     }
   }
@@ -106,7 +106,7 @@ export class SkillUpdateChecker {
     const checks: Promise<void>[] = [];
 
     // Hash 比对
-    if (config.checkHash && remoteRef.hash) {
+    if (config.checkHash) {
       checks.push(
         this.compareHash(skill, remoteRef).then(({ hasUpdate }) => {
           // hash 不同说明有更新
@@ -115,7 +115,7 @@ export class SkillUpdateChecker {
     }
 
     // 版本比较
-    if (config.checkVersion && remoteRef.version) {
+    if (config.checkVersion && skill.version) {
       checks.push(
         this.compareVersion(skill, remoteRef, config).then((versionResult) => {
           // 版本比较逻辑
@@ -127,24 +127,23 @@ export class SkillUpdateChecker {
     await Promise.all(checks);
 
     // 执行实际的更新检查
-    const hashResult =
-      config.checkHash && remoteRef.hash
-        ? await this.compareHash(skill, remoteRef)
-        : { hasUpdate: false };
+    const hashResult = config.checkHash
+      ? await this.compareHash(skill, remoteRef)
+      : { hasUpdate: false };
     const versionResult =
-      config.checkVersion && remoteRef.version
+      config.checkVersion && skill.version
         ? await this.compareVersion(skill, remoteRef, config)
         : { isNewer: false, isCompatible: true, compareValue: 0 };
 
     return {
       hasUpdate: hashResult.hasUpdate || versionResult.isNewer,
       currentVersion: skill.version || "unknown",
-      latestVersion: remoteRef.version || "unknown",
-      changelog: versionResult.changelog,
+      latestVersion: skill.version || "unknown",
+      changelog: skill.changelog,
       breakingChanges: !versionResult.isCompatible,
       updateSize: hashResult.hasUpdate ? this.estimateUpdateSize(skill) : undefined,
       checkedAt: new Date().toISOString(),
-      source: remoteRef.source || "unknown",
+      source: remoteRef.sourceId || "unknown",
     };
   }
 
@@ -156,7 +155,7 @@ export class SkillUpdateChecker {
     remoteRef: SkillRemoteRef,
   ): Promise<{ hasUpdate: boolean }> {
     const currentHash = await this.computeHash(skill.content);
-    const hasUpdate = currentHash !== remoteRef.hash;
+    const hasUpdate = currentHash !== remoteRef.contentHash;
     return { hasUpdate };
   }
 
@@ -177,11 +176,11 @@ export class SkillUpdateChecker {
    */
   private async compareVersion(
     skill: Skill,
-    remoteRef: SkillRemoteRef,
+    _remoteRef: SkillRemoteRef,
     _config: UpdateCheckConfig,
   ): Promise<VersionCompareResult> {
     const currentVersion = skill.version || "0.0.0";
-    const latestVersion = remoteRef.version || "0.0.0";
+    const latestVersion = "0.0.0";
 
     const compareValue = this.semverCompare(currentVersion, latestVersion);
 
@@ -189,7 +188,7 @@ export class SkillUpdateChecker {
       isNewer: compareValue < 0,
       isCompatible: this.isCompatible(currentVersion, latestVersion),
       compareValue,
-      changelog: remoteRef.changelog,
+      changelog: skill.changelog,
     };
   }
 
@@ -237,7 +236,7 @@ export class SkillUpdateChecker {
    * 获取缓存 key
    */
   private getCacheKey(skill: Skill, remoteRef: SkillRemoteRef): string {
-    return `${skill.name}:${remoteRef.source}:${remoteRef.url || ""}`;
+    return `${skill.name}:${remoteRef.sourceId}:${remoteRef.remoteUrl || ""}`;
   }
 
   /**

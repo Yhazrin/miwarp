@@ -35,10 +35,10 @@
   );
 
   // 转换 MultiAgentConfig 为 SkillPipeline 用于 DAG 分析
-  const currentPipeline = $derived<SkillPipeline | null>(() => {
+  const currentPipeline = $derived.by<SkillPipeline | null>(() => {
     if (!currentConfig) return null;
     return {
-      id: currentConfig.id,
+      id: `pipeline-${currentConfig.name}`,
       name: currentConfig.name,
       description: currentConfig.description,
       steps: currentConfig.agents.map((agent) => ({

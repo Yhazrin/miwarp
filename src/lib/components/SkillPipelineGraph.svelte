@@ -113,7 +113,7 @@
     if (executionState?.stepStatuses[step.skillName]) {
       return executionState.stepStatuses[step.skillName];
     }
-    return step.status || "pending";
+    return "pending";
   }
 
   /**

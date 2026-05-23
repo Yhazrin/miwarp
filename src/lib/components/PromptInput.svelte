@@ -1572,10 +1572,11 @@
         const end = el?.selectionEnd ?? start;
         const before = store.inputText.slice(0, start);
         const after = store.inputText.slice(end);
+        const textLen = text.length;
         store.inputText = before + text + after;
         requestAnimationFrame(() => {
           if (!store.textareaEl) return;
-          const pos = start + text.length;
+          const pos = start + textLen;
           store.textareaEl.selectionStart = store.textareaEl.selectionEnd = pos;
           autoResize();
         });

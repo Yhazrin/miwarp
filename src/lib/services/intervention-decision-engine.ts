@@ -503,7 +503,7 @@ export function quickRiskAssessment(skill: Skill): {
     if (warning.includes("critical") || warning.includes("磁盘") || warning.includes("数据库")) {
       riskLevel = "critical";
       break;
-    } else if (riskLevel !== "critical" && (warning.includes("high") || warning.includes("删除"))) {
+    } else if (warning.includes("high") || warning.includes("删除")) {
       riskLevel = "high";
     } else if (riskLevel === "low" && warning.includes("medium")) {
       riskLevel = "medium";
