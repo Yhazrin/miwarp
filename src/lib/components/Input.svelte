@@ -5,6 +5,7 @@
     type = "text",
     disabled = false,
     class: className = "",
+    id,
     oninput,
     onblur,
     onpaste,
@@ -14,6 +15,7 @@
     type?: string;
     disabled?: boolean;
     class?: string;
+    id?: string;
     oninput?: (e: Event) => void;
     onblur?: (e: FocusEvent) => void;
     onpaste?: (e: ClipboardEvent) => void;
@@ -21,6 +23,7 @@
 </script>
 
 <input
+  {id}
   {type}
   {placeholder}
   {disabled}

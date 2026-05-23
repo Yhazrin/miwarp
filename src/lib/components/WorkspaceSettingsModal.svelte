@@ -59,10 +59,11 @@
   <div class="space-y-4">
     <!-- Alias -->
     <div>
-      <label class="mb-1.5 block text-xs font-medium text-muted-foreground">
+      <label for="workspace-alias" class="mb-1.5 block text-xs font-medium text-muted-foreground">
         {t("workspace_displayName") ?? "Display name"}
       </label>
       <input
+        id="workspace-alias"
         type="text"
         bind:value={aliasValue}
         class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm
@@ -77,9 +78,9 @@
 
     <!-- Path -->
     <div>
-      <label class="mb-1.5 block text-xs font-medium text-muted-foreground">
+      <span class="mb-1.5 block text-xs font-medium text-muted-foreground">
         {t("workspace_localPath") ?? "Local path"}
-      </label>
+      </span>
       <div class="flex items-center gap-2">
         <span
           class="flex-1 truncate rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground font-mono"

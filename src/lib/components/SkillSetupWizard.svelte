@@ -245,10 +245,14 @@ step by step, * with progress tracking and helpful hints. */
 
         <!-- Name -->
         <div class="space-y-1">
-          <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <label
+            for="skill-wizard-name"
+            class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
             Skill Name
           </label>
           <input
+            id="skill-wizard-name"
             type="text"
             bind:value={skillName}
             placeholder="e.g., daily-standup"
@@ -261,10 +265,14 @@ step by step, * with progress tracking and helpful hints. */
 
         <!-- Description -->
         <div class="space-y-1">
-          <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <label
+            for="skill-wizard-desc"
+            class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
             Description
           </label>
           <textarea
+            id="skill-wizard-desc"
             bind:value={skillDescription}
             placeholder="What does this skill do?"
             rows="2"
@@ -274,9 +282,9 @@ step by step, * with progress tracking and helpful hints. */
 
         <!-- Icon picker -->
         <div class="space-y-1">
-          <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Icon
-          </label>
+          </span>
           <div class="flex flex-wrap gap-2">
             {#each ICONS as icon}
               <button
@@ -295,9 +303,9 @@ step by step, * with progress tracking and helpful hints. */
 
         <!-- Tags -->
         <div class="space-y-1">
-          <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Tags
-          </label>
+          </span>
           <div class="flex flex-wrap gap-1 mb-2">
             {#each skillTags as tag}
               <span class="px-2 py-0.5 text-xs rounded-full bg-muted/50 flex items-center gap-1">
@@ -345,10 +353,14 @@ step by step, * with progress tracking and helpful hints. */
         </p>
 
         <div class="space-y-1">
-          <label class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <label
+            for="skill-wizard-content"
+            class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+          >
             Skill Content
           </label>
           <textarea
+            id="skill-wizard-content"
             bind:value={skillPrompt}
             placeholder={`# ${skillName}
 

@@ -682,9 +682,11 @@
             <!-- Custom: extra Base URL input -->
             {#if selectedPlatform.id === "custom"}
               <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-medium text-muted-foreground">{t("setup_baseUrl")}</label
+                <label for="setup-base-url" class="text-xs font-medium text-muted-foreground"
+                  >{t("setup_baseUrl")}</label
                 >
                 <input
+                  id="setup-base-url"
                   type="text"
                   bind:value={customBaseUrl}
                   placeholder="https://api.example.com"
@@ -695,11 +697,12 @@
 
             <!-- API Key input -->
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-medium text-muted-foreground"
+              <label for="setup-api-key" class="text-xs font-medium text-muted-foreground"
                 >{t("setup_apiKeyLabel")}</label
               >
               <div class="relative">
                 <input
+                  id="setup-api-key"
                   type={showKey ? "text" : "password"}
                   bind:value={apiKey}
                   placeholder={selectedPlatform.key_placeholder}

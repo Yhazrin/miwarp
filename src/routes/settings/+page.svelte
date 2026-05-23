@@ -2903,10 +2903,11 @@
                     {#if isCustomPlatform(selectedPlatformId ?? "")}
                       <div class="flex gap-3">
                         <div class="flex-1">
-                          <label class="text-sm font-medium mb-1.5 block"
+                          <label for="settings-custom-name" class="text-sm font-medium mb-1.5 block"
                             >{t("settings_general_customNameLabel")}</label
                           >
                           <Input
+                            id="settings-custom-name"
                             value={findCredential(platformCredentials, selectedPlatformId ?? "")
                               ?.name ?? ""}
                             placeholder={t("settings_general_customNamePlaceholder")}
@@ -2923,8 +2924,8 @@
                           />
                         </div>
                         <div>
-                          <label class="text-sm font-medium mb-1.5 block"
-                            >{t("settings_general_authType")}</label
+                          <span class="text-sm font-medium mb-1.5 block"
+                            >{t("settings_general_authType")}</span
                           >
                           <div class="mt-1 flex rounded-md border border-input overflow-hidden">
                             <button
@@ -3144,8 +3145,8 @@
                     {@const phSonnet = presetSonnet || t("settings_general_modelsPlaceholder")}
                     {@const phHaiku = presetHaiku || t("settings_general_modelsPlaceholder")}
                     <div>
-                      <label class="text-sm font-medium mb-1.5 block"
-                        >{t("settings_general_models")}</label
+                      <span class="text-sm font-medium mb-1.5 block"
+                        >{t("settings_general_models")}</span
                       >
                       <div class="mt-1 space-y-1.5">
                         <div class="flex items-center gap-2">

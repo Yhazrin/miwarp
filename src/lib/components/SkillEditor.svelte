@@ -207,8 +207,10 @@
 
         <!-- Category -->
         <div class="space-y-2">
-          <label class="text-sm font-medium">{t("skillEditor_category")}</label>
-          <div class="grid grid-cols-2 gap-2">
+          <label id="skill-category-label" class="text-sm font-medium"
+            >{t("skillEditor_category")}</label
+          >
+          <div class="grid grid-cols-2 gap-2" aria-labelledby="skill-category-label">
             {#each SKILL_CATEGORIES as cat}
               <button
                 class="flex items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors
@@ -226,8 +228,8 @@
 
         <!-- Icon -->
         <div class="space-y-2">
-          <label class="text-sm font-medium">{t("skillEditor_icon")}</label>
-          <div class="flex flex-wrap gap-2">
+          <label id="skill-icon-label" class="text-sm font-medium">{t("skillEditor_icon")}</label>
+          <div class="flex flex-wrap gap-2" aria-labelledby="skill-icon-label">
             {#each iconOptions as iconOption}
               <button
                 class="flex h-10 w-10 items-center justify-center rounded-md border text-lg transition-colors

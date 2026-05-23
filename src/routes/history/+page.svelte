@@ -311,11 +311,14 @@
         <div class="grid grid-cols-4 gap-3">
           <!-- Project -->
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+            <label
+              for="history-project-filter"
+              class="mb-1.5 block text-xs font-medium text-muted-foreground"
               >{t("history_project")}</label
             >
             <div class="relative">
               <select
+                id="history-project-filter"
                 onchange={(e) => onProjectFilter(e.currentTarget.value || undefined)}
                 class="h-8 w-full appearance-none rounded-md border border-border bg-background px-2.5 pr-7 text-[13px] text-foreground transition-colors hover:border-muted-foreground/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
               >
@@ -340,11 +343,14 @@
 
           <!-- Agent -->
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+            <label
+              for="history-agent-filter"
+              class="mb-1.5 block text-xs font-medium text-muted-foreground"
               >{t("history_agent")}</label
             >
             <div class="relative">
               <select
+                id="history-agent-filter"
                 onchange={(e) => onAgentFilter(e.currentTarget.value || undefined)}
                 class="h-8 w-full appearance-none rounded-md border border-border bg-background px-2.5 pr-7 text-[13px] text-foreground transition-colors hover:border-muted-foreground/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
               >
@@ -391,7 +397,9 @@
         <!-- Row 2: Cost range -->
         <div class="mt-3 grid grid-cols-4 gap-3">
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+            <label
+              for="history-cost-min"
+              class="mb-1.5 block text-xs font-medium text-muted-foreground"
               >{t("history_costMin")}</label
             >
             <div class="relative">
@@ -400,6 +408,7 @@
                 >$</span
               >
               <input
+                id="history-cost-min"
                 type="number"
                 step="0.01"
                 min="0"
@@ -410,7 +419,9 @@
             </div>
           </div>
           <div>
-            <label class="mb-1.5 block text-xs font-medium text-muted-foreground"
+            <label
+              for="history-cost-max"
+              class="mb-1.5 block text-xs font-medium text-muted-foreground"
               >{t("history_costMax")}</label
             >
             <div class="relative">
@@ -419,6 +430,7 @@
                 >$</span
               >
               <input
+                id="history-cost-max"
                 type="number"
                 step="0.01"
                 min="0"

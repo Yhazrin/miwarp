@@ -1458,10 +1458,13 @@
             <div class="px-5 py-4 space-y-4 overflow-y-auto">
               {#if editorMode === "new"}
                 <div>
-                  <label class="block text-xs font-medium text-muted-foreground mb-1"
+                  <label
+                    for="plugin-editor-name"
+                    class="block text-xs font-medium text-muted-foreground mb-1"
                     >{t("plugin_editorName")}</label
                   >
                   <input
+                    id="plugin-editor-name"
                     type="text"
                     placeholder={t("plugins_skillNamePlaceholder")}
                     class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -1470,10 +1473,13 @@
                 </div>
 
                 <div>
-                  <label class="block text-xs font-medium text-muted-foreground mb-1"
+                  <label
+                    for="plugin-editor-desc"
+                    class="block text-xs font-medium text-muted-foreground mb-1"
                     >{t("plugin_editorDescription")}</label
                   >
                   <input
+                    id="plugin-editor-desc"
                     type="text"
                     placeholder={t("plugins_skillDescPlaceholder")}
                     class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -1482,10 +1488,13 @@
                 </div>
 
                 <div>
-                  <label class="block text-xs font-medium text-muted-foreground mb-1"
+                  <label
+                    for="plugin-editor-scope"
+                    class="block text-xs font-medium text-muted-foreground mb-1"
                     >{t("plugin_editorScope")}</label
                   >
                   <select
+                    id="plugin-editor-scope"
                     class="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     bind:value={editorScope}
                   >
@@ -1509,12 +1518,15 @@
               {/if}
 
               <div>
-                <label class="block text-xs font-medium text-muted-foreground mb-1"
+                <label
+                  for="plugin-editor-content"
+                  class="block text-xs font-medium text-muted-foreground mb-1"
                   >{editorMode === "new"
                     ? t("plugin_editorContent")
                     : t("plugin_skillMdContent")}</label
                 >
                 <textarea
+                  id="plugin-editor-content"
                   class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
                   rows="12"
                   placeholder={t("plugins_skillContentPlaceholder")}

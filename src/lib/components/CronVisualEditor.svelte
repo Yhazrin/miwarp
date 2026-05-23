@@ -254,10 +254,14 @@ editing cron expressions * with real-time preview and natural language descripti
   {#if activeTab === "simple"}
     <!-- Simple Interval Selector -->
     <div class="space-y-1">
-      <label class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+      <label
+        for="cron-schedule-type"
+        class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
+      >
         Schedule Type
       </label>
       <select
+        id="cron-schedule-type"
         bind:value={simpleInterval}
         onchange={() => updateSimple()}
         {disabled}
@@ -276,10 +280,14 @@ editing cron expressions * with real-time preview and natural language descripti
     {#if simpleInterval === "daily" || simpleInterval === "weekly" || simpleInterval === "monthly"}
       <div class="grid grid-cols-2 gap-2">
         <div class="space-y-1">
-          <label class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+          <label
+            for="cron-hour"
+            class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
+          >
             Hour
           </label>
           <select
+            id="cron-hour"
             bind:value={dailyHour}
             onchange={() => updateSimple()}
             {disabled}
@@ -291,10 +299,14 @@ editing cron expressions * with real-time preview and natural language descripti
           </select>
         </div>
         <div class="space-y-1">
-          <label class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+          <label
+            for="cron-minute"
+            class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
+          >
             Minute
           </label>
           <select
+            id="cron-minute"
             bind:value={dailyMinute}
             onchange={() => updateSimple()}
             {disabled}
@@ -311,9 +323,9 @@ editing cron expressions * with real-time preview and natural language descripti
     <!-- Weekly day picker -->
     {#if simpleInterval === "weekly"}
       <div class="space-y-1">
-        <label class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+        <span class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
           Days of Week
-        </label>
+        </span>
         <div class="flex gap-1">
           {#each WEEKDAY_ABBREV as day, i}
             <button
@@ -335,10 +347,14 @@ editing cron expressions * with real-time preview and natural language descripti
     <!-- Monthly day picker -->
     {#if simpleInterval === "monthly"}
       <div class="space-y-1">
-        <label class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+        <label
+          for="cron-day-of-month"
+          class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
+        >
           Day of Month
         </label>
         <select
+          id="cron-day-of-month"
           bind:value={monthlyDay}
           onchange={() => updateSimple()}
           {disabled}
@@ -355,10 +371,14 @@ editing cron expressions * with real-time preview and natural language descripti
     {#if simpleInterval === "custom"}
       <div class="grid grid-cols-2 gap-2">
         <div class="space-y-1">
-          <label class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+          <label
+            for="cron-interval"
+            class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
+          >
             Interval
           </label>
           <input
+            id="cron-interval"
             type="number"
             min="1"
             max="59"
@@ -369,10 +389,14 @@ editing cron expressions * with real-time preview and natural language descripti
           />
         </div>
         <div class="space-y-1">
-          <label class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+          <label
+            for="cron-unit"
+            class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
+          >
             Unit
           </label>
           <select
+            id="cron-unit"
             bind:value={intervalUnit}
             onchange={() => updateSimple()}
             {disabled}
@@ -387,9 +411,9 @@ editing cron expressions * with real-time preview and natural language descripti
 
     <!-- Quick Presets -->
     <div class="space-y-1">
-      <label class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+      <span class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
         Quick Presets
-      </label>
+      </span>
       <div class="flex flex-wrap gap-1">
         {#each PRESETS.slice(0, 5) as preset}
           <button
@@ -407,10 +431,14 @@ editing cron expressions * with real-time preview and natural language descripti
     <!-- Advanced: Direct cron expression input -->
     <div class="space-y-2">
       <div class="space-y-1">
-        <label class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+        <label
+          for="cron-expression"
+          class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
+        >
           Cron Expression
         </label>
         <input
+          id="cron-expression"
           type="text"
           {value}
           oninput={(e) => handleDirectInput(e.currentTarget.value)}
@@ -434,9 +462,9 @@ editing cron expressions * with real-time preview and natural language descripti
 
       <!-- More presets in advanced mode -->
       <div class="space-y-1">
-        <label class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+        <span class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
           More Presets
-        </label>
+        </span>
         <div class="flex flex-wrap gap-1">
           {#each PRESETS.slice(5) as preset}
             <button

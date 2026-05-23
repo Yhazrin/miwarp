@@ -334,8 +334,8 @@
 
         <!-- Event type (pill selector) -->
         <div>
-          <label class="block text-[11px] font-medium text-muted-foreground mb-1.5"
-            >{t("hooks_event")}</label
+          <span class="block text-[11px] font-medium text-muted-foreground mb-1.5"
+            >{t("hooks_event")}</span
           >
           <div class="flex flex-wrap gap-1">
             {#each HOOK_EVENT_TYPES as ev}
@@ -360,10 +360,13 @@
         <!-- Matcher -->
         {#if editorEvent === "PreToolUse" || editorEvent === "PostToolUse" || editorEvent === "SubagentTool"}
           <div>
-            <label class="block text-[11px] font-medium text-muted-foreground mb-1"
+            <label
+              for="hook-matcher"
+              class="block text-[11px] font-medium text-muted-foreground mb-1"
               >{t("hooks_matcher")}</label
             >
             <input
+              id="hook-matcher"
               type="text"
               class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               placeholder={t("hooks_matcherPlaceholder")}
@@ -376,9 +379,7 @@
         <!-- Handlers -->
         <div>
           <div class="flex items-center justify-between mb-2">
-            <label class="text-[11px] font-medium text-muted-foreground"
-              >{t("hooks_handlers")}</label
-            >
+            <span class="text-[11px] font-medium text-muted-foreground">{t("hooks_handlers")}</span>
             <button
               class="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               onclick={addHandler}
@@ -469,10 +470,13 @@
                   ></textarea>
                   <!-- Model for prompt handlers -->
                   <div>
-                    <label class="block text-[10px] text-muted-foreground mb-0.5"
+                    <label
+                      for="hook-model-{hi}"
+                      class="block text-[10px] text-muted-foreground mb-0.5"
                       >{t("hooks_model")}</label
                     >
                     <input
+                      id="hook-model-{hi}"
                       type="text"
                       class="w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                       placeholder={t("hooks_modelPlaceholder")}
@@ -488,10 +492,13 @@
                 {:else if handler.type === "mcp_tool"}
                   <!-- MCP server name -->
                   <div>
-                    <label class="block text-[10px] text-muted-foreground mb-0.5"
+                    <label
+                      for="hook-mcp-server-{hi}"
+                      class="block text-[10px] text-muted-foreground mb-0.5"
                       >{t("hooks_mcpServer")}</label
                     >
                     <input
+                      id="hook-mcp-server-{hi}"
                       type="text"
                       class="w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                       placeholder={t("hooks_mcpServerPlaceholder")}
@@ -506,10 +513,13 @@
                   </div>
                   <!-- MCP tool name -->
                   <div>
-                    <label class="block text-[10px] text-muted-foreground mb-0.5"
+                    <label
+                      for="hook-mcp-tool-{hi}"
+                      class="block text-[10px] text-muted-foreground mb-0.5"
                       >{t("hooks_mcpTool")}</label
                     >
                     <input
+                      id="hook-mcp-tool-{hi}"
                       type="text"
                       class="w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                       placeholder={t("hooks_mcpToolPlaceholder")}
@@ -524,10 +534,13 @@
                   </div>
                   <!-- Input JSON (optional) -->
                   <div>
-                    <label class="block text-[10px] text-muted-foreground mb-0.5"
+                    <label
+                      for="hook-mcp-input-{hi}"
+                      class="block text-[10px] text-muted-foreground mb-0.5"
                       >{t("hooks_mcpInput")}</label
                     >
                     <textarea
+                      id="hook-mcp-input-{hi}"
                       class="w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
                       rows="3"
                       placeholder={t("hooks_mcpInputPlaceholder")}
@@ -626,10 +639,13 @@
 
                 <!-- Conditional filter -->
                 <div>
-                  <label class="block text-[10px] text-muted-foreground mb-0.5"
+                  <label
+                    for="hook-condition-{hi}"
+                    class="block text-[10px] text-muted-foreground mb-0.5"
                     >{t("hooks_condition")}</label
                   >
                   <input
+                    id="hook-condition-{hi}"
                     type="text"
                     class="w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     placeholder={t("hooks_conditionPlaceholder")}
@@ -646,10 +662,13 @@
                 <!-- Status message -->
                 {#if handler.type === "command"}
                   <div>
-                    <label class="block text-[10px] text-muted-foreground mb-0.5"
+                    <label
+                      for="hook-status-{hi}"
+                      class="block text-[10px] text-muted-foreground mb-0.5"
                       >{t("hooks_statusMessage")}</label
                     >
                     <input
+                      id="hook-status-{hi}"
                       type="text"
                       class="w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                       placeholder={t("hooks_statusMessagePlaceholder")}

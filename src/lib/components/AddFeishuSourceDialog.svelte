@@ -88,31 +88,43 @@
 
       <form class="space-y-3 text-xs" onsubmit={handleSave}>
         <div>
-          <label class="block text-muted-foreground mb-1">{t("skillSources_field_name")}</label>
+          <label for="feishu-name" class="block text-muted-foreground mb-1"
+            >{t("skillSources_field_name")}</label
+          >
           <input
+            id="feishu-name"
             class="w-full rounded-lg border border-border bg-background px-3 py-1.5"
             bind:value={name}
             required
           />
         </div>
         <div>
-          <label class="block text-muted-foreground mb-1">{t("skillSources_field_urls")}</label>
+          <label for="feishu-urls" class="block text-muted-foreground mb-1"
+            >{t("skillSources_field_urls")}</label
+          >
           <textarea
+            id="feishu-urls"
             rows="5"
             class="w-full rounded-lg border border-border bg-background px-3 py-1.5 font-mono text-[11px]"
             bind:value={urls}
           ></textarea>
         </div>
         <div>
-          <label class="block text-muted-foreground mb-1">{t("skillSources_field_profile")}</label>
+          <label for="feishu-profile" class="block text-muted-foreground mb-1"
+            >{t("skillSources_field_profile")}</label
+          >
           <input
+            id="feishu-profile"
             class="w-full rounded-lg border border-border bg-background px-3 py-1.5"
             bind:value={auth}
           />
         </div>
         <div>
-          <label class="block text-muted-foreground mb-1">{t("skillSources_field_parser")}</label>
+          <label for="feishu-parser" class="block text-muted-foreground mb-1"
+            >{t("skillSources_field_parser")}</label
+          >
           <select
+            id="feishu-parser"
             class="w-full rounded-lg border border-border bg-background px-3 py-1.5"
             bind:value={parser}
           >
