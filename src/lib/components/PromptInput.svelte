@@ -237,7 +237,7 @@
     availableSkills?: string[];
     skillItems?: { name: string; description: string }[];
     agents?: { name: string; description: string }[];
-    showAuthBadge?: boolean; // TODO: remove unused auth props after hero migration
+    showAuthBadge?: boolean;
     pendingPermission?: boolean;
     hasStash?: boolean;
     onBtwSend?: (question: string) => void;
