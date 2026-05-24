@@ -80,6 +80,11 @@ final class MiWarpConnectionStore: ObservableObject {
         userDefaults.set(connection.id.uuidString, forKey: activeConnectionKey)
         connectionState = .connecting
 
+        // Connect first, THEN start observing the stream
+        // This order is critical: wsClient.connect() creates new streams,
+        // and we must observe the stream that is created AFTER our connect call
+        wsClient.connect(host: connection.host, port: connection.port, token: token)
+
         // Cancel previous observer and observe connection state changes
         connectionObserverTask?.cancel()
         connectionObserverTask = Task { @MainActor [weak self] in
@@ -88,8 +93,6 @@ final class MiWarpConnectionStore: ObservableObject {
                 self.connectionState = state
             }
         }
-
-        wsClient.connect(host: connection.host, port: connection.port, token: token)
     }
 
     func connectToDefault() {

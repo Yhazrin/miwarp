@@ -392,10 +392,12 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         heartbeatTask = nil
         reconnectTimer?.invalidate()
         reconnectTimer = nil
-        webSocketTask?.cancel(with: .normalClosure, reason: nil)
+        webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
         urlSession?.invalidateAndCancel()
         urlSession = nil
+        // Clean up pending requests since connection is being terminated
+        cancelAllPendingRequests()
     }
 
     private func maskedURL(_ url: URL) -> String {
@@ -493,7 +495,7 @@ extension MiWarpWebSocketClient: URLSessionWebSocketDelegate {
                     reason: Data?) {
         logger.wsInfo("WebSocket closed: \(closeCode.rawValue)")
         if !isIntentionalClose {
-            scheduleReconnect()
+            scheduleReconnect(generation: connectionGeneration)
         }
     }
 
