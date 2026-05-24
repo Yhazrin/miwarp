@@ -70,4 +70,9 @@ enum MWTypography {
     static func monoSmall() -> Font {
         .system(size: 11, weight: .regular, design: .monospaced)
     }
+
+    // Icons
+    static func iconLarge() -> Font {
+        .system(size: 40, weight: .regular, design: .default)
+    }
 }
