@@ -26,14 +26,13 @@ struct ChatView: View {
 
     @EnvironmentObject private var store: MiWarpConnectionStore
     @EnvironmentObject private var theme: MWTheme
-    @StateObject private var reducer = MiWarpEventReducer()
-    @State private var inputText = ""
-    @State private var isLoading = true
-    @State private var error: String?
-    @State private var complexityMode: ComplexityMode = .developer
-    @State private var showRawEvents = false
-    @State private var showArtifacts = false
-    @State private var rawEvents: [BusEvent] = []
+    @StateObject private var viewModel: ChatViewModel
+
+    init(runId: String, runTitle: String) {
+        self.runId = runId
+        self.runTitle = runTitle
+        _viewModel = StateObject(wrappedValue: ChatViewModel(runId: runId))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -48,30 +47,30 @@ struct ChatView: View {
             runStatusBar
 
             // Messages
-            if isLoading {
+            if viewModel.isLoading {
                 MWLoadingState(message: "Loading messages...")
-            } else if let error {
+            } else if let error = viewModel.error {
                 MWErrorState(message: error, onAction: {
-                    Task { await loadHistory() }
+                    Task { await viewModel.loadHistory() }
                 })
             } else {
                 MessageListView(
-                    messages: reducer.messages,
-                    complexityMode: complexityMode,
+                    messages: viewModel.reducer.messages,
+                    complexityMode: viewModel.complexityMode,
                     onApprove: { requestId, approved in
-                        Task { await handlePermission(requestId: requestId, approved: approved) }
+                        Task { await viewModel.handlePermission(requestId: requestId, approved: approved) }
                     }
                 )
             }
 
             // Pending permissions
-            if let permission = reducer.pendingPermissions.first {
+            if let permission = viewModel.reducer.pendingPermissions.first {
                 MWApprovalCard(
                     requestId: permission.id,
                     toolName: permission.toolName,
                     description: permission.description
                 ) { approved in
-                    Task { await handlePermission(requestId: permission.id, approved: approved) }
+                    Task { await viewModel.handlePermission(requestId: permission.id, approved: approved) }
                 }
                 .padding(.horizontal, MWSpacing.lg)
                 .padding(.bottom, MWSpacing.sm)
@@ -79,12 +78,12 @@ struct ChatView: View {
 
             // Input bar
             ChatInputBar(
-                text: $inputText,
-                isRunning: reducer.currentStatus == .running,
+                text: $viewModel.inputText,
+                isRunning: viewModel.reducer.currentStatus == .running,
                 canSend: store.isConnected,
-                onSend: { Task { await sendMessage() } },
-                onStop: { Task { await stopSession() } },
-                onFork: { Task { await forkSession() } }
+                onSend: { Task { await viewModel.sendMessage() } },
+                onStop: { Task { await viewModel.stopSession() } },
+                onFork: { Task { await viewModel.forkSession() } }
             )
         }
         .background(theme.bgDeepest)
@@ -93,7 +92,7 @@ struct ChatView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Picker("Mode", selection: $complexityMode) {
+                    Picker("Mode", selection: $viewModel.complexityMode) {
                         ForEach(ComplexityMode.allCases, id: \.self) { mode in
                             Label(mode.rawValue, systemImage: mode.systemImage)
                                 .tag(mode)
@@ -103,32 +102,33 @@ struct ChatView: View {
                     Divider()
 
                     Button {
-                        showArtifacts = true
+                        viewModel.showArtifacts = true
                     } label: {
                         Label("Artifacts", systemImage: "archivebox")
                     }
 
                     Button {
-                        showRawEvents = true
+                        viewModel.showRawEvents = true
                     } label: {
                         Label("Raw Events", systemImage: "list.bullet.rectangle")
                     }
                 } label: {
-                    Image(systemName: complexityMode.systemImage)
+                    Image(systemName: viewModel.complexityMode.systemImage)
                 }
             }
         }
-        .sheet(isPresented: $showRawEvents) {
-            RawEventView(events: rawEvents)
+        .sheet(isPresented: $viewModel.showRawEvents) {
+            RawEventView(events: viewModel.rawEvents)
         }
-        .sheet(isPresented: $showArtifacts) {
+        .sheet(isPresented: $viewModel.showArtifacts) {
             NavigationStack {
                 ArtifactsView(runId: runId)
             }
         }
         .task {
-            await loadHistory()
-            await subscribeToEvents()
+            viewModel.attach(store: store)
+            await viewModel.loadHistory()
+            await viewModel.subscribeToEvents()
         }
     }
 
@@ -136,33 +136,33 @@ struct ChatView: View {
 
     private var runStatusBar: some View {
         HStack(spacing: MWSpacing.md) {
-            MWStatusPill(status: reducer.currentStatus)
+            MWStatusPill(status: viewModel.reducer.currentStatus)
 
-            if reducer.usage.costUsd > 0 {
+            if viewModel.reducer.usage.costUsd > 0 {
                 HStack(spacing: MWSpacing.xs) {
                     Image(systemName: "dollarsign.circle")
                         .font(MWTypography.caption2())
-                    Text(String(format: "%.4f", reducer.usage.costUsd))
+                    Text(String(format: "%.4f", viewModel.reducer.usage.costUsd))
                 }
                 .font(MWTypography.monoCaption())
                 .foregroundColor(MWColors.statusWarning)
             }
 
-            if reducer.usage.inputTokens > 0 {
+            if viewModel.reducer.usage.inputTokens > 0 {
                 HStack(spacing: MWSpacing.xs) {
                     Image(systemName: "arrow.down.circle")
                         .font(MWTypography.caption2())
-                    Text(formatTokens(reducer.usage.inputTokens))
+                    Text(viewModel.formatTokens(viewModel.reducer.usage.inputTokens))
                 }
                 .font(MWTypography.monoCaption())
                 .foregroundColor(MWColors.textTertiary)
             }
 
-            if reducer.usage.outputTokens > 0 {
+            if viewModel.reducer.usage.outputTokens > 0 {
                 HStack(spacing: MWSpacing.xs) {
                     Image(systemName: "arrow.up.circle")
                         .font(MWTypography.caption2())
-                    Text(formatTokens(reducer.usage.outputTokens))
+                    Text(viewModel.formatTokens(viewModel.reducer.usage.outputTokens))
                 }
                 .font(MWTypography.monoCaption())
                 .foregroundColor(MWColors.textTertiary)
@@ -183,129 +183,5 @@ struct ChatView: View {
                     alignment: .bottom
                 )
         )
-    }
-
-    // MARK: - Actions
-
-    private func loadHistory() async {
-        guard let rpc = store.rpc else {
-            error = "Not connected"
-            isLoading = false
-            return
-        }
-
-        isLoading = true
-        error = nil
-
-        do {
-            let events = try await rpc.getBusEvents(runId: runId)
-            rawEvents = events
-            reducer.loadHistory(events)
-
-            // If no events, session may need to be started
-            if events.isEmpty {
-                try? await rpc.startSession(runId: runId)
-            }
-        } catch {
-            // Try starting session before showing error
-            do {
-                try await rpc.startSession(runId: runId)
-                let events = try await rpc.getBusEvents(runId: runId)
-                rawEvents = events
-                reducer.loadHistory(events)
-            } catch {
-                self.error = error.localizedDescription
-            }
-        }
-
-        isLoading = false
-    }
-
-    private func subscribeToEvents() async {
-        guard let rpc = store.rpc else { return }
-
-        do {
-            try await rpc.subscribe(runId: runId, lastSeq: reducer.lastSeq)
-        } catch {
-            MiWarpLogger.shared.error("Subscribe failed: \(error.localizedDescription)")
-        }
-
-        // Outer loop: re-subscribe after each reconnect (stream ends on disconnect)
-        while !Task.isCancelled {
-            for await event in store.wsClient.eventStream {
-                guard event.runId == runId else { continue }
-                rawEvents.append(event)
-                reducer.processEvent(event)
-            }
-            // Stream finished (disconnect). Wait for reconnection.
-            // Re-subscribe to run events once reconnected.
-            if Task.isCancelled { break }
-            try? await Task.sleep(nanoseconds: 500_000_000)
-            guard store.isConnected, let rpc = store.rpc else { continue }
-            do {
-                try await rpc.subscribe(runId: runId, lastSeq: reducer.lastSeq)
-            } catch {
-                MiWarpLogger.shared.error("Re-subscribe failed: \(error.localizedDescription)")
-            }
-        }
-    }
-
-    private func sendMessage() async {
-        guard let rpc = store.rpc, !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return
-        }
-
-        let message = inputText
-        inputText = ""
-
-        do {
-            try await rpc.sendMessage(runId: runId, message: message)
-        } catch {
-            inputText = message // restore draft on failure
-            self.error = "Failed to send: \(error.localizedDescription)"
-        }
-    }
-
-    private func stopSession() async {
-        guard let rpc = store.rpc else { return }
-        do {
-            try await rpc.stopSession(runId: runId)
-        } catch {
-            self.error = "Failed to stop: \(error.localizedDescription)"
-        }
-    }
-
-    private func forkSession() async {
-        guard let rpc = store.rpc else { return }
-        do {
-            let newRunId = try await rpc.forkSession(runId: runId)
-            MiWarpLogger.shared.info("Forked session: \(newRunId)")
-        } catch {
-            self.error = "Failed to fork: \(error.localizedDescription)"
-        }
-    }
-
-    private func handlePermission(requestId: String, approved: Bool) async {
-        guard let rpc = store.rpc else { return }
-        do {
-            try await rpc.respondPermission(
-                runId: runId,
-                requestId: requestId,
-                behavior: approved ? "allow" : "deny",
-                denyMessage: approved ? nil : "Denied from mobile"
-            )
-            reducer.removePermission(requestId: requestId)
-        } catch {
-            self.error = "Permission response failed: \(error.localizedDescription)"
-        }
-    }
-
-    private func formatTokens(_ count: Int) -> String {
-        if count >= 1_000_000 {
-            return String(format: "%.1fM", Double(count) / 1_000_000)
-        } else if count >= 1_000 {
-            return String(format: "%.1fK", Double(count) / 1_000)
-        }
-        return "\(count)"
     }
 }
