@@ -118,15 +118,17 @@ class MiWarpEventReducer {
                 changed = true
             }
             is BusEvent.SystemStatus -> {
-                if (event.status.isNullOrEmpty()) return@let false
-                messages.add(
-                    ChatMessage(
-                        id = "system-$lastSeq",
-                        role = MessageRole.System,
-                        text = event.status,
+                val status = event.status
+                if (!status.isNullOrEmpty()) {
+                    messages.add(
+                        ChatMessage(
+                            id = "system-$lastSeq",
+                            role = MessageRole.System,
+                            text = status,
+                        )
                     )
-                )
-                changed = true
+                    changed = true
+                }
             }
             is BusEvent.FullReload -> {
                 clear()
@@ -134,6 +136,18 @@ class MiWarpEventReducer {
             }
             is BusEvent.CompactBoundary -> {
                 // Mark the boundary; content continues after
+            }
+            is BusEvent.CommandOutput -> {
+                if (!event.content.isNullOrEmpty()) {
+                    messages.add(
+                        ChatMessage(
+                            id = "cmdout-$lastSeq",
+                            role = MessageRole.System,
+                            text = event.content,
+                        )
+                    )
+                    changed = true
+                }
             }
             else -> { /* Other events don't directly affect chat messages */ }
         }
@@ -187,7 +201,8 @@ class MiWarpEventReducer {
         val streaming = messages.lastOrNull { it.role == MessageRole.Assistant && it.isStreaming }
         if (streaming != null) {
             val index = messages.indexOf(streaming)
-            messages[index] = streaming.copy(isStreaming = false)
+            val finalText = event.text ?: streaming.text
+            messages[index] = streaming.copy(text = finalText, isStreaming = false)
             streamingMessageId = null
             messageAccumulator.remove(streaming.id)
             return true

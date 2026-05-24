@@ -239,7 +239,10 @@ class MiWarpRpcClient(
     }
 
     private fun parseBusEvent(envelope: RpcBroadcast): BusEvent? {
-        return parseBusEventFromEnvelope(envelope.event, envelope.seq, envelope.runId, envelope.payload)
+        // Server sends event="bus-event" with actual type in payload.type
+        val eventType = envelope.payload?.jsonObject?.get("type")?.jsonPrimitive?.content
+            ?: envelope.event
+        return parseBusEventFromEnvelope(eventType, envelope.seq, envelope.runId, envelope.payload)
     }
 
     private fun parseBusEventFromElement(element: JsonElement): BusEvent? {
@@ -270,7 +273,11 @@ class MiWarpRpcClient(
                 text = payload?.jsonObject?.get("text")?.jsonPrimitive?.content ?: "",
                 role = payload?.jsonObject?.get("role")?.jsonPrimitive?.content ?: "assistant",
             )
-            "message_complete" -> BusEvent.MessageComplete(seq, runId, payload)
+            "message_complete" -> BusEvent.MessageComplete(
+                seq, runId,
+                messageId = payload?.jsonObject?.get("message_id")?.jsonPrimitive?.content,
+                text = payload?.jsonObject?.get("text")?.jsonPrimitive?.content,
+            )
             "tool_start" -> BusEvent.ToolStart(
                 seq, runId,
                 toolName = payload?.jsonObject?.get("tool_name")?.jsonPrimitive?.content ?: "",
@@ -356,7 +363,7 @@ class MiWarpRpcClient(
             "tool_use_summary" -> BusEvent.ToolUseSummary(seq, runId, payload)
             "files_persisted" -> BusEvent.FilesPersisted(seq, runId, payload)
             "control_cancelled" -> BusEvent.ControlCancelled(seq, runId, payload)
-            "command_output" -> BusEvent.CommandOutput(seq, runId, payload)
+            "command_output" -> BusEvent.CommandOutput(seq, runId, payload?.jsonObject?.get("content")?.jsonPrimitive?.contentOrNull)
             "elicitation_prompt" -> BusEvent.ElicitationPrompt(seq, runId, payload)
             "rate_limit_event" -> BusEvent.RateLimitEvent(seq, runId, payload)
             "auth_status" -> BusEvent.AuthStatus(seq, runId, payload)

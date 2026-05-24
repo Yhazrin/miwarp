@@ -230,11 +230,23 @@ struct ChatView: View {
             MiWarpLogger.shared.error("Subscribe failed: \(error.localizedDescription)")
         }
 
-        // Listen for real-time events
-        for await event in store.wsClient.eventStream {
-            guard event.runId == runId else { continue }
-            rawEvents.append(event)
-            reducer.processEvent(event)
+        // Outer loop: re-subscribe after each reconnect (stream ends on disconnect)
+        while !Task.isCancelled {
+            for await event in store.wsClient.eventStream {
+                guard event.runId == runId else { continue }
+                rawEvents.append(event)
+                reducer.processEvent(event)
+            }
+            // Stream finished (disconnect). Wait for reconnection.
+            // Re-subscribe to run events once reconnected.
+            if Task.isCancelled { break }
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard store.isConnected, let rpc = store.rpc else { continue }
+            do {
+                try await rpc.subscribe(runId: runId, lastSeq: reducer.lastSeq)
+            } catch {
+                MiWarpLogger.shared.error("Re-subscribe failed: \(error.localizedDescription)")
+            }
         }
     }
 

@@ -112,6 +112,9 @@ final class MiWarpEventReducer: ObservableObject {
         case .systemStatus(let payload):
             handleSystemStatus(payload)
 
+        case .commandOutput(let payload):
+            handleCommandOutput(payload)
+
         case .sessionInit:
             break
 
@@ -315,6 +318,19 @@ final class MiWarpEventReducer: ObservableObject {
             id: "system-\(lastSeq)",
             role: .system,
             content: status,
+            timestamp: Date(),
+            isStreaming: false,
+            toolCalls: []
+        )
+        messages.append(msg)
+    }
+
+    private func handleCommandOutput(_ payload: CommandOutputPayload) {
+        guard let content = payload.content, !content.isEmpty else { return }
+        let msg = DisplayMessage(
+            id: "cmdout-\(lastSeq)",
+            role: .system,
+            content: content,
             timestamp: Date(),
             isStreaming: false,
             toolCalls: []

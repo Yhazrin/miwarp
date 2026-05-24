@@ -127,7 +127,7 @@ sealed class BusEvent {
 
     data class SessionInit(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class MessageDelta(override val seq: Long, override val runId: String, val text: String, val role: String) : BusEvent()
-    data class MessageComplete(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
+    data class MessageComplete(override val seq: Long, override val runId: String, val messageId: String?, val text: String?) : BusEvent()
     data class ToolStart(override val seq: Long, override val runId: String, val toolName: String, val toolId: String, val input: JsonElement?) : BusEvent()
     data class ToolEnd(override val seq: Long, override val runId: String, val toolName: String, val toolId: String, val output: JsonElement?, val status: String) : BusEvent()
     data class UserMessage(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
@@ -148,7 +148,7 @@ sealed class BusEvent {
     data class ToolUseSummary(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class FilesPersisted(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class ControlCancelled(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
-    data class CommandOutput(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
+    data class CommandOutput(override val seq: Long, override val runId: String, val content: String?) : BusEvent()
     data class ElicitationPrompt(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class RateLimitEvent(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class AuthStatus(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
