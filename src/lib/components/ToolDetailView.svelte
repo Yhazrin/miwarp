@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg } from "$lib/utils/debug";
   import { ansiToHtml, hasAnsiCodes, escapeHtml, stripAnsi } from "$lib/utils/ansi";
@@ -16,7 +16,26 @@
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
   import TeamToolDetail from "$lib/components/TeamToolDetail.svelte";
   import { hljs } from "$lib/utils/hljs-init";
-  import { structuredPatch } from "diff";
+
+  // Lazy-load the diff library (30KB) — cached at module level across instances
+  let _diffFn: typeof import("diff").structuredPatch | null = null;
+  const _diffPromise = import("diff").then((m) => {
+    _diffFn = m.structuredPatch;
+    return m.structuredPatch;
+  });
+  function diffLoaded(): boolean {
+    return _diffFn !== null;
+  }
+  function getDiffFn() {
+    return _diffFn!;
+  }
+
+  onMount(() => {
+    // Ensure diff module is loaded for this component instance
+    if (!_diffFn) {
+      _diffPromise.then(() => {});
+    }
+  });
 
   const TEAM_TOOLS = new Set([
     "TeamCreate",
@@ -152,12 +171,15 @@
   }
 
   /** Compute a unified diff from old_string + new_string, using the original file
-   *  content (if available) to determine real line numbers. Returns PatchHunk[]. */
+   *  content (if available) to determine real line numbers. Returns PatchHunk[].
+   *  Returns empty array if diff library not yet loaded. */
   function computeFallbackPatch(
     oldStr: string,
     newStr: string,
     originalFile?: string,
   ): PatchHunk[] {
+    if (!diffLoaded()) return [];
+
     // Find real line offset by locating old_string in the original file
     let lineOffset = 0;
     if (originalFile) {
@@ -167,7 +189,7 @@
       }
     }
 
-    const patch = structuredPatch("", "", oldStr, newStr, "", "", { context: 3 });
+    const patch = getDiffFn()("", "", oldStr, newStr, "", "", { context: 3 });
     // Adjust line numbers to real file positions
     if (lineOffset > 0) {
       for (const hunk of patch.hunks) {
