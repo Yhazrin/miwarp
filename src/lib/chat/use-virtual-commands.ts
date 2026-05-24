@@ -6,6 +6,7 @@ import {
   buildHelpText,
   parseRalphArgs,
 } from "$lib/utils/slash-commands";
+import { sortTasksByPriority } from "$lib/utils/task-sort";
 import { executeAddDir } from "$lib/utils/add-dir";
 import { buildDoctorReport } from "$lib/utils/doctor";
 import { getCliCommands } from "$lib/stores";
@@ -369,14 +370,7 @@ async function handleListTasks(ctx: VirtualCommandContext, args: string): Promis
       appendCommandOutput(t("slashTasks_empty"));
       return;
     }
-    const sorted = tasks.sort((a, b) => {
-      const aActive =
-        a.status !== "completed" && a.status !== "failed" && a.status !== "error" ? 1 : 0;
-      const bActive =
-        b.status !== "completed" && b.status !== "failed" && b.status !== "error" ? 1 : 0;
-      if (aActive !== bActive) return bActive - aActive;
-      return b.startedAt - a.startedAt;
-    });
+    const sorted = sortTasksByPriority(tasks);
     const now = Date.now();
     const elapsed = (ms: number) => {
       const sec = Math.floor((now - ms) / 1000);
