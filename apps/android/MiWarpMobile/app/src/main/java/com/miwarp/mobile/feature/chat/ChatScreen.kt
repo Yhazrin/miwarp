@@ -144,6 +144,7 @@ fun ChatScreen(
                 try {
                     rpcClient.sendMessage(runId, text)
                 } catch (e: Exception) {
+                    inputText = text // restore draft on failure
                     error = e.message ?: "Failed to send message"
                 } finally {
                     isSending = false

@@ -32,6 +32,7 @@ struct ChatView: View {
     @State private var error: String?
     @State private var complexityMode: ComplexityMode = .developer
     @State private var showRawEvents = false
+    @State private var showArtifacts = false
     @State private var rawEvents: [BusEvent] = []
 
     var body: some View {
@@ -102,6 +103,12 @@ struct ChatView: View {
                     Divider()
 
                     Button {
+                        showArtifacts = true
+                    } label: {
+                        Label("Artifacts", systemImage: "archivebox")
+                    }
+
+                    Button {
                         showRawEvents = true
                     } label: {
                         Label("Raw Events", systemImage: "list.bullet.rectangle")
@@ -113,6 +120,11 @@ struct ChatView: View {
         }
         .sheet(isPresented: $showRawEvents) {
             RawEventView(events: rawEvents)
+        }
+        .sheet(isPresented: $showArtifacts) {
+            NavigationStack {
+                ArtifactsView(runId: runId)
+            }
         }
         .task {
             await loadHistory()
@@ -188,8 +200,21 @@ struct ChatView: View {
             let events = try await rpc.getBusEvents(runId: runId)
             rawEvents = events
             reducer.loadHistory(events)
+
+            // If no events, session may need to be started
+            if events.isEmpty {
+                try? await rpc.startSession(runId: runId)
+            }
         } catch {
-            self.error = error.localizedDescription
+            // Try starting session before showing error
+            do {
+                try await rpc.startSession(runId: runId)
+                let events = try await rpc.getBusEvents(runId: runId)
+                rawEvents = events
+                reducer.loadHistory(events)
+            } catch {
+                self.error = error.localizedDescription
+            }
         }
 
         isLoading = false
@@ -223,6 +248,7 @@ struct ChatView: View {
         do {
             try await rpc.sendMessage(runId: runId, message: message)
         } catch {
+            inputText = message // restore draft on failure
             self.error = "Failed to send: \(error.localizedDescription)"
         }
     }
