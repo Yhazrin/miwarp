@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
@@ -60,6 +61,10 @@ class MiWarpWebSocketClient(
 
     private val baseDelayMs = 1000L
     private val maxDelayMs = 30_000L
+    private val maxReconnectAttempts = 20
+
+    /** RPC request timeout in milliseconds */
+    private val rpcTimeoutMs = 30_000L
 
     fun connect(url: String) {
         if (_connectionState.value == ConnectionState.Connected && currentUrl == url) return
@@ -84,10 +89,13 @@ class MiWarpWebSocketClient(
     private fun doConnect() {
         _connectionState.value = if (reconnectAttempt == 0) ConnectionState.Connecting else ConnectionState.Reconnecting
 
+        // Build URL with token redacted for logging
+        val redactedUrl = currentUrl.replace(Regex("token=[^&]+"), "token=[REDACTED]")
+
         val request = Request.Builder().url(currentUrl).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(ws: WebSocket, response: Response) {
-                Logger.i("WebSocket connected to $currentUrl")
+                Logger.wsInfo("WebSocket connected to $redactedUrl")
                 reconnectAttempt = 0
                 _connectionState.value = ConnectionState.Connected
             }
@@ -96,7 +104,7 @@ class MiWarpWebSocketClient(
                 try {
                     handleMessage(text)
                 } catch (e: Exception) {
-                    Logger.e("Error handling WebSocket message", e)
+                    Logger.wsError("Error handling WebSocket message", e)
                 }
             }
 
@@ -105,14 +113,21 @@ class MiWarpWebSocketClient(
             }
 
             override fun onClosed(ws: WebSocket, code: Int, reason: String) {
-                Logger.i("WebSocket closed: $code $reason")
+                // Ignore stale callbacks from previous connections
+                if (ws !== webSocket) return
+                Logger.wsInfo("WebSocket closed: $code $reason")
                 _connectionState.value = ConnectionState.Disconnected
                 scheduleReconnect()
             }
 
             override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
-                Logger.e("WebSocket failure", t)
+                if (ws !== webSocket) return
+                Logger.wsError("WebSocket failure", t)
                 _connectionState.value = ConnectionState.Error
+                // Fail all pending requests immediately instead of waiting for timeout
+                val error = RpcResponse(id = null, error = "Connection lost: ${t.message}")
+                pendingRequests.values.forEach { it.complete(error) }
+                pendingRequests.clear()
                 scheduleReconnect()
             }
         })
@@ -155,9 +170,14 @@ class MiWarpWebSocketClient(
 
     private fun scheduleReconnect() {
         if (!shouldReconnect) return
+        if (reconnectAttempt >= maxReconnectAttempts) {
+            Logger.wsError("Max reconnect attempts ($maxReconnectAttempts) reached")
+            _connectionState.value = ConnectionState.Error
+            return
+        }
         reconnectJob = scope.launch {
             val delayMs = calculateBackoff(reconnectAttempt)
-            Logger.i("Reconnecting in ${delayMs}ms (attempt ${reconnectAttempt + 1})")
+            Logger.wsInfo("Reconnecting in ${delayMs}ms (attempt ${reconnectAttempt + 1}/$maxReconnectAttempts)")
             delay(delayMs)
             reconnectAttempt++
             doConnect()
@@ -180,6 +200,8 @@ class MiWarpWebSocketClient(
         val deferred = CompletableDeferred<RpcResponse>()
         pendingRequests[id] = deferred
 
+        Logger.rpcDebug("RPC -> $method (id=$id)")
+
         return suspendCancellableCoroutine { continuation ->
             continuation.invokeOnCancellation {
                 pendingRequests.remove(id)
@@ -193,8 +215,17 @@ class MiWarpWebSocketClient(
 
             scope.launch {
                 try {
-                    val response = deferred.await()
-                    continuation.resume(response)
+                    val response = withTimeoutOrNull(rpcTimeoutMs) {
+                        deferred.await()
+                    }
+                    if (response != null) {
+                        Logger.rpcDebug("RPC <- $method (id=$id) ok")
+                        continuation.resume(response)
+                    } else {
+                        pendingRequests.remove(id)
+                        Logger.rpcError("RPC timeout: $method (id=$id)")
+                        continuation.resumeWithException(RpcTimeoutException(method))
+                    }
                 } catch (e: Exception) {
                     if (continuation.isActive) {
                         continuation.resumeWithException(e)
@@ -207,3 +238,4 @@ class MiWarpWebSocketClient(
 
 class DisconnectedException : Exception("WebSocket is not connected")
 class SendFailedException : Exception("Failed to send WebSocket message")
+class RpcTimeoutException(method: String) : Exception("RPC timeout: $method")

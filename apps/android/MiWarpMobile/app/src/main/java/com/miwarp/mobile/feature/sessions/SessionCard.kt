@@ -12,11 +12,10 @@ fun SessionCard(
     modifier: Modifier = Modifier,
 ) {
     MWSessionCard(
-        title = run.title.ifBlank { "Session ${run.id.take(8)}" },
+        title = run.displayTitle,
         status = run.status,
-        cwd = run.cwd,
+        cwd = run.shortCwd,
         model = run.model,
-        tokenCount = run.totalTokens,
         messageCount = run.messageCount,
         onClick = onClick,
         modifier = modifier,

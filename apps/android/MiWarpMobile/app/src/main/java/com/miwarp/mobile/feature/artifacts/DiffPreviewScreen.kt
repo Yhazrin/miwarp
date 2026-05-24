@@ -36,13 +36,18 @@ fun DiffPreviewScreen(
     val colors = MWTheme.colors
     val spacing = MWTheme.spacing
 
-    var diffs by remember { mutableStateOf<List<GitDiff>>(emptyList()) }
+    var diff by remember { mutableStateOf<GitDiff?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(runId, filePath) {
+    LaunchedEffect(runId, filePath, cwd) {
+        if (cwd.isBlank()) {
+            error = "Working directory not available"
+            isLoading = false
+            return@LaunchedEffect
+        }
         try {
-            diffs = rpcClient.getGitDiff(cwd, file = filePath)
+            diff = rpcClient.getGitDiff(cwd, file = filePath)
         } catch (e: Exception) {
             error = e.message ?: "Failed to load diff"
         } finally {
@@ -77,7 +82,7 @@ fun DiffPreviewScreen(
             error != null -> {
                 Text(text = error!!, style = MWTypography.body, color = colors.statusError)
             }
-            diffs.isEmpty() -> {
+            diff == null || diff!!.diff.isBlank() -> {
                 Text(text = "No diff available for this file.", style = MWTypography.body, color = colors.textSecondary)
             }
             else -> {
@@ -86,24 +91,21 @@ fun DiffPreviewScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState()),
                 ) {
-                    diffs.forEach { diff ->
-                        MWGlassCard {
-                            Text(
-                                text = if (diff.staged) "Staged" else "Unstaged",
-                                style = MWTypography.label,
-                                color = if (diff.staged) colors.statusSuccess else colors.statusWarning,
-                            )
-                            Spacer(modifier = Modifier.height(spacing.xs))
-                            Text(
-                                text = diff.diff,
-                                style = MWTypography.monoSmall,
-                                color = colors.textPrimary,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .horizontalScroll(rememberScrollState()),
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(spacing.sm))
+                    MWGlassCard {
+                        Text(
+                            text = "Diff",
+                            style = MWTypography.label,
+                            color = colors.accentCyan,
+                        )
+                        Spacer(modifier = Modifier.height(spacing.xs))
+                        Text(
+                            text = diff!!.diff,
+                            style = MWTypography.monoSmall,
+                            color = colors.textPrimary,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .horizontalScroll(rememberScrollState()),
+                        )
                     }
                 }
             }

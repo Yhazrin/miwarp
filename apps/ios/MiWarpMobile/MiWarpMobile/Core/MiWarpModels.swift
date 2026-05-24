@@ -448,26 +448,26 @@ struct ToolInputDeltaPayload: Codable {
 struct PermissionPromptPayload: Codable {
     let requestId: String?
     let toolName: String?
+    let toolUseId: String?
     let toolInput: AnyCodable?
     let description: String?
 
     enum CodingKeys: String, CodingKey {
         case requestId = "request_id"
         case toolName = "tool_name"
+        case toolUseId = "tool_use_id"
         case toolInput = "tool_input"
-        case description
+        case description = "decision_reason"
     }
 }
 
 struct PermissionDeniedPayload: Codable {
-    let requestId: String?
     let toolName: String?
-    let reason: String?
+    let toolUseId: String?
 
     enum CodingKeys: String, CodingKey {
-        case requestId = "request_id"
         case toolName = "tool_name"
-        case reason
+        case toolUseId = "tool_use_id"
     }
 }
 

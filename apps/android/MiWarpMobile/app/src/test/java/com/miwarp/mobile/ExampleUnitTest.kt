@@ -80,15 +80,15 @@ class ExampleUnitTest {
         val reducer = MiWarpEventReducer()
         val event = BusEvent.PermissionPrompt(
             seq = 1, runId = "r1", requestId = "req1",
-            toolName = "bash", description = "Run rm -rf?",
+            toolName = "bash", toolUseId = "tu1", description = "Run rm -rf?",
             options = listOf("allow", "deny"),
         )
         val result = reducer.reduce(event)
 
         assertTrue(result.changed)
-        assertNotNull(result.pendingPermission)
-        assertEquals("req1", result.pendingPermission!!.requestId)
-        assertEquals("bash", result.pendingPermission!!.toolName)
+        assertNotNull(result.pendingPermissions.firstOrNull())
+        assertEquals("req1", result.pendingPermissions.first().requestId)
+        assertEquals("bash", result.pendingPermissions.first().toolName)
     }
 
     @Test
@@ -104,7 +104,7 @@ class ExampleUnitTest {
     @Test
     fun `RunStatus enum parses correctly`() {
         assertEquals(RunStatus.Running, RunStatus.valueOf("Running"))
-        assertEquals(RunStatus.Done, RunStatus.valueOf("Done"))
+        assertEquals(RunStatus.Completed, RunStatus.valueOf("Completed"))
         assertEquals(RunStatus.Failed, RunStatus.valueOf("Failed"))
     }
 
@@ -137,12 +137,12 @@ class ExampleUnitTest {
         val reducer = MiWarpEventReducer()
         reducer.reduce(BusEvent.PermissionPrompt(
             seq = 1, runId = "r1", requestId = "req1",
-            toolName = "bash", description = "test", options = emptyList(),
+            toolName = "bash", toolUseId = "tu1", description = "test", options = emptyList(),
         ))
-        assertNotNull(reducer.getPendingPermission())
+        assertNotNull(reducer.getPendingPermissions().firstOrNull())
 
-        reducer.reduce(BusEvent.PermissionDenied(seq = 2, runId = "r1", payload = null))
-        assertNull(reducer.getPendingPermission())
+        reducer.reduce(BusEvent.PermissionDenied(seq = 2, runId = "r1", toolName = "bash", toolUseId = "tu1"))
+        assertNull(reducer.getPendingPermissions().firstOrNull())
     }
 
     @Test
@@ -152,7 +152,7 @@ class ExampleUnitTest {
         reducer.clear()
 
         assertTrue(reducer.getMessages().isEmpty())
-        assertNull(reducer.getPendingPermission())
+        assertNull(reducer.getPendingPermissions().firstOrNull())
     }
 
     @Test

@@ -41,7 +41,7 @@ data class UnsubscribeParams(
 data class SendMessageParams(
     @SerialName("run_id") val runId: String,
     val message: String,
-    val attachments: List<String>? = null,
+    val attachments: List<Map<String, String>>? = null,
 )
 
 @Serializable

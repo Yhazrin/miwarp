@@ -19,6 +19,7 @@ final class MiWarpConnectionStore: ObservableObject {
     // Sub-systems
     let wsClient = MiWarpWebSocketClient()
     private(set) var rpc: MiWarpRPC?
+    private var connectionObserverTask: Task<Void, Never>?
 
     var isConnected: Bool { connectionState == .connected }
 
@@ -79,8 +80,9 @@ final class MiWarpConnectionStore: ObservableObject {
         userDefaults.set(connection.id.uuidString, forKey: activeConnectionKey)
         connectionState = .connecting
 
-        // Observe connection state changes
-        Task { @MainActor [weak self] in
+        // Cancel previous observer and observe connection state changes
+        connectionObserverTask?.cancel()
+        connectionObserverTask = Task { @MainActor [weak self] in
             guard let self else { return }
             for await state in self.wsClient.connectionStateStream {
                 self.connectionState = state
@@ -100,6 +102,8 @@ final class MiWarpConnectionStore: ObservableObject {
     }
 
     func disconnect() {
+        connectionObserverTask?.cancel()
+        connectionObserverTask = nil
         wsClient.disconnect()
         connectionState = .disconnected
     }

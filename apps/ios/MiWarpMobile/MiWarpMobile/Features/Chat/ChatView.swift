@@ -138,10 +138,6 @@ struct ChatView: View {
             }
 
             Spacer()
-
-            Text("seq: \(reducer.lastSeq)")
-                .font(MWTypography.caption2())
-                .foregroundColor(MWColors.textTertiary)
         }
         .padding(.horizontal, MWSpacing.lg)
         .padding(.vertical, MWSpacing.sm)

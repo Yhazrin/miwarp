@@ -28,12 +28,14 @@ import com.miwarp.mobile.design.MWReconnectBanner
 import com.miwarp.mobile.design.MWStatusPill
 import com.miwarp.mobile.design.MWTheme
 import com.miwarp.mobile.design.MWTypography
+import com.miwarp.mobile.design.formatTokens
 import com.miwarp.mobile.model.BusEvent
 import com.miwarp.mobile.model.ChatMessage
 import com.miwarp.mobile.model.ConnectionState
 import com.miwarp.mobile.model.MiWarpRun
 import com.miwarp.mobile.model.PermissionRequest
 import com.miwarp.mobile.model.RunStatus
+import com.miwarp.mobile.model.UsageSummary
 import com.miwarp.mobile.reducer.MiWarpEventReducer
 import com.miwarp.mobile.reducer.ReductionResult
 import com.miwarp.mobile.rpc.MiWarpRpcClient
@@ -53,7 +55,8 @@ fun ChatScreen(
 
     var run by remember { mutableStateOf<MiWarpRun?>(null) }
     var messages by remember { mutableStateOf<List<ChatMessage>>(emptyList()) }
-    var pendingPermission by remember { mutableStateOf<PermissionRequest?>(null) }
+    var pendingPermissions by remember { mutableStateOf<List<PermissionRequest>>(emptyList()) }
+    var usage by remember { mutableStateOf(UsageSummary()) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var isSending by remember { mutableStateOf(false) }
@@ -73,10 +76,11 @@ fun ChatScreen(
             reducer.clear()
             for (event in history) {
                 reducer.reduce(event)
-                if (event.seq > lastSeq) lastSeq = event.seq
             }
             messages = reducer.getMessages()
-            pendingPermission = reducer.getPendingPermission()
+            pendingPermissions = reducer.getPendingPermissions()
+            usage = reducer.getUsage()
+            lastSeq = reducer.getLastSeq()
 
             rpcClient.subscribe(runId, lastSeq)
         } catch (e: Exception) {
@@ -90,22 +94,18 @@ fun ChatScreen(
     LaunchedEffect(runId) {
         rpcClient.broadcastBusEvents().collect { event ->
             if (event.runId != runId) return@collect
-            if (event.seq > 0 && event.seq <= lastSeq) return@collect
 
             val result: ReductionResult = reducer.reduce(event)
-            if (event.seq > lastSeq) lastSeq = event.seq
 
             if (result.changed) {
                 messages = result.messages
-                pendingPermission = result.pendingPermission
+                pendingPermissions = result.pendingPermissions
+                usage = result.usage
             }
 
             // Update run state from event
             if (event is BusEvent.RunState) {
                 run = run?.copy(status = event.status)
-            }
-            if (event is BusEvent.UsageUpdate) {
-                run = run?.copy(totalTokens = event.tokens, totalCost = event.cost)
             }
             if (event is BusEvent.FullReload) {
                 try {
@@ -113,13 +113,13 @@ fun ChatScreen(
                     run = freshRun
                     val freshHistory = rpcClient.getBusEvents(runId)
                     reducer.clear()
-                    lastSeq = 0L
                     for (evt in freshHistory) {
                         reducer.reduce(evt)
-                        if (evt.seq > lastSeq) lastSeq = evt.seq
                     }
                     messages = reducer.getMessages()
-                    pendingPermission = reducer.getPendingPermission()
+                    pendingPermissions = reducer.getPendingPermissions()
+                    usage = reducer.getUsage()
+                    lastSeq = reducer.getLastSeq()
                     rpcClient.subscribe(runId, lastSeq)
                 } catch (_: Exception) { }
             }
@@ -152,12 +152,12 @@ fun ChatScreen(
         }
     }
 
-    val respondPermission: (String) -> Unit = label@{ behavior ->
-        val perm = pendingPermission ?: return@label
+    val respondPermission: (String, String) -> Unit = label@{ requestId, behavior ->
         scope.launch {
             try {
-                rpcClient.respondPermission(runId, perm.requestId, behavior)
-                pendingPermission = null
+                rpcClient.respondPermission(runId, requestId, behavior)
+                reducer.removePermission(requestId)
+                pendingPermissions = reducer.getPendingPermissions()
             } catch (e: Exception) {
                 error = e.message ?: "Failed to respond to permission"
             }
@@ -198,12 +198,11 @@ fun ChatScreen(
                             run = rpcClient.getRun(runId)
                             val history = rpcClient.getBusEvents(runId)
                             reducer.clear()
-                            lastSeq = 0L
                             for (event in history) {
                                 reducer.reduce(event)
-                                if (event.seq > lastSeq) lastSeq = event.seq
                             }
                             messages = reducer.getMessages()
+                            lastSeq = reducer.getLastSeq()
                             rpcClient.subscribe(runId, lastSeq)
                         } catch (e: Exception) {
                             error = e.message
@@ -217,6 +216,7 @@ fun ChatScreen(
                 // Chat header
                 ChatHeader(
                     run = run,
+                    usage = usage,
                     onArtifactsClick = { onNavigateToArtifacts(runId) },
                     onRawEventsClick = { onNavigateToRawEvents(runId) },
                     onStopClick = stopSession,
@@ -228,13 +228,14 @@ fun ChatScreen(
                     modifier = Modifier.weight(1f),
                 )
 
-                // Pending approval
-                if (pendingPermission != null) {
+                // Pending approval (show first one)
+                val firstPermission = pendingPermissions.firstOrNull()
+                if (firstPermission != null) {
                     ApprovalCard(
-                        toolName = pendingPermission!!.toolName,
-                        description = pendingPermission!!.description,
-                        options = pendingPermission!!.options,
-                        onApprove = respondPermission,
+                        toolName = firstPermission.toolName,
+                        description = firstPermission.description,
+                        options = firstPermission.options,
+                        onApprove = { behavior -> respondPermission(firstPermission.requestId, behavior) },
                         modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.xs),
                     )
                 }
@@ -257,6 +258,7 @@ fun ChatScreen(
 @Composable
 private fun ChatHeader(
     run: MiWarpRun?,
+    usage: UsageSummary,
     onArtifactsClick: () -> Unit,
     onRawEventsClick: () -> Unit,
     onStopClick: () -> Unit,
@@ -272,9 +274,28 @@ private fun ChatHeader(
         Column(
             modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
         ) {
-            MWStatusPill(
-                status = run?.status ?: RunStatus.Idle,
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(spacing.md),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                MWStatusPill(
+                    status = run?.status ?: RunStatus.Idle,
+                )
+                if (usage.costUsd > 0) {
+                    Text(
+                        text = "$${String.format("%.2f", usage.costUsd)}",
+                        style = MWTypography.caption,
+                        color = colors.textSecondary,
+                    )
+                }
+                if (usage.inputTokens > 0) {
+                    Text(
+                        text = formatTokens(usage.inputTokens + usage.outputTokens),
+                        style = MWTypography.caption,
+                        color = colors.textTertiary,
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(4.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(spacing.sm),

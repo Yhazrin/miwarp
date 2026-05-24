@@ -78,21 +78,75 @@ fun ArtifactsScreen(
                     isLoading = true
                 },
             )
-            artifacts == null || artifacts!!.files.isEmpty() -> MWEmptyState(
-                title = "No Artifacts",
-                subtitle = "No files were generated in this session.",
-            )
             else -> {
-                LazyColumn(
-                    contentPadding = PaddingValues(vertical = spacing.sm),
-                    verticalArrangement = Arrangement.spacedBy(spacing.xs),
-                ) {
-                    items(artifacts!!.files, key = { it.path }) { file ->
-                        MWDiffFileRow(
-                            filePath = file.path,
-                            language = file.language.ifBlank { "text" },
-                            onClick = { onFileClick(file.path) },
-                        )
+                val files = artifacts?.filesChanged
+                val diffSummary = artifacts?.diffSummary
+                val commands = artifacts?.commands
+                val cost = artifacts?.costEstimate
+
+                if (files.isNullOrEmpty() && diffSummary.isNullOrEmpty() && commands.isNullOrEmpty()) {
+                    MWEmptyState(
+                        title = "No Artifacts",
+                        subtitle = "No files were generated in this session.",
+                    )
+                } else {
+                    LazyColumn(
+                        contentPadding = PaddingValues(vertical = spacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(spacing.xs),
+                    ) {
+                        if (!files.isNullOrEmpty()) {
+                            items(files, key = { it.path }) { file ->
+                                MWDiffFileRow(
+                                    filePath = file.path,
+                                    status = file.status.name.lowercase(),
+                                    additions = file.additions,
+                                    deletions = file.deletions,
+                                    onClick = { onFileClick(file.path) },
+                                )
+                            }
+                        }
+                        if (!diffSummary.isNullOrEmpty()) {
+                            item {
+                                Text(
+                                    text = "Diff Summary",
+                                    style = MWTypography.subheading,
+                                    color = colors.textPrimary,
+                                    modifier = Modifier.padding(top = spacing.md),
+                                )
+                                Text(
+                                    text = diffSummary,
+                                    style = MWTypography.monoSmall,
+                                    color = colors.textSecondary,
+                                )
+                            }
+                        }
+                        if (!commands.isNullOrEmpty()) {
+                            item {
+                                Text(
+                                    text = "Commands",
+                                    style = MWTypography.subheading,
+                                    color = colors.textPrimary,
+                                    modifier = Modifier.padding(top = spacing.md),
+                                )
+                                commands.forEach { cmd ->
+                                    Text(
+                                        text = cmd,
+                                        style = MWTypography.monoSmall,
+                                        color = colors.textTertiary,
+                                    )
+                                }
+                            }
+                        }
+                        if (cost != null && cost > 0) {
+                            item {
+                                Text(
+                                    text = "Estimated cost: $${String.format("%.4f", cost)}",
+                                    style = MWTypography.caption,
+                                    color = colors.textTertiary,
+                                    modifier = Modifier.padding(top = spacing.md),
+                                )
+                            }
+                        }
                     }
                 }
             }

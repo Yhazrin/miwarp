@@ -7,8 +7,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -206,7 +208,14 @@ fun AppNavGraph(
                     backStackEntry.arguments?.getString("filePath") ?: return@composable,
                     "UTF-8",
                 )
-                val cwd = activeConnection?.let { "" } ?: ""
+                // Fetch run to get cwd for git diff
+                var cwd by remember { mutableStateOf("") }
+                LaunchedEffect(runId) {
+                    try {
+                        val run = rpcClient.getRun(runId)
+                        cwd = run.cwd
+                    } catch (_: Exception) {}
+                }
                 DiffPreviewScreen(
                     runId = runId,
                     filePath = filePath,
@@ -255,9 +264,12 @@ private fun connectToServer(
     connection: MiWarpConnection,
     scope: kotlinx.coroutines.CoroutineScope,
 ) {
-    rpcClient.connect(connection.wsUrl)
+    // Build wsUrl from stored token (not from the model, which may have token stripped)
+    val token = connection.token.ifBlank { connectionStore.getToken(connection.id) ?: "" }
+    val wsUrl = "ws://${connection.host}:${connection.port}/ws?token=$token"
+    rpcClient.connect(wsUrl)
     scope.launch {
-        connectionStore.saveConnection(connection)
+        connectionStore.saveConnection(connection, token)
         connectionStore.setActiveConnection(connection.id)
     }
 }

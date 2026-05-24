@@ -46,9 +46,11 @@ fun SessionHubScreen(
     val filteredRuns = remember(runs, activeFilter) {
         when (activeFilter) {
             SessionFilter.All -> runs
-            SessionFilter.Active -> runs.filter { it.status == RunStatus.Running || it.status == RunStatus.Pending }
-            SessionFilter.Completed -> runs.filter { it.status == RunStatus.Done }
-            SessionFilter.Failed -> runs.filter { it.status == RunStatus.Failed || it.status == RunStatus.Cancelled }
+            SessionFilter.Active -> runs.filter {
+                it.status == RunStatus.Running || it.status == RunStatus.Idle || it.status == RunStatus.WaitingInput || it.status == RunStatus.WaitingApproval
+            }
+            SessionFilter.Completed -> runs.filter { it.status == RunStatus.Completed }
+            SessionFilter.Failed -> runs.filter { it.status == RunStatus.Failed || it.status == RunStatus.Stopped }
         }
     }
 

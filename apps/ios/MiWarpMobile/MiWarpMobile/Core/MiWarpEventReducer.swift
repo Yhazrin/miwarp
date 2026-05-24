@@ -36,6 +36,7 @@ struct PendingPermission: Identifiable {
     let id: String // requestId
     let runId: String
     let toolName: String
+    let toolUseId: String
     let toolInput: AnyCodable?
     let description: String?
 }
@@ -71,6 +72,11 @@ final class MiWarpEventReducer: ObservableObject {
         guard !seenSeqs.contains(event.seq) else { return }
         seenSeqs.insert(event.seq)
         lastSeq = max(lastSeq, event.seq)
+
+        // Cap seenSeqs to prevent unbounded growth
+        if seenSeqs.count > 8192 {
+            seenSeqs = Set(seenSeqs.filter { $0 > lastSeq - 8192 })
+        }
 
         switch event.payload {
         case .userMessage(let payload):
@@ -270,6 +276,7 @@ final class MiWarpEventReducer: ObservableObject {
             id: requestId,
             runId: runId,
             toolName: toolName,
+            toolUseId: payload.toolUseId ?? "",
             toolInput: payload.toolInput,
             description: payload.description
         )
@@ -278,8 +285,12 @@ final class MiWarpEventReducer: ObservableObject {
     }
 
     private func handlePermissionDenied(_ payload: PermissionDeniedPayload) {
-        guard let requestId = payload.requestId else { return }
-        pendingPermissions.removeAll { $0.id == requestId }
+        if let toolUseId = payload.toolUseId, !toolUseId.isEmpty {
+            pendingPermissions.removeAll { $0.toolUseId == toolUseId }
+        } else if let toolName = payload.toolName {
+            pendingPermissions.removeAll { $0.toolName == toolName }
+        }
+        if pendingPermissions.isEmpty { currentStatus = .running }
     }
 
     private func handleSystemStatus(_ payload: SystemStatusPayload) {

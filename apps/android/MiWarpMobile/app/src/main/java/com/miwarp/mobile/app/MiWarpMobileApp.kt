@@ -23,8 +23,8 @@ class MiWarpMobileApp : Application() {
 
         Logger.i("MiWarpMobileApp initializing")
 
-        connectionStore = ConnectionStore(applicationContext)
         secureTokenStore = SecureTokenStore(applicationContext)
+        connectionStore = ConnectionStore(applicationContext, secureTokenStore)
         rpcClient = MiWarpRpcClient()
     }
 

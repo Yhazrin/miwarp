@@ -6,7 +6,11 @@ import com.miwarp.mobile.model.MessageRole
 import com.miwarp.mobile.model.PermissionRequest
 import com.miwarp.mobile.model.RunStatus
 import com.miwarp.mobile.model.ToolCallInfo
+import com.miwarp.mobile.model.UsageSummary
 import java.util.UUID
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 /**
  * Reduces a stream of BusEvents into ChatMessage list + derived state.
@@ -16,15 +20,39 @@ class MiWarpEventReducer {
 
     private val messages = mutableListOf<ChatMessage>()
     private val seenSeqs = mutableSetOf<Long>()
-    private var pendingPermission: PermissionRequest? = null
+    private val pendingPermissions = mutableListOf<PermissionRequest>()
+    private var usage = UsageSummary()
+    private var currentStatus: RunStatus = RunStatus.Idle
+    private var lastSeq: Long = 0L
+    private var streamingMessageId: String? = null
+    private val messageAccumulator = mutableMapOf<String, String>() // messageId -> accumulated text
 
     fun getMessages(): List<ChatMessage> = messages.toList()
 
-    fun getPendingPermission(): PermissionRequest? = pendingPermission
+    fun getPendingPermissions(): List<PermissionRequest> = pendingPermissions.toList()
+
+    fun getUsage(): UsageSummary = usage.copy()
+
+    fun getCurrentStatus(): RunStatus = currentStatus
+
+    fun getLastSeq(): Long = lastSeq
 
     fun reduce(event: BusEvent): ReductionResult {
         if (event.seq > 0 && !seenSeqs.add(event.seq)) {
-            return ReductionResult(messages = getMessages(), changed = false, pendingPermission = pendingPermission)
+            return ReductionResult(
+                messages = getMessages(),
+                changed = false,
+                pendingPermissions = getPendingPermissions(),
+                usage = getUsage(),
+                currentStatus = currentStatus,
+            )
+        }
+
+        if (event.seq > lastSeq) lastSeq = event.seq
+
+        // Cap seenSeqs to prevent unbounded growth (keep last 8192 entries)
+        if (seenSeqs.size > 8192) {
+            seenSeqs.retainAll { it > lastSeq - 8192 }
         }
 
         var changed = false
@@ -55,17 +83,48 @@ class MiWarpEventReducer {
                 changed = handleThinkingDelta(event)
             }
             is BusEvent.PermissionPrompt -> {
-                pendingPermission = PermissionRequest(
-                    requestId = event.requestId,
-                    runId = event.runId,
-                    toolName = event.toolName,
-                    description = event.description,
-                    options = event.options,
+                pendingPermissions.add(
+                    PermissionRequest(
+                        requestId = event.requestId,
+                        runId = event.runId,
+                        toolName = event.toolName,
+                        toolUseId = event.toolUseId,
+                        description = event.description,
+                        options = event.options,
+                    )
                 )
+                currentStatus = RunStatus.WaitingApproval
                 changed = true
             }
             is BusEvent.PermissionDenied -> {
-                pendingPermission = null
+                if (event.toolUseId.isNotEmpty()) {
+                    pendingPermissions.removeAll { it.toolUseId == event.toolUseId }
+                } else {
+                    pendingPermissions.removeAll { it.toolName == event.toolName }
+                }
+                if (pendingPermissions.isEmpty()) currentStatus = RunStatus.Running
+                changed = true
+            }
+            is BusEvent.RunState -> {
+                currentStatus = event.status
+                changed = true
+            }
+            is BusEvent.UsageUpdate -> {
+                usage.inputTokens += event.inputTokens
+                usage.outputTokens += event.outputTokens
+                usage.cacheReadTokens += event.cacheReadTokens
+                usage.cacheWriteTokens += event.cacheWriteTokens
+                usage.costUsd += event.costUsd
+                changed = true
+            }
+            is BusEvent.SystemStatus -> {
+                messages.add(
+                    ChatMessage(
+                        id = "system-$lastSeq",
+                        role = MessageRole.System,
+                        text = event.message,
+                    )
+                )
                 changed = true
             }
             is BusEvent.FullReload -> {
@@ -81,31 +140,45 @@ class MiWarpEventReducer {
         return ReductionResult(
             messages = getMessages(),
             changed = changed,
-            pendingPermission = pendingPermission,
+            pendingPermissions = getPendingPermissions(),
+            usage = getUsage(),
+            currentStatus = currentStatus,
         )
     }
 
     fun clear() {
         messages.clear()
         seenSeqs.clear()
-        pendingPermission = null
+        pendingPermissions.clear()
+        usage = UsageSummary()
+        currentStatus = RunStatus.Idle
+        lastSeq = 0
+        streamingMessageId = null
+        messageAccumulator.clear()
+    }
+
+    fun removePermission(requestId: String) {
+        pendingPermissions.removeAll { it.requestId == requestId }
     }
 
     private fun handleMessageDelta(event: BusEvent.MessageDelta): Boolean {
+        val msgId = streamingMessageId ?: UUID.randomUUID().toString()
         val existing = messages.lastOrNull { it.role == MessageRole.Assistant && it.isStreaming }
         if (existing != null) {
             val index = messages.indexOf(existing)
             messages[index] = existing.copy(text = existing.text + event.text)
         } else {
+            streamingMessageId = msgId
             messages.add(
                 ChatMessage(
-                    id = UUID.randomUUID().toString(),
+                    id = msgId,
                     role = MessageRole.Assistant,
                     text = event.text,
                     isStreaming = true,
                 )
             )
         }
+        messageAccumulator[msgId, default = ""] += event.text
         return true
     }
 
@@ -114,16 +187,20 @@ class MiWarpEventReducer {
         if (streaming != null) {
             val index = messages.indexOf(streaming)
             messages[index] = streaming.copy(isStreaming = false)
+            streamingMessageId = null
+            messageAccumulator.remove(streaming.id)
             return true
         }
         return false
     }
 
     private fun handleUserMessage(event: BusEvent.UserMessage): Boolean {
-        val text = event.payload?.toString() ?: ""
+        val text = try {
+            event.payload?.jsonObject?.get("text")?.jsonPrimitive?.contentOrNull ?: ""
+        } catch (_: Exception) { "" }
         messages.add(
             ChatMessage(
-                id = UUID.randomUUID().toString(),
+                id = "user-$lastSeq",
                 role = MessageRole.User,
                 text = text,
             )
@@ -132,10 +209,11 @@ class MiWarpEventReducer {
     }
 
     private fun handleToolStart(event: BusEvent.ToolStart): Boolean {
+        val inputPreview = event.input?.toString()?.take(200) ?: ""
         val tool = ToolCallInfo(
             toolId = event.toolId,
             toolName = event.toolName,
-            input = event.input?.toString() ?: "",
+            inputPreview = inputPreview,
             isRunning = true,
         )
 
@@ -179,7 +257,7 @@ class MiWarpEventReducer {
                 if (toolIndex >= 0) {
                     val updated = msg.toolCalls.toMutableList()
                     updated[toolIndex] = updated[toolIndex].copy(
-                        input = updated[toolIndex].input + event.text,
+                        inputPreview = updated[toolIndex].inputPreview + event.text,
                     )
                     messages[i] = msg.copy(toolCalls = updated)
                     return true
@@ -230,5 +308,7 @@ class MiWarpEventReducer {
 data class ReductionResult(
     val messages: List<ChatMessage>,
     val changed: Boolean,
-    val pendingPermission: PermissionRequest?,
+    val pendingPermissions: List<PermissionRequest>,
+    val usage: UsageSummary,
+    val currentStatus: RunStatus,
 )

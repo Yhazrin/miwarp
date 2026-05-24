@@ -40,7 +40,7 @@ fun PairingScreen(
     val spacing = MWTheme.spacing
 
     var host by remember { mutableStateOf("") }
-    var port by remember { mutableStateOf("9876") }
+    var port by remember { mutableStateOf("9476") }
     var token by remember { mutableStateOf("") }
     var label by remember { mutableStateOf("") }
     var isConnecting by remember { mutableStateOf(false) }
@@ -99,7 +99,7 @@ fun PairingScreen(
                 value = port,
                 onValueChange = { port = it.filter { c -> c.isDigit() }; errorMessage = null },
                 label = { Text("Port") },
-                placeholder = { Text("9876") },
+                placeholder = { Text("9476") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(radius.md),

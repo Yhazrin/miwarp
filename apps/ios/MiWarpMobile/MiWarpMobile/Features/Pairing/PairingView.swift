@@ -55,7 +55,7 @@ struct ManualConnectionSheet: View {
 
     @State private var name = ""
     @State private var host = ""
-    @State private var port = "9821"
+    @State private var port = "9476"
     @State private var token = ""
     @State private var isDefault = false
     @State private var error: String?

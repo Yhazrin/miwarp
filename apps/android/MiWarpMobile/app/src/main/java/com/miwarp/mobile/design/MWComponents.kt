@@ -128,7 +128,6 @@ fun MWSessionCard(
     status: RunStatus,
     cwd: String,
     model: String,
-    tokenCount: Long,
     messageCount: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -169,9 +168,6 @@ fun MWSessionCard(
         ) {
             if (model.isNotBlank()) {
                 Text(text = model, style = MWTypography.caption, color = colors.textSecondary)
-            }
-            if (tokenCount > 0) {
-                Text(text = formatTokens(tokenCount), style = MWTypography.caption, color = colors.textSecondary)
             }
             if (messageCount > 0) {
                 Text(text = "$messageCount msgs", style = MWTypography.caption, color = colors.textSecondary)
@@ -489,7 +485,9 @@ fun MWApprovalCard(
 @Composable
 fun MWDiffFileRow(
     filePath: String,
-    language: String,
+    status: String,
+    additions: Int? = null,
+    deletions: Int? = null,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
 ) {
@@ -497,6 +495,13 @@ fun MWDiffFileRow(
     val radius = MWTheme.radius
 
     val clickableMod = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
+
+    val statusColor = when (status.lowercase()) {
+        "added" -> colors.statusSuccess
+        "deleted" -> colors.statusError
+        "renamed" -> colors.accentCyan
+        else -> colors.statusWarning
+    }
 
     Row(
         modifier = modifier
@@ -507,6 +512,12 @@ fun MWDiffFileRow(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(statusColor, RoundedCornerShape(4.dp)),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = filePath.substringAfterLast('/'),
             style = MWTypography.body,
@@ -516,11 +527,21 @@ fun MWDiffFileRow(
             modifier = Modifier.weight(1f),
         )
         Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = language,
-            style = MWTypography.monoSmall,
-            color = colors.textTertiary,
-        )
+        if (additions != null && additions > 0) {
+            Text(
+                text = "+$additions",
+                style = MWTypography.monoSmall,
+                color = colors.statusSuccess,
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+        }
+        if (deletions != null && deletions > 0) {
+            Text(
+                text = "-$deletions",
+                style = MWTypography.monoSmall,
+                color = colors.statusError,
+            )
+        }
         if (onClick != null) {
             Spacer(modifier = Modifier.width(4.dp))
             Icon(

@@ -1,6 +1,5 @@
 package com.miwarp.mobile.rpc
 
-import com.miwarp.mobile.model.ArtifactFile
 import com.miwarp.mobile.model.BusEvent
 import com.miwarp.mobile.model.BusEventEnvelope
 import com.miwarp.mobile.model.ConnectionState
@@ -8,6 +7,7 @@ import com.miwarp.mobile.model.GitDiff
 import com.miwarp.mobile.model.GitStatus
 import com.miwarp.mobile.model.MiWarpRun
 import com.miwarp.mobile.model.RunArtifacts
+import com.miwarp.mobile.model.RunSource
 import com.miwarp.mobile.model.RunStatus
 import com.miwarp.mobile.model.WebServerStatus
 import com.miwarp.mobile.util.Logger
@@ -26,6 +26,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.longOrNull
 
 class MiWarpRpcClient(
@@ -77,7 +78,7 @@ class MiWarpRpcClient(
         return response.result?.jsonArray?.mapNotNull { parseBusEventFromElement(it) } ?: emptyList()
     }
 
-    suspend fun sendMessage(runId: String, message: String, attachments: List<String>? = null) {
+    suspend fun sendMessage(runId: String, message: String, attachments: List<Map<String, String>>? = null) {
         val params = json.encodeToJsonElement(
             SendMessageParams.serializer(), SendMessageParams(runId, message, attachments)
         )
@@ -160,18 +161,16 @@ class MiWarpRpcClient(
         }
     }
 
-    suspend fun getGitDiff(cwd: String, staged: Boolean? = null, file: String? = null): List<GitDiff> {
+    suspend fun getGitDiff(cwd: String, staged: Boolean? = null, file: String? = null): GitDiff {
         val params = json.encodeToJsonElement(
             GetGitDiffParams.serializer(), GetGitDiffParams(cwd, staged, file)
         )
         val response = wsClient.sendRequest("get_git_diff", params)
         checkError(response)
         return try {
-            response.result?.jsonArray?.map {
-                json.decodeFromJsonElement(GitDiff.serializer(), it)
-            } ?: emptyList()
+            json.decodeFromJsonElement(GitDiff.serializer(), response.result!!)
         } catch (_: Exception) {
-            emptyList()
+            GitDiff()
         }
     }
 
@@ -213,24 +212,31 @@ class MiWarpRpcClient(
         return try {
             json.decodeFromJsonElement(MiWarpRun.serializer(), element)
         } catch (_: Exception) {
+            // Fallback manual parsing for resilience
             val obj = element.jsonObject
+            val statusStr = obj["status"]?.jsonPrimitive?.content ?: "idle"
+            val status = try {
+                RunStatus.valueOf(statusStr.replaceFirstChar { it.uppercase() })
+            } catch (_: Exception) { RunStatus.Idle }
+
+            val sourceStr = obj["source"]?.jsonPrimitive?.content
+            val source = RunSource.fromString(sourceStr)
+
             MiWarpRun(
                 id = obj["id"]?.jsonPrimitive?.content ?: "",
+                name = obj["name"]?.jsonPrimitive?.content,
+                prompt = obj["prompt"]?.jsonPrimitive?.content,
                 cwd = obj["cwd"]?.jsonPrimitive?.content ?: "",
-                mode = obj["mode"]?.jsonPrimitive?.content ?: "",
-                status = try {
-                    RunStatus.valueOf(
-                        obj["status"]?.jsonPrimitive?.content?.replaceFirstChar { it.uppercase() } ?: "Idle"
-                    )
-                } catch (_: Exception) { RunStatus.Idle },
-                title = obj["title"]?.jsonPrimitive?.content ?: "",
+                agent = obj["agent"]?.jsonPrimitive?.content ?: "",
                 model = obj["model"]?.jsonPrimitive?.content ?: "",
-                createdAt = obj["created_at"]?.jsonPrimitive?.longOrNull ?: 0L,
-                updatedAt = obj["updated_at"]?.jsonPrimitive?.longOrNull ?: 0L,
-                totalTokens = obj["total_tokens"]?.jsonPrimitive?.longOrNull ?: 0L,
-                totalCost = obj["total_cost"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                status = status,
+                source = source,
                 messageCount = obj["message_count"]?.jsonPrimitive?.intOrNull ?: 0,
-                turnCount = obj["turn_count"]?.jsonPrimitive?.intOrNull ?: 0,
+                lastActivity = obj["last_activity"]?.jsonPrimitive?.content,
+                hasApprovalPending = obj["has_approval_pending"]?.jsonPrimitive?.booleanOrNull ?: false,
+                hasFilesChanged = obj["has_files_changed"]?.jsonPrimitive?.booleanOrNull ?: false,
+                hasArtifacts = obj["has_artifacts"]?.jsonPrimitive?.booleanOrNull ?: false,
+                createdAt = obj["created_at"]?.jsonPrimitive?.content,
             )
         }
     }
@@ -264,50 +270,75 @@ class MiWarpRpcClient(
             "tool_start" -> BusEvent.ToolStart(
                 seq, runId,
                 toolName = payload?.jsonObject?.get("tool_name")?.jsonPrimitive?.content ?: "",
-                toolId = payload?.jsonObject?.get("tool_id")?.jsonPrimitive?.content ?: "",
+                toolId = payload?.jsonObject?.get("tool_use_id")?.jsonPrimitive?.content
+                    ?: payload?.jsonObject?.get("tool_id")?.jsonPrimitive?.content ?: "",
                 input = payload?.jsonObject?.get("input"),
             )
             "tool_end" -> BusEvent.ToolEnd(
                 seq, runId,
                 toolName = payload?.jsonObject?.get("tool_name")?.jsonPrimitive?.content ?: "",
-                toolId = payload?.jsonObject?.get("tool_id")?.jsonPrimitive?.content ?: "",
+                toolId = payload?.jsonObject?.get("tool_use_id")?.jsonPrimitive?.content
+                    ?: payload?.jsonObject?.get("tool_id")?.jsonPrimitive?.content ?: "",
                 output = payload?.jsonObject?.get("output")?.jsonPrimitive?.content ?: "",
-                isError = payload?.jsonObject?.get("is_error")?.jsonPrimitive?.booleanOrNull ?: false,
+                isError = payload?.jsonObject?.get("is_error")?.jsonPrimitive?.booleanOrNull
+                    ?: payload?.jsonObject?.get("status")?.jsonPrimitive?.content == "error",
             )
             "user_message" -> BusEvent.UserMessage(seq, runId, payload)
             "run_state" -> {
-                val statusStr = payload?.jsonObject?.get("status")?.jsonPrimitive?.content ?: "idle"
+                val statusStr = payload?.jsonObject?.get("state")?.jsonPrimitive?.content
+                    ?: payload?.jsonObject?.get("status")?.jsonPrimitive?.content ?: "idle"
                 val status = try {
                     RunStatus.valueOf(statusStr.replaceFirstChar { it.uppercase() })
                 } catch (_: Exception) { RunStatus.Idle }
                 BusEvent.RunState(seq, runId, status)
             }
-            "usage_update" -> BusEvent.UsageUpdate(
-                seq, runId,
-                tokens = payload?.jsonObject?.get("total_tokens")?.jsonPrimitive?.longOrNull ?: 0L,
-                cost = payload?.jsonObject?.get("total_cost")?.jsonPrimitive?.doubleOrNull ?: 0.0,
-            )
+            "usage_update" -> {
+                val obj = payload?.jsonObject
+                BusEvent.UsageUpdate(
+                    seq, runId,
+                    inputTokens = obj?.get("input_tokens")?.jsonPrimitive?.longOrNull ?: 0L,
+                    outputTokens = obj?.get("output_tokens")?.jsonPrimitive?.longOrNull ?: 0L,
+                    cacheReadTokens = obj?.get("cache_read_tokens")?.jsonPrimitive?.longOrNull ?: 0L,
+                    cacheWriteTokens = obj?.get("cache_write_tokens")?.jsonPrimitive?.longOrNull ?: 0L,
+                    costUsd = obj?.get("total_cost_usd")?.jsonPrimitive?.doubleOrNull
+                        ?: obj?.get("cost_usd")?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                )
+            }
             "thinking_delta" -> BusEvent.ThinkingDelta(
                 seq, runId,
                 text = payload?.jsonObject?.get("text")?.jsonPrimitive?.content ?: "",
             )
             "tool_input_delta" -> BusEvent.ToolInputDelta(
                 seq, runId,
-                toolId = payload?.jsonObject?.get("tool_id")?.jsonPrimitive?.content ?: "",
-                text = payload?.jsonObject?.get("text")?.jsonPrimitive?.content ?: "",
+                toolId = payload?.jsonObject?.get("tool_use_id")?.jsonPrimitive?.content
+                    ?: payload?.jsonObject?.get("tool_id")?.jsonPrimitive?.content ?: "",
+                text = payload?.jsonObject?.get("partial_json")?.jsonPrimitive?.content
+                    ?: payload?.jsonObject?.get("text")?.jsonPrimitive?.content ?: "",
             )
             "permission_prompt" -> BusEvent.PermissionPrompt(
                 seq, runId,
                 requestId = payload?.jsonObject?.get("request_id")?.jsonPrimitive?.content ?: "",
                 toolName = payload?.jsonObject?.get("tool_name")?.jsonPrimitive?.content ?: "",
-                description = payload?.jsonObject?.get("description")?.jsonPrimitive?.content ?: "",
-                options = payload?.jsonObject?.get("options")?.jsonArray?.map {
-                    it.jsonPrimitive.content
-                } ?: emptyList(),
+                toolUseId = payload?.jsonObject?.get("tool_use_id")?.jsonPrimitive?.content ?: "",
+                description = payload?.jsonObject?.get("decision_reason")?.jsonPrimitive?.content
+                    ?: payload?.jsonObject?.get("description")?.jsonPrimitive?.content ?: "",
+                options = parsePermissionOptions(payload),
             )
-            "permission_denied" -> BusEvent.PermissionDenied(seq, runId, payload)
+            "permission_denied" -> BusEvent.PermissionDenied(
+                seq, runId,
+                toolName = payload?.jsonObject?.get("tool_name")?.jsonPrimitive?.content ?: "",
+                toolUseId = payload?.jsonObject?.get("tool_use_id")?.jsonPrimitive?.content ?: "",
+            )
             "compact_boundary" -> BusEvent.CompactBoundary(seq, runId, payload)
-            "system_status" -> BusEvent.SystemStatus(seq, runId, payload)
+            "system_status" -> {
+                val obj = payload?.jsonObject
+                BusEvent.SystemStatus(
+                    seq, runId,
+                    message = obj?.get("data")?.jsonObject?.get("message")?.jsonPrimitive?.content
+                        ?: obj?.get("status")?.jsonPrimitive?.content ?: "",
+                    level = obj?.get("data")?.jsonObject?.get("level")?.jsonPrimitive?.content ?: "info",
+                )
+            }
             "hook_started" -> BusEvent.HookStarted(seq, runId, payload)
             "hook_progress" -> BusEvent.HookProgress(seq, runId, payload)
             "hook_response" -> BusEvent.HookResponse(seq, runId, payload)
@@ -315,9 +346,10 @@ class MiWarpRpcClient(
             "task_notification" -> BusEvent.TaskNotification(seq, runId, payload)
             "tool_progress" -> BusEvent.ToolProgress(
                 seq, runId,
-                toolId = payload?.jsonObject?.get("tool_id")?.jsonPrimitive?.content ?: "",
-                progress = payload?.jsonObject?.get("progress")?.jsonPrimitive?.doubleOrNull ?: 0.0,
-                message = payload?.jsonObject?.get("message")?.jsonPrimitive?.content ?: "",
+                toolId = payload?.jsonObject?.get("tool_use_id")?.jsonPrimitive?.content
+                    ?: payload?.jsonObject?.get("tool_id")?.jsonPrimitive?.content ?: "",
+                progress = payload?.jsonObject?.get("elapsed_time_seconds")?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                message = payload?.jsonObject?.get("data")?.jsonPrimitive?.content ?: "",
             )
             "tool_use_summary" -> BusEvent.ToolUseSummary(seq, runId, payload)
             "files_persisted" -> BusEvent.FilesPersisted(seq, runId, payload)
@@ -334,5 +366,41 @@ class MiWarpRpcClient(
         }
     }
 }
+
+/**
+ * Parse permission options from a permission_prompt payload.
+ * Server may send suggestions as objects [{type, behavior, rules}] or as simple strings.
+ * Falls back to ["allow", "deny"] if parsing fails.
+ */
+private fun parsePermissionOptions(payload: JsonElement?): List<String> {
+    // Try "suggestions" first (server's canonical field)
+    payload?.jsonObject?.get("suggestions")?.jsonArray?.let { arr ->
+        val options = mutableListOf<String>()
+        for (item in arr) {
+            // Try as string first
+            val str = item.jsonPrimitiveOrNull?.content
+            if (str != null) {
+                options.add(str)
+            } else {
+                // Object: extract behavior, skip complex suggestion types
+                val behavior = item.jsonObject?.get("behavior")?.jsonPrimitiveOrNull?.content
+                if (behavior != null) {
+                    options.add(behavior)
+                }
+            }
+        }
+        if (options.isNotEmpty()) return options
+    }
+    // Try "options" fallback
+    payload?.jsonObject?.get("options")?.jsonArray?.let { arr ->
+        val options = arr.mapNotNull { it.jsonPrimitiveOrNull?.content }
+        if (options.isNotEmpty()) return options
+    }
+    return listOf("allow", "deny")
+}
+
+/** Safe accessor that returns null instead of throwing for non-primitive elements */
+private val JsonElement.jsonPrimitiveOrNull: JsonPrimitive?
+    get() = this as? JsonPrimitive
 
 class RpcException(message: String) : Exception(message)

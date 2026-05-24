@@ -16,7 +16,10 @@ import kotlinx.serialization.json.Json
 
 private val Context.connectionDataStore: DataStore<Preferences> by preferencesDataStore(name = "miwarp_connections")
 
-class ConnectionStore(private val context: Context) {
+class ConnectionStore(
+    private val context: Context,
+    private val secureTokenStore: SecureTokenStore,
+) {
     private val json = Json { ignoreUnknownKeys = true }
 
     companion object {
@@ -46,22 +49,39 @@ class ConnectionStore(private val context: Context) {
         connList.find { it.id == activeId }
     }
 
-    suspend fun saveConnection(connection: MiWarpConnection) {
+    /**
+     * Save a connection. Token is stored separately in SecureTokenStore,
+     * NOT serialized into DataStore.
+     */
+    suspend fun saveConnection(connection: MiWarpConnection, token: String) {
+        // Store token securely
+        secureTokenStore.saveToken(connection.id, token)
+
+        // Store connection metadata (without token)
+        val safeConnection = connection.copy(token = "")
         context.connectionDataStore.edit { prefs ->
             val current = prefs[CONNECTIONS_KEY]?.let {
                 try { json.decodeFromString<MutableList<MiWarpConnection>>(it) } catch (_: Exception) { mutableListOf() }
             } ?: mutableListOf()
-            val index = current.indexOfFirst { it.id == connection.id }
+            val index = current.indexOfFirst { it.id == safeConnection.id }
             if (index >= 0) {
-                current[index] = connection
+                current[index] = safeConnection
             } else {
-                current.add(connection)
+                current.add(safeConnection)
             }
             prefs[CONNECTIONS_KEY] = json.encodeToString(current)
         }
     }
 
+    /**
+     * Get the token for a connection from secure storage.
+     */
+    fun getToken(connectionId: String): String? {
+        return secureTokenStore.getToken(connectionId)
+    }
+
     suspend fun removeConnection(id: String) {
+        secureTokenStore.deleteToken(id)
         context.connectionDataStore.edit { prefs ->
             val current = prefs[CONNECTIONS_KEY]?.let {
                 try { json.decodeFromString<MutableList<MiWarpConnection>>(it) } catch (_: Exception) { mutableListOf() }
@@ -77,7 +97,6 @@ class ConnectionStore(private val context: Context) {
     suspend fun setActiveConnection(id: String) {
         context.connectionDataStore.edit { prefs ->
             prefs[ACTIVE_CONNECTION_ID_KEY] = id
-            // Update lastConnectedAt
             val current = prefs[CONNECTIONS_KEY]?.let {
                 try { json.decodeFromString<MutableList<MiWarpConnection>>(it) } catch (_: Exception) { mutableListOf() }
             } ?: mutableListOf()
@@ -94,6 +113,7 @@ class ConnectionStore(private val context: Context) {
     }
 
     suspend fun clearAll() {
+        secureTokenStore.clearAll()
         context.connectionDataStore.edit { it.clear() }
     }
 }
