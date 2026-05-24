@@ -245,6 +245,7 @@
     }
 
     prevSessionPhase = phase;
+    return () => clearTimeout(morphFlashTimer);
   });
 
   // ── Compact indicator (context bar only — does NOT expand tier 2) ──
@@ -279,6 +280,7 @@
     compactTimer = setTimeout(() => {
       compactVisible = false;
     }, 8000);
+    return () => clearTimeout(compactTimer);
   });
 
   let _cwdShort = $derived.by(() => {

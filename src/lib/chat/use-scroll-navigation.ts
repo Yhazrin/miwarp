@@ -270,7 +270,13 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
       requestAnimationFrame(() => {
         for (const c of cvEls) c.style.contentVisibility = "";
       });
-      setTimeout(() => el.classList.remove("ring-2", "ring-primary/50"), 2000);
+      setTimeout(() => {
+        try {
+          el.classList.remove("ring-2", "ring-primary/50");
+        } catch {
+          /* element removed from DOM */
+        }
+      }, 2000);
     }
   }
 
@@ -306,7 +312,11 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
         for (const c of cvEls) c.style.contentVisibility = "";
       });
       setTimeout(() => {
-        el!.classList.remove("ring-2", "ring-primary/50");
+        try {
+          el.classList.remove("ring-2", "ring-primary/50");
+        } catch {
+          /* element removed from DOM */
+        }
       }, 2000);
     } else {
       dbg("chat", "scrollToMessage: element not found", { anchor: ts });

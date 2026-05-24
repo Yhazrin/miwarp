@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from "$app/stores";
   import { goto, replaceState } from "$app/navigation";
-  import { tick, onMount, untrack, getContext } from "svelte";
+  import { tick, onMount, onDestroy, untrack, getContext } from "svelte";
   import * as api from "$lib/api";
   import {
     sessionStore,
@@ -890,6 +890,12 @@
       chatToast = null;
     }, 2500);
   }
+  onDestroy(() => {
+    if (chatToastTimeout) {
+      clearTimeout(chatToastTimeout);
+      chatToastTimeout = null;
+    }
+  });
 
   const insight = useConversationInsight({
     getRun: () => store.run,

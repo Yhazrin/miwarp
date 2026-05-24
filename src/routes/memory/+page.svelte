@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { beforeNavigate } from "$app/navigation";
   import { page } from "$app/stores";
   import * as api from "$lib/api";
@@ -19,6 +19,24 @@
   let toastVisible = $state(false);
   let toastFading = $state(false);
   let error = $state("");
+  let toastTimers: ReturnType<typeof setTimeout>[] = [];
+
+  function showToast(durationMs = 2500) {
+    for (const t of toastTimers) clearTimeout(t);
+    toastTimers = [];
+    toastFading = false;
+    toastVisible = true;
+    toastTimers.push(
+      setTimeout(() => {
+        toastFading = true;
+        toastTimers.push(setTimeout(() => (toastVisible = false), 250));
+      }, durationMs),
+    );
+  }
+
+  onDestroy(() => {
+    for (const t of toastTimers) clearTimeout(t);
+  });
 
   // The cwd that was active when the current content was loaded.
   // Used by save() so that switching projects before saving doesn't break permissions.
@@ -299,12 +317,7 @@
       memoryStore.setSavedContent(content);
       // Notify layout to refresh candidates (updates exists status in sidebar)
       window.dispatchEvent(new Event("ocv:memory-file-saved"));
-      toastFading = false;
-      toastVisible = true;
-      setTimeout(() => {
-        toastFading = true;
-        setTimeout(() => (toastVisible = false), 250);
-      }, 2500);
+      showToast();
     } catch (e) {
       error = String(e);
     } finally {
@@ -326,12 +339,7 @@
       if (result.errors.length > 0) {
         error = result.errors.join(", ");
       } else {
-        toastFading = false;
-        toastVisible = true;
-        setTimeout(() => {
-          toastFading = true;
-          setTimeout(() => (toastVisible = false), 2500);
-        }, 2500);
+        showToast();
       }
     } catch (e) {
       error = String(e);
@@ -348,12 +356,7 @@
     error = "";
     try {
       await memoryStore.syncMemory();
-      toastFading = false;
-      toastVisible = true;
-      setTimeout(() => {
-        toastFading = true;
-        setTimeout(() => (toastVisible = false), 2500);
-      }, 2500);
+      showToast();
     } catch (e) {
       error = String(e);
     } finally {

@@ -321,6 +321,7 @@ export class SessionStore {
   private _lastReduceEventType = "";
   private _needsIdleHealthCheck = false;
   private _lastRecoverAt = 0;
+  private _recoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private static _RECOVER_DEBOUNCE_MS = 2000;
 
   // ── Reducer tool indexes (runtime-only, not serialized) ──
@@ -1108,8 +1109,10 @@ export class SessionStore {
       dbgWarn("snapshot", "delete failed before recover", e);
     }
     await this.loadRun(runId);
-    setTimeout(() => {
-      if (this.recoveryNotice) this.recoveryNotice = null;
+    if (this._recoveryTimer) clearTimeout(this._recoveryTimer);
+    this._recoveryTimer = setTimeout(() => {
+      this.recoveryNotice = null;
+      this._recoveryTimer = null;
     }, 5000);
   }
 

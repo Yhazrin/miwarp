@@ -212,8 +212,8 @@
   async function loadSessionFolders() {
     try {
       sessionFolders = await listSessionFolders(projectCwd || "default");
-    } catch {
-      // silently fail
+    } catch (e) {
+      dbgWarn("layout", "loadSessionFolders failed", e);
     }
   }
 
@@ -714,8 +714,8 @@
       }
       lastRunsSync = new Date().toISOString();
       runsLoadSucceededOnce = true;
-    } catch {
-      // Silently fail — keep existing data
+    } catch (e) {
+      dbgWarn("layout", "loadRuns failed", e);
     }
   }
 
@@ -785,8 +785,8 @@
       await migrateCredentialsIfNeeded(settings);
       applyZoom(settings.ui_zoom);
       applyVisualPerformance(settings.visual_performance_mode);
-    } catch {
-      // Silently fail
+    } catch (e) {
+      dbgWarn("layout", "loadAndApplySettings failed", e);
     }
   }
 
