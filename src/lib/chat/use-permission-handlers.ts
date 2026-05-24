@@ -16,8 +16,15 @@ export interface PermissionHandlerContext {
 export function createPermissionHandlers(ctx: PermissionHandlerContext) {
   const { store, timelineIdIndex, setApproving, goto, tick } = ctx;
 
+  let approveTimer: ReturnType<typeof setTimeout> | null = null;
+
   async function handleToolApprove(toolName: string): Promise<void> {
     if (!store.run) return;
+    // Clear any pending timer from a previous approval to prevent race conditions
+    if (approveTimer) {
+      clearTimeout(approveTimer);
+      approveTimer = null;
+    }
     setApproving(true);
     dbg("chat", "approving tool", { runId: store.run.id, toolName });
     try {
@@ -26,8 +33,9 @@ export function createPermissionHandlers(ctx: PermissionHandlerContext) {
       dbgWarn("chat", "approve failed:", e);
       store.error = String(e);
     } finally {
-      setTimeout(() => {
+      approveTimer = setTimeout(() => {
         setApproving(false);
+        approveTimer = null;
       }, 3000);
     }
   }

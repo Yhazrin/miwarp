@@ -418,11 +418,12 @@ export class SkillStore {
 
     try {
       // Simulate progress for now - in real implementation, this would come from SSE or websocket
+      const progressTimers: ReturnType<typeof setTimeout>[] = [];
       if (onProgress) {
         onProgress(10, "Initializing skill...");
-        setTimeout(() => onProgress(30, "Loading dependencies..."), 500);
-        setTimeout(() => onProgress(60, "Executing main logic..."), 1000);
-        setTimeout(() => onProgress(90, "Finalizing..."), 1500);
+        progressTimers.push(setTimeout(() => onProgress(30, "Loading dependencies..."), 500));
+        progressTimers.push(setTimeout(() => onProgress(60, "Executing main logic..."), 1000));
+        progressTimers.push(setTimeout(() => onProgress(90, "Finalizing..."), 1500));
       }
 
       const response = await fetch("/api/skills/execute", {
@@ -434,6 +435,8 @@ export class SkillStore {
           args,
         }),
       });
+
+      for (const t of progressTimers) clearTimeout(t);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);

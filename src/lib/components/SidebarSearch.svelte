@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
 
   interface Props {
@@ -17,6 +18,13 @@
   // Sync external value changes
   $effect(() => {
     if (value !== query) query = value;
+  });
+
+  onDestroy(() => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
   });
 
   function handleInput(e: Event) {

@@ -7,6 +7,7 @@
   } from "$lib/api";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
+  import { onDestroy } from "svelte";
   import type {
     ProviderHealth,
     McpRegistryServer,
@@ -44,6 +45,15 @@
   let headerValues = $state<Record<string, string>>({});
 
   let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let mounted = true;
+
+  onDestroy(() => {
+    mounted = false;
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = null;
+    }
+  });
 
   let displayResults = $derived(query.trim().length >= 2 ? results : popularResults);
 
@@ -70,6 +80,7 @@
   async function refreshInstalledServers() {
     try {
       const servers = await listConfiguredMcpServers(projectCwd || undefined);
+      if (!mounted) return;
       installedServers = servers;
       dbg("mcp-discover", "installed servers", servers.length);
     } catch (e) {
@@ -94,12 +105,14 @@
   async function loadInitial() {
     checkMcpRegistryHealth()
       .then((h) => {
+        if (!mounted) return;
         registryHealth = h;
         dbg("mcp-discover", "health", h);
       })
       .catch((e) => dbgWarn("mcp-discover", "health check failed:", e));
     searchMcpRegistry("server", 20)
       .then((r) => {
+        if (!mounted) return;
         popularResults = r.servers;
         dbg("mcp-discover", "popular loaded", r.servers.length);
       })
@@ -111,13 +124,14 @@
     refreshing = true;
     try {
       const [h, r] = await Promise.all([checkMcpRegistryHealth(), searchMcpRegistry("server", 20)]);
+      if (!mounted) return;
       registryHealth = h;
       popularResults = r.servers;
       dbg("mcp-discover", "refreshed", { health: h.available, popular: r.servers.length });
     } catch (e) {
       dbgWarn("mcp-discover", "refresh error", e);
     } finally {
-      refreshing = false;
+      if (mounted) refreshing = false;
     }
   }
 
@@ -134,12 +148,13 @@
       searching = true;
       try {
         const r = await searchMcpRegistry(q, 30);
+        if (!mounted) return;
         results = r.servers;
         dbg("mcp-discover", "search results", { query: q, count: r.servers.length });
       } catch {
-        showToast(t("mcp_searchFailed"), "error");
+        if (mounted) showToast(t("mcp_searchFailed"), "error");
       } finally {
-        searching = false;
+        if (mounted) searching = false;
       }
     }, 300);
   }

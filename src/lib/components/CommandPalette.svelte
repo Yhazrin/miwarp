@@ -112,8 +112,6 @@
 
   let recentCommands = $derived(getRecentCommands(agent));
   let showRecent = $derived(!query && recentCommands.length > 0);
-  let displayList = $derived(showRecent ? [...recentCommands, ...flatList] : flatList);
-
   let grouped = $derived(groupByCategory(flatList));
 
   // Reset on open
@@ -145,7 +143,7 @@
     }
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      selectedIndex = Math.min(selectedIndex + 1, displayList.length - 1);
+      selectedIndex = Math.min(selectedIndex + 1, indexMap.size - 1);
       scrollToSelected();
       return;
     }
@@ -155,16 +153,16 @@
       scrollToSelected();
       return;
     }
-    if (e.key === "Enter" && displayList.length > 0) {
+    if (e.key === "Enter" && indexMap.size > 0) {
       e.preventDefault();
-      executeCommand(displayList[selectedIndex]);
+      executeCommand(commandByIndex[selectedIndex]);
       return;
     }
     if (e.key === "Tab" && hoveredCmdId) {
       // Preview command on Tab
       e.preventDefault();
       showCommandPreview(
-        displayList.find((c) => c.id === hoveredCmdId) || displayList[selectedIndex],
+        flatList.find((c) => c.id === hoveredCmdId) || commandByIndex[selectedIndex],
       );
       return;
     }
@@ -429,12 +427,27 @@
       "settings",
       "diagnostics",
     ];
+    if (showRecent) {
+      for (const cmd of recentCommands) {
+        if (!map.has(cmd.id)) map.set(cmd.id, idx++);
+      }
+    }
     for (const cat of categoryOrder) {
       for (const cmd of grouped[cat]) {
-        map.set(cmd.id, idx++);
+        if (!map.has(cmd.id)) map.set(cmd.id, idx++);
       }
     }
     return map;
+  });
+
+  // Reverse lookup: visual index → command
+  let commandByIndex = $derived.by(() => {
+    const arr: CommandDef[] = new Array(indexMap.size);
+    for (const [id, idx] of indexMap) {
+      const cmd = recentCommands.find((c) => c.id === id) || flatList.find((c) => c.id === id);
+      if (cmd) arr[idx] = cmd;
+    }
+    return arr;
   });
 
   // Get icon for command
@@ -551,12 +564,12 @@
                 {t("cmd_cat_recent")}
               </p>
               {#each recentCommands as cmd}
-                {@const _idx = indexMap.get(cmd.id) ?? displayList.indexOf(cmd)}
+                {@const idx = indexMap.get(cmd.id) ?? 0}
                 {@const usage = getCommandUsageCount(cmd.id)}
                 <button
-                  data-cmd-idx={displayList.indexOf(cmd)}
+                  data-cmd-idx={idx}
                   class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors
-                    {displayList.indexOf(cmd) === selectedIndex
+                    {idx === selectedIndex
                     ? 'bg-accent text-accent-foreground'
                     : 'hover:bg-accent/50'}"
                   onclick={() => executeCommand(cmd)}
@@ -588,7 +601,7 @@
                   {categoryLabels[cat as CommandCategory]}
                 </p>
                 {#each grouped[cat as CommandCategory] as cmd}
-                  {@const idx = displayList.indexOf(cmd)}
+                  {@const idx = indexMap.get(cmd.id) ?? 0}
                   {@const usage = getCommandUsageCount(cmd.id)}
                   <button
                     data-cmd-idx={idx}
@@ -648,7 +661,7 @@
             {/if}
           {/each}
 
-          {#if displayList.length === 0}
+          {#if indexMap.size === 0}
             <div class="py-6 text-center text-sm text-muted-foreground">
               {query ? t("cmd_noCommandsFound") : "没有可用的命令"}
             </div>
@@ -660,8 +673,8 @@
           class="border-t px-4 py-2 flex items-center justify-between text-xs text-muted-foreground"
         >
           <span>↑↓ 导航 · Enter 执行 · Tab 预览 · Ctrl+F 模糊 · Ctrl+N 语义</span>
-          {#if displayList.length > 0}
-            <span>{displayList.length} 条命令</span>
+          {#if indexMap.size > 0}
+            <span>{indexMap.size} 条命令</span>
           {/if}
         </div>
       </div>

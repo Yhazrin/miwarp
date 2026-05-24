@@ -107,8 +107,12 @@ async function handleBusEvent(ev: BusEvent): Promise<void> {
     if (shouldSendFeishu("run_completed")) {
       trySendFeishu("Task completed", title, "completed");
     }
+    _runs.delete(runId);
   } else if (state === "failed" || state === "stopped" || state === "error") {
-    if (state === "stopped") return; // User-initiated stop, not a failure
+    if (state === "stopped") {
+      _runs.delete(runId);
+      return;
+    }
 
     const run = _runs.get(runId);
     const title = run?.name || run?.prompt?.slice(0, 50) || "Task";
@@ -127,6 +131,7 @@ async function handleBusEvent(ev: BusEvent): Promise<void> {
     if (shouldSendFeishu("run_failed")) {
       trySendFeishu("Task failed", title, "failed");
     }
+    _runs.delete(runId);
   } else if (state === "running" || state === "spawning") {
     // Track run for later use (title lookup)
     // We don't fetch here — the session store handles that
@@ -149,6 +154,11 @@ function handlePermissionPrompt(ev: BusEvent): void {
 
 /** Update cached run info (called by session store when run data loads) */
 export function cacheRun(run: TaskRun): void {
+  // Cap map size as a safety net — evict oldest entries if needed
+  if (_runs.size > 100) {
+    const firstKey = _runs.keys().next().value;
+    if (firstKey) _runs.delete(firstKey);
+  }
   _runs.set(run.id, run);
 }
 
