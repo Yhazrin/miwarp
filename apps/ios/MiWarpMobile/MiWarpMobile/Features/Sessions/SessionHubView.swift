@@ -16,12 +16,12 @@ struct SessionHubView: View {
                 let query = searchText.lowercased()
                 let matchesSearch = (run.displayTitle.lowercased().contains(query)) ||
                     (run.cwd.lowercased().contains(query)) ||
-                    (run.model.lowercased().contains(query))
+                    (run.model?.lowercased().contains(query) ?? false)
                 if !matchesSearch { return false }
             }
             if let agent = filters.agent, run.agent != agent { return false }
             if let status = filters.status, run.status != status { return false }
-            if let source = filters.source, run.source != source { return false }
+            if let source = filters.source, (run.source ?? .unknown) != source { return false }
             return true
         }
     }

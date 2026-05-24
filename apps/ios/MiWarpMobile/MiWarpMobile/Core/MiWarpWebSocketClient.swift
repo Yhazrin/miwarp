@@ -9,7 +9,11 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
     private var urlSession: URLSession?
     private let logger = MiWarpLogger.shared
 
-    private var pendingRequests: [String: CheckedContinuation<AnyCodable, Error>] = [:]
+    private struct PendingRequest {
+        let continuation: CheckedContinuation<AnyCodable, Error>
+        let timeoutTask: Task<Void, Never>?
+    }
+    private var pendingRequests: [String: PendingRequest] = [:]
     private let requestLock = NSLock()
 
     private var eventContinuation: AsyncStream<BusEvent>.Continuation?
@@ -198,27 +202,28 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         }
 
         return try await withCheckedThrowingContinuation { continuation in
+            // Timeout after 30 seconds
+            let timeoutTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(30))
+                self?.requestLock.lock()
+                let req = self?.pendingRequests.removeValue(forKey: id)
+                self?.requestLock.unlock()
+                req?.continuation.resume(throwing: WSError.timeout)
+            }
+
             requestLock.lock()
-            pendingRequests[id] = continuation
+            pendingRequests[id] = PendingRequest(continuation: continuation, timeoutTask: timeoutTask)
             requestLock.unlock()
 
             webSocketTask?.send(.string(jsonString)) { [weak self] error in
                 if let error {
                     self?.logger.wsError("Send failed: \(error.localizedDescription)")
                     self?.requestLock.lock()
-                    let cont = self?.pendingRequests.removeValue(forKey: id)
+                    let req = self?.pendingRequests.removeValue(forKey: id)
                     self?.requestLock.unlock()
-                    cont?.resume(throwing: error)
+                    req?.timeoutTask?.cancel()
+                    req?.continuation.resume(throwing: error)
                 }
-            }
-
-            // Timeout after 30 seconds
-            Task { [weak self] in
-                try? await Task.sleep(for: .seconds(30))
-                self?.requestLock.lock()
-                let cont = self?.pendingRequests.removeValue(forKey: id)
-                self?.requestLock.unlock()
-                cont?.resume(throwing: WSError.timeout)
             }
         }
     }
@@ -268,15 +273,17 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
             // Handle RPC response
             if let id = response.id {
                 requestLock.lock()
-                let continuation = pendingRequests.removeValue(forKey: id)
+                let req = pendingRequests.removeValue(forKey: id)
                 requestLock.unlock()
 
+                req?.timeoutTask?.cancel()
+
                 if let error = response.error {
-                    continuation?.resume(throwing: WSError.serverError(error))
+                    req?.continuation.resume(throwing: WSError.serverError(error))
                 } else if let result = response.result {
-                    continuation?.resume(returning: result)
+                    req?.continuation.resume(returning: result)
                 } else {
-                    continuation?.resume(returning: AnyCodable([:]))
+                    req?.continuation.resume(returning: AnyCodable([:]))
                 }
             }
         } catch {
@@ -456,11 +463,12 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
 
     private func cancelAllPendingRequests() {
         requestLock.lock()
-        let continuations = pendingRequests
+        let requests = pendingRequests
         pendingRequests.removeAll()
         requestLock.unlock()
-        for (_, cont) in continuations {
-            cont.resume(throwing: WSError.notConnected)
+        for (_, req) in requests {
+            req.timeoutTask?.cancel()
+            req.continuation.resume(throwing: WSError.notConnected)
         }
     }
 

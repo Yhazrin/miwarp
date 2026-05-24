@@ -242,10 +242,8 @@ struct MWSessionCard: View {
                     .foregroundColor(MWColors.textTertiary)
                     .lineLimit(1)
 
-                // Row 4: msg count · last activity
-                HStack(spacing: MWSpacing.sm) {
-                    Text("\(run.messageCount) messages")
-                        .font(MWTypography.caption2())
+                    Label("\(run.messageCount ?? 0)", systemImage: "message")
+                        .font(MWTypography.caption())
                         .foregroundColor(MWColors.textTertiary)
 
                     if let lastActivity = run.lastActivity {
@@ -255,6 +253,27 @@ struct MWSessionCard: View {
                             .font(MWTypography.caption2())
                             .foregroundColor(MWColors.textTertiary)
                     }
+                }
+
+                // Source badge
+                HStack(spacing: MWSpacing.sm) {
+                    if run.source != .unknown {
+                        HStack(spacing: MWSpacing.xs) {
+                            Image(systemName: sourceIcon(run.source))
+                                .font(MWTypography.caption2())
+                            Text(sourceLabel(run.source))
+                                .font(MWTypography.caption2())
+                        }
+                        .foregroundColor(MWColors.accentCyan)
+                        .padding(.horizontal, MWSpacing.sm)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(MWColors.accentCyan.opacity(0.1))
+                        )
+                    }
+
+                    Spacer()
                 }
             }
             .padding(.horizontal, MWSpacing.md)

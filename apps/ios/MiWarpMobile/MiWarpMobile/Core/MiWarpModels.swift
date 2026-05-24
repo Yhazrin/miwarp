@@ -120,9 +120,9 @@ struct MiWarpRun: Identifiable, Codable, Hashable {
     var prompt: String?
     var cwd: String
     var agent: String
-    var model: String
+    var model: String?
     var status: RunStatus
-    var source: RunSource
+    var source: RunSource?
     var messageCount: Int?
     var lastActivityAt: String?
     var startedAt: String?

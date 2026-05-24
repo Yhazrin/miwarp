@@ -63,7 +63,6 @@ final class MiWarpEventReducer: ObservableObject {
     @Published private(set) var streamingMessageId: String?
 
     private var seenSeqs: Set<Int> = []
-    private var messageAccumulator: [String: String] = [:] // messageId -> accumulated text
 
     // MARK: - Process Event
 
@@ -139,7 +138,6 @@ final class MiWarpEventReducer: ObservableObject {
         currentStatus = .idle
         lastSeq = 0
         seenSeqs.removeAll()
-        messageAccumulator.removeAll()
         streamingMessageId = nil
     }
 
@@ -181,7 +179,6 @@ final class MiWarpEventReducer: ObservableObject {
             messages.append(msg)
         }
 
-        messageAccumulator[msgId, default: ""] += delta
     }
 
     private func handleMessageComplete(_ payload: MessageCompletePayload) {
@@ -193,7 +190,6 @@ final class MiWarpEventReducer: ObservableObject {
             }
         }
         streamingMessageId = nil
-        messageAccumulator.removeValue(forKey: msgId)
     }
 
     private func handleToolStart(_ payload: ToolStartPayload) {
