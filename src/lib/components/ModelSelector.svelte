@@ -87,6 +87,8 @@
 <div bind:this={wrapperEl}>
   <button
     bind:this={buttonEl}
+    aria-expanded={dropdownOpen}
+    aria-haspopup="listbox"
     class="flex items-center gap-1.5 rounded-md border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
     onclick={toggleDropdown}
   >
@@ -114,6 +116,7 @@
 
   {#if dropdownOpen}
     <div
+      role="listbox"
       class="w-80 rounded-md border bg-background shadow-lg animate-fade-in"
       style={dropdownStyle}
     >

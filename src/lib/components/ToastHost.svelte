@@ -54,7 +54,10 @@
 </script>
 
 {#if toasts.length > 0}
-  <div class="fixed bottom-20 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
+  <div
+    class="fixed bottom-20 right-4 z-[200] flex flex-col gap-2 pointer-events-none"
+    aria-live="polite"
+  >
     {#each toasts as toast (toast.id)}
       <div
         class="pointer-events-auto motion-slide-up flex items-start gap-2.5 px-3.5 py-2.5

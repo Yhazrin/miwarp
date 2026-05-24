@@ -46,6 +46,9 @@
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay backdrop-blur-sm animate-fade-in"
     onclick={() => (open = false)}
+    onkeydown={(e) => {
+      if (e.key === "Escape" || e.key === "Enter" || e.key === " ") open = false;
+    }}
   >
     <!-- Panel -->
     <div

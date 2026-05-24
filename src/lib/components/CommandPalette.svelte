@@ -511,6 +511,7 @@
             onkeydown={handleKeydown}
             class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             placeholder={t("cmd_placeholder")}
+            aria-label={t("cmd_placeholder")}
           />
           <div class="flex items-center gap-2">
             {#if previewContent}

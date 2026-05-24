@@ -121,6 +121,8 @@
 
 <div
   bind:this={menuEl}
+  role="listbox"
+  aria-label={t("cmd_placeholder")}
   class="fixed z-[9999] rounded-lg border border-border bg-background shadow-lg animate-fade-in"
   style="bottom: {bottom}px; left: {left}px; width: {width}px;"
 >
@@ -137,6 +139,8 @@
       {@const hint = getArgumentHint(cmd)}
       <button
         data-index={idx}
+        role="option"
+        aria-selected={idx === selectedIndex}
         class="flex w-full items-center gap-2 px-3 {py} text-left text-sm transition-colors {idx ===
         selectedIndex
           ? 'bg-accent text-foreground'
