@@ -6,7 +6,7 @@
   import type { RunSearchFilters, RunSearchResponse } from "$lib/types";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
-  import { formatCostDisplay } from "$lib/utils/format";
+  import { formatCostDisplay, relativeTime } from "$lib/utils/format";
 
   let filters = $state<RunSearchFilters>({});
   let response = $state<RunSearchResponse | null>(null);
@@ -33,20 +33,6 @@
   function projectDisplayName(cwd: string): string {
     const parts = cwd.replace(/\\/g, "/").split("/");
     return parts[parts.length - 1] || cwd;
-  }
-
-  function formatRelativeTime(iso: string): string {
-    const now = Date.now();
-    const then = new Date(iso).getTime();
-    const diff = now - then;
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "just now";
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `${days}d ago`;
-    return new Date(iso).toLocaleDateString();
   }
 
   const formatCost = formatCostDisplay;
@@ -560,7 +546,7 @@
                 <div class="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                   <span>{projectDisplayName(run.cwd)}</span>
                   <span>·</span>
-                  <span>{formatRelativeTime(run.startedAt)}</span>
+                  <span>{relativeTime(run.startedAt)}</span>
                   {#if run.model}
                     <span>·</span>
                     <span>{run.model}</span>

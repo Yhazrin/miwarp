@@ -4,6 +4,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
   import { statusDotClass, statusLabel, parseServersFromResponse } from "$lib/utils/mcp";
+  import { relativeTime } from "$lib/utils/format";
 
   let {
     runId,
@@ -107,21 +108,6 @@
     if (latency < 200) return { label: "Fair", color: "text-yellow-600", icon: "🟡" };
     if (latency < 500) return { label: "Poor", color: "text-orange-600", icon: "🟠" };
     return { label: "Critical", color: "text-red-600", icon: "🔴" };
-  }
-
-  /**
-   * Format relative time
-   */
-  function formatRelativeTime(isoString: string | null): string {
-    if (!isoString) return "Never";
-    const date = new Date(isoString);
-    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-    if (seconds < 60) return `${seconds}s ago`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
   }
 
   async function refresh() {
@@ -419,7 +405,7 @@ diagnostics and history * - Quick reconnect with health check */
                   <div class="p-1.5 rounded bg-muted/30">
                     <div class="text-muted-foreground">Last Success</div>
                     <div class="font-medium">
-                      {formatRelativeTime(health.lastSuccess)}
+                      {health.lastSuccess ? relativeTime(health.lastSuccess) : "Never"}
                     </div>
                   </div>
                   <div class="p-1.5 rounded bg-muted/30">

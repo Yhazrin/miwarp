@@ -6,7 +6,6 @@
    */
   import { t } from "$lib/i18n/index.svelte";
   import type { MarketplaceSkill, MarketplaceCategory } from "$lib/types/marketplace";
-  // import { SKILL_CATEGORIES } from "$lib/types/skill";
 
   interface Props {
     onInstall?: (skill: MarketplaceSkill) => void;
