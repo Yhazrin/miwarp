@@ -229,7 +229,7 @@ struct SessionHubView: View {
             if let conn = store.activeConnection {
                 Text("·")
                     .foregroundColor(MWColors.textTertiary)
-                Text(conn.displayLabel)
+                Text(conn.name)
                     .font(MWTypography.monoCaption())
                     .foregroundColor(MWColors.textTertiary)
             }

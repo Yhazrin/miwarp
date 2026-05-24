@@ -223,7 +223,7 @@ struct MobileSettingsView: View {
         let info = """
         MiWarp Mobile Debug Info
         Connected: \(store.isConnected)
-        Connection: \(store.activeConnection?.displayLabel ?? "none")
+        Connection: \(store.activeConnection?.name ?? "none")
         State: \(store.connectionState.displayLabel)
         Theme: \(theme.colorScheme == .dark ? "dark" : "light")
         """
