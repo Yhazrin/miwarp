@@ -12,7 +12,7 @@ fn do_capture(app: &AppHandle) {
             "ocv-screenshot-{}.png",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_millis()
         ))
         .to_string_lossy()

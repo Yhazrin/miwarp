@@ -14,7 +14,10 @@ pub fn load_cli_config() -> Value {
     match std::fs::read_to_string(&path) {
         Ok(s) => match serde_json::from_str::<Value>(&s) {
             Ok(v) if v.is_object() => {
-                log::debug!("[cli_config] loaded {} keys", v.as_object().unwrap().len());
+                log::debug!(
+                    "[cli_config] loaded {} keys",
+                    v.as_object().map_or(0, |o| o.len())
+                );
                 v
             }
             Ok(_) => {
@@ -42,7 +45,7 @@ pub fn load_project_cli_config(cwd: &str) -> Value {
             Ok(v) if v.is_object() => {
                 log::debug!(
                     "[cli_config] project config loaded {} keys from {}",
-                    v.as_object().unwrap().len(),
+                    v.as_object().map_or(0, |o| o.len()),
                     path.display()
                 );
                 v

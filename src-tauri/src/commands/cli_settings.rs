@@ -132,7 +132,10 @@ fn write_permissions(path: &Path, category: &str, rules: &[String]) -> Result<()
     }
 
     // 3. Set permissions.<category> = rules
-    let perms = map.get_mut("permissions").unwrap().as_object_mut().unwrap();
+    let perms = map
+        .get_mut("permissions")
+        .and_then(|v| v.as_object_mut())
+        .expect("permissions key guaranteed by guard above");
     perms.insert(
         category.to_string(),
         Value::Array(rules.iter().map(|r| Value::String(r.clone())).collect()),

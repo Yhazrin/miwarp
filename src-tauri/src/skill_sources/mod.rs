@@ -336,7 +336,10 @@ fn annotate_with_skills(
         return Ok(());
     }
     if let Some(s) = by_remote.first() {
-        let local_hash = &s.remote_ref.as_ref().unwrap().content_hash;
+        let Some(remote_ref) = s.remote_ref.as_ref() else {
+            return Ok(());
+        };
+        let local_hash = &remote_ref.content_hash;
         if local_hash != &cand.content_hash {
             cand.status = "update_available".into();
         } else {
