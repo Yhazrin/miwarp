@@ -52,6 +52,7 @@
   type SettingsTab =
     | "general"
     | "connection"
+    | "mobile"
     | "cli-config"
     | "shortcuts"
     | "remote"
@@ -62,6 +63,7 @@
   const VALID_TABS: SettingsTab[] = [
     "general",
     "connection",
+    "mobile",
     "cli-config",
     "shortcuts",
     "remote",
@@ -86,6 +88,7 @@
   const tabLabels: Record<SettingsTab, () => string> = {
     general: () => t("settings_tab_general"),
     connection: () => t("settings_tab_connection"),
+    mobile: () => t("settings_tab_mobile") || "Mobile",
     "cli-config": () => t("settings_tab_cliConfig"),
     shortcuts: () => t("settings_tab_shortcuts"),
     remote: () => t("settings_tab_remote"),
@@ -103,6 +106,10 @@
     {
       id: "connection",
       icon: "M12 2a4 4 0 0 0-4 4c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2 4 4 0 0 0-4-4z M8 8v2a4 4 0 0 0 8 0V8 M12 14v4 M8 18h8",
+    },
+    {
+      id: "mobile",
+      icon: "M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z",
     },
     {
       id: "cli-config",
@@ -1607,7 +1614,7 @@
         >
           {t("settings_nav_providers") || "Providers"}
         </p>
-        {#each ["connection"] as tabId (tabId)}
+        {#each ["connection", "mobile"] as tabId (tabId)}
           {@const tab = tabs.find((t) => t.id === tabId)}
           {#if tab}
             <button
@@ -2061,89 +2068,33 @@
                       {t("settings_general_mobileAccessDesc")}
                     </p>
 
-                    {#if !webStatus?.running}
-                      <p class="text-xs text-muted-foreground italic">
-                        {t("settings_general_mobileNoServer")}
-                      </p>
-                    {:else if webStatus.bind === "127.0.0.1" || webStatus.bind === "::1"}
-                      <div
-                        class="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-300"
+                    <button
+                      class="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-4 py-3 text-sm hover:bg-muted/50 transition-colors w-full"
+                      onclick={() => setActiveTab("mobile")}
+                    >
+                      <svg
+                        class="h-5 w-5 text-muted-foreground"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
                       >
-                        {t("settings_general_mobileBindWarning")}
-                      </div>
-                    {:else}
-                      <!-- QR Code -->
-                      {#if mobileQrDataUrl}
-                        <div class="flex items-start gap-4 mb-4">
-                          <div
-                            class="shrink-0 rounded-xl border border-border/40 bg-background/60 p-2.5 backdrop-blur-sm"
-                          >
-                            <img
-                              src={mobileQrDataUrl}
-                              alt="Mobile pairing QR code"
-                              class="w-[180px] h-[180px]"
-                            />
-                          </div>
-                          <div class="flex-1 min-w-0 pt-1">
-                            <p class="text-xs font-medium text-foreground/80 mb-1">
-                              {t("settings_general_mobileQrCode")}
-                            </p>
-                            <p class="text-[11px] text-muted-foreground leading-relaxed mb-3">
-                              {t("settings_general_mobileQrCodeDesc")}
-                            </p>
-                            <div
-                              class="rounded-md border border-border/30 bg-muted/30 px-2.5 py-1.5 text-[11px] text-muted-foreground leading-relaxed"
-                            >
-                              {t("settings_general_mobileSafetyNotice")}
-                            </div>
-                          </div>
-                        </div>
-                      {/if}
-
-                      <!-- Pairing Link -->
-                      <div class="flex items-center gap-2 mb-3">
-                        <p class="text-xs text-muted-foreground shrink-0">
-                          {t("settings_general_mobilePairingLink")}
-                        </p>
-                        <code
-                          class="flex-1 rounded-md border bg-muted/50 px-2.5 py-1 font-mono text-[11px] overflow-hidden text-ellipsis whitespace-nowrap"
-                          >{buildPairingLink()?.replace(/token=.*$/, "token=...") ?? ""}</code
-                        >
-                        <button
-                          class="rounded-md border px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-accent transition-colors shrink-0"
-                          onclick={copyPairingLink}
-                        >
-                          {mobilePairingLinkCopied
-                            ? t("settings_general_mobilePairingLinkCopied")
-                            : t("settings_general_mobileCopyPairingLink")}
-                        </button>
-                      </div>
-
-                      <!-- Reset Token -->
-                      <div class="flex items-center gap-2">
-                        <button
-                          class="rounded-md border border-amber-500/30 px-2.5 py-1 text-[11px] text-amber-400/80 hover:bg-amber-500/10 transition-colors"
-                          onclick={async () => {
-                            try {
-                              const newToken = await api.regenerateWebServerToken();
-                              webToken = newToken;
-                              showWebToken = false;
-                              webTokenCopied = false;
-                              webLinkCopied = false;
-                              mobilePairingLinkCopied = false;
-                              dbg("settings", "mobile token reset");
-                            } catch (e) {
-                              dbgWarn("settings", "mobile token reset failed", e);
-                            }
-                          }}
-                        >
-                          {t("settings_general_mobileResetToken")}
-                        </button>
-                        <span class="text-[11px] text-muted-foreground"
-                          >{t("settings_general_mobileResetTokenDesc")}</span
-                        >
-                      </div>
-                    {/if}
+                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                        <line x1="12" y1="18" x2="12.01" y2="18" />
+                      </svg>
+                      <span class="flex-1 text-left"
+                        >{t("settings_general_mobileOpenTab") || "Open Mobile Settings"}</span
+                      >
+                      <svg
+                        class="h-4 w-4 text-muted-foreground/50"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <path d="m9 18 6-6-6-6" />
+                      </svg>
+                    </button>
                   </div>
 
                   <!-- HTTP Tunnel -->
@@ -3429,6 +3380,304 @@
             </div>
           </div>
 
+          <!-- ═══ Mobile tab ═══ -->
+        {:else if activeTab === "mobile"}
+          <div class="space-y-6">
+            <!-- Server Settings Card -->
+            <Card class="p-6 space-y-5">
+              <div class="flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t("settings_mobile_server") || "Web Server"}
+                </h2>
+                {#if webStatus?.running}
+                  <span class="flex items-center gap-1.5 text-xs text-emerald-500">
+                    <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    {t("settings_mobile_serverRunning") || "Running"}
+                  </span>
+                {:else}
+                  <span class="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span class="h-2 w-2 rounded-full bg-muted-foreground/50"></span>
+                    {t("settings_mobile_serverStopped") || "Stopped"}
+                  </span>
+                {/if}
+              </div>
+
+              <!-- Enable Toggle -->
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm font-medium">{t("settings_general_webEnabled")}</p>
+                  <p class="text-xs text-muted-foreground">
+                    {t("settings_general_webEnabledDesc")}
+                  </p>
+                </div>
+                <button
+                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {webStatus?.enabled
+                    ? 'bg-primary'
+                    : 'bg-muted'}"
+                  role="switch"
+                  aria-checked={webStatus?.enabled ?? false}
+                  disabled={webRestarting}
+                  onclick={async () => {
+                    const newEnabled = !webStatus?.enabled;
+                    webRestarting = true;
+                    webRestartError = null;
+                    webRestartWarning = null;
+                    try {
+                      if (newEnabled) {
+                        const portNum = parseInt(webPortInput, 10);
+                        if (isNaN(portNum) || portNum < 1024 || portNum > 65535) {
+                          throw new Error(t("settings_general_webPortInvalid"));
+                        }
+                        const result = await api.restartWebServer({
+                          enabled: true,
+                          port: portNum,
+                          bind: webBindValue,
+                          allowed_origins: webOrigins.length > 0 ? webOrigins : null,
+                          tunnel_url: webTunnelUrl.trim() || null,
+                        });
+                        if (!result.config_saved) {
+                          webRestartWarning = t("settings_general_webSaveWarning");
+                        }
+                      } else {
+                        await api.restartWebServer({
+                          enabled: false,
+                          port: 0,
+                          bind: "",
+                          allowed_origins: null,
+                          tunnel_url: null,
+                        });
+                      }
+                      webStatus = await api.getWebServerStatus();
+                      settings = await api.getUserSettings();
+                      dbg("settings", "webServer toggled from mobile", { enabled: newEnabled });
+                      if (webStatus?.running) await refreshLanIp(webStatus.bind);
+                    } catch (e) {
+                      webRestartError = (e as Error)?.message ?? String(e);
+                      webStatus = await api.getWebServerStatus();
+                      dbgWarn("settings", "webServer toggle failed from mobile", e);
+                    } finally {
+                      webRestarting = false;
+                    }
+                  }}
+                >
+                  <span
+                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {webStatus?.enabled
+                      ? 'translate-x-6'
+                      : 'translate-x-1'}"
+                  ></span>
+                </button>
+              </div>
+
+              <!-- Access Mode -->
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <p class="text-sm font-medium">{t("settings_general_webAccess")}</p>
+                  {#if webStatus?.running && webStatus.bind !== webBindValue}
+                    <span class="text-xs text-amber-400 flex items-center gap-1">
+                      <span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                      {t("settings_mobile_pendingRestart") || "Pending restart"}
+                    </span>
+                  {/if}
+                </div>
+                <div class="flex gap-2">
+                  <button
+                    class="flex-1 rounded-md border px-3 py-2.5 text-[13px] transition-colors {webBindValue ===
+                    '127.0.0.1'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-accent'}"
+                    onclick={() => (webBindValue = "127.0.0.1")}
+                  >
+                    {t("settings_general_webAccessLocal")}
+                  </button>
+                  <button
+                    class="flex-1 rounded-md border px-3 py-2.5 text-[13px] transition-colors {webBindValue ===
+                    '0.0.0.0'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-accent'}"
+                    onclick={() => (webBindValue = "0.0.0.0")}
+                  >
+                    {t("settings_general_webAccessLan")}
+                  </button>
+                </div>
+                <p class="text-xs text-muted-foreground mt-1.5">
+                  {t("settings_general_webAccessDesc")}
+                </p>
+              </div>
+
+              <!-- Port -->
+              <div class="flex items-center gap-4">
+                <div class="flex-1">
+                  <p class="text-sm font-medium mb-2">{t("settings_general_webPort")}</p>
+                  <input
+                    type="number"
+                    class="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    bind:value={webPortInput}
+                    min="1024"
+                    max="65535"
+                  />
+                </div>
+                <button
+                  class="mt-6 rounded-md border border-primary/50 bg-primary/10 px-4 py-2 text-sm text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 flex items-center gap-2"
+                  disabled={webRestarting}
+                  onclick={applyWebServerSettings}
+                >
+                  {#if webRestarting}
+                    <span
+                      class="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin"
+                    ></span>
+                  {/if}
+                  {webRestarting
+                    ? t("settings_mobile_applying") || "Applying..."
+                    : t("settings_mobile_apply") || "Apply"}
+                </button>
+              </div>
+
+              <!-- Error/Warning -->
+              {#if webRestartError}
+                <div class="rounded-md border border-red-500/30 bg-red-500/5 px-3 py-2">
+                  <p class="text-xs text-red-400">{webRestartError}</p>
+                </div>
+              {/if}
+              {#if webRestartWarning}
+                <div class="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
+                  <p class="text-xs text-amber-400">{webRestartWarning}</p>
+                </div>
+              {/if}
+            </Card>
+
+            <!-- QR Code Card -->
+            <Card class="p-6 space-y-5">
+              <div class="flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t("settings_mobile_qrCode") || "Pairing Code"}
+                </h2>
+                {#if webStatus?.running}
+                  <span class="text-[10px] font-mono text-muted-foreground/60">
+                    {webStatus.bind}:{webStatus.port} | LAN: {webLanIp ?? "—"}
+                  </span>
+                {/if}
+              </div>
+
+              <!-- QR Code Section -->
+              <div class="flex flex-col items-center justify-center py-4">
+                {#if !webStatus?.running}
+                  <div class="flex flex-col items-center gap-4 text-center">
+                    <div class="h-20 w-20 rounded-2xl bg-muted/30 flex items-center justify-center">
+                      {@html `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-10 w-10 text-muted-foreground/50"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`}
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-foreground/80">
+                        {t("settings_mobile_startServer") || "Start Web Server First"}
+                      </p>
+                      <p class="text-xs text-muted-foreground mt-1">
+                        {t("settings_mobile_startServerDesc") ||
+                          "Enable the web server above to generate a QR code"}
+                      </p>
+                    </div>
+                  </div>
+                {:else if webStatus.bind === "127.0.0.1" || webStatus.bind === "::1"}
+                  <div class="flex flex-col items-center gap-4 text-center">
+                    <div
+                      class="h-20 w-20 rounded-2xl bg-amber-500/10 flex items-center justify-center"
+                    >
+                      {@html `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-10 w-10 text-amber-500/70"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`}
+                    </div>
+                    <div>
+                      <p class="text-sm font-medium text-amber-400">
+                        {t("settings_mobile_bindWarning") || "LAN Mode Required"}
+                      </p>
+                      <p class="text-xs text-muted-foreground mt-1">
+                        {t("settings_mobile_bindWarningDesc") ||
+                          "Switch to LAN mode above to allow mobile connections"}
+                      </p>
+                    </div>
+                  </div>
+                {:else if mobileQrDataUrl}
+                  <div class="flex flex-col items-center gap-4">
+                    <div class="relative">
+                      <div
+                        class="rounded-2xl border border-border/40 bg-background/80 p-4 backdrop-blur-sm"
+                      >
+                        <img src={mobileQrDataUrl} alt="Mobile pairing QR code" class="w-48 h-48" />
+                      </div>
+                      <div class="absolute -bottom-3 left-1/2 -translate-x-1/2">
+                        <span
+                          class="rounded-full bg-primary/10 text-primary text-xs px-3 py-1 font-medium"
+                        >
+                          {t("settings_mobile_scanToConnect") || "Scan to Connect"}
+                        </span>
+                      </div>
+                    </div>
+                    <p class="text-xs text-muted-foreground text-center max-w-xs">
+                      {t("settings_general_mobileSafetyNotice")}
+                    </p>
+                  </div>
+                {:else}
+                  <div class="flex flex-col items-center gap-4 text-center">
+                    <div class="h-20 w-20 rounded-2xl bg-muted/30 flex items-center justify-center">
+                      <div
+                        class="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin"
+                      ></div>
+                    </div>
+                    <p class="text-sm text-muted-foreground">
+                      {t("settings_mobile_generatingQr") || "Generating..."}
+                    </p>
+                  </div>
+                {/if}
+              </div>
+
+              <!-- Connection Info -->
+              {#if webStatus?.running && webToken}
+                <div class="border-t border-border/30 pt-4 space-y-3">
+                  <!-- Pairing Link -->
+                  <div class="space-y-1.5">
+                    <label
+                      class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                    >
+                      {t("settings_mobile_pairingLink") || "Pairing Link"}
+                    </label>
+                    <div class="flex items-center gap-2">
+                      <code
+                        class="flex-1 rounded-md border bg-muted/50 px-3 py-2 font-mono text-xs overflow-hidden text-ellipsis whitespace-nowrap"
+                        >{buildPairingLink()?.replace(/token=.*$/, "token=...") ?? ""}</code
+                      >
+                      <button
+                        class="shrink-0 rounded-md border px-3 py-2 text-xs text-muted-foreground hover:bg-accent transition-colors"
+                        onclick={copyPairingLink}
+                      >
+                        {mobilePairingLinkCopied
+                          ? t("settings_general_mobilePairingLinkCopied")
+                          : t("settings_general_mobileCopyPairingLink")}
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Reset Token -->
+                  <div class="flex items-center gap-2">
+                    <button
+                      class="rounded-md border border-amber-500/30 px-3 py-1.5 text-xs text-amber-400/80 hover:bg-amber-500/10 transition-colors"
+                      onclick={async () => {
+                        try {
+                          const newToken = await api.regenerateWebServerToken();
+                          webToken = newToken;
+                          mobilePairingLinkCopied = false;
+                          dbg("settings", "mobile token reset");
+                        } catch (e) {
+                          dbgWarn("settings", "mobile token reset failed", e);
+                        }
+                      }}
+                    >
+                      {t("settings_general_mobileResetToken")}
+                    </button>
+                    <span class="text-[11px] text-muted-foreground"
+                      >{t("settings_general_mobileResetTokenDesc")}</span
+                    >
+                  </div>
+                </div>
+              {/if}
+            </Card>
+          </div>
+
           <!-- ═══ CLI Config tab ═══ -->
         {:else if activeTab === "cli-config"}
           {#if cliConfigLoading && !cliConfigLoaded}
@@ -3450,10 +3699,8 @@
                 onclick={() => {
                   cliConfigLoaded = false;
                   loadCliConfig();
-                }}
+                }}>{t("settings_cliConfig_retry")}</button
               >
-                {t("settings_cliConfig_retry")}
-              </button>
             </Card>
           {:else}
             <div class="space-y-6">
