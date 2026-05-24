@@ -97,13 +97,13 @@
         registryHealth = h;
         dbg("mcp-discover", "health", h);
       })
-      .catch(() => {});
+      .catch((e) => dbgWarn("mcp-discover", "health check failed:", e));
     searchMcpRegistry("server", 20)
       .then((r) => {
         popularResults = r.servers;
         dbg("mcp-discover", "popular loaded", r.servers.length);
       })
-      .catch(() => {});
+      .catch((e) => dbgWarn("mcp-discover", "popular search failed:", e));
     refreshInstalledServers();
   }
 

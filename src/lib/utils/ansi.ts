@@ -103,7 +103,7 @@ export function ansiToHtml(input: string): string {
   // eslint-disable-next-line no-control-regex
   const ansiRegex = /\x1b\[([0-9;]*)m/g;
   const style: Style = {};
-  let result = "";
+  const parts: string[] = [];
   let lastIndex = 0;
   let spanOpen = false;
 
@@ -112,7 +112,7 @@ export function ansiToHtml(input: string): string {
     // Append text before this escape sequence
     const textBefore = input.slice(lastIndex, match.index);
     if (textBefore) {
-      result += escapeHtml(textBefore);
+      parts.push(escapeHtml(textBefore));
     }
     lastIndex = match.index + match[0].length;
 
@@ -164,13 +164,13 @@ export function ansiToHtml(input: string): string {
 
     // Close previous span if open
     if (spanOpen) {
-      result += "</span>";
+      parts.push("</span>");
       spanOpen = false;
     }
 
     // Open new span if style is active
     if (hasStyle(style)) {
-      result += `<span${styleToAttrs(style)}>`;
+      parts.push(`<span${styleToAttrs(style)}>`);
       spanOpen = true;
     }
   }
@@ -178,13 +178,15 @@ export function ansiToHtml(input: string): string {
   // Append remaining text after last escape sequence
   const remaining = input.slice(lastIndex);
   if (remaining) {
-    result += escapeHtml(remaining);
+    parts.push(escapeHtml(remaining));
   }
 
   // Close any open span
   if (spanOpen) {
-    result += "</span>";
+    parts.push("</span>");
   }
+
+  const result = parts.join("");
 
   // Strip any remaining non-SGR escape sequences (cursor movement, OSC, charset, etc.)
   return result.replace(ANSI_RE, "");

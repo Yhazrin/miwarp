@@ -2570,11 +2570,13 @@
                         active_platform_id: null,
                         auth_env_var: null,
                       });
-                      api.removeCliApiKey().catch(() => {});
+                      api
+                        .removeCliApiKey()
+                        .catch((e) => dbgWarn("settings", "removeCliApiKey failed:", e));
                       api
                         .getAuthOverview()
                         .then((ov) => (authOverview = ov))
-                        .catch(() => {});
+                        .catch((e) => dbgWarn("settings", "getAuthOverview failed:", e));
                     }}
                   >
                     <div
@@ -2610,7 +2612,7 @@
                       api
                         .getAuthOverview()
                         .then((ov) => (authOverview = ov))
-                        .catch(() => {});
+                        .catch((e) => dbgWarn("settings", "getAuthOverview failed:", e));
                     }}
                   >
                     <div
@@ -2675,7 +2677,9 @@
                                     api
                                       .getAuthOverview()
                                       .then((ov) => (authOverview = ov))
-                                      .catch(() => {});
+                                      .catch((e) =>
+                                        dbgWarn("settings", "getAuthOverview failed:", e),
+                                      );
                                   } else {
                                     cliLoginError = t("setup_loginFailed");
                                   }

@@ -220,7 +220,7 @@ body { overflow: auto !important; height: auto !important; }
           ta.style.left = '-9999px';
           document.body.appendChild(ta);
           ta.select();
-          try { document.execCommand('copy'); done(); } catch(e) {}
+          try { document.execCommand('copy'); done(); } catch { /* fallback copy failed */ }
           document.body.removeChild(ta);
         }
       });

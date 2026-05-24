@@ -80,7 +80,7 @@ export function createPermissionModeHandler(ctx: PermissionModeContext) {
           }
         }
       })
-      .catch(() => {});
+      .catch((e) => dbgWarn("chat", "permission mode persist failed:", e));
 
     await pendingPersist;
 

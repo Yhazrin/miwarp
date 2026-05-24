@@ -170,7 +170,7 @@
   onMount(() => {
     getPresets()
       .then((p) => team.setTeamPresets(p))
-      .catch(() => {});
+      .catch((e) => dbgWarn("chat", "getPresets failed:", e));
   });
 
   // Auto-name one-shot latch: reset only on actual run ID change

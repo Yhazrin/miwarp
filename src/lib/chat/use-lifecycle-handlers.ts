@@ -249,7 +249,7 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
       api
         .getAuthOverview()
         .then((ov) => setAuthOverview(ov))
-        .catch(() => {});
+        .catch((e) => dbgWarn("chat", "getAuthOverview failed:", e));
       // Detect local proxy statuses for AuthSourceBadge
       checkAllLocalProxies();
     } catch (e) {
@@ -273,7 +273,9 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
       }
       // One-time migration: clear stale agentSettings.effort to prevent --effort at spawn
       if (agentResult.value?.effort) {
-        api.updateAgentSettings("claude", { effort: "" }).catch(() => {});
+        api
+          .updateAgentSettings("claude", { effort: "" })
+          .catch((e) => dbgWarn("chat", "clear effort failed:", e));
       }
     } else {
       dbgWarn("chat", "failed to load agent settings:", agentResult.reason);
@@ -476,7 +478,9 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
       destroyed = true;
       const forkOverlay = getForkOverlay();
       if (forkOverlay?.active && store.run && store.run.id !== forkOverlay.sourceRunId) {
-        api.stopSession(store.run.id).catch(() => {});
+        api
+          .stopSession(store.run.id)
+          .catch((e) => dbgWarn("chat", "stopSession on unmount failed:", e));
       }
       store.unmountGuards();
       middleware.destroy();

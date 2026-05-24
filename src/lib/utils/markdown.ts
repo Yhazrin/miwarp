@@ -17,26 +17,26 @@ marked.use({
       rows: Array<Array<{ tokens: Token[]; align: string | null; header: boolean }>>;
     }) {
       // Build header cells
-      let headerCells = "";
+      const headerCells: string[] = [];
       for (const cell of token.header) {
         const content = this.parser.parseInline(cell.tokens);
         const tag = cell.align ? `<th align="${cell.align}">` : "<th>";
-        headerCells += `${tag}${content}</th>\n`;
+        headerCells.push(`${tag}${content}</th>`);
       }
-      const headerRow = `<tr>\n${headerCells}</tr>\n`;
+      const headerRow = `<tr>${headerCells.join("")}</tr>`;
 
       // Build body rows
-      let body = "";
+      const bodyRows: string[] = [];
       for (const row of token.rows) {
-        let rowCells = "";
+        const rowCells: string[] = [];
         for (const cell of row) {
           const content = this.parser.parseInline(cell.tokens);
           const tag = cell.align ? `<td align="${cell.align}">` : "<td>";
-          rowCells += `${tag}${content}</td>\n`;
+          rowCells.push(`${tag}${content}</td>`);
         }
-        body += `<tr>\n${rowCells}</tr>\n`;
+        bodyRows.push(`<tr>${rowCells.join("")}</tr>`);
       }
-      if (body) body = `<tbody>${body}</tbody>`;
+      const body = bodyRows.length ? `<tbody>${bodyRows.join("")}</tbody>` : "";
 
       return `<div class="table-wrapper"><table><thead>${headerRow}</thead>${body}</table></div>`;
     },
