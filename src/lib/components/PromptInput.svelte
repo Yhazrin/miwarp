@@ -1871,6 +1871,12 @@
     tokenDebounce = setTimeout(() => {
       tokenEstimate = allText ? estimateTokens(allText) : 0;
     }, 300);
+    return () => {
+      if (tokenDebounce) {
+        clearTimeout(tokenDebounce);
+        tokenDebounce = null;
+      }
+    };
   });
   const tokenPercent = $derived(
     contextWindow > 0 && tokenEstimate > 0 ? Math.round((tokenEstimate / contextWindow) * 100) : 0,
