@@ -18,10 +18,10 @@ struct MWGlassCard<Content: View>: View {
             .padding(MWSpacing.lg)
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius)
-                    .fill(MWColors.glassBg)
+                    .fill(.ultraThinMaterial)
                     .overlay(
                         RoundedRectangle(cornerRadius: cornerRadius)
-                            .strokeBorder(borderColor ?? MWColors.glassBorder, lineWidth: 1)
+                            .strokeBorder(.white.opacity(0.2), lineWidth: 1)
                     )
             )
     }
@@ -150,13 +150,13 @@ struct MWSessionCard: View {
             .padding(MWSpacing.lg)
             .background(
                 RoundedRectangle(cornerRadius: MWRadius.lg)
-                    .fill(MWColors.bgElevated)
+                    .fill(.ultraThinMaterial)
                     .overlay(
                         RoundedRectangle(cornerRadius: MWRadius.lg)
                             .strokeBorder(
                                 run.status == .waitingApproval
                                     ? MWColors.statusWarning.opacity(0.3)
-                                    : MWColors.glassBorder,
+                                    : .white.opacity(0.15),
                                 lineWidth: run.status == .waitingApproval ? 1 : 0.5
                             )
                     )
@@ -213,12 +213,12 @@ struct MWChatBubble: View {
             .background(
                 RoundedRectangle(cornerRadius: isUser ? MWRadius.xl : MWRadius.lg)
                     .fill(isUser ? MWColors.accentPrimary : MWColors.bgSurface)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: isUser ? MWRadius.xl : MWRadius.lg)
-                            .strokeBorder(
-                                isUser ? Color.clear : MWColors.glassBorder,
-                                lineWidth: 0.5
-                            )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: isUser ? MWRadius.xl : MWRadius.lg)
+                    .strokeBorder(
+                        isUser ? Color.clear : .white.opacity(0.1),
+                        lineWidth: 0.5
                     )
             )
 
@@ -487,11 +487,11 @@ struct MWInputBar: View {
                 .padding(.vertical, MWSpacing.sm)
                 .background(
                     RoundedRectangle(cornerRadius: MWRadius.xl)
-                        .fill(MWColors.bgSurface)
+                        .fill(.ultraThinMaterial)
                         .overlay(
                             RoundedRectangle(cornerRadius: MWRadius.xl)
                                 .strokeBorder(
-                                    isFocused ? MWColors.accentCyan.opacity(0.3) : MWColors.glassBorder,
+                                    isFocused ? MWColors.accentCyan.opacity(0.3) : .white.opacity(0.1),
                                     lineWidth: 1
                                 )
                         )
@@ -536,10 +536,10 @@ struct MWInputBar: View {
         .padding(.vertical, MWSpacing.md)
         .background(
             Rectangle()
-                .fill(MWColors.glassBg)
+                .fill(.ultraThinMaterial)
                 .overlay(
                     Rectangle()
-                        .strokeBorder(MWColors.glassBorder, lineWidth: 0.5)
+                        .strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
                         .padding(.top, 0.5)
                 )
         )
@@ -688,7 +688,7 @@ struct MWErrorState: View {
                             .padding(.vertical, MWSpacing.md)
                             .background(
                                 Capsule()
-                                    .strokeBorder(MWColors.glassBorder, lineWidth: 1)
+                                    .strokeBorder(.white.opacity(0.15), lineWidth: 1)
                             )
                     }
                 }

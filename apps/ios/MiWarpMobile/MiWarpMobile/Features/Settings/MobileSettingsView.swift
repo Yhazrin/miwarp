@@ -61,7 +61,7 @@ struct MobileSettingsView: View {
             }
 
             Divider()
-                .background(MWColors.glassBorder)
+                .background(.white.opacity(0.1))
 
             HStack(spacing: MWSpacing.md) {
                 Button {
@@ -140,7 +140,7 @@ struct MobileSettingsView: View {
             }
 
             Divider()
-                .background(MWColors.glassBorder)
+                .background(.white.opacity(0.1))
 
             settingsButton(icon: "doc.on.doc", label: "Copy Debug Info") {
                 copyDebugInfo()

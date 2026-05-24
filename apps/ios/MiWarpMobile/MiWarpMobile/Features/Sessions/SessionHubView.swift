@@ -115,10 +115,10 @@ struct SessionHubView: View {
             .padding(.vertical, MWSpacing.lg)
             .background(
                 RoundedRectangle(cornerRadius: MWRadius.lg)
-                    .fill(MWColors.bgElevated)
+                    .fill(.ultraThinMaterial)
                     .overlay(
                         RoundedRectangle(cornerRadius: MWRadius.lg)
-                            .strokeBorder(MWColors.glassBorder, lineWidth: 0.5)
+                            .strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
                     )
             )
             .padding(.horizontal, MWSpacing.xl)
@@ -280,12 +280,12 @@ struct SessionHubView: View {
                 .background(
                     Capsule()
                         .fill(isActive ? MWColors.accentCyan.opacity(0.12) : MWColors.bgSurface)
-                        .overlay(
-                            Capsule()
-                                .strokeBorder(
-                                    isActive ? MWColors.accentCyan.opacity(0.3) : MWColors.glassBorder,
-                                    lineWidth: 0.5
-                                )
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder(
+                            isActive ? MWColors.accentCyan.opacity(0.3) : .white.opacity(0.1),
+                            lineWidth: 0.5
                         )
                 )
         }

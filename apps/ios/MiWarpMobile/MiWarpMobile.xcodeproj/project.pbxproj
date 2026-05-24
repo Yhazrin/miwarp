@@ -1,0 +1,514 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		04DB51B2A725C113B3A6EE29 /* ArtifactsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D86348B9DC8374F8A7B3688E /* ArtifactsView.swift */; };
+		18E246F86CCFC3D52E28E1DA /* MiWarpRPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87A3AF41B54A7D4AF4EF7B78 /* MiWarpRPC.swift */; };
+		18E3370AE5AE152C060EB950 /* MiWarpModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02342E23F233A1CF248129CF /* MiWarpModels.swift */; };
+		1A0B8BAEDB303A040B818DDC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 64526B69FA3F302F90E918A2 /* Assets.xcassets */; };
+		1AAB91C90865BBEFE731E609 /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0357B8FA940E87F3AFEE4019 /* QRScannerView.swift */; };
+		24908B86D77D42EB10C3DEF0 /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9EBC6E7E1C3A6687A1AC5BD /* AppRouter.swift */; };
+		31752E8113DC5B9B09E5B8D0 /* DiffPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F107680AD38109AD258F79 /* DiffPreviewView.swift */; };
+		3F6BFBDB959EC1C975CA3F05 /* MiWarpLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EF42EA4D95E49A3EE8DFCE5 /* MiWarpLogger.swift */; };
+		46C205483229F049CF7547B0 /* MobileSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BDC398FA44E521237508ED9 /* MobileSettingsView.swift */; };
+		532CCC78DC030F41D8724B45 /* RawEventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F6C0CCD921DD31844147DD1 /* RawEventView.swift */; };
+		65AA0F610CDB4B67B39B53C9 /* MWTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = D79C91C976F9F764AF38DA9E /* MWTypography.swift */; };
+		6791ED1049A4C99EC0895E03 /* ConnectionListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90961D2A1D3E576400FBA90D /* ConnectionListView.swift */; };
+		6F565ED315DFAAAD6CC80C6D /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0E65980CBFDCE0641A89EB6 /* ChatView.swift */; };
+		8946456184C3D6B8126E8EA1 /* MessageBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E75A871369C61901E50A56 /* MessageBubbleView.swift */; };
+		8C469F2748D6D72D5BEB4DF2 /* MWColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24865EBC18A08682F72F290F /* MWColors.swift */; };
+		9B288F274A622D202EA9133D /* SessionHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A5CFCDC3786BC4196BFD619 /* SessionHubView.swift */; };
+		A172FA18B2E5D055735D564B /* SessionCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 987255B12C719BFE7C7334E3 /* SessionCardView.swift */; };
+		A210B494EBB75AB16812621E /* MessageListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9476AE56F033A24CF340F5 /* MessageListView.swift */; };
+		A5BBE889D03AB2D6A4C7AD34 /* PairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3FAA7EA2B1B6F88F3FCE898 /* PairingView.swift */; };
+		C0A5C03FAD0BF00E36BCDB2E /* MiWarpMobileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C548D8CEFC934933FBECC65 /* MiWarpMobileApp.swift */; };
+		C96972A01DA3558985C1A234 /* MWTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48092D2C4044F54B928D3A0D /* MWTheme.swift */; };
+		DA3692C0666B9ADCAEE3784A /* SessionFiltersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 015D6770F2BF381E65357860 /* SessionFiltersView.swift */; };
+		DA9BDFA699E6C93BBB381595 /* MiWarpWebSocketClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74358DE064BFA91D37F88C20 /* MiWarpWebSocketClient.swift */; };
+		DFA039E9FFE6D381AA863AD2 /* MiWarpEventReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85BC39AF301E61AA2D7BDDF /* MiWarpEventReducer.swift */; };
+		E2B3A825971612D747C522A7 /* ToolCallCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E481018763FF42586EAB656 /* ToolCallCardView.swift */; };
+		F0FBF592BF4ED3A133FB8A3A /* MWComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E7E49A3B0F2853F7255337 /* MWComponents.swift */; };
+		F4EC3C0A42C3DA0D397A2F3F /* MiWarpKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9737E58B096F2A6DFBA00DFA /* MiWarpKeychain.swift */; };
+		FBAA055780AF798D3BB80B6B /* ApprovalCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF2DF97B4D4DB5A75EBEB6AD /* ApprovalCardView.swift */; };
+		FCCCC4792AEF4E33B3F92E1D /* MiWarpConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A0B57EF75232E7CBDA97B0D /* MiWarpConnectionStore.swift */; };
+		FE7765B8799D45D7EF4E3626 /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096DDAC3E0FF81650A464E57 /* ChatInputBar.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		015D6770F2BF381E65357860 /* SessionFiltersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionFiltersView.swift; sourceTree = "<group>"; };
+		02342E23F233A1CF248129CF /* MiWarpModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpModels.swift; sourceTree = "<group>"; };
+		0357B8FA940E87F3AFEE4019 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
+		096DDAC3E0FF81650A464E57 /* ChatInputBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputBar.swift; sourceTree = "<group>"; };
+		0C548D8CEFC934933FBECC65 /* MiWarpMobileApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpMobileApp.swift; sourceTree = "<group>"; };
+		1BDC398FA44E521237508ED9 /* MobileSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileSettingsView.swift; sourceTree = "<group>"; };
+		218378B6F9F53E2E224481E7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		24865EBC18A08682F72F290F /* MWColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MWColors.swift; sourceTree = "<group>"; };
+		3EF42EA4D95E49A3EE8DFCE5 /* MiWarpLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpLogger.swift; sourceTree = "<group>"; };
+		3F6C0CCD921DD31844147DD1 /* RawEventView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RawEventView.swift; sourceTree = "<group>"; };
+		48092D2C4044F54B928D3A0D /* MWTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MWTheme.swift; sourceTree = "<group>"; };
+		4F9476AE56F033A24CF340F5 /* MessageListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageListView.swift; sourceTree = "<group>"; };
+		64526B69FA3F302F90E918A2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		69E7E49A3B0F2853F7255337 /* MWComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MWComponents.swift; sourceTree = "<group>"; };
+		6A0B57EF75232E7CBDA97B0D /* MiWarpConnectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpConnectionStore.swift; sourceTree = "<group>"; };
+		6A5CFCDC3786BC4196BFD619 /* SessionHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionHubView.swift; sourceTree = "<group>"; };
+		6E481018763FF42586EAB656 /* ToolCallCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolCallCardView.swift; sourceTree = "<group>"; };
+		74358DE064BFA91D37F88C20 /* MiWarpWebSocketClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpWebSocketClient.swift; sourceTree = "<group>"; };
+		87A3AF41B54A7D4AF4EF7B78 /* MiWarpRPC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpRPC.swift; sourceTree = "<group>"; };
+		90961D2A1D3E576400FBA90D /* ConnectionListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionListView.swift; sourceTree = "<group>"; };
+		9737E58B096F2A6DFBA00DFA /* MiWarpKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpKeychain.swift; sourceTree = "<group>"; };
+		987255B12C719BFE7C7334E3 /* SessionCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardView.swift; sourceTree = "<group>"; };
+		A9E75A871369C61901E50A56 /* MessageBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageBubbleView.swift; sourceTree = "<group>"; };
+		B3FAA7EA2B1B6F88F3FCE898 /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
+		B85BC39AF301E61AA2D7BDDF /* MiWarpEventReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpEventReducer.swift; sourceTree = "<group>"; };
+		B9EBC6E7E1C3A6687A1AC5BD /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
+		C0E65980CBFDCE0641A89EB6 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		C664FD00C805F710AB2CB298 /* MiWarp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MiWarp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CF2DF97B4D4DB5A75EBEB6AD /* ApprovalCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalCardView.swift; sourceTree = "<group>"; };
+		D79C91C976F9F764AF38DA9E /* MWTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MWTypography.swift; sourceTree = "<group>"; };
+		D86348B9DC8374F8A7B3688E /* ArtifactsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactsView.swift; sourceTree = "<group>"; };
+		F0F107680AD38109AD258F79 /* DiffPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffPreviewView.swift; sourceTree = "<group>"; };
+		F56164434961DBAFF3086CE8 /* MiWarpMobile.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MiWarpMobile.entitlements; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		06B3F40200C9628F9C51930E /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				6A0B57EF75232E7CBDA97B0D /* MiWarpConnectionStore.swift */,
+				B85BC39AF301E61AA2D7BDDF /* MiWarpEventReducer.swift */,
+				9737E58B096F2A6DFBA00DFA /* MiWarpKeychain.swift */,
+				3EF42EA4D95E49A3EE8DFCE5 /* MiWarpLogger.swift */,
+				02342E23F233A1CF248129CF /* MiWarpModels.swift */,
+				87A3AF41B54A7D4AF4EF7B78 /* MiWarpRPC.swift */,
+				74358DE064BFA91D37F88C20 /* MiWarpWebSocketClient.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		1DB9B8F84F7FDA2C3BF3FB4E /* Artifacts */ = {
+			isa = PBXGroup;
+			children = (
+				D86348B9DC8374F8A7B3688E /* ArtifactsView.swift */,
+				F0F107680AD38109AD258F79 /* DiffPreviewView.swift */,
+			);
+			path = Artifacts;
+			sourceTree = "<group>";
+		};
+		21B9443E7ADA0E66BC51EC45 = {
+			isa = PBXGroup;
+			children = (
+				22BD8ACE83181FFD864F28B1 /* MiWarpMobile */,
+				DEECF2C198EF49DF81D17E61 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		22BD8ACE83181FFD864F28B1 /* MiWarpMobile */ = {
+			isa = PBXGroup;
+			children = (
+				3F298A52E1516DD55DDBFBB1 /* App */,
+				06B3F40200C9628F9C51930E /* Core */,
+				DC54AFBAC9418EB17B2FAEE5 /* DesignSystem */,
+				B8B851F80CFCF7DD00AD8922 /* Features */,
+				FFF295E37EFF54B540E122AE /* Resources */,
+			);
+			path = MiWarpMobile;
+			sourceTree = "<group>";
+		};
+		3F298A52E1516DD55DDBFBB1 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				B9EBC6E7E1C3A6687A1AC5BD /* AppRouter.swift */,
+				0C548D8CEFC934933FBECC65 /* MiWarpMobileApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		437C4B79688DD86A7C7CCE5D /* Pairing */ = {
+			isa = PBXGroup;
+			children = (
+				90961D2A1D3E576400FBA90D /* ConnectionListView.swift */,
+				B3FAA7EA2B1B6F88F3FCE898 /* PairingView.swift */,
+				0357B8FA940E87F3AFEE4019 /* QRScannerView.swift */,
+			);
+			path = Pairing;
+			sourceTree = "<group>";
+		};
+		4E8627887DB2A06C5DDC1C58 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				1BDC398FA44E521237508ED9 /* MobileSettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		6A4E33DD8A32F84C3E4B0112 /* Sessions */ = {
+			isa = PBXGroup;
+			children = (
+				987255B12C719BFE7C7334E3 /* SessionCardView.swift */,
+				015D6770F2BF381E65357860 /* SessionFiltersView.swift */,
+				6A5CFCDC3786BC4196BFD619 /* SessionHubView.swift */,
+			);
+			path = Sessions;
+			sourceTree = "<group>";
+		};
+		90FF8A3EAF6BDC69F7056862 /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				CF2DF97B4D4DB5A75EBEB6AD /* ApprovalCardView.swift */,
+				096DDAC3E0FF81650A464E57 /* ChatInputBar.swift */,
+				C0E65980CBFDCE0641A89EB6 /* ChatView.swift */,
+				A9E75A871369C61901E50A56 /* MessageBubbleView.swift */,
+				4F9476AE56F033A24CF340F5 /* MessageListView.swift */,
+				3F6C0CCD921DD31844147DD1 /* RawEventView.swift */,
+				6E481018763FF42586EAB656 /* ToolCallCardView.swift */,
+			);
+			path = Chat;
+			sourceTree = "<group>";
+		};
+		B8B851F80CFCF7DD00AD8922 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				1DB9B8F84F7FDA2C3BF3FB4E /* Artifacts */,
+				90FF8A3EAF6BDC69F7056862 /* Chat */,
+				437C4B79688DD86A7C7CCE5D /* Pairing */,
+				6A4E33DD8A32F84C3E4B0112 /* Sessions */,
+				4E8627887DB2A06C5DDC1C58 /* Settings */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		DC54AFBAC9418EB17B2FAEE5 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				24865EBC18A08682F72F290F /* MWColors.swift */,
+				69E7E49A3B0F2853F7255337 /* MWComponents.swift */,
+				48092D2C4044F54B928D3A0D /* MWTheme.swift */,
+				D79C91C976F9F764AF38DA9E /* MWTypography.swift */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		DEECF2C198EF49DF81D17E61 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C664FD00C805F710AB2CB298 /* MiWarp.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		FFF295E37EFF54B540E122AE /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				64526B69FA3F302F90E918A2 /* Assets.xcassets */,
+				218378B6F9F53E2E224481E7 /* Info.plist */,
+				F56164434961DBAFF3086CE8 /* MiWarpMobile.entitlements */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F8E7E71355059B3247A86C55 /* MiWarpMobile */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1530B67D58F823A1958C4553 /* Build configuration list for PBXNativeTarget "MiWarpMobile" */;
+			buildPhases = (
+				9C8100177FC1DD16EAC902DC /* Sources */,
+				546F474D9113DEF931D8E907 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MiWarpMobile;
+			packageProductDependencies = (
+			);
+			productName = MiWarpMobile;
+			productReference = C664FD00C805F710AB2CB298 /* MiWarp.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		11F491C32C81F5DD954CCFEB /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					F8E7E71355059B3247A86C55 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 50671168109FA766CF2E8E13 /* Build configuration list for PBXProject "MiWarpMobile" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 21B9443E7ADA0E66BC51EC45;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = DEECF2C198EF49DF81D17E61 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F8E7E71355059B3247A86C55 /* MiWarpMobile */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		546F474D9113DEF931D8E907 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1A0B8BAEDB303A040B818DDC /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		9C8100177FC1DD16EAC902DC /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				24908B86D77D42EB10C3DEF0 /* AppRouter.swift in Sources */,
+				FBAA055780AF798D3BB80B6B /* ApprovalCardView.swift in Sources */,
+				04DB51B2A725C113B3A6EE29 /* ArtifactsView.swift in Sources */,
+				FE7765B8799D45D7EF4E3626 /* ChatInputBar.swift in Sources */,
+				6F565ED315DFAAAD6CC80C6D /* ChatView.swift in Sources */,
+				6791ED1049A4C99EC0895E03 /* ConnectionListView.swift in Sources */,
+				31752E8113DC5B9B09E5B8D0 /* DiffPreviewView.swift in Sources */,
+				8C469F2748D6D72D5BEB4DF2 /* MWColors.swift in Sources */,
+				F0FBF592BF4ED3A133FB8A3A /* MWComponents.swift in Sources */,
+				C96972A01DA3558985C1A234 /* MWTheme.swift in Sources */,
+				65AA0F610CDB4B67B39B53C9 /* MWTypography.swift in Sources */,
+				8946456184C3D6B8126E8EA1 /* MessageBubbleView.swift in Sources */,
+				A210B494EBB75AB16812621E /* MessageListView.swift in Sources */,
+				FCCCC4792AEF4E33B3F92E1D /* MiWarpConnectionStore.swift in Sources */,
+				DFA039E9FFE6D381AA863AD2 /* MiWarpEventReducer.swift in Sources */,
+				F4EC3C0A42C3DA0D397A2F3F /* MiWarpKeychain.swift in Sources */,
+				3F6BFBDB959EC1C975CA3F05 /* MiWarpLogger.swift in Sources */,
+				C0A5C03FAD0BF00E36BCDB2E /* MiWarpMobileApp.swift in Sources */,
+				18E3370AE5AE152C060EB950 /* MiWarpModels.swift in Sources */,
+				18E246F86CCFC3D52E28E1DA /* MiWarpRPC.swift in Sources */,
+				DA9BDFA699E6C93BBB381595 /* MiWarpWebSocketClient.swift in Sources */,
+				46C205483229F049CF7547B0 /* MobileSettingsView.swift in Sources */,
+				A5BBE889D03AB2D6A4C7AD34 /* PairingView.swift in Sources */,
+				1AAB91C90865BBEFE731E609 /* QRScannerView.swift in Sources */,
+				532CCC78DC030F41D8724B45 /* RawEventView.swift in Sources */,
+				A172FA18B2E5D055735D564B /* SessionCardView.swift in Sources */,
+				DA3692C0666B9ADCAEE3784A /* SessionFiltersView.swift in Sources */,
+				9B288F274A622D202EA9133D /* SessionHubView.swift in Sources */,
+				E2B3A825971612D747C522A7 /* ToolCallCardView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		473442DBD2602487C3B624A1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = MiWarpMobile/Resources/MiWarpMobile.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 5CQ49A8XPZ;
+				INFOPLIST_FILE = MiWarpMobile/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.miwarp.mobile;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		AE0E2C4A305635FE2ADD4577 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = MiWarpMobile/Resources/MiWarpMobile.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = 5CQ49A8XPZ;
+				INFOPLIST_FILE = MiWarpMobile/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.miwarp.mobile;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B462DD30483561ABA5D9103B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_FILE = MiWarpMobile/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = MiWarp;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B8D4FE114EDB53A1B954E97B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_FILE = MiWarpMobile/Resources/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = MiWarp;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1530B67D58F823A1958C4553 /* Build configuration list for PBXNativeTarget "MiWarpMobile" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AE0E2C4A305635FE2ADD4577 /* Debug */,
+				473442DBD2602487C3B624A1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		50671168109FA766CF2E8E13 /* Build configuration list for PBXProject "MiWarpMobile" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B462DD30483561ABA5D9103B /* Debug */,
+				B8D4FE114EDB53A1B954E97B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 11F491C32C81F5DD954CCFEB /* Project object */;
+}

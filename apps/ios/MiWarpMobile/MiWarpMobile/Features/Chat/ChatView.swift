@@ -161,10 +161,10 @@ struct ChatView: View {
         .padding(.vertical, MWSpacing.sm)
         .background(
             Rectangle()
-                .fill(MWColors.bgDeep)
+                .fill(.ultraThinMaterial)
                 .overlay(
                     Rectangle()
-                        .fill(MWColors.glassBorder)
+                        .fill(.white.opacity(0.1))
                         .frame(height: 0.5),
                     alignment: .bottom
                 )

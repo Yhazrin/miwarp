@@ -7,7 +7,7 @@ struct MiWarpMobileApp: App {
 
     var body: some Scene {
         WindowGroup {
-            AppRouter()
+            RootView(theme: theme, connectionStore: connectionStore)
                 .environmentObject(connectionStore)
                 .environmentObject(theme)
                 .preferredColorScheme(theme.colorScheme)
@@ -48,5 +48,15 @@ struct MiWarpMobileApp: App {
         } catch {
             MiWarpLogger.shared.error("Deep link connection failed: \(error.localizedDescription)")
         }
+    }
+}
+
+struct RootView: View {
+    @ObservedObject var theme: MWTheme
+    @ObservedObject var connectionStore: MiWarpConnectionStore
+
+    var body: some View {
+        AppRouter()
+            .preferredColorScheme(theme.colorScheme)
     }
 }
