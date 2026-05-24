@@ -510,10 +510,18 @@ extension MiWarpWebSocketClient: URLSessionWebSocketDelegate {
                     didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
                     reason: Data?) {
         guard webSocketTask === self.webSocketTask else { return }
-        logger.wsInfo("WebSocket closed: \(closeCode.rawValue)")
-        if !isIntentionalClose {
-            scheduleReconnect(generation: connectionGeneration)
+        let reasonStr = reason.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+        logger.wsInfo("WebSocket closed: \(closeCode.rawValue) reason=\(reasonStr)")
+        guard !isIntentionalClose else { return }
+
+        // 4401 = token rotated / session expired / token version mismatch
+        // Reconnecting won't help — surface auth error immediately
+        if closeCode.rawValue == 4401 {
+            connectionState = .authFailed(reason: "Token expired or rotated. Please reconnect from the desktop.")
+            return
         }
+
+        scheduleReconnect(generation: connectionGeneration)
     }
 
     func urlSession(_ session: URLSession,
