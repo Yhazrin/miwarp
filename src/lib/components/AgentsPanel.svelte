@@ -110,8 +110,9 @@
     }
   }
 
-  // Auto-load when component becomes visible
+  // Auto-load when component becomes visible or cwd changes
   $effect(() => {
+    void projectCwd; // establish reactive tracking for cwd prop
     void loadAgents();
   });
 

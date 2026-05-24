@@ -2,7 +2,8 @@
   import { onMount, getContext } from "svelte";
   import { page } from "$app/stores";
   import * as api from "$lib/api";
-  import { loadCliInfo, KeybindingStore } from "$lib/stores";
+  import { loadCliInfo } from "$lib/stores";
+  import type { KeybindingStore } from "$lib/stores";
   import type {
     UserSettings,
     CliConfigSettingDef,

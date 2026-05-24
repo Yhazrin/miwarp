@@ -565,11 +565,19 @@
     global: false,
   });
 
-  let memoryScopeProject = $derived(memoryCandidates.filter((c) => c.scope === "project"));
-  let memoryScopeGlobal = $derived(memoryCandidates.filter((c) => c.scope === "global"));
-  let memoryScopeMemory = $derived(memoryCandidates.filter((c) => c.scope === "memory"));
-  // Merged project + auto memory for flat folder view
-  let memoryScopeFolder = $derived([...memoryScopeProject, ...memoryScopeMemory]);
+  let _partitioned = $derived.by(() => {
+    const project: typeof memoryCandidates = [];
+    const global: typeof memoryCandidates = [];
+    const memory: typeof memoryCandidates = [];
+    for (const c of memoryCandidates) {
+      if (c.scope === "project") project.push(c);
+      else if (c.scope === "global") global.push(c);
+      else if (c.scope === "memory") memory.push(c);
+    }
+    return { project, global, memory, folder: [...project, ...memory] };
+  });
+  let memoryScopeGlobal = $derived(_partitioned.global);
+  let memoryScopeFolder = $derived(_partitioned.folder);
 
   let memoryCandidateSeq = 0;
 

@@ -13,8 +13,16 @@
       : scheduledTasksStore.tasks,
   );
 
-  let filteredActiveTasks = $derived(filteredTasks.filter((t) => t.enabled));
-  let filteredInactiveTasks = $derived(filteredTasks.filter((t) => !t.enabled));
+  let _partitioned = $derived.by(() => {
+    const active: typeof filteredTasks = [];
+    const inactive: typeof filteredTasks = [];
+    for (const t of filteredTasks) {
+      (t.enabled ? active : inactive).push(t);
+    }
+    return { active, inactive };
+  });
+  let filteredActiveTasks = $derived(_partitioned.active);
+  let filteredInactiveTasks = $derived(_partitioned.inactive);
 
   function handleCreateNew() {
     scheduledTasksStore.editingTask = null;
@@ -32,8 +40,9 @@
     scheduledTasksStore.selectedTaskId = task.id;
   }
 
-  // Load tasks on mount
+  // Load tasks on mount or when cwd changes
   $effect(() => {
+    void cwd; // establish reactive tracking for cwd prop
     scheduledTasksStore.loadTasks();
   });
 </script>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { getTransport } from "$lib/transport";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
@@ -74,7 +75,8 @@
 
   // ── Load sessions on mount ──
 
-  $effect(() => {
+  // Load sessions on mount (cwd is a local const, not reactive)
+  onMount(() => {
     discoverSessions();
   });
 

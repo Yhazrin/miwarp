@@ -232,19 +232,15 @@
     tool.input?.command ? colorizeCommand(tool.input.command as string) : "",
   );
 
+  // Stripped plain text — computed once, reused by terminalPlainText
+  let stdoutStripped = $derived(bashResult?.stdout ? stripAnsi(bashResult.stdout) : "");
+  let stderrStripped = $derived(bashResult?.stderr ? stripAnsi(bashResult.stderr) : "");
+  let outputStripped = $derived(outputText ? stripAnsi(outputText) : "");
+
   // Unified plain text source for Bash (stripped of ANSI codes)
-  let terminalPlainText = $derived.by(() => {
-    let raw: string;
-    if (bashResult) {
-      const parts: string[] = [];
-      if (bashResult.stdout) parts.push(bashResult.stdout);
-      if (bashResult.stderr) parts.push(bashResult.stderr);
-      raw = parts.join("\n");
-    } else {
-      raw = outputText;
-    }
-    return stripAnsi(raw);
-  });
+  let terminalPlainText = $derived(
+    bashResult ? [stdoutStripped, stderrStripped].filter(Boolean).join("\n") : outputStripped,
+  );
 
   const ANSI_SIZE_LIMIT = 200_000;
 
@@ -278,11 +274,6 @@
     if (bashResult || tool.status === "running") return null;
     return safeAnsiHtml(outputText, "fallback");
   });
-
-  // Stripped plain text fallbacks (for running / >200KB degradation)
-  let stdoutStripped = $derived(bashResult?.stdout ? stripAnsi(bashResult.stdout) : "");
-  let stderrStripped = $derived(bashResult?.stderr ? stripAnsi(bashResult.stderr) : "");
-  let outputStripped = $derived(outputText ? stripAnsi(outputText) : "");
 
   // Structured Edit result from tool_use_result (structuredPatch)
   interface PatchHunk {
