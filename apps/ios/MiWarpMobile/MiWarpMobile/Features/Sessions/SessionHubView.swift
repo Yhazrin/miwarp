@@ -43,21 +43,15 @@ struct SessionHubView: View {
             }
             .background(theme.bgDeepest)
             .navigationTitle("Sessions")
-            .searchable(text: $searchText, prompt: "Search sessions...")
+            .searchable(text: $searchText, prompt: "Search...")
             .toolbar {
                 ToolbarItemGroup(placement: .primaryAction) {
                     if store.isConnected {
                         Button {
-                            showFilters = true
-                        } label: {
-                            Image(systemName: filters.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
-                                .foregroundColor(filters.isActive ? MWColors.accentCyan : MWColors.textSecondary)
-                        }
-
-                        Button {
                             Task { await loadRuns() }
                         } label: {
                             Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 15, weight: .medium))
                                 .foregroundColor(MWColors.textSecondary)
                         }
                     }
@@ -174,7 +168,7 @@ struct SessionHubView: View {
 
     private var sessionList: some View {
         VStack(spacing: 0) {
-            // Connection status header
+            // Connection status header — compact one-liner
             connectionStatusHeader
 
             // Filter chips
@@ -202,16 +196,18 @@ struct SessionHubView: View {
                             SessionCardView(run: run)
                         }
                         .listRowInsets(EdgeInsets(
-                            top: MWSpacing.sm,
-                            leading: MWSpacing.lg,
-                            bottom: MWSpacing.sm,
-                            trailing: MWSpacing.lg
+                            top: 3,
+                            leading: MWSpacing.md,
+                            bottom: 3,
+                            trailing: MWSpacing.md
                         ))
-                        .listRowBackground(MWColors.bgDeepest)
+                        .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                     }
                 }
                 .listStyle(.plain)
+                .background(theme.bgDeepest)
+                .padding(.bottom, 80) // Safe area for dock
                 .navigationDestination(for: MiWarpRun.self) { run in
                     ChatView(runId: run.id, runTitle: run.displayTitle)
                 }
@@ -222,8 +218,8 @@ struct SessionHubView: View {
     private var connectionStatusHeader: some View {
         HStack(spacing: MWSpacing.sm) {
             Circle()
-                .fill(store.isConnected ? MWColors.statusSuccess : MWColors.statusError)
-                .frame(width: 6, height: 6)
+                .fill(store.isConnected ? MWColors.statusSuccessLowSat : MWColors.statusError)
+                .frame(width: 5, height: 5)
 
             Text(store.isConnected ? "Connected" : "Disconnected")
                 .font(MWTypography.caption())
@@ -232,7 +228,7 @@ struct SessionHubView: View {
             if let conn = store.activeConnection {
                 Text("·")
                     .foregroundColor(MWColors.textTertiary)
-                Text(conn.name)
+                Text(conn.host)
                     .font(MWTypography.monoCaption())
                     .foregroundColor(MWColors.textTertiary)
             }
@@ -243,53 +239,46 @@ struct SessionHubView: View {
                 .font(MWTypography.caption())
                 .foregroundColor(MWColors.textTertiary)
         }
-        .padding(.horizontal, MWSpacing.lg)
-        .padding(.vertical, MWSpacing.sm)
-        .background(theme.bgDeep)
+        .padding(.horizontal, MWSpacing.md)
+        .padding(.vertical, MWSpacing.xs)
+        .background(MWColors.bgDeepest)
     }
 
     private var filterChipsRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: MWSpacing.sm) {
+            HStack(spacing: MWSpacing.xs) {
                 filterChip(title: "All", isActive: filters.status == nil) {
                     filters.status = nil
                 }
-                filterChip(title: "Active", isActive: filters.status == .running) {
+                filterChip(title: "Running", isActive: filters.status == .running) {
                     filters.status = filters.status == .running ? nil : .running
                 }
-                filterChip(title: "Idle", isActive: filters.status == .idle) {
-                    filters.status = filters.status == .idle ? nil : .idle
-                }
-                filterChip(title: "Completed", isActive: filters.status == .completed) {
-                    filters.status = filters.status == .completed ? nil : .completed
+                filterChip(title: "Approval", isActive: filters.status == .waitingApproval) {
+                    filters.status = filters.status == .waitingApproval ? nil : .waitingApproval
                 }
                 filterChip(title: "Failed", isActive: filters.status == .failed) {
                     filters.status = filters.status == .failed ? nil : .failed
                 }
+                filterChip(title: "Recent", isActive: filters.status == .completed) {
+                    filters.status = filters.status == .completed ? nil : .completed
+                }
             }
-            .padding(.horizontal, MWSpacing.lg)
-            .padding(.vertical, MWSpacing.sm)
+            .padding(.horizontal, MWSpacing.md)
+            .padding(.vertical, MWSpacing.xs)
         }
-        .background(theme.bgDeepest)
+        .background(MWColors.bgDeepest)
     }
 
     private func filterChip(title: String, isActive: Bool, onTap: @escaping () -> Void) -> some View {
         Button(action: onTap) {
             Text(title)
                 .font(MWTypography.caption())
-                            .foregroundColor(isActive ? MWColors.tabActive : MWColors.textTertiary)
-                .padding(.horizontal, MWSpacing.md)
-                .padding(.vertical, MWSpacing.xs)
+                .foregroundColor(isActive ? MWColors.tabActive : MWColors.textTertiary)
+                .padding(.horizontal, MWSpacing.sm)
+                .padding(.vertical, 4)
                 .background(
                     Capsule()
-                        .fill(isActive ? MWColors.tabActive.opacity(0.12) : MWColors.bgSurface)
-                )
-                .overlay(
-                    Capsule()
-                        .strokeBorder(
-                            isActive ? MWColors.tabActive.opacity(0.3) : MWColors.divider,
-                            lineWidth: 0.5
-                        )
+                        .fill(isActive ? MWColors.tabActive.opacity(0.10) : Color.clear)
                 )
         }
         .buttonStyle(.plain)

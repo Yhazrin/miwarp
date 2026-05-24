@@ -137,6 +137,8 @@ struct MWThemeTokens {
     let statusWarning: Color
     let statusError: Color
     let statusApproval: Color
+    let statusStopped: Color
+    let statusSuccessLowSat: Color
     let tabActive: Color
     let tabInactive: Color
     let inputBg: Color
@@ -206,6 +208,8 @@ enum MWColors {
     static var statusPending: Color { current.statusPending }
     static var statusIdle: Color { current.statusIdle }
     static var statusApproval: Color { current.statusApproval }
+    static var statusStopped: Color { current.statusStopped }
+    static var statusSuccessLowSat: Color { current.statusSuccessLowSat }
     static var glowCyan: Color { current.glow }
     static var glowRunning: Color { current.statusRunning.opacity(0.24) }
     static var glowApproval: Color { current.statusApproval.opacity(0.22) }
@@ -230,7 +234,7 @@ enum MWColors {
         case .waitingApproval: return statusWarning
         case .completed: return statusDone
         case .failed: return statusFailed
-        case .stopped: return statusError
+        case .stopped: return statusStopped
         }
     }
 
@@ -238,12 +242,12 @@ enum MWColors {
 
     private static let defaultMiWarp = MWThemePair(
         light: MWThemeTokens(
-            bgDeepest: Color(hex: 0xF6F8FC),
+            bgDeepest: Color(hex: 0xF8F8FA),
             bgBase: Color(hex: 0xFFFFFF),
-            bgElevated: Color(hex: 0xEEF3F8),
-            bgSurface: Color(hex: 0xE8EEF5),
-            glassBg: Color(hex: 0xF4F8FC, opacity: 0.86),
-            glassBorder: Color(hex: 0x7893AD, opacity: 0.26),
+            bgElevated: Color(hex: 0xF2F4F8),
+            bgSurface: Color(hex: 0xECEEF2),
+            glassBg: Color(hex: 0xFAFAFC, opacity: 0.92),
+            glassBorder: Color(hex: 0xC8D0DC, opacity: 0.20),
             textPrimary: Color(hex: 0x142033),
             textSecondary: Color(hex: 0x4F6175),
             textTertiary: Color(hex: 0x78879A),
@@ -255,11 +259,13 @@ enum MWColors {
             statusWarning: Color(hex: 0xB7791F),
             statusError: Color(hex: 0xDC2626),
             statusApproval: Color(hex: 0xB7791F),
+            statusStopped: Color(hex: 0x9B7280),
+            statusSuccessLowSat: Color(hex: 0x34A853),
             tabActive: Color(hex: 0x0891B2),
             tabInactive: Color(hex: 0x78879A),
             inputBg: Color(hex: 0xF4F8FC, opacity: 0.88),
-            cardBg: Color(hex: 0xF8FBFE, opacity: 0.86),
-            divider: Color(hex: 0x7A8EA4, opacity: 0.20),
+            cardBg: Color(hex: 0xFDFDFF, opacity: 0.95),
+            divider: Color(hex: 0x7A8EA4, opacity: 0.12),
             glow: Color(hex: 0x22D3EE, opacity: 0.20)
         ),
         dark: MWThemeTokens(
@@ -280,6 +286,8 @@ enum MWColors {
             statusWarning: Color(hue: 38.0 / 360.0, saturation: 0.80, lightness: 0.55),
             statusError: Color(hue: 0, saturation: 0.72, lightness: 0.60),
             statusApproval: Color(hue: 38.0 / 360.0, saturation: 0.80, lightness: 0.55),
+            statusStopped: Color(hue: 0, saturation: 0.30, lightness: 0.55),
+            statusSuccessLowSat: Color(hue: 152.0 / 360.0, saturation: 0.40, lightness: 0.50),
             tabActive: Color(hex: 0x22D3EE),
             tabInactive: Color(hue: 220.0 / 360.0, saturation: 0.10, lightness: 0.42),
             inputBg: Color(hue: 220.0 / 360.0, saturation: 0.18, lightness: 0.11, opacity: 0.82),
@@ -308,6 +316,8 @@ enum MWColors {
             statusWarning: Color(hex: 0xA06512),
             statusError: Color(hex: 0xD32648),
             statusApproval: Color(hex: 0xE6397C),
+            statusStopped: Color(hex: 0xA06878),
+            statusSuccessLowSat: Color(hex: 0x34A853),
             tabActive: Color(hex: 0xB9205A),
             tabInactive: Color(hex: 0x8A6E7A),
             inputBg: Color(hex: 0xFFF8FA, opacity: 0.88),
@@ -333,6 +343,8 @@ enum MWColors {
             statusWarning: Color(hex: 0xFFB85C),
             statusError: Color(hex: 0xFF5A72),
             statusApproval: Color(hex: 0xFF7AAD),
+            statusStopped: Color(hex: 0x8F7480),
+            statusSuccessLowSat: Color(hex: 0x41D6A2),
             tabActive: Color(hex: 0xE6397C),
             tabInactive: Color(hex: 0x8F7480),
             inputBg: Color(hex: 0x17171A, opacity: 0.84),
@@ -361,6 +373,8 @@ enum MWColors {
             statusWarning: Color(hex: 0x9B681A),
             statusError: Color(hex: 0xC9344D),
             statusApproval: Color(hex: 0x6A7EDB),
+            statusStopped: Color(hex: 0x7A7F90),
+            statusSuccessLowSat: Color(hex: 0x34A853),
             tabActive: Color(hex: 0x122E8A),
             tabInactive: Color(hex: 0x7A7F90),
             inputBg: Color(hex: 0xFFFBF7, opacity: 0.88),
@@ -386,6 +400,8 @@ enum MWColors {
             statusWarning: Color(hex: 0xF8D18A),
             statusError: Color(hex: 0xFF7488),
             statusApproval: Color(hex: 0xF5EFEA),
+            statusStopped: Color(hex: 0x8EA0E0),
+            statusSuccessLowSat: Color(hex: 0x61D7B1),
             tabActive: Color(hex: 0xF5EFEA),
             tabInactive: Color(hex: 0x8EA0E0),
             inputBg: Color(hex: 0x0B1E5B, opacity: 0.78),
@@ -414,6 +430,8 @@ enum MWColors {
             statusWarning: Color(hex: 0x8C7600),
             statusError: Color(hex: 0xD1324D),
             statusApproval: Color(hex: 0x9F82FD),
+            statusStopped: Color(hex: 0x8A82A2),
+            statusSuccessLowSat: Color(hex: 0x34A853),
             tabActive: Color(hex: 0x6E50D8),
             tabInactive: Color(hex: 0x8A82A2),
             inputBg: Color(hex: 0xFFFDEB, opacity: 0.88),
@@ -439,6 +457,8 @@ enum MWColors {
             statusWarning: Color(hex: 0xFBEA03),
             statusError: Color(hex: 0xFF667B),
             statusApproval: Color(hex: 0xFBEA03),
+            statusStopped: Color(hex: 0x9B8FCA),
+            statusSuccessLowSat: Color(hex: 0xB9F25A),
             tabActive: Color(hex: 0xFBEA03),
             tabInactive: Color(hex: 0x9B8FCA),
             inputBg: Color(hex: 0x1B1236, opacity: 0.82),
@@ -467,6 +487,8 @@ enum MWColors {
             statusWarning: Color(hex: 0xA66718),
             statusError: Color(hex: 0xE72D48),
             statusApproval: Color(hex: 0xE72D48),
+            statusStopped: Color(hex: 0x9B7780),
+            statusSuccessLowSat: Color(hex: 0x34A853),
             tabActive: Color(hex: 0xC51F38),
             tabInactive: Color(hex: 0x9B7780),
             inputBg: Color(hex: 0xFFF7F8, opacity: 0.88),
@@ -492,6 +514,8 @@ enum MWColors {
             statusWarning: Color(hex: 0xFFC46D),
             statusError: Color(hex: 0xFF6478),
             statusApproval: Color(hex: 0xF1DDDF),
+            statusStopped: Color(hex: 0xB47D86),
+            statusSuccessLowSat: Color(hex: 0x5AD5A8),
             tabActive: Color(hex: 0xF1DDDF),
             tabInactive: Color(hex: 0xB47D86),
             inputBg: Color(hex: 0x2A080F, opacity: 0.82),
@@ -520,6 +544,8 @@ enum MWColors {
             statusWarning: Color(hex: 0x8A6A00),
             statusError: Color(hex: 0xD3354F),
             statusApproval: Color(hex: 0x9F82FD),
+            statusStopped: Color(hex: 0x878098),
+            statusSuccessLowSat: Color(hex: 0x34A853),
             tabActive: Color(hex: 0x6D4FDA),
             tabInactive: Color(hex: 0x878098),
             inputBg: Color(hex: 0xFBFFF2, opacity: 0.88),
@@ -545,6 +571,8 @@ enum MWColors {
             statusWarning: Color(hex: 0xF6D86B),
             statusError: Color(hex: 0xFF6378),
             statusApproval: Color(hex: 0xBCFE1A),
+            statusStopped: Color(hex: 0x948BBE),
+            statusSuccessLowSat: Color(hex: 0xBCFE1A),
             tabActive: Color(hex: 0xBCFE1A),
             tabInactive: Color(hex: 0x948BBE),
             inputBg: Color(hex: 0x181031, opacity: 0.82),

@@ -183,21 +183,28 @@ struct MWGlassCard<Content: View>: View {
 struct MWStatusPill: View {
     let status: RunStatus
 
-    var body: some View {
-        HStack(spacing: MWSpacing.xs) {
-            Circle()
-                .fill(MWColors.color(for: status))
-                .frame(width: 6, height: 6)
-            Text(status.displayLabel)
-                .font(MWTypography.caption())
-                .foregroundColor(MWColors.textPrimary)
+    private var statusColor: Color {
+        switch status {
+        case .running: return MWColors.statusRunning
+        case .waitingApproval: return MWColors.statusApproval
+        case .failed: return MWColors.statusError
+        case .completed: return MWColors.statusSuccess
+        case .pending: return MWColors.statusPending
+        case .idle: return MWColors.statusIdle
+        case .stopped: return MWColors.statusStopped
         }
-        .padding(.horizontal, MWSpacing.sm)
-        .padding(.vertical, MWSpacing.xs)
-        .background(
-            Capsule()
-                .fill(MWColors.color(for: status).opacity(0.15))
-        )
+    }
+
+    var body: some View {
+        Text(status.displayLabel)
+            .font(MWTypography.caption())
+            .foregroundColor(statusColor)
+            .padding(.horizontal, MWSpacing.sm)
+            .padding(.vertical, 3)
+            .background(
+                Capsule()
+                    .fill(statusColor.opacity(0.12))
+            )
     }
 }
 
@@ -207,108 +214,61 @@ struct MWSessionCard: View {
     let run: MiWarpRun
     var onTap: (() -> Void)?
 
-    private var glowColor: Color {
-        switch run.status {
-        case .running: return MWColors.glowRunning
-        case .waitingApproval: return MWColors.glowApproval
-        default: return .clear
-        }
-    }
-
     var body: some View {
         Button {
             onTap?()
         } label: {
-            VStack(alignment: .leading, spacing: MWSpacing.sm) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: MWSpacing.xs) {
-                        Text(run.displayTitle)
-                            .font(MWTypography.bodyMedium())
-                            .foregroundColor(MWColors.textPrimary)
-                            .lineLimit(2)
-
-                        HStack(spacing: MWSpacing.sm) {
-                            Label(run.agent, systemImage: "cpu")
-                            Text("·")
-                                .foregroundColor(MWColors.textTertiary)
-                            Label(run.model, systemImage: "cube")
-                        }
-                        .font(MWTypography.caption())
-                        .foregroundColor(MWColors.textSecondary)
-                    }
-
-                    Spacer(minLength: MWSpacing.sm)
+            VStack(alignment: .leading, spacing: 4) {
+                // Row 1: title + status pill
+                HStack(alignment: .top, spacing: MWSpacing.sm) {
+                    Text(run.displayTitle)
+                        .font(MWTypography.bodyMedium())
+                        .foregroundColor(MWColors.textPrimary)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
                     MWStatusPill(status: run.status)
                 }
 
-                HStack(spacing: MWSpacing.md) {
-                    Label(run.shortCwd, systemImage: "folder")
-                        .font(MWTypography.monoSmall())
-                        .foregroundColor(MWColors.textTertiary)
-                        .lineLimit(1)
+                // Row 2: agent · model
+                Text("\(run.agent) · \(run.model)")
+                    .font(MWTypography.caption())
+                    .foregroundColor(MWColors.textSecondary)
+                    .lineLimit(1)
 
-                    Spacer()
+                // Row 3: cwd
+                Text(run.shortCwd)
+                    .font(MWTypography.monoSmall())
+                    .foregroundColor(MWColors.textTertiary)
+                    .lineLimit(1)
 
-                    Label("\(run.messageCount)", systemImage: "message")
-                        .font(MWTypography.caption())
+                // Row 4: msg count · last activity
+                HStack(spacing: MWSpacing.sm) {
+                    Text("\(run.messageCount) messages")
+                        .font(MWTypography.caption2())
                         .foregroundColor(MWColors.textTertiary)
 
                     if let lastActivity = run.lastActivity {
+                        Text("·")
+                            .foregroundColor(MWColors.textTertiary)
                         Text(lastActivity.formatted(.relative(presentation: .named)))
                             .font(MWTypography.caption2())
                             .foregroundColor(MWColors.textTertiary)
                     }
                 }
-
-                // Source badge
-                HStack(spacing: MWSpacing.sm) {
-                    if run.source != .unknown {
-                        HStack(spacing: MWSpacing.xs) {
-                            Image(systemName: sourceIcon(run.source))
-                                .font(MWTypography.caption2())
-                            Text(sourceLabel(run.source))
-                                .font(MWTypography.caption2())
-                        }
-                        .foregroundColor(MWColors.accentCyan)
-                        .padding(.horizontal, MWSpacing.sm)
-                        .padding(.vertical, 2)
-                        .background(
-                            Capsule()
-                                .fill(MWColors.accentCyan.opacity(0.1))
-                        )
-                    }
-
-                    Spacer()
-                }
             }
-            .padding(MWSpacing.lg)
-            .mwGlassSurface(
-                cornerRadius: MWRadius.lg,
-                borderColor: run.status == .waitingApproval
-                    ? MWColors.statusApproval.opacity(0.3)
-                    : MWColors.glassBorder
+            .padding(.horizontal, MWSpacing.md)
+            .padding(.vertical, MWSpacing.sm)
+            .background(
+                RoundedRectangle(cornerRadius: MWRadius.md)
+                    .fill(MWColors.cardBg)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: MWRadius.md)
+                            .strokeBorder(MWColors.divider.opacity(0.5), lineWidth: 0.5)
+                    )
             )
-            .mwGlassGlow(glowColor, radius: run.status == .running ? 16 : 12,
-                         isActive: run.status == .running || run.status == .waitingApproval)
         }
         .buttonStyle(.plain)
-    }
-
-    private func sourceIcon(_ source: RunSource) -> String {
-        switch source {
-        case .native: return "app.fill"
-        case .cliImport: return "terminal"
-        case .unknown: return "questionmark.circle"
-        }
-    }
-
-    private func sourceLabel(_ source: RunSource) -> String {
-        switch source {
-        case .native: return "Native"
-        case .cliImport: return "CLI"
-        case .unknown: return ""
-        }
     }
 }
 
