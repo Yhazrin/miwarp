@@ -120,11 +120,28 @@ struct MiWarpRun: Identifiable, Codable, Hashable {
     var status: RunStatus
     var source: RunSource
     var messageCount: Int
-    var lastActivity: Date?
+    var lastActivityTimestamp: TimeInterval?
     var hasApprovalPending: Bool
     var hasFilesChanged: Bool
     var hasArtifacts: Bool
-    var createdAt: Date?
+    var createdAtTimestamp: TimeInterval?
+
+    var lastActivity: Date? {
+        lastActivityTimestamp.map { Date(timeIntervalSince1970: $0) }
+    }
+    var createdAt: Date? {
+        createdAtTimestamp.map { Date(timeIntervalSince1970: $0) }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, name, prompt, cwd, agent, model, status, source
+        case messageCount = "message_count"
+        case lastActivityTimestamp = "last_activity"
+        case hasApprovalPending = "has_approval_pending"
+        case hasFilesChanged = "has_files_changed"
+        case hasArtifacts = "has_artifacts"
+        case createdAtTimestamp = "created_at"
+    }
 
     var displayTitle: String {
         name ?? prompt?.prefix(80).description ?? "Untitled Session"
@@ -361,7 +378,7 @@ struct MessageDeltaPayload: Codable {
 
     enum CodingKeys: String, CodingKey {
         case role
-        case content
+        case content = "text"
         case delta
         case messageId = "message_id"
     }
@@ -374,7 +391,7 @@ struct MessageCompletePayload: Codable {
 
     enum CodingKeys: String, CodingKey {
         case role
-        case content
+        case content = "text"
         case messageId = "message_id"
     }
 }
@@ -408,11 +425,21 @@ struct ToolEndPayload: Codable {
 struct UserMessagePayload: Codable {
     let content: String?
     let role: String?
+
+    enum CodingKeys: String, CodingKey {
+        case content = "text"
+        case role
+    }
 }
 
 struct RunStatePayload: Codable {
     let status: RunStatus?
     let error: String?
+
+    enum CodingKeys: String, CodingKey {
+        case status = "state"
+        case error
+    }
 }
 
 struct UsageUpdatePayload: Codable {
@@ -427,7 +454,7 @@ struct UsageUpdatePayload: Codable {
         case outputTokens = "output_tokens"
         case cacheReadTokens = "cache_read_tokens"
         case cacheWriteTokens = "cache_write_tokens"
-        case costUsd = "cost_usd"
+        case costUsd = "total_cost_usd"
     }
 }
 

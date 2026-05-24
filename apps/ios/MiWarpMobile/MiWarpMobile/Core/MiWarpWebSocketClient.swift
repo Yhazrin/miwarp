@@ -34,24 +34,28 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         }
     }
 
-    // MARK: - Streams
+    // MARK: - Streams (lazily created once, never recreated)
 
-    var eventStream: AsyncStream<BusEvent> {
+    private lazy var _eventStream: AsyncStream<BusEvent> = {
         AsyncStream { continuation in
             self.eventContinuation = continuation
             continuation.onTermination = { @Sendable _ in
                 // Cleanup handled by disconnect
             }
         }
-    }
+    }()
 
-    var connectionStateStream: AsyncStream<ConnectionState> {
+    var eventStream: AsyncStream<BusEvent> { _eventStream }
+
+    private lazy var _connectionStateStream: AsyncStream<ConnectionState> = {
         AsyncStream { continuation in
             self.connectionContinuation = continuation
             continuation.yield(connectionState)
             continuation.onTermination = { @Sendable _ in }
         }
-    }
+    }()
+
+    var connectionStateStream: AsyncStream<ConnectionState> { _connectionStateStream }
 
     // MARK: - Connect
 
