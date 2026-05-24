@@ -232,11 +232,8 @@ class MiWarpRpcClient(
                 status = status,
                 source = source,
                 messageCount = obj["message_count"]?.jsonPrimitive?.intOrNull ?: 0,
-                lastActivity = obj["last_activity"]?.jsonPrimitive?.content,
-                hasApprovalPending = obj["has_approval_pending"]?.jsonPrimitive?.booleanOrNull ?: false,
-                hasFilesChanged = obj["has_files_changed"]?.jsonPrimitive?.booleanOrNull ?: false,
-                hasArtifacts = obj["has_artifacts"]?.jsonPrimitive?.booleanOrNull ?: false,
-                createdAt = obj["created_at"]?.jsonPrimitive?.content,
+                lastActivity = obj["last_activity_at"]?.jsonPrimitive?.content,
+                createdAt = obj["started_at"]?.jsonPrimitive?.content,
             )
         }
     }
@@ -246,12 +243,19 @@ class MiWarpRpcClient(
     }
 
     private fun parseBusEventFromElement(element: JsonElement): BusEvent? {
-        return try {
-            val envelope = json.decodeFromJsonElement(BusEventEnvelope.serializer(), element)
-            parseBusEventFromEnvelope(envelope.event, envelope.seq, envelope.runId, envelope.payload)
-        } catch (_: Exception) {
-            null
+        // Try broadcast envelope format first (has "event" and "payload" keys)
+        val obj = element.jsonObject
+        if (obj.containsKey("event") && obj.containsKey("payload")) {
+            return try {
+                val envelope = json.decodeFromJsonElement(BusEventEnvelope.serializer(), element)
+                parseBusEventFromEnvelope(envelope.event, envelope.seq, envelope.runId, envelope.payload)
+            } catch (_: Exception) { null }
         }
+        // Flat RPC format: event fields spread at top level, _seq with underscore
+        val eventType = obj["type"]?.jsonPrimitive?.content ?: return null
+        val seq = obj["_seq"]?.jsonPrimitive?.longOrNull ?: 0L
+        val runId = obj["run_id"]?.jsonPrimitive?.content ?: ""
+        return parseBusEventFromEnvelope(eventType, seq, runId, element)
     }
 
     private fun parseBusEventFromEnvelope(
@@ -279,9 +283,8 @@ class MiWarpRpcClient(
                 toolName = payload?.jsonObject?.get("tool_name")?.jsonPrimitive?.content ?: "",
                 toolId = payload?.jsonObject?.get("tool_use_id")?.jsonPrimitive?.content
                     ?: payload?.jsonObject?.get("tool_id")?.jsonPrimitive?.content ?: "",
-                output = payload?.jsonObject?.get("output")?.jsonPrimitive?.content ?: "",
-                isError = payload?.jsonObject?.get("is_error")?.jsonPrimitive?.booleanOrNull
-                    ?: payload?.jsonObject?.get("status")?.jsonPrimitive?.content == "error",
+                output = payload?.jsonObject?.get("output"),
+                status = payload?.jsonObject?.get("status")?.jsonPrimitive?.content ?: "",
             )
             "user_message" -> BusEvent.UserMessage(seq, runId, payload)
             "run_state" -> {
@@ -334,9 +337,8 @@ class MiWarpRpcClient(
                 val obj = payload?.jsonObject
                 BusEvent.SystemStatus(
                     seq, runId,
-                    message = obj?.get("data")?.jsonObject?.get("message")?.jsonPrimitive?.content
-                        ?: obj?.get("status")?.jsonPrimitive?.content ?: "",
-                    level = obj?.get("data")?.jsonObject?.get("level")?.jsonPrimitive?.content ?: "info",
+                    status = obj?.get("status")?.jsonPrimitive?.content,
+                    data = obj?.get("data"),
                 )
             }
             "hook_started" -> BusEvent.HookStarted(seq, runId, payload)
@@ -348,8 +350,8 @@ class MiWarpRpcClient(
                 seq, runId,
                 toolId = payload?.jsonObject?.get("tool_use_id")?.jsonPrimitive?.content
                     ?: payload?.jsonObject?.get("tool_id")?.jsonPrimitive?.content ?: "",
-                progress = payload?.jsonObject?.get("elapsed_time_seconds")?.jsonPrimitive?.doubleOrNull ?: 0.0,
-                message = payload?.jsonObject?.get("data")?.jsonPrimitive?.content ?: "",
+                elapsedTimeSeconds = payload?.jsonObject?.get("elapsed_time_seconds")?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                data = payload?.jsonObject?.get("data"),
             )
             "tool_use_summary" -> BusEvent.ToolUseSummary(seq, runId, payload)
             "files_persisted" -> BusEvent.FilesPersisted(seq, runId, payload)

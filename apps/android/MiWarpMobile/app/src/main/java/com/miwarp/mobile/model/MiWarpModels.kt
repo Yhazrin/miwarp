@@ -55,11 +55,8 @@ data class MiWarpRun(
     val status: RunStatus = RunStatus.Idle,
     val source: RunSource = RunSource.Unknown,
     @SerialName("message_count") val messageCount: Int = 0,
-    @SerialName("last_activity") val lastActivity: String? = null,
-    @SerialName("has_approval_pending") val hasApprovalPending: Boolean = false,
-    @SerialName("has_files_changed") val hasFilesChanged: Boolean = false,
-    @SerialName("has_artifacts") val hasArtifacts: Boolean = false,
-    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("last_activity_at") val lastActivity: String? = null,
+    @SerialName("started_at") val createdAt: String? = null,
 ) {
     /** Display title: name, or first 80 chars of prompt, or fallback */
     val displayTitle: String
@@ -77,10 +74,10 @@ data class MiWarpRun(
 
 @Serializable
 enum class RunStatus {
-    @SerialName("idle") Idle,
+    @SerialName("pending") Pending,
     @SerialName("running") Running,
-    @SerialName("waiting_input") WaitingInput,
-    @SerialName("waiting_approval") WaitingApproval,
+    @SerialName("idle") Idle,
+    @SerialName("waiting_approval") WaitingApproval, // client-only, set by permission_prompt events
     @SerialName("completed") Completed,
     @SerialName("failed") Failed,
     @SerialName("stopped") Stopped,
@@ -88,9 +85,9 @@ enum class RunStatus {
 
     val displayLabel: String
         get() = when (this) {
-            Idle -> "Idle"
+            Pending -> "Pending"
             Running -> "Running"
-            WaitingInput -> "Waiting"
+            Idle -> "Idle"
             WaitingApproval -> "Approval"
             Completed -> "Done"
             Failed -> "Failed"
@@ -100,19 +97,15 @@ enum class RunStatus {
 
 @Serializable
 enum class RunSource {
-    @SerialName("cli") CLI,
-    @SerialName("web") Web,
-    @SerialName("mobile") Mobile,
-    @SerialName("api") API,
+    @SerialName("native") Native,
+    @SerialName("cli_import") CliImport,
     Unknown,
     ;
 
     companion object {
         fun fromString(value: String?): RunSource = when (value) {
-            "cli" -> CLI
-            "web" -> Web
-            "mobile" -> Mobile
-            "api" -> API
+            "native" -> Native
+            "cli_import" -> CliImport
             else -> Unknown
         }
     }
@@ -136,7 +129,7 @@ sealed class BusEvent {
     data class MessageDelta(override val seq: Long, override val runId: String, val text: String, val role: String) : BusEvent()
     data class MessageComplete(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class ToolStart(override val seq: Long, override val runId: String, val toolName: String, val toolId: String, val input: JsonElement?) : BusEvent()
-    data class ToolEnd(override val seq: Long, override val runId: String, val toolName: String, val toolId: String, val output: String, val isError: Boolean) : BusEvent()
+    data class ToolEnd(override val seq: Long, override val runId: String, val toolName: String, val toolId: String, val output: JsonElement?, val status: String) : BusEvent()
     data class UserMessage(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class RunState(override val seq: Long, override val runId: String, val status: RunStatus) : BusEvent()
     data class UsageUpdate(override val seq: Long, override val runId: String, val inputTokens: Long, val outputTokens: Long, val cacheReadTokens: Long, val cacheWriteTokens: Long, val costUsd: Double) : BusEvent()
@@ -145,13 +138,13 @@ sealed class BusEvent {
     data class PermissionPrompt(override val seq: Long, override val runId: String, val requestId: String, val toolName: String, val toolUseId: String, val description: String, val options: List<String>) : BusEvent()
     data class PermissionDenied(override val seq: Long, override val runId: String, val toolName: String, val toolUseId: String) : BusEvent()
     data class CompactBoundary(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
-    data class SystemStatus(override val seq: Long, override val runId: String, val message: String, val level: String) : BusEvent()
+    data class SystemStatus(override val seq: Long, override val runId: String, val status: String?, val data: JsonElement?) : BusEvent()
     data class HookStarted(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class HookProgress(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class HookResponse(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class HookCallback(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class TaskNotification(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
-    data class ToolProgress(override val seq: Long, override val runId: String, val toolId: String, val progress: Double, val message: String) : BusEvent()
+    data class ToolProgress(override val seq: Long, override val runId: String, val toolId: String, val elapsedTimeSeconds: Double, val data: JsonElement?) : BusEvent()
     data class ToolUseSummary(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class FilesPersisted(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class ControlCancelled(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
@@ -171,27 +164,13 @@ sealed class BusEvent {
 
 @Serializable
 data class RunArtifacts(
-    @SerialName("files_changed") val filesChanged: List<ArtifactFile>? = null,
-    @SerialName("diff_summary") val diffSummary: String? = null,
-    val commands: List<String>? = null,
+    @SerialName("task_id") val taskId: String = "",
+    @SerialName("files_changed") val filesChanged: List<String> = emptyList(),
+    @SerialName("diff_summary") val diffSummary: String = "",
+    val commands: List<String> = emptyList(),
     @SerialName("cost_estimate") val costEstimate: Double? = null,
+    @SerialName("updated_at") val updatedAt: String = "",
 )
-
-@Serializable
-data class ArtifactFile(
-    val path: String = "",
-    val status: FileChangeStatus = FileChangeStatus.Modified,
-    val additions: Int? = null,
-    val deletions: Int? = null,
-)
-
-@Serializable
-enum class FileChangeStatus {
-    @SerialName("added") Added,
-    @SerialName("modified") Modified,
-    @SerialName("deleted") Deleted,
-    @SerialName("renamed") Renamed,
-}
 
 // ── Git ─────────────────────────────────────────────────────────────────────
 

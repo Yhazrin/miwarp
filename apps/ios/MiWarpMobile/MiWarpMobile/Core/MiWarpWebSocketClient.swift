@@ -34,28 +34,25 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         }
     }
 
-    // MARK: - Streams (lazily created once, never recreated)
+    // MARK: - Streams (recreated on each connect to avoid stale finished streams)
 
-    private lazy var _eventStream: AsyncStream<BusEvent> = {
-        AsyncStream { continuation in
-            self.eventContinuation = continuation
-            continuation.onTermination = { @Sendable _ in
-                // Cleanup handled by disconnect
-            }
-        }
-    }()
+    private var _eventStream: AsyncStream<BusEvent>!
+    private var _connectionStateStream: AsyncStream<ConnectionState>!
 
     var eventStream: AsyncStream<BusEvent> { _eventStream }
+    var connectionStateStream: AsyncStream<ConnectionState> { _connectionStateStream }
 
-    private lazy var _connectionStateStream: AsyncStream<ConnectionState> = {
-        AsyncStream { continuation in
+    private func createStreams() {
+        _eventStream = AsyncStream { continuation in
+            self.eventContinuation = continuation
+            continuation.onTermination = { @Sendable _ in }
+        }
+        _connectionStateStream = AsyncStream { continuation in
             self.connectionContinuation = continuation
             continuation.yield(connectionState)
             continuation.onTermination = { @Sendable _ in }
         }
-    }()
-
-    var connectionStateStream: AsyncStream<ConnectionState> { _connectionStateStream }
+    }
 
     // MARK: - Connect
 
@@ -76,6 +73,7 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         currentToken = token
         isIntentionalClose = false
         reconnectAttempt = 0
+        createStreams()
         performConnect(url: url)
     }
 

@@ -93,7 +93,7 @@ fun SettingsScreen(
                 }
                 val connStatusRun = when (connectionState) {
                     ConnectionState.Connected -> RunStatus.Completed
-                    ConnectionState.Connecting, ConnectionState.Reconnecting -> RunStatus.WaitingInput
+                    ConnectionState.Connecting, ConnectionState.Reconnecting -> RunStatus.Pending
                     ConnectionState.Error -> RunStatus.Failed
                     ConnectionState.Disconnected -> RunStatus.Idle
                 }

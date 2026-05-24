@@ -59,19 +59,25 @@ enum ConnectionState: Equatable {
 // MARK: - Run Status
 
 enum RunStatus: String, Codable, CaseIterable {
+    case pending
     case running
     case idle
-    case waitingInput = "waiting_input"
-    case waitingApproval = "waiting_approval"
+    case waitingApproval = "waiting_approval" // client-only, set by permission_prompt events
     case completed
     case failed
     case stopped
 
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        self = RunStatus(rawValue: raw) ?? .pending
+    }
+
     var displayLabel: String {
         switch self {
+        case .pending: return "Pending"
         case .running: return "Running"
         case .idle: return "Idle"
-        case .waitingInput: return "Waiting Input"
         case .waitingApproval: return "Waiting Approval"
         case .completed: return "Completed"
         case .failed: return "Failed"
@@ -81,9 +87,9 @@ enum RunStatus: String, Codable, CaseIterable {
 
     var systemImage: String {
         switch self {
+        case .pending: return "clock.circle.fill"
         case .running: return "play.circle.fill"
         case .idle: return "moon.circle.fill"
-        case .waitingInput: return "hand.raised.circle.fill"
         case .waitingApproval: return "exclamationmark.shield.fill"
         case .completed: return "checkmark.circle.fill"
         case .failed: return "xmark.circle.fill"
@@ -95,10 +101,8 @@ enum RunStatus: String, Codable, CaseIterable {
 // MARK: - Run Source
 
 enum RunSource: String, Codable {
-    case cli
-    case web
-    case mobile
-    case api
+    case native
+    case cliImport = "cli_import"
     case unknown
 
     init(from decoder: Decoder) throws {
@@ -119,28 +123,28 @@ struct MiWarpRun: Identifiable, Codable, Hashable {
     var model: String
     var status: RunStatus
     var source: RunSource
-    var messageCount: Int
-    var lastActivityTimestamp: TimeInterval?
-    var hasApprovalPending: Bool
-    var hasFilesChanged: Bool
-    var hasArtifacts: Bool
-    var createdAtTimestamp: TimeInterval?
+    var messageCount: Int?
+    var lastActivityAt: String?
+    var startedAt: String?
+
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
 
     var lastActivity: Date? {
-        lastActivityTimestamp.map { Date(timeIntervalSince1970: $0) }
+        lastActivityAt.flatMap { MiWarpRun.isoFormatter.date(from: $0) }
     }
     var createdAt: Date? {
-        createdAtTimestamp.map { Date(timeIntervalSince1970: $0) }
+        startedAt.flatMap { MiWarpRun.isoFormatter.date(from: $0) }
     }
 
     enum CodingKeys: String, CodingKey {
         case id, name, prompt, cwd, agent, model, status, source
         case messageCount = "message_count"
-        case lastActivityTimestamp = "last_activity"
-        case hasApprovalPending = "has_approval_pending"
-        case hasFilesChanged = "has_files_changed"
-        case hasArtifacts = "has_artifacts"
-        case createdAtTimestamp = "created_at"
+        case lastActivityAt = "last_activity_at"
+        case startedAt = "started_at"
     }
 
     var displayTitle: String {
@@ -156,17 +160,57 @@ struct MiWarpRun: Identifiable, Codable, Hashable {
 
 // MARK: - Bus Event
 
-struct BusEvent: Identifiable, Codable {
+struct BusEvent: Identifiable {
     let seq: Int
     let runId: String
     let payload: BusEventPayload
 
     var id: Int { seq }
 
+    init(seq: Int, runId: String, payload: BusEventPayload) {
+        self.seq = seq
+        self.runId = runId
+        self.payload = payload
+    }
+}
+
+extension BusEvent: Codable {
     enum CodingKeys: String, CodingKey {
         case seq
+        case _seq
         case runId = "run_id"
         case payload
+        case type
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // Broadcast format has `seq`, RPC flat format has `_seq`
+        if let s = try container.decodeIfPresent(Int.self, forKey: .seq) {
+            seq = s
+        } else if let s = try container.decodeIfPresent(Int.self, forKey: ._seq) {
+            seq = s
+        } else {
+            seq = 0
+        }
+
+        runId = try container.decodeIfPresent(String.self, forKey: .runId) ?? ""
+
+        // Broadcast format has `payload` wrapper; RPC flat format is the payload itself
+        if let p = try container.decodeIfPresent(BusEventPayload.self, forKey: .payload) {
+            payload = p
+        } else {
+            // Flat format — decode the whole object as a BusEventPayload
+            payload = try BusEventPayload(from: decoder)
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(seq, forKey: .seq)
+        try container.encode(runId, forKey: .runId)
+        try payload.encode(to: encoder)
     }
 }
 
@@ -411,14 +455,14 @@ struct ToolStartPayload: Codable {
 struct ToolEndPayload: Codable {
     let toolName: String?
     let toolUseId: String?
-    let output: String?
-    let isError: Bool?
+    let output: AnyCodable?
+    let status: String?
 
     enum CodingKeys: String, CodingKey {
         case toolName = "tool_name"
         case toolUseId = "tool_use_id"
         case output
-        case isError = "is_error"
+        case status
     }
 }
 
@@ -459,7 +503,11 @@ struct UsageUpdatePayload: Codable {
 }
 
 struct ThinkingDeltaPayload: Codable {
-    let delta: String?
+    let text: String?
+
+    enum CodingKeys: String, CodingKey {
+        case text
+    }
 }
 
 struct ToolInputDeltaPayload: Codable {
@@ -507,86 +555,107 @@ struct CompactBoundaryPayload: Codable {
 }
 
 struct SystemStatusPayload: Codable {
-    let message: String?
-    let level: String?
+    let status: String?
+    let data: AnyCodable?
 }
 
 struct HookStartedPayload: Codable {
-    let hookName: String?
+    let hookEvent: String?
     let hookId: String?
+    let data: AnyCodable?
+    let hookName: String?
 
     enum CodingKeys: String, CodingKey {
-        case hookName = "hook_name"
+        case hookEvent = "hook_event"
         case hookId = "hook_id"
+        case data
+        case hookName = "hook_name"
     }
 }
 
 struct HookProgressPayload: Codable {
     let hookId: String?
-    let progress: Double?
-    let message: String?
+    let data: AnyCodable?
 
     enum CodingKeys: String, CodingKey {
         case hookId = "hook_id"
-        case progress
-        case message
+        case data
     }
 }
 
 struct HookResponsePayload: Codable {
     let hookId: String?
-    let output: String?
-    let success: Bool?
+    let hookEvent: String?
+    let outcome: String?
+    let data: AnyCodable?
+    let hookName: String?
+    let stdout: String?
 
     enum CodingKeys: String, CodingKey {
         case hookId = "hook_id"
-        case output
-        case success
+        case hookEvent = "hook_event"
+        case outcome
+        case data
+        case hookName = "hook_name"
+        case stdout
     }
 }
 
 struct HookCallbackPayload: Codable {
+    let requestId: String?
+    let hookEvent: String?
     let hookId: String?
-    let callbackType: String?
+    let hookName: String?
+    let data: AnyCodable?
 
     enum CodingKeys: String, CodingKey {
+        case requestId = "request_id"
+        case hookEvent = "hook_event"
         case hookId = "hook_id"
-        case callbackType = "callback_type"
+        case hookName = "hook_name"
+        case data
     }
 }
 
 struct TaskNotificationPayload: Codable {
-    let title: String?
-    let body: String?
-    let level: String?
+    let taskId: String?
+    let status: String?
+    let data: AnyCodable?
+
+    enum CodingKeys: String, CodingKey {
+        case taskId = "task_id"
+        case status
+        case data
+    }
 }
 
 struct ToolProgressPayload: Codable {
     let toolUseId: String?
-    let progress: Double?
-    let message: String?
+    let elapsedTimeSeconds: Double?
 
     enum CodingKeys: String, CodingKey {
         case toolUseId = "tool_use_id"
-        case progress
-        case message
+        case elapsedTimeSeconds = "elapsed_time_seconds"
     }
 }
 
 struct ToolUseSummaryPayload: Codable {
-    let toolName: String?
-    let durationMs: Int?
+    let toolUseId: String?
     let summary: String?
+    let precedingToolUseIds: [String]?
+    let data: AnyCodable?
 
     enum CodingKeys: String, CodingKey {
-        case toolName = "tool_name"
-        case durationMs = "duration_ms"
+        case toolUseId = "tool_use_id"
         case summary
+        case precedingToolUseIds = "preceding_tool_use_ids"
+        case data
     }
 }
 
 struct FilesPersistedPayload: Codable {
-    let files: [String]?
+    let files: AnyCodable?
+    let data: AnyCodable?
 }
 
 struct ControlCancelledPayload: Codable {
@@ -594,35 +663,51 @@ struct ControlCancelledPayload: Codable {
 }
 
 struct CommandOutputPayload: Codable {
-    let command: String?
-    let output: String?
-    let exitCode: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case command
-        case output
-        case exitCode = "exit_code"
-    }
+    let content: String?
 }
 
 struct ElicitationPromptPayload: Codable {
-    let prompt: String?
-    let options: [String]?
+    let requestId: String?
+    let mcpServerName: String?
+    let message: String?
+    let elicitationId: String?
+    let mode: String?
+    let url: String?
+
+    enum CodingKeys: String, CodingKey {
+        case requestId = "request_id"
+        case mcpServerName = "mcp_server_name"
+        case message
+        case elicitationId = "elicitation_id"
+        case mode
+        case url
+    }
 }
 
 struct RateLimitEventPayload: Codable {
-    let retryAfter: Double?
-    let message: String?
+    let status: String?
+    let resetsAt: Double?
+    let rateLimitType: String?
+    let utilization: Double?
 
     enum CodingKeys: String, CodingKey {
-        case retryAfter = "retry_after"
-        case message
+        case status
+        case resetsAt = "resets_at"
+        case rateLimitType = "rate_limit_type"
+        case utilization
     }
 }
 
 struct AuthStatusPayload: Codable {
-    let authenticated: Bool?
-    let provider: String?
+    let isAuthenticating: Bool?
+    let output: [String]?
+    let data: AnyCodable?
+
+    enum CodingKeys: String, CodingKey {
+        case isAuthenticating = "is_authenticating"
+        case output
+        case data
+    }
 }
 
 struct RalphStartedPayload: Codable {
@@ -661,33 +746,21 @@ struct RawPayload: Codable {
 // MARK: - Artifacts & Git
 
 struct RunArtifacts: Codable {
-    let filesChanged: [ArtifactFile]?
-    let diffSummary: String?
-    let commands: [String]?
+    let taskId: String
+    let filesChanged: [String]
+    let diffSummary: String
+    let commands: [String]
     let costEstimate: Double?
+    let updatedAt: String
 
     enum CodingKeys: String, CodingKey {
+        case taskId = "task_id"
         case filesChanged = "files_changed"
         case diffSummary = "diff_summary"
         case commands
         case costEstimate = "cost_estimate"
+        case updatedAt = "updated_at"
     }
-}
-
-struct ArtifactFile: Identifiable, Codable {
-    let path: String
-    let status: FileChangeStatus
-    let additions: Int?
-    let deletions: Int?
-
-    var id: String { path }
-}
-
-enum FileChangeStatus: String, Codable {
-    case added
-    case modified
-    case deleted
-    case renamed
 }
 
 struct GitStatus: Codable {

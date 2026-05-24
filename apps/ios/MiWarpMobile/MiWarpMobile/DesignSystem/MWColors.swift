@@ -227,9 +227,9 @@ enum MWColors {
 
     static func color(for status: RunStatus) -> Color {
         switch status {
+        case .pending: return statusPending
         case .running: return statusRunning
         case .idle: return statusIdle
-        case .waitingInput: return statusPending
         case .waitingApproval: return statusWarning
         case .completed: return statusDone
         case .failed: return statusFailed

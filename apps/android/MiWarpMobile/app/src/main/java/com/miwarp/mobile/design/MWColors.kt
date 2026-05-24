@@ -124,9 +124,9 @@ private val lightColors = MWColorTokens(
 
 /** Map RunStatus to its display color */
 fun MWColorTokens.colorForStatus(status: com.miwarp.mobile.model.RunStatus): Color = when (status) {
-    com.miwarp.mobile.model.RunStatus.Idle -> statusIdle
+    com.miwarp.mobile.model.RunStatus.Pending -> statusPending
     com.miwarp.mobile.model.RunStatus.Running -> statusRunning
-    com.miwarp.mobile.model.RunStatus.WaitingInput -> statusPending
+    com.miwarp.mobile.model.RunStatus.Idle -> statusIdle
     com.miwarp.mobile.model.RunStatus.WaitingApproval -> statusWarning
     com.miwarp.mobile.model.RunStatus.Completed -> statusDone
     com.miwarp.mobile.model.RunStatus.Failed -> statusFailed

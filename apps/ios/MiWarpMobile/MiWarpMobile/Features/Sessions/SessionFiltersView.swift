@@ -39,10 +39,8 @@ struct SessionFiltersView: View {
                 Section("Source") {
                     Picker("Source", selection: $filters.source) {
                         Text("Any").tag(nil as RunSource?)
-                        Text("CLI").tag(RunSource.cli as RunSource?)
-                        Text("Web").tag(RunSource.web as RunSource?)
-                        Text("Mobile").tag(RunSource.mobile as RunSource?)
-                        Text("API").tag(RunSource.api as RunSource?)
+                        Text("Native").tag(RunSource.native as RunSource?)
+                        Text("CLI Import").tag(RunSource.cliImport as RunSource?)
                     }
                 }
 

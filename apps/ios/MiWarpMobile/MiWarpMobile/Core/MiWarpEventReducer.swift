@@ -237,11 +237,27 @@ final class MiWarpEventReducer: ObservableObject {
 
     private func handleToolEnd(_ payload: ToolEndPayload) {
         guard let toolId = payload.toolUseId else { return }
+        let outputString: String? = {
+            guard let output = payload.output else { return nil }
+            if let str = output.stringValue { return str }
+            if let dict = output.dictValue,
+               let data = try? JSONSerialization.data(withJSONObject: dict, options: [.fragmentsAllowed, .sortedKeys]),
+               let str = String(data: data, encoding: .utf8) {
+                return str
+            }
+            if let arr = output.arrayValue,
+               let data = try? JSONSerialization.data(withJSONObject: arr, options: [.fragmentsAllowed, .sortedKeys]),
+               let str = String(data: data, encoding: .utf8) {
+                return str
+            }
+            return nil
+        }()
+
         for msgIndex in messages.indices {
             if let toolIndex = messages[msgIndex].toolCalls.firstIndex(where: { $0.id == toolId }) {
-                messages[msgIndex].toolCalls[toolIndex].output = payload.output
+                messages[msgIndex].toolCalls[toolIndex].output = outputString
                 messages[msgIndex].toolCalls[toolIndex].isComplete = true
-                messages[msgIndex].toolCalls[toolIndex].isError = payload.isError ?? false
+                messages[msgIndex].toolCalls[toolIndex].isError = payload.status != "success"
                 break
             }
         }
@@ -264,9 +280,9 @@ final class MiWarpEventReducer: ObservableObject {
     }
 
     private func handleThinkingDelta(_ payload: ThinkingDeltaPayload) {
-        guard let delta = payload.delta else { return }
+        guard let text = payload.text else { return }
         if let lastIndex = messages.indices.last, messages[lastIndex].role == .assistant {
-            messages[lastIndex].thinking = (messages[lastIndex].thinking ?? "") + delta
+            messages[lastIndex].thinking = (messages[lastIndex].thinking ?? "") + text
         }
     }
 
@@ -294,10 +310,11 @@ final class MiWarpEventReducer: ObservableObject {
     }
 
     private func handleSystemStatus(_ payload: SystemStatusPayload) {
+        guard let status = payload.status, !status.isEmpty else { return }
         let msg = DisplayMessage(
             id: "system-\(lastSeq)",
             role: .system,
-            content: payload.message ?? "",
+            content: status,
             timestamp: Date(),
             isStreaming: false,
             toolCalls: []

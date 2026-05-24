@@ -118,11 +118,12 @@ class MiWarpEventReducer {
                 changed = true
             }
             is BusEvent.SystemStatus -> {
+                if (event.status.isNullOrEmpty()) return@let false
                 messages.add(
                     ChatMessage(
                         id = "system-$lastSeq",
                         role = MessageRole.System,
-                        text = event.message,
+                        text = event.status,
                     )
                 )
                 changed = true
@@ -229,6 +230,7 @@ class MiWarpEventReducer {
     }
 
     private fun handleToolEnd(event: BusEvent.ToolEnd): Boolean {
+        val outputStr = event.output?.toString()?.take(2000) ?: ""
         for (i in messages.indices.reversed()) {
             val msg = messages[i]
             if (msg.role == MessageRole.Assistant) {
@@ -236,9 +238,9 @@ class MiWarpEventReducer {
                 if (toolIndex >= 0) {
                     val updated = msg.toolCalls.toMutableList()
                     updated[toolIndex] = updated[toolIndex].copy(
-                        output = event.output,
+                        output = outputStr,
                         isRunning = false,
-                        isError = event.isError,
+                        isError = event.status != "success",
                         progress = -1.0,
                     )
                     messages[i] = msg.copy(toolCalls = updated)
@@ -275,8 +277,8 @@ class MiWarpEventReducer {
                 if (toolIndex >= 0) {
                     val updated = msg.toolCalls.toMutableList()
                     updated[toolIndex] = updated[toolIndex].copy(
-                        progress = event.progress,
-                        progressMessage = event.message,
+                        progress = event.elapsedTimeSeconds,
+                        progressMessage = "",
                     )
                     messages[i] = msg.copy(toolCalls = updated)
                     return true

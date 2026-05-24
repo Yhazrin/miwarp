@@ -110,13 +110,13 @@ struct MWSessionCard: View {
                     }
                 }
 
-                // Source badge + indicators
+                // Source badge
                 HStack(spacing: MWSpacing.sm) {
                     if run.source != .unknown {
                         HStack(spacing: MWSpacing.xs) {
                             Image(systemName: sourceIcon(run.source))
                                 .font(MWTypography.caption2())
-                            Text(run.source.rawValue.capitalized)
+                            Text(sourceLabel(run.source))
                                 .font(MWTypography.caption2())
                         }
                         .foregroundColor(MWColors.accentCyan)
@@ -126,22 +126,6 @@ struct MWSessionCard: View {
                             Capsule()
                                 .fill(MWColors.accentCyan.opacity(0.1))
                         )
-                    }
-
-                    if run.hasApprovalPending {
-                        Label("Approval", systemImage: "exclamationmark.shield.fill")
-                            .font(MWTypography.caption2())
-                            .foregroundColor(MWColors.statusWarning)
-                    }
-                    if run.hasFilesChanged {
-                        Label("Files", systemImage: "doc.badge.arrow.up")
-                            .font(MWTypography.caption2())
-                            .foregroundColor(MWColors.accentCyan)
-                    }
-                    if run.hasArtifacts {
-                        Label("Artifacts", systemImage: "archivebox")
-                            .font(MWTypography.caption2())
-                            .foregroundColor(MWColors.accentPrimary)
                     }
 
                     Spacer()
@@ -169,11 +153,17 @@ struct MWSessionCard: View {
 
     private func sourceIcon(_ source: RunSource) -> String {
         switch source {
-        case .cli: return "terminal"
-        case .web: return "globe"
-        case .mobile: return "iphone"
-        case .api: return "point.3.connected.trianglepath.dotted"
+        case .native: return "app.fill"
+        case .cliImport: return "terminal"
         case .unknown: return "questionmark.circle"
+        }
+    }
+
+    private func sourceLabel(_ source: RunSource) -> String {
+        switch source {
+        case .native: return "Native"
+        case .cliImport: return "CLI"
+        case .unknown: return ""
         }
     }
 }
@@ -405,61 +395,6 @@ struct MWApprovalCard: View {
                 )
                 .shadow(color: MWColors.statusWarning.opacity(0.08), radius: 12, x: 0, y: 0)
         )
-    }
-}
-
-// MARK: - Diff File Row
-
-struct MWDiffFileRow: View {
-    let path: String
-    let status: FileChangeStatus
-    let additions: Int?
-    let deletions: Int?
-
-    var statusIcon: String {
-        switch status {
-        case .added: return "plus.circle.fill"
-        case .modified: return "pencil.circle.fill"
-        case .deleted: return "minus.circle.fill"
-        case .renamed: return "arrow.triangle.2.circlepath"
-        }
-    }
-
-    var statusColor: Color {
-        switch status {
-        case .added: return MWColors.statusSuccess
-        case .modified: return MWColors.statusWarning
-        case .deleted: return MWColors.statusError
-        case .renamed: return MWColors.accentCyan
-        }
-    }
-
-    var body: some View {
-        HStack(spacing: MWSpacing.sm) {
-            Image(systemName: statusIcon)
-                .foregroundColor(statusColor)
-                .frame(width: 16)
-
-            Text(path)
-                .font(MWTypography.monoCaption())
-                .foregroundColor(MWColors.textPrimary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-
-            Spacer()
-
-            if let add = additions, add > 0 {
-                Text("+\(add)")
-                    .font(MWTypography.monoSmall())
-                    .foregroundColor(MWColors.statusSuccess)
-            }
-            if let del = deletions, del > 0 {
-                Text("-\(del)")
-                    .font(MWTypography.monoSmall())
-                    .foregroundColor(MWColors.statusError)
-            }
-        }
-        .padding(.vertical, MWSpacing.xs)
     }
 }
 

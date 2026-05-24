@@ -252,11 +252,11 @@ struct SessionHubView: View {
                 filterChip(title: "All", isActive: filters.status == nil) {
                     filters.status = nil
                 }
-                filterChip(title: "Running", isActive: filters.status == .running) {
+                filterChip(title: "Active", isActive: filters.status == .running) {
                     filters.status = filters.status == .running ? nil : .running
                 }
-                filterChip(title: "Approval", isActive: filters.status == .waitingApproval) {
-                    filters.status = filters.status == .waitingApproval ? nil : .waitingApproval
+                filterChip(title: "Idle", isActive: filters.status == .idle) {
+                    filters.status = filters.status == .idle ? nil : .idle
                 }
                 filterChip(title: "Completed", isActive: filters.status == .completed) {
                     filters.status = filters.status == .completed ? nil : .completed

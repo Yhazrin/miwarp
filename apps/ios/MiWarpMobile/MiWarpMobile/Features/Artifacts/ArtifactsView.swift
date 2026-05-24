@@ -18,22 +18,25 @@ struct ArtifactsView: View {
                 })
             } else if let artifacts {
                 List {
-                    if let files = artifacts.filesChanged, !files.isEmpty {
+                    if !artifacts.filesChanged.isEmpty {
                         Section("Files Changed") {
-                            ForEach(files) { file in
-                                MWDiffFileRow(
-                                    path: file.path,
-                                    status: file.status,
-                                    additions: file.additions,
-                                    deletions: file.deletions
-                                )
+                            ForEach(artifacts.filesChanged, id: \.self) { path in
+                                HStack {
+                                    Image(systemName: "doc")
+                                        .font(.caption)
+                                        .foregroundColor(MWColors.accentCyan)
+                                    Text(path)
+                                        .font(MWTypography.monoCaption())
+                                        .foregroundColor(MWColors.textSecondary)
+                                        .textSelection(.enabled)
+                                }
                             }
                         }
                     }
 
-                    if let commands = artifacts.commands, !commands.isEmpty {
+                    if !artifacts.commands.isEmpty {
                         Section("Commands") {
-                            ForEach(commands, id: \.self) { command in
+                            ForEach(artifacts.commands, id: \.self) { command in
                                 Text(command)
                                     .font(MWTypography.monoCaption())
                                     .foregroundColor(MWColors.textSecondary)
@@ -42,9 +45,9 @@ struct ArtifactsView: View {
                         }
                     }
 
-                    if let diff = artifacts.diffSummary, !diff.isEmpty {
+                    if !artifacts.diffSummary.isEmpty {
                         Section("Diff Summary") {
-                            DiffPreviewView(diff: diff)
+                            DiffPreviewView(diff: artifacts.diffSummary)
                         }
                     }
 

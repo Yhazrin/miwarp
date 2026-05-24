@@ -1,5 +1,6 @@
 package com.miwarp.mobile.feature.artifacts
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,6 +10,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -17,8 +22,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.miwarp.mobile.design.MWDiffFileRow
 import com.miwarp.mobile.design.MWEmptyState
 import com.miwarp.mobile.design.MWErrorState
 import com.miwarp.mobile.design.MWLoadingState
@@ -95,13 +100,24 @@ fun ArtifactsScreen(
                         verticalArrangement = Arrangement.spacedBy(spacing.xs),
                     ) {
                         if (!files.isNullOrEmpty()) {
-                            items(files, key = { it.path }) { file ->
-                                MWDiffFileRow(
-                                    filePath = file.path,
-                                    status = file.status.name.lowercase(),
-                                    additions = file.additions,
-                                    deletions = file.deletions,
-                                    onClick = { onFileClick(file.path) },
+                            items(files, key = { it }) { filePath ->
+                                ListItem(
+                                    headlineContent = {
+                                        Text(
+                                            text = filePath,
+                                            style = MWTypography.monoCaption,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    },
+                                    leadingContent = {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Description,
+                                            contentDescription = null,
+                                            tint = colors.accentCyan,
+                                        )
+                                    },
+                                    modifier = Modifier.clickable { onFileClick(filePath) },
                                 )
                             }
                         }
