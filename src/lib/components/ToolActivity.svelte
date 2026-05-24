@@ -6,6 +6,7 @@
   import { truncate, formatTokenCount, formatDuration } from "$lib/utils/format";
   import { getToolDetail as getToolDetailRaw } from "$lib/utils/tool-rendering";
   import { dbg } from "$lib/utils/debug";
+  import { sortTasksByPriority, formatElapsed } from "$lib/utils/task-sort";
   import { t } from "$lib/i18n/index.svelte";
   import ContextHistoryPanel from "$lib/components/ContextHistoryPanel.svelte";
   import WorkspaceContextPanel from "$lib/components/WorkspaceContextPanel.svelte";
@@ -324,23 +325,7 @@
 
   // ── Background tasks (sorted: active first, then by recency) ──
 
-  let sortedBgTasks = $derived.by(() => {
-    const items = [...backgroundTasks.values()];
-    return items.sort((a, b) => {
-      const aActive =
-        a.status !== "completed" && a.status !== "failed" && a.status !== "error" ? 0 : 1;
-      const bActive =
-        b.status !== "completed" && b.status !== "failed" && b.status !== "error" ? 0 : 1;
-      if (aActive !== bActive) return aActive - bActive;
-      return b.startedAt - a.startedAt;
-    });
-  });
-
-  function bgElapsed(startedAt: number): string {
-    const ms = Date.now() - startedAt;
-    if (ms < 1000) return "<1s";
-    return `${Math.floor(ms / 1000)}s`;
-  }
+  let sortedBgTasks = $derived(sortTasksByPriority([...backgroundTasks.values()]));
 
   let useTimeline = $derived(timeline.some((e) => e.kind === "tool"));
 
@@ -1227,7 +1212,7 @@
                       >
                       {#if isActive}
                         <span class="shrink-0 text-[10px] text-foreground/30 tabular-nums"
-                          >{bgElapsed(item.startedAt)}</span
+                          >{formatElapsed(item.startedAt)}</span
                         >
                       {/if}
                     </div>

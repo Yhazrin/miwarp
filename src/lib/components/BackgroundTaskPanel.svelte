@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
+  import { sortTasksByPriority, formatElapsed } from "$lib/utils/task-sort";
 
   let {
     tasks = new Map(),
@@ -19,24 +20,8 @@
     collapsed?: boolean;
   } = $props();
 
-  function elapsed(startedAt: number): string {
-    const ms = Date.now() - startedAt;
-    if (ms < 1000) return "<1s";
-    return `${Math.floor(ms / 1000)}s`;
-  }
-
   // Sort: active first, then completed/failed (by most recent)
-  let sortedTasks = $derived.by(() => {
-    const items = [...tasks.values()];
-    return items.sort((a, b) => {
-      const aActive =
-        a.status !== "completed" && a.status !== "failed" && a.status !== "error" ? 0 : 1;
-      const bActive =
-        b.status !== "completed" && b.status !== "failed" && b.status !== "error" ? 0 : 1;
-      if (aActive !== bActive) return aActive - bActive;
-      return b.startedAt - a.startedAt;
-    });
-  });
+  let sortedTasks = $derived(sortTasksByPriority([...tasks.values()]));
 </script>
 
 {#if tasks.size > 0}
@@ -118,7 +103,8 @@
             <span class="flex-1 min-w-0 truncate">{item.message}</span>
 
             {#if isActive}
-              <span class="shrink-0 text-foreground/30 tabular-nums">{elapsed(item.startedAt)}</span
+              <span class="shrink-0 text-foreground/30 tabular-nums"
+                >{formatElapsed(item.startedAt)}</span
               >
             {/if}
           </div>
