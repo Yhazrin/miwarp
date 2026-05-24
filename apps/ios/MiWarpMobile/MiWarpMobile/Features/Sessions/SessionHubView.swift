@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SessionHubView: View {
     @EnvironmentObject private var store: MiWarpConnectionStore
+    @EnvironmentObject private var theme: MWTheme
     @State private var runs: [MiWarpRun] = []
     @State private var isLoading = false
     @State private var error: String?
@@ -40,7 +41,7 @@ struct SessionHubView: View {
                     sessionList
                 }
             }
-            .background(MWColors.bgDeepest)
+            .background(theme.bgDeepest)
             .navigationTitle("Sessions")
             .searchable(text: $searchText, prompt: "Search sessions...")
             .toolbar {
@@ -242,7 +243,7 @@ struct SessionHubView: View {
         }
         .padding(.horizontal, MWSpacing.lg)
         .padding(.vertical, MWSpacing.sm)
-        .background(MWColors.bgDeep)
+        .background(theme.bgDeep)
     }
 
     private var filterChipsRow: some View {
@@ -267,7 +268,7 @@ struct SessionHubView: View {
             .padding(.horizontal, MWSpacing.lg)
             .padding(.vertical, MWSpacing.sm)
         }
-        .background(MWColors.bgDeepest)
+        .background(theme.bgDeepest)
     }
 
     private func filterChip(title: String, isActive: Bool, onTap: @escaping () -> Void) -> some View {

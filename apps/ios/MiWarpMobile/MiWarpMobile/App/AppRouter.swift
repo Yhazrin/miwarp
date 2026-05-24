@@ -77,10 +77,10 @@ struct MWControlDock: View {
         .background(
             Capsule()
                 .fill(.ultraThinMaterial)
-                .overlay(
-                    Capsule()
-                        .strokeBorder(.white.opacity(0.2), lineWidth: 0.5)
-                )
+        )
+        .overlay(
+            Capsule()
+                .strokeBorder(.white.opacity(0.2), lineWidth: 0.5)
         )
         .padding(.horizontal, MWSpacing.xxxl)
     }

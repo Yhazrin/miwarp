@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PairingView: View {
     @EnvironmentObject private var store: MiWarpConnectionStore
+    @EnvironmentObject private var theme: MWTheme
     @State private var showManualEntry = false
     @State private var showScanner = false
 
@@ -27,7 +28,7 @@ struct PairingView: View {
                 }
                 .padding(.vertical, MWSpacing.lg)
             }
-            .background(MWColors.bgDeepest)
+            .background(theme.bgDeepest)
             .navigationTitle("Connections")
             .sheet(isPresented: $showManualEntry) {
                 ManualConnectionSheet()

@@ -3,6 +3,7 @@ import SwiftUI
 struct ArtifactsView: View {
     let runId: String
     @EnvironmentObject private var store: MiWarpConnectionStore
+    @EnvironmentObject private var theme: MWTheme
     @State private var artifacts: RunArtifacts?
     @State private var isLoading = false
     @State private var error: String?
@@ -68,7 +69,7 @@ struct ArtifactsView: View {
                 )
             }
         }
-        .background(MWColors.bgDeepest)
+        .background(theme.bgDeepest)
         .navigationTitle("Artifacts")
         .task {
             await loadArtifacts()

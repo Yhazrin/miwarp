@@ -27,7 +27,7 @@ struct MobileSettingsView: View {
                 }
                 .padding(.vertical, MWSpacing.lg)
             }
-            .background(MWColors.bgDeepest)
+            .background(theme.bgDeepest)
             .navigationTitle("Settings")
             .sheet(isPresented: $showLogs) {
                 LogsView()
@@ -244,6 +244,7 @@ struct MobileSettingsView: View {
 
 struct LogsView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var theme: MWTheme
     let logger = MiWarpLogger.shared
 
     var body: some View {
@@ -270,7 +271,7 @@ struct LogsView: View {
                 .padding(.vertical, 2)
             }
             .listStyle(.plain)
-            .background(MWColors.bgDeepest)
+            .background(theme.bgDeepest)
             .navigationTitle("Logs")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -299,6 +300,7 @@ struct LogsView: View {
 
 struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var theme: MWTheme
 
     var body: some View {
         NavigationStack {
@@ -333,7 +335,7 @@ struct AboutView: View {
 
                 Spacer()
             }
-            .background(MWColors.bgDeepest)
+            .background(theme.bgDeepest)
             .navigationTitle("About")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

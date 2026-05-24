@@ -25,6 +25,7 @@ struct ChatView: View {
     let runTitle: String
 
     @EnvironmentObject private var store: MiWarpConnectionStore
+    @EnvironmentObject private var theme: MWTheme
     @StateObject private var reducer = MiWarpEventReducer()
     @State private var inputText = ""
     @State private var isLoading = true
@@ -85,7 +86,7 @@ struct ChatView: View {
                 onFork: { Task { await forkSession() } }
             )
         }
-        .background(MWColors.bgDeepest)
+        .background(theme.bgDeepest)
         .navigationTitle(runTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
