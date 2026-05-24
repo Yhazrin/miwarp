@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg } from "$lib/utils/debug";
   import { ansiToHtml, hasAnsiCodes, escapeHtml, stripAnsi } from "$lib/utils/ansi";
@@ -535,6 +536,13 @@
       copyFeedback = null;
     }, 1500);
   }
+
+  onDestroy(() => {
+    if (copyTimeout) {
+      clearTimeout(copyTimeout);
+      copyTimeout = undefined;
+    }
+  });
 </script>
 
 <div class="mt-2 space-y-1.5" role="presentation" onclick={(e) => e.stopPropagation()}>

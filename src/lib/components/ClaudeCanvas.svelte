@@ -25,10 +25,11 @@
   $effect(() => {
     const _s = status;
     alive = false;
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       alive = true;
       startTime = performance.now();
     }, 50);
+    return () => clearTimeout(timer);
   });
 
   onMount(() => {

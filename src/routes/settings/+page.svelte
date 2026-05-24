@@ -1216,8 +1216,8 @@
     saveGeneralPatch({ platform_credentials: platformCredentials });
     // If we deleted the active platform, switch to Anthropic
     if (wasActive) {
-      const anthropic = PLATFORM_PRESETS.find((p) => p.id === "anthropic")!;
-      applyPlatformPreset(anthropic);
+      const anthropic = PLATFORM_PRESETS.find((p) => p.id === "anthropic");
+      if (anthropic) applyPlatformPreset(anthropic);
     }
   }
 

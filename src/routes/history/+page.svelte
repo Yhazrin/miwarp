@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { searchRuns } from "$lib/api";
@@ -205,6 +205,13 @@
       filters = { query: q };
     }
     loadData();
+  });
+
+  onDestroy(() => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = undefined;
+    }
   });
 </script>
 

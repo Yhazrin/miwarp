@@ -2211,8 +2211,8 @@ export class SessionStore {
       dbg("store", "interrupt failed, killing process:", e);
       try {
         await api.stopSession(this.run.id);
-      } catch {
-        // Session may already be dead
+      } catch (e) {
+        dbgWarn("store", "stopSession also failed (session may already be dead)", e);
       }
       this._setPhase("stopped");
 

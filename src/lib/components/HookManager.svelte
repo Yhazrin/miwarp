@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { getCliConfig, updateCliConfig } from "$lib/api";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
@@ -48,6 +48,13 @@
   // ── Lifecycle ──
   onMount(() => {
     loadConfig();
+  });
+
+  onDestroy(() => {
+    if (toastTimeout) {
+      clearTimeout(toastTimeout);
+      toastTimeout = null;
+    }
   });
 
   async function loadConfig() {

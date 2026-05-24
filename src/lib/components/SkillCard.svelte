@@ -22,7 +22,8 @@
 
   const categoryInfo = $derived(
     SKILL_CATEGORIES.find((c) => c.value === skill.category) ||
-      SKILL_CATEGORIES.find((c) => c.value === "custom")!,
+      SKILL_CATEGORIES.find((c) => c.value === "custom") ||
+      SKILL_CATEGORIES[0],
   );
 
   function handleSelect() {

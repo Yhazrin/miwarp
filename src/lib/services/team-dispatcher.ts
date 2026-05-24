@@ -6,7 +6,7 @@
  */
 import * as api from "$lib/api";
 import type { TeamPreset, TeamRun } from "$lib/types";
-import { dbg } from "$lib/utils/debug";
+import { dbg, dbgWarn } from "$lib/utils/debug";
 
 // ── Trigger detection ──
 
@@ -313,13 +313,13 @@ async function waitForRunCompletion(runId: string, maxWaitMs = 300_000): Promise
             const text = lastEvent.payload?.text || lastEvent.payload?.content || "";
             return typeof text === "string" ? text : JSON.stringify(text);
           }
-        } catch {
-          // Fall through to return status
+        } catch (e) {
+          dbgWarn("team-dispatcher", "getRunEvents failed", e);
         }
         return run.status === "completed" ? "Task completed" : `Task ${run.status}`;
       }
-    } catch {
-      // Run might not exist yet, keep polling
+    } catch (e) {
+      dbgWarn("team-dispatcher", "poll iteration failed (run may not exist yet)", e);
     }
 
     await new Promise((resolve) => setTimeout(resolve, pollInterval));
