@@ -130,6 +130,11 @@ struct SessionHubView: View {
                     await loadRuns()
                 }
             }
+            .onChange(of: store.isConnected) { connected in
+                if connected {
+                    Task { await viewModel.loadRuns() }
+                }
+            }
             .refreshable {
                 await loadRuns()
             }

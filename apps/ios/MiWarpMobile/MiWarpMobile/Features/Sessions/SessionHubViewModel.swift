@@ -33,7 +33,7 @@ final class SessionHubViewModel: ObservableObject {
     }
 
     func loadRuns() async {
-        guard let rpc = store?.rpc else {
+        guard store?.isConnected == true, let rpc = store?.rpc else {
             if runs.isEmpty {
                 error = "Not connected"
             }

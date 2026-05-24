@@ -27,7 +27,7 @@ final class ChatViewModel: ObservableObject {
     // MARK: - Load History
 
     func loadHistory() async {
-        guard let rpc = store?.rpc else {
+        guard store?.isConnected == true, let rpc = store?.rpc else {
             error = "Not connected"
             isLoading = false
             return

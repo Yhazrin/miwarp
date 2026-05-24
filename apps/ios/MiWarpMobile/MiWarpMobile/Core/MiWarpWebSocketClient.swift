@@ -71,7 +71,7 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         components.host = host
         components.port = port
         components.path = "/ws"
-        // Token goes in header for security, not URL query
+        // Token in URL query for WS handshake; also sent via headers in performConnect()
         components.queryItems = [URLQueryItem(name: "token", value: token)]
 
         guard let url = components.url else {
