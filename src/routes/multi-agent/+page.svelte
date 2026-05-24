@@ -7,6 +7,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import Button from "$lib/components/Button.svelte";
   import Card from "$lib/components/Card.svelte";
+  import { dbgWarn } from "$lib/utils/debug";
 
   const presets = multiAgentService.getPresets();
   let _selectedConfig = $state<MultiAgentConfig | null>(null);
@@ -27,7 +28,7 @@
       );
       results = execResults;
     } catch (e) {
-      console.error("executePreset failed", e);
+      dbgWarn("multi-agent", "executePreset failed", e);
     } finally {
       isRunning = false;
     }

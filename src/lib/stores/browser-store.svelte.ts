@@ -10,6 +10,7 @@ import type {
   PageContent,
   ScreenshotResult,
 } from "$lib/services/browser-service";
+import { dbgWarn } from "$lib/utils/debug";
 
 // ── State Types ──
 
@@ -238,7 +239,7 @@ function createBrowserStore() {
       const content = await browserService.getPageContent(state.activeTabId);
       dispatch({ type: "SET_PAGE_CONTENT", content });
     } catch (error) {
-      console.error("Failed to load page content:", error);
+      dbgWarn("browser-store", "Failed to load page content:", error);
     }
   }
 
@@ -252,7 +253,7 @@ function createBrowserStore() {
       }
       return result;
     } catch (error) {
-      console.error("Screenshot failed:", error);
+      dbgWarn("browser-store", "Screenshot failed:", error);
       return null;
     }
   }

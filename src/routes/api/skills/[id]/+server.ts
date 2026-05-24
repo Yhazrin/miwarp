@@ -6,10 +6,11 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 import { dbg, dbgWarn } from "$lib/utils/debug";
+import type { Skill } from "$lib/types/skill";
 
 // Shared skill storage (in production would use a database)
 // For now we import from parent, but in real app would be a service
-const skills: any[] = [];
+const skills: Skill[] = [];
 
 export const GET: RequestHandler = async ({ params }) => {
   const { id } = params;

@@ -4,7 +4,7 @@
   import { getTeamTask, listTeamRuns, getTeamRun, cancelTeamRun } from "$lib/api";
   import type { TeamStore } from "$lib/stores/team-store.svelte";
   import type { TeamTask, TeamInboxMessage, TeamRun, TeamRunStatus } from "$lib/types";
-  // import { dbg } from "$lib/utils/debug";
+  import { dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
 
   const teamStore = getContext<TeamStore>("teamStore");
@@ -80,7 +80,7 @@
       teamRuns = await listTeamRuns();
     } catch (e) {
       runsError = String(e);
-      console.error("Failed to load team runs:", e);
+      dbgWarn("teams", "Failed to load team runs:", e);
     } finally {
       runsLoading = false;
     }
@@ -94,7 +94,7 @@
     try {
       selectedRun = await getTeamRun(id);
     } catch (e) {
-      console.error("Failed to load team run:", e);
+      dbgWarn("teams", "Failed to load team run:", e);
       selectedRun = null;
     } finally {
       loadingRunId = null;
@@ -109,7 +109,7 @@
         await selectRun(id);
       }
     } catch (e) {
-      console.error("Failed to cancel team run:", e);
+      dbgWarn("teams", "Failed to cancel team run:", e);
     }
   }
 
@@ -270,7 +270,7 @@
       await teamStore.deleteTeam(name);
       deleteConfirm = null;
     } catch (e) {
-      console.error("delete team failed:", e);
+      dbgWarn("teams", "Delete team failed:", e);
     } finally {
       deleting = false;
     }

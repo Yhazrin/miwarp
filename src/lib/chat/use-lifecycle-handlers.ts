@@ -435,7 +435,7 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
       try {
         await middleware.start();
       } catch (e) {
-        console.error("[chat] middleware.start() failed:", e);
+        dbgWarn("chat", "middleware.start() failed:", e);
         store.error = t("chat_eventSystemFailed");
       }
       try {

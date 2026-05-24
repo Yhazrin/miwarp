@@ -13,6 +13,7 @@ import {
   executeTeamRun,
   shouldShowTeamHint,
 } from "$lib/services/team-dispatcher";
+import { dbgWarn } from "$lib/utils/debug";
 import * as api from "$lib/api";
 
 // ── Context (dependency injection) ──
@@ -92,7 +93,7 @@ export function createTeamDispatch(ctx: TeamDispatchContext): TeamDispatchHandle
         activeTeamRuns = activeTeamRuns.map((r) => (r.id === updated.id ? updated : r));
       },
     ).catch((err) => {
-      console.error("Team run failed:", err);
+      dbgWarn("team-dispatch", "Team run failed:", err);
     });
   }
 

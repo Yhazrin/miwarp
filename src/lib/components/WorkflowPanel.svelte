@@ -6,6 +6,7 @@
     type WorkflowStep,
   } from "$lib/stores/workflow-store.svelte";
   import { multiFieldFuzzyMatch } from "$lib/utils/fuzzy";
+  import { dbgWarn } from "$lib/utils/debug";
 
   let {
     open = $bindable(false),
@@ -81,7 +82,7 @@
         selectedTemplateId = null;
       },
       onError: (error: Error) => {
-        console.error("Workflow execution error:", error);
+        dbgWarn("workflow", "Workflow execution error:", error);
         selectedTemplateId = null;
       },
     });
