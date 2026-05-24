@@ -14,6 +14,8 @@ Welcome! We're glad you're interested in contributing to MiWarp. Whether it's a 
 
 ```bash
 git clone https://github.com/Yhazrin/miwarp.git
+
+Before release, run the [release regression checklist](docs/release-regression.md) and `npm run version:check`.
 cd MiWarp
 npm install
 npm run tauri dev

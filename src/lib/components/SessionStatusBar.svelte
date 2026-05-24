@@ -875,6 +875,12 @@
               {/if}
             </span>
           </span>
+        {:else}
+          <span class="session-context-pill text-foreground/60">
+            <span class="session-context-pill-inner bg-[hsl(var(--miwarp-accent-primary))]">
+              <span class="text-[10px] font-bold text-white/90">miw</span>
+            </span>
+          </span>
         {/if}
 
         <div class="session-island-tab-group">

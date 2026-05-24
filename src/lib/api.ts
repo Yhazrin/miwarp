@@ -567,6 +567,10 @@ export async function runDiagnostics(cwd: string): Promise<DiagnosticsReport> {
   return invoke<DiagnosticsReport>("run_diagnostics", { cwd });
 }
 
+export async function getDataDirectory(): Promise<string> {
+  return invoke<string>("get_data_directory", {});
+}
+
 // Claude Code History Migration
 export async function exportClaudeCodeHistoryArchive(outputPath: string): Promise<ExportReport> {
   dbg("api", "exportClaudeCodeHistoryArchive", { outputPath });

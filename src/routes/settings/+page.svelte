@@ -18,6 +18,7 @@
   import BackgroundPicker from "$lib/components/BackgroundPicker.svelte";
   import ThemeEditor from "$lib/components/ThemeEditor.svelte";
   import SettingsToggle from "$lib/components/settings/SettingsToggle.svelte";
+  import SettingsDoctorPanel from "$lib/components/settings/SettingsDoctorPanel.svelte";
   import { formatKeyDisplay } from "$lib/stores/keybindings.svelte";
   import {
     PLATFORM_PRESETS,
@@ -2527,6 +2528,10 @@
                   "在侧边栏工作区行显示 Claude Code 像素动画吉祥物"}
               />
             </Card>
+
+            <Card class="p-6">
+              <SettingsDoctorPanel {settings} />
+            </Card>
           </div>
 
           <!-- ═══ Connection tab ═══ -->
@@ -4478,6 +4483,9 @@
             <p class="text-sm text-muted-foreground">
               {t("settings_data_claude_code_history_desc") ||
                 "Export or import Claude Code native history sessions between machines."}
+            </p>
+            <p class="text-xs text-muted-foreground/80">
+              {t("settings_data_readonly_note")}
             </p>
 
             <!-- Scan -->
