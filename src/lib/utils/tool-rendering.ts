@@ -174,7 +174,7 @@ export function isPlanFilePath(filePath: string): boolean {
 export function planFileName(filePath: string): string | null {
   if (!isPlanFilePath(filePath)) return null;
   const normalized = filePath.replaceAll("\\", "/");
-  const name = normalized.split("/").pop()!.replace(/\.md$/, "");
+  const name = (normalized.split("/").pop() || normalized).replace(/\.md$/, "");
   return name;
 }
 

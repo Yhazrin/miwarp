@@ -143,7 +143,7 @@ async function _handleVirtualCommand(
           Array.isArray(e.tool.tool_use_result.newTodos),
       );
     if (lastTodo) {
-      const todos = lastTodo.tool.tool_use_result!.newTodos as Array<{
+      const todos = (lastTodo.tool.tool_use_result as Record<string, unknown>).newTodos as Array<{
         content: string;
         status: "pending" | "in_progress" | "completed";
       }>;

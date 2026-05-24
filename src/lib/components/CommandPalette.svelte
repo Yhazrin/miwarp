@@ -44,7 +44,6 @@
   let previewContent = $state<string | null>(null);
   let hoveredCmdId = $state<string | null>(null);
   let searchMode = $state<"basic" | "fuzzy" | "nl">("basic");
-  let _isLoadingFuzzy = $state(false);
   let _nlMatchResult = $state<CommandDef | null>(null);
 
   // Compute flat list with fuzzy scores
