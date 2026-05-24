@@ -1,0 +1,338 @@
+package com.miwarp.mobile.rpc
+
+import com.miwarp.mobile.model.ArtifactFile
+import com.miwarp.mobile.model.BusEvent
+import com.miwarp.mobile.model.BusEventEnvelope
+import com.miwarp.mobile.model.ConnectionState
+import com.miwarp.mobile.model.GitDiff
+import com.miwarp.mobile.model.GitStatus
+import com.miwarp.mobile.model.MiWarpRun
+import com.miwarp.mobile.model.RunArtifacts
+import com.miwarp.mobile.model.RunStatus
+import com.miwarp.mobile.model.WebServerStatus
+import com.miwarp.mobile.util.Logger
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
+
+class MiWarpRpcClient(
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+) {
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+        encodeDefaults = true
+    }
+
+    val wsClient = MiWarpWebSocketClient(scope)
+
+    val connectionState: StateFlow<ConnectionState> = wsClient.connectionState
+
+    val rawBroadcastEvents: SharedFlow<RpcBroadcast> = wsClient.broadcastEvents
+
+    fun connect(url: String) = wsClient.connect(url)
+
+    fun disconnect() = wsClient.disconnect()
+
+    fun broadcastBusEvents(): Flow<BusEvent> = rawBroadcastEvents.mapNotNull { envelope ->
+        parseBusEvent(envelope)
+    }
+
+    // ── Dispatch methods ────────────────────────────────────────────────────
+
+    suspend fun listRuns(): List<MiWarpRun> {
+        val response = wsClient.sendRequest("list_runs")
+        checkError(response)
+        return response.result?.jsonArray?.map { element ->
+            parseRun(element)
+        } ?: emptyList()
+    }
+
+    suspend fun getRun(id: String): MiWarpRun {
+        val params = json.encodeToJsonElement(GetRunParams.serializer(), GetRunParams(id))
+        val response = wsClient.sendRequest("get_run", params)
+        checkError(response)
+        return parseRun(response.result!!)
+    }
+
+    suspend fun getBusEvents(id: String, sinceSeq: Long? = null): List<BusEvent> {
+        val params = json.encodeToJsonElement(
+            GetBusEventsParams.serializer(), GetBusEventsParams(id, sinceSeq)
+        )
+        val response = wsClient.sendRequest("get_bus_events", params)
+        checkError(response)
+        return response.result?.jsonArray?.mapNotNull { parseBusEventFromElement(it) } ?: emptyList()
+    }
+
+    suspend fun sendMessage(runId: String, message: String, attachments: List<String>? = null) {
+        val params = json.encodeToJsonElement(
+            SendMessageParams.serializer(), SendMessageParams(runId, message, attachments)
+        )
+        val response = wsClient.sendRequest("send_session_message", params)
+        checkError(response)
+    }
+
+    suspend fun startSession(runId: String, mode: String? = null, initialMessage: String? = null) {
+        val params = json.encodeToJsonElement(
+            StartSessionParams.serializer(), StartSessionParams(runId, mode, initialMessage)
+        )
+        val response = wsClient.sendRequest("start_session", params)
+        checkError(response)
+    }
+
+    suspend fun stopSession(runId: String) {
+        val params = json.encodeToJsonElement(
+            StopSessionParams.serializer(), StopSessionParams(runId)
+        )
+        val response = wsClient.sendRequest("stop_session", params)
+        checkError(response)
+    }
+
+    suspend fun forkSession(runId: String): String {
+        val params = json.encodeToJsonElement(
+            ForkSessionParams.serializer(), ForkSessionParams(runId)
+        )
+        val response = wsClient.sendRequest("fork_session", params)
+        checkError(response)
+        return response.result?.jsonPrimitive?.content ?: ""
+    }
+
+    suspend fun respondPermission(
+        runId: String,
+        requestId: String,
+        behavior: String,
+        updatedPermissions: JsonElement? = null,
+        denyMessage: String? = null,
+        interrupt: Boolean? = null,
+    ) {
+        val params = json.encodeToJsonElement(
+            RespondPermissionParams.serializer(),
+            RespondPermissionParams(runId, requestId, behavior, updatedPermissions, denyMessage, interrupt),
+        )
+        val response = wsClient.sendRequest("respond_permission", params)
+        checkError(response)
+    }
+
+    suspend fun approveTool(runId: String, toolName: String) {
+        val params = json.encodeToJsonElement(
+            ApproveToolParams.serializer(), ApproveToolParams(runId, toolName)
+        )
+        val response = wsClient.sendRequest("approve_session_tool", params)
+        checkError(response)
+    }
+
+    suspend fun getRunArtifacts(id: String): RunArtifacts {
+        val params = json.encodeToJsonElement(
+            GetArtifactsParams.serializer(), GetArtifactsParams(id)
+        )
+        val response = wsClient.sendRequest("get_run_artifacts", params)
+        checkError(response)
+        return try {
+            json.decodeFromJsonElement(RunArtifacts.serializer(), response.result!!)
+        } catch (_: Exception) {
+            RunArtifacts()
+        }
+    }
+
+    suspend fun getGitStatus(cwd: String): GitStatus {
+        val params = json.encodeToJsonElement(
+            GetGitStatusParams.serializer(), GetGitStatusParams(cwd)
+        )
+        val response = wsClient.sendRequest("get_git_status", params)
+        checkError(response)
+        return try {
+            json.decodeFromJsonElement(GitStatus.serializer(), response.result!!)
+        } catch (_: Exception) {
+            GitStatus()
+        }
+    }
+
+    suspend fun getGitDiff(cwd: String, staged: Boolean? = null, file: String? = null): List<GitDiff> {
+        val params = json.encodeToJsonElement(
+            GetGitDiffParams.serializer(), GetGitDiffParams(cwd, staged, file)
+        )
+        val response = wsClient.sendRequest("get_git_diff", params)
+        checkError(response)
+        return try {
+            response.result?.jsonArray?.map {
+                json.decodeFromJsonElement(GitDiff.serializer(), it)
+            } ?: emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun subscribe(runId: String, lastSeq: Long = 0L) {
+        val params = json.encodeToJsonElement(
+            SubscribeParams.serializer(), SubscribeParams(runId, lastSeq)
+        )
+        val response = wsClient.sendRequest("_subscribe", params)
+        checkError(response)
+    }
+
+    suspend fun unsubscribe(runId: String) {
+        val params = json.encodeToJsonElement(
+            UnsubscribeParams.serializer(), UnsubscribeParams(runId)
+        )
+        val response = wsClient.sendRequest("_unsubscribe", params)
+        checkError(response)
+    }
+
+    suspend fun getWebServerStatus(): WebServerStatus {
+        val response = wsClient.sendRequest("get_web_server_status")
+        checkError(response)
+        return try {
+            json.decodeFromJsonElement(WebServerStatus.serializer(), response.result!!)
+        } catch (_: Exception) {
+            WebServerStatus()
+        }
+    }
+
+    // ── Parsing helpers ─────────────────────────────────────────────────────
+
+    private fun checkError(response: RpcResponse) {
+        if (response.error != null) {
+            throw RpcException(response.error)
+        }
+    }
+
+    private fun parseRun(element: JsonElement): MiWarpRun {
+        return try {
+            json.decodeFromJsonElement(MiWarpRun.serializer(), element)
+        } catch (_: Exception) {
+            val obj = element.jsonObject
+            MiWarpRun(
+                id = obj["id"]?.jsonPrimitive?.content ?: "",
+                cwd = obj["cwd"]?.jsonPrimitive?.content ?: "",
+                mode = obj["mode"]?.jsonPrimitive?.content ?: "",
+                status = try {
+                    RunStatus.valueOf(
+                        obj["status"]?.jsonPrimitive?.content?.replaceFirstChar { it.uppercase() } ?: "Idle"
+                    )
+                } catch (_: Exception) { RunStatus.Idle },
+                title = obj["title"]?.jsonPrimitive?.content ?: "",
+                model = obj["model"]?.jsonPrimitive?.content ?: "",
+                createdAt = obj["created_at"]?.jsonPrimitive?.longOrNull ?: 0L,
+                updatedAt = obj["updated_at"]?.jsonPrimitive?.longOrNull ?: 0L,
+                totalTokens = obj["total_tokens"]?.jsonPrimitive?.longOrNull ?: 0L,
+                totalCost = obj["total_cost"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                messageCount = obj["message_count"]?.jsonPrimitive?.intOrNull ?: 0,
+                turnCount = obj["turn_count"]?.jsonPrimitive?.intOrNull ?: 0,
+            )
+        }
+    }
+
+    private fun parseBusEvent(envelope: RpcBroadcast): BusEvent? {
+        return parseBusEventFromEnvelope(envelope.event, envelope.seq, envelope.runId, envelope.payload)
+    }
+
+    private fun parseBusEventFromElement(element: JsonElement): BusEvent? {
+        return try {
+            val envelope = json.decodeFromJsonElement(BusEventEnvelope.serializer(), element)
+            parseBusEventFromEnvelope(envelope.event, envelope.seq, envelope.runId, envelope.payload)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun parseBusEventFromEnvelope(
+        event: String, seq: Long, runId: String, payload: JsonElement?,
+    ): BusEvent? {
+        if (event == "_full_reload") return BusEvent.FullReload(seq, runId)
+
+        return when (event) {
+            "session_init" -> BusEvent.SessionInit(seq, runId, payload)
+            "message_delta" -> BusEvent.MessageDelta(
+                seq, runId,
+                text = payload?.jsonObject?.get("text")?.jsonPrimitive?.content ?: "",
+                role = payload?.jsonObject?.get("role")?.jsonPrimitive?.content ?: "assistant",
+            )
+            "message_complete" -> BusEvent.MessageComplete(seq, runId, payload)
+            "tool_start" -> BusEvent.ToolStart(
+                seq, runId,
+                toolName = payload?.jsonObject?.get("tool_name")?.jsonPrimitive?.content ?: "",
+                toolId = payload?.jsonObject?.get("tool_id")?.jsonPrimitive?.content ?: "",
+                input = payload?.jsonObject?.get("input"),
+            )
+            "tool_end" -> BusEvent.ToolEnd(
+                seq, runId,
+                toolName = payload?.jsonObject?.get("tool_name")?.jsonPrimitive?.content ?: "",
+                toolId = payload?.jsonObject?.get("tool_id")?.jsonPrimitive?.content ?: "",
+                output = payload?.jsonObject?.get("output")?.jsonPrimitive?.content ?: "",
+                isError = payload?.jsonObject?.get("is_error")?.jsonPrimitive?.booleanOrNull ?: false,
+            )
+            "user_message" -> BusEvent.UserMessage(seq, runId, payload)
+            "run_state" -> {
+                val statusStr = payload?.jsonObject?.get("status")?.jsonPrimitive?.content ?: "idle"
+                val status = try {
+                    RunStatus.valueOf(statusStr.replaceFirstChar { it.uppercase() })
+                } catch (_: Exception) { RunStatus.Idle }
+                BusEvent.RunState(seq, runId, status)
+            }
+            "usage_update" -> BusEvent.UsageUpdate(
+                seq, runId,
+                tokens = payload?.jsonObject?.get("total_tokens")?.jsonPrimitive?.longOrNull ?: 0L,
+                cost = payload?.jsonObject?.get("total_cost")?.jsonPrimitive?.doubleOrNull ?: 0.0,
+            )
+            "thinking_delta" -> BusEvent.ThinkingDelta(
+                seq, runId,
+                text = payload?.jsonObject?.get("text")?.jsonPrimitive?.content ?: "",
+            )
+            "tool_input_delta" -> BusEvent.ToolInputDelta(
+                seq, runId,
+                toolId = payload?.jsonObject?.get("tool_id")?.jsonPrimitive?.content ?: "",
+                text = payload?.jsonObject?.get("text")?.jsonPrimitive?.content ?: "",
+            )
+            "permission_prompt" -> BusEvent.PermissionPrompt(
+                seq, runId,
+                requestId = payload?.jsonObject?.get("request_id")?.jsonPrimitive?.content ?: "",
+                toolName = payload?.jsonObject?.get("tool_name")?.jsonPrimitive?.content ?: "",
+                description = payload?.jsonObject?.get("description")?.jsonPrimitive?.content ?: "",
+                options = payload?.jsonObject?.get("options")?.jsonArray?.map {
+                    it.jsonPrimitive.content
+                } ?: emptyList(),
+            )
+            "permission_denied" -> BusEvent.PermissionDenied(seq, runId, payload)
+            "compact_boundary" -> BusEvent.CompactBoundary(seq, runId, payload)
+            "system_status" -> BusEvent.SystemStatus(seq, runId, payload)
+            "hook_started" -> BusEvent.HookStarted(seq, runId, payload)
+            "hook_progress" -> BusEvent.HookProgress(seq, runId, payload)
+            "hook_response" -> BusEvent.HookResponse(seq, runId, payload)
+            "hook_callback" -> BusEvent.HookCallback(seq, runId, payload)
+            "task_notification" -> BusEvent.TaskNotification(seq, runId, payload)
+            "tool_progress" -> BusEvent.ToolProgress(
+                seq, runId,
+                toolId = payload?.jsonObject?.get("tool_id")?.jsonPrimitive?.content ?: "",
+                progress = payload?.jsonObject?.get("progress")?.jsonPrimitive?.doubleOrNull ?: 0.0,
+                message = payload?.jsonObject?.get("message")?.jsonPrimitive?.content ?: "",
+            )
+            "tool_use_summary" -> BusEvent.ToolUseSummary(seq, runId, payload)
+            "files_persisted" -> BusEvent.FilesPersisted(seq, runId, payload)
+            "control_cancelled" -> BusEvent.ControlCancelled(seq, runId, payload)
+            "command_output" -> BusEvent.CommandOutput(seq, runId, payload)
+            "elicitation_prompt" -> BusEvent.ElicitationPrompt(seq, runId, payload)
+            "rate_limit_event" -> BusEvent.RateLimitEvent(seq, runId, payload)
+            "auth_status" -> BusEvent.AuthStatus(seq, runId, payload)
+            "ralph_started" -> BusEvent.RalphStarted(seq, runId, payload)
+            "ralph_iteration" -> BusEvent.RalphIteration(seq, runId, payload)
+            "ralph_complete" -> BusEvent.RalphComplete(seq, runId, payload)
+            "raw" -> BusEvent.Raw(seq, runId, payload)
+            else -> BusEvent.Unknown(seq, runId, event, payload)
+        }
+    }
+}
+
+class RpcException(message: String) : Exception(message)

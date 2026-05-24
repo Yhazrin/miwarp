@@ -303,6 +303,8 @@
   let webTunnelError = $state<string | null>(null);
   let webTunnelLinkCopied = $state(false);
   let lanIpRequestId = $state(0);
+  let mobileQrDataUrl = $state<string | null>(null);
+  let mobilePairingLinkCopied = $state(false);
 
   let debugOn = $state(isDebugMode());
   let logCopied = $state(false);
@@ -1507,6 +1509,56 @@
       dbgWarn("settings", "failed to open browser", e);
     }
   }
+
+  function buildPairingLink(): string | null {
+    if (!webStatus?.running || !webToken) return null;
+    const bind = webStatus.bind;
+    const isAll = bind === "0.0.0.0" || bind === "::" || bind === "[::]";
+    const rawHost = isAll ? webLanIp : bind;
+    if (!rawHost) return null;
+    const host = rawHost.includes(":") ? `[${rawHost}]` : rawHost;
+    return `miwarp://connect?host=${host}&port=${webStatus.port}&token=${webToken}`;
+  }
+
+  async function generateMobileQr() {
+    const link = buildPairingLink();
+    if (!link) {
+      mobileQrDataUrl = null;
+      return;
+    }
+    try {
+      const QRCode = await import("qrcode");
+      const dataUrl = await QRCode.toDataURL(link, {
+        width: 200,
+        margin: 2,
+        color: { dark: "#e6e6e6", light: "#00000000" },
+        errorCorrectionLevel: "M",
+      });
+      mobileQrDataUrl = dataUrl;
+    } catch (e) {
+      dbgWarn("settings", "QR generation failed", e);
+      mobileQrDataUrl = null;
+    }
+  }
+
+  async function copyPairingLink() {
+    const link = buildPairingLink();
+    if (!link) return;
+    await navigator.clipboard.writeText(link);
+    mobilePairingLinkCopied = true;
+    dbg("settings", "pairing link copied");
+    setTimeout(() => (mobilePairingLinkCopied = false), 1500);
+  }
+
+  // Generate QR when status/token/IP changes
+  $effect(() => {
+    const _key = `${webStatus?.running}-${webStatus?.bind}-${webToken}-${webLanIp}`;
+    if (webStatus?.running && webToken) {
+      void generateMobileQr();
+    } else {
+      mobileQrDataUrl = null;
+    }
+  });
 </script>
 
 {#key currentLocale()}
@@ -2001,6 +2053,98 @@
                       </div>
                     </div>
                   {/if}
+
+                  <!-- Mobile Access -->
+                  <div class="border-t border-border/30 pt-4 mt-2">
+                    <p class="text-sm font-medium mb-1">{t("settings_general_mobileAccess")}</p>
+                    <p class="text-xs text-muted-foreground mb-3">
+                      {t("settings_general_mobileAccessDesc")}
+                    </p>
+
+                    {#if !webStatus?.running}
+                      <p class="text-xs text-muted-foreground italic">
+                        {t("settings_general_mobileNoServer")}
+                      </p>
+                    {:else if webStatus.bind === "127.0.0.1" || webStatus.bind === "::1"}
+                      <div
+                        class="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-300"
+                      >
+                        {t("settings_general_mobileBindWarning")}
+                      </div>
+                    {:else}
+                      <!-- QR Code -->
+                      {#if mobileQrDataUrl}
+                        <div class="flex items-start gap-4 mb-4">
+                          <div
+                            class="shrink-0 rounded-xl border border-border/40 bg-background/60 p-2.5 backdrop-blur-sm"
+                          >
+                            <img
+                              src={mobileQrDataUrl}
+                              alt="Mobile pairing QR code"
+                              class="w-[180px] h-[180px]"
+                            />
+                          </div>
+                          <div class="flex-1 min-w-0 pt-1">
+                            <p class="text-xs font-medium text-foreground/80 mb-1">
+                              {t("settings_general_mobileQrCode")}
+                            </p>
+                            <p class="text-[11px] text-muted-foreground leading-relaxed mb-3">
+                              {t("settings_general_mobileQrCodeDesc")}
+                            </p>
+                            <div
+                              class="rounded-md border border-border/30 bg-muted/30 px-2.5 py-1.5 text-[11px] text-muted-foreground leading-relaxed"
+                            >
+                              {t("settings_general_mobileSafetyNotice")}
+                            </div>
+                          </div>
+                        </div>
+                      {/if}
+
+                      <!-- Pairing Link -->
+                      <div class="flex items-center gap-2 mb-3">
+                        <p class="text-xs text-muted-foreground shrink-0">
+                          {t("settings_general_mobilePairingLink")}
+                        </p>
+                        <code
+                          class="flex-1 rounded-md border bg-muted/50 px-2.5 py-1 font-mono text-[11px] overflow-hidden text-ellipsis whitespace-nowrap"
+                          >{buildPairingLink()?.replace(/token=.*$/, "token=...") ?? ""}</code
+                        >
+                        <button
+                          class="rounded-md border px-2.5 py-1 text-[11px] text-muted-foreground hover:bg-accent transition-colors shrink-0"
+                          onclick={copyPairingLink}
+                        >
+                          {mobilePairingLinkCopied
+                            ? t("settings_general_mobilePairingLinkCopied")
+                            : t("settings_general_mobileCopyPairingLink")}
+                        </button>
+                      </div>
+
+                      <!-- Reset Token -->
+                      <div class="flex items-center gap-2">
+                        <button
+                          class="rounded-md border border-amber-500/30 px-2.5 py-1 text-[11px] text-amber-400/80 hover:bg-amber-500/10 transition-colors"
+                          onclick={async () => {
+                            try {
+                              const newToken = await api.regenerateWebServerToken();
+                              webToken = newToken;
+                              showWebToken = false;
+                              webTokenCopied = false;
+                              webLinkCopied = false;
+                              mobilePairingLinkCopied = false;
+                              dbg("settings", "mobile token reset");
+                            } catch (e) {
+                              dbgWarn("settings", "mobile token reset failed", e);
+                            }
+                          }}
+                        >
+                          {t("settings_general_mobileResetToken")}
+                        </button>
+                        <span class="text-[11px] text-muted-foreground"
+                          >{t("settings_general_mobileResetTokenDesc")}</span
+                        >
+                      </div>
+                    {/if}
+                  </div>
 
                   <!-- HTTP Tunnel -->
                   <div>

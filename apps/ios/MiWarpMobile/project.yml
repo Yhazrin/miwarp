@@ -1,0 +1,42 @@
+name: MiWarpMobile
+options:
+  bundleIdPrefix: com.miwarp
+  deploymentTarget:
+    iOS: "16.0"
+  xcodeVersion: "15.0"
+  swiftVersion: "5.9"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    INFOPLIST_FILE: MiWarpMobile/Resources/Info.plist
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    PRODUCT_NAME: MiWarp
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  MiWarpMobile:
+    type: application
+    platform: iOS
+    sources:
+      - path: MiWarpMobile
+        excludes:
+          - "**/.DS_Store"
+    resources:
+      - path: MiWarpMobile/Resources
+        excludes:
+          - "**/.DS_Store"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.miwarp.mobile
+        INFOPLIST_FILE: MiWarpMobile/Resources/Info.plist
+    entitlements:
+      path: MiWarpMobile/Resources/MiWarpMobile.entitlements
+      properties:
+        com.apple.security.network.client: true
