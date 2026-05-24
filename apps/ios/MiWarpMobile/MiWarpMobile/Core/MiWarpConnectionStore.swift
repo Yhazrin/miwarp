@@ -61,6 +61,22 @@ final class MiWarpConnectionStore: ObservableObject {
         saveConnections()
     }
 
+    func findConnection(host: String, port: Int) -> MiWarpConnection? {
+        connections.first { $0.host == host && $0.port == port }
+    }
+
+    func addOrUpdateConnection(_ connection: MiWarpConnection, token: String) throws {
+        // Check if connection with same host+port exists
+        if let existing = findConnection(host: connection.host, port: connection.port) {
+            // Update existing connection with new token
+            try updateConnection(existing, token: token)
+            logger.info("Updated token for existing connection: \(connection.host):\(connection.port)")
+        } else {
+            // Add new connection
+            try addConnection(connection, token: token)
+        }
+    }
+
     func setDefault(_ connection: MiWarpConnection) {
         for i in connections.indices {
             connections[i].isDefault = (connections[i].id == connection.id)

@@ -366,6 +366,7 @@ struct QRScannerSheet: View {
     @EnvironmentObject private var store: MiWarpConnectionStore
     @Environment(\.dismiss) private var dismiss
     @State private var error: String?
+    @State private var isAuthenticating = false
 
     var body: some View {
         NavigationStack {
@@ -374,6 +375,17 @@ struct QRScannerSheet: View {
                     handleQRCode(code)
                 }
                 .ignoresSafeArea()
+
+                if isAuthenticating {
+                    HStack(spacing: MWSpacing.sm) {
+                        ProgressView()
+                            .tint(MWColors.accentCyan)
+                        Text("Verifying...")
+                            .font(MWTypography.caption())
+                            .foregroundColor(MWColors.textSecondary)
+                    }
+                    .padding()
+                }
 
                 if let error {
                     Text(error)
@@ -404,8 +416,9 @@ struct QRScannerSheet: View {
             return
         }
 
+        // Parse query items (already URL-decoded by URLComponents)
         let queryItems = components.queryItems ?? []
-        guard let host = queryItems.first(where: { $0.name == "host" })?.value,
+        guard let rawHost = queryItems.first(where: { $0.name == "host" })?.value,
               let portStr = queryItems.first(where: { $0.name == "port" })?.value,
               let port = Int(portStr),
               let token = queryItems.first(where: { $0.name == "token" })?.value else {
@@ -413,17 +426,101 @@ struct QRScannerSheet: View {
             return
         }
 
+        // Normalize host: trim whitespace, strip IPv6 brackets
+        let host = normalizeHost(rawHost)
         let label = queryItems.first(where: { $0.name == "label" })?.value
+
+        isAuthenticating = true
+        error = nil
+
+        // Token auth preflight before connecting
+        Task {
+            do {
+                let result = try await verifyToken(host: host, port: port, token: token)
+                await MainActor.run {
+                    self.isAuthenticating = false
+                    switch result {
+                    case .success:
+                        self.connectWithQrCode(host: host, port: port, token: token, label: label)
+                    case .authFailed:
+                        self.error = "Authentication Failed: invalid token"
+                    case .networkError:
+                        self.error = "Server Unavailable: cannot reach \(host):\(port)"
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.isAuthenticating = false
+                    self.error = "Server Unavailable: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
+    private func normalizeHost(_ host: String) -> String {
+        var result = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Strip IPv6 brackets if present: [::1] -> ::1
+        if result.hasPrefix("[") && result.hasSuffix("]") {
+            result = String(result.dropFirst().dropLast())
+        }
+        return result
+    }
+
+    enum PreflightResult {
+        case success
+        case authFailed
+        case networkError
+    }
+
+    private func verifyToken(host: String, port: Int, token: String) async throws -> PreflightResult {
+        guard let authURL = URL(string: "http://\(host):\(port)/auth") else {
+            return .networkError
+        }
+
+        var request = URLRequest(url: authURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 5
+
+        let body = ["token": token]
+        request.httpBody = try JSONEncoder().encode(body)
+
+        let (_, response): (Data, URLResponse)
+        do {
+            (_, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            return .networkError
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            return .networkError
+        }
+
+        switch httpResponse.statusCode {
+        case 200:
+            return .success
+        case 403:
+            return .authFailed
+        default:
+            return .networkError
+        }
+    }
+
+    private func connectWithQrCode(host: String, port: Int, token: String, label: String?) {
+        let connectionName = label ?? host
         let connection = MiWarpConnection(
-            name: label ?? host,
+            name: connectionName,
             host: host,
             port: port,
             isDefault: store.connections.isEmpty
         )
 
         do {
-            try store.addConnection(connection, token: token)
-            store.connect(to: connection)
+            try store.addOrUpdateConnection(connection, token: token)
+            // Find the connection (may have been updated or newly created)
+            if let savedConn = store.findConnection(host: host, port: port) {
+                store.connect(to: savedConn)
+            }
             dismiss()
         } catch {
             self.error = error.localizedDescription

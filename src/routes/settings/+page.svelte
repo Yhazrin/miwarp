@@ -1523,8 +1523,9 @@
     const isAll = bind === "0.0.0.0" || bind === "::" || bind === "[::]";
     const rawHost = isAll ? webLanIp : bind;
     if (!rawHost) return null;
+    // IPv6 addresses need brackets; encodeURIComponent handles special chars in all fields
     const host = rawHost.includes(":") ? `[${rawHost}]` : rawHost;
-    return `miwarp://connect?host=${host}&port=${webStatus.port}&token=${webToken}`;
+    return `miwarp://connect?host=${encodeURIComponent(host)}&port=${encodeURIComponent(webStatus.port)}&token=${encodeURIComponent(webToken)}`;
   }
 
   async function generateMobileQr() {
