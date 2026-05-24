@@ -40,3 +40,15 @@ targets:
       path: MiWarpMobile/Resources/MiWarpMobile.entitlements
       properties:
         com.apple.security.network.client: true
+
+  MiWarpMobileTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: MiWarpMobileTests
+    dependencies:
+      - target: MiWarpMobile
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.miwarp.mobile.tests
+        INFOPLIST_FILE: MiWarpMobileTests/Info.plist

@@ -141,7 +141,7 @@ struct ChatView: View {
             if reducer.usage.costUsd > 0 {
                 HStack(spacing: MWSpacing.xs) {
                     Image(systemName: "dollarsign.circle")
-                        .font(.caption2)
+                        .font(MWTypography.caption2())
                     Text(String(format: "%.4f", reducer.usage.costUsd))
                 }
                 .font(MWTypography.monoCaption())
@@ -151,7 +151,7 @@ struct ChatView: View {
             if reducer.usage.inputTokens > 0 {
                 HStack(spacing: MWSpacing.xs) {
                     Image(systemName: "arrow.down.circle")
-                        .font(.caption2)
+                        .font(MWTypography.caption2())
                     Text(formatTokens(reducer.usage.inputTokens))
                 }
                 .font(MWTypography.monoCaption())
@@ -161,7 +161,7 @@ struct ChatView: View {
             if reducer.usage.outputTokens > 0 {
                 HStack(spacing: MWSpacing.xs) {
                     Image(systemName: "arrow.up.circle")
-                        .font(.caption2)
+                        .font(MWTypography.caption2())
                     Text(formatTokens(reducer.usage.outputTokens))
                 }
                 .font(MWTypography.monoCaption())
