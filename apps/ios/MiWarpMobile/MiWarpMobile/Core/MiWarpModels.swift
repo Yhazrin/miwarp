@@ -110,7 +110,7 @@ enum RunSource: String, Codable {
 
 // MARK: - MiWarp Run
 
-struct MiWarpRun: Identifiable, Codable {
+struct MiWarpRun: Identifiable, Codable, Hashable {
     let id: String
     var name: String?
     var prompt: String?

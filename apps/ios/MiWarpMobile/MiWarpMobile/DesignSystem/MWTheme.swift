@@ -31,19 +31,19 @@ enum MWMotion {
     static let normal: Double = 0.18
     static let slow: Double = 0.28
 
-    static let standardEasing = UnitCurve.bezier(startControlPoint: CGPoint(x: 0.2, y: 0),
-                                                  endControlPoint: CGPoint(x: 0, y: 1))
-    static let emphasizedEasing = UnitCurve.bezier(startControlPoint: CGPoint(x: 0.16, y: 1),
-                                                    endControlPoint: CGPoint(x: 0.3, y: 1))
+    static let standardEasing = UnitCurve.bezier(startControlPoint: UnitPoint(x: 0.2, y: 0),
+                                                  endControlPoint: UnitPoint(x: 0, y: 1))
+    static let emphasizedEasing = UnitCurve.bezier(startControlPoint: UnitPoint(x: 0.16, y: 1),
+                                                    endControlPoint: UnitPoint(x: 0.3, y: 1))
 }
 
 // MARK: - Theme
 
-@Observable
-final class MWTheme {
+@MainActor
+final class MWTheme: ObservableObject {
     static let shared = MWTheme()
 
-    var colorScheme: ColorScheme = .dark
+    @Published var colorScheme: ColorScheme = .dark
 
     // Background tokens
     var bgDeepest: Color { colorScheme == .dark ? MWColors.bgDeepest : MWColors.lightBgDeepest }

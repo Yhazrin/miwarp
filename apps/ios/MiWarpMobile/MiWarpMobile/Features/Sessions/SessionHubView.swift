@@ -1,14 +1,13 @@
 import SwiftUI
 
 struct SessionHubView: View {
-    @Environment(MiWarpConnectionStore.self) private var store
+    @EnvironmentObject private var store: MiWarpConnectionStore
     @State private var runs: [MiWarpRun] = []
     @State private var isLoading = false
     @State private var error: String?
     @State private var searchText = ""
     @State private var showFilters = false
     @State private var filters = SessionFilters()
-    @State private var selectedRun: MiWarpRun?
 
     private var filteredRuns: [MiWarpRun] {
         runs.filter { run in
@@ -51,8 +50,8 @@ struct SessionHubView: View {
                         ForEach(groupedRuns, id: \.0) { cwd, runs in
                             Section {
                                 ForEach(runs) { run in
-                                    SessionCardView(run: run) {
-                                        selectedRun = run
+                                    NavigationLink(value: run) {
+                                        SessionCardView(run: run)
                                     }
                                     .listRowInsets(EdgeInsets(
                                         top: MWSpacing.sm,
@@ -71,6 +70,9 @@ struct SessionHubView: View {
                         }
                     }
                     .listStyle(.plain)
+                    .navigationDestination(for: MiWarpRun.self) { run in
+                        ChatView(runId: run.id, runTitle: run.displayTitle)
+                    }
                 }
             }
             .background(MWColors.bgDeepest)
@@ -94,9 +96,6 @@ struct SessionHubView: View {
             }
             .sheet(isPresented: $showFilters) {
                 SessionFiltersView(filters: $filters, runs: runs)
-            }
-            .navigationDestination(item: $selectedRun) { run in
-                ChatView(runId: run.id, runTitle: run.displayTitle)
             }
             .task {
                 await loadRuns()

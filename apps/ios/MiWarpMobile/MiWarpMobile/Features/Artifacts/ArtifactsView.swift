@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ArtifactsView: View {
     let runId: String
-    @Environment(MiWarpConnectionStore.self) private var store
+    @EnvironmentObject private var store: MiWarpConnectionStore
     @State private var artifacts: RunArtifacts?
     @State private var isLoading = false
     @State private var error: String?

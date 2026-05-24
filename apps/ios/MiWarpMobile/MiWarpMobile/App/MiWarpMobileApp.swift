@@ -2,14 +2,14 @@ import SwiftUI
 
 @main
 struct MiWarpMobileApp: App {
-    @State private var connectionStore = MiWarpConnectionStore.shared
-    @State private var theme = MWTheme.shared
+    @StateObject private var connectionStore = MiWarpConnectionStore.shared
+    @StateObject private var theme = MWTheme.shared
 
     var body: some Scene {
         WindowGroup {
             AppRouter()
-                .environment(connectionStore)
-                .environment(theme)
+                .environmentObject(connectionStore)
+                .environmentObject(theme)
                 .preferredColorScheme(theme.colorScheme)
                 .onOpenURL { url in
                     handleDeepLink(url)

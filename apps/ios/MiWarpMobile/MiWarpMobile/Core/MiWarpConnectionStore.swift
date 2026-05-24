@@ -3,8 +3,8 @@ import SwiftUI
 
 // MARK: - Connection Store
 
-@Observable
-final class MiWarpConnectionStore {
+@MainActor
+final class MiWarpConnectionStore: ObservableObject {
     static let shared = MiWarpConnectionStore()
 
     private let logger = MiWarpLogger.shared
@@ -12,9 +12,9 @@ final class MiWarpConnectionStore {
     private let connectionsKey = "ocv:miwarp_connections"
     private let activeConnectionKey = "ocv:miwarp_active_connection"
 
-    var connections: [MiWarpConnection] = []
-    var activeConnection: MiWarpConnection?
-    var connectionState: ConnectionState = .disconnected
+    @Published var connections: [MiWarpConnection] = []
+    @Published var activeConnection: MiWarpConnection?
+    @Published var connectionState: ConnectionState = .disconnected
 
     // Sub-systems
     let wsClient = MiWarpWebSocketClient()
@@ -70,7 +70,7 @@ final class MiWarpConnectionStore {
     // MARK: - Connect / Disconnect
 
     func connect(to connection: MiWarpConnection) {
-        guard let token = try? MiWarpKeychain.load(for: connection.id), let token else {
+        guard let token = try? MiWarpKeychain.load(for: connection.id) else {
             connectionState = .authFailed(reason: "No token stored for this connection")
             return
         }

@@ -19,7 +19,7 @@ struct MessageListView: View {
                 .padding(.horizontal, MWSpacing.lg)
                 .padding(.vertical, MWSpacing.md)
             }
-            .onChange(of: messages.count) {
+            .onChange(of: messages.count) { _ in
                 withAnimation {
                     if let lastId = messages.last?.id {
                         proxy.scrollTo(lastId, anchor: .bottom)

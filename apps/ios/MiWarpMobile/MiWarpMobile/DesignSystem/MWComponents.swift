@@ -149,7 +149,7 @@ struct MWToolCallCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: MWSpacing.sm) {
             Button {
-                withAnimation(MWMotion.standardEasing.curve) {
+                withAnimation(.easeInOut(duration: MWMotion.normal)) {
                     onToggle?()
                 }
             } label: {

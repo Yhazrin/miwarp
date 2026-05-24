@@ -27,7 +27,7 @@ enum AppTab: String, CaseIterable {
 // MARK: - App Router
 
 struct AppRouter: View {
-    @Environment(MiWarpConnectionStore.self) private var store
+    @EnvironmentObject private var store: MiWarpConnectionStore
     @State private var selectedTab: AppTab = .sessions
 
     var body: some View {

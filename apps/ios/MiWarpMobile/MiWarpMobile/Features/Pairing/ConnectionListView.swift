@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ConnectionListView: View {
-    @Environment(MiWarpConnectionStore.self) private var store
+    @EnvironmentObject private var store: MiWarpConnectionStore
     @State private var editMode: EditMode = .inactive
 
     var body: some View {

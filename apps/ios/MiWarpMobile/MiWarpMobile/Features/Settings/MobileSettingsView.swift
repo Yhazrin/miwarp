@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct MobileSettingsView: View {
-    @Environment(MiWarpConnectionStore.self) private var store
-    @Environment(MWTheme.self) private var theme
+    @EnvironmentObject private var store: MiWarpConnectionStore
+    @EnvironmentObject private var theme: MWTheme
     @State private var showLogs = false
     @State private var showAbout = false
 

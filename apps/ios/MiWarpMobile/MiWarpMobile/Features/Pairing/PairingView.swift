@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct PairingView: View {
-    @Environment(MiWarpConnectionStore.self) private var store
+    @EnvironmentObject private var store: MiWarpConnectionStore
     @State private var showManualEntry = false
     @State private var showScanner = false
 
@@ -50,7 +50,7 @@ struct PairingView: View {
 // MARK: - Manual Connection Sheet
 
 struct ManualConnectionSheet: View {
-    @Environment(MiWarpConnectionStore.self) private var store
+    @EnvironmentObject private var store: MiWarpConnectionStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var name = ""
@@ -127,7 +127,7 @@ struct ManualConnectionSheet: View {
 // MARK: - QR Scanner Sheet
 
 struct QRScannerSheet: View {
-    @Environment(MiWarpConnectionStore.self) private var store
+    @EnvironmentObject private var store: MiWarpConnectionStore
     @Environment(\.dismiss) private var dismiss
     @State private var error: String?
 

@@ -52,14 +52,14 @@ struct UsageSummary {
 
 // MARK: - Event Reducer
 
-@Observable
-final class MiWarpEventReducer {
-    private(set) var messages: [DisplayMessage] = []
-    private(set) var pendingPermissions: [PendingPermission] = []
-    private(set) var usage: UsageSummary = UsageSummary()
-    private(set) var currentStatus: RunStatus = .idle
-    private(set) var lastSeq: Int = 0
-    private(set) var streamingMessageId: String?
+@MainActor
+final class MiWarpEventReducer: ObservableObject {
+    @Published private(set) var messages: [DisplayMessage] = []
+    @Published private(set) var pendingPermissions: [PendingPermission] = []
+    @Published private(set) var usage: UsageSummary = UsageSummary()
+    @Published private(set) var currentStatus: RunStatus = .idle
+    @Published private(set) var lastSeq: Int = 0
+    @Published private(set) var streamingMessageId: String?
 
     private var seenSeqs: Set<Int> = []
     private var messageAccumulator: [String: String] = [:] // messageId -> accumulated text

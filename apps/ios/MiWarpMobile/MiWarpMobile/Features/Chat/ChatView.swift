@@ -24,8 +24,8 @@ struct ChatView: View {
     let runId: String
     let runTitle: String
 
-    @Environment(MiWarpConnectionStore.self) private var store
-    @State private var reducer = MiWarpEventReducer()
+    @EnvironmentObject private var store: MiWarpConnectionStore
+    @StateObject private var reducer = MiWarpEventReducer()
     @State private var inputText = ""
     @State private var isLoading = true
     @State private var error: String?
