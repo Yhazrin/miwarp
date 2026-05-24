@@ -1,4 +1,8 @@
 use crate::storage;
+use std::sync::LazyLock;
+
+static HTTP_CLIENT: LazyLock<reqwest::Client> =
+    LazyLock::new(|| reqwest::Client::builder().build().unwrap_or_default());
 
 /// Color template for the card header based on status.
 fn status_template(status: &str) -> &'static str {
@@ -71,7 +75,7 @@ fn build_card_payload(
 /// Fire-and-forget: POST a pre-built payload to a Feishu webhook URL.
 pub fn fire_webhook(url: String, payload: serde_json::Value) {
     tokio::spawn(async move {
-        match reqwest::Client::new()
+        match HTTP_CLIENT
             .post(&url)
             .json(&payload)
             .timeout(std::time::Duration::from_secs(10))

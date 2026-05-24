@@ -1,7 +1,7 @@
 use crate::models::{now_iso, BusEvent, ModelUsageSummary, RawRunUsage, RunEvent, RunEventType};
 use std::collections::HashMap;
 use std::fs::{self, OpenOptions};
-use std::io::{BufReader, Read, Seek, SeekFrom, Write};
+use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 
 /// Event types the frontend reducer actually handles during replay.
 /// "raw" events (CLI stream data) are 90%+ of the file but the frontend drops them,
@@ -202,13 +202,17 @@ impl EventWriter {
         let path = events_path(run_id);
         let line =
             serde_json::to_string(&envelope).map_err(|e| format!("serialize failed: {}", e))?;
-        let mut file = OpenOptions::new()
+        let file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(&path)
             .map_err(|e| format!("open {} failed: {}", path.display(), e))?;
-        writeln!(file, "{}", line)
+        let mut writer = BufWriter::new(file);
+        writeln!(writer, "{}", line)
             .map_err(|e| format!("write to {} failed: {}", path.display(), e))?;
+        writer
+            .flush()
+            .map_err(|e| format!("flush {} failed: {}", path.display(), e))?;
 
         Ok(())
     }
@@ -252,13 +256,17 @@ impl EventWriter {
         let path = events_path(run_id);
         let line =
             serde_json::to_string(&envelope).map_err(|e| format!("serialize failed: {}", e))?;
-        let mut file = OpenOptions::new()
+        let file = OpenOptions::new()
             .create(true)
             .append(true)
             .open(&path)
             .map_err(|e| format!("open {} failed: {}", path.display(), e))?;
-        writeln!(file, "{}", line)
+        let mut writer = BufWriter::new(file);
+        writeln!(writer, "{}", line)
             .map_err(|e| format!("write to {} failed: {}", path.display(), e))?;
+        writer
+            .flush()
+            .map_err(|e| format!("flush {} failed: {}", path.display(), e))?;
 
         Ok(current)
     }

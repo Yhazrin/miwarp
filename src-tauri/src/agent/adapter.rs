@@ -127,10 +127,11 @@ pub fn build_adapter_settings(
     let system_prompt = agent.system_prompt.clone();
     let tool_set = agent.tool_set.clone();
     let add_dirs = agent.add_dirs.clone().unwrap_or_default();
-    let json_schema = agent
-        .json_schema
-        .as_ref()
-        .and_then(|v| serde_json::to_string(v).ok());
+    let json_schema = agent.json_schema.as_ref().and_then(|v| {
+        serde_json::to_string(v)
+            .map_err(|e| log::warn!("[adapter] json_schema serialization failed: {}", e))
+            .ok()
+    });
     // Default to true: stream sessions need partial messages for real-time streaming.
     // Users can explicitly set false in agent config to disable.
     let include_partial_messages = agent.include_partial_messages.unwrap_or(true);

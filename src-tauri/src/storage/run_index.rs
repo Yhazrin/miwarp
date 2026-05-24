@@ -526,7 +526,11 @@ pub fn build_or_update_index() -> Result<Vec<RunIndexEntry>, String> {
     // Write index + manifest atomically
     let index_content: String = all_entries
         .iter()
-        .filter_map(|e| serde_json::to_string(e).ok())
+        .filter_map(|e| {
+            serde_json::to_string(e)
+                .map_err(|e| log::warn!("[run_index] entry serialization failed: {}", e))
+                .ok()
+        })
         .collect::<Vec<_>>()
         .join("\n");
 
