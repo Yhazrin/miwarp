@@ -46,16 +46,16 @@ final class MWTheme: ObservableObject {
     @Published var colorScheme: ColorScheme = .dark
 
     // Background tokens
-    var bgDeepest: Color { colorScheme == .dark ? MWColors.bgDeepest : MWColors.lightBgDeepest }
-    var bgDeep: Color { colorScheme == .dark ? MWColors.bgDeep : MWColors.lightBgDeepest }
-    var bgBase: Color { colorScheme == .dark ? MWColors.bgBase : MWColors.lightBgBase }
-    var bgElevated: Color { colorScheme == .dark ? MWColors.bgElevated : Color(white: 0.96) }
-    var bgSurface: Color { colorScheme == .dark ? MWColors.bgSurface : Color(white: 0.94) }
-    var bgHover: Color { colorScheme == .dark ? MWColors.bgHover : Color(white: 0.92) }
+    var bgDeepest: Color { MWColors.bgDeepest(for: colorScheme) }
+    var bgDeep: Color { MWColors.bgDeep(for: colorScheme) }
+    var bgBase: Color { MWColors.bgBase(for: colorScheme) }
+    var bgElevated: Color { MWColors.bgElevated(for: colorScheme) }
+    var bgSurface: Color { MWColors.bgSurface(for: colorScheme) }
+    var bgHover: Color { MWColors.bgHover(for: colorScheme) }
 
     // Glass
-    var glassBg: Color { MWColors.glassBg }
-    var glassBorder: Color { MWColors.glassBorder }
+    var glassBg: Color { MWColors.glassBg(for: colorScheme) }
+    var glassBorder: Color { MWColors.glassBorder(for: colorScheme) }
 
     // Accents
     var accentPrimary: Color { MWColors.accentPrimary }
@@ -63,9 +63,9 @@ final class MWTheme: ObservableObject {
     var accentBlue: Color { MWColors.accentBlue }
 
     // Text
-    var textPrimary: Color { colorScheme == .dark ? MWColors.textPrimary : MWColors.lightTextPrimary }
-    var textSecondary: Color { colorScheme == .dark ? MWColors.textSecondary : MWColors.lightTextSecondary }
-    var textTertiary: Color { MWColors.textTertiary }
+    var textPrimary: Color { MWColors.textPrimary(for: colorScheme) }
+    var textSecondary: Color { MWColors.textSecondary(for: colorScheme) }
+    var textTertiary: Color { MWColors.textTertiary(for: colorScheme) }
 
     // Status
     var statusSuccess: Color { MWColors.statusSuccess }
@@ -76,6 +76,12 @@ final class MWTheme: ObservableObject {
     var statusFailed: Color { MWColors.statusFailed }
     var statusPending: Color { MWColors.statusPending }
     var statusIdle: Color { MWColors.statusIdle }
+    var statusApproval: Color { MWColors.statusWarning }
+
+    // Glow
+    var glowCyan: Color { MWColors.glowCyan }
+    var glowRunning: Color { MWColors.glowRunning }
+    var glowApproval: Color { MWColors.glowApproval }
 
     func statusColor(for status: RunStatus) -> Color {
         MWColors.color(for: status)

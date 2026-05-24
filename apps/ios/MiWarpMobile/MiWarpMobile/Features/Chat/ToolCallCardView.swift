@@ -14,6 +14,8 @@ struct ToolCallCardView: View {
             toolName: toolCall.toolName,
             inputPreview: toolCall.inputPreview,
             output: toolCall.output,
+            isComplete: toolCall.isComplete,
+            isError: toolCall.isError,
             isExpanded: isExpanded
         ) {
             isExpanded.toggle()

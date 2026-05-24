@@ -7,41 +7,281 @@ struct PairingView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if store.connections.isEmpty {
-                    Section {
-                        MWEmptyState(
-                            icon: "point.3.filled.connected.trianglepath.dotted",
-                            title: "No Connections",
-                            message: "Scan a QR code or add a connection manually to get started."
-                        )
-                        .listRowBackground(Color.clear)
-                        .frame(height: 300)
-                    }
-                } else {
-                    ConnectionListView()
-                }
+            ScrollView {
+                VStack(spacing: MWSpacing.xl) {
+                    // Header
+                    headerSection
 
-                Section {
-                    Button {
-                        showManualEntry = true
-                    } label: {
-                        Label("Add Manually", systemImage: "plus.circle")
+                    // Quick actions
+                    quickActionsSection
+
+                    // Onboarding (when no connections)
+                    if store.connections.isEmpty {
+                        onboardingSection
                     }
 
-                    Button {
-                        showScanner = true
-                    } label: {
-                        Label("Scan QR Code", systemImage: "qrcode.viewfinder")
+                    // Saved connections
+                    if !store.connections.isEmpty {
+                        savedConnectionsSection
                     }
                 }
+                .padding(.vertical, MWSpacing.lg)
             }
+            .background(MWColors.bgDeepest)
             .navigationTitle("Connections")
             .sheet(isPresented: $showManualEntry) {
                 ManualConnectionSheet()
             }
             .sheet(isPresented: $showScanner) {
                 QRScannerSheet()
+            }
+        }
+    }
+
+    // MARK: - Header
+
+    private var headerSection: some View {
+        VStack(spacing: MWSpacing.sm) {
+            Text("Connect your phone to a running MiWarp Desktop")
+                .font(MWTypography.callout())
+                .foregroundColor(MWColors.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, MWSpacing.xl)
+    }
+
+    // MARK: - Quick Actions
+
+    private var quickActionsSection: some View {
+        HStack(spacing: MWSpacing.md) {
+            // Scan QR
+            Button {
+                showScanner = true
+            } label: {
+                VStack(spacing: MWSpacing.sm) {
+                    Image(systemName: "qrcode.viewfinder")
+                        .font(.system(size: 28))
+                        .foregroundColor(MWColors.accentCyan)
+                    Text("Scan QR")
+                        .font(MWTypography.subheadlineMedium())
+                        .foregroundColor(MWColors.textPrimary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, MWSpacing.lg)
+                .background(
+                    RoundedRectangle(cornerRadius: MWRadius.lg)
+                        .fill(MWColors.bgElevated)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: MWRadius.lg)
+                                .strokeBorder(MWColors.accentCyan.opacity(0.2), lineWidth: 1)
+                        )
+                )
+            }
+            .buttonStyle(.plain)
+
+            // Add Manually
+            Button {
+                showManualEntry = true
+            } label: {
+                VStack(spacing: MWSpacing.sm) {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 28))
+                        .foregroundColor(MWColors.accentPrimary)
+                    Text("Add Manually")
+                        .font(MWTypography.subheadlineMedium())
+                        .foregroundColor(MWColors.textPrimary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, MWSpacing.lg)
+                .background(
+                    RoundedRectangle(cornerRadius: MWRadius.lg)
+                        .fill(MWColors.bgElevated)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: MWRadius.lg)
+                                .strokeBorder(MWColors.accentPrimary.opacity(0.2), lineWidth: 1)
+                        )
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, MWSpacing.lg)
+    }
+
+    // MARK: - Onboarding
+
+    private var onboardingSection: some View {
+        VStack(alignment: .leading, spacing: MWSpacing.md) {
+            Text("Getting Started")
+                .font(MWTypography.title3())
+                .foregroundColor(MWColors.textPrimary)
+                .padding(.horizontal, MWSpacing.lg)
+
+            MWGlassCard {
+                VStack(alignment: .leading, spacing: MWSpacing.md) {
+                    onboardingStep(
+                        icon: "desktopcomputer",
+                        title: "Enable Web Server",
+                        desc: "Open MiWarp Desktop → Settings → Web Server"
+                    )
+                    onboardingStep(
+                        icon: "network",
+                        title: "Set bind to 0.0.0.0",
+                        desc: "Allows your phone to connect over LAN"
+                    )
+                    onboardingStep(
+                        icon: "qrcode",
+                        title: "Scan QR or enter manually",
+                        desc: "Use the QR code from Desktop or type host/token"
+                    )
+                }
+            }
+            .padding(.horizontal, MWSpacing.lg)
+        }
+    }
+
+    private func onboardingStep(icon: String, title: String, desc: String) -> some View {
+        HStack(alignment: .top, spacing: MWSpacing.md) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(MWColors.accentCyan)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(MWTypography.subheadlineMedium())
+                    .foregroundColor(MWColors.textPrimary)
+                Text(desc)
+                    .font(MWTypography.caption())
+                    .foregroundColor(MWColors.textTertiary)
+            }
+        }
+    }
+
+    // MARK: - Saved Connections
+
+    private var savedConnectionsSection: some View {
+        VStack(alignment: .leading, spacing: MWSpacing.md) {
+            HStack {
+                Text("Saved Connections")
+                    .font(MWTypography.title3())
+                    .foregroundColor(MWColors.textPrimary)
+                Spacer()
+                Text("\(store.connections.count)")
+                    .font(MWTypography.caption())
+                    .foregroundColor(MWColors.textTertiary)
+                    .padding(.horizontal, MWSpacing.sm)
+                    .padding(.vertical, 2)
+                    .background(
+                        Capsule()
+                            .fill(MWColors.bgSurface)
+                    )
+            }
+            .padding(.horizontal, MWSpacing.lg)
+
+            ForEach(store.connections) { connection in
+                ConnectionCard(
+                    connection: connection,
+                    isActive: store.activeConnection?.id == connection.id,
+                    connectionState: store.activeConnection?.id == connection.id ? store.connectionState : .disconnected,
+                    onConnect: {
+                        store.connect(to: connection)
+                    },
+                    onDisconnect: {
+                        store.disconnect()
+                    },
+                    onDelete: {
+                        store.removeConnection(connection)
+                    }
+                )
+                .padding(.horizontal, MWSpacing.lg)
+            }
+        }
+    }
+}
+
+// MARK: - Connection Card
+
+struct ConnectionCard: View {
+    let connection: MiWarpConnection
+    let isActive: Bool
+    let connectionState: ConnectionState
+    var onConnect: (() -> Void)?
+    var onDisconnect: (() -> Void)?
+    var onDelete: (() -> Void)?
+
+    var body: some View {
+        MWGlassCard(borderColor: isActive ? MWColors.accentCyan.opacity(0.3) : nil) {
+            VStack(alignment: .leading, spacing: MWSpacing.md) {
+                HStack {
+                    VStack(alignment: .leading, spacing: MWSpacing.xs) {
+                        HStack(spacing: MWSpacing.sm) {
+                            Text(connection.name)
+                                .font(MWTypography.bodyMedium())
+                                .foregroundColor(MWColors.textPrimary)
+
+                            if connection.isDefault {
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(MWColors.statusPending)
+                            }
+                        }
+
+                        Text("\(connection.host):\(connection.port)")
+                            .font(MWTypography.monoCaption())
+                            .foregroundColor(MWColors.textSecondary)
+                    }
+
+                    Spacer()
+
+                    if isActive {
+                        MWStatusIndicator(state: connectionState)
+                    }
+                }
+
+                HStack(spacing: MWSpacing.sm) {
+                    if isActive && connectionState == .connected {
+                        Button {
+                            onDisconnect?()
+                        } label: {
+                            Label("Disconnect", systemImage: "xmark.circle")
+                                .font(MWTypography.caption())
+                                .foregroundColor(MWColors.statusError)
+                                .padding(.horizontal, MWSpacing.md)
+                                .padding(.vertical, MWSpacing.xs)
+                                .background(
+                                    Capsule()
+                                        .strokeBorder(MWColors.statusError.opacity(0.3), lineWidth: 0.5)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Button {
+                            onConnect?()
+                        } label: {
+                            Label("Connect", systemImage: "play.fill")
+                                .font(MWTypography.caption())
+                                .foregroundColor(MWColors.accentPrimary)
+                                .padding(.horizontal, MWSpacing.md)
+                                .padding(.vertical, MWSpacing.xs)
+                                .background(
+                                    Capsule()
+                                        .fill(MWColors.accentPrimary.opacity(0.12))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        onDelete?()
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.caption)
+                            .foregroundColor(MWColors.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }
@@ -64,8 +304,8 @@ struct ManualConnectionSheet: View {
         NavigationStack {
             Form {
                 Section("Server") {
-                    TextField("Name", text: $name)
-                    TextField("Host", text: $host)
+                    TextField("Name (optional)", text: $name)
+                    TextField("Host (e.g. 192.168.1.100)", text: $host)
                         .textContentType(.URL)
                         .autocapitalization(.none)
                     TextField("Port", text: $port)
@@ -95,7 +335,7 @@ struct ManualConnectionSheet: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
+                    Button("Save & Connect") { save() }
                         .disabled(host.isEmpty || port.isEmpty || token.isEmpty)
                 }
             }
@@ -117,6 +357,7 @@ struct ManualConnectionSheet: View {
 
         do {
             try store.addConnection(connection, token: token)
+            store.connect(to: connection)
             dismiss()
         } catch {
             self.error = error.localizedDescription
@@ -177,8 +418,9 @@ struct QRScannerSheet: View {
             return
         }
 
+        let label = queryItems.first(where: { $0.name == "label" })?.value
         let connection = MiWarpConnection(
-            name: host,
+            name: label ?? host,
             host: host,
             port: port,
             isDefault: store.connections.isEmpty
@@ -186,6 +428,7 @@ struct QRScannerSheet: View {
 
         do {
             try store.addConnection(connection, token: token)
+            store.connect(to: connection)
             dismiss()
         } catch {
             self.error = error.localizedDescription

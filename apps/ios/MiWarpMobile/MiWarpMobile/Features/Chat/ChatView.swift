@@ -49,9 +49,9 @@ struct ChatView: View {
             if isLoading {
                 MWLoadingState(message: "Loading messages...")
             } else if let error {
-                MWErrorState(message: error) {
+                MWErrorState(message: error, onAction: {
                     Task { await loadHistory() }
-                }
+                })
             } else {
                 MessageListView(
                     messages: reducer.messages,
@@ -126,22 +126,49 @@ struct ChatView: View {
             MWStatusPill(status: reducer.currentStatus)
 
             if reducer.usage.costUsd > 0 {
-                Text(String(format: "$%.4f", reducer.usage.costUsd))
-                    .font(MWTypography.monoCaption())
-                    .foregroundColor(MWColors.statusWarning)
+                HStack(spacing: MWSpacing.xs) {
+                    Image(systemName: "dollarsign.circle")
+                        .font(.caption2)
+                    Text(String(format: "%.4f", reducer.usage.costUsd))
+                }
+                .font(MWTypography.monoCaption())
+                .foregroundColor(MWColors.statusWarning)
             }
 
             if reducer.usage.inputTokens > 0 {
-                Text("\(formatTokens(reducer.usage.inputTokens)) in")
-                    .font(MWTypography.caption())
-                    .foregroundColor(MWColors.textTertiary)
+                HStack(spacing: MWSpacing.xs) {
+                    Image(systemName: "arrow.down.circle")
+                        .font(.caption2)
+                    Text(formatTokens(reducer.usage.inputTokens))
+                }
+                .font(MWTypography.monoCaption())
+                .foregroundColor(MWColors.textTertiary)
+            }
+
+            if reducer.usage.outputTokens > 0 {
+                HStack(spacing: MWSpacing.xs) {
+                    Image(systemName: "arrow.up.circle")
+                        .font(.caption2)
+                    Text(formatTokens(reducer.usage.outputTokens))
+                }
+                .font(MWTypography.monoCaption())
+                .foregroundColor(MWColors.textTertiary)
             }
 
             Spacer()
         }
         .padding(.horizontal, MWSpacing.lg)
         .padding(.vertical, MWSpacing.sm)
-        .background(MWColors.bgDeep)
+        .background(
+            Rectangle()
+                .fill(MWColors.bgDeep)
+                .overlay(
+                    Rectangle()
+                        .fill(MWColors.glassBorder)
+                        .frame(height: 0.5),
+                    alignment: .bottom
+                )
+        )
     }
 
     // MARK: - Actions

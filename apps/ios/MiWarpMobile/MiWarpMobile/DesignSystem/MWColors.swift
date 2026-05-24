@@ -120,11 +120,35 @@ enum MWColors {
     // MARK: - Light Mode Overrides
 
     static var lightBgDeepest: Color {
-        Color(hue: 0, saturation: 0, lightness: 0.98)
+        Color(hue: 220.0 / 360.0, saturation: 0.10, lightness: 0.98)
+    }
+
+    static var lightBgDeep: Color {
+        Color(hue: 220.0 / 360.0, saturation: 0.10, lightness: 0.96)
     }
 
     static var lightBgBase: Color {
         Color(hue: 0, saturation: 0, lightness: 1.0)
+    }
+
+    static var lightBgElevated: Color {
+        Color(hue: 0, saturation: 0, lightness: 0.96)
+    }
+
+    static var lightBgSurface: Color {
+        Color(hue: 0, saturation: 0, lightness: 0.94)
+    }
+
+    static var lightBgHover: Color {
+        Color(hue: 0, saturation: 0, lightness: 0.92)
+    }
+
+    static var lightGlassBg: Color {
+        Color(hue: 220.0 / 360.0, saturation: 0.15, lightness: 0.92, opacity: 0.85)
+    }
+
+    static var lightGlassBorder: Color {
+        Color(hue: 220.0 / 360.0, saturation: 0.15, lightness: 0.70, opacity: 0.25)
     }
 
     static var lightTextPrimary: Color {
@@ -135,14 +159,56 @@ enum MWColors {
         Color(hue: 220.0 / 360.0, saturation: 0.10, lightness: 0.42)
     }
 
+    static var lightTextTertiary: Color {
+        Color(hue: 220.0 / 360.0, saturation: 0.08, lightness: 0.55)
+    }
+
+    // MARK: - Glow
+
+    static var glowCyan: Color {
+        accentCyan.opacity(0.20)
+    }
+
+    static var glowRunning: Color {
+        statusRunning.opacity(0.25)
+    }
+
+    static var glowApproval: Color {
+        statusWarning.opacity(0.20)
+    }
+
     // MARK: - ColorScheme-aware accessors
 
     static func bgDeepest(for scheme: ColorScheme) -> Color {
         scheme == .dark ? bgDeepest : lightBgDeepest
     }
 
+    static func bgDeep(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? bgDeep : lightBgDeep
+    }
+
     static func bgBase(for scheme: ColorScheme) -> Color {
         scheme == .dark ? bgBase : lightBgBase
+    }
+
+    static func bgElevated(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? bgElevated : lightBgElevated
+    }
+
+    static func bgSurface(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? bgSurface : lightBgSurface
+    }
+
+    static func bgHover(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? bgHover : lightBgHover
+    }
+
+    static func glassBg(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? glassBg : lightGlassBg
+    }
+
+    static func glassBorder(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? glassBorder : lightGlassBorder
     }
 
     static func textPrimary(for scheme: ColorScheme) -> Color {
@@ -151,6 +217,10 @@ enum MWColors {
 
     static func textSecondary(for scheme: ColorScheme) -> Color {
         scheme == .dark ? textSecondary : lightTextSecondary
+    }
+
+    static func textTertiary(for scheme: ColorScheme) -> Color {
+        scheme == .dark ? textTertiary : lightTextTertiary
     }
 
     // MARK: - Status Color Mapping
