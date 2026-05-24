@@ -63,6 +63,7 @@ struct AppRouter: View {
 // MARK: - Control Dock
 
 struct MWControlDock: View {
+    @EnvironmentObject private var theme: MWTheme
     @Binding var selectedTab: AppTab
     @Namespace private var dockAnimation
 
@@ -74,14 +75,8 @@ struct MWControlDock: View {
         }
         .padding(.horizontal, MWSpacing.md)
         .padding(.vertical, MWSpacing.sm)
-        .background(
-            Capsule()
-                .fill(.ultraThinMaterial)
-        )
-        .overlay(
-            Capsule()
-                .strokeBorder(.white.opacity(0.2), lineWidth: 0.5)
-        )
+        .mwGlassSurface(cornerRadius: MWRadius.full)
+        .shadow(color: theme.glow, radius: 18, x: 0, y: 10)
         .padding(.horizontal, MWSpacing.xxxl)
     }
 
@@ -97,20 +92,20 @@ struct MWControlDock: View {
                 ZStack {
                     if isSelected {
                         Circle()
-                            .fill(MWColors.accentCyan.opacity(0.15))
+                            .fill(theme.tabActive.opacity(0.15))
                             .frame(width: 36, height: 36)
                             .matchedGeometryEffect(id: "dockHighlight", in: dockAnimation)
                     }
 
                     Image(systemName: isSelected ? tab.activeImage : tab.systemImage)
                         .font(.system(size: 16, weight: isSelected ? .semibold : .regular))
-                        .foregroundColor(isSelected ? MWColors.accentCyan : MWColors.textTertiary)
+                        .foregroundColor(isSelected ? theme.tabActive : theme.tabInactive)
                 }
                 .frame(width: 36, height: 36)
 
                 Text(tab.title)
                     .font(MWTypography.caption2())
-                    .foregroundColor(isSelected ? MWColors.accentCyan : MWColors.textTertiary)
+                    .foregroundColor(isSelected ? theme.tabActive : theme.tabInactive)
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())

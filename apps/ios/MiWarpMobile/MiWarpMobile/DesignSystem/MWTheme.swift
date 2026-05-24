@@ -43,45 +43,114 @@ enum MWMotion {
 final class MWTheme: ObservableObject {
     static let shared = MWTheme()
 
-    @Published var colorScheme: ColorScheme = .dark
+    private enum StorageKey {
+        static let appearance = "miwarp.appearanceMode"
+        static let accentTheme = "miwarp.accentTheme"
+        static let textureStrength = "miwarp.textureStrength"
+    }
+
+    @Published var appearanceMode: MWAppearanceMode {
+        didSet { UserDefaults.standard.set(appearanceMode.rawValue, forKey: StorageKey.appearance) }
+    }
+
+    @Published var accentTheme: MWAccentTheme {
+        didSet { UserDefaults.standard.set(accentTheme.rawValue, forKey: StorageKey.accentTheme) }
+    }
+
+    @Published var textureStrength: MWTextureStrength {
+        didSet { UserDefaults.standard.set(textureStrength.rawValue, forKey: StorageKey.textureStrength) }
+    }
+
+    @Published private(set) var systemColorScheme: ColorScheme = .dark
+
+    private init() {
+        let defaults = UserDefaults.standard
+        appearanceMode = MWAppearanceMode(rawValue: defaults.string(forKey: StorageKey.appearance) ?? "") ?? .system
+        accentTheme = MWAccentTheme(rawValue: defaults.string(forKey: StorageKey.accentTheme) ?? "") ?? .defaultMiWarp
+        textureStrength = MWTextureStrength(rawValue: defaults.string(forKey: StorageKey.textureStrength) ?? "") ?? .subtle
+    }
+
+    var colorScheme: ColorScheme {
+        get { effectiveColorScheme }
+        set { appearanceMode = newValue == .dark ? .dark : .light }
+    }
+
+    var preferredColorScheme: ColorScheme? {
+        switch appearanceMode {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+
+    var effectiveColorScheme: ColorScheme {
+        switch appearanceMode {
+        case .system: return systemColorScheme
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+
+    var tokens: MWThemeTokens {
+        MWColors.tokens(for: accentTheme, scheme: effectiveColorScheme)
+    }
+
+    func updateSystemColorScheme(_ scheme: ColorScheme) {
+        guard systemColorScheme != scheme else { return }
+        systemColorScheme = scheme
+    }
 
     // Background tokens
-    var bgDeepest: Color { MWColors.bgDeepest(for: colorScheme) }
-    var bgDeep: Color { MWColors.bgDeep(for: colorScheme) }
-    var bgBase: Color { MWColors.bgBase(for: colorScheme) }
-    var bgElevated: Color { MWColors.bgElevated(for: colorScheme) }
-    var bgSurface: Color { MWColors.bgSurface(for: colorScheme) }
-    var bgHover: Color { MWColors.bgHover(for: colorScheme) }
+    var bgDeepest: Color { tokens.bgDeepest }
+    var bgDeep: Color { tokens.bgDeep }
+    var bgBase: Color { tokens.bgBase }
+    var bgElevated: Color { tokens.bgElevated }
+    var bgSurface: Color { tokens.bgSurface }
+    var bgHover: Color { tokens.bgHover }
 
     // Glass
-    var glassBg: Color { MWColors.glassBg(for: colorScheme) }
-    var glassBorder: Color { MWColors.glassBorder(for: colorScheme) }
+    var glassBg: Color { tokens.glassBg }
+    var glassBorder: Color { tokens.glassBorder }
 
     // Accents
-    var accentPrimary: Color { MWColors.accentPrimary }
-    var accentCyan: Color { MWColors.accentCyan }
-    var accentBlue: Color { MWColors.accentBlue }
+    var accentPrimary: Color { tokens.accentPrimary }
+    var accentSecondary: Color { tokens.accentSecondary }
+    var accentCyan: Color { tokens.accentSecondary }
+    var accentBlue: Color { tokens.accentPrimary }
+    var accentOnAccent: Color { tokens.accentOnAccent }
 
     // Text
-    var textPrimary: Color { MWColors.textPrimary(for: colorScheme) }
-    var textSecondary: Color { MWColors.textSecondary(for: colorScheme) }
-    var textTertiary: Color { MWColors.textTertiary(for: colorScheme) }
+    var textPrimary: Color { tokens.textPrimary }
+    var textSecondary: Color { tokens.textSecondary }
+    var textTertiary: Color { tokens.textTertiary }
 
     // Status
-    var statusSuccess: Color { MWColors.statusSuccess }
-    var statusWarning: Color { MWColors.statusWarning }
-    var statusError: Color { MWColors.statusError }
-    var statusRunning: Color { MWColors.statusRunning }
-    var statusDone: Color { MWColors.statusDone }
-    var statusFailed: Color { MWColors.statusFailed }
-    var statusPending: Color { MWColors.statusPending }
-    var statusIdle: Color { MWColors.statusIdle }
-    var statusApproval: Color { MWColors.statusWarning }
+    var statusSuccess: Color { tokens.statusSuccess }
+    var statusWarning: Color { tokens.statusWarning }
+    var statusError: Color { tokens.statusError }
+    var statusRunning: Color { tokens.statusRunning }
+    var statusDone: Color { tokens.statusDone }
+    var statusFailed: Color { tokens.statusFailed }
+    var statusPending: Color { tokens.statusPending }
+    var statusIdle: Color { tokens.statusIdle }
+    var statusApproval: Color { tokens.statusApproval }
+
+    // Component tokens
+    var tabActive: Color { tokens.tabActive }
+    var tabInactive: Color { tokens.tabInactive }
+    var inputBg: Color { tokens.inputBg }
+    var cardBg: Color { tokens.cardBg }
+    var divider: Color { tokens.divider }
 
     // Glow
-    var glowCyan: Color { MWColors.glowCyan }
-    var glowRunning: Color { MWColors.glowRunning }
-    var glowApproval: Color { MWColors.glowApproval }
+    var glow: Color { tokens.glow }
+    var glowCyan: Color { tokens.glow }
+    var glowRunning: Color { tokens.statusRunning.opacity(0.24) }
+    var glowApproval: Color { tokens.statusApproval.opacity(0.22) }
+
+    var textureOpacity: Double {
+        textureStrength.opacity(for: effectiveColorScheme)
+    }
 
     func statusColor(for status: RunStatus) -> Color {
         MWColors.color(for: status)

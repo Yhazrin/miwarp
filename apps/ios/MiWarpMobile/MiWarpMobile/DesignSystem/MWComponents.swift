@@ -1,5 +1,163 @@
 import SwiftUI
 
+// MARK: - Native Glass Surface
+
+private struct MWFallbackGlassSurface: ViewModifier {
+    @EnvironmentObject private var theme: MWTheme
+    let cornerRadius: CGFloat
+    let borderColor: Color?
+    let fillColor: Color?
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .background(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(fillColor ?? theme.glassBg)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .strokeBorder(borderColor ?? theme.glassBorder, lineWidth: 1)
+                    )
+            )
+    }
+}
+
+#if compiler(>=6.2)
+@available(iOS 26.0, *)
+private struct MWNativeLiquidGlassSurface: ViewModifier {
+    @EnvironmentObject private var theme: MWTheme
+    let cornerRadius: CGFloat
+    let borderColor: Color?
+    let fillColor: Color?
+
+    func body(content: Content) -> some View {
+        content
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(fillColor ?? theme.glassBg)
+                    .opacity(0.42)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(borderColor ?? theme.glassBorder, lineWidth: 1)
+            )
+    }
+}
+#endif
+
+extension View {
+    @ViewBuilder
+    func mwGlassSurface(
+        cornerRadius: CGFloat = MWRadius.lg,
+        borderColor: Color? = nil,
+        fillColor: Color? = nil
+    ) -> some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            modifier(MWNativeLiquidGlassSurface(cornerRadius: cornerRadius, borderColor: borderColor, fillColor: fillColor))
+        } else {
+            modifier(MWFallbackGlassSurface(cornerRadius: cornerRadius, borderColor: borderColor, fillColor: fillColor))
+        }
+        #else
+        modifier(MWFallbackGlassSurface(cornerRadius: cornerRadius, borderColor: borderColor, fillColor: fillColor))
+        #endif
+    }
+}
+
+// MARK: - Geometric Texture
+
+struct MWGeometricPattern: View {
+    @EnvironmentObject private var theme: MWTheme
+    var opacityOverride: Double?
+
+    private var opacity: Double {
+        opacityOverride ?? theme.textureOpacity
+    }
+
+    var body: some View {
+        Canvas { context, size in
+            guard opacity > 0 else { return }
+
+            let color = theme.effectiveColorScheme == .dark ? theme.accentSecondary : theme.accentPrimary
+            let primary = color.opacity(opacity)
+            let secondary = theme.textPrimary.opacity(opacity * 0.34)
+            let gridStep: CGFloat = 28
+            let angleOffset: CGFloat = gridStep * 0.58
+
+            var gridPath = Path()
+            var x = -size.height
+            while x < size.width + size.height {
+                gridPath.move(to: CGPoint(x: x, y: 0))
+                gridPath.addLine(to: CGPoint(x: x + size.height * 0.58, y: size.height))
+                x += gridStep
+            }
+
+            x = -size.height
+            while x < size.width + size.height {
+                gridPath.move(to: CGPoint(x: x + angleOffset, y: 0))
+                gridPath.addLine(to: CGPoint(x: x - size.height * 0.58 + angleOffset, y: size.height))
+                x += gridStep
+            }
+
+            var horizontal = Path()
+            var y: CGFloat = gridStep
+            while y < size.height {
+                horizontal.move(to: CGPoint(x: 0, y: y))
+                horizontal.addLine(to: CGPoint(x: size.width, y: y))
+                y += gridStep * 1.72
+            }
+
+            var mazePath = Path()
+            let cell = gridStep * 1.5
+            var row: CGFloat = 0
+            while row < size.height + cell {
+                var col: CGFloat = 0
+                while col < size.width + cell {
+                    let start = CGPoint(x: col, y: row)
+                    mazePath.move(to: start)
+                    mazePath.addLine(to: CGPoint(x: col + cell * 0.62, y: row))
+                    mazePath.addLine(to: CGPoint(x: col + cell * 0.62, y: row + cell * 0.38))
+                    if Int((col + row) / cell).isMultiple(of: 2) {
+                        mazePath.addLine(to: CGPoint(x: col + cell, y: row + cell * 0.38))
+                    } else {
+                        mazePath.move(to: CGPoint(x: col + cell * 0.18, y: row + cell * 0.72))
+                        mazePath.addLine(to: CGPoint(x: col + cell * 0.78, y: row + cell * 0.72))
+                    }
+                    col += cell
+                }
+                row += cell
+            }
+
+            context.stroke(gridPath, with: .color(secondary), lineWidth: 0.45)
+            context.stroke(horizontal, with: .color(secondary.opacity(0.7)), lineWidth: 0.35)
+            context.stroke(mazePath, with: .color(primary), lineWidth: 1.0)
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+struct MWPatternedBackdrop: View {
+    @EnvironmentObject private var theme: MWTheme
+    var baseColor: Color?
+    var patternOpacity: Double?
+
+    var body: some View {
+        ZStack {
+            baseColor ?? theme.bgDeepest
+            if (patternOpacity ?? theme.textureOpacity) > 0 {
+                MWGeometricPattern(opacityOverride: patternOpacity)
+                    .blendMode(theme.effectiveColorScheme == .dark ? .screen : .multiply)
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
 // MARK: - Glass Card
 
 struct MWGlassCard<Content: View>: View {
@@ -16,14 +174,7 @@ struct MWGlassCard<Content: View>: View {
     var body: some View {
         content
             .padding(MWSpacing.lg)
-            .background(
-                RoundedRectangle(cornerRadius: cornerRadius)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: cornerRadius)
-                            .strokeBorder(.white.opacity(0.2), lineWidth: 1)
-                    )
-            )
+            .mwGlassSurface(cornerRadius: cornerRadius, borderColor: borderColor)
     }
 }
 
@@ -148,18 +299,11 @@ struct MWSessionCard: View {
                 }
             }
             .padding(MWSpacing.lg)
-            .background(
-                RoundedRectangle(cornerRadius: MWRadius.lg)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: MWRadius.lg)
-                            .strokeBorder(
-                                run.status == .waitingApproval
-                                    ? MWColors.statusWarning.opacity(0.3)
-                                    : .white.opacity(0.15),
-                                lineWidth: run.status == .waitingApproval ? 1 : 0.5
-                            )
-                    )
+            .mwGlassSurface(
+                cornerRadius: MWRadius.lg,
+                borderColor: run.status == .waitingApproval
+                    ? MWColors.statusApproval.opacity(0.3)
+                    : MWColors.glassBorder
             )
             .mwGlassGlow(glowColor, radius: run.status == .running ? 16 : 12,
                          isActive: run.status == .running || run.status == .waitingApproval)
@@ -194,7 +338,7 @@ struct MWChatBubble: View {
             VStack(alignment: isUser ? .trailing : .leading, spacing: MWSpacing.xs) {
                 Text(content)
                     .font(isUser ? MWTypography.body() : MWTypography.body())
-                    .foregroundColor(isUser ? .white : MWColors.textPrimary)
+                    .foregroundColor(isUser ? MWColors.accentOnAccent : MWColors.textPrimary)
                     .textSelection(.enabled)
 
                 if isStreaming {
@@ -212,12 +356,12 @@ struct MWChatBubble: View {
             .padding(.vertical, MWSpacing.md)
             .background(
                 RoundedRectangle(cornerRadius: isUser ? MWRadius.xl : MWRadius.lg)
-                    .fill(isUser ? MWColors.accentPrimary : MWColors.bgSurface)
+                    .fill(isUser ? MWColors.accentPrimary : MWColors.cardBg)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: isUser ? MWRadius.xl : MWRadius.lg)
                     .strokeBorder(
-                        isUser ? Color.clear : .white.opacity(0.1),
+                        isUser ? Color.clear : MWColors.divider,
                         lineWidth: 0.5
                     )
             )
@@ -311,7 +455,7 @@ struct MWToolCallCard: View {
         .padding(MWSpacing.md)
         .background(
             RoundedRectangle(cornerRadius: MWRadius.md)
-                .fill(MWColors.bgDeep)
+                .fill(MWColors.cardBg)
                 .overlay(
                     RoundedRectangle(cornerRadius: MWRadius.md)
                         .strokeBorder(
@@ -385,7 +529,7 @@ struct MWApprovalCard: View {
                 } label: {
                     Label("Allow", systemImage: "checkmark")
                         .font(MWTypography.subheadlineMedium())
-                        .foregroundColor(.white)
+                        .foregroundColor(MWColors.accentOnAccent)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, MWSpacing.sm)
                         .background(
@@ -398,12 +542,12 @@ struct MWApprovalCard: View {
         .padding(MWSpacing.lg)
         .background(
             RoundedRectangle(cornerRadius: MWRadius.lg)
-                .fill(MWColors.bgElevated)
+                .fill(MWColors.cardBg)
                 .overlay(
                     RoundedRectangle(cornerRadius: MWRadius.lg)
-                        .strokeBorder(MWColors.statusWarning.opacity(0.25), lineWidth: 1)
+                        .strokeBorder(MWColors.statusApproval.opacity(0.25), lineWidth: 1)
                 )
-                .shadow(color: MWColors.statusWarning.opacity(0.08), radius: 12, x: 0, y: 0)
+                .shadow(color: MWColors.glowApproval, radius: 12, x: 0, y: 0)
         )
     }
 }
@@ -487,11 +631,11 @@ struct MWInputBar: View {
                 .padding(.vertical, MWSpacing.sm)
                 .background(
                     RoundedRectangle(cornerRadius: MWRadius.xl)
-                        .fill(.ultraThinMaterial)
+                        .fill(MWColors.inputBg)
                         .overlay(
                             RoundedRectangle(cornerRadius: MWRadius.xl)
                                 .strokeBorder(
-                                    isFocused ? MWColors.accentCyan.opacity(0.3) : .white.opacity(0.1),
+                                    isFocused ? MWColors.accentCyan.opacity(0.3) : MWColors.divider,
                                     lineWidth: 1
                                 )
                         )
@@ -537,9 +681,10 @@ struct MWInputBar: View {
         .background(
             Rectangle()
                 .fill(.ultraThinMaterial)
+                .background(MWColors.glassBg)
                 .overlay(
                     Rectangle()
-                        .strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
+                        .strokeBorder(MWColors.divider, lineWidth: 0.5)
                         .padding(.top, 0.5)
                 )
         )
@@ -608,7 +753,7 @@ struct MWEmptyState: View {
                 } label: {
                     Label(actionTitle, systemImage: actionIcon ?? "arrow.right")
                         .font(MWTypography.bodyMedium())
-                        .foregroundColor(.white)
+                        .foregroundColor(MWColors.accentOnAccent)
                         .padding(.horizontal, MWSpacing.xl)
                         .padding(.vertical, MWSpacing.md)
                         .background(
@@ -621,6 +766,7 @@ struct MWEmptyState: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, MWSpacing.xxxl)
+        .background(MWPatternedBackdrop())
     }
 }
 
@@ -667,7 +813,7 @@ struct MWErrorState: View {
                     } label: {
                         Label(actionTitle, systemImage: "arrow.clockwise")
                             .font(MWTypography.bodyMedium())
-                            .foregroundColor(.white)
+                            .foregroundColor(MWColors.accentOnAccent)
                             .padding(.horizontal, MWSpacing.xl)
                             .padding(.vertical, MWSpacing.md)
                             .background(
@@ -688,7 +834,7 @@ struct MWErrorState: View {
                             .padding(.vertical, MWSpacing.md)
                             .background(
                                 Capsule()
-                                    .strokeBorder(.white.opacity(0.15), lineWidth: 1)
+                                    .strokeBorder(MWColors.divider, lineWidth: 1)
                             )
                     }
                 }
@@ -697,6 +843,7 @@ struct MWErrorState: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, MWSpacing.xxxl)
+        .background(MWPatternedBackdrop())
     }
 }
 
@@ -756,6 +903,10 @@ struct MWReconnectBanner: View {
                     Rectangle()
                         .fill(MWColors.statusWarning.opacity(0.04))
                         .blur(radius: 8)
+                )
+                .overlay(
+                    MWGeometricPattern(opacityOverride: min(MWTheme.shared.textureOpacity, 0.10))
+                        .blendMode(.screen)
                 )
         )
     }
