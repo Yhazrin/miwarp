@@ -5,6 +5,7 @@ import {
 } from "@tauri-apps/plugin-notification";
 import { appVisibility } from "$lib/stores/app-visibility.svelte";
 import type { TaskRun } from "$lib/types";
+import { dbgWarn } from "$lib/utils/debug";
 
 export type NotifyKind =
   | "run_completed"
@@ -54,7 +55,7 @@ export async function notifyUser(options: NotifyOptions): Promise<void> {
       body: options.body ?? "",
     });
   } catch (error) {
-    console.warn("[notification] failed", error);
+    dbgWarn("notification", "send failed", error);
   }
 }
 

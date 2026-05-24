@@ -7,6 +7,7 @@
  * Single source of truth: all theme state lives here.
  */
 import { t } from "$lib/i18n/index.svelte";
+import { dbgWarn } from "$lib/utils/debug";
 
 export interface ThemeDefinition {
   id: string;
@@ -262,8 +263,8 @@ class ThemeStore {
       this._applyColorScheme(this.colorScheme);
       // Persist after import so settings aren't lost on refresh
       this._persistSettings();
-    } catch {
-      console.warn("Failed to import theme config");
+    } catch (e) {
+      dbgWarn("theme", "import failed", e);
     }
   }
 
@@ -290,8 +291,8 @@ class ThemeStore {
         this.initialized = true;
         return;
       }
-    } catch {
-      // Use defaults
+    } catch (e) {
+      dbgWarn("theme", "init failed, using defaults", e);
     }
 
     // Fallback: migrate from old ocv:theme / ocv:colorScheme
@@ -325,8 +326,8 @@ class ThemeStore {
 
       // Migrate: write to new key so we don't migrate again
       this._persistSettings();
-    } catch {
-      // Use defaults
+    } catch (e) {
+      dbgWarn("theme", "migration failed, using defaults", e);
     }
 
     this._applyTheme(this.currentTheme);

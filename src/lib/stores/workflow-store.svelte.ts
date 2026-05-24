@@ -391,8 +391,8 @@ class WorkflowStore {
     // Persist
     try {
       localStorage.setItem("miwarp:recent-workflows", JSON.stringify(this.recentTemplates));
-    } catch {
-      // Silently fail
+    } catch (e) {
+      dbgWarn("workflow", "persist recent templates failed", e);
     }
   }
 
@@ -405,7 +405,8 @@ class WorkflowStore {
       if (raw) {
         this.recentTemplates = JSON.parse(raw);
       }
-    } catch {
+    } catch (e) {
+      dbgWarn("workflow", "load recent templates failed", e);
       this.recentTemplates = [];
     }
   }

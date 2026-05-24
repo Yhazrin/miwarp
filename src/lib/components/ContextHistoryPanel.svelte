@@ -111,11 +111,18 @@
     return turnUsages[turnUsages.length - 1].cost - turnUsages[turnUsages.length - 2].cost;
   });
 
+  /** Pre-index turnUsages by turnIndex for O(1) cost lookup. */
+  let turnUsageByIndex = $derived.by(() => {
+    const map = new Map<number, TurnUsage>();
+    for (const tu of turnUsages) map.set(tu.turnIndex, tu);
+    return map;
+  });
+
   /** Compute per-turn cost from cumulative total_cost_usd values. */
   function getTurnCost(tu: TurnUsage): number {
-    const idx = turnUsages.indexOf(tu);
-    if (idx <= 0) return tu.cost; // first turn: cumulative = per-turn
-    return Math.max(0, tu.cost - turnUsages[idx - 1].cost);
+    const prev = turnUsageByIndex.get(tu.turnIndex - 1);
+    if (!prev) return tu.cost; // first turn: cumulative = per-turn
+    return Math.max(0, tu.cost - prev.cost);
   }
 
   function formatResourceDelta(value: number): string {

@@ -31,10 +31,9 @@
   let testResult = $state<{ success: boolean; output?: string; error?: string } | null>(null);
 
   // Progress tracking
-  let progress = $derived.by(() => {
-    const steps: WizardStep[] = ["select-type", "configure", "parameters", "test", "complete"];
-    return ((steps.indexOf(step) + 1) / steps.length) * 100;
-  });
+  const WIZARD_STEPS: WizardStep[] = ["select-type", "configure", "parameters", "test", "complete"];
+  let stepIndex = $derived(WIZARD_STEPS.indexOf(step));
+  let progress = $derived(((stepIndex + 1) / WIZARD_STEPS.length) * 100);
 
   const CATEGORIES: { id: SkillCategory; label: string; description: string; icon: string }[] = [
     {
@@ -83,18 +82,14 @@
   }
 
   function goBack() {
-    const steps: WizardStep[] = ["select-type", "configure", "parameters", "test", "complete"];
-    const currentIndex = steps.indexOf(step);
-    if (currentIndex > 0) {
-      step = steps[currentIndex - 1];
+    if (stepIndex > 0) {
+      step = WIZARD_STEPS[stepIndex - 1];
     }
   }
 
   function nextStep() {
-    const steps: WizardStep[] = ["select-type", "configure", "parameters", "test", "complete"];
-    const currentIndex = steps.indexOf(step);
-    if (currentIndex < steps.length - 1) {
-      step = steps[currentIndex + 1];
+    if (stepIndex < WIZARD_STEPS.length - 1) {
+      step = WIZARD_STEPS[stepIndex + 1];
     }
   }
 
@@ -184,7 +179,7 @@ step by step, * with progress tracking and helpful hints. */
   <div class="shrink-0 px-4 pt-4">
     <div class="flex items-center justify-between mb-2">
       <span class="text-xs text-muted-foreground">
-        Step {["select-type", "configure", "parameters", "test", "complete"].indexOf(step) + 1} of 5
+        Step {stepIndex + 1} of 5
       </span>
       <span class="text-xs text-muted-foreground">{Math.round(progress)}%</span>
     </div>

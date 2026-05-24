@@ -10,6 +10,7 @@ import {
   type BackgroundConfig,
   type BackgroundSettings,
 } from "../types/background";
+import { dbgWarn } from "$lib/utils/debug";
 
 class BackgroundStore {
   /** Global background configuration */
@@ -82,8 +83,8 @@ class BackgroundStore {
       if (settings.global) this.global = settings.global;
       if (settings.perSession) this.perSession = settings.perSession;
       this._persist();
-    } catch {
-      console.warn("Failed to import background settings");
+    } catch (e) {
+      dbgWarn("background", "import failed", e);
     }
   }
 

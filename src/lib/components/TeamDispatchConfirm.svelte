@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { getPresets } from "$lib/services/team-dispatcher";
+  import { dbgWarn } from "$lib/utils/debug";
   import type { TeamPreset } from "$lib/types";
 
   let {
@@ -31,7 +32,7 @@
         selectedPresetId = presets[0].id;
       }
     } catch (e) {
-      console.error("Failed to load team presets:", e);
+      dbgWarn("team-dispatch", "load presets failed", e);
     } finally {
       loading = false;
     }
