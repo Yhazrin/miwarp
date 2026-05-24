@@ -67,6 +67,7 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         components.host = host
         components.port = port
         components.path = "/ws"
+        // Token goes in header for security, not URL query
         components.queryItems = [URLQueryItem(name: "token", value: token)]
 
         guard let url = components.url else {
@@ -87,14 +88,14 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         reconnectAttempt = 0
         createStreams()
         logger.wsInfo("Connecting to \(maskedURL(url))")
-        performPreflightThenConnect(url: url, generation: generation)
+        performPreflightThenConnect(url: url, token: token, generation: generation)
     }
 
-    private func performPreflightThenConnect(url: URL, generation: UInt64) {
+    private func performPreflightThenConnect(url: URL, token: String, generation: UInt64) {
         guard generation == connectionGeneration else { return }
 
         guard let probeURL = httpProbeURL(for: url) else {
-            performConnect(url: url, generation: generation)
+            performConnect(url: url, token: token, generation: generation)
             return
         }
 
@@ -103,7 +104,7 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         let config = URLSessionConfiguration.ephemeral
         config.waitsForConnectivity = false
         config.timeoutIntervalForRequest = 6
-        config.timeoutIntervalForResource = 8
+        // No resource timeout for preflight probe
 
         preflightSession?.invalidateAndCancel()
         let session = URLSession(configuration: config)
@@ -135,22 +136,28 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
                 self.logger.wsInfo("Preflight OK")
             }
 
-            self.performConnect(url: url, generation: generation)
+            self.performConnect(url: url, token: token, generation: generation)
         }
         preflightTask?.resume()
     }
 
-    private func performConnect(url: URL, generation: UInt64) {
+    private func performConnect(url: URL, token: String, generation: UInt64) {
         guard generation == connectionGeneration else { return }
 
         connectionState = reconnectAttempt > 0 ? .reconnecting(attempt: reconnectAttempt) : .connecting
 
         let config = URLSessionConfiguration.default
         config.waitsForConnectivity = false
-        config.timeoutIntervalForRequest = 12
-        config.timeoutIntervalForResource = 20
+        config.timeoutIntervalForRequest = 15
+        // No resource timeout — WebSocket is a long-lived connection
         urlSession = URLSession(configuration: config, delegate: self, delegateQueue: .main)
-        let task = urlSession?.webSocketTask(with: url)
+
+        var request = URLRequest(url: url)
+        // Use header auth for security — token not in URL query logs
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue(token, forHTTPHeaderField: "X-MiWarp-Token")
+
+        let task = urlSession?.webSocketTask(with: request)
         webSocketTask = task
         task?.resume()
 
@@ -357,11 +364,11 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
 
         reconnectTimer?.invalidate()
         reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
-            guard let self, let url = self.currentURL else { return }
+            guard let self, let url = self.currentURL, let token = self.currentToken else { return }
             guard generation == self.connectionGeneration else { return }
             self.webSocketTask?.cancel(with: .goingAway, reason: nil)
             self.webSocketTask = nil
-            self.performPreflightThenConnect(url: url, generation: generation)
+            self.performPreflightThenConnect(url: url, token: token, generation: generation)
         }
     }
 
@@ -482,6 +489,7 @@ extension MiWarpWebSocketClient: URLSessionWebSocketDelegate {
     func urlSession(_ session: URLSession,
                     webSocketTask: URLSessionWebSocketTask,
                     didOpenWithProtocol protocol: String?) {
+        guard webSocketTask === self.webSocketTask else { return }
         connectTimeoutTask?.cancel()
         connectTimeoutTask = nil
         logger.wsInfo("WebSocket connected")
@@ -493,6 +501,7 @@ extension MiWarpWebSocketClient: URLSessionWebSocketDelegate {
                     webSocketTask: URLSessionWebSocketTask,
                     didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
                     reason: Data?) {
+        guard webSocketTask === self.webSocketTask else { return }
         logger.wsInfo("WebSocket closed: \(closeCode.rawValue)")
         if !isIntentionalClose {
             scheduleReconnect(generation: connectionGeneration)
@@ -502,11 +511,23 @@ extension MiWarpWebSocketClient: URLSessionWebSocketDelegate {
     func urlSession(_ session: URLSession,
                     task: URLSessionTask,
                     didCompleteWithError error: Error?) {
+        // Only handle if this is the current active WebSocket task
+        guard let webSocketTask = task as? URLSessionWebSocketTask,
+              webSocketTask === self.webSocketTask else { return }
         guard let error, !isIntentionalClose else { return }
+
         connectTimeoutTask?.cancel()
         connectTimeoutTask = nil
         logger.wsError("Connection failed: \(error.localizedDescription)")
-        connectionState = .serverUnavailable(reason: connectionTroubleshootingReason(for: error))
+
+        // If already connected, treat as disconnection → reconnect
+        // Only set serverUnavailable if in connecting/reconnecting phase
+        if connectionState == .connected {
+            scheduleReconnect(generation: connectionGeneration)
+        } else if connectionState == .connecting || connectionState.isReconnecting {
+            connectionState = .serverUnavailable(reason: connectionTroubleshootingReason(for: error))
+        }
+        // If already disconnected/intentional, do nothing
     }
 }
 

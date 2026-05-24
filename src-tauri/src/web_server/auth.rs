@@ -43,7 +43,22 @@ pub async fn authenticate_ws(
             }
         }
     }
-    // 2. Fallback to query token
+    // 2. Try header auth: Authorization: Bearer <token> or X-MiWarp-Token: <token>
+    if let Some(bearer) = headers.get("authorization").and_then(|v| v.to_str().ok()) {
+        if let Some(token) = bearer.strip_prefix("Bearer ").or(bearer.strip_prefix("bearer ")) {
+            if token == state.token.read().await.as_str() {
+                log::debug!("[auth] WS auth: valid Bearer token");
+                return Some(WsAuthSubject::QueryToken);
+            }
+        }
+    }
+    if let Some(token) = headers.get("x-miwarp-token").and_then(|v| v.to_str().ok()) {
+        if token == state.token.read().await.as_str() {
+            log::debug!("[auth] WS auth: valid X-MiWarp-Token header");
+            return Some(WsAuthSubject::QueryToken);
+        }
+    }
+    // 3. Fallback to query token
     if let Some(tok) = query_token {
         if tok == state.token.read().await.as_str() {
             log::debug!("[auth] WS auth: valid query token");
@@ -283,7 +298,23 @@ pub async fn validate_ws_auth_extracted(
         }
     }
 
-    // 2. Fallback to query param token
+    // 2. Try header auth: Authorization: Bearer <token> or X-MiWarp-Token: <token>
+    if let Some(bearer) = headers.get("authorization").and_then(|v| v.to_str().ok()) {
+        if let Some(token) = bearer.strip_prefix("Bearer ").or(bearer.strip_prefix("bearer ")) {
+            if token == state.token.read().await.as_str() {
+                log::debug!("[auth] WS auth: valid Bearer token");
+                return true;
+            }
+        }
+    }
+    if let Some(token) = headers.get("x-miwarp-token").and_then(|v| v.to_str().ok()) {
+        if token == state.token.read().await.as_str() {
+            log::debug!("[auth] WS auth: valid X-MiWarp-Token header");
+            return true;
+        }
+    }
+
+    // 3. Fallback to query param token
     if let Some(token_val) = query_token {
         if token_val == state.token.read().await.as_str() {
             log::debug!("[auth] WS auth: valid query token");
