@@ -264,10 +264,11 @@ function parsePlanForMemberTasks(plan: string, preset: TeamPreset): MemberTaskAs
 
   for (const member of preset.members) {
     // Try to extract section for this member
+    const escaped = member.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const patterns = [
-      new RegExp(`### ${member.name}\\s*\\n([\\s\\S]*?)(?=### |$)`, "i"),
-      new RegExp(`## ${member.name}\\s*\\n([\\s\\S]*?)(?=## |$)`, "i"),
-      new RegExp(`${member.name}\\s*:?\\s*\\n([\\s\\S]*?)(?=\\n## |$)`, "i"),
+      new RegExp(`### ${escaped}\\s*\\n([\\s\\S]*?)(?=### |$)`, "i"),
+      new RegExp(`## ${escaped}\\s*\\n([\\s\\S]*?)(?=## |$)`, "i"),
+      new RegExp(`${escaped}\\s*:?\\s*\\n([\\s\\S]*?)(?=\\n## |$)`, "i"),
     ];
 
     let task = "";

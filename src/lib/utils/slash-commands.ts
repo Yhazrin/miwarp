@@ -429,14 +429,14 @@ export function shouldBackFromSubView(
   activeCmdName: string | undefined,
 ): boolean {
   if (!activeCmdName) return false;
-  const pattern = new RegExp(`^\\/${activeCmdName}\\s*$`);
-  return pattern.test(inputText) && cursorPos === inputText.length;
+  const prefix = `/${activeCmdName}`;
+  return (inputText === prefix || inputText === `${prefix} `) && cursorPos === inputText.length;
 }
 
 /** Whether sub-view input is still valid for the active command. */
 export function isSubViewInputValid(inputText: string, activeCmdName: string): boolean {
-  const pattern = new RegExp(`^\\/${activeCmdName}(?:\\s.*)?$`);
-  return pattern.test(inputText);
+  const prefix = `/${activeCmdName}`;
+  return inputText === prefix || inputText.startsWith(`${prefix} `);
 }
 
 // ── Quick action pills (L3) ──

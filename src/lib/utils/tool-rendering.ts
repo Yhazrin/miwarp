@@ -122,6 +122,7 @@ export function extractStructuredOutput(output: unknown): unknown {
     }
   }
   if (Array.isArray(output)) return output;
+  if (typeof output !== "object" || output === null) return output;
   const obj = output as Record<string, unknown>;
   if (obj.content != null) {
     if (typeof obj.content === "string") {

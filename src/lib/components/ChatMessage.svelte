@@ -52,7 +52,14 @@
   let collapsed = $state(true);
   let thinkingCollapsed = $state(true);
 
-  const lineCount = $derived(message.content.split("\n").length);
+  const lineCount = $derived(countNewlines(message.content) + 1);
+  function countNewlines(s: string): number {
+    let count = 0;
+    for (let i = 0; i < s.length; i++) {
+      if (s.charCodeAt(i) === 10) count++;
+    }
+    return count;
+  }
   const isLong = $derived(isUser && lineCount > 10);
 
   // Artifact resolution for assistant messages

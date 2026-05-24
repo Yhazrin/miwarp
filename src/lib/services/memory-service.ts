@@ -198,6 +198,7 @@ export class MemoryService {
   ): Promise<MemorySearchResult[]> {
     const results: MemorySearchResult[] = [];
     const queryLower = query.toLowerCase();
+    const queryRegex = new RegExp(queryLower.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
 
     for (const candidate of candidates) {
       if (!candidate.exists || results.length >= limit) break;
@@ -207,7 +208,7 @@ export class MemoryService {
         const { body } = parseFrontmatter(content);
         const lowerBody = body.toLowerCase();
 
-        const matches = (lowerBody.match(new RegExp(queryLower, "g")) || []).length;
+        const matches = (lowerBody.match(queryRegex) || []).length;
         if (matches > 0) {
           // Extract snippet around first match
           const firstIndex = lowerBody.indexOf(queryLower);
