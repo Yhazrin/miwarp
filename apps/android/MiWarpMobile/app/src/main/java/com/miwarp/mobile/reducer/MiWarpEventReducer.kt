@@ -25,7 +25,6 @@ class MiWarpEventReducer {
     private var currentStatus: RunStatus = RunStatus.Idle
     private var lastSeq: Long = 0L
     private var streamingMessageId: String? = null
-    private val messageAccumulator = mutableMapOf<String, String>() // messageId -> accumulated text
 
     fun getMessages(): List<ChatMessage> = messages.toList()
 
@@ -169,7 +168,6 @@ class MiWarpEventReducer {
         currentStatus = RunStatus.Idle
         lastSeq = 0
         streamingMessageId = null
-        messageAccumulator.clear()
     }
 
     fun removePermission(requestId: String) {
@@ -193,7 +191,6 @@ class MiWarpEventReducer {
                 )
             )
         }
-        messageAccumulator[msgId, default = ""] += event.text
         return true
     }
 
@@ -204,7 +201,6 @@ class MiWarpEventReducer {
             val finalText = event.text ?: streaming.text
             messages[index] = streaming.copy(text = finalText, isStreaming = false)
             streamingMessageId = null
-            messageAccumulator.remove(streaming.id)
             return true
         }
         return false
