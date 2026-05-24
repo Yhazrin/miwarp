@@ -67,6 +67,126 @@
     background: hsla(var(--miwarp-glass-bg), calc(var(--miwarp-glass-opacity, 0.72) + 0.06));
   }
 
+  .link-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: 0.5rem;
+    max-width: min(100%, 46rem);
+  }
+
+  .link-card {
+    --link-card-accent: var(--miwarp-accent-primary);
+    --link-card-accent-2: var(--miwarp-accent-violet);
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 3.25rem;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    border-radius: calc(var(--radius) + 1px);
+    border: 1px solid hsl(var(--link-card-accent) / 0.2);
+    background: hsl(var(--miwarp-bg-surface));
+    padding: 0.5625rem 0.625rem;
+    color: hsl(var(--miwarp-text-primary));
+    text-align: left;
+    box-shadow: 0 2px 8px hsl(var(--miwarp-bg-deepest) / 0.12);
+    transition:
+      transform 180ms ease-out,
+      border-color 180ms ease-out,
+      box-shadow 180ms ease-out;
+  }
+
+  .link-card[data-type="local-file"] {
+    --link-card-accent: var(--miwarp-status-success);
+    --link-card-accent-2: var(--miwarp-accent-primary);
+  }
+
+  .link-card[data-type="local-folder"] {
+    --link-card-accent: var(--miwarp-status-warning);
+    --link-card-accent-2: var(--miwarp-accent-primary);
+  }
+
+  .link-card:hover {
+    border-color: hsl(var(--link-card-accent) / 0.4);
+    box-shadow:
+      0 4px 12px hsl(var(--miwarp-bg-deepest) / 0.14),
+      0 0 0 1px hsl(var(--link-card-accent) / 0.08);
+  }
+
+  .link-card:active {
+    transform: scale(0.99);
+  }
+
+  .link-card:focus-visible {
+    outline: 2px solid hsl(var(--miwarp-accent-primary) / 0.68);
+    outline-offset: 2px;
+  }
+
+  .link-card-icon {
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    color: hsl(var(--link-card-accent));
+  }
+
+  .link-card-content {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    min-width: 0;
+    gap: 0.1875rem;
+  }
+
+  .link-card-title {
+    overflow: hidden;
+    color: hsl(var(--link-card-accent) / 0.96);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .link-card-meta {
+    overflow: hidden;
+    color: hsl(var(--link-card-accent-2) / 0.74);
+    font-family: theme("fontFamily.mono");
+    font-size: 0.6875rem;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .link-card-action {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: calc(var(--radius) - 3px);
+    color: hsl(var(--link-card-accent) / 0.8);
+    opacity: 0.86;
+    transition:
+      transform 180ms ease-out,
+      color 180ms ease-out,
+      background-color 180ms ease-out,
+      opacity 180ms ease-out;
+  }
+
+  .link-card:hover .link-card-action {
+    transform: translateX(2px);
+    background: hsl(var(--miwarp-bg-surface) / 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: hsl(var(--link-card-accent));
+    opacity: 1;
+  }
+
   .glass-sidebar {
     background: hsla(var(--miwarp-bg-deepest), 0.78);
     backdrop-filter: blur(28px) saturate(180%);
@@ -1051,6 +1171,30 @@ textarea,
 }
 
 .session-island-tier1-has-context .session-island-tab-group:last-child {
+  justify-self: start;
+}
+
+/* No-session fallback: grid layout with narrow center slot for the miwarp pill */
+.session-island-tier1-no-context {
+  display: grid;
+  grid-template-columns:
+    var(--session-island-side-rail-width)
+    auto
+    var(--session-island-side-rail-width);
+  justify-content: center;
+  column-gap: 8px;
+}
+
+.session-island-tier1-no-context .session-island-tab-group:first-child {
+  justify-self: end;
+}
+
+.session-island-tier1-no-context .session-context-pill {
+  width: auto;
+  justify-self: center;
+}
+
+.session-island-tier1-no-context .session-island-tab-group:last-child {
   justify-self: start;
 }
 

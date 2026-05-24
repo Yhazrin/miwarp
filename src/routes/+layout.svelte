@@ -39,7 +39,6 @@
     initBackendCapabilities,
     useIncrementalRunsSync,
   } from "$lib/backend-capabilities.svelte";
-  import { APP_LOGO_URL } from "$lib/utils/brand-assets";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
   import TopWindowDrag from "$lib/components/TopWindowDrag.svelte";
@@ -1808,8 +1807,6 @@
       <div class="relative flex h-14 w-full items-center justify-center pt-[42px]">
         <!-- Left drag area -->
         <WindowDragArea class="absolute left-0 top-0 bottom-0 w-8" />
-        <!-- Logo (not draggable) -->
-        <img src={APP_LOGO_URL} alt="MiWarp" class="no-drag relative z-10 h-8 w-8 rounded-lg" />
         <!-- Right drag area -->
         <WindowDragArea class="absolute right-0 top-0 bottom-0 w-8" />
       </div>
