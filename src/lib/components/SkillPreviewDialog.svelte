@@ -61,12 +61,13 @@
 {#if open && preview}
   <div class="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
     <!-- Backdrop -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="fixed inset-0 bg-miwarp-overlay backdrop-blur-sm"
       onclick={handleCancel}
-      onkeydown={() => {}}
-      role="button"
-      tabindex="-1"
+      onkeydown={(e) => {
+        if (e.key === "Escape" || e.key === "Enter" || e.key === " ") handleCancel();
+      }}
     ></div>
 
     <!-- Dialog -->

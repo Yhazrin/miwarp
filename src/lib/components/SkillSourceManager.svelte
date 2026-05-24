@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import { dbgWarn } from "$lib/utils/debug";
   import { skillSourcesStore } from "$lib/stores/skill-source-store.svelte";
   import SkillSourceSyncLog from "$lib/components/SkillSourceSyncLog.svelte";
   import RemoteSkillCard from "$lib/components/RemoteSkillCard.svelte";
@@ -24,8 +25,12 @@
   let installScope = $state<"user" | "project">("user");
 
   onMount(async () => {
-    await store.loadSources();
-    await store.runStartupSyncIfNeeded(projectCwd || undefined);
+    try {
+      await store.loadSources();
+      await store.runStartupSyncIfNeeded(projectCwd || undefined);
+    } catch (e) {
+      dbgWarn("skill-source-manager", "onMount failed", e);
+    }
   });
 
   async function handlePreview() {

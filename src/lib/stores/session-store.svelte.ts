@@ -153,6 +153,12 @@ function mapAttachments(
   }));
 }
 
+/** Append to an array with a cap of 100 entries (keeps most recent). */
+function _appendCapped<T>(arr: T[], item: T): T[] {
+  const next = [...arr, item];
+  return next.length > 100 ? next.slice(-100) : next;
+}
+
 // ── Exported types ──
 
 export interface ElicitationState {
@@ -3761,55 +3767,43 @@ export class SessionStore {
         break;
 
       case "hook_started":
-        this.hookEvents = [
-          ...this.hookEvents,
-          {
-            type: ev.type,
-            hook_id: ev.hook_id,
-            data: ev,
-            hook_name: ev.hook_name,
-          },
-        ];
+        this.hookEvents = _appendCapped(this.hookEvents, {
+          type: ev.type,
+          hook_id: ev.hook_id,
+          data: ev,
+          hook_name: ev.hook_name,
+        });
         break;
 
       case "hook_progress":
-        this.hookEvents = [
-          ...this.hookEvents,
-          {
-            type: ev.type,
-            hook_id: ev.hook_id,
-            data: ev,
-          },
-        ];
+        this.hookEvents = _appendCapped(this.hookEvents, {
+          type: ev.type,
+          hook_id: ev.hook_id,
+          data: ev,
+        });
         break;
 
       case "hook_response":
-        this.hookEvents = [
-          ...this.hookEvents,
-          {
-            type: ev.type,
-            hook_id: ev.hook_id,
-            data: ev,
-            hook_name: ev.hook_name,
-            stdout: ev.stdout,
-            stderr: ev.stderr,
-            exit_code: ev.exit_code,
-          },
-        ];
+        this.hookEvents = _appendCapped(this.hookEvents, {
+          type: ev.type,
+          hook_id: ev.hook_id,
+          data: ev,
+          hook_name: ev.hook_name,
+          stdout: ev.stdout,
+          stderr: ev.stderr,
+          exit_code: ev.exit_code,
+        });
         break;
 
       case "hook_callback":
         // Hook callback from CLI — PreToolUse hooks are actionable (allow/deny)
-        this.hookEvents = [
-          ...this.hookEvents,
-          {
-            type: ev.type,
-            hook_id: ev.hook_id,
-            data: ev,
-            request_id: ev.request_id,
-            status: ev.hook_event === "PreToolUse" ? "hook_pending" : "allowed",
-          },
-        ];
+        this.hookEvents = _appendCapped(this.hookEvents, {
+          type: ev.type,
+          hook_id: ev.hook_id,
+          data: ev,
+          request_id: ev.request_id,
+          status: ev.hook_event === "PreToolUse" ? "hook_pending" : "allowed",
+        });
         break;
 
       case "task_notification": {
@@ -3842,12 +3836,12 @@ export class SessionStore {
         break;
       }
 
-      case "files_persisted":
-        this.persistedFiles = [
-          ...this.persistedFiles,
-          ...(Array.isArray(ev.files) ? ev.files : []),
-        ];
+      case "files_persisted": {
+        const newFiles = Array.isArray(ev.files) ? ev.files : [];
+        const merged = [...this.persistedFiles, ...newFiles];
+        this.persistedFiles = merged.length > 500 ? merged.slice(-500) : merged;
         break;
+      }
 
       case "tool_progress": {
         if (ev.parent_tool_use_id) {

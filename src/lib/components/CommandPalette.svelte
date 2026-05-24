@@ -507,7 +507,9 @@
     <div
       class="fixed inset-0 bg-miwarp-overlay backdrop-blur-sm"
       onclick={() => (open = false)}
-      onkeydown={() => {}}
+      onkeydown={(e) => {
+        if (e.key === "Escape" || e.key === "Enter" || e.key === " ") open = false;
+      }}
     ></div>
 
     <!-- Palette Container -->
