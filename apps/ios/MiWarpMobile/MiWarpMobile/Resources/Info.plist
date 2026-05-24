@@ -35,6 +35,11 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>MiWarp Mobile uses the camera to scan QR codes for quick connection setup.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>MiWarp Mobile needs access to your local network to connect to the MiWarp desktop server via WebSocket.</string>
 	<key>UIApplicationSceneManifest</key>

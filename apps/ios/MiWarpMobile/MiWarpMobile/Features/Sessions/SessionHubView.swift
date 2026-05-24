@@ -116,10 +116,11 @@ struct SessionHubView: View {
             .padding(.vertical, MWSpacing.lg)
             .background(
                 RoundedRectangle(cornerRadius: MWRadius.lg)
-                    .fill(.ultraThinMaterial)
+                    .fill(MWColors.glassBg)
+                    .overlay(MWGeometricPattern(opacityOverride: min(theme.textureOpacity, 0.10)))
                     .overlay(
                         RoundedRectangle(cornerRadius: MWRadius.lg)
-                            .strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
+                            .strokeBorder(MWColors.glassBorder, lineWidth: 0.5)
                     )
             )
             .padding(.horizontal, MWSpacing.xl)
@@ -131,7 +132,7 @@ struct SessionHubView: View {
                 } label: {
                     Label("Connect Desktop", systemImage: "plus.circle.fill")
                         .font(MWTypography.bodyMedium())
-                        .foregroundColor(.white)
+                        .foregroundColor(MWColors.accentOnAccent)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, MWSpacing.md)
                         .background(
@@ -155,7 +156,7 @@ struct SessionHubView: View {
         HStack(spacing: MWSpacing.md) {
             Text("\(number)")
                 .font(MWTypography.caption2())
-                .foregroundColor(.white)
+                .foregroundColor(MWColors.accentOnAccent)
                 .frame(width: 22, height: 22)
                 .background(
                     Circle()
@@ -166,6 +167,7 @@ struct SessionHubView: View {
                 .font(MWTypography.callout())
                 .foregroundColor(MWColors.textSecondary)
         }
+        .background(MWPatternedBackdrop())
     }
 
     // MARK: - Session List
@@ -275,17 +277,17 @@ struct SessionHubView: View {
         Button(action: onTap) {
             Text(title)
                 .font(MWTypography.caption())
-                .foregroundColor(isActive ? MWColors.accentCyan : MWColors.textTertiary)
+                            .foregroundColor(isActive ? MWColors.tabActive : MWColors.textTertiary)
                 .padding(.horizontal, MWSpacing.md)
                 .padding(.vertical, MWSpacing.xs)
                 .background(
                     Capsule()
-                        .fill(isActive ? MWColors.accentCyan.opacity(0.12) : MWColors.bgSurface)
+                        .fill(isActive ? MWColors.tabActive.opacity(0.12) : MWColors.bgSurface)
                 )
                 .overlay(
                     Capsule()
                         .strokeBorder(
-                            isActive ? MWColors.accentCyan.opacity(0.3) : .white.opacity(0.1),
+                            isActive ? MWColors.tabActive.opacity(0.3) : MWColors.divider,
                             lineWidth: 0.5
                         )
                 )

@@ -69,13 +69,10 @@ struct PairingView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, MWSpacing.lg)
-                .background(
-                    RoundedRectangle(cornerRadius: MWRadius.lg)
-                        .fill(MWColors.bgElevated)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: MWRadius.lg)
-                                .strokeBorder(MWColors.accentCyan.opacity(0.2), lineWidth: 1)
-                        )
+                .mwGlassSurface(
+                    cornerRadius: MWRadius.lg,
+                    borderColor: MWColors.accentCyan.opacity(0.2),
+                    fillColor: MWColors.cardBg
                 )
             }
             .buttonStyle(.plain)
@@ -94,13 +91,10 @@ struct PairingView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, MWSpacing.lg)
-                .background(
-                    RoundedRectangle(cornerRadius: MWRadius.lg)
-                        .fill(MWColors.bgElevated)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: MWRadius.lg)
-                                .strokeBorder(MWColors.accentPrimary.opacity(0.2), lineWidth: 1)
-                        )
+                .mwGlassSurface(
+                    cornerRadius: MWRadius.lg,
+                    borderColor: MWColors.accentPrimary.opacity(0.2),
+                    fillColor: MWColors.cardBg
                 )
             }
             .buttonStyle(.plain)
@@ -211,7 +205,7 @@ struct ConnectionCard: View {
     var onDelete: (() -> Void)?
 
     var body: some View {
-        MWGlassCard(borderColor: isActive ? MWColors.accentCyan.opacity(0.3) : nil) {
+        MWGlassCard(borderColor: isActive ? MWColors.tabActive.opacity(0.3) : nil) {
             VStack(alignment: .leading, spacing: MWSpacing.md) {
                 HStack {
                     VStack(alignment: .leading, spacing: MWSpacing.xs) {

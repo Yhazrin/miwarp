@@ -10,7 +10,7 @@ struct MiWarpMobileApp: App {
             RootView(theme: theme, connectionStore: connectionStore)
                 .environmentObject(connectionStore)
                 .environmentObject(theme)
-                .preferredColorScheme(theme.colorScheme)
+                .preferredColorScheme(theme.preferredColorScheme)
                 .onOpenURL { url in
                     handleDeepLink(url)
                 }
@@ -54,9 +54,16 @@ struct MiWarpMobileApp: App {
 struct RootView: View {
     @ObservedObject var theme: MWTheme
     @ObservedObject var connectionStore: MiWarpConnectionStore
+    @Environment(\.colorScheme) private var systemColorScheme
 
     var body: some View {
         AppRouter()
-            .preferredColorScheme(theme.colorScheme)
+            .preferredColorScheme(theme.preferredColorScheme)
+            .onAppear {
+                theme.updateSystemColorScheme(systemColorScheme)
+            }
+            .onChange(of: systemColorScheme) { _, newValue in
+                theme.updateSystemColorScheme(newValue)
+            }
     }
 }
