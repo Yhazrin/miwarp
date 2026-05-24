@@ -5,9 +5,11 @@ import SwiftUI
 struct MWGlassCard<Content: View>: View {
     let content: Content
     var cornerRadius: CGFloat = MWRadius.lg
+    var borderColor: Color?
 
-    init(cornerRadius: CGFloat = MWRadius.lg, @ViewBuilder content: () -> Content) {
+    init(cornerRadius: CGFloat = MWRadius.lg, borderColor: Color? = nil, @ViewBuilder content: () -> Content) {
         self.cornerRadius = cornerRadius
+        self.borderColor = borderColor
         self.content = content()
     }
 
@@ -19,7 +21,7 @@ struct MWGlassCard<Content: View>: View {
                     .fill(MWColors.glassBg)
                     .overlay(
                         RoundedRectangle(cornerRadius: cornerRadius)
-                            .strokeBorder(MWColors.glassBorder, lineWidth: 1)
+                            .strokeBorder(borderColor ?? MWColors.glassBorder, lineWidth: 1)
                     )
             )
     }
@@ -54,37 +56,96 @@ struct MWSessionCard: View {
     let run: MiWarpRun
     var onTap: (() -> Void)?
 
+    private var glowColor: Color {
+        switch run.status {
+        case .running: return MWColors.glowRunning
+        case .waitingApproval: return MWColors.glowApproval
+        default: return .clear
+        }
+    }
+
     var body: some View {
         Button {
             onTap?()
         } label: {
             VStack(alignment: .leading, spacing: MWSpacing.sm) {
-                HStack {
-                    Text(run.displayTitle)
-                        .font(MWTypography.bodyMedium())
-                        .foregroundColor(MWColors.textPrimary)
-                        .lineLimit(1)
-                    Spacer()
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: MWSpacing.xs) {
+                        Text(run.displayTitle)
+                            .font(MWTypography.bodyMedium())
+                            .foregroundColor(MWColors.textPrimary)
+                            .lineLimit(2)
+
+                        HStack(spacing: MWSpacing.sm) {
+                            Label(run.agent, systemImage: "cpu")
+                            Text("·")
+                                .foregroundColor(MWColors.textTertiary)
+                            Label(run.model, systemImage: "cube")
+                        }
+                        .font(MWTypography.caption())
+                        .foregroundColor(MWColors.textSecondary)
+                    }
+
+                    Spacer(minLength: MWSpacing.sm)
+
                     MWStatusPill(status: run.status)
                 }
 
                 HStack(spacing: MWSpacing.md) {
-                    Label(run.agent, systemImage: "cpu")
                     Label(run.shortCwd, systemImage: "folder")
-                    Label(run.model, systemImage: "cube")
-                }
-                .font(MWTypography.caption())
-                .foregroundColor(MWColors.textSecondary)
+                        .font(MWTypography.monoSmall())
+                        .foregroundColor(MWColors.textTertiary)
+                        .lineLimit(1)
 
-                HStack {
-                    Label("\(run.messageCount) messages", systemImage: "message")
                     Spacer()
+
+                    Label("\(run.messageCount)", systemImage: "message")
+                        .font(MWTypography.caption())
+                        .foregroundColor(MWColors.textTertiary)
+
                     if let lastActivity = run.lastActivity {
                         Text(lastActivity.formatted(.relative(presentation: .named)))
+                            .font(MWTypography.caption2())
+                            .foregroundColor(MWColors.textTertiary)
                     }
                 }
-                .font(MWTypography.caption2())
-                .foregroundColor(MWColors.textTertiary)
+
+                // Source badge + indicators
+                HStack(spacing: MWSpacing.sm) {
+                    if run.source != .unknown {
+                        HStack(spacing: MWSpacing.xs) {
+                            Image(systemName: sourceIcon(run.source))
+                                .font(MWTypography.caption2())
+                            Text(run.source.rawValue.capitalized)
+                                .font(MWTypography.caption2())
+                        }
+                        .foregroundColor(MWColors.accentCyan)
+                        .padding(.horizontal, MWSpacing.sm)
+                        .padding(.vertical, 2)
+                        .background(
+                            Capsule()
+                                .fill(MWColors.accentCyan.opacity(0.1))
+                        )
+                    }
+
+                    if run.hasApprovalPending {
+                        Label("Approval", systemImage: "exclamationmark.shield.fill")
+                            .font(MWTypography.caption2())
+                            .foregroundColor(MWColors.statusWarning)
+                    }
+                    if run.hasFilesChanged {
+                        Label("Files", systemImage: "doc.badge.arrow.up")
+                            .font(MWTypography.caption2())
+                            .foregroundColor(MWColors.accentCyan)
+                    }
+                    if run.hasArtifacts {
+                        Label("Artifacts", systemImage: "archivebox")
+                            .font(MWTypography.caption2())
+                            .foregroundColor(MWColors.accentPrimary)
+                    }
+
+                    Spacer()
+                }
             }
             .padding(MWSpacing.lg)
             .background(
@@ -92,11 +153,28 @@ struct MWSessionCard: View {
                     .fill(MWColors.bgElevated)
                     .overlay(
                         RoundedRectangle(cornerRadius: MWRadius.lg)
-                            .strokeBorder(MWColors.glassBorder, lineWidth: 0.5)
+                            .strokeBorder(
+                                run.status == .waitingApproval
+                                    ? MWColors.statusWarning.opacity(0.3)
+                                    : MWColors.glassBorder,
+                                lineWidth: run.status == .waitingApproval ? 1 : 0.5
+                            )
                     )
             )
+            .mwGlassGlow(glowColor, radius: run.status == .running ? 16 : 12,
+                         isActive: run.status == .running || run.status == .waitingApproval)
         }
         .buttonStyle(.plain)
+    }
+
+    private func sourceIcon(_ source: RunSource) -> String {
+        switch source {
+        case .cli: return "terminal"
+        case .web: return "globe"
+        case .mobile: return "iphone"
+        case .api: return "point.3.connected.trianglepath.dotted"
+        case .unknown: return "questionmark.circle"
+        }
     }
 }
 
@@ -111,28 +189,40 @@ struct MWChatBubble: View {
 
     var body: some View {
         HStack {
-            if isUser { Spacer(minLength: 60) }
+            if isUser { Spacer(minLength: 48) }
 
             VStack(alignment: isUser ? .trailing : .leading, spacing: MWSpacing.xs) {
                 Text(content)
-                    .font(MWTypography.body())
+                    .font(isUser ? MWTypography.body() : MWTypography.body())
                     .foregroundColor(isUser ? .white : MWColors.textPrimary)
                     .textSelection(.enabled)
 
                 if isStreaming {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                        .tint(MWColors.accentPrimary)
+                    HStack(spacing: MWSpacing.xs) {
+                        ProgressView()
+                            .scaleEffect(0.6)
+                            .tint(MWColors.accentCyan)
+                        Text("streaming")
+                            .font(MWTypography.caption2())
+                            .foregroundColor(MWColors.textTertiary)
+                    }
                 }
             }
             .padding(.horizontal, MWSpacing.lg)
             .padding(.vertical, MWSpacing.md)
             .background(
-                RoundedRectangle(cornerRadius: MWRadius.xl)
+                RoundedRectangle(cornerRadius: isUser ? MWRadius.xl : MWRadius.lg)
                     .fill(isUser ? MWColors.accentPrimary : MWColors.bgSurface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: isUser ? MWRadius.xl : MWRadius.lg)
+                            .strokeBorder(
+                                isUser ? Color.clear : MWColors.glassBorder,
+                                lineWidth: 0.5
+                            )
+                    )
             )
 
-            if !isUser { Spacer(minLength: 60) }
+            if !isUser { Spacer(minLength: 48) }
         }
     }
 }
@@ -143,8 +233,22 @@ struct MWToolCallCard: View {
     let toolName: String
     let inputPreview: String?
     let output: String?
+    var isComplete: Bool = false
+    var isError: Bool = false
     let isExpanded: Bool
     var onToggle: (() -> Void)?
+
+    var statusIcon: String {
+        if isError { return "xmark.circle.fill" }
+        if isComplete { return "checkmark.circle.fill" }
+        return "arrow.triangle.2.circlepath"
+    }
+
+    var statusColor: Color {
+        if isError { return MWColors.statusError }
+        if isComplete { return MWColors.statusDone }
+        return MWColors.accentCyan
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: MWSpacing.sm) {
@@ -153,13 +257,23 @@ struct MWToolCallCard: View {
                     onToggle?()
                 }
             } label: {
-                HStack {
-                    Image(systemName: "wrench.and.screwdriver")
-                        .foregroundColor(MWColors.accentCyan)
+                HStack(spacing: MWSpacing.sm) {
+                    Image(systemName: statusIcon)
+                        .font(.system(size: 12))
+                        .foregroundColor(statusColor)
+
                     Text(toolName)
                         .font(MWTypography.monoCaption())
                         .foregroundColor(MWColors.accentCyan)
+
                     Spacer()
+
+                    if !isComplete && !isError {
+                        ProgressView()
+                            .scaleEffect(0.6)
+                            .tint(MWColors.accentCyan)
+                    }
+
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(MWTypography.caption2())
                         .foregroundColor(MWColors.textTertiary)
@@ -187,8 +301,8 @@ struct MWToolCallCard: View {
                             .foregroundColor(MWColors.textTertiary)
                         Text(output)
                             .font(MWTypography.monoSmall())
-                            .foregroundColor(MWColors.textSecondary)
-                            .lineLimit(10)
+                            .foregroundColor(isError ? MWColors.statusError : MWColors.textSecondary)
+                            .lineLimit(15)
                             .textSelection(.enabled)
                     }
                 }
@@ -200,7 +314,10 @@ struct MWToolCallCard: View {
                 .fill(MWColors.bgDeep)
                 .overlay(
                     RoundedRectangle(cornerRadius: MWRadius.md)
-                        .strokeBorder(MWColors.accentCyan.opacity(0.2), lineWidth: 0.5)
+                        .strokeBorder(
+                            isError ? MWColors.statusError.opacity(0.2) : MWColors.accentCyan.opacity(0.15),
+                            lineWidth: 0.5
+                        )
                 )
         )
     }
@@ -216,44 +333,58 @@ struct MWApprovalCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: MWSpacing.md) {
-            HStack {
+            // Header
+            HStack(spacing: MWSpacing.sm) {
                 Image(systemName: "exclamationmark.shield.fill")
+                    .font(.system(size: 16))
                     .foregroundColor(MWColors.statusWarning)
+
                 Text("Permission Required")
                     .font(MWTypography.bodyMedium())
                     .foregroundColor(MWColors.statusWarning)
+
+                Spacer()
             }
 
-            Text(toolName)
-                .font(MWTypography.monoCaption())
-                .foregroundColor(MWColors.textPrimary)
+            // Tool name
+            HStack(spacing: MWSpacing.xs) {
+                Image(systemName: "wrench.and.screwdriver")
+                    .font(.caption2)
+                    .foregroundColor(MWColors.textTertiary)
+                Text(toolName)
+                    .font(MWTypography.monoCaption())
+                    .foregroundColor(MWColors.accentCyan)
+            }
 
-            if let desc = description {
+            // Description
+            if let desc = description, !desc.isEmpty {
                 Text(desc)
                     .font(MWTypography.callout())
                     .foregroundColor(MWColors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
+            // Action buttons
             HStack(spacing: MWSpacing.md) {
                 Button {
                     onApprove?(false)
                 } label: {
-                    Text("Deny")
-                        .font(MWTypography.bodyMedium())
-                        .foregroundColor(MWColors.statusError)
+                    Label("Deny", systemImage: "xmark")
+                        .font(MWTypography.subheadlineMedium())
+                        .foregroundColor(MWColors.textSecondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, MWSpacing.sm)
                         .background(
                             RoundedRectangle(cornerRadius: MWRadius.md)
-                                .strokeBorder(MWColors.statusError, lineWidth: 1)
+                                .fill(MWColors.bgSurface)
                         )
                 }
 
                 Button {
                     onApprove?(true)
                 } label: {
-                    Text("Allow")
-                        .font(MWTypography.bodyMedium())
+                    Label("Allow", systemImage: "checkmark")
+                        .font(MWTypography.subheadlineMedium())
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, MWSpacing.sm)
@@ -270,8 +401,9 @@ struct MWApprovalCard: View {
                 .fill(MWColors.bgElevated)
                 .overlay(
                     RoundedRectangle(cornerRadius: MWRadius.lg)
-                        .strokeBorder(MWColors.statusWarning.opacity(0.3), lineWidth: 1)
+                        .strokeBorder(MWColors.statusWarning.opacity(0.25), lineWidth: 1)
                 )
+                .shadow(color: MWColors.statusWarning.opacity(0.08), radius: 12, x: 0, y: 0)
         )
     }
 }
@@ -344,54 +476,92 @@ struct MWInputBar: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
-            Divider()
-                .background(MWColors.glassBorder)
+        HStack(alignment: .bottom, spacing: MWSpacing.sm) {
+            // Text field with glass background
+            TextField("Type a message...", text: $text, axis: .vertical)
+                .textFieldStyle(.plain)
+                .font(MWTypography.body())
+                .lineLimit(1...6)
+                .focused($isFocused)
+                .padding(.horizontal, MWSpacing.md)
+                .padding(.vertical, MWSpacing.sm)
+                .background(
+                    RoundedRectangle(cornerRadius: MWRadius.xl)
+                        .fill(MWColors.bgSurface)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: MWRadius.xl)
+                                .strokeBorder(
+                                    isFocused ? MWColors.accentCyan.opacity(0.3) : MWColors.glassBorder,
+                                    lineWidth: 1
+                                )
+                        )
+                )
 
-            HStack(alignment: .bottom, spacing: MWSpacing.sm) {
-                TextField("Type a message...", text: $text, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .font(MWTypography.body())
-                    .lineLimit(1...6)
-                    .focused($isFocused)
-                    .padding(.horizontal, MWSpacing.md)
-                    .padding(.vertical, MWSpacing.sm)
-                    .background(
-                        RoundedRectangle(cornerRadius: MWRadius.lg)
-                            .fill(MWColors.bgSurface)
-                    )
-
-                if isRunning {
-                    Button {
-                        onStop?()
-                    } label: {
-                        Image(systemName: "stop.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(MWColors.statusError)
-                    }
-
-                    Button {
-                        onFork?()
-                    } label: {
-                        Image(systemName: "arrow.branch")
-                            .font(.system(size: 22))
-                            .foregroundColor(MWColors.accentCyan)
-                    }
-                } else {
-                    Button {
-                        onSend?()
-                    } label: {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(canSend ? MWColors.accentPrimary : MWColors.textTertiary)
-                    }
-                    .disabled(!canSend || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            if isRunning {
+                // Stop button
+                Button {
+                    onStop?()
+                } label: {
+                    Image(systemName: "stop.circle.fill")
+                        .font(.system(size: 30))
+                        .foregroundColor(MWColors.statusError)
                 }
+
+                // Fork button
+                Button {
+                    onFork?()
+                } label: {
+                    Image(systemName: "arrow.branch")
+                        .font(.system(size: 20))
+                        .foregroundColor(MWColors.accentCyan)
+                        .frame(width: 30, height: 30)
+                }
+            } else {
+                // Send button
+                Button {
+                    onSend?()
+                } label: {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 30))
+                        .foregroundColor(
+                            (!canSend || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                                ? MWColors.textTertiary
+                                : MWColors.accentPrimary
+                        )
+                }
+                .disabled(!canSend || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            .padding(.horizontal, MWSpacing.lg)
-            .padding(.vertical, MWSpacing.sm)
-            .background(MWColors.bgDeep)
         }
+        .padding(.horizontal, MWSpacing.lg)
+        .padding(.vertical, MWSpacing.md)
+        .background(
+            Rectangle()
+                .fill(MWColors.glassBg)
+                .overlay(
+                    Rectangle()
+                        .strokeBorder(MWColors.glassBorder, lineWidth: 0.5)
+                        .padding(.top, 0.5)
+                )
+        )
+    }
+}
+
+// MARK: - Glass Glow Modifier
+
+struct MWGlassGlow: ViewModifier {
+    let color: Color
+    var radius: CGFloat = 12
+    var isActive: Bool = true
+
+    func body(content: Content) -> some View {
+        content
+            .shadow(color: isActive ? color : .clear, radius: radius, x: 0, y: 0)
+    }
+}
+
+extension View {
+    func mwGlassGlow(_ color: Color, radius: CGFloat = 12, isActive: Bool = true) -> some View {
+        modifier(MWGlassGlow(color: color, radius: radius, isActive: isActive))
     }
 }
 
@@ -401,19 +571,53 @@ struct MWEmptyState: View {
     let icon: String
     let title: String
     let message: String
+    var actionTitle: String?
+    var actionIcon: String?
+    var onAction: (() -> Void)?
+
+    init(icon: String, title: String, message: String, actionTitle: String? = nil, actionIcon: String? = nil, onAction: (() -> Void)? = nil) {
+        self.icon = icon
+        self.title = title
+        self.message = message
+        self.actionTitle = actionTitle
+        self.actionIcon = actionIcon
+        self.onAction = onAction
+    }
 
     var body: some View {
-        VStack(spacing: MWSpacing.lg) {
+        VStack(spacing: MWSpacing.xl) {
             Image(systemName: icon)
-                .font(.system(size: 48))
-                .foregroundColor(MWColors.textTertiary)
-            Text(title)
-                .font(MWTypography.title3())
-                .foregroundColor(MWColors.textPrimary)
-            Text(message)
-                .font(MWTypography.callout())
-                .foregroundColor(MWColors.textSecondary)
-                .multilineTextAlignment(.center)
+                .font(.system(size: 52))
+                .foregroundStyle(MWColors.accentPrimary, MWColors.accentCyan)
+                .padding(.bottom, MWSpacing.sm)
+
+            VStack(spacing: MWSpacing.sm) {
+                Text(title)
+                    .font(MWTypography.title3())
+                    .foregroundColor(MWColors.textPrimary)
+                Text(message)
+                    .font(MWTypography.callout())
+                    .foregroundColor(MWColors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if let actionTitle, let onAction {
+                Button {
+                    onAction()
+                } label: {
+                    Label(actionTitle, systemImage: actionIcon ?? "arrow.right")
+                        .font(MWTypography.bodyMedium())
+                        .foregroundColor(.white)
+                        .padding(.horizontal, MWSpacing.xl)
+                        .padding(.vertical, MWSpacing.md)
+                        .background(
+                            Capsule()
+                                .fill(MWColors.accentPrimary)
+                        )
+                }
+                .padding(.top, MWSpacing.sm)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, MWSpacing.xxxl)
@@ -423,26 +627,73 @@ struct MWEmptyState: View {
 // MARK: - Error State
 
 struct MWErrorState: View {
+    let title: String
     let message: String
-    var onRetry: (() -> Void)?
+    var actionTitle: String?
+    var secondaryTitle: String?
+    var onAction: (() -> Void)?
+    var onSecondary: (() -> Void)?
+
+    init(message: String, title: String = "Something went wrong", actionTitle: String? = "Retry", secondaryTitle: String? = nil, onAction: (() -> Void)? = nil, onSecondary: (() -> Void)? = nil) {
+        self.title = title
+        self.message = message
+        self.actionTitle = actionTitle
+        self.secondaryTitle = secondaryTitle
+        self.onAction = onAction
+        self.onSecondary = onSecondary
+    }
 
     var body: some View {
-        VStack(spacing: MWSpacing.lg) {
-            Image(systemName: "exclamationmark.triangle")
+        VStack(spacing: MWSpacing.xl) {
+            Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 48))
                 .foregroundColor(MWColors.statusError)
-            Text("Something went wrong")
-                .font(MWTypography.title3())
-                .foregroundColor(MWColors.textPrimary)
-            Text(message)
-                .font(MWTypography.callout())
-                .foregroundColor(MWColors.textSecondary)
-                .multilineTextAlignment(.center)
-            if let onRetry {
-                Button("Retry", action: onRetry)
-                    .buttonStyle(.bordered)
-                    .tint(MWColors.accentPrimary)
+
+            VStack(spacing: MWSpacing.sm) {
+                Text(title)
+                    .font(MWTypography.title3())
+                    .foregroundColor(MWColors.textPrimary)
+                Text(message)
+                    .font(MWTypography.callout())
+                    .foregroundColor(MWColors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+
+            HStack(spacing: MWSpacing.md) {
+                if let actionTitle, let onAction {
+                    Button {
+                        onAction()
+                    } label: {
+                        Label(actionTitle, systemImage: "arrow.clockwise")
+                            .font(MWTypography.bodyMedium())
+                            .foregroundColor(.white)
+                            .padding(.horizontal, MWSpacing.xl)
+                            .padding(.vertical, MWSpacing.md)
+                            .background(
+                                Capsule()
+                                    .fill(MWColors.accentPrimary)
+                            )
+                    }
+                }
+
+                if let secondaryTitle, let onSecondary {
+                    Button {
+                        onSecondary()
+                    } label: {
+                        Text(secondaryTitle)
+                            .font(MWTypography.bodyMedium())
+                            .foregroundColor(MWColors.textSecondary)
+                            .padding(.horizontal, MWSpacing.lg)
+                            .padding(.vertical, MWSpacing.md)
+                            .background(
+                                Capsule()
+                                    .strokeBorder(MWColors.glassBorder, lineWidth: 1)
+                            )
+                    }
+                }
+            }
+            .padding(.top, MWSpacing.sm)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, MWSpacing.xxxl)
@@ -455,12 +706,13 @@ struct MWLoadingState: View {
     var message: String = "Loading..."
 
     var body: some View {
-        VStack(spacing: MWSpacing.md) {
+        VStack(spacing: MWSpacing.lg) {
             ProgressView()
-                .tint(MWColors.accentPrimary)
+                .scaleEffect(1.2)
+                .tint(MWColors.accentCyan)
             Text(message)
                 .font(MWTypography.callout())
-                .foregroundColor(MWColors.textSecondary)
+                .foregroundColor(MWColors.textTertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -475,12 +727,20 @@ struct MWReconnectBanner: View {
     var body: some View {
         HStack(spacing: MWSpacing.sm) {
             ProgressView()
-                .scaleEffect(0.8)
+                .scaleEffect(0.75)
                 .tint(MWColors.statusWarning)
-            Text("Reconnecting (attempt \(attempt))...")
-                .font(MWTypography.subheadline())
-                .foregroundColor(MWColors.statusWarning)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Reconnecting")
+                    .font(MWTypography.subheadlineMedium())
+                    .foregroundColor(MWColors.statusWarning)
+                Text("Attempt \(attempt)")
+                    .font(MWTypography.caption2())
+                    .foregroundColor(MWColors.textTertiary)
+            }
+
             Spacer()
+
             Button("Cancel") {
                 onCancel?()
             }
@@ -489,6 +749,14 @@ struct MWReconnectBanner: View {
         }
         .padding(.horizontal, MWSpacing.lg)
         .padding(.vertical, MWSpacing.sm)
-        .background(MWColors.statusWarning.opacity(0.1))
+        .background(
+            Rectangle()
+                .fill(MWColors.statusWarning.opacity(0.08))
+                .overlay(
+                    Rectangle()
+                        .fill(MWColors.statusWarning.opacity(0.04))
+                        .blur(radius: 8)
+                )
+        )
     }
 }

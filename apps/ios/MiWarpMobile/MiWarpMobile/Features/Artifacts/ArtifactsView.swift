@@ -12,9 +12,9 @@ struct ArtifactsView: View {
             if isLoading {
                 MWLoadingState(message: "Loading artifacts...")
             } else if let error {
-                MWErrorState(message: error) {
+                MWErrorState(message: error, onAction: {
                     Task { await loadArtifacts() }
-                }
+                })
             } else if let artifacts {
                 List {
                     if let files = artifacts.filesChanged, !files.isEmpty {
