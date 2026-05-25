@@ -9,19 +9,13 @@ struct PairingView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: MWSpacing.xl) {
-                    // Header
+                VStack(spacing: MWSpacing.lg) {
                     headerSection
 
-                    // Quick actions
-                    quickActionsSection
+                    scanQRHeroCard
 
-                    // Onboarding (when no connections)
-                    if store.connections.isEmpty {
-                        onboardingSection
-                    }
+                    manualSetupCard
 
-                    // Saved connections
                     if !store.connections.isEmpty {
                         savedConnectionsSection
                     }
@@ -29,7 +23,7 @@ struct PairingView: View {
                 .padding(.vertical, MWSpacing.lg)
             }
             .background(theme.bgDeepest)
-            .navigationTitle("Connections")
+            .navigationTitle("Connect")
             .sheet(isPresented: $showManualEntry) {
                 ManualConnectionSheet()
             }
@@ -42,8 +36,12 @@ struct PairingView: View {
     // MARK: - Header
 
     private var headerSection: some View {
-        VStack(spacing: MWSpacing.sm) {
-            Text("Connect your phone to a running MiWarp Desktop")
+        VStack(spacing: MWSpacing.xs) {
+            Text(String(localized: "Connect Desktop"))
+                .font(MWTypography.title())
+                .foregroundColor(MWColors.textPrimary)
+
+            Text(String(localized: "Scan QR code or enter details manually."))
                 .font(MWTypography.callout())
                 .foregroundColor(MWColors.textSecondary)
                 .multilineTextAlignment(.center)
@@ -51,105 +49,101 @@ struct PairingView: View {
         .padding(.horizontal, MWSpacing.xl)
     }
 
-    // MARK: - Quick Actions
+    // MARK: - Scan QR Hero Card
 
-    private var quickActionsSection: some View {
-        HStack(spacing: MWSpacing.md) {
-            // Scan QR
+    private var scanQRHeroCard: some View {
+        VStack(alignment: .leading, spacing: MWSpacing.md) {
+            VStack(alignment: .leading, spacing: MWSpacing.sm) {
+                Text(String(localized: "Scan QR Code"))
+                    .font(MWTypography.title())
+                    .foregroundColor(.white)
+
+                Text(String(localized: "Point your camera at the QR code shown in MiWarp Desktop."))
+                    .font(MWTypography.callout())
+                    .foregroundColor(.white.opacity(0.85))
+            }
+
             Button {
                 showScanner = true
             } label: {
-                VStack(spacing: MWSpacing.sm) {
+                HStack(spacing: MWSpacing.sm) {
                     Image(systemName: "qrcode.viewfinder")
-                        .font(.system(size: 28))
-                        .foregroundColor(MWColors.accentCyan)
-                    Text("Scan QR")
-                        .font(MWTypography.subheadlineMedium())
-                        .foregroundColor(MWColors.textPrimary)
+                        .font(.system(size: 16, weight: .medium))
+
+                    Text(String(localized: "Scan QR Code"))
+                        .font(MWTypography.bodyMedium())
+
+                    Spacer()
+
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 14, weight: .medium))
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, MWSpacing.lg)
-                .mwGlassSurface(
-                    cornerRadius: MWRadius.lg,
-                    borderColor: MWColors.accentCyan.opacity(0.2),
-                    fillColor: MWColors.cardBg
+                .foregroundColor(MWColors.accentPrimary)
+                .padding(.horizontal, MWSpacing.lg)
+                .padding(.vertical, MWSpacing.md)
+                .background(
+                    Capsule()
+                        .fill(Color.white)
                 )
             }
-            .buttonStyle(.plain)
+        }
+        .padding(MWSpacing.lg)
+        .background(
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(hex: 0xC51F62),
+                    Color(hex: 0x8B3DFF)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: MWRadius.xxl))
+        .padding(.horizontal, MWSpacing.md)
+    }
 
-            // Add Manually
+    // MARK: - Manual Setup Card
+
+    private var manualSetupCard: some View {
+        VStack(spacing: MWSpacing.sm) {
             Button {
                 showManualEntry = true
             } label: {
-                VStack(spacing: MWSpacing.sm) {
-                    Image(systemName: "plus.circle")
-                        .font(.system(size: 28))
+                HStack(spacing: MWSpacing.md) {
+                    Image(systemName: "keyboard")
+                        .font(.system(size: 20))
                         .foregroundColor(MWColors.accentPrimary)
-                    Text("Add Manually")
-                        .font(MWTypography.subheadlineMedium())
-                        .foregroundColor(MWColors.textPrimary)
+                        .frame(width: 28)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(String(localized: "Manual Setup"))
+                            .font(MWTypography.bodyMedium())
+                            .foregroundColor(MWColors.textPrimary)
+
+                        Text(String(localized: "Host, port, and token"))
+                            .font(MWTypography.caption())
+                            .foregroundColor(MWColors.textTertiary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(MWColors.textTertiary)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, MWSpacing.lg)
-                .mwGlassSurface(
-                    cornerRadius: MWRadius.lg,
-                    borderColor: MWColors.accentPrimary.opacity(0.2),
-                    fillColor: MWColors.cardBg
+                .padding(MWSpacing.lg)
+                .background(
+                    RoundedRectangle(cornerRadius: MWRadius.lg)
+                        .fill(MWColors.glassBg)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: MWRadius.lg)
+                                .strokeBorder(MWColors.glassBorder, lineWidth: 0.5)
+                        )
                 )
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, MWSpacing.lg)
-    }
-
-    // MARK: - Onboarding
-
-    private var onboardingSection: some View {
-        VStack(alignment: .leading, spacing: MWSpacing.md) {
-            Text("Getting Started")
-                .font(MWTypography.title3())
-                .foregroundColor(MWColors.textPrimary)
-                .padding(.horizontal, MWSpacing.lg)
-
-            MWGlassCard {
-                VStack(alignment: .leading, spacing: MWSpacing.md) {
-                    onboardingStep(
-                        icon: "desktopcomputer",
-                        title: "Enable Web Server",
-                        desc: "Open MiWarp Desktop → Settings → Web Server"
-                    )
-                    onboardingStep(
-                        icon: "network",
-                        title: "Set bind to 0.0.0.0",
-                        desc: "Allows your phone to connect over LAN"
-                    )
-                    onboardingStep(
-                        icon: "qrcode",
-                        title: "Scan QR or enter manually",
-                        desc: "Use the QR code from Desktop or type host/token"
-                    )
-                }
-            }
-            .padding(.horizontal, MWSpacing.lg)
-        }
-    }
-
-    private func onboardingStep(icon: String, title: String, desc: String) -> some View {
-        HStack(alignment: .top, spacing: MWSpacing.md) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundColor(MWColors.accentCyan)
-                .frame(width: 24)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(MWTypography.subheadlineMedium())
-                    .foregroundColor(MWColors.textPrimary)
-                Text(desc)
-                    .font(MWTypography.caption())
-                    .foregroundColor(MWColors.textTertiary)
-            }
-        }
+        .padding(.horizontal, MWSpacing.md)
     }
 
     // MARK: - Saved Connections
@@ -157,10 +151,12 @@ struct PairingView: View {
     private var savedConnectionsSection: some View {
         VStack(alignment: .leading, spacing: MWSpacing.md) {
             HStack {
-                Text("Saved Connections")
+                Text(String(localized: "Saved Connections"))
                     .font(MWTypography.title3())
                     .foregroundColor(MWColors.textPrimary)
+
                 Spacer()
+
                 Text("\(store.connections.count)")
                     .font(MWTypography.caption())
                     .foregroundColor(MWColors.textTertiary)
@@ -416,7 +412,6 @@ struct QRScannerSheet: View {
             return
         }
 
-        // Parse query items (already URL-decoded by URLComponents)
         let queryItems = components.queryItems ?? []
         guard let rawHost = queryItems.first(where: { $0.name == "host" })?.value,
               let portStr = queryItems.first(where: { $0.name == "port" })?.value,
@@ -426,14 +421,12 @@ struct QRScannerSheet: View {
             return
         }
 
-        // Normalize host: trim whitespace, strip IPv6 brackets
         let host = normalizeHost(rawHost)
         let label = queryItems.first(where: { $0.name == "label" })?.value
 
         isAuthenticating = true
         error = nil
 
-        // Token auth preflight before connecting
         Task {
             do {
                 let result = try await verifyToken(host: host, port: port, token: token)
@@ -459,7 +452,6 @@ struct QRScannerSheet: View {
 
     private func normalizeHost(_ host: String) -> String {
         var result = host.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Strip IPv6 brackets if present: [::1] -> ::1
         if result.hasPrefix("[") && result.hasSuffix("]") {
             result = String(result.dropFirst().dropLast())
         }
@@ -517,7 +509,6 @@ struct QRScannerSheet: View {
 
         do {
             try store.addOrUpdateConnection(connection, token: token)
-            // Find the connection (may have been updated or newly created)
             if let savedConn = store.findConnection(host: host, port: port) {
                 store.connect(to: savedConn)
             }

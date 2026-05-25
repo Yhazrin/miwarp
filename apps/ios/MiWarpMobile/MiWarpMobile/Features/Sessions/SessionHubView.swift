@@ -43,6 +43,8 @@ struct SessionHubView: View {
             Group {
                 if !store.isConnected && runs.isEmpty {
                     notConnectedView
+                } else if store.isConnected && !isLoading && runs.isEmpty {
+                    connectedEmptyView
                 } else if isLoading && runs.isEmpty {
                     MWLoadingState(message: String(localized: "Loading sessions..."))
                 } else if let error, runs.isEmpty {
@@ -135,7 +137,7 @@ struct SessionHubView: View {
             }
             .onChange(of: store.isConnected) { connected in
                 if connected {
-                    Task { await viewModel.loadRuns() }
+                    Task { await loadRuns() }
                 }
             }
             .refreshable {
@@ -149,24 +151,10 @@ struct SessionHubView: View {
     private var notConnectedView: some View {
         ScrollView {
             VStack(spacing: MWSpacing.lg) {
-                // Header with title + subtitle
-                VStack(alignment: .leading, spacing: MWSpacing.xs) {
-                    Text(String(localized: "Sessions"))
-                        .font(MWTypography.largeTitle())
-                        .foregroundColor(MWColors.textPrimary)
+                headerSection
 
-                    Text(String(localized: "Connect, sync, and continue your MiWarp conversations."))
-                        .font(MWTypography.callout())
-                        .foregroundColor(MWColors.textSecondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, MWSpacing.lg)
-                .padding(.top, MWSpacing.md)
-
-                // Hero Card
                 heroCard
 
-                // Status hint
                 statusHint
 
                 Spacer(minLength: MWSpacing.xxl)
@@ -176,11 +164,46 @@ struct SessionHubView: View {
         .background(theme.bgDeepest)
     }
 
-    // MARK: - Hero Card
+    // MARK: - Connected but Empty View
+
+    private var connectedEmptyView: some View {
+        ScrollView {
+            VStack(spacing: MWSpacing.lg) {
+                headerSection
+
+                connectedHeroCard
+
+                connectedStatusHint
+
+                Spacer(minLength: MWSpacing.xxl)
+            }
+            .padding(.horizontal, MWSpacing.md)
+        }
+        .background(theme.bgDeepest)
+        .task {
+            await loadRuns()
+        }
+    }
+
+    private var headerSection: some View {
+        VStack(alignment: .leading, spacing: MWSpacing.xs) {
+            Text(String(localized: "Sessions"))
+                .font(MWTypography.largeTitle())
+                .foregroundColor(MWColors.textPrimary)
+
+            Text(String(localized: "Connect, sync, and continue your MiWarp conversations."))
+                .font(MWTypography.callout())
+                .foregroundColor(MWColors.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, MWSpacing.lg)
+        .padding(.top, MWSpacing.md)
+    }
+
+    // MARK: - Hero Card (Not Connected)
 
     private var heroCard: some View {
         VStack(alignment: .leading, spacing: MWSpacing.md) {
-            // Card header
             VStack(alignment: .leading, spacing: MWSpacing.sm) {
                 Text(String(localized: "Connect Desktop"))
                     .font(MWTypography.title())
@@ -191,7 +214,6 @@ struct SessionHubView: View {
                     .foregroundColor(.white.opacity(0.85))
             }
 
-            // Connect Now button
             NavigationLink {
                 PairingView()
             } label: {
@@ -216,7 +238,6 @@ struct SessionHubView: View {
                 )
             }
 
-            // Step pills
             HStack(spacing: MWSpacing.sm) {
                 stepPill(icon: "server.rack", label: String(localized: "Enable Server"))
                 stepPill(icon: "network", label: String(localized: "LAN Access"))
@@ -254,7 +275,72 @@ struct SessionHubView: View {
         )
     }
 
-    // MARK: - Status Hint
+    // MARK: - Connected Hero Card (No Sessions Yet)
+
+    private var connectedHeroCard: some View {
+        VStack(alignment: .leading, spacing: MWSpacing.md) {
+            VStack(alignment: .leading, spacing: MWSpacing.sm) {
+                HStack(spacing: MWSpacing.sm) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(Color(hex: 0x22C55E))
+
+                    Text(String(localized: "Desktop Connected"))
+                        .font(MWTypography.title())
+                        .foregroundColor(.white)
+                }
+
+                Text(String(localized: "Waiting for sessions to sync."))
+                    .font(MWTypography.callout())
+                    .foregroundColor(.white.opacity(0.85))
+            }
+
+            Button {
+                Task { await loadRuns() }
+            } label: {
+                HStack(spacing: MWSpacing.sm) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 14, weight: .medium))
+
+                    Text(String(localized: "Sync Now"))
+                        .font(MWTypography.bodyMedium())
+
+                    Spacer()
+                }
+                .foregroundColor(MWColors.accentPrimary)
+                .padding(.horizontal, MWSpacing.lg)
+                .padding(.vertical, MWSpacing.md)
+                .background(
+                    Capsule()
+                        .fill(Color.white)
+                )
+            }
+
+            if let conn = store.activeConnection {
+                HStack(spacing: MWSpacing.xs) {
+                    Image(systemName: "desktopcomputer")
+                        .font(.system(size: 10))
+                    Text(conn.host)
+                        .font(MWTypography.caption())
+                }
+                .foregroundColor(.white.opacity(0.7))
+            }
+        }
+        .padding(MWSpacing.lg)
+        .background(
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(hex: 0x22C55E),
+                    Color(hex: 0x16A34A)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: MWRadius.xxl))
+    }
+
+    // MARK: - Status Hint (Not Connected)
 
     private var statusHint: some View {
         VStack(spacing: MWSpacing.xs) {
@@ -276,14 +362,34 @@ struct SessionHubView: View {
         )
     }
 
+    // MARK: - Connected Status Hint (No Sessions)
+
+    private var connectedStatusHint: some View {
+        VStack(spacing: MWSpacing.xs) {
+            Text(String(localized: "No sessions yet"))
+                .font(MWTypography.subheadlineMedium())
+                .foregroundColor(MWColors.textSecondary)
+
+            Text(String(localized: "Start a session in MiWarp Desktop to see it here."))
+                .font(MWTypography.caption())
+                .foregroundColor(MWColors.textTertiary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, MWSpacing.md)
+        .padding(.horizontal, MWSpacing.lg)
+        .background(
+            RoundedRectangle(cornerRadius: MWRadius.md)
+                .fill(Color(hex: 0xF0FDF4).opacity(0.6))
+        )
+    }
+
     // MARK: - Session List
 
     private var sessionList: some View {
         VStack(spacing: 0) {
-            // Connection status header
             connectionStatusHeader
 
-            // Content
             if filteredRuns.isEmpty && !searchText.isEmpty {
                 MWEmptyState(
                     icon: "magnifyingglass",
