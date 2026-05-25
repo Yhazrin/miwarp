@@ -46,8 +46,8 @@ struct ChatInputBar: View {
                         .font(.system(size: 30))
                         .foregroundStyle(
                             (!canSend || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                                ? .quaternary
-                                : .tint
+                                ? AnyShapeStyle(.quaternary)
+                                : AnyShapeStyle(Color.accentColor)
                         )
                 }
                 .disabled(!canSend || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

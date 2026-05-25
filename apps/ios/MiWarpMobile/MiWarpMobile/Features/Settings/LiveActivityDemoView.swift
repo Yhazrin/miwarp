@@ -12,16 +12,43 @@ struct LiveActivityDemoView: View {
     @State private var agentTotal = 5
     @State private var syncPhase: SyncPhase = .preparing
     @State private var agentPhase: AgentPhase = .queued
-    @State private var activityAuthInfo = ""
+
+    // Debug info
+    @State private var activitiesEnabled = false
+    @State private var syncResult: LiveActivityStartResult?
+    @State private var agentResult: LiveActivityStartResult?
+    @State private var deviceSupportsDynamicIsland = false
 
     var body: some View {
         List {
+            // MARK: - Device Capability Check
             Section {
-                Text(activityAuthInfo)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: activitiesEnabled ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundColor(activitiesEnabled ? .green : .red)
+                        Text("Live Activities: \(activitiesEnabled ? "Enabled" : "Disabled")")
+                    }
+
+                    HStack {
+                        Image(systemName: deviceSupportsDynamicIsland ? "capsule.portrait.fill" : "iphone")
+                            .foregroundColor(deviceSupportsDynamicIsland ? .purple : .secondary)
+                        Text("Dynamic Island: \(deviceSupportsDynamicIsland ? "Supported" : "Not Supported")")
+                    }
+
+                    if !activitiesEnabled {
+                        Text("⚠️ Go to Settings → MiWarp → Live Activities and enable it")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+
+                    Text("ℹ️ Dynamic Island requires iPhone 14 Pro or later. Other iPhones show Lock Screen Live Activity only.")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .font(.callout)
             } header: {
-                Text("Live Activity Authorization")
+                Text("Device Capability")
             }
 
             // MARK: - Session Sync Demo
@@ -38,7 +65,7 @@ struct LiveActivityDemoView: View {
                     Text("Phase")
                     Spacer()
                     Text(syncPhase.displayTitle)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(syncPhase.isActive ? .primary : .secondary)
                 }
 
                 HStack {
@@ -47,6 +74,18 @@ struct LiveActivityDemoView: View {
                     Text("\(syncCount) / \(syncTotal)")
                         .font(.caption.monospaced())
                         .foregroundColor(.secondary)
+                }
+
+                if let result = syncResult {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Image(systemName: result.isSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .foregroundColor(result.isSuccess ? .green : .red)
+                            Text(result.displayMessage)
+                                .font(.caption)
+                        }
+                    }
+                    .padding(.vertical, 4)
                 }
 
                 Button {
@@ -101,7 +140,7 @@ struct LiveActivityDemoView: View {
                     Text("Phase")
                     Spacer()
                     Text(agentPhase.displayTitle)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(agentPhase.isActive ? .primary : .secondary)
                 }
 
                 HStack {
@@ -110,6 +149,18 @@ struct LiveActivityDemoView: View {
                     Text("\(agentStep) / \(agentTotal)")
                         .font(.caption.monospaced())
                         .foregroundColor(.secondary)
+                }
+
+                if let result = agentResult {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Image(systemName: result.isSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .foregroundColor(result.isSuccess ? .green : .red)
+                            Text(result.displayMessage)
+                                .font(.caption)
+                        }
+                    }
+                    .padding(.vertical, 4)
                 }
 
                 Button {
@@ -152,15 +203,25 @@ struct LiveActivityDemoView: View {
         }
         .navigationTitle("Live Activity Demo")
         .task {
-            checkAuthorization()
+            checkCapabilities()
         }
     }
 
-    // MARK: - Authorization
+    // MARK: - Capabilities Check
 
-    private func checkAuthorization() {
+    private func checkCapabilities() {
         let authInfo = ActivityAuthorizationInfo()
-        activityAuthInfo = "Are Activities Enabled: \(authInfo.areActivitiesEnabled)"
+        activitiesEnabled = authInfo.areActivitiesEnabled
+
+        // Check if device supports Dynamic Island (iPhone 14 Pro and later)
+        // This is a simple check - in production you'd use device model detection
+        #if targetEnvironment(simulator)
+        deviceSupportsDynamicIsland = true // Simulator supports it
+        #else
+        // On real device, we'd need to check device model
+        // For now, assume iPhone 14 Pro+ has Dynamic Island
+        deviceSupportsDynamicIsland = false // Default to false, real device detection would be needed
+        #endif
     }
 
     // MARK: - Sync Controls
@@ -169,17 +230,21 @@ struct LiveActivityDemoView: View {
         syncPhase = .preparing
         syncCount = 0
         syncTaskId = UUID().uuidString.prefix(8).description
+        syncResult = nil
 
-        LiveActivityManager.shared.startSessionSync(
+        let result = LiveActivityManager.shared.startSessionSync(
             taskId: syncTaskId,
             workspaceName: "miwarp",
             desktopName: "MacBook Pro"
         )
+        syncResult = result
 
-        // Auto-advance to connecting after 1s
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            guard syncPhase == .preparing else { return }
-            updateSync(.connecting)
+        if result.isSuccess {
+            // Auto-advance to connecting after 1s
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                guard syncPhase == .preparing else { return }
+                updateSync(.connecting)
+            }
         }
     }
 
@@ -209,6 +274,7 @@ struct LiveActivityDemoView: View {
         syncPhase = .preparing
         syncCount = 0
         syncTaskId = UUID().uuidString.prefix(8).description
+        syncResult = nil
     }
 
     private func updateSync(_ phase: SyncPhase, error: String? = nil) {
@@ -229,16 +295,20 @@ struct LiveActivityDemoView: View {
         agentPhase = .queued
         agentStep = 0
         agentTaskId = UUID().uuidString.prefix(8).description
+        agentResult = nil
 
-        LiveActivityManager.shared.startAgentTask(
+        let result = LiveActivityManager.shared.startAgentTask(
             taskId: agentTaskId,
             title: "Analyzing Workspace",
             workspaceName: "miwarp"
         )
+        agentResult = result
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            guard agentPhase == .queued else { return }
-            updateAgent(.running)
+        if result.isSuccess {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                guard agentPhase == .queued else { return }
+                updateAgent(.running)
+            }
         }
     }
 
@@ -269,6 +339,7 @@ struct LiveActivityDemoView: View {
         agentPhase = .queued
         agentStep = 0
         agentTaskId = UUID().uuidString.prefix(8).description
+        agentResult = nil
     }
 
     private func updateAgent(_ phase: AgentPhase, stepTitle: String? = nil, error: String? = nil) {

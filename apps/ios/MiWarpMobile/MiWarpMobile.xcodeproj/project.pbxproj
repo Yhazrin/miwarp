@@ -8,139 +8,154 @@
 
 /* Begin PBXBuildFile section */
 		04DB51B2A725C113B3A6EE29 /* ArtifactsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D86348B9DC8374F8A7B3688E /* ArtifactsView.swift */; };
-		0F16E07198160397 /* MascotState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10FCE309A6DF1E3C /* MascotState.swift */; };
-		150E1E3950560F24 /* AgentSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE07B77E559C30A1 /* AgentSyncManager.swift */; };
+		0500B008F57FCDD7EDF29B83 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFF61283EBAE28E6191391DB /* ChatViewModel.swift */; };
+		091EDBC0BE2D2B27D772B014 /* DynamicIslandExpandedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251C0C6808F6AE962B5773BF /* DynamicIslandExpandedView.swift */; };
+		0B6DC2E41A1DD8086756F4A4 /* AgentTaskAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 582462DD41026975764CB27B /* AgentTaskAttributes.swift */; };
+		11F022E5C4471ED50783C0FA /* AgentSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7985AEBA9004F16FCC63F390 /* AgentSyncManager.swift */; };
+		184609C6EBCE7907B8314B79 /* MascotState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656F809295E8CC07CB44BF0F /* MascotState.swift */; };
 		18E246F86CCFC3D52E28E1DA /* MiWarpRPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87A3AF41B54A7D4AF4EF7B78 /* MiWarpRPC.swift */; };
 		18E3370AE5AE152C060EB950 /* MiWarpModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02342E23F233A1CF248129CF /* MiWarpModels.swift */; };
 		1A0B8BAEDB303A040B818DDC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 64526B69FA3F302F90E918A2 /* Assets.xcassets */; };
 		1AAB91C90865BBEFE731E609 /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0357B8FA940E87F3AFEE4019 /* QRScannerView.swift */; };
-		23BAED383DBAC04B51B6D66F /* AgentTaskAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FB828288367326 /* AgentTaskAttributes.swift */; };
+		1F4AF87F9F9A169B726E6DC5 /* MiWarpActivityAvatarRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = F023646BC636346DDF4C6A25 /* MiWarpActivityAvatarRing.swift */; };
 		24908B86D77D42EB10C3DEF0 /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9EBC6E7E1C3A6687A1AC5BD /* AppRouter.swift */; };
-		24D59176054F3AF6 /* LiveActivityDemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5CA8BB9104E61D9 /* LiveActivityDemoView.swift */; };
-		2BDE5BB585506D8FE578A2A5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6C63DFFB943A6F41E7A1047B /* Foundation.framework */; };
+		27176FD90C32057D4DF0B2DC /* AgentTaskAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 582462DD41026975764CB27B /* AgentTaskAttributes.swift */; };
+		2DD50F246947160FB772ECF2 /* MascotState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656F809295E8CC07CB44BF0F /* MascotState.swift */; };
 		31752E8113DC5B9B09E5B8D0 /* DiffPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F107680AD38109AD258F79 /* DiffPreviewView.swift */; };
-		3D885E06982487C0C11DFA0C /* MiWarpActivityAvatarRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 235D10DA9D0EE05FFD8BAA77 /* MiWarpActivityAvatarRing.swift */; };
 		3F6BFBDB959EC1C975CA3F05 /* MiWarpLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EF42EA4D95E49A3EE8DFCE5 /* MiWarpLogger.swift */; };
 		46C205483229F049CF7547B0 /* MobileSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BDC398FA44E521237508ED9 /* MobileSettingsView.swift */; };
-		46DBC49F0B2B915B28F03533 /* SessionSyncAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 230EF37D09827AC1 /* SessionSyncAttributes.swift */; };
-		4D5DDE0D979274C2C53F5E08 /* MascotState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10FCE309A6DF1E3C /* MascotState.swift */; };
+		4DD2694249859A43B61D0599 /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9BF7A25E7D0838898CA05F9 /* LiveActivityManager.swift */; };
 		532CCC78DC030F41D8724B45 /* RawEventView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F6C0CCD921DD31844147DD1 /* RawEventView.swift */; };
-		563E00C7BDA2351B8229136A /* LiveActivityDeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 972706DDCE76C5C3 /* LiveActivityDeepLink.swift */; };
-		6081EC7D2CF73109F19DB9E3 /* LiveActivityPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3FB27CCEE013C5A /* LiveActivityPhase.swift */; };
-		61C878F248E60363 /* SessionSyncAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 230EF37D09827AC1 /* SessionSyncAttributes.swift */; };
+		5A5342F6B8D9074CEB266EB8 /* SessionHubViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 808C2B6042F76BE515E49A90 /* SessionHubViewModel.swift */; };
+		5C41EF8843347D75659A9848 /* SessionSyncAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6924FB55309725BC61D2EFC6 /* SessionSyncAttributes.swift */; };
 		65AA0F610CDB4B67B39B53C9 /* MWTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = D79C91C976F9F764AF38DA9E /* MWTypography.swift */; };
 		6791ED1049A4C99EC0895E03 /* ConnectionListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90961D2A1D3E576400FBA90D /* ConnectionListView.swift */; };
+		6D5D0695AC0106DB652AD62F /* MiWarpMascotStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971D14568DAB22776BF82929 /* MiWarpMascotStatusView.swift */; };
+		6F33528D57DF25214FBCA7D0 /* MiWarpEventReducerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DA8BA470842A000FEC94F8B /* MiWarpEventReducerTests.swift */; };
 		6F565ED315DFAAAD6CC80C6D /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0E65980CBFDCE0641A89EB6 /* ChatView.swift */; };
-		76EEAC0FC03DA3FF2027F759 /* DynamicIslandExpandedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E11C7238E3EBF5610ACD5E41 /* DynamicIslandExpandedView.swift */; };
-		789373F17DB80E1B /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3824B3A40324D16D /* LiveActivityManager.swift */; };
-		87BA9E0A5AC074DE /* LiveActivityPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3FB27CCEE013C5A /* LiveActivityPhase.swift */; };
+		8208571575CB75CC6C1C887D /* LiveActivityDeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289D60E42DA65D8A062D44C8 /* LiveActivityDeepLink.swift */; };
+		846147A25B80E7CC8D8A16E4 /* DynamicIslandCompactView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB91D75D1E3DED1FDD2B7FAF /* DynamicIslandCompactView.swift */; };
 		8946456184C3D6B8126E8EA1 /* MessageBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E75A871369C61901E50A56 /* MessageBubbleView.swift */; };
 		8C469F2748D6D72D5BEB4DF2 /* MWColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24865EBC18A08682F72F290F /* MWColors.swift */; };
-		8F6CCEC299A66E4372A834EB /* WidgetColorHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F70AC0095170D3215FA8A26 /* WidgetColorHelper.swift */; };
 		9B288F274A622D202EA9133D /* SessionHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A5CFCDC3786BC4196BFD619 /* SessionHubView.swift */; };
-		9BB15338BCB478A5 /* SessionSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4CE3E187FEFBBD6 /* SessionSyncManager.swift */; };
 		A172FA18B2E5D055735D564B /* SessionCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 987255B12C719BFE7C7334E3 /* SessionCardView.swift */; };
 		A210B494EBB75AB16812621E /* MessageListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F9476AE56F033A24CF340F5 /* MessageListView.swift */; };
-		A421B83FA42F69975CD74E77 /* MiWarpMascotStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E1D23DAA5CC7F44690E6E8F /* MiWarpMascotStatusView.swift */; };
 		A5BBE889D03AB2D6A4C7AD34 /* PairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3FAA7EA2B1B6F88F3FCE898 /* PairingView.swift */; };
-		A99EF19A54DEA797 /* AgentTaskAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FB828288367326 /* AgentTaskAttributes.swift */; };
-		B04757E2E24D3A45F7473CE2 /* DynamicIslandCompactView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 502D6F88661C2425E0CE0430 /* DynamicIslandCompactView.swift */; };
+		AE787F9A8B3C39AE4FE32D73 /* MiWarpRingProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA286401A9EB29439E2463FB /* MiWarpRingProgressView.swift */; };
+		BC2AC5D7B71C9844971627F8 /* LiveActivityPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 581F007A6C36C77AC442C6DE /* LiveActivityPhase.swift */; };
+		BC2B58DD168E738B9F5A1441 /* WidgetColorHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = F47EEC1D96137CACCBAD464D /* WidgetColorHelper.swift */; };
 		C0A5C03FAD0BF00E36BCDB2E /* MiWarpMobileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C548D8CEFC934933FBECC65 /* MiWarpMobileApp.swift */; };
-		C519099BA1DEB54370019F82 /* MiWarpRingProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02F184F1D58906E2D1C6435E /* MiWarpRingProgressView.swift */; };
-		C7648DAF442620D15281A519 /* LockScreenActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2D8FC54691FBA161BC0B95 /* LockScreenActivityView.swift */; };
+		C30281F01B6D385F5BA7EC50 /* LiveActivityDeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289D60E42DA65D8A062D44C8 /* LiveActivityDeepLink.swift */; };
 		C96972A01DA3558985C1A234 /* MWTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48092D2C4044F54B928D3A0D /* MWTheme.swift */; };
-		CHATVIEWMODEL12345678 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CHATVIEWMODELREF00000 /* ChatViewModel.swift */; };
-		D2E6242027E4F4AB /* LiveActivityDeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 972706DDCE76C5C3 /* LiveActivityDeepLink.swift */; };
+		CA9A8A1B4BCA33A6F3A09724 /* SessionSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F919BE41E786BAA781AEABF7 /* SessionSyncManager.swift */; };
+		D1E575799D332A3B1C2FAEC8 /* MiWarpLiveActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BBC11E713D887C54BA4BE895 /* MiWarpLiveActivityExtension.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		D322874B95C1F70377CF038D /* SessionSyncAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6924FB55309725BC61D2EFC6 /* SessionSyncAttributes.swift */; };
 		DA3692C0666B9ADCAEE3784A /* SessionFiltersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 015D6770F2BF381E65357860 /* SessionFiltersView.swift */; };
 		DA9BDFA699E6C93BBB381595 /* MiWarpWebSocketClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74358DE064BFA91D37F88C20 /* MiWarpWebSocketClient.swift */; };
+		DF80F90DE40672EAD5FE7C2A /* LockScreenActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 265E79FD01704F5BC71CA337 /* LockScreenActivityView.swift */; };
 		DFA039E9FFE6D381AA863AD2 /* MiWarpEventReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85BC39AF301E61AA2D7BDDF /* MiWarpEventReducer.swift */; };
+		E15851B856698CE552D0AFE2 /* MiWarpLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55BE0C74BD5807AE4486B20D /* MiWarpLiveActivityWidget.swift */; };
 		E2B3A825971612D747C522A7 /* ToolCallCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E481018763FF42586EAB656 /* ToolCallCardView.swift */; };
+		E7BAA4FD183D808345170009 /* LiveActivityDemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1355A6A96238DD857E69FC3 /* LiveActivityDemoView.swift */; };
 		F0FBF592BF4ED3A133FB8A3A /* MWComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69E7E49A3B0F2853F7255337 /* MWComponents.swift */; };
 		F4EC3C0A42C3DA0D397A2F3F /* MiWarpKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9737E58B096F2A6DFBA00DFA /* MiWarpKeychain.swift */; };
-		F5CC3C6ED01609154DB20253 /* MiWarpLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31E2F1B41F9576F7C6DB4D5D /* MiWarpLiveActivityWidget.swift */; };
+		F5F0A72D1CAB2E5EF9B8E645 /* LiveActivityPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 581F007A6C36C77AC442C6DE /* LiveActivityPhase.swift */; };
 		FBAA055780AF798D3BB80B6B /* ApprovalCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF2DF97B4D4DB5A75EBEB6AD /* ApprovalCardView.swift */; };
 		FCCCC4792AEF4E33B3F92E1D /* MiWarpConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A0B57EF75232E7CBDA97B0D /* MiWarpConnectionStore.swift */; };
 		FE7765B8799D45D7EF4E3626 /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096DDAC3E0FF81650A464E57 /* ChatInputBar.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		4CF41C2C0EC1FED0DEC84445 /* PBXContainerItemProxy */ = {
+		66173BA5660FD6CCC9529765 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 11F491C32C81F5DD954CCFEB /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = F5527037C4FC0F96386B3B04;
+			remoteGlobalIDString = 18675E3B9E2E005D4F2E1C61;
 			remoteInfo = MiWarpLiveActivityExtension;
 		};
+		BBDC538639712C2B84CF9940 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 11F491C32C81F5DD954CCFEB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F8E7E71355059B3247A86C55;
+			remoteInfo = MiWarpMobile;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B6C9C80EC3DB140BC0189653 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				D1E575799D332A3B1C2FAEC8 /* MiWarpLiveActivityExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		015D6770F2BF381E65357860 /* SessionFiltersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionFiltersView.swift; sourceTree = "<group>"; };
 		02342E23F233A1CF248129CF /* MiWarpModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpModels.swift; sourceTree = "<group>"; };
-		02F184F1D58906E2D1C6435E /* MiWarpRingProgressView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MiWarpRingProgressView.swift; path = ../../MiWarpLiveActivityExtension/Views/MiWarpRingProgressView.swift; sourceTree = "<group>"; };
 		0357B8FA940E87F3AFEE4019 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		096DDAC3E0FF81650A464E57 /* ChatInputBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputBar.swift; sourceTree = "<group>"; };
 		0C548D8CEFC934933FBECC65 /* MiWarpMobileApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpMobileApp.swift; sourceTree = "<group>"; };
-		0E17A136C86C2624BEC230EF /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = Info.plist; path = ../../MiWarpLiveActivityExtension/Info.plist; sourceTree = "<group>"; };
-		0F70AC0095170D3215FA8A26 /* WidgetColorHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WidgetColorHelper.swift; path = ../../MiWarpLiveActivityExtension/Views/WidgetColorHelper.swift; sourceTree = "<group>"; };
-		10FCE309A6DF1E3C /* MascotState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotState.swift; sourceTree = "<group>"; };
+		0DA8BA470842A000FEC94F8B /* MiWarpEventReducerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpEventReducerTests.swift; sourceTree = "<group>"; };
+		13FD0A824F6DD907EBAAB727 /* MiWarpLiveActivityExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MiWarpLiveActivityExtension.entitlements; sourceTree = "<group>"; };
 		1BDC398FA44E521237508ED9 /* MobileSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileSettingsView.swift; sourceTree = "<group>"; };
 		218378B6F9F53E2E224481E7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		230EF37D09827AC1 /* SessionSyncAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSyncAttributes.swift; sourceTree = "<group>"; };
-		235D10DA9D0EE05FFD8BAA77 /* MiWarpActivityAvatarRing.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MiWarpActivityAvatarRing.swift; path = ../../MiWarpLiveActivityExtension/Views/MiWarpActivityAvatarRing.swift; sourceTree = "<group>"; };
 		24865EBC18A08682F72F290F /* MWColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MWColors.swift; sourceTree = "<group>"; };
-		2E1D23DAA5CC7F44690E6E8F /* MiWarpMascotStatusView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MiWarpMascotStatusView.swift; path = ../../MiWarpLiveActivityExtension/Views/MiWarpMascotStatusView.swift; sourceTree = "<group>"; };
-		31E2F1B41F9576F7C6DB4D5D /* MiWarpLiveActivityWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MiWarpLiveActivityWidget.swift; path = ../../MiWarpLiveActivityExtension/MiWarpLiveActivityWidget.swift; sourceTree = "<group>"; };
-		3824B3A40324D16D /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
+		251C0C6808F6AE962B5773BF /* DynamicIslandExpandedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicIslandExpandedView.swift; sourceTree = "<group>"; };
+		265E79FD01704F5BC71CA337 /* LockScreenActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenActivityView.swift; sourceTree = "<group>"; };
+		289D60E42DA65D8A062D44C8 /* LiveActivityDeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityDeepLink.swift; sourceTree = "<group>"; };
 		3EF42EA4D95E49A3EE8DFCE5 /* MiWarpLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpLogger.swift; sourceTree = "<group>"; };
 		3F6C0CCD921DD31844147DD1 /* RawEventView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RawEventView.swift; sourceTree = "<group>"; };
 		48092D2C4044F54B928D3A0D /* MWTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MWTheme.swift; sourceTree = "<group>"; };
 		4F9476AE56F033A24CF340F5 /* MessageListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageListView.swift; sourceTree = "<group>"; };
-		502D6F88661C2425E0CE0430 /* DynamicIslandCompactView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DynamicIslandCompactView.swift; path = ../../MiWarpLiveActivityExtension/Views/DynamicIslandCompactView.swift; sourceTree = "<group>"; };
-		55FB828288367326 /* AgentTaskAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTaskAttributes.swift; sourceTree = "<group>"; };
+		55BE0C74BD5807AE4486B20D /* MiWarpLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpLiveActivityWidget.swift; sourceTree = "<group>"; };
+		581F007A6C36C77AC442C6DE /* LiveActivityPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityPhase.swift; sourceTree = "<group>"; };
+		582462DD41026975764CB27B /* AgentTaskAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTaskAttributes.swift; sourceTree = "<group>"; };
 		64526B69FA3F302F90E918A2 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		656F809295E8CC07CB44BF0F /* MascotState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotState.swift; sourceTree = "<group>"; };
+		6924FB55309725BC61D2EFC6 /* SessionSyncAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSyncAttributes.swift; sourceTree = "<group>"; };
 		69E7E49A3B0F2853F7255337 /* MWComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MWComponents.swift; sourceTree = "<group>"; };
 		6A0B57EF75232E7CBDA97B0D /* MiWarpConnectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpConnectionStore.swift; sourceTree = "<group>"; };
 		6A5CFCDC3786BC4196BFD619 /* SessionHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionHubView.swift; sourceTree = "<group>"; };
-		6C63DFFB943A6F41E7A1047B /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		6E481018763FF42586EAB656 /* ToolCallCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolCallCardView.swift; sourceTree = "<group>"; };
 		74358DE064BFA91D37F88C20 /* MiWarpWebSocketClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpWebSocketClient.swift; sourceTree = "<group>"; };
+		7985AEBA9004F16FCC63F390 /* AgentSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSyncManager.swift; sourceTree = "<group>"; };
+		808C2B6042F76BE515E49A90 /* SessionHubViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionHubViewModel.swift; sourceTree = "<group>"; };
+		8701350F5DF21D23BB18EE1E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		87A3AF41B54A7D4AF4EF7B78 /* MiWarpRPC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpRPC.swift; sourceTree = "<group>"; };
 		90961D2A1D3E576400FBA90D /* ConnectionListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionListView.swift; sourceTree = "<group>"; };
-		972706DDCE76C5C3 /* LiveActivityDeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityDeepLink.swift; sourceTree = "<group>"; };
+		971D14568DAB22776BF82929 /* MiWarpMascotStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpMascotStatusView.swift; sourceTree = "<group>"; };
 		9737E58B096F2A6DFBA00DFA /* MiWarpKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpKeychain.swift; sourceTree = "<group>"; };
 		987255B12C719BFE7C7334E3 /* SessionCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCardView.swift; sourceTree = "<group>"; };
-		A32CAE291A63375CA4F70871 /* MiWarpLiveActivityExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; name = MiWarpLiveActivityExtension.entitlements; path = ../../MiWarpLiveActivityExtension/MiWarpLiveActivityExtension.entitlements; sourceTree = "<group>"; };
-		A3FB27CCEE013C5A /* LiveActivityPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityPhase.swift; sourceTree = "<group>"; };
-		A4CE3E187FEFBBD6 /* SessionSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSyncManager.swift; sourceTree = "<group>"; };
 		A9E75A871369C61901E50A56 /* MessageBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageBubbleView.swift; sourceTree = "<group>"; };
+		AB91D75D1E3DED1FDD2B7FAF /* DynamicIslandCompactView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicIslandCompactView.swift; sourceTree = "<group>"; };
 		B3FAA7EA2B1B6F88F3FCE898 /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
+		B46B5DCA6CF7C80E4626D47A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		B85BC39AF301E61AA2D7BDDF /* MiWarpEventReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpEventReducer.swift; sourceTree = "<group>"; };
 		B9EBC6E7E1C3A6687A1AC5BD /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
-		BB2D8FC54691FBA161BC0B95 /* LockScreenActivityView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LockScreenActivityView.swift; path = ../../MiWarpLiveActivityExtension/Views/LockScreenActivityView.swift; sourceTree = "<group>"; };
+		BBC11E713D887C54BA4BE895 /* MiWarpLiveActivityExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = MiWarpLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		BDFAFD6DD96630C2562FBFDE /* MiWarpMobileTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = MiWarpMobileTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0E65980CBFDCE0641A89EB6 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
-		C664FD00C805F710AB2CB298 /* MiWarp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MiWarp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		CE07B77E559C30A1 /* AgentSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSyncManager.swift; sourceTree = "<group>"; };
+		C1355A6A96238DD857E69FC3 /* LiveActivityDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityDemoView.swift; sourceTree = "<group>"; };
+		C664FD00C805F710AB2CB298 /* MiWarpMobile.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MiWarpMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C9BF7A25E7D0838898CA05F9 /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
 		CF2DF97B4D4DB5A75EBEB6AD /* ApprovalCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalCardView.swift; sourceTree = "<group>"; };
-		CHATVIEWMODELREF00000 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		D79C91C976F9F764AF38DA9E /* MWTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MWTypography.swift; sourceTree = "<group>"; };
 		D86348B9DC8374F8A7B3688E /* ArtifactsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactsView.swift; sourceTree = "<group>"; };
-		D96C72BF6A3A4D97C5F82319 /* MiWarpLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MiWarpLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		E11C7238E3EBF5610ACD5E41 /* DynamicIslandExpandedView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DynamicIslandExpandedView.swift; path = ../../MiWarpLiveActivityExtension/Views/DynamicIslandExpandedView.swift; sourceTree = "<group>"; };
-		E5CA8BB9104E61D9 /* LiveActivityDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityDemoView.swift; sourceTree = "<group>"; };
+		DA286401A9EB29439E2463FB /* MiWarpRingProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpRingProgressView.swift; sourceTree = "<group>"; };
+		EFF61283EBAE28E6191391DB /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
+		F023646BC636346DDF4C6A25 /* MiWarpActivityAvatarRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpActivityAvatarRing.swift; sourceTree = "<group>"; };
 		F0F107680AD38109AD258F79 /* DiffPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffPreviewView.swift; sourceTree = "<group>"; };
+		F47EEC1D96137CACCBAD464D /* WidgetColorHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetColorHelper.swift; sourceTree = "<group>"; };
 		F56164434961DBAFF3086CE8 /* MiWarpMobile.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MiWarpMobile.entitlements; sourceTree = "<group>"; };
+		F919BE41E786BAA781AEABF7 /* SessionSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSyncManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		D305DAA82010344B7AC26845 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				2BDE5BB585506D8FE578A2A5 /* Foundation.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		06B3F40200C9628F9C51930E /* Core */ = {
@@ -157,6 +172,17 @@
 			path = Core;
 			sourceTree = "<group>";
 		};
+		163F45701E2F742BB8BADCF3 /* LiveActivities */ = {
+			isa = PBXGroup;
+			children = (
+				FFA972AFDAFA81B5AFF86F13 /* Attributes */,
+				E0CF79B9130171F7A14B3593 /* DeepLink */,
+				938196512E1A210E6EFE7F3E /* Manager */,
+				330EAB1C893C847B1B2FF720 /* Models */,
+			);
+			path = LiveActivities;
+			sourceTree = "<group>";
+		};
 		1DB9B8F84F7FDA2C3BF3FB4E /* Artifacts */ = {
 			isa = PBXGroup;
 			children = (
@@ -169,9 +195,13 @@
 		21B9443E7ADA0E66BC51EC45 = {
 			isa = PBXGroup;
 			children = (
+				FFA972AFDAFA81B5AFF86F13 /* Attributes */,
+				E0CF79B9130171F7A14B3593 /* DeepLink */,
+				30878D2DB939D8658DD6345C /* MiWarpLiveActivityExtension */,
 				22BD8ACE83181FFD864F28B1 /* MiWarpMobile */,
+				38A09A1F5946842668AF1240 /* MiWarpMobileTests */,
+				330EAB1C893C847B1B2FF720 /* Models */,
 				DEECF2C198EF49DF81D17E61 /* Products */,
-				AD5DCC510C5A6692694A3E30 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -182,11 +212,40 @@
 				06B3F40200C9628F9C51930E /* Core */,
 				DC54AFBAC9418EB17B2FAEE5 /* DesignSystem */,
 				B8B851F80CFCF7DD00AD8922 /* Features */,
+				163F45701E2F742BB8BADCF3 /* LiveActivities */,
 				FFF295E37EFF54B540E122AE /* Resources */,
-				LAROOTGRP00000001 /* LiveActivities */,
-				87A1E376C9BAC264AF0D11F1 /* MiWarpLiveActivityExtension */,
 			);
 			path = MiWarpMobile;
+			sourceTree = "<group>";
+		};
+		30878D2DB939D8658DD6345C /* MiWarpLiveActivityExtension */ = {
+			isa = PBXGroup;
+			children = (
+				B46B5DCA6CF7C80E4626D47A /* Info.plist */,
+				13FD0A824F6DD907EBAAB727 /* MiWarpLiveActivityExtension.entitlements */,
+				55BE0C74BD5807AE4486B20D /* MiWarpLiveActivityWidget.swift */,
+				D0E3CC0DD17B106C782AC247 /* Views */,
+			);
+			path = MiWarpLiveActivityExtension;
+			sourceTree = "<group>";
+		};
+		330EAB1C893C847B1B2FF720 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				581F007A6C36C77AC442C6DE /* LiveActivityPhase.swift */,
+				656F809295E8CC07CB44BF0F /* MascotState.swift */,
+			);
+			name = Models;
+			path = MiWarpMobile/LiveActivities/Models;
+			sourceTree = "<group>";
+		};
+		38A09A1F5946842668AF1240 /* MiWarpMobileTests */ = {
+			isa = PBXGroup;
+			children = (
+				8701350F5DF21D23BB18EE1E /* Info.plist */,
+				0DA8BA470842A000FEC94F8B /* MiWarpEventReducerTests.swift */,
+			);
+			path = MiWarpMobileTests;
 			sourceTree = "<group>";
 		};
 		3F298A52E1516DD55DDBFBB1 /* App */ = {
@@ -211,18 +270,10 @@
 		4E8627887DB2A06C5DDC1C58 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				C1355A6A96238DD857E69FC3 /* LiveActivityDemoView.swift */,
 				1BDC398FA44E521237508ED9 /* MobileSettingsView.swift */,
-				E5CA8BB9104E61D9 /* LiveActivityDemoView.swift */,
 			);
 			path = Settings;
-			sourceTree = "<group>";
-		};
-		5AD5293A6BDB224259C87E3C /* iOS */ = {
-			isa = PBXGroup;
-			children = (
-				6C63DFFB943A6F41E7A1047B /* Foundation.framework */,
-			);
-			name = iOS;
 			sourceTree = "<group>";
 		};
 		6A4E33DD8A32F84C3E4B0112 /* Sessions */ = {
@@ -231,25 +282,9 @@
 				987255B12C719BFE7C7334E3 /* SessionCardView.swift */,
 				015D6770F2BF381E65357860 /* SessionFiltersView.swift */,
 				6A5CFCDC3786BC4196BFD619 /* SessionHubView.swift */,
+				808C2B6042F76BE515E49A90 /* SessionHubViewModel.swift */,
 			);
 			path = Sessions;
-			sourceTree = "<group>";
-		};
-		87A1E376C9BAC264AF0D11F1 /* MiWarpLiveActivityExtension */ = {
-			isa = PBXGroup;
-			children = (
-				31E2F1B41F9576F7C6DB4D5D /* MiWarpLiveActivityWidget.swift */,
-				502D6F88661C2425E0CE0430 /* DynamicIslandCompactView.swift */,
-				E11C7238E3EBF5610ACD5E41 /* DynamicIslandExpandedView.swift */,
-				BB2D8FC54691FBA161BC0B95 /* LockScreenActivityView.swift */,
-				235D10DA9D0EE05FFD8BAA77 /* MiWarpActivityAvatarRing.swift */,
-				2E1D23DAA5CC7F44690E6E8F /* MiWarpMascotStatusView.swift */,
-				02F184F1D58906E2D1C6435E /* MiWarpRingProgressView.swift */,
-				0F70AC0095170D3215FA8A26 /* WidgetColorHelper.swift */,
-				0E17A136C86C2624BEC230EF /* Info.plist */,
-				A32CAE291A63375CA4F70871 /* MiWarpLiveActivityExtension.entitlements */,
-			);
-			path = MiWarpLiveActivityExtension;
 			sourceTree = "<group>";
 		};
 		90FF8A3EAF6BDC69F7056862 /* Chat */ = {
@@ -258,7 +293,7 @@
 				CF2DF97B4D4DB5A75EBEB6AD /* ApprovalCardView.swift */,
 				096DDAC3E0FF81650A464E57 /* ChatInputBar.swift */,
 				C0E65980CBFDCE0641A89EB6 /* ChatView.swift */,
-				CHATVIEWMODELREF00000 /* ChatViewModel.swift */,
+				EFF61283EBAE28E6191391DB /* ChatViewModel.swift */,
 				A9E75A871369C61901E50A56 /* MessageBubbleView.swift */,
 				4F9476AE56F033A24CF340F5 /* MessageListView.swift */,
 				3F6C0CCD921DD31844147DD1 /* RawEventView.swift */,
@@ -267,12 +302,14 @@
 			path = Chat;
 			sourceTree = "<group>";
 		};
-		AD5DCC510C5A6692694A3E30 /* Frameworks */ = {
+		938196512E1A210E6EFE7F3E /* Manager */ = {
 			isa = PBXGroup;
 			children = (
-				5AD5293A6BDB224259C87E3C /* iOS */,
+				7985AEBA9004F16FCC63F390 /* AgentSyncManager.swift */,
+				C9BF7A25E7D0838898CA05F9 /* LiveActivityManager.swift */,
+				F919BE41E786BAA781AEABF7 /* SessionSyncManager.swift */,
 			);
-			name = Frameworks;
+			path = Manager;
 			sourceTree = "<group>";
 		};
 		B8B851F80CFCF7DD00AD8922 /* Features */ = {
@@ -285,6 +322,20 @@
 				4E8627887DB2A06C5DDC1C58 /* Settings */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		D0E3CC0DD17B106C782AC247 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				AB91D75D1E3DED1FDD2B7FAF /* DynamicIslandCompactView.swift */,
+				251C0C6808F6AE962B5773BF /* DynamicIslandExpandedView.swift */,
+				265E79FD01704F5BC71CA337 /* LockScreenActivityView.swift */,
+				F023646BC636346DDF4C6A25 /* MiWarpActivityAvatarRing.swift */,
+				971D14568DAB22776BF82929 /* MiWarpMascotStatusView.swift */,
+				DA286401A9EB29439E2463FB /* MiWarpRingProgressView.swift */,
+				F47EEC1D96137CACCBAD464D /* WidgetColorHelper.swift */,
+			);
+			path = Views;
 			sourceTree = "<group>";
 		};
 		DC54AFBAC9418EB17B2FAEE5 /* DesignSystem */ = {
@@ -301,10 +352,30 @@
 		DEECF2C198EF49DF81D17E61 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C664FD00C805F710AB2CB298 /* MiWarp.app */,
-				D96C72BF6A3A4D97C5F82319 /* MiWarpLiveActivityExtension.appex */,
+				BBC11E713D887C54BA4BE895 /* MiWarpLiveActivityExtension.appex */,
+				C664FD00C805F710AB2CB298 /* MiWarpMobile.app */,
+				BDFAFD6DD96630C2562FBFDE /* MiWarpMobileTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		E0CF79B9130171F7A14B3593 /* DeepLink */ = {
+			isa = PBXGroup;
+			children = (
+				289D60E42DA65D8A062D44C8 /* LiveActivityDeepLink.swift */,
+			);
+			name = DeepLink;
+			path = MiWarpMobile/LiveActivities/DeepLink;
+			sourceTree = "<group>";
+		};
+		FFA972AFDAFA81B5AFF86F13 /* Attributes */ = {
+			isa = PBXGroup;
+			children = (
+				582462DD41026975764CB27B /* AgentTaskAttributes.swift */,
+				6924FB55309725BC61D2EFC6 /* SessionSyncAttributes.swift */,
+			);
+			name = Attributes;
+			path = MiWarpMobile/LiveActivities/Attributes;
 			sourceTree = "<group>";
 		};
 		FFF295E37EFF54B540E122AE /* Resources */ = {
@@ -317,72 +388,43 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
-		LAATTRGRP00000001 /* Attributes */ = {
-			isa = PBXGroup;
-			children = (
-				55FB828288367326 /* AgentTaskAttributes.swift */,
-				230EF37D09827AC1 /* SessionSyncAttributes.swift */,
-			);
-			path = Attributes;
-			sourceTree = "<group>";
-		};
-		LADLGRP00000001 /* DeepLink */ = {
-			isa = PBXGroup;
-			children = (
-				972706DDCE76C5C3 /* LiveActivityDeepLink.swift */,
-			);
-			path = DeepLink;
-			sourceTree = "<group>";
-		};
-		LAMGRGRP00000001 /* Manager */ = {
-			isa = PBXGroup;
-			children = (
-				CE07B77E559C30A1 /* AgentSyncManager.swift */,
-				3824B3A40324D16D /* LiveActivityManager.swift */,
-				A4CE3E187FEFBBD6 /* SessionSyncManager.swift */,
-			);
-			path = Manager;
-			sourceTree = "<group>";
-		};
-		LAMODGRP00000001 /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				A3FB27CCEE013C5A /* LiveActivityPhase.swift */,
-				10FCE309A6DF1E3C /* MascotState.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		LAROOTGRP00000001 /* LiveActivities */ = {
-			isa = PBXGroup;
-			children = (
-				LAATTRGRP00000001 /* Attributes */,
-				LADLGRP00000001 /* DeepLink */,
-				LAMGRGRP00000001 /* Manager */,
-				LAMODGRP00000001 /* Models */,
-			);
-			path = LiveActivities;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		F5527037C4FC0F96386B3B04 /* MiWarpLiveActivityExtension */ = {
+		18675E3B9E2E005D4F2E1C61 /* MiWarpLiveActivityExtension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A846244B0410FBAF1D0D6498 /* Build configuration list for PBXNativeTarget "MiWarpLiveActivityExtension" */;
+			buildConfigurationList = 40D7A70BFC4A40E78C0BEF0E /* Build configuration list for PBXNativeTarget "MiWarpLiveActivityExtension" */;
 			buildPhases = (
-				8F1AF88DC8F47ED938754B0F /* Sources */,
-				D305DAA82010344B7AC26845 /* Frameworks */,
-				FB9AC67D2746AD7C0C7AACF6 /* Resources */,
+				E9A831591A3753C380DC682A /* Sources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			name = MiWarpLiveActivityExtension;
+			packageProductDependencies = (
+			);
 			productName = MiWarpLiveActivityExtension;
-			productReference = D96C72BF6A3A4D97C5F82319 /* MiWarpLiveActivityExtension.appex */;
+			productReference = BBC11E713D887C54BA4BE895 /* MiWarpLiveActivityExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
+		};
+		6BAF44B848D573A7D725D743 /* MiWarpMobileTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 39EEEBDE74E1051185665E13 /* Build configuration list for PBXNativeTarget "MiWarpMobileTests" */;
+			buildPhases = (
+				E1196C172C85B7CC342FF905 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				764C51D6D8656C6DA53D69D0 /* PBXTargetDependency */,
+			);
+			name = MiWarpMobileTests;
+			packageProductDependencies = (
+			);
+			productName = MiWarpMobileTests;
+			productReference = BDFAFD6DD96630C2562FBFDE /* MiWarpMobileTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		F8E7E71355059B3247A86C55 /* MiWarpMobile */ = {
 			isa = PBXNativeTarget;
@@ -390,15 +432,18 @@
 			buildPhases = (
 				9C8100177FC1DD16EAC902DC /* Sources */,
 				546F474D9113DEF931D8E907 /* Resources */,
+				B6C9C80EC3DB140BC0189653 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				0461B3F2B72B6433D2DE59B7 /* PBXTargetDependency */,
+				2E431EA42F9E6022DB047F38 /* PBXTargetDependency */,
 			);
 			name = MiWarpMobile;
+			packageProductDependencies = (
+			);
 			productName = MiWarpMobile;
-			productReference = C664FD00C805F710AB2CB298 /* MiWarp.app */;
+			productReference = C664FD00C805F710AB2CB298 /* MiWarpMobile.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -410,7 +455,16 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
+					18675E3B9E2E005D4F2E1C61 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					6BAF44B848D573A7D725D743 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
 					F8E7E71355059B3247A86C55 = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -429,8 +483,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				18675E3B9E2E005D4F2E1C61 /* MiWarpLiveActivityExtension */,
 				F8E7E71355059B3247A86C55 /* MiWarpMobile */,
-				F5527037C4FC0F96386B3B04 /* MiWarpLiveActivityExtension */,
+				6BAF44B848D573A7D725D743 /* MiWarpMobileTests */,
 			);
 		};
 /* End PBXProject section */
@@ -444,52 +499,32 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FB9AC67D2746AD7C0C7AACF6 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		8F1AF88DC8F47ED938754B0F /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				F5CC3C6ED01609154DB20253 /* MiWarpLiveActivityWidget.swift in Sources */,
-				B04757E2E24D3A45F7473CE2 /* DynamicIslandCompactView.swift in Sources */,
-				76EEAC0FC03DA3FF2027F759 /* DynamicIslandExpandedView.swift in Sources */,
-				C7648DAF442620D15281A519 /* LockScreenActivityView.swift in Sources */,
-				3D885E06982487C0C11DFA0C /* MiWarpActivityAvatarRing.swift in Sources */,
-				A421B83FA42F69975CD74E77 /* MiWarpMascotStatusView.swift in Sources */,
-				C519099BA1DEB54370019F82 /* MiWarpRingProgressView.swift in Sources */,
-				8F6CCEC299A66E4372A834EB /* WidgetColorHelper.swift in Sources */,
-				23BAED383DBAC04B51B6D66F /* AgentTaskAttributes.swift in Sources */,
-				46DBC49F0B2B915B28F03533 /* SessionSyncAttributes.swift in Sources */,
-				563E00C7BDA2351B8229136A /* LiveActivityDeepLink.swift in Sources */,
-				6081EC7D2CF73109F19DB9E3 /* LiveActivityPhase.swift in Sources */,
-				4D5DDE0D979274C2C53F5E08 /* MascotState.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		9C8100177FC1DD16EAC902DC /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				11F022E5C4471ED50783C0FA /* AgentSyncManager.swift in Sources */,
+				0B6DC2E41A1DD8086756F4A4 /* AgentTaskAttributes.swift in Sources */,
 				24908B86D77D42EB10C3DEF0 /* AppRouter.swift in Sources */,
 				FBAA055780AF798D3BB80B6B /* ApprovalCardView.swift in Sources */,
 				04DB51B2A725C113B3A6EE29 /* ArtifactsView.swift in Sources */,
 				FE7765B8799D45D7EF4E3626 /* ChatInputBar.swift in Sources */,
 				6F565ED315DFAAAD6CC80C6D /* ChatView.swift in Sources */,
-				CHATVIEWMODEL12345678 /* ChatViewModel.swift in Sources */,
+				0500B008F57FCDD7EDF29B83 /* ChatViewModel.swift in Sources */,
 				6791ED1049A4C99EC0895E03 /* ConnectionListView.swift in Sources */,
 				31752E8113DC5B9B09E5B8D0 /* DiffPreviewView.swift in Sources */,
+				C30281F01B6D385F5BA7EC50 /* LiveActivityDeepLink.swift in Sources */,
+				E7BAA4FD183D808345170009 /* LiveActivityDemoView.swift in Sources */,
+				4DD2694249859A43B61D0599 /* LiveActivityManager.swift in Sources */,
+				BC2AC5D7B71C9844971627F8 /* LiveActivityPhase.swift in Sources */,
 				8C469F2748D6D72D5BEB4DF2 /* MWColors.swift in Sources */,
 				F0FBF592BF4ED3A133FB8A3A /* MWComponents.swift in Sources */,
 				C96972A01DA3558985C1A234 /* MWTheme.swift in Sources */,
 				65AA0F610CDB4B67B39B53C9 /* MWTypography.swift in Sources */,
+				2DD50F246947160FB772ECF2 /* MascotState.swift in Sources */,
 				8946456184C3D6B8126E8EA1 /* MessageBubbleView.swift in Sources */,
 				A210B494EBB75AB16812621E /* MessageListView.swift in Sources */,
 				FCCCC4792AEF4E33B3F92E1D /* MiWarpConnectionStore.swift in Sources */,
@@ -507,38 +542,80 @@
 				A172FA18B2E5D055735D564B /* SessionCardView.swift in Sources */,
 				DA3692C0666B9ADCAEE3784A /* SessionFiltersView.swift in Sources */,
 				9B288F274A622D202EA9133D /* SessionHubView.swift in Sources */,
-				24D59176054F3AF6 /* LiveActivityDemoView.swift in Sources */,
+				5A5342F6B8D9074CEB266EB8 /* SessionHubViewModel.swift in Sources */,
+				D322874B95C1F70377CF038D /* SessionSyncAttributes.swift in Sources */,
+				CA9A8A1B4BCA33A6F3A09724 /* SessionSyncManager.swift in Sources */,
 				E2B3A825971612D747C522A7 /* ToolCallCardView.swift in Sources */,
-				A99EF19A54DEA797 /* AgentTaskAttributes.swift in Sources */,
-				61C878F248E60363 /* SessionSyncAttributes.swift in Sources */,
-				D2E6242027E4F4AB /* LiveActivityDeepLink.swift in Sources */,
-				150E1E3950560F24 /* AgentSyncManager.swift in Sources */,
-				789373F17DB80E1B /* LiveActivityManager.swift in Sources */,
-				9BB15338BCB478A5 /* SessionSyncManager.swift in Sources */,
-				87BA9E0A5AC074DE /* LiveActivityPhase.swift in Sources */,
-				0F16E07198160397 /* MascotState.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E1196C172C85B7CC342FF905 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6F33528D57DF25214FBCA7D0 /* MiWarpEventReducerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E9A831591A3753C380DC682A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				27176FD90C32057D4DF0B2DC /* AgentTaskAttributes.swift in Sources */,
+				846147A25B80E7CC8D8A16E4 /* DynamicIslandCompactView.swift in Sources */,
+				091EDBC0BE2D2B27D772B014 /* DynamicIslandExpandedView.swift in Sources */,
+				8208571575CB75CC6C1C887D /* LiveActivityDeepLink.swift in Sources */,
+				F5F0A72D1CAB2E5EF9B8E645 /* LiveActivityPhase.swift in Sources */,
+				DF80F90DE40672EAD5FE7C2A /* LockScreenActivityView.swift in Sources */,
+				184609C6EBCE7907B8314B79 /* MascotState.swift in Sources */,
+				1F4AF87F9F9A169B726E6DC5 /* MiWarpActivityAvatarRing.swift in Sources */,
+				E15851B856698CE552D0AFE2 /* MiWarpLiveActivityWidget.swift in Sources */,
+				6D5D0695AC0106DB652AD62F /* MiWarpMascotStatusView.swift in Sources */,
+				AE787F9A8B3C39AE4FE32D73 /* MiWarpRingProgressView.swift in Sources */,
+				5C41EF8843347D75659A9848 /* SessionSyncAttributes.swift in Sources */,
+				BC2B58DD168E738B9F5A1441 /* WidgetColorHelper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		0461B3F2B72B6433D2DE59B7 /* PBXTargetDependency */ = {
+		2E431EA42F9E6022DB047F38 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			name = MiWarpLiveActivityExtension;
-			target = F5527037C4FC0F96386B3B04 /* MiWarpLiveActivityExtension */;
-			targetProxy = 4CF41C2C0EC1FED0DEC84445 /* PBXContainerItemProxy */;
+			target = 18675E3B9E2E005D4F2E1C61 /* MiWarpLiveActivityExtension */;
+			targetProxy = 66173BA5660FD6CCC9529765 /* PBXContainerItemProxy */;
+		};
+		764C51D6D8656C6DA53D69D0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F8E7E71355059B3247A86C55 /* MiWarpMobile */;
+			targetProxy = BBDC538639712C2B84CF9940 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		09C36831A7750D02F1680C90 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				INFOPLIST_FILE = MiWarpMobileTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.miwarp.mobile.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MiWarpMobile.app/MiWarpMobile";
+			};
+			name = Debug;
+		};
 		473442DBD2602487C3B624A1 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = MiWarpMobile/Resources/MiWarpMobile.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 5CQ49A8XPZ;
 				INFOPLIST_FILE = MiWarpMobile/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -550,13 +627,67 @@
 			};
 			name = Release;
 		};
+		47BB4466F72FE8F52E7A5717 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				INFOPLIST_FILE = MiWarpMobileTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.miwarp.mobile.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MiWarpMobile.app/MiWarpMobile";
+			};
+			name = Release;
+		};
+		737C57AC22E34C6FE06EB1B4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MiWarpLiveActivityExtension/MiWarpLiveActivityExtension.entitlements;
+				INFOPLIST_FILE = MiWarpLiveActivityExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.miwarp.mobile.MiWarpLiveActivityExtension;
+				PRODUCT_NAME = MiWarpLiveActivityExtension;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		828AF5141539996DE5D0FF5D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MiWarpLiveActivityExtension/MiWarpLiveActivityExtension.entitlements;
+				INFOPLIST_FILE = MiWarpLiveActivityExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.miwarp.mobile.MiWarpLiveActivityExtension;
+				PRODUCT_NAME = MiWarpLiveActivityExtension;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		AE0E2C4A305635FE2ADD4577 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = MiWarpMobile/Resources/MiWarpMobile.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 5CQ49A8XPZ;
 				INFOPLIST_FILE = MiWarpMobile/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -703,37 +834,6 @@
 			};
 			name = Release;
 		};
-		C041A2B305D7CB24BAFE99EA /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_ENTITLEMENTS = MiWarpLiveActivityExtension/MiWarpLiveActivityExtension.entitlements;
-				DEVELOPMENT_TEAM = 5CQ49A8XPZ;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.miwarp.mobile.MiWarpLiveActivityExtension;
-				PRODUCT_MODULE_NAME = MiWarpLiveActivityExtension;
-				PRODUCT_NAME = MiWarpLiveActivityExtension;
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
-		C6CB341FE0B06A1EF88F1493 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_ENTITLEMENTS = MiWarpLiveActivityExtension/MiWarpLiveActivityExtension.entitlements;
-				DEVELOPMENT_TEAM = 5CQ49A8XPZ;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.miwarp.mobile.MiWarpLiveActivityExtension;
-				PRODUCT_MODULE_NAME = MiWarpLiveActivityExtension;
-				PRODUCT_NAME = MiWarpLiveActivityExtension;
-				SDKROOT = iphoneos;
-				SKIP_INSTALL = YES;
-			};
-			name = Debug;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -746,6 +846,24 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		39EEEBDE74E1051185665E13 /* Build configuration list for PBXNativeTarget "MiWarpMobileTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				09C36831A7750D02F1680C90 /* Debug */,
+				47BB4466F72FE8F52E7A5717 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		40D7A70BFC4A40E78C0BEF0E /* Build configuration list for PBXNativeTarget "MiWarpLiveActivityExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				828AF5141539996DE5D0FF5D /* Debug */,
+				737C57AC22E34C6FE06EB1B4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		50671168109FA766CF2E8E13 /* Build configuration list for PBXProject "MiWarpMobile" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -754,15 +872,6 @@
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
-		};
-		A846244B0410FBAF1D0D6498 /* Build configuration list for PBXNativeTarget "MiWarpLiveActivityExtension" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				C041A2B305D7CB24BAFE99EA /* Release */,
-				C6CB341FE0B06A1EF88F1493 /* Debug */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

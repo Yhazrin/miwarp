@@ -8,7 +8,6 @@ final class SessionHubViewModel: ObservableObject {
     @Published var error: String?
     @Published var searchText = ""
     @Published var showFilters = false
-    @Published var filters = SessionFilters()
 
     private weak var store: MiWarpConnectionStore?
 
@@ -21,9 +20,6 @@ final class SessionHubViewModel: ObservableObject {
                     (run.model?.lowercased().contains(query) ?? false)
                 if !matchesSearch { return false }
             }
-            if let agent = filters.agent, run.agent != agent { return false }
-            if let status = filters.status, run.status != status { return false }
-            if let source = filters.source, (run.source ?? .unknown) != source { return false }
             return true
         }
     }
@@ -50,21 +46,5 @@ final class SessionHubViewModel: ObservableObject {
         }
 
         isLoading = false
-    }
-}
-
-struct SessionFilters {
-    var agent: String?
-    var status: RunStatus?
-    var source: RunSource?
-
-    var isActive: Bool {
-        agent != nil || status != nil || source != nil
-    }
-
-    mutating func reset() {
-        agent = nil
-        status = nil
-        source = nil
     }
 }

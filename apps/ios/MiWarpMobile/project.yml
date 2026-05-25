@@ -40,6 +40,10 @@ targets:
       path: MiWarpMobile/Resources/MiWarpMobile.entitlements
       properties:
         com.apple.security.network.client: true
+    dependencies:
+      - target: MiWarpLiveActivityExtension
+        embed: true
+        codeSign: true
 
   MiWarpMobileTests:
     type: bundle.unit-test
@@ -63,10 +67,11 @@ targets:
       - path: MiWarpMobile/LiveActivities/DeepLink
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.miwarp.mobile.live-activity
+        PRODUCT_BUNDLE_IDENTIFIER: com.miwarp.mobile.MiWarpLiveActivityExtension
         INFOPLIST_FILE: MiWarpLiveActivityExtension/Info.plist
         SWIFT_VERSION: "5.9"
-        IPHONEOS_DEPLOYMENT_TARGET: "16.1"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        PRODUCT_NAME: "MiWarpLiveActivityExtension"
     entitlements:
       path: MiWarpLiveActivityExtension/MiWarpLiveActivityExtension.entitlements
       properties:

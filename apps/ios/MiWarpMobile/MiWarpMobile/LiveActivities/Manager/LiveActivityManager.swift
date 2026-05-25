@@ -3,6 +3,29 @@ import ActivityKit
 import Foundation
 import os.log
 
+/// Result of starting a Live Activity
+enum LiveActivityStartResult: Equatable {
+    case success(activityId: String)
+    case failure(error: String)
+    case notSupported
+
+    var isSuccess: Bool {
+        if case .success = self { return true }
+        return false
+    }
+
+    var displayMessage: String {
+        switch self {
+        case .success(let activityId):
+            return "Created! ID: \(activityId.prefix(8))..."
+        case .failure(let error):
+            return "Failed: \(error)"
+        case .notSupported:
+            return "Live Activities not supported on this device"
+        }
+    }
+}
+
 @MainActor
 final class LiveActivityManager {
     static let shared = LiveActivityManager()
@@ -23,8 +46,14 @@ final class LiveActivityManager {
         taskId: String,
         workspaceName: String? = nil,
         desktopName: String? = nil
-    ) {
+    ) -> LiveActivityStartResult {
         endSessionSync()
+
+        // Check if Live Activities are supported
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            logger.warning("Live Activities are not enabled on this device")
+            return .notSupported
+        }
 
         let attrs = SessionSyncAttributes(taskId: taskId, workspaceName: workspaceName)
         let state = SessionSyncAttributes.ContentState(
@@ -42,9 +71,12 @@ final class LiveActivityManager {
                 content: .init(state: state, staleDate: nil),
                 pushType: nil
             )
-            logger.info("Started sync activity: \(taskId)")
+            let activityId = syncActivity?.id ?? "unknown"
+            logger.info("Started sync activity: \(taskId), ID: \(activityId)")
+            return .success(activityId: activityId)
         } catch {
             logger.error("Failed to start sync activity: \(error.localizedDescription)")
+            return .failure(error: error.localizedDescription)
         }
     }
 
@@ -91,8 +123,14 @@ final class LiveActivityManager {
         taskId: String,
         title: String,
         workspaceName: String? = nil
-    ) {
+    ) -> LiveActivityStartResult {
         endAgentTask()
+
+        // Check if Live Activities are supported
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            logger.warning("Live Activities are not enabled on this device")
+            return .notSupported
+        }
 
         let attrs = AgentTaskAttributes(taskId: taskId, title: title)
         let state = AgentTaskAttributes.ContentState(
@@ -110,9 +148,12 @@ final class LiveActivityManager {
                 content: .init(state: state, staleDate: nil),
                 pushType: nil
             )
-            logger.info("Started agent activity: \(taskId)")
+            let activityId = agentActivity?.id ?? "unknown"
+            logger.info("Started agent activity: \(taskId), ID: \(activityId)")
+            return .success(activityId: activityId)
         } catch {
             logger.error("Failed to start agent activity: \(error.localizedDescription)")
+            return .failure(error: error.localizedDescription)
         }
     }
 
