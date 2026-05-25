@@ -65,6 +65,13 @@
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import HtmlReportPreview from "$lib/components/insight/HtmlReportPreview.svelte";
   import { getPresets } from "$lib/services/team-dispatcher";
+  import {
+    chatViewCache,
+    saveChatViewState,
+    updateLastChatHref,
+    getCachedScrollTop,
+    getCachedRenderLimit,
+  } from "$lib/chat/chat-view-cache.svelte";
 
   // ── Helpers ──
 
@@ -101,6 +108,8 @@
   let isChatAutoScroll = $state(true);
   /** Non-reactive flag: suppresses auto-scroll reset during search scroll-to navigation. */
   let _scrollToInFlight = false;
+  /** Non-reactive flag: suppresses auto-scroll during scroll restoration from cache. */
+  let restoringScroll = false;
   let showChatScrollHint = $state(false);
   let agentSettings = $state<AgentSettings | null>(null);
   let resuming = $state(false);
@@ -392,6 +401,7 @@
 
   // ── URL-derived (primitive values only — avoids $effect re-trigger on unrelated URL changes) ──
   let runId = $derived($page.url.searchParams.get("run") ?? "");
+  let hasNewParam = $derived($page.url.searchParams.has("new"));
   let hasResumeParam = $derived($page.url.searchParams.has("resume"));
   let folderParam = $derived($page.url.searchParams.get("folder"));
   let hostParam = $derived($page.url.searchParams.get("host"));
@@ -467,6 +477,7 @@
     if (!middlewareReady) return;
     const id = runId;
     const hasResume = hasResumeParam;
+    const isNewChat = hasNewParam;
     untrack(() => {
       middleware.subscribeCurrent(id, store);
 
@@ -481,10 +492,61 @@
       if (hasResume) return;
 
       if (!id) {
+        // Case 1: explicit new chat (?new=1) → start empty
+        if (isNewChat) {
+          chatViewCache.lastRunId = "";
+          store.loadRun("", xtermRef);
+          cancelProgressive();
+          return;
+        }
+
+        // Case 2: no run in URL but cached run exists → redirect to it
+        const cachedRunId = chatViewCache.lastRunId;
+        if (cachedRunId) {
+          replaceState(`/chat?run=${cachedRunId}`, {});
+          return;
+        }
+
+        // Case 3: store already has a run with timeline → preserve it (navigation return)
+        if (store.run?.id && store.timeline.length > 0) {
+          dbg("effect", "restoring chat state from store", { runId: store.run.id });
+          // Restore UI state from cache
+          const cachedTab = chatViewCache.toolPanelActiveTab;
+          if (cachedTab) toolPanelActiveTab = cachedTab;
+          const cachedCollapsed = chatViewCache.sidebarCollapsed;
+          sidebarCollapsed = cachedCollapsed;
+          const cachedPreview = chatViewCache.requestedPreviewPath;
+          if (cachedPreview) {
+            requestedPreviewPath = cachedPreview;
+            sidebarRequestedTab = "files";
+          }
+          const cachedRenderLimit = getCachedRenderLimit(store.run.id);
+          if (cachedRenderLimit !== undefined) {
+            tl.setRenderLimit(cachedRenderLimit);
+          }
+          // Restore scroll position
+          restoringScroll = true;
+          isChatAutoScroll = false;
+          tick().then(() => {
+            requestAnimationFrame(() => {
+              if (chatAreaRef) {
+                const cachedScroll = getCachedScrollTop(store.run!.id);
+                chatAreaRef.scrollTop = cachedScroll;
+              }
+              restoringScroll = false;
+            });
+          });
+          return;
+        }
+
+        // Case 4: truly empty → new empty run
         store.loadRun("", xtermRef);
-        cancelProgressive(); // empty run — no progressive needed
+        cancelProgressive();
         return;
       }
+
+      // Update lastChatHref when navigating to a run URL
+      updateLastChatHref(id, $page.url.href);
 
       // If store already holds an active session for this run, skip redundant loadRun
       if (store.run?.id === id && store.sessionAlive) {
@@ -573,7 +635,10 @@
     // _scrollToInFlight is non-reactive (plain let): reading it doesn't create a dependency.
     // When a search scroll-to navigation is in progress, suppress auto-scroll so
     // scrollToMessage isn't overridden by the auto-scroll $effect.
-    isChatAutoScroll = !_scrollToInFlight;
+    // restoringScroll is also non-reactive — don't override it during cache restoration.
+    if (!restoringScroll) {
+      isChatAutoScroll = !_scrollToInFlight;
+    }
     showChatScrollHint = false;
     prevTl = 0;
     prevSt = 0;
@@ -895,6 +960,15 @@
       clearTimeout(chatToastTimeout);
       chatToastTimeout = null;
     }
+    // Save UI view state before leaving the chat page
+    saveChatViewState({
+      runId: store.run?.id ?? "",
+      scrollTop: chatAreaRef?.scrollTop ?? 0,
+      toolPanelActiveTab,
+      sidebarCollapsed,
+      requestedPreviewPath,
+      renderLimit: tl.renderLimit,
+    });
   });
 
   const insight = useConversationInsight({

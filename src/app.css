@@ -1078,7 +1078,7 @@ textarea,
   --context-pill-width-compact: 100px;
   --session-island-side-rail-width: 88px;
   --session-island-shell-width-rest: 260px;
-  --session-island-shell-width-hover: 324px;
+  --session-island-shell-width-hover: 580px;
   --session-island-shell-width-compact: 304px;
   --session-island-shell-width-current: var(--session-island-shell-width-rest);
   --context-pill-slot-width: var(--context-pill-width-rest);

@@ -42,6 +42,7 @@
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
   import TopWindowDrag from "$lib/components/TopWindowDrag.svelte";
+  import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
   import type {
     TaskRun,
     UserSettings,
@@ -1592,7 +1593,16 @@
   });
 
   function newChat() {
-    goto("/chat");
+    // Prefer last chat, otherwise start explicit new chat
+    goto(chatViewCache.lastChatHref || "/chat?new=1");
+  }
+
+  function getNavItemHref(item: { path: string; icon: string }): string {
+    // Chat nav item: return to last chat if available
+    if (item.icon === "message") {
+      return chatViewCache.lastChatHref || "/chat";
+    }
+    return item.path;
   }
 
   function newChatInFolder(cwd: string) {
@@ -1808,7 +1818,7 @@
           {/if}
           {@const isActive = currentPath.startsWith(item.path)}
           <a
-            href={item.path}
+            href={getNavItemHref(item)}
             class="relative flex h-9 w-9 items-center justify-center rounded-md transition-colors duration-150 no-underline
                 {isActive
               ? 'bg-sidebar-accent text-sidebar-accent-foreground'
