@@ -26,5 +26,8 @@ struct AppRouter: View {
                 }
                 .tag(2)
         }
+        .tabViewStyle(.automatic)
+        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
     }
 }

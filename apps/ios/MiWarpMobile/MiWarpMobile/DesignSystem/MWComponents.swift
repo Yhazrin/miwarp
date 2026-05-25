@@ -208,84 +208,59 @@ struct MWStatusPill: View {
     }
 }
 
-// MARK: - Session Card
+// MARK: - Session Card (minimal native row)
 
 struct MWSessionCard: View {
     let run: MiWarpRun
     var onTap: (() -> Void)?
 
+    private var statusColor: Color {
+        switch run.status {
+        case .running: return MWColors.statusRunning
+        case .waitingApproval: return MWColors.statusApproval
+        case .failed: return MWColors.statusError
+        case .completed: return MWColors.statusSuccess
+        case .pending: return MWColors.statusPending
+        case .idle: return MWColors.statusIdle
+        case .stopped: return MWColors.statusStopped
+        }
+    }
+
     var body: some View {
         Button {
             onTap?()
         } label: {
-            VStack(alignment: .leading, spacing: 4) {
-                // Row 1: title + status pill
-                HStack(alignment: .top, spacing: MWSpacing.sm) {
+            HStack(alignment: .center, spacing: MWSpacing.sm) {
+                // Status dot
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 7, height: 7)
+
+                // Title + metadata
+                VStack(alignment: .leading, spacing: 2) {
                     Text(run.displayTitle)
                         .font(MWTypography.bodyMedium())
                         .foregroundColor(MWColors.textPrimary)
                         .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                    MWStatusPill(status: run.status)
-                }
-
-                // Row 2: agent · model
-                Text("\(run.agent) · \(run.model)")
-                    .font(MWTypography.caption())
-                    .foregroundColor(MWColors.textSecondary)
-                    .lineLimit(1)
-
-                // Row 3: cwd
-                Text(run.shortCwd)
-                    .font(MWTypography.monoSmall())
-                    .foregroundColor(MWColors.textTertiary)
-                    .lineLimit(1)
-
-                    Label("\(run.messageCount ?? 0)", systemImage: "message")
+                    Text("\(run.agent) · \(run.model)")
                         .font(MWTypography.caption())
                         .foregroundColor(MWColors.textTertiary)
-
-                    if let lastActivity = run.lastActivity {
-                        Text("·")
-                            .foregroundColor(MWColors.textTertiary)
-                        Text(lastActivity.formatted(.relative(presentation: .named)))
-                            .font(MWTypography.caption2())
-                            .foregroundColor(MWColors.textTertiary)
-                    }
+                        .lineLimit(1)
                 }
 
-                // Source badge
-                HStack(spacing: MWSpacing.sm) {
-                    if run.source != .unknown {
-                        HStack(spacing: MWSpacing.xs) {
-                            Image(systemName: sourceIcon(run.source))
-                                .font(MWTypography.caption2())
-                            Text(sourceLabel(run.source))
-                                .font(MWTypography.caption2())
-                        }
-                        .foregroundColor(MWColors.accentCyan)
-                        .padding(.horizontal, MWSpacing.sm)
-                        .padding(.vertical, 2)
-                        .background(
-                            Capsule()
-                                .fill(MWColors.accentCyan.opacity(0.1))
-                        )
-                    }
+                Spacer()
 
-                    Spacer()
+                // Time
+                if let lastActivity = run.lastActivity {
+                    Text(lastActivity.formatted(.relative(presentation: .named)))
+                        .font(MWTypography.caption())
+                        .foregroundColor(MWColors.textTertiary)
+                        .lineLimit(1)
                 }
             }
-            .padding(.horizontal, MWSpacing.md)
-            .padding(.vertical, MWSpacing.sm)
-            .background(
-                RoundedRectangle(cornerRadius: MWRadius.md)
-                    .fill(MWColors.cardBg)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: MWRadius.md)
-                            .strokeBorder(MWColors.divider.opacity(0.5), lineWidth: 0.5)
-                    )
-            )
+            .padding(.vertical, MWSpacing.xs)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

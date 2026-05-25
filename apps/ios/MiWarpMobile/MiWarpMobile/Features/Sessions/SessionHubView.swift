@@ -3,18 +3,51 @@ import SwiftUI
 struct SessionHubView: View {
     @EnvironmentObject private var store: MiWarpConnectionStore
     @EnvironmentObject private var theme: MWTheme
-    @StateObject private var viewModel = SessionHubViewModel()
+    @State private var runs: [MiWarpRun] = []
+    @State private var isLoading = false
+    @State private var error: String?
+    @State private var searchText = ""
+    @State private var filters = SessionFilters()
+
+    private var filteredRuns: [MiWarpRun] {
+        runs.filter { run in
+            if !searchText.isEmpty {
+                let query = searchText.lowercased()
+                let matchesSearch = (run.displayTitle.lowercased().contains(query)) ||
+                    (run.cwd.lowercased().contains(query)) ||
+                    (run.model.lowercased().contains(query))
+                if !matchesSearch { return false }
+            }
+            if let agent = filters.agent, run.agent != agent { return false }
+            if let status = filters.status, run.status != status { return false }
+            if let source = filters.source, run.source != source { return false }
+            return true
+        }
+    }
+
+    private var activeFilterLabel: String {
+        switch filters.status {
+        case .running: return "Running"
+        case .waitingApproval: return "Approval"
+        case .failed: return "Failed"
+        case .completed: return "Recent"
+        case .idle: return "Idle"
+        case .pending: return "Pending"
+        case .stopped: return "Stopped"
+        case nil: return "All"
+        }
+    }
 
     var body: some View {
         NavigationStack {
             Group {
-                if !store.isConnected && viewModel.runs.isEmpty {
+                if !store.isConnected && runs.isEmpty {
                     notConnectedView
-                } else if viewModel.isLoading && viewModel.runs.isEmpty {
+                } else if isLoading && runs.isEmpty {
                     MWLoadingState(message: "Loading sessions...")
-                } else if let error = viewModel.error, viewModel.runs.isEmpty {
+                } else if let error, runs.isEmpty {
                     MWErrorState(message: error, onAction: {
-                        Task { await viewModel.loadRuns() }
+                        Task { await loadRuns() }
                     })
                 } else {
                     sessionList
@@ -22,19 +55,48 @@ struct SessionHubView: View {
             }
             .background(theme.bgDeepest)
             .navigationTitle("Sessions")
-            .searchable(text: $viewModel.searchText, prompt: "Search sessions...")
+            .searchable(text: $searchText, prompt: "Search...")
             .toolbar {
-                ToolbarItemGroup(placement: .primaryAction) {
+                ToolbarItem(placement: .primaryAction) {
                     if store.isConnected {
-                        Button {
-                            viewModel.showFilters = true
+                        Menu {
+                            Button {
+                                filters.status = nil
+                            } label: {
+                                Label("All", systemImage: filters.status == nil ? "checkmark" : "")
+                            }
+                            Button {
+                                filters.status = filters.status == .running ? nil : .running
+                            } label: {
+                                Label("Running", systemImage: filters.status == .running ? "checkmark" : "")
+                            }
+                            Button {
+                                filters.status = filters.status == .waitingApproval ? nil : .waitingApproval
+                            } label: {
+                                Label("Approval", systemImage: filters.status == .waitingApproval ? "checkmark" : "")
+                            }
+                            Button {
+                                filters.status = filters.status == .failed ? nil : .failed
+                            } label: {
+                                Label("Failed", systemImage: filters.status == .failed ? "checkmark" : "")
+                            }
+                            Button {
+                                filters.status = filters.status == .completed ? nil : .completed
+                            } label: {
+                                Label("Recent", systemImage: filters.status == .completed ? "checkmark" : "")
+                            }
                         } label: {
-                            Image(systemName: viewModel.filters.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
-                                .foregroundColor(viewModel.filters.isActive ? MWColors.accentCyan : MWColors.textSecondary)
+                            HStack(spacing: 4) {
+                                Text(activeFilterLabel)
+                                    .font(MWTypography.caption())
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 10, weight: .medium))
+                            }
+                            .foregroundColor(filters.isActive ? MWColors.tabActive : MWColors.textSecondary)
                         }
 
                         Button {
-                            Task { await viewModel.loadRuns() }
+                            Task { await loadRuns() }
                         } label: {
                             Image(systemName: "arrow.clockwise")
                                 .font(.system(size: 15, weight: .medium))
@@ -43,17 +105,13 @@ struct SessionHubView: View {
                     }
                 }
             }
-            .sheet(isPresented: $viewModel.showFilters) {
-                SessionFiltersView(filters: $viewModel.filters, runs: viewModel.runs)
-            }
             .task {
-                viewModel.attach(store: store)
                 if store.isConnected {
-                    await viewModel.loadRuns()
+                    await loadRuns()
                 }
             }
             .refreshable {
-                await viewModel.loadRuns()
+                await loadRuns()
             }
         }
     }
@@ -71,7 +129,7 @@ struct SessionHubView: View {
                     .frame(width: 100, height: 100)
 
                 Image(systemName: "point.3.filled.connected.trianglepath.dotted")
-                    .font(MWTypography.iconLarge())
+                    .font(.system(size: 40))
                     .foregroundStyle(MWColors.accentPrimary, MWColors.accentCyan)
             }
 
@@ -155,22 +213,17 @@ struct SessionHubView: View {
 
     private var sessionList: some View {
         VStack(spacing: 0) {
-            // Connection status header — compact one-liner
+            // Connection status — ultra compact native bar
             connectionStatusHeader
 
-            // Filter chips
-            if !viewModel.runs.isEmpty {
-                filterChipsRow
-            }
-
             // Content
-            if viewModel.filteredRuns.isEmpty && !viewModel.searchText.isEmpty {
+            if filteredRuns.isEmpty && !searchText.isEmpty {
                 MWEmptyState(
                     icon: "magnifyingglass",
                     title: "No Results",
-                    message: "No sessions match \"\(viewModel.searchText)\""
+                    message: "No sessions match \"\(searchText)\""
                 )
-            } else if viewModel.filteredRuns.isEmpty {
+            } else if filteredRuns.isEmpty {
                 MWEmptyState(
                     icon: "checkmark.circle",
                     title: "All Clear",
@@ -178,26 +231,57 @@ struct SessionHubView: View {
                 )
             } else {
                 List {
-                    ForEach(viewModel.filteredRuns) { run in
-                        NavigationLink(value: run) {
-                            SessionCardView(run: run)
-                        }
-                        .listRowInsets(EdgeInsets(
-                            top: 3,
-                            leading: MWSpacing.md,
-                            bottom: 3,
-                            trailing: MWSpacing.md
-                        ))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
+                    ForEach(filteredRuns) { run in
+                        sessionRow(for: run)
                     }
                 }
                 .listStyle(.plain)
                 .background(theme.bgDeepest)
-                .padding(.bottom, 80) // Safe area for dock
                 .navigationDestination(for: MiWarpRun.self) { run in
                     ChatView(runId: run.id, runTitle: run.displayTitle)
                 }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sessionRow(for run: MiWarpRun) -> some View {
+        NavigationLink(value: run) {
+            SessionCardView(run: run)
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            if run.status == .running {
+                Button(role: .destructive) {
+                    // stop action
+                } label: {
+                    Label("Stop", systemImage: "stop.fill")
+                }
+            }
+            Button {
+                // pin action
+            } label: {
+                Label("Pin", systemImage: "pin")
+            }
+            .tint(MWColors.statusWarning)
+        }
+        .contextMenu {
+            Button {
+                // view details
+            } label: {
+                Label("Details", systemImage: "info.circle")
+            }
+            if run.status == .running {
+                Button(role: .destructive) {
+                    // stop
+                } label: {
+                    Label("Stop", systemImage: "stop.fill")
+                }
+            }
+            Divider()
+            Button {
+                // copy path
+            } label: {
+                Label("Copy Path", systemImage: "doc.on.doc")
             }
         }
     }
@@ -222,52 +306,52 @@ struct SessionHubView: View {
 
             Spacer()
 
-            Text("\(viewModel.filteredRuns.count) sessions")
+            Text("\(filteredRuns.count) sessions")
                 .font(MWTypography.caption())
                 .foregroundColor(MWColors.textTertiary)
         }
         .padding(.horizontal, MWSpacing.md)
         .padding(.vertical, MWSpacing.xs)
-        .background(MWColors.bgDeepest)
+        .background(.ultraThinMaterial)
     }
 
-    private var filterChipsRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: MWSpacing.sm) {
-                filterChip(title: "All", isActive: viewModel.filters.status == nil) {
-                    viewModel.filters.status = nil
-                }
-                filterChip(title: "Active", isActive: viewModel.filters.status == .running) {
-                    viewModel.filters.status = viewModel.filters.status == .running ? nil : .running
-                }
-                filterChip(title: "Idle", isActive: viewModel.filters.status == .idle) {
-                    viewModel.filters.status = viewModel.filters.status == .idle ? nil : .idle
-                }
-                filterChip(title: "Completed", isActive: viewModel.filters.status == .completed) {
-                    viewModel.filters.status = viewModel.filters.status == .completed ? nil : .completed
-                }
-                filterChip(title: "Failed", isActive: viewModel.filters.status == .failed) {
-                    viewModel.filters.status = viewModel.filters.status == .failed ? nil : .failed
-                }
+    // MARK: - Load
+
+    private func loadRuns() async {
+        guard let rpc = store.rpc else {
+            if runs.isEmpty {
+                error = "Not connected"
             }
-            .padding(.horizontal, MWSpacing.md)
-            .padding(.vertical, MWSpacing.xs)
+            return
         }
-        .background(MWColors.bgDeepest)
+
+        isLoading = true
+        error = nil
+
+        do {
+            runs = try await rpc.listRuns()
+        } catch {
+            self.error = error.localizedDescription
+        }
+
+        isLoading = false
+    }
+}
+
+// MARK: - Session Filters
+
+struct SessionFilters {
+    var agent: String?
+    var status: RunStatus?
+    var source: RunSource?
+
+    var isActive: Bool {
+        agent != nil || status != nil || source != nil
     }
 
-    private func filterChip(title: String, isActive: Bool, onTap: @escaping () -> Void) -> some View {
-        Button(action: onTap) {
-            Text(title)
-                .font(MWTypography.caption())
-                .foregroundColor(isActive ? MWColors.tabActive : MWColors.textTertiary)
-                .padding(.horizontal, MWSpacing.md)
-                .padding(.vertical, MWSpacing.xs)
-                .background(
-                    Capsule()
-                        .fill(isActive ? MWColors.tabActive.opacity(0.10) : Color.clear)
-                )
-        }
-        .buttonStyle(.plain)
+    mutating func reset() {
+        agent = nil
+        status = nil
+        source = nil
     }
 }
