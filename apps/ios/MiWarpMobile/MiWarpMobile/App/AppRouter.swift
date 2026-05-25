@@ -49,25 +49,21 @@ struct AppRouter: View {
 
     private func configureTabBarAppearance() {
         let appearance = UITabBarAppearance()
-        appearance.configureWithOpaqueBackground()
-        appearance.backgroundColor = UIColor(MWColors.bgDeepest)
+        appearance.configureWithDefaultBackground()
 
         // Normal state
-        appearance.stackedLayoutAppearance.normal.iconColor = UIColor(MWColors.tabInactive)
+        appearance.stackedLayoutAppearance.normal.iconColor = .secondaryLabel
         appearance.stackedLayoutAppearance.normal.titleTextAttributes = [
-            .foregroundColor: UIColor(MWColors.tabInactive),
+            .foregroundColor: UIColor.secondaryLabel,
             .font: UIFont.systemFont(ofSize: 10, weight: .medium),
         ]
 
-        // Selected state
-        appearance.stackedLayoutAppearance.selected.iconColor = UIColor(MWColors.tabActive)
+        // Selected state — tint color handles this, but set explicit fallback
+        appearance.stackedLayoutAppearance.selected.iconColor = UIColor(theme.accentPrimary)
         appearance.stackedLayoutAppearance.selected.titleTextAttributes = [
-            .foregroundColor: UIColor(MWColors.tabActive),
+            .foregroundColor: UIColor(theme.accentPrimary),
             .font: UIFont.systemFont(ofSize: 10, weight: .semibold),
         ]
-
-        // Top separator
-        appearance.shadowColor = UIColor(MWColors.divider)
 
         UITabBar.appearance().standardAppearance = appearance
         UITabBar.appearance().scrollEdgeAppearance = appearance

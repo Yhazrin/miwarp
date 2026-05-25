@@ -144,7 +144,7 @@ struct ChatView: View {
             await viewModel.loadHistory()
             await viewModel.subscribeToEvents()
         }
-        .onChange(of: store.isConnected) { connected in
+        .onChange(of: store.isConnected) { _, connected in
             if connected && viewModel.reducer.messages.isEmpty && !viewModel.isLoading {
                 Task { await viewModel.loadHistory() }
             }

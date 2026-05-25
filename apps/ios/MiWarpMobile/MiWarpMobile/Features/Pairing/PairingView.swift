@@ -3,7 +3,6 @@ import SwiftUI
 struct PairingView: View {
     @EnvironmentObject private var store: MiWarpConnectionStore
     @EnvironmentObject private var theme: MWTheme
-    @State private var showManualEntry = false
     @State private var showScanner = false
 
     var body: some View {
@@ -46,9 +45,6 @@ struct PairingView: View {
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Connect")
-            .sheet(isPresented: $showManualEntry) {
-                ManualConnectionSheet()
-            }
             .sheet(isPresented: $showScanner) {
                 QRScannerSheet()
             }

@@ -97,7 +97,7 @@ struct SessionHubView: View {
                     await loadRuns()
                 }
             }
-            .onChange(of: store.isConnected) { connected in
+            .onChange(of: store.isConnected) { _, connected in
                 if connected {
                     Task { await loadRuns() }
                 }
@@ -511,55 +511,42 @@ struct SessionRowView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .top, spacing: 8) {
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 8, height: 8)
-                    .padding(.top, 5)
+        HStack(alignment: .top, spacing: 10) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 8, height: 8)
+                .padding(.top, 6)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(run.displayTitle)
-                        .font(.body.weight(.semibold))
-                        .lineLimit(2)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(run.displayTitle)
+                    .font(.body.weight(.medium))
+                    .lineLimit(2)
 
-                    Text(run.displayAgentModel)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                if let cwd = run.displayCwd {
+                    Text(cwd)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.tertiary)
                         .lineLimit(1)
-
-                    if run.hasMetadata {
-                        HStack(spacing: 6) {
-                            if let cwd = run.displayCwd {
-                                Text(cwd)
-                                    .font(.caption2.monospaced())
-                                    .foregroundStyle(.tertiary)
-                                    .lineLimit(1)
-                            }
-                            if run.displayCwd != nil, run.displayMessageCount != nil {
-                                Text("·")
-                                    .foregroundStyle(.tertiary)
-                            }
-                            if let msgs = run.displayMessageCount {
-                                Text(msgs)
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                                    .lineLimit(1)
-                            }
-                        }
-                    }
                 }
+            }
 
-                Spacer()
+            Spacer(minLength: 8)
 
+            VStack(alignment: .trailing, spacing: 3) {
                 if let time = run.displayRelativeTime {
                     Text(time)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
+
+                if let msgs = run.displayMessageCount {
+                    Text(msgs)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 2)
     }
 }
 
