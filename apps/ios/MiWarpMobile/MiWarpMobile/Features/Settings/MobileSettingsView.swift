@@ -281,6 +281,28 @@ struct MobileSettingsView: View {
 
                 Divider().background(MWColors.divider)
 
+                #if canImport(ActivityKit)
+                NavigationLink {
+                    LiveActivityDemoView()
+                } label: {
+                    HStack {
+                        Image(systemName: "livephoto")
+                            .foregroundColor(MWColors.accentCyan)
+                            .frame(width: 24)
+                        Text(String(localized: "Live Activity Demo"))
+                            .font(MWTypography.callout())
+                            .foregroundColor(MWColors.textPrimary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(MWColors.textTertiary)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                Divider().background(MWColors.divider)
+                #endif
+
                 Button {
                     clearTokens()
                 } label: {

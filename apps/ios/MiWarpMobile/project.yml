@@ -52,3 +52,23 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.miwarp.mobile.tests
         INFOPLIST_FILE: MiWarpMobileTests/Info.plist
+
+  MiWarpLiveActivityExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: MiWarpLiveActivityExtension
+      - path: MiWarpMobile/LiveActivities/Models
+      - path: MiWarpMobile/LiveActivities/Attributes
+      - path: MiWarpMobile/LiveActivities/DeepLink
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.miwarp.mobile.live-activity
+        INFOPLIST_FILE: MiWarpLiveActivityExtension/Info.plist
+        SWIFT_VERSION: "5.9"
+        IPHONEOS_DEPLOYMENT_TARGET: "16.1"
+    entitlements:
+      path: MiWarpLiveActivityExtension/MiWarpLiveActivityExtension.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.miwarp.mobile
