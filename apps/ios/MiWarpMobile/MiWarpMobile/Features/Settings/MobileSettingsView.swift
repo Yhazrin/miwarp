@@ -8,21 +8,13 @@ struct MobileSettingsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: MWSpacing.lg) {
-                    generalSection
-
-                    connectionSection
-
-                    sessionsSection
-
-                    aiModelsSection
-
-                    advancedSection
-                }
-                .padding(.vertical, MWSpacing.lg)
+            Form {
+                generalSection
+                connectionSection
+                sessionsSection
+                aiModelsSection
+                advancedSection
             }
-            .background(theme.bgDeepest)
             .navigationTitle("Settings")
             .sheet(isPresented: $showLogs) {
                 LogsView()
@@ -36,90 +28,70 @@ struct MobileSettingsView: View {
     // MARK: - General
 
     private var generalSection: some View {
-        settingsGroup(title: String(localized: "General"), icon: "gearshape.fill") {
-            VStack(spacing: MWSpacing.md) {
-                appearanceRow
-                Divider().background(MWColors.divider)
-                themeRow
-            }
-        }
-    }
-
-    private var appearanceRow: some View {
-        VStack(alignment: .leading, spacing: MWSpacing.sm) {
-            HStack {
-                Image(systemName: theme.appearanceMode.systemImage)
-                    .foregroundColor(MWColors.accentCyan)
-                    .frame(width: 24)
-                Text(String(localized: "Appearance"))
-                    .font(MWTypography.callout())
-                    .foregroundColor(MWColors.textPrimary)
-                Spacer()
-            }
-
-            Picker("", selection: $theme.appearanceMode) {
+        Section {
+            Picker(selection: $theme.appearanceMode) {
                 ForEach(MWAppearanceMode.allCases) { mode in
-                    Text(mode.displayName).tag(mode)
+                    Label(mode.displayName, systemImage: mode.systemImage)
+                        .tag(mode)
                 }
+            } label: {
+                Label("Appearance", systemImage: theme.appearanceMode.systemImage)
             }
-            .pickerStyle(.segmented)
-            .padding(.leading, MWSpacing.xl)
+
+            accentThemePicker
+        } header: {
+            Label("General", systemImage: "gearshape.fill")
         }
     }
 
-    private var themeRow: some View {
-        VStack(alignment: .leading, spacing: MWSpacing.sm) {
-            HStack {
-                Image(systemName: "swatchpalette")
-                    .foregroundColor(MWColors.accentCyan)
-                    .frame(width: 24)
-                Text(String(localized: "Accent Theme"))
-                    .font(MWTypography.callout())
-                    .foregroundColor(MWColors.textPrimary)
-                Spacer()
-            }
+    private var accentThemePicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Accent Theme", systemImage: "swatchpalette")
+                .font(.body)
 
             LazyVGrid(
                 columns: [
-                    GridItem(.flexible(), spacing: MWSpacing.sm),
-                    GridItem(.flexible(), spacing: MWSpacing.sm),
-                    GridItem(.flexible(), spacing: MWSpacing.sm)
+                    GridItem(.flexible(), spacing: 6),
+                    GridItem(.flexible(), spacing: 6),
+                    GridItem(.flexible(), spacing: 6)
                 ],
-                spacing: MWSpacing.sm
+                spacing: 6
             ) {
                 ForEach(MWAccentTheme.allCases.prefix(6)) { accent in
-                    themePreview(accent)
+                    accentSwatchButton(accent)
                 }
             }
-            .padding(.leading, MWSpacing.xl)
         }
+        .padding(.vertical, 4)
     }
 
-    private func themePreview(_ accent: MWAccentTheme) -> some View {
+    private func accentSwatchButton(_ accent: MWAccentTheme) -> some View {
         let isSelected = theme.accentTheme == accent
         return Button {
-            withAnimation(.easeInOut(duration: MWMotion.normal)) {
+            withAnimation(.easeInOut(duration: 0.18)) {
                 theme.accentTheme = accent
             }
         } label: {
-            VStack(spacing: MWSpacing.xs) {
+            VStack(spacing: 3) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: MWRadius.sm)
+                    RoundedRectangle(cornerRadius: 6)
                         .fill(LinearGradient(
                             gradient: Gradient(colors: [accent.primarySwatch, accent.secondarySwatch]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         ))
-                        .frame(height: 36)
+                        .frame(height: 32)
 
-                    Image(systemName: isSelected ? "checkmark" : "")
-                        .font(.caption.bold())
-                        .foregroundColor(.white)
+                    if isSelected {
+                        Image(systemName: "checkmark")
+                            .font(.caption.bold())
+                            .foregroundColor(.white)
+                    }
                 }
 
                 Text(accent.displayName)
-                    .font(MWTypography.caption2())
-                    .foregroundColor(MWColors.textSecondary)
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
                     .lineLimit(1)
             }
         }
@@ -129,238 +101,122 @@ struct MobileSettingsView: View {
     // MARK: - Connection
 
     private var connectionSection: some View {
-        settingsGroup(title: String(localized: "Connection"), icon: "network") {
-            VStack(alignment: .leading, spacing: MWSpacing.md) {
-                if let connection = store.activeConnection, store.isConnected {
-                    HStack {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(MWColors.statusSuccess)
-                        Text(connection.name)
-                            .font(MWTypography.bodyMedium())
-                            .foregroundColor(MWColors.textPrimary)
-                        Spacer()
-                        Text(connection.host)
-                            .font(MWTypography.monoCaption())
-                            .foregroundColor(MWColors.textSecondary)
-                    }
+        Section {
+            if let connection = store.activeConnection, store.isConnected {
+                LabeledContent {
+                    Text(connection.host)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                } label: {
+                    Label(connection.name, systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                }
 
-                    Divider().background(MWColors.divider)
+                Button(role: .destructive) {
+                    store.disconnect()
+                } label: {
+                    Label("Disconnect", systemImage: "xmark.circle")
+                }
 
-                    HStack(spacing: MWSpacing.md) {
-                        Button {
-                            store.disconnect()
-                        } label: {
-                            Label(String(localized: "Disconnect"), systemImage: "xmark.circle")
-                                .font(MWTypography.subheadlineMedium())
-                                .foregroundColor(MWColors.statusError)
-                        }
-                        .buttonStyle(.plain)
+                Button {
+                    store.reconnect()
+                } label: {
+                    Label("Reconnect", systemImage: "arrow.clockwise")
+                }
+            } else {
+                Label("No active connection", systemImage: "wifi.slash")
+                    .foregroundStyle(.tertiary)
 
-                        Button {
-                            store.reconnect()
-                        } label: {
-                            Label(String(localized: "Reconnect"), systemImage: "arrow.clockwise")
-                                .font(MWTypography.subheadlineMedium())
-                                .foregroundColor(MWColors.textSecondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                } else {
-                    HStack {
-                        Image(systemName: "wifi.slash")
-                            .foregroundColor(MWColors.textTertiary)
-                        Text(String(localized: "No active connection"))
-                            .font(MWTypography.callout())
-                            .foregroundColor(MWColors.textTertiary)
-                        Spacer()
-
-                        Button {
-                            store.connectToDefault()
-                        } label: {
-                            Label(String(localized: "Connect"), systemImage: "play.circle")
-                                .font(MWTypography.subheadlineMedium())
-                                .foregroundColor(MWColors.accentPrimary)
-                        }
-                        .buttonStyle(.plain)
-                    }
+                Button {
+                    store.connectToDefault()
+                } label: {
+                    Label("Connect", systemImage: "play.circle")
+                        .foregroundStyle(theme.accentPrimary)
                 }
             }
+        } header: {
+            Label("Connection", systemImage: "network")
         }
     }
 
     // MARK: - Sessions
 
     private var sessionsSection: some View {
-        settingsGroup(title: String(localized: "Sessions"), icon: "bubble.left.and.bubble.right.fill") {
-            VStack(spacing: MWSpacing.sm) {
-                HStack {
-                    Image(systemName: "info.circle")
-                        .foregroundColor(MWColors.accentCyan)
-                        .frame(width: 24)
-                    Text(String(localized: "Sessions sync automatically"))
-                        .font(MWTypography.callout())
-                        .foregroundColor(MWColors.textPrimary)
-                    Spacer()
-                }
+        Section {
+            Label("Sessions sync automatically", systemImage: "info.circle")
+                .foregroundStyle(.secondary)
 
-                Divider().background(MWColors.divider)
-
-                HStack {
-                    Image(systemName: "trash")
-                        .foregroundColor(MWColors.statusError)
-                        .frame(width: 24)
-                    Text(String(localized: "Clear Session History"))
-                        .font(MWTypography.callout())
-                        .foregroundColor(MWColors.textPrimary)
-                    Spacer()
-                }
+            Button(role: .destructive) {
+                // Clear session history
+            } label: {
+                Label("Clear Session History", systemImage: "trash")
             }
+        } header: {
+            Label("Sessions", systemImage: "bubble.left.and.bubble.right.fill")
         }
     }
 
     // MARK: - AI & Models
 
     private var aiModelsSection: some View {
-        settingsGroup(title: String(localized: "AI & Models"), icon: "cpu") {
-            VStack(spacing: MWSpacing.sm) {
-                HStack {
-                    Image(systemName: "cpu")
-                        .foregroundColor(MWColors.accentCyan)
-                        .frame(width: 24)
-                    Text(String(localized: "Default Mode"))
-                        .font(MWTypography.callout())
-                        .foregroundColor(MWColors.textPrimary)
-                    Spacer()
-                    Text("Focus")
-                        .font(MWTypography.monoCaption())
-                        .foregroundColor(MWColors.textSecondary)
-                }
+        Section {
+            LabeledContent("Default Mode") {
+                Text("Focus")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
             }
+        } header: {
+            Label("AI & Models", systemImage: "cpu")
         }
     }
 
     // MARK: - Advanced
 
     private var advancedSection: some View {
-        settingsGroup(title: String(localized: "Advanced"), icon: "slider.horizontal.3") {
-            VStack(spacing: MWSpacing.sm) {
-                Button {
-                    showLogs = true
-                } label: {
-                    HStack {
-                        Image(systemName: "doc.text")
-                            .foregroundColor(MWColors.accentCyan)
-                            .frame(width: 24)
-                        Text(String(localized: "View Logs"))
-                            .font(MWTypography.callout())
-                            .foregroundColor(MWColors.textPrimary)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(MWColors.textTertiary)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                Divider().background(MWColors.divider)
-
-                Button {
-                    copyDebugInfo()
-                } label: {
-                    HStack {
-                        Image(systemName: "doc.on.doc")
-                            .foregroundColor(MWColors.accentCyan)
-                            .frame(width: 24)
-                        Text(String(localized: "Copy Debug Info"))
-                            .font(MWTypography.callout())
-                            .foregroundColor(MWColors.textPrimary)
-                        Spacer()
-                    }
-                }
-                .buttonStyle(.plain)
-
-                Divider().background(MWColors.divider)
-
-                #if canImport(ActivityKit)
-                NavigationLink {
-                    LiveActivityDemoView()
-                } label: {
-                    HStack {
-                        Image(systemName: "livephoto")
-                            .foregroundColor(MWColors.accentCyan)
-                            .frame(width: 24)
-                        Text(String(localized: "Live Activity Demo"))
-                            .font(MWTypography.callout())
-                            .foregroundColor(MWColors.textPrimary)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(MWColors.textTertiary)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                Divider().background(MWColors.divider)
-                #endif
-
-                Button {
-                    clearTokens()
-                } label: {
-                    HStack {
-                        Image(systemName: "key")
-                            .foregroundColor(MWColors.statusError)
-                            .frame(width: 24)
-                        Text(String(localized: "Clear Saved Tokens"))
-                            .font(MWTypography.callout())
-                            .foregroundColor(MWColors.statusError)
-                        Spacer()
-                    }
-                }
-                .buttonStyle(.plain)
-
-                Divider().background(MWColors.divider)
-
-                Button {
-                    showAbout = true
-                } label: {
-                    HStack {
-                        Image(systemName: "info.circle")
-                            .foregroundColor(MWColors.accentCyan)
-                            .frame(width: 24)
-                        Text(String(localized: "About MiWarp Mobile"))
-                            .font(MWTypography.callout())
-                            .foregroundColor(MWColors.textPrimary)
-                        Spacer()
-                        Text("v1.0.0")
-                            .font(MWTypography.monoCaption())
-                            .foregroundColor(MWColors.textTertiary)
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(MWColors.textTertiary)
-                    }
-                }
-                .buttonStyle(.plain)
+        Section {
+            Button {
+                showLogs = true
+            } label: {
+                Label("View Logs", systemImage: "doc.text")
             }
+
+            Button {
+                copyDebugInfo()
+            } label: {
+                Label("Copy Debug Info", systemImage: "doc.on.doc")
+            }
+
+            #if canImport(ActivityKit)
+            NavigationLink {
+                LiveActivityDemoView()
+            } label: {
+                Label("Live Activity Demo", systemImage: "livephoto")
+            }
+            #endif
+
+            Button(role: .destructive) {
+                clearTokens()
+            } label: {
+                Label("Clear Saved Tokens", systemImage: "key")
+            }
+
+            Button {
+                showAbout = true
+            } label: {
+                HStack {
+                    Label("About MiWarp Mobile", systemImage: "info.circle")
+                    Spacer()
+                    Text("v1.0.0")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        } header: {
+            Label("Advanced", systemImage: "slider.horizontal.3")
         }
     }
 
     // MARK: - Helpers
-
-    private func settingsGroup<Content: View>(title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: MWSpacing.sm) {
-            Label(title, systemImage: icon)
-                .font(MWTypography.subheadlineMedium())
-                .foregroundColor(MWColors.textSecondary)
-                .padding(.horizontal, MWSpacing.lg)
-
-            MWGlassCard {
-                VStack(alignment: .leading, spacing: MWSpacing.md) {
-                    content()
-                }
-            }
-            .padding(.horizontal, MWSpacing.lg)
-        }
-    }
 
     private func copyDebugInfo() {
         let info = """
@@ -389,34 +245,32 @@ struct MobileSettingsView: View {
 
 struct LogsView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var theme: MWTheme
     let logger = MiWarpLogger.shared
 
     var body: some View {
         NavigationStack {
             List(logger.recentLogs) { entry in
-                VStack(alignment: .leading, spacing: MWSpacing.xs) {
+                VStack(alignment: .leading, spacing: 2) {
                     HStack {
                         Text(entry.timestamp, style: .time)
-                            .font(MWTypography.monoSmall())
-                            .foregroundColor(MWColors.textTertiary)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.tertiary)
                         Text("[\(entry.category)]")
-                            .font(MWTypography.monoSmall())
-                            .foregroundColor(MWColors.accentCyan)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
                         Spacer()
                         Text(entry.level.rawValue.uppercased())
-                            .font(MWTypography.caption2())
-                            .foregroundColor(logLevelColor(entry.level))
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(logLevelColor(entry.level))
                     }
                     Text(entry.message)
-                        .font(MWTypography.monoCaption())
-                        .foregroundColor(MWColors.textSecondary)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
                 .padding(.vertical, 2)
             }
             .listStyle(.plain)
-            .background(theme.bgDeepest)
             .navigationTitle("Logs")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -425,7 +279,7 @@ struct LogsView: View {
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button("Clear") { logger.clearLogs() }
-                        .foregroundColor(MWColors.statusError)
+                        .foregroundStyle(.red)
                 }
             }
         }
@@ -433,10 +287,10 @@ struct LogsView: View {
 
     private func logLevelColor(_ level: MiWarpLogger.LogLevel) -> Color {
         switch level {
-        case .debug: return MWColors.textTertiary
-        case .info: return MWColors.accentPrimary
-        case .warning: return MWColors.statusWarning
-        case .error: return MWColors.statusError
+        case .debug: return .secondary
+        case .info: return .accent
+        case .warning: return .orange
+        case .error: return .red
         }
     }
 }
@@ -449,38 +303,35 @@ struct AboutView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: MWSpacing.xxl) {
+            VStack(spacing: 32) {
                 Spacer()
 
                 ZStack {
                     Circle()
-                        .fill(MWColors.accentPrimary.opacity(0.08))
+                        .fill(theme.accentPrimary.opacity(0.08))
                         .frame(width: 88, height: 88)
                     Image(systemName: "cpu")
                         .font(.system(size: 40))
-                        .foregroundStyle(MWColors.accentPrimary, MWColors.accentCyan)
+                        .foregroundStyle(theme.accentPrimary, theme.accentSecondary)
                 }
 
-                VStack(spacing: MWSpacing.sm) {
+                VStack(spacing: 6) {
                     Text("MiWarp Mobile")
-                        .font(MWTypography.title())
-                        .foregroundColor(MWColors.textPrimary)
-
+                        .font(.title2.weight(.semibold))
                     Text("Version 1.0.0")
-                        .font(MWTypography.caption())
-                        .foregroundColor(MWColors.textTertiary)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
 
                 Text("Local-first Agent Session Control Center.\nConnect, monitor, and interact with your AI coding sessions from anywhere on your network.")
-                    .font(MWTypography.callout())
-                    .foregroundColor(MWColors.textSecondary)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, MWSpacing.xxl)
+                    .padding(.horizontal, 32)
 
                 Spacer()
             }
-            .background(theme.bgDeepest)
             .navigationTitle("About")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

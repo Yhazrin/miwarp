@@ -8,21 +8,43 @@ struct PairingView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: MWSpacing.lg) {
-                    headerSection
+            List {
+                heroSection
 
-                    scanQRHeroCard
+                Section {
+                    Button {
+                        showScanner = true
+                    } label: {
+                        Label("Scan QR Code", systemImage: "qrcode.viewfinder")
+                    }
 
-                    manualSetupCard
+                    NavigationLink {
+                        ManualConnectionSheet()
+                    } label: {
+                        Label("Manual Setup", systemImage: "keyboard")
+                    }
+                } header: {
+                    Text("Add Connection")
+                }
 
-                    if !store.connections.isEmpty {
-                        savedConnectionsSection
+                if !store.connections.isEmpty {
+                    Section {
+                        ForEach(store.connections) { connection in
+                            ConnectionRow(
+                                connection: connection,
+                                isActive: store.activeConnection?.id == connection.id,
+                                connectionState: store.activeConnection?.id == connection.id ? store.connectionState : .disconnected,
+                                onConnect: { store.connect(to: connection) },
+                                onDisconnect: { store.disconnect() },
+                                onDelete: { store.removeConnection(connection) }
+                            )
+                        }
+                    } header: {
+                        Text("Saved Connections")
                     }
                 }
-                .padding(.vertical, MWSpacing.lg)
             }
-            .background(theme.bgDeepest)
+            .listStyle(.insetGrouped)
             .navigationTitle("Connect")
             .sheet(isPresented: $showManualEntry) {
                 ManualConnectionSheet()
@@ -33,166 +55,64 @@ struct PairingView: View {
         }
     }
 
-    // MARK: - Header
+    // MARK: - Hero
 
-    private var headerSection: some View {
-        VStack(spacing: MWSpacing.xs) {
-            Text(String(localized: "Connect Desktop"))
-                .font(MWTypography.title())
-                .foregroundColor(MWColors.textPrimary)
+    private var heroSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Connect Desktop")
+                        .font(.title2.weight(.semibold))
+                        .foregroundColor(.white)
 
-            Text(String(localized: "Scan QR code or enter details manually."))
-                .font(MWTypography.callout())
-                .foregroundColor(MWColors.textSecondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding(.horizontal, MWSpacing.xl)
-    }
-
-    // MARK: - Scan QR Hero Card
-
-    private var scanQRHeroCard: some View {
-        VStack(alignment: .leading, spacing: MWSpacing.md) {
-            VStack(alignment: .leading, spacing: MWSpacing.sm) {
-                Text(String(localized: "Scan QR Code"))
-                    .font(MWTypography.title())
-                    .foregroundColor(.white)
-
-                Text(String(localized: "Point your camera at the QR code shown in MiWarp Desktop."))
-                    .font(MWTypography.callout())
-                    .foregroundColor(.white.opacity(0.85))
-            }
-
-            Button {
-                showScanner = true
-            } label: {
-                HStack(spacing: MWSpacing.sm) {
-                    Image(systemName: "qrcode.viewfinder")
-                        .font(.system(size: 16, weight: .medium))
-
-                    Text(String(localized: "Scan QR Code"))
-                        .font(MWTypography.bodyMedium())
-
-                    Spacer()
-
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 14, weight: .medium))
+                    Text("Scan QR code or enter details manually.")
+                        .font(.callout)
+                        .foregroundColor(.white.opacity(0.85))
                 }
-                .foregroundColor(MWColors.accentPrimary)
-                .padding(.horizontal, MWSpacing.lg)
-                .padding(.vertical, MWSpacing.md)
-                .background(
-                    Capsule()
-                        .fill(Color.white)
-                )
+
+                HStack(spacing: 8) {
+                    heroPill(icon: "server.rack", label: "Enable Server")
+                    heroPill(icon: "network", label: "LAN Access")
+                    heroPill(icon: "qrcode.viewfinder", label: "Scan QR")
+                }
             }
-        }
-        .padding(MWSpacing.lg)
-        .background(
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(hex: 0xC51F62),
-                    Color(hex: 0x8B3DFF)
-                ]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+            .padding(.vertical, 8)
+            .listRowInsets(EdgeInsets())
+            .frame(maxWidth: .infinity)
+            .padding(16)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(hex: 0xC51F62),
+                        Color(hex: 0x8B3DFF)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
             )
+        }
+    }
+
+    private func heroPill(icon: String, label: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .medium))
+            Text(label)
+                .font(.caption)
+        }
+        .foregroundColor(.white.opacity(0.9))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(Color.white.opacity(0.2))
         )
-        .clipShape(RoundedRectangle(cornerRadius: MWRadius.xxl))
-        .padding(.horizontal, MWSpacing.md)
-    }
-
-    // MARK: - Manual Setup Card
-
-    private var manualSetupCard: some View {
-        VStack(spacing: MWSpacing.sm) {
-            Button {
-                showManualEntry = true
-            } label: {
-                HStack(spacing: MWSpacing.md) {
-                    Image(systemName: "keyboard")
-                        .font(.system(size: 20))
-                        .foregroundColor(MWColors.accentPrimary)
-                        .frame(width: 28)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(String(localized: "Manual Setup"))
-                            .font(MWTypography.bodyMedium())
-                            .foregroundColor(MWColors.textPrimary)
-
-                        Text(String(localized: "Host, port, and token"))
-                            .font(MWTypography.caption())
-                            .foregroundColor(MWColors.textTertiary)
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(MWColors.textTertiary)
-                }
-                .padding(MWSpacing.lg)
-                .background(
-                    RoundedRectangle(cornerRadius: MWRadius.lg)
-                        .fill(MWColors.glassBg)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: MWRadius.lg)
-                                .strokeBorder(MWColors.glassBorder, lineWidth: 0.5)
-                        )
-                )
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, MWSpacing.md)
-    }
-
-    // MARK: - Saved Connections
-
-    private var savedConnectionsSection: some View {
-        VStack(alignment: .leading, spacing: MWSpacing.md) {
-            HStack {
-                Text(String(localized: "Saved Connections"))
-                    .font(MWTypography.title3())
-                    .foregroundColor(MWColors.textPrimary)
-
-                Spacer()
-
-                Text("\(store.connections.count)")
-                    .font(MWTypography.caption())
-                    .foregroundColor(MWColors.textTertiary)
-                    .padding(.horizontal, MWSpacing.sm)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule()
-                            .fill(MWColors.bgSurface)
-                    )
-            }
-            .padding(.horizontal, MWSpacing.lg)
-
-            ForEach(store.connections) { connection in
-                ConnectionCard(
-                    connection: connection,
-                    isActive: store.activeConnection?.id == connection.id,
-                    connectionState: store.activeConnection?.id == connection.id ? store.connectionState : .disconnected,
-                    onConnect: {
-                        store.connect(to: connection)
-                    },
-                    onDisconnect: {
-                        store.disconnect()
-                    },
-                    onDelete: {
-                        store.removeConnection(connection)
-                    }
-                )
-                .padding(.horizontal, MWSpacing.lg)
-            }
-        }
     }
 }
 
-// MARK: - Connection Card
+// MARK: - Connection Row
 
-struct ConnectionCard: View {
+struct ConnectionRow: View {
     let connection: MiWarpConnection
     let isActive: Bool
     let connectionState: ConnectionState
@@ -201,78 +121,72 @@ struct ConnectionCard: View {
     var onDelete: (() -> Void)?
 
     var body: some View {
-        MWGlassCard(borderColor: isActive ? MWColors.tabActive.opacity(0.3) : nil) {
-            VStack(alignment: .leading, spacing: MWSpacing.md) {
-                HStack {
-                    VStack(alignment: .leading, spacing: MWSpacing.xs) {
-                        HStack(spacing: MWSpacing.sm) {
-                            Text(connection.name)
-                                .font(MWTypography.bodyMedium())
-                                .foregroundColor(MWColors.textPrimary)
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(connection.name)
+                        .font(.body.weight(.medium))
 
-                            if connection.isDefault {
-                                Image(systemName: "star.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(MWColors.statusPending)
-                            }
-                        }
-
-                        Text("\(connection.host):\(connection.port)")
-                            .font(MWTypography.monoCaption())
-                            .foregroundColor(MWColors.textSecondary)
-                    }
-
-                    Spacer()
-
-                    if isActive {
-                        MWStatusIndicator(state: connectionState)
+                    if connection.isDefault {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 9))
+                            .foregroundColor(.orange)
                     }
                 }
 
-                HStack(spacing: MWSpacing.sm) {
-                    if isActive && connectionState == .connected {
-                        Button {
-                            onDisconnect?()
-                        } label: {
-                            Label("Disconnect", systemImage: "xmark.circle")
-                                .font(MWTypography.caption())
-                                .foregroundColor(MWColors.statusError)
-                                .padding(.horizontal, MWSpacing.md)
-                                .padding(.vertical, MWSpacing.xs)
-                                .background(
-                                    Capsule()
-                                        .strokeBorder(MWColors.statusError.opacity(0.3), lineWidth: 0.5)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    } else {
-                        Button {
-                            onConnect?()
-                        } label: {
-                            Label("Connect", systemImage: "play.fill")
-                                .font(MWTypography.caption())
-                                .foregroundColor(MWColors.accentPrimary)
-                                .padding(.horizontal, MWSpacing.md)
-                                .padding(.vertical, MWSpacing.xs)
-                                .background(
-                                    Capsule()
-                                        .fill(MWColors.accentPrimary.opacity(0.12))
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
+                Text("\(connection.host):\(connection.port)")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.secondary)
+            }
 
-                    Spacer()
+            Spacer()
 
-                    Button {
-                        onDelete?()
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.caption)
-                            .foregroundColor(MWColors.textTertiary)
-                    }
-                    .buttonStyle(.plain)
+            if isActive {
+                MWStatusIndicator(state: connectionState)
+            }
+        }
+        .swipeActions(edge: .trailing) {
+            if isActive && connectionState == .connected {
+                Button {
+                    onDisconnect?()
+                } label: {
+                    Label("Disconnect", systemImage: "xmark.circle")
                 }
+                .tint(.red)
+            } else {
+                Button {
+                    onConnect?()
+                } label: {
+                    Label("Connect", systemImage: "play.fill")
+                }
+                .tint(.green)
+            }
+
+            Button(role: .destructive) {
+                onDelete?()
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+        .contextMenu {
+            if isActive && connectionState == .connected {
+                Button {
+                    onDisconnect?()
+                } label: {
+                    Label("Disconnect", systemImage: "xmark.circle")
+                }
+            } else {
+                Button {
+                    onConnect?()
+                } label: {
+                    Label("Connect", systemImage: "play.fill")
+                }
+            }
+            Divider()
+            Button(role: .destructive) {
+                onDelete?()
+            } label: {
+                Label("Delete", systemImage: "trash")
             }
         }
     }
@@ -314,8 +228,8 @@ struct ManualConnectionSheet: View {
                 if let error {
                     Section {
                         Text(error)
-                            .foregroundColor(MWColors.statusError)
-                            .font(MWTypography.callout())
+                            .foregroundStyle(.red)
+                            .font(.callout)
                     }
                 }
             }
@@ -373,20 +287,19 @@ struct QRScannerSheet: View {
                 .ignoresSafeArea()
 
                 if isAuthenticating {
-                    HStack(spacing: MWSpacing.sm) {
+                    HStack(spacing: 8) {
                         ProgressView()
-                            .tint(MWColors.accentCyan)
                         Text("Verifying...")
-                            .font(MWTypography.caption())
-                            .foregroundColor(MWColors.textSecondary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                     .padding()
                 }
 
                 if let error {
                     Text(error)
-                        .foregroundColor(MWColors.statusError)
-                        .font(MWTypography.callout())
+                        .foregroundStyle(.red)
+                        .font(.callout)
                         .padding()
                 }
             }

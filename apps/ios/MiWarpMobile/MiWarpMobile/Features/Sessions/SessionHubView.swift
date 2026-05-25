@@ -49,86 +49,45 @@ struct SessionHubView: View {
                 } else if store.isConnected && !isLoading && runs.isEmpty {
                     connectedEmptyView
                 } else if isLoading && runs.isEmpty {
-                    MWLoadingState(message: String(localized: "Loading sessions..."))
+                    ContentUnavailableView {
+                        Label("Loading Sessions", systemImage: "arrow.clockwise")
+                    } description: {
+                        Text("Fetching sessions from your desktop...")
+                    }
                 } else if let error, runs.isEmpty {
-                    MWErrorState(
-                        message: error,
-                        title: String(localized: "Cannot Load Sessions"),
-                        actionTitle: String(localized: "Retry"),
-                        onAction: { Task { await loadRuns() } }
-                    )
+                    ContentUnavailableView {
+                        Label("Cannot Load Sessions", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text(error)
+                    } actions: {
+                        Button("Retry") { Task { await loadRuns() } }
+                            .buttonStyle(.bordered)
+                    }
                 } else {
                     sessionList
                 }
             }
-            .background(theme.bgDeepest)
-            .navigationTitle(String(localized: "Sessions"))
-            .searchable(text: $searchText, prompt: String(localized: "Search..."))
+            .navigationTitle("Sessions")
+            .searchable(text: $searchText, prompt: "Search sessions...")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     if store.isConnected {
                         Menu {
-                            Button {
-                                filters.status = nil
-                            } label: {
-                                Label { Text(String(localized: "All")) } icon: {
-                                    if filters.status == nil {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                            Button {
-                                filters.status = filters.status == .running ? nil : .running
-                            } label: {
-                                Label { Text(String(localized: "Running")) } icon: {
-                                    if filters.status == .running {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                            Button {
-                                filters.status = filters.status == .waitingApproval ? nil : .waitingApproval
-                            } label: {
-                                Label { Text(String(localized: "Approval")) } icon: {
-                                    if filters.status == .waitingApproval {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                            Button {
-                                filters.status = filters.status == .failed ? nil : .failed
-                            } label: {
-                                Label { Text(String(localized: "Failed")) } icon: {
-                                    if filters.status == .failed {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                            Button {
-                                filters.status = filters.status == .completed ? nil : .completed
-                            } label: {
-                                Label { Text(String(localized: "Recent")) } icon: {
-                                    if filters.status == .completed {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
+                            filterMenuContent
                         } label: {
                             HStack(spacing: 4) {
                                 Text(activeFilterLabel)
-                                    .font(MWTypography.caption())
+                                    .font(.caption)
                                 Image(systemName: "chevron.down")
                                     .font(.system(size: 10, weight: .medium))
                             }
-                            .foregroundColor(filters.isActive ? MWColors.tabActive : MWColors.textSecondary)
+                            .foregroundColor(filters.isActive ? theme.tabActive : .secondary)
                         }
 
                         Button {
                             Task { await loadRuns() }
                         } label: {
                             Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 15, weight: .medium))
-                                .foregroundColor(MWColors.textSecondary)
                         }
                     }
                 }
@@ -149,100 +108,90 @@ struct SessionHubView: View {
         }
     }
 
+    // MARK: - Filter Menu
+
+    @ViewBuilder
+    private var filterMenuContent: some View {
+        Button {
+            filters.status = nil
+        } label: {
+            Label("All", systemImage: filters.status == nil ? "checkmark" : "")
+        }
+        Button {
+            filters.status = filters.status == .running ? nil : .running
+        } label: {
+            Label("Running", systemImage: filters.status == .running ? "checkmark" : "")
+        }
+        Button {
+            filters.status = filters.status == .waitingApproval ? nil : .waitingApproval
+        } label: {
+            Label("Approval", systemImage: filters.status == .waitingApproval ? "checkmark" : "")
+        }
+        Button {
+            filters.status = filters.status == .failed ? nil : .failed
+        } label: {
+            Label("Failed", systemImage: filters.status == .failed ? "checkmark" : "")
+        }
+        Button {
+            filters.status = filters.status == .completed ? nil : .completed
+        } label: {
+            Label("Recent", systemImage: filters.status == .completed ? "checkmark" : "")
+        }
+    }
+
     // MARK: - Not Connected View
 
     private var notConnectedView: some View {
         ScrollView {
-            VStack(spacing: MWSpacing.lg) {
-                headerSection
-
-                heroCard
-
+            VStack(spacing: 16) {
+                notConnectedHero
                 statusHint
-
-                Spacer(minLength: MWSpacing.xxl)
             }
-            .padding(.horizontal, MWSpacing.md)
-        }
-        .background(theme.bgDeepest)
-    }
-
-    // MARK: - Connected but Empty View
-
-    private var connectedEmptyView: some View {
-        ScrollView {
-            VStack(spacing: MWSpacing.lg) {
-                headerSection
-
-                connectedHeroCard
-
-                connectedStatusHint
-
-                Spacer(minLength: MWSpacing.xxl)
-            }
-            .padding(.horizontal, MWSpacing.md)
-        }
-        .background(theme.bgDeepest)
-        .task {
-            await loadRuns()
+            .padding(.horizontal, 16)
+            .padding(.top, 20)
         }
     }
 
-    private var headerSection: some View {
-        VStack(alignment: .leading, spacing: MWSpacing.xs) {
-            Text(String(localized: "Connect, sync, and continue your MiWarp conversations."))
-                .font(MWTypography.callout())
-                .foregroundColor(MWColors.textSecondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, MWSpacing.lg)
-    }
-
-    // MARK: - Hero Card (Not Connected)
-
-    private var heroCard: some View {
-        VStack(alignment: .leading, spacing: MWSpacing.md) {
-            VStack(alignment: .leading, spacing: MWSpacing.sm) {
-                Text(String(localized: "Connect Desktop"))
-                    .font(MWTypography.title())
+    private var notConnectedHero: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Connect Desktop")
+                    .font(.title2.weight(.semibold))
                     .foregroundColor(.white)
 
-                Text(String(localized: "Sync local MiWarp sessions over your network."))
-                    .font(MWTypography.callout())
+                Text("Sync local MiWarp sessions over your network.")
+                    .font(.callout)
                     .foregroundColor(.white.opacity(0.85))
             }
 
             NavigationLink {
                 PairingView()
             } label: {
-                HStack(spacing: MWSpacing.sm) {
+                HStack(spacing: 8) {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 16, weight: .medium))
-
-                    Text(String(localized: "Connect Now"))
-                        .font(MWTypography.bodyMedium())
-
+                    Text("Connect Now")
+                        .font(.body.weight(.medium))
                     Spacer()
-
                     Image(systemName: "arrow.right")
                         .font(.system(size: 14, weight: .medium))
                 }
-                .foregroundColor(MWColors.accentPrimary)
-                .padding(.horizontal, MWSpacing.lg)
-                .padding(.vertical, MWSpacing.md)
+                .foregroundColor(theme.accentPrimary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
                 .background(
                     Capsule()
                         .fill(Color.white)
                 )
             }
 
-            HStack(spacing: MWSpacing.sm) {
-                stepPill(icon: "server.rack", label: String(localized: "Enable Server"))
-                stepPill(icon: "network", label: String(localized: "LAN Access"))
-                stepPill(icon: "qrcode.viewfinder", label: String(localized: "Scan QR"))
+            HStack(spacing: 8) {
+                heroPill(icon: "server.rack", label: "Enable Server")
+                heroPill(icon: "network", label: "LAN Access")
+                heroPill(icon: "qrcode.viewfinder", label: "Scan QR")
             }
         }
-        .padding(MWSpacing.lg)
+        .padding(16)
         .background(
             LinearGradient(
                 gradient: Gradient(colors: [
@@ -253,43 +202,40 @@ struct SessionHubView: View {
                 endPoint: .bottomTrailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: MWRadius.xxl))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    private func stepPill(icon: String, label: String) -> some View {
-        HStack(spacing: MWSpacing.xs) {
-            Image(systemName: icon)
-                .font(.system(size: 10, weight: .medium))
+    // MARK: - Connected Empty View
 
-            Text(label)
-                .font(MWTypography.caption())
+    private var connectedEmptyView: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                connectedHeroCard
+                connectedStatusHint
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 20)
         }
-        .foregroundColor(.white.opacity(0.9))
-        .padding(.horizontal, MWSpacing.sm)
-        .padding(.vertical, MWSpacing.xs)
-        .background(
-            Capsule()
-                .fill(Color.white.opacity(0.2))
-        )
+        .task {
+            await loadRuns()
+        }
     }
-
-    // MARK: - Connected Hero Card (No Sessions Yet)
 
     private var connectedHeroCard: some View {
-        VStack(alignment: .leading, spacing: MWSpacing.md) {
-            VStack(alignment: .leading, spacing: MWSpacing.sm) {
-                HStack(spacing: MWSpacing.sm) {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 18))
-                        .foregroundColor(Color(hex: 0x22C55E))
+                        .foregroundColor(.green)
 
-                    Text(String(localized: "Desktop Connected"))
-                        .font(MWTypography.title())
+                    Text("Desktop Connected")
+                        .font(.title2.weight(.semibold))
                         .foregroundColor(.white)
                 }
 
-                Text(String(localized: "Waiting for sessions to sync."))
-                    .font(MWTypography.callout())
+                Text("Waiting for sessions to sync.")
+                    .font(.callout)
                     .foregroundColor(.white.opacity(0.85))
             }
 
@@ -299,7 +245,6 @@ struct SessionHubView: View {
                     syncManager.cancelSync()
                 } else {
                     syncManager.startSync(store: store)
-                    // Also refresh the runs list after sync completes
                     Task {
                         try? await Task.sleep(nanoseconds: 500_000_000)
                         while syncManager.isSyncing {
@@ -309,24 +254,23 @@ struct SessionHubView: View {
                     }
                 }
             } label: {
-                HStack(spacing: MWSpacing.sm) {
+                HStack(spacing: 8) {
                     if syncManager.isSyncing {
                         ProgressView()
                             .scaleEffect(0.8)
-                            .tint(MWColors.accentPrimary)
                         Text(syncManager.syncPhase.displayTitle)
-                            .font(MWTypography.bodyMedium())
+                            .font(.body.weight(.medium))
                     } else {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 14, weight: .medium))
-                        Text(String(localized: "Sync Now"))
-                            .font(MWTypography.bodyMedium())
+                        Text("Sync Now")
+                            .font(.body.weight(.medium))
                     }
                     Spacer()
                 }
-                .foregroundColor(MWColors.accentPrimary)
-                .padding(.horizontal, MWSpacing.lg)
-                .padding(.vertical, MWSpacing.md)
+                .foregroundColor(theme.accentPrimary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
                 .background(
                     Capsule()
                         .fill(Color.white)
@@ -337,16 +281,16 @@ struct SessionHubView: View {
             Button {
                 Task { await loadRuns() }
             } label: {
-                HStack(spacing: MWSpacing.sm) {
+                HStack(spacing: 8) {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 14, weight: .medium))
-                    Text(String(localized: "Sync Now"))
-                        .font(MWTypography.bodyMedium())
+                    Text("Sync Now")
+                        .font(.body.weight(.medium))
                     Spacer()
                 }
-                .foregroundColor(MWColors.accentPrimary)
-                .padding(.horizontal, MWSpacing.lg)
-                .padding(.vertical, MWSpacing.md)
+                .foregroundColor(theme.accentPrimary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
                 .background(
                     Capsule()
                         .fill(Color.white)
@@ -355,16 +299,16 @@ struct SessionHubView: View {
             #endif
 
             if let conn = store.activeConnection {
-                HStack(spacing: MWSpacing.xs) {
+                HStack(spacing: 4) {
                     Image(systemName: "desktopcomputer")
                         .font(.system(size: 10))
                     Text(conn.host)
-                        .font(MWTypography.caption())
+                        .font(.caption)
                 }
                 .foregroundColor(.white.opacity(0.7))
             }
         }
-        .padding(MWSpacing.lg)
+        .padding(16)
         .background(
             LinearGradient(
                 gradient: Gradient(colors: [
@@ -375,189 +319,225 @@ struct SessionHubView: View {
                 endPoint: .bottomTrailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: MWRadius.xxl))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    // MARK: - Status Hint (Not Connected)
+    // MARK: - Status Hints
 
     private var statusHint: some View {
-        VStack(spacing: MWSpacing.xs) {
-            Text(String(localized: "No desktop connected"))
-                .font(MWTypography.subheadlineMedium())
-                .foregroundColor(MWColors.textSecondary)
-
-            Text(String(localized: "Start MiWarp Desktop and enable Web Server to begin."))
-                .font(MWTypography.caption())
-                .foregroundColor(MWColors.textTertiary)
+        VStack(spacing: 4) {
+            Text("No desktop connected")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+            Text("Start MiWarp Desktop and enable Web Server to begin.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, MWSpacing.md)
-        .padding(.horizontal, MWSpacing.lg)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
         .background(
-            RoundedRectangle(cornerRadius: MWRadius.md)
-                .fill(Color(hex: 0xFFF0F5).opacity(0.6))
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(.secondarySystemGroupedBackground))
         )
     }
 
-    // MARK: - Connected Status Hint (No Sessions)
-
     private var connectedStatusHint: some View {
-        VStack(spacing: MWSpacing.xs) {
-            Text(String(localized: "No sessions yet"))
-                .font(MWTypography.subheadlineMedium())
-                .foregroundColor(MWColors.textSecondary)
-
-            Text(String(localized: "Start a session in MiWarp Desktop to see it here."))
-                .font(MWTypography.caption())
-                .foregroundColor(MWColors.textTertiary)
+        VStack(spacing: 4) {
+            Text("No sessions yet")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.secondary)
+            Text("Start a session in MiWarp Desktop to see it here.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, MWSpacing.md)
-        .padding(.horizontal, MWSpacing.lg)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
         .background(
-            RoundedRectangle(cornerRadius: MWRadius.md)
-                .fill(Color(hex: 0xF0FDF4).opacity(0.6))
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
+    }
+
+    // MARK: - Helper
+
+    private func heroPill(icon: String, label: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .medium))
+            Text(label)
+                .font(.caption)
+        }
+        .foregroundColor(.white.opacity(0.9))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(Color.white.opacity(0.2))
         )
     }
 
     // MARK: - Session List
 
     private var sessionList: some View {
-        VStack(spacing: 0) {
-            connectionStatusHeader
+        List {
+            // Connection status header
+            Section {
+                EmptyView()
+            } header: {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(store.isConnected ? .green : .red)
+                        .frame(width: 6, height: 6)
+
+                    Text(store.isConnected ? "Connected" : "Disconnected")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+
+                    if let conn = store.activeConnection {
+                        Text("·")
+                            .foregroundStyle(.tertiary)
+                        Text(conn.host)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.tertiary)
+                    }
+
+                    Spacer()
+
+                    Text("\(filteredRuns.count) sessions")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
 
             if filteredRuns.isEmpty && !searchText.isEmpty {
-                MWEmptyState(
-                    icon: "magnifyingglass",
-                    title: String(localized: "No Results"),
-                    message: String(localized: "No sessions match \"\(searchText)\"")
-                )
+                ContentUnavailableView.search(text: searchText)
             } else if filteredRuns.isEmpty {
-                MWEmptyState(
-                    icon: "checkmark.circle",
-                    title: String(localized: "All Clear"),
-                    message: String(localized: "No sessions match the current filters")
-                )
+                ContentUnavailableView {
+                    Label("All Clear", systemImage: "checkmark.circle")
+                } description: {
+                    Text("No sessions match the current filters")
+                }
             } else {
-                List {
-                    ForEach(filteredRuns) { run in
-                        sessionRow(for: run)
+                ForEach(filteredRuns) { run in
+                    NavigationLink(value: run) {
+                        SessionRowView(run: run)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        if run.status == .running {
+                            Button(role: .destructive) {
+                                // stop action
+                            } label: {
+                                Label("Stop", systemImage: "stop.fill")
+                            }
+                        }
+                        Button {
+                            // pin action
+                        } label: {
+                            Label("Pin", systemImage: "pin")
+                        }
+                        .tint(.orange)
+                    }
+                    .contextMenu {
+                        Button {
+                            // view details
+                        } label: {
+                            Label("Details", systemImage: "info.circle")
+                        }
+                        if run.status == .running {
+                            Button(role: .destructive) {
+                                // stop
+                            } label: {
+                                Label("Stop", systemImage: "stop.fill")
+                            }
+                        }
+                        Divider()
+                        Button {
+                            // copy path
+                        } label: {
+                            Label("Copy Path", systemImage: "doc.on.doc")
+                        }
                     }
                 }
-                .listStyle(.plain)
-                .background(theme.bgDeepest)
-                .navigationDestination(for: MiWarpRun.self) { run in
-                    ChatView(runId: run.id, runTitle: run.displayTitle)
-                }
             }
         }
-        .background(theme.bgDeepest)
-        .safeAreaInset(edge: .bottom) {
-            Color.clear.frame(height: 1)
+        .listStyle(.plain)
+        .navigationDestination(for: MiWarpRun.self) { run in
+            ChatView(runId: run.id, runTitle: run.displayTitle)
+        }
+    }
+}
+
+// MARK: - Session Row (native style)
+
+struct SessionRowView: View {
+    let run: MiWarpRun
+
+    private var statusColor: Color {
+        switch run.status {
+        case .running:    return .green
+        case .waitingApproval: return .orange
+        case .failed:     return .red
+        case .completed:  return .gray
+        case .idle:       return .secondary
+        case .pending:    return .blue
+        case .stopped:    return .gray
         }
     }
 
-    @ViewBuilder
-    private func sessionRow(for run: MiWarpRun) -> some View {
-        NavigationLink(value: run) {
-            SessionCardView(run: run)
-        }
-        .listRowInsets(EdgeInsets(
-            top: 0,
-            leading: MWSpacing.md,
-            bottom: 0,
-            trailing: MWSpacing.md
-        ))
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            if run.status == .running {
-                Button(role: .destructive) {
-                    // stop action
-                } label: {
-                    Label(String(localized: "Stop"), systemImage: "stop.fill")
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top, spacing: 8) {
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 8, height: 8)
+                    .padding(.top, 5)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(run.displayTitle)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(2)
+
+                    Text(run.displayAgentModel)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+
+                    if run.hasMetadata {
+                        HStack(spacing: 6) {
+                            if let cwd = run.displayCwd {
+                                Text(cwd)
+                                    .font(.caption2.monospaced())
+                                    .foregroundStyle(.tertiary)
+                                    .lineLimit(1)
+                            }
+                            if run.displayCwd != nil, run.displayMessageCount != nil {
+                                Text("·")
+                                    .foregroundStyle(.tertiary)
+                            }
+                            if let msgs = run.displayMessageCount {
+                                Text(msgs)
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+
+                Spacer()
+
+                if let time = run.displayRelativeTime {
+                    Text(time)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
             }
-            Button {
-                // pin action
-            } label: {
-                Label(String(localized: "Pin"), systemImage: "pin")
-            }
-            .tint(MWColors.statusWarning)
         }
-        .contextMenu {
-            Button {
-                // view details
-            } label: {
-                Label(String(localized: "Details"), systemImage: "info.circle")
-            }
-            if run.status == .running {
-                Button(role: .destructive) {
-                    // stop
-                } label: {
-                    Label(String(localized: "Stop"), systemImage: "stop.fill")
-                }
-            }
-            Divider()
-            Button {
-                // copy path
-            } label: {
-                Label(String(localized: "Copy Path"), systemImage: "doc.on.doc")
-            }
-        }
-    }
-
-    private var connectionStatusHeader: some View {
-        HStack(spacing: MWSpacing.sm) {
-            Circle()
-                .fill(store.isConnected ? Color(hex: 0x22C55E) : MWColors.statusError)
-                .frame(width: 6, height: 6)
-
-            Text(store.isConnected ? String(localized: "Connected") : String(localized: "Disconnected"))
-                .font(.system(size: 12))
-                .foregroundColor(MWColors.textTertiary)
-
-            if let conn = store.activeConnection {
-                Text("·")
-                    .foregroundColor(MWColors.textTertiary)
-                Text(conn.host)
-                    .font(.system(size: 11).monospaced())
-                    .foregroundColor(MWColors.textTertiary)
-            }
-
-            Spacer()
-
-            Text("\(filteredRuns.count) " + String(localized: "sessions"))
-                .font(.system(size: 12))
-                .foregroundColor(MWColors.textTertiary)
-        }
-        .padding(.horizontal, MWSpacing.md)
-        .padding(.vertical, MWSpacing.xs)
-        .background(theme.bgDeepest)
-    }
-
-    // MARK: - Load
-
-    private func loadRuns() async {
-        guard let rpc = store.rpc else {
-            if runs.isEmpty {
-                error = String(localized: "Not connected")
-            }
-            return
-        }
-
-        isLoading = true
-        error = nil
-
-        do {
-            runs = try await rpc.listRuns()
-        } catch {
-            self.error = error.localizedDescription
-        }
-
-        isLoading = false
+        .padding(.vertical, 4)
     }
 }
 
