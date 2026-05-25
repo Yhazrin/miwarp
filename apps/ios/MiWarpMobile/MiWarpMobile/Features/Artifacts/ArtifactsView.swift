@@ -3,7 +3,6 @@ import SwiftUI
 struct ArtifactsView: View {
     let runId: String
     @EnvironmentObject private var store: MiWarpConnectionStore
-    @EnvironmentObject private var theme: MWTheme
     @State private var artifacts: RunArtifacts?
     @State private var isLoading = false
     @State private var error: String?
@@ -11,25 +10,29 @@ struct ArtifactsView: View {
     var body: some View {
         Group {
             if isLoading {
-                MWLoadingState(message: "Loading artifacts...")
+                ContentUnavailableView {
+                    Label("Loading Artifacts", systemImage: "arrow.clockwise")
+                }
             } else if let error {
-                MWErrorState(message: error, onAction: {
-                    Task { await loadArtifacts() }
-                })
+                ContentUnavailableView {
+                    Label("Cannot Load Artifacts", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(error)
+                } actions: {
+                    Button("Retry") {
+                        Task { await loadArtifacts() }
+                    }
+                    .buttonStyle(.bordered)
+                }
             } else if let artifacts {
                 List {
                     if !artifacts.filesChanged.isEmpty {
                         Section("Files Changed") {
                             ForEach(artifacts.filesChanged, id: \.self) { path in
-                                HStack {
-                                    Image(systemName: "doc")
-                                        .font(.caption)
-                                        .foregroundColor(MWColors.accentCyan)
-                                    Text(path)
-                                        .font(MWTypography.monoCaption())
-                                        .foregroundColor(MWColors.textSecondary)
-                                        .textSelection(.enabled)
-                                }
+                                Label(path, systemImage: "doc")
+                                    .font(.caption.monospaced())
+                                    .foregroundStyle(.secondary)
+                                    .textSelection(.enabled)
                             }
                         }
                     }
@@ -38,8 +41,8 @@ struct ArtifactsView: View {
                         Section("Commands") {
                             ForEach(artifacts.commands, id: \.self) { command in
                                 Text(command)
-                                    .font(MWTypography.monoCaption())
-                                    .foregroundColor(MWColors.textSecondary)
+                                    .font(.caption.monospaced())
+                                    .foregroundStyle(.secondary)
                                     .textSelection(.enabled)
                             }
                         }
@@ -53,26 +56,23 @@ struct ArtifactsView: View {
 
                     if let cost = artifacts.costEstimate {
                         Section("Cost") {
-                            HStack {
-                                Text("Estimated cost")
-                                    .foregroundColor(MWColors.textSecondary)
-                                Spacer()
+                            LabeledContent("Estimated cost") {
                                 Text(String(format: "$%.4f", cost))
-                                    .font(MWTypography.monoBody())
-                                    .foregroundColor(MWColors.statusWarning)
+                                    .font(.body.monospaced())
+                                    .foregroundStyle(.orange)
                             }
                         }
                     }
                 }
+                .listStyle(.insetGrouped)
             } else {
-                MWEmptyState(
-                    icon: "archivebox",
-                    title: "No Artifacts",
-                    message: "This session has no artifacts yet"
-                )
+                ContentUnavailableView {
+                    Label("No Artifacts", systemImage: "archivebox")
+                } description: {
+                    Text("This session has no artifacts yet")
+                }
             }
         }
-        .background(theme.bgDeepest)
         .navigationTitle("Artifacts")
         .task {
             await loadArtifacts()

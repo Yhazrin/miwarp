@@ -39,9 +39,7 @@ struct ChatView: View {
         VStack(spacing: 0) {
             // Reconnect banner
             if case .reconnecting(let attempt) = store.connectionState {
-                MWReconnectBanner(attempt: attempt) {
-                    store.disconnect()
-                }
+                reconnectBanner(attempt: attempt)
             }
 
             // Status bar
@@ -49,11 +47,22 @@ struct ChatView: View {
 
             // Messages
             if viewModel.isLoading {
-                MWLoadingState(message: "Loading messages...")
+                ContentUnavailableView {
+                    Label("Loading Messages", systemImage: "arrow.clockwise")
+                } description: {
+                    Text("Fetching conversation history...")
+                }
             } else if let error = viewModel.error {
-                MWErrorState(message: error, onAction: {
-                    Task { await viewModel.loadHistory() }
-                })
+                ContentUnavailableView {
+                    Label("Cannot Load Messages", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text(error)
+                } actions: {
+                    Button("Retry") {
+                        Task { await viewModel.loadHistory() }
+                    }
+                    .buttonStyle(.bordered)
+                }
             } else {
                 MessageListView(
                     messages: viewModel.reducer.messages,
@@ -67,18 +76,16 @@ struct ChatView: View {
 
             // Pending permissions
             if let permission = viewModel.reducer.pendingPermissions.first {
-                MWApprovalCard(
-                    requestId: permission.id,
+                InlineApprovalView(
                     toolName: permission.toolName,
                     description: permission.description
                 ) { approved in
                     Task { await viewModel.handlePermission(requestId: permission.id, approved: approved) }
                 }
-                .padding(.horizontal, MWSpacing.lg)
-                .padding(.bottom, MWSpacing.sm)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
             }
         }
-        .background(theme.bgDeepest)
         .navigationTitle(runTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
@@ -146,53 +153,140 @@ struct ChatView: View {
     // MARK: - Status Bar
 
     private var runStatusBar: some View {
-        HStack(spacing: MWSpacing.md) {
-            MWStatusPill(status: viewModel.reducer.currentStatus)
+        HStack(spacing: 10) {
+            statusPill(viewModel.reducer.currentStatus)
 
             if viewModel.reducer.usage.costUsd > 0 {
-                HStack(spacing: MWSpacing.xs) {
-                    Image(systemName: "dollarsign.circle")
-                        .font(MWTypography.caption2())
-                    Text(String(format: "%.4f", viewModel.reducer.usage.costUsd))
-                }
-                .font(MWTypography.monoCaption())
-                .foregroundColor(MWColors.statusWarning)
+                Label(String(format: "$%.4f", viewModel.reducer.usage.costUsd), systemImage: "dollarsign.circle")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.orange)
             }
 
             if viewModel.reducer.usage.inputTokens > 0 {
-                HStack(spacing: MWSpacing.xs) {
-                    Image(systemName: "arrow.down.circle")
-                        .font(MWTypography.caption2())
-                    Text(viewModel.formatTokens(viewModel.reducer.usage.inputTokens))
-                }
-                .font(MWTypography.monoCaption())
-                .foregroundColor(MWColors.textTertiary)
+                Label(viewModel.formatTokens(viewModel.reducer.usage.inputTokens), systemImage: "arrow.down.circle")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.tertiary)
             }
 
             if viewModel.reducer.usage.outputTokens > 0 {
-                HStack(spacing: MWSpacing.xs) {
-                    Image(systemName: "arrow.up.circle")
-                        .font(MWTypography.caption2())
-                    Text(viewModel.formatTokens(viewModel.reducer.usage.outputTokens))
-                }
-                .font(MWTypography.monoCaption())
-                .foregroundColor(MWColors.textTertiary)
+                Label(viewModel.formatTokens(viewModel.reducer.usage.outputTokens), systemImage: "arrow.up.circle")
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.tertiary)
             }
 
             Spacer()
         }
-        .padding(.horizontal, MWSpacing.lg)
-        .padding(.vertical, MWSpacing.sm)
-        .background(
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .background(MWColors.glassBg)
-                .overlay(
-                    Rectangle()
-                        .fill(MWColors.divider)
-                        .frame(height: 0.5),
-                    alignment: .bottom
-                )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .background(.bar)
+        .overlay(alignment: .bottom) {
+            Divider()
+        }
+    }
+
+    private func statusPill(_ status: RunStatus) -> some View {
+        Text(status.displayLabel)
+            .font(.caption.weight(.medium))
+            .foregroundStyle(statusColor(status))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(statusColor(status).opacity(0.12), in: Capsule())
+    }
+
+    private func statusColor(_ status: RunStatus) -> Color {
+        switch status {
+        case .running: return .blue
+        case .waitingApproval: return .orange
+        case .failed: return .red
+        case .completed: return .green
+        case .pending: return .secondary
+        case .idle: return .secondary
+        case .stopped: return .gray
+        }
+    }
+
+    // MARK: - Reconnect Banner
+
+    private func reconnectBanner(attempt: Int) -> some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .scaleEffect(0.75)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Reconnecting")
+                    .font(.subheadline.weight(.medium))
+                Text("Attempt \(attempt)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("Cancel") {
+                store.disconnect()
+            }
+            .font(.subheadline)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(.orange.opacity(0.08))
+    }
+}
+
+// MARK: - Inline Approval
+
+struct InlineApprovalView: View {
+    let toolName: String
+    let description: String?
+    var onApprove: ((Bool) -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "exclamationmark.shield.fill")
+                    .foregroundStyle(.orange)
+                Text("Permission Required")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.orange)
+            }
+
+            Label(toolName, systemImage: "wrench.and.screwdriver")
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+
+            if let desc = description, !desc.isEmpty {
+                Text(desc)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            HStack(spacing: 12) {
+                Button {
+                    onApprove?(false)
+                } label: {
+                    Text("Deny")
+                        .font(.subheadline.weight(.medium))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                }
+
+                Button {
+                    onApprove?(true)
+                } label: {
+                    Text("Allow")
+                        .font(.subheadline.weight(.medium))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(.tint, in: RoundedRectangle(cornerRadius: 8))
+                        .foregroundStyle(.white)
+                }
+            }
+        }
+        .padding(14)
+        .background(.background, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(.orange.opacity(0.3), lineWidth: 1)
         )
+        .shadow(color: .orange.opacity(0.08), radius: 8)
     }
 }

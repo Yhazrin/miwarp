@@ -9,24 +9,21 @@ struct DiffPreviewView: View {
                 ForEach(Array(diff.components(separatedBy: "\n").enumerated()), id: \.offset) { _, line in
                     HStack(spacing: 0) {
                         Text(diffLinePrefix(line))
-                            .font(MWTypography.monoSmall())
-                            .foregroundColor(diffLineColor(line).opacity(0.6))
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(diffLineColor(line).opacity(0.6))
                             .frame(width: 20, alignment: .leading)
 
                         Text(line)
-                            .font(MWTypography.monoSmall())
-                            .foregroundColor(diffLineColor(line))
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(diffLineColor(line))
                     }
                     .padding(.vertical, 1)
                     .background(diffLineBackground(line))
                 }
             }
-            .padding(MWSpacing.sm)
+            .padding(8)
         }
-        .background(
-            RoundedRectangle(cornerRadius: MWRadius.sm)
-                .fill(MWColors.bgDeep)
-        )
+        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8))
     }
 
     private func diffLinePrefix(_ line: String) -> String {
@@ -37,15 +34,15 @@ struct DiffPreviewView: View {
     }
 
     private func diffLineColor(_ line: String) -> Color {
-        if line.hasPrefix("+") { return MWColors.statusSuccess }
-        if line.hasPrefix("-") { return MWColors.statusError }
-        if line.hasPrefix("@") { return MWColors.accentCyan }
-        return MWColors.textSecondary
+        if line.hasPrefix("+") { return .green }
+        if line.hasPrefix("-") { return .red }
+        if line.hasPrefix("@") { return .blue }
+        return .secondary
     }
 
     private func diffLineBackground(_ line: String) -> Color {
-        if line.hasPrefix("+") { return MWColors.statusSuccess.opacity(0.08) }
-        if line.hasPrefix("-") { return MWColors.statusError.opacity(0.08) }
+        if line.hasPrefix("+") { return .green.opacity(0.08) }
+        if line.hasPrefix("-") { return .red.opacity(0.08) }
         return .clear
     }
 }

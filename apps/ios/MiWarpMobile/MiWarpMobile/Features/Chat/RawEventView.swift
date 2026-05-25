@@ -7,24 +7,24 @@ struct RawEventView: View {
     var body: some View {
         NavigationStack {
             List(events) { event in
-                VStack(alignment: .leading, spacing: MWSpacing.xs) {
+                VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text("seq: \(event.seq)")
-                            .font(MWTypography.monoCaption())
-                            .foregroundColor(MWColors.accentCyan)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.blue)
                         Spacer()
                         Text(event.runId.prefix(8) + "...")
-                            .font(MWTypography.monoSmall())
-                            .foregroundColor(MWColors.textTertiary)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.tertiary)
                     }
 
                     Text(String(describing: event.payload))
-                        .font(MWTypography.monoSmall())
-                        .foregroundColor(MWColors.textSecondary)
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
                         .lineLimit(3)
                         .textSelection(.enabled)
                 }
-                .padding(.vertical, MWSpacing.xs)
+                .padding(.vertical, 2)
             }
             .navigationTitle("Raw Events (\(events.count))")
             .navigationBarTitleDisplayMode(.inline)

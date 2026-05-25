@@ -5,8 +5,7 @@ struct ApprovalCardView: View {
     var onApprove: ((Bool) -> Void)?
 
     var body: some View {
-        MWApprovalCard(
-            requestId: permission.id,
+        InlineApprovalView(
             toolName: permission.toolName,
             description: permission.description,
             onApprove: onApprove
