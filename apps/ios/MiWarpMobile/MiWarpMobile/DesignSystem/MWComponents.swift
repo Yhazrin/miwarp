@@ -208,11 +208,10 @@ struct MWStatusPill: View {
     }
 }
 
-// MARK: - Session Card (compact高级列表row)
+// MARK: - Session Card (compact高级列表row, pure display)
 
 struct MWSessionCard: View {
     let run: MiWarpRun
-    var onTap: (() -> Void)?
 
     // Status dot color — semantic, not "dirty"
     private var statusColor: Color {
@@ -223,7 +222,7 @@ struct MWSessionCard: View {
         case .completed:  return Color(hex: 0x6B7280)  // muted gray-green
         case .idle:       return Color(hex: 0x94A3B8)  // slate gray-blue
         case .pending:    return Color(hex: 0x60A5FA)  // soft blue
-        case .stopped:     return Color(hex: 0x9CA3AF)  // desaturated gray
+        case .stopped:    return Color(hex: 0x9CA3AF)  // desaturated gray
         }
     }
 
@@ -233,66 +232,61 @@ struct MWSessionCard: View {
     }
 
     var body: some View {
-        Button {
-            onTap?()
-        } label: {
-            VStack(alignment: .leading, spacing: 3) {
-                // Row 1: status dot + title + time
-                HStack(alignment: .top, spacing: MWSpacing.sm) {
-                    // Status dot — 8pt, aligned with first text line
-                    Circle()
-                        .fill(statusColor)
-                        .frame(width: 8, height: 8)
-                        .shadow(color: statusGlow ? Color(hex: 0x22C55E).opacity(0.5) : .clear, radius: 3)
+        VStack(alignment: .leading, spacing: 3) {
+            // Row 1: status dot + title + time
+            HStack(alignment: .top, spacing: MWSpacing.sm) {
+                // Status dot — 8pt, aligned with first text line
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 8, height: 8)
+                    .shadow(color: statusGlow ? Color(hex: 0x22C55E).opacity(0.5) : .clear, radius: 3)
 
-                    // Title — semibold, 2 lines max
-                    Text(run.displayTitle)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(MWColors.textPrimary)
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                // Title — semibold, 2 lines max
+                Text(run.displayTitle)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(MWColors.textPrimary)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                    // Time — right aligned, muted
-                    if let time = run.displayRelativeTime {
-                        Text(time)
-                            .font(.system(size: 12))
-                            .foregroundColor(MWColors.textTertiary)
-                            .frame(alignment: .trailing)
-                    }
+                // Time — right aligned, muted
+                if let time = run.displayRelativeTime {
+                    Text(time)
+                        .font(.system(size: 12))
+                        .foregroundColor(MWColors.textTertiary)
+                        .frame(alignment: .trailing)
                 }
+            }
 
-                // Row 2: agent · model
-                Text(run.displayAgentModel)
-                    .font(.system(size: 12))
-                    .foregroundColor(MWColors.textTertiary)
-                    .lineLimit(1)
+            // Row 2: agent · model
+            Text(run.displayAgentModel)
+                .font(.system(size: 12))
+                .foregroundColor(MWColors.textTertiary)
+                .lineLimit(1)
 
-                // Row 3: cwd · message count (only if metadata exists)
-                if run.hasMetadata {
-                    HStack(spacing: MWSpacing.sm) {
-                        if let cwd = run.displayCwd {
-                            Text(cwd)
-                                .font(.system(size: 11).monospaced())
-                                .foregroundColor(MWColors.textTertiary.opacity(0.7))
-                                .lineLimit(1)
-                        }
-                        if let cwd = run.displayCwd, run.displayMessageCount != nil {
-                            Text("·")
-                                .foregroundColor(MWColors.textTertiary.opacity(0.5))
-                        }
-                        if let msgs = run.displayMessageCount {
-                            Text(msgs)
-                                .font(.system(size: 11))
-                                .foregroundColor(MWColors.textTertiary.opacity(0.7))
-                                .lineLimit(1)
-                        }
+            // Row 3: cwd · message count (only if metadata exists)
+            if run.hasMetadata {
+                HStack(spacing: MWSpacing.sm) {
+                    if let cwd = run.displayCwd {
+                        Text(cwd)
+                            .font(.system(size: 11).monospaced())
+                            .foregroundColor(MWColors.textTertiary.opacity(0.7))
+                            .lineLimit(1)
+                    }
+                    if run.displayCwd != nil, run.displayMessageCount != nil {
+                        Text("·")
+                            .foregroundColor(MWColors.textTertiary.opacity(0.5))
+                    }
+                    if let msgs = run.displayMessageCount {
+                        Text(msgs)
+                            .font(.system(size: 11))
+                            .foregroundColor(MWColors.textTertiary.opacity(0.7))
+                            .lineLimit(1)
                     }
                 }
             }
-            .padding(.vertical, MWSpacing.sm)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, MWSpacing.sm)
+        .contentShape(Rectangle())
     }
 }
 
@@ -828,5 +822,28 @@ struct MWReconnectBanner: View {
                         .blendMode(.screen)
                 )
         )
+    }
+}
+
+// MARK: - View Size Reader
+
+struct SizePreferenceKey: PreferenceKey {
+    static var defaultValue: CGSize = .zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        value = nextValue()
+    }
+}
+
+extension View {
+    func readSize(_ onChange: @escaping (CGSize) -> Void) -> some View {
+        background(
+            GeometryReader { geometry in
+                Color.clear
+                    .preference(key: SizePreferenceKey.self, value: geometry.size)
+            }
+        )
+        .onPreferenceChange(SizePreferenceKey.self) { size in
+            onChange(size)
+        }
     }
 }

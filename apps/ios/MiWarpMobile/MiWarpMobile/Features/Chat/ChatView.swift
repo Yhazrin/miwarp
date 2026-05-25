@@ -27,6 +27,7 @@ struct ChatView: View {
     @EnvironmentObject private var store: MiWarpConnectionStore
     @EnvironmentObject private var theme: MWTheme
     @StateObject private var viewModel: ChatViewModel
+    @State private var inputBarHeight: CGFloat = 60
 
     init(runId: String, runTitle: String) {
         self.runId = runId
@@ -57,6 +58,7 @@ struct ChatView: View {
                 MessageListView(
                     messages: viewModel.reducer.messages,
                     complexityMode: viewModel.complexityMode,
+                    inputBarHeight: inputBarHeight,
                     onApprove: { requestId, approved in
                         Task { await viewModel.handlePermission(requestId: requestId, approved: approved) }
                     }
@@ -75,20 +77,11 @@ struct ChatView: View {
                 .padding(.horizontal, MWSpacing.lg)
                 .padding(.bottom, MWSpacing.sm)
             }
-
-            // Input bar
-            ChatInputBar(
-                text: $viewModel.inputText,
-                isRunning: viewModel.reducer.currentStatus == .running,
-                canSend: store.isConnected,
-                onSend: { Task { await viewModel.sendMessage() } },
-                onStop: { Task { await viewModel.stopSession() } },
-                onFork: { Task { await viewModel.forkSession() } }
-            )
         }
         .background(theme.bgDeepest)
         .navigationTitle(runTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
@@ -115,6 +108,19 @@ struct ChatView: View {
                 } label: {
                     Image(systemName: viewModel.complexityMode.systemImage)
                 }
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            ChatInputBar(
+                text: $viewModel.inputText,
+                isRunning: viewModel.reducer.currentStatus == .running,
+                canSend: store.isConnected,
+                onSend: { Task { await viewModel.sendMessage() } },
+                onStop: { Task { await viewModel.stopSession() } },
+                onFork: { Task { await viewModel.forkSession() } }
+            )
+            .readSize { size in
+                inputBarHeight = size.height
             }
         }
         .sheet(isPresented: $viewModel.showRawEvents) {

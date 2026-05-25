@@ -3,6 +3,8 @@ import SwiftUI
 struct MessageListView: View {
     let messages: [DisplayMessage]
     let complexityMode: ComplexityMode
+    var inputBarHeight: CGFloat = 60
+    var keyboardHeight: CGFloat = 0
     var onApprove: ((String, Bool) -> Void)?
 
     @State private var scrollProxy: ScrollViewProxy?
@@ -18,8 +20,9 @@ struct MessageListView: View {
                 }
                 .padding(.horizontal, MWSpacing.lg)
                 .padding(.vertical, MWSpacing.md)
+                .padding(.bottom, inputBarHeight + MWSpacing.lg)
             }
-            .onChange(of: messages.count) { _ in
+            .onChange(of: messages.count) { _, _ in
                 withAnimation {
                     if let lastId = messages.last?.id {
                         proxy.scrollTo(lastId, anchor: .bottom)
