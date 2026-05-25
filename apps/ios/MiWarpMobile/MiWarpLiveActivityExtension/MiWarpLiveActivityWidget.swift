@@ -12,6 +12,7 @@ struct SessionSyncLiveActivityWidget: Widget {
                 attributes: context.attributes,
                 state: context.state
             )
+            .activityBackgroundTint(Color.black.opacity(0.85))
             .widgetURL(LiveActivityDeepLink.sync(taskId: context.attributes.taskId))
         } dynamicIsland: { context in
             DynamicIsland {
@@ -64,6 +65,7 @@ struct SessionSyncLiveActivityWidget: Widget {
                 )
             }
             .contentMargins(.trailing, 32, for: .expanded)
+            .contentMargins(.bottom, 8, for: .expanded)
             .contentMargins([.leading, .top, .bottom], 6, for: .compactLeading)
             .contentMargins(.all, 6, for: .minimal)
             .widgetURL(LiveActivityDeepLink.sync(taskId: context.attributes.taskId))
@@ -92,6 +94,7 @@ struct AgentTaskLiveActivityWidget: Widget {
                 attributes: context.attributes,
                 state: context.state
             )
+            .activityBackgroundTint(Color.black.opacity(0.85))
             .widgetURL(LiveActivityDeepLink.agent(taskId: context.attributes.taskId))
         } dynamicIsland: { context in
             DynamicIsland {
@@ -143,6 +146,7 @@ struct AgentTaskLiveActivityWidget: Widget {
                 )
             }
             .contentMargins(.trailing, 32, for: .expanded)
+            .contentMargins(.bottom, 8, for: .expanded)
             .contentMargins([.leading, .top, .bottom], 6, for: .compactLeading)
             .contentMargins(.all, 6, for: .minimal)
             .widgetURL(LiveActivityDeepLink.agent(taskId: context.attributes.taskId))

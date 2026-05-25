@@ -21,8 +21,24 @@ struct MiWarpMobileApp: App {
     }
 
     private func handleDeepLink(_ url: URL) {
-        guard url.scheme == "miwarp",
-              url.host == "connect",
+        guard url.scheme == "miwarp" else { return }
+
+        // Live Activity deep links
+        if let parsed = LiveActivityDeepLink.parse(url) {
+            switch parsed {
+            case .sync:
+                // Navigate to sessions — sync details shown inline
+                NotificationCenter.default.post(name: .liveActivityDeepLink, object: parsed)
+            case .agent:
+                NotificationCenter.default.post(name: .liveActivityDeepLink, object: parsed)
+            case .sessions:
+                NotificationCenter.default.post(name: .liveActivityDeepLink, object: parsed)
+            }
+            return
+        }
+
+        // QR / pairing deep link
+        guard url.host == "connect",
               let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
             return
         }

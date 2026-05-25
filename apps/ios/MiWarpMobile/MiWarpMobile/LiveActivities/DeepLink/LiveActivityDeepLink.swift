@@ -1,5 +1,9 @@
 import Foundation
 
+extension Notification.Name {
+    static let liveActivityDeepLink = Notification.Name("com.miwarp.liveActivityDeepLink")
+}
+
 enum LiveActivityDeepLink {
     static let scheme = "miwarp"
 

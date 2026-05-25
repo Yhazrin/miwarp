@@ -31,6 +31,20 @@ struct AppRouter: View {
         .onAppear {
             configureTabBarAppearance()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .liveActivityDeepLink)) { notification in
+            if let deepLink = notification.object as? LiveActivityDeepLink.ParsedDeepLink {
+                handleLiveActivityDeepLink(deepLink)
+            }
+        }
+    }
+
+    private func handleLiveActivityDeepLink(_ deepLink: LiveActivityDeepLink.ParsedDeepLink) {
+        switch deepLink {
+        case .sync, .sessions:
+            selectedTab = 0 // Sessions tab
+        case .agent:
+            selectedTab = 0 // Sessions tab — agent details shown inline
+        }
     }
 
     private func configureTabBarAppearance() {

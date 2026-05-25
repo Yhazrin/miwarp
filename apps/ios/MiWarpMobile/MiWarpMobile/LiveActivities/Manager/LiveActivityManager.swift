@@ -78,9 +78,10 @@ final class LiveActivityManager {
         syncActivity = nil
 
         Task {
-            // Show final state briefly, then dismiss
-            try? await Task.sleep(nanoseconds: UInt64(dismissAfter * 1_000_000_000))
-            await activity.end(.init(state: activity.content.state, staleDate: nil), dismissalPolicy: .after(.now + dismissAfter))
+            await activity.end(
+                .init(state: activity.content.state, staleDate: nil),
+                dismissalPolicy: .after(.now + dismissAfter)
+            )
         }
     }
 
@@ -145,8 +146,10 @@ final class LiveActivityManager {
         agentActivity = nil
 
         Task {
-            try? await Task.sleep(nanoseconds: UInt64(dismissAfter * 1_000_000_000))
-            await activity.end(.init(state: activity.content.state, staleDate: nil), dismissalPolicy: .after(.now + dismissAfter))
+            await activity.end(
+                .init(state: activity.content.state, staleDate: nil),
+                dismissalPolicy: .after(.now + dismissAfter)
+            )
         }
     }
 
