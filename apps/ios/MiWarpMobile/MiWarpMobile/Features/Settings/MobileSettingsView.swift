@@ -1,10 +1,37 @@
 import SwiftUI
 
+// MARK: - Diagonal Clash Shape for swatch buttons
+
+/// Top-left triangle (primary color)
+struct TopLeftTriangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Bottom-right triangle (secondary color)
+struct BottomRightTriangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.closeSubpath()
+        return path
+    }
+}
+
 struct MobileSettingsView: View {
     @EnvironmentObject private var store: MiWarpConnectionStore
     @EnvironmentObject private var theme: MWTheme
     @State private var showLogs = false
     @State private var showAbout = false
+    @State private var showComponentLab = false
 
     var body: some View {
         NavigationStack {
@@ -22,6 +49,11 @@ struct MobileSettingsView: View {
             .sheet(isPresented: $showAbout) {
                 AboutView()
             }
+            .sheet(isPresented: $showComponentLab) {
+                ComponentLabView()
+            }
+            .scrollContentBackground(.hidden)
+            .background(MWPatternedBackdrop())
         }
     }
 
@@ -42,6 +74,7 @@ struct MobileSettingsView: View {
         } header: {
             Label("General", systemImage: "gearshape.fill")
         }
+        .listRowBackground(theme.cardBg)
     }
 
     private var accentThemePicker: some View {
@@ -74,20 +107,21 @@ struct MobileSettingsView: View {
         } label: {
             VStack(spacing: 3) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(LinearGradient(
-                            gradient: Gradient(colors: [accent.primarySwatch, accent.secondarySwatch]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ))
-                        .frame(height: 32)
+                    // Top-left triangle: primary color (clash!)
+                    TopLeftTriangle()
+                        .fill(Color(accent.primarySwatch))
+                    // Bottom-right triangle: secondary color
+                    BottomRightTriangle()
+                        .fill(Color(accent.secondarySwatch))
 
                     if isSelected {
                         Image(systemName: "checkmark")
                             .font(.caption.bold())
                             .foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.4), radius: 2, x: 0, y: 1)
                     }
                 }
+                .clipShape(RoundedRectangle(cornerRadius: 6))
 
                 Text(accent.displayName)
                     .font(.system(size: 10))
@@ -137,6 +171,7 @@ struct MobileSettingsView: View {
         } header: {
             Label("Connection", systemImage: "network")
         }
+        .listRowBackground(theme.cardBg)
     }
 
     // MARK: - Sessions
@@ -154,6 +189,7 @@ struct MobileSettingsView: View {
         } header: {
             Label("Sessions", systemImage: "bubble.left.and.bubble.right.fill")
         }
+        .listRowBackground(theme.cardBg)
     }
 
     // MARK: - AI & Models
@@ -168,6 +204,7 @@ struct MobileSettingsView: View {
         } header: {
             Label("AI & Models", systemImage: "cpu")
         }
+        .listRowBackground(theme.cardBg)
     }
 
     // MARK: - Advanced
@@ -194,6 +231,12 @@ struct MobileSettingsView: View {
             }
             #endif
 
+            Button {
+                showComponentLab = true
+            } label: {
+                Label("Component Lab", systemImage: "square.3.layers.3d")
+            }
+
             Button(role: .destructive) {
                 clearTokens()
             } label: {
@@ -214,6 +257,7 @@ struct MobileSettingsView: View {
         } header: {
             Label("Advanced", systemImage: "slider.horizontal.3")
         }
+        .listRowBackground(theme.cardBg)
     }
 
     // MARK: - Helpers
@@ -340,5 +384,148 @@ struct AboutView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Component Lab
+
+struct ComponentLabView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var ringProgress: Double = 0.65
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    // MWTaskProgressRing
+                    componentSection(title: "MWTaskProgressRing") {
+                        HStack(spacing: 20) {
+                            MWTaskProgressRing(progress: ringProgress, state: .running, size: 50)
+                            MWTaskProgressRing(progress: ringProgress, state: .waiting, size: 50)
+                            MWTaskProgressRing(progress: 1.0, state: .completed, size: 50)
+                            MWTaskProgressRing(progress: 0.4, state: .failed, size: 50)
+                        }
+                        Slider(value: $ringProgress, in: 0...1)
+                            .padding(.horizontal)
+                    }
+
+                    // MWThinkingIndicator
+                    componentSection(title: "MWThinkingIndicator") {
+                        VStack(spacing: 12) {
+                            HStack(spacing: 20) {
+                                Text("Small")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                MWThinkingIndicator(size: .small)
+                            }
+                            HStack(spacing: 20) {
+                                Text("Medium")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                MWThinkingIndicator(size: .medium)
+                            }
+                        }
+                    }
+
+                    // MWStatusBadge
+                    componentSection(title: "MWStatusBadge") {
+                        VStack(spacing: 8) {
+                            HStack(spacing: 8) {
+                                MWStatusBadge(text: "Running", style: .info)
+                                MWStatusBadge(text: "Completed", style: .success)
+                                MWStatusBadge(text: "Warning", style: .warning)
+                            }
+                            HStack(spacing: 8) {
+                                MWStatusBadge(text: "Failed", style: .error)
+                                MWStatusBadge(text: "Idle", style: .neutral)
+                            }
+                        }
+                    }
+
+                    // MWStatusDot
+                    componentSection(title: "MWStatusDot") {
+                        HStack(spacing: 16) {
+                            VStack(spacing: 8) {
+                                MWStatusDot(status: .connected)
+                                Text("connected")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            VStack(spacing: 8) {
+                                MWStatusDot(status: .running, showGlow: true)
+                                Text("running")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            VStack(spacing: 8) {
+                                MWStatusDot(status: .syncing)
+                                Text("syncing")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            VStack(spacing: 8) {
+                                MWStatusDot(status: .failed)
+                                Text("failed")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            VStack(spacing: 8) {
+                                MWStatusDot(status: .waiting)
+                                Text("waiting")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            VStack(spacing: 8) {
+                                MWStatusDot(status: .localOnly)
+                                Text("localOnly")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
+                    // MWStatusBadge with RunStatus
+                    componentSection(title: "MWStatusBadge (RunStatus)") {
+                        LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 8) {
+                            ForEach(RunStatus.allCases, id: \.self) { status in
+                                HStack {
+                                    MWStatusBadge(status: status)
+                                    Spacer()
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Component Lab")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func componentSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(MWColors.accentPrimary)
+
+            content()
+                .frame(maxWidth: .infinity)
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(MWColors.cardBg)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(MWColors.divider, lineWidth: 0.5)
+                )
+        )
     }
 }

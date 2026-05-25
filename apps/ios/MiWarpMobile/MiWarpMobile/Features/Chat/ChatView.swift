@@ -90,6 +90,7 @@ struct ChatView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
+        .background(MWPatternedBackdrop())
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
@@ -279,7 +280,7 @@ struct InlineApprovalView: View {
             }
         }
         .padding(14)
-        .background(.background, in: RoundedRectangle(cornerRadius: 12))
+        .background(MWColors.cardBg, in: RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(.orange.opacity(0.3), lineWidth: 1)

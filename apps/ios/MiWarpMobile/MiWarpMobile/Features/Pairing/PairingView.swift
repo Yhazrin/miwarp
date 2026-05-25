@@ -25,6 +25,7 @@ struct PairingView: View {
                 } header: {
                     Text("Add Connection")
                 }
+                .listRowBackground(theme.cardBg)
 
                 if !store.connections.isEmpty {
                     Section {
@@ -41,9 +42,12 @@ struct PairingView: View {
                     } header: {
                         Text("Saved Connections")
                     }
+                    .listRowBackground(theme.cardBg)
                 }
             }
             .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(MWPatternedBackdrop())
             .navigationTitle("Connect")
             .sheet(isPresented: $showScanner) {
                 QRScannerSheet()
@@ -76,16 +80,17 @@ struct PairingView: View {
             .listRowInsets(EdgeInsets())
             .frame(maxWidth: .infinity)
             .padding(16)
-            .background(
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        MWColors.accentPrimary,
-                        MWColors.accentCyan
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            .background(MWColors.accentPrimary)
+        }
+        .listRowBackground(Color.clear)
+    }
+
+    private var pillTextColor: Color {
+        switch theme.accentTheme {
+        case .deepSeaMilk, .auroraPomelo, .auroraLime:
+            return .black
+        default:
+            return .white
         }
     }
 
@@ -96,7 +101,7 @@ struct PairingView: View {
             Text(label)
                 .font(.caption)
         }
-        .foregroundColor(.white.opacity(0.9))
+        .foregroundColor(pillTextColor)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(

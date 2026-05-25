@@ -4,6 +4,7 @@ struct SessionFiltersView: View {
     @Binding var filters: SessionFilters
     let runs: [MiWarpRun]
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var theme: MWTheme
 
     private var availableAgents: [String] {
         Array(Set(runs.map(\.agent))).sorted()
@@ -20,6 +21,7 @@ struct SessionFiltersView: View {
                         }
                     }
                 }
+                .listRowBackground(theme.cardBg)
 
                 Section("Status") {
                     Picker("Status", selection: $filters.status) {
@@ -35,6 +37,7 @@ struct SessionFiltersView: View {
                         }
                     }
                 }
+                .listRowBackground(theme.cardBg)
 
                 Section("Source") {
                     Picker("Source", selection: $filters.source) {
@@ -43,13 +46,17 @@ struct SessionFiltersView: View {
                         Text("CLI Import").tag(RunSource.cliImport as RunSource?)
                     }
                 }
+                .listRowBackground(theme.cardBg)
 
                 Section {
                     Button("Reset Filters", role: .destructive) {
                         filters.reset()
                     }
                 }
+                .listRowBackground(theme.cardBg)
             }
+            .scrollContentBackground(.hidden)
+            .background(MWPatternedBackdrop())
             .navigationTitle("Filters")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

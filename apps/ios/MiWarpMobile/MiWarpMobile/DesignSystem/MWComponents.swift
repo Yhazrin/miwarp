@@ -78,66 +78,133 @@ struct MWGeometricPattern: View {
         opacityOverride ?? theme.textureOpacity
     }
 
+    /// Pre-rendered tile image — path computation happens once, not every frame.
+    @State private var cachedImage: CGImage?
+    @State private var cachedScheme: ColorScheme?
+    @State private var cachedTheme: MWAccentTheme?
+    @State private var cachedOpacity: Double?
+
+    private let tileSize: CGFloat = 512  // Covers any iOS screen when tiled
+
     var body: some View {
         Canvas { context, size in
-            guard opacity > 0 else { return }
-
-            let color = theme.effectiveColorScheme == .dark ? theme.accentSecondary : theme.accentPrimary
-            let primary = color.opacity(opacity)
-            let secondary = theme.textPrimary.opacity(opacity * 0.34)
-            let gridStep: CGFloat = 28
-            let angleOffset: CGFloat = gridStep * 0.58
-
-            var gridPath = Path()
-            var x = -size.height
-            while x < size.width + size.height {
-                gridPath.move(to: CGPoint(x: x, y: 0))
-                gridPath.addLine(to: CGPoint(x: x + size.height * 0.58, y: size.height))
-                x += gridStep
-            }
-
-            x = -size.height
-            while x < size.width + size.height {
-                gridPath.move(to: CGPoint(x: x + angleOffset, y: 0))
-                gridPath.addLine(to: CGPoint(x: x - size.height * 0.58 + angleOffset, y: size.height))
-                x += gridStep
-            }
-
-            var horizontal = Path()
-            var y: CGFloat = gridStep
-            while y < size.height {
-                horizontal.move(to: CGPoint(x: 0, y: y))
-                horizontal.addLine(to: CGPoint(x: size.width, y: y))
-                y += gridStep * 1.72
-            }
-
-            var mazePath = Path()
-            let cell = gridStep * 1.5
-            var row: CGFloat = 0
-            while row < size.height + cell {
-                var col: CGFloat = 0
-                while col < size.width + cell {
-                    let start = CGPoint(x: col, y: row)
-                    mazePath.move(to: start)
-                    mazePath.addLine(to: CGPoint(x: col + cell * 0.62, y: row))
-                    mazePath.addLine(to: CGPoint(x: col + cell * 0.62, y: row + cell * 0.38))
-                    if Int((col + row) / cell).isMultiple(of: 2) {
-                        mazePath.addLine(to: CGPoint(x: col + cell, y: row + cell * 0.38))
-                    } else {
-                        mazePath.move(to: CGPoint(x: col + cell * 0.18, y: row + cell * 0.72))
-                        mazePath.addLine(to: CGPoint(x: col + cell * 0.78, y: row + cell * 0.72))
-                    }
-                    col += cell
+            guard let cgImage = cachedImage else { return }
+            let tile = Image(decorative: cgImage, scale: 1, orientation: .up)
+            let cols = Int(ceil(size.width / tileSize)) + 1
+            let rows = Int(ceil(size.height / tileSize)) + 1
+            for row in 0..<rows {
+                for col in 0..<cols {
+                    let origin = CGPoint(x: CGFloat(col) * tileSize, y: CGFloat(row) * tileSize)
+                    context.draw(tile, at: origin, anchor: .topLeading)
                 }
-                row += cell
             }
-
-            context.stroke(gridPath, with: .color(secondary), lineWidth: 0.45)
-            context.stroke(horizontal, with: .color(secondary.opacity(0.7)), lineWidth: 0.35)
-            context.stroke(mazePath, with: .color(primary), lineWidth: 1.0)
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+        .onAppear { renderIfNeeded() }
+        .onChange(of: theme.accentTheme) { _, _ in invalidateCache() }
+        .onChange(of: theme.effectiveColorScheme) { _, _ in invalidateCache() }
+        .onChange(of: opacity) { _, _ in invalidateCache() }
+    }
+
+    private func invalidateCache() {
+        cachedImage = nil
+        cachedScheme = nil
+        cachedTheme = nil
+        cachedOpacity = nil
+    }
+
+    private func renderIfNeeded() {
+        guard cachedImage == nil
+            || cachedScheme != theme.effectiveColorScheme
+            || cachedTheme != theme.accentTheme
+            || cachedOpacity != opacity
+        else { return }
+
+        cachedScheme = theme.effectiveColorScheme
+        cachedTheme = theme.accentTheme
+        cachedOpacity = opacity
+
+        cachedImage = renderTile(
+            primaryColor: (theme.effectiveColorScheme == .dark ? theme.accentSecondary : theme.accentPrimary).opacity(opacity),
+            secondaryColor: theme.textPrimary.opacity(opacity * 0.34)
+        )
+    }
+
+    private func renderTile(primaryColor: Color, secondaryColor: Color) -> CGImage? {
+        let w = Int(tileSize)
+        let h = Int(tileSize)
+        guard let ctx = CGContext(data: nil, width: w, height: h,
+            bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+
+        let gridStep: CGFloat = 28
+        let angleOffset = gridStep * 0.58
+        let hFloat = CGFloat(h)
+        let wFloat = CGFloat(w)
+
+        // Diagonal grid lines
+        var gridPath = Path()
+        var x: CGFloat = -hFloat
+        while x < wFloat + hFloat {
+            gridPath.move(to: CGPoint(x: x, y: 0))
+            gridPath.addLine(to: CGPoint(x: x + hFloat * 0.58, y: hFloat))
+            x += gridStep
+        }
+        x = -hFloat
+        while x < wFloat + hFloat {
+            gridPath.move(to: CGPoint(x: x + angleOffset, y: 0))
+            gridPath.addLine(to: CGPoint(x: x - hFloat * 0.58 + angleOffset, y: hFloat))
+            x += gridStep
+        }
+
+        // Horizontal lines
+        var horizPath = Path()
+        var y: CGFloat = gridStep
+        while y < hFloat {
+            horizPath.move(to: CGPoint(x: 0, y: y))
+            horizPath.addLine(to: CGPoint(x: wFloat, y: y))
+            y += gridStep * 1.72
+        }
+
+        // Maze pattern
+        var mazePath = Path()
+        let cell = gridStep * 1.5
+        var row: CGFloat = 0
+        while row < hFloat + cell {
+            var col: CGFloat = 0
+            while col < wFloat + cell {
+                mazePath.move(to: CGPoint(x: col, y: row))
+                mazePath.addLine(to: CGPoint(x: col + cell * 0.62, y: row))
+                mazePath.addLine(to: CGPoint(x: col + cell * 0.62, y: row + cell * 0.38))
+                if Int((col + row) / cell).isMultiple(of: 2) {
+                    mazePath.addLine(to: CGPoint(x: col + cell, y: row + cell * 0.38))
+                } else {
+                    mazePath.move(to: CGPoint(x: col + cell * 0.18, y: row + cell * 0.72))
+                    mazePath.addLine(to: CGPoint(x: col + cell * 0.78, y: row + cell * 0.72))
+                }
+                col += cell
+            }
+            row += cell
+        }
+
+        // Three separate stroke passes via CGContext (batched per color)
+        ctx.setStrokeColor(secondaryColor.cgColor!)
+        ctx.setLineWidth(0.45)
+        ctx.addPath(gridPath.cgPath)
+        ctx.strokePath()
+
+        ctx.setLineWidth(0.35)
+        ctx.addPath(horizPath.cgPath)
+        ctx.strokePath()
+
+        ctx.setStrokeColor(primaryColor.cgColor!)
+        ctx.setLineWidth(1.0)
+        ctx.addPath(mazePath.cgPath)
+        ctx.strokePath()
+
+        return ctx.makeImage()
     }
 }
 
@@ -293,6 +360,7 @@ struct MWSessionCard: View {
 // MARK: - Chat Bubble
 
 struct MWChatBubble: View {
+    @EnvironmentObject private var theme: MWTheme
     let role: String
     let content: String
     var isStreaming: Bool = false
@@ -306,7 +374,7 @@ struct MWChatBubble: View {
             VStack(alignment: isUser ? .trailing : .leading, spacing: MWSpacing.xs) {
                 Text(content)
                     .font(isUser ? MWTypography.body() : MWTypography.body())
-                    .foregroundColor(isUser ? MWColors.accentOnAccent : MWColors.textPrimary)
+                    .foregroundColor(isUser ? theme.accentOnAccent : theme.cardTextPrimary)
                     .textSelection(.enabled)
 
                 if isStreaming {
@@ -316,7 +384,7 @@ struct MWChatBubble: View {
                             .tint(MWColors.accentCyan)
                         Text("streaming")
                             .font(MWTypography.caption2())
-                            .foregroundColor(MWColors.textTertiary)
+                            .foregroundColor(theme.cardTextTertiary)
                     }
                 }
             }
@@ -324,12 +392,12 @@ struct MWChatBubble: View {
             .padding(.vertical, MWSpacing.md)
             .background(
                 RoundedRectangle(cornerRadius: isUser ? MWRadius.xl : MWRadius.lg)
-                    .fill(isUser ? MWColors.accentPrimary : MWColors.cardBg)
+                    .fill(isUser ? theme.accentPrimary : theme.bgSurface)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: isUser ? MWRadius.xl : MWRadius.lg)
                     .strokeBorder(
-                        isUser ? Color.clear : MWColors.divider,
+                        isUser ? Color.clear : theme.divider,
                         lineWidth: 0.5
                     )
             )
@@ -342,6 +410,7 @@ struct MWChatBubble: View {
 // MARK: - Tool Call Card
 
 struct MWToolCallCard: View {
+    @EnvironmentObject private var theme: MWTheme
     let toolName: String
     let inputPreview: String?
     let output: String?
@@ -357,9 +426,9 @@ struct MWToolCallCard: View {
     }
 
     var statusColor: Color {
-        if isError { return MWColors.statusError }
-        if isComplete { return MWColors.statusDone }
-        return MWColors.accentCyan
+        if isError { return theme.statusError }
+        if isComplete { return theme.statusDone }
+        return theme.accentCyan
     }
 
     var body: some View {
@@ -376,19 +445,19 @@ struct MWToolCallCard: View {
 
                     Text(toolName)
                         .font(MWTypography.monoCaption())
-                        .foregroundColor(MWColors.accentCyan)
+                        .foregroundColor(theme.accentCyan)
 
                     Spacer()
 
                     if !isComplete && !isError {
                         ProgressView()
                             .scaleEffect(0.6)
-                            .tint(MWColors.accentCyan)
+                            .tint(theme.accentCyan)
                     }
 
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(MWTypography.caption2())
-                        .foregroundColor(MWColors.textTertiary)
+                        .foregroundColor(theme.cardTextTertiary)
                 }
             }
             .buttonStyle(.plain)
@@ -398,10 +467,10 @@ struct MWToolCallCard: View {
                     VStack(alignment: .leading, spacing: MWSpacing.xs) {
                         Text("Input")
                             .font(MWTypography.caption2())
-                            .foregroundColor(MWColors.textTertiary)
+                            .foregroundColor(theme.cardTextTertiary)
                         Text(input)
                             .font(MWTypography.monoSmall())
-                            .foregroundColor(MWColors.textSecondary)
+                            .foregroundColor(theme.cardTextSecondary)
                             .textSelection(.enabled)
                     }
                 }
@@ -410,10 +479,10 @@ struct MWToolCallCard: View {
                     VStack(alignment: .leading, spacing: MWSpacing.xs) {
                         Text("Output")
                             .font(MWTypography.caption2())
-                            .foregroundColor(MWColors.textTertiary)
+                            .foregroundColor(theme.cardTextTertiary)
                         Text(output)
                             .font(MWTypography.monoSmall())
-                            .foregroundColor(isError ? MWColors.statusError : MWColors.textSecondary)
+                            .foregroundColor(isError ? theme.statusError : theme.cardTextSecondary)
                             .lineLimit(15)
                             .textSelection(.enabled)
                     }
@@ -423,11 +492,11 @@ struct MWToolCallCard: View {
         .padding(MWSpacing.md)
         .background(
             RoundedRectangle(cornerRadius: MWRadius.md)
-                .fill(MWColors.cardBg)
+                .fill(theme.bgSurface)
                 .overlay(
                     RoundedRectangle(cornerRadius: MWRadius.md)
                         .strokeBorder(
-                            isError ? MWColors.statusError.opacity(0.2) : MWColors.accentCyan.opacity(0.15),
+                            isError ? theme.statusError.opacity(0.2) : theme.accentCyan.opacity(0.15),
                             lineWidth: 0.5
                         )
                 )
@@ -438,6 +507,7 @@ struct MWToolCallCard: View {
 // MARK: - Approval Card
 
 struct MWApprovalCard: View {
+    @EnvironmentObject private var theme: MWTheme
     let requestId: String
     let toolName: String
     let description: String?
@@ -449,11 +519,11 @@ struct MWApprovalCard: View {
             HStack(spacing: MWSpacing.sm) {
                 Image(systemName: "exclamationmark.shield.fill")
                     .font(.system(size: 16))
-                    .foregroundColor(MWColors.statusWarning)
+                    .foregroundColor(theme.statusWarning)
 
                 Text("Permission Required")
                     .font(MWTypography.bodyMedium())
-                    .foregroundColor(MWColors.statusWarning)
+                    .foregroundColor(theme.statusWarning)
 
                 Spacer()
             }
@@ -462,17 +532,17 @@ struct MWApprovalCard: View {
             HStack(spacing: MWSpacing.xs) {
                 Image(systemName: "wrench.and.screwdriver")
                     .font(.caption2)
-                    .foregroundColor(MWColors.textTertiary)
+                    .foregroundColor(theme.cardTextTertiary)
                 Text(toolName)
                     .font(MWTypography.monoCaption())
-                    .foregroundColor(MWColors.accentCyan)
+                    .foregroundColor(theme.accentCyan)
             }
 
             // Description
             if let desc = description, !desc.isEmpty {
                 Text(desc)
                     .font(MWTypography.callout())
-                    .foregroundColor(MWColors.textSecondary)
+                    .foregroundColor(theme.cardTextSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -483,12 +553,12 @@ struct MWApprovalCard: View {
                 } label: {
                     Label("Deny", systemImage: "xmark")
                         .font(MWTypography.subheadlineMedium())
-                        .foregroundColor(MWColors.textSecondary)
+                        .foregroundColor(theme.cardTextSecondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, MWSpacing.sm)
                         .background(
                             RoundedRectangle(cornerRadius: MWRadius.md)
-                                .fill(MWColors.bgSurface)
+                                .fill(theme.bgSurface)
                         )
                 }
 
@@ -497,12 +567,12 @@ struct MWApprovalCard: View {
                 } label: {
                     Label("Allow", systemImage: "checkmark")
                         .font(MWTypography.subheadlineMedium())
-                        .foregroundColor(MWColors.accentOnAccent)
+                        .foregroundColor(theme.accentOnAccent)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, MWSpacing.sm)
                         .background(
                             RoundedRectangle(cornerRadius: MWRadius.md)
-                                .fill(MWColors.accentPrimary)
+                                .fill(theme.accentPrimary)
                         )
                 }
             }
@@ -510,12 +580,12 @@ struct MWApprovalCard: View {
         .padding(MWSpacing.lg)
         .background(
             RoundedRectangle(cornerRadius: MWRadius.lg)
-                .fill(MWColors.cardBg)
+                .fill(theme.bgSurface)
                 .overlay(
                     RoundedRectangle(cornerRadius: MWRadius.lg)
-                        .strokeBorder(MWColors.statusApproval.opacity(0.25), lineWidth: 1)
+                        .strokeBorder(theme.statusApproval.opacity(0.25), lineWidth: 1)
                 )
-                .shadow(color: MWColors.glowApproval, radius: 12, x: 0, y: 0)
+                .shadow(color: theme.glowApproval, radius: 12, x: 0, y: 0)
         )
     }
 }
@@ -523,6 +593,7 @@ struct MWApprovalCard: View {
 // MARK: - Input Bar
 
 struct MWInputBar: View {
+    @EnvironmentObject private var theme: MWTheme
     @Binding var text: String
     var isRunning: Bool = false
     var canSend: Bool = true
@@ -544,11 +615,11 @@ struct MWInputBar: View {
                 .padding(.vertical, MWSpacing.sm)
                 .background(
                     RoundedRectangle(cornerRadius: MWRadius.xl)
-                        .fill(MWColors.inputBg)
+                        .fill(theme.inputBg)
                         .overlay(
                             RoundedRectangle(cornerRadius: MWRadius.xl)
                                 .strokeBorder(
-                                    isFocused ? MWColors.accentCyan.opacity(0.3) : MWColors.divider,
+                                    isFocused ? theme.accentCyan.opacity(0.3) : theme.divider,
                                     lineWidth: 1
                                 )
                         )
@@ -561,7 +632,7 @@ struct MWInputBar: View {
                 } label: {
                     Image(systemName: "stop.circle.fill")
                         .font(.system(size: 30))
-                        .foregroundColor(MWColors.statusError)
+                        .foregroundColor(theme.statusError)
                 }
 
                 // Fork button
@@ -570,7 +641,7 @@ struct MWInputBar: View {
                 } label: {
                     Image(systemName: "arrow.branch")
                         .font(.system(size: 20))
-                        .foregroundColor(MWColors.accentCyan)
+                        .foregroundColor(theme.accentCyan)
                         .frame(width: 30, height: 30)
                 }
             } else {
@@ -582,8 +653,8 @@ struct MWInputBar: View {
                         .font(.system(size: 30))
                         .foregroundColor(
                             (!canSend || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                                ? MWColors.textTertiary
-                                : MWColors.accentPrimary
+                                ? theme.cardTextTertiary
+                                : theme.accentPrimary
                         )
                 }
                 .disabled(!canSend || text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -594,10 +665,10 @@ struct MWInputBar: View {
         .background(
             Rectangle()
                 .fill(.ultraThinMaterial)
-                .background(MWColors.glassBg)
+                .background(theme.glassBg)
                 .overlay(
                     Rectangle()
-                        .strokeBorder(MWColors.divider, lineWidth: 0.5)
+                        .strokeBorder(theme.divider, lineWidth: 0.5)
                         .padding(.top, 0.5)
                 )
         )
@@ -845,5 +916,254 @@ extension View {
         .onPreferenceChange(SizePreferenceKey.self) { size in
             onChange(size)
         }
+    }
+}
+
+// MARK: - Task Progress Ring
+
+/// A circular progress ring with MiWarp brand styling.
+/// Supports progress tracking with completed checkmark and failed warning states.
+struct MWTaskProgressRing: View {
+    let progress: Double
+    let state: RingState
+    var size: CGFloat = 40
+    var lineWidth: CGFloat = 4
+
+    enum RingState {
+        case running
+        case waiting
+        case completed
+        case failed
+    }
+
+    private var normalizedProgress: Double {
+        switch state {
+        case .running, .waiting: return min(max(progress, 0.02), 1.0)
+        case .completed: return 1.0
+        case .failed: return progress
+        }
+    }
+
+    private var ringColor: Color {
+        switch state {
+        case .running: return MWColors.statusRunning
+        case .waiting: return MWColors.statusWarning
+        case .completed: return MWColors.statusSuccess
+        case .failed: return MWColors.statusError
+        }
+    }
+
+    private var trackColor: Color {
+        switch state {
+        case .failed: return MWColors.statusError.opacity(0.15)
+        default: return MWColors.divider
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(trackColor, lineWidth: lineWidth)
+
+            Circle()
+                .trim(from: 0, to: normalizedProgress)
+                .stroke(
+                    ringColor,
+                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+                .opacity(state == .failed ? 0.5 : 1.0)
+
+            stateIcon
+        }
+        .frame(width: size, height: size)
+    }
+
+    @ViewBuilder
+    private var stateIcon: some View {
+        switch state {
+        case .completed:
+            Image(systemName: "checkmark")
+                .font(.system(size: size * 0.35, weight: .bold))
+                .foregroundColor(MWColors.statusSuccess)
+        case .failed:
+            Image(systemName: "exclamationmark")
+                .font(.system(size: size * 0.3, weight: .bold))
+                .foregroundColor(MWColors.statusError)
+        default:
+            EmptyView()
+        }
+    }
+}
+
+// MARK: - Thinking Indicator
+
+/// Animated three-dot bouncing indicator for chat typing/thinking states.
+/// Respects Reduce Motion accessibility setting.
+struct MWThinkingIndicator: View {
+    var size: IndicatorSize = .medium
+
+    enum IndicatorSize {
+        case small
+        case medium
+
+        var dotSize: CGFloat {
+            switch self {
+            case .small: return 4
+            case .medium: return 6
+            }
+        }
+
+        var spacing: CGFloat {
+            switch self {
+            case .small: return 2
+            case .medium: return 3
+            }
+        }
+    }
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.35)) { timeline in
+            let phase = Int(timeline.date.timeIntervalSinceReferenceDate / 0.35) % 3
+            HStack(spacing: size.spacing) {
+                ForEach(0..<3, id: \.self) { index in
+                    Circle()
+                        .fill(MWColors.textTertiary)
+                        .frame(width: size.dotSize, height: size.dotSize)
+                        .offset(y: !reduceMotion && phase == index ? -(size.dotSize * 0.5) : 0)
+                        .animation(
+                            reduceMotion ? .none : .easeInOut(duration: 0.2),
+                            value: phase
+                        )
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Status Badge
+
+/// Capsule-shaped status badge with semantic colors for workflow states.
+struct MWStatusBadge: View {
+    let text: String
+    let style: BadgeStyle
+
+    @MainActor
+    enum BadgeStyle {
+        case info
+        case success
+        case warning
+        case error
+        case neutral
+
+        var tint: Color {
+            switch self {
+            case .info: return MWColors.accentPrimary
+            case .success: return MWColors.statusSuccess
+            case .warning: return MWColors.statusWarning
+            case .error: return MWColors.statusError
+            case .neutral: return MWColors.textTertiary
+            }
+        }
+    }
+
+    init(text: String, style: BadgeStyle) {
+        self.text = text
+        self.style = style
+    }
+
+    /// Convenience initializer from RunStatus
+    init(status: RunStatus) {
+        self.text = status.displayLabel
+        self.style = Self.badgeStyle(for: status)
+    }
+
+    /// Convenience initializer from ConnectionState
+    init(connectionState: ConnectionState) {
+        self.text = connectionState.displayLabel
+        self.style = Self.badgeStyle(for: connectionState)
+    }
+
+    private static func badgeStyle(for status: RunStatus) -> BadgeStyle {
+        switch status {
+        case .running: return .info
+        case .pending, .idle: return .neutral
+        case .waitingApproval: return .warning
+        case .completed: return .success
+        case .failed, .stopped: return .error
+        }
+    }
+
+    private static func badgeStyle(for state: ConnectionState) -> BadgeStyle {
+        switch state {
+        case .connected: return .success
+        case .connecting, .authenticating, .reconnecting: return .info
+        case .disconnected, .authFailed, .serverUnavailable: return .error
+        }
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.caption)
+            .fontWeight(.medium)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .foregroundStyle(style.tint)
+            .background(
+                Capsule().fill(style.tint.opacity(0.12))
+            )
+            .overlay(
+                Capsule().stroke(style.tint.opacity(0.2), lineWidth: 0.5)
+            )
+    }
+}
+
+// MARK: - Status Dot
+
+/// Small circular status indicator for use in list rows.
+struct MWStatusDot: View {
+    let status: DotStatus
+    var showGlow: Bool = false
+
+    @MainActor
+    enum DotStatus {
+        case connected
+        case disconnected
+        case syncing
+        case running
+        case waiting
+        case completed
+        case failed
+        case localOnly
+
+        var color: Color {
+            switch self {
+            case .connected: return MWColors.statusSuccess
+            case .disconnected: return MWColors.statusError
+            case .syncing: return MWColors.accentCyan
+            case .running: return MWColors.statusRunning
+            case .waiting: return MWColors.statusWarning
+            case .completed: return MWColors.textTertiary
+            case .failed: return MWColors.statusError
+            case .localOnly: return MWColors.statusWarning
+            }
+        }
+    }
+
+    init(status: DotStatus, showGlow: Bool = false) {
+        self.status = status
+        self.showGlow = showGlow
+    }
+
+    var body: some View {
+        Circle()
+            .fill(status.color)
+            .frame(width: 8, height: 8)
+            .shadow(
+                color: showGlow ? status.color.opacity(0.5) : .clear,
+                radius: showGlow ? 3 : 0
+            )
     }
 }

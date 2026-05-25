@@ -68,6 +68,7 @@ struct SessionHubView: View {
                 }
             }
             .navigationTitle("Sessions")
+            .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchText, prompt: "Search sessions...")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -105,6 +106,7 @@ struct SessionHubView: View {
             .refreshable {
                 await loadRuns()
             }
+            .background(MWPatternedBackdrop())
         }
     }
 
@@ -150,6 +152,7 @@ struct SessionHubView: View {
             .padding(.horizontal, 16)
             .padding(.top, 20)
         }
+        .background(MWPatternedBackdrop())
     }
 
     private var notConnectedHero: some View {
@@ -157,11 +160,11 @@ struct SessionHubView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Connect Desktop")
                     .font(.title2.weight(.semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(heroTextColor)
 
                 Text("Sync local MiWarp sessions over your network.")
                     .font(.callout)
-                    .foregroundColor(.white.opacity(0.85))
+                    .foregroundColor(heroTextColor.opacity(0.85))
             }
 
             NavigationLink {
@@ -192,17 +195,17 @@ struct SessionHubView: View {
             }
         }
         .padding(16)
-        .background(
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    MWColors.accentPrimary,
-                    MWColors.accentCyan
-                ]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        .background(MWColors.accentPrimary)
         .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var heroTextColor: Color {
+        switch theme.accentTheme {
+        case .deepSeaMilk, .auroraPomelo, .auroraLime:
+            return .black
+        default:
+            return .white
+        }
     }
 
     // MARK: - Connected Empty View
@@ -216,6 +219,7 @@ struct SessionHubView: View {
             .padding(.horizontal, 16)
             .padding(.top, 20)
         }
+        .background(MWPatternedBackdrop())
         .task {
             await loadRuns()
         }
@@ -339,7 +343,7 @@ struct SessionHubView: View {
         .padding(.horizontal, 16)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.secondarySystemGroupedBackground))
+                .fill(MWColors.cardBg)
         )
     }
 
@@ -358,7 +362,7 @@ struct SessionHubView: View {
         .padding(.horizontal, 16)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.secondarySystemGroupedBackground))
+                .fill(MWColors.cardBg)
         )
     }
 
@@ -390,81 +394,89 @@ struct SessionHubView: View {
             } header: {
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(store.isConnected ? .green : .red)
+                        .fill(store.isConnected ? theme.statusSuccess : theme.statusError)
                         .frame(width: 6, height: 6)
 
                     Text(store.isConnected ? "Connected" : "Disconnected")
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundColor(theme.textTertiary)
 
                     if let conn = store.activeConnection {
                         Text("·")
-                            .foregroundStyle(.tertiary)
+                            .foregroundColor(theme.textTertiary)
                         Text(conn.host)
                             .font(.caption.monospaced())
-                            .foregroundStyle(.tertiary)
+                            .foregroundColor(theme.textTertiary)
                     }
 
                     Spacer()
 
                     Text("\(filteredRuns.count) sessions")
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundColor(theme.textTertiary)
                 }
             }
+            .listRowBackground(Color.clear)
 
             if filteredRuns.isEmpty && !searchText.isEmpty {
                 ContentUnavailableView.search(text: searchText)
+                    .listRowBackground(Color.clear)
             } else if filteredRuns.isEmpty {
                 ContentUnavailableView {
                     Label("All Clear", systemImage: "checkmark.circle")
                 } description: {
                     Text("No sessions match the current filters")
                 }
+                .listRowBackground(Color.clear)
             } else {
-                ForEach(filteredRuns) { run in
-                    NavigationLink(value: run) {
-                        SessionRowView(run: run)
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        if run.status == .running {
-                            Button(role: .destructive) {
-                                // stop action
-                            } label: {
-                                Label("Stop", systemImage: "stop.fill")
+                Section {
+                    ForEach(filteredRuns) { run in
+                        NavigationLink(value: run) {
+                            SessionRowView(run: run)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            if run.status == .running {
+                                Button(role: .destructive) {
+                                    // stop action
+                                } label: {
+                                    Label("Stop", systemImage: "stop.fill")
+                                }
                             }
-                        }
-                        Button {
-                            // pin action
-                        } label: {
-                            Label("Pin", systemImage: "pin")
-                        }
-                        .tint(MWColors.statusWarning)
-                    }
-                    .contextMenu {
-                        Button {
-                            // view details
-                        } label: {
-                            Label("Details", systemImage: "info.circle")
-                        }
-                        if run.status == .running {
-                            Button(role: .destructive) {
-                                // stop
+                            Button {
+                                // pin action
                             } label: {
-                                Label("Stop", systemImage: "stop.fill")
+                                Label("Pin", systemImage: "pin")
                             }
+                            .tint(MWColors.statusWarning)
                         }
-                        Divider()
-                        Button {
-                            // copy path
-                        } label: {
-                            Label("Copy Path", systemImage: "doc.on.doc")
+                        .contextMenu {
+                            Button {
+                                // view details
+                            } label: {
+                                Label("Details", systemImage: "info.circle")
+                            }
+                            if run.status == .running {
+                                Button(role: .destructive) {
+                                    // stop
+                                } label: {
+                                    Label("Stop", systemImage: "stop.fill")
+                                }
+                            }
+                            Divider()
+                            Button {
+                                // copy path
+                            } label: {
+                                Label("Copy Path", systemImage: "doc.on.doc")
+                            }
                         }
                     }
                 }
+                .listRowBackground(Color.clear)
             }
         }
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(MWPatternedBackdrop())
         .navigationDestination(for: MiWarpRun.self) { run in
             ChatView(runId: run.id, runTitle: run.displayTitle)
         }
@@ -496,17 +508,18 @@ struct SessionHubView: View {
 // MARK: - Session Row (native style)
 
 struct SessionRowView: View {
+    @EnvironmentObject private var theme: MWTheme
     let run: MiWarpRun
 
     private var statusColor: Color {
         switch run.status {
-        case .running:    return .green
-        case .waitingApproval: return .orange
-        case .failed:     return .red
-        case .completed:  return .gray
-        case .idle:       return .secondary
-        case .pending:    return .blue
-        case .stopped:    return .gray
+        case .running:    return theme.statusRunning
+        case .waitingApproval: return theme.statusWarning
+        case .failed:     return theme.statusError
+        case .completed:  return theme.statusDone
+        case .idle:       return theme.statusIdle
+        case .pending:    return theme.statusPending
+        case .stopped:    return theme.statusStopped
         }
     }
 
@@ -520,12 +533,13 @@ struct SessionRowView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(run.displayTitle)
                     .font(.body.weight(.medium))
+                    .foregroundColor(theme.textPrimary)
                     .lineLimit(2)
 
                 if let cwd = run.displayCwd {
                     Text(cwd)
                         .font(.caption.monospaced())
-                        .foregroundStyle(.tertiary)
+                        .foregroundColor(theme.textTertiary)
                         .lineLimit(1)
                 }
             }
@@ -536,13 +550,13 @@ struct SessionRowView: View {
                 if let time = run.displayRelativeTime {
                     Text(time)
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundColor(theme.textTertiary)
                 }
 
                 if let msgs = run.displayMessageCount {
                     Text(msgs)
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundColor(theme.textTertiary)
                 }
             }
         }

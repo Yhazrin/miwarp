@@ -3,6 +3,7 @@ import SwiftUI
 struct RawEventView: View {
     let events: [BusEvent]
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var theme: MWTheme
 
     var body: some View {
         NavigationStack {
@@ -25,7 +26,10 @@ struct RawEventView: View {
                         .textSelection(.enabled)
                 }
                 .padding(.vertical, 2)
+                .listRowBackground(theme.cardBg)
             }
+            .scrollContentBackground(.hidden)
+            .background(MWPatternedBackdrop())
             .navigationTitle("Raw Events (\(events.count))")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

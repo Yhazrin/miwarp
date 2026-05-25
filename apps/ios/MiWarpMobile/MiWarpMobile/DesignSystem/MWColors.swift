@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Color Helpers
 
@@ -20,6 +21,22 @@ extension Color {
         let blue = Double(hex & 0xff) / 255.0
         self.init(red: red, green: green, blue: blue, opacity: opacity)
     }
+
+    /// Perceived luminance in [0, 1] using ITU-R BT.709 coefficients.
+    var perceivedLuminance: Double {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        UIColor(self).getRed(&r, green: &g, blue: &b, alpha: &a)
+        return 0.2126 * Double(r) + 0.7152 * Double(g) + 0.0722 * Double(b)
+    }
+
+    /// WCAG contrast ratio of this color against another.
+    func contrastRatio(against other: Color) -> Double {
+        let l1 = self.perceivedLuminance
+        let l2 = other.perceivedLuminance
+        let lighter = max(l1, l2)
+        let darker = min(l1, l2)
+        return (lighter + 0.05) / (darker + 0.05)
+    }
 }
 
 // MARK: - Appearance
@@ -28,6 +45,7 @@ enum MWAppearanceMode: String, CaseIterable, Identifiable {
     case system
     case light
     case dark
+    case custom
 
     var id: String { rawValue }
 
@@ -36,6 +54,7 @@ enum MWAppearanceMode: String, CaseIterable, Identifiable {
         case .system: return "System"
         case .light: return "Light"
         case .dark: return "Dark"
+        case .custom: return "Custom"
         }
     }
 
@@ -44,6 +63,7 @@ enum MWAppearanceMode: String, CaseIterable, Identifiable {
         case .system: return "circle.lefthalf.filled"
         case .light: return "sun.max.fill"
         case .dark: return "moon.fill"
+        case .custom: return "paintpalette.fill"
         }
     }
 }
@@ -85,6 +105,10 @@ enum MWAccentTheme: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    var requiresCustomAppearance: Bool {
+        self != .defaultMiWarp
+    }
+
     var displayName: String {
         switch self {
         case .defaultMiWarp: return "Default MiWarp"
@@ -98,23 +122,23 @@ enum MWAccentTheme: String, CaseIterable, Identifiable {
 
     var primarySwatch: Color {
         switch self {
-        case .defaultMiWarp: return Color(hex: 0x0ea5e9)
-        case .carbonPink: return Color(hex: 0x1A1A1D)
-        case .deepSeaMilk: return Color(hex: 0x122E8A)
-        case .auroraPomelo: return Color(hex: 0x9F82FD)
-        case .pomegranateMist: return Color(hex: 0xE72D48)
-        case .auroraLime: return Color(hex: 0x9F82FD)
+        case .defaultMiWarp: return Color(hex: 0xFF6700)  // Xiaomi orange
+        case .carbonPink: return Color(hex: 0x1A1A1D)    // 炭黑
+        case .deepSeaMilk: return Color(hex: 0x122E8A)   // 深海蓝
+        case .auroraPomelo: return Color(hex: 0x9F82FD)  // 极光紫
+        case .pomegranateMist: return Color(hex: 0xE72D48) // 石榴红
+        case .auroraLime: return Color(hex: 0x01847F)    // teal
         }
     }
 
     var secondarySwatch: Color {
         switch self {
-        case .defaultMiWarp: return Color(hex: 0x22d3ee)
-        case .carbonPink: return Color(hex: 0xE6397C)
-        case .deepSeaMilk: return Color(hex: 0xF5EFEA)
-        case .auroraPomelo: return Color(hex: 0xFBEA03)
-        case .pomegranateMist: return Color(hex: 0xF1DDDF)
-        case .auroraLime: return Color(hex: 0xBCFE1A)
+        case .defaultMiWarp: return Color(hex: 0xFF6700)  // Xiaomi orange
+        case .carbonPink: return Color(hex: 0xE6397C)     // 甜酷粉
+        case .deepSeaMilk: return Color(hex: 0xF5EFEA)    // 柔奶白
+        case .auroraPomelo: return Color(hex: 0xFBEA03)  // 蜜柚黄
+        case .pomegranateMist: return Color(hex: 0xF1DDDF) // 雾粉桃
+        case .auroraLime: return Color(hex: 0xF9D2E4)    // light pink
         }
     }
 }
@@ -240,345 +264,351 @@ enum MWColors {
 
     // MARK: Theme Definitions
 
+    // Default: pure black + white, Xiaomi orange accent
     private static let defaultMiWarp = MWThemePair(
         light: MWThemeTokens(
-            bgDeepest: Color(hex: 0xF8F8FA),
-            bgBase: Color(hex: 0xFFFFFF),
-            bgElevated: Color(hex: 0xF2F4F8),
-            bgSurface: Color(hex: 0xECEEF2),
-            glassBg: Color(hex: 0xFAFAFC, opacity: 0.92),
-            glassBorder: Color(hex: 0xC8D0DC, opacity: 0.20),
-            textPrimary: Color(hex: 0x142033),
-            textSecondary: Color(hex: 0x4F6175),
-            textTertiary: Color(hex: 0x78879A),
-            accentPrimary: Color(hex: 0x0369A1),
-            accentSecondary: Color(hex: 0x0891B2),
-            accentOnAccent: Color(hex: 0xF7FBFF),
-            statusRunning: Color(hex: 0x2563EB),
-            statusSuccess: Color(hex: 0x059669),
-            statusWarning: Color(hex: 0xB7791F),
-            statusError: Color(hex: 0xDC2626),
-            statusApproval: Color(hex: 0xB7791F),
-            statusStopped: Color(hex: 0x9B7280),
-            statusSuccessLowSat: Color(hex: 0x34A853),
-            tabActive: Color(hex: 0x0891B2),
-            tabInactive: Color(hex: 0x78879A),
-            inputBg: Color(hex: 0xF4F8FC, opacity: 0.88),
-            cardBg: Color(hex: 0xFDFDFF, opacity: 0.95),
-            divider: Color(hex: 0x7A8EA4, opacity: 0.12),
-            glow: Color(hex: 0x22D3EE, opacity: 0.20)
+            bgDeepest: Color(hex: 0xFFFFFF),
+            bgBase: Color(hex: 0xFAFAFA),
+            bgElevated: Color(hex: 0xF5F5F5),
+            bgSurface: Color(hex: 0xEEEEEE),
+            glassBg: Color(hex: 0xFFFFFF, opacity: 0.90),
+            glassBorder: Color(hex: 0x000000, opacity: 0.12),
+            textPrimary: Color(hex: 0x000000),
+            textSecondary: Color(hex: 0x3D3D3D),
+            textTertiary: Color(hex: 0x8C8C8C),
+            accentPrimary: Color(hex: 0xFF6700),
+            accentSecondary: Color(hex: 0x00E5FF),
+            accentOnAccent: Color(hex: 0xFFFFFF),
+            statusRunning: Color(hex: 0xFF6700),
+            statusSuccess: Color(hex: 0x00C853),
+            statusWarning: Color(hex: 0xFF9100),
+            statusError: Color(hex: 0xFF3D00),
+            statusApproval: Color(hex: 0xFF9100),
+            statusStopped: Color(hex: 0x9E9E9E),
+            statusSuccessLowSat: Color(hex: 0x00C853),
+            tabActive: Color(hex: 0xFF6700),
+            tabInactive: Color(hex: 0x8C8C8C),
+            inputBg: Color(hex: 0xFFFFFF, opacity: 0.88),
+            cardBg: Color(hex: 0xFFFFFF, opacity: 0.95),
+            divider: Color(hex: 0x000000, opacity: 0.08),
+            glow: Color(hex: 0xFF6700, opacity: 0.25)
         ),
         dark: MWThemeTokens(
-            bgDeepest: Color(hue: 220.0 / 360.0, saturation: 0.18, lightness: 0.06),
-            bgBase: Color(hue: 220.0 / 360.0, saturation: 0.14, lightness: 0.12),
-            bgElevated: Color(hue: 220.0 / 360.0, saturation: 0.12, lightness: 0.15),
-            bgSurface: Color(hue: 220.0 / 360.0, saturation: 0.10, lightness: 0.18),
-            glassBg: Color(hue: 220.0 / 360.0, saturation: 0.18, lightness: 0.11, opacity: 0.72),
-            glassBorder: Color(hue: 220.0 / 360.0, saturation: 0.30, lightness: 0.50, opacity: 0.12),
-            textPrimary: Color(hue: 0, saturation: 0, lightness: 0.94),
-            textSecondary: Color(hue: 220.0 / 360.0, saturation: 0.10, lightness: 0.62),
-            textTertiary: Color(hue: 220.0 / 360.0, saturation: 0.10, lightness: 0.42),
-            accentPrimary: Color(hue: 210.0 / 360.0, saturation: 1.0, lightness: 0.60),
-            accentSecondary: Color(hue: 185.0 / 360.0, saturation: 0.85, lightness: 0.55),
-            accentOnAccent: Color(hex: 0xF7FBFF),
-            statusRunning: Color(hue: 217.0 / 360.0, saturation: 0.91, lightness: 0.60),
-            statusSuccess: Color(hue: 152.0 / 360.0, saturation: 0.55, lightness: 0.55),
-            statusWarning: Color(hue: 38.0 / 360.0, saturation: 0.80, lightness: 0.55),
-            statusError: Color(hue: 0, saturation: 0.72, lightness: 0.60),
-            statusApproval: Color(hue: 38.0 / 360.0, saturation: 0.80, lightness: 0.55),
-            statusStopped: Color(hue: 0, saturation: 0.30, lightness: 0.55),
-            statusSuccessLowSat: Color(hue: 152.0 / 360.0, saturation: 0.40, lightness: 0.50),
-            tabActive: Color(hex: 0x22D3EE),
-            tabInactive: Color(hue: 220.0 / 360.0, saturation: 0.10, lightness: 0.42),
-            inputBg: Color(hue: 220.0 / 360.0, saturation: 0.18, lightness: 0.11, opacity: 0.82),
-            cardBg: Color(hue: 220.0 / 360.0, saturation: 0.18, lightness: 0.11, opacity: 0.78),
-            divider: Color(hex: 0xBFE9FF, opacity: 0.14),
-            glow: Color(hex: 0x22D3EE, opacity: 0.20)
+            bgDeepest: Color(hex: 0x000000),
+            bgBase: Color(hex: 0x0D0D0D),
+            bgElevated: Color(hex: 0x1A1A1A),
+            bgSurface: Color(hex: 0x262626),
+            glassBg: Color(hex: 0x000000, opacity: 0.80),
+            glassBorder: Color(hex: 0xFFFFFF, opacity: 0.12),
+            textPrimary: Color(hex: 0xFFFFFF),
+            textSecondary: Color(hex: 0xB3B3B3),
+            textTertiary: Color(hex: 0x737373),
+            accentPrimary: Color(hex: 0xFF6700),
+            accentSecondary: Color(hex: 0x00E5FF),
+            accentOnAccent: Color(hex: 0x000000),
+            statusRunning: Color(hex: 0xFF6700),
+            statusSuccess: Color(hex: 0x00E676),
+            statusWarning: Color(hex: 0xFFAB40),
+            statusError: Color(hex: 0xFF6E40),
+            statusApproval: Color(hex: 0xFFAB40),
+            statusStopped: Color(hex: 0x757575),
+            statusSuccessLowSat: Color(hex: 0x00E676),
+            tabActive: Color(hex: 0xFF6700),
+            tabInactive: Color(hex: 0x737373),
+            inputBg: Color(hex: 0x1A1A1A, opacity: 0.88),
+            cardBg: Color(hex: 0x1A1A1A, opacity: 0.95),
+            divider: Color(hex: 0xFFFFFF, opacity: 0.10),
+            glow: Color(hex: 0xFF6700, opacity: 0.30)
         )
     )
 
+    // carbonPink — bg: 炭黑 #1A1A1D, cards: 甜酷粉 #E6397C, font: white
     private static let carbonPink = MWThemePair(
         light: MWThemeTokens(
-            bgDeepest: Color(hex: 0xFAF4F7),
-            bgBase: Color(hex: 0xFFF8FA),
-            bgElevated: Color(hex: 0xF7EAF0),
-            bgSurface: Color(hex: 0xF0DDE6),
-            glassBg: Color(hex: 0xFFF8FA, opacity: 0.84),
-            glassBorder: Color(hex: 0xE6397C, opacity: 0.22),
-            textPrimary: Color(hex: 0x1A1A1D),
-            textSecondary: Color(hex: 0x5E4350),
-            textTertiary: Color(hex: 0x8A6E7A),
-            accentPrimary: Color(hex: 0xB9205A),
-            accentSecondary: Color(hex: 0xE6397C),
-            accentOnAccent: Color(hex: 0xFFF7FB),
-            statusRunning: Color(hex: 0xB9205A),
-            statusSuccess: Color(hex: 0x168567),
-            statusWarning: Color(hex: 0xA06512),
-            statusError: Color(hex: 0xD32648),
-            statusApproval: Color(hex: 0xE6397C),
-            statusStopped: Color(hex: 0xA06878),
-            statusSuccessLowSat: Color(hex: 0x34A853),
-            tabActive: Color(hex: 0xB9205A),
-            tabInactive: Color(hex: 0x8A6E7A),
-            inputBg: Color(hex: 0xFFF8FA, opacity: 0.88),
-            cardBg: Color(hex: 0xFFF8FA, opacity: 0.84),
-            divider: Color(hex: 0xD8AFC0, opacity: 0.36),
-            glow: Color(hex: 0xE6397C, opacity: 0.20)
+            bgDeepest: Color(hex: 0x1A1A1D),
+            bgBase: Color(hex: 0x232326),
+            bgElevated: Color(hex: 0x2C2C2F),
+            bgSurface: Color(hex: 0xE6397C),
+            glassBg: Color(hex: 0xE6397C, opacity: 0.88),
+            glassBorder: Color(hex: 0xFFFFFF, opacity: 0.15),
+            textPrimary: Color(hex: 0xFFFFFF),
+            textSecondary: Color(hex: 0xFFC0D8),
+            textTertiary: Color(hex: 0xFFFFFF).opacity(0.75),
+            accentPrimary: Color(hex: 0xE6397C),
+            accentSecondary: Color(hex: 0x1A1A1D),
+            accentOnAccent: Color(hex: 0xFFFFFF),
+            statusRunning: Color(hex: 0xE6397C),
+            statusSuccess: Color(hex: 0x00C853),
+            statusWarning: Color(hex: 0xFF9100),
+            statusError: Color(hex: 0xFF3D00),
+            statusApproval: Color(hex: 0xFF9100),
+            statusStopped: Color(hex: 0x9E9E9E),
+            statusSuccessLowSat: Color(hex: 0x00C853),
+            tabActive: Color(hex: 0xE6397C),
+            tabInactive: Color(hex: 0xB0B0B8),
+            inputBg: Color(hex: 0xE6397C, opacity: 0.85),
+            cardBg: Color(hex: 0xE6397C, opacity: 0.92),
+            divider: Color(hex: 0xFFFFFF, opacity: 0.12),
+            glow: Color(hex: 0xE6397C, opacity: 0.35)
         ),
         dark: MWThemeTokens(
-            bgDeepest: Color(hex: 0x0F0F11),
-            bgBase: Color(hex: 0x1A1A1D),
-            bgElevated: Color(hex: 0x242126),
-            bgSurface: Color(hex: 0x302830),
-            glassBg: Color(hex: 0x1A1A1D, opacity: 0.74),
-            glassBorder: Color(hex: 0xE6397C, opacity: 0.18),
-            textPrimary: Color(hex: 0xF6EEF2),
-            textSecondary: Color(hex: 0xC9AAB8),
-            textTertiary: Color(hex: 0x8F7480),
+            bgDeepest: Color(hex: 0x1A1A1D),
+            bgBase: Color(hex: 0x232326),
+            bgElevated: Color(hex: 0x2C2C2F),
+            bgSurface: Color(hex: 0xE6397C),
+            glassBg: Color(hex: 0xE6397C, opacity: 0.88),
+            glassBorder: Color(hex: 0xFFFFFF, opacity: 0.15),
+            textPrimary: Color(hex: 0xFFFFFF),
+            textSecondary: Color(hex: 0xFFC0D8),
+            textTertiary: Color(hex: 0xFFFFFF).opacity(0.75),
             accentPrimary: Color(hex: 0xE6397C),
-            accentSecondary: Color(hex: 0xFF7AAD),
-            accentOnAccent: Color(hex: 0x1A1A1D),
+            accentSecondary: Color(hex: 0x1A1A1D),
+            accentOnAccent: Color(hex: 0xFFFFFF),
             statusRunning: Color(hex: 0xE6397C),
-            statusSuccess: Color(hex: 0x41D6A2),
-            statusWarning: Color(hex: 0xFFB85C),
-            statusError: Color(hex: 0xFF5A72),
-            statusApproval: Color(hex: 0xFF7AAD),
-            statusStopped: Color(hex: 0x8F7480),
-            statusSuccessLowSat: Color(hex: 0x41D6A2),
+            statusSuccess: Color(hex: 0x00C853),
+            statusWarning: Color(hex: 0xFF9100),
+            statusError: Color(hex: 0xFF3D00),
+            statusApproval: Color(hex: 0xFF9100),
+            statusStopped: Color(hex: 0x9E9E9E),
+            statusSuccessLowSat: Color(hex: 0x00C853),
             tabActive: Color(hex: 0xE6397C),
-            tabInactive: Color(hex: 0x8F7480),
-            inputBg: Color(hex: 0x17171A, opacity: 0.84),
-            cardBg: Color(hex: 0x1D1B20, opacity: 0.80),
-            divider: Color(hex: 0xE6397C, opacity: 0.16),
-            glow: Color(hex: 0xE6397C, opacity: 0.24)
+            tabInactive: Color(hex: 0xB0B0B8),
+            inputBg: Color(hex: 0xE6397C, opacity: 0.85),
+            cardBg: Color(hex: 0xE6397C, opacity: 0.92),
+            divider: Color(hex: 0xFFFFFF, opacity: 0.12),
+            glow: Color(hex: 0xE6397C, opacity: 0.35)
         )
     )
 
+    // deepSeaMilk — bg: 深海蓝 #122E8A, cards: 白色, font: 白色
     private static let deepSeaMilk = MWThemePair(
         light: MWThemeTokens(
-            bgDeepest: Color(hex: 0xF5EFEA),
-            bgBase: Color(hex: 0xFBF7F3),
-            bgElevated: Color(hex: 0xEEE5DF),
-            bgSurface: Color(hex: 0xE8DDD4),
-            glassBg: Color(hex: 0xFBF7F3, opacity: 0.84),
-            glassBorder: Color(hex: 0x122E8A, opacity: 0.18),
-            textPrimary: Color(hex: 0x122E8A),
-            textSecondary: Color(hex: 0x43537D),
-            textTertiary: Color(hex: 0x7A7F90),
-            accentPrimary: Color(hex: 0x122E8A),
-            accentSecondary: Color(hex: 0x6A7EDB),
-            accentOnAccent: Color(hex: 0xF5EFEA),
-            statusRunning: Color(hex: 0x2746AE),
-            statusSuccess: Color(hex: 0x118568),
-            statusWarning: Color(hex: 0x9B681A),
-            statusError: Color(hex: 0xC9344D),
-            statusApproval: Color(hex: 0x6A7EDB),
-            statusStopped: Color(hex: 0x7A7F90),
-            statusSuccessLowSat: Color(hex: 0x34A853),
-            tabActive: Color(hex: 0x122E8A),
-            tabInactive: Color(hex: 0x7A7F90),
-            inputBg: Color(hex: 0xFFFBF7, opacity: 0.88),
-            cardBg: Color(hex: 0xFFFBF7, opacity: 0.84),
-            divider: Color(hex: 0x122E8A, opacity: 0.16),
-            glow: Color(hex: 0x122E8A, opacity: 0.16)
+            bgDeepest: Color(hex: 0x122E8A),
+            bgBase: Color(hex: 0x15389E),
+            bgElevated: Color(hex: 0x1842B2),
+            bgSurface: Color(hex: 0xFFFFFF),
+            glassBg: Color(hex: 0xFFFFFF, opacity: 0.88),
+            glassBorder: Color(hex: 0xFFFFFF, opacity: 0.20),
+            textPrimary: Color(hex: 0xFFFFFF),
+            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
+            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
+            accentPrimary: Color(hex: 0xFFFFFF),
+            accentSecondary: Color(hex: 0x122E8A),
+            accentOnAccent: Color(hex: 0x122E8A),
+            statusRunning: Color(hex: 0xFFFFFF),
+            statusSuccess: Color(hex: 0x00C853),
+            statusWarning: Color(hex: 0xFF9100),
+            statusError: Color(hex: 0xFF3D00),
+            statusApproval: Color(hex: 0xFF9100),
+            statusStopped: Color(hex: 0x9E9E9E),
+            statusSuccessLowSat: Color(hex: 0x00C853),
+            tabActive: Color(hex: 0xFFFFFF),
+            tabInactive: Color(hex: 0x90A0C0),
+            inputBg: Color(hex: 0xFFFFFF, opacity: 0.85),
+            cardBg: Color(hex: 0xFFFFFF, opacity: 0.92),
+            divider: Color(hex: 0xFFFFFF, opacity: 0.20),
+            glow: Color(hex: 0xFFFFFF, opacity: 0.35)
         ),
         dark: MWThemeTokens(
-            bgDeepest: Color(hex: 0x071238),
-            bgBase: Color(hex: 0x122E8A),
-            bgElevated: Color(hex: 0x183894),
-            bgSurface: Color(hex: 0x213F9C),
-            glassBg: Color(hex: 0x071238, opacity: 0.62),
-            glassBorder: Color(hex: 0xF5EFEA, opacity: 0.18),
-            textPrimary: Color(hex: 0xF8F2ED),
-            textSecondary: Color(hex: 0xC9D2FF),
-            textTertiary: Color(hex: 0x8EA0E0),
-            accentPrimary: Color(hex: 0xF5EFEA),
-            accentSecondary: Color(hex: 0x9FB2FF),
+            bgDeepest: Color(hex: 0x122E8A),
+            bgBase: Color(hex: 0x15389E),
+            bgElevated: Color(hex: 0x1842B2),
+            bgSurface: Color(hex: 0xFFFFFF),
+            glassBg: Color(hex: 0xFFFFFF, opacity: 0.88),
+            glassBorder: Color(hex: 0xFFFFFF, opacity: 0.20),
+            textPrimary: Color(hex: 0xFFFFFF),
+            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
+            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
+            accentPrimary: Color(hex: 0xFFFFFF),
+            accentSecondary: Color(hex: 0x122E8A),
             accentOnAccent: Color(hex: 0x122E8A),
-            statusRunning: Color(hex: 0x9FB2FF),
-            statusSuccess: Color(hex: 0x61D7B1),
-            statusWarning: Color(hex: 0xF8D18A),
-            statusError: Color(hex: 0xFF7488),
-            statusApproval: Color(hex: 0xF5EFEA),
-            statusStopped: Color(hex: 0x8EA0E0),
-            statusSuccessLowSat: Color(hex: 0x61D7B1),
-            tabActive: Color(hex: 0xF5EFEA),
-            tabInactive: Color(hex: 0x8EA0E0),
-            inputBg: Color(hex: 0x0B1E5B, opacity: 0.78),
-            cardBg: Color(hex: 0x0B1E5B, opacity: 0.70),
-            divider: Color(hex: 0xF5EFEA, opacity: 0.14),
-            glow: Color(hex: 0xF5EFEA, opacity: 0.14)
+            statusRunning: Color(hex: 0xFFFFFF),
+            statusSuccess: Color(hex: 0x00C853),
+            statusWarning: Color(hex: 0xFF9100),
+            statusError: Color(hex: 0xFF3D00),
+            statusApproval: Color(hex: 0xFF9100),
+            statusStopped: Color(hex: 0x9E9E9E),
+            statusSuccessLowSat: Color(hex: 0x00C853),
+            tabActive: Color(hex: 0xFFFFFF),
+            tabInactive: Color(hex: 0x90A0C0),
+            inputBg: Color(hex: 0xFFFFFF, opacity: 0.85),
+            cardBg: Color(hex: 0xFFFFFF, opacity: 0.92),
+            divider: Color(hex: 0xFFFFFF, opacity: 0.20),
+            glow: Color(hex: 0xFFFFFF, opacity: 0.35)
         )
     )
 
+    // auroraPomelo — bg: 极光紫 #9F82FD, cards: 蜜柚黄 #FBEA03
     private static let auroraPomelo = MWThemePair(
         light: MWThemeTokens(
-            bgDeepest: Color(hex: 0xFAF8EA),
-            bgBase: Color(hex: 0xFFFDEB),
-            bgElevated: Color(hex: 0xF0EBFF),
-            bgSurface: Color(hex: 0xE5DCF9),
-            glassBg: Color(hex: 0xFFFDEB, opacity: 0.84),
-            glassBorder: Color(hex: 0x9F82FD, opacity: 0.22),
-            textPrimary: Color(hex: 0x2C1D58),
-            textSecondary: Color(hex: 0x5E5380),
-            textTertiary: Color(hex: 0x8A82A2),
-            accentPrimary: Color(hex: 0x6E50D8),
-            accentSecondary: Color(hex: 0xB6A000),
-            accentOnAccent: Color(hex: 0xFFFDEB),
-            statusRunning: Color(hex: 0x6E50D8),
-            statusSuccess: Color(hex: 0x0F8564),
-            statusWarning: Color(hex: 0x8C7600),
-            statusError: Color(hex: 0xD1324D),
-            statusApproval: Color(hex: 0x9F82FD),
-            statusStopped: Color(hex: 0x8A82A2),
-            statusSuccessLowSat: Color(hex: 0x34A853),
-            tabActive: Color(hex: 0x6E50D8),
-            tabInactive: Color(hex: 0x8A82A2),
-            inputBg: Color(hex: 0xFFFDEB, opacity: 0.88),
-            cardBg: Color(hex: 0xFFFBF0, opacity: 0.84),
-            divider: Color(hex: 0x9F82FD, opacity: 0.18),
-            glow: Color(hex: 0x9F82FD, opacity: 0.18)
-        ),
-        dark: MWThemeTokens(
-            bgDeepest: Color(hex: 0x120D25),
-            bgBase: Color(hex: 0x211743),
-            bgElevated: Color(hex: 0x2A1C56),
-            bgSurface: Color(hex: 0x352267),
-            glassBg: Color(hex: 0x211743, opacity: 0.74),
-            glassBorder: Color(hex: 0xFBEA03, opacity: 0.16),
-            textPrimary: Color(hex: 0xF3EFFD),
-            textSecondary: Color(hex: 0xCFC4F9),
-            textTertiary: Color(hex: 0x9B8FCA),
+            bgDeepest: Color(hex: 0x9F82FD),
+            bgBase: Color(hex: 0xA890FD),
+            bgElevated: Color(hex: 0xB29EFD),
+            bgSurface: Color(hex: 0xFBEA03),
+            glassBg: Color(hex: 0xFBEA03, opacity: 0.88),
+            glassBorder: Color(hex: 0xFFFFFF, opacity: 0.15),
+            textPrimary: Color(hex: 0xFFFFFF),
+            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
+            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
             accentPrimary: Color(hex: 0xFBEA03),
             accentSecondary: Color(hex: 0x9F82FD),
-            accentOnAccent: Color(hex: 0x211743),
-            statusRunning: Color(hex: 0x9F82FD),
-            statusSuccess: Color(hex: 0xB9F25A),
-            statusWarning: Color(hex: 0xFBEA03),
-            statusError: Color(hex: 0xFF667B),
-            statusApproval: Color(hex: 0xFBEA03),
-            statusStopped: Color(hex: 0x9B8FCA),
-            statusSuccessLowSat: Color(hex: 0xB9F25A),
+            accentOnAccent: Color(hex: 0x000000),
+            statusRunning: Color(hex: 0xFFFFFF),
+            statusSuccess: Color(hex: 0x00C853),
+            statusWarning: Color(hex: 0xFF9100),
+            statusError: Color(hex: 0xFF3D00),
+            statusApproval: Color(hex: 0xFF9100),
+            statusStopped: Color(hex: 0x9E9E9E),
+            statusSuccessLowSat: Color(hex: 0x00C853),
             tabActive: Color(hex: 0xFBEA03),
-            tabInactive: Color(hex: 0x9B8FCA),
-            inputBg: Color(hex: 0x1B1236, opacity: 0.82),
-            cardBg: Color(hex: 0x211743, opacity: 0.78),
-            divider: Color(hex: 0xFBEA03, opacity: 0.14),
-            glow: Color(hex: 0xFBEA03, opacity: 0.18)
+            tabInactive: Color(hex: 0xC0B0E0),
+            inputBg: Color(hex: 0xFBEA03, opacity: 0.85),
+            cardBg: Color(hex: 0xFBEA03, opacity: 0.92),
+            divider: Color(hex: 0xFFFFFF, opacity: 0.15),
+            glow: Color(hex: 0xFBEA03, opacity: 0.35)
+        ),
+        dark: MWThemeTokens(
+            bgDeepest: Color(hex: 0x9F82FD),
+            bgBase: Color(hex: 0xA890FD),
+            bgElevated: Color(hex: 0xB29EFD),
+            bgSurface: Color(hex: 0xFBEA03),
+            glassBg: Color(hex: 0xFBEA03, opacity: 0.88),
+            glassBorder: Color(hex: 0xFFFFFF, opacity: 0.15),
+            textPrimary: Color(hex: 0xFFFFFF),
+            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
+            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
+            accentPrimary: Color(hex: 0xFBEA03),
+            accentSecondary: Color(hex: 0x9F82FD),
+            accentOnAccent: Color(hex: 0x000000),
+            statusRunning: Color(hex: 0xFFFFFF),
+            statusSuccess: Color(hex: 0x00C853),
+            statusWarning: Color(hex: 0xFF9100),
+            statusError: Color(hex: 0xFF3D00),
+            statusApproval: Color(hex: 0xFF9100),
+            statusStopped: Color(hex: 0x9E9E9E),
+            statusSuccessLowSat: Color(hex: 0x00C853),
+            tabActive: Color(hex: 0xFBEA03),
+            tabInactive: Color(hex: 0xC0B0E0),
+            inputBg: Color(hex: 0xFBEA03, opacity: 0.85),
+            cardBg: Color(hex: 0xFBEA03, opacity: 0.92),
+            divider: Color(hex: 0xFFFFFF, opacity: 0.15),
+            glow: Color(hex: 0xFBEA03, opacity: 0.35)
         )
     )
 
+    // pomegranateMist — bg: 石榴红 #E72D48, cards: 雾粉桃 #F1DDDF
     private static let pomegranateMist = MWThemePair(
         light: MWThemeTokens(
-            bgDeepest: Color(hex: 0xF8EEF0),
-            bgBase: Color(hex: 0xFFF7F8),
-            bgElevated: Color(hex: 0xF1DDDF),
-            bgSurface: Color(hex: 0xE8CDD0),
-            glassBg: Color(hex: 0xFFF7F8, opacity: 0.84),
-            glassBorder: Color(hex: 0xE72D48, opacity: 0.20),
-            textPrimary: Color(hex: 0x42111B),
-            textSecondary: Color(hex: 0x70414A),
-            textTertiary: Color(hex: 0x9B7780),
-            accentPrimary: Color(hex: 0xC51F38),
-            accentSecondary: Color(hex: 0xE72D48),
-            accentOnAccent: Color(hex: 0xFFF7F8),
-            statusRunning: Color(hex: 0xC51F38),
-            statusSuccess: Color(hex: 0x128365),
-            statusWarning: Color(hex: 0xA66718),
-            statusError: Color(hex: 0xE72D48),
-            statusApproval: Color(hex: 0xE72D48),
-            statusStopped: Color(hex: 0x9B7780),
-            statusSuccessLowSat: Color(hex: 0x34A853),
-            tabActive: Color(hex: 0xC51F38),
-            tabInactive: Color(hex: 0x9B7780),
-            inputBg: Color(hex: 0xFFF7F8, opacity: 0.88),
-            cardBg: Color(hex: 0xFFF7F8, opacity: 0.84),
-            divider: Color(hex: 0xE72D48, opacity: 0.16),
-            glow: Color(hex: 0xE72D48, opacity: 0.18)
-        ),
-        dark: MWThemeTokens(
-            bgDeepest: Color(hex: 0x24070D),
-            bgBase: Color(hex: 0x3A0D16),
-            bgElevated: Color(hex: 0x4A121E),
-            bgSurface: Color(hex: 0x5A1827),
-            glassBg: Color(hex: 0x3A0D16, opacity: 0.74),
-            glassBorder: Color(hex: 0xF1DDDF, opacity: 0.18),
-            textPrimary: Color(hex: 0xFAEEF0),
-            textSecondary: Color(hex: 0xE9BFC5),
-            textTertiary: Color(hex: 0xB47D86),
+            bgDeepest: Color(hex: 0xE72D48),
+            bgBase: Color(hex: 0xEB3B55),
+            bgElevated: Color(hex: 0xEF4962),
+            bgSurface: Color(hex: 0xF1DDDF),
+            glassBg: Color(hex: 0xF1DDDF, opacity: 0.88),
+            glassBorder: Color(hex: 0xFFFFFF, opacity: 0.15),
+            textPrimary: Color(hex: 0xFFFFFF),
+            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
+            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
             accentPrimary: Color(hex: 0xF1DDDF),
             accentSecondary: Color(hex: 0xE72D48),
-            accentOnAccent: Color(hex: 0x3A0D16),
-            statusRunning: Color(hex: 0xF1DDDF),
-            statusSuccess: Color(hex: 0x5AD5A8),
-            statusWarning: Color(hex: 0xFFC46D),
-            statusError: Color(hex: 0xFF6478),
-            statusApproval: Color(hex: 0xF1DDDF),
-            statusStopped: Color(hex: 0xB47D86),
-            statusSuccessLowSat: Color(hex: 0x5AD5A8),
-            tabActive: Color(hex: 0xF1DDDF),
-            tabInactive: Color(hex: 0xB47D86),
-            inputBg: Color(hex: 0x2A080F, opacity: 0.82),
-            cardBg: Color(hex: 0x3A0D16, opacity: 0.78),
-            divider: Color(hex: 0xF1DDDF, opacity: 0.14),
-            glow: Color(hex: 0xE72D48, opacity: 0.22)
+            accentOnAccent: Color(hex: 0xE72D48),
+            statusRunning: Color(hex: 0xE72D48),
+            statusSuccess: Color(hex: 0x00C853),
+            statusWarning: Color(hex: 0xFF9100),
+            statusError: Color(hex: 0xFF3D00),
+            statusApproval: Color(hex: 0xFF9100),
+            statusStopped: Color(hex: 0x9E9E9E),
+            statusSuccessLowSat: Color(hex: 0x00C853),
+            tabActive: Color(hex: 0xE72D48),
+            tabInactive: Color(hex: 0xC0A0A8),
+            inputBg: Color(hex: 0xF1DDDF, opacity: 0.85),
+            cardBg: Color(hex: 0xF1DDDF, opacity: 0.92),
+            divider: Color(hex: 0xE72D48, opacity: 0.15),
+            glow: Color(hex: 0xE72D48, opacity: 0.35)
+        ),
+        dark: MWThemeTokens(
+            bgDeepest: Color(hex: 0xE72D48),
+            bgBase: Color(hex: 0xEB3B55),
+            bgElevated: Color(hex: 0xEF4962),
+            bgSurface: Color(hex: 0xF1DDDF),
+            glassBg: Color(hex: 0xF1DDDF, opacity: 0.88),
+            glassBorder: Color(hex: 0xFFFFFF, opacity: 0.15),
+            textPrimary: Color(hex: 0xFFFFFF),
+            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
+            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
+            accentPrimary: Color(hex: 0xF1DDDF),
+            accentSecondary: Color(hex: 0xE72D48),
+            accentOnAccent: Color(hex: 0xE72D48),
+            statusRunning: Color(hex: 0xE72D48),
+            statusSuccess: Color(hex: 0x00C853),
+            statusWarning: Color(hex: 0xFF9100),
+            statusError: Color(hex: 0xFF3D00),
+            statusApproval: Color(hex: 0xFF9100),
+            statusStopped: Color(hex: 0x9E9E9E),
+            statusSuccessLowSat: Color(hex: 0x00C853),
+            tabActive: Color(hex: 0xE72D48),
+            tabInactive: Color(hex: 0xC0A0A8),
+            inputBg: Color(hex: 0xF1DDDF, opacity: 0.85),
+            cardBg: Color(hex: 0xF1DDDF, opacity: 0.92),
+            divider: Color(hex: 0xE72D48, opacity: 0.15),
+            glow: Color(hex: 0xE72D48, opacity: 0.35)
         )
     )
 
+    // auroraLime — bg: #01847F teal, cards: #F9D2E4 light pink, font: white
     private static let auroraLime = MWThemePair(
         light: MWThemeTokens(
-            bgDeepest: Color(hex: 0xF5FAEA),
-            bgBase: Color(hex: 0xFBFFF2),
-            bgElevated: Color(hex: 0xEFE8FF),
-            bgSurface: Color(hex: 0xE2D8F7),
-            glassBg: Color(hex: 0xFBFFF2, opacity: 0.84),
-            glassBorder: Color(hex: 0x9F82FD, opacity: 0.22),
-            textPrimary: Color(hex: 0x27194F),
-            textSecondary: Color(hex: 0x5A5174),
-            textTertiary: Color(hex: 0x878098),
-            accentPrimary: Color(hex: 0x6D4FDA),
-            accentSecondary: Color(hex: 0x76A600),
-            accentOnAccent: Color(hex: 0xFBFFF2),
-            statusRunning: Color(hex: 0x6D4FDA),
-            statusSuccess: Color(hex: 0x4F8F00),
-            statusWarning: Color(hex: 0x8A6A00),
-            statusError: Color(hex: 0xD3354F),
-            statusApproval: Color(hex: 0x9F82FD),
-            statusStopped: Color(hex: 0x878098),
-            statusSuccessLowSat: Color(hex: 0x34A853),
-            tabActive: Color(hex: 0x6D4FDA),
-            tabInactive: Color(hex: 0x878098),
-            inputBg: Color(hex: 0xFBFFF2, opacity: 0.88),
-            cardBg: Color(hex: 0xFDFFF6, opacity: 0.84),
-            divider: Color(hex: 0x9F82FD, opacity: 0.18),
-            glow: Color(hex: 0x9F82FD, opacity: 0.18)
+            bgDeepest: Color(hex: 0x01847F),
+            bgBase: Color(hex: 0x01968C),
+            bgElevated: Color(hex: 0x01A899),
+            bgSurface: Color(hex: 0xF9D2E4),
+            glassBg: Color(hex: 0xF9D2E4, opacity: 0.88),
+            glassBorder: Color(hex: 0xFFFFFF, opacity: 0.15),
+            textPrimary: Color(hex: 0xFFFFFF),
+            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
+            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
+            accentPrimary: Color(hex: 0xF9D2E4),
+            accentSecondary: Color(hex: 0x01847F),
+            accentOnAccent: Color(hex: 0x01847F),
+            statusRunning: Color(hex: 0x01847F),
+            statusSuccess: Color(hex: 0x00C853),
+            statusWarning: Color(hex: 0xFF9100),
+            statusError: Color(hex: 0xFF3D00),
+            statusApproval: Color(hex: 0xFF9100),
+            statusStopped: Color(hex: 0x9E9E9E),
+            statusSuccessLowSat: Color(hex: 0x00C853),
+            tabActive: Color(hex: 0xF9D2E4),
+            tabInactive: Color(hex: 0x90C0BC),
+            inputBg: Color(hex: 0xF9D2E4, opacity: 0.85),
+            cardBg: Color(hex: 0xF9D2E4, opacity: 0.92),
+            divider: Color(hex: 0x01847F, opacity: 0.15),
+            glow: Color(hex: 0xF9D2E4, opacity: 0.35)
         ),
         dark: MWThemeTokens(
-            bgDeepest: Color(hex: 0x120D25),
-            bgBase: Color(hex: 0x1D143B),
-            bgElevated: Color(hex: 0x281B53),
-            bgSurface: Color(hex: 0x332268),
-            glassBg: Color(hex: 0x1D143B, opacity: 0.74),
-            glassBorder: Color(hex: 0xBCFE1A, opacity: 0.16),
-            textPrimary: Color(hex: 0xF3EFFD),
-            textSecondary: Color(hex: 0xCDC6F0),
-            textTertiary: Color(hex: 0x948BBE),
-            accentPrimary: Color(hex: 0xBCFE1A),
-            accentSecondary: Color(hex: 0x9F82FD),
-            accentOnAccent: Color(hex: 0x17220B),
-            statusRunning: Color(hex: 0x9F82FD),
-            statusSuccess: Color(hex: 0xBCFE1A),
-            statusWarning: Color(hex: 0xF6D86B),
-            statusError: Color(hex: 0xFF6378),
-            statusApproval: Color(hex: 0xBCFE1A),
-            statusStopped: Color(hex: 0x948BBE),
-            statusSuccessLowSat: Color(hex: 0xBCFE1A),
-            tabActive: Color(hex: 0xBCFE1A),
-            tabInactive: Color(hex: 0x948BBE),
-            inputBg: Color(hex: 0x181031, opacity: 0.82),
-            cardBg: Color(hex: 0x1D143B, opacity: 0.78),
-            divider: Color(hex: 0xBCFE1A, opacity: 0.14),
-            glow: Color(hex: 0xBCFE1A, opacity: 0.18)
+            bgDeepest: Color(hex: 0x01847F),
+            bgBase: Color(hex: 0x01968C),
+            bgElevated: Color(hex: 0x01A899),
+            bgSurface: Color(hex: 0xF9D2E4),
+            glassBg: Color(hex: 0xF9D2E4, opacity: 0.88),
+            glassBorder: Color(hex: 0xFFFFFF, opacity: 0.15),
+            textPrimary: Color(hex: 0xFFFFFF),
+            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
+            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
+            accentPrimary: Color(hex: 0xF9D2E4),
+            accentSecondary: Color(hex: 0x01847F),
+            accentOnAccent: Color(hex: 0x01847F),
+            statusRunning: Color(hex: 0x01847F),
+            statusSuccess: Color(hex: 0x00C853),
+            statusWarning: Color(hex: 0xFF9100),
+            statusError: Color(hex: 0xFF3D00),
+            statusApproval: Color(hex: 0xFF9100),
+            statusStopped: Color(hex: 0x9E9E9E),
+            statusSuccessLowSat: Color(hex: 0x00C853),
+            tabActive: Color(hex: 0xF9D2E4),
+            tabInactive: Color(hex: 0x90C0BC),
+            inputBg: Color(hex: 0xF9D2E4, opacity: 0.85),
+            cardBg: Color(hex: 0xF9D2E4, opacity: 0.92),
+            divider: Color(hex: 0x01847F, opacity: 0.15),
+            glow: Color(hex: 0xF9D2E4, opacity: 0.35)
         )
     )
 }

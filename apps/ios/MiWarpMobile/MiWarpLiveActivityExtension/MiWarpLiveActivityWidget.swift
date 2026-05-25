@@ -22,8 +22,8 @@ struct SessionSyncLiveActivityWidget: Widget {
                         progress: context.state.progress,
                         ringPhase: ringPhase(context.state.phase),
                         mascotState: .from(syncPhase: context.state.phase),
-                        size: 44,
-                        lineWidth: 3
+                        size: 46,
+                        lineWidth: 3.25
                     )
                 }
 
@@ -31,23 +31,23 @@ struct SessionSyncLiveActivityWidget: Widget {
                     SyncExpandedTrailing(
                         phase: context.state.phase,
                         currentCount: context.state.currentCount,
-                        totalCount: context.state.totalCount
+                        totalCount: context.state.totalCount,
+                        progress: context.state.progress
                     )
                 }
 
                 DynamicIslandExpandedRegion(.center) {
                     SyncExpandedCenter(
+                        phase: context.state.phase,
                         desktopName: context.state.desktopName,
                         currentItemTitle: context.state.currentItemTitle,
-                        workspaceName: context.attributes.workspaceName
+                        workspaceName: context.attributes.workspaceName,
+                        errorMessage: context.state.errorMessage
                     )
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
-                    SyncExpandedBottom(
-                        phase: context.state.phase,
-                        taskId: context.attributes.taskId
-                    )
+                    ExpandedOpenAction()
                 }
             } compactLeading: {
                 SyncCompactLeading(phase: context.state.phase)
@@ -60,8 +60,8 @@ struct SessionSyncLiveActivityWidget: Widget {
             } minimal: {
                 SyncCompactLeading(phase: context.state.phase)
             }
-            .contentMargins(.trailing, 32, for: .expanded)
-            .contentMargins(.bottom, 8, for: .expanded)
+            .contentMargins(.horizontal, 14, for: .expanded)
+            .contentMargins(.vertical, 8, for: .expanded)
             .contentMargins([.leading, .top, .bottom], 6, for: .compactLeading)
             .contentMargins(.all, 6, for: .minimal)
             .widgetURL(LiveActivityDeepLink.sync(taskId: context.attributes.taskId))
@@ -99,8 +99,8 @@ struct AgentTaskLiveActivityWidget: Widget {
                         progress: context.state.progress,
                         ringPhase: ringPhase(context.state.phase),
                         mascotState: .from(agentPhase: context.state.phase),
-                        size: 44,
-                        lineWidth: 3
+                        size: 46,
+                        lineWidth: 3.25
                     )
                 }
 
@@ -108,23 +108,25 @@ struct AgentTaskLiveActivityWidget: Widget {
                     AgentExpandedTrailing(
                         phase: context.state.phase,
                         currentStep: context.state.currentStep,
-                        totalSteps: context.state.totalSteps
+                        totalSteps: context.state.totalSteps,
+                        progress: context.state.progress
                     )
                 }
 
                 DynamicIslandExpandedRegion(.center) {
                     AgentExpandedCenter(
-                        title: context.attributes.title,
+                        phase: context.state.phase,
+                        fallbackTitle: context.attributes.title,
                         stepTitle: context.state.stepTitle,
-                        workspaceName: context.state.workspaceName
+                        workspaceName: context.state.workspaceName,
+                        currentStep: context.state.currentStep,
+                        totalSteps: context.state.totalSteps,
+                        errorMessage: context.state.errorMessage
                     )
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
-                    AgentExpandedBottom(
-                        phase: context.state.phase,
-                        taskId: context.attributes.taskId
-                    )
+                    ExpandedOpenAction()
                 }
             } compactLeading: {
                 AgentCompactLeading(phase: context.state.phase)
@@ -137,8 +139,8 @@ struct AgentTaskLiveActivityWidget: Widget {
             } minimal: {
                 AgentCompactLeading(phase: context.state.phase)
             }
-            .contentMargins(.trailing, 32, for: .expanded)
-            .contentMargins(.bottom, 8, for: .expanded)
+            .contentMargins(.horizontal, 14, for: .expanded)
+            .contentMargins(.vertical, 8, for: .expanded)
             .contentMargins([.leading, .top, .bottom], 6, for: .compactLeading)
             .contentMargins(.all, 6, for: .minimal)
             .widgetURL(LiveActivityDeepLink.agent(taskId: context.attributes.taskId))
@@ -162,70 +164,81 @@ struct SyncExpandedTrailing: View {
     let phase: SyncPhase
     let currentCount: Int
     let totalCount: Int
+    let progress: Double
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 2) {
-            if totalCount > 0 {
-                Text("\(currentCount)/\(totalCount)")
-                    .font(.system(size: 20, weight: .bold).monospacedDigit())
-                    .foregroundColor(.white)
-            }
-            Text(phase.displayTitle)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.white.opacity(0.6))
+        Text(statusValue)
+            .font(.system(size: 20, weight: .bold).monospacedDigit())
+            .foregroundColor(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .contentTransition(.numericText())
+    }
+
+    private var statusValue: String {
+        if totalCount > 0 {
+            return "\(currentCount)/\(totalCount)"
+        }
+
+        switch phase {
+        case .completed:
+            return "Done"
+        case .failed:
+            return "Fail"
+        default:
+            return "\(Int(progress * 100))%"
         }
     }
 }
 
 struct SyncExpandedCenter: View {
+    let phase: SyncPhase
     let desktopName: String?
     let currentItemTitle: String?
     let workspaceName: String?
+    let errorMessage: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 3) {
             Text("Syncing Sessions")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.white)
+                .lineLimit(1)
 
-            if let desktop = desktopName {
-                Text(desktop)
-                    .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.6))
-            } else if let ws = workspaceName {
-                Text(ws)
-                    .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.6))
-            }
-
-            if let item = currentItemTitle, !item.isEmpty {
-                Text(item)
-                    .font(.system(size: 10))
-                    .foregroundColor(.white.opacity(0.45))
-                    .lineLimit(1)
-            }
+            Text(subtitle)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(subtitleColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
         }
     }
-}
 
-struct SyncExpandedBottom: View {
-    let phase: SyncPhase
-    let taskId: String
-
-    var body: some View {
-        HStack {
-            if phase.isActive {
-                Label("Stop", systemImage: "stop.fill")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(Color(hex: 0xFF5A72))
-            }
-            Spacer()
-            Label("Open", systemImage: "arrow.up.right")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(Color(hex: 0x22D3EE))
+    private var subtitle: String {
+        if let errorMessage, !errorMessage.isEmpty {
+            return errorMessage
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 4)
+
+        if phase == .completed {
+            return "All sessions synced"
+        }
+
+        if let currentItemTitle, !currentItemTitle.isEmpty {
+            return currentItemTitle
+        }
+
+        if let workspaceName, !workspaceName.isEmpty {
+            return "Workspace \(workspaceName)"
+        }
+
+        if let desktopName, !desktopName.isEmpty {
+            return desktopName
+        }
+
+        return "Preparing sync"
+    }
+
+    private var subtitleColor: Color {
+        phase == .failed ? Color(hex: 0xFF8A9A) : .white.opacity(0.62)
     }
 }
 
@@ -233,66 +246,99 @@ struct AgentExpandedTrailing: View {
     let phase: AgentPhase
     let currentStep: Int
     let totalSteps: Int
+    let progress: Double
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 2) {
-            if totalSteps > 0 {
-                Text("\(currentStep)/\(totalSteps)")
-                    .font(.system(size: 20, weight: .bold).monospacedDigit())
-                    .foregroundColor(.white)
-            }
-            Text(phase.displayTitle)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.white.opacity(0.6))
+        Text(statusValue)
+            .font(.system(size: 20, weight: .bold).monospacedDigit())
+            .foregroundColor(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .contentTransition(.numericText())
+    }
+
+    private var statusValue: String {
+        if totalSteps > 0 {
+            return "\(currentStep)/\(totalSteps)"
+        }
+
+        switch phase {
+        case .completed:
+            return "Done"
+        case .failed:
+            return "Fail"
+        default:
+            return "\(Int(progress * 100))%"
         }
     }
 }
 
 struct AgentExpandedCenter: View {
-    let title: String
+    let phase: AgentPhase
+    let fallbackTitle: String
     let stepTitle: String
     let workspaceName: String?
+    let currentStep: Int
+    let totalSteps: Int
+    let errorMessage: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 3) {
             Text(title)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.white)
                 .lineLimit(1)
 
-            if let ws = workspaceName {
-                Text(ws)
-                    .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.6))
-                    .lineLimit(1)
-            }
-
-            Text(stepTitle)
-                .font(.system(size: 10))
-                .foregroundColor(.white.opacity(0.45))
+            Text(subtitle)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(subtitleColor)
                 .lineLimit(1)
+                .minimumScaleFactor(0.75)
         }
+    }
+
+    private var title: String {
+        if let workspaceName, !workspaceName.isEmpty {
+            return "Analyzing \(workspaceName)"
+        }
+        return fallbackTitle
+    }
+
+    private var subtitle: String {
+        if let errorMessage, !errorMessage.isEmpty {
+            return errorMessage
+        }
+
+        if phase == .completed {
+            return "Task complete"
+        }
+
+        if totalSteps > 0 {
+            return "Step \(currentStep) of \(totalSteps) · \(stepTitle)"
+        }
+
+        return stepTitle
+    }
+
+    private var subtitleColor: Color {
+        phase == .failed ? Color(hex: 0xFF8A9A) : .white.opacity(0.62)
     }
 }
 
-struct AgentExpandedBottom: View {
-    let phase: AgentPhase
-    let taskId: String
-
+struct ExpandedOpenAction: View {
     var body: some View {
         HStack {
-            if phase.isActive {
-                Label("Stop", systemImage: "stop.fill")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(Color(hex: 0xFF5A72))
-            }
             Spacer()
             Label("Open", systemImage: "arrow.up.right")
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(Color(hex: 0x22D3EE))
+                .labelStyle(.titleAndIcon)
+                .padding(.horizontal, 10)
+                .frame(height: 22)
+                .background(Color.white.opacity(0.08), in: Capsule())
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 4)
+        .frame(maxWidth: .infinity, minHeight: 22, maxHeight: 24, alignment: .center)
+        .padding(.top, 1)
     }
 }
 

@@ -21,6 +21,7 @@ struct MessageListView: View {
                 .padding(.vertical, 12)
                 .padding(.bottom, inputBarHeight + 16)
             }
+            .background(MWPatternedBackdrop())
             .onChange(of: messages.count) { _, _ in
                 withAnimation {
                     if let lastId = messages.last?.id {
@@ -107,7 +108,7 @@ struct MessageListView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(MWColors.cardBg, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     // MARK: - Tool Call
@@ -206,6 +207,6 @@ struct ToolCallDisclosureView: View {
             }
         }
         .padding(10)
-        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8))
+        .background(MWColors.bgElevated, in: RoundedRectangle(cornerRadius: 8))
     }
 }

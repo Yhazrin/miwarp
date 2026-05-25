@@ -61,6 +61,8 @@ final class MiWarpEventReducer: ObservableObject {
     @Published private(set) var currentStatus: RunStatus = .idle
     @Published private(set) var lastSeq: Int = 0
     @Published private(set) var streamingMessageId: String?
+    /// Tracks all in-flight streaming message IDs so handleMessageComplete can find them.
+    private var pendingStreamingIds: Set<String> = []
 
     private var seenSeqs: Set<Int> = []
 
@@ -142,6 +144,7 @@ final class MiWarpEventReducer: ObservableObject {
         lastSeq = 0
         seenSeqs.removeAll()
         streamingMessageId = nil
+        pendingStreamingIds.removeAll()
     }
 
     // MARK: - Handlers
@@ -160,7 +163,8 @@ final class MiWarpEventReducer: ObservableObject {
     }
 
     private func handleMessageDelta(_ payload: MessageDeltaPayload) {
-        let msgId = payload.messageId ?? "streaming"
+        // Use provided messageId, or generate a UUID — never a static string that collides across messages.
+        let msgId = payload.messageId ?? UUID().uuidString
         let delta = payload.delta ?? payload.content ?? ""
 
         if streamingMessageId == msgId {
@@ -171,6 +175,7 @@ final class MiWarpEventReducer: ObservableObject {
         } else {
             // Start new streaming message
             streamingMessageId = msgId
+            pendingStreamingIds.insert(msgId)
             let msg = DisplayMessage(
                 id: msgId,
                 role: .assistant,
@@ -185,19 +190,34 @@ final class MiWarpEventReducer: ObservableObject {
     }
 
     private func handleMessageComplete(_ payload: MessageCompletePayload) {
-        let msgId = payload.messageId ?? "streaming"
-        if let index = messages.lastIndex(where: { $0.id == msgId }) {
+        let msgId: String?
+        if let id = payload.messageId {
+            msgId = id
+        } else if let current = streamingMessageId, pendingStreamingIds.contains(current) {
+            msgId = current
+        } else {
+            msgId = nil
+        }
+        guard let id = msgId else { return }
+        if let index = messages.lastIndex(where: { $0.id == id }) {
             messages[index].isStreaming = false
             if let content = payload.content {
                 messages[index].content = content
             }
         }
-        streamingMessageId = nil
+        pendingStreamingIds.remove(id)
+        streamingMessageId = pendingStreamingIds.first
     }
 
     private func handleToolStart(_ payload: ToolStartPayload) {
         guard let toolName = payload.toolName else { return }
         let toolId = payload.toolUseId ?? UUID().uuidString
+
+        // Skip if this toolUseId is already present (prevents duplicate IDs from retried events).
+        let alreadyExists = messages.contains { msg in
+            msg.toolCalls.contains { $0.id == toolId }
+        }
+        if alreadyExists { return }
 
         var inputPreview: String?
         if let input = payload.input {

@@ -8,24 +8,28 @@ struct AppRouter: View {
     @State private var selectedTab = 0
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            SessionHubView()
-                .tabItem {
-                    Label("Sessions", systemImage: "bubble.left.and.bubble.right")
-                }
-                .tag(0)
+        ZStack {
+            MWPatternedBackdrop()
 
-            PairingView()
-                .tabItem {
-                    Label("Connect", systemImage: "point.3.filled.connected.trianglepath.dotted")
-                }
-                .tag(1)
+            TabView(selection: $selectedTab) {
+                SessionHubView()
+                    .tabItem {
+                        Label("Sessions", systemImage: "bubble.left.and.bubble.right")
+                    }
+                    .tag(0)
 
-            MobileSettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gear")
-                }
-                .tag(2)
+                PairingView()
+                    .tabItem {
+                        Label("Connect", systemImage: "point.3.filled.connected.trianglepath.dotted")
+                    }
+                    .tag(1)
+
+                MobileSettingsView()
+                    .tabItem {
+                        Label("Settings", systemImage: "gear")
+                    }
+                    .tag(2)
+            }
         }
         .tint(MWColors.tabActive)
         .onReceive(NotificationCenter.default.publisher(for: .liveActivityDeepLink)) { notification in
