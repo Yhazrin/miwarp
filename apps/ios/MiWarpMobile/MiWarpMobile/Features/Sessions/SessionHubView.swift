@@ -15,7 +15,7 @@ struct SessionHubView: View {
                 let query = searchText.lowercased()
                 let matchesSearch = (run.displayTitle.lowercased().contains(query)) ||
                     (run.cwd.lowercased().contains(query)) ||
-                    (run.model.lowercased().contains(query))
+                    ((run.model ?? "").lowercased().contains(query))
                 if !matchesSearch { return false }
             }
             if let agent = filters.agent, run.agent != agent { return false }

@@ -147,6 +147,22 @@ struct MiWarpRun: Identifiable, Codable, Hashable {
         case startedAt = "started_at"
     }
 
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        prompt = try container.decodeIfPresent(String.self, forKey: .prompt)
+        cwd = try container.decodeIfPresent(String.self, forKey: .cwd) ?? ""
+        agent = try container.decodeIfPresent(String.self, forKey: .agent) ?? ""
+        model = try container.decodeIfPresent(String.self, forKey: .model) ?? ""
+        status = try container.decodeIfPresent(RunStatus.self, forKey: .status) ?? .pending
+        source = try container.decodeIfPresent(RunSource.self, forKey: .source) ?? .unknown
+        messageCount = try container.decodeIfPresent(Int.self, forKey: .messageCount) ?? 0
+        lastActivityAt = try container.decodeIfPresent(String.self, forKey: .lastActivityAt)
+        startedAt = try container.decodeIfPresent(String.self, forKey: .startedAt)
+    }
+
     var displayTitle: String {
         name ?? prompt?.prefix(80).description ?? "Untitled Session"
     }

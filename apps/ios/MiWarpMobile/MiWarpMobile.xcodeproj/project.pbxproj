@@ -37,6 +37,7 @@
 		FBAA055780AF798D3BB80B6B /* ApprovalCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF2DF97B4D4DB5A75EBEB6AD /* ApprovalCardView.swift */; };
 		FCCCC4792AEF4E33B3F92E1D /* MiWarpConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A0B57EF75232E7CBDA97B0D /* MiWarpConnectionStore.swift */; };
 		FE7765B8799D45D7EF4E3626 /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096DDAC3E0FF81650A464E57 /* ChatInputBar.swift */; };
+		CHATVIEWMODEL12345678 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CHATVIEWMODELREF00000 /* ChatViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -67,6 +68,7 @@
 		B85BC39AF301E61AA2D7BDDF /* MiWarpEventReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpEventReducer.swift; sourceTree = "<group>"; };
 		B9EBC6E7E1C3A6687A1AC5BD /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
 		C0E65980CBFDCE0641A89EB6 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		CHATVIEWMODELREF00000 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		C664FD00C805F710AB2CB298 /* MiWarp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MiWarp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF2DF97B4D4DB5A75EBEB6AD /* ApprovalCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApprovalCardView.swift; sourceTree = "<group>"; };
 		D79C91C976F9F764AF38DA9E /* MWTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MWTypography.swift; sourceTree = "<group>"; };
@@ -162,6 +164,7 @@
 				CF2DF97B4D4DB5A75EBEB6AD /* ApprovalCardView.swift */,
 				096DDAC3E0FF81650A464E57 /* ChatInputBar.swift */,
 				C0E65980CBFDCE0641A89EB6 /* ChatView.swift */,
+				CHATVIEWMODELREF00000 /* ChatViewModel.swift */,
 				A9E75A871369C61901E50A56 /* MessageBubbleView.swift */,
 				4F9476AE56F033A24CF340F5 /* MessageListView.swift */,
 				3F6C0CCD921DD31844147DD1 /* RawEventView.swift */,
@@ -286,6 +289,7 @@
 				04DB51B2A725C113B3A6EE29 /* ArtifactsView.swift in Sources */,
 				FE7765B8799D45D7EF4E3626 /* ChatInputBar.swift in Sources */,
 				6F565ED315DFAAAD6CC80C6D /* ChatView.swift in Sources */,
+				CHATVIEWMODEL12345678 /* ChatViewModel.swift in Sources */,
 				6791ED1049A4C99EC0895E03 /* ConnectionListView.swift in Sources */,
 				31752E8113DC5B9B09E5B8D0 /* DiffPreviewView.swift in Sources */,
 				8C469F2748D6D72D5BEB4DF2 /* MWColors.swift in Sources */,
