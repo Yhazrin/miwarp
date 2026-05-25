@@ -124,7 +124,7 @@
 		CHATVIEWMODELREF00000 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
 		D79C91C976F9F764AF38DA9E /* MWTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MWTypography.swift; sourceTree = "<group>"; };
 		D86348B9DC8374F8A7B3688E /* ArtifactsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactsView.swift; sourceTree = "<group>"; };
-		D96C72BF6A3A4D97C5F82319 /* MiWarpLiveActivityExtension */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; name = MiWarpLiveActivityExtension; path = MiWarpLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D96C72BF6A3A4D97C5F82319 /* MiWarpLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MiWarpLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		E11C7238E3EBF5610ACD5E41 /* DynamicIslandExpandedView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DynamicIslandExpandedView.swift; path = ../../MiWarpLiveActivityExtension/Views/DynamicIslandExpandedView.swift; sourceTree = "<group>"; };
 		E5CA8BB9104E61D9 /* LiveActivityDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityDemoView.swift; sourceTree = "<group>"; };
 		F0F107680AD38109AD258F79 /* DiffPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffPreviewView.swift; sourceTree = "<group>"; };
@@ -249,7 +249,6 @@
 				0E17A136C86C2624BEC230EF /* Info.plist */,
 				A32CAE291A63375CA4F70871 /* MiWarpLiveActivityExtension.entitlements */,
 			);
-			name = MiWarpLiveActivityExtension;
 			path = MiWarpLiveActivityExtension;
 			sourceTree = "<group>";
 		};
@@ -303,7 +302,7 @@
 			isa = PBXGroup;
 			children = (
 				C664FD00C805F710AB2CB298 /* MiWarp.app */,
-				D96C72BF6A3A4D97C5F82319 /* MiWarpLiveActivityExtension */,
+				D96C72BF6A3A4D97C5F82319 /* MiWarpLiveActivityExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -382,7 +381,7 @@
 			);
 			name = MiWarpLiveActivityExtension;
 			productName = MiWarpLiveActivityExtension;
-			productReference = D96C72BF6A3A4D97C5F82319 /* MiWarpLiveActivityExtension */;
+			productReference = D96C72BF6A3A4D97C5F82319 /* MiWarpLiveActivityExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		F8E7E71355059B3247A86C55 /* MiWarpMobile */ = {
@@ -709,7 +708,9 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = MiWarpLiveActivityExtension/MiWarpLiveActivityExtension.entitlements;
+				DEVELOPMENT_TEAM = 5CQ49A8XPZ;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.miwarp.mobile.MiWarpLiveActivityExtension;
 				PRODUCT_MODULE_NAME = MiWarpLiveActivityExtension;
 				PRODUCT_NAME = MiWarpLiveActivityExtension;
 				SDKROOT = iphoneos;
@@ -723,7 +724,9 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = MiWarpLiveActivityExtension/MiWarpLiveActivityExtension.entitlements;
+				DEVELOPMENT_TEAM = 5CQ49A8XPZ;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.miwarp.mobile.MiWarpLiveActivityExtension;
 				PRODUCT_MODULE_NAME = MiWarpLiveActivityExtension;
 				PRODUCT_NAME = MiWarpLiveActivityExtension;
 				SDKROOT = iphoneos;

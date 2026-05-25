@@ -469,6 +469,28 @@ struct SessionHubView: View {
             ChatView(runId: run.id, runTitle: run.displayTitle)
         }
     }
+
+    // MARK: - Load
+
+    private func loadRuns() async {
+        guard let rpc = store.rpc else {
+            if runs.isEmpty {
+                error = String(localized: "Not connected")
+            }
+            return
+        }
+
+        isLoading = true
+        error = nil
+
+        do {
+            runs = try await rpc.listRuns()
+        } catch {
+            self.error = error.localizedDescription
+        }
+
+        isLoading = false
+    }
 }
 
 // MARK: - Session Row (native style)

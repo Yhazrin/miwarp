@@ -288,7 +288,7 @@ struct LogsView: View {
     private func logLevelColor(_ level: MiWarpLogger.LogLevel) -> Color {
         switch level {
         case .debug: return .secondary
-        case .info: return .accent
+        case .info: return MWColors.accentPrimary
         case .warning: return .orange
         case .error: return .red
         }
