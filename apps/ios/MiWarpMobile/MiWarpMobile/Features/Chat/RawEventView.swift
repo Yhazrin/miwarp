@@ -11,7 +11,7 @@ struct RawEventView: View {
                     HStack {
                         Text("seq: \(event.seq)")
                             .font(.caption.monospaced())
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(MWColors.accentPrimary)
                         Spacer()
                         Text(event.runId.prefix(8) + "...")
                             .font(.caption2.monospaced())

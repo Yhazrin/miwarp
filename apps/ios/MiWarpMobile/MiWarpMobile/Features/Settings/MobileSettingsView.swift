@@ -109,7 +109,7 @@ struct MobileSettingsView: View {
                         .foregroundStyle(.secondary)
                 } label: {
                     Label(connection.name, systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(MWColors.statusSuccess)
                 }
 
                 Button(role: .destructive) {
@@ -279,7 +279,7 @@ struct LogsView: View {
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button("Clear") { logger.clearLogs() }
-                        .foregroundStyle(.red)
+                        .foregroundStyle(MWColors.statusError)
                 }
             }
         }
@@ -289,8 +289,8 @@ struct LogsView: View {
         switch level {
         case .debug: return .secondary
         case .info: return MWColors.accentPrimary
-        case .warning: return .orange
-        case .error: return .red
+        case .warning: return MWColors.statusWarning
+        case .error: return MWColors.statusError
         }
     }
 }

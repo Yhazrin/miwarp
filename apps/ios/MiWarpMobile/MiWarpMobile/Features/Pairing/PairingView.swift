@@ -130,7 +130,7 @@ struct ConnectionRow: View {
                     if connection.isDefault {
                         Image(systemName: "star.fill")
                             .font(.system(size: 9))
-                            .foregroundColor(.orange)
+                            .foregroundColor(MWColors.statusWarning)
                     }
                 }
 
@@ -152,14 +152,14 @@ struct ConnectionRow: View {
                 } label: {
                     Label("Disconnect", systemImage: "xmark.circle")
                 }
-                .tint(.red)
+                .tint(MWColors.statusError)
             } else {
                 Button {
                     onConnect?()
                 } label: {
                     Label("Connect", systemImage: "play.fill")
                 }
-                .tint(.green)
+                .tint(MWColors.statusSuccess)
             }
 
             Button(role: .destructive) {
@@ -228,7 +228,7 @@ struct ManualConnectionSheet: View {
                 if let error {
                     Section {
                         Text(error)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(MWColors.statusError)
                             .font(.callout)
                     }
                 }
@@ -298,7 +298,7 @@ struct QRScannerSheet: View {
 
                 if let error {
                     Text(error)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(MWColors.statusError)
                         .font(.callout)
                         .padding()
                 }

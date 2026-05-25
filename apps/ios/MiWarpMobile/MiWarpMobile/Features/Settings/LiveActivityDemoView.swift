@@ -26,20 +26,20 @@ struct LiveActivityDemoView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Image(systemName: activitiesEnabled ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundColor(activitiesEnabled ? .green : .red)
+                            .foregroundColor(activitiesEnabled ? MWColors.statusSuccess : MWColors.statusError)
                         Text("Live Activities: \(activitiesEnabled ? "Enabled" : "Disabled")")
                     }
 
                     HStack {
                         Image(systemName: deviceSupportsDynamicIsland ? "capsule.portrait.fill" : "iphone")
-                            .foregroundColor(deviceSupportsDynamicIsland ? .purple : .secondary)
+                            .foregroundColor(deviceSupportsDynamicIsland ? MWColors.accentPrimary : .secondary)
                         Text("Dynamic Island: \(deviceSupportsDynamicIsland ? "Supported" : "Not Supported")")
                     }
 
                     if !activitiesEnabled {
                         Text("⚠️ Go to Settings → MiWarp → Live Activities and enable it")
                             .font(.caption)
-                            .foregroundColor(.orange)
+                            .foregroundColor(MWColors.statusWarning)
                     }
 
                     Text("ℹ️ Dynamic Island requires iPhone 14 Pro or later. Other iPhones show Lock Screen Live Activity only.")
@@ -80,7 +80,7 @@ struct LiveActivityDemoView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Image(systemName: result.isSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                .foregroundColor(result.isSuccess ? .green : .red)
+                                .foregroundColor(result.isSuccess ? MWColors.statusSuccess : MWColors.statusError)
                             Text(result.displayMessage)
                                 .font(.caption)
                         }
@@ -113,7 +113,7 @@ struct LiveActivityDemoView: View {
                     failSync()
                 } label: {
                     Label("Fail Sync", systemImage: "xmark.circle")
-                        .foregroundColor(.red)
+                        .foregroundColor(MWColors.statusError)
                 }
                 .disabled(!syncPhase.isActive)
 
@@ -155,7 +155,7 @@ struct LiveActivityDemoView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Image(systemName: result.isSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                .foregroundColor(result.isSuccess ? .green : .red)
+                                .foregroundColor(result.isSuccess ? MWColors.statusSuccess : MWColors.statusError)
                             Text(result.displayMessage)
                                 .font(.caption)
                         }
@@ -188,7 +188,7 @@ struct LiveActivityDemoView: View {
                     failAgent()
                 } label: {
                     Label("Fail Agent", systemImage: "xmark.circle")
-                        .foregroundColor(.red)
+                        .foregroundColor(MWColors.statusError)
                 }
                 .disabled(!agentPhase.isActive)
 

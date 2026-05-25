@@ -119,7 +119,7 @@ struct MessageListView: View {
             if toolCall.isComplete && toolCall.isError {
                 Label(toolCall.toolName, systemImage: "exclamationmark.triangle")
                     .font(.caption)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(MWColors.statusError)
             }
 
         case .focus:
@@ -128,7 +128,7 @@ struct MessageListView: View {
                     .font(.caption.monospaced())
             } icon: {
                 Image(systemName: toolCall.isError ? "xmark.circle.fill" : (toolCall.isComplete ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath"))
-                    .foregroundStyle(toolCall.isError ? .red : (toolCall.isComplete ? .green : .blue))
+                    .foregroundStyle(toolCall.isError ? MWColors.statusError : (toolCall.isComplete ? MWColors.statusSuccess : MWColors.accentPrimary))
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -193,11 +193,11 @@ struct ToolCallDisclosureView: View {
             HStack(spacing: 6) {
                 Image(systemName: toolCall.isError ? "xmark.circle.fill" : (toolCall.isComplete ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath"))
                     .font(.system(size: 12))
-                    .foregroundStyle(toolCall.isError ? .red : (toolCall.isComplete ? .green : .blue))
+                    .foregroundStyle(toolCall.isError ? MWColors.statusError : (toolCall.isComplete ? MWColors.statusSuccess : MWColors.accentPrimary))
 
                 Text(toolCall.toolName)
                     .font(.caption.monospaced())
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(MWColors.accentPrimary)
 
                 if !toolCall.isComplete && !toolCall.isError {
                     ProgressView()

@@ -59,7 +59,7 @@ struct ArtifactsView: View {
                             LabeledContent("Estimated cost") {
                                 Text(String(format: "$%.4f", cost))
                                     .font(.body.monospaced())
-                                    .foregroundStyle(.orange)
+                                    .foregroundStyle(MWColors.statusWarning)
                             }
                         }
                     }

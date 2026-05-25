@@ -160,7 +160,7 @@ struct ChatView: View {
             if viewModel.reducer.usage.costUsd > 0 {
                 Label(String(format: "$%.4f", viewModel.reducer.usage.costUsd), systemImage: "dollarsign.circle")
                     .font(.caption.monospaced())
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(MWColors.statusWarning)
             }
 
             if viewModel.reducer.usage.inputTokens > 0 {
@@ -238,10 +238,10 @@ struct InlineApprovalView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
                 Image(systemName: "exclamationmark.shield.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(MWColors.statusWarning)
                 Text("Permission Required")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(MWColors.statusWarning)
             }
 
             Label(toolName, systemImage: "wrench.and.screwdriver")

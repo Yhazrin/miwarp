@@ -227,7 +227,7 @@ struct SessionHubView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 18))
-                        .foregroundColor(.green)
+                        .foregroundColor(MWColors.statusSuccess)
 
                     Text("Desktop Connected")
                         .font(.title2.weight(.semibold))
@@ -439,7 +439,7 @@ struct SessionHubView: View {
                         } label: {
                             Label("Pin", systemImage: "pin")
                         }
-                        .tint(.orange)
+                        .tint(MWColors.statusWarning)
                     }
                     .contextMenu {
                         Button {
