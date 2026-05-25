@@ -187,17 +187,12 @@ struct SessionHubView: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: MWSpacing.xs) {
-            Text(String(localized: "Sessions"))
-                .font(MWTypography.largeTitle())
-                .foregroundColor(MWColors.textPrimary)
-
             Text(String(localized: "Connect, sync, and continue your MiWarp conversations."))
                 .font(MWTypography.callout())
                 .foregroundColor(MWColors.textSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, MWSpacing.lg)
-        .padding(.top, MWSpacing.md)
     }
 
     // MARK: - Hero Card (Not Connected)
