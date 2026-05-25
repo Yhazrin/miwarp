@@ -506,8 +506,8 @@
     <!-- Label -->
     <span class="truncate">{label}</span>
 
-    <!-- Running indicator GIF / Canvas mascot -->
-    {#if (isRunning || mascotStatus === "done") && showMascot}
+    <!-- Canvas mascot — shown when enabled, regardless of status -->
+    {#if showMascot}
       <button
         class="ml-auto shrink-0 cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity rounded"
         onclick={onMascotClick}

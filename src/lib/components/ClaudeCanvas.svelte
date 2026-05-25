@@ -2,11 +2,12 @@
   /**
    * ClaudeCanvas — Canvas 2D pixel-art mascot for Claude Code.
    *
-   * A cute blob/robot creature with expressive animations.
+   * A cute blob/robot creature inspired by Claude Code's mascot.
    * States:
-   * - idle: gentle floating, blinking, occasional thought sparks
-   * - running: fast leg cycle, speed lines, excited expression
-   * - waiting: shaking with frustration, amber prompt bubble
+   * - idle: gentle floating, blinking, subtle thought sparks
+   * - running: fast leg cycle, excited expression, speed lines
+   * - waiting: frustrated shaking, amber prompt bubble
+   * - done: satisfied smile, breathing, checkmark sparkle
    */
   import { onMount } from "svelte";
 
@@ -15,21 +16,16 @@
     size?: number;
   }
 
-  let { status = "idle", size = 27 }: Props = $props();
+  let { status = "idle", size = 16 }: Props = $props();
 
   let canvas: HTMLCanvasElement;
   let animFrame: number;
-  let alive = $state(true);
-  let startTime = 0;
+  let startTime = $state(0);
 
+  // Reset animation on status change
   $effect(() => {
     const _s = status;
-    alive = false;
-    const timer = setTimeout(() => {
-      alive = true;
-      startTime = performance.now();
-    }, 50);
-    return () => clearTimeout(timer);
+    startTime = performance.now();
   });
 
   onMount(() => {
@@ -73,18 +69,18 @@
 
   // ── Grid helpers ──
   // 16x16 logical grid, centered and scaled
-  function coord(ox: number, oy: number, s = 1): { x: number; y: number; w: number; h: number } {
+  function coord(ox: number, oy: number): { x: number; y: number; w: number; h: number } {
     const scale = size / 16;
     return {
       x: ox * scale,
       y: oy * scale,
-      w: s * scale,
+      w: scale,
       h: scale,
     };
   }
 
   function px(ctx: CanvasRenderingContext2D, ox: number, oy: number, color: string) {
-    const { x, y, w, h } = coord(ox, oy, 1);
+    const { x, y, w, h } = coord(ox, oy);
     ctx.fillStyle = color;
     ctx.fillRect(Math.round(x), Math.round(y), Math.ceil(w), Math.ceil(h));
   }
@@ -97,7 +93,7 @@
     h: number,
     color: string,
   ) {
-    const { x, y, w: ww, h: hh } = coord(ox, oy, 1);
+    const { x, y, w: ww, h: hh } = coord(ox, oy);
     ctx.fillStyle = color;
     ctx.fillRect(Math.round(x), Math.round(y), Math.round(ww * w), Math.round(hh * h));
   }
@@ -128,26 +124,11 @@
     amber: "#F59E0B",
     shadow: "rgba(0,0,0,0.18)",
     glow: "rgba(167,139,250,0.25)",
+    green: "#34D399", // emerald-400
   };
 
   // ── Sprite definition ──
-  // Each row is [x, color] pairs for that y row of the body
-  // 16x16 grid, rows 0-15 top to bottom
-  // Body shape: blob with head bump, feet, and a face
-
-  function drawSprite(
-    ctx: CanvasRenderingContext2D,
-    pixels: Array<[number, number, string]>,
-    dy = 0,
-    flip = false,
-  ) {
-    for (const [x, y, c] of pixels) {
-      const drawX = flip ? 15 - x : x;
-      px(ctx, drawX, y + dy, c);
-    }
-  }
-
-  // Body pixel map (x, y, color)
+  // Each row is [x, y, color] tuples for drawing
   type Pixel = [number, number, string];
   const BODY: Pixel[] = [
     // Top bump / antenna
@@ -288,6 +269,13 @@
     [10, 12, P.foot],
   ];
 
+  function drawSprite(ctx: CanvasRenderingContext2D, pixels: Pixel[], dy = 0, flip = false) {
+    for (const [x, y, c] of pixels) {
+      const drawX = flip ? 15 - x : x;
+      px(ctx, drawX, y + dy, c);
+    }
+  }
+
   // ── Idle: floating, blinking, sparks ──
   function drawIdle(ctx: CanvasRenderingContext2D, t: number) {
     const bob = Math.sin((t / 1.4) * Math.PI * 2) * 0.7;
@@ -303,8 +291,8 @@
 
     // Blink: collapse eyes to a line
     if (isBlinking) {
-      const { x, y, w, h } = coord(5, 3, 1);
-      const { x: x2, y: y2, w: w2, h: h2 } = coord(10, 3, 1);
+      const { x, y, w, h } = coord(5, 3);
+      const { x: x2, y: y2, w: w2, h: h2 } = coord(10, 3);
       ctx.fillStyle = P.eye;
       ctx.fillRect(Math.round(x), Math.round(y + bob), Math.round(w * 2), Math.ceil(h * 0.4));
       ctx.fillRect(Math.round(x2), Math.round(y2 + bob), Math.round(w2 * 2), Math.ceil(h2 * 0.4));
@@ -387,7 +375,7 @@
   }
 
   function drawStar(ctx: CanvasRenderingContext2D, ox: number, oy: number, color: string) {
-    const { x, y, w, h } = coord(ox, oy, 1);
+    const { x, y, w, h } = coord(ox, oy);
     ctx.fillStyle = color;
     ctx.fillRect(Math.round(x), Math.round(y + h * 0.2), Math.ceil(w), Math.ceil(h * 0.6));
     ctx.fillRect(Math.round(x + w * 0.2), Math.round(y), Math.ceil(w * 0.6), Math.ceil(h));
@@ -402,7 +390,7 @@
     // Soft green tint glow
     ctx.save();
     ctx.globalAlpha = 0.08;
-    ctx.fillStyle = "#34D399"; // emerald-400
+    ctx.fillStyle = P.green;
     ctx.beginPath();
     ctx.arc(size / 2, size / 2 + 1, size * 0.48, 0, Math.PI * 2);
     ctx.fill();
@@ -419,7 +407,7 @@
       const sparkleOpacity = Math.sin(((sparkleT - 0.5) / 2.0) * Math.PI);
       ctx.save();
       ctx.globalAlpha = sparkleOpacity * 0.9;
-      ctx.strokeStyle = "#34D399";
+      ctx.strokeStyle = P.green;
       ctx.lineWidth = Math.max(0.5, size / 16);
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
@@ -474,7 +462,7 @@
     // Checkmark badge near body
     ctx.save();
     ctx.globalAlpha = checkPulse;
-    ctx.strokeStyle = "#34D399";
+    ctx.strokeStyle = P.green;
     ctx.lineWidth = Math.max(1, size / 14);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
@@ -541,7 +529,7 @@
     rect(ctx, 4, 14, 8, 1, `rgba(0,0,0,${shadowOp})`);
 
     // Glow
-    if (alive && flash > 0.1) {
+    if (flash > 0.1) {
       ctx.save();
       ctx.globalAlpha = flash * 0.2;
       ctx.fillStyle = P.amber;
@@ -622,8 +610,8 @@
     // Amber prompt
     const promptColor = flash > 0.4 ? P.amber : P.prompt;
     ctx.fillStyle = promptColor;
-    const { x: p1x, y: p1y, w: p1w, h: p1h } = coord(4, 9 + bounceY, 1);
-    const { x: p2x, y: p2y } = coord(5, 10 + bounceY, 1);
+    const { x: p1x, y: p1y, w: p1w, h: p1h } = coord(4, 9 + bounceY);
+    const { x: p2x, y: p2y } = coord(5, 10 + bounceY);
     ctx.fillRect(Math.round(p1x), Math.round(p1y), Math.ceil(p1w), Math.ceil(p1h));
     ctx.fillRect(Math.round(p2x), Math.round(p2y), Math.ceil(p1w), Math.ceil(p1h));
     ctx.restore();

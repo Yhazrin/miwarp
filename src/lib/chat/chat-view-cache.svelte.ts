@@ -114,8 +114,14 @@ export function saveChatViewState(opts: {
   requestedPreviewPath: string | null;
   renderLimit: number;
 }) {
-  const { runId, scrollTop, toolPanelActiveTab, sidebarCollapsed, requestedPreviewPath, renderLimit } =
-    opts;
+  const {
+    runId,
+    scrollTop,
+    toolPanelActiveTab,
+    sidebarCollapsed,
+    requestedPreviewPath,
+    renderLimit,
+  } = opts;
 
   if (runId) {
     _cache.scrollTopByRun[runId] = scrollTop;
