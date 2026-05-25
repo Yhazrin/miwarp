@@ -4,6 +4,7 @@ import SwiftUI
 
 struct AppRouter: View {
     @EnvironmentObject private var store: MiWarpConnectionStore
+    @EnvironmentObject private var theme: MWTheme
     @State private var selectedTab = 0
 
     var body: some View {
@@ -26,8 +27,35 @@ struct AppRouter: View {
                 }
                 .tag(2)
         }
-        .tabViewStyle(.automatic)
-        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
-        .toolbarBackground(.visible, for: .tabBar)
+        .tint(MWColors.tabActive)
+        .onAppear {
+            configureTabBarAppearance()
+        }
+    }
+
+    private func configureTabBarAppearance() {
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(MWColors.bgDeepest)
+
+        // Normal state
+        appearance.stackedLayoutAppearance.normal.iconColor = UIColor(MWColors.tabInactive)
+        appearance.stackedLayoutAppearance.normal.titleTextAttributes = [
+            .foregroundColor: UIColor(MWColors.tabInactive),
+            .font: UIFont.systemFont(ofSize: 10, weight: .medium),
+        ]
+
+        // Selected state
+        appearance.stackedLayoutAppearance.selected.iconColor = UIColor(MWColors.tabActive)
+        appearance.stackedLayoutAppearance.selected.titleTextAttributes = [
+            .foregroundColor: UIColor(MWColors.tabActive),
+            .font: UIFont.systemFont(ofSize: 10, weight: .semibold),
+        ]
+
+        // Top separator
+        appearance.shadowColor = UIColor(MWColors.divider)
+
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
     }
 }

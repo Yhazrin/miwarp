@@ -111,6 +111,9 @@ final class MiWarpEventReducer: ObservableObject {
         case .systemStatus(let payload):
             handleSystemStatus(payload)
 
+        case .toolInputDelta(let payload):
+            handleToolInputDelta(payload)
+
         case .commandOutput(let payload):
             handleCommandOutput(payload)
 
@@ -319,6 +322,17 @@ final class MiWarpEventReducer: ObservableObject {
             toolCalls: []
         )
         messages.append(msg)
+    }
+
+    private func handleToolInputDelta(_ payload: ToolInputDeltaPayload) {
+        guard let toolId = payload.toolUseId, let delta = payload.partialJson else { return }
+        for msgIndex in messages.indices {
+            if let toolIndex = messages[msgIndex].toolCalls.firstIndex(where: { $0.id == toolId }) {
+                messages[msgIndex].toolCalls[toolIndex].inputPreview =
+                    (messages[msgIndex].toolCalls[toolIndex].inputPreview ?? "") + delta
+                break
+            }
+        }
     }
 
     private func handleCommandOutput(_ payload: CommandOutputPayload) {

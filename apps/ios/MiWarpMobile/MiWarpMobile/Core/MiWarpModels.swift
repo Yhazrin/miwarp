@@ -567,11 +567,11 @@ struct ThinkingDeltaPayload: Codable {
 
 struct ToolInputDeltaPayload: Codable {
     let toolUseId: String?
-    let delta: String?
+    let partialJson: String?
 
     enum CodingKeys: String, CodingKey {
         case toolUseId = "tool_use_id"
-        case delta
+        case partialJson = "partial_json"
     }
 }
 
