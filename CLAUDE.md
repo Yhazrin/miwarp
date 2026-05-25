@@ -95,6 +95,15 @@ Always respond in Chinese (中文) unless the user writes in English. This inclu
 - Never remove Tauri command handlers (`invoke_handler`) without verifying the frontend no longer calls them — grep for each command name first.
 - When merging branches, proactively check for duplicate imports, naming collisions, and type conflicts before running the build.
 - Before committing, verify staged files match intent — no auto-staged extras.
+- Commit 前运行 `git diff --stat` 确认只包含预期的文件变更。
+- 合并冲突解决后必须运行完整构建验证。
+
+### 项目架构备注
+
+- Windows 构建需要 MSVC C++ 工具链，如缺少则提醒用户安装而非反复尝试。
+- `tauri.conf.json` 中的 `beforeBuildCommand` 必须正确配置以确保前端被重建。
+- 变更 store 或类型定义后，必须同步更新所有引用文件。
+- 修复 bug 前先运行一次完整构建确认基线状态，避免在已损坏的基础上叠加问题。
 
 ### Svelte 5 — Runes Only
 
