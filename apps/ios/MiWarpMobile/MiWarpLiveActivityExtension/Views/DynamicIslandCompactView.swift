@@ -1,26 +1,34 @@
 import SwiftUI
 
+struct MiWarpIslandDot: View {
+    let color: Color
+
+    var body: some View {
+        Circle()
+            .fill(color)
+            .frame(width: 9, height: 9)
+    }
+}
+
 // MARK: - Sync Compact
 
 struct SyncCompactLeading: View {
     let phase: SyncPhase
 
     var body: some View {
-        MiWarpActivityCompactRing(
-            progress: 0,
-            ringPhase: ringPhase,
-            size: 20
-        )
+        MiWarpIslandDot(color: islandColor)
     }
 
-    private var ringPhase: MiWarpRingProgressView.RingPhase {
+    private var islandColor: Color {
         switch phase {
-        case .preparing: return .preparing
-        case .connecting: return .connecting
-        case .syncing, .importing, .exporting: return .syncing
-        case .finishing: return .waiting
-        case .completed: return .completed
-        case .failed: return .failed
+        case .preparing, .connecting, .syncing, .importing, .exporting:
+            return Color(hex: 0xE6397C)
+        case .finishing:
+            return Color(hex: 0x9F82FD)
+        case .completed:
+            return Color(hex: 0x41D6A2)
+        case .failed:
+            return Color(hex: 0xFF5A72)
         }
     }
 }
@@ -31,25 +39,22 @@ struct SyncCompactTrailing: View {
     let totalCount: Int
 
     var body: some View {
+        Text(label)
+            .font(.system(size: 12, weight: .semibold).monospacedDigit())
+            .foregroundColor(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .contentTransition(.numericText())
+    }
+
+    private var label: String {
         switch phase {
         case .completed:
-            Text("Done")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(Color(hex: 0x41D6A2))
+            return "Done"
         case .failed:
-            Text("Failed")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(Color(hex: 0xFF5A72))
+            return "Fail"
         default:
-            if totalCount > 0 {
-                Text("\(currentCount)/\(totalCount)")
-                    .font(.system(size: 12, weight: .medium).monospacedDigit())
-                    .foregroundColor(.white.opacity(0.85))
-            } else {
-                Text(phase.displayTitle)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white.opacity(0.85))
-            }
+            return totalCount > 0 ? "\(currentCount)/\(totalCount)" : "Sync"
         }
     }
 }
@@ -60,20 +65,19 @@ struct AgentCompactLeading: View {
     let phase: AgentPhase
 
     var body: some View {
-        MiWarpActivityCompactRing(
-            progress: 0,
-            ringPhase: ringPhase,
-            size: 20
-        )
+        MiWarpIslandDot(color: islandColor)
     }
 
-    private var ringPhase: MiWarpRingProgressView.RingPhase {
+    private var islandColor: Color {
         switch phase {
-        case .queued: return .preparing
-        case .running: return .syncing
-        case .waiting: return .waiting
-        case .completed: return .completed
-        case .failed: return .failed
+        case .running:
+            return Color(hex: 0xE6397C)
+        case .queued, .waiting:
+            return Color(hex: 0x9F82FD)
+        case .completed:
+            return Color(hex: 0x41D6A2)
+        case .failed:
+            return Color(hex: 0xFF5A72)
         }
     }
 }
@@ -84,25 +88,22 @@ struct AgentCompactTrailing: View {
     let totalSteps: Int
 
     var body: some View {
+        Text(label)
+            .font(.system(size: 12, weight: .semibold).monospacedDigit())
+            .foregroundColor(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .contentTransition(.numericText())
+    }
+
+    private var label: String {
         switch phase {
         case .completed:
-            Text("Done")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(Color(hex: 0x41D6A2))
+            return "Done"
         case .failed:
-            Text("Failed")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(Color(hex: 0xFF5A72))
+            return "Fail"
         default:
-            if totalSteps > 0 {
-                Text("\(currentStep)/\(totalSteps)")
-                    .font(.system(size: 12, weight: .medium).monospacedDigit())
-                    .foregroundColor(.white.opacity(0.85))
-            } else {
-                Text(phase.displayTitle)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white.opacity(0.85))
-            }
+            return totalSteps > 0 ? "\(currentStep)/\(totalSteps)" : "Run"
         }
     }
 }

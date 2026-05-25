@@ -140,7 +140,7 @@
 		B85BC39AF301E61AA2D7BDDF /* MiWarpEventReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpEventReducer.swift; sourceTree = "<group>"; };
 		B9EBC6E7E1C3A6687A1AC5BD /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
 		BBC11E713D887C54BA4BE895 /* MiWarpLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MiWarpLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		BDFAFD6DD96630C2562FBFDE /* MiWarp.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MiWarp.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BDFAFD6DD96630C2562FBFDE /* MiWarpMobileTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = file; name = MiWarpMobileTests.xctest; path = MiWarp.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0E65980CBFDCE0641A89EB6 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		C1355A6A96238DD857E69FC3 /* LiveActivityDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityDemoView.swift; sourceTree = "<group>"; };
 		C664FD00C805F710AB2CB298 /* MiWarp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MiWarp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -351,7 +351,7 @@
 			children = (
 				BBC11E713D887C54BA4BE895 /* MiWarpLiveActivityExtension.appex */,
 				C664FD00C805F710AB2CB298 /* MiWarp.app */,
-				BDFAFD6DD96630C2562FBFDE /* MiWarp.xctest */,
+				BDFAFD6DD96630C2562FBFDE /* MiWarpMobileTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -420,7 +420,7 @@
 			packageProductDependencies = (
 			);
 			productName = MiWarpMobileTests;
-			productReference = BDFAFD6DD96630C2562FBFDE /* MiWarp.xctest */;
+			productReference = BDFAFD6DD96630C2562FBFDE /* MiWarpMobileTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		F8E7E71355059B3247A86C55 /* MiWarpMobile */ = {
@@ -456,6 +456,7 @@
 						ProvisioningStyle = Automatic;
 					};
 					6BAF44B848D573A7D725D743 = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 					F8E7E71355059B3247A86C55 = {
@@ -591,7 +592,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				DEVELOPMENT_TEAM = 5CQ49A8XPZ;
 				INFOPLIST_FILE = MiWarpMobileTests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -627,7 +627,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
-				DEVELOPMENT_TEAM = 5CQ49A8XPZ;
 				INFOPLIST_FILE = MiWarpMobileTests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

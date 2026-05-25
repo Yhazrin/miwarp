@@ -17,7 +17,6 @@ struct LiveActivityDemoView: View {
     @State private var activitiesEnabled = false
     @State private var syncResult: LiveActivityStartResult?
     @State private var agentResult: LiveActivityStartResult?
-    @State private var deviceSupportsDynamicIsland = false
 
     var body: some View {
         List {
@@ -31,9 +30,9 @@ struct LiveActivityDemoView: View {
                     }
 
                     HStack {
-                        Image(systemName: deviceSupportsDynamicIsland ? "capsule.portrait.fill" : "iphone")
-                            .foregroundColor(deviceSupportsDynamicIsland ? MWColors.accentPrimary : .secondary)
-                        Text("Dynamic Island: \(deviceSupportsDynamicIsland ? "Supported" : "Not Supported")")
+                        Image(systemName: "capsule.portrait.fill")
+                            .foregroundColor(MWColors.accentPrimary)
+                        Text("Dynamic Island: available on iPhone 14 Pro or later")
                     }
 
                     if !activitiesEnabled {
@@ -42,7 +41,7 @@ struct LiveActivityDemoView: View {
                             .foregroundColor(MWColors.statusWarning)
                     }
 
-                    Text("ℹ️ Dynamic Island requires iPhone 14 Pro or later. Other iPhones show Lock Screen Live Activity only.")
+                    Text("Other iPhones show Lock Screen Live Activity only.")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
@@ -212,16 +211,6 @@ struct LiveActivityDemoView: View {
     private func checkCapabilities() {
         let authInfo = ActivityAuthorizationInfo()
         activitiesEnabled = authInfo.areActivitiesEnabled
-
-        // Check if device supports Dynamic Island (iPhone 14 Pro and later)
-        // This is a simple check - in production you'd use device model detection
-        #if targetEnvironment(simulator)
-        deviceSupportsDynamicIsland = true // Simulator supports it
-        #else
-        // On real device, we'd need to check device model
-        // For now, assume iPhone 14 Pro+ has Dynamic Island
-        deviceSupportsDynamicIsland = false // Default to false, real device detection would be needed
-        #endif
     }
 
     // MARK: - Sync Controls
@@ -240,11 +229,7 @@ struct LiveActivityDemoView: View {
         syncResult = result
 
         if result.isSuccess {
-            // Auto-advance to connecting after 1s
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                guard syncPhase == .preparing else { return }
-                updateSync(.connecting)
-            }
+            updateSync(.connecting, currentItemTitle: "Starting")
         }
     }
 
@@ -277,13 +262,13 @@ struct LiveActivityDemoView: View {
         syncResult = nil
     }
 
-    private func updateSync(_ phase: SyncPhase, error: String? = nil) {
+    private func updateSync(_ phase: SyncPhase, currentItemTitle: String? = nil, error: String? = nil) {
         syncPhase = phase
         LiveActivityManager.shared.updateSessionSync(
             phase: phase,
             currentCount: syncCount,
             totalCount: syncTotal,
-            currentItemTitle: phase.isActive ? "session-\(syncCount)" : nil,
+            currentItemTitle: phase.isActive ? (currentItemTitle ?? "session-\(syncCount)") : nil,
             desktopName: "MacBook Pro",
             errorMessage: error
         )
@@ -305,10 +290,7 @@ struct LiveActivityDemoView: View {
         agentResult = result
 
         if result.isSuccess {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                guard agentPhase == .queued else { return }
-                updateAgent(.running)
-            }
+            updateAgent(.running, stepTitle: "Starting")
         }
     }
 

@@ -58,11 +58,7 @@ struct SessionSyncLiveActivityWidget: Widget {
                     totalCount: context.state.totalCount
                 )
             } minimal: {
-                MiWarpActivityCompactRing(
-                    progress: context.state.progress,
-                    ringPhase: ringPhase(context.state.phase),
-                    size: 16
-                )
+                SyncCompactLeading(phase: context.state.phase)
             }
             .contentMargins(.trailing, 32, for: .expanded)
             .contentMargins(.bottom, 8, for: .expanded)
@@ -139,11 +135,7 @@ struct AgentTaskLiveActivityWidget: Widget {
                     totalSteps: context.state.totalSteps
                 )
             } minimal: {
-                MiWarpActivityCompactRing(
-                    progress: context.state.progress,
-                    ringPhase: ringPhase(context.state.phase),
-                    size: 16
-                )
+                AgentCompactLeading(phase: context.state.phase)
             }
             .contentMargins(.trailing, 32, for: .expanded)
             .contentMargins(.bottom, 8, for: .expanded)

@@ -38,8 +38,6 @@ targets:
         INFOPLIST_FILE: MiWarpMobile/Resources/Info.plist
     entitlements:
       path: MiWarpMobile/Resources/MiWarpMobile.entitlements
-      properties:
-        com.apple.security.network.client: true
     dependencies:
       - target: MiWarpLiveActivityExtension
         embed: true
@@ -74,6 +72,3 @@ targets:
         PRODUCT_NAME: "MiWarpLiveActivityExtension"
     entitlements:
       path: MiWarpLiveActivityExtension/MiWarpLiveActivityExtension.entitlements
-      properties:
-        com.apple.security.application-groups:
-          - group.com.miwarp.mobile
