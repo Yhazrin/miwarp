@@ -3,6 +3,9 @@ import SwiftUI
 struct SessionHubView: View {
     @EnvironmentObject private var store: MiWarpConnectionStore
     @EnvironmentObject private var theme: MWTheme
+    #if canImport(ActivityKit)
+    @StateObject private var syncManager = SessionSyncManager.shared
+    #endif
     @State private var runs: [MiWarpRun] = []
     @State private var isLoading = false
     @State private var error: String?
@@ -290,16 +293,35 @@ struct SessionHubView: View {
                     .foregroundColor(.white.opacity(0.85))
             }
 
+            #if canImport(ActivityKit)
             Button {
-                Task { await loadRuns() }
+                if syncManager.isSyncing {
+                    syncManager.cancelSync()
+                } else {
+                    syncManager.startSync(store: store)
+                    // Also refresh the runs list after sync completes
+                    Task {
+                        try? await Task.sleep(nanoseconds: 500_000_000)
+                        while syncManager.isSyncing {
+                            try? await Task.sleep(nanoseconds: 1_000_000_000)
+                        }
+                        await loadRuns()
+                    }
+                }
             } label: {
                 HStack(spacing: MWSpacing.sm) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 14, weight: .medium))
-
-                    Text(String(localized: "Sync Now"))
-                        .font(MWTypography.bodyMedium())
-
+                    if syncManager.isSyncing {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .tint(MWColors.accentPrimary)
+                        Text(syncManager.syncPhase.displayTitle)
+                            .font(MWTypography.bodyMedium())
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 14, weight: .medium))
+                        Text(String(localized: "Sync Now"))
+                            .font(MWTypography.bodyMedium())
+                    }
                     Spacer()
                 }
                 .foregroundColor(MWColors.accentPrimary)
@@ -310,6 +332,27 @@ struct SessionHubView: View {
                         .fill(Color.white)
                 )
             }
+            .disabled(syncManager.isSyncing && syncManager.syncPhase == .preparing)
+            #else
+            Button {
+                Task { await loadRuns() }
+            } label: {
+                HStack(spacing: MWSpacing.sm) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 14, weight: .medium))
+                    Text(String(localized: "Sync Now"))
+                        .font(MWTypography.bodyMedium())
+                    Spacer()
+                }
+                .foregroundColor(MWColors.accentPrimary)
+                .padding(.horizontal, MWSpacing.lg)
+                .padding(.vertical, MWSpacing.md)
+                .background(
+                    Capsule()
+                        .fill(Color.white)
+                )
+            }
+            #endif
 
             if let conn = store.activeConnection {
                 HStack(spacing: MWSpacing.xs) {
