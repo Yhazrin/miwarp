@@ -38,7 +38,16 @@
 		FCCCC4792AEF4E33B3F92E1D /* MiWarpConnectionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A0B57EF75232E7CBDA97B0D /* MiWarpConnectionStore.swift */; };
 		FE7765B8799D45D7EF4E3626 /* ChatInputBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 096DDAC3E0FF81650A464E57 /* ChatInputBar.swift */; };
 		CHATVIEWMODEL12345678 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CHATVIEWMODELREF00000 /* ChatViewModel.swift */; };
-/* End PBXBuildFile section */
+		A99EF19A54DEA797 /* AgentTaskAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FB828288367326 /* AgentTaskAttributes.swift */; };
+		61C878F248E60363 /* SessionSyncAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 230EF37D09827AC1 /* SessionSyncAttributes.swift */; };
+		D2E6242027E4F4AB /* LiveActivityDeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 972706DDCE76C5C3 /* LiveActivityDeepLink.swift */; };
+		150E1E3950560F24 /* AgentSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE07B77E559C30A1 /* AgentSyncManager.swift */; };
+		789373F17DB80E1B /* LiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3824B3A40324D16D /* LiveActivityManager.swift */; };
+		9BB15338BCB478A5 /* SessionSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4CE3E187FEFBBD6 /* SessionSyncManager.swift */; };
+		87BA9E0A5AC074DE /* LiveActivityPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3FB27CCEE013C5A /* LiveActivityPhase.swift */; };
+		0F16E07198160397 /* MascotState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10FCE309A6DF1E3C /* MascotState.swift */; };
+			24D59176054F3AF6 /* LiveActivityDemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5CA8BB9104E61D9 /* LiveActivityDemoView.swift */; };
+	/* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		015D6770F2BF381E65357860 /* SessionFiltersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionFiltersView.swift; sourceTree = "<group>"; };
@@ -75,7 +84,16 @@
 		D86348B9DC8374F8A7B3688E /* ArtifactsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArtifactsView.swift; sourceTree = "<group>"; };
 		F0F107680AD38109AD258F79 /* DiffPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiffPreviewView.swift; sourceTree = "<group>"; };
 		F56164434961DBAFF3086CE8 /* MiWarpMobile.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MiWarpMobile.entitlements; sourceTree = "<group>"; };
-/* End PBXFileReference section */
+		55FB828288367326 /* AgentTaskAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentTaskAttributes.swift; sourceTree = "<group>"; };
+		230EF37D09827AC1 /* SessionSyncAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSyncAttributes.swift; sourceTree = "<group>"; };
+		972706DDCE76C5C3 /* LiveActivityDeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityDeepLink.swift; sourceTree = "<group>"; };
+		CE07B77E559C30A1 /* AgentSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentSyncManager.swift; sourceTree = "<group>"; };
+		3824B3A40324D16D /* LiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityManager.swift; sourceTree = "<group>"; };
+		A4CE3E187FEFBBD6 /* SessionSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSyncManager.swift; sourceTree = "<group>"; };
+		A3FB27CCEE013C5A /* LiveActivityPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityPhase.swift; sourceTree = "<group>"; };
+		10FCE309A6DF1E3C /* MascotState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotState.swift; sourceTree = "<group>"; };
+			E5CA8BB9104E61D9 /* LiveActivityDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityDemoView.swift; sourceTree = "<group>"; };
+	/* End PBXFileReference section */
 
 /* Begin PBXGroup section */
 		06B3F40200C9628F9C51930E /* Core */ = {
@@ -117,6 +135,7 @@
 				DC54AFBAC9418EB17B2FAEE5 /* DesignSystem */,
 				B8B851F80CFCF7DD00AD8922 /* Features */,
 				FFF295E37EFF54B540E122AE /* Resources */,
+				LAROOTGRP00000001 /* LiveActivities */,
 			);
 			path = MiWarpMobile;
 			sourceTree = "<group>";
@@ -144,6 +163,7 @@
 			isa = PBXGroup;
 			children = (
 				1BDC398FA44E521237508ED9 /* MobileSettingsView.swift */,
+				E5CA8BB9104E61D9 /* LiveActivityDemoView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -214,7 +234,54 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
-/* End PBXGroup section */
+LAROOTGRP00000001 /* LiveActivities */ = {
+	isa = PBXGroup;
+	children = (
+		LAATTRGRP00000001 /* Attributes */,
+		LADLGRP00000001 /* DeepLink */,
+		LAMGRGRP00000001 /* Manager */,
+		LAMODGRP00000001 /* Models */,
+	);
+	path = LiveActivities;
+	sourceTree = "<group>";
+};
+LAATTRGRP00000001 /* Attributes */ = {
+	isa = PBXGroup;
+	children = (
+		55FB828288367326 /* AgentTaskAttributes.swift */,
+		230EF37D09827AC1 /* SessionSyncAttributes.swift */,
+	);
+	path = Attributes;
+	sourceTree = "<group>";
+};
+LADLGRP00000001 /* DeepLink */ = {
+	isa = PBXGroup;
+	children = (
+		972706DDCE76C5C3 /* LiveActivityDeepLink.swift */,
+	);
+	path = DeepLink;
+	sourceTree = "<group>";
+};
+LAMGRGRP00000001 /* Manager */ = {
+	isa = PBXGroup;
+	children = (
+		CE07B77E559C30A1 /* AgentSyncManager.swift */,
+		3824B3A40324D16D /* LiveActivityManager.swift */,
+		A4CE3E187FEFBBD6 /* SessionSyncManager.swift */,
+	);
+	path = Manager;
+	sourceTree = "<group>";
+};
+LAMODGRP00000001 /* Models */ = {
+	isa = PBXGroup;
+	children = (
+		A3FB27CCEE013C5A /* LiveActivityPhase.swift */,
+		10FCE309A6DF1E3C /* MascotState.swift */,
+	);
+	path = Models;
+	sourceTree = "<group>";
+};
+	/* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
 		F8E7E71355059B3247A86C55 /* MiWarpMobile */ = {
@@ -313,7 +380,16 @@
 				A172FA18B2E5D055735D564B /* SessionCardView.swift in Sources */,
 				DA3692C0666B9ADCAEE3784A /* SessionFiltersView.swift in Sources */,
 				9B288F274A622D202EA9133D /* SessionHubView.swift in Sources */,
+				24D59176054F3AF6 /* LiveActivityDemoView.swift in Sources */,
 				E2B3A825971612D747C522A7 /* ToolCallCardView.swift in Sources */,
+						A99EF19A54DEA797 /* AgentTaskAttributes.swift in Sources */,
+			61C878F248E60363 /* SessionSyncAttributes.swift in Sources */,
+			D2E6242027E4F4AB /* LiveActivityDeepLink.swift in Sources */,
+			150E1E3950560F24 /* AgentSyncManager.swift in Sources */,
+			789373F17DB80E1B /* LiveActivityManager.swift in Sources */,
+			9BB15338BCB478A5 /* SessionSyncManager.swift in Sources */,
+			87BA9E0A5AC074DE /* LiveActivityPhase.swift in Sources */,
+			0F16E07198160397 /* MascotState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

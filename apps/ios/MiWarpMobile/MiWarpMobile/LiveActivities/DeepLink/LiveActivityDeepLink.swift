@@ -18,7 +18,7 @@ enum LiveActivityDeepLink {
     }
 
     /// Deep link to open sessions list
-    static func sessions: URL? {
+    static var sessions: URL? {
         URL(string: "\(scheme)://sessions")
     }
 
