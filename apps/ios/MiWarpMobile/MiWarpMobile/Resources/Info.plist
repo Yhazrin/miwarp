@@ -33,6 +33,8 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>MiWarp Mobile uses the camera to scan QR codes for quick connection setup.</string>
 	<key>NSAppTransportSecurity</key>
