@@ -46,9 +46,12 @@ struct SessionHubView: View {
                 } else if isLoading && runs.isEmpty {
                     MWLoadingState(message: String(localized: "Loading sessions..."))
                 } else if let error, runs.isEmpty {
-                    MWErrorState(message: error, onAction: {
-                        Task { await loadRuns() }
-                    })
+                    MWErrorState(
+                        message: error,
+                        title: String(localized: "Cannot Load Sessions"),
+                        actionTitle: String(localized: "Retry"),
+                        onAction: { Task { await loadRuns() } }
+                    )
                 } else {
                     sessionList
                 }

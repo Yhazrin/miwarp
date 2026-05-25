@@ -89,12 +89,13 @@ fun SettingsScreen(
                     ConnectionState.Connecting -> "Connecting..."
                     ConnectionState.Reconnecting -> "Reconnecting..."
                     ConnectionState.Error -> "Error"
+                    ConnectionState.AuthFailed -> "Auth Failed"
                     ConnectionState.Disconnected -> "Disconnected"
                 }
                 val connStatusRun = when (connectionState) {
                     ConnectionState.Connected -> RunStatus.Completed
                     ConnectionState.Connecting, ConnectionState.Reconnecting -> RunStatus.Pending
-                    ConnectionState.Error -> RunStatus.Failed
+                    ConnectionState.Error, ConnectionState.AuthFailed -> RunStatus.Failed
                     ConnectionState.Disconnected -> RunStatus.Idle
                 }
                 MWStatusPill(status = connStatusRun, label = connStatusLabel)

@@ -26,6 +26,7 @@ enum class ConnectionState {
     Connected,
     Reconnecting,
     Error,
+    AuthFailed,
     ;
 
     /** Whether the connection is actively usable */
@@ -39,6 +40,7 @@ enum class ConnectionState {
             Connected -> "Connected"
             Reconnecting -> "Reconnecting..."
             Error -> "Error"
+            AuthFailed -> "Authentication Failed"
         }
 }
 

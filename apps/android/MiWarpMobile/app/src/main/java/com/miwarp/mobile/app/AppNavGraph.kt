@@ -249,7 +249,11 @@ fun AppNavGraph(
                 SessionHubScreen(
                     runs = runs,
                     isLoading = connectionState == ConnectionState.Connecting || connectionState == ConnectionState.Reconnecting,
-                    error = if (connectionState == ConnectionState.Error) "Connection error" else null,
+                    error = when (connectionState) {
+                        ConnectionState.Error -> "Connection error"
+                        ConnectionState.AuthFailed -> "Authentication failed — token expired or rotated. Please reconnect."
+                        else -> null
+                    },
                     onRefresh = {
                         scope.launch {
                             try {

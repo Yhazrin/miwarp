@@ -177,7 +177,7 @@ fun ChatScreen(
         modifier = modifier.fillMaxSize(),
     ) {
         // Reconnect banner
-        val isDisconnected = connectionState == ConnectionState.Reconnecting || connectionState == ConnectionState.Error
+        val isDisconnected = connectionState == ConnectionState.Reconnecting || connectionState == ConnectionState.Error || connectionState == ConnectionState.AuthFailed
         val isReconnecting = connectionState == ConnectionState.Reconnecting
         if (isDisconnected) {
             MWReconnectBanner(

@@ -116,6 +116,14 @@ class MiWarpWebSocketClient(
                 // Ignore stale callbacks from previous connections
                 if (ws !== webSocket) return
                 Logger.wsInfo("WebSocket closed: $code $reason")
+
+                // 4401 = token rotated / session expired / token version mismatch
+                // Reconnecting won't help — surface auth error immediately
+                if (code == 4401) {
+                    _connectionState.value = ConnectionState.AuthFailed
+                    return
+                }
+
                 _connectionState.value = ConnectionState.Disconnected
                 scheduleReconnect()
             }
