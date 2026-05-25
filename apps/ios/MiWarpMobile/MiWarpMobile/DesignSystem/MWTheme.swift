@@ -21,6 +21,7 @@ enum MWRadius {
     static let md: CGFloat = 8
     static let lg: CGFloat = 10
     static let xl: CGFloat = 14
+    static let xxl: CGFloat = 28
     static let full: CGFloat = 999
 }
 
