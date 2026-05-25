@@ -88,6 +88,7 @@ struct ChatView: View {
         }
         .navigationTitle(runTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -178,10 +179,6 @@ struct ChatView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
-        .background(.bar)
-        .overlay(alignment: .bottom) {
-            Divider()
-        }
     }
 
     private func statusPill(_ status: RunStatus) -> some View {
@@ -195,7 +192,7 @@ struct ChatView: View {
 
     private func statusColor(_ status: RunStatus) -> Color {
         switch status {
-        case .running: return .blue
+        case .running: return theme.accentPrimary
         case .waitingApproval: return .orange
         case .failed: return .red
         case .completed: return .green
