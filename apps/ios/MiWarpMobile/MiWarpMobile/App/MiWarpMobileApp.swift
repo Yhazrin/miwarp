@@ -15,7 +15,10 @@ struct MiWarpMobileApp: App {
                     handleDeepLink(url)
                 }
                 .onAppear {
-                    connectionStore.connectToDefault()
+                    Task {
+                        try? await Task.sleep(nanoseconds: 300_000_000)
+                        connectionStore.connectToDefault()
+                    }
                 }
         }
     }

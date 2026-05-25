@@ -28,9 +28,6 @@ struct AppRouter: View {
                 .tag(2)
         }
         .tint(MWColors.tabActive)
-        .onAppear {
-            configureTabBarAppearance()
-        }
         .onReceive(NotificationCenter.default.publisher(for: .liveActivityDeepLink)) { notification in
             if let deepLink = notification.object as? LiveActivityDeepLink.ParsedDeepLink {
                 handleLiveActivityDeepLink(deepLink)
@@ -45,27 +42,5 @@ struct AppRouter: View {
         case .agent:
             selectedTab = 0 // Sessions tab — agent details shown inline
         }
-    }
-
-    private func configureTabBarAppearance() {
-        let appearance = UITabBarAppearance()
-        appearance.configureWithDefaultBackground()
-
-        // Normal state
-        appearance.stackedLayoutAppearance.normal.iconColor = .secondaryLabel
-        appearance.stackedLayoutAppearance.normal.titleTextAttributes = [
-            .foregroundColor: UIColor.secondaryLabel,
-            .font: UIFont.systemFont(ofSize: 10, weight: .medium),
-        ]
-
-        // Selected state — tint color handles this, but set explicit fallback
-        appearance.stackedLayoutAppearance.selected.iconColor = UIColor(theme.accentPrimary)
-        appearance.stackedLayoutAppearance.selected.titleTextAttributes = [
-            .foregroundColor: UIColor(theme.accentPrimary),
-            .font: UIFont.systemFont(ofSize: 10, weight: .semibold),
-        ]
-
-        UITabBar.appearance().standardAppearance = appearance
-        UITabBar.appearance().scrollEdgeAppearance = appearance
     }
 }

@@ -187,15 +187,15 @@ struct ChatView: View {
             .foregroundStyle(statusColor(status))
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(statusColor(status).opacity(0.12), in: Capsule())
+            .background(statusColor(status).opacity(0.18), in: Capsule())
     }
 
     private func statusColor(_ status: RunStatus) -> Color {
         switch status {
         case .running: return theme.accentPrimary
-        case .waitingApproval: return .orange
-        case .failed: return .red
-        case .completed: return .green
+        case .waitingApproval: return MWColors.statusWarning
+        case .failed: return MWColors.statusError
+        case .completed: return MWColors.statusSuccess
         case .pending: return .secondary
         case .idle: return .secondary
         case .stopped: return .gray

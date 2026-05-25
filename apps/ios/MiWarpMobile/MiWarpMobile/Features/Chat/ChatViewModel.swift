@@ -14,6 +14,8 @@ final class ChatViewModel: ObservableObject {
     @Published var showArtifacts = false
     @Published var rawEvents: [BusEvent] = []
 
+    private let maxRawEvents = 1000
+
     private weak var store: MiWarpConnectionStore?
 
     init(runId: String) {
@@ -77,6 +79,9 @@ final class ChatViewModel: ObservableObject {
             for await event in wsClient.eventStream {
                 guard event.runId == runId else { continue }
                 rawEvents.append(event)
+                if rawEvents.count > maxRawEvents {
+                    rawEvents.removeFirst(rawEvents.count - maxRawEvents)
+                }
                 reducer.processEvent(event)
             }
             if Task.isCancelled { break }
