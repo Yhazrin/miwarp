@@ -55,5 +55,8 @@ AGENTS.md
 
 .metadata_never_index
 
+# Agent reference repos (local only)
+.agent-reference/
+
 # Unrelated binaries
 forget_ptr
