@@ -73,6 +73,29 @@ Session lifecycle: `session_actor.rs` spawns a CLI child process, reads stdout l
 
 ## Code Conventions
 
+### Language
+
+Always respond in Chinese (中文) unless the user writes in English. This includes explanations, summaries, and commit messages.
+
+### Action Over Reporting
+
+- Always make actual code changes — do NOT produce audit reports, summaries, or status documents unless explicitly asked.
+- When fixing bugs, write and run the fix immediately. Never stop to summarize findings without acting first.
+- If a fix doesn't work, try the next approach immediately rather than re-analyzing.
+
+### Build & Verify
+
+- After ANY Tauri config change (`tauri.conf.json`, `Cargo.toml`, plugins), verify the frontend is actually being rebuilt — check `beforeBuildCommand` is not empty.
+- Always run `pnpm check` after Svelte file modifications.
+- Always run `cargo clippy` after Rust changes.
+- After multi-file refactors, run the full build pipeline before committing.
+
+### Git Safety
+
+- Never remove Tauri command handlers (`invoke_handler`) without verifying the frontend no longer calls them — grep for each command name first.
+- When merging branches, proactively check for duplicate imports, naming collisions, and type conflicts before running the build.
+- Before committing, verify staged files match intent — no auto-staged extras.
+
 ### Svelte 5 — Runes Only
 
 Use `$state`, `$derived`, `$effect`, `$props()`, `$bindable()`. No legacy stores, no `<slot>`, no `export let`. Use `{#snippet}` + `{@render}` for component children.
