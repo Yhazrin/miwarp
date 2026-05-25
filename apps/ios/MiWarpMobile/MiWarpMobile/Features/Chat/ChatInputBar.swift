@@ -61,7 +61,7 @@ struct ChatInputBar: View {
                     } label: {
                         Image(systemName: "arrow.up")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(canSubmit ? .white : .quaternary)
+                            .foregroundStyle(canSubmit ? Color.white : Color.gray.opacity(0.4))
                             .frame(width: 28, height: 28)
                             .background(canSubmit ? theme.accentPrimary : Color(.systemFill), in: Circle())
                     }

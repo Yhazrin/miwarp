@@ -83,8 +83,8 @@ struct PairingView: View {
             .background(
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color(hex: 0xC51F62),
-                        Color(hex: 0x8B3DFF)
+                        MWColors.accentPrimary,
+                        MWColors.accentCyan
                     ]),
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
