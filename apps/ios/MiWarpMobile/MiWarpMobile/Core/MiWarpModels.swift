@@ -172,6 +172,45 @@ struct MiWarpRun: Identifiable, Codable, Hashable {
         if components.count <= 2 { return cwd }
         return ".../" + components.suffix(2).joined(separator: "/")
     }
+
+    // MARK: - Display Formatters
+
+    /// Agent and model display string. Model is optional.
+    /// e.g. "Claude · MiniMax-M2.7 Highspeed" or "Claude" if no model
+    var displayAgentModel: String {
+        if let model = model, !model.isEmpty {
+            return "\(agent) · \(model)"
+        }
+        return agent
+    }
+
+    /// Short cwd for display in list rows.
+    var displayCwd: String? {
+        guard !cwd.isEmpty else { return nil }
+        return shortCwd
+    }
+
+    /// Message count formatted for display.
+    /// e.g. "60 messages" or hidden if count is 0/nil
+    var displayMessageCount: String? {
+        guard let count = messageCount, count > 0 else { return nil }
+        if count == 1 { return "1 message" }
+        return "\(count) messages"
+    }
+
+    /// Relative time string for display.
+    /// e.g. "11h ago", "2d ago", "Just now"
+    var displayRelativeTime: String? {
+        guard let date = lastActivity else { return nil }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
+    /// Whether this run has any metadata to display in list rows.
+    var hasMetadata: Bool {
+        displayCwd != nil || displayMessageCount != nil
+    }
 }
 
 // MARK: - Bus Event

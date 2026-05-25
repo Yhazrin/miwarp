@@ -208,58 +208,88 @@ struct MWStatusPill: View {
     }
 }
 
-// MARK: - Session Card (minimal native row)
+// MARK: - Session Card (compact高级列表row)
 
 struct MWSessionCard: View {
     let run: MiWarpRun
     var onTap: (() -> Void)?
 
+    // Status dot color — semantic, not "dirty"
     private var statusColor: Color {
         switch run.status {
-        case .running: return MWColors.statusRunning
-        case .waitingApproval: return MWColors.statusApproval
-        case .failed: return MWColors.statusError
-        case .completed: return MWColors.statusSuccess
-        case .pending: return MWColors.statusPending
-        case .idle: return MWColors.statusIdle
-        case .stopped: return MWColors.statusStopped
+        case .running:    return Color(hex: 0x22C55E)  // vibrant green
+        case .waitingApproval: return Color(hex: 0xF59E0B)  // amber
+        case .failed:     return Color(hex: 0xEF4444)  // clear red
+        case .completed:  return Color(hex: 0x6B7280)  // muted gray-green
+        case .idle:       return Color(hex: 0x94A3B8)  // slate gray-blue
+        case .pending:    return Color(hex: 0x60A5FA)  // soft blue
+        case .stopped:     return Color(hex: 0x9CA3AF)  // desaturated gray
         }
+    }
+
+    // Glow for running state
+    private var statusGlow: Bool {
+        run.status == .running
     }
 
     var body: some View {
         Button {
             onTap?()
         } label: {
-            HStack(alignment: .center, spacing: MWSpacing.sm) {
-                // Status dot
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 7, height: 7)
+            VStack(alignment: .leading, spacing: 3) {
+                // Row 1: status dot + title + time
+                HStack(alignment: .top, spacing: MWSpacing.sm) {
+                    // Status dot — 8pt, aligned with first text line
+                    Circle()
+                        .fill(statusColor)
+                        .frame(width: 8, height: 8)
+                        .shadow(color: statusGlow ? Color(hex: 0x22C55E).opacity(0.5) : .clear, radius: 3)
 
-                // Title + metadata
-                VStack(alignment: .leading, spacing: 2) {
+                    // Title — semibold, 2 lines max
                     Text(run.displayTitle)
-                        .font(MWTypography.bodyMedium())
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(MWColors.textPrimary)
                         .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                    Text("\(run.agent) · \(run.model)")
-                        .font(MWTypography.caption())
-                        .foregroundColor(MWColors.textTertiary)
-                        .lineLimit(1)
+                    // Time — right aligned, muted
+                    if let time = run.displayRelativeTime {
+                        Text(time)
+                            .font(.system(size: 12))
+                            .foregroundColor(MWColors.textTertiary)
+                            .frame(alignment: .trailing)
+                    }
                 }
 
-                Spacer()
+                // Row 2: agent · model
+                Text(run.displayAgentModel)
+                    .font(.system(size: 12))
+                    .foregroundColor(MWColors.textTertiary)
+                    .lineLimit(1)
 
-                // Time
-                if let lastActivity = run.lastActivity {
-                    Text(lastActivity.formatted(.relative(presentation: .named)))
-                        .font(MWTypography.caption())
-                        .foregroundColor(MWColors.textTertiary)
-                        .lineLimit(1)
+                // Row 3: cwd · message count (only if metadata exists)
+                if run.hasMetadata {
+                    HStack(spacing: MWSpacing.sm) {
+                        if let cwd = run.displayCwd {
+                            Text(cwd)
+                                .font(.system(size: 11).monospaced())
+                                .foregroundColor(MWColors.textTertiary.opacity(0.7))
+                                .lineLimit(1)
+                        }
+                        if let cwd = run.displayCwd, run.displayMessageCount != nil {
+                            Text("·")
+                                .foregroundColor(MWColors.textTertiary.opacity(0.5))
+                        }
+                        if let msgs = run.displayMessageCount {
+                            Text(msgs)
+                                .font(.system(size: 11))
+                                .foregroundColor(MWColors.textTertiary.opacity(0.7))
+                                .lineLimit(1)
+                        }
+                    }
                 }
             }
-            .padding(.vertical, MWSpacing.xs)
+            .padding(.vertical, MWSpacing.sm)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

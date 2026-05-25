@@ -213,7 +213,7 @@ struct SessionHubView: View {
 
     private var sessionList: some View {
         VStack(spacing: 0) {
-            // Connection status — ultra compact native bar
+            // Connection status header
             connectionStatusHeader
 
             // Content
@@ -242,6 +242,10 @@ struct SessionHubView: View {
                 }
             }
         }
+        .background(theme.bgDeepest)
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 1)
+        }
     }
 
     @ViewBuilder
@@ -249,6 +253,14 @@ struct SessionHubView: View {
         NavigationLink(value: run) {
             SessionCardView(run: run)
         }
+        .listRowInsets(EdgeInsets(
+            top: 0,
+            leading: MWSpacing.md,
+            bottom: 0,
+            trailing: MWSpacing.md
+        ))
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if run.status == .running {
                 Button(role: .destructive) {
@@ -289,30 +301,30 @@ struct SessionHubView: View {
     private var connectionStatusHeader: some View {
         HStack(spacing: MWSpacing.sm) {
             Circle()
-                .fill(store.isConnected ? MWColors.statusSuccessLowSat : MWColors.statusError)
-                .frame(width: 5, height: 5)
+                .fill(store.isConnected ? Color(hex: 0x22C55E) : MWColors.statusError)
+                .frame(width: 6, height: 6)
 
             Text(store.isConnected ? "Connected" : "Disconnected")
-                .font(MWTypography.caption())
+                .font(.system(size: 12))
                 .foregroundColor(MWColors.textTertiary)
 
             if let conn = store.activeConnection {
                 Text("·")
                     .foregroundColor(MWColors.textTertiary)
                 Text(conn.host)
-                    .font(MWTypography.monoCaption())
+                    .font(.system(size: 11).monospaced())
                     .foregroundColor(MWColors.textTertiary)
             }
 
             Spacer()
 
             Text("\(filteredRuns.count) sessions")
-                .font(MWTypography.caption())
+                .font(.system(size: 12))
                 .foregroundColor(MWColors.textTertiary)
         }
         .padding(.horizontal, MWSpacing.md)
         .padding(.vertical, MWSpacing.xs)
-        .background(.ultraThinMaterial)
+        .background(theme.bgDeepest)
     }
 
     // MARK: - Load
