@@ -247,14 +247,14 @@
           value={editedScript.name}
           oninput={handleNameChange}
           class="text-lg font-semibold focus:outline-none"
-          placeholder="Script name"
+          placeholder={t("automationEditor_scriptName")}
         />
       </div>
     </div>
     <div class="flex items-center gap-2">
       {#if !validationResult.valid}
         <span class="text-xs text-destructive">
-          {validationResult.errors.length} validation errors
+          {validationResult.errors.length} {t("automationEditor_validationErrors")}
         </span>
       {/if}
       <button
@@ -276,19 +276,19 @@
       <!-- Metadata -->
       <div class="border-b p-4 space-y-3">
         <div>
-          <span class="text-xs font-medium text-muted-foreground">Description</span>
+          <span class="text-xs font-medium text-muted-foreground">{t("automationEditor_description")}</span>
           <textarea
             value={editedScript.description}
             oninput={handleDescriptionChange}
             class="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm resize-none"
             rows="2"
-            placeholder="Describe what this automation does..."
+            placeholder={t("automationEditor_descriptionPlaceholder")}
           ></textarea>
         </div>
 
         <div class="flex gap-3">
           <div class="flex-1">
-            <span class="text-xs font-medium text-muted-foreground">Category</span>
+            <span class="text-xs font-medium text-muted-foreground">{t("automationEditor_category")}</span>
             <select
               value={editedScript.category}
               onchange={handleCategoryChange}
@@ -302,7 +302,7 @@
         </div>
 
         <div>
-          <span class="text-xs font-medium text-muted-foreground">Tags</span>
+          <span class="text-xs font-medium text-muted-foreground">{t("automationEditor_tags")}</span>
           <div class="mt-1 flex flex-wrap gap-1.5">
             {#each editedScript.tags as tag}
               <span class="inline-flex items-center gap-1 rounded bg-accent px-2 py-0.5 text-xs">
@@ -315,7 +315,7 @@
             <input
               type="text"
               class="flex-1 min-w-[80px] rounded border bg-background px-2 py-0.5 text-xs focus:outline-none"
-              placeholder="Add tag..."
+              placeholder={t("automationEditor_addTag")}
               onkeydown={handleTagInput}
             />
           </div>
@@ -325,19 +325,19 @@
       <!-- Steps -->
       <div class="p-4">
         <div class="mb-3 flex items-center justify-between">
-          <span class="text-sm font-medium">Steps ({editedScript.steps.length})</span>
+          <span class="text-sm font-medium">{t("automationEditor_steps")} ({editedScript.steps.length})</span>
           <button
             class="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90"
             onclick={handleAddStep}
           >
-            + Add Step
+            + {t("automationEditor_addStep")}
           </button>
         </div>
 
         {#if editedScript.steps.length === 0}
           <div class="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
             <span class="text-3xl mb-2 block">📋</span>
-            <p class="text-sm">No steps yet. Add a step to get started.</p>
+            <p class="text-sm">{t("automationEditor_noSteps")}</p>
           </div>
         {:else}
           <div class="space-y-2">
@@ -470,11 +470,11 @@
 
       <!-- Execution controls -->
       <div class="mt-4 rounded-lg border bg-card p-4">
-        <h3 class="text-sm font-medium mb-3">Execution</h3>
+        <h3 class="text-sm font-medium mb-3">{t("automationEditor_execution")}</h3>
 
         {#if !browserStore.state.connected}
           <div class="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-            ⚠️ Browser not connected. Please connect a browser first.
+            ⚠️ {t("automationEditor_browserRequired")}
           </div>
         {:else if isExecuting}
           <div class="space-y-3">
@@ -518,7 +518,7 @@
             onclick={handleExecute}
             disabled={!canExecute}
           >
-            ▶ Execute Script
+            ▶ {t("automationEditor_execute")}
           </button>
           {#if executionError}
             <div class="mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive">

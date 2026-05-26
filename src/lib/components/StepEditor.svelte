@@ -4,6 +4,7 @@
    *
    * Edit individual automation step parameters.
    */
+  import { t } from "$lib/i18n/index.svelte";
   import {
     STEP_TYPES,
     getStepTypeInfo,
@@ -108,7 +109,7 @@
 
   <!-- Step Type -->
   <div class="space-y-1.5">
-    <span class="text-xs font-medium text-muted-foreground">Step Type</span>
+    <span class="text-xs font-medium text-muted-foreground">{t("stepEditor_stepType")}</span>
     <select
       value={step.type}
       onchange={handleTypeChange}
@@ -125,19 +126,19 @@
 
   <!-- Description -->
   <div class="space-y-1.5">
-    <span class="text-xs font-medium text-muted-foreground">Description</span>
+    <span class="text-xs font-medium text-muted-foreground">{t("stepEditor_description")}</span>
     <input
       type="text"
       value={step.description}
       oninput={handleDescriptionChange}
       class="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-      placeholder="What does this step do?"
+      placeholder={t("stepEditor_descriptionPlaceholder")}
     />
   </div>
 
   <!-- Parameters -->
   <div class="space-y-3">
-    <span class="text-xs font-medium text-muted-foreground">Parameters</span>
+    <span class="text-xs font-medium text-muted-foreground">{t("stepEditor_parameters")}</span>
 
     <div class="rounded-lg border bg-card p-3 space-y-3">
       {#if step.type === "navigate"}
@@ -439,12 +440,12 @@
 
   <!-- Advanced Options -->
   <div class="space-y-3">
-    <span class="text-xs font-medium text-muted-foreground">Advanced</span>
+    <span class="text-xs font-medium text-muted-foreground">{t("stepEditor_advanced")}</span>
 
     <div class="rounded-lg border bg-card p-3 space-y-3">
       <!-- Timeout -->
       <div class="space-y-1.5">
-        <span class="text-xs text-muted-foreground">Timeout (ms)</span>
+        <span class="text-xs text-muted-foreground">{t("stepEditor_timeout")}</span>
         <input
           type="number"
           value={step.timeout ?? 30000}
@@ -456,15 +457,15 @@
 
       <!-- On Error -->
       <div class="space-y-1.5">
-        <span class="text-xs text-muted-foreground">On Error</span>
+        <span class="text-xs text-muted-foreground">{t("stepEditor_onError")}</span>
         <select
           value={step.onError}
           onchange={handleOnErrorChange}
           class="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <option value="continue">Continue to next step</option>
-          <option value="stop">Stop execution</option>
-          <option value="retry">Retry this step</option>
+          <option value="continue">{t("stepEditor_onErrorContinue")}</option>
+          <option value="stop">{t("stepEditor_onErrorStop")}</option>
+          <option value="retry">{t("stepEditor_onErrorRetry")}</option>
         </select>
       </div>
 
@@ -477,7 +478,7 @@
           onchange={handleEnabledChange}
           class="h-4 w-4 rounded border-gray-300"
         />
-        <label for="stepEnabled" class="text-sm">Step enabled</label>
+        <label for="stepEnabled" class="text-sm">{t("stepEditor_enabled")}</label>
       </div>
     </div>
   </div>

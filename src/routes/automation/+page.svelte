@@ -131,7 +131,7 @@
           {t("automation_title") || "Automation Scripts"}
         </h1>
         <p class="text-sm text-muted-foreground mt-1">
-          Create and manage browser automation scripts
+          {t("automation_subtitle")}
         </p>
       </div>
       <div class="flex items-center gap-2">
@@ -139,13 +139,13 @@
           class="rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
           onclick={handleImportScript}
         >
-          📥 Import
+          📥 {t("automation_import")}
         </button>
         <button
           class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           onclick={() => (showNewScriptDialog = true)}
         >
-          + New Script
+          + {t("automation_newScript")}
         </button>
       </div>
     </div>
@@ -170,7 +170,7 @@
           type="text"
           bind:value={searchQuery}
           class="h-9 w-full rounded-md border bg-background pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-          placeholder="Search scripts..."
+          placeholder={t("automation_searchPlaceholder")}
         />
       </div>
 
@@ -182,7 +182,7 @@
             : 'bg-accent text-accent-foreground hover:bg-accent/80'}"
           onclick={() => (selectedCategory = null)}
         >
-          All ({automationStore.state.scripts.length})
+          {t("automation_all")} ({automationStore.state.scripts.length})
         </button>
         {#each AUTOMATION_CATEGORIES as cat}
           {@const count = groupedScripts[cat.value]?.length ?? 0}
@@ -204,15 +204,15 @@
     {#if filteredScripts.length === 0}
       <div class="rounded-lg border border-dashed p-12 text-center">
         <span class="text-5xl mb-4 block">⚡</span>
-        <h3 class="text-lg font-medium mb-2">No scripts found</h3>
+        <h3 class="text-lg font-medium mb-2">{t("automation_emptyTitle")}</h3>
         <p class="text-sm text-muted-foreground mb-4">
-          Create your first automation script to get started
+          {t("automation_emptyDesc")}
         </p>
         <button
           class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           onclick={() => (showNewScriptDialog = true)}
         >
-          Create Script
+          {t("automation_createScript")}
         </button>
       </div>
     {:else}
@@ -247,17 +247,17 @@
     tabindex="-1"
   >
     <div class="w-[400px] rounded-lg bg-background p-6 shadow-xl">
-      <h2 class="text-lg font-semibold mb-4">Create New Script</h2>
+      <h2 class="text-lg font-semibold mb-4">{t("automation_createDialogTitle")}</h2>
 
       <div class="space-y-4">
         <div>
-          <label for="new-script-name" class="text-sm font-medium">Script Name</label>
+          <label for="new-script-name" class="text-sm font-medium">{t("automation_scriptName")}</label>
           <input
             id="new-script-name"
             type="text"
             bind:value={newScriptName}
             class="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-            placeholder="My Automation Script"
+            placeholder={t("automation_scriptNamePlaceholder")}
             onkeydown={(e) => {
               if (e.key === "Enter") handleNewScript();
             }}
@@ -273,14 +273,14 @@
             newScriptName = "";
           }}
         >
-          Cancel
+          {t("automation_cancel")}
         </button>
         <button
           class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           onclick={handleNewScript}
           disabled={!newScriptName.trim()}
         >
-          Create
+          {t("automation_create")}
         </button>
       </div>
     </div>
