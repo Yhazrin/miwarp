@@ -188,13 +188,13 @@
           log.status === "running" ? { ...log, status: "success" as const } : log,
         );
       } else {
-        executionError = result.error ?? "Script execution failed";
+        executionError = result.error ?? t("automationEditor_executionFailed");
       }
 
       executionProgress = 100;
       editedScript.usageCount++;
     } catch (error) {
-      executionError = error instanceof Error ? error.message : "Execution failed";
+      executionError = error instanceof Error ? error.message : t("automationEditor_executionError");
     } finally {
       isExecuting = false;
     }
@@ -261,10 +261,10 @@
         class="rounded-md border px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50"
         onclick={handleSave}
       >
-        {t("automationEditor_save") || "Save"}
+        {t("automationEditor_save")}
       </button>
       <button class="rounded-md border px-3 py-1.5 text-sm hover:bg-accent" onclick={onClose}>
-        {t("automationEditor_close") || "Close"}
+        {t("automationEditor_close")}
       </button>
     </div>
   </div>
@@ -409,7 +409,7 @@
                   <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                     <button
                       class="rounded p-1 hover:bg-accent"
-                      title="Duplicate"
+                      title={t("automationEditor_duplicate")}
                       onclick={(e) => {
                         e.stopPropagation();
                         handleDuplicateStep(index);
@@ -428,7 +428,7 @@
                     </button>
                     <button
                       class="rounded p-1 hover:bg-destructive/10 hover:text-destructive"
-                      title="Delete"
+                      title={t("automationEditor_delete")}
                       onclick={(e) => {
                         e.stopPropagation();
                         handleDeleteStep(index);
@@ -464,7 +464,7 @@
           class="flex h-full flex-col items-center justify-center text-center text-muted-foreground"
         >
           <span class="text-4xl mb-3">👆</span>
-          <p class="text-sm">Select a step to edit</p>
+          <p class="text-sm">{t("automationEditor_selectStep")}</p>
         </div>
       {/if}
 

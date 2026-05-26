@@ -82,11 +82,11 @@
   <div class="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
     <span class="flex items-center gap-1">
       <span>📋</span>
-      {script.steps.length} steps
+      {t("automationCard_steps", { count: String(script.steps.length) })}
     </span>
     <span class="flex items-center gap-1">
       <span>▶</span>
-      {script.usageCount} runs
+      {t("automationCard_runs", { count: String(script.usageCount) })}
     </span>
     {#if script.lastRunAt}
       <span class="flex items-center gap-1">
@@ -121,7 +121,7 @@
         onExecute?.(script);
       }}
     >
-      ▶ Run
+      ▶ {t("automationCard_run")}
     </button>
     <button
       class="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
@@ -130,14 +130,14 @@
         onEdit?.(script);
       }}
     >
-      Edit
+      {t("automationCard_edit")}
     </button>
 
     <!-- More menu -->
     <div class="relative">
       <button
         class="rounded-md p-1.5 hover:bg-accent transition-colors"
-        aria-label="More options"
+        aria-label={t("automationCard_moreOptions")}
         onclick={(e) => {
           e.stopPropagation();
           showMenu = !showMenu;
@@ -163,7 +163,7 @@
               onDuplicate?.(script);
             }}
           >
-            <span>📋</span> Duplicate
+            <span>📋</span> {t("automationCard_duplicate")}
           </button>
           <button
             class="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
@@ -172,7 +172,7 @@
               onDelete?.(script);
             }}
           >
-            <span>🗑️</span> Delete
+            <span>🗑️</span> {t("automationCard_delete")}
           </button>
         </div>
       {/if}
