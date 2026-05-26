@@ -280,17 +280,9 @@ struct MWStatusPill: View {
 struct MWSessionCard: View {
     let run: MiWarpRun
 
-    // Status dot color — semantic, not "dirty"
+    // Status dot color — semantic, using MWColors
     private var statusColor: Color {
-        switch run.status {
-        case .running:    return Color(hex: 0x22C55E)  // vibrant green
-        case .waitingApproval: return Color(hex: 0xF59E0B)  // amber
-        case .failed:     return Color(hex: 0xEF4444)  // clear red
-        case .completed:  return Color(hex: 0x6B7280)  // muted gray-green
-        case .idle:       return Color(hex: 0x94A3B8)  // slate gray-blue
-        case .pending:    return Color(hex: 0x60A5FA)  // soft blue
-        case .stopped:    return Color(hex: 0x9CA3AF)  // desaturated gray
-        }
+        MWColors.color(for: run.status)
     }
 
     // Glow for running state
@@ -306,7 +298,7 @@ struct MWSessionCard: View {
                 Circle()
                     .fill(statusColor)
                     .frame(width: 8, height: 8)
-                    .shadow(color: statusGlow ? Color(hex: 0x22C55E).opacity(0.5) : .clear, radius: 3)
+                    .shadow(color: statusGlow ? MWColors.statusSuccess.opacity(0.5) : .clear, radius: 3)
 
                 // Title — semibold, 2 lines max
                 Text(run.displayTitle)
@@ -854,6 +846,7 @@ struct MWLoadingState: View {
 struct MWReconnectBanner: View {
     let attempt: Int
     var onCancel: (() -> Void)?
+    @EnvironmentObject private var theme: MWTheme
 
     var body: some View {
         HStack(spacing: MWSpacing.sm) {
@@ -889,7 +882,7 @@ struct MWReconnectBanner: View {
                         .blur(radius: 8)
                 )
                 .overlay(
-                    MWGeometricPattern(opacityOverride: min(MWTheme.shared.textureOpacity, 0.10))
+                    MWGeometricPattern(opacityOverride: min(theme.textureOpacity, 0.10))
                         .blendMode(.screen)
                 )
         )

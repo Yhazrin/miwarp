@@ -32,6 +32,7 @@ struct MobileSettingsView: View {
     @State private var showLogs = false
     @State private var showAbout = false
     @State private var showComponentLab = false
+    @State private var showClearTokensConfirm = false
 
     var body: some View {
         NavigationStack {
@@ -238,9 +239,13 @@ struct MobileSettingsView: View {
             }
 
             Button(role: .destructive) {
-                clearTokens()
+                showClearTokensConfirm = true
             } label: {
                 Label("Clear Saved Tokens", systemImage: "key")
+            }
+            .confirmationDialog("Remove all saved connections and tokens?", isPresented: $showClearTokensConfirm, titleVisibility: .visible) {
+                Button("Remove All", role: .destructive) { clearTokens() }
+                Button("Cancel", role: .cancel) {}
             }
 
             Button {
@@ -249,7 +254,7 @@ struct MobileSettingsView: View {
                 HStack {
                     Label("About MiWarp Mobile", systemImage: "info.circle")
                     Spacer()
-                    Text("v1.0.0")
+                    Text("v\(appVersion)")
                         .font(.caption.monospaced())
                         .foregroundStyle(.tertiary)
                 }
@@ -261,6 +266,10 @@ struct MobileSettingsView: View {
     }
 
     // MARK: - Helpers
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+    }
 
     private func copyDebugInfo() {
         let info = """
@@ -362,7 +371,7 @@ struct AboutView: View {
                 VStack(spacing: 6) {
                     Text("MiWarp Mobile")
                         .font(.title2.weight(.semibold))
-                    Text("Version 1.0.0")
+                    Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }

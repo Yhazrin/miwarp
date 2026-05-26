@@ -127,17 +127,28 @@ struct MiWarpRun: Identifiable, Codable, Hashable {
     var lastActivityAt: String?
     var startedAt: String?
 
-    private static let isoFormatter: ISO8601DateFormatter = {
+    private static let isoFormatterWithFractional: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f
     }()
 
+    private static let isoFormatterPlain: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    private static func parseDate(_ string: String) -> Date? {
+        MiWarpRun.isoFormatterWithFractional.date(from: string)
+            ?? MiWarpRun.isoFormatterPlain.date(from: string)
+    }
+
     var lastActivity: Date? {
-        lastActivityAt.flatMap { MiWarpRun.isoFormatter.date(from: $0) }
+        lastActivityAt.flatMap { MiWarpRun.parseDate($0) }
     }
     var createdAt: Date? {
-        startedAt.flatMap { MiWarpRun.isoFormatter.date(from: $0) }
+        startedAt.flatMap { MiWarpRun.parseDate($0) }
     }
 
     enum CodingKeys: String, CodingKey {
@@ -198,13 +209,17 @@ struct MiWarpRun: Identifiable, Codable, Hashable {
         return "\(count) messages"
     }
 
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .abbreviated
+        return f
+    }()
+
     /// Relative time string for display.
     /// e.g. "11h ago", "2d ago", "Just now"
     var displayRelativeTime: String? {
         guard let date = lastActivity else { return nil }
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
+        return MiWarpRun.relativeFormatter.localizedString(for: date, relativeTo: Date())
     }
 
     /// Whether this run has any metadata to display in list rows.
@@ -343,7 +358,10 @@ enum BusEventPayload: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: DynamicKey.self)
 
-        let typeString = try container.decode(String.self, forKey: DynamicKey(stringValue: "type")!)
+        guard let typeKey = DynamicKey(stringValue: "type") else {
+            throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Missing type key"))
+        }
+        let typeString = try container.decode(String.self, forKey: typeKey)
         guard let eventType = EventType(rawValue: typeString) else {
             let rawDict = try decoder.singleValueContainer().decode([String: AnyCodable].self)
             self = .raw(RawPayload(type: typeString, data: rawDict))

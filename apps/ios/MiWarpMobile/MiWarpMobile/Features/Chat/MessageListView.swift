@@ -6,8 +6,6 @@ struct MessageListView: View {
     var inputBarHeight: CGFloat = 60
     var onApprove: ((String, Bool) -> Void)?
 
-    @State private var scrollProxy: ScrollViewProxy?
-
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -23,12 +21,21 @@ struct MessageListView: View {
             }
             .background(MWPatternedBackdrop())
             .onChange(of: messages.count) { _, _ in
-                withAnimation {
-                    if let lastId = messages.last?.id {
-                        proxy.scrollTo(lastId, anchor: .bottom)
-                    }
-                }
+                scrollToBottom(proxy: proxy)
             }
+            .onChange(of: messages.last?.content) { _, _ in
+                scrollToBottom(proxy: proxy)
+            }
+            .onChange(of: messages.last?.isStreaming) { _, _ in
+                scrollToBottom(proxy: proxy)
+            }
+        }
+    }
+
+    private func scrollToBottom(proxy: ScrollViewProxy) {
+        guard let lastId = messages.last?.id else { return }
+        withAnimation {
+            proxy.scrollTo(lastId, anchor: .bottom)
         }
     }
 

@@ -32,6 +32,15 @@ struct AppRouter: View {
             }
         }
         .tint(MWColors.tabActive)
+        .onAppear {
+            configureTabBarAppearance()
+        }
+        .onChange(of: theme.accentTheme) { _, _ in
+            configureTabBarAppearance()
+        }
+        .onChange(of: theme.effectiveColorScheme) { _, _ in
+            configureTabBarAppearance()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .liveActivityDeepLink)) { notification in
             if let deepLink = notification.object as? LiveActivityDeepLink.ParsedDeepLink {
                 handleLiveActivityDeepLink(deepLink)

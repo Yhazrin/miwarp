@@ -220,9 +220,6 @@ struct SessionHubView: View {
             .padding(.top, 20)
         }
         .background(MWPatternedBackdrop())
-        .task {
-            await loadRuns()
-        }
     }
 
     private var connectedHeroCard: some View {
@@ -316,8 +313,8 @@ struct SessionHubView: View {
         .background(
             LinearGradient(
                 gradient: Gradient(colors: [
-                    Color(hex: 0x22C55E),
-                    Color(hex: 0x16A34A)
+                    MWColors.statusSuccess,
+                    MWColors.statusSuccess.opacity(0.8)
                 ]),
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -394,7 +391,7 @@ struct SessionHubView: View {
             } header: {
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(store.isConnected ? theme.statusSuccess : theme.statusError)
+                        .fill(store.isConnected ? MWColors.statusSuccess : MWColors.statusError)
                         .frame(width: 6, height: 6)
 
                     Text(store.isConnected ? "Connected" : "Disconnected")
@@ -512,15 +509,7 @@ struct SessionRowView: View {
     let run: MiWarpRun
 
     private var statusColor: Color {
-        switch run.status {
-        case .running:    return theme.statusRunning
-        case .waitingApproval: return theme.statusWarning
-        case .failed:     return theme.statusError
-        case .completed:  return theme.statusDone
-        case .idle:       return theme.statusIdle
-        case .pending:    return theme.statusPending
-        case .stopped:    return theme.statusStopped
-        }
+        MWColors.color(for: run.status)
     }
 
     var body: some View {

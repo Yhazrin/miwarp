@@ -1790,7 +1790,7 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="flex h-screen w-screen overflow-hidden" style={statusColorVars}>
+<div class="flex w-screen overflow-hidden" style="height: 100vh; height: 100dvh; {statusColorVars}">
   <!-- Sidebar: Icon Rail + Content Panel -->
   <aside
     class="sidebar-container shrink-0 glass-sidebar text-sidebar-foreground"

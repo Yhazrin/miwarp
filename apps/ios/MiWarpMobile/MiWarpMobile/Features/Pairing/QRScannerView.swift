@@ -54,6 +54,27 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
     }
 
     private func setupCamera() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            configureCaptureSession()
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                DispatchQueue.main.async {
+                    if granted {
+                        self?.configureCaptureSession()
+                    } else {
+                        self?.showError("Camera access denied. Go to Settings > MiWarp to enable.")
+                    }
+                }
+            }
+        case .denied, .restricted:
+            showError("Camera access denied. Go to Settings > MiWarp to enable.")
+        @unknown default:
+            showError("Camera not available")
+        }
+    }
+
+    private func configureCaptureSession() {
         let session = AVCaptureSession()
 
         guard let device = AVCaptureDevice.default(for: .video),

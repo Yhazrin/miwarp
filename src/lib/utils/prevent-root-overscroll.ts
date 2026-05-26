@@ -11,7 +11,7 @@ function isScrollable(el: HTMLElement | null): boolean {
 }
 
 export function installPreventRootOverscroll() {
-  const handler = (event: WheelEvent) => {
+  const wheelHandler = (event: WheelEvent) => {
     const target = event.target as HTMLElement | null;
 
     if (!isScrollable(target)) {
@@ -19,9 +19,20 @@ export function installPreventRootOverscroll() {
     }
   };
 
-  window.addEventListener("wheel", handler, { passive: false });
+  // iOS rubber-band overscroll prevention
+  const touchHandler = (event: TouchEvent) => {
+    const target = event.target as HTMLElement | null;
+
+    if (!isScrollable(target)) {
+      event.preventDefault();
+    }
+  };
+
+  window.addEventListener("wheel", wheelHandler, { passive: false });
+  window.addEventListener("touchmove", touchHandler, { passive: false });
 
   return () => {
-    window.removeEventListener("wheel", handler);
+    window.removeEventListener("wheel", wheelHandler);
+    window.removeEventListener("touchmove", touchHandler);
   };
 }

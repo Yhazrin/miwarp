@@ -42,19 +42,8 @@ final class ChatViewModel: ObservableObject {
             let events = try await rpc.getBusEvents(runId: runId)
             rawEvents = events
             reducer.loadHistory(events)
-
-            if events.isEmpty {
-                try? await rpc.startSession(runId: runId)
-            }
         } catch {
-            do {
-                try await rpc.startSession(runId: runId)
-                let events = try await rpc.getBusEvents(runId: runId)
-                rawEvents = events
-                reducer.loadHistory(events)
-            } catch {
-                self.error = error.localizedDescription
-            }
+            self.error = error.localizedDescription
         }
 
         isLoading = false
@@ -77,6 +66,7 @@ final class ChatViewModel: ObservableObject {
                 continue
             }
             for await event in wsClient.eventStream {
+                if Task.isCancelled { return }
                 guard event.runId == runId else { continue }
                 rawEvents.append(event)
                 if rawEvents.count > maxRawEvents {
@@ -86,7 +76,7 @@ final class ChatViewModel: ObservableObject {
             }
             if Task.isCancelled { break }
             try? await Task.sleep(nanoseconds: 500_000_000)
-            guard store?.isConnected == true, let rpc = store?.rpc else { continue }
+            guard !Task.isCancelled, store?.isConnected == true, let rpc = store?.rpc else { continue }
             do {
                 try await rpc.subscribe(runId: runId, lastSeq: reducer.lastSeq)
             } catch {
