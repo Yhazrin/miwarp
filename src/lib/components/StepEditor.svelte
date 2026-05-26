@@ -143,7 +143,7 @@
     <div class="rounded-lg border bg-card p-3 space-y-3">
       {#if step.type === "navigate"}
         <div class="space-y-1.5">
-          <span class="text-xs text-muted-foreground">URL</span>
+          <span class="text-xs text-muted-foreground">{t("stepEditor_url")}</span>
           <input
             type="text"
             value={step.params.url ?? ""}
@@ -155,7 +155,7 @@
       {:else if step.type === "click" || step.type === "double_click" || step.type === "right_click" || step.type === "hover"}
         <div class="grid grid-cols-2 gap-3">
           <div class="space-y-1.5">
-            <span class="text-xs text-muted-foreground">X</span>
+            <span class="text-xs text-muted-foreground">{t("stepEditor_coordX")}</span>
             <input
               type="number"
               value={step.params.coordinate?.[0] ?? ""}
@@ -169,7 +169,7 @@
             />
           </div>
           <div class="space-y-1.5">
-            <span class="text-xs text-muted-foreground">Y</span>
+            <span class="text-xs text-muted-foreground">{t("stepEditor_coordY")}</span>
             <input
               type="number"
               value={step.params.coordinate?.[1] ?? ""}
@@ -184,7 +184,7 @@
           </div>
         </div>
         <div class="space-y-1.5">
-          <span class="text-xs text-muted-foreground">Element Ref (optional)</span>
+          <span class="text-xs text-muted-foreground">{t("stepEditor_elementRef")}</span>
           <input
             type="text"
             value={step.params.ref ?? ""}
@@ -195,7 +195,7 @@
         </div>
       {:else if step.type === "type"}
         <div class="space-y-1.5">
-          <span class="text-xs text-muted-foreground">Text</span>
+          <span class="text-xs text-muted-foreground">{t("stepEditor_text")}</span>
           <textarea
             value={step.params.text ?? ""}
             oninput={(e) => handleParamChange("text", (e.target as HTMLTextAreaElement).value)}
@@ -236,7 +236,7 @@
         </div>
       {:else if step.type === "wait"}
         <div class="space-y-1.5">
-          <span class="text-xs text-muted-foreground">Duration (ms)</span>
+          <span class="text-xs text-muted-foreground">{t("stepEditor_duration")}</span>
           <input
             type="number"
             value={step.params.duration ?? 1000}
@@ -247,33 +247,33 @@
           />
         </div>
         <div class="space-y-1.5">
-          <span class="text-xs text-muted-foreground">Condition</span>
+          <span class="text-xs text-muted-foreground">{t("stepEditor_condition")}</span>
           <select
             value={step.params.condition ?? "timeout"}
             onchange={(e) => handleParamChange("condition", (e.target as HTMLSelectElement).value)}
             class="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            <option value="timeout">Timeout (duration)</option>
-            <option value="element_visible">Element Visible</option>
-            <option value="network_idle">Network Idle</option>
+            <option value="timeout">{t("stepEditor_conditionTimeout")}</option>
+            <option value="element_visible">{t("stepEditor_conditionElement")}</option>
+            <option value="network_idle">{t("stepEditor_conditionNetwork")}</option>
           </select>
         </div>
       {:else if step.type === "scroll"}
         <div class="space-y-1.5">
-          <span class="text-xs text-muted-foreground">Direction</span>
+          <span class="text-xs text-muted-foreground">{t("stepEditor_direction")}</span>
           <select
             value={step.params.direction ?? "down"}
             onchange={(e) => handleParamChange("direction", (e.target as HTMLSelectElement).value)}
             class="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            <option value="up">Up</option>
-            <option value="down">Down</option>
-            <option value="left">Left</option>
-            <option value="right">Right</option>
+            <option value="up">{t("stepEditor_dirUp")}</option>
+            <option value="down">{t("stepEditor_dirDown")}</option>
+            <option value="left">{t("stepEditor_dirLeft")}</option>
+            <option value="right">{t("stepEditor_dirRight")}</option>
           </select>
         </div>
         <div class="space-y-1.5">
-          <span class="text-xs text-muted-foreground">Scroll Amount (ticks)</span>
+          <span class="text-xs text-muted-foreground">{t("stepEditor_scrollAmount")}</span>
           <input
             type="number"
             value={step.params.scrollAmount ?? 3}
@@ -287,7 +287,7 @@
         </div>
       {:else if step.type === "screenshot"}
         <div class="space-y-1.5">
-          <span class="text-xs text-muted-foreground">Options</span>
+          <span class="text-xs text-muted-foreground">{t("stepEditor_options")}</span>
           <div class="flex items-center gap-2">
             <input
               type="checkbox"
@@ -297,12 +297,12 @@
                 handleParamChange("fullPage", (e.target as HTMLInputElement).checked)}
               class="h-4 w-4 rounded border-gray-300"
             />
-            <label for="fullPage" class="text-sm">Full Page</label>
+            <label for="fullPage" class="text-sm">{t("stepEditor_fullPage")}</label>
           </div>
         </div>
       {:else if step.type === "find"}
         <div class="space-y-1.5">
-          <span class="text-xs text-muted-foreground">Query</span>
+          <span class="text-xs text-muted-foreground">{t("stepEditor_query")}</span>
           <input
             type="text"
             value={step.params.query ?? ""}
@@ -313,7 +313,7 @@
         </div>
       {:else if step.type === "execute_js"}
         <div class="space-y-1.5">
-          <span class="text-xs text-muted-foreground">JavaScript Code</span>
+          <span class="text-xs text-muted-foreground">{t("stepEditor_javaScript")}</span>
           <textarea
             value={step.params.script ?? ""}
             oninput={(e) => handleParamChange("script", (e.target as HTMLTextAreaElement).value)}
@@ -324,7 +324,7 @@
         </div>
       {:else if step.type === "switch_tab"}
         <div class="space-y-1.5">
-          <span class="text-xs text-muted-foreground">Tab Index</span>
+          <span class="text-xs text-muted-foreground">{t("stepEditor_tabIndex")}</span>
           <input
             type="number"
             value={step.params.tabId ?? 0}
@@ -336,10 +336,10 @@
         </div>
       {:else if step.type === "drag_drop"}
         <div class="space-y-3">
-          <div class="text-xs font-medium text-muted-foreground">Start Position</div>
+          <div class="text-xs font-medium text-muted-foreground">{t("stepEditor_startPos")}</div>
           <div class="grid grid-cols-2 gap-3">
             <div class="space-y-1.5">
-              <span class="text-xs text-muted-foreground">Start X</span>
+              <span class="text-xs text-muted-foreground">{t("stepEditor_startX")}</span>
               <input
                 type="number"
                 value={step.params.startCoordinate?.[0] ?? ""}
@@ -352,7 +352,7 @@
               />
             </div>
             <div class="space-y-1.5">
-              <span class="text-xs text-muted-foreground">Start Y</span>
+              <span class="text-xs text-muted-foreground">{t("stepEditor_startY")}</span>
               <input
                 type="number"
                 value={step.params.startCoordinate?.[1] ?? ""}
@@ -365,10 +365,10 @@
               />
             </div>
           </div>
-          <div class="text-xs font-medium text-muted-foreground">End Position</div>
+          <div class="text-xs font-medium text-muted-foreground">{t("stepEditor_endPos")}</div>
           <div class="grid grid-cols-2 gap-3">
             <div class="space-y-1.5">
-              <span class="text-xs text-muted-foreground">End X</span>
+              <span class="text-xs text-muted-foreground">{t("stepEditor_endX")}</span>
               <input
                 type="number"
                 value={step.params.endCoordinate?.[0] ?? ""}
@@ -381,7 +381,7 @@
               />
             </div>
             <div class="space-y-1.5">
-              <span class="text-xs text-muted-foreground">End Y</span>
+              <span class="text-xs text-muted-foreground">{t("stepEditor_endY")}</span>
               <input
                 type="number"
                 value={step.params.endCoordinate?.[1] ?? ""}
@@ -397,7 +397,7 @@
         </div>
       {:else if step.type === "upload_file"}
         <div class="space-y-1.5">
-          <span class="text-xs text-muted-foreground">File Path</span>
+          <span class="text-xs text-muted-foreground">{t("stepEditor_filePath")}</span>
           <input
             type="text"
             value={step.params.filePath ?? ""}
@@ -408,7 +408,7 @@
         </div>
       {:else if step.type === "select_option"}
         <div class="space-y-1.5">
-          <span class="text-xs text-muted-foreground">Element Ref</span>
+          <span class="text-xs text-muted-foreground">{t("stepEditor_elementRefRequired")}</span>
           <input
             type="text"
             value={step.params.ref ?? ""}
@@ -418,7 +418,7 @@
           />
         </div>
         <div class="space-y-1.5">
-          <span class="text-xs text-muted-foreground">Value or Index</span>
+          <span class="text-xs text-muted-foreground">{t("stepEditor_valueOrIndex")}</span>
           <input
             type="text"
             value={step.params.value ?? String(step.params.index ?? "")}
@@ -432,7 +432,7 @@
         </div>
       {:else}
         <div class="text-sm text-muted-foreground">
-          Select a step type to see available parameters
+          {t("stepEditor_noParams")}
         </div>
       {/if}
     </div>

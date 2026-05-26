@@ -76,7 +76,7 @@
   }
 
   function handleDeleteScript(script: AutomationScript) {
-    if (confirm(`Delete "${script.name}"?`)) {
+    if (confirm(t("automationCard_confirmDelete", { name: script.name }))) {
       automationStore.deleteScript(script.id);
     }
   }
