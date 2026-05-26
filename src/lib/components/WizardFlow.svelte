@@ -228,7 +228,7 @@
     <div class="shrink-0 px-4 pt-4">
       <div class="flex items-center justify-between mb-2">
         <span class="text-xs text-muted-foreground">
-          Step {currentStepIndex + 1} of {totalSteps}
+          {t("wizard_stepProgress", { current: String(currentStepIndex + 1), total: String(totalSteps) })}
         </span>
         <span class="text-xs text-muted-foreground">
           {Math.round(((currentStepIndex + 1) / totalSteps) * 100)}%
@@ -246,7 +246,7 @@
   <!-- Step content area -->
   <div class="flex-1 overflow-y-auto p-4">
     {#if isTransitioning}
-      <div class="animate-pulse">Loading...</div>
+      <div class="animate-pulse">{t("wizard_loading")}</div>
     {:else if currentStep.component}
       {@render currentStep.component()}
     {:else}
@@ -260,7 +260,7 @@
         {/if}
         <!-- Placeholder for step content -->
         <div class="border border-dashed border-border rounded-lg p-8 text-center text-muted-foreground">
-          Step content goes here
+          {t("wizard_stepContentPlaceholder")}
         </div>
       </div>
     {/if}
@@ -273,7 +273,7 @@
       <div>
         {#if currentStepIndex > 0 && (currentStep.canGoBack !== false)}
           <Button variant="ghost" size="sm" onclick={goBack}>
-            ← Back
+            ← {t("wizard_back")}
           </Button>
         {/if}
       </div>
@@ -282,7 +282,7 @@
       <div>
         {#if allowSkip && currentStep.canSkip}
           <Button variant="ghost" size="sm" onclick={skip}>
-            Skip
+            {t("wizard_skip")}
           </Button>
         {/if}
       </div>
@@ -297,15 +297,15 @@
             {#if currentStep.isLoading}
               <span class="flex items-center gap-2">
                 <span class="h-3 w-3 border border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></span>
-                Processing...
+                {t("wizard_processing")}
               </span>
             {:else}
-              Next →
+              {t("wizard_next")} →
             {/if}
           </Button>
         {:else}
           <Button onclick={goNext}>
-            Complete
+            {t("wizard_complete")}
           </Button>
         {/if}
       </div>
