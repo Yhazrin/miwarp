@@ -85,7 +85,6 @@
 
   function handleExecuteScript(_script: AutomationScript) {
     // Will be implemented with browser store
-    console.log("Execute script", _script.id);
   }
 
   function handleExportScript(scriptId: string) {
