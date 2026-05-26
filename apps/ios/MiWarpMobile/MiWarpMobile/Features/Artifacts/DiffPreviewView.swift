@@ -5,27 +5,51 @@ struct DiffPreviewView: View {
 
     @State private var parsedLines: [DiffLine] = []
 
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(parsedLines) { line in
-                    HStack(spacing: 0) {
-                        Text(line.prefix)
-                            .font(.caption2.monospaced())
-                            .foregroundStyle(line.color.opacity(0.6))
-                            .frame(width: 20, alignment: .leading)
+    private var additionCount: Int { parsedLines.filter { $0.prefix == "+" }.count }
+    private var deletionCount: Int { parsedLines.filter { $0.prefix == "-" }.count }
 
-                        Text(line.text)
-                            .font(.caption2.monospaced())
-                            .foregroundStyle(line.color)
-                    }
-                    .padding(.vertical, 1)
-                    .background(line.background)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            // Summary
+            HStack(spacing: 12) {
+                if additionCount > 0 {
+                    Label("\(additionCount)", systemImage: "plus.circle.fill")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(MWColors.statusSuccess)
                 }
+                if deletionCount > 0 {
+                    Label("\(deletionCount)", systemImage: "minus.circle.fill")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(MWColors.statusError)
+                }
+                Spacer()
+                Text("\(parsedLines.count) lines")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
-            .padding(8)
+
+            // Diff content
+            ScrollView(.horizontal, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(parsedLines) { line in
+                        HStack(spacing: 0) {
+                            Text(line.prefix)
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(line.color.opacity(0.6))
+                                .frame(width: 20, alignment: .leading)
+
+                            Text(line.text)
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(line.color)
+                        }
+                        .padding(.vertical, 1)
+                        .background(line.background)
+                    }
+                }
+                .padding(8)
+            }
+            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8))
         }
-        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8))
         .onAppear { parseDiff() }
         .onChange(of: diff) { _, _ in parseDiff() }
     }

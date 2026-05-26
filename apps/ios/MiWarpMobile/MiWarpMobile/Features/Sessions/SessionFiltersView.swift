@@ -5,9 +5,14 @@ struct SessionFiltersView: View {
     let runs: [MiWarpRun]
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var theme: MWTheme
+    @State private var showResetConfirm = false
 
     private var availableAgents: [String] {
         Array(Set(runs.map(\.agent))).sorted()
+    }
+
+    private func statusCount(_ status: RunStatus) -> Int {
+        runs.filter { $0.status == status }.count
     }
 
     var body: some View {
@@ -32,6 +37,13 @@ struct SessionFiltersView: View {
                                     .fill(MWColors.color(for: status))
                                     .frame(width: 8, height: 8)
                                 Text(status.displayLabel)
+                                Spacer()
+                                let count = statusCount(status)
+                                if count > 0 {
+                                    Text("\(count)")
+                                        .font(.caption.monospaced())
+                                        .foregroundStyle(.tertiary)
+                                }
                             }
                             .tag(status as RunStatus?)
                         }
@@ -50,7 +62,7 @@ struct SessionFiltersView: View {
 
                 Section {
                     Button("Reset Filters", role: .destructive) {
-                        filters.reset()
+                        showResetConfirm = true
                     }
                 }
                 .listRowBackground(theme.cardBg)
@@ -63,6 +75,10 @@ struct SessionFiltersView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .confirmationDialog("Reset all filters?", isPresented: $showResetConfirm, titleVisibility: .visible) {
+                Button("Reset", role: .destructive) { filters.reset() }
+                Button("Cancel", role: .cancel) {}
             }
         }
     }

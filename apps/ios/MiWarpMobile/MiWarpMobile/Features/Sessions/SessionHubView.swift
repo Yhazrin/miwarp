@@ -441,39 +441,23 @@ struct SessionHubView: View {
                         NavigationLink(value: run) {
                             SessionRowView(run: run)
                         }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            if run.status == .running {
-                                Button(role: .destructive) {
-                                    // stop action
-                                } label: {
-                                    Label("Stop", systemImage: "stop.fill")
-                                }
-                            }
-                            Button {
-                                // pin action
-                            } label: {
-                                Label("Pin", systemImage: "pin")
-                            }
-                            .tint(MWColors.statusWarning)
-                        }
                         .contextMenu {
                             Button {
-                                // view details
-                            } label: {
-                                Label("Details", systemImage: "info.circle")
-                            }
-                            if run.status == .running {
-                                Button(role: .destructive) {
-                                    // stop
-                                } label: {
-                                    Label("Stop", systemImage: "stop.fill")
-                                }
-                            }
-                            Divider()
-                            Button {
-                                // copy path
+                                #if os(iOS)
+                                UIPasteboard.general.string = run.cwd
+                                #endif
                             } label: {
                                 Label("Copy Path", systemImage: "doc.on.doc")
+                            }
+
+                            if let model = run.model {
+                                Button {
+                                    #if os(iOS)
+                                    UIPasteboard.general.string = model
+                                    #endif
+                                } label: {
+                                    Label("Copy Model", systemImage: "cpu")
+                                }
                             }
                         }
                     }
