@@ -80,7 +80,17 @@ struct PairingView: View {
             .listRowInsets(EdgeInsets())
             .frame(maxWidth: .infinity)
             .padding(16)
-            .background(MWColors.accentPrimary)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        MWColors.accentPrimary,
+                        MWColors.accentPrimary.opacity(0.85),
+                        theme.accentSecondary.opacity(0.7)
+                    ]),
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
         }
         .listRowBackground(Color.clear)
     }

@@ -159,27 +159,39 @@ struct ChatView: View {
             statusPill(viewModel.reducer.currentStatus)
 
             if viewModel.reducer.usage.costUsd > 0 {
-                Label(String(format: "$%.4f", viewModel.reducer.usage.costUsd), systemImage: "dollarsign.circle")
+                Text(String(format: "$%.4f", viewModel.reducer.usage.costUsd))
                     .font(.caption.monospaced())
                     .foregroundStyle(MWColors.statusWarning)
+                    .contentTransition(.numericText())
             }
 
             if viewModel.reducer.usage.inputTokens > 0 {
-                Label(viewModel.formatTokens(viewModel.reducer.usage.inputTokens), systemImage: "arrow.down.circle")
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.tertiary)
+                HStack(spacing: 2) {
+                    Image(systemName: "arrow.down.circle")
+                        .font(.caption)
+                    Text(viewModel.formatTokens(viewModel.reducer.usage.inputTokens))
+                        .font(.caption.monospaced())
+                }
+                .foregroundStyle(.tertiary)
+                .contentTransition(.numericText())
             }
 
             if viewModel.reducer.usage.outputTokens > 0 {
-                Label(viewModel.formatTokens(viewModel.reducer.usage.outputTokens), systemImage: "arrow.up.circle")
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.tertiary)
+                HStack(spacing: 2) {
+                    Image(systemName: "arrow.up.circle")
+                        .font(.caption)
+                    Text(viewModel.formatTokens(viewModel.reducer.usage.outputTokens))
+                        .font(.caption.monospaced())
+                }
+                .foregroundStyle(.tertiary)
+                .contentTransition(.numericText())
             }
 
             Spacer()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
+        .animation(.spring(duration: 0.3, bounce: 0.2), value: viewModel.reducer.usage.costUsd)
     }
 
     private func statusPill(_ status: RunStatus) -> some View {
@@ -189,6 +201,8 @@ struct ChatView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(statusColor(status).opacity(0.18), in: Capsule())
+            .contentTransition(.opacity)
+            .animation(.spring(duration: 0.3, bounce: 0.2), value: status)
     }
 
     private func statusColor(_ status: RunStatus) -> Color {
@@ -234,11 +248,13 @@ struct InlineApprovalView: View {
     let toolName: String
     let description: String?
     var onApprove: ((Bool) -> Void)?
+    @State private var didRespond = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
                 Image(systemName: "exclamationmark.shield.fill")
+                    .symbolEffect(.pulse.byLayer, options: .repeating)
                     .foregroundStyle(MWColors.statusWarning)
                 Text("Permission Required")
                     .font(.subheadline.weight(.semibold))
@@ -258,6 +274,7 @@ struct InlineApprovalView: View {
 
             HStack(spacing: 12) {
                 Button {
+                    didRespond = true
                     onApprove?(false)
                 } label: {
                     Text("Deny")
@@ -268,6 +285,7 @@ struct InlineApprovalView: View {
                 }
 
                 Button {
+                    didRespond = true
                     onApprove?(true)
                 } label: {
                     Text("Allow")
@@ -283,8 +301,14 @@ struct InlineApprovalView: View {
         .background(MWColors.cardBg, in: RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(.orange.opacity(0.3), lineWidth: 1)
+                .stroke(MWColors.statusWarning.opacity(0.3), lineWidth: 1)
         )
-        .shadow(color: .orange.opacity(0.08), radius: 8)
+        .shadow(color: MWColors.statusWarning.opacity(0.1), radius: 8)
+        .transition(.asymmetric(
+            insertion: .scale(scale: 0.95).combined(with: .opacity),
+            removal: .scale(scale: 0.95).combined(with: .opacity)
+        ))
+        .animation(.spring(duration: 0.4, bounce: 0.3), value: didRespond)
+        .sensoryFeedback(.warning, trigger: didRespond)
     }
 }

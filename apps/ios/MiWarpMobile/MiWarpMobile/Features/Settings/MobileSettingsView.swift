@@ -102,7 +102,7 @@ struct MobileSettingsView: View {
     private func accentSwatchButton(_ accent: MWAccentTheme) -> some View {
         let isSelected = theme.accentTheme == accent
         return Button {
-            withAnimation(.easeInOut(duration: 0.18)) {
+            withAnimation(.spring(duration: 0.35, bounce: 0.35)) {
                 theme.accentTheme = accent
             }
         } label: {
@@ -120,9 +120,17 @@ struct MobileSettingsView: View {
                             .font(.caption.bold())
                             .foregroundColor(.white)
                             .shadow(color: .black.opacity(0.4), radius: 2, x: 0, y: 1)
+                            .transition(.scale(scale: 0.5).combined(with: .opacity))
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(isSelected ? Color.white.opacity(0.6) : Color.clear, lineWidth: 2)
+                        .animation(.spring(duration: 0.3, bounce: 0.3), value: isSelected)
+                )
+                .scaleEffect(isSelected ? 1.05 : 1.0)
+                .animation(.spring(duration: 0.3, bounce: 0.4), value: isSelected)
 
                 Text(accent.displayName)
                     .font(.system(size: 10))
@@ -131,6 +139,7 @@ struct MobileSettingsView: View {
             }
         }
         .buttonStyle(.plain)
+        .sensoryFeedback(.selection, trigger: isSelected)
     }
 
     // MARK: - Connection

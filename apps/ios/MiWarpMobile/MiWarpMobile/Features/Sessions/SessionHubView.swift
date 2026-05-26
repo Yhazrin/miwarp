@@ -195,7 +195,17 @@ struct SessionHubView: View {
             }
         }
         .padding(16)
-        .background(MWColors.accentPrimary)
+        .background(
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    MWColors.accentPrimary,
+                    MWColors.accentPrimary.opacity(0.85),
+                    theme.accentSecondary.opacity(0.7)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
@@ -514,10 +524,19 @@ struct SessionRowView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Circle()
-                .fill(statusColor)
-                .frame(width: 8, height: 8)
-                .padding(.top, 6)
+            ZStack {
+                if run.status == .running {
+                    Circle()
+                        .fill(statusColor.opacity(0.3))
+                        .frame(width: 14, height: 14)
+                        .symbolEffect(.pulse.byLayer, options: .repeating)
+                }
+                Circle()
+                    .fill(statusColor)
+                    .frame(width: 8, height: 8)
+            }
+            .frame(width: 14, height: 14)
+            .padding(.top, 6)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(run.displayTitle)

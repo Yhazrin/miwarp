@@ -294,11 +294,19 @@ struct MWSessionCard: View {
         VStack(alignment: .leading, spacing: 3) {
             // Row 1: status dot + title + time
             HStack(alignment: .top, spacing: MWSpacing.sm) {
-                // Status dot — 8pt, aligned with first text line
-                Circle()
-                    .fill(statusColor)
-                    .frame(width: 8, height: 8)
-                    .shadow(color: statusGlow ? MWColors.statusSuccess.opacity(0.5) : .clear, radius: 3)
+                // Status dot — 8pt, with pulse glow for active states
+                ZStack {
+                    if statusGlow {
+                        Circle()
+                            .fill(statusColor.opacity(0.25))
+                            .frame(width: 14, height: 14)
+                            .symbolEffect(.pulse.byLayer, options: .repeating)
+                    }
+                    Circle()
+                        .fill(statusColor)
+                        .frame(width: 8, height: 8)
+                }
+                .frame(width: 14, height: 14)
 
                 // Title — semibold, 2 lines max
                 Text(run.displayTitle)
@@ -966,10 +974,13 @@ struct MWTaskProgressRing: View {
                 )
                 .rotationEffect(.degrees(-90))
                 .opacity(state == .failed ? 0.5 : 1.0)
+                .animation(.spring(duration: 0.6, bounce: 0.2), value: normalizedProgress)
 
             stateIcon
+                .transition(.scale(scale: 0.5).combined(with: .opacity))
         }
         .frame(width: size, height: size)
+        .animation(.spring(duration: 0.4, bounce: 0.3), value: state)
     }
 
     @ViewBuilder
@@ -1150,13 +1161,26 @@ struct MWStatusDot: View {
         self.showGlow = showGlow
     }
 
+    private var isAnimating: Bool {
+        status == .running || status == .syncing
+    }
+
     var body: some View {
-        Circle()
-            .fill(status.color)
-            .frame(width: 8, height: 8)
-            .shadow(
-                color: showGlow ? status.color.opacity(0.5) : .clear,
-                radius: showGlow ? 3 : 0
-            )
+        ZStack {
+            if isAnimating {
+                Circle()
+                    .fill(status.color.opacity(0.25))
+                    .frame(width: 14, height: 14)
+                    .symbolEffect(.pulse.byLayer, options: .repeating)
+            }
+            Circle()
+                .fill(status.color)
+                .frame(width: 8, height: 8)
+        }
+        .frame(width: 14, height: 14)
+        .shadow(
+            color: showGlow ? status.color.opacity(0.5) : .clear,
+            radius: showGlow ? 4 : 0
+        )
     }
 }

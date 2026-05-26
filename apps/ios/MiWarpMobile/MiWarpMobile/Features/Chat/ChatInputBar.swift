@@ -10,6 +10,7 @@ struct ChatInputBar: View {
 
     @FocusState private var isFocused: Bool
     @EnvironmentObject private var theme: MWTheme
+    @State private var sendScale: CGFloat = 1.0
 
     private var canSubmit: Bool {
         canSend && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -46,6 +47,7 @@ struct ChatInputBar: View {
                             .frame(width: 28, height: 28)
                             .background(.red, in: Circle())
                     }
+                    .sensoryFeedback(.impact(flexibility: .solid, intensity: 0.7), trigger: isRunning)
 
                     Button {
                         onFork?()
@@ -57,6 +59,14 @@ struct ChatInputBar: View {
                     }
                 } else {
                     Button {
+                        withAnimation(.spring(duration: 0.2, bounce: 0.4)) {
+                            sendScale = 0.85
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            withAnimation(.spring(duration: 0.3, bounce: 0.5)) {
+                                sendScale = 1.0
+                            }
+                        }
                         onSend?()
                     } label: {
                         Image(systemName: "arrow.up")
@@ -64,9 +74,11 @@ struct ChatInputBar: View {
                             .foregroundStyle(canSubmit ? Color.white : Color.gray.opacity(0.4))
                             .frame(width: 28, height: 28)
                             .background(canSubmit ? theme.accentPrimary : Color(.systemFill), in: Circle())
+                            .scaleEffect(sendScale)
                     }
                     .disabled(!canSubmit)
-                    .animation(.easeInOut(duration: 0.15), value: canSubmit)
+                    .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.6), trigger: canSubmit)
+                    .animation(.spring(duration: 0.25, bounce: 0.3), value: canSubmit)
                 }
             }
             .padding(.leading, 14)
@@ -76,9 +88,10 @@ struct ChatInputBar: View {
             .overlay(
                 Capsule()
                     .strokeBorder(
-                        isFocused ? theme.accentPrimary.opacity(0.25) : Color(.separator).opacity(0.3),
-                        lineWidth: 0.5
+                        isFocused ? theme.accentPrimary.opacity(0.3) : Color(.separator).opacity(0.3),
+                        lineWidth: isFocused ? 1 : 0.5
                     )
+                    .animation(.spring(duration: 0.3, bounce: 0.2), value: isFocused)
             )
         }
         .padding(.horizontal, 12)

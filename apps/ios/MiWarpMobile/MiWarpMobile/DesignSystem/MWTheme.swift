@@ -36,6 +36,12 @@ enum MWMotion {
                                                   endControlPoint: UnitPoint(x: 0, y: 1))
     static let emphasizedEasing = UnitCurve.bezier(startControlPoint: UnitPoint(x: 0.16, y: 1),
                                                     endControlPoint: UnitPoint(x: 0.3, y: 1))
+
+    // Spring animations — Apple-style fluid motion
+    static let springQuick = Animation.spring(duration: 0.25, bounce: 0.3)
+    static let springStandard = Animation.spring(duration: 0.4, bounce: 0.2)
+    static let springBouncy = Animation.spring(duration: 0.5, bounce: 0.4)
+    static let springGentle = Animation.spring(duration: 0.6, bounce: 0.15)
 }
 
 // MARK: - Theme

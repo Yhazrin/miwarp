@@ -32,6 +32,7 @@ struct AppRouter: View {
             }
         }
         .tint(MWColors.tabActive)
+        .sensoryFeedback(.selection, trigger: selectedTab)
         .onAppear {
             configureTabBarAppearance()
         }
@@ -55,5 +56,25 @@ struct AppRouter: View {
         case .agent:
             selectedTab = 0 // Sessions tab — agent details shown inline
         }
+    }
+
+    private func configureTabBarAppearance() {
+        let appearance = UITabBarAppearance()
+        appearance.configureWithDefaultBackground()
+
+        appearance.stackedLayoutAppearance.normal.iconColor = .secondaryLabel
+        appearance.stackedLayoutAppearance.normal.titleTextAttributes = [
+            .foregroundColor: UIColor.secondaryLabel,
+            .font: UIFont.systemFont(ofSize: 10, weight: .medium),
+        ]
+
+        appearance.stackedLayoutAppearance.selected.iconColor = UIColor(theme.accentPrimary)
+        appearance.stackedLayoutAppearance.selected.titleTextAttributes = [
+            .foregroundColor: UIColor(theme.accentPrimary),
+            .font: UIFont.systemFont(ofSize: 10, weight: .semibold),
+        ]
+
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
     }
 }
