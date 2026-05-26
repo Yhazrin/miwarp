@@ -105,7 +105,7 @@ const CODE_STOPWORDS = new Set([
 ]);
 
 const IDENTIFIER_PATTERN = /[a-zA-Z_][a-zA-Z0-9_]*/g;
-const CAMEL_CASE_PATTERN = /[a-z])([A-Z])/g;
+const CAMEL_CASE_PATTERN = /([a-z])([A-Z])/g;
 const SNAKE_CASE_PATTERN = /_([a-z])/g;
 
 export class Tokenizer {
@@ -489,7 +489,6 @@ export function detectLanguage(path: string): string {
     php: "php",
     scala: "scala",
     r: "r",
-    scala: "scala",
   };
 
   return languageMap[ext] || "unknown";

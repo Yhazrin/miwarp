@@ -27,7 +27,7 @@ export interface MiddlewareHandler<T> {
   before?: (event: T, ctx: MiddlewareContext) => T | Promise<T | null>;
   /** Main handler - the core event processing logic.
    * Return modified event to continue, or null to short-circuit. */
-  handler: (event: T, ctx: MiddlewareContext) => T | Promise<T | null>;
+  handler: (event: T, ctx: MiddlewareContext) => T | null | Promise<T | null>;
   /** After hook - runs after the event is processed.
    * Can be used for logging, metrics, etc. */
   after?: (event: T, ctx: MiddlewareContext) => void | Promise<void>;
@@ -270,7 +270,7 @@ export function createFilterMiddleware<T>(
   return {
     name,
     priority,
-    handler: (event) => {
+    handler: (event, _ctx) => {
       if (predicate(event)) return event;
       return null; // Filter out
     },
