@@ -1827,6 +1827,8 @@
   "skills_noHistory": "No execution history yet",
   "skills_searchPlaceholder": "Search skills...",
   "skills_title": "Skills",
+  "skills_noResults": "No skills match your search",
+  "skills_empty": "No skills yet",
   "slashMenu_backToCommands": "Back to commands",
   "slashMenu_catCoding": "Coding",
   "slashMenu_catConfig": "Config",

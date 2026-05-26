@@ -232,7 +232,7 @@
             />
           </svg>
           <p class="text-sm text-muted-foreground">
-            {searchQuery ? "No skills match your search" : "No skills yet"}
+            {searchQuery ? t("skills_noResults") : t("skills_empty")}
           </p>
           {#if !searchQuery}
             <button

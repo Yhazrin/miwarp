@@ -1827,6 +1827,8 @@
   "skills_noHistory": "暂无执行历史",
   "skills_searchPlaceholder": "搜索技能...",
   "skills_title": "技能",
+  "skills_noResults": "没有匹配的技能",
+  "skills_empty": "暂无技能",
   "slashMenu_backToCommands": "返回命令列表",
   "slashMenu_catCoding": "编码",
   "slashMenu_catConfig": "配置",
