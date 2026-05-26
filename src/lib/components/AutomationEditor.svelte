@@ -294,7 +294,7 @@
               onchange={handleCategoryChange}
               class="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
-              {#each [["web_scraping", "Web Scraping"], ["form_automation", "Form Automation"], ["testing", "Testing"], ["data_entry", "Data Entry"], ["monitoring", "Monitoring"], ["custom", "Custom"]] as [value, label]}
+              {#each [["web_scraping", t("automationCat_webScraping")], ["form_automation", t("automationCat_formAutomation")], ["testing", t("automationCat_testing")], ["data_entry", t("automationCat_dataEntry")], ["monitoring", t("automationCat_monitoring")], ["custom", t("automationCat_custom")]] as [value, label]}
                 <option {value}>{label}</option>
               {/each}
             </select>

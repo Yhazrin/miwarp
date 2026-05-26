@@ -41,6 +41,15 @@
 
   const groupedScripts = $derived(automationStore.scriptsByCategory);
 
+  const CATEGORY_I18N: Record<string, string> = {
+    web_scraping: "automationCat_webScraping",
+    form_automation: "automationCat_formAutomation",
+    testing: "automationCat_testing",
+    data_entry: "automationCat_dataEntry",
+    monitoring: "automationCat_monitoring",
+    custom: "automationCat_custom",
+  };
+
   // Methods
   function handleNewScript() {
     if (!newScriptName.trim()) return;
@@ -193,7 +202,7 @@
             onclick={() => (selectedCategory = cat.value)}
           >
             {cat.icon}
-            {cat.label} ({count})
+            {CATEGORY_I18N[cat.value] ? t(CATEGORY_I18N[cat.value] as never) : cat.label} ({count})
           </button>
         {/each}
       </div>
