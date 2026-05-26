@@ -27,14 +27,14 @@ struct RawEventView: View {
                 .buttonStyle(.plain)
                 .listRowBackground(theme.cardBg)
             }
-            .searchable(text: $searchText, prompt: "Filter by type...")
+            .searchable(text: $searchText, prompt: String(localized: "rawEvents.filter"))
             .scrollContentBackground(.hidden)
             .background(MWPatternedBackdrop())
-            .navigationTitle("Raw Events (\(events.count))")
+            .navigationTitle(String(format: String(localized: "rawEvents.title"), events.count))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    Button(String(localized: "action.done")) { dismiss() }
                 }
             }
             .sheet(item: $selectedEvent) { event in
@@ -98,11 +98,11 @@ struct RawEventView: View {
             }
             .scrollContentBackground(.hidden)
             .background(MWPatternedBackdrop())
-            .navigationTitle("Event Detail")
+            .navigationTitle(String(localized: "rawEvents.eventDetail"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(String(localized: "action.done")) { dismiss() }
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {

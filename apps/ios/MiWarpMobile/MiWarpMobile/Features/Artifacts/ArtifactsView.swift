@@ -11,15 +11,15 @@ struct ArtifactsView: View {
         Group {
             if isLoading {
                 ContentUnavailableView {
-                    Label("Loading Artifacts", systemImage: "arrow.clockwise")
+                    Label(String(localized: "artifacts.loading"), systemImage: "arrow.clockwise")
                 }
             } else if let error {
                 ContentUnavailableView {
-                    Label("Cannot Load Artifacts", systemImage: "exclamationmark.triangle")
+                    Label(String(localized: "artifacts.cannotLoad"), systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") {
+                    Button(String(localized: "action.retry")) {
                         Task { await loadArtifacts() }
                     }
                     .buttonStyle(.bordered)
@@ -27,7 +27,7 @@ struct ArtifactsView: View {
             } else if let artifacts {
                 List {
                     if !artifacts.filesChanged.isEmpty {
-                        Section("Files Changed (\(artifacts.filesChanged.count))") {
+                        Section(String(format: String(localized: "artifacts.filesChanged"), artifacts.filesChanged.count)) {
                             ForEach(artifacts.filesChanged, id: \.self) { path in
                                 Label {
                                     Text(path)
@@ -43,7 +43,7 @@ struct ArtifactsView: View {
                     }
 
                     if !artifacts.commands.isEmpty {
-                        Section("Commands (\(artifacts.commands.count))") {
+                        Section(String(format: String(localized: "artifacts.commands"), artifacts.commands.count)) {
                             ForEach(artifacts.commands, id: \.self) { command in
                                 Label(command, systemImage: "terminal")
                                     .font(.caption.monospaced())
@@ -54,14 +54,14 @@ struct ArtifactsView: View {
                     }
 
                     if !artifacts.diffSummary.isEmpty {
-                        Section("Diff Summary") {
+                        Section(String(localized: "artifacts.diffSummary")) {
                             DiffPreviewView(diff: artifacts.diffSummary)
                         }
                     }
 
                     if let cost = artifacts.costEstimate {
-                        Section("Cost") {
-                            LabeledContent("Estimated cost") {
+                        Section(String(localized: "artifacts.cost")) {
+                            LabeledContent(String(localized: "artifacts.estimatedCost")) {
                                 Text(String(format: "$%.4f", cost))
                                     .font(.body.monospaced())
                                     .foregroundStyle(MWColors.statusWarning)
@@ -74,13 +74,13 @@ struct ArtifactsView: View {
                 .background(MWPatternedBackdrop())
             } else {
                 ContentUnavailableView {
-                    Label("No Artifacts", systemImage: "archivebox")
+                    Label(String(localized: "artifacts.noArtifacts"), systemImage: "archivebox")
                 } description: {
-                    Text("This session has no artifacts yet")
+                    Text(String(localized: "artifacts.empty"))
                 }
             }
         }
-        .navigationTitle("Artifacts")
+        .navigationTitle(String(localized: "artifacts.title"))
         .task {
             await loadArtifacts()
         }
@@ -104,7 +104,7 @@ struct ArtifactsView: View {
 
     private func loadArtifacts() async {
         guard let rpc = store.rpc else {
-            error = "Not connected"
+            error = String(localized: "error.notConnected")
             return
         }
 

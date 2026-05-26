@@ -20,7 +20,7 @@ struct ChatInputBar: View {
         HStack(alignment: .bottom, spacing: 10) {
             // Input capsule
             HStack(spacing: 6) {
-                TextField("Message", text: $text, axis: .vertical)
+                TextField(String(localized: "chat.inputPlaceholder"), text: $text, axis: .vertical)
                     .textFieldStyle(.plain)
                     .font(.body)
                     .lineLimit(1...6)
@@ -36,7 +36,7 @@ struct ChatInputBar: View {
                             .frame(width: 28, height: 28)
                             .background(.red, in: Circle())
                     }
-                    .accessibilityLabel("Stop")
+                    .accessibilityLabel(String(localized: "action.stop"))
                     .sensoryFeedback(.impact(flexibility: .solid, intensity: 0.7), trigger: isRunning)
 
                     Button {
@@ -47,7 +47,7 @@ struct ChatInputBar: View {
                             .foregroundStyle(.secondary)
                             .frame(width: 28, height: 28)
                     }
-                    .accessibilityLabel("Fork conversation")
+                    .accessibilityLabel(String(localized: "action.fork"))
                 } else {
                     Button {
                         withAnimation(.spring(duration: 0.2, bounce: 0.4)) {
@@ -68,7 +68,7 @@ struct ChatInputBar: View {
                             .scaleEffect(sendScale)
                     }
                     .disabled(!canSubmit)
-                    .accessibilityLabel("Send message")
+                    .accessibilityLabel(String(localized: "action.send"))
                     .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.6), trigger: canSubmit)
                     .animation(.spring(duration: 0.25, bounce: 0.3), value: canSubmit)
                 }

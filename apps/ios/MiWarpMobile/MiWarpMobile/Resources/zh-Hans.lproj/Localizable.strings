@@ -1,0 +1,189 @@
+/* Tab Bar */
+"tab.sessions" = "会话";
+"tab.connect" = "连接";
+"tab.settings" = "设置";
+
+/* Connection States */
+"connection.disconnected" = "已断开";
+"connection.connecting" = "连接中...";
+"connection.authenticating" = "认证中...";
+"connection.connected" = "已连接";
+"connection.reconnecting" = "重新连接中（第 %d 次）...";
+"connection.authFailed" = "认证失败";
+"connection.serverUnavailable" = "服务器不可用";
+"connection.noActive" = "无活动连接";
+
+/* Run Statuses */
+"runStatus.pending" = "等待中";
+"runStatus.running" = "运行中";
+"runStatus.idle" = "空闲";
+"runStatus.waitingApproval" = "等待审批";
+"runStatus.completed" = "已完成";
+"runStatus.failed" = "失败";
+"runStatus.stopped" = "已停止";
+
+/* Chat */
+"chat.inputPlaceholder" = "消息";
+"chat.loadingMessages" = "加载消息中";
+"chat.fetchingHistory" = "正在获取对话历史...";
+"chat.cannotLoadMessages" = "无法加载消息";
+"chat.permissionRequired" = "需要权限";
+"chat.thinking" = "思考中";
+"chat.artifacts" = "产物";
+"chat.rawEvents" = "原始事件";
+"chat.mode" = "模式";
+
+/* Actions */
+"action.retry" = "重试";
+"action.cancel" = "取消";
+"action.deny" = "拒绝";
+"action.allow" = "允许";
+"action.disconnect" = "断开连接";
+"action.reconnect" = "重新连接";
+"action.connect" = "连接";
+"action.delete" = "删除";
+"action.done" = "完成";
+"action.clear" = "清除";
+"action.send" = "发送消息";
+"action.stop" = "停止";
+"action.fork" = "分叉对话";
+
+/* Pairing */
+"pairing.scanQR" = "扫描二维码";
+"pairing.manualSetup" = "手动设置";
+"pairing.addConnection" = "添加连接";
+"pairing.savedConnections" = "已保存的连接";
+"pairing.connectDesktop" = "连接桌面端";
+"pairing.heroSubtitle" = "扫描二维码或手动输入连接信息。";
+"pairing.enableServer" = "启用服务器";
+"pairing.lanAccess" = "局域网访问";
+"pairing.newConnection" = "新建连接";
+"pairing.saveAndConnect" = "保存并连接";
+"pairing.invalidPort" = "端口号无效";
+"pairing.invalidQRFormat" = "二维码格式无效";
+"pairing.notMiWarpQR" = "不是 MiWarp 二维码";
+"pairing.missingParams" = "缺少连接参数";
+"pairing.authFailed" = "认证失败：令牌无效";
+"pairing.serverUnavailable" = "服务器不可用：无法连接 %@:%@";
+
+/* Settings */
+"settings.title" = "设置";
+"settings.appearance" = "外观";
+"settings.general" = "通用";
+"settings.accentTheme" = "主题色";
+"settings.connection" = "连接";
+"settings.sessions" = "会话";
+"settings.sessionsAutoSync" = "会话自动同步";
+"settings.clearSessionHistory" = "清除会话历史";
+"settings.defaultMode" = "默认模式";
+"settings.aiModels" = "AI 和模型";
+"settings.advanced" = "高级";
+"settings.about" = "关于 MiWarp Mobile";
+"settings.clearTokens" = "清除保存的令牌";
+"settings.clearTokensConfirm" = "移除所有已保存的连接和令牌？";
+"settings.removeAll" = "全部移除";
+"settings.viewLogs" = "查看日志";
+"settings.copyDebugInfo" = "复制调试信息";
+"settings.liveActivityDemo" = "实时活动演示";
+"settings.componentLab" = "组件实验室";
+
+/* About */
+"about.appName" = "MiWarp Mobile";
+"about.version" = "版本 %@";
+"about.description" = "本地优先的 Agent 会话控制中心。\n在网络中的任何设备上连接、监控和交互你的 AI 编程会话。";
+
+/* Session */
+"session.untitled" = "无标题会话";
+"session.messageCount" = "%lld 条消息";
+"session.messageCountOne" = "1 条消息";
+
+/* Sessions */
+"sessions.title" = "会话";
+"sessions.search" = "搜索会话...";
+"sessions.loading" = "加载会话中";
+"sessions.fetching" = "正在从桌面端获取会话...";
+"sessions.cannotLoad" = "无法加载会话";
+"sessions.syncNow" = "立即同步";
+"sessions.desktopConnected" = "桌面端已连接";
+"sessions.waitingSync" = "等待会话同步。";
+"sessions.noDesktop" = "未连接桌面端";
+"sessions.startDesktop" = "启动 MiWarp 桌面端并启用 Web Server 即可开始。";
+"sessions.noSessions" = "暂无会话";
+"sessions.startSession" = "在桌面端 MiWarp 中启动一个会话即可在此查看。";
+"sessions.count" = "%lld 个会话";
+"sessions.allClear" = "全部正常";
+"sessions.noMatch" = "没有匹配当前筛选条件的会话";
+"sessions.copyPath" = "复制路径";
+"sessions.copyModel" = "复制模型";
+"sessions.filterAll" = "全部";
+"sessions.filterRunning" = "运行中";
+"sessions.filterApproval" = "待审批";
+"sessions.filterFailed" = "失败";
+"sessions.filterRecent" = "最近";
+"sessions.syncDescription" = "通过网络同步本地 MiWarp 会话。";
+"sessions.connectNow" = "立即连接";
+
+/* Pairing Extended */
+"pairing.server" = "服务器";
+"pairing.authentication" = "认证";
+"pairing.namePlaceholder" = "名称（可选）";
+"pairing.hostPlaceholder" = "主机（如 192.168.1.100）";
+"pairing.portPlaceholder" = "端口";
+"pairing.tokenPlaceholder" = "令牌";
+"pairing.setDefault" = "设为默认";
+"pairing.verifying" = "验证中...";
+"pairing.serverUnavailableDetail" = "服务器不可用：%@";
+
+/* Settings Extended */
+"settings.logs" = "日志";
+"settings.defaultFocus" = "专注";
+
+/* Chat Extended */
+"chat.streaming" = "输出中";
+"chat.toolInput" = "输入";
+"chat.toolOutput" = "输出";
+"chat.reconnecting" = "重新连接中";
+"chat.attempt" = "第 %d 次尝试";
+"chat.typeMessage" = "输入消息...";
+"chat.allClear" = "全部正常";
+
+/* Component States */
+"component.small" = "小";
+"component.medium" = "中";
+
+/* Artifacts */
+"artifacts.title" = "产物";
+"artifacts.loading" = "加载产物中";
+"artifacts.cannotLoad" = "无法加载产物";
+"artifacts.noArtifacts" = "暂无产物";
+"artifacts.empty" = "此会话暂无产物";
+"artifacts.filesChanged" = "变更文件 (%lld)";
+"artifacts.commands" = "命令 (%lld)";
+"artifacts.diffSummary" = "差异摘要";
+"artifacts.cost" = "费用";
+"artifacts.estimatedCost" = "预估费用";
+
+/* Raw Events */
+"rawEvents.title" = "原始事件 (%lld)";
+"rawEvents.filter" = "按类型筛选...";
+"rawEvents.eventDetail" = "事件详情";
+
+/* Filters */
+"filters.title" = "筛选";
+"filters.agent" = "Agent";
+"filters.status" = "状态";
+"filters.source" = "来源";
+"filters.any" = "全部";
+"filters.native" = "原生";
+"filters.cliImport" = "CLI 导入";
+"filters.resetFilters" = "重置筛选";
+"filters.resetConfirm" = "重置所有筛选条件？";
+"filters.reset" = "重置";
+
+/* Camera */
+"camera.accessDenied" = "相机访问被拒绝。请前往 设置 > MiWarp 启用。";
+"camera.notAvailable" = "相机不可用";
+
+/* Generic */
+"error.somethingWentWrong" = "出了点问题";
+"loading.default" = "加载中...";

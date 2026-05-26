@@ -80,7 +80,7 @@ struct MessageListView: View {
                             .foregroundStyle(.tertiary)
                             .textSelection(.enabled)
                     } label: {
-                        Label("Thinking", systemImage: "brain")
+                        Label(String(localized: "chat.thinking"), systemImage: "brain")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
@@ -173,7 +173,7 @@ struct ToolCallDisclosureView: View {
             VStack(alignment: .leading, spacing: 8) {
                 if let input = toolCall.inputPreview, !input.isEmpty {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Input")
+                        Text(String(localized: "chat.toolInput"))
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(.tertiary)
                         Text(input)
@@ -185,7 +185,7 @@ struct ToolCallDisclosureView: View {
 
                 if let output = toolCall.output, !output.isEmpty {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Output")
+                        Text(String(localized: "chat.toolOutput"))
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(.tertiary)
                         Text(output)

@@ -45,13 +45,13 @@ enum ConnectionState: Equatable {
 
     var displayLabel: String {
         switch self {
-        case .disconnected: return "Disconnected"
-        case .connecting: return "Connecting..."
-        case .authenticating: return "Authenticating..."
-        case .connected: return "Connected"
-        case .reconnecting(let attempt): return "Reconnecting (attempt \(attempt))..."
-        case .authFailed: return "Authentication Failed"
-        case .serverUnavailable: return "Server Unavailable"
+        case .disconnected: return String(localized: "connection.disconnected")
+        case .connecting: return String(localized: "connection.connecting")
+        case .authenticating: return String(localized: "connection.authenticating")
+        case .connected: return String(localized: "connection.connected")
+        case .reconnecting(let attempt): return String(format: String(localized: "connection.reconnecting"), attempt)
+        case .authFailed: return String(localized: "connection.authFailed")
+        case .serverUnavailable: return String(localized: "connection.serverUnavailable")
         }
     }
 }
@@ -75,13 +75,13 @@ enum RunStatus: String, Codable, CaseIterable {
 
     var displayLabel: String {
         switch self {
-        case .pending: return "Pending"
-        case .running: return "Running"
-        case .idle: return "Idle"
-        case .waitingApproval: return "Waiting Approval"
-        case .completed: return "Completed"
-        case .failed: return "Failed"
-        case .stopped: return "Stopped"
+        case .pending: return String(localized: "runStatus.pending")
+        case .running: return String(localized: "runStatus.running")
+        case .idle: return String(localized: "runStatus.idle")
+        case .waitingApproval: return String(localized: "runStatus.waitingApproval")
+        case .completed: return String(localized: "runStatus.completed")
+        case .failed: return String(localized: "runStatus.failed")
+        case .stopped: return String(localized: "runStatus.stopped")
         }
     }
 

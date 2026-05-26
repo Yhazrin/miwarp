@@ -50,26 +50,26 @@ struct SessionHubView: View {
                     connectedEmptyView
                 } else if isLoading && runs.isEmpty {
                     ContentUnavailableView {
-                        Label("Loading Sessions", systemImage: "arrow.clockwise")
+                        Label(String(localized: "sessions.loading"), systemImage: "arrow.clockwise")
                     } description: {
-                        Text("Fetching sessions from your desktop...")
+                        Text(String(localized: "sessions.fetching"))
                     }
                 } else if let error, runs.isEmpty {
                     ContentUnavailableView {
-                        Label("Cannot Load Sessions", systemImage: "exclamationmark.triangle")
+                        Label(String(localized: "sessions.cannotLoad"), systemImage: "exclamationmark.triangle")
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { Task { await loadRuns() } }
+                        Button(String(localized: "action.retry")) { Task { await loadRuns() } }
                             .buttonStyle(.bordered)
                     }
                 } else {
                     sessionList
                 }
             }
-            .navigationTitle("Sessions")
+            .navigationTitle(String(localized: "sessions.title"))
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $searchText, prompt: "Search sessions...")
+            .searchable(text: $searchText, prompt: String(localized: "sessions.search"))
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     if store.isConnected {
@@ -117,27 +117,27 @@ struct SessionHubView: View {
         Button {
             filters.status = nil
         } label: {
-            Label("All", systemImage: filters.status == nil ? "checkmark" : "")
+            Label(String(localized: "sessions.filterAll"), systemImage: filters.status == nil ? "checkmark" : "")
         }
         Button {
             filters.status = filters.status == .running ? nil : .running
         } label: {
-            Label("Running", systemImage: filters.status == .running ? "checkmark" : "")
+            Label(String(localized: "sessions.filterRunning"), systemImage: filters.status == .running ? "checkmark" : "")
         }
         Button {
             filters.status = filters.status == .waitingApproval ? nil : .waitingApproval
         } label: {
-            Label("Approval", systemImage: filters.status == .waitingApproval ? "checkmark" : "")
+            Label(String(localized: "sessions.filterApproval"), systemImage: filters.status == .waitingApproval ? "checkmark" : "")
         }
         Button {
             filters.status = filters.status == .failed ? nil : .failed
         } label: {
-            Label("Failed", systemImage: filters.status == .failed ? "checkmark" : "")
+            Label(String(localized: "sessions.filterFailed"), systemImage: filters.status == .failed ? "checkmark" : "")
         }
         Button {
             filters.status = filters.status == .completed ? nil : .completed
         } label: {
-            Label("Recent", systemImage: filters.status == .completed ? "checkmark" : "")
+            Label(String(localized: "sessions.filterRecent"), systemImage: filters.status == .completed ? "checkmark" : "")
         }
     }
 
@@ -158,11 +158,11 @@ struct SessionHubView: View {
     private var notConnectedHero: some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Connect Desktop")
+                Text(String(localized: "pairing.connectDesktop"))
                     .font(.title2.weight(.semibold))
                     .foregroundColor(heroTextColor)
 
-                Text("Sync local MiWarp sessions over your network.")
+                Text(String(localized: "sessions.syncDescription"))
                     .font(.callout)
                     .foregroundColor(heroTextColor.opacity(0.85))
             }
@@ -173,7 +173,7 @@ struct SessionHubView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 16, weight: .medium))
-                    Text("Connect Now")
+                    Text(String(localized: "sessions.connectNow"))
                         .font(.body.weight(.medium))
                     Spacer()
                     Image(systemName: "arrow.right")
@@ -189,9 +189,9 @@ struct SessionHubView: View {
             }
 
             HStack(spacing: 8) {
-                heroPill(icon: "server.rack", label: "Enable Server")
-                heroPill(icon: "network", label: "LAN Access")
-                heroPill(icon: "qrcode.viewfinder", label: "Scan QR")
+                heroPill(icon: "server.rack", label: String(localized: "pairing.enableServer"))
+                heroPill(icon: "network", label: String(localized: "pairing.lanAccess"))
+                heroPill(icon: "qrcode.viewfinder", label: String(localized: "pairing.scanQR"))
             }
         }
         .padding(16)
@@ -240,12 +240,12 @@ struct SessionHubView: View {
                         .font(.system(size: 18))
                         .foregroundColor(MWColors.statusSuccess)
 
-                    Text("Desktop Connected")
+                    Text(String(localized: "sessions.desktopConnected"))
                         .font(.title2.weight(.semibold))
                         .foregroundColor(.white)
                 }
 
-                Text("Waiting for sessions to sync.")
+                Text(String(localized: "sessions.waitingSync"))
                     .font(.callout)
                     .foregroundColor(.white.opacity(0.85))
             }
@@ -274,7 +274,7 @@ struct SessionHubView: View {
                     } else {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 14, weight: .medium))
-                        Text("Sync Now")
+                        Text(String(localized: "sessions.syncNow"))
                             .font(.body.weight(.medium))
                     }
                     Spacer()
@@ -337,10 +337,10 @@ struct SessionHubView: View {
 
     private var statusHint: some View {
         VStack(spacing: 4) {
-            Text("No desktop connected")
+            Text(String(localized: "sessions.noDesktop"))
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
-            Text("Start MiWarp Desktop and enable Web Server to begin.")
+            Text(String(localized: "sessions.startDesktop"))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
@@ -356,10 +356,10 @@ struct SessionHubView: View {
 
     private var connectedStatusHint: some View {
         VStack(spacing: 4) {
-            Text("No sessions yet")
+            Text(String(localized: "sessions.noSessions"))
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(.secondary)
-            Text("Start a session in MiWarp Desktop to see it here.")
+            Text(String(localized: "sessions.startSession"))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
@@ -404,7 +404,7 @@ struct SessionHubView: View {
                         .fill(store.isConnected ? MWColors.statusSuccess : MWColors.statusError)
                         .frame(width: 6, height: 6)
 
-                    Text(store.isConnected ? "Connected" : "Disconnected")
+                    Text(store.isConnected ? String(localized: "connection.connected") : String(localized: "connection.disconnected"))
                         .font(.caption)
                         .foregroundColor(theme.textTertiary)
 
@@ -418,7 +418,7 @@ struct SessionHubView: View {
 
                     Spacer()
 
-                    Text("\(filteredRuns.count) sessions")
+                    Text(String(format: String(localized: "sessions.count"), filteredRuns.count))
                         .font(.caption)
                         .foregroundColor(theme.textTertiary)
                 }
@@ -430,9 +430,9 @@ struct SessionHubView: View {
                     .listRowBackground(Color.clear)
             } else if filteredRuns.isEmpty {
                 ContentUnavailableView {
-                    Label("All Clear", systemImage: "checkmark.circle")
+                    Label(String(localized: "sessions.allClear"), systemImage: "checkmark.circle")
                 } description: {
-                    Text("No sessions match the current filters")
+                    Text(String(localized: "sessions.noMatch"))
                 }
                 .listRowBackground(Color.clear)
             } else {
@@ -447,7 +447,7 @@ struct SessionHubView: View {
                                 UIPasteboard.general.string = run.cwd
                                 #endif
                             } label: {
-                                Label("Copy Path", systemImage: "doc.on.doc")
+                                Label(String(localized: "sessions.copyPath"), systemImage: "doc.on.doc")
                             }
 
                             if let model = run.model {
@@ -456,7 +456,7 @@ struct SessionHubView: View {
                                     UIPasteboard.general.string = model
                                     #endif
                                 } label: {
-                                    Label("Copy Model", systemImage: "cpu")
+                                    Label(String(localized: "sessions.copyModel"), systemImage: "cpu")
                                 }
                             }
                         }

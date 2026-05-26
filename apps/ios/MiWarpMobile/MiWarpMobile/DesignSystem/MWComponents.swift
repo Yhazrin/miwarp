@@ -382,7 +382,7 @@ struct MWChatBubble: View {
                         ProgressView()
                             .scaleEffect(0.6)
                             .tint(MWColors.accentCyan)
-                        Text("streaming")
+                        Text(String(localized: "chat.streaming"))
                             .font(MWTypography.caption2())
                             .foregroundColor(theme.cardTextTertiary)
                     }
@@ -465,7 +465,7 @@ struct MWToolCallCard: View {
             if isExpanded {
                 if let input = inputPreview, !input.isEmpty {
                     VStack(alignment: .leading, spacing: MWSpacing.xs) {
-                        Text("Input")
+                        Text(String(localized: "chat.toolInput"))
                             .font(MWTypography.caption2())
                             .foregroundColor(theme.cardTextTertiary)
                         Text(input)
@@ -477,7 +477,7 @@ struct MWToolCallCard: View {
 
                 if let output = output, !output.isEmpty {
                     VStack(alignment: .leading, spacing: MWSpacing.xs) {
-                        Text("Output")
+                        Text(String(localized: "chat.toolOutput"))
                             .font(MWTypography.caption2())
                             .foregroundColor(theme.cardTextTertiary)
                         Text(output)
@@ -521,7 +521,7 @@ struct MWApprovalCard: View {
                     .font(.system(size: 16))
                     .foregroundColor(theme.statusWarning)
 
-                Text("Permission Required")
+                Text(String(localized: "chat.permissionRequired"))
                     .font(MWTypography.bodyMedium())
                     .foregroundColor(theme.statusWarning)
 
@@ -551,7 +551,7 @@ struct MWApprovalCard: View {
                 Button {
                     onApprove?(false)
                 } label: {
-                    Label("Deny", systemImage: "xmark")
+                    Label(String(localized: "action.deny"), systemImage: "xmark")
                         .font(MWTypography.subheadlineMedium())
                         .foregroundColor(theme.cardTextSecondary)
                         .frame(maxWidth: .infinity)
@@ -565,7 +565,7 @@ struct MWApprovalCard: View {
                 Button {
                     onApprove?(true)
                 } label: {
-                    Label("Allow", systemImage: "checkmark")
+                    Label(String(localized: "action.allow"), systemImage: "checkmark")
                         .font(MWTypography.subheadlineMedium())
                         .foregroundColor(theme.accentOnAccent)
                         .frame(maxWidth: .infinity)
@@ -606,7 +606,7 @@ struct MWInputBar: View {
     var body: some View {
         HStack(alignment: .bottom, spacing: MWSpacing.sm) {
             // Text field with glass background
-            TextField("Type a message...", text: $text, axis: .vertical)
+            TextField(String(localized: "chat.typeMessage"), text: $text, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(MWTypography.body())
                 .lineLimit(1...6)
@@ -764,7 +764,7 @@ struct MWErrorState: View {
     var onAction: (() -> Void)?
     var onSecondary: (() -> Void)?
 
-    init(message: String, title: String = "Something went wrong", actionTitle: String? = "Retry", secondaryTitle: String? = nil, onAction: (() -> Void)? = nil, onSecondary: (() -> Void)? = nil) {
+    init(message: String, title: String = String(localized: "error.somethingWentWrong"), actionTitle: String? = String(localized: "action.retry"), secondaryTitle: String? = nil, onAction: (() -> Void)? = nil, onSecondary: (() -> Void)? = nil) {
         self.title = title
         self.message = message
         self.actionTitle = actionTitle
@@ -834,7 +834,7 @@ struct MWErrorState: View {
 // MARK: - Loading State
 
 struct MWLoadingState: View {
-    var message: String = "Loading..."
+    var message: String = String(localized: "loading.default")
 
     var body: some View {
         VStack(spacing: MWSpacing.lg) {
@@ -863,17 +863,17 @@ struct MWReconnectBanner: View {
                 .tint(MWColors.statusWarning)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Reconnecting")
+                Text(String(localized: "chat.reconnecting"))
                     .font(MWTypography.subheadlineMedium())
                     .foregroundColor(MWColors.statusWarning)
-                Text("Attempt \(attempt)")
+                Text(String(format: String(localized: "chat.attempt"), attempt))
                     .font(MWTypography.caption2())
                     .foregroundColor(MWColors.textTertiary)
             }
 
             Spacer()
 
-            Button("Cancel") {
+            Button(String(localized: "action.cancel")) {
                 onCancel?()
             }
             .font(MWTypography.subheadline())

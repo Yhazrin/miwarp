@@ -256,7 +256,7 @@ struct InlineApprovalView: View {
                 Image(systemName: "exclamationmark.shield.fill")
                     .symbolEffect(.pulse.byLayer, options: .repeating)
                     .foregroundStyle(MWColors.statusWarning)
-                Text("Permission Required")
+                Text(String(localized: "chat.permissionRequired"))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(MWColors.statusWarning)
             }
@@ -277,20 +277,20 @@ struct InlineApprovalView: View {
                     didRespond = true
                     onApprove?(false)
                 } label: {
-                    Text("Deny")
+                    Text(String(localized: "action.deny"))
                         .font(.subheadline.weight(.medium))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                         .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
                 }
                 .disabled(didRespond)
-                .accessibilityLabel("Deny permission")
+                .accessibilityLabel(String(localized: "action.deny"))
 
                 Button {
                     didRespond = true
                     onApprove?(true)
                 } label: {
-                    Text("Allow")
+                    Text(String(localized: "action.allow"))
                         .font(.subheadline.weight(.medium))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
@@ -298,7 +298,7 @@ struct InlineApprovalView: View {
                         .foregroundStyle(.white)
                 }
                 .disabled(didRespond)
-                .accessibilityLabel("Allow permission")
+                .accessibilityLabel(String(localized: "action.allow"))
             }
         }
         .padding(14)

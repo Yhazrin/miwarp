@@ -43,7 +43,7 @@ struct MobileSettingsView: View {
                 aiModelsSection
                 advancedSection
             }
-            .navigationTitle("Settings")
+            .navigationTitle(String(localized: "settings.title"))
             .sheet(isPresented: $showLogs) {
                 LogsView()
             }
@@ -68,19 +68,19 @@ struct MobileSettingsView: View {
                         .tag(mode)
                 }
             } label: {
-                Label("Appearance", systemImage: theme.appearanceMode.systemImage)
+                Label(String(localized: "settings.appearance"), systemImage: theme.appearanceMode.systemImage)
             }
 
             accentThemePicker
         } header: {
-            Label("General", systemImage: "gearshape.fill")
+            Label(String(localized: "settings.general"), systemImage: "gearshape.fill")
         }
         .listRowBackground(theme.cardBg)
     }
 
     private var accentThemePicker: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Label("Accent Theme", systemImage: "swatchpalette")
+            Label(String(localized: "settings.accentTheme"), systemImage: "swatchpalette")
                 .font(.body)
 
             LazyVGrid(
@@ -159,27 +159,27 @@ struct MobileSettingsView: View {
                 Button(role: .destructive) {
                     store.disconnect()
                 } label: {
-                    Label("Disconnect", systemImage: "xmark.circle")
+                    Label(String(localized: "action.disconnect"), systemImage: "xmark.circle")
                 }
 
                 Button {
                     store.reconnect()
                 } label: {
-                    Label("Reconnect", systemImage: "arrow.clockwise")
+                    Label(String(localized: "action.reconnect"), systemImage: "arrow.clockwise")
                 }
             } else {
-                Label("No active connection", systemImage: "wifi.slash")
+                Label(String(localized: "connection.noActive"), systemImage: "wifi.slash")
                     .foregroundStyle(.tertiary)
 
                 Button {
                     store.connectToDefault()
                 } label: {
-                    Label("Connect", systemImage: "play.circle")
+                    Label(String(localized: "action.connect"), systemImage: "play.circle")
                         .foregroundStyle(theme.accentPrimary)
                 }
             }
         } header: {
-            Label("Connection", systemImage: "network")
+            Label(String(localized: "settings.connection"), systemImage: "network")
         }
         .listRowBackground(theme.cardBg)
     }
@@ -188,16 +188,16 @@ struct MobileSettingsView: View {
 
     private var sessionsSection: some View {
         Section {
-            Label("Sessions sync automatically", systemImage: "info.circle")
+            Label(String(localized: "settings.sessionsAutoSync"), systemImage: "info.circle")
                 .foregroundStyle(.secondary)
 
             Button(role: .destructive) {
                 // Clear session history
             } label: {
-                Label("Clear Session History", systemImage: "trash")
+                Label(String(localized: "settings.clearSessionHistory"), systemImage: "trash")
             }
         } header: {
-            Label("Sessions", systemImage: "bubble.left.and.bubble.right.fill")
+            Label(String(localized: "settings.sessions"), systemImage: "bubble.left.and.bubble.right.fill")
         }
         .listRowBackground(theme.cardBg)
     }
@@ -206,13 +206,13 @@ struct MobileSettingsView: View {
 
     private var aiModelsSection: some View {
         Section {
-            LabeledContent("Default Mode") {
-                Text("Focus")
+            LabeledContent(String(localized: "settings.defaultMode")) {
+                Text(String(localized: "settings.defaultFocus"))
                     .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
             }
         } header: {
-            Label("AI & Models", systemImage: "cpu")
+            Label(String(localized: "settings.aiModels"), systemImage: "cpu")
         }
         .listRowBackground(theme.cardBg)
     }
@@ -224,44 +224,44 @@ struct MobileSettingsView: View {
             Button {
                 showLogs = true
             } label: {
-                Label("View Logs", systemImage: "doc.text")
+                Label(String(localized: "settings.viewLogs"), systemImage: "doc.text")
             }
 
             Button {
                 copyDebugInfo()
             } label: {
-                Label("Copy Debug Info", systemImage: "doc.on.doc")
+                Label(String(localized: "settings.copyDebugInfo"), systemImage: "doc.on.doc")
             }
 
             #if canImport(ActivityKit)
             NavigationLink {
                 LiveActivityDemoView()
             } label: {
-                Label("Live Activity Demo", systemImage: "livephoto")
+                Label(String(localized: "settings.liveActivityDemo"), systemImage: "livephoto")
             }
             #endif
 
             Button {
                 showComponentLab = true
             } label: {
-                Label("Component Lab", systemImage: "square.3.layers.3d")
+                Label(String(localized: "settings.componentLab"), systemImage: "square.3.layers.3d")
             }
 
             Button(role: .destructive) {
                 showClearTokensConfirm = true
             } label: {
-                Label("Clear Saved Tokens", systemImage: "key")
+                Label(String(localized: "settings.clearTokens"), systemImage: "key")
             }
-            .confirmationDialog("Remove all saved connections and tokens?", isPresented: $showClearTokensConfirm, titleVisibility: .visible) {
-                Button("Remove All", role: .destructive) { clearTokens() }
-                Button("Cancel", role: .cancel) {}
+            .confirmationDialog(String(localized: "settings.clearTokensConfirm"), isPresented: $showClearTokensConfirm, titleVisibility: .visible) {
+                Button(String(localized: "settings.removeAll"), role: .destructive) { clearTokens() }
+                Button(String(localized: "action.cancel"), role: .cancel) {}
             }
 
             Button {
                 showAbout = true
             } label: {
                 HStack {
-                    Label("About MiWarp Mobile", systemImage: "info.circle")
+                    Label(String(localized: "settings.about"), systemImage: "info.circle")
                     Spacer()
                     Text("v\(appVersion)")
                         .font(.caption.monospaced())
@@ -269,7 +269,7 @@ struct MobileSettingsView: View {
                 }
             }
         } header: {
-            Label("Advanced", systemImage: "slider.horizontal.3")
+            Label(String(localized: "settings.advanced"), systemImage: "slider.horizontal.3")
         }
         .listRowBackground(theme.cardBg)
     }
@@ -333,14 +333,14 @@ struct LogsView: View {
                 .padding(.vertical, 2)
             }
             .listStyle(.plain)
-            .navigationTitle("Logs")
+            .navigationTitle(String(localized: "settings.logs"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    Button(String(localized: "action.done")) { dismiss() }
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    Button("Clear") { logger.clearLogs() }
+                    Button(String(localized: "action.clear")) { logger.clearLogs() }
                         .foregroundStyle(MWColors.statusError)
                 }
             }
@@ -378,14 +378,14 @@ struct AboutView: View {
                 }
 
                 VStack(spacing: 6) {
-                    Text("MiWarp Mobile")
+                    Text(String(localized: "about.appName"))
                         .font(.title2.weight(.semibold))
-                    Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0")")
+                    Text(String(format: String(localized: "about.version"), Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"))
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
 
-                Text("Local-first Agent Session Control Center.\nConnect, monitor, and interact with your AI coding sessions from anywhere on your network.")
+                Text(String(localized: "about.description"))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -394,11 +394,11 @@ struct AboutView: View {
 
                 Spacer()
             }
-            .navigationTitle("About")
+            .navigationTitle(String(localized: "settings.about"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(String(localized: "action.done")) { dismiss() }
                 }
             }
         }
@@ -431,13 +431,13 @@ struct ComponentLabView: View {
                     componentSection(title: "MWThinkingIndicator") {
                         VStack(spacing: 12) {
                             HStack(spacing: 20) {
-                                Text("Small")
+                                Text(String(localized: "component.small"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 MWThinkingIndicator(size: .small)
                             }
                             HStack(spacing: 20) {
-                                Text("Medium")
+                                Text(String(localized: "component.medium"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 MWThinkingIndicator(size: .medium)
@@ -465,13 +465,13 @@ struct ComponentLabView: View {
                         HStack(spacing: 16) {
                             VStack(spacing: 8) {
                                 MWStatusDot(status: .connected)
-                                Text("connected")
+                                Text(String(localized: "connection.connected"))
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
                             VStack(spacing: 8) {
                                 MWStatusDot(status: .running, showGlow: true)
-                                Text("running")
+                                Text(String(localized: "runStatus.running"))
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
@@ -483,13 +483,13 @@ struct ComponentLabView: View {
                             }
                             VStack(spacing: 8) {
                                 MWStatusDot(status: .failed)
-                                Text("failed")
+                                Text(String(localized: "runStatus.failed"))
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
                             VStack(spacing: 8) {
                                 MWStatusDot(status: .waiting)
-                                Text("waiting")
+                                Text(String(localized: "runStatus.waitingApproval"))
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
@@ -516,11 +516,11 @@ struct ComponentLabView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Component Lab")
+            .navigationTitle(String(localized: "settings.componentLab"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(String(localized: "action.done")) { dismiss() }
                 }
             }
         }

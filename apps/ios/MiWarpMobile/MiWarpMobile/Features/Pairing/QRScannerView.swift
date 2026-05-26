@@ -63,14 +63,14 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
                     if granted {
                         self?.configureCaptureSession()
                     } else {
-                        self?.showError("Camera access denied. Go to Settings > MiWarp to enable.")
+                        self?.showError(String(localized: "camera.accessDenied"))
                     }
                 }
             }
         case .denied, .restricted:
-            showError("Camera access denied. Go to Settings > MiWarp to enable.")
+            showError(String(localized: "camera.accessDenied"))
         @unknown default:
-            showError("Camera not available")
+            showError(String(localized: "camera.notAvailable"))
         }
     }
 
@@ -79,7 +79,7 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
 
         guard let device = AVCaptureDevice.default(for: .video),
               let input = try? AVCaptureDeviceInput(device: device) else {
-            showError("Camera not available")
+            showError(String(localized: "camera.notAvailable"))
             return
         }
 

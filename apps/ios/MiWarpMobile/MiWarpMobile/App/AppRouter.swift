@@ -14,19 +14,19 @@ struct AppRouter: View {
             TabView(selection: $selectedTab) {
                 SessionHubView()
                     .tabItem {
-                        Label("Sessions", systemImage: "bubble.left.and.bubble.right")
+                        Label(String(localized: "tab.sessions"), systemImage: "bubble.left.and.bubble.right")
                     }
                     .tag(0)
 
                 PairingView()
                     .tabItem {
-                        Label("Connect", systemImage: "point.3.filled.connected.trianglepath.dotted")
+                        Label(String(localized: "tab.connect"), systemImage: "point.3.filled.connected.trianglepath.dotted")
                     }
                     .tag(1)
 
                 MobileSettingsView()
                     .tabItem {
-                        Label("Settings", systemImage: "gear")
+                        Label(String(localized: "tab.settings"), systemImage: "gear")
                     }
                     .tag(2)
             }

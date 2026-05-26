@@ -18,9 +18,9 @@ struct SessionFiltersView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Agent") {
-                    Picker("Agent", selection: $filters.agent) {
-                        Text("Any").tag(nil as String?)
+                Section(String(localized: "filters.agent")) {
+                    Picker(String(localized: "filters.agent"), selection: $filters.agent) {
+                        Text(String(localized: "filters.any")).tag(nil as String?)
                         ForEach(availableAgents, id: \.self) { agent in
                             Text(agent).tag(agent as String?)
                         }
@@ -28,9 +28,9 @@ struct SessionFiltersView: View {
                 }
                 .listRowBackground(theme.cardBg)
 
-                Section("Status") {
-                    Picker("Status", selection: $filters.status) {
-                        Text("Any").tag(nil as RunStatus?)
+                Section(String(localized: "filters.status")) {
+                    Picker(String(localized: "filters.status"), selection: $filters.status) {
+                        Text(String(localized: "filters.any")).tag(nil as RunStatus?)
                         ForEach(RunStatus.allCases, id: \.self) { status in
                             HStack {
                                 Circle()
@@ -51,17 +51,17 @@ struct SessionFiltersView: View {
                 }
                 .listRowBackground(theme.cardBg)
 
-                Section("Source") {
-                    Picker("Source", selection: $filters.source) {
-                        Text("Any").tag(nil as RunSource?)
-                        Text("Native").tag(RunSource.native as RunSource?)
-                        Text("CLI Import").tag(RunSource.cliImport as RunSource?)
+                Section(String(localized: "filters.source")) {
+                    Picker(String(localized: "filters.source"), selection: $filters.source) {
+                        Text(String(localized: "filters.any")).tag(nil as RunSource?)
+                        Text(String(localized: "filters.native")).tag(RunSource.native as RunSource?)
+                        Text(String(localized: "filters.cliImport")).tag(RunSource.cliImport as RunSource?)
                     }
                 }
                 .listRowBackground(theme.cardBg)
 
                 Section {
-                    Button("Reset Filters", role: .destructive) {
+                    Button(String(localized: "filters.resetFilters"), role: .destructive) {
                         showResetConfirm = true
                     }
                 }
@@ -69,16 +69,16 @@ struct SessionFiltersView: View {
             }
             .scrollContentBackground(.hidden)
             .background(MWPatternedBackdrop())
-            .navigationTitle("Filters")
+            .navigationTitle(String(localized: "filters.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(String(localized: "action.done")) { dismiss() }
                 }
             }
-            .confirmationDialog("Reset all filters?", isPresented: $showResetConfirm, titleVisibility: .visible) {
-                Button("Reset", role: .destructive) { filters.reset() }
-                Button("Cancel", role: .cancel) {}
+            .confirmationDialog(String(localized: "filters.resetConfirm"), isPresented: $showResetConfirm, titleVisibility: .visible) {
+                Button(String(localized: "filters.reset"), role: .destructive) { filters.reset() }
+                Button(String(localized: "action.cancel"), role: .cancel) {}
             }
         }
     }

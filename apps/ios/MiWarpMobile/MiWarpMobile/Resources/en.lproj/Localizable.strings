@@ -1,0 +1,189 @@
+/* Tab Bar */
+"tab.sessions" = "Sessions";
+"tab.connect" = "Connect";
+"tab.settings" = "Settings";
+
+/* Connection States */
+"connection.disconnected" = "Disconnected";
+"connection.connecting" = "Connecting...";
+"connection.authenticating" = "Authenticating...";
+"connection.connected" = "Connected";
+"connection.reconnecting" = "Reconnecting (attempt %d)...";
+"connection.authFailed" = "Authentication Failed";
+"connection.serverUnavailable" = "Server Unavailable";
+"connection.noActive" = "No active connection";
+
+/* Run Statuses */
+"runStatus.pending" = "Pending";
+"runStatus.running" = "Running";
+"runStatus.idle" = "Idle";
+"runStatus.waitingApproval" = "Waiting Approval";
+"runStatus.completed" = "Completed";
+"runStatus.failed" = "Failed";
+"runStatus.stopped" = "Stopped";
+
+/* Chat */
+"chat.inputPlaceholder" = "Message";
+"chat.loadingMessages" = "Loading Messages";
+"chat.fetchingHistory" = "Fetching conversation history...";
+"chat.cannotLoadMessages" = "Cannot Load Messages";
+"chat.permissionRequired" = "Permission Required";
+"chat.thinking" = "Thinking";
+"chat.artifacts" = "Artifacts";
+"chat.rawEvents" = "Raw Events";
+"chat.mode" = "Mode";
+
+/* Actions */
+"action.retry" = "Retry";
+"action.cancel" = "Cancel";
+"action.deny" = "Deny";
+"action.allow" = "Allow";
+"action.disconnect" = "Disconnect";
+"action.reconnect" = "Reconnect";
+"action.connect" = "Connect";
+"action.delete" = "Delete";
+"action.done" = "Done";
+"action.clear" = "Clear";
+"action.send" = "Send message";
+"action.stop" = "Stop";
+"action.fork" = "Fork conversation";
+
+/* Pairing */
+"pairing.scanQR" = "Scan QR Code";
+"pairing.manualSetup" = "Manual Setup";
+"pairing.addConnection" = "Add Connection";
+"pairing.savedConnections" = "Saved Connections";
+"pairing.connectDesktop" = "Connect Desktop";
+"pairing.heroSubtitle" = "Scan QR code or enter details manually.";
+"pairing.enableServer" = "Enable Server";
+"pairing.lanAccess" = "LAN Access";
+"pairing.newConnection" = "New Connection";
+"pairing.saveAndConnect" = "Save & Connect";
+"pairing.invalidPort" = "Invalid port number";
+"pairing.invalidQRFormat" = "Invalid QR code format";
+"pairing.notMiWarpQR" = "Not a MiWarp QR code";
+"pairing.missingParams" = "Missing connection parameters";
+"pairing.authFailed" = "Authentication Failed: invalid token";
+"pairing.serverUnavailable" = "Server Unavailable: cannot reach %@:%@";
+
+/* Settings */
+"settings.title" = "Settings";
+"settings.appearance" = "Appearance";
+"settings.general" = "General";
+"settings.accentTheme" = "Accent Theme";
+"settings.connection" = "Connection";
+"settings.sessions" = "Sessions";
+"settings.sessionsAutoSync" = "Sessions sync automatically";
+"settings.clearSessionHistory" = "Clear Session History";
+"settings.defaultMode" = "Default Mode";
+"settings.aiModels" = "AI & Models";
+"settings.advanced" = "Advanced";
+"settings.about" = "About MiWarp Mobile";
+"settings.clearTokens" = "Clear Saved Tokens";
+"settings.clearTokensConfirm" = "Remove all saved connections and tokens?";
+"settings.removeAll" = "Remove All";
+"settings.viewLogs" = "View Logs";
+"settings.copyDebugInfo" = "Copy Debug Info";
+"settings.liveActivityDemo" = "Live Activity Demo";
+"settings.componentLab" = "Component Lab";
+
+/* About */
+"about.appName" = "MiWarp Mobile";
+"about.version" = "Version %@";
+"about.description" = "Local-first Agent Session Control Center.\nConnect, monitor, and interact with your AI coding sessions from anywhere on your network.";
+
+/* Session */
+"session.untitled" = "Untitled Session";
+"session.messageCount" = "%lld messages";
+"session.messageCountOne" = "1 message";
+
+/* Sessions */
+"sessions.title" = "Sessions";
+"sessions.search" = "Search sessions...";
+"sessions.loading" = "Loading Sessions";
+"sessions.fetching" = "Fetching sessions from your desktop...";
+"sessions.cannotLoad" = "Cannot Load Sessions";
+"sessions.syncNow" = "Sync Now";
+"sessions.desktopConnected" = "Desktop Connected";
+"sessions.waitingSync" = "Waiting for sessions to sync.";
+"sessions.noDesktop" = "No desktop connected";
+"sessions.startDesktop" = "Start MiWarp Desktop and enable Web Server to begin.";
+"sessions.noSessions" = "No sessions yet";
+"sessions.startSession" = "Start a session in MiWarp Desktop to see it here.";
+"sessions.count" = "%lld sessions";
+"sessions.allClear" = "All Clear";
+"sessions.noMatch" = "No sessions match the current filters";
+"sessions.copyPath" = "Copy Path";
+"sessions.copyModel" = "Copy Model";
+"sessions.filterAll" = "All";
+"sessions.filterRunning" = "Running";
+"sessions.filterApproval" = "Approval";
+"sessions.filterFailed" = "Failed";
+"sessions.filterRecent" = "Recent";
+"sessions.syncDescription" = "Sync local MiWarp sessions over your network.";
+"sessions.connectNow" = "Connect Now";
+
+/* Pairing Extended */
+"pairing.server" = "Server";
+"pairing.authentication" = "Authentication";
+"pairing.namePlaceholder" = "Name (optional)";
+"pairing.hostPlaceholder" = "Host (e.g. 192.168.1.100)";
+"pairing.portPlaceholder" = "Port";
+"pairing.tokenPlaceholder" = "Token";
+"pairing.setDefault" = "Set as Default";
+"pairing.verifying" = "Verifying...";
+"pairing.serverUnavailableDetail" = "Server Unavailable: %@";
+
+/* Settings Extended */
+"settings.logs" = "Logs";
+"settings.defaultFocus" = "Focus";
+
+/* Chat Extended */
+"chat.streaming" = "streaming";
+"chat.toolInput" = "Input";
+"chat.toolOutput" = "Output";
+"chat.reconnecting" = "Reconnecting";
+"chat.attempt" = "Attempt %d";
+"chat.typeMessage" = "Type a message...";
+"chat.allClear" = "All Clear";
+
+/* Component States */
+"component.small" = "Small";
+"component.medium" = "Medium";
+
+/* Artifacts */
+"artifacts.title" = "Artifacts";
+"artifacts.loading" = "Loading Artifacts";
+"artifacts.cannotLoad" = "Cannot Load Artifacts";
+"artifacts.noArtifacts" = "No Artifacts";
+"artifacts.empty" = "This session has no artifacts yet";
+"artifacts.filesChanged" = "Files Changed (%lld)";
+"artifacts.commands" = "Commands (%lld)";
+"artifacts.diffSummary" = "Diff Summary";
+"artifacts.cost" = "Cost";
+"artifacts.estimatedCost" = "Estimated cost";
+
+/* Raw Events */
+"rawEvents.title" = "Raw Events (%lld)";
+"rawEvents.filter" = "Filter by type...";
+"rawEvents.eventDetail" = "Event Detail";
+
+/* Filters */
+"filters.title" = "Filters";
+"filters.agent" = "Agent";
+"filters.status" = "Status";
+"filters.source" = "Source";
+"filters.any" = "Any";
+"filters.native" = "Native";
+"filters.cliImport" = "CLI Import";
+"filters.resetFilters" = "Reset Filters";
+"filters.resetConfirm" = "Reset all filters?";
+"filters.reset" = "Reset";
+
+/* Camera */
+"camera.accessDenied" = "Camera access denied. Go to Settings > MiWarp to enable.";
+"camera.notAvailable" = "Camera not available";
+
+/* Generic */
+"error.somethingWentWrong" = "Something went wrong";
+"loading.default" = "Loading...";

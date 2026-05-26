@@ -14,16 +14,16 @@ struct PairingView: View {
                     Button {
                         showScanner = true
                     } label: {
-                        Label("Scan QR Code", systemImage: "qrcode.viewfinder")
+                        Label(String(localized: "pairing.scanQR"), systemImage: "qrcode.viewfinder")
                     }
 
                     NavigationLink {
                         ManualConnectionSheet()
                     } label: {
-                        Label("Manual Setup", systemImage: "keyboard")
+                        Label(String(localized: "pairing.manualSetup"), systemImage: "keyboard")
                     }
                 } header: {
-                    Text("Add Connection")
+                    Text(String(localized: "pairing.addConnection"))
                 }
                 .listRowBackground(theme.cardBg)
 
@@ -40,7 +40,7 @@ struct PairingView: View {
                             )
                         }
                     } header: {
-                        Text("Saved Connections")
+                        Text(String(localized: "pairing.savedConnections"))
                     }
                     .listRowBackground(theme.cardBg)
                 }
@@ -48,7 +48,7 @@ struct PairingView: View {
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(MWPatternedBackdrop())
-            .navigationTitle("Connect")
+            .navigationTitle(String(localized: "action.connect"))
             .sheet(isPresented: $showScanner) {
                 QRScannerSheet()
             }
@@ -61,19 +61,19 @@ struct PairingView: View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Connect Desktop")
+                    Text(String(localized: "pairing.connectDesktop"))
                         .font(.title2.weight(.semibold))
                         .foregroundColor(.white)
 
-                    Text("Scan QR code or enter details manually.")
+                    Text(String(localized: "pairing.heroSubtitle"))
                         .font(.callout)
                         .foregroundColor(.white.opacity(0.85))
                 }
 
                 HStack(spacing: 8) {
-                    heroPill(icon: "server.rack", label: "Enable Server")
-                    heroPill(icon: "network", label: "LAN Access")
-                    heroPill(icon: "qrcode.viewfinder", label: "Scan QR")
+                    heroPill(icon: "server.rack", label: String(localized: "pairing.enableServer"))
+                    heroPill(icon: "network", label: String(localized: "pairing.lanAccess"))
+                    heroPill(icon: "qrcode.viewfinder", label: String(localized: "pairing.scanQR"))
                 }
             }
             .padding(.vertical, 8)
@@ -161,14 +161,14 @@ struct ConnectionRow: View {
                 Button {
                     onDisconnect?()
                 } label: {
-                    Label("Disconnect", systemImage: "xmark.circle")
+                    Label(String(localized: "action.disconnect"), systemImage: "xmark.circle")
                 }
                 .tint(MWColors.statusError)
             } else {
                 Button {
                     onConnect?()
                 } label: {
-                    Label("Connect", systemImage: "play.fill")
+                    Label(String(localized: "action.connect"), systemImage: "play.fill")
                 }
                 .tint(MWColors.statusSuccess)
             }
@@ -176,7 +176,7 @@ struct ConnectionRow: View {
             Button(role: .destructive) {
                 onDelete?()
             } label: {
-                Label("Delete", systemImage: "trash")
+                Label(String(localized: "action.delete"), systemImage: "trash")
             }
         }
         .contextMenu {
@@ -184,20 +184,20 @@ struct ConnectionRow: View {
                 Button {
                     onDisconnect?()
                 } label: {
-                    Label("Disconnect", systemImage: "xmark.circle")
+                    Label(String(localized: "action.disconnect"), systemImage: "xmark.circle")
                 }
             } else {
                 Button {
                     onConnect?()
                 } label: {
-                    Label("Connect", systemImage: "play.fill")
+                    Label(String(localized: "action.connect"), systemImage: "play.fill")
                 }
             }
             Divider()
             Button(role: .destructive) {
                 onDelete?()
             } label: {
-                Label("Delete", systemImage: "trash")
+                Label(String(localized: "action.delete"), systemImage: "trash")
             }
         }
     }
@@ -219,21 +219,21 @@ struct ManualConnectionSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Server") {
-                    TextField("Name (optional)", text: $name)
-                    TextField("Host (e.g. 192.168.1.100)", text: $host)
+                Section(String(localized: "pairing.server")) {
+                    TextField(String(localized: "pairing.namePlaceholder"), text: $name)
+                    TextField(String(localized: "pairing.hostPlaceholder"), text: $host)
                         .textContentType(.URL)
                         .autocapitalization(.none)
-                    TextField("Port", text: $port)
+                    TextField(String(localized: "pairing.portPlaceholder"), text: $port)
                         .keyboardType(.numberPad)
                 }
 
-                Section("Authentication") {
-                    SecureField("Token", text: $token)
+                Section(String(localized: "pairing.authentication")) {
+                    SecureField(String(localized: "pairing.tokenPlaceholder"), text: $token)
                 }
 
                 Section {
-                    Toggle("Set as Default", isOn: $isDefault)
+                    Toggle(String(localized: "pairing.setDefault"), isOn: $isDefault)
                 }
 
                 if let error {
@@ -244,14 +244,14 @@ struct ManualConnectionSheet: View {
                     }
                 }
             }
-            .navigationTitle("New Connection")
+            .navigationTitle(String(localized: "pairing.newConnection"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(String(localized: "action.cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save & Connect") { save() }
+                    Button(String(localized: "pairing.saveAndConnect")) { save() }
                         .disabled(host.isEmpty || port.isEmpty || token.isEmpty)
                 }
             }
@@ -260,7 +260,7 @@ struct ManualConnectionSheet: View {
 
     private func save() {
         guard let portInt = Int(port) else {
-            error = "Invalid port number"
+            error = String(localized: "pairing.invalidPort")
             return
         }
 
@@ -300,7 +300,7 @@ struct QRScannerSheet: View {
                 if isAuthenticating {
                     HStack(spacing: 8) {
                         ProgressView()
-                        Text("Verifying...")
+                        Text(String(localized: "pairing.verifying"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -314,11 +314,11 @@ struct QRScannerSheet: View {
                         .padding()
                 }
             }
-            .navigationTitle("Scan QR Code")
+            .navigationTitle(String(localized: "pairing.scanQR"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(String(localized: "action.cancel")) { dismiss() }
                 }
             }
         }
@@ -327,12 +327,12 @@ struct QRScannerSheet: View {
     private func handleQRCode(_ code: String) {
         guard let url = URL(string: code),
               let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
-            error = "Invalid QR code format"
+            error = String(localized: "pairing.invalidQRFormat")
             return
         }
 
         guard components.scheme == "miwarp", components.host == "connect" else {
-            error = "Not a MiWarp QR code"
+            error = String(localized: "pairing.notMiWarpQR")
             return
         }
 
@@ -341,7 +341,7 @@ struct QRScannerSheet: View {
               let portStr = queryItems.first(where: { $0.name == "port" })?.value,
               let port = Int(portStr),
               let token = queryItems.first(where: { $0.name == "token" })?.value else {
-            error = "Missing connection parameters"
+            error = String(localized: "pairing.missingParams")
             return
         }
 
@@ -360,15 +360,15 @@ struct QRScannerSheet: View {
                     case .success:
                         self.connectWithQrCode(host: host, port: port, token: token, label: label)
                     case .authFailed:
-                        self.error = "Authentication Failed: invalid token"
+                        self.error = String(localized: "pairing.authFailed")
                     case .networkError:
-                        self.error = "Server Unavailable: cannot reach \(host):\(port)"
+                        self.error = String(format: String(localized: "pairing.serverUnavailable"), host, "\(port)")
                     }
                 }
             } catch {
                 await MainActor.run {
                     self.isAuthenticating = false
-                    self.error = "Server Unavailable: \(error.localizedDescription)"
+                    self.error = String(format: String(localized: "pairing.serverUnavailableDetail"), error.localizedDescription)
                 }
             }
         }

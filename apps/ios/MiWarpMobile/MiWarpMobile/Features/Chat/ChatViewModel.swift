@@ -30,7 +30,7 @@ final class ChatViewModel: ObservableObject {
 
     func loadHistory() async {
         guard store?.isConnected == true, let rpc = store?.rpc else {
-            error = "Not connected"
+            error = String(localized: "error.notConnected")
             isLoading = false
             return
         }
@@ -99,7 +99,7 @@ final class ChatViewModel: ObservableObject {
             try await rpc.sendMessage(runId: runId, message: message)
         } catch {
             inputText = message
-            self.error = "Failed to send: \(error.localizedDescription)"
+            self.error = String(format: String(localized: "error.failedToSend"), error.localizedDescription)
         }
     }
 
@@ -110,7 +110,7 @@ final class ChatViewModel: ObservableObject {
         do {
             try await rpc.stopSession(runId: runId)
         } catch {
-            self.error = "Failed to stop: \(error.localizedDescription)"
+            self.error = String(format: String(localized: "error.failedToStop"), error.localizedDescription)
         }
     }
 
@@ -120,7 +120,7 @@ final class ChatViewModel: ObservableObject {
             let newRunId = try await rpc.forkSession(runId: runId)
             MiWarpLogger.shared.info("Forked session: \(newRunId)")
         } catch {
-            self.error = "Failed to fork: \(error.localizedDescription)"
+            self.error = String(format: String(localized: "error.failedToFork"), error.localizedDescription)
         }
     }
 
@@ -137,7 +137,7 @@ final class ChatViewModel: ObservableObject {
             )
             reducer.removePermission(requestId: requestId)
         } catch {
-            self.error = "Permission response failed: \(error.localizedDescription)"
+            self.error = String(format: String(localized: "error.permissionResponseFailed"), error.localizedDescription)
         }
     }
 
