@@ -108,7 +108,7 @@
 
   <!-- Step Type -->
   <div class="space-y-1.5">
-    <label class="text-xs font-medium text-muted-foreground">Step Type</label>
+    <span class="text-xs font-medium text-muted-foreground">Step Type</span>
     <select
       value={step.type}
       onchange={handleTypeChange}
@@ -125,7 +125,7 @@
 
   <!-- Description -->
   <div class="space-y-1.5">
-    <label class="text-xs font-medium text-muted-foreground">Description</label>
+    <span class="text-xs font-medium text-muted-foreground">Description</span>
     <input
       type="text"
       value={step.description}
@@ -137,12 +137,12 @@
 
   <!-- Parameters -->
   <div class="space-y-3">
-    <label class="text-xs font-medium text-muted-foreground">Parameters</label>
+    <span class="text-xs font-medium text-muted-foreground">Parameters</span>
 
     <div class="rounded-lg border bg-card p-3 space-y-3">
       {#if step.type === "navigate"}
         <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">URL</label>
+          <span class="text-xs text-muted-foreground">URL</span>
           <input
             type="text"
             value={step.params.url ?? ""}
@@ -154,7 +154,7 @@
       {:else if step.type === "click" || step.type === "double_click" || step.type === "right_click" || step.type === "hover"}
         <div class="grid grid-cols-2 gap-3">
           <div class="space-y-1.5">
-            <label class="text-xs text-muted-foreground">X</label>
+            <span class="text-xs text-muted-foreground">X</span>
             <input
               type="number"
               value={step.params.coordinate?.[0] ?? ""}
@@ -168,7 +168,7 @@
             />
           </div>
           <div class="space-y-1.5">
-            <label class="text-xs text-muted-foreground">Y</label>
+            <span class="text-xs text-muted-foreground">Y</span>
             <input
               type="number"
               value={step.params.coordinate?.[1] ?? ""}
@@ -183,7 +183,7 @@
           </div>
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">Element Ref (optional)</label>
+          <span class="text-xs text-muted-foreground">Element Ref (optional)</span>
           <input
             type="text"
             value={step.params.ref ?? ""}
@@ -194,7 +194,7 @@
         </div>
       {:else if step.type === "type"}
         <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">Text</label>
+          <span class="text-xs text-muted-foreground">Text</span>
           <textarea
             value={step.params.text ?? ""}
             oninput={(e) => handleParamChange("text", (e.target as HTMLTextAreaElement).value)}
@@ -205,7 +205,7 @@
         </div>
         <div class="grid grid-cols-2 gap-3">
           <div class="space-y-1.5">
-            <label class="text-xs text-muted-foreground">X</label>
+            <span class="text-xs text-muted-foreground">X</span>
             <input
               type="number"
               value={step.params.coordinate?.[0] ?? ""}
@@ -219,7 +219,7 @@
             />
           </div>
           <div class="space-y-1.5">
-            <label class="text-xs text-muted-foreground">Y</label>
+            <span class="text-xs text-muted-foreground">Y</span>
             <input
               type="number"
               value={step.params.coordinate?.[1] ?? ""}
@@ -235,7 +235,7 @@
         </div>
       {:else if step.type === "wait"}
         <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">Duration (ms)</label>
+          <span class="text-xs text-muted-foreground">Duration (ms)</span>
           <input
             type="number"
             value={step.params.duration ?? 1000}
@@ -246,7 +246,7 @@
           />
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">Condition</label>
+          <span class="text-xs text-muted-foreground">Condition</span>
           <select
             value={step.params.condition ?? "timeout"}
             onchange={(e) => handleParamChange("condition", (e.target as HTMLSelectElement).value)}
@@ -259,7 +259,7 @@
         </div>
       {:else if step.type === "scroll"}
         <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">Direction</label>
+          <span class="text-xs text-muted-foreground">Direction</span>
           <select
             value={step.params.direction ?? "down"}
             onchange={(e) => handleParamChange("direction", (e.target as HTMLSelectElement).value)}
@@ -272,7 +272,7 @@
           </select>
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">Scroll Amount (ticks)</label>
+          <span class="text-xs text-muted-foreground">Scroll Amount (ticks)</span>
           <input
             type="number"
             value={step.params.scrollAmount ?? 3}
@@ -286,7 +286,7 @@
         </div>
       {:else if step.type === "screenshot"}
         <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">Options</label>
+          <span class="text-xs text-muted-foreground">Options</span>
           <div class="flex items-center gap-2">
             <input
               type="checkbox"
@@ -301,7 +301,7 @@
         </div>
       {:else if step.type === "find"}
         <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">Query</label>
+          <span class="text-xs text-muted-foreground">Query</span>
           <input
             type="text"
             value={step.params.query ?? ""}
@@ -312,7 +312,7 @@
         </div>
       {:else if step.type === "execute_js"}
         <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">JavaScript Code</label>
+          <span class="text-xs text-muted-foreground">JavaScript Code</span>
           <textarea
             value={step.params.script ?? ""}
             oninput={(e) => handleParamChange("script", (e.target as HTMLTextAreaElement).value)}
@@ -323,7 +323,7 @@
         </div>
       {:else if step.type === "switch_tab"}
         <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">Tab Index</label>
+          <span class="text-xs text-muted-foreground">Tab Index</span>
           <input
             type="number"
             value={step.params.tabId ?? 0}
@@ -338,7 +338,7 @@
           <div class="text-xs font-medium text-muted-foreground">Start Position</div>
           <div class="grid grid-cols-2 gap-3">
             <div class="space-y-1.5">
-              <label class="text-xs text-muted-foreground">Start X</label>
+              <span class="text-xs text-muted-foreground">Start X</span>
               <input
                 type="number"
                 value={step.params.startCoordinate?.[0] ?? ""}
@@ -351,7 +351,7 @@
               />
             </div>
             <div class="space-y-1.5">
-              <label class="text-xs text-muted-foreground">Start Y</label>
+              <span class="text-xs text-muted-foreground">Start Y</span>
               <input
                 type="number"
                 value={step.params.startCoordinate?.[1] ?? ""}
@@ -367,7 +367,7 @@
           <div class="text-xs font-medium text-muted-foreground">End Position</div>
           <div class="grid grid-cols-2 gap-3">
             <div class="space-y-1.5">
-              <label class="text-xs text-muted-foreground">End X</label>
+              <span class="text-xs text-muted-foreground">End X</span>
               <input
                 type="number"
                 value={step.params.endCoordinate?.[0] ?? ""}
@@ -380,7 +380,7 @@
               />
             </div>
             <div class="space-y-1.5">
-              <label class="text-xs text-muted-foreground">End Y</label>
+              <span class="text-xs text-muted-foreground">End Y</span>
               <input
                 type="number"
                 value={step.params.endCoordinate?.[1] ?? ""}
@@ -396,7 +396,7 @@
         </div>
       {:else if step.type === "upload_file"}
         <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">File Path</label>
+          <span class="text-xs text-muted-foreground">File Path</span>
           <input
             type="text"
             value={step.params.filePath ?? ""}
@@ -407,7 +407,7 @@
         </div>
       {:else if step.type === "select_option"}
         <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">Element Ref</label>
+          <span class="text-xs text-muted-foreground">Element Ref</span>
           <input
             type="text"
             value={step.params.ref ?? ""}
@@ -417,7 +417,7 @@
           />
         </div>
         <div class="space-y-1.5">
-          <label class="text-xs text-muted-foreground">Value or Index</label>
+          <span class="text-xs text-muted-foreground">Value or Index</span>
           <input
             type="text"
             value={step.params.value ?? String(step.params.index ?? "")}
@@ -439,12 +439,12 @@
 
   <!-- Advanced Options -->
   <div class="space-y-3">
-    <label class="text-xs font-medium text-muted-foreground">Advanced</label>
+    <span class="text-xs font-medium text-muted-foreground">Advanced</span>
 
     <div class="rounded-lg border bg-card p-3 space-y-3">
       <!-- Timeout -->
       <div class="space-y-1.5">
-        <label class="text-xs text-muted-foreground">Timeout (ms)</label>
+        <span class="text-xs text-muted-foreground">Timeout (ms)</span>
         <input
           type="number"
           value={step.timeout ?? 30000}
@@ -456,7 +456,7 @@
 
       <!-- On Error -->
       <div class="space-y-1.5">
-        <label class="text-xs text-muted-foreground">On Error</label>
+        <span class="text-xs text-muted-foreground">On Error</span>
         <select
           value={step.onError}
           onchange={handleOnErrorChange}

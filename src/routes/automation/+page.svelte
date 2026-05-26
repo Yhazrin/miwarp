@@ -251,8 +251,9 @@
 
       <div class="space-y-4">
         <div>
-          <label class="text-sm font-medium">Script Name</label>
+          <label for="new-script-name" class="text-sm font-medium">Script Name</label>
           <input
+            id="new-script-name"
             type="text"
             bind:value={newScriptName}
             class="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"

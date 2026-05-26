@@ -54,7 +54,10 @@
   }: Props = $props();
 
   // Current step index
-  let currentStepIndex = $state(initialStep);
+  let currentStepIndex = $state(0);
+  $effect(() => {
+    currentStepIndex = initialStep;
+  });
 
   // Navigation state
   let isTransitioning = $state(false);

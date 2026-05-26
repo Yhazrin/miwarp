@@ -3417,6 +3417,7 @@
                     : 'bg-muted'}"
                   role="switch"
                   aria-checked={webStatus?.enabled ?? false}
+                  aria-label={t("settings_general_webEnabled")}
                   disabled={webRestarting}
                   onclick={async () => {
                     const newEnabled = !webStatus?.enabled;
@@ -3632,11 +3633,11 @@
                 <div class="border-t border-border/30 pt-4 space-y-3">
                   <!-- Pairing Link -->
                   <div class="space-y-1.5">
-                    <label
+                    <p
                       class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
                     >
                       {t("settings_mobile_pairingLink") || "Pairing Link"}
-                    </label>
+                    </p>
                     <div class="flex items-center gap-2">
                       <code
                         class="flex-1 rounded-md border bg-muted/50 px-3 py-2 font-mono text-xs overflow-hidden text-ellipsis whitespace-nowrap"

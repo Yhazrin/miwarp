@@ -41,7 +41,10 @@
 
 <div
   class="group relative rounded-lg border bg-card p-4 transition-all hover:border-primary/50 hover:shadow-md"
+  role="button"
+  tabindex="0"
   onclick={() => onSelect?.(script)}
+  onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect?.(script); } }}
 >
   <!-- Header -->
   <div class="flex items-start justify-between gap-3">
@@ -134,6 +137,7 @@
     <div class="relative">
       <button
         class="rounded-md p-1.5 hover:bg-accent transition-colors"
+        aria-label="More options"
         onclick={(e) => {
           e.stopPropagation();
           showMenu = !showMenu;
@@ -149,6 +153,7 @@
       {#if showMenu}
         <div
           class="absolute right-0 top-full mt-1 z-10 w-32 rounded-lg border bg-popover shadow-lg animate-fade-in"
+          role="none"
           onclick={(e) => e.stopPropagation()}
         >
           <button

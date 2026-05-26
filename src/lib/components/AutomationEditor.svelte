@@ -26,8 +26,11 @@
 
   let { script, onSave, onClose }: Props = $props();
 
-  // State
-  let editedScript = $state<AutomationScript>({ ...script });
+  // State — initialized from prop via effect to avoid state_referenced_locally
+  let editedScript = $state<AutomationScript>({} as AutomationScript);
+  $effect(() => {
+    editedScript = { ...script };
+  });
   let selectedStepIndex = $state<number | null>(null);
   let isDragging = $state(false);
   let dragIndex = $state<number | null>(null);
@@ -273,7 +276,7 @@
       <!-- Metadata -->
       <div class="border-b p-4 space-y-3">
         <div>
-          <label class="text-xs font-medium text-muted-foreground">Description</label>
+          <span class="text-xs font-medium text-muted-foreground">Description</span>
           <textarea
             value={editedScript.description}
             oninput={handleDescriptionChange}
@@ -285,7 +288,7 @@
 
         <div class="flex gap-3">
           <div class="flex-1">
-            <label class="text-xs font-medium text-muted-foreground">Category</label>
+            <span class="text-xs font-medium text-muted-foreground">Category</span>
             <select
               value={editedScript.category}
               onchange={handleCategoryChange}
@@ -299,7 +302,7 @@
         </div>
 
         <div>
-          <label class="text-xs font-medium text-muted-foreground">Tags</label>
+          <span class="text-xs font-medium text-muted-foreground">Tags</span>
           <div class="mt-1 flex flex-wrap gap-1.5">
             {#each editedScript.tags as tag}
               <span class="inline-flex items-center gap-1 rounded bg-accent px-2 py-0.5 text-xs">
@@ -347,7 +350,10 @@
                   : 'hover:border-primary/50'}
                   {isDragging && dragIndex === index ? 'opacity-50' : ''}"
                 draggable="true"
+                role="button"
+                tabindex="0"
                 onclick={() => handleStepSelect(index)}
+                onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleStepSelect(index); } }}
                 ondragstart={(e) => handleDragStart(e, index)}
                 ondragover={(e) => handleDragOver(e, index)}
                 ondrop={(e) => handleDrop(e, index)}
