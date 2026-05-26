@@ -3,6 +3,7 @@ import SwiftUI
 struct SessionHubView: View {
     @EnvironmentObject private var store: MiWarpConnectionStore
     @EnvironmentObject private var theme: MWTheme
+    let usesInlineChat: Bool
     #if canImport(ActivityKit)
     @StateObject private var syncManager = SessionSyncManager.shared
     #endif
@@ -11,6 +12,26 @@ struct SessionHubView: View {
     @State private var error: String?
     @State private var searchText = ""
     @State private var filters = SessionFilters()
+    @State private var localSelectedRun: MiWarpRun?
+    @StateObject private var toastPresenter = MiToastPresenter()
+    private let externalSelectedRun: Binding<MiWarpRun?>?
+
+    init(usesInlineChat: Bool = false, selectedRun: Binding<MiWarpRun?>? = nil) {
+        self.usesInlineChat = usesInlineChat
+        self.externalSelectedRun = selectedRun
+    }
+
+    private var selectedRun: MiWarpRun? {
+        externalSelectedRun?.wrappedValue ?? localSelectedRun
+    }
+
+    private func selectRun(_ run: MiWarpRun) {
+        if let externalSelectedRun {
+            externalSelectedRun.wrappedValue = run
+        } else {
+            localSelectedRun = run
+        }
+    }
 
     private var filteredRuns: [MiWarpRun] {
         runs.filter { run in
@@ -42,71 +63,129 @@ struct SessionHubView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if !store.isConnected && runs.isEmpty {
-                    notConnectedView
-                } else if store.isConnected && !isLoading && runs.isEmpty {
-                    connectedEmptyView
-                } else if isLoading && runs.isEmpty {
-                    ContentUnavailableView {
-                        Label(String(localized: "sessions.loading"), systemImage: "arrow.clockwise")
-                    } description: {
-                        Text(String(localized: "sessions.fetching"))
-                    }
-                } else if let error, runs.isEmpty {
-                    ContentUnavailableView {
-                        Label(String(localized: "sessions.cannotLoad"), systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        Button(String(localized: "action.retry")) { Task { await loadRuns() } }
-                            .buttonStyle(.bordered)
-                    }
-                } else {
-                    sessionList
-                }
+        MWAdaptiveReader { layout in
+            if usesInlineChat && layout.shouldUseSplitView {
+                inlineSplitBody(layout: layout)
+            } else {
+                compactBody(layout: layout)
             }
+        }
+    }
+
+    private func compactBody(layout: MWAdaptiveLayout) -> some View {
+        NavigationStack {
+            contentState(layout: layout, navigationMode: .push)
             .navigationTitle(String(localized: "sessions.title"))
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchText, prompt: String(localized: "sessions.search"))
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    if store.isConnected {
-                        Menu {
-                            filterMenuContent
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text(activeFilterLabel)
-                                    .font(.caption)
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 10, weight: .medium))
-                            }
-                            .foregroundColor(filters.isActive ? theme.tabActive : .secondary)
-                        }
-
-                        Button {
-                            Task { await loadRuns() }
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
-                        }
-                    }
-                }
-            }
-            .task {
-                if store.isConnected {
-                    await loadRuns()
-                }
-            }
+            .toolbar { toolbarContent }
+            .task { await loadRunsIfConnected() }
             .onChange(of: store.isConnected) { _, connected in
-                if connected {
-                    Task { await loadRuns() }
+                if connected { Task { await loadRuns() } }
+            }
+            .refreshable { await loadRuns() }
+            .background(MWPatternedBackdrop())
+            .miToastPresenter(toastPresenter)
+        }
+    }
+
+    private func inlineSplitBody(layout: MWAdaptiveLayout) -> some View {
+        HStack(spacing: 0) {
+            NavigationStack {
+                contentState(layout: layout, navigationMode: .selection)
+                    .navigationTitle("Sessions")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .searchable(text: $searchText, prompt: "Search sessions...")
+                    .toolbar { toolbarContent }
+                    .task { await loadRunsIfConnected() }
+                    .onChange(of: store.isConnected) { _, connected in
+                        if connected { Task { await loadRuns() } }
+                    }
+                    .refreshable { await loadRuns() }
+            }
+            .frame(width: layout.listColumnWidth)
+
+            Divider()
+
+            NavigationStack {
+                if let selectedRun {
+                    ChatView(runId: selectedRun.id, runTitle: selectedRun.displayTitle)
+                } else {
+                    ContentUnavailableView {
+                        Label("Select a session", systemImage: "bubble.left.and.bubble.right")
+                    } description: {
+                        Text("Choose a conversation to continue.")
+                    }
+                    .frame(maxWidth: layout.detailMaxWidth)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(MWPatternedBackdrop())
+                    .navigationTitle("Session")
+                    .navigationBarTitleDisplayMode(.inline)
                 }
             }
-            .refreshable {
-                await loadRuns()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(MWPatternedBackdrop())
+        .miToastPresenter(toastPresenter)
+    }
+
+    @ViewBuilder
+    private func contentState(layout: MWAdaptiveLayout, navigationMode: SessionNavigationMode) -> some View {
+        if !store.isConnected && runs.isEmpty {
+            notConnectedView(layout: layout)
+        } else if store.isConnected && !isLoading && runs.isEmpty {
+            connectedEmptyView(layout: layout)
+        } else if isLoading && runs.isEmpty {
+            ScrollView {
+                VStack(spacing: MWSpacing.md) {
+                    MiSkeletonCard(lines: 4, height: 168)
+                    MiSkeletonCard(lines: 3, showsAvatar: true)
+                    MiSkeletonCard(lines: 3, showsAvatar: true)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 20)
+                .frame(maxWidth: layout.contentMaxWidth)
+                .frame(maxWidth: .infinity)
             }
             .background(MWPatternedBackdrop())
+        } else if let error, runs.isEmpty {
+            ContentUnavailableView {
+                Label("Cannot Load Sessions", systemImage: "exclamationmark.triangle")
+            } description: {
+                Text(error)
+            } actions: {
+                Button("Retry") { Task { await loadRuns() } }
+                    .buttonStyle(.bordered)
+            }
+            .frame(maxWidth: layout.contentMaxWidth)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            sessionList(layout: layout, navigationMode: navigationMode)
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            if store.isConnected {
+                Menu {
+                    filterMenuContent
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(activeFilterLabel)
+                            .font(.caption)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                    .foregroundColor(filters.isActive ? theme.tabActive : .secondary)
+                }
+
+                Button {
+                    Task { await loadRuns() }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+            }
         }
     }
 
@@ -143,14 +222,21 @@ struct SessionHubView: View {
 
     // MARK: - Not Connected View
 
-    private var notConnectedView: some View {
+    private func notConnectedView(layout: MWAdaptiveLayout) -> some View {
         ScrollView {
             VStack(spacing: 16) {
+                HomeDashboardView(
+                    runs: [],
+                    connectionState: store.connectionState,
+                    activeConnection: store.activeConnection,
+                    toastPresenter: toastPresenter
+                )
                 notConnectedHero
-                statusHint
             }
             .padding(.horizontal, 16)
             .padding(.top, 20)
+            .frame(maxWidth: layout.contentMaxWidth)
+            .frame(maxWidth: .infinity)
         }
         .background(MWPatternedBackdrop())
     }
@@ -220,14 +306,21 @@ struct SessionHubView: View {
 
     // MARK: - Connected Empty View
 
-    private var connectedEmptyView: some View {
+    private func connectedEmptyView(layout: MWAdaptiveLayout) -> some View {
         ScrollView {
             VStack(spacing: 16) {
+                HomeDashboardView(
+                    runs: runs,
+                    connectionState: store.connectionState,
+                    activeConnection: store.activeConnection,
+                    toastPresenter: toastPresenter
+                )
                 connectedHeroCard
-                connectedStatusHint
             }
             .padding(.horizontal, 16)
             .padding(.top, 20)
+            .frame(maxWidth: layout.contentMaxWidth)
+            .frame(maxWidth: .infinity)
         }
         .background(MWPatternedBackdrop())
     }
@@ -339,10 +432,10 @@ struct SessionHubView: View {
         VStack(spacing: 4) {
             Text(String(localized: "sessions.noDesktop"))
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.cardTextSecondary)
             Text(String(localized: "sessions.startDesktop"))
                 .font(.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(theme.cardTextTertiary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -358,10 +451,10 @@ struct SessionHubView: View {
         VStack(spacing: 4) {
             Text(String(localized: "sessions.noSessions"))
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.cardTextSecondary)
             Text(String(localized: "sessions.startSession"))
                 .font(.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(theme.cardTextTertiary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -393,8 +486,20 @@ struct SessionHubView: View {
 
     // MARK: - Session List
 
-    private var sessionList: some View {
+    private func sessionList(layout: MWAdaptiveLayout, navigationMode: SessionNavigationMode) -> some View {
         List {
+            Section {
+                HomeDashboardView(
+                    runs: runs,
+                    connectionState: store.connectionState,
+                    activeConnection: store.activeConnection,
+                    toastPresenter: toastPresenter
+                )
+                .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 8, trailing: 16))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+            }
+
             // Connection status header
             Section {
                 EmptyView()
@@ -438,8 +543,22 @@ struct SessionHubView: View {
             } else {
                 Section {
                     ForEach(filteredRuns) { run in
-                        NavigationLink(value: run) {
-                            SessionRowView(run: run)
+                        sessionRow(for: run, navigationMode: navigationMode)
+                        .listRowBackground(rowBackground(for: run, navigationMode: navigationMode))
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            if run.status == .running {
+                                Button(role: .destructive) {
+                                    // stop action
+                                } label: {
+                                    Label(String(localized: "action.stop"), systemImage: "stop.fill")
+                                }
+                            }
+                            Button {
+                                // pin action
+                            } label: {
+                                Label(String(localized: "action.pin"), systemImage: "pin")
+                            }
+                            .tint(MWColors.statusWarning)
                         }
                         .contextMenu {
                             Button {
@@ -468,8 +587,40 @@ struct SessionHubView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(MWPatternedBackdrop())
+        .frame(maxWidth: navigationMode == .push ? layout.contentMaxWidth : .infinity)
+        .frame(maxWidth: .infinity)
         .navigationDestination(for: MiWarpRun.self) { run in
             ChatView(runId: run.id, runTitle: run.displayTitle)
+        }
+    }
+
+    @ViewBuilder
+    private func sessionRow(for run: MiWarpRun, navigationMode: SessionNavigationMode) -> some View {
+        switch navigationMode {
+        case .push:
+            NavigationLink(value: run) {
+                SessionRowView(run: run)
+            }
+        case .selection:
+            Button {
+                selectRun(run)
+            } label: {
+                SessionRowView(run: run)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func rowBackground(for run: MiWarpRun, navigationMode: SessionNavigationMode) -> Color {
+        guard navigationMode == .selection, selectedRun?.id == run.id else {
+            return Color.clear
+        }
+        return theme.accentPrimary.opacity(0.14)
+    }
+
+    private func loadRunsIfConnected() async {
+        if store.isConnected {
+            await loadRuns()
         }
     }
 
@@ -572,4 +723,9 @@ struct SessionFilters {
         status = nil
         source = nil
     }
+}
+
+private enum SessionNavigationMode {
+    case push
+    case selection
 }

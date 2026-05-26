@@ -27,6 +27,11 @@ const BUILTIN_THEMES: ThemeDefinition[] = [
   { id: "morandi-light", name: t("theme_morandiLight"), type: "light", accent: "#A67FA3" },
   { id: "dev-preview", name: t("theme_devPreview"), type: "dark", accent: "#26C2A3" },
   { id: "dev-preview-light", name: t("theme_devPreviewLight"), type: "light", accent: "#26C2A3" },
+  { id: "carbonPink", name: t("theme_carbonPink"), type: "dark", accent: "#F43F8A" },
+  { id: "deepSeaMilk", name: t("theme_deepSeaMilk"), type: "dark", accent: "#7DD3FC" },
+  { id: "auroraPomelo", name: t("theme_auroraPomelo"), type: "light", accent: "#F97316" },
+  { id: "pomegranateMist", name: t("theme_pomegranateMist"), type: "light", accent: "#E11D48" },
+  { id: "auroraLime", name: t("theme_auroraLime"), type: "dark", accent: "#A3E635" },
 ];
 
 export type ThemeId = string;

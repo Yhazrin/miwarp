@@ -16,7 +16,10 @@ struct MWStatusIndicator: View {
     }
 
     private var isAnimating: Bool {
-        state == .connecting || state == .reconnecting || state == .authenticating
+        switch state {
+        case .connecting, .reconnecting, .authenticating: return true
+        default: return false
+        }
     }
 
     var body: some View {
@@ -43,7 +46,7 @@ struct MWStatusIndicator: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
-        .background(color.opacity(0.1), in: Capsule())
+        .background(color.opacity(0.12), in: Capsule())
         .animation(.spring(duration: 0.3, bounce: 0.2), value: state)
     }
 }

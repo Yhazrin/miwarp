@@ -4,6 +4,7 @@ import SwiftUI
 
 /// Local test entry for manually starting, updating, completing, and failing Live Activities.
 struct LiveActivityDemoView: View {
+    @EnvironmentObject private var theme: MWTheme
     @State private var syncTaskId = UUID().uuidString.prefix(8).description
     @State private var agentTaskId = UUID().uuidString.prefix(8).description
     @State private var syncCount = 0
@@ -27,12 +28,14 @@ struct LiveActivityDemoView: View {
                         Image(systemName: activitiesEnabled ? "checkmark.circle.fill" : "xmark.circle.fill")
                             .foregroundColor(activitiesEnabled ? MWColors.statusSuccess : MWColors.statusError)
                         Text("Live Activities: \(activitiesEnabled ? "Enabled" : "Disabled")")
+                            .foregroundColor(theme.cardTextPrimary)
                     }
 
                     HStack {
                         Image(systemName: "capsule.portrait.fill")
                             .foregroundColor(MWColors.accentPrimary)
                         Text("Dynamic Island: available on iPhone 14 Pro or later")
+                            .foregroundColor(theme.cardTextPrimary)
                     }
 
                     if !activitiesEnabled {
@@ -43,36 +46,40 @@ struct LiveActivityDemoView: View {
 
                     Text("Other iPhones show Lock Screen Live Activity only.")
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(theme.cardTextSecondary)
                 }
                 .font(.callout)
             } header: {
                 Text("Device Capability")
+                    .foregroundColor(theme.cardTextSecondary)
             }
 
             // MARK: - Session Sync Demo
             Section {
                 HStack {
                     Text("Task ID")
+                        .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text(syncTaskId)
                         .font(.caption.monospaced())
-                        .foregroundColor(.secondary)
+                        .foregroundColor(theme.cardTextSecondary)
                 }
 
                 HStack {
                     Text("Phase")
+                        .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text(syncPhase.displayTitle)
-                        .foregroundColor(syncPhase.isActive ? .primary : .secondary)
+                        .foregroundColor(syncPhase.isActive ? theme.cardTextPrimary : theme.cardTextSecondary)
                 }
 
                 HStack {
                     Text("Progress")
+                        .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text("\(syncCount) / \(syncTotal)")
                         .font(.caption.monospaced())
-                        .foregroundColor(.secondary)
+                        .foregroundColor(theme.cardTextSecondary)
                 }
 
                 if let result = syncResult {
@@ -82,6 +89,7 @@ struct LiveActivityDemoView: View {
                                 .foregroundColor(result.isSuccess ? MWColors.statusSuccess : MWColors.statusError)
                             Text(result.displayMessage)
                                 .font(.caption)
+                                .foregroundColor(theme.cardTextPrimary)
                         }
                     }
                     .padding(.vertical, 4)
@@ -91,6 +99,7 @@ struct LiveActivityDemoView: View {
                     startSync()
                 } label: {
                     Label("Start Sync Activity", systemImage: "play.fill")
+                        .foregroundColor(theme.cardTextPrimary)
                 }
                 .disabled(syncPhase != .preparing)
 
@@ -98,6 +107,7 @@ struct LiveActivityDemoView: View {
                     advanceSync()
                 } label: {
                     Label("Advance Sync", systemImage: "arrow.right.circle")
+                        .foregroundColor(theme.cardTextPrimary)
                 }
                 .disabled(!syncPhase.isActive)
 
@@ -105,6 +115,7 @@ struct LiveActivityDemoView: View {
                     completeSync()
                 } label: {
                     Label("Complete Sync", systemImage: "checkmark.circle")
+                        .foregroundColor(theme.cardTextPrimary)
                 }
                 .disabled(!syncPhase.isActive)
 
@@ -120,34 +131,39 @@ struct LiveActivityDemoView: View {
                     resetSync()
                 } label: {
                     Label("Reset", systemImage: "arrow.counterclockwise")
+                        .foregroundColor(theme.cardTextPrimary)
                 }
             } header: {
                 Label("Session Sync", systemImage: "arrow.triangle.2.circlepath")
+                    .foregroundColor(theme.cardTextSecondary)
             }
 
             // MARK: - Agent Task Demo
             Section {
                 HStack {
                     Text("Task ID")
+                        .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text(agentTaskId)
                         .font(.caption.monospaced())
-                        .foregroundColor(.secondary)
+                        .foregroundColor(theme.cardTextSecondary)
                 }
 
                 HStack {
                     Text("Phase")
+                        .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text(agentPhase.displayTitle)
-                        .foregroundColor(agentPhase.isActive ? .primary : .secondary)
+                        .foregroundColor(agentPhase.isActive ? theme.cardTextPrimary : theme.cardTextSecondary)
                 }
 
                 HStack {
                     Text("Progress")
+                        .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text("\(agentStep) / \(agentTotal)")
                         .font(.caption.monospaced())
-                        .foregroundColor(.secondary)
+                        .foregroundColor(theme.cardTextSecondary)
                 }
 
                 if let result = agentResult {
@@ -157,6 +173,7 @@ struct LiveActivityDemoView: View {
                                 .foregroundColor(result.isSuccess ? MWColors.statusSuccess : MWColors.statusError)
                             Text(result.displayMessage)
                                 .font(.caption)
+                                .foregroundColor(theme.cardTextPrimary)
                         }
                     }
                     .padding(.vertical, 4)
@@ -166,6 +183,7 @@ struct LiveActivityDemoView: View {
                     startAgent()
                 } label: {
                     Label("Start Agent Activity", systemImage: "play.fill")
+                        .foregroundColor(theme.cardTextPrimary)
                 }
                 .disabled(agentPhase != .queued)
 
@@ -173,6 +191,7 @@ struct LiveActivityDemoView: View {
                     advanceAgent()
                 } label: {
                     Label("Advance Agent", systemImage: "arrow.right.circle")
+                        .foregroundColor(theme.cardTextPrimary)
                 }
                 .disabled(!agentPhase.isActive)
 
@@ -180,6 +199,7 @@ struct LiveActivityDemoView: View {
                     completeAgent()
                 } label: {
                     Label("Complete Agent", systemImage: "checkmark.circle")
+                        .foregroundColor(theme.cardTextPrimary)
                 }
                 .disabled(!agentPhase.isActive)
 
@@ -195,6 +215,7 @@ struct LiveActivityDemoView: View {
                     resetAgent()
                 } label: {
                     Label("Reset", systemImage: "arrow.counterclockwise")
+                        .foregroundColor(theme.cardTextPrimary)
                 }
             } header: {
                 Label("Agent Task", systemImage: "brain")

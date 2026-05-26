@@ -27,6 +27,7 @@ struct ChatView: View {
     @EnvironmentObject private var store: MiWarpConnectionStore
     @EnvironmentObject private var theme: MWTheme
     @StateObject private var viewModel: ChatViewModel
+    @StateObject private var toastPresenter = MiToastPresenter()
     @State private var inputBarHeight: CGFloat = 60
 
     init(runId: String, runTitle: String) {
@@ -36,6 +37,30 @@ struct ChatView: View {
     }
 
     var body: some View {
+        MWAdaptiveReader { layout in
+            content(layout: layout)
+        }
+        .sheet(isPresented: $viewModel.showRawEvents) {
+            RawEventView(events: viewModel.rawEvents)
+        }
+        .sheet(isPresented: $viewModel.showArtifacts) {
+            NavigationStack {
+                ArtifactsView(runId: runId)
+            }
+        }
+        .task {
+            viewModel.attach(store: store)
+            await viewModel.loadHistory()
+            await viewModel.subscribeToEvents()
+        }
+        .onChange(of: store.isConnected) { _, connected in
+            if connected && viewModel.reducer.messages.isEmpty && !viewModel.isLoading {
+                Task { await viewModel.loadHistory() }
+            }
+        }
+    }
+
+    private func content(layout: MWAdaptiveLayout) -> some View {
         VStack(spacing: 0) {
             // Reconnect banner
             if case .reconnecting(let attempt) = store.connectionState {
@@ -64,24 +89,25 @@ struct ChatView: View {
                     .buttonStyle(.bordered)
                 }
             } else {
-                MessageListView(
+                MessageTimeline(
                     messages: viewModel.reducer.messages,
                     complexityMode: viewModel.complexityMode,
                     inputBarHeight: inputBarHeight,
+                    pendingPermissions: viewModel.reducer.pendingPermissions,
                     onApprove: { requestId, approved in
                         Task { await viewModel.handlePermission(requestId: requestId, approved: approved) }
-                    }
+                    },
+                    toastPresenter: toastPresenter
                 )
             }
 
             // Pending permissions
             if let permission = viewModel.reducer.pendingPermissions.first {
-                InlineApprovalView(
-                    toolName: permission.toolName,
-                    description: permission.description
-                ) { approved in
+                PermissionRequestCard(permission: permission) { approved in
                     Task { await viewModel.handlePermission(requestId: permission.id, approved: approved) }
                 }
+                .frame(maxWidth: layout.chatAssistantBubbleMaxWidth)
+                .frame(maxWidth: .infinity)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
             }
@@ -91,6 +117,11 @@ struct ChatView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar(.hidden, for: .tabBar)
         .background(MWPatternedBackdrop())
+        .miToastPresenter(toastPresenter)
+        .onChange(of: viewModel.error) { _, error in
+            guard let error else { return }
+            toastPresenter.error("Chat error", message: error)
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
@@ -120,34 +151,24 @@ struct ChatView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            ChatInputBar(
+            ComposerBar(
                 text: $viewModel.inputText,
                 isRunning: viewModel.reducer.currentStatus == .running,
                 canSend: store.isConnected,
+                provider: viewModel.reducer.sessionAgent ?? "MiWarp",
+                model: viewModel.reducer.sessionModel ?? "Model pending",
+                runtimeStatus: store.connectionState,
+                toastPresenter: toastPresenter,
                 onSend: { Task { await viewModel.sendMessage() } },
                 onStop: { Task { await viewModel.stopSession() } },
-                onFork: { Task { await viewModel.forkSession() } }
+                onAttach: {
+                    toastPresenter.show("Attachments", message: "File attach is reserved for the next mobile pass.", kind: .info)
+                }
             )
+            .frame(maxWidth: layout.chatContentMaxWidth)
+            .frame(maxWidth: .infinity)
             .readSize { size in
                 inputBarHeight = size.height
-            }
-        }
-        .sheet(isPresented: $viewModel.showRawEvents) {
-            RawEventView(events: viewModel.rawEvents)
-        }
-        .sheet(isPresented: $viewModel.showArtifacts) {
-            NavigationStack {
-                ArtifactsView(runId: runId)
-            }
-        }
-        .task {
-            viewModel.attach(store: store)
-            await viewModel.loadHistory()
-            await viewModel.subscribeToEvents()
-        }
-        .onChange(of: store.isConnected) { _, connected in
-            if connected && viewModel.reducer.messages.isEmpty && !viewModel.isLoading {
-                Task { await viewModel.loadHistory() }
             }
         }
     }
@@ -172,7 +193,7 @@ struct ChatView: View {
                     Text(viewModel.formatTokens(viewModel.reducer.usage.inputTokens))
                         .font(.caption.monospaced())
                 }
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(theme.cardTextTertiary)
                 .contentTransition(.numericText())
             }
 
@@ -183,7 +204,7 @@ struct ChatView: View {
                     Text(viewModel.formatTokens(viewModel.reducer.usage.outputTokens))
                         .font(.caption.monospaced())
                 }
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(theme.cardTextTertiary)
                 .contentTransition(.numericText())
             }
 
@@ -228,7 +249,7 @@ struct ChatView: View {
                     .font(.subheadline.weight(.medium))
                 Text("Attempt \(attempt)")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.cardTextSecondary)
             }
             Spacer()
             Button("Cancel") {
@@ -249,6 +270,7 @@ struct InlineApprovalView: View {
     let description: String?
     var onApprove: ((Bool) -> Void)?
     @State private var didRespond = false
+    @EnvironmentObject private var theme: MWTheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -263,12 +285,12 @@ struct InlineApprovalView: View {
 
             Label(toolName, systemImage: "wrench.and.screwdriver")
                 .font(.caption.monospaced())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.cardTextSecondary)
 
             if let desc = description, !desc.isEmpty {
                 Text(desc)
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.cardTextSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 

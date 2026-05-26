@@ -380,7 +380,7 @@ enum MWColors {
         )
     )
 
-    // deepSeaMilk — bg: 深海蓝 #122E8A, cards: 白色, font: 白色
+    // deepSeaMilk — bg: 深海蓝 #122E8A, cards: 白色, font: 黑色
     private static let deepSeaMilk = MWThemePair(
         light: MWThemeTokens(
             bgDeepest: Color(hex: 0x122E8A),
@@ -389,9 +389,9 @@ enum MWColors {
             bgSurface: Color(hex: 0xFFFFFF),
             glassBg: Color(hex: 0xFFFFFF, opacity: 0.88),
             glassBorder: Color(hex: 0xFFFFFF, opacity: 0.20),
-            textPrimary: Color(hex: 0xFFFFFF),
-            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
-            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
+            textPrimary: Color(hex: 0x000000),
+            textSecondary: Color(hex: 0x000000).opacity(0.75),
+            textTertiary: Color(hex: 0x000000).opacity(0.50),
             accentPrimary: Color(hex: 0xFFFFFF),
             accentSecondary: Color(hex: 0x122E8A),
             accentOnAccent: Color(hex: 0x122E8A),
@@ -416,9 +416,9 @@ enum MWColors {
             bgSurface: Color(hex: 0xFFFFFF),
             glassBg: Color(hex: 0xFFFFFF, opacity: 0.88),
             glassBorder: Color(hex: 0xFFFFFF, opacity: 0.20),
-            textPrimary: Color(hex: 0xFFFFFF),
-            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
-            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
+            textPrimary: Color(hex: 0x000000),
+            textSecondary: Color(hex: 0x000000).opacity(0.75),
+            textTertiary: Color(hex: 0x000000).opacity(0.50),
             accentPrimary: Color(hex: 0xFFFFFF),
             accentSecondary: Color(hex: 0x122E8A),
             accentOnAccent: Color(hex: 0x122E8A),
@@ -438,7 +438,7 @@ enum MWColors {
         )
     )
 
-    // auroraPomelo — bg: 极光紫 #9F82FD, cards: 蜜柚黄 #FBEA03
+    // auroraPomelo — bg: 极光紫 #9F82FD, cards: 蜜柚黄 #FBEA03, font: 黑色
     private static let auroraPomelo = MWThemePair(
         light: MWThemeTokens(
             bgDeepest: Color(hex: 0x9F82FD),
@@ -447,9 +447,9 @@ enum MWColors {
             bgSurface: Color(hex: 0xFBEA03),
             glassBg: Color(hex: 0xFBEA03, opacity: 0.88),
             glassBorder: Color(hex: 0xFFFFFF, opacity: 0.15),
-            textPrimary: Color(hex: 0xFFFFFF),
-            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
-            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
+            textPrimary: Color(hex: 0x000000),
+            textSecondary: Color(hex: 0x000000).opacity(0.75),
+            textTertiary: Color(hex: 0x000000).opacity(0.50),
             accentPrimary: Color(hex: 0xFBEA03),
             accentSecondary: Color(hex: 0x9F82FD),
             accentOnAccent: Color(hex: 0x000000),
@@ -474,9 +474,9 @@ enum MWColors {
             bgSurface: Color(hex: 0xFBEA03),
             glassBg: Color(hex: 0xFBEA03, opacity: 0.88),
             glassBorder: Color(hex: 0xFFFFFF, opacity: 0.15),
-            textPrimary: Color(hex: 0xFFFFFF),
-            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
-            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
+            textPrimary: Color(hex: 0x000000),
+            textSecondary: Color(hex: 0x000000).opacity(0.75),
+            textTertiary: Color(hex: 0x000000).opacity(0.50),
             accentPrimary: Color(hex: 0xFBEA03),
             accentSecondary: Color(hex: 0x9F82FD),
             accentOnAccent: Color(hex: 0x000000),
@@ -496,7 +496,7 @@ enum MWColors {
         )
     )
 
-    // pomegranateMist — bg: 石榴红 #E72D48, cards: 雾粉桃 #F1DDDF
+    // pomegranateMist — bg: 石榴红 #E72D48, cards: 雾粉桃 #F1DDDF, font: 黑色
     private static let pomegranateMist = MWThemePair(
         light: MWThemeTokens(
             bgDeepest: Color(hex: 0xE72D48),
@@ -505,9 +505,9 @@ enum MWColors {
             bgSurface: Color(hex: 0xF1DDDF),
             glassBg: Color(hex: 0xF1DDDF, opacity: 0.88),
             glassBorder: Color(hex: 0xFFFFFF, opacity: 0.15),
-            textPrimary: Color(hex: 0xFFFFFF),
-            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
-            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
+            textPrimary: Color(hex: 0x000000),
+            textSecondary: Color(hex: 0x000000).opacity(0.75),
+            textTertiary: Color(hex: 0x000000).opacity(0.50),
             accentPrimary: Color(hex: 0xF1DDDF),
             accentSecondary: Color(hex: 0xE72D48),
             accentOnAccent: Color(hex: 0xE72D48),
@@ -532,9 +532,9 @@ enum MWColors {
             bgSurface: Color(hex: 0xF1DDDF),
             glassBg: Color(hex: 0xF1DDDF, opacity: 0.88),
             glassBorder: Color(hex: 0xFFFFFF, opacity: 0.15),
-            textPrimary: Color(hex: 0xFFFFFF),
-            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
-            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
+            textPrimary: Color(hex: 0x000000),
+            textSecondary: Color(hex: 0x000000).opacity(0.75),
+            textTertiary: Color(hex: 0x000000).opacity(0.50),
             accentPrimary: Color(hex: 0xF1DDDF),
             accentSecondary: Color(hex: 0xE72D48),
             accentOnAccent: Color(hex: 0xE72D48),
@@ -554,7 +554,7 @@ enum MWColors {
         )
     )
 
-    // auroraLime — bg: #01847F teal, cards: #F9D2E4 light pink, font: white
+    // auroraLime — bg: #01847F teal, cards: #F9D2E4 light pink, font: 黑色
     private static let auroraLime = MWThemePair(
         light: MWThemeTokens(
             bgDeepest: Color(hex: 0x01847F),
@@ -563,9 +563,9 @@ enum MWColors {
             bgSurface: Color(hex: 0xF9D2E4),
             glassBg: Color(hex: 0xF9D2E4, opacity: 0.88),
             glassBorder: Color(hex: 0xFFFFFF, opacity: 0.15),
-            textPrimary: Color(hex: 0xFFFFFF),
-            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
-            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
+            textPrimary: Color(hex: 0x000000),
+            textSecondary: Color(hex: 0x000000).opacity(0.75),
+            textTertiary: Color(hex: 0x000000).opacity(0.50),
             accentPrimary: Color(hex: 0xF9D2E4),
             accentSecondary: Color(hex: 0x01847F),
             accentOnAccent: Color(hex: 0x01847F),
@@ -590,9 +590,9 @@ enum MWColors {
             bgSurface: Color(hex: 0xF9D2E4),
             glassBg: Color(hex: 0xF9D2E4, opacity: 0.88),
             glassBorder: Color(hex: 0xFFFFFF, opacity: 0.15),
-            textPrimary: Color(hex: 0xFFFFFF),
-            textSecondary: Color(hex: 0xFFFFFF).opacity(0.75),
-            textTertiary: Color(hex: 0xFFFFFF).opacity(0.50),
+            textPrimary: Color(hex: 0x000000),
+            textSecondary: Color(hex: 0x000000).opacity(0.75),
+            textTertiary: Color(hex: 0x000000).opacity(0.50),
             accentPrimary: Color(hex: 0xF9D2E4),
             accentSecondary: Color(hex: 0x01847F),
             accentOnAccent: Color(hex: 0x01847F),

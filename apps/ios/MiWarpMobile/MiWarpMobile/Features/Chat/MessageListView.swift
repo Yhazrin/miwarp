@@ -6,18 +6,28 @@ struct MessageListView: View {
     var inputBarHeight: CGFloat = 60
     var onApprove: ((String, Bool) -> Void)?
 
+    @EnvironmentObject private var theme: MWTheme
+
     var body: some View {
+        MWAdaptiveReader { layout in
+            content(layout: layout)
+        }
+    }
+
+    private func content(layout: MWAdaptiveLayout) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 10) {
                     ForEach(messages) { message in
-                        messageContent(message)
+                        messageContent(message, layout: layout)
                             .id(message.id)
                     }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .padding(.bottom, inputBarHeight + 16)
+                .frame(maxWidth: layout.chatContentMaxWidth)
+                .frame(maxWidth: .infinity)
             }
             .background(MWPatternedBackdrop())
             .onChange(of: messages.count) { _, _ in
@@ -40,12 +50,12 @@ struct MessageListView: View {
     }
 
     @ViewBuilder
-    private func messageContent(_ message: DisplayMessage) -> some View {
+    private func messageContent(_ message: DisplayMessage, layout: MWAdaptiveLayout) -> some View {
         switch message.role {
         case .user:
-            userBubble(message.content)
+            userBubble(message.content, layout: layout)
         case .assistant:
-            assistantContent(message)
+            assistantContent(message, layout: layout)
         case .system:
             systemMessage(message.content)
         }
@@ -53,13 +63,14 @@ struct MessageListView: View {
 
     // MARK: - User Bubble
 
-    private func userBubble(_ content: String) -> some View {
+    private func userBubble(_ content: String, layout: MWAdaptiveLayout) -> some View {
         HStack {
             Spacer(minLength: 48)
             Text(content)
                 .font(.body)
                 .foregroundStyle(.white)
                 .textSelection(.enabled)
+                .frame(maxWidth: layout.chatUserBubbleMaxWidth, alignment: .leading)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
                 .background(.tint, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -69,7 +80,7 @@ struct MessageListView: View {
     // MARK: - Assistant Content
 
     @ViewBuilder
-    private func assistantContent(_ message: DisplayMessage) -> some View {
+    private func assistantContent(_ message: DisplayMessage, layout: MWAdaptiveLayout) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             // Thinking (developer/raw mode only)
             if complexityMode == .developer || complexityMode == .raw {
@@ -77,36 +88,40 @@ struct MessageListView: View {
                     DisclosureGroup {
                         Text(thinking)
                             .font(.caption.monospaced())
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(theme.cardTextTertiary)
                             .textSelection(.enabled)
                     } label: {
                         Label(String(localized: "chat.thinking"), systemImage: "brain")
                             .font(.caption)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(theme.cardTextTertiary)
                     }
                     .padding(10)
+                    .frame(maxWidth: layout.chatAssistantBubbleMaxWidth, alignment: .leading)
                     .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
                 }
             }
 
             // Message content
             if !message.content.isEmpty {
-                assistantBubble(message.content, isStreaming: message.isStreaming)
+                assistantBubble(message.content, isStreaming: message.isStreaming, layout: layout)
             }
 
             // Tool calls
             ForEach(message.toolCalls) { toolCall in
-                toolCallInline(toolCall)
+                toolCallInline(toolCall, layout: layout)
             }
         }
+        .frame(maxWidth: layout.chatAssistantBubbleMaxWidth, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func assistantBubble(_ content: String, isStreaming: Bool) -> some View {
+    private func assistantBubble(_ content: String, isStreaming: Bool, layout: MWAdaptiveLayout) -> some View {
         HStack(spacing: 8) {
             Text(content)
                 .font(.body)
-                .foregroundStyle(.primary)
+                .foregroundStyle(theme.cardTextPrimary)
                 .textSelection(.enabled)
+                .frame(maxWidth: layout.chatAssistantBubbleMaxWidth, alignment: .leading)
 
             if isStreaming {
                 ProgressView()
@@ -115,13 +130,13 @@ struct MessageListView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(MWColors.cardBg, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(theme.cardBg, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     // MARK: - Tool Call
 
     @ViewBuilder
-    private func toolCallInline(_ toolCall: DisplayToolCall) -> some View {
+    private func toolCallInline(_ toolCall: DisplayToolCall, layout: MWAdaptiveLayout) -> some View {
         switch complexityMode {
         case .simple:
             if toolCall.isComplete && toolCall.isError {
@@ -139,10 +154,11 @@ struct MessageListView: View {
                     .foregroundStyle(toolCall.isError ? MWColors.statusError : (toolCall.isComplete ? MWColors.statusSuccess : MWColors.accentPrimary))
             }
             .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(theme.cardTextSecondary)
 
         case .developer, .raw:
             ToolCallDisclosureView(toolCall: toolCall)
+                .frame(maxWidth: layout.chatAssistantBubbleMaxWidth, alignment: .leading)
         }
     }
 
@@ -153,7 +169,7 @@ struct MessageListView: View {
             Spacer()
             Text(content)
                 .font(.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(theme.cardTextTertiary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
                 .background(.quaternary, in: Capsule())
@@ -167,6 +183,7 @@ struct MessageListView: View {
 struct ToolCallDisclosureView: View {
     let toolCall: DisplayToolCall
     @State private var isExpanded = false
+    @EnvironmentObject private var theme: MWTheme
 
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
@@ -175,10 +192,10 @@ struct ToolCallDisclosureView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(String(localized: "chat.toolInput"))
                             .font(.caption2.weight(.medium))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(theme.cardTextTertiary)
                         Text(input)
                             .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(theme.cardTextSecondary)
                             .textSelection(.enabled)
                     }
                 }
@@ -187,10 +204,10 @@ struct ToolCallDisclosureView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(String(localized: "chat.toolOutput"))
                             .font(.caption2.weight(.medium))
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(theme.cardTextTertiary)
                         Text(output)
                             .font(.caption.monospaced())
-                            .foregroundStyle(toolCall.isError ? .red : .secondary)
+                            .foregroundStyle(toolCall.isError ? MWColors.statusError : theme.cardTextSecondary)
                             .lineLimit(15)
                             .textSelection(.enabled)
                     }

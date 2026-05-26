@@ -3,6 +3,7 @@ import SwiftUI
 struct ArtifactsView: View {
     let runId: String
     @EnvironmentObject private var store: MiWarpConnectionStore
+    @EnvironmentObject private var theme: MWTheme
     @State private var artifacts: RunArtifacts?
     @State private var isLoading = false
     @State private var error: String?
@@ -32,7 +33,7 @@ struct ArtifactsView: View {
                                 Label {
                                     Text(path)
                                         .font(.caption.monospaced())
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(theme.cardTextSecondary)
                                         .textSelection(.enabled)
                                 } icon: {
                                     Image(systemName: pathIcon(path))
@@ -47,7 +48,7 @@ struct ArtifactsView: View {
                             ForEach(artifacts.commands, id: \.self) { command in
                                 Label(command, systemImage: "terminal")
                                     .font(.caption.monospaced())
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(theme.cardTextSecondary)
                                     .textSelection(.enabled)
                             }
                         }

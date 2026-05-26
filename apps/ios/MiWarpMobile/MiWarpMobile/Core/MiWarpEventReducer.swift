@@ -59,6 +59,8 @@ final class MiWarpEventReducer: ObservableObject {
     @Published private(set) var pendingPermissions: [PendingPermission] = []
     @Published private(set) var usage: UsageSummary = UsageSummary()
     @Published private(set) var currentStatus: RunStatus = .idle
+    @Published private(set) var sessionAgent: String?
+    @Published private(set) var sessionModel: String?
     @Published private(set) var lastSeq: Int = 0
     @Published private(set) var streamingMessageId: String?
     /// Tracks all in-flight streaming message IDs so handleMessageComplete can find them.
@@ -119,8 +121,8 @@ final class MiWarpEventReducer: ObservableObject {
         case .commandOutput(let payload):
             handleCommandOutput(payload)
 
-        case .sessionInit:
-            break
+        case .sessionInit(let payload):
+            handleSessionInit(payload)
 
         default:
             break
@@ -141,6 +143,8 @@ final class MiWarpEventReducer: ObservableObject {
         pendingPermissions.removeAll()
         usage = UsageSummary()
         currentStatus = .idle
+        sessionAgent = nil
+        sessionModel = nil
         lastSeq = 0
         seenSeqs.removeAll()
         streamingMessageId = nil
@@ -148,6 +152,11 @@ final class MiWarpEventReducer: ObservableObject {
     }
 
     // MARK: - Handlers
+
+    private func handleSessionInit(_ payload: SessionInitPayload) {
+        sessionAgent = payload.agent
+        sessionModel = payload.model
+    }
 
     private func handleUserMessage(_ payload: UserMessagePayload) {
         guard let content = payload.content else { return }

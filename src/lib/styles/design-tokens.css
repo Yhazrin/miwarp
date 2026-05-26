@@ -688,3 +688,329 @@ html.light:not([data-theme]) {
   --popover: 0 0% 100%;
   --popover-foreground: 220 15% 12%;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   High-contrast MiWarp collision themes
+   These themes are self-contained token sets so they do not fall back to
+   the system light/dark canvas when selected through custom appearance.
+   ═══════════════════════════════════════════════════════════ */
+
+[data-theme="carbonPink"] {
+  --miwarp-bg-deepest: 224 18% 7%;
+  --miwarp-bg-deep: 226 16% 10%;
+  --miwarp-bg-base: 228 14% 13%;
+  --miwarp-bg-elevated: 228 12% 17%;
+  --miwarp-bg-surface: 230 12% 20%;
+  --miwarp-bg-hover: 330 18% 24%;
+
+  --miwarp-glass-bg: 226 16% 10%;
+  --miwarp-glass-opacity: 0.8;
+  --miwarp-glass-border: 333 86% 62%;
+  --miwarp-glass-border-opacity: 0.18;
+  --miwarp-glass-blur: 18px;
+
+  --miwarp-overlay: 224 28% 4% / 0.62;
+
+  --miwarp-accent-primary: 333 89% 60%;
+  --miwarp-accent-violet: 292 84% 64%;
+  --miwarp-accent-blue: 199 88% 60%;
+
+  --miwarp-text-primary: 330 28% 96%;
+  --miwarp-text-secondary: 330 14% 68%;
+  --miwarp-text-tertiary: 330 10% 48%;
+
+  --miwarp-status-success: 158 68% 55%;
+  --miwarp-status-warning: 38 92% 58%;
+  --miwarp-status-error: 350 88% 66%;
+  --miwarp-status-info: 199 88% 60%;
+  --miwarp-status-running: 333 89% 60%;
+  --miwarp-status-done: 158 68% 55%;
+  --miwarp-status-failed: 350 88% 66%;
+  --miwarp-status-pending: 38 92% 58%;
+  --miwarp-status-paused: 226 12% 64%;
+  --miwarp-status-blocked: 18 92% 60%;
+  --miwarp-status-idle: 230 10% 58%;
+
+  --background: 224 18% 7%;
+  --foreground: 330 28% 96%;
+  --primary: 333 89% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 228 12% 17%;
+  --secondary-foreground: 330 24% 92%;
+  --muted: 230 12% 20%;
+  --muted-foreground: 330 10% 58%;
+  --accent: 292 84% 64%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 350 88% 66%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 330 18% 26%;
+  --input: 228 12% 17%;
+  --ring: 333 89% 60%;
+  --radius: 0.625rem;
+  --sidebar-background: 226 16% 9%;
+  --sidebar-foreground: 330 24% 92%;
+  --sidebar-primary: 333 89% 60%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 330 18% 22%;
+  --sidebar-accent-foreground: 330 28% 96%;
+  --sidebar-border: 330 16% 18%;
+  --sidebar-ring: 333 89% 60%;
+  --popover: 226 16% 10%;
+  --popover-foreground: 330 28% 96%;
+}
+
+[data-theme="deepSeaMilk"] {
+  --miwarp-bg-deepest: 202 42% 8%;
+  --miwarp-bg-deep: 201 38% 11%;
+  --miwarp-bg-base: 199 32% 15%;
+  --miwarp-bg-elevated: 198 28% 19%;
+  --miwarp-bg-surface: 196 24% 23%;
+  --miwarp-bg-hover: 194 22% 27%;
+
+  --miwarp-glass-bg: 201 38% 11%;
+  --miwarp-glass-opacity: 0.78;
+  --miwarp-glass-border: 43 70% 86%;
+  --miwarp-glass-border-opacity: 0.2;
+  --miwarp-glass-blur: 18px;
+
+  --miwarp-overlay: 202 50% 5% / 0.6;
+
+  --miwarp-accent-primary: 194 92% 72%;
+  --miwarp-accent-violet: 43 78% 84%;
+  --miwarp-accent-blue: 185 76% 55%;
+
+  --miwarp-text-primary: 44 70% 94%;
+  --miwarp-text-secondary: 42 28% 72%;
+  --miwarp-text-tertiary: 199 18% 54%;
+
+  --miwarp-status-success: 160 66% 56%;
+  --miwarp-status-warning: 43 88% 68%;
+  --miwarp-status-error: 5 78% 66%;
+  --miwarp-status-info: 194 92% 72%;
+  --miwarp-status-running: 194 92% 72%;
+  --miwarp-status-done: 160 66% 56%;
+  --miwarp-status-failed: 5 78% 66%;
+  --miwarp-status-pending: 43 88% 68%;
+  --miwarp-status-paused: 199 16% 62%;
+  --miwarp-status-blocked: 24 84% 64%;
+  --miwarp-status-idle: 199 14% 58%;
+
+  --background: 202 42% 8%;
+  --foreground: 44 70% 94%;
+  --primary: 194 92% 72%;
+  --primary-foreground: 202 42% 8%;
+  --secondary: 198 28% 19%;
+  --secondary-foreground: 44 56% 90%;
+  --muted: 196 24% 23%;
+  --muted-foreground: 42 20% 62%;
+  --accent: 43 78% 84%;
+  --accent-foreground: 202 42% 10%;
+  --destructive: 5 78% 66%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 196 24% 28%;
+  --input: 198 28% 19%;
+  --ring: 194 92% 72%;
+  --radius: 0.625rem;
+  --sidebar-background: 202 44% 7%;
+  --sidebar-foreground: 44 60% 90%;
+  --sidebar-primary: 194 92% 72%;
+  --sidebar-primary-foreground: 202 42% 8%;
+  --sidebar-accent: 196 24% 23%;
+  --sidebar-accent-foreground: 44 70% 94%;
+  --sidebar-border: 199 26% 18%;
+  --sidebar-ring: 194 92% 72%;
+  --popover: 201 38% 11%;
+  --popover-foreground: 44 70% 94%;
+}
+
+[data-theme="auroraPomelo"] {
+  --miwarp-bg-deepest: 42 88% 96%;
+  --miwarp-bg-deep: 38 78% 94%;
+  --miwarp-bg-base: 36 80% 97%;
+  --miwarp-bg-elevated: 0 0% 100%;
+  --miwarp-bg-surface: 28 84% 93%;
+  --miwarp-bg-hover: 28 86% 89%;
+
+  --miwarp-glass-bg: 38 78% 96%;
+  --miwarp-glass-opacity: 0.9;
+  --miwarp-glass-border: 18 92% 54%;
+  --miwarp-glass-border-opacity: 0.2;
+  --miwarp-glass-blur: 14px;
+
+  --miwarp-overlay: 18 80% 12% / 0.28;
+
+  --miwarp-accent-primary: 18 92% 54%;
+  --miwarp-accent-violet: 288 82% 62%;
+  --miwarp-accent-blue: 177 64% 42%;
+
+  --miwarp-text-primary: 24 38% 16%;
+  --miwarp-text-secondary: 24 18% 42%;
+  --miwarp-text-tertiary: 24 12% 58%;
+
+  --miwarp-status-success: 150 48% 38%;
+  --miwarp-status-warning: 32 88% 45%;
+  --miwarp-status-error: 0 72% 50%;
+  --miwarp-status-info: 177 64% 38%;
+  --miwarp-status-running: 18 92% 54%;
+  --miwarp-status-done: 150 48% 38%;
+  --miwarp-status-failed: 0 72% 50%;
+  --miwarp-status-pending: 32 88% 45%;
+  --miwarp-status-paused: 24 12% 52%;
+  --miwarp-status-blocked: 288 72% 48%;
+  --miwarp-status-idle: 24 10% 55%;
+
+  --background: 36 80% 97%;
+  --foreground: 24 38% 16%;
+  --primary: 18 92% 54%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 28 84% 93%;
+  --secondary-foreground: 24 38% 16%;
+  --muted: 34 60% 92%;
+  --muted-foreground: 24 18% 42%;
+  --accent: 288 82% 92%;
+  --accent-foreground: 288 72% 36%;
+  --destructive: 0 72% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 28 36% 82%;
+  --input: 28 40% 86%;
+  --ring: 18 92% 54%;
+  --radius: 0.625rem;
+  --sidebar-background: 42 88% 95%;
+  --sidebar-foreground: 24 38% 16%;
+  --sidebar-primary: 18 92% 54%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 28 86% 89%;
+  --sidebar-accent-foreground: 24 38% 16%;
+  --sidebar-border: 28 36% 82%;
+  --sidebar-ring: 18 92% 54%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 24 38% 16%;
+}
+
+[data-theme="pomegranateMist"] {
+  --miwarp-bg-deepest: 350 72% 97%;
+  --miwarp-bg-deep: 348 64% 95%;
+  --miwarp-bg-base: 346 60% 98%;
+  --miwarp-bg-elevated: 0 0% 100%;
+  --miwarp-bg-surface: 346 46% 93%;
+  --miwarp-bg-hover: 346 44% 89%;
+
+  --miwarp-glass-bg: 346 60% 97%;
+  --miwarp-glass-opacity: 0.9;
+  --miwarp-glass-border: 345 78% 48%;
+  --miwarp-glass-border-opacity: 0.18;
+  --miwarp-glass-blur: 14px;
+
+  --miwarp-overlay: 345 78% 12% / 0.26;
+
+  --miwarp-accent-primary: 345 78% 48%;
+  --miwarp-accent-violet: 267 72% 58%;
+  --miwarp-accent-blue: 198 62% 42%;
+
+  --miwarp-text-primary: 346 42% 16%;
+  --miwarp-text-secondary: 346 18% 42%;
+  --miwarp-text-tertiary: 346 12% 58%;
+
+  --miwarp-status-success: 152 44% 38%;
+  --miwarp-status-warning: 36 76% 45%;
+  --miwarp-status-error: 345 78% 48%;
+  --miwarp-status-info: 198 62% 42%;
+  --miwarp-status-running: 345 78% 48%;
+  --miwarp-status-done: 152 44% 38%;
+  --miwarp-status-failed: 345 78% 48%;
+  --miwarp-status-pending: 36 76% 45%;
+  --miwarp-status-paused: 346 12% 54%;
+  --miwarp-status-blocked: 267 72% 48%;
+  --miwarp-status-idle: 346 10% 56%;
+
+  --background: 346 60% 98%;
+  --foreground: 346 42% 16%;
+  --primary: 345 78% 48%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 346 46% 93%;
+  --secondary-foreground: 346 42% 16%;
+  --muted: 346 34% 92%;
+  --muted-foreground: 346 18% 42%;
+  --accent: 267 72% 92%;
+  --accent-foreground: 267 72% 34%;
+  --destructive: 345 78% 48%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 346 30% 84%;
+  --input: 346 30% 88%;
+  --ring: 345 78% 48%;
+  --radius: 0.625rem;
+  --sidebar-background: 350 72% 96%;
+  --sidebar-foreground: 346 42% 16%;
+  --sidebar-primary: 345 78% 48%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 346 44% 89%;
+  --sidebar-accent-foreground: 346 42% 16%;
+  --sidebar-border: 346 30% 84%;
+  --sidebar-ring: 345 78% 48%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 346 42% 16%;
+}
+
+[data-theme="auroraLime"] {
+  --miwarp-bg-deepest: 214 36% 7%;
+  --miwarp-bg-deep: 214 32% 10%;
+  --miwarp-bg-base: 212 28% 13%;
+  --miwarp-bg-elevated: 210 24% 17%;
+  --miwarp-bg-surface: 208 22% 21%;
+  --miwarp-bg-hover: 112 20% 24%;
+
+  --miwarp-glass-bg: 214 32% 10%;
+  --miwarp-glass-opacity: 0.78;
+  --miwarp-glass-border: 80 88% 62%;
+  --miwarp-glass-border-opacity: 0.18;
+  --miwarp-glass-blur: 18px;
+
+  --miwarp-overlay: 214 44% 4% / 0.62;
+
+  --miwarp-accent-primary: 80 88% 62%;
+  --miwarp-accent-violet: 170 78% 48%;
+  --miwarp-accent-blue: 204 92% 62%;
+
+  --miwarp-text-primary: 86 38% 94%;
+  --miwarp-text-secondary: 88 18% 68%;
+  --miwarp-text-tertiary: 90 12% 48%;
+
+  --miwarp-status-success: 80 88% 62%;
+  --miwarp-status-warning: 43 92% 58%;
+  --miwarp-status-error: 350 82% 66%;
+  --miwarp-status-info: 204 92% 62%;
+  --miwarp-status-running: 80 88% 62%;
+  --miwarp-status-done: 80 88% 62%;
+  --miwarp-status-failed: 350 82% 66%;
+  --miwarp-status-pending: 43 92% 58%;
+  --miwarp-status-paused: 210 12% 62%;
+  --miwarp-status-blocked: 170 78% 48%;
+  --miwarp-status-idle: 210 10% 58%;
+
+  --background: 214 36% 7%;
+  --foreground: 86 38% 94%;
+  --primary: 80 88% 62%;
+  --primary-foreground: 214 36% 8%;
+  --secondary: 210 24% 17%;
+  --secondary-foreground: 86 34% 90%;
+  --muted: 208 22% 21%;
+  --muted-foreground: 88 14% 58%;
+  --accent: 170 78% 48%;
+  --accent-foreground: 214 36% 8%;
+  --destructive: 350 82% 66%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 208 18% 26%;
+  --input: 210 24% 17%;
+  --ring: 80 88% 62%;
+  --radius: 0.625rem;
+  --sidebar-background: 214 38% 7%;
+  --sidebar-foreground: 86 34% 90%;
+  --sidebar-primary: 80 88% 62%;
+  --sidebar-primary-foreground: 214 36% 8%;
+  --sidebar-accent: 112 20% 24%;
+  --sidebar-accent-foreground: 86 38% 94%;
+  --sidebar-border: 208 18% 18%;
+  --sidebar-ring: 80 88% 62%;
+  --popover: 214 32% 10%;
+  --popover-foreground: 86 38% 94%;
+}

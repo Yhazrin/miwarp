@@ -6,6 +6,12 @@ struct PairingView: View {
     @State private var showScanner = false
 
     var body: some View {
+        MWAdaptiveReader { layout in
+            content(layout: layout)
+        }
+    }
+
+    private func content(layout: MWAdaptiveLayout) -> some View {
         NavigationStack {
             List {
                 heroSection
@@ -33,7 +39,7 @@ struct PairingView: View {
                             ConnectionRow(
                                 connection: connection,
                                 isActive: store.activeConnection?.id == connection.id,
-                                connectionState: store.activeConnection?.id == connection.id ? store.connectionState : .disconnected,
+                                connectionState: store.activeConnection?.id == connection.id ? store.connectionState : ConnectionState.disconnected,
                                 onConnect: { store.connect(to: connection) },
                                 onDisconnect: { store.disconnect() },
                                 onDelete: { store.removeConnection(connection) }
@@ -48,6 +54,8 @@ struct PairingView: View {
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(MWPatternedBackdrop())
+            .frame(maxWidth: layout.connectContentMaxWidth)
+            .frame(maxWidth: .infinity)
             .navigationTitle(String(localized: "action.connect"))
             .sheet(isPresented: $showScanner) {
                 QRScannerSheet()
@@ -63,11 +71,11 @@ struct PairingView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(String(localized: "pairing.connectDesktop"))
                         .font(.title2.weight(.semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(heroTextColor)
 
                     Text(String(localized: "pairing.heroSubtitle"))
                         .font(.callout)
-                        .foregroundColor(.white.opacity(0.85))
+                        .foregroundColor(heroSubtextColor)
                 }
 
                 HStack(spacing: 8) {
@@ -104,6 +112,17 @@ struct PairingView: View {
         }
     }
 
+    private var heroTextColor: Color { pillTextColor }
+
+    private var heroSubtextColor: Color {
+        switch theme.accentTheme {
+        case .deepSeaMilk, .auroraPomelo, .auroraLime:
+            return .black.opacity(0.75)
+        default:
+            return .white.opacity(0.85)
+        }
+    }
+
     private func heroPill(icon: String, label: String) -> some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
@@ -124,6 +143,7 @@ struct PairingView: View {
 // MARK: - Connection Row
 
 struct ConnectionRow: View {
+    @EnvironmentObject private var theme: MWTheme
     let connection: MiWarpConnection
     let isActive: Bool
     let connectionState: ConnectionState
@@ -147,7 +167,7 @@ struct ConnectionRow: View {
 
                 Text("\(connection.host):\(connection.port)")
                     .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.cardTextSecondary)
             }
 
             Spacer()

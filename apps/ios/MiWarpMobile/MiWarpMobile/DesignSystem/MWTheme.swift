@@ -212,9 +212,9 @@ final class MWTheme: ObservableObject {
     // MARK: - Card Adaptive Text
 
     /// True when bgSurface is a light color and needs dark text for contrast.
+    /// Uses perceived luminance: surfaces brighter than 0.5 need dark text.
     var isCardSurfaceLight: Bool {
-        // If contrast ratio against white is < 4.5, the surface is light and needs dark text.
-        tokens.bgSurface.contrastRatio(against: .white) < 4.5
+        tokens.bgSurface.perceivedLuminance > 0.5
     }
 
     /// Primary text color for content rendered on bgSurface (card) backgrounds.

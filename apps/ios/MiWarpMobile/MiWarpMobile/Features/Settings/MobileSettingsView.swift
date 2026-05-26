@@ -35,6 +35,12 @@ struct MobileSettingsView: View {
     @State private var showClearTokensConfirm = false
 
     var body: some View {
+        MWAdaptiveReader { layout in
+            content(layout: layout)
+        }
+    }
+
+    private func content(layout: MWAdaptiveLayout) -> some View {
         NavigationStack {
             Form {
                 generalSection
@@ -55,6 +61,8 @@ struct MobileSettingsView: View {
             }
             .scrollContentBackground(.hidden)
             .background(MWPatternedBackdrop())
+            .frame(maxWidth: layout.settingsContentMaxWidth)
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -65,15 +73,18 @@ struct MobileSettingsView: View {
             Picker(selection: $theme.appearanceMode) {
                 ForEach(MWAppearanceMode.allCases) { mode in
                     Label(mode.displayName, systemImage: mode.systemImage)
+                        .foregroundStyle(theme.cardTextPrimary)
                         .tag(mode)
                 }
             } label: {
                 Label(String(localized: "settings.appearance"), systemImage: theme.appearanceMode.systemImage)
+                    .foregroundStyle(theme.accentPrimary)
             }
 
             accentThemePicker
         } header: {
             Label(String(localized: "settings.general"), systemImage: "gearshape.fill")
+                .foregroundStyle(theme.cardTextSecondary)
         }
         .listRowBackground(theme.cardBg)
     }
@@ -118,7 +129,7 @@ struct MobileSettingsView: View {
                     if isSelected {
                         Image(systemName: "checkmark")
                             .font(.caption.bold())
-                            .foregroundColor(.white)
+                            .foregroundColor(theme.cardTextPrimary)
                             .shadow(color: .black.opacity(0.4), radius: 2, x: 0, y: 1)
                             .transition(.scale(scale: 0.5).combined(with: .opacity))
                     }
@@ -134,7 +145,7 @@ struct MobileSettingsView: View {
 
                 Text(accent.displayName)
                     .font(.system(size: 10))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(theme.cardTextSecondary)
                     .lineLimit(1)
             }
         }
@@ -150,7 +161,7 @@ struct MobileSettingsView: View {
                 LabeledContent {
                     Text(connection.host)
                         .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.cardTextSecondary)
                 } label: {
                     Label(connection.name, systemImage: "checkmark.circle.fill")
                         .foregroundStyle(MWColors.statusSuccess)
@@ -160,16 +171,18 @@ struct MobileSettingsView: View {
                     store.disconnect()
                 } label: {
                     Label(String(localized: "action.disconnect"), systemImage: "xmark.circle")
+                        .foregroundStyle(theme.cardTextPrimary)
                 }
 
                 Button {
                     store.reconnect()
                 } label: {
                     Label(String(localized: "action.reconnect"), systemImage: "arrow.clockwise")
+                        .foregroundStyle(theme.cardTextPrimary)
                 }
             } else {
                 Label(String(localized: "connection.noActive"), systemImage: "wifi.slash")
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(theme.cardTextTertiary)
 
                 Button {
                     store.connectToDefault()
@@ -180,6 +193,7 @@ struct MobileSettingsView: View {
             }
         } header: {
             Label(String(localized: "settings.connection"), systemImage: "network")
+                .foregroundStyle(theme.cardTextSecondary)
         }
         .listRowBackground(theme.cardBg)
     }
@@ -189,15 +203,17 @@ struct MobileSettingsView: View {
     private var sessionsSection: some View {
         Section {
             Label(String(localized: "settings.sessionsAutoSync"), systemImage: "info.circle")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(theme.cardTextSecondary)
 
             Button(role: .destructive) {
                 // Clear session history
             } label: {
                 Label(String(localized: "settings.clearSessionHistory"), systemImage: "trash")
+                    .foregroundStyle(theme.cardTextPrimary)
             }
         } header: {
             Label(String(localized: "settings.sessions"), systemImage: "bubble.left.and.bubble.right.fill")
+                .foregroundStyle(theme.cardTextSecondary)
         }
         .listRowBackground(theme.cardBg)
     }
@@ -209,10 +225,11 @@ struct MobileSettingsView: View {
             LabeledContent(String(localized: "settings.defaultMode")) {
                 Text(String(localized: "settings.defaultFocus"))
                     .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.cardTextSecondary)
             }
         } header: {
             Label(String(localized: "settings.aiModels"), systemImage: "cpu")
+                .foregroundStyle(theme.cardTextSecondary)
         }
         .listRowBackground(theme.cardBg)
     }
@@ -225,12 +242,14 @@ struct MobileSettingsView: View {
                 showLogs = true
             } label: {
                 Label(String(localized: "settings.viewLogs"), systemImage: "doc.text")
+                    .foregroundStyle(theme.cardTextPrimary)
             }
 
             Button {
                 copyDebugInfo()
             } label: {
                 Label(String(localized: "settings.copyDebugInfo"), systemImage: "doc.on.doc")
+                    .foregroundStyle(theme.cardTextPrimary)
             }
 
             #if canImport(ActivityKit)
@@ -238,6 +257,7 @@ struct MobileSettingsView: View {
                 LiveActivityDemoView()
             } label: {
                 Label(String(localized: "settings.liveActivityDemo"), systemImage: "livephoto")
+                    .foregroundStyle(theme.cardTextPrimary)
             }
             #endif
 
@@ -245,12 +265,14 @@ struct MobileSettingsView: View {
                 showComponentLab = true
             } label: {
                 Label(String(localized: "settings.componentLab"), systemImage: "square.3.layers.3d")
+                    .foregroundStyle(theme.cardTextPrimary)
             }
 
             Button(role: .destructive) {
                 showClearTokensConfirm = true
             } label: {
                 Label(String(localized: "settings.clearTokens"), systemImage: "key")
+                    .foregroundStyle(theme.cardTextPrimary)
             }
             .confirmationDialog(String(localized: "settings.clearTokensConfirm"), isPresented: $showClearTokensConfirm, titleVisibility: .visible) {
                 Button(String(localized: "settings.removeAll"), role: .destructive) { clearTokens() }
@@ -262,14 +284,16 @@ struct MobileSettingsView: View {
             } label: {
                 HStack {
                     Label(String(localized: "settings.about"), systemImage: "info.circle")
+                        .foregroundStyle(theme.cardTextPrimary)
                     Spacer()
                     Text("v\(appVersion)")
                         .font(.caption.monospaced())
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(theme.cardTextTertiary)
                 }
             }
         } header: {
             Label(String(localized: "settings.advanced"), systemImage: "slider.horizontal.3")
+                .foregroundStyle(theme.cardTextSecondary)
         }
         .listRowBackground(theme.cardBg)
     }
@@ -307,6 +331,7 @@ struct MobileSettingsView: View {
 
 struct LogsView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var theme: MWTheme
     let logger = MiWarpLogger.shared
 
     var body: some View {
@@ -316,10 +341,10 @@ struct LogsView: View {
                     HStack {
                         Text(entry.timestamp, style: .time)
                             .font(.caption.monospaced())
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(theme.cardTextTertiary)
                         Text("[\(entry.category)]")
                             .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(theme.cardTextSecondary)
                         Spacer()
                         Text(entry.level.rawValue.uppercased())
                             .font(.caption2.weight(.medium))
@@ -327,7 +352,7 @@ struct LogsView: View {
                     }
                     Text(entry.message)
                         .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.cardTextSecondary)
                         .textSelection(.enabled)
                 }
                 .padding(.vertical, 2)
@@ -349,7 +374,7 @@ struct LogsView: View {
 
     private func logLevelColor(_ level: MiWarpLogger.LogLevel) -> Color {
         switch level {
-        case .debug: return .secondary
+        case .debug: return theme.cardTextSecondary
         case .info: return MWColors.accentPrimary
         case .warning: return MWColors.statusWarning
         case .error: return MWColors.statusError
@@ -382,12 +407,12 @@ struct AboutView: View {
                         .font(.title2.weight(.semibold))
                     Text(String(format: String(localized: "about.version"), Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"))
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(theme.cardTextTertiary)
                 }
 
                 Text(String(localized: "about.description"))
                     .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(theme.cardTextSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 32)
@@ -409,6 +434,7 @@ struct AboutView: View {
 
 struct ComponentLabView: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var theme: MWTheme
     @State private var ringProgress: Double = 0.65
 
     var body: some View {
@@ -433,13 +459,13 @@ struct ComponentLabView: View {
                             HStack(spacing: 20) {
                                 Text(String(localized: "component.small"))
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(theme.cardTextSecondary)
                                 MWThinkingIndicator(size: .small)
                             }
                             HStack(spacing: 20) {
                                 Text(String(localized: "component.medium"))
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(theme.cardTextSecondary)
                                 MWThinkingIndicator(size: .medium)
                             }
                         }
@@ -467,37 +493,37 @@ struct ComponentLabView: View {
                                 MWStatusDot(status: .connected)
                                 Text(String(localized: "connection.connected"))
                                     .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(theme.cardTextSecondary)
                             }
                             VStack(spacing: 8) {
                                 MWStatusDot(status: .running, showGlow: true)
                                 Text(String(localized: "runStatus.running"))
                                     .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(theme.cardTextSecondary)
                             }
                             VStack(spacing: 8) {
                                 MWStatusDot(status: .syncing)
                                 Text("syncing")
                                     .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(theme.cardTextSecondary)
                             }
                             VStack(spacing: 8) {
                                 MWStatusDot(status: .failed)
                                 Text(String(localized: "runStatus.failed"))
                                     .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(theme.cardTextSecondary)
                             }
                             VStack(spacing: 8) {
                                 MWStatusDot(status: .waiting)
                                 Text(String(localized: "runStatus.waitingApproval"))
                                     .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(theme.cardTextSecondary)
                             }
                             VStack(spacing: 8) {
                                 MWStatusDot(status: .localOnly)
                                 Text("localOnly")
                                     .font(.caption2)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(theme.cardTextSecondary)
                             }
                         }
                     }
@@ -531,7 +557,7 @@ struct ComponentLabView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.headline)
-                .foregroundStyle(MWColors.accentPrimary)
+                .foregroundStyle(theme.accentPrimary)
 
             content()
                 .frame(maxWidth: .infinity)
@@ -539,10 +565,10 @@ struct ComponentLabView: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(MWColors.cardBg)
+                .fill(theme.cardBg)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(MWColors.divider, lineWidth: 0.5)
+                        .strokeBorder(theme.divider, lineWidth: 0.5)
                 )
         )
     }

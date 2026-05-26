@@ -82,15 +82,14 @@ struct RawEventView: View {
                             .foregroundStyle(MWColors.accentPrimary)
                         Text("seq: \(event.seq) · run: \(event.runId.prefix(12))...")
                             .font(.caption.monospaced())
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(theme.cardTextTertiary)
                     }
 
                     Divider()
 
-                    // JSON payload
                     Text(formattedPayload(event))
                         .font(.caption.monospaced())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(theme.cardTextSecondary)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
