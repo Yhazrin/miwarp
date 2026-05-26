@@ -540,7 +540,7 @@
                 <div class="flex items-center gap-2">
                   <span class="h-2 w-2 shrink-0 rounded-full {statusColor(run.status)}"></span>
                   <span class="truncate text-sm font-medium text-foreground">
-                    {run.name || run.promptPreview || "Untitled"}
+                    {run.name || run.promptPreview || t("history_untitled")}
                   </span>
                   {#if run.hasErrors}
                     <span
