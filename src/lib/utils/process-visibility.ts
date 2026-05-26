@@ -1,5 +1,4 @@
 import type { BusToolItem, TimelineEntry } from "$lib/types";
-import { formatDuration } from "$lib/utils/format";
 import { CONTEXT_CLEARED_MARKER } from "$lib/utils/slash-commands";
 
 export type ProcessVisibility = "output" | "guided" | "developer" | "expert";
@@ -54,10 +53,6 @@ export function shouldUseCompactToolCards(mode: ProcessVisibility): boolean {
 
 export function shouldHideToolCards(mode: ProcessVisibility): boolean {
   return mode === "output";
-}
-
-export function shouldShowRightActivityPanel(mode: ProcessVisibility): boolean {
-  return mode !== "output";
 }
 
 export function shouldShowRawDebug(mode: ProcessVisibility): boolean {
@@ -129,111 +124,6 @@ export function guidedToolRowStatusIconKind(
     return "running";
   }
   return "other";
-}
-
-function pushFlattenTools(
-  entry: Extract<TimelineEntry, { kind: "tool" }>,
-  out: BusToolItem[],
-): void {
-  out.push(entry.tool);
-  if (entry.subTimeline) {
-    for (const st of entry.subTimeline) {
-      if (st.kind === "tool") pushFlattenTools(st, out);
-    }
-  }
-}
-
-/** Tools in this assistant turn: between previous user/assistant boundary and this assistant. */
-export function collectToolsBeforeAssistant(
-  timeline: TimelineEntry[],
-  assistantIndex: number,
-): BusToolItem[] {
-  let start = 0;
-  for (let i = assistantIndex - 1; i >= 0; i--) {
-    const e = timeline[i];
-    if (e.kind === "user" || e.kind === "assistant") {
-      start = i + 1;
-      break;
-    }
-  }
-  const out: BusToolItem[] = [];
-  for (let i = start; i < assistantIndex; i++) {
-    const e = timeline[i];
-    if (e.kind === "tool") pushFlattenTools(e, out);
-  }
-  return out;
-}
-
-const READ_NAMES = new Set([
-  "Read",
-  "Grep",
-  "Glob",
-  "grep",
-  "glob",
-  "NotebookRead",
-  "WebFetch",
-  "WebSearch",
-]);
-
-const CMD_NAMES = new Set(["Bash", "bash"]);
-
-const EDIT_NAMES = new Set(["Write", "Edit", "MultiEdit", "EditNotebook", "NotebookEdit"]);
-
-export interface RunProcessStats {
-  reads: number;
-  commands: number;
-  edits: number;
-  errors: number;
-  durationMs: number;
-}
-
-export function computeRunProcessStats(tools: BusToolItem[]): RunProcessStats {
-  let reads = 0;
-  let commands = 0;
-  let edits = 0;
-  let errors = 0;
-  let durationMs = 0;
-  for (const t of tools) {
-    const name = t.tool_name;
-    if (READ_NAMES.has(name)) reads += 1;
-    else if (CMD_NAMES.has(name)) commands += 1;
-    else if (EDIT_NAMES.has(name)) edits += 1;
-
-    if (t.status === "error" || t.status === "denied" || t.status === "permission_denied") {
-      errors += 1;
-    }
-    if (typeof t.duration_ms === "number" && t.duration_ms > 0) durationMs += t.duration_ms;
-  }
-  return { reads, commands, edits, errors, durationMs };
-}
-
-export function formatProcessRunSummaryLine(
-  stats: RunProcessStats,
-  t: (key: string, params?: Record<string, string>) => string,
-): string {
-  const parts: string[] = [];
-  if (stats.reads > 0) {
-    parts.push(t("processRunSummary_reads", { n: String(stats.reads) }));
-  }
-  if (stats.commands > 0) {
-    parts.push(t("processRunSummary_commands", { n: String(stats.commands) }));
-  }
-  if (stats.edits > 0) {
-    parts.push(t("processRunSummary_edits", { n: String(stats.edits) }));
-  }
-  if (stats.errors > 0) {
-    parts.push(t("processRunSummary_errors", { n: String(stats.errors) }));
-  }
-  const body =
-    parts.length > 0 ? parts.join(t("processRunSummary_sep")) : t("processRunSummary_noTools");
-  const time =
-    stats.durationMs > 0
-      ? t("processRunSummary_timePrefix", { time: formatDuration(stats.durationMs) })
-      : "";
-  return t("processRunSummary_full", {
-    body,
-    time: time ? `${t("processRunSummary_sep")}${time}` : "",
-  });
 }
 
 export function shouldShowTimelineCommandOutput(mode: ProcessVisibility, content: string): boolean {

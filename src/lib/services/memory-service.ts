@@ -13,7 +13,7 @@ import { dbg, dbgWarn } from "$lib/utils/debug";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export interface MemoryMetadata {
+interface MemoryMetadata {
   title?: string;
   created?: string;
   updated?: string;
@@ -22,21 +22,21 @@ export interface MemoryMetadata {
   [key: string]: unknown;
 }
 
-export interface ParsedMemoryFile {
+interface ParsedMemoryFile {
   path: string;
   frontmatter: MemoryMetadata;
   content: string;
   rawContent: string;
 }
 
-export interface MemorySearchResult {
+interface MemorySearchResult {
   path: string;
   label: string;
   snippet: string;
   matches: number;
 }
 
-export interface ConsolidationOptions {
+interface ConsolidationOptions {
   mergeDuplicates?: boolean;
   removeStale?: boolean;
   updateIndex?: boolean;
@@ -47,7 +47,7 @@ export interface ConsolidationOptions {
 
 const FRONTMATTER_REGEX = /^---\n([\s\S]*?)\n---\n?/;
 
-export function parseFrontmatter(content: string): { frontmatter: MemoryMetadata; body: string } {
+function parseFrontmatter(content: string): { frontmatter: MemoryMetadata; body: string } {
   const match = content.match(FRONTMATTER_REGEX);
 
   if (!match) {
@@ -88,7 +88,7 @@ export function parseFrontmatter(content: string): { frontmatter: MemoryMetadata
   return { frontmatter, body };
 }
 
-export function generateFrontmatter(metadata: MemoryMetadata): string {
+function generateFrontmatter(metadata: MemoryMetadata): string {
   const lines: string[] = ["---"];
 
   for (const [key, value] of Object.entries(metadata)) {
@@ -119,7 +119,7 @@ export function generateFrontmatter(metadata: MemoryMetadata): string {
 
 // ── Memory file operations ────────────────────────────────────────────────────
 
-export class MemoryService {
+class MemoryService {
   private _cwd = "";
 
   constructor(cwd?: string) {
@@ -422,7 +422,7 @@ export class MemoryService {
 
 let defaultService: MemoryService | null = null;
 
-export function getMemoryService(cwd?: string): MemoryService {
+function getMemoryService(cwd?: string): MemoryService {
   if (!defaultService) {
     defaultService = new MemoryService(cwd);
   }
@@ -437,7 +437,7 @@ export function getMemoryService(cwd?: string): MemoryService {
 /**
  * Format memory file for display.
  */
-export function formatMemoryLabel(path: string, scope: string): string {
+function formatMemoryLabel(path: string, scope: string): string {
   const parts = path.split("/");
   const filename = parts.pop() ?? path;
 
@@ -459,7 +459,7 @@ export function formatMemoryLabel(path: string, scope: string): string {
 /**
  * Check if a memory file should be auto-included.
  */
-export function shouldAutoInclude(filename: string): boolean {
+function shouldAutoInclude(filename: string): boolean {
   const autoIncludePatterns = [
     /^CLAUDE\.md$/i,
     /^CLAUDE\.local\.md$/i,
@@ -473,7 +473,7 @@ export function shouldAutoInclude(filename: string): boolean {
 /**
  * Extract tags from memory content.
  */
-export function extractTags(content: string): string[] {
+function extractTags(content: string): string[] {
   const tags: string[] = [];
 
   // Check frontmatter

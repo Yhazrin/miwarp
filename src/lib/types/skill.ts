@@ -28,7 +28,7 @@ export interface Skill {
   metadata?: Record<string, unknown>;
 }
 
-export interface SkillDependency {
+interface SkillDependency {
   skillId: string;
   version?: string; // Semver constraint (e.g., ">=1.0.0")
 }
@@ -36,7 +36,7 @@ export interface SkillDependency {
 /**
  * Skill version info for update checking.
  */
-export interface SkillVersion {
+interface SkillVersion {
   version: string;
   minAppVersion: string;
   changelog?: string;
@@ -60,7 +60,7 @@ export type SkillSource =
   | "github"
   | "folder";
 
-export type SkillRemoteSourceKind = "feishu" | "github" | "folder" | "marketplace";
+type SkillRemoteSourceKind = "feishu" | "github" | "folder" | "marketplace";
 
 export interface SkillRemoteRef {
   sourceId: string;
@@ -72,7 +72,7 @@ export interface SkillRemoteRef {
   lastSyncedAt: string;
 }
 
-export interface SkillSourceConfigFeishu {
+interface SkillSourceConfigFeishu {
   authProfile?: string;
   wikiUrl?: string;
   wikiToken?: string;
@@ -84,7 +84,7 @@ export interface SkillSourceConfigFeishu {
   parserMode?: "strict" | "loose";
 }
 
-export interface SkillSourceConfigSync {
+interface SkillSourceConfigSync {
   mode: "manual" | "startup" | "interval";
   intervalMinutes?: number;
   lastSyncedAt?: string;
@@ -92,7 +92,7 @@ export interface SkillSourceConfigSync {
   lastError?: string;
 }
 
-export type SkillSourceProviderType = SkillRemoteSourceKind;
+type SkillSourceProviderType = SkillRemoteSourceKind;
 
 export interface SkillSourceConfig {
   id: string;
@@ -120,7 +120,7 @@ export interface RemoteSkillCandidate {
   skipReason?: string;
 }
 
-export type RemoteSkillInstallStatus =
+type RemoteSkillInstallStatus =
   | "not_installed"
   | "installed"
   | "update_available"
@@ -146,7 +146,7 @@ export interface InstallRemoteSkillResult {
   conflictName?: string;
 }
 
-export interface RemoteSkillUpdateItem {
+interface RemoteSkillUpdateItem {
   skillPath: string;
   skillName: string;
   remoteId: string;
@@ -183,7 +183,7 @@ export interface SkillMetadata {
   author?: string;
 }
 
-export interface SkillManifest {
+interface SkillManifest {
   id: string;
   name: string;
   description: string;
@@ -212,7 +212,7 @@ export const DEFAULT_SKILL_ICON = "✨";
  * Check if a skill version satisfies a constraint.
  * Supports semver-like matching.
  */
-export function satisfiesVersion(installedVersion: string, constraint: string): boolean {
+function satisfiesVersion(installedVersion: string, constraint: string): boolean {
   if (!constraint) return true;
 
   // Simple version comparison (major.minor.patch)

@@ -18,17 +18,6 @@ struct ChatInputBar: View {
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 10) {
-            // Attach button
-            Button {
-                // TODO: attach media
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 36, height: 36)
-                    .background(.ultraThinMaterial, in: Circle())
-            }
-
             // Input capsule
             HStack(spacing: 6) {
                 TextField("Message", text: $text, axis: .vertical)
@@ -47,6 +36,7 @@ struct ChatInputBar: View {
                             .frame(width: 28, height: 28)
                             .background(.red, in: Circle())
                     }
+                    .accessibilityLabel("Stop")
                     .sensoryFeedback(.impact(flexibility: .solid, intensity: 0.7), trigger: isRunning)
 
                     Button {
@@ -57,6 +47,7 @@ struct ChatInputBar: View {
                             .foregroundStyle(.secondary)
                             .frame(width: 28, height: 28)
                     }
+                    .accessibilityLabel("Fork conversation")
                 } else {
                     Button {
                         withAnimation(.spring(duration: 0.2, bounce: 0.4)) {
@@ -77,6 +68,7 @@ struct ChatInputBar: View {
                             .scaleEffect(sendScale)
                     }
                     .disabled(!canSubmit)
+                    .accessibilityLabel("Send message")
                     .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.6), trigger: canSubmit)
                     .animation(.spring(duration: 0.25, bounce: 0.3), value: canSubmit)
                 }

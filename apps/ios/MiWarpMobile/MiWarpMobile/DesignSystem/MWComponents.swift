@@ -190,7 +190,7 @@ struct MWGeometricPattern: View {
         }
 
         // Three separate stroke passes via CGContext (batched per color)
-        ctx.setStrokeColor(secondaryColor.cgColor!)
+        ctx.setStrokeColor(secondaryColor.cgColor ?? CGColor(gray: 0.5, alpha: 1))
         ctx.setLineWidth(0.45)
         ctx.addPath(gridPath.cgPath)
         ctx.strokePath()
@@ -199,7 +199,7 @@ struct MWGeometricPattern: View {
         ctx.addPath(horizPath.cgPath)
         ctx.strokePath()
 
-        ctx.setStrokeColor(primaryColor.cgColor!)
+        ctx.setStrokeColor(primaryColor.cgColor ?? CGColor(gray: 0.3, alpha: 1))
         ctx.setLineWidth(1.0)
         ctx.addPath(mazePath.cgPath)
         ctx.strokePath()

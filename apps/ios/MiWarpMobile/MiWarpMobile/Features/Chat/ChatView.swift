@@ -283,6 +283,8 @@ struct InlineApprovalView: View {
                         .padding(.vertical, 8)
                         .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
                 }
+                .disabled(didRespond)
+                .accessibilityLabel("Deny permission")
 
                 Button {
                     didRespond = true
@@ -295,6 +297,8 @@ struct InlineApprovalView: View {
                         .background(.tint, in: RoundedRectangle(cornerRadius: 8))
                         .foregroundStyle(.white)
                 }
+                .disabled(didRespond)
+                .accessibilityLabel("Allow permission")
             }
         }
         .padding(14)
