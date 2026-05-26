@@ -373,7 +373,7 @@ struct MWChatBubble: View {
 
             VStack(alignment: isUser ? .trailing : .leading, spacing: MWSpacing.xs) {
                 Text(content)
-                    .font(isUser ? MWTypography.body() : MWTypography.body())
+                    .font(MWTypography.body())
                     .foregroundColor(isUser ? theme.accentOnAccent : theme.cardTextPrimary)
                     .textSelection(.enabled)
 
