@@ -26,6 +26,7 @@
     persistCachedProcessVisibility,
   } from "$lib/utils/process-visibility";
   import ProjectFolderItem from "$lib/components/ProjectFolderItem.svelte";
+  import ConversationItem from "$lib/components/ConversationItem.svelte";
   import CommandPalette from "$lib/components/CommandPalette.svelte";
   import SetupWizard from "$lib/components/SetupWizard.svelte";
   import AboutModal from "$lib/components/AboutModal.svelte";
@@ -57,6 +58,7 @@
   import { filterVisibleCandidates } from "$lib/utils/memory-helpers";
   import {
     buildEnrichedProjectFolders,
+    buildFlatConversationList,
     autoExpandForRun,
     expandForProjectChange,
     normalizeCwd,
@@ -1329,15 +1331,12 @@
     }
     if (e.shiftKey && lastSelectedKey) {
       // Range select: find all conversations between lastSelected and current
-      const allKeys: string[] = [];
-      for (const folder of enrichedProjectFolders) {
-        for (const sf of folder.subFolders ?? []) {
-          for (const conv of sf.conversations) allKeys.push(conv.groupKey);
-        }
-        for (const conv of folder.conversations) {
-          allKeys.push(conv.groupKey);
-        }
-      }
+      // Use flat list order (matches visual rendering)
+      const allKeys: string[] = [
+        ...sidebarPinned.map((c) => c.groupKey),
+        ...sidebarRecent.map((c) => c.groupKey),
+        ...(sidebarShowArchive ? sidebarArchived.map((c) => c.groupKey) : []),
+      ];
       const fromIdx = allKeys.indexOf(lastSelectedKey);
       const toIdx = allKeys.indexOf(groupKey);
       if (fromIdx >= 0 && toIdx >= 0) {
@@ -1374,17 +1373,9 @@
   function collectSelectedRunIds(): string[] {
     const keys = new Set(selectedGroupKeys);
     const ids: string[] = [];
-    for (const folder of enrichedProjectFolders) {
-      // Unfoldered sessions
-      for (const conv of folder.conversations) {
-        if (keys.has(conv.groupKey)) ids.push(...conv.runs.map((r) => r.id));
-      }
-      // Sub-folder sessions
-      for (const sf of folder.subFolders ?? []) {
-        for (const conv of sf.conversations) {
-          if (keys.has(conv.groupKey)) ids.push(...conv.runs.map((r) => r.id));
-        }
-      }
+    const allConvs = [...sidebarPinned, ...sidebarRecent, ...sidebarArchived];
+    for (const conv of allConvs) {
+      if (keys.has(conv.groupKey)) ids.push(...conv.runs.map((r) => r.id));
     }
     return ids;
   }
@@ -1506,6 +1497,13 @@
       scheduledTasksStore.runs,
     ),
   );
+
+  // ── Flat conversation list (Cursor-style sidebar) ──
+  const flatConversationList = $derived(buildFlatConversationList(runs, favoriteRunIds));
+  const sidebarPinned = $derived(flatConversationList.pinned);
+  const sidebarRecent = $derived(flatConversationList.recent);
+  const sidebarArchived = $derived(flatConversationList.archived);
+  let sidebarShowArchive = $state(false);
 
   // Reload session folders when project context changes
   $effect(() => {
@@ -2798,106 +2796,122 @@
                 {/if}
               </div>
             {:else}
-              <!-- Unified project + sub-folder tree -->
-              <div class="flex-1 overflow-y-auto px-2 py-1">
-                {#each enrichedProjectFolders as folder (folder.folderKey)}
-                  <ProjectFolderItem
-                    {folder}
-                    label={folder.isUncategorized
-                      ? t("sidebar_uncategorized")
-                      : cwdDisplayLabel(folder.cwd)}
-                    expanded={expandedProjects.has(folder.folderKey)}
-                    {selectedRunId}
-                    onToggle={() => toggleProject(folder.folderKey)}
-                    onSelectConversation={(runId) => goto(`/chat?run=${runId}`)}
-                    onResume={(runId, mode) => goto(`/chat?run=${runId}&resume=${mode}`)}
-                    onDelete={requestDeleteConversation}
-                    onMoveToFolder={requestMoveToFolder}
-                    {selectedGroupKeys}
-                    {batchModeActive}
-                    onBatchClick={toggleSelectConversation}
-                    onLongPressSelect={enterBatchMode}
-                    onSessionDragStart={handleSessionDragStart}
-                    onSessionDragMove={handleSessionDragMove}
-                    onSessionDragEnd={handleSessionDragEnd}
-                    onRemove={folder.isUncategorized
-                      ? undefined
-                      : () => requestRemoveProject(folder.cwd)}
-                    onNewChat={folder.isUncategorized
-                      ? undefined
-                      : () => newChatInFolder(folder.cwd)}
-                    subFolders={folder.subFolders ?? []}
-                    scheduledTaskHubs={folder.scheduledTaskHubs ?? []}
-                    {selectedScheduledTaskId}
-                    onSelectScheduledHub={(taskId) => goto(`/scheduled-tasks/${taskId}`)}
-                    {expandedSubFolders}
-                    onToggleSubFolder={toggleSubFolder}
-                    onCreateSubFolder={folder.isUncategorized
-                      ? undefined
-                      : () => {
-                          _folderCreateCwd = folder.cwd;
-                          folderCreateOpen = true;
-                          folderCreateName = "";
-                        }}
-                    onRenameSubFolder={(sf) => {
-                      const f = sessionFolders.find((x) => x.id === sf.folderId);
-                      if (f) requestRenameFolder(f);
-                    }}
-                    onDeleteSubFolder={(sf) => {
-                      const f = sessionFolders.find((x) => x.id === sf.folderId);
-                      if (f) requestDeleteFolder(f);
-                    }}
-                    dragOverSubFolderKey={dragOverFolderId ? `sf:${dragOverFolderId}` : null}
-                    {dragRunId}
-                    onOpenDirectory={folder.isUncategorized
-                      ? undefined
-                      : async () => {
-                          try {
-                            const { open } = await import("@tauri-apps/plugin-shell");
-                            await open(folder.cwd);
-                          } catch (e) {
-                            dbgWarn("layout", "openDirectory failed", e);
-                          }
-                        }}
-                    onRenameWorkspace={folder.isUncategorized
-                      ? undefined
-                      : () => openWorkspaceSettings(folder.cwd)}
-                    onWorkspaceSettings={folder.isUncategorized
-                      ? undefined
-                      : () => openWorkspaceSettings(folder.cwd)}
-                    isRunning={folder.isUncategorized
-                      ? false
-                      : runs.some(
-                          (r) =>
-                            normalizeCwd(r.parent_cwd ?? r.cwd) === normalizeCwd(folder.cwd) &&
-                            r.status === "running",
-                        )}
-                    mascotStatus={folder.isUncategorized
-                      ? "idle"
-                      : (() => {
-                          const folderRuns = runs.filter(
-                            (r) => normalizeCwd(r.parent_cwd ?? r.cwd) === normalizeCwd(folder.cwd),
-                          );
-                          if (folderRuns.some((r) => r.status === "running")) return "running";
-                          if (folderRuns.some((r) => r.status === "completed")) return "done";
-                          return "idle";
-                        })()}
-                    showMascot={settings?.mascot_enabled !== false}
-                    onMascotClick={folder.isUncategorized
-                      ? undefined
-                      : () => {
-                          const runningRun = runs.find(
-                            (r) =>
-                              normalizeCwd(r.parent_cwd ?? r.cwd) === normalizeCwd(folder.cwd) &&
-                              r.status === "running",
-                          );
-                          if (runningRun) goto(`/chat?run=${runningRun.id}`);
-                        }}
-                  />
-                {/each}
-                <!-- Open folder... -->
+              <!-- Flat conversation list (Cursor-style) -->
+              <div class="flex-1 overflow-y-auto px-1.5 py-1">
+                <!-- Favorites section -->
+                {#if sidebarPinned.length > 0}
+                  <div class="px-2.5 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                    {t("sidebar_pinned") ?? "Pinned"}
+                    <span class="ml-1 opacity-60">{sidebarPinned.length}</span>
+                  </div>
+                  {#each sidebarPinned as conv (conv.groupKey)}
+                    <ConversationItem
+                      conversation={conv}
+                      selected={conv.runs.some((r) => r.id === selectedRunId)}
+                      batchSelected={selectedGroupKeys.has(conv.groupKey)}
+                      batchModeActive={batchModeActive}
+                      density="sidebar"
+                      isDragging={dragRunId === conv.latestRun.id}
+                      onclick={() => goto(`/chat?run=${conv.latestRun.id}`)}
+                      onresume={(runId, mode) => goto(`/chat?run=${runId}&resume=${mode}`)}
+                      ondelete={requestDeleteConversation}
+                      onmovetofolder={requestMoveToFolder}
+                      onBatchClick={toggleSelectConversation}
+                      onLongPressSelect={enterBatchMode}
+                      onSessionDragStart={handleSessionDragStart}
+                      onSessionDragMove={handleSessionDragMove}
+                      onSessionDragEnd={handleSessionDragEnd}
+                    />
+                  {/each}
+                {/if}
+
+                <!-- Divider between pinned and recent -->
+                {#if sidebarPinned.length > 0 && sidebarRecent.length > 0}
+                  <div class="mx-2.5 my-1 h-px bg-border/30"></div>
+                {/if}
+
+                <!-- Recent section -->
+                {#if sidebarRecent.length > 0}
+                  {#if sidebarPinned.length === 0}
+                    <div class="px-2.5 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                      {t("sidebar_recent") ?? "Recent"}
+                      <span class="ml-1 opacity-60">{sidebarRecent.length}</span>
+                    </div>
+                  {/if}
+                  {#each sidebarRecent as conv (conv.groupKey)}
+                    <ConversationItem
+                      conversation={conv}
+                      selected={conv.runs.some((r) => r.id === selectedRunId)}
+                      batchSelected={selectedGroupKeys.has(conv.groupKey)}
+                      batchModeActive={batchModeActive}
+                      density="sidebar"
+                      isDragging={dragRunId === conv.latestRun.id}
+                      onclick={() => goto(`/chat?run=${conv.latestRun.id}`)}
+                      onresume={(runId, mode) => goto(`/chat?run=${runId}&resume=${mode}`)}
+                      ondelete={requestDeleteConversation}
+                      onmovetofolder={requestMoveToFolder}
+                      onBatchClick={toggleSelectConversation}
+                      onLongPressSelect={enterBatchMode}
+                      onSessionDragStart={handleSessionDragStart}
+                      onSessionDragMove={handleSessionDragMove}
+                      onSessionDragEnd={handleSessionDragEnd}
+                    />
+                  {/each}
+                {/if}
+
+                <!-- Archive toggle -->
+                {#if sidebarArchived.length > 0}
+                  <button
+                    class="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1 mt-1 text-[10px]
+                           text-muted-foreground/60 transition-colors hover:bg-muted/30 hover:text-muted-foreground"
+                    onclick={() => (sidebarShowArchive = !sidebarShowArchive)}
+                  >
+                    <svg
+                      class="h-3 w-3 shrink-0 transition-transform duration-150 {sidebarShowArchive ? 'rotate-90' : ''}"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                    {t("sidebar_archivedSessions") ?? "Archived"}
+                    <span class="opacity-60">{sidebarArchived.length}</span>
+                  </button>
+
+                  {#if sidebarShowArchive}
+                    <div class="mx-2.5 my-1 h-px bg-border/30"></div>
+                    <div class="px-2.5 pt-1 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                      {t("sidebar_archivedSessions") ?? "Archived"}
+                      <span class="ml-1 opacity-60">{sidebarArchived.length}</span>
+                    </div>
+                    {#each sidebarArchived as conv (conv.groupKey)}
+                      <ConversationItem
+                        conversation={conv}
+                        selected={conv.runs.some((r) => r.id === selectedRunId)}
+                        batchSelected={selectedGroupKeys.has(conv.groupKey)}
+                        batchModeActive={batchModeActive}
+                        density="sidebar"
+                        isDragging={dragRunId === conv.latestRun.id}
+                        onclick={() => goto(`/chat?run=${conv.latestRun.id}`)}
+                        onresume={(runId, mode) => goto(`/chat?run=${runId}&resume=${mode}`)}
+                        ondelete={requestDeleteConversation}
+                        onmovetofolder={requestMoveToFolder}
+                        onBatchClick={toggleSelectConversation}
+                        onLongPressSelect={enterBatchMode}
+                        onSessionDragStart={handleSessionDragStart}
+                        onSessionDragMove={handleSessionDragMove}
+                        onSessionDragEnd={handleSessionDragEnd}
+                      />
+                    {/each}
+                  {/if}
+                {/if}
+
+                <!-- Open folder button -->
                 <button
-                  class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
+                  class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 mt-1 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
                   onclick={pickFolder}
                 >
                   <svg
@@ -2912,7 +2926,8 @@
                   <span>{t("project_openFolder")}</span>
                 </button>
 
-                {#if enrichedProjectFolders.length === 0}
+                <!-- Empty state -->
+                {#if sidebarPinned.length === 0 && sidebarRecent.length === 0 && sidebarArchived.length === 0}
                   <div class="flex flex-col items-center gap-2 px-3 py-6 text-center">
                     <p class="text-xs text-muted-foreground">
                       {t("sidebar_noConversationsYet")}<br />{t("sidebar_startNewChat")}

@@ -50,6 +50,10 @@
   let menuEl: HTMLDivElement | undefined = $state();
   let adjustedX = $state(0);
   let adjustedY = $state(0);
+  let focusedIndex = $state(0);
+  let itemButtons: (HTMLButtonElement | undefined)[] = $state([]);
+  let typeAheadBuffer = $state("");
+  let typeAheadTimer: ReturnType<typeof setTimeout> | undefined;
 
   $effect(() => {
     // Adjust position to stay within viewport
@@ -74,10 +78,102 @@
     }
   });
 
+  /** Returns indices of non-disabled items in display order. */
+  function navigableIndices(): number[] {
+    return items
+      .map((item, i) => ({ item, i }))
+      .filter(({ item }) => !item.disabled)
+      .map(({ i }) => i);
+  }
+
+  /** Focus the button at the given index and scroll it into view. */
+  function focusItem(index: number) {
+    focusedIndex = index;
+    const btn = itemButtons[index];
+    if (btn) {
+      btn.focus();
+      btn.scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  /** Jump to the next navigable item in the given direction, wrapping around. */
+  function moveFocus(direction: 1 | -1) {
+    const nav = navigableIndices();
+    if (nav.length === 0) return;
+    const currentPos = nav.indexOf(focusedIndex);
+    const nextPos =
+      currentPos === -1
+        ? 0
+        : (currentPos + direction + nav.length) % nav.length;
+    focusItem(nav[nextPos]);
+  }
+
   function handleKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape") {
-      e.preventDefault();
-      onClose();
+    switch (e.key) {
+      case "Escape":
+        e.preventDefault();
+        onClose();
+        break;
+
+      case "ArrowDown":
+        e.preventDefault();
+        moveFocus(1);
+        break;
+
+      case "ArrowUp":
+        e.preventDefault();
+        moveFocus(-1);
+        break;
+
+      case "Home":
+        e.preventDefault();
+        {
+          const nav = navigableIndices();
+          if (nav.length > 0) focusItem(nav[0]);
+        }
+        break;
+
+      case "End":
+        e.preventDefault();
+        {
+          const nav = navigableIndices();
+          if (nav.length > 0) focusItem(nav[nav.length - 1]);
+        }
+        break;
+
+      case "Enter":
+      case " ":
+        e.preventDefault();
+        {
+          const item = items[focusedIndex];
+          if (item && !item.disabled) handleSelect(item);
+        }
+        break;
+
+      default:
+        // Type-ahead: single printable character jumps to next matching item
+        if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          clearTimeout(typeAheadTimer);
+          typeAheadBuffer += e.key.toLowerCase();
+          typeAheadTimer = setTimeout(() => {
+            typeAheadBuffer = "";
+          }, 500);
+
+          const nav = navigableIndices();
+          if (nav.length === 0) return;
+          // Search from the item after the current focused index
+          const startPos = nav.indexOf(focusedIndex);
+          for (let offset = 1; offset <= nav.length; offset++) {
+            const idx = nav[(startPos + offset) % nav.length];
+            const label = items[idx].label.toLowerCase();
+            if (label.startsWith(typeAheadBuffer)) {
+              focusItem(idx);
+              break;
+            }
+          }
+        }
+        break;
     }
   }
 
@@ -93,6 +189,21 @@
     onSelect(item.id);
     onClose();
   }
+
+  // Auto-focus first navigable item when menu opens
+  $effect(() => {
+    // Subscribe to items to re-run when they change
+    void items;
+    const nav = navigableIndices();
+    if (nav.length > 0) {
+      focusedIndex = nav[0];
+      // Defer focus to next microtask so the DOM is ready
+      queueMicrotask(() => {
+        const btn = itemButtons[focusedIndex];
+        btn?.focus();
+      });
+    }
+  });
 
   function handleContextMenu(e: MouseEvent) {
     e.preventDefault();
