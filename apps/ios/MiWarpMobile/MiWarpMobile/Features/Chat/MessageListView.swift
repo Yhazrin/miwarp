@@ -43,7 +43,7 @@ struct MessageListView: View {
 
     private func scrollToBottom(proxy: ScrollViewProxy) {
         guard let lastId = messages.last?.id else { return }
-        withAnimation(.spring(duration: 0.4, bounce: 0.2)) {
+        withAnimation(MWMotion.springStandard) {
             proxy.scrollTo(lastId, anchor: .bottom)
         }
     }
