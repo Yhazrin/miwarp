@@ -49,7 +49,7 @@
       .replace(/<p align="center">[\s\S]*?<\/p>/g, (match) =>
         match.includes("README") ? "" : match,
       )
-      .replace(/href="LICENSE"/g, 'href="#"')
+      .replace(/<a href="LICENSE">([^<]*)<\/a>/g, "$1")
       .trim();
   }
 
