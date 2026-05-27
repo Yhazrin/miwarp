@@ -17,7 +17,7 @@ struct AgentAnimationView: View {
                         rotation = 360
                     }
                 } else {
-                    withAnimation(.easeOut(duration: 0.3)) {
+                    withAnimation(MWMotion.springQuick) {
                         rotation = 0
                     }
                 }
