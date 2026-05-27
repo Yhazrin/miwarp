@@ -2,7 +2,6 @@
   import { t } from "$lib/i18n/index.svelte";
   import type { MessageKey } from "$lib/i18n/types";
   import Button from "./Button.svelte";
-  // import Card from "./Card.svelte";
   import type { Skill, SkillCategory } from "$lib/types/skill";
   import { skillStore } from "$lib/stores/skill-store.svelte";
 

@@ -295,6 +295,7 @@
   $effect(() => {
     if (isRemote) return;
     const interval = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       branchPoller.refresh(cwd).then((b) => {
         gitBranch = b;
       });

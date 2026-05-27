@@ -1,5 +1,4 @@
 <script lang="ts">
-  // import { t } from "$lib/i18n/index.svelte";
   import type { SkillExecutionEnhanced } from "$lib/types/skill-execution";
   import { createTaskDashboard } from "$lib/services/task-execution-dashboard";
 

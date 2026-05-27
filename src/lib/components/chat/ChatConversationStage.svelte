@@ -14,7 +14,6 @@
   import ChatWelcomeScreen from "$lib/components/ChatWelcomeScreen.svelte";
   import ChatForkedBanner from "$lib/components/ChatForkedBanner.svelte";
   import ChatNotificationBanner from "$lib/components/ChatNotificationBanner.svelte";
-  // import ChatToolFilterBar from "$lib/components/ChatToolFilterBar.svelte";
   import ChatTimelineEntries from "$lib/components/chat/ChatTimelineEntries.svelte";
   import ChatOutputWorkingHint from "$lib/components/ChatOutputWorkingHint.svelte";
   import ChatRewindMarkers from "$lib/components/ChatRewindMarkers.svelte";

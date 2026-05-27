@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { MediaArtifact } from "$lib/types";
   import { fade, scale } from "svelte/transition";
-  // import { t } from "$lib/i18n/index.svelte";
 
   let { artifact }: { artifact: MediaArtifact } = $props();
 

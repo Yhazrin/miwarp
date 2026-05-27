@@ -953,11 +953,15 @@
     removedCwds = loadRemovedCwds();
 
     // Poll for runs every 60s (fallback only — primary updates via ocv:runs-changed event)
-    const interval = setInterval(loadRuns, 60000);
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") loadRuns();
+    }, 60000);
 
     // Team store: initial load + poll fallback (60s)
     teamStore.loadTeams();
-    const teamPollInterval = setInterval(() => teamStore.loadTeams(), 60000);
+    const teamPollInterval = setInterval(() => {
+      if (document.visibilityState === "visible") teamStore.loadTeams();
+    }, 60000);
 
     // Team/task event listeners — app-level lifecycle, independent of chat page
     type TeamUpdatePayload = { team_name: string; change: string };
