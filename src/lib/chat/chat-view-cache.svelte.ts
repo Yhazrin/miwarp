@@ -53,7 +53,7 @@ function saveToStorage(c: ChatViewCache) {
 }
 
 // Module-level singleton — survives page component destruction
-let _cache = loadFromStorage();
+const _cache = loadFromStorage();
 
 export const chatViewCache: ChatViewCache = {
   get lastRunId() {

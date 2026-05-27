@@ -57,9 +57,6 @@
         : "",
   );
 
-  // 显示的文本
-  let displayText = $derived(compactMode ? `${pct}%` : `ctx ${pct}%`);
-
   // 详细tokens信息（用于弹窗）
   let usedTokens = $derived(contextWindow ? Math.round(contextUtilization * contextWindow) : 0);
   let remainingTokens = $derived(contextWindow ? contextWindow - usedTokens : 0);
@@ -136,7 +133,7 @@
       onkeydown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onClick ? onClick() : toggleDetail(e);
+          if (onClick) { onClick(); } else { toggleDetail(e); }
         }
       }}
     >
@@ -175,8 +172,6 @@
 
   <!-- 详情弹窗 -->
   {#if detailOpen}
-    <!-- svelte-ignore a11y_interactive_supports_focus -->
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
     <div
       bind:this={detailRef}
       class="absolute top-full right-0 z-50 mt-2 w-64 rounded-xl border border-border/60 bg-background/95 p-3 shadow-lg backdrop-blur-sm animate-fade-in"
