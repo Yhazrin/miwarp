@@ -9,6 +9,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { formatCostDisplay, relativeTime } from "$lib/utils/format";
   import Spinner from "$lib/components/Spinner.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
 
   let filters = $state<RunSearchFilters>({});
@@ -229,15 +230,7 @@
     <!-- Search + Filter toggle -->
     <div class="mb-4 flex items-center gap-3">
       <div class="relative flex-1">
-        <svg
-          class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-        </svg>
+        <Icon name="search" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
           bind:value={searchInput}

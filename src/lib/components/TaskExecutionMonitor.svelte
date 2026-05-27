@@ -146,16 +146,7 @@
             <line x1="9" y1="9" x2="15" y2="15" />
           </svg>
         {:else}
-          <svg
-            class="h-5 w-5 {config.color}"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
+          <Icon name="clock" class="h-5 w-5 {config.color}" />
         {/if}
       </div>
       <div>

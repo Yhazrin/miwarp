@@ -4,6 +4,7 @@
   import { goto } from "$app/navigation";
   import { t } from "$lib/i18n/index.svelte";
   import Button from "$lib/components/Button.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import ScheduledTaskEditor from "$lib/components/ScheduledTaskEditor.svelte";
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
   import { ScheduledTasksService } from "$lib/services/scheduled-tasks-service";
@@ -325,17 +326,7 @@
           <div
             class="flex h-full flex-col items-center justify-center text-center text-muted-foreground"
           >
-            <svg
-              class="mb-4 h-16 w-16 opacity-40"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
+            <Icon name="clock" class="mb-4 h-16 w-16 opacity-40" />
             <p class="text-sm">{t("schedHub_selectExecution")}</p>
           </div>
         {/if}

@@ -3,6 +3,7 @@
   import { splitPath } from "$lib/utils/format";
   import { t } from "$lib/i18n/index.svelte";
   import ContextMenu, { type MenuItem } from "$lib/components/ContextMenu.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import * as api from "$lib/api";
 
   let {

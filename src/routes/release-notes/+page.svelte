@@ -6,6 +6,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   let entries = $state<ChangelogEntry[]>([]);
   let loading = $state(true);
@@ -93,15 +94,7 @@
 
     <!-- Search -->
     <div class="relative">
-      <svg
-        class="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg
-      >
+      <Icon name="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50" size="sm" />
       <input
         type="text"
         bind:value={searchQuery}

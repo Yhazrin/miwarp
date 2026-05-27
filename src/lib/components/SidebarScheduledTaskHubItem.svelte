@@ -2,6 +2,7 @@
   import type { ScheduledTaskHubGroup } from "$lib/utils/sidebar-groups";
   import { relativeTime } from "$lib/utils/format";
   import { t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   interface Props {
     hub: ScheduledTaskHubGroup;
@@ -35,19 +36,7 @@
   title={hub.taskName}
   aria-current={selected ? "page" : undefined}
 >
-  <svg
-    class="h-3.5 w-3.5 shrink-0 text-[hsl(var(--miwarp-status-warning)/0.8)]"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="2"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    aria-hidden="true"
-  >
-    <circle cx="12" cy="12" r="10" />
-    <polyline points="12 6 12 12 16 14" />
-  </svg>
+  <Icon name="clock" size="sm" class="shrink-0 text-[hsl(var(--miwarp-status-warning)/0.8)]" />
 
   <span class="min-w-0 flex-1 truncate font-medium">{hub.taskName}</span>
 

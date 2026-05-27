@@ -7,6 +7,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   interface Props {
     /** Whether the sidebar is visible */
@@ -175,18 +176,7 @@
           </div>
         {:else if !searching && searchResultCount === 0}
           <div class="flex flex-col items-center gap-2 px-3 py-10 text-center">
-            <svg
-              class="h-8 w-8 text-muted-foreground/30"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
+            <Icon name="search" class="h-8 w-8 text-muted-foreground/30" />
             <p class="text-xs text-muted-foreground">{t("sidebar_noSessions")}</p>
           </div>
         {:else}

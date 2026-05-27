@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
   import { t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   type Indicators = { context: boolean; files: boolean; tasks: boolean };
 
@@ -124,18 +125,7 @@
             ><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg
           >
         {:else if tab === "scheduled-tasks"}
-          <svg
-            class="h-4 w-4 shrink-0 opacity-90"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
+          <Icon name="clock" size="md" class="shrink-0 opacity-90" />
         {/if}
       </button>
     {/each}

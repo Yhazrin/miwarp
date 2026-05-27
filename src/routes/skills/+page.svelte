@@ -8,6 +8,7 @@
   import SkillEditor from "$lib/components/SkillEditor.svelte";
   import Modal from "$lib/components/Modal.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
 
   // Local state
@@ -139,16 +140,7 @@
     <div class="flex items-center gap-4">
       <!-- Search -->
       <div class="relative flex-1 max-w-md">
-        <svg
-          class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <circle cx="11" cy="11" r="8" />
-          <path d="m21 21-4.3-4.3" />
-        </svg>
+        <Icon name="search" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
           bind:value={searchQuery}
@@ -257,16 +249,7 @@
     {:else if activeTab === "history"}
       {#if skillStore.executions.length === 0}
         <div class="flex h-40 flex-col items-center justify-center gap-2 text-center">
-          <svg
-            class="h-12 w-12 text-muted-foreground/50"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
+          <Icon name="clock" class="h-12 w-12 text-muted-foreground/50" />
           <p class="text-sm text-muted-foreground">{t("skills_noHistory")}</p>
         </div>
       {:else}

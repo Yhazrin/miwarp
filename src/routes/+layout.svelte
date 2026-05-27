@@ -87,6 +87,7 @@
   import { themeStore } from "$lib/stores/theme-store.svelte";
   import ToastHost from "$lib/components/ToastHost.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import {
     t,
     LOCALE_REGISTRY,
@@ -1890,16 +1891,7 @@
                 stroke-linejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg
               >
             {:else if item.icon === "clock"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg
-              >
+              <Icon name="clock" class="h-[18px] w-[18px]" />
             {:else if item.icon === "settings"}
               <svg
                 class="h-[18px] w-[18px]"
@@ -1914,16 +1906,7 @@
                 /><circle cx="12" cy="12" r="3" /></svg
               >
             {:else if item.icon === "schedule"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg
-              >
+              <Icon name="clock" class="h-[18px] w-[18px]" />
             {:else if item.icon === "users"}
               <svg
                 class="h-[18px] w-[18px]"

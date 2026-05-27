@@ -4,6 +4,7 @@
   import { relativeTime } from "$lib/utils/format";
   import AuthSourceBadge from "./AuthSourceBadge.svelte";
   import type { Snippet } from "svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import type { AuthOverview, PlatformCredential } from "$lib/types";
 
   interface Props {
@@ -139,16 +140,7 @@
         class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
         onclick={onGotoSchedule}
       >
-        <svg
-          class="h-4 w-4 shrink-0 text-[hsl(var(--miwarp-accent-violet)/0.7)]"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          ><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg
-        >
+        <Icon name="clock" size="md" class="shrink-0 text-[hsl(var(--miwarp-accent-violet)/0.7)]" />
         <span>{t("chat_quickSchedule")}</span>
       </button>
     </div>

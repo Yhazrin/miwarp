@@ -11,6 +11,7 @@
   import AutomationScriptCard from "$lib/components/AutomationScriptCard.svelte";
   import AutomationEditor from "$lib/components/AutomationEditor.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import { fade, fly } from "svelte/transition";
 
   // State
@@ -166,16 +167,7 @@
     <!-- Search and filters -->
     <div class="mb-6 flex flex-wrap items-center gap-4">
       <div class="relative flex-1 min-w-[200px]">
-        <svg
-          class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <circle cx="11" cy="11" r="8" />
-          <path d="m21 21-4.3-4.3" />
-        </svg>
+        <Icon name="search" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
           bind:value={searchQuery}

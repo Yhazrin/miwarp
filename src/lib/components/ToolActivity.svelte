@@ -8,6 +8,7 @@
   import { dbg } from "$lib/utils/debug";
   import { sortTasksByPriority, formatElapsed } from "$lib/utils/task-sort";
   import { t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import ContextHistoryPanel from "$lib/components/ContextHistoryPanel.svelte";
   import WorkspaceContextPanel from "$lib/components/WorkspaceContextPanel.svelte";
   import FilesPanel from "$lib/components/FilesPanel.svelte";
@@ -796,18 +797,7 @@
         onclick={() => openCollapsedTab("context")}
         title={t("toolActivity_tabContext")}
       >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
-        </svg>
+        <Icon name="clock" size="sm" />
         {#if contextHistory.length > 0}
           <span
             class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-success))]"
@@ -895,18 +885,7 @@
         onclick={() => openCollapsedTab("scheduled-tasks")}
         title={t("sessionControl_panelScheduledTasks")}
       >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
-        </svg>
+        <Icon name="clock" size="sm" />
       </button>
       <button
         class="mt-auto flex h-8 w-8 items-center justify-center rounded-xl bg-accent/20 text-foreground transition-colors hover:bg-accent/30"
@@ -1008,18 +987,7 @@
               onclick={() => (activeTab = "context")}
               title={t("toolActivity_tabContext")}
             >
-              <svg
-                class="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
+              <Icon name="clock" size="sm" />
               {#if contextHistory.length > 0}
                 <span
                   class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-success))]"
@@ -1107,18 +1075,7 @@
               onclick={() => (activeTab = "scheduled-tasks")}
               title={t("sessionControl_panelScheduledTasks")}
             >
-              <svg
-                class="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
+              <Icon name="clock" size="sm" />
             </button>
           </div>
           <button
@@ -1675,18 +1632,7 @@
         }}
         title={t("toolActivity_tabContext")}
       >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
-        </svg>
+        <Icon name="clock" size="sm" />
       </button>
       <button
         class="p-1 rounded transition-colors {activeTab === 'files'
@@ -1749,18 +1695,7 @@
         }}
         title={t("sessionControl_panelScheduledTasks")}
       >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
-        </svg>
+        <Icon name="clock" size="sm" />
       </button>
       {#if toolStats.totalToolCount > 0}
         <span class="mt-1 text-[10px] text-muted-foreground" style="writing-mode: vertical-rl;"
