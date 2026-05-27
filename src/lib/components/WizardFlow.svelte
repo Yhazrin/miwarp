@@ -9,6 +9,7 @@
    * - Phase grouping for complex workflows
    */
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import Button from "./Button.svelte";
   import type { Snippet } from "svelte";
 
@@ -296,7 +297,7 @@
           >
             {#if currentStep.isLoading}
               <span class="flex items-center gap-2">
-                <span class="h-3 w-3 border border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></span>
+                <Spinner size="xs" class="border-primary-foreground/30 border-t-primary-foreground" />
                 {t("wizard_processing")}
               </span>
             {:else}
