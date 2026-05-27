@@ -8,6 +8,8 @@
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { formatCostDisplay, relativeTime } from "$lib/utils/format";
+  import Spinner from "$lib/components/Spinner.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
 
   let filters = $state<RunSearchFilters>({});
   let response = $state<RunSearchResponse | null>(null);
@@ -506,27 +508,17 @@
     <!-- Initial loading spinner (only when no data yet) -->
     {#if loading && !response}
       <div class="flex items-center justify-center py-20">
-        <div
-          class="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"
-        ></div>
+        <Spinner size="lg" class="border-primary border-t-transparent" />
       </div>
     {:else if error}
       <div class="rounded-lg border border-[hsl(var(--miwarp-status-error)/0.2)] bg-[hsl(var(--miwarp-status-error)/0.1)] p-4 text-sm text-[hsl(var(--miwarp-status-error))]">
         {error}
       </div>
     {:else if response && response.results.length === 0 && !loading}
-      <div class="flex flex-col items-center justify-center py-20 text-muted-foreground">
-        <svg
-          class="mb-3 h-12 w-12 opacity-30"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-        >
-          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-        </svg>
-        <p class="text-sm">{t("history_noResults")}</p>
-      </div>
+      <EmptyState
+        icon="🔍"
+        title={t("history_noResults")}
+      />
     {:else if response}
       <!-- Run cards (subtle opacity during reload to avoid layout jump) -->
       <div class="space-y-2 transition-opacity" class:opacity-50={loading}>

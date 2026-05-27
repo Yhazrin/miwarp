@@ -42,6 +42,7 @@
   import { splitPath } from "$lib/utils/format";
   import { IS_WINDOWS } from "$lib/utils/platform";
   import { t, LOCALE_REGISTRY, currentLocale, switchLocale } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { getTransport } from "$lib/transport";
   import {
     PROCESS_VISIBILITY_LEVELS,
@@ -2276,9 +2277,7 @@
                     >
                       {#if webRestarting}
                         <span class="inline-flex items-center gap-2">
-                          <span
-                            class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"
-                          ></span>
+                          <Spinner size="sm" class="border-primary border-t-transparent" />
                           {t("settings_general_webApplying")}
                         </span>
                       {:else}
@@ -2797,9 +2796,7 @@
                           >
                             {#if cliLoginLoading}
                               <span class="flex items-center gap-1.5">
-                                <span
-                                  class="h-3 w-3 border border-foreground/30 border-t-foreground rounded-full animate-spin"
-                                ></span>
+                                <Spinner size="xs" class="border-foreground/30 border-t-foreground" />
                                 {t("settings_auth_cliLoginBtn")}
                               </span>
                             {:else}
@@ -3525,9 +3522,7 @@
                   onclick={applyWebServerSettings}
                 >
                   {#if webRestarting}
-                    <span
-                      class="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin"
-                    ></span>
+                    <Spinner size="sm" class="border-primary border-t-transparent" />
                   {/if}
                   {webRestarting
                     ? t("settings_mobile_applying") || "Applying..."
@@ -3618,9 +3613,7 @@
                 {:else}
                   <div class="flex flex-col items-center gap-4 text-center">
                     <div class="h-20 w-20 rounded-2xl bg-muted/30 flex items-center justify-center">
-                      <div
-                        class="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin"
-                      ></div>
+                      <Spinner size="xl" class="border-primary border-t-transparent" />
                     </div>
                     <p class="text-sm text-muted-foreground">
                       {t("settings_mobile_generatingQr") || "Generating..."}
@@ -3685,9 +3678,7 @@
         {:else if activeTab === "cli-config"}
           {#if cliConfigLoading && !cliConfigLoaded}
             <div class="flex items-center justify-center py-12">
-              <div
-                class="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent"
-              ></div>
+              <Spinner size="md" class="border-primary border-t-transparent" />
               <span class="ml-3 text-sm text-muted-foreground"
                 >{t("settings_cliConfig_loading")}</span
               >
@@ -4226,9 +4217,7 @@
                     >
                       {#if sshKeyStep === "checking"}
                         <div class="flex items-center gap-2 text-muted-foreground">
-                          <div
-                            class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"
-                          ></div>
+                          <Spinner size="sm" class="border-primary border-t-transparent" />
                           {t("settings_remote_sshKeyChecking")}
                         </div>
                       {:else if sshKeyStep === "no_key"}
@@ -4241,9 +4230,7 @@
                         </button>
                       {:else if sshKeyStep === "generating"}
                         <div class="flex items-center gap-2 text-muted-foreground">
-                          <div
-                            class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent"
-                          ></div>
+                          <Spinner size="sm" class="border-primary border-t-transparent" />
                           {t("settings_remote_sshKeyGenerating")}
                         </div>
                       {:else if sshKeyStep === "pub_missing" && sshKeyInfo}
