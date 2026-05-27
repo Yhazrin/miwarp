@@ -2,6 +2,7 @@
   import { getToasts, dismissToast, type ToastType } from "$lib/stores/toast-store.svelte";
   import { onMount } from "svelte";
   import { fly } from "svelte/transition";
+  import { t } from "$lib/i18n/index.svelte";
 
   const toasts = $derived(getToasts());
 
@@ -30,6 +31,20 @@
       case "info":
       default:
         return "border-l-miwarp-status-info";
+    }
+  }
+
+  function iconColorClass(type: ToastType): string {
+    switch (type) {
+      case "success":
+        return "text-miwarp-status-success";
+      case "error":
+        return "text-miwarp-status-error";
+      case "warning":
+        return "text-miwarp-status-warning";
+      case "info":
+      default:
+        return "text-miwarp-status-info";
     }
   }
 
@@ -68,13 +83,7 @@
         role="alert"
       >
         <svg
-          class="h-4 w-4 shrink-0 mt-0.5 text-{toast.type === 'success'
-            ? 'miwarp-status-success'
-            : toast.type === 'error'
-              ? 'miwarp-status-error'
-              : toast.type === 'warning'
-                ? 'miwarp-status-warning'
-                : 'miwarp-status-info'}"
+          class="h-4 w-4 shrink-0 mt-0.5 {iconColorClass(toast.type)}"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -89,7 +98,7 @@
         <button
           class="shrink-0 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
           onclick={() => dismissToast(toast.id)}
-          aria-label="Dismiss"
+          aria-label={t("common_dismiss")}
         >
           <svg
             class="h-3.5 w-3.5"

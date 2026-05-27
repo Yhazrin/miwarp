@@ -8,6 +8,7 @@
   import SkillEditor from "$lib/components/SkillEditor.svelte";
   import Modal from "$lib/components/Modal.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
 
   // Local state
   let searchQuery = $state("");
@@ -214,9 +215,7 @@
     {#if activeTab === "browse"}
       {#if skillStore.loading}
         <div class="flex h-40 items-center justify-center">
-          <div
-            class="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"
-          ></div>
+          <Spinner size="xl" class="border-primary border-t-transparent" />
         </div>
       {:else if filteredSkills().length === 0}
         <div class="flex h-40 flex-col items-center justify-center gap-2 text-center">

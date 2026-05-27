@@ -6,6 +6,7 @@
   import type { TeamTask, TeamInboxMessage, TeamRun, TeamRunStatus } from "$lib/types";
   import { dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
 
   const teamStore = getContext<TeamStore>("teamStore");
 
@@ -507,9 +508,7 @@
         <div class="flex-1 overflow-y-auto">
           {#if runsLoading}
             <div class="flex items-center justify-center py-12">
-              <div
-                class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-              ></div>
+              <Spinner size="md" />
             </div>
           {:else if runsError}
             <div class="px-3 py-6 text-center">
@@ -602,9 +601,7 @@
       <div class="flex-1 flex flex-col min-w-0 h-full">
         {#if loadingRunId}
           <div class="flex flex-col items-center justify-center h-full text-center px-6">
-            <div
-              class="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-primary mb-3"
-            ></div>
+            <Spinner size="lg" class="border-muted-foreground/30 mb-3" />
             <p class="text-sm text-muted-foreground">{t("common_loading")}</p>
           </div>
         {:else if !selectedRun}
@@ -783,9 +780,7 @@
         </div>
       {:else if teamStore.loading}
         <div class="flex items-center justify-center h-full">
-          <div
-            class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-          ></div>
+          <Spinner size="md" />
         </div>
       {:else if teamStore.selectedTeam && teamStore.teamConfig}
         <div class="flex h-full overflow-hidden">
@@ -1359,9 +1354,7 @@
                                   <div
                                     class="flex items-center gap-1.5 text-[10px] text-muted-foreground"
                                   >
-                                    <div
-                                      class="h-3 w-3 border border-primary/30 border-t-primary rounded-full animate-spin"
-                                    ></div>
+                                    <Spinner size="xs" />
                                     {t("team_loading")}
                                   </div>
                                 {:else}
@@ -1477,9 +1470,7 @@
                                   <div
                                     class="flex items-center gap-1.5 text-[10px] text-muted-foreground"
                                   >
-                                    <div
-                                      class="h-3 w-3 border border-primary/30 border-t-primary rounded-full animate-spin"
-                                    ></div>
+                                    <Spinner size="xs" />
                                     {t("team_loading")}
                                   </div>
                                 {:else}
@@ -1599,9 +1590,7 @@
                                   <div
                                     class="flex items-center gap-1.5 text-[10px] text-muted-foreground"
                                   >
-                                    <div
-                                      class="h-3 w-3 border border-primary/30 border-t-primary rounded-full animate-spin"
-                                    ></div>
+                                    <Spinner size="xs" />
                                     {t("team_loading")}
                                   </div>
                                 {:else}

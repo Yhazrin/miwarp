@@ -9,6 +9,7 @@
   import HeatmapCalendar from "$lib/components/HeatmapCalendar.svelte";
   import StackedModelChart from "$lib/components/StackedModelChart.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { fmtDate, fmtNumber } from "$lib/i18n/format";
 
   let data = $state<UsageOverview | null>(null);
@@ -299,9 +300,7 @@
 
     {#if loading}
       <div class="flex flex-col items-center justify-center py-12 gap-3">
-        <div
-          class="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-        ></div>
+        <Spinner size="lg" />
         {#if showFullScanMessage}
           <p class="text-sm text-muted-foreground animate-fade-in">
             {t("usage_firstLoadMessage")}

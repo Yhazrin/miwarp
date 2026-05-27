@@ -4,6 +4,7 @@
   import FilePreviewPane from "$lib/components/FilePreviewPane.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { getCachedFile, setCachedFile, clearCachedFile } from "$lib/utils/explorer-state";
 
   // ── State ──
@@ -163,9 +164,7 @@
     </div>
   {:else if fileLoading && !fileError}
     <div class="flex h-full flex-col items-center justify-center gap-3 bg-background">
-      <div
-        class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-      ></div>
+      <Spinner size="md" />
       <p class="text-sm text-muted-foreground">{t("explorer_loading")}</p>
     </div>
   {:else if fileError}
