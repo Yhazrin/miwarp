@@ -73,17 +73,17 @@ struct ChatView: View {
             // Messages
             if viewModel.isLoading {
                 ContentUnavailableView {
-                    Label("Loading Messages", systemImage: "arrow.clockwise")
+                    Label(String(localized: "chat.loadingMessages"), systemImage: "arrow.clockwise")
                 } description: {
-                    Text("Fetching conversation history...")
+                    Text(String(localized: "chat.fetchingHistory"))
                 }
             } else if let error = viewModel.error {
                 ContentUnavailableView {
-                    Label("Cannot Load Messages", systemImage: "exclamationmark.triangle")
+                    Label(String(localized: "chat.cannotLoadMessages"), systemImage: "exclamationmark.triangle")
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") {
+                    Button(String(localized: "action.retry")) {
                         Task { await viewModel.loadHistory() }
                     }
                     .buttonStyle(.bordered)
