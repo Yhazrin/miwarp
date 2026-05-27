@@ -399,6 +399,7 @@
   "context_cost": "费用:",
   "agentEditor_addTool": "添加工具...",
   "taskExecution_waiting": "等待执行日志...",
+  "skillEditor_saveHint": "按 {shortcut} 保存",
   "context_usageMeter": "上下文使用量: {pct}%",
   "context_used": "已使用",
   "context_usedTokens": "已使用",

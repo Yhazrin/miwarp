@@ -317,7 +317,8 @@ Provide some examples..."
 
   <!-- Footer hint -->
   <div class="border-t px-4 py-2 text-xs text-muted-foreground">
-    Press <kbd class="rounded bg-secondary px-1.5 py-0.5 font-mono">Ctrl+S</kbd> to save
+    {t('skillEditor_saveHint', { shortcut: '' })}
+    <kbd class="rounded bg-secondary px-1.5 py-0.5 font-mono">Ctrl+S</kbd>
   </div>
 </div>
 
