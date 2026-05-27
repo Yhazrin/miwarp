@@ -56,10 +56,10 @@ struct HomeDashboardView: View {
         }
         .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: MWRadius.card)
                 .fill(theme.cardBg)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: MWRadius.card)
                         .strokeBorder(theme.divider, lineWidth: 0.5)
                 )
         )
@@ -116,7 +116,7 @@ struct HomeDashboardView: View {
         }
         .padding(10)
         .background(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: MWRadius.md)
                 .fill(theme.cardBg.opacity(0.5))
         )
     }

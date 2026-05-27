@@ -72,7 +72,7 @@ struct MessageListView: View {
                 .frame(maxWidth: layout.chatUserBubbleMaxWidth, alignment: .leading)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(.tint, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(.tint, in: RoundedRectangle(cornerRadius: MWRadius.bubble, style: .continuous))
         }
     }
 
@@ -96,7 +96,7 @@ struct MessageListView: View {
                     }
                     .padding(10)
                     .frame(maxWidth: layout.chatAssistantBubbleMaxWidth, alignment: .leading)
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: MWRadius.md))
                 }
             }
 
@@ -129,7 +129,7 @@ struct MessageListView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(theme.cardBg, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(theme.cardBg, in: RoundedRectangle(cornerRadius: MWRadius.bubble, style: .continuous))
     }
 
     // MARK: - Tool Call
@@ -230,6 +230,6 @@ struct ToolCallDisclosureView: View {
             }
         }
         .padding(10)
-        .background(MWColors.bgElevated, in: RoundedRectangle(cornerRadius: 8))
+        .background(MWColors.bgElevated, in: RoundedRectangle(cornerRadius: MWRadius.md))
     }
 }

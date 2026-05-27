@@ -13,10 +13,10 @@ struct MiCard<Content: View>: View {
         content
             .padding(16)
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: MWRadius.card)
                     .fill(theme.cardBg)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12)
+                        RoundedRectangle(cornerRadius: MWRadius.card)
                             .strokeBorder(theme.divider, lineWidth: 0.5)
                     )
             )

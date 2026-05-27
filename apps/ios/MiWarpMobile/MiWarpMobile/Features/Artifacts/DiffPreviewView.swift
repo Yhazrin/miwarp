@@ -48,7 +48,7 @@ struct DiffPreviewView: View {
                 }
                 .padding(8)
             }
-            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8))
+            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: MWRadius.md))
         }
         .onAppear { parseDiff() }
         .onChange(of: diff) { _, _ in parseDiff() }

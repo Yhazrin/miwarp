@@ -34,7 +34,7 @@ struct MiButton: View {
             .foregroundColor(foregroundColor)
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .background(backgroundColor, in: RoundedRectangle(cornerRadius: 10))
+            .background(backgroundColor, in: RoundedRectangle(cornerRadius: MWRadius.lg))
         }
     }
 

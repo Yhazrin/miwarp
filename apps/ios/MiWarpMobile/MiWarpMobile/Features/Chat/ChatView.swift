@@ -303,7 +303,7 @@ struct InlineApprovalView: View {
                         .font(.subheadline.weight(.medium))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: MWRadius.md))
                 }
                 .disabled(didRespond)
                 .accessibilityLabel(String(localized: "action.deny"))
@@ -316,7 +316,7 @@ struct InlineApprovalView: View {
                         .font(.subheadline.weight(.medium))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
-                        .background(.tint, in: RoundedRectangle(cornerRadius: 8))
+                        .background(.tint, in: RoundedRectangle(cornerRadius: MWRadius.md))
                         .foregroundStyle(.white)
                 }
                 .disabled(didRespond)
@@ -324,9 +324,9 @@ struct InlineApprovalView: View {
             }
         }
         .padding(14)
-        .background(MWColors.cardBg, in: RoundedRectangle(cornerRadius: 12))
+        .background(MWColors.cardBg, in: RoundedRectangle(cornerRadius: MWRadius.card))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: MWRadius.card)
                 .stroke(MWColors.statusWarning.opacity(0.3), lineWidth: 1)
         )
         .shadow(color: MWColors.statusWarning.opacity(0.1), radius: 8)

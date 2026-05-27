@@ -24,7 +24,6 @@
 		31752E8113DC5B9B09E5B8D0 /* DiffPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F107680AD38109AD258F79 /* DiffPreviewView.swift */; };
 		3F6BFBDB959EC1C975CA3F05 /* MiWarpLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EF42EA4D95E49A3EE8DFCE5 /* MiWarpLogger.swift */; };
 		46C205483229F049CF7547B0 /* MobileSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BDC398FA44E521237508ED9 /* MobileSettingsView.swift */; };
-		4A1000000000000000000001 /* MiMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A2000000000000000000001 /* MiMotion.swift */; };
 		4A1000000000000000000002 /* MiToast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A2000000000000000000002 /* MiToast.swift */; };
 		4A1000000000000000000003 /* MiHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A2000000000000000000003 /* MiHaptics.swift */; };
 		4A1000000000000000000004 /* MiSkeletonCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A2000000000000000000004 /* MiSkeletonCard.swift */; };
@@ -124,7 +123,6 @@
 		3EF42EA4D95E49A3EE8DFCE5 /* MiWarpLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpLogger.swift; sourceTree = "<group>"; };
 		3F6C0CCD921DD31844147DD1 /* RawEventView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RawEventView.swift; sourceTree = "<group>"; };
 		48092D2C4044F54B928D3A0D /* MWTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MWTheme.swift; sourceTree = "<group>"; };
-		4A2000000000000000000001 /* MiMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Motion/MiMotion.swift; sourceTree = "<group>"; };
 		4A2000000000000000000002 /* MiToast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Feedback/MiToast.swift; sourceTree = "<group>"; };
 		4A2000000000000000000003 /* MiHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Feedback/MiHaptics.swift; sourceTree = "<group>"; };
 		4A2000000000000000000004 /* MiSkeletonCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Loading/MiSkeletonCard.swift; sourceTree = "<group>"; };
@@ -383,7 +381,6 @@
 				24865EBC18A08682F72F290F /* MWColors.swift */,
 				69E7E49A3B0F2853F7255337 /* MWComponents.swift */,
 				4A2000000000000000000003 /* MiHaptics.swift */,
-				4A2000000000000000000001 /* MiMotion.swift */,
 				4A2000000000000000000008 /* MiProgressRing.swift */,
 				4A2000000000000000000004 /* MiSkeletonCard.swift */,
 				4A2000000000000000000006 /* MiStatusBadge.swift */,
@@ -584,7 +581,6 @@
 				4A1000000000000000000007 /* MiButton.swift in Sources */,
 				4A1000000000000000000005 /* MiCard.swift in Sources */,
 				4A1000000000000000000003 /* MiHaptics.swift in Sources */,
-				4A1000000000000000000001 /* MiMotion.swift in Sources */,
 				4A1000000000000000000008 /* MiProgressRing.swift in Sources */,
 				4A1000000000000000000004 /* MiSkeletonCard.swift in Sources */,
 				4A1000000000000000000006 /* MiStatusBadge.swift in Sources */,

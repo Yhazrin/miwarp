@@ -30,10 +30,10 @@ struct MiSkeletonCard: View {
         .frame(maxWidth: .infinity)
         .frame(height: height)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: MWRadius.card)
                 .fill(theme.cardBg)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: MWRadius.card)
                         .strokeBorder(theme.divider, lineWidth: 0.5)
                 )
         )
@@ -46,7 +46,7 @@ struct MiSkeletonCard: View {
     }
 
     private func skeletonLine(width: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: 4)
+        RoundedRectangle(cornerRadius: MWRadius.sm)
             .fill(theme.cardTextTertiary.opacity(0.15))
             .frame(width: width == 1.0 ? nil : width * 200, height: 12)
             .frame(maxWidth: width == 1.0 ? .infinity : nil, alignment: .leading)
@@ -72,7 +72,7 @@ struct MiSkeletonCard: View {
             .frame(width: geo.size.width * 2)
             .offset(x: shimmerPhase * geo.size.width)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: MWRadius.card))
         .allowsHitTesting(false)
     }
 }
