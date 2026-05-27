@@ -15,7 +15,7 @@ struct MiProgressRing: View {
                 .trim(from: 0, to: progress)
                 .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(.easeInOut(duration: 0.3), value: progress)
+                .animation(MWMotion.springQuick, value: progress)
         }
         .frame(width: size, height: size)
     }
