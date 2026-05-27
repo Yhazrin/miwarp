@@ -920,7 +920,7 @@
             <div class="text-[11px] text-muted-foreground mt-0.5">{t("sidebar_skills")}</div>
           </button>
           <button
-            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-[hsl(var(--miwarp-status-success)/0.3)] hover:bg-[hsl(var(--miwarp-status-success))]/5 transition-all"
+            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-[hsl(var(--miwarp-status-success)/0.3)] hover:bg-[hsl(var(--miwarp-status-success)/0.05)] transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "plugins";
             }}

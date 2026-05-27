@@ -346,7 +346,7 @@
       },
       plan: { label: t("sessionStatus_plan"), cls: "bg-purple-500/15 text-purple-400" },
       auto: { label: t("sessionStatus_auto"), cls: "bg-teal-500/15 text-teal-400" },
-      dontAsk: { label: "no-ask", cls: "bg-red-500/15 text-miwarp-status-error" },
+      dontAsk: { label: "no-ask", cls: "bg-[hsl(var(--miwarp-status-error)/0.15)] text-miwarp-status-error" },
     };
     return (
       map[permissionMode] ?? { label: permissionMode, cls: "bg-foreground/10 text-foreground/60" }
@@ -843,9 +843,9 @@
           {@const pct = Math.round(contextUtilization! * 100)}
           {@const barColor =
             contextWarningLevel === "critical"
-              ? "bg-orange-500"
+              ? "bg-[hsl(var(--miwarp-status-warning))]"
               : contextWarningLevel === "high"
-                ? "bg-orange-500"
+                ? "bg-[hsl(var(--miwarp-status-warning))]"
                 : contextWarningLevel === "moderate"
                   ? "bg-amber-500"
                   : "bg-emerald-500"}
@@ -858,7 +858,7 @@
           >
             <span
               class="session-context-pill-inner {compactVisible
-                ? 'bg-orange-500/80 animate-pulse'
+                ? 'bg-[hsl(var(--miwarp-status-warning)/0.8)] animate-pulse'
                 : barColor}"
             >
               {#if compactVisible}
@@ -987,7 +987,7 @@
           class="flex items-center gap-1 text-miwarp-status-info"
           title={t("bgTask_activeTitle", { count: String(activeTaskCount) })}
         >
-          <span class="inline-block h-1.5 w-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"></span>
           <span>{t("bgTask_active", { count: String(activeTaskCount) })}</span>
         </span>
         <span class="session-island-tier2-divider" aria-hidden="true">|</span>

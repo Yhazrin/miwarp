@@ -4981,7 +4981,7 @@
             <!-- Error -->
             {#if historyError}
               <div
-                class="p-3 bg-[hsl(var(--miwarp-status-error)/0.1)] border border-[hsl(var(--miwarp-status-error))]/30 rounded-md text-sm text-[hsl(var(--miwarp-status-error))]"
+                class="p-3 bg-[hsl(var(--miwarp-status-error)/0.1)] border border-[hsl(var(--miwarp-status-error)/0.3)] rounded-md text-sm text-[hsl(var(--miwarp-status-error))]"
               >
                 {historyError}
               </div>

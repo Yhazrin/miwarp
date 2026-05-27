@@ -19,12 +19,12 @@
   let expanded = $state<Set<string>>(new Set());
 
   const STATUS_COLORS: Record<TeamRunStatus, string> = {
-    created: "bg-gray-400",
+    created: "bg-muted-foreground/30",
     planning: "bg-violet-500",
-    running: "bg-blue-500",
+    running: "bg-[hsl(var(--miwarp-status-info))]",
     completed: "bg-emerald-500",
-    failed: "bg-red-500",
-    cancelled: "bg-gray-400",
+    failed: "bg-[hsl(var(--miwarp-status-error))]",
+    cancelled: "bg-muted-foreground/30",
   };
 
   const STATUS_TEXT: Record<TeamRunStatus, () => string> = {
@@ -46,9 +46,9 @@
       label: "待命",
       pulse: false,
     },
-    running: { dot: "bg-blue-500", ring: "ring-blue-500/30", label: "运行中", pulse: true },
+    running: { dot: "bg-[hsl(var(--miwarp-status-info))]", ring: "ring-[hsl(var(--miwarp-status-info)/0.3)]", label: "运行中", pulse: true },
     completed: { dot: "bg-emerald-500", ring: "ring-emerald-500/30", label: "完成", pulse: false },
-    failed: { dot: "bg-red-500", ring: "ring-red-500/30", label: "失败", pulse: false },
+    failed: { dot: "bg-[hsl(var(--miwarp-status-error))]", ring: "ring-[hsl(var(--miwarp-status-error)/0.3)]", label: "失败", pulse: false },
   };
 
   function toggleExpand(id: string) {
@@ -97,9 +97,9 @@
           {teamRun.status === 'completed'
             ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
             : teamRun.status === 'failed'
-              ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+              ? 'bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]'
               : teamRun.status === 'running' || teamRun.status === 'planning'
-                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                ? 'bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]'
                 : 'bg-muted text-muted-foreground'}"
         >
           <span
@@ -195,7 +195,7 @@
                 </p>
               {/if}
               {#if member.error}
-                <p class="text-[10px] text-red-500 leading-relaxed">{member.error}</p>
+                <p class="text-[10px] text-[hsl(var(--miwarp-status-error))] leading-relaxed">{member.error}</p>
               {/if}
             </div>
           {/if}
@@ -215,8 +215,8 @@
 
   <!-- Error -->
   {#if teamRun.error}
-    <div class="border-t border-red-500/20 px-3.5 py-2 bg-red-500/5">
-      <p class="text-[11px] text-red-500">{teamRun.error}</p>
+    <div class="border-t border-[hsl(var(--miwarp-status-error)/0.2)] px-3.5 py-2 bg-[hsl(var(--miwarp-status-error)/0.05)]">
+      <p class="text-[11px] text-[hsl(var(--miwarp-status-error))]">{teamRun.error}</p>
     </div>
   {/if}
 

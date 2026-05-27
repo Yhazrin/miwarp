@@ -1101,7 +1101,7 @@
                                     : ""}
                                 </div>
                               {:else if parsed.type === "shutdown_approved"}
-                                <div class="text-[11px] text-[hsl(var(--miwarp-status-error))]/70">
+                                <div class="text-[11px] text-[hsl(var(--miwarp-status-error)/0.7)]">
                                   {t("team_msgShutDown")}
                                 </div>
                               {:else if parsed.type === "shutdown_rejected"}
@@ -1296,7 +1296,7 @@
                             onclick={() => toggleTaskExpand(task)}
                           >
                             <div class="flex items-start gap-1.5">
-                              <span class="text-[11px] font-mono text-[hsl(var(--miwarp-status-info))]/60 shrink-0 mt-0.5"
+                              <span class="text-[11px] font-mono text-[hsl(var(--miwarp-status-info)/0.6)] shrink-0 mt-0.5"
                                 >#{task.id}</span
                               >
                               <div class="flex-1 min-w-0">
