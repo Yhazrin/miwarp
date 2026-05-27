@@ -120,7 +120,7 @@ struct ChatView: View {
         .miToastPresenter(toastPresenter)
         .onChange(of: viewModel.error) { _, error in
             guard let error else { return }
-            toastPresenter.error("Chat error", message: error)
+            toastPresenter.error(String(localized: "chat.errorTitle"), message: error)
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -212,6 +212,7 @@ struct ChatView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
+        .accessibilityElement(children: .combine)
         .animation(MWMotion.springQuick, value: viewModel.reducer.usage.costUsd)
     }
 
@@ -245,21 +246,23 @@ struct ChatView: View {
             ProgressView()
                 .scaleEffect(0.75)
             VStack(alignment: .leading, spacing: 1) {
-                Text("Reconnecting")
+                Text(String(localized: "chat.reconnecting"))
                     .font(.subheadline.weight(.medium))
-                Text("Attempt \(attempt)")
+                Text(String(format: String(localized: "chat.attempt"), attempt))
                     .font(.caption2)
                     .foregroundStyle(theme.cardTextSecondary)
             }
             Spacer()
-            Button("Cancel") {
+            Button(String(localized: "action.cancel")) {
                 store.disconnect()
             }
             .font(.subheadline)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(.orange.opacity(0.08))
+        .background(MWColors.statusWarning.opacity(0.08))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(String(localized: "chat.reconnecting"))
     }
 }
 

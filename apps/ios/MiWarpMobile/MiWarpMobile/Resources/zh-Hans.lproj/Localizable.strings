@@ -148,6 +148,7 @@
 "chat.attempt" = "第 %d 次尝试";
 "chat.typeMessage" = "输入消息...";
 "chat.allClear" = "全部正常";
+"chat.errorTitle" = "对话错误";
 
 /* Component States */
 "component.small" = "小";

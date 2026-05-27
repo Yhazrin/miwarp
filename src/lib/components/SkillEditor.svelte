@@ -211,7 +211,7 @@
             >{t("skillEditor_category")}</span
           >
           <div class="grid grid-cols-2 gap-2" aria-labelledby="skill-category-label">
-            {#each SKILL_CATEGORIES as cat}
+            {#each SKILL_CATEGORIES as cat (cat.value)}
               <button
                 class="flex items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors
                   {category === cat.value
@@ -230,7 +230,7 @@
         <div class="space-y-2">
           <span id="skill-icon-label" class="text-sm font-medium">{t("skillEditor_icon")}</span>
           <div class="flex flex-wrap gap-2" aria-labelledby="skill-icon-label">
-            {#each iconOptions as iconOption}
+            {#each iconOptions as iconOption (iconOption)}
               <button
                 class="flex h-10 w-10 items-center justify-center rounded-md border text-lg transition-colors
                   {icon === iconOption
@@ -262,7 +262,7 @@
           <div class="rounded-md border border-destructive/50 bg-destructive/10 p-3">
             <p class="text-sm font-medium text-destructive">{t("skillEditor_fixErrors")}</p>
             <ul class="mt-1 list-inside list-disc text-sm text-destructive/80">
-              {#each errors as error}
+              {#each errors as error, i (i)}
                 <li>{error}</li>
               {/each}
             </ul>

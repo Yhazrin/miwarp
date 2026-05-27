@@ -283,7 +283,7 @@ diagnostics and history * - Quick reconnect with health check */
         {t("mcp_noConfiguredStatus")}
       </div>
     {:else}
-      {#each servers as server}
+      {#each servers as server (server.name)}
         {@const health = healthMetrics[server.name]}
         {@const quality = getConnectionQuality(health?.latency || null)}
         <div class="border-b border-border/50 last:border-b-0">
@@ -379,7 +379,7 @@ diagnostics and history * - Quick reconnect with health check */
                       {t('mcpStatus_latencyHistory')}
                     </div>
                     <div class="flex items-end gap-0.5 h-6">
-                      {#each health.latencyHistory as latency, _i}
+                      {#each health.latencyHistory as latency, _i (_i)}
                         {@const maxLatency = Math.max(...health.latencyHistory)}
                         {@const height = maxLatency > 0 ? (latency / maxLatency) * 24 : 0}
                         <div

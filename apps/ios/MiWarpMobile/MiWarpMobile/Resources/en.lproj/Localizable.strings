@@ -148,6 +148,7 @@
 "chat.attempt" = "Attempt %d";
 "chat.typeMessage" = "Type a message...";
 "chat.allClear" = "All Clear";
+"chat.errorTitle" = "Chat error";
 
 /* Component States */
 "component.small" = "Small";

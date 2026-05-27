@@ -564,7 +564,7 @@
               >
                 {t("cmd_cat_recent")}
               </p>
-              {#each recentCommands as cmd}
+              {#each recentCommands as cmd (cmd.id)}
                 {@const idx = indexMap.get(cmd.id) ?? 0}
                 {@const usage = getCommandUsageCount(cmd.id)}
                 <button
@@ -593,7 +593,7 @@
               {/each}
             </div>
           {/if}
-          {#each ["chat", "tools", "navigation", "settings", "diagnostics"] as cat}
+          {#each ["chat", "tools", "navigation", "settings", "diagnostics"] as cat (cat)}
             {#if grouped[cat as CommandCategory].length > 0}
               <div class="mb-1">
                 <p
@@ -601,7 +601,7 @@
                 >
                   {categoryLabels[cat as CommandCategory]}
                 </p>
-                {#each grouped[cat as CommandCategory] as cmd}
+                {#each grouped[cat as CommandCategory] as cmd (cmd.id)}
                   {@const idx = indexMap.get(cmd.id) ?? 0}
                   {@const usage = getCommandUsageCount(cmd.id)}
                   <button

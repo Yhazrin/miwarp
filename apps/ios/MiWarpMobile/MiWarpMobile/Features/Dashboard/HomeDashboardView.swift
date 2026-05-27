@@ -37,6 +37,7 @@ struct HomeDashboardView: View {
                         .foregroundColor(theme.textTertiary)
                 }
             }
+            .accessibilityElement(children: .combine)
 
             Spacer()
 
@@ -86,6 +87,7 @@ struct HomeDashboardView: View {
                 .font(.footnote.weight(.semibold))
                 .foregroundColor(theme.textSecondary)
                 .textCase(.uppercase)
+                .accessibilityAddTraits(.isHeader)
 
             ForEach(runs.prefix(3)) { run in
                 recentRunRow(run)
@@ -98,6 +100,7 @@ struct HomeDashboardView: View {
             Image(systemName: run.status == .completed ? "checkmark.circle.fill" : "clock.fill")
                 .font(.system(size: 14))
                 .foregroundColor(run.status == .completed ? MWColors.statusSuccess : MWColors.statusWarning)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(run.name ?? String(localized: "dashboard.run"))
@@ -115,6 +118,7 @@ struct HomeDashboardView: View {
             Spacer()
         }
         .padding(10)
+        .accessibilityElement(children: .combine)
         .background(
             RoundedRectangle(cornerRadius: MWRadius.md)
                 .fill(theme.cardBg.opacity(0.5))
