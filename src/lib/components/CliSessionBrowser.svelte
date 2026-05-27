@@ -357,7 +357,7 @@
                     <span
                       class="inline-block h-2 w-2 shrink-0 rounded-full {isImported
                         ? 'bg-emerald-500'
-                        : 'bg-blue-500'}"
+                        : 'bg-[hsl(var(--miwarp-status-info))]'}"
                     ></span>
                     <span class="text-xs text-muted-foreground shrink-0">
                       {fmtRelative(session.lastActivityAt)}

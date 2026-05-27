@@ -368,7 +368,7 @@
       {:else if currentStep === "complete"}
         <!-- Success -->
         <div class="flex flex-col items-center justify-center py-8 text-center">
-          <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10">
+          <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--miwarp-status-success)/0.1)]">
             <span class="text-2xl">✓</span>
           </div>
           <h3 class="text-sm font-medium text-foreground mb-1">

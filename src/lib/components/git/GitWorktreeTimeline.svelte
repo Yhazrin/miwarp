@@ -47,7 +47,7 @@
       {t("gitWorktree_loading")}
     </div>
   {:else if error}
-    <p class="py-2 text-[11px] text-red-500/80">{error}</p>
+    <p class="py-2 text-[11px] text-[hsl(var(--miwarp-status-error)/0.8)]">{error}</p>
   {:else if entries.length === 0}
     <p class="py-2 text-[11px] text-muted-foreground">{t("gitWorktree_timeline_empty")}</p>
   {:else}

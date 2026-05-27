@@ -427,7 +427,7 @@
             {#if displayedBranch && !isDetached}
               <button
                 type="button"
-                class="h-7 rounded-md bg-blue-500/12 px-2.5 text-[10px] font-medium text-blue-600 hover:bg-blue-500/20 transition-colors disabled:opacity-40"
+                class="h-7 rounded-md bg-[hsl(var(--miwarp-status-info)/0.12)] px-2.5 text-[10px] font-medium text-[hsl(var(--miwarp-status-info))] hover:bg-[hsl(var(--miwarp-status-info)/0.2)] transition-colors disabled:opacity-40"
                 onclick={handleCreatePr}
                 disabled={prBusy}
               >

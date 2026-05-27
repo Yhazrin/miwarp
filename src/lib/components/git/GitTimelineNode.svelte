@@ -24,7 +24,7 @@
       case "working_tree":
         return entry.is_dirty ? "bg-amber-400" : "bg-emerald-400";
       case "branch_ref":
-        return "bg-blue-400";
+        return "bg-[hsl(var(--miwarp-status-info))]";
       case "remote_ref":
         return "bg-violet-400";
       case "base":

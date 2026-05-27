@@ -29,7 +29,7 @@
       case "edit":
         return { bg: "bg-amber-500/15", text: "text-amber-600 dark:text-amber-400" };
       case "read":
-        return { bg: "bg-blue-500/15", text: "text-blue-600 dark:text-blue-400" };
+        return { bg: "bg-[hsl(var(--miwarp-status-info)/0.15)]", text: "text-[hsl(var(--miwarp-status-info))]" };
       case "persisted":
         return { bg: "bg-emerald-500/15", text: "text-emerald-600 dark:text-emerald-400" };
     }

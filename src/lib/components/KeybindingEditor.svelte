@@ -82,7 +82,7 @@
   {#if recording}
     <button
       bind:this={buttonRef}
-      class="flex items-center gap-1.5 rounded-md border-2 border-blue-500 bg-miwarp-status-info/10 px-3 py-1 text-sm font-mono min-w-[120px] animate-pulse focus:outline-none"
+      class="flex items-center gap-1.5 rounded-md border-2 border-[hsl(var(--miwarp-status-info))] bg-miwarp-status-info/10 px-3 py-1 text-sm font-mono min-w-[120px] animate-pulse focus:outline-none"
       onkeydown={handleKeydown}
     >
       {#if pendingKey}

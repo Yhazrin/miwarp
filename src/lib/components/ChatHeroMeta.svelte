@@ -61,7 +61,7 @@
     {/if}
     <button
       class="inline-flex items-center gap-1 cursor-pointer text-xs {currentRemoteHostName
-        ? 'text-blue-400/70 hover:text-blue-400'
+        ? 'text-[hsl(var(--miwarp-status-info)/0.7)] hover:text-[hsl(var(--miwarp-status-info))]'
         : 'text-muted-foreground hover:text-foreground'} transition-colors"
       onclick={() => (targetDropdownOpen = !targetDropdownOpen)}
     >
