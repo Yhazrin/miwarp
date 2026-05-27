@@ -412,23 +412,23 @@ Describe what this skill does and how it should behave...
         {#if testResult}
           <div
             class="p-4 rounded-lg {testResult.success
-              ? 'bg-green-500/10 border-green-500/30'
-              : 'bg-red-500/10 border-red-500/30'} border"
+              ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] border-[hsl(var(--miwarp-status-success)/0.3)]'
+              : 'bg-[hsl(var(--miwarp-status-error)/0.1)] border-[hsl(var(--miwarp-status-error)/0.3)]'} border"
           >
             <div class="flex items-center gap-2 mb-2">
               {#if testResult.success}
                 <span class="text-xl">✅</span>
-                <span class="font-medium text-green-600">Test Passed</span>
+                <span class="font-medium text-[hsl(var(--miwarp-status-success))]">Test Passed</span>
               {:else}
                 <span class="text-xl">❌</span>
-                <span class="font-medium text-red-600">Test Failed</span>
+                <span class="font-medium text-[hsl(var(--miwarp-status-error))]">Test Failed</span>
               {/if}
             </div>
             {#if testResult.output}
               <div class="text-sm text-muted-foreground font-mono">{testResult.output}</div>
             {/if}
             {#if testResult.error}
-              <div class="text-sm text-red-500 font-mono">{testResult.error}</div>
+              <div class="text-sm text-[hsl(var(--miwarp-status-error))] font-mono">{testResult.error}</div>
             {/if}
           </div>
         {/if}

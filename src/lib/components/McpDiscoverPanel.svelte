@@ -275,8 +275,8 @@
         class="inline-block h-2 w-2 rounded-full {registryHealth === null
           ? 'bg-muted-foreground/40'
           : registryHealth.available
-            ? 'bg-green-500'
-            : 'bg-red-500'}"
+            ? 'bg-[hsl(var(--miwarp-status-success))]'
+            : 'bg-[hsl(var(--miwarp-status-error))]'}"
       ></span>
       <span class="text-[10px] text-muted-foreground">{t("mcp_registry")}</span>
     </div>

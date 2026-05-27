@@ -295,7 +295,7 @@
               checked={step.params.fullPage ?? false}
               onchange={(e) =>
                 handleParamChange("fullPage", (e.target as HTMLInputElement).checked)}
-              class="h-4 w-4 rounded border-gray-300"
+              class="h-4 w-4 rounded border-border"
             />
             <label for="fullPage" class="text-sm">{t("stepEditor_fullPage")}</label>
           </div>
@@ -476,7 +476,7 @@
           id="stepEnabled"
           checked={step.enabled}
           onchange={handleEnabledChange}
-          class="h-4 w-4 rounded border-gray-300"
+          class="h-4 w-4 rounded border-border"
         />
         <label for="stepEnabled" class="text-sm">{t("stepEditor_enabled")}</label>
       </div>

@@ -91,7 +91,7 @@
   function typeBadgeColor(serverType: string): string {
     switch (serverType) {
       case "stdio":
-        return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
+        return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]";
       case "http":
         return "bg-teal-500/10 text-teal-600 dark:text-teal-400";
       case "sse":
@@ -108,7 +108,7 @@
       case "user":
         return "bg-muted text-muted-foreground";
       case "project":
-        return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
+        return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]";
       default:
         return "bg-muted text-muted-foreground";
     }

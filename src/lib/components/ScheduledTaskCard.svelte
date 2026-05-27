@@ -48,7 +48,7 @@
     return date.toLocaleString();
   }
 
-  const statusColor = $derived(task.enabled ? "text-green-500" : "text-muted-foreground");
+  const statusColor = $derived(task.enabled ? "text-[hsl(var(--miwarp-status-success))]" : "text-muted-foreground");
 
   async function handleTrigger() {
     triggering = true;
@@ -95,7 +95,7 @@
       <span class="text-sm font-medium text-foreground truncate" title={task.name}>{task.name}</span
       >
       <span class="flex items-center gap-1 {statusColor} shrink-0">
-        <span class="w-1.5 h-1.5 rounded-full {task.enabled ? 'bg-green-500' : 'bg-muted'}"></span>
+        <span class="w-1.5 h-1.5 rounded-full {task.enabled ? 'bg-[hsl(var(--miwarp-status-success))]' : 'bg-muted'}"></span>
         <span class="text-[10px]"
           >{task.enabled ? t("schedCard_active") : t("schedCard_paused")}</span
         >

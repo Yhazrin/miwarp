@@ -167,7 +167,7 @@
                 onclick={() => respondSingle(item.requestId, "deny")}>{t("common_deny")}</button
               >
               <button
-                class="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-miwarp-status-error hover:bg-miwarp-status-error/20 transition-all disabled:opacity-50"
+                class="rounded-md border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.1)] px-3 py-1.5 text-xs font-medium text-miwarp-status-error hover:bg-miwarp-status-error/20 transition-all disabled:opacity-50"
                 disabled={busy}
                 onclick={() =>
                   respondSingle(item.requestId, "deny", undefined, undefined, undefined, true)}
@@ -250,7 +250,7 @@
                       >{t("common_allow")}</button
                     >
                     <button
-                      class="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-all disabled:opacity-50"
+                      class="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-[hsl(var(--miwarp-status-error))] hover:bg-[hsl(var(--miwarp-status-error)/0.1)] transition-all disabled:opacity-50"
                       disabled={busy}
                       onclick={() => respondSingle(item.requestId, "deny")}
                       title={t("common_deny")}>&times;</button
