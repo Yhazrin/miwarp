@@ -10,6 +10,7 @@
   import { createEmptyScript } from "$lib/types/automation";
   import AutomationScriptCard from "$lib/components/AutomationScriptCard.svelte";
   import AutomationEditor from "$lib/components/AutomationEditor.svelte";
+  import { fade, fly } from "svelte/transition";
 
   // State
   let searchQuery = $state("");
@@ -244,6 +245,7 @@
 {#if showNewScriptDialog}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay"
+    transition:fade={{ duration: 200 }}
     onclick={(e) => {
       if (e.target === e.currentTarget) showNewScriptDialog = false;
     }}
@@ -254,7 +256,7 @@
     aria-modal="true"
     tabindex="-1"
   >
-    <div class="w-[400px] rounded-lg bg-background p-6 shadow-xl">
+    <div class="w-[400px] rounded-lg bg-background p-6 shadow-xl" transition:fly={{ y: 10, duration: 200 }}>
       <h2 class="text-lg font-semibold mb-4">{t("automation_createDialogTitle")}</h2>
 
       <div class="space-y-4">
@@ -297,7 +299,7 @@
 
 <!-- Editor Modal -->
 {#if showEditor && editingScript}
-  <div class="fixed inset-0 z-50 bg-background">
+  <div class="fixed inset-0 z-50 bg-background" transition:fade={{ duration: 200 }}>
     <AutomationEditor
       script={editingScript}
       onSave={handleSaveScript}

@@ -21,7 +21,8 @@
     <span class="text-xs font-medium text-[hsl(var(--miwarp-status-info))]">{t("chat_btw")}</span>
     <button
       onclick={onClose}
-      title="Close side question"
+      title={t("chat_closeSideQuestion")}
+      aria-label={t("chat_closeSideQuestion")}
       class="text-muted-foreground hover:text-foreground transition-colors"
     >
       <svg

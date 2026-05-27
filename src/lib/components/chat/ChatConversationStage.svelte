@@ -32,6 +32,7 @@
   import XTerminalComponent from "$lib/components/XTerminal.svelte";
   import { timelineHasHiddenRoutineWorkRunning } from "$lib/utils/process-visibility";
   import { APP_LOGO_URL } from "$lib/utils/brand-assets";
+  import { fade, scale } from "svelte/transition";
   import { t as tFn } from "$lib/i18n/index.svelte";
 
   const t = tFn;
@@ -403,7 +404,8 @@
       </div>
       {#if showChatScrollHint}
         <button
-          class="absolute bottom-[calc(var(--chat-input-dock-offset,13rem)+0.75rem)] left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-lg transition-all duration-200 hover:bg-primary/90 animate-fade-in"
+          transition:fade={{ duration: 150 }}
+          class="absolute bottom-[calc(var(--chat-input-dock-offset,13rem)+0.75rem)] left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-lg transition-all duration-200 hover:bg-primary/90"
           onclick={scrollChatToBottom}
         >
           {t("chat_newMessages")}
@@ -424,7 +426,8 @@
 
     {#if showSelectionToolbar}
       <div
-        class="fixed z-50 flex items-center gap-1 rounded-lg border border-border bg-popover px-2 py-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-150"
+        transition:scale={{ start: 0.95, duration: 100 }}
+        class="fixed z-50 flex items-center gap-1 rounded-lg border border-border bg-popover px-2 py-1.5 shadow-xl"
         style="left: {selectionX}px; top: {selectionY}px; transform: translate(-50%, -100%);"
       >
         <button

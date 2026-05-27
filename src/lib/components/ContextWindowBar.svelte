@@ -1,5 +1,6 @@
 <script lang="ts">
   import { fmtNumber } from "$lib/i18n/format";
+  import { slide } from "svelte/transition";
 
   interface ContextSegment {
     type: "system" | "env" | "claudeMd" | "files" | "tools";
@@ -133,7 +134,7 @@ CLAUDE.md, files, tools output. */
 
   <!-- Detailed breakdown (optional) -->
   {#if showDetails && segmentWidths.length > 0}
-    <div class="flex flex-wrap gap-x-3 gap-y-1 text-[10px]">
+    <div class="flex flex-wrap gap-x-3 gap-y-1 text-[10px]" transition:slide={{ duration: 200 }}>
       {#each segmentWidths as seg (seg.type)}
         <div class="flex items-center gap-1">
           <span class="inline-block h-2 w-2 rounded-sm {segmentColors[seg.type]}"></span>

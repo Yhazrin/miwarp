@@ -307,7 +307,7 @@
             {#each editedScript.tags as tag}
               <span class="inline-flex items-center gap-1 rounded bg-accent px-2 py-0.5 text-xs">
                 {tag}
-                <button class="hover:text-destructive" onclick={() => handleRemoveTag(tag)}>
+                <button class="hover:text-destructive" onclick={() => handleRemoveTag(tag)} aria-label={t("common_remove")}>
                   ×
                 </button>
               </span>

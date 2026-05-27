@@ -9,6 +9,7 @@
     getPercentage,
   } from "$lib/utils/context-window";
   import { t } from "$lib/i18n/index.svelte";
+  import { fade } from "svelte/transition";
 
   let {
     utilization = 0,
@@ -199,6 +200,7 @@
     {#if showTooltip}
       <div
         class="absolute left-0 right-0 bottom-full mb-2 p-3 bg-popover border border-border rounded-lg shadow-xl z-50"
+        transition:fade={{ duration: 100 }}
       >
         <div class="text-xs space-y-1">
           <div class="flex justify-between">

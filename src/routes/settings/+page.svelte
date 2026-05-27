@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, getContext } from "svelte";
+  import { slide } from "svelte/transition";
   import { page } from "$app/stores";
   import * as api from "$lib/api";
   import { loadCliInfo } from "$lib/stores";
@@ -2006,7 +2007,7 @@
                       <!-- Token reveal + regenerate -->
                       <div class="flex items-center gap-3 text-xs text-muted-foreground">
                         {#if showWebToken}
-                          <code class="font-mono text-[11px] select-all">{webToken}</code>
+                          <code class="font-mono text-[11px] select-all" transition:slide={{ duration: 200 }}>{webToken}</code>
                           <button
                             class="hover:text-foreground transition-colors shrink-0"
                             onclick={() => (showWebToken = false)}

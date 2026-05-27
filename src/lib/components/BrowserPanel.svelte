@@ -154,11 +154,11 @@
     <div class="section navigation-section">
       <!-- Back/Forward/Refresh -->
       <div class="nav-controls">
-        <button class="btn-icon" onclick={handleGoBack} title={t("browser_goBack")}> ← </button>
-        <button class="btn-icon" onclick={handleGoForward} title={t("browser_goForward")}>
+        <button class="btn-icon" onclick={handleGoBack} title={t("browser_goBack")} aria-label={t("browser_goBack")}> ← </button>
+        <button class="btn-icon" onclick={handleGoForward} title={t("browser_goForward")} aria-label={t("browser_goForward")}>
           →
         </button>
-        <button class="btn-icon" onclick={handleRefresh} title={t("browser_refresh")}>
+        <button class="btn-icon" onclick={handleRefresh} title={t("browser_refresh")} aria-label={t("browser_refresh")}>
           ↻
         </button>
       </div>
@@ -201,7 +201,7 @@
             </span>
           </button>
         {/each}
-        <button class="btn-icon add-tab" onclick={handleCreateTab} title={t("browser_newTab")}>
+        <button class="btn-icon add-tab" onclick={handleCreateTab} title={t("browser_newTab")} aria-label={t("browser_newTab")}>
           +
         </button>
       </div>

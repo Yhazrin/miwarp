@@ -1,6 +1,7 @@
 <script lang="ts">
   import { themeStore, type ThemeId } from "../stores/theme-store.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import { slide } from "svelte/transition";
 
   interface Props {
     /** Callback when theme changes */
@@ -20,42 +21,42 @@
 
   const colorGroups = [
     {
-      label: "Backgrounds",
+      label: t("themeEditor_backgrounds"),
       vars: [
-        { key: "--miwarp-bg-deepest", label: "Deepest" },
-        { key: "--miwarp-bg-deep", label: "Deep" },
-        { key: "--miwarp-bg-base", label: "Base" },
-        { key: "--miwarp-bg-elevated", label: "Elevated" },
-        { key: "--miwarp-bg-surface", label: "Surface" },
-        { key: "--miwarp-bg-hover", label: "Hover" },
+        { key: "--miwarp-bg-deepest", label: t("themeEditor_deepest") },
+        { key: "--miwarp-bg-deep", label: t("themeEditor_deep") },
+        { key: "--miwarp-bg-base", label: t("themeEditor_base") },
+        { key: "--miwarp-bg-elevated", label: t("themeEditor_elevated") },
+        { key: "--miwarp-bg-surface", label: t("themeEditor_surface") },
+        { key: "--miwarp-bg-hover", label: t("themeEditor_hover") },
       ],
     },
     {
-      label: "Accent Colors",
+      label: t("themeEditor_accentColors"),
       vars: [
-        { key: "--miwarp-accent-primary", label: "Primary" },
-        { key: "--miwarp-accent-violet", label: "Violet" },
-        { key: "--miwarp-accent-blue", label: "Blue" },
+        { key: "--miwarp-accent-primary", label: t("themeEditor_primary") },
+        { key: "--miwarp-accent-violet", label: t("themeEditor_violet") },
+        { key: "--miwarp-accent-blue", label: t("themeEditor_blue") },
       ],
     },
     {
-      label: "Text",
+      label: t("themeEditor_text"),
       vars: [
-        { key: "--miwarp-text-primary", label: "Primary" },
-        { key: "--miwarp-text-secondary", label: "Secondary" },
-        { key: "--miwarp-text-tertiary", label: "Tertiary" },
+        { key: "--miwarp-text-primary", label: t("themeEditor_primary") },
+        { key: "--miwarp-text-secondary", label: t("themeEditor_secondary") },
+        { key: "--miwarp-text-tertiary", label: t("themeEditor_tertiary") },
       ],
     },
     {
-      label: "Status",
+      label: t("themeEditor_status"),
       vars: [
-        { key: "--miwarp-status-running", label: "Running" },
-        { key: "--miwarp-status-done", label: "Completed" },
-        { key: "--miwarp-status-failed", label: "Failed" },
-        { key: "--miwarp-status-pending", label: "Pending" },
-        { key: "--miwarp-status-paused", label: "Paused" },
-        { key: "--miwarp-status-blocked", label: "Blocked" },
-        { key: "--miwarp-status-idle", label: "Idle" },
+        { key: "--miwarp-status-running", label: t("themeEditor_running") },
+        { key: "--miwarp-status-done", label: t("themeEditor_completed") },
+        { key: "--miwarp-status-failed", label: t("themeEditor_failed") },
+        { key: "--miwarp-status-pending", label: t("themeEditor_pending") },
+        { key: "--miwarp-status-paused", label: t("themeEditor_paused") },
+        { key: "--miwarp-status-blocked", label: t("themeEditor_blocked") },
+        { key: "--miwarp-status-idle", label: t("themeEditor_idle") },
       ],
     },
   ];
@@ -225,6 +226,7 @@
                 class="ml-auto text-miwarp-text-tertiary hover:text-miwarp-text-primary shrink-0"
                 onclick={() => handleResetVariable(colorVar.key)}
                 title={t("theme_resetVariable")}
+                aria-label={t("theme_resetVariable")}
               >
                 ↺
               </button>
@@ -254,7 +256,7 @@
 
     <!-- Save as Custom Theme Dialog -->
     {#if showSaveDialog}
-      <div class="space-y-2 border-t border-border pt-3">
+      <div class="space-y-2 border-t border-border pt-3" transition:slide={{ duration: 200 }}>
         <input
           type="text"
           class="w-full rounded-md border border-border bg-miwarp-bg-elevated px-3 py-1.5 text-xs text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
@@ -293,7 +295,7 @@
     </button>
 
     {#if showImportExport}
-      <div class="space-y-2">
+      <div class="space-y-2" transition:slide={{ duration: 200 }}>
         <div class="flex gap-2">
           <button
             class="rounded-md border border-border bg-miwarp-bg-surface px-3 py-1.5
@@ -314,7 +316,7 @@
           class="rounded-md accent-gradient px-3 py-1.5 text-xs text-white"
           onclick={handleImport}
         >
-          Import Theme
+          {t("theme_importTheme")}
         </button>
       </div>
     {/if}

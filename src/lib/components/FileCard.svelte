@@ -12,6 +12,8 @@
   - other: Generic file icon
 -->
 <script lang="ts">
+  import { t } from "$lib/i18n/index.svelte";
+
   interface Props {
     file: {
       name: string;
@@ -208,7 +210,8 @@
             class="action-btn flex items-center justify-center w-7 h-7 rounded-md
                    text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             onclick={handleCopy}
-            title="复制路径"
+            title={t("fileCard_copyPath")}
+            aria-label={t("fileCard_copyPath")}
           >
             <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
               <rect
@@ -235,7 +238,8 @@
             class="action-btn flex items-center justify-center w-7 h-7 rounded-md
                    text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             onclick={handleDelete}
-            title="删除"
+            title={t("fileCard_delete")}
+            aria-label={t("fileCard_delete")}
           >
             <svg class="w-3.5 h-3.5" viewBox="0 0 16 16" fill="none">
               <path

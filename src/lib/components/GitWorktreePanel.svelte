@@ -15,6 +15,7 @@
   import GitWorktreeTimeline from "$lib/components/git/GitWorktreeTimeline.svelte";
   import GitBranchPill from "$lib/components/git/GitBranchPill.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import { slide } from "svelte/transition";
   import { showToast } from "$lib/stores/toast-store.svelte";
   import { formatTokenCount } from "$lib/utils/format";
 
@@ -298,6 +299,7 @@
           type="button"
           class="ml-auto rounded p-0.5 text-muted-foreground/60 hover:text-foreground hover:bg-accent/40 transition-colors disabled:opacity-40 shrink-0"
           title={t("gitWorktree_refresh")}
+          aria-label={t("gitWorktree_refresh")}
           disabled={panelState.loading}
           onclick={refresh}
         >
@@ -361,7 +363,7 @@
         <div class="px-3 py-2 border-t border-border/20">
           <!-- Commit input row (when showing) -->
           {#if showCommitInput && !panelState.isClean}
-            <div class="flex items-center gap-1.5 mb-2">
+            <div class="flex items-center gap-1.5 mb-2" transition:slide={{ duration: 200 }}>
               <input
                 type="text"
                 bind:value={commitMessage}
@@ -465,7 +467,7 @@
         </button>
 
         {#if showWorktreeList}
-          <ul class="px-3 pb-1.5 space-y-0.5 list-none">
+          <ul class="px-3 pb-1.5 space-y-0.5 list-none" transition:slide={{ duration: 200 }}>
             {#each panelState.worktrees as wt (wt.path)}
               {@const cur = !!(worktreePath && wt.path === worktreePath)}
               <li

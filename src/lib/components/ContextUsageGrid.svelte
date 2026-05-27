@@ -4,6 +4,7 @@
    * Input: raw markdown text from CLI's non-interactive /context handler.
    */
   import { t } from "$lib/i18n/index.svelte";
+  import { slide } from "svelte/transition";
   import {
     parseContextMarkdown,
     getColor,
@@ -135,7 +136,7 @@
               <span class="text-muted-foreground/40">({table.rows.length})</span>
             </button>
             {#if expandedSections.has(table.title)}
-              <div class="ml-4 mt-0.5">
+              <div class="ml-4 mt-0.5" transition:slide={{ duration: 200 }}>
                 <table class="text-[11px] text-muted-foreground/70">
                   <thead>
                     <tr>

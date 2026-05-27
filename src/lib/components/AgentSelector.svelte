@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { scale } from "svelte/transition";
+
   let {
     value = $bindable("claude"),
     class: className = "",
@@ -53,7 +55,8 @@
 
   {#if open}
     <div
-      class="absolute bottom-full left-0 mb-1 min-w-[120px] rounded-xl border border-border bg-background py-1 shadow-lg animate-fade-in z-[9999]"
+      transition:scale={{ start: 0.95, duration: 100 }}
+      class="absolute bottom-full left-0 mb-1 min-w-[120px] rounded-xl border border-border bg-background py-1 shadow-lg z-[9999]"
     >
       {#each agents as agent}
         <button

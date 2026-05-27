@@ -13,6 +13,7 @@
   import { IS_WINDOWS } from "$lib/utils/platform";
   import { getTransport } from "$lib/transport";
   import { t } from "$lib/i18n/index.svelte";
+  import { slide } from "svelte/transition";
   import { buildDoctorReport } from "$lib/utils/doctor";
 
   let { onComplete }: { onComplete: () => void } = $props();
@@ -384,7 +385,7 @@
 
         <!-- Proxy guidance for China network -->
         {#if showProxyGuidance}
-          <div class="rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] p-4">
+          <div class="rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] p-4" transition:slide={{ duration: 200 }}>
             <div class="flex items-start gap-2">
               <svg
                 class="h-5 w-5 text-[hsl(var(--miwarp-status-warning))] shrink-0 mt-0.5"

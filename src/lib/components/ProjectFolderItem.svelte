@@ -11,6 +11,7 @@
   import VirtualList from "./VirtualList.svelte";
   import ContextMenu, { type MenuItem } from "./ContextMenu.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import { slide } from "svelte/transition";
   import { SESSION_DROP_FOLDER_ATTR } from "$lib/utils/session-drag-state";
   import { dbgWarn } from "$lib/utils/debug";
   import ClaudeCanvas from "./ClaudeCanvas.svelte";
@@ -543,7 +544,7 @@
 
   <!-- Expanded children -->
   {#if expanded}
-    <div class="ml-1.5 mt-0.5 border-l border-border/25 pl-2">
+    <div class="ml-1.5 mt-0.5 border-l border-border/25 pl-2" transition:slide={{ duration: 200 }}>
       {#if children}
         {@render children()}
       {:else}

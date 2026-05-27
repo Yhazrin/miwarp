@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { scale } from "svelte/transition";
   import type { AuthOverview, PlatformCredential } from "$lib/types";
   import { t } from "$lib/i18n/index.svelte";
   import {
@@ -193,7 +194,8 @@
 
     {#if dropdownOpen}
       <div
-        class="w-72 max-h-80 overflow-y-auto rounded-md border bg-background shadow-lg animate-fade-in"
+        transition:scale={{ start: 0.95, duration: 100 }}
+        class="w-72 max-h-80 overflow-y-auto rounded-md border bg-background shadow-lg"
         style={dropdownStyle}
       >
         <div class="p-2 space-y-1">

@@ -5,6 +5,7 @@
    * Displays an automation script with quick actions.
    */
   import { t } from "$lib/i18n/index.svelte";
+  import { scale } from "svelte/transition";
   import type { AutomationScript } from "$lib/types/automation";
   import { getCategoryInfo } from "$lib/types/automation";
 
@@ -152,7 +153,8 @@
 
       {#if showMenu}
         <div
-          class="absolute right-0 top-full mt-1 z-10 w-32 rounded-lg border bg-popover shadow-lg animate-fade-in"
+          transition:scale={{ start: 0.95, duration: 100 }}
+          class="absolute right-0 top-full mt-1 z-10 w-32 rounded-lg border bg-popover shadow-lg"
           role="none"
           onclick={(e) => e.stopPropagation()}
         >

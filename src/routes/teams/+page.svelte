@@ -484,6 +484,7 @@
           <button
             class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
             title={t("teamRun_refresh")}
+            aria-label={t("teamRun_refresh")}
             onclick={loadTeamRuns}
           >
             <svg

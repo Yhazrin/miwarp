@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+  import { scale } from "svelte/transition";
   import type { TaskRun, McpServerInfo, CliModelInfo } from "$lib/types";
   import type { TurnUsage } from "$lib/stores/types";
   import { dbg } from "$lib/utils/debug";
@@ -1096,10 +1097,11 @@
 
 {#if dropdownOpen}
   <div
+    transition:scale={{ start: 0.95, duration: 100 }}
     bind:this={dropdownEl}
     tabindex="-1"
     role="listbox"
-    class="statusbar-popover animate-fade-in flex max-h-[min(420px,70vh)] flex-col overflow-hidden outline-none"
+    class="statusbar-popover flex max-h-[min(420px,70vh)] flex-col overflow-hidden outline-none"
     style={dropdownStyle}
     onkeydown={handleDropdownKeydown}
   >

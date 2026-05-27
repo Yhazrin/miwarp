@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
+  import { slide } from "svelte/transition";
 
   interface Props {
     thinkingText: string;
@@ -11,7 +12,7 @@
 </script>
 
 {#if expanded}
-  <div class="w-full animate-fade-in">
+  <div class="w-full" transition:slide={{ duration: 200 }}>
     <div class="chat-content-width py-1">
       <div
         class="max-h-28 overflow-hidden rounded-lg border border-[hsl(var(--miwarp-glass-border)/0.5)] bg-[hsl(var(--miwarp-bg-deep)/0.6)]"

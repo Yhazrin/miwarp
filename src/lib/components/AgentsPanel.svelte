@@ -258,7 +258,7 @@
           class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
           onclick={() => (confirmDelete = null)}
         >
-          Cancel
+          {t("common_cancel")}
         </button>
         <button
           class="rounded-md bg-destructive px-3 py-1.5 text-xs text-destructive-foreground hover:bg-destructive/90"
@@ -559,7 +559,7 @@
           </div>
         {:else}
           <div class="flex items-center justify-center h-full text-muted-foreground text-xs">
-            Select an agent to view details
+            {t("agentsPanel_selectAgent")}
           </div>
         {/if}
       </div>
@@ -603,7 +603,7 @@
           class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
           onclick={() => (renameState = null)}
         >
-          Cancel
+          {t("common_cancel")}
         </button>
         <button
           class="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90

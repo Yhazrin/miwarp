@@ -202,7 +202,7 @@
     <div class="error-section">
       <span class="error-icon">⚠️</span>
       <span class="error-message">{error}</span>
-      <button class="px-2 py-1 bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onclick={() => (error = null)}> × </button>
+      <button class="px-2 py-1 bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onclick={() => (error = null)} title={t("common_close")} aria-label={t("common_close")}> × </button>
     </div>
   {/if}
 

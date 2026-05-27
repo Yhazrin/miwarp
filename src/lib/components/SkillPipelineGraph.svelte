@@ -4,6 +4,7 @@
     SkillPipelineStep,
     PipelineStepStatus,
   } from "$lib/types/skill-pipeline";
+  import { t } from "$lib/i18n/index.svelte";
 
   interface Props {
     pipeline: SkillPipeline;
@@ -131,35 +132,35 @@
           bgClass: "fill-blue-500/20 stroke-blue-500",
           borderClass: "border-[hsl(var(--miwarp-status-info))]",
           icon: "▶",
-          label: "Running",
+          label: t("skillPipeline_running"),
         };
       case "completed":
         return {
           bgClass: "fill-green-500/20 stroke-green-500",
           borderClass: "border-[hsl(var(--miwarp-status-success))]",
           icon: "✓",
-          label: "Completed",
+          label: t("skillPipeline_completed"),
         };
       case "failed":
         return {
           bgClass: "fill-red-500/20 stroke-red-500",
           borderClass: "border-[hsl(var(--miwarp-status-error))]",
           icon: "✗",
-          label: "Failed",
+          label: t("skillPipeline_failed"),
         };
       case "skipped":
         return {
           bgClass: "fill-gray-500/20 stroke-gray-500",
           borderClass: "border-muted-foreground",
           icon: "○",
-          label: "Skipped",
+          label: t("skillPipeline_skipped"),
         };
       default:
         return {
           bgClass: "fill-muted/30 stroke-muted-foreground",
           borderClass: "border-border",
           icon: "○",
-          label: "Pending",
+          label: t("skillPipeline_pending"),
         };
     }
   }
@@ -192,7 +193,7 @@ running, completed, failed * - Dependency arrows with proper layout */
     <!-- Progress bar -->
     <div class="mb-3">
       <div class="flex items-center justify-between text-xs text-muted-foreground mb-1">
-        <span>Progress</span>
+        <span>{t("skillPipeline_progress")}</span>
         <span>{progress}%</span>
       </div>
       <div class="h-1.5 rounded-full bg-muted overflow-hidden">
@@ -339,19 +340,19 @@ running, completed, failed * - Dependency arrows with proper layout */
     <div class="flex items-center gap-4 mt-3 text-[10px] text-muted-foreground">
       <div class="flex items-center gap-1">
         <div class="w-2.5 h-2.5 rounded-full bg-muted border border-border"></div>
-        <span>Pending</span>
+        <span>{t("skillPipeline_pending")}</span>
       </div>
       <div class="flex items-center gap-1">
         <div class="w-2.5 h-2.5 rounded-full bg-[hsl(var(--miwarp-status-info)/0.2)] border border-[hsl(var(--miwarp-status-info))]"></div>
-        <span>Running</span>
+        <span>{t("skillPipeline_running")}</span>
       </div>
       <div class="flex items-center gap-1">
         <div class="w-2.5 h-2.5 rounded-full bg-[hsl(var(--miwarp-status-success)/0.2)] border border-[hsl(var(--miwarp-status-success))]"></div>
-        <span>Completed</span>
+        <span>{t("skillPipeline_completed")}</span>
       </div>
       <div class="flex items-center gap-1">
         <div class="w-2.5 h-2.5 rounded-full bg-[hsl(var(--miwarp-status-error)/0.2)] border border-[hsl(var(--miwarp-status-error))]"></div>
-        <span>Failed</span>
+        <span>{t("skillPipeline_failed")}</span>
       </div>
     </div>
   {/if}

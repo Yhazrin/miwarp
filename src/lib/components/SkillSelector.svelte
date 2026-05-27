@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { scale } from "svelte/transition";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg } from "$lib/utils/debug";
 
@@ -114,8 +115,9 @@
 
   {#if dropdownOpen}
     <div
+      transition:scale={{ start: 0.95, duration: 100 }}
       role="listbox"
-      class="w-80 max-h-96 overflow-y-auto rounded-lg border bg-background shadow-lg animate-fade-in"
+      class="w-80 max-h-96 overflow-y-auto rounded-lg border bg-background shadow-lg"
       style={dropdownStyle}
     >
       {#if isEmpty}

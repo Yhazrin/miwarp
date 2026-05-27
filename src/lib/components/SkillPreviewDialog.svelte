@@ -8,6 +8,7 @@
   import type { Skill } from "$lib/types/skill";
   import { generateSkillPreview, type SkillPreview } from "$lib/services/skill-preview";
   import { t } from "$lib/i18n/index.svelte";
+  import { fade, fly } from "svelte/transition";
 
   interface Props {
     open?: boolean;
@@ -64,6 +65,7 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="fixed inset-0 bg-miwarp-overlay backdrop-blur-sm"
+      transition:fade={{ duration: 200 }}
       onclick={handleCancel}
       onkeydown={(e) => {
         if (e.key === "Escape" || e.key === "Enter" || e.key === " ") handleCancel();
@@ -72,7 +74,8 @@
 
     <!-- Dialog -->
     <div
-      class="relative z-50 w-full max-w-lg rounded-lg border bg-background shadow-2xl animate-fade-in"
+      class="relative z-50 w-full max-w-lg rounded-lg border bg-background shadow-2xl"
+      transition:fly={{ y: 10, duration: 200 }}
     >
       <!-- Header -->
       <div class="flex items-center justify-between border-b px-6 py-4">
@@ -176,7 +179,7 @@
                 d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
               />
             </svg>
-            Execution Steps
+            {t("skillPreview_executionSteps")}
           </h3>
           <div class="space-y-2">
             {#each preview.steps as step, i}
@@ -204,7 +207,7 @@
                   {/if}
                   {#if step.estimatedDuration}
                     <span class="mt-1 text-xs text-muted-foreground">
-                      Est: {step.estimatedDuration}
+                      {t("skillPreview_est")} {step.estimatedDuration}
                     </span>
                   {/if}
                 </div>
@@ -229,7 +232,7 @@
             <polyline points="12 6 12 12 16 14" />
           </svg>
           <span
-            >Estimated duration: <strong class="text-foreground">{preview.estimatedDuration}</strong
+            >{t("skillPreview_estimatedDuration")} <strong class="text-foreground">{preview.estimatedDuration}</strong
             ></span
           >
         </div>
@@ -237,7 +240,7 @@
         <!-- Side Effects -->
         {#if preview.potentialSideEffects.length > 0}
           <div class="mt-4 rounded-md border border-muted p-3">
-            <h4 class="text-xs font-medium text-muted-foreground mb-2">Potential Side Effects</h4>
+            <h4 class="text-xs font-medium text-muted-foreground mb-2">{t("skillPreview_sideEffects")}</h4>
             <div class="flex flex-wrap gap-2">
               {#each preview.potentialSideEffects as effect}
                 <span class="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs">
@@ -252,41 +255,23 @@
       <!-- Footer -->
       <div class="flex items-center justify-between border-t px-6 py-4">
         <div class="text-xs text-muted-foreground">
-          <kbd class="rounded bg-muted px-1.5 py-0.5">Ctrl</kbd> +
-          <kbd class="rounded bg-muted px-1.5 py-0.5">Enter</kbd> to confirm
+          {t("skillPreview_confirmHint")}
         </div>
         <div class="flex items-center gap-3">
           <button
             class="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent transition-colors"
             onclick={handleCancel}
           >
-            Cancel
+            {t("skillPreview_cancel")}
           </button>
           <button
             class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             onclick={handleConfirm}
           >
-            Execute Skill
+            {t("skillPreview_execute")}
           </button>
         </div>
       </div>
     </div>
   </div>
 {/if}
-
-<style>
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  .animate-fade-in {
-    animation: fade-in 0.2s ease-out;
-  }
-</style>

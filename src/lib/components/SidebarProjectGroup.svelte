@@ -2,6 +2,7 @@
   import type { Snippet } from "svelte";
   import type { ProjectFolder } from "$lib/utils/sidebar-groups";
   import { t } from "$lib/i18n/index.svelte";
+  import { slide } from "svelte/transition";
 
   interface Props {
     folder: ProjectFolder;
@@ -142,7 +143,7 @@
 
   <!-- Expanded children -->
   {#if expanded}
-    <div class="pl-3">
+    <div class="pl-3" transition:slide={{ duration: 200 }}>
       {#if onNewChat}
         <button
           class="flex w-full items-center gap-1.5 px-2.5 py-0.5 text-[11px] text-muted-foreground/60 hover:text-muted-foreground hover:bg-sidebar-accent/20 rounded-md transition-colors"

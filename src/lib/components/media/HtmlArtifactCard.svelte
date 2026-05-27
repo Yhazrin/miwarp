@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { MediaArtifact } from "$lib/types";
+  import { t } from "$lib/i18n/index.svelte";
 
   let { artifact }: { artifact: MediaArtifact } = $props();
 
@@ -34,7 +35,7 @@
       class="shrink-0 text-xs text-primary hover:underline ml-2"
       onclick={() => (showPreview = !showPreview)}
     >
-      {showPreview ? "Hide" : "Preview"}
+      {showPreview ? t("htmlArtifact_hide") : t("htmlArtifact_preview")}
     </button>
   </div>
   {#if showPreview && artifact.contentBase64}

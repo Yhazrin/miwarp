@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Skill } from "$lib/types/skill";
+  import { scale } from "svelte/transition";
   import { t } from "$lib/i18n/index.svelte";
   import { SKILL_CATEGORIES } from "$lib/types/skill";
   import { dbg } from "$lib/utils/debug";
@@ -112,7 +113,8 @@
 
         {#if showMenu}
           <div
-            class="absolute right-0 top-full mt-1 z-10 w-32 rounded-lg border bg-popover shadow-lg animate-fade-in"
+            transition:scale={{ start: 0.95, duration: 100 }}
+            class="absolute right-0 top-full mt-1 z-10 w-32 rounded-lg border bg-popover shadow-lg"
           >
             <button
               class="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors"

@@ -1951,6 +1951,7 @@
               ? 'text-[hsl(var(--miwarp-status-warning))] hover:text-[hsl(var(--miwarp-status-warning)/0.8)] hover:bg-[hsl(var(--miwarp-status-warning)/0.1)]'
               : 'text-muted-foreground/60 hover:text-muted-foreground hover:bg-sidebar-accent/50'}"
             onclick={() => (showAbout = true)}
+            aria-label={t("settings_checkUpdate")}
             title={sidebarUpdateAvailable
               ? `有新版本可用 (当前 ${sidebarVersion})`
               : `已是最新版本 ${sidebarVersion}`}
@@ -2005,6 +2006,7 @@
           <button
             class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
             onclick={toggleLocale}
+            aria-label={t("settings_changeLanguage")}
             title={getEntry(currentLocale())?.nativeName ?? currentLocale()}
           >
             <span class="text-xs font-medium"
@@ -2015,6 +2017,7 @@
         <button
           class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
           onclick={() => themeStore.cycleTheme()}
+          aria-label={t("settings_toggleTheme")}
           title={themeStore.isDark ? t("layout_themeTitle_dark") : t("layout_themeTitle_light")}
         >
           {#if themeStore.isDark}
@@ -2044,6 +2047,7 @@
           class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
           onclick={() =>
             themeStore.setColorScheme(themeStore.colorScheme === "warm" ? "neutral" : "warm")}
+          aria-label={t("settings_toggleColorScheme")}
           title={themeStore.colorScheme === "warm"
             ? t("layout_schemeTitle_warm")
             : t("layout_schemeTitle_neutral")}
@@ -2096,6 +2100,7 @@
               <button
                 class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
                 onclick={() => (showCliBrowser = true)}
+                aria-label={t("sidebar_cliBrowser")}
                 title={t("cliSync_title")}
               >
                 <svg
@@ -2114,6 +2119,7 @@
               <button
                 class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
                 onclick={newChat}
+                aria-label={t("sidebar_newChat")}
                 title={t("layout_newConversation")}
               >
                 <svg
@@ -2446,6 +2452,7 @@
                   <button
                     class="ml-auto flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
                     onclick={loadGitSummary}
+                    aria-label={t("sidebar_refresh")}
                     title={t("sidebar_refresh")}
                   >
                     <svg
@@ -2983,7 +2990,9 @@
 />
 
 {#if showSetupWizard}
-  <SetupWizard onComplete={handleSetupComplete} />
+  <div transition:fade={{ duration: 200 }}>
+    <SetupWizard onComplete={handleSetupComplete} />
+  </div>
 {/if}
 
 <AboutModal bind:open={showAbout} />
@@ -2998,6 +3007,7 @@
 />
 
 {#if showCliBrowser}
+  <div transition:fade={{ duration: 200 }}>
   <CliSessionBrowser
     cwd="/"
     onclose={() => (showCliBrowser = false)}
@@ -3007,6 +3017,7 @@
       goto(`/chat?run=${runId}`);
     }}
   />
+  </div>
 {/if}
 
 <Modal bind:open={deleteConfirmOpen} title={t("sidebar_deleteConfirm")}>

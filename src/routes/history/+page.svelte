@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+  import { slide } from "svelte/transition";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { searchRuns } from "$lib/api";
@@ -299,7 +300,7 @@
 
     <!-- Advanced filters (collapsible) -->
     {#if showAdvancedFilters}
-      <div class="mb-4 rounded-lg border border-border bg-muted/20 p-4">
+      <div class="mb-4 rounded-lg border border-border bg-muted/20 p-4" transition:slide={{ duration: 200 }}>
         <!-- Row 1: Dropdowns + Date range -->
         <div class="grid grid-cols-4 gap-3">
           <!-- Project -->

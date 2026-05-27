@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
+  import type { MessageKey } from "$lib/i18n/types";
   import Button from "./Button.svelte";
   // import Card from "./Card.svelte";
   import type { Skill, SkillCategory } from "$lib/types/skill";
@@ -35,41 +36,41 @@
   let stepIndex = $derived(WIZARD_STEPS.indexOf(step));
   let progress = $derived(((stepIndex + 1) / WIZARD_STEPS.length) * 100);
 
-  const CATEGORIES: { id: SkillCategory; label: string; description: string; icon: string }[] = [
+  const CATEGORIES: { id: SkillCategory; labelKey: string; descKey: string; icon: string }[] = [
     {
       id: "automation",
-      label: "Automation",
-      description: "Schedule recurring tasks and workflows",
+      labelKey: "skillWizard_catAutomation",
+      descKey: "skillWizard_catAutomationDesc",
       icon: "⏰",
     },
     {
       id: "productivity",
-      label: "Productivity",
-      description: "Boost your daily workflow efficiency",
+      labelKey: "skillWizard_catProductivity",
+      descKey: "skillWizard_catProductivityDesc",
       icon: "⚡",
     },
     {
       id: "development",
-      label: "Code",
-      description: "Development and code-related skills",
+      labelKey: "skillWizard_catCode",
+      descKey: "skillWizard_catCodeDesc",
       icon: "💻",
     },
     {
       id: "memory",
-      label: "Memory",
-      description: "Memory management and organization",
+      labelKey: "skillWizard_catMemory",
+      descKey: "skillWizard_catMemoryDesc",
       icon: "🧠",
     },
     {
       id: "integrations",
-      label: "Integrations",
-      description: "Connect with external services",
+      labelKey: "skillWizard_catIntegrations",
+      descKey: "skillWizard_catIntegrationsDesc",
       icon: "🔗",
     },
     {
       id: "custom",
-      label: "Custom",
-      description: "Build your own custom skill",
+      labelKey: "skillWizard_catCustom",
+      descKey: "skillWizard_catCustomDesc",
       icon: "🎨",
     },
   ];
@@ -115,13 +116,13 @@
 
       testResult = {
         success: true,
-        output: "Skill executed successfully! Response time: 1.2s",
+        output: t("skillWizard_testOutput"),
       };
       step = "complete";
     } catch (e) {
       testResult = {
         success: false,
-        error: e instanceof Error ? e.message : "Test failed",
+        error: e instanceof Error ? e.message : t("skillWizard_testError"),
       };
     } finally {
       testing = false;
@@ -211,9 +212,9 @@ step by step, * with progress tracking and helpful hints. */
               class="p-4 rounded-xl border border-border text-left hover:border-primary hover:bg-primary/5 transition-all text-center"
             >
               <div class="text-2xl mb-2">{cat.icon}</div>
-              <div class="font-medium text-sm">{cat.label}</div>
+              <div class="font-medium text-sm">{t(cat.labelKey as MessageKey)}</div>
               <div class="text-xs text-muted-foreground mt-1 line-clamp-2">
-                {cat.description}
+                {t(cat.descKey as MessageKey)}
               </div>
             </button>
           {/each}
@@ -244,17 +245,17 @@ step by step, * with progress tracking and helpful hints. */
             for="skill-wizard-name"
             class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
           >
-            Skill Name
+            {t("skillWizard_skillName")}
           </label>
           <input
             id="skill-wizard-name"
             type="text"
             bind:value={skillName}
-            placeholder="e.g., daily-standup"
+            placeholder={t("skillWizard_placeholderName")}
             class="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm"
           />
           <p class="text-[10px] text-muted-foreground">
-            Use kebab-case (e.g., daily-standup, code-review)
+            {t("skillWizard_helpKebabCase")}
           </p>
         </div>
 
@@ -264,12 +265,12 @@ step by step, * with progress tracking and helpful hints. */
             for="skill-wizard-desc"
             class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
           >
-            Description
+            {t("skillWizard_description")}
           </label>
           <textarea
             id="skill-wizard-desc"
             bind:value={skillDescription}
-            placeholder="What does this skill do?"
+            placeholder={t("skillWizard_placeholderDesc")}
             rows="2"
             class="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm resize-none"
           ></textarea>
@@ -278,7 +279,7 @@ step by step, * with progress tracking and helpful hints. */
         <!-- Icon picker -->
         <div class="space-y-1">
           <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Icon
+            {t("skillWizard_icon")}
           </span>
           <div class="flex flex-wrap gap-2">
             {#each ICONS as icon}
@@ -299,7 +300,7 @@ step by step, * with progress tracking and helpful hints. */
         <!-- Tags -->
         <div class="space-y-1">
           <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            Tags
+            {t("skillWizard_tags")}
           </span>
           <div class="flex flex-wrap gap-1 mb-2">
             {#each skillTags as tag}
@@ -320,14 +321,14 @@ step by step, * with progress tracking and helpful hints. */
               type="text"
               bind:value={newTag}
               onkeydown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
-              placeholder="Add a tag..."
+              placeholder={t("skillWizard_placeholderTag")}
               class="flex-1 px-3 py-1.5 rounded-lg border border-input bg-background text-xs"
             />
-            <Button variant="outline" size="sm" onclick={addTag}>Add</Button>
+            <Button variant="outline" size="sm" onclick={addTag}>{t("skillWizard_add")}</Button>
           </div>
         </div>
 
-        <Button onclick={nextStep} disabled={!isConfigureValid} class="w-full">Continue</Button>
+        <Button onclick={nextStep} disabled={!isConfigureValid} class="w-full">{t("skillWizard_continue")}</Button>
       </div>
     {:else if step === "parameters"}
       <!-- Step 3: Skill prompt/content -->
@@ -344,7 +345,7 @@ step by step, * with progress tracking and helpful hints. */
 
         <h2 class="text-lg font-semibold">{t("skillWizard_skillPrompt")}</h2>
         <p class="text-sm text-muted-foreground">
-          Write the instructions that Claude will follow when this skill is activated.
+          {t("skillWizard_helpWriteInstructions")}
         </p>
 
         <div class="space-y-1">
@@ -352,43 +353,29 @@ step by step, * with progress tracking and helpful hints. */
             for="skill-wizard-content"
             class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
           >
-            Skill Content
+            {t("skillWizard_skillContent")}
           </label>
           <textarea
             id="skill-wizard-content"
             bind:value={skillPrompt}
-            placeholder={`# ${skillName}
-
-Describe what this skill does and how it should behave...
-
-## Usage
-/skill-name [arguments]
-
-## Steps
-1. First step...
-2. Second step...
-3. Third step...
-
-## Tips
-- Helpful tip 1
-- Helpful tip 2`}
+            placeholder={t("skillWizard_placeholderContent")}
             rows="12"
             class="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm font-mono resize-none"
           ></textarea>
         </div>
 
         <div class="p-3 rounded-lg bg-muted/30 text-xs space-y-1">
-          <div class="font-medium">Writing Tips</div>
+          <div class="font-medium">{t("skillWizard_writingTips")}</div>
           <ul class="list-disc list-inside text-muted-foreground space-y-0.5">
-            <li>Start with a clear description of the skill's purpose</li>
-            <li>Include usage examples with expected inputs/outputs</li>
-            <li>Break complex tasks into numbered steps</li>
-            <li>Add error handling and edge case notes</li>
+            <li>{t("skillWizard_helpStartDescription")}</li>
+            <li>{t("skillWizard_helpUsageExamples")}</li>
+            <li>{t("skillWizard_helpNumberedSteps")}</li>
+            <li>{t("skillWizard_helpErrorHandling")}</li>
           </ul>
         </div>
 
         <Button onclick={nextStep} disabled={!isPromptValid} class="w-full">
-          Continue to Test
+          {t("skillWizard_continueToTest")}
         </Button>
       </div>
     {:else if step === "test"}
@@ -406,7 +393,7 @@ Describe what this skill does and how it should behave...
 
         <h2 class="text-lg font-semibold">{t("skillWizard_testSkill")}</h2>
         <p class="text-sm text-muted-foreground">
-          Run a test to verify your skill works correctly.
+          {t("skillWizard_helpRunTest")}
         </p>
 
         {#if testResult}
@@ -418,10 +405,10 @@ Describe what this skill does and how it should behave...
             <div class="flex items-center gap-2 mb-2">
               {#if testResult.success}
                 <span class="text-xl">✅</span>
-                <span class="font-medium text-[hsl(var(--miwarp-status-success))]">Test Passed</span>
+                <span class="font-medium text-[hsl(var(--miwarp-status-success))]">{t("skillWizard_testPassed")}</span>
               {:else}
                 <span class="text-xl">❌</span>
-                <span class="font-medium text-[hsl(var(--miwarp-status-error))]">Test Failed</span>
+                <span class="font-medium text-[hsl(var(--miwarp-status-error))]">{t("skillWizard_testFailed")}</span>
               {/if}
             </div>
             {#if testResult.output}
@@ -438,12 +425,12 @@ Describe what this skill does and how it should behave...
             <div
               class="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full"
             ></div>
-            <span class="ml-3 text-sm text-muted-foreground">Running test...</span>
+            <span class="ml-3 text-sm text-muted-foreground">{t("skillWizard_runningTest")}</span>
           </div>
         {/if}
 
         <Button onclick={testSkill} disabled={testing} class="w-full">
-          {testing ? "Testing..." : "Run Test"}
+          {testing ? t("skillWizard_testing") : t("skillWizard_runTest")}
         </Button>
       </div>
     {:else if step === "complete"}
@@ -453,13 +440,13 @@ Describe what this skill does and how it should behave...
         <div>
           <h2 class="text-xl font-semibold mb-2">{t("skillWizard_complete")}</h2>
           <p class="text-sm text-muted-foreground">
-            Your skill "{skillName}" has been created successfully!
+            {t("skillWizard_createdSuccess", { skillName })}
           </p>
         </div>
 
         <div class="flex gap-3">
-          <Button variant="outline" onclick={createSkill}>Save Skill</Button>
-          <Button onclick={handleCancel}>Done</Button>
+          <Button variant="outline" onclick={createSkill}>{t("skillWizard_saveSkill")}</Button>
+          <Button onclick={handleCancel}>{t("skillWizard_done")}</Button>
         </div>
       </div>
     {/if}

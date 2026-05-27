@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
+  import { fade } from "svelte/transition";
 
   interface Props {
     pageDragActive: boolean;
@@ -12,6 +13,7 @@
 {#if pageDragActive || dragProcessing}
   <div
     class="absolute inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-[2px]"
+    transition:fade={{ duration: 200 }}
     class:pointer-events-none={pageDragActive && !dragProcessing}
   >
     <div

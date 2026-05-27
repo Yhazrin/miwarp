@@ -276,6 +276,7 @@
           ? 'invisible'
           : ''}"
         title={t("usage_refreshTitle")}
+        aria-label={t("usage_refreshTitle")}
         disabled={refreshing || scope !== "global"}
         onclick={refreshCache}
       >

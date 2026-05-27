@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { McpServerInfo } from "$lib/types";
   import * as api from "$lib/api";
+  import { slide } from "svelte/transition";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
   import { statusDotClass, statusLabel, parseServersFromResponse } from "$lib/utils/mcp";
@@ -363,7 +364,7 @@ diagnostics and history * - Quick reconnect with health check */
 
           <!-- Expanded details -->
           {#if expandedServer === server.name}
-            <div class="px-3 pb-3 pl-8 space-y-2 text-[10px]">
+            <div class="px-3 pb-3 pl-8 space-y-2 text-[10px]" transition:slide={{ duration: 200 }}>
               {#if server.error}
                 <div class="p-2 rounded bg-destructive/10 border border-destructive/20">
                   <div class="font-medium text-destructive mb-0.5">{t('mcpStatus_error')}</div>

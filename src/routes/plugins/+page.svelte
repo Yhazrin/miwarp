@@ -37,6 +37,7 @@
   import SkillSourceManager from "$lib/components/SkillSourceManager.svelte";
   import PluginInstaller from "$lib/components/PluginInstaller.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import { fade } from "svelte/transition";
   import type {
     MarketplacePlugin,
     StandaloneSkill,
@@ -1577,6 +1578,7 @@
             <button
               class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
               title={t("plugins_refresh")}
+              aria-label={t("plugins_refresh")}
               disabled={communityRefreshing}
               onclick={refreshCommunity}
             >
@@ -2576,6 +2578,7 @@
 
 <!-- Plugin Installer Modal -->
 {#if showInstaller}
+  <div transition:fade={{ duration: 200 }}>
   <PluginInstaller
     {plugins}
     {marketplaces}
@@ -2583,4 +2586,5 @@
     onInstall={handleInstall}
     onCancel={() => (showInstaller = false)}
   />
+  </div>
 {/if}

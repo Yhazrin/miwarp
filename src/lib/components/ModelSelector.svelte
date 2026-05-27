@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { scale } from "svelte/transition";
   import { getCliModels } from "$lib/stores/cli-info.svelte";
   import { t } from "$lib/i18n/index.svelte";
 
@@ -20,7 +21,7 @@
 
   let displayValue = $derived.by(() => {
     const found = getCliModels().find((mdl) => mdl.value === value);
-    return found?.displayName ?? (value || "Default");
+    return found?.displayName ?? (value || t("modelSelector_default"));
   });
 
   let dropdownOpen = $state(false);
@@ -116,8 +117,9 @@
 
   {#if dropdownOpen}
     <div
+      transition:scale={{ start: 0.95, duration: 100 }}
       role="listbox"
-      class="w-80 rounded-md border bg-background shadow-lg animate-fade-in"
+      class="w-80 rounded-md border bg-background shadow-lg"
       style={dropdownStyle}
     >
       <div class="p-1">

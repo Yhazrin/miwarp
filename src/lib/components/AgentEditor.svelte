@@ -240,7 +240,7 @@
           class="text-xs text-muted-foreground underline hover:text-foreground mt-1"
           onclick={handleForceSave}
         >
-          Force save (skip validation)
+          {t("agentEditor_forceSave")}
         </button>
       {/if}
     </div>
@@ -259,7 +259,7 @@
           type="text"
           class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground
             focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-          placeholder="code-reviewer"
+          placeholder={t("agentEditor_placeholderName")}
           bind:value={formData.name}
           disabled={mode === "edit"}
         />
@@ -276,7 +276,7 @@
           class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground
             focus:outline-none focus:ring-1 focus:ring-primary resize-none disabled:opacity-50"
           rows="2"
-          placeholder="Expert code reviewer for quality..."
+          placeholder={t("agentEditor_placeholderDesc")}
           bind:value={formData.description}
           disabled={mode === "edit"}
         ></textarea>
@@ -389,11 +389,11 @@
           bind:value={formData.permissionMode}
           disabled={mode === "edit"}
         >
-          <option value="default">default</option>
-          <option value="acceptEdits">acceptEdits</option>
-          <option value="dontAsk">dontAsk</option>
-          <option value="bypassPermissions">bypassPermissions</option>
-          <option value="plan">plan</option>
+          <option value="default">{t("agentEditor_permDefault")}</option>
+          <option value="acceptEdits">{t("agentEditor_permAcceptEdits")}</option>
+          <option value="dontAsk">{t("agentEditor_permDontAsk")}</option>
+          <option value="bypassPermissions">{t("agentEditor_permBypass")}</option>
+          <option value="plan">{t("agentEditor_permPlan")}</option>
         </select>
       </div>
 
@@ -463,7 +463,7 @@
           type="text"
           class="w-full rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground
             focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-          placeholder="Auto-submit prompt on first turn..."
+          placeholder={t("agentEditor_placeholderAutoSubmit")}
           bind:value={formData.initialPrompt}
           disabled={mode === "edit"}
         />
@@ -479,7 +479,7 @@
           class="w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground font-mono
             focus:outline-none focus:ring-1 focus:ring-primary resize-y disabled:opacity-50"
           rows="8"
-          placeholder="You are a specialized agent..."
+          placeholder={t("agentEditor_placeholderSystemPrompt")}
           bind:value={formData.systemPrompt}
           disabled={mode === "edit"}
         ></textarea>
@@ -535,14 +535,14 @@
       class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
       onclick={onCancel}
     >
-      Cancel
+      {t("common_cancel")}
     </button>
     <button
       class="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       onclick={handleSave}
       disabled={saving}
     >
-      {saving ? "Saving..." : mode === "create" ? t("agent_createAgent") : "Save"}
+      {saving ? t("agentEditor_saving") : mode === "create" ? t("agent_createAgent") : t("agentEditor_save")}
     </button>
   </div>
 </div>

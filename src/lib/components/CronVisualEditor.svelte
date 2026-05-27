@@ -37,30 +37,28 @@
   let intervalValue = $state(30);
   let intervalUnit = $state<"minutes" | "hours">("minutes");
 
-  const WEEKDAY_ABBREV = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const WEEKDAY_FULL = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ];
+  const WEEKDAY_ABBREV = $derived([
+    t("weekday_sun"), t("weekday_mon"), t("weekday_tue"), t("weekday_wed"),
+    t("weekday_thu"), t("weekday_fri"), t("weekday_sat"),
+  ]);
+  const WEEKDAY_FULL = $derived([
+    t("weekday_sunday"), t("weekday_monday"), t("weekday_tuesday"), t("weekday_wednesday"),
+    t("weekday_thursday"), t("weekday_friday"), t("weekday_saturday"),
+  ]);
 
   // Common presets
-  const PRESETS = [
-    { label: "Every minute", expr: "* * * * *" },
-    { label: "Every 5 minutes", expr: "*/5 * * * *" },
-    { label: "Every 15 minutes", expr: "*/15 * * * *" },
-    { label: "Every 30 minutes", expr: "*/30 * * * *" },
-    { label: "Every hour", expr: "0 * * * *" },
-    { label: "Every day at 9am", expr: "0 9 * * *" },
-    { label: "Every day at 6pm", expr: "0 18 * * *" },
-    { label: "Weekdays 9am", expr: "0 9 * * 1-5" },
-    { label: "Every Monday", expr: "0 9 * * 1" },
-    { label: "First of month", expr: "0 0 1 * *" },
-  ];
+  const PRESETS = $derived([
+    { label: t("cronPreset_everyMinute"), expr: "* * * * *" },
+    { label: t("cronPreset_everyNMinutes", { n: "5" }), expr: "*/5 * * * *" },
+    { label: t("cronPreset_everyNMinutes", { n: "15" }), expr: "*/15 * * * *" },
+    { label: t("cronPreset_everyNMinutes", { n: "30" }), expr: "*/30 * * * *" },
+    { label: t("cronPreset_everyHour"), expr: "0 * * * *" },
+    { label: t("cronPreset_everyDayAt9"), expr: "0 9 * * *" },
+    { label: t("cronPreset_everyDayAt6"), expr: "0 18 * * *" },
+    { label: t("cronPreset_weekdays9"), expr: "0 9 * * 1-5" },
+    { label: t("cronPreset_everyMonday"), expr: "0 9 * * 1" },
+    { label: t("cronPreset_firstOfMonth"), expr: "0 0 1 * *" },
+  ]);
 
   /**
    * Parse incoming value to sync UI state
@@ -169,11 +167,11 @@
    * Generate natural language description
    */
   const description = $derived.by(() => {
-    if (value === "* * * * *") return "Every minute";
+    if (value === "* * * * *") return t("cronDesc_everyMinute");
 
     if (value.startsWith("*/")) {
       const interval = value.split(" ")[0].slice(2);
-      return `Every ${interval} minutes`;
+      return t("cronDesc_everyNMinutes", { interval });
     }
 
     const parts = value.split(/\s+/);
@@ -181,7 +179,7 @@
 
     // Daily at specific time
     if (dom === "*" && mon === "*" && dow === "*") {
-      return `Every day at ${formatTime(hr, min)}`;
+      return t("cronDesc_everyDayAt", { time: formatTime(hr, min) });
     }
 
     // Weekly
@@ -190,21 +188,21 @@
         .split(",")
         .map((d) => WEEKDAY_FULL[parseInt(d) || 0])
         .join(", ");
-      return `Every ${days} at ${formatTime(hr, min)}`;
+      return t("cronDesc_daysAt", { days, time: formatTime(hr, min) });
     }
 
     // Monthly
     if (dom !== "*" && mon === "*") {
-      return `Monthly on day ${dom} at ${formatTime(hr, min)}`;
+      return t("cronDesc_monthlyOn", { dom, time: formatTime(hr, min) });
     }
 
-    return `At ${formatTime(hr, min)} on day ${dom} of month ${mon}`;
+    return t("cronDesc_atTimeOnDay", { time: formatTime(hr, min), dom, mon });
   });
 
   function formatTime(hr: string, min: string): string {
     const h = parseInt(hr) || 0;
     const m = parseInt(min) || 0;
-    const ampm = h >= 12 ? "PM" : "AM";
+    const ampm = h >= 12 ? t("cronEditor_pm") : t("cronEditor_am");
     const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
     return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
   }
@@ -238,7 +236,7 @@ editing cron expressions * with real-time preview and natural language descripti
         : 'text-muted-foreground hover:text-foreground'}"
       {disabled}
     >
-      Simple
+      {t("cronEditor_simple")}
     </button>
     <button
       type="button"
@@ -249,7 +247,7 @@ editing cron expressions * with real-time preview and natural language descripti
         : 'text-muted-foreground hover:text-foreground'}"
       {disabled}
     >
-      Advanced
+      {t("cronEditor_advanced")}
     </button>
   </div>
 
@@ -260,7 +258,7 @@ editing cron expressions * with real-time preview and natural language descripti
         for="cron-schedule-type"
         class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
       >
-        Schedule Type
+        {t("cronEditor_scheduleType")}
       </label>
       <select
         id="cron-schedule-type"
@@ -286,7 +284,7 @@ editing cron expressions * with real-time preview and natural language descripti
             for="cron-hour"
             class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
           >
-            Hour
+            {t("cronEditor_hour")}
           </label>
           <select
             id="cron-hour"
@@ -305,7 +303,7 @@ editing cron expressions * with real-time preview and natural language descripti
             for="cron-minute"
             class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
           >
-            Minute
+            {t("cronEditor_minute")}
           </label>
           <select
             id="cron-minute"
@@ -326,7 +324,7 @@ editing cron expressions * with real-time preview and natural language descripti
     {#if simpleInterval === "weekly"}
       <div class="space-y-1">
         <span class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-          Days of Week
+          {t("cronEditor_daysOfWeek")}
         </span>
         <div class="flex gap-1">
           {#each WEEKDAY_ABBREV as day, i}
@@ -353,7 +351,7 @@ editing cron expressions * with real-time preview and natural language descripti
           for="cron-day-of-month"
           class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
         >
-          Day of Month
+          {t("cronEditor_dayOfMonth")}
         </label>
         <select
           id="cron-day-of-month"
@@ -377,7 +375,7 @@ editing cron expressions * with real-time preview and natural language descripti
             for="cron-interval"
             class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
           >
-            Interval
+            {t("cronEditor_interval")}
           </label>
           <input
             id="cron-interval"
@@ -395,7 +393,7 @@ editing cron expressions * with real-time preview and natural language descripti
             for="cron-unit"
             class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
           >
-            Unit
+            {t("cronEditor_unit")}
           </label>
           <select
             id="cron-unit"
@@ -404,8 +402,8 @@ editing cron expressions * with real-time preview and natural language descripti
             {disabled}
             class="w-full px-2 py-1.5 rounded-lg border border-input bg-background text-xs"
           >
-            <option value="minutes">Minutes</option>
-            <option value="hours">Hours</option>
+            <option value="minutes">{t("cronEditor_minutes")}</option>
+            <option value="hours">{t("cronEditor_hours")}</option>
           </select>
         </div>
       </div>
@@ -414,7 +412,7 @@ editing cron expressions * with real-time preview and natural language descripti
     <!-- Quick Presets -->
     <div class="space-y-1">
       <span class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-        Quick Presets
+        {t("cronEditor_quickPresets")}
       </span>
       <div class="flex flex-wrap gap-1">
         {#each PRESETS.slice(0, 5) as preset}
@@ -437,7 +435,7 @@ editing cron expressions * with real-time preview and natural language descripti
           for="cron-expression"
           class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider"
         >
-          Cron Expression
+          {t("cronEditor_cronExpression")}
         </label>
         <input
           id="cron-expression"
@@ -452,7 +450,7 @@ editing cron expressions * with real-time preview and natural language descripti
 
       <!-- Cron field reference -->
       <div class="p-2 rounded-lg bg-muted/30 text-[10px] space-y-1">
-        <div class="font-medium text-muted-foreground">Format: minute hour day month weekday</div>
+        <div class="font-medium text-muted-foreground">{t("cronEditor_format")}</div>
         <div class="grid grid-cols-5 gap-1 text-muted-foreground">
           <div class="text-center">0-59</div>
           <div class="text-center">0-23</div>
@@ -465,7 +463,7 @@ editing cron expressions * with real-time preview and natural language descripti
       <!-- More presets in advanced mode -->
       <div class="space-y-1">
         <span class="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-          More Presets
+          {t("cronEditor_morePresets")}
         </span>
         <div class="flex flex-wrap gap-1">
           {#each PRESETS.slice(5) as preset}
@@ -485,7 +483,7 @@ editing cron expressions * with real-time preview and natural language descripti
 
   <!-- Preview -->
   <div class="p-2 rounded-lg bg-primary/10 border border-primary/20">
-    <div class="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Preview</div>
+    <div class="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{t("cronEditor_preview")}</div>
     <div class="text-xs font-medium text-primary">{description}</div>
     <div class="text-[10px] font-mono text-muted-foreground mt-1">{value}</div>
   </div>

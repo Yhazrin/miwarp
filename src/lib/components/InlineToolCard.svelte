@@ -26,6 +26,7 @@
   import ToolDetailView from "$lib/components/ToolDetailView.svelte";
   import StatusIcon from "$lib/components/StatusIcon.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import { slide } from "svelte/transition";
   import { dbg } from "$lib/utils/debug";
   import { viewModeStore } from "$lib/stores/view-mode-store.svelte";
   import PhaseIndicator from "$lib/components/PhaseIndicator.svelte";
@@ -1897,7 +1898,7 @@
 
       <!-- Expanded content area with accent left border -->
       {#if expanded}
-        <div class="ml-2.5 pl-2 border-l-2 {renderLevel === 2 ? style.border : 'border-border/20'}">
+        <div class="ml-2.5 pl-2 border-l-2 {renderLevel === 2 ? style.border : 'border-border/20'}" transition:slide={{ duration: 200 }}>
           {#if isTruncated && !lazyResult}
             {#if lazyLoading}
               <div class="px-4 py-3 text-center text-xs text-muted-foreground animate-pulse">
@@ -1963,7 +1964,7 @@
     {/if}
     <!-- Subagent subTimeline: nested entries from child agents -->
     {#if showSubTimeline}
-      <div class="mt-2 ml-4 pl-3 border-l-2 border-[hsl(var(--miwarp-status-info)/0.3)] space-y-1">
+      <div class="mt-2 ml-4 pl-3 border-l-2 border-[hsl(var(--miwarp-status-info)/0.3)] space-y-1" transition:slide={{ duration: 200 }}>
         {#each subTimeline as subEntry (subEntry.id)}
           {#if subEntry.kind === "assistant"}
             <div class="text-sm text-muted-foreground py-1">

@@ -8,6 +8,7 @@
   import BrowserPanel from "$lib/components/BrowserPanel.svelte";
   import WebFetch from "$lib/components/WebFetch.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import { fade } from "svelte/transition";
 
   let activeTab = $state<"browser" | "webfetch">("browser");
   let showSettings = $state(false);
@@ -59,7 +60,7 @@
 
   <!-- Settings Panel -->
   {#if showSettings}
-    <div class="settings-overlay" role="presentation" onclick={() => (showSettings = false)}>
+    <div class="settings-overlay" role="presentation" onclick={() => (showSettings = false)} transition:fade={{ duration: 200 }}>
       <div class="settings-panel" role="presentation" onclick={(e) => e.stopPropagation()}>
         <div class="settings-header">
           <h2>{t("browser_settings")}</h2>

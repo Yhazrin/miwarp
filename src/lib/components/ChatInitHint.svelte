@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
+  import { fade } from "svelte/transition";
 
   interface Props {
     visible: boolean;
@@ -11,7 +12,7 @@
 </script>
 
 {#if visible}
-  <div class="mt-3 flex items-center gap-2 text-[11px] text-[hsl(var(--miwarp-status-warning)/0.8)]">
+  <div class="mt-3 flex items-center gap-2 text-[11px] text-[hsl(var(--miwarp-status-warning)/0.8)]" transition:fade={{ duration: 200 }}>
     <svg
       class="h-3.5 w-3.5 shrink-0"
       viewBox="0 0 24 24"
@@ -36,6 +37,7 @@
       class="ml-auto text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
       onclick={onDismiss}
       title={t("chat_initHintDismiss")}
+      aria-label={t("chat_initHintDismiss")}
     >
       <svg
         class="h-3 w-3"

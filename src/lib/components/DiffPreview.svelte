@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
+  import { slide } from "svelte/transition";
 
   let {
     diff = "",
@@ -231,6 +232,7 @@
     <div
       class="diff-content overflow-auto {mode === 'split' ? 'grid grid-cols-2' : ''}"
       style="max-height: {maxHeight}"
+      transition:slide={{ duration: 200 }}
     >
       {#if !diff.trim()}
         <div class="flex items-center justify-center py-8 text-sm text-muted-foreground">
@@ -289,7 +291,7 @@
 
   <!-- Footer hint -->
   {#if expanded && diff.trim()}
-    <div class="border-t border-border/40 px-4 py-2 bg-muted/20">
+    <div class="border-t border-border/40 px-4 py-2 bg-muted/20" transition:slide={{ duration: 200 }}>
       <p class="text-[10px] text-muted-foreground/70 text-center">
         {t("diff_inlineHint")}
       </p>

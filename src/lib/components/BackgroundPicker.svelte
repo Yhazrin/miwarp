@@ -78,7 +78,7 @@
     {/if}
     <div class="absolute inset-0 z-[2] flex items-center justify-center">
       <span class="text-xs text-miwarp-text-secondary">
-        {config.imageUrl ? "Preview" : "No background set"}
+        {config.imageUrl ? t("bgPicker_preview") : t("bgPicker_noBackground")}
       </span>
     </div>
   </div>
@@ -86,7 +86,7 @@
   <!-- Image URL -->
   <div class="space-y-1.5">
     <label class="text-xs font-medium text-miwarp-text-secondary" for="bg-url">
-      Image URL or Path
+      {t("bgPicker_imageUrl")}
     </label>
     <div class="flex gap-2">
       <input
@@ -104,7 +104,7 @@
                text-xs text-miwarp-text-secondary transition-colors hover:bg-miwarp-bg-hover"
         onclick={handleImagePick}
       >
-        Browse
+        {t("bgPicker_browse")}
       </button>
     </div>
   </div>
@@ -113,7 +113,7 @@
   <div class="space-y-1.5">
     <div class="flex items-center justify-between">
       <label class="text-xs font-medium text-miwarp-text-secondary" for="bg-opacity">
-        Opacity
+        {t("bgPicker_opacity")}
       </label>
       <span class="text-xs text-miwarp-text-tertiary">{config.opacity}%</span>
     </div>
@@ -152,7 +152,7 @@
     <div class="space-y-1.5">
       <div class="flex items-center justify-between">
         <label class="text-xs font-medium text-miwarp-text-secondary" for="bg-pos-x">
-          Position X
+          {t("bgPicker_positionX")}
         </label>
         <span class="text-xs text-miwarp-text-tertiary">{config.positionX}%</span>
       </div>
@@ -169,7 +169,7 @@
     <div class="space-y-1.5">
       <div class="flex items-center justify-between">
         <label class="text-xs font-medium text-miwarp-text-secondary" for="bg-pos-y">
-          Position Y
+          {t("bgPicker_positionY")}
         </label>
         <span class="text-xs text-miwarp-text-tertiary">{config.positionY}%</span>
       </div>
@@ -188,7 +188,7 @@
   <!-- Sizing Mode -->
   <div class="space-y-1.5">
     <label class="text-xs font-medium text-miwarp-text-secondary" for="bg-sizing">
-      Sizing Mode
+      {t("bgPicker_sizingMode")}
     </label>
     <select
       id="bg-sizing"
@@ -206,7 +206,7 @@
   <!-- Color Overlay -->
   <div class="space-y-1.5">
     <label class="text-xs font-medium text-miwarp-text-secondary" for="bg-overlay">
-      Color Overlay
+      {t("bgPicker_colorOverlay")}
     </label>
     <div class="flex gap-2">
       <input
@@ -231,14 +231,14 @@
   <!-- Scope info + Reset -->
   <div class="flex items-center justify-between border-t border-border pt-3">
     <span class="text-xs text-miwarp-text-tertiary">
-      {sessionId ? "Session override" : "Global default"}
+      {sessionId ? t("bgPicker_sessionOverride") : t("bgPicker_globalDefault")}
     </span>
     <button
       class="rounded-md px-3 py-1 text-xs text-miwarp-status-error
              transition-colors hover:bg-miwarp-status-error/10"
       onclick={handleReset}
     >
-      {sessionId ? "Remove Override" : "Reset to Default"}
+      {sessionId ? t("bgPicker_removeOverride") : t("bgPicker_resetDefault")}
     </button>
   </div>
 </div>

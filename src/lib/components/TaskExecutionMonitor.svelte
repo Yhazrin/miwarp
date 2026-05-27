@@ -45,23 +45,23 @@
 
   // Status configuration
   const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
-    queued: { label: "Queued", color: "text-muted-foreground", bgColor: "bg-muted" },
+    queued: { label: t("taskExec_queued"), color: "text-muted-foreground", bgColor: "bg-muted" },
     running: {
-      label: "Running",
+      label: t("taskExec_running"),
       color: "text-[hsl(var(--miwarp-status-info))]",
       bgColor: "bg-[hsl(var(--miwarp-status-info)/0.1)]",
     },
     paused: {
-      label: "Paused",
+      label: t("taskExec_paused"),
       color: "text-[hsl(var(--miwarp-status-warning))]",
       bgColor: "bg-[hsl(var(--miwarp-status-warning)/0.1)]",
     },
     completed: {
-      label: "Completed",
+      label: t("taskExec_completed"),
       color: "text-[hsl(var(--miwarp-status-success))]",
       bgColor: "bg-[hsl(var(--miwarp-status-success)/0.1)]",
     },
-    failed: { label: "Failed", color: "text-[hsl(var(--miwarp-status-error))]", bgColor: "bg-[hsl(var(--miwarp-status-error)/0.1)]" },
+    failed: { label: t("taskExec_failed"), color: "text-[hsl(var(--miwarp-status-error))]", bgColor: "bg-[hsl(var(--miwarp-status-error)/0.1)]" },
   };
 
   let config = $derived(statusConfig[status] || statusConfig.queued);
@@ -186,7 +186,7 @@
   <div class="border-b px-4 py-3">
     <div class="flex items-center justify-between text-sm mb-2">
       <span class="text-muted-foreground">
-        Step {currentStep} of {totalSteps}
+        {t("taskExec_stepProgress", { currentStep: String(currentStep), totalSteps: String(totalSteps) })}
       </span>
       <span class="font-medium">{progress.toFixed(0)}%</span>
     </div>
@@ -240,15 +240,15 @@
       {#if status === "running"}
         <span class="flex items-center gap-1">
           <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"></span>
-          Processing...
+          {t("taskExec_processing")}
         </span>
       {:else if status === "completed"}
         <span class="flex items-center gap-1 text-[hsl(var(--miwarp-status-success))]">
-          ✓ Completed successfully
+          ✓ {t("taskExec_completedSuccess")}
         </span>
       {:else if status === "failed"}
         <span class="flex items-center gap-1 text-[hsl(var(--miwarp-status-error))]">
-          ✗ Execution failed
+          ✗ {t("taskExec_execFailed")}
         </span>
       {/if}
     </div>
@@ -258,7 +258,7 @@
           class="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent transition-colors"
           onclick={() => onCancel?.()}
         >
-          Cancel
+          {t("taskExec_cancel")}
         </button>
       {/if}
       {#if status === "failed"}
@@ -266,7 +266,7 @@
           class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           onclick={() => onRetry?.()}
         >
-          Retry
+          {t("taskExec_retry")}
         </button>
       {/if}
     </div>

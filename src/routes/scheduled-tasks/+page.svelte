@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { slide } from "svelte/transition";
   import { t } from "$lib/i18n/index.svelte";
   import Button from "$lib/components/Button.svelte";
   import ScheduledTaskCard from "$lib/components/ScheduledTaskCard.svelte";
@@ -317,7 +318,7 @@
 
     <!-- Execution Monitor Panel -->
     {#if activeMonitor}
-      <div class="w-[35%] border-r overflow-hidden p-4">
+      <div class="w-[35%] border-r overflow-hidden p-4" transition:slide={{ duration: 200 }}>
         <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
           <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"></span>
           {t("scheduledTasks_executionMonitor")}
