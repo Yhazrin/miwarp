@@ -111,12 +111,12 @@ enum MWAccentTheme: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .defaultMiWarp: return "Default MiWarp"
-        case .carbonPink: return "Carbon Pink"
-        case .deepSeaMilk: return "Deep Sea Milk"
-        case .auroraPomelo: return "Aurora Pomelo"
-        case .pomegranateMist: return "Pomegranate Mist"
-        case .auroraLime: return "Aurora Lime"
+        case .defaultMiWarp: return String(localized: "accentTheme.defaultMiWarp")
+        case .carbonPink: return String(localized: "accentTheme.carbonPink")
+        case .deepSeaMilk: return String(localized: "accentTheme.deepSeaMilk")
+        case .auroraPomelo: return String(localized: "accentTheme.auroraPomelo")
+        case .pomegranateMist: return String(localized: "accentTheme.pomegranateMist")
+        case .auroraLime: return String(localized: "accentTheme.auroraLime")
         }
     }
 

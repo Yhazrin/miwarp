@@ -8,6 +8,15 @@ enum ComplexityMode: String, CaseIterable {
     case developer = "Developer"
     case raw = "Raw"
 
+    var displayName: String {
+        switch self {
+        case .simple: return String(localized: "chatMode.simple")
+        case .focus: return String(localized: "chatMode.focus")
+        case .developer: return String(localized: "chatMode.developer")
+        case .raw: return String(localized: "chatMode.raw")
+        }
+    }
+
     var systemImage: String {
         switch self {
         case .simple: return "eye"
@@ -77,6 +86,7 @@ struct ChatView: View {
                 } description: {
                     Text(String(localized: "chat.fetchingHistory"))
                 }
+                .transition(.opacity)
             } else if let error = viewModel.error {
                 ContentUnavailableView {
                     Label(String(localized: "chat.cannotLoadMessages"), systemImage: "exclamationmark.triangle")
@@ -88,6 +98,7 @@ struct ChatView: View {
                     }
                     .buttonStyle(.bordered)
                 }
+                .transition(.opacity)
             } else {
                 MessageTimeline(
                     messages: viewModel.reducer.messages,
@@ -99,6 +110,7 @@ struct ChatView: View {
                     },
                     toastPresenter: toastPresenter
                 )
+                .transition(.opacity)
             }
 
             // Pending permissions
@@ -108,8 +120,8 @@ struct ChatView: View {
                 }
                 .frame(maxWidth: layout.chatAssistantBubbleMaxWidth)
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
+                .padding(.horizontal, MWSpacing.lg)
+                .padding(.bottom, MWSpacing.sm)
             }
         }
         .navigationTitle(runTitle)
@@ -125,9 +137,9 @@ struct ChatView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Picker("Mode", selection: $viewModel.complexityMode) {
+                    Picker(String(localized: "chat.mode"), selection: $viewModel.complexityMode) {
                         ForEach(ComplexityMode.allCases, id: \.self) { mode in
-                            Label(mode.rawValue, systemImage: mode.systemImage)
+                            Label(mode.displayName, systemImage: mode.systemImage)
                                 .tag(mode)
                         }
                     }
@@ -148,6 +160,7 @@ struct ChatView: View {
                 } label: {
                     Image(systemName: viewModel.complexityMode.systemImage)
                 }
+                .accessibilityLabel(String(localized: "a11y.modeSelector"))
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -159,7 +172,7 @@ struct ChatView: View {
                 model: viewModel.reducer.sessionModel ?? "Model pending",
                 runtimeStatus: store.connectionState,
                 toastPresenter: toastPresenter,
-                onSend: { Task { await viewModel.sendMessage() } },
+                onSend: { MiHaptics.lightImpact(); Task { await viewModel.sendMessage() } },
                 onStop: { Task { await viewModel.stopSession() } },
                 onAttach: {
                     toastPresenter.show("Attachments", message: "File attach is reserved for the next mobile pass.", kind: .info)
@@ -176,7 +189,7 @@ struct ChatView: View {
     // MARK: - Status Bar
 
     private var runStatusBar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: MWSpacing.lg) {
             statusPill(viewModel.reducer.currentStatus)
 
             if viewModel.reducer.usage.costUsd > 0 {
@@ -210,8 +223,8 @@ struct ChatView: View {
 
             Spacer()
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 6)
+        .padding(.horizontal, MWSpacing.lg)
+        .padding(.vertical, MWSpacing.sm)
         .accessibilityElement(children: .combine)
         .animation(MWMotion.springQuick, value: viewModel.reducer.usage.costUsd)
     }
@@ -220,7 +233,7 @@ struct ChatView: View {
         Text(status.displayLabel)
             .font(.caption.weight(.medium))
             .foregroundStyle(statusColor(status))
-            .padding(.horizontal, 8)
+            .padding(.horizontal, MWSpacing.sm)
             .padding(.vertical, 3)
             .background(statusColor(status).opacity(0.18), in: Capsule())
             .contentTransition(.opacity)
@@ -242,7 +255,7 @@ struct ChatView: View {
     // MARK: - Reconnect Banner
 
     private func reconnectBanner(attempt: Int) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: MWSpacing.sm) {
             ProgressView()
                 .scaleEffect(0.75)
             VStack(alignment: .leading, spacing: 1) {
@@ -258,8 +271,8 @@ struct ChatView: View {
             }
             .font(.subheadline)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.horizontal, MWSpacing.lg)
+        .padding(.vertical, MWSpacing.sm)
         .background(MWColors.statusWarning.opacity(0.08))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(String(localized: "chat.reconnecting"))
@@ -276,8 +289,8 @@ struct InlineApprovalView: View {
     @EnvironmentObject private var theme: MWTheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: MWSpacing.lg) {
+            HStack(spacing: MWSpacing.sm) {
                 Image(systemName: "exclamationmark.shield.fill")
                     .symbolEffect(.pulse.byLayer, options: .repeating)
                     .foregroundStyle(MWColors.statusWarning)
@@ -297,7 +310,7 @@ struct InlineApprovalView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: MWSpacing.md) {
                 Button {
                     didRespond = true
                     onApprove?(false)
@@ -305,7 +318,7 @@ struct InlineApprovalView: View {
                     Text(String(localized: "action.deny"))
                         .font(.subheadline.weight(.medium))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, MWSpacing.sm)
                         .background(.quaternary, in: RoundedRectangle(cornerRadius: MWRadius.md))
                 }
                 .disabled(didRespond)
@@ -318,7 +331,7 @@ struct InlineApprovalView: View {
                     Text(String(localized: "action.allow"))
                         .font(.subheadline.weight(.medium))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, MWSpacing.sm)
                         .background(.tint, in: RoundedRectangle(cornerRadius: MWRadius.md))
                         .foregroundStyle(MWColors.accentOnAccent)
                 }

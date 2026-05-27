@@ -49,6 +49,7 @@
 "action.stop" = "Stop";
 "action.fork" = "Fork conversation";
 "action.attach" = "Attach";
+"action.pin" = "Pin";
 
 /* Pairing */
 "pairing.scanQR" = "Scan QR Code";
@@ -232,3 +233,24 @@
 "theme.texture.off" = "Off";
 "theme.texture.subtle" = "Subtle";
 "theme.texture.strong" = "Strong";
+
+/* Chat Modes */
+"chatMode.simple" = "Simple";
+"chatMode.focus" = "Focus";
+"chatMode.developer" = "Developer";
+"chatMode.raw" = "Raw";
+
+/* Accent Themes */
+"accentTheme.defaultMiWarp" = "Default MiWarp";
+"accentTheme.carbonPink" = "Carbon Pink";
+"accentTheme.deepSeaMilk" = "Deep Sea Milk";
+"accentTheme.auroraPomelo" = "Aurora Pomelo";
+"accentTheme.pomegranateMist" = "Pomegranate Mist";
+"accentTheme.auroraLime" = "Aurora Lime";
+
+/* Accessibility */
+"a11y.modeSelector" = "Mode selector";
+"a11y.filterSessions" = "Filter sessions";
+"a11y.refreshSessions" = "Refresh sessions";
+"a11y.sessionRow" = "%@";
+"a11y.status" = "status";

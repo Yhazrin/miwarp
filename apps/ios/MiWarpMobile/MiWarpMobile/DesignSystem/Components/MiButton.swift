@@ -5,6 +5,7 @@ struct MiButton: View {
     let icon: String?
     let style: ButtonStyle
     let action: () -> Void
+    let accessibilityLabel: String?
 
     enum ButtonStyle {
         case primary
@@ -14,10 +15,11 @@ struct MiButton: View {
 
     @EnvironmentObject private var theme: MWTheme
 
-    init(_ title: String, icon: String? = nil, style: ButtonStyle = .primary, action: @escaping () -> Void) {
+    init(_ title: String, icon: String? = nil, style: ButtonStyle = .primary, accessibilityLabel: String? = nil, action: @escaping () -> Void) {
         self.title = title
         self.icon = icon
         self.style = style
+        self.accessibilityLabel = accessibilityLabel
         self.action = action
     }
 
@@ -36,6 +38,7 @@ struct MiButton: View {
             .padding(.vertical, 10)
             .background(backgroundColor, in: RoundedRectangle(cornerRadius: MWRadius.lg))
         }
+        .accessibilityLabel(accessibilityLabel ?? title)
     }
 
     private var foregroundColor: Color {

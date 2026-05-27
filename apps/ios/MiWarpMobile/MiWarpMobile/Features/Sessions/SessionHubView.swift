@@ -51,14 +51,14 @@ struct SessionHubView: View {
 
     private var activeFilterLabel: String {
         switch filters.status {
-        case .running: return String(localized: "Running")
-        case .waitingApproval: return String(localized: "Approval")
-        case .failed: return String(localized: "Failed")
-        case .completed: return String(localized: "Recent")
-        case .idle: return String(localized: "Idle")
-        case .pending: return String(localized: "Pending")
-        case .stopped: return String(localized: "Stopped")
-        case nil: return String(localized: "All")
+        case .running: return String(localized: "sessions.filterRunning")
+        case .waitingApproval: return String(localized: "sessions.filterApproval")
+        case .failed: return String(localized: "sessions.filterFailed")
+        case .completed: return String(localized: "sessions.filterRecent")
+        case .idle: return String(localized: "runStatus.idle")
+        case .pending: return String(localized: "runStatus.pending")
+        case .stopped: return String(localized: "runStatus.stopped")
+        case nil: return String(localized: "sessions.filterAll")
         }
     }
 
@@ -133,8 +133,10 @@ struct SessionHubView: View {
     private func contentState(layout: MWAdaptiveLayout, navigationMode: SessionNavigationMode) -> some View {
         if !store.isConnected && runs.isEmpty {
             notConnectedView(layout: layout)
+                .transition(.opacity)
         } else if store.isConnected && !isLoading && runs.isEmpty {
             connectedEmptyView(layout: layout)
+                .transition(.opacity)
         } else if isLoading && runs.isEmpty {
             ScrollView {
                 VStack(spacing: MWSpacing.md) {
@@ -142,8 +144,8 @@ struct SessionHubView: View {
                     MiSkeletonCard(lines: 3, showsAvatar: true)
                     MiSkeletonCard(lines: 3, showsAvatar: true)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 20)
+                .padding(.horizontal, MWSpacing.lg)
+                .padding(.top, MWSpacing.xl)
                 .frame(maxWidth: layout.contentMaxWidth)
                 .frame(maxWidth: .infinity)
             }
@@ -159,8 +161,10 @@ struct SessionHubView: View {
             }
             .frame(maxWidth: layout.contentMaxWidth)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .transition(.opacity)
         } else {
             sessionList(layout: layout, navigationMode: navigationMode)
+                .transition(.opacity)
         }
     }
 
@@ -171,7 +175,7 @@ struct SessionHubView: View {
                 Menu {
                     filterMenuContent
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: MWSpacing.xs) {
                         Text(activeFilterLabel)
                             .font(.caption)
                         Image(systemName: "chevron.down")
@@ -179,12 +183,15 @@ struct SessionHubView: View {
                     }
                     .foregroundColor(filters.isActive ? theme.tabActive : .secondary)
                 }
+                .accessibilityLabel(String(localized: "a11y.filterSessions"))
 
                 Button {
+                    MiHaptics.lightImpact()
                     Task { await loadRuns() }
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
+                .accessibilityLabel(String(localized: "a11y.refreshSessions"))
             }
         }
     }
@@ -194,26 +201,31 @@ struct SessionHubView: View {
     @ViewBuilder
     private var filterMenuContent: some View {
         Button {
+            MiHaptics.lightImpact()
             filters.status = nil
         } label: {
             Label(String(localized: "sessions.filterAll"), systemImage: filters.status == nil ? "checkmark" : "")
         }
         Button {
+            MiHaptics.lightImpact()
             filters.status = filters.status == .running ? nil : .running
         } label: {
             Label(String(localized: "sessions.filterRunning"), systemImage: filters.status == .running ? "checkmark" : "")
         }
         Button {
+            MiHaptics.lightImpact()
             filters.status = filters.status == .waitingApproval ? nil : .waitingApproval
         } label: {
             Label(String(localized: "sessions.filterApproval"), systemImage: filters.status == .waitingApproval ? "checkmark" : "")
         }
         Button {
+            MiHaptics.lightImpact()
             filters.status = filters.status == .failed ? nil : .failed
         } label: {
             Label(String(localized: "sessions.filterFailed"), systemImage: filters.status == .failed ? "checkmark" : "")
         }
         Button {
+            MiHaptics.lightImpact()
             filters.status = filters.status == .completed ? nil : .completed
         } label: {
             Label(String(localized: "sessions.filterRecent"), systemImage: filters.status == .completed ? "checkmark" : "")
@@ -224,7 +236,7 @@ struct SessionHubView: View {
 
     private func notConnectedView(layout: MWAdaptiveLayout) -> some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: MWSpacing.lg) {
                 HomeDashboardView(
                     runs: [],
                     connectionState: store.connectionState,
@@ -233,8 +245,8 @@ struct SessionHubView: View {
                 )
                 notConnectedHero
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 20)
+            .padding(.horizontal, MWSpacing.lg)
+            .padding(.top, MWSpacing.xl)
             .frame(maxWidth: layout.contentMaxWidth)
             .frame(maxWidth: .infinity)
         }
@@ -242,8 +254,8 @@ struct SessionHubView: View {
     }
 
     private var notConnectedHero: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: MWSpacing.md) {
+            VStack(alignment: .leading, spacing: MWSpacing.sm) {
                 Text(String(localized: "pairing.connectDesktop"))
                     .font(.title2.weight(.semibold))
                     .foregroundColor(heroTextColor)
@@ -256,7 +268,7 @@ struct SessionHubView: View {
             NavigationLink {
                 PairingView()
             } label: {
-                HStack(spacing: 8) {
+                HStack(spacing: MWSpacing.sm) {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 16, weight: .medium))
                     Text(String(localized: "sessions.connectNow"))
@@ -266,21 +278,21 @@ struct SessionHubView: View {
                         .font(.system(size: 14, weight: .medium))
                 }
                 .foregroundColor(theme.accentPrimary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.horizontal, MWSpacing.lg)
+                .padding(.vertical, MWSpacing.md)
                 .background(
                     Capsule()
                         .fill(MWColors.accentOnAccent)
                 )
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: MWSpacing.sm) {
                 heroPill(icon: "server.rack", label: String(localized: "pairing.enableServer"))
                 heroPill(icon: "network", label: String(localized: "pairing.lanAccess"))
                 heroPill(icon: "qrcode.viewfinder", label: String(localized: "pairing.scanQR"))
             }
         }
-        .padding(16)
+        .padding(MWSpacing.lg)
         .background(
             LinearGradient(
                 gradient: Gradient(colors: [
@@ -292,7 +304,7 @@ struct SessionHubView: View {
                 endPoint: .bottomTrailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: MWRadius.bubble))
     }
 
     private var heroTextColor: Color {
@@ -308,7 +320,7 @@ struct SessionHubView: View {
 
     private func connectedEmptyView(layout: MWAdaptiveLayout) -> some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: MWSpacing.lg) {
                 HomeDashboardView(
                     runs: runs,
                     connectionState: store.connectionState,
@@ -317,8 +329,8 @@ struct SessionHubView: View {
                 )
                 connectedHeroCard
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 20)
+            .padding(.horizontal, MWSpacing.lg)
+            .padding(.top, MWSpacing.xl)
             .frame(maxWidth: layout.contentMaxWidth)
             .frame(maxWidth: .infinity)
         }
@@ -326,9 +338,9 @@ struct SessionHubView: View {
     }
 
     private var connectedHeroCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: MWSpacing.md) {
+            VStack(alignment: .leading, spacing: MWSpacing.sm) {
+                HStack(spacing: MWSpacing.sm) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 18))
                         .foregroundColor(MWColors.statusSuccess)
@@ -345,6 +357,7 @@ struct SessionHubView: View {
 
             #if canImport(ActivityKit)
             Button {
+                MiHaptics.lightImpact()
                 if syncManager.isSyncing {
                     syncManager.cancelSync()
                 } else {
@@ -358,7 +371,7 @@ struct SessionHubView: View {
                     }
                 }
             } label: {
-                HStack(spacing: 8) {
+                HStack(spacing: MWSpacing.sm) {
                     if syncManager.isSyncing {
                         ProgressView()
                             .scaleEffect(0.8)
@@ -373,8 +386,8 @@ struct SessionHubView: View {
                     Spacer()
                 }
                 .foregroundColor(theme.accentPrimary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.horizontal, MWSpacing.lg)
+                .padding(.vertical, MWSpacing.md)
                 .background(
                     Capsule()
                         .fill(MWColors.accentOnAccent)
@@ -383,9 +396,10 @@ struct SessionHubView: View {
             .disabled(syncManager.isSyncing && syncManager.syncPhase == .preparing)
             #else
             Button {
+                MiHaptics.lightImpact()
                 Task { await loadRuns() }
             } label: {
-                HStack(spacing: 8) {
+                HStack(spacing: MWSpacing.sm) {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 14, weight: .medium))
                     Text(String(localized: "sessions.syncNow"))
@@ -393,8 +407,8 @@ struct SessionHubView: View {
                     Spacer()
                 }
                 .foregroundColor(theme.accentPrimary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.horizontal, MWSpacing.lg)
+                .padding(.vertical, MWSpacing.md)
                 .background(
                     Capsule()
                         .fill(MWColors.accentOnAccent)
@@ -403,7 +417,7 @@ struct SessionHubView: View {
             #endif
 
             if let conn = store.activeConnection {
-                HStack(spacing: 4) {
+                HStack(spacing: MWSpacing.xs) {
                     Image(systemName: "desktopcomputer")
                         .font(.system(size: 10))
                     Text(conn.host)
@@ -412,7 +426,7 @@ struct SessionHubView: View {
                 .foregroundColor(heroTextColor.opacity(0.7))
             }
         }
-        .padding(16)
+        .padding(MWSpacing.lg)
         .background(
             LinearGradient(
                 gradient: Gradient(colors: [
@@ -423,13 +437,13 @@ struct SessionHubView: View {
                 endPoint: .bottomTrailing
             )
         )
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: MWRadius.bubble))
     }
 
     // MARK: - Status Hints
 
     private var statusHint: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: MWSpacing.xs) {
             Text(String(localized: "sessions.noDesktop"))
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(theme.cardTextSecondary)
@@ -439,16 +453,16 @@ struct SessionHubView: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .padding(.horizontal, 16)
+        .padding(.vertical, MWSpacing.md)
+        .padding(.horizontal, MWSpacing.lg)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: MWRadius.lg)
                 .fill(MWColors.cardBg)
         )
     }
 
     private var connectedStatusHint: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: MWSpacing.xs) {
             Text(String(localized: "sessions.noSessions"))
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(theme.cardTextSecondary)
@@ -458,10 +472,10 @@ struct SessionHubView: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .padding(.horizontal, 16)
+        .padding(.vertical, MWSpacing.md)
+        .padding(.horizontal, MWSpacing.lg)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: MWRadius.lg)
                 .fill(MWColors.cardBg)
         )
     }
@@ -469,15 +483,15 @@ struct SessionHubView: View {
     // MARK: - Helper
 
     private func heroPill(icon: String, label: String) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: MWSpacing.xs) {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .medium))
             Text(label)
                 .font(.caption)
         }
         .foregroundColor(heroTextColor.opacity(0.9))
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.horizontal, MWSpacing.sm)
+        .padding(.vertical, MWSpacing.xs)
         .background(
             Capsule()
                 .fill(heroTextColor.opacity(0.2))
@@ -504,7 +518,7 @@ struct SessionHubView: View {
             Section {
                 EmptyView()
             } header: {
-                HStack(spacing: 6) {
+                HStack(spacing: MWSpacing.sm) {
                     Circle()
                         .fill(store.isConnected ? MWColors.statusSuccess : MWColors.statusError)
                         .frame(width: 6, height: 6)
@@ -596,11 +610,13 @@ struct SessionHubView: View {
 
     @ViewBuilder
     private func sessionRow(for run: MiWarpRun, navigationMode: SessionNavigationMode) -> some View {
+        let rowLabel = String(format: String(localized: "a11y.sessionRow"), run.displayTitle)
         switch navigationMode {
         case .push:
             NavigationLink(value: run) {
                 SessionRowView(run: run)
             }
+            .accessibilityLabel(rowLabel)
         case .selection:
             Button {
                 selectRun(run)
@@ -608,6 +624,7 @@ struct SessionHubView: View {
                 SessionRowView(run: run)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(rowLabel)
         }
     }
 
@@ -629,21 +646,29 @@ struct SessionHubView: View {
     private func loadRuns() async {
         guard let rpc = store.rpc else {
             if runs.isEmpty {
-                error = String(localized: "Not connected")
+                error = String(localized: "connection.noActive")
             }
             return
         }
 
-        isLoading = true
-        error = nil
-
-        do {
-            runs = try await rpc.listRuns()
-        } catch {
-            self.error = error.localizedDescription
+        withAnimation(MWMotion.springStandard) {
+            isLoading = true
+            error = nil
         }
 
-        isLoading = false
+        do {
+            let loaded = try await rpc.listRuns()
+            withAnimation(MWMotion.springStandard) {
+                runs = loaded
+                isLoading = false
+            }
+            MiHaptics.success()
+        } catch {
+            withAnimation(MWMotion.springStandard) {
+                self.error = error.localizedDescription
+                isLoading = false
+            }
+        }
     }
 }
 
@@ -658,7 +683,7 @@ struct SessionRowView: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: MWSpacing.lg) {
             ZStack {
                 if run.status == .running {
                     Circle()
@@ -671,7 +696,7 @@ struct SessionRowView: View {
                     .frame(width: 8, height: 8)
             }
             .frame(width: 14, height: 14)
-            .padding(.top, 6)
+            .padding(.top, MWSpacing.sm)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(run.displayTitle)
@@ -705,7 +730,7 @@ struct SessionRowView: View {
         }
         .padding(.vertical, 2)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(run.displayTitle), status: \(run.status)")
+        .accessibilityLabel("\(run.displayTitle), \(String(localized: "a11y.status")): \(run.status)")
     }
 }
 

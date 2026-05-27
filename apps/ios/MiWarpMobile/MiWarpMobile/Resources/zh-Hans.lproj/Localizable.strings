@@ -49,6 +49,7 @@
 "action.stop" = "停止";
 "action.fork" = "分叉对话";
 "action.attach" = "附件";
+"action.pin" = "置顶";
 
 /* Pairing */
 "pairing.scanQR" = "扫描二维码";
@@ -232,3 +233,24 @@
 "theme.texture.off" = "关闭";
 "theme.texture.subtle" = "轻微";
 "theme.texture.strong" = "强烈";
+
+/* Chat Modes */
+"chatMode.simple" = "简单";
+"chatMode.focus" = "专注";
+"chatMode.developer" = "开发者";
+"chatMode.raw" = "原始";
+
+/* Accent Themes */
+"accentTheme.defaultMiWarp" = "默认 MiWarp";
+"accentTheme.carbonPink" = "炭黑粉";
+"accentTheme.deepSeaMilk" = "深海奶蓝";
+"accentTheme.auroraPomelo" = "极光蜜柚";
+"accentTheme.pomegranateMist" = "石榴薄雾";
+"accentTheme.auroraLime" = "极光青柠";
+
+/* Accessibility */
+"a11y.modeSelector" = "模式选择器";
+"a11y.filterSessions" = "筛选会话";
+"a11y.refreshSessions" = "刷新会话";
+"a11y.sessionRow" = "%@";
+"a11y.status" = "状态";

@@ -3,6 +3,7 @@ import SwiftUI
 struct MiStatusBadge: View {
     let text: String
     let color: Color
+    var accessibilityLabel: String?
 
     var body: some View {
         Text(text)
@@ -11,5 +12,6 @@ struct MiStatusBadge: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(color, in: Capsule())
+            .accessibilityLabel(accessibilityLabel ?? text)
     }
 }
