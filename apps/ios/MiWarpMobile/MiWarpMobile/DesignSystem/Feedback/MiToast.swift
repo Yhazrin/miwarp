@@ -66,7 +66,7 @@ final class MiToastPresenter: ObservableObject {
 
     func dismiss() {
         dismissTask?.cancel()
-        withAnimation(.spring(duration: 0.25, bounce: 0.2)) {
+        withAnimation(MWMotion.springQuick) {
             currentToast = nil
         }
     }
