@@ -37,6 +37,7 @@
   import SkillSourceManager from "$lib/components/SkillSourceManager.svelte";
   import PluginInstaller from "$lib/components/PluginInstaller.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { fade } from "svelte/transition";
   import type {
     MarketplacePlugin,
@@ -857,9 +858,7 @@
 <div class="px-6 py-5 h-full overflow-y-auto">
   {#if loading}
     <div class="flex items-center justify-center py-16">
-      <div
-        class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-      ></div>
+      <Spinner size="md" />
     </div>
   {:else if loadError}
     <div class="flex flex-col items-center justify-center py-16 text-center">
@@ -1673,9 +1672,7 @@
         <!-- Loading spinner for search -->
         {#if communitySearching}
           <div class="flex items-center justify-center py-4">
-            <div
-              class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-            ></div>
+            <Spinner size="sm" />
             <span class="ml-2 text-xs text-muted-foreground">{t("plugin_searching")}</span>
           </div>
         {/if}
@@ -1773,9 +1770,7 @@
                     <div
                       class="rounded-xl border border-border/50 bg-card/20 p-6 flex items-center justify-center h-full"
                     >
-                      <div
-                        class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                      ></div>
+                      <Spinner size="sm" />
                       <span class="ml-2 text-xs text-muted-foreground"
                         >{t("plugin_loadingPreview")}</span
                       >
@@ -2458,9 +2453,7 @@
                   </button>
                   <!-- Loading spinner -->
                   {#if operationLoading === plugin.name}
-                    <div
-                      class="h-3.5 w-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                    ></div>
+                    <Spinner size="sm" />
                   {/if}
                 </div>
               </div>
@@ -2547,9 +2540,7 @@
                           {t("plugin_remove")}
                         </button>
                         {#if operationLoading === `__mp_${mp.name}`}
-                          <div
-                            class="h-3.5 w-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                          ></div>
+                          <Spinner size="sm" />
                         {/if}
                       </div>
                     </div>
