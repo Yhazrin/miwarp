@@ -397,6 +397,7 @@
   "context_effective": "有效",
   "context_cacheEfficiency": "缓存效率:",
   "context_cost": "费用:",
+  "agentEditor_addTool": "添加工具...",
   "context_usageMeter": "上下文使用量: {pct}%",
   "context_used": "已使用",
   "context_usedTokens": "已使用",

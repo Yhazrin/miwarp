@@ -361,7 +361,7 @@
               class="flex-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
               bind:value={toolInput}
             >
-              <option value="">Add tool...</option>
+              <option value="">{t('agentEditor_addTool')}</option>
               {#each AVAILABLE_TOOLS.filter((t) => !formData.tools.includes(t)) as tool}
                 <option value={tool}>{tool}</option>
               {/each}

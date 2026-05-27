@@ -408,6 +408,7 @@
   "context_effective": "Effective",
   "context_cacheEfficiency": "Cache efficiency:",
   "context_cost": "Cost:",
+  "agentEditor_addTool": "Add tool...",
   "context_usageMeter": "Context usage: {pct}%",
   "context_used": "used",
   "context_usedTokens": "Used",
