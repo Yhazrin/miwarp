@@ -320,7 +320,7 @@
       <div class="w-[35%] border-r overflow-hidden p-4">
         <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
           <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"></span>
-          Execution Monitor
+          {t("scheduledTasks_executionMonitor")}
         </h3>
         <TaskExecutionMonitor
           taskId={activeMonitor.taskId}
@@ -519,7 +519,7 @@
     <span class="text-sm">{scheduledTasksStore.error}</span>
     <button
       class="ml-2 p-1 hover:bg-[hsl(var(--miwarp-text-primary)/0.15)] rounded"
-      aria-label="Dismiss error"
+      aria-label={t("common_dismiss")}
       onclick={() => scheduledTasksStore.clearError()}
     >
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

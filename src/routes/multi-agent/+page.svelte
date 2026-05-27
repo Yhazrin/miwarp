@@ -7,7 +7,9 @@
   import { t } from "$lib/i18n/index.svelte";
   import Button from "$lib/components/Button.svelte";
   import Card from "$lib/components/Card.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import { dbgWarn } from "$lib/utils/debug";
+  import { fade } from "svelte/transition";
 
   const presets = multiAgentService.getPresets();
   let _selectedConfig = $state<MultiAgentConfig | null>(null);
@@ -48,25 +50,33 @@
   <!-- 预设任务 -->
   <div class="mb-8">
     <h2 class="text-lg font-medium mb-4">{t("multiAgent_presetSelect")}</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {#each presets as preset (preset.id)}
-        {@const config = multiAgentService.getPreset(preset.id)}
-        {#if config}
-          <Card>
-            <div class="p-4">
-              <h3 class="font-medium mb-2">{preset.name}</h3>
-              <p class="text-sm text-muted-foreground mb-4">{preset.description}</p>
-              <div class="text-xs text-muted-foreground mb-4">
-                {t("multiAgent_agentsParallel", { count: String(config.agents.length) })}
+    {#if presets.length === 0}
+      <EmptyState
+        icon="🤖"
+        title={t("multiAgent_noPresetsTitle")}
+        description={t("multiAgent_noPresetsDesc")}
+      />
+    {:else}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {#each presets as preset (preset.id)}
+          {@const config = multiAgentService.getPreset(preset.id)}
+          {#if config}
+            <Card>
+              <div class="p-4">
+                <h3 class="font-medium mb-2">{preset.name}</h3>
+                <p class="text-sm text-muted-foreground mb-4">{preset.description}</p>
+                <div class="text-xs text-muted-foreground mb-4">
+                  {t("multiAgent_agentsParallel", { count: String(config.agents.length) })}
+                </div>
+                <Button onclick={() => executePreset(config)} disabled={isRunning} class="w-full">
+                  {isRunning ? t("multiAgent_running") : t("multiAgent_execute")}
+                </Button>
               </div>
-              <Button onclick={() => executePreset(config)} disabled={isRunning} class="w-full">
-                {isRunning ? t("multiAgent_running") : t("multiAgent_execute")}
-              </Button>
-            </div>
-          </Card>
-        {/if}
-      {/each}
-    </div>
+            </Card>
+          {/if}
+        {/each}
+      </div>
+    {/if}
   </div>
 
   <!-- 自定义任务 -->
@@ -84,9 +94,29 @@
     </div>
   </div>
 
+  <!-- 执行中指示器 -->
+  {#if isRunning}
+    <div class="mb-8 flex items-center gap-3 p-4 rounded-lg border border-border bg-muted/30" transition:fade={{ duration: 200 }}>
+      <svg
+        class="animate-spin h-5 w-5 text-[hsl(var(--miwarp-accent-primary))]"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path
+          class="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+        ></path>
+      </svg>
+      <span class="text-sm text-muted-foreground">{t("multiAgent_running")}</span>
+    </div>
+  {/if}
+
   <!-- 执行结果 -->
   {#if results.length > 0}
-    <div>
+    <div transition:fade={{ duration: 250 }}>
       <h2 class="text-lg font-medium mb-4">{t("multiAgent_execResults")}</h2>
       <div class="space-y-3">
         {#each results as result}
