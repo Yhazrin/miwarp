@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { formatElapsed } from "$lib/chat/utils/format";
 
   interface Props {
@@ -45,9 +46,7 @@
     <div class="pl-7">
       {#if activeToolName}
         <div class="flex items-center gap-2 text-sm text-muted-foreground">
-          <div
-            class="h-3.5 w-3.5 rounded-full border-2 border-border border-t-muted-foreground animate-spin"
-          ></div>
+          <Spinner size="sm" class="border-border border-t-muted-foreground" />
           <span
             >{t("chat_usingTool")}
             <span class="text-foreground font-medium">{activeToolName}</span></span
@@ -58,16 +57,12 @@
         </div>
       {:else if approving}
         <div class="flex items-center gap-2 text-sm text-muted-foreground">
-          <div
-            class="h-3.5 w-3.5 rounded-full border-2 border-border border-t-muted-foreground animate-spin"
-          ></div>
+          <Spinner size="sm" class="border-border border-t-muted-foreground" />
           <span>{t("chat_restartingApproved")}</span>
         </div>
       {:else if sending}
         <div class="flex items-center gap-2 text-sm text-muted-foreground">
-          <div
-            class="h-3.5 w-3.5 rounded-full border-2 border-border border-t-muted-foreground animate-spin"
-          ></div>
+          <Spinner size="sm" class="border-border border-t-muted-foreground" />
           <span>{t("chat_startingSession")}</span>
         </div>
       {:else}

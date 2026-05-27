@@ -5,6 +5,7 @@
   import type { ChangelogEntry } from "$lib/types";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
 
   let entries = $state<ChangelogEntry[]>([]);
   let loading = $state(true);
@@ -136,9 +137,7 @@
   <div class="flex-1 overflow-y-auto">
     {#if loading}
       <div class="flex items-center justify-center py-20">
-        <div
-          class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-        ></div>
+        <Spinner size="md" />
       </div>
     {:else if error}
       <div class="flex flex-col items-center gap-3 px-6 py-20 text-center">

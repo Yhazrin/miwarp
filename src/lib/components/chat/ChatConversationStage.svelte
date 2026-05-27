@@ -33,6 +33,7 @@
   import { APP_LOGO_URL } from "$lib/utils/brand-assets";
   import { fade, scale } from "svelte/transition";
   import { t as tFn } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
 
   const t = tFn;
 
@@ -273,9 +274,7 @@
           </div>
         {:else if routeRunPending || (store.phase === "loading" && store.timeline.length === 0 && !!runId)}
           <div class="flex h-full flex-col items-center justify-center gap-3">
-            <div
-              class="h-5 w-5 rounded-full border-2 border-muted-foreground/30 border-t-primary animate-spin"
-            ></div>
+            <Spinner size="md" class="border-muted-foreground/30" />
             <p class="text-xs text-muted-foreground">{t("chat_loadingSession")}</p>
           </div>
         {:else}
@@ -379,9 +378,7 @@
               <div class="w-full animate-fade-in" data-export-exclude>
                 <div class="chat-content-width py-2">
                   <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                    <div
-                      class="h-3.5 w-3.5 rounded-full border-2 border-border border-t-muted-foreground animate-spin"
-                    ></div>
+                    <Spinner size="sm" class="border-border border-t-muted-foreground" />
                     <span>{t("chat_processingCommand", { command: processingSlashCmd })}</span>
                   </div>
                 </div>

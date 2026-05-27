@@ -7,6 +7,7 @@
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
   import CodeEditor from "$lib/components/CodeEditor.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { showToast } from "$lib/stores/toast-store.svelte";
   import { dbgWarn } from "$lib/utils/debug";
   import { memoryStore } from "$lib/stores/memory-store.svelte";
@@ -431,9 +432,7 @@
     </div>
   {:else if loading}
     <div class="flex flex-1 items-center justify-center">
-      <div
-        class="h-6 w-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-      ></div>
+      <Spinner size="lg" />
     </div>
   {:else if viewMode === "preview" && isMarkdown}
     <div class="flex-1 overflow-y-auto p-4">
