@@ -409,6 +409,7 @@
   "context_cacheEfficiency": "Cache efficiency:",
   "context_cost": "Cost:",
   "agentEditor_addTool": "Add tool...",
+  "taskExecution_waiting": "Waiting for execution logs...",
   "context_usageMeter": "Context usage: {pct}%",
   "context_used": "used",
   "context_usedTokens": "Used",
