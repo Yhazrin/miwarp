@@ -2419,9 +2419,7 @@
                 </div>
               {:else if gitLoading}
                 <div class="flex-1 flex items-center justify-center">
-                  <div
-                    class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                  ></div>
+                  <Spinner size="sm" />
                 </div>
               {:else if !gitSummary}
                 <div class="flex-1 flex items-center justify-center px-3">
@@ -2546,9 +2544,7 @@
                 >
                   {#if memoryLoading}
                     <div class="flex items-center justify-center py-6">
-                      <div
-                        class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                      ></div>
+                      <Spinner size="sm" />
                     </div>
                   {:else if memoryScopeFolder.length > 0}
                     {#each filterVisibleCandidates(memoryScopeFolder, true, memorySelectedFile) as file}
@@ -2694,9 +2690,7 @@
             <div class="flex-1 overflow-y-auto px-2 py-1">
               {#if teamStore.loading}
                 <div class="flex items-center justify-center py-6">
-                  <div
-                    class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                  ></div>
+                  <Spinner size="sm" />
                 </div>
               {:else if filteredTeams.length === 0}
                 <div class="flex flex-col items-center gap-1 px-3 py-6 text-center">
