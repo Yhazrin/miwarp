@@ -340,9 +340,9 @@
       shortLabel: () => t("prompt_permAutoReadShort"),
       description: () => t("prompt_permAutoReadDesc"),
       cls: "text-miwarp-status-info",
-      dotCls: "bg-blue-400",
+      dotCls: "bg-[hsl(var(--miwarp-status-info))]",
       borderCls:
-        "border-blue-400/40 focus-within:border-blue-400/60 focus-within:shadow-[0_0_0_1px_rgba(96,165,250,0.15)]",
+        "border-[hsl(var(--miwarp-status-info)/0.4)] focus-within:border-[hsl(var(--miwarp-status-info)/0.6)] focus-within:shadow-[0_0_0_1px_hsl(var(--miwarp-status-info)/0.15)]",
     },
     {
       value: "bypassPermissions",
@@ -379,10 +379,10 @@
       label: () => t("prompt_permDontAskLabel"),
       shortLabel: () => t("prompt_permDontAskShort"),
       description: () => t("prompt_permDontAskDesc"),
-      cls: "text-red-400",
-      dotCls: "bg-red-400",
+      cls: "text-[hsl(var(--miwarp-status-error))]",
+      dotCls: "bg-[hsl(var(--miwarp-status-error))]",
       borderCls:
-        "border-red-400/40 focus-within:border-red-400/60 focus-within:shadow-[0_0_0_1px_rgba(248,113,113,0.15)]",
+        "border-[hsl(var(--miwarp-status-error)/0.4)] focus-within:border-[hsl(var(--miwarp-status-error)/0.6)] focus-within:shadow-[0_0_0_1px_hsl(var(--miwarp-status-error)/0.15)]",
     },
   ];
 
@@ -2052,7 +2052,7 @@
       {#each store.pastedBlocks as block (block.id)}
         {@const isSpreadsheet = block.ext ? isSpreadsheetExt(block.ext) : false}
         <span
-          class="inline-flex items-center gap-1.5 rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 px-2 py-1 text-xs"
+          class="inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)] text-[hsl(var(--miwarp-status-info))] px-2 py-1 text-xs"
         >
           {#if isSpreadsheet}
             <!-- Table/spreadsheet icon -->
@@ -2090,7 +2090,7 @@
           >
           <button
             onclick={() => removePastedBlock(block.id)}
-            class="ml-0.5 rounded p-0.5 transition-colors hover:bg-blue-200/50 dark:hover:bg-blue-800/50"
+            class="ml-0.5 rounded p-0.5 transition-colors hover:bg-[hsl(var(--miwarp-status-info)/0.15)]"
             title={t("prompt_removePaste")}
           >
             <svg

@@ -100,11 +100,11 @@
   function getStatusColor(status: string): string {
     switch (status) {
       case "completed":
-        return "text-green-500";
+        return "text-[hsl(var(--miwarp-status-success))]";
       case "failed":
-        return "text-red-500";
+        return "text-[hsl(var(--miwarp-status-error))]";
       case "running":
-        return "text-blue-500";
+        return "text-[hsl(var(--miwarp-status-info))]";
       case "cancelled":
         return "text-muted-foreground";
       default:

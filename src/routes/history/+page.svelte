@@ -510,7 +510,7 @@
         ></div>
       </div>
     {:else if error}
-      <div class="rounded-lg border border-red-500/20 bg-[hsl(var(--miwarp-status-error))]/10 p-4 text-sm text-[hsl(var(--miwarp-status-error))]">
+      <div class="rounded-lg border border-[hsl(var(--miwarp-status-error)/0.2)] bg-[hsl(var(--miwarp-status-error)/0.1)] p-4 text-sm text-[hsl(var(--miwarp-status-error))]">
         {error}
       </div>
     {:else if response && response.results.length === 0 && !loading}
@@ -544,7 +544,7 @@
                   </span>
                   {#if run.hasErrors}
                     <span
-                      class="rounded bg-[hsl(var(--miwarp-status-error))]/15 px-1.5 py-0.5 text-[10px] font-medium text-[hsl(var(--miwarp-status-error))]"
+                      class="rounded bg-[hsl(var(--miwarp-status-error)/0.15)] px-1.5 py-0.5 text-[10px] font-medium text-[hsl(var(--miwarp-status-error))]"
                     >
                       {t("history_errors")}
                     </span>

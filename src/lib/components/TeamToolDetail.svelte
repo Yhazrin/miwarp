@@ -300,7 +300,7 @@
     {#if tool.status === "success"}
       <div class="rounded bg-muted p-2">
         <span
-          class="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:text-miwarp-status-error"
+          class="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--miwarp-status-error)/0.1)] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--miwarp-status-error))]"
         >
           <svg
             class="h-3 w-3"

@@ -458,9 +458,9 @@
   let gitLoading = $state(false);
 
   const GIT_STATUS_COLORS: Record<string, string> = {
-    M: "text-blue-400",
-    A: "text-green-400",
-    D: "text-red-400",
+    M: "text-[hsl(var(--miwarp-status-info))]",
+    A: "text-[hsl(var(--miwarp-status-success))]",
+    D: "text-[hsl(var(--miwarp-status-error))]",
     R: "text-purple-400",
     "?": "text-muted-foreground",
   };
@@ -1754,7 +1754,7 @@
           stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg
         >
         <svg
-          class="h-3.5 w-3.5 shrink-0 text-blue-400/70"
+          class="h-3.5 w-3.5 shrink-0 text-[hsl(var(--miwarp-status-info)/0.7)]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -2283,7 +2283,7 @@
                 >{t("sidebar_git")}
                 {#if gitSummary && gitSummary.total_files > 0}
                   <span
-                    class="ml-0.5 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-blue-500/80 px-1 text-[10px] font-bold text-white"
+                    class="ml-0.5 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-[hsl(var(--miwarp-status-info)/0.8)] px-1 text-[10px] font-bold text-white"
                     >{gitSummary.total_files}</span
                   >
                 {/if}
@@ -2474,11 +2474,11 @@
                         : t("sidebar_changedFile", { count: String(gitSummary.total_files) })}</span
                     >
                     {#if gitSummary.total_insertions > 0}
-                      <span class="text-green-500 tabular-nums">+{gitSummary.total_insertions}</span
+                      <span class="text-[hsl(var(--miwarp-status-success))] tabular-nums">+{gitSummary.total_insertions}</span
                       >
                     {/if}
                     {#if gitSummary.total_deletions > 0}
-                      <span class="text-red-400 tabular-nums">-{gitSummary.total_deletions}</span>
+                      <span class="text-[hsl(var(--miwarp-status-error))] tabular-nums">-{gitSummary.total_deletions}</span>
                     {/if}
                   </div>
                   <!-- Changed files list -->
@@ -2497,10 +2497,10 @@
                           >{file.path}</span
                         >
                         {#if file.insertions > 0}
-                          <span class="text-[10px] text-green-500">+{file.insertions}</span>
+                          <span class="text-[10px] text-[hsl(var(--miwarp-status-success))]">+{file.insertions}</span>
                         {/if}
                         {#if file.deletions > 0}
-                          <span class="text-[10px] text-red-400">-{file.deletions}</span>
+                          <span class="text-[10px] text-[hsl(var(--miwarp-status-error))]">-{file.deletions}</span>
                         {/if}
                       </button>
                     {/each}
@@ -2555,7 +2555,7 @@
                           class="h-3 w-3 shrink-0 {file.scope === 'memory'
                             ? 'text-amber-400'
                             : file.exists
-                              ? 'text-blue-400'
+                              ? 'text-[hsl(var(--miwarp-status-info))]'
                               : 'text-muted-foreground/40'}"
                           viewBox="0 0 24 24"
                           fill="none"
@@ -2630,7 +2630,7 @@
                         >
                           <svg
                             class="h-3 w-3 shrink-0 {file.exists
-                              ? 'text-blue-400'
+                              ? 'text-[hsl(var(--miwarp-status-info))]'
                               : 'text-muted-foreground/40'}"
                             viewBox="0 0 24 24"
                             fill="none"
@@ -3059,7 +3059,7 @@
       {t("sidebar_deleteCancel")}
     </button>
     <button
-      class="px-3 py-1.5 text-sm rounded-md border border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors"
+      class="px-3 py-1.5 text-sm rounded-md border border-[hsl(var(--miwarp-status-warning))] text-[hsl(var(--miwarp-status-warning))] hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
       onclick={confirmDeleteConversation}
     >
       {t("sidebar_softDelete")}
@@ -3085,7 +3085,7 @@
       {t("sidebar_deleteCancel")}
     </button>
     <button
-      class="px-3 py-1.5 text-sm rounded-md border border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors"
+      class="px-3 py-1.5 text-sm rounded-md border border-[hsl(var(--miwarp-status-warning))] text-[hsl(var(--miwarp-status-warning))] hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
       onclick={batchDelete}
     >
       {t("sidebar_softDelete")}
@@ -3205,7 +3205,7 @@
       {t("sidebar_deleteCancel")}
     </button>
     <button
-      class="px-3 py-1.5 text-sm rounded-md border border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950 transition-colors"
+      class="px-3 py-1.5 text-sm rounded-md border border-[hsl(var(--miwarp-status-warning))] text-[hsl(var(--miwarp-status-warning))] hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
       onclick={() => doDeleteFolder(false)}
     >
       {t("sidebar_deleteFolderKeep")}

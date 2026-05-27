@@ -141,7 +141,7 @@
     <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1">
       <!-- Input -->
       <div class="flex items-center gap-1">
-        <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+        <span class="w-2 h-2 rounded-full bg-[hsl(var(--miwarp-status-info))]"></span>
         <span class="text-xs text-muted-foreground">{t('context_input')}</span>
         <span class="text-xs tabular-nums text-foreground">
           {formatTokens(inputTokens)}

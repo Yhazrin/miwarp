@@ -92,10 +92,10 @@
         {#each results as result}
           <div
             class="p-4 rounded-lg border {result.status === 'completed'
-              ? 'border-green-500/30 bg-green-500/10'
+              ? 'border-[hsl(var(--miwarp-status-success)/0.3)] bg-[hsl(var(--miwarp-status-success)/0.1)]'
               : result.status === 'failed'
-                ? 'border-red-500/30 bg-red-500/10'
-                : 'border-yellow-500/30 bg-yellow-500/10'}"
+                ? 'border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.1)]'
+                : 'border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)]'}"
           >
             <div class="flex items-center gap-3">
               {#if result.status === "completed"}
@@ -113,7 +113,7 @@
                   </div>
                 {/if}
                 {#if result.error}
-                  <div class="text-sm text-red-500 mt-1">{result.error}</div>
+                  <div class="text-sm text-[hsl(var(--miwarp-status-error))] mt-1">{result.error}</div>
                 {/if}
                 {#if result.result}
                   <div class="text-sm mt-1">{result.result}</div>
