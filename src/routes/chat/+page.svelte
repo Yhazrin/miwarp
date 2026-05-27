@@ -1488,6 +1488,4 @@
       fn?.(null);
     }}
   />
-
-  <!-- Chat toast (fixed bottom-center, auto-dismiss) -->
 </div>
