@@ -81,7 +81,7 @@
               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
               : taskStatus === 'in_progress'
                 ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
-                : 'bg-neutral-500/10 text-muted-foreground'}">{taskStatus}</span
+                : 'bg-muted text-muted-foreground'}">{taskStatus}</span
           >
         {/if}
       </div>
@@ -150,7 +150,7 @@
               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
               : statusChange.from === 'in_progress'
                 ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
-                : 'bg-neutral-500/10 text-muted-foreground'}">{statusChange.from}</span
+                : 'bg-muted text-muted-foreground'}">{statusChange.from}</span
           >
           <span class="text-muted-foreground/60">&rarr;</span>
           <span
@@ -159,7 +159,7 @@
               ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
               : statusChange.to === 'in_progress'
                 ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
-                : 'bg-neutral-500/10 text-muted-foreground'}">{statusChange.to}</span
+                : 'bg-muted text-muted-foreground'}">{statusChange.to}</span
           >
         </div>
       {:else if updatedStatus}
@@ -169,7 +169,7 @@
             ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
             : updatedStatus === 'in_progress'
               ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
-              : 'bg-neutral-500/10 text-muted-foreground'}">{updatedStatus}</span
+              : 'bg-muted text-muted-foreground'}">{updatedStatus}</span
         >
       {/if}
     {/if}
@@ -204,7 +204,7 @@
                       ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                       : task.status === 'in_progress'
                         ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
-                        : 'bg-neutral-500/10 text-muted-foreground'}">{task.status}</span
+                        : 'bg-muted text-muted-foreground'}">{task.status}</span
                   >
                 </td>
                 <td class="px-2 py-1 text-muted-foreground">{task.owner ?? ""}</td>
@@ -256,7 +256,7 @@
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                   : task.status === 'in_progress'
                     ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
-                    : 'bg-neutral-500/10 text-muted-foreground'}">{task.status}</span
+                    : 'bg-muted text-muted-foreground'}">{task.status}</span
               >
             {/if}
           </div>

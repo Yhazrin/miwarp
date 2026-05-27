@@ -18,7 +18,7 @@ struct MiProgressRing: View {
                 .animation(MWMotion.springQuick, value: progress)
         }
         .frame(width: size, height: size)
-        .accessibilityLabel("Progress")
+        .accessibilityLabel(String(localized: "component.progress"))
         .accessibilityValue("\(Int(progress * 100))%")
     }
 }

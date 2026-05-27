@@ -124,6 +124,8 @@
 "sessions.filterRecent" = "Recent";
 "sessions.syncDescription" = "Sync local MiWarp sessions over your network.";
 "sessions.connectNow" = "Connect Now";
+"sessions.selectSession" = "Select a session";
+"sessions.selectSessionDesc" = "Choose a conversation to continue.";
 
 /* Pairing Extended */
 "pairing.server" = "Server";
@@ -194,3 +196,9 @@
 /* Dashboard */
 "dashboard.recentActivity" = "Recent Activity";
 "dashboard.run" = "Run";
+
+/* Diff */
+"diff.lineCount" = "%lld lines";
+
+/* Component */
+"component.progress" = "Progress";

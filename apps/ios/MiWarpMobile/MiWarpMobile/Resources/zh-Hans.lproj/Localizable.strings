@@ -124,6 +124,8 @@
 "sessions.filterRecent" = "最近";
 "sessions.syncDescription" = "通过网络同步本地 MiWarp 会话。";
 "sessions.connectNow" = "立即连接";
+"sessions.selectSession" = "选择会话";
+"sessions.selectSessionDesc" = "选择一个对话继续。";
 
 /* Pairing Extended */
 "pairing.server" = "服务器";
@@ -194,3 +196,9 @@
 /* Dashboard */
 "dashboard.recentActivity" = "最近活动";
 "dashboard.run" = "运行";
+
+/* Diff */
+"diff.lineCount" = "%lld 行";
+
+/* Component */
+"component.progress" = "进度";

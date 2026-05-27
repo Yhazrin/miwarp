@@ -93,9 +93,9 @@ struct SessionHubView: View {
         HStack(spacing: 0) {
             NavigationStack {
                 contentState(layout: layout, navigationMode: .selection)
-                    .navigationTitle("Sessions")
+                    .navigationTitle(String(localized: "sessions.title"))
                     .navigationBarTitleDisplayMode(.inline)
-                    .searchable(text: $searchText, prompt: "Search sessions...")
+                    .searchable(text: $searchText, prompt: String(localized: "sessions.search"))
                     .toolbar { toolbarContent }
                     .task { await loadRunsIfConnected() }
                     .onChange(of: store.isConnected) { _, connected in
@@ -112,14 +112,14 @@ struct SessionHubView: View {
                     ChatView(runId: selectedRun.id, runTitle: selectedRun.displayTitle)
                 } else {
                     ContentUnavailableView {
-                        Label("Select a session", systemImage: "bubble.left.and.bubble.right")
+                        Label(String(localized: "sessions.selectSession"), systemImage: "bubble.left.and.bubble.right")
                     } description: {
-                        Text("Choose a conversation to continue.")
+                        Text(String(localized: "sessions.selectSessionDesc"))
                     }
                     .frame(maxWidth: layout.detailMaxWidth)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(MWPatternedBackdrop())
-                    .navigationTitle("Session")
+                    .navigationTitle(String(localized: "sessions.title"))
                     .navigationBarTitleDisplayMode(.inline)
                 }
             }
@@ -150,11 +150,11 @@ struct SessionHubView: View {
             .background(MWPatternedBackdrop())
         } else if let error, runs.isEmpty {
             ContentUnavailableView {
-                Label("Cannot Load Sessions", systemImage: "exclamationmark.triangle")
+                Label(String(localized: "sessions.cannotLoad"), systemImage: "exclamationmark.triangle")
             } description: {
                 Text(error)
             } actions: {
-                Button("Retry") { Task { await loadRuns() } }
+                Button(String(localized: "action.retry")) { Task { await loadRuns() } }
                     .buttonStyle(.bordered)
             }
             .frame(maxWidth: layout.contentMaxWidth)
@@ -270,7 +270,7 @@ struct SessionHubView: View {
                 .padding(.vertical, 12)
                 .background(
                     Capsule()
-                        .fill(Color.white)
+                        .fill(MWColors.accentOnAccent)
                 )
             }
 
@@ -335,12 +335,12 @@ struct SessionHubView: View {
 
                     Text(String(localized: "sessions.desktopConnected"))
                         .font(.title2.weight(.semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(heroTextColor)
                 }
 
                 Text(String(localized: "sessions.waitingSync"))
                     .font(.callout)
-                    .foregroundColor(.white.opacity(0.85))
+                    .foregroundColor(heroTextColor.opacity(0.85))
             }
 
             #if canImport(ActivityKit)
@@ -377,7 +377,7 @@ struct SessionHubView: View {
                 .padding(.vertical, 12)
                 .background(
                     Capsule()
-                        .fill(Color.white)
+                        .fill(MWColors.accentOnAccent)
                 )
             }
             .disabled(syncManager.isSyncing && syncManager.syncPhase == .preparing)
@@ -388,7 +388,7 @@ struct SessionHubView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 14, weight: .medium))
-                    Text("Sync Now")
+                    Text(String(localized: "sessions.syncNow"))
                         .font(.body.weight(.medium))
                     Spacer()
                 }
@@ -397,7 +397,7 @@ struct SessionHubView: View {
                 .padding(.vertical, 12)
                 .background(
                     Capsule()
-                        .fill(Color.white)
+                        .fill(MWColors.accentOnAccent)
                 )
             }
             #endif
@@ -409,7 +409,7 @@ struct SessionHubView: View {
                     Text(conn.host)
                         .font(.caption)
                 }
-                .foregroundColor(.white.opacity(0.7))
+                .foregroundColor(heroTextColor.opacity(0.7))
             }
         }
         .padding(16)
@@ -475,12 +475,12 @@ struct SessionHubView: View {
             Text(label)
                 .font(.caption)
         }
-        .foregroundColor(.white.opacity(0.9))
+        .foregroundColor(heroTextColor.opacity(0.9))
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(
             Capsule()
-                .fill(Color.white.opacity(0.2))
+                .fill(heroTextColor.opacity(0.2))
         )
     }
 

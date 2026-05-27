@@ -23,7 +23,7 @@ struct DiffPreviewView: View {
                         .foregroundStyle(MWColors.statusError)
                 }
                 Spacer()
-                Text("\(parsedLines.count) lines")
+                Text(String(format: String(localized: "diff.lineCount"), parsedLines.count))
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }

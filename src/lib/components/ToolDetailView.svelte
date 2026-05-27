@@ -576,9 +576,9 @@
         {#if bashResult}
           {#if bashResult.stdout}
             {#if stdoutHtml}
-              <div class="mt-1 text-neutral-300/80">{@html stdoutHtml}</div>
+              <div class="mt-1 text-muted-foreground/80">{@html stdoutHtml}</div>
             {:else}
-              <div class="mt-1 text-neutral-300/80">{stdoutStripped}</div>
+              <div class="mt-1 text-muted-foreground/80">{stdoutStripped}</div>
             {/if}
           {/if}
           {#if bashResult.stderr}
@@ -595,9 +595,9 @@
           {/if}
         {:else if outputText}
           {#if outputHtml}
-            <div class="mt-1 text-neutral-300/80">{@html outputHtml}</div>
+            <div class="mt-1 text-muted-foreground/80">{@html outputHtml}</div>
           {:else}
-            <div class="mt-1 text-neutral-300/80">{outputStripped}</div>
+            <div class="mt-1 text-muted-foreground/80">{outputStripped}</div>
           {/if}
         {/if}
         {#if isInputStreaming || tool.status === "running"}
@@ -606,7 +606,7 @@
           ></span>
         {/if}
         <button
-          class="absolute top-1.5 right-1.5 text-xs text-neutral-500 hover:text-neutral-300 opacity-0 group-hover/copy:opacity-100 transition-opacity"
+          class="absolute top-1.5 right-1.5 text-xs text-muted-foreground hover:text-foreground opacity-0 group-hover/copy:opacity-100 transition-opacity"
           onclick={() => handleCopy(`$ ${tool.input?.command}\n${terminalPlainText}`)}
           >{copyFeedback ?? t("common_copy")}</button
         >
@@ -1174,7 +1174,7 @@
                   ? 'bg-[hsl(var(--miwarp-status-success)/0.15)] text-[hsl(var(--miwarp-status-success))]'
                   : todo.status === 'in_progress'
                     ? 'bg-[hsl(var(--miwarp-status-info)/0.15)] text-[hsl(var(--miwarp-status-info))]'
-                    : 'bg-neutral-500/15 text-muted-foreground'}"
+                    : 'bg-muted text-muted-foreground'}"
               >
                 {todo.status === "completed"
                   ? t("tool_statusDone")

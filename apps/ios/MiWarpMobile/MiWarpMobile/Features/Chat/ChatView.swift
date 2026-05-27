@@ -137,13 +137,13 @@ struct ChatView: View {
                     Button {
                         viewModel.showArtifacts = true
                     } label: {
-                        Label("Artifacts", systemImage: "archivebox")
+                        Label(String(localized: "chat.artifacts"), systemImage: "archivebox")
                     }
 
                     Button {
                         viewModel.showRawEvents = true
                     } label: {
-                        Label("Raw Events", systemImage: "list.bullet.rectangle")
+                        Label(String(localized: "chat.rawEvents"), systemImage: "list.bullet.rectangle")
                     }
                 } label: {
                     Image(systemName: viewModel.complexityMode.systemImage)
