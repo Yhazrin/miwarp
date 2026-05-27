@@ -6,9 +6,17 @@
    */
   import { t } from "$lib/i18n/index.svelte";
 
-  const mcp__workspace__web_fetch = (globalThis as any).mcp__workspace__web_fetch as (
-    args: any,
-  ) => Promise<any>;
+  interface WebFetchResult {
+    content?: string;
+    headers?: Record<string, string>;
+    statusCode?: number;
+  }
+
+  const mcp__workspace__web_fetch = (
+    globalThis as Record<string, unknown>
+  ).mcp__workspace__web_fetch as
+    | ((args: Record<string, unknown>) => Promise<WebFetchResult>)
+    | undefined;
 
   let url = $state("");
   let isLoading = $state(false);
@@ -37,14 +45,19 @@
     statusCode = null;
 
     try {
+      if (!mcp__workspace__web_fetch) {
+        error = t("webfetch_unavailable");
+        return;
+      }
+
       const result = await mcp__workspace__web_fetch({
         url: targetUrl,
       });
 
       if (result) {
-        content = result.content;
+        content = result.content ?? null;
         headers = result.headers || {};
-        statusCode = result.statusCode;
+        statusCode = result.statusCode ?? null;
         contentType = headers["content-type"] || "";
 
         // Add to history

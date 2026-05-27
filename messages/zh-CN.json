@@ -2441,6 +2441,7 @@
   "webfetch_showHeaders": "显示请求头",
   "webfetch_subtitle": "获取并分析网页内容",
   "webfetch_title": "网页获取",
+  "webfetch_unavailable": "网页获取工具不可用",
   "webfetch_unknownError": "发生未知错误",
   "wf_templateNotFound": "Template not found",
   "wizard_back": "返回",

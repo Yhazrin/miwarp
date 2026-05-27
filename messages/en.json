@@ -2298,6 +2298,7 @@
   "webfetch_showHeaders": "Show Headers",
   "webfetch_subtitle": "Fetch and analyze web content",
   "webfetch_title": "Web Fetch",
+  "webfetch_unavailable": "Web fetch tool is not available",
   "webfetch_unknownError": "Unknown error occurred",
   "workspaceContext_active": "Active",
   "workspaceContext_claudeMd": "Instructions",
