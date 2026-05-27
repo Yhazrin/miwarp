@@ -26,7 +26,6 @@
     persistCachedProcessVisibility,
   } from "$lib/utils/process-visibility";
   import ProjectFolderItem from "$lib/components/ProjectFolderItem.svelte";
-  import ConversationItem from "$lib/components/ConversationItem.svelte";
   import CommandPalette from "$lib/components/CommandPalette.svelte";
   import SetupWizard from "$lib/components/SetupWizard.svelte";
   import AboutModal from "$lib/components/AboutModal.svelte";
@@ -62,7 +61,6 @@
     expandForProjectChange,
     normalizeCwd,
     type ConversationGroup,
-    // type EnrichedProjectFolder,
   } from "$lib/utils/sidebar-groups";
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
   import { loadRemovedCwds } from "$lib/utils/removed-cwds";
