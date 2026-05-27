@@ -12,6 +12,7 @@
 "connection.authFailed" = "Authentication Failed";
 "connection.serverUnavailable" = "Server Unavailable";
 "connection.noActive" = "No active connection";
+"connection.connect" = "Connect";
 
 /* Run Statuses */
 "runStatus.pending" = "Pending";
@@ -187,3 +188,7 @@
 /* Generic */
 "error.somethingWentWrong" = "Something went wrong";
 "loading.default" = "Loading...";
+
+/* Dashboard */
+"dashboard.recentActivity" = "Recent Activity";
+"dashboard.run" = "Run";

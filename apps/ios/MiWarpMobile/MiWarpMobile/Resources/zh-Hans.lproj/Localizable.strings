@@ -12,6 +12,7 @@
 "connection.authFailed" = "认证失败";
 "connection.serverUnavailable" = "服务器不可用";
 "connection.noActive" = "无活动连接";
+"connection.connect" = "连接";
 
 /* Run Statuses */
 "runStatus.pending" = "等待中";
@@ -187,3 +188,7 @@
 /* Generic */
 "error.somethingWentWrong" = "出了点问题";
 "loading.default" = "加载中...";
+
+/* Dashboard */
+"dashboard.recentActivity" = "最近活动";
+"dashboard.run" = "运行";
