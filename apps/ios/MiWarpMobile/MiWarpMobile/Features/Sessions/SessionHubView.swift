@@ -559,15 +559,18 @@ struct SessionHubView: View {
                     ForEach(filteredRuns) { run in
                         sessionRow(for: run, navigationMode: navigationMode)
                         .listRowBackground(rowBackground(for: run, navigationMode: navigationMode))
+                        .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .opacity))
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             if run.status == .running {
                                 Button(role: .destructive) {
+                                    MiHaptics.lightImpact()
                                     // stop action
                                 } label: {
                                     Label(String(localized: "action.stop"), systemImage: "stop.fill")
                                 }
                             }
                             Button {
+                                MiHaptics.lightImpact()
                                 // pin action
                             } label: {
                                 Label(String(localized: "action.pin"), systemImage: "pin")
@@ -601,6 +604,7 @@ struct SessionHubView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(MWPatternedBackdrop())
+        .animation(MWMotion.springStandard, value: filteredRuns.map(\.id))
         .frame(maxWidth: navigationMode == .push ? layout.contentMaxWidth : .infinity)
         .frame(maxWidth: .infinity)
         .navigationDestination(for: MiWarpRun.self) { run in

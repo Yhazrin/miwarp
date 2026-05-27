@@ -75,6 +75,7 @@
   import { page } from "$app/stores";
   import { goto, afterNavigate } from "$app/navigation";
   import { onMount, setContext, untrack } from "svelte";
+  import { fade } from "svelte/transition";
   import { installPreventRootOverscroll } from "$lib/utils/prevent-root-overscroll";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { fpsCounter } from "$lib/utils/perf";
@@ -3000,7 +3001,11 @@
     <UpdateBanner />
     <!-- Page content: overflow-hidden so route pages own scrolling (chat keeps input in normal flow). -->
     <main class="flex-1 min-h-0 overflow-hidden flex flex-col">
-      {@render children()}
+      {#key $page.url.pathname}
+        <div class="flex-1 min-h-0 flex flex-col" transition:fade={{ duration: 150 }}>
+          {@render children()}
+        </div>
+      {/key}
     </main>
   </div>
 </div>

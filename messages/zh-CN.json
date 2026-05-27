@@ -241,6 +241,7 @@
   "chat_quickSchedule": "打开定时任务",
   "chat_ralphLoop": "Ralph 循环",
   "chat_restartingApproved": "正在重启并批准工具...",
+  "chat_scrollToBottom": "滚动到底部",
   "chat_send": "发送",
   "chat_sessionLoadFailed": "加载会话失败",
   "chat_sessionRenamed": "已重命名为：{name}",

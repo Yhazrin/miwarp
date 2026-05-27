@@ -273,6 +273,7 @@
   "chat_quickSchedule": "Open scheduled tasks",
   "chat_ralphLoop": "Ralph Loop",
   "chat_restartingApproved": "Restarting with tool approved...",
+  "chat_scrollToBottom": "Scroll to bottom",
   "chat_send": "Send",
   "chat_sessionLoadFailed": "Failed to load session",
   "chat_sessionRenamed": "Session renamed to: {name}",

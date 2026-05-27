@@ -2,6 +2,7 @@
   import { page } from "$app/stores";
   import { goto, replaceState } from "$app/navigation";
   import { tick, onMount, onDestroy, untrack, getContext } from "svelte";
+  import { fly } from "svelte/transition";
   import * as api from "$lib/api";
   import {
     sessionStore,
@@ -111,6 +112,7 @@
   /** Non-reactive flag: suppresses auto-scroll during scroll restoration from cache. */
   let restoringScroll = false;
   let showChatScrollHint = $state(false);
+  let showScrollButton = $derived(!isChatAutoScroll && store.timeline.length > 0);
   let agentSettings = $state<AgentSettings | null>(null);
   let resuming = $state(false);
   /** Suppress "Session ended" flash during tool approval restart cycle. */
@@ -1393,6 +1395,27 @@
         />
       {/snippet}
     </ChatConversationStage>
+
+    {#if showScrollButton}
+      <button
+        transition:fly={{ y: 10, duration: 200 }}
+        class="absolute bottom-20 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-colors hover:bg-primary/90"
+        aria-label={t("chat_scrollToBottom")}
+        onclick={scrollChatToBottom}
+      >
+        <svg
+          class="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+    {/if}
   </div>
 
   <!-- Tool Activity sidebar -->

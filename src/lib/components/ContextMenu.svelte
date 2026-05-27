@@ -145,6 +145,7 @@
     {/if}
     <button
       class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs transition-colors
+             focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none
              {item.disabled
         ? 'opacity-40 cursor-not-allowed'
         : item.danger

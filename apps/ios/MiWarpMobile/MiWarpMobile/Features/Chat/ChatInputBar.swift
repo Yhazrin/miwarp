@@ -25,6 +25,10 @@ struct ChatInputBar: View {
                     .font(.body)
                     .lineLimit(1...6)
                     .focused($isFocused)
+                    .submitLabel(.send)
+                    .onSubmit {
+                        if canSubmit { onSend?() }
+                    }
 
                 if isRunning {
                     Button {

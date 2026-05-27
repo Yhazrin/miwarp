@@ -179,6 +179,7 @@ struct ConnectionRow: View {
         .swipeActions(edge: .trailing) {
             if isActive && connectionState == .connected {
                 Button {
+                    MiHaptics.lightImpact()
                     onDisconnect?()
                 } label: {
                     Label(String(localized: "action.disconnect"), systemImage: "xmark.circle")
@@ -186,6 +187,7 @@ struct ConnectionRow: View {
                 .tint(MWColors.statusError)
             } else {
                 Button {
+                    MiHaptics.lightImpact()
                     onConnect?()
                 } label: {
                     Label(String(localized: "action.connect"), systemImage: "play.fill")
@@ -194,6 +196,7 @@ struct ConnectionRow: View {
             }
 
             Button(role: .destructive) {
+                MiHaptics.lightImpact()
                 onDelete?()
             } label: {
                 Label(String(localized: "action.delete"), systemImage: "trash")
