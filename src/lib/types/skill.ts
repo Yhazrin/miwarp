@@ -36,7 +36,7 @@ interface SkillDependency {
 /**
  * Skill version info for update checking.
  */
-interface SkillVersion {
+interface _SkillVersion {
   version: string;
   minAppVersion: string;
   changelog?: string;
@@ -183,7 +183,7 @@ export interface SkillMetadata {
   author?: string;
 }
 
-interface SkillManifest {
+interface _SkillManifest {
   id: string;
   name: string;
   description: string;
@@ -212,7 +212,7 @@ export const DEFAULT_SKILL_ICON = "✨";
  * Check if a skill version satisfies a constraint.
  * Supports semver-like matching.
  */
-function satisfiesVersion(installedVersion: string, constraint: string): boolean {
+function _satisfiesVersion(installedVersion: string, constraint: string): boolean {
   if (!constraint) return true;
 
   // Simple version comparison (major.minor.patch)

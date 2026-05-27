@@ -1471,7 +1471,7 @@
   }
 
   // Workspace settings modal
-  function openWorkspaceSettings(cwd: string) {
+  function _openWorkspaceSettings(cwd: string) {
     const normalized = normalizeCwd(cwd);
     const alias = settings?.workspace_aliases?.[normalized] ?? "";
     workspaceSettingsCwd = cwd;
@@ -1794,6 +1794,7 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
+<!-- eslint-disable-next-line svelte/no-dupe-style-properties — 100vh is a fallback for browsers without dvh support -->
 <div class="flex w-screen overflow-hidden" style="height: 100vh; height: 100dvh; {statusColorVars}">
   <!-- Sidebar: Icon Rail + Content Panel -->
   <aside

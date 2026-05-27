@@ -97,7 +97,7 @@
     // Will be implemented with browser store
   }
 
-  function handleExportScript(scriptId: string) {
+  function _handleExportScript(scriptId: string) {
     const json = automationStore.exportScript(scriptId);
     if (json) {
       const blob = new Blob([json], { type: "application/json" });

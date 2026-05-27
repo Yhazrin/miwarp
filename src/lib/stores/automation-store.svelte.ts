@@ -173,13 +173,12 @@ function createAutomationStore() {
         state.executionProgress = action.progress;
         break;
 
-      case "COMPLETE_EXECUTION":
+      case "COMPLETE_EXECUTION": {
         state.isExecuting = false;
         if (state.executionProgress) {
           state.executionProgress.status = "completed";
           state.executionProgress.progress = 100;
         }
-        // Update script usage count
         const script = state.scripts.find((s) => s.id === action.scriptId);
         if (script) {
           script.usageCount++;
@@ -188,8 +187,9 @@ function createAutomationStore() {
         }
         dbg("automation-store", "Completed execution", action.scriptId);
         break;
+      }
 
-      case "FAIL_EXECUTION":
+      case "FAIL_EXECUTION": {
         state.isExecuting = false;
         if (state.executionProgress) {
           state.executionProgress.status = "failed";
@@ -201,6 +201,7 @@ function createAutomationStore() {
         }
         dbgWarn("automation-store", "Execution failed", action.error);
         break;
+      }
 
       case "SET_ERROR":
         state.error = action.error;
