@@ -405,6 +405,7 @@
   "mcpStatus_errors": "错误",
   "mcpStatus_connectionQuality": "连接质量",
   "mcpStatus_latencyHistory": "延迟历史",
+  "cron_hourly": "每小时",
   "context_usageMeter": "上下文使用量: {pct}%",
   "context_used": "已使用",
   "context_usedTokens": "已使用",

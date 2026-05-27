@@ -416,6 +416,7 @@
   "mcpStatus_errors": "Errors",
   "mcpStatus_connectionQuality": "Connection Quality",
   "mcpStatus_latencyHistory": "Latency History",
+  "cron_hourly": "Every hour",
   "context_usageMeter": "Context usage: {pct}%",
   "context_used": "used",
   "context_usedTokens": "Used",

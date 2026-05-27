@@ -267,12 +267,12 @@ editing cron expressions * with real-time preview and natural language descripti
         {disabled}
         class="w-full px-2 py-1.5 rounded-lg border border-input bg-background text-xs"
       >
-        <option value="minute">Every minute</option>
-        <option value="hourly">Every hour</option>
-        <option value="daily">Daily at specific time</option>
-        <option value="weekly">Weekly on selected days</option>
-        <option value="monthly">Monthly on specific day</option>
-        <option value="custom">Custom interval</option>
+        <option value="minute">{t('cron_everyMinute')}</option>
+        <option value="hourly">{t('cron_hourly')}</option>
+        <option value="daily">{t('cron_daily')}</option>
+        <option value="weekly">{t('cron_weekly')}</option>
+        <option value="monthly">{t('cron_monthly')}</option>
+        <option value="custom">{t('cron_custom')}</option>
       </select>
     </div>
 
