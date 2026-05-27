@@ -306,13 +306,13 @@
 
   // ── Branch color (7 rainbow colors based on name hash) ──
   const BRANCH_COLORS = [
-    { bg: "bg-red-500/15", text: "text-red-400" },
-    { bg: "bg-orange-500/15", text: "text-orange-400" },
-    { bg: "bg-yellow-500/15", text: "text-yellow-400" },
-    { bg: "bg-green-500/15", text: "text-green-400" },
-    { bg: "bg-miwarp-status-info/10", text: "text-miwarp-status-info" },
-    { bg: "bg-indigo-500/15", text: "text-indigo-400" },
-    { bg: "bg-purple-500/15", text: "text-[hsl(var(--miwarp-accent-violet))]" },
+    { bg: "bg-miwarp-status-error/15", text: "text-miwarp-status-error" },
+    { bg: "bg-miwarp-status-warning/15", text: "text-miwarp-status-warning" },
+    { bg: "bg-miwarp-status-success/15", text: "text-miwarp-status-success" },
+    { bg: "bg-miwarp-status-info/15", text: "text-miwarp-status-info" },
+    { bg: "bg-miwarp-accent-primary/15", text: "text-miwarp-accent-primary" },
+    { bg: "bg-miwarp-accent-violet/15", text: "text-miwarp-accent-violet" },
+    { bg: "bg-miwarp-accent-blue/15", text: "text-miwarp-accent-blue" },
   ];
 
   function branchColor(name: string) {

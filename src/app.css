@@ -236,6 +236,16 @@ html.theme-transitioning *::after {
   .glow-active {
     box-shadow: 0 0 16px hsl(var(--miwarp-accent-primary) / 0.2);
   }
+
+  /* Gradient accent left border */
+  .gradient-border-left {
+    border-left: 3px solid;
+    border-image: linear-gradient(
+      180deg,
+      hsl(var(--miwarp-accent-primary)),
+      hsl(var(--miwarp-accent-violet))
+    ) 1;
+  }
 }
 
 @layer base {

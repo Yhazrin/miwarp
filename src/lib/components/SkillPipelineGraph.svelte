@@ -129,21 +129,21 @@
     switch (status) {
       case "running":
         return {
-          bgClass: "fill-blue-500/20 stroke-blue-500",
+          bgClass: "fill-[hsl(var(--miwarp-status-info)/0.2)] stroke-[hsl(var(--miwarp-status-info))]",
           borderClass: "border-[hsl(var(--miwarp-status-info))]",
           icon: "▶",
           label: t("skillPipeline_running"),
         };
       case "completed":
         return {
-          bgClass: "fill-green-500/20 stroke-green-500",
+          bgClass: "fill-[hsl(var(--miwarp-status-success)/0.2)] stroke-[hsl(var(--miwarp-status-success))]",
           borderClass: "border-[hsl(var(--miwarp-status-success))]",
           icon: "✓",
           label: t("skillPipeline_completed"),
         };
       case "failed":
         return {
-          bgClass: "fill-red-500/20 stroke-red-500",
+          bgClass: "fill-[hsl(var(--miwarp-status-error)/0.2)] stroke-[hsl(var(--miwarp-status-error))]",
           borderClass: "border-[hsl(var(--miwarp-status-error))]",
           icon: "✗",
           label: t("skillPipeline_failed"),

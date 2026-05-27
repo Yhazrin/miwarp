@@ -31,16 +31,16 @@
   // 渐变色进度条颜色（基于利用率和预警级别）
   let barColor = $derived.by(() => {
     if (contextWarningLevel === "critical" || contextWarningLevel === "high") {
-      return "bg-gradient-to-r from-red-500 to-orange-500";
+      return "bg-gradient-to-r from-miwarp-status-error to-miwarp-status-warning";
     }
     if (contextWarningLevel === "moderate") {
-      return "bg-gradient-to-r from-amber-500 to-yellow-400";
+      return "bg-gradient-to-r from-miwarp-status-warning to-yellow-400";
     }
     if (pct >= 80) {
-      return "bg-gradient-to-r from-amber-500 to-yellow-400";
+      return "bg-gradient-to-r from-miwarp-status-warning to-yellow-400";
     }
     if (pct >= 60) {
-      return "bg-gradient-to-r from-green-500 to-emerald-400";
+      return "bg-gradient-to-r from-miwarp-status-success to-emerald-400";
     }
     return "bg-gradient-to-r from-emerald-500 to-teal-400";
   });

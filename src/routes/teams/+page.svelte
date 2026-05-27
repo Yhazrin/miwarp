@@ -278,13 +278,13 @@
 
   function memberColorClass(color: string): string {
     const map: Record<string, string> = {
-      purple: "bg-purple-500",
-      blue: "bg-blue-500",
-      green: "bg-green-500",
-      red: "bg-red-500",
-      orange: "bg-orange-500",
+      purple: "bg-miwarp-accent-violet",
+      blue: "bg-miwarp-accent-primary",
+      green: "bg-miwarp-status-success",
+      red: "bg-miwarp-status-error",
+      orange: "bg-miwarp-status-warning",
       yellow: "bg-yellow-500",
-      cyan: "bg-cyan-500",
+      cyan: "bg-miwarp-accent-blue",
       pink: "bg-pink-500",
       teal: "bg-teal-500",
     };
@@ -293,13 +293,13 @@
 
   function msgColorClass(color: string): string {
     const map: Record<string, string> = {
-      purple: "text-purple-500",
-      blue: "text-[hsl(var(--miwarp-status-info))]",
-      green: "text-green-500",
-      red: "text-[hsl(var(--miwarp-status-error))]",
-      orange: "text-orange-500",
+      purple: "text-miwarp-accent-violet",
+      blue: "text-miwarp-status-info",
+      green: "text-miwarp-status-success",
+      red: "text-miwarp-status-error",
+      orange: "text-miwarp-status-warning",
       yellow: "text-yellow-500",
-      cyan: "text-cyan-500",
+      cyan: "text-miwarp-accent-blue",
       pink: "text-pink-500",
       teal: "text-teal-500",
     };

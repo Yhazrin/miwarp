@@ -685,8 +685,7 @@
         {#if isAsk && (tool.status === "running" || tool.status === "ask_pending") && askQuestion}
           <!-- AskUserQuestion: show question + option buttons -->
           <div
-            class="glass-card rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] px-4 py-3"
-            style="border-left: 3px solid; border-image: linear-gradient(180deg, hsl(var(--miwarp-accent-primary)), hsl(var(--miwarp-accent-violet))) 1;"
+            class="glass-card gradient-border-left rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] px-4 py-3"
           >
             <div class="flex items-center gap-2 mb-2">
               <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded {style.bg}">
@@ -1313,8 +1312,7 @@
         {:else if tool.status === "permission_prompt" && tool.permission_request_id && tool.tool_name === "ExitPlanMode"}
           <!-- ExitPlanMode: 3-option execution card + continue planning -->
           <div
-            class="glass-card rounded-xl border border-[hsl(var(--miwarp-accent-primary)/0.3)] bg-[hsl(var(--miwarp-accent-primary)/0.04)] px-4 py-3"
-            style="border-left: 3px solid; border-image: linear-gradient(180deg, hsl(var(--miwarp-accent-primary)), hsl(var(--miwarp-accent-violet))) 1;"
+            class="glass-card gradient-border-left rounded-xl border border-[hsl(var(--miwarp-accent-primary)/0.3)] bg-[hsl(var(--miwarp-accent-primary)/0.04)] px-4 py-3"
           >
             <!-- Header -->
             <div class="flex items-center gap-2 mb-1.5">
