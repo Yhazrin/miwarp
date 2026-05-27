@@ -60,8 +60,10 @@
 
   <!-- Settings Panel -->
   {#if showSettings}
-    <div class="settings-overlay" role="presentation" onclick={() => (showSettings = false)} transition:fade={{ duration: 200 }}>
-      <div class="settings-panel" role="presentation" onclick={(e) => e.stopPropagation()}>
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="settings-overlay" onclick={() => (showSettings = false)} onkeydown={(e) => { if (e.key === "Escape") showSettings = false; }} transition:fade={{ duration: 200 }}>
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="settings-panel" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
         <div class="settings-header">
           <h2>{t("browser_settings")}</h2>
           <button class="btn btn-icon" onclick={() => (showSettings = false)}> × </button>

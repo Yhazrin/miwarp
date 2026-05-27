@@ -8,8 +8,8 @@
     sessionId?: string;
     phase: string;
     onDismiss: () => void;
-    onRetry: () => void;
-    onFork: () => void;
+    onRetry?: () => void;
+    onFork?: () => void;
     onGotoSettings: (path: string) => void;
   }
 
@@ -68,13 +68,13 @@
       >
     </div>
     <div class="flex items-center gap-2 mt-2 pl-6">
-      {#if classified.canRetry && phase === "failed" && sessionId}
+      {#if onRetry && classified.canRetry && phase === "failed" && sessionId}
         <button
           class="rounded px-2.5 py-1 text-xs bg-destructive/20 hover:bg-destructive/30 text-destructive transition-colors"
           onclick={onRetry}>{t("common_retry")}</button
         >
       {/if}
-      {#if classified.canFork && sessionId}
+      {#if onFork && classified.canFork && sessionId}
         <button
           class="rounded px-2.5 py-1 text-xs bg-[hsl(var(--miwarp-status-info)/0.2)] hover:bg-[hsl(var(--miwarp-status-info)/0.3)] text-[hsl(var(--miwarp-status-info))] transition-colors"
           onclick={onFork}>{t("statusbar_fork")}</button

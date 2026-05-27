@@ -520,8 +520,6 @@
         sessionId={store.run?.session_id}
         phase={store.phase}
         onDismiss={() => (store.error = "")}
-        onRetry={() => {}}
-        onFork={() => {}}
         onGotoSettings={goto}
       />
     {/if}
