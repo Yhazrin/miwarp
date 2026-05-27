@@ -142,7 +142,7 @@
       <!-- Input -->
       <div class="flex items-center gap-1">
         <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-        <span class="text-xs text-neutral-400">In:</span>
+        <span class="text-xs text-neutral-400">{t('context_input')}</span>
         <span class="text-xs tabular-nums text-neutral-300">
           {formatTokens(inputTokens)}
         </span>
@@ -151,7 +151,7 @@
       <!-- Output -->
       <div class="flex items-center gap-1">
         <span class="w-2 h-2 rounded-full bg-purple-500"></span>
-        <span class="text-xs text-neutral-400">Out:</span>
+        <span class="text-xs text-neutral-400">{t('context_output')}</span>
         <span class="text-xs tabular-nums text-neutral-300">
           {formatTokens(outputTokens)}
         </span>
@@ -161,7 +161,7 @@
       {#if cacheReadTokens > 0}
         <div class="flex items-center gap-1">
           <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span class="text-xs text-neutral-400">Cache:</span>
+          <span class="text-xs text-neutral-400">{t('context_cache')}</span>
           <span class="text-xs tabular-nums text-neutral-300">
             {formatTokens(cacheReadTokens)}
           </span>
@@ -172,7 +172,7 @@
       {#if cacheWriteTokens > 0}
         <div class="flex items-center gap-1">
           <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-          <span class="text-xs text-neutral-400">Write:</span>
+          <span class="text-xs text-neutral-400">{t('context_write')}</span>
           <span class="text-xs tabular-nums text-neutral-300">
             {formatTokens(cacheWriteTokens)}
           </span>
@@ -181,7 +181,7 @@
 
       <!-- Total -->
       <div class="flex items-center gap-1 ml-auto">
-        <span class="text-xs text-neutral-400">Total:</span>
+        <span class="text-xs text-neutral-400">{t('context_totalTokens')}</span>
         <span class="text-xs tabular-nums font-medium text-neutral-200">
           {formatTokens(totalTokens)}
         </span>
@@ -202,15 +202,15 @@
       >
         <div class="text-xs space-y-1">
           <div class="flex justify-between">
-            <span class="text-neutral-400">Total tokens:</span>
+            <span class="text-neutral-400">{t('context_totalTokens')}</span>
             <span class="tabular-nums text-neutral-200">{totalTokens.toLocaleString()}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-neutral-400">Effective (in + out):</span>
+            <span class="text-neutral-400">{t('context_effective')} (in + out):</span>
             <span class="tabular-nums text-neutral-200">{effectiveTokens.toLocaleString()}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-neutral-400">Cache efficiency:</span>
+            <span class="text-neutral-400">{t('context_cacheEfficiency')}</span>
             <span class="tabular-nums text-neutral-200">
               {effectiveTokens > 0
                 ? ((cacheReadTokens / effectiveTokens) * 100).toFixed(1) + "%"
