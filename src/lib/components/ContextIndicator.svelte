@@ -82,9 +82,9 @@
   let warningColor = $derived.by(() => {
     switch (contextWarningLevel) {
       case "critical":
-        return "text-red-500 bg-red-500/10 border-red-500/30";
+        return "text-[hsl(var(--miwarp-status-error))] bg-[hsl(var(--miwarp-status-error)/0.1)] border-[hsl(var(--miwarp-status-error)/0.3)]";
       case "high":
-        return "text-orange-500 bg-orange-500/10 border-orange-500/30";
+        return "text-[hsl(var(--miwarp-status-warning))] bg-[hsl(var(--miwarp-status-warning)/0.1)] border-[hsl(var(--miwarp-status-warning)/0.3)]";
       case "moderate":
         return "text-amber-500 bg-amber-500/10 border-amber-500/30";
       default:

@@ -88,7 +88,7 @@
         onclick={onQuickAnalyze}
       >
         <svg
-          class="h-4 w-4 shrink-0 text-blue-400/70"
+          class="h-4 w-4 shrink-0 text-[hsl(var(--miwarp-status-info)/0.7)]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -122,7 +122,7 @@
         onclick={onQuickDaily}
       >
         <svg
-          class="h-4 w-4 shrink-0 text-green-400/70"
+          class="h-4 w-4 shrink-0 text-[hsl(var(--miwarp-status-success)/0.7)]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

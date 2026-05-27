@@ -102,9 +102,9 @@
 
       <span class="text-muted-foreground pr-4">{t("cost_codeChanges")}</span>
       <span class="text-foreground">
-        <span class="text-green-400">+{parsed.linesAdded}</span>
+        <span class="text-[hsl(var(--miwarp-status-success))]">+{parsed.linesAdded}</span>
         <span class="text-muted-foreground">/</span>
-        <span class="text-red-400">-{parsed.linesRemoved}</span>
+        <span class="text-[hsl(var(--miwarp-status-error))]">-{parsed.linesRemoved}</span>
         <span class="text-muted-foreground ml-1">{t("cost_lines")}</span>
       </span>
     </div>

@@ -14,11 +14,11 @@
 </script>
 
 <div
-  class="pointer-events-auto border-t border-blue-500/30 bg-blue-500/5"
+  class="pointer-events-auto border-t border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)]"
   style="max-height: 40vh; overflow-y: auto;"
 >
   <div class="flex items-center justify-between px-4 py-2 border-b border-border/50">
-    <span class="text-xs font-medium text-blue-400">{t("chat_btw")}</span>
+    <span class="text-xs font-medium text-[hsl(var(--miwarp-status-info))]">{t("chat_btw")}</span>
     <button
       onclick={onClose}
       title="Close side question"
@@ -46,7 +46,7 @@
         <MarkdownContent text={answer} streaming={loading} />
       {/if}
       {#if loading}
-        <span class="inline-block w-2 h-4 bg-blue-400 animate-pulse rounded-sm"></span>
+        <span class="inline-block w-2 h-4 bg-[hsl(var(--miwarp-status-info))] animate-pulse rounded-sm"></span>
       {/if}
     </div>
   </div>

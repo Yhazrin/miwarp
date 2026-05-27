@@ -91,8 +91,8 @@
   // 处理行高亮
   function getLineClass(line: string): string {
     if (line.startsWith("+")) return "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400";
-    if (line.startsWith("-")) return "bg-red-500/15 text-red-600 dark:text-red-400";
-    if (line.startsWith("@@")) return "bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium";
+    if (line.startsWith("-")) return "bg-[hsl(var(--miwarp-status-error)/0.15)] text-[hsl(var(--miwarp-status-error))]";
+    if (line.startsWith("@@")) return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))] font-medium";
     if (
       line.startsWith("diff") ||
       line.startsWith("index") ||
@@ -151,7 +151,7 @@
       {#if stats.added > 0 || stats.removed > 0}
         <div class="flex items-center gap-1.5 text-[11px]">
           <span class="text-emerald-600 dark:text-emerald-400">+{stats.added}</span>
-          <span class="text-red-600 dark:text-red-400">-{stats.removed}</span>
+          <span class="text-[hsl(var(--miwarp-status-error))]">-{stats.removed}</span>
         </div>
       {/if}
     </div>

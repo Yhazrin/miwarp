@@ -215,8 +215,8 @@
 
   function scopeColor(agent: AgentDefinitionSummary): string {
     if (agent.source === "built-in") return "bg-muted text-muted-foreground";
-    if (agent.scope === "user") return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
-    if (agent.scope === "project") return "bg-green-500/10 text-green-600 dark:text-green-400";
+    if (agent.scope === "user") return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]";
+    if (agent.scope === "project") return "bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]";
     if (agent.scope === "plugin") return "bg-purple-500/10 text-purple-600 dark:text-purple-400";
     return "bg-muted text-muted-foreground";
   }

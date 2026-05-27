@@ -137,8 +137,8 @@
 
         <!-- Prerequisites -->
         {#if preview.prerequisites.length > 0}
-          <div class="mb-4 rounded-md bg-blue-500/10 border border-blue-500/20 p-3">
-            <div class="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-2">
+          <div class="mb-4 rounded-md bg-[hsl(var(--miwarp-status-info)/0.1)] border border-[hsl(var(--miwarp-status-info)/0.2)] p-3">
+            <div class="flex items-center gap-2 text-[hsl(var(--miwarp-status-info))] mb-2">
               <svg
                 class="h-4 w-4"
                 viewBox="0 0 24 24"
@@ -151,7 +151,7 @@
               </svg>
               <span class="text-sm font-medium">{t('skillPreview_prerequisites')}</span>
             </div>
-            <ul class="space-y-1 text-xs text-blue-700 dark:text-blue-300">
+            <ul class="space-y-1 text-xs text-[hsl(var(--miwarp-status-info)/0.8)]">
               {#each preview.prerequisites as prereq}
                 <li class="flex items-start gap-2">
                   <span>•</span>

@@ -1319,9 +1319,9 @@
               >
               {#if toolStats.reads > 0}
                 <span class="text-muted-foreground/40">&middot;</span>
-                <span class="flex items-center gap-0.5 text-blue-500 dark:text-blue-400">
+                <span class="flex items-center gap-0.5 text-[hsl(var(--miwarp-status-info))]">
                   {@render categoryIcon(
-                    "bg-blue-500",
+                    "bg-[hsl(var(--miwarp-status-info))]",
                     "M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z",
                   )}
                   {toolStats.reads}
@@ -1464,7 +1464,7 @@
                       {#if hasTools}
                         {@const bk = getTurnBreakdown(turn)}
                         <span class="flex items-center gap-1 text-[10px]">
-                          {#if bk.reads > 0}<span class="text-blue-500/70 dark:text-blue-400/70"
+                          {#if bk.reads > 0}<span class="text-[hsl(var(--miwarp-status-info)/0.7)]"
                               >{bk.reads}R</span
                             >{/if}
                           {#if bk.searches > 0}<span
