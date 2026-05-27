@@ -384,10 +384,10 @@
 
         <!-- Proxy guidance for China network -->
         {#if showProxyGuidance}
-          <div class="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+          <div class="rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] p-4">
             <div class="flex items-start gap-2">
               <svg
-                class="h-5 w-5 text-amber-500 shrink-0 mt-0.5"
+                class="h-5 w-5 text-[hsl(var(--miwarp-status-warning))] shrink-0 mt-0.5"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -397,7 +397,7 @@
                 /></svg
               >
               <div>
-                <p class="text-sm font-medium text-amber-500">{t("setup_networkFailTitle")}</p>
+                <p class="text-sm font-medium text-[hsl(var(--miwarp-status-warning))]">{t("setup_networkFailTitle")}</p>
                 <p class="text-xs text-muted-foreground mt-1">{t("setup_networkFailDesc")}</p>
                 <ul class="text-xs text-muted-foreground mt-2 space-y-1 list-disc list-inside">
                   <li>{t("setup_networkTipProxy")}</li>

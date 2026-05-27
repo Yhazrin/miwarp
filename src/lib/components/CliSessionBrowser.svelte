@@ -356,7 +356,7 @@
                   <div class="flex items-center gap-2">
                     <span
                       class="inline-block h-2 w-2 shrink-0 rounded-full {isImported
-                        ? 'bg-emerald-500'
+                        ? 'bg-[hsl(var(--miwarp-status-success))]'
                         : 'bg-[hsl(var(--miwarp-status-info))]'}"
                     ></span>
                     <span class="text-xs text-muted-foreground shrink-0">
@@ -391,7 +391,7 @@
                     {/if}
                     {#if isImported && session.existingRunId}
                       <span>&middot;</span>
-                      <span class="text-emerald-600 dark:text-emerald-400">
+                      <span class="text-[hsl(var(--miwarp-status-success))]">
                         {t("cliSync_alreadyImported")}
                       </span>
                     {/if}

@@ -107,8 +107,8 @@
 
         <!-- Warnings -->
         {#if preview.warnings.length > 0}
-          <div class="mb-4 rounded-md bg-amber-500/10 border border-amber-500/20 p-3">
-            <div class="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-2">
+          <div class="mb-4 rounded-md bg-[hsl(var(--miwarp-status-warning)/0.1)] border border-[hsl(var(--miwarp-status-warning)/0.2)] p-3">
+            <div class="flex items-center gap-2 text-[hsl(var(--miwarp-status-warning))] mb-2">
               <svg
                 class="h-4 w-4"
                 viewBox="0 0 24 24"
@@ -124,7 +124,7 @@
               </svg>
               <span class="text-sm font-medium">{t('skillPreview_warnings')}</span>
             </div>
-            <ul class="space-y-1 text-xs text-amber-700 dark:text-amber-300">
+            <ul class="space-y-1 text-xs text-[hsl(var(--miwarp-status-warning)/0.8)]">
               {#each preview.warnings as warning}
                 <li class="flex items-start gap-2">
                   <span>•</span>

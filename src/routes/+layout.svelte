@@ -1819,7 +1819,7 @@
           {@const isActive = currentPath.startsWith(item.path)}
           <a
             href={getNavItemHref(item)}
-            class="relative flex h-9 w-9 items-center justify-center rounded-md transition-colors duration-150 no-underline
+            class="relative flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 no-underline active:scale-95
                 {isActive
               ? 'bg-sidebar-accent text-sidebar-accent-foreground'
               : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"

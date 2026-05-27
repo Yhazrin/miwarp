@@ -1775,7 +1775,7 @@
                   {t("settings_general_display")}
                 </h2>
                 {#if displaySaved}
-                  <span class="text-xs text-emerald-500 flex items-center gap-1 animate-fade-in">
+                  <span class="text-xs text-[hsl(var(--miwarp-status-success))] flex items-center gap-1 animate-fade-in">
                     <svg
                       class="h-3 w-3"
                       viewBox="0 0 24 24"
@@ -1890,8 +1890,8 @@
                 {#if webStatus?.enabled || webStatus?.running}
                   <!-- Startup warning banner -->
                   {#if webStatus?.warning}
-                    <div class="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
-                      <p class="text-xs text-amber-400 whitespace-pre-line">
+                    <div class="rounded-md border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] px-3 py-2">
+                      <p class="text-xs text-[hsl(var(--miwarp-status-warning))] whitespace-pre-line">
                         {t("settings_general_webStartupWarning", { warning: webStatus.warning })}
                       </p>
                     </div>
@@ -1999,7 +1999,7 @@
                           </button>
                         </div>
                       {:else if isAllInterfaces}
-                        <p class="text-xs text-amber-400">
+                        <p class="text-xs text-[hsl(var(--miwarp-status-warning))]">
                           {t("settings_general_webLanIpFailed")}
                         </p>
                       {/if}
@@ -2038,7 +2038,7 @@
                         {/if}
                         <span class="text-border">|</span>
                         <button
-                          class="text-amber-400/70 hover:text-amber-400 transition-colors"
+                          class="text-[hsl(var(--miwarp-status-warning)/0.7)] hover:text-[hsl(var(--miwarp-status-warning))] transition-colors"
                           onclick={async () => {
                             try {
                               const newToken = await api.regenerateWebServerToken();
@@ -2266,7 +2266,7 @@
                       </p>
                     {/if}
                     {#if webRestartWarning}
-                      <p class="text-xs text-amber-400">{webRestartWarning}</p>
+                      <p class="text-xs text-[hsl(var(--miwarp-status-warning))]">{webRestartWarning}</p>
                     {/if}
                     <button
                       class="rounded-md border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
@@ -2640,7 +2640,7 @@
                   {t("settings_general_connection")}
                 </h2>
                 {#if generalSaved}
-                  <span class="text-xs text-emerald-500 flex items-center gap-1 animate-fade-in">
+                  <span class="text-xs text-[hsl(var(--miwarp-status-success))] flex items-center gap-1 animate-fade-in">
                     <svg
                       class="h-3 w-3"
                       viewBox="0 0 24 24"
@@ -2682,10 +2682,10 @@
                     }}
                   >
                     <div
-                      class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10"
+                      class="flex h-10 w-10 items-center justify-center rounded-full bg-[hsl(var(--miwarp-status-success)/0.1)]"
                     >
                       <svg
-                        class="h-5 w-5 text-emerald-400"
+                        class="h-5 w-5 text-[hsl(var(--miwarp-status-success))]"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -2718,10 +2718,10 @@
                     }}
                   >
                     <div
-                      class="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/10"
+                      class="flex h-10 w-10 items-center justify-center rounded-full bg-[hsl(var(--miwarp-accent-violet)/0.1)]"
                     >
                       <svg
-                        class="h-5 w-5 text-violet-400"
+                        class="h-5 w-5 text-[hsl(var(--miwarp-accent-violet))]"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -2753,8 +2753,8 @@
                     </p>
                     {#if authOverview?.cli_login_available}
                       <div class="flex items-center gap-2">
-                        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                        <span class="text-xs text-emerald-500">
+                        <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-success))]"></span>
+                        <span class="text-xs text-[hsl(var(--miwarp-status-success))]">
                           {t("auth_loggedIn")}{authOverview.cli_login_account
                             ? `: ${authOverview.cli_login_account}`
                             : ""}
@@ -2820,8 +2820,8 @@
                     <h3 class="text-sm font-medium mb-1">{t("settings_auth_cliApiKeyTitle")}</h3>
                     {#if authOverview?.cli_has_api_key}
                       <div class="flex items-center gap-2">
-                        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                        <span class="text-xs text-emerald-500"
+                        <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-success))]"></span>
+                        <span class="text-xs text-[hsl(var(--miwarp-status-success))]"
                           >{t("auth_cliKeyHint", {
                             hint: authOverview.cli_api_key_hint ?? "",
                           })}</span
@@ -2920,7 +2920,7 @@
                               !ps.needsAuth
                                 ? 'bg-[hsl(var(--miwarp-status-success))]'
                                 : ps?.running && ps.needsAuth
-                                  ? 'bg-amber-500'
+                                  ? 'bg-[hsl(var(--miwarp-status-warning))]'
                                   : 'bg-muted-foreground/30'}"
                               title={ps?.running && !ps.needsAuth
                                 ? t("settings_local_running")
@@ -2958,13 +2958,13 @@
                     <div class="rounded-lg border p-4 space-y-3">
                       <div class="flex items-center gap-2">
                         {#if localProxyChecking}
-                          <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
+                          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-warning))] animate-pulse"></span>
                           <span class="text-sm">{t("settings_local_checking")}</span>
                         {:else if localProxyStatus?.running && !localProxyStatus.needsAuth}
                           <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-success))]"></span>
                           <span class="text-sm font-medium">{t("settings_local_running")}</span>
                         {:else if localProxyStatus?.running && localProxyStatus.needsAuth}
-                          <span class="h-2 w-2 rounded-full bg-amber-500"></span>
+                          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-warning))]"></span>
                           <span class="text-sm font-medium">{t("settings_local_needsAuth")}</span>
                         {:else}
                           <span class="h-2 w-2 rounded-full bg-muted-foreground/30"></span>
@@ -2977,7 +2977,7 @@
                       </div>
                       <p class="text-xs text-muted-foreground font-mono">{anthropicBaseUrl}</p>
                       {#if localProxyStatus && !localProxyStatus.running}
-                        <p class="text-xs text-amber-500">
+                        <p class="text-xs text-[hsl(var(--miwarp-status-warning))]">
                           {selectedPlatform.setup_hint
                             ? t(selectedPlatform.setup_hint as Parameters<typeof t>[0])
                             : t("settings_local_startHint", { name: selectedPlatform.name })}
@@ -3178,7 +3178,7 @@
                       <!-- API test result -->
                       {#if apiTestLoading}
                         <div class="mt-1.5 flex items-center gap-1.5">
-                          <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
+                          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-warning))] animate-pulse"></span>
                           <span class="text-xs text-muted-foreground"
                             >{t("settings_apiTest_testing")}</span
                           >
@@ -3391,8 +3391,8 @@
                   {t("settings_mobile_server") || "Web Server"}
                 </h2>
                 {#if webStatus?.running}
-                  <span class="flex items-center gap-1.5 text-xs text-emerald-500">
-                    <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span class="flex items-center gap-1.5 text-xs text-[hsl(var(--miwarp-status-success))]">
+                    <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-success))] animate-pulse"></span>
                     {t("settings_mobile_serverRunning") || "Running"}
                   </span>
                 {:else}
@@ -3475,8 +3475,8 @@
                 <div class="flex items-center justify-between mb-2">
                   <p class="text-sm font-medium">{t("settings_general_webAccess")}</p>
                   {#if webStatus?.running && webStatus.bind !== webBindValue}
-                    <span class="text-xs text-amber-400 flex items-center gap-1">
-                      <span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span class="text-xs text-[hsl(var(--miwarp-status-warning))] flex items-center gap-1">
+                      <span class="h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-warning))] animate-pulse"></span>
                       {t("settings_mobile_pendingRestart") || "Pending restart"}
                     </span>
                   {/if}
@@ -3541,8 +3541,8 @@
                 </div>
               {/if}
               {#if webRestartWarning}
-                <div class="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2">
-                  <p class="text-xs text-amber-400">{webRestartWarning}</p>
+                <div class="rounded-md border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] px-3 py-2">
+                  <p class="text-xs text-[hsl(var(--miwarp-status-warning))]">{webRestartWarning}</p>
                 </div>
               {/if}
             </Card>
@@ -3580,12 +3580,12 @@
                 {:else if webStatus.bind === "127.0.0.1" || webStatus.bind === "::1"}
                   <div class="flex flex-col items-center gap-4 text-center">
                     <div
-                      class="h-20 w-20 rounded-2xl bg-amber-500/10 flex items-center justify-center"
+                      class="h-20 w-20 rounded-2xl bg-[hsl(var(--miwarp-status-warning)/0.1)] flex items-center justify-center"
                     >
-                      {@html `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-10 w-10 text-amber-500/70"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`}
+                      {@html `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-10 w-10 text-[hsl(var(--miwarp-status-warning)/0.7)]"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`}
                     </div>
                     <div>
-                      <p class="text-sm font-medium text-amber-400">
+                      <p class="text-sm font-medium text-[hsl(var(--miwarp-status-warning))]">
                         {t("settings_mobile_bindWarning") || "LAN Mode Required"}
                       </p>
                       <p class="text-xs text-muted-foreground mt-1">
@@ -3657,7 +3657,7 @@
                   <!-- Reset Token -->
                   <div class="flex items-center gap-2">
                     <button
-                      class="rounded-md border border-amber-500/30 px-3 py-1.5 text-xs text-amber-400/80 hover:bg-amber-500/10 transition-colors"
+                      class="rounded-md border border-[hsl(var(--miwarp-status-warning)/0.3)] px-3 py-1.5 text-xs text-[hsl(var(--miwarp-status-warning)/0.8)] hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
                       onclick={async () => {
                         try {
                           const newToken = await api.regenerateWebServerToken();
@@ -3718,7 +3718,7 @@
                         <p class="text-sm font-medium">{def.label}</p>
                         {#if isProjectOverride(def.key)}
                           <span
-                            class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/15 text-amber-400 border border-amber-500/20"
+                            class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-status-warning)/0.15)] text-[hsl(var(--miwarp-status-warning))] border border-[hsl(var(--miwarp-status-warning)/0.2)]"
                           >
                             {t("settings_cliConfig_projectOverride")}
                           </span>
@@ -3788,7 +3788,7 @@
                         <p class="text-sm font-medium">{def.label}</p>
                         {#if isProjectOverride(def.key)}
                           <span
-                            class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/15 text-amber-400 border border-amber-500/20"
+                            class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-status-warning)/0.15)] text-[hsl(var(--miwarp-status-warning))] border border-[hsl(var(--miwarp-status-warning)/0.2)]"
                           >
                             {t("settings_cliConfig_projectOverride")}
                           </span>
@@ -3877,7 +3877,7 @@
                         <p class="text-sm font-medium">{def.label}</p>
                         {#if isProjectOverride(def.key)}
                           <span
-                            class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-500/15 text-amber-400 border border-amber-500/20"
+                            class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-status-warning)/0.15)] text-[hsl(var(--miwarp-status-warning))] border border-[hsl(var(--miwarp-status-warning)/0.2)]"
                           >
                             {t("settings_cliConfig_projectOverride")}
                           </span>
@@ -4085,7 +4085,7 @@
                 </p>
               </div>
               {#if remoteSaved}
-                <span class="text-xs text-emerald-500 flex items-center gap-1 animate-fade-in">
+                <span class="text-xs text-[hsl(var(--miwarp-status-success))] flex items-center gap-1 animate-fade-in">
                   <svg
                     class="h-3 w-3"
                     viewBox="0 0 24 24"
@@ -4246,7 +4246,7 @@
                           {t("settings_remote_sshKeyGenerating")}
                         </div>
                       {:else if sshKeyStep === "pub_missing" && sshKeyInfo}
-                        <p class="text-amber-400">
+                        <p class="text-[hsl(var(--miwarp-status-warning))]">
                           {t(
                             IS_WINDOWS
                               ? "settings_remote_sshKeyPubMissing_win"
@@ -4282,7 +4282,7 @@
                           {t("settings_remote_sshKeyClose")}
                         </button>
                       {:else if sshKeyStep === "has_key" && sshKeyInfo}
-                        <p class="text-emerald-500">
+                        <p class="text-[hsl(var(--miwarp-status-success))]">
                           {t("settings_remote_sshKeyFound", { keyType: sshKeyInfo.key_type })}
                           <span class="text-muted-foreground ml-1 font-mono"
                             >{sshKeyInfo.key_path}</span
@@ -4366,7 +4366,7 @@
                           </button>
                         {/if}
                       {:else if sshKeyStep === "done"}
-                        <p class="text-emerald-500">{t("settings_remote_sshKeySuccess")}</p>
+                        <p class="text-[hsl(var(--miwarp-status-success))]">{t("settings_remote_sshKeySuccess")}</p>
                         <button
                           class="text-[10px] text-muted-foreground hover:underline"
                           onclick={closeSshWizard}
@@ -4483,9 +4483,9 @@
                     {/if}
                     {#if remoteTestResult.ssh_ok && !remoteTestResult.cli_found}
                       <div
-                        class="mt-1.5 p-2 rounded bg-amber-500/10 border border-amber-500/20 space-y-1"
+                        class="mt-1.5 p-2 rounded bg-[hsl(var(--miwarp-status-warning)/0.1)] border border-[hsl(var(--miwarp-status-warning)/0.2)] space-y-1"
                       >
-                        <p class="text-amber-400">{t("settings_remote_cliNotFoundHint")}</p>
+                        <p class="text-[hsl(var(--miwarp-status-warning))]">{t("settings_remote_cliNotFoundHint")}</p>
                         <code
                           class="block rounded bg-muted px-2 py-1 font-mono text-[11px] select-all"
                           >which claude</code
@@ -4619,7 +4619,7 @@
                 {t("settings_notif_title") || "System Notifications"}
               </h2>
               {#if notifSaved}
-                <span class="text-xs text-emerald-500 flex items-center gap-1 animate-fade-in">
+                <span class="text-xs text-[hsl(var(--miwarp-status-success))] flex items-center gap-1 animate-fade-in">
                   <svg
                     class="h-3 w-3"
                     viewBox="0 0 24 24"
@@ -4739,7 +4739,7 @@
                 {t("settings_notif_feishuTitle") || "Feishu Webhook"}
               </h2>
               {#if feishuSaved}
-                <span class="text-xs text-emerald-500 flex items-center gap-1 animate-fade-in">
+                <span class="text-xs text-[hsl(var(--miwarp-status-success))] flex items-center gap-1 animate-fade-in">
                   <svg
                     class="h-3 w-3"
                     viewBox="0 0 24 24"
@@ -4822,7 +4822,7 @@
                   class="text-xs {feishuTestResult.includes('Failed') ||
                   feishuTestResult.includes('Error')
                     ? 'text-destructive'
-                    : 'text-emerald-500'}"
+                    : 'text-[hsl(var(--miwarp-status-success))]'}"
                 >
                   {feishuTestResult}
                 </span>
