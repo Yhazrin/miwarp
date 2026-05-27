@@ -30,14 +30,13 @@ struct MessageListView: View {
                 .frame(maxWidth: .infinity)
             }
             .background(MWPatternedBackdrop())
-            .onChange(of: messages.count) { _, _ in
+            .onChange(of: messages.last?.id) { _, _ in
                 scrollToBottom(proxy: proxy)
             }
-            .onChange(of: messages.last?.content) { _, _ in
-                scrollToBottom(proxy: proxy)
-            }
-            .onChange(of: messages.last?.isStreaming) { _, _ in
-                scrollToBottom(proxy: proxy)
+            .onChange(of: messages.last?.isStreaming) { _, streaming in
+                if streaming {
+                    scrollToBottom(proxy: proxy)
+                }
             }
         }
     }
