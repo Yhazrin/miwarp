@@ -14,6 +14,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme transition — applied temporarily during theme switches */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease,
+    box-shadow 300ms ease, fill 300ms ease, stroke 300ms ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-transitioning,
+  html.theme-transitioning *,
+  html.theme-transitioning *::before,
+  html.theme-transitioning *::after {
+    transition: none !important;
+  }
+}
+
 @layer base {
   /* ── Light mode (legacy fallback) ── */
   :root {
