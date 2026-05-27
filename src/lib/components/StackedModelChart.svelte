@@ -12,14 +12,14 @@
   } = $props();
 
   const MODEL_COLORS = [
-    "rgb(16, 185, 129)", // emerald
-    "rgb(59, 130, 246)", // blue
-    "rgb(245, 158, 11)", // amber
-    "rgb(244, 63, 94)", // rose
-    "rgb(139, 92, 246)", // violet
-    "rgb(6, 182, 212)", // cyan
-    "rgb(249, 115, 22)", // orange
-    "rgb(132, 204, 22)", // lime
+    "hsl(var(--miwarp-status-success))",
+    "hsl(var(--miwarp-status-info))",
+    "hsl(var(--miwarp-status-warning))",
+    "hsl(var(--miwarp-status-error))",
+    "hsl(var(--miwarp-accent-violet))",
+    "hsl(var(--miwarp-accent-blue))",
+    "hsl(var(--miwarp-accent-primary))",
+    "hsl(var(--miwarp-status-success))",
   ];
 
   let sliced = $derived(daily.slice(-maxDays));

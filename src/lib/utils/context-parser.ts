@@ -110,21 +110,21 @@ export function parseContextMarkdown(md: string): ContextData | null {
 // ── Color + Icon mapping ──
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  "System prompt": "#a78bfa",
-  "System tools": "#f87171",
-  "System tools (deferred)": "#fb923c",
-  "MCP tools": "#34d399",
-  "MCP tools (deferred)": "#2dd4bf",
-  "Custom agents": "#60a5fa",
-  "Memory files": "#fbbf24",
-  Skills: "#facc15",
-  Messages: "#f472b6",
+  "System prompt": "hsl(var(--miwarp-accent-violet))",
+  "System tools": "hsl(var(--miwarp-status-error))",
+  "System tools (deferred)": "hsl(var(--miwarp-status-warning))",
+  "MCP tools": "hsl(var(--miwarp-status-success))",
+  "MCP tools (deferred)": "hsl(var(--miwarp-accent-blue))",
+  "Custom agents": "hsl(var(--miwarp-status-info))",
+  "Memory files": "hsl(var(--miwarp-status-warning))",
+  Skills: "hsl(var(--miwarp-accent-primary))",
+  Messages: "hsl(var(--miwarp-accent-violet))",
 };
 
 export function getColor(name: string): string {
-  if (name === "Free space") return "#6b7280";
-  if (name === "Autocompact buffer") return "#4b5563";
-  return CATEGORY_COLORS[name] ?? "#9ca3af";
+  if (name === "Free space") return "hsl(var(--miwarp-text-tertiary))";
+  if (name === "Autocompact buffer") return "hsl(var(--miwarp-text-secondary))";
+  return CATEGORY_COLORS[name] ?? "hsl(var(--miwarp-text-tertiary))";
 }
 
 export function getIcon(name: string): string {

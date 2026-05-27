@@ -76,7 +76,14 @@
   }
 
   // Model color palette
-  const MODEL_COLORS = ["#a78bfa", "#60a5fa", "#34d399", "#fbbf24", "#f87171", "#f472b6"];
+  const MODEL_COLORS = [
+    "hsl(var(--miwarp-accent-violet))",
+    "hsl(var(--miwarp-status-info))",
+    "hsl(var(--miwarp-status-success))",
+    "hsl(var(--miwarp-status-warning))",
+    "hsl(var(--miwarp-status-error))",
+    "hsl(var(--miwarp-accent-primary))",
+  ];
   function modelColor(idx: number): string {
     return MODEL_COLORS[idx % MODEL_COLORS.length];
   }
