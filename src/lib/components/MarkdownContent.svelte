@@ -145,6 +145,85 @@
     };
   });
 
+  // ── Collapsible code blocks ──
+  // After HTML is rendered, find [data-collapsible] code blocks and add:
+  // - A wrapper with max-height for collapse
+  // - A gradient fade overlay
+  // - A toggle button
+  const COLLAPSE_VISIBLE_LINES = 8;
+  const expandedBlocks = new Set<string>();
+
+  function applyCollapsibleBlocks() {
+    if (!container) return;
+    const blocks = container.querySelectorAll<HTMLElement>(".code-block[data-collapsible]");
+    blocks.forEach((block, index) => {
+      // Skip if already processed
+      if (block.dataset.collapsibleApplied) return;
+      block.dataset.collapsibleApplied = "true";
+
+      const pre = block.querySelector("pre");
+      if (!pre) return;
+      const preEl = pre; // narrow for closure
+
+      const key = `md-code-${index}-${(block.querySelector("code")?.textContent || "").slice(0, 80)}`;
+      const isExpanded = expandedBlocks.has(key);
+
+      // Wrap <pre> in a collapsible container
+      const wrapper = document.createElement("div");
+      wrapper.className = "code-block-collapsible";
+      preEl.parentNode?.insertBefore(wrapper, preEl);
+      wrapper.appendChild(preEl);
+
+      // Add gradient fade overlay inside wrapper
+      const fade = document.createElement("div");
+      fade.className = "code-block-fade";
+      wrapper.appendChild(fade);
+
+      // Create toggle button
+      const toggleBtn = document.createElement("button");
+      toggleBtn.className = "code-block-toggle";
+      toggleBtn.type = "button";
+
+      // Calculate collapsed height based on line-height
+      const lineHeight = parseFloat(getComputedStyle(preEl).lineHeight) || 18.4; // 0.8125rem * 1.45 ≈ 18.4px
+      const collapsedHeight = COLLAPSE_VISIBLE_LINES * lineHeight;
+
+      function setExpanded(expanded: boolean) {
+        if (expanded) {
+          block.dataset.expanded = "true";
+          wrapper.style.maxHeight = `${preEl.scrollHeight}px`;
+          toggleBtn.textContent = "Show less";
+          expandedBlocks.add(key);
+        } else {
+          block.dataset.expanded = "false";
+          wrapper.style.maxHeight = `${collapsedHeight}px`;
+          toggleBtn.textContent = "Show more";
+          expandedBlocks.delete(key);
+        }
+      }
+
+      toggleBtn.addEventListener("click", () => {
+        const isCurrentlyExpanded = block.dataset.expanded === "true";
+        setExpanded(!isCurrentlyExpanded);
+      });
+
+      // Insert toggle button after the wrapper (at the bottom of the code block)
+      block.appendChild(toggleBtn);
+
+      // Set initial state
+      setExpanded(isExpanded);
+    });
+  }
+
+  $effect(() => {
+    if (!container || !html) return;
+    // Use rAF to let the DOM settle after {@html} injection
+    const raf = requestAnimationFrame(() => {
+      applyCollapsibleBlocks();
+    });
+    return () => cancelAnimationFrame(raf);
+  });
+
   // Resolve relative image paths against basePath (for Explorer file preview)
   $effect(() => {
     if (!container || !html || !basePath) return;
