@@ -304,7 +304,7 @@
     flex-direction: column;
     gap: 1rem;
     padding: 1rem;
-    background: var(--color-surface, #1a1a1a);
+    background: hsl(var(--miwarp-bg-elevated, 220 12% 15%));
     border-radius: 8px;
     max-height: 100%;
     overflow-y: auto;
@@ -335,16 +335,16 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--color-error, #ff4444);
+    background: hsl(var(--miwarp-status-error, 0 72% 60%));
   }
 
   .connection-status.connected .status-dot {
-    background: var(--color-success, #44ff44);
+    background: hsl(var(--miwarp-status-success, 152 55% 55%));
   }
 
   .section {
     padding: 0.75rem;
-    background: var(--color-background, #0a0a0a);
+    background: hsl(var(--miwarp-bg-deepest, 220 18% 6%));
     border-radius: 6px;
   }
 
@@ -369,12 +369,12 @@
   }
 
   .btn-primary {
-    background: var(--color-primary, #6366f1);
+    background: hsl(var(--miwarp-accent-primary, 210 100% 60%));
     color: white;
   }
 
   .btn-primary:hover:not(:disabled) {
-    background: var(--color-primary-hover, #4f46e5);
+    background: hsl(var(--miwarp-accent-primary, 210 100% 55%));
   }
 
   .btn-secondary {
@@ -408,7 +408,7 @@
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem;
-    background: var(--color-background, #0a0a0a);
+    background: hsl(var(--miwarp-bg-deepest, 220 18% 6%));
     border: 1px solid var(--color-border, #333);
     border-radius: 6px;
     cursor: pointer;
@@ -417,7 +417,7 @@
 
   .browser-item:hover {
     background: var(--color-hover, #222);
-    border-color: var(--color-primary, #6366f1);
+    border-color: hsl(var(--miwarp-accent-primary, 210 100% 60%));
   }
 
   .browser-icon {
@@ -441,7 +441,7 @@
 
   .badge {
     padding: 0.25rem 0.5rem;
-    background: var(--color-success, #44ff44);
+    background: hsl(var(--miwarp-status-success, 152 55% 55%));
     color: black;
     font-size: 0.75rem;
     border-radius: 4px;
@@ -462,7 +462,7 @@
   .search-input {
     flex: 1;
     padding: 0.5rem;
-    background: var(--color-background, #0a0a0a);
+    background: hsl(var(--miwarp-bg-deepest, 220 18% 6%));
     border: 1px solid var(--color-border, #333);
     border-radius: 4px;
     color: var(--color-text, white);
@@ -472,7 +472,7 @@
   .url-input:focus,
   .search-input:focus {
     outline: none;
-    border-color: var(--color-primary, #6366f1);
+    border-color: hsl(var(--miwarp-accent-primary, 210 100% 60%));
   }
 
   .tabs-section {
@@ -506,7 +506,7 @@
   }
 
   .tab-item.active {
-    background: var(--color-primary, #6366f1);
+    background: hsl(var(--miwarp-accent-primary, 210 100% 60%));
     color: white;
   }
 
@@ -547,7 +547,7 @@
   .found-elements {
     margin-top: 0.75rem;
     padding: 0.75rem;
-    background: var(--color-background, #0a0a0a);
+    background: hsl(var(--miwarp-bg-deepest, 220 18% 6%));
     border-radius: 4px;
   }
 
@@ -566,7 +566,7 @@
   }
 
   .element-ref {
-    color: var(--color-primary, #6366f1);
+    color: hsl(var(--miwarp-accent-primary, 210 100% 60%));
     font-family: monospace;
   }
 
@@ -584,7 +584,7 @@
   .content-preview {
     max-height: 150px;
     overflow: auto;
-    background: var(--color-background, #0a0a0a);
+    background: hsl(var(--miwarp-bg-deepest, 220 18% 6%));
     border-radius: 4px;
     padding: 0.5rem;
   }
