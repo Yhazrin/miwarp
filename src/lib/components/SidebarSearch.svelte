@@ -9,7 +9,9 @@
     onClear?: () => void;
   }
 
-  let { placeholder = "Search sessions...", value = "", onSearch, onClear }: Props = $props();
+  let { placeholder = "", value = "", onSearch, onClear }: Props = $props();
+
+  let effectivePlaceholder = $derived(placeholder || t("sidebar_searchChats"));
 
   let query = $state("");
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -68,7 +70,7 @@
     value={query}
     oninput={handleInput}
     onkeydown={handleKeydown}
-    {placeholder}
+    placeholder={effectivePlaceholder}
     class="w-full rounded-md border border-sidebar-border bg-sidebar py-1.5 pl-8 pr-7 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50 transition-colors"
   />
   {#if query}
