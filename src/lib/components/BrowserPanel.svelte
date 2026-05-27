@@ -360,7 +360,7 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.875rem;
-    transition: all 0.2s;
+    transition: all var(--motion-normal) var(--ease-standard);
   }
 
   .btn:disabled {
@@ -412,7 +412,7 @@
     border: 1px solid var(--color-border, #333);
     border-radius: 6px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all var(--motion-normal) var(--ease-standard);
   }
 
   .browser-item:hover {
@@ -498,7 +498,7 @@
     cursor: pointer;
     white-space: nowrap;
     max-width: 150px;
-    transition: all 0.2s;
+    transition: all var(--motion-normal) var(--ease-standard);
   }
 
   .tab-item:hover {
