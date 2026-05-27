@@ -91,9 +91,9 @@
     const now = new Date();
     const diff = now.getTime() - date.getTime();
 
-    if (diff < 60000) return "Just now";
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    if (diff < 60000) return t("skills_timeJustNow");
+    if (diff < 3600000) return t("skills_timeMinutesAgo", { n: String(Math.floor(diff / 60000)) });
+    if (diff < 86400000) return t("skills_timeHoursAgo", { n: String(Math.floor(diff / 3600000)) });
     return date.toLocaleDateString();
   }
 
@@ -119,7 +119,7 @@
     <div>
       <h1 class="text-xl font-semibold">{t("skills_title")}</h1>
       <p class="text-sm text-muted-foreground">
-        {skillStore.skills.length} skills available
+        {t("skills_available", { count: String(skillStore.skills.length) })}
       </p>
     </div>
     <button
@@ -129,7 +129,7 @@
       <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 5v14M5 12h14" />
       </svg>
-      Create Skill
+      {t("skills_createSkill")}
     </button>
   </div>
 
@@ -166,7 +166,7 @@
             : 'text-muted-foreground hover:bg-accent'}"
           onclick={() => (selectedCategory = null)}
         >
-          All
+          {t("skills_categoryAll")}
         </button>
         {#each SKILL_CATEGORIES as cat (cat.value)}
           <button
@@ -191,7 +191,7 @@
         {activeTab === 'browse' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}"
       onclick={() => (activeTab = "browse")}
     >
-      Browse
+      {t("skills_tabBrowse")}
       {#if activeTab === "browse"}
         <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>
       {/if}
@@ -201,7 +201,7 @@
         {activeTab === 'history' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}"
       onclick={() => (activeTab = "history")}
     >
-      History
+      {t("skills_tabHistory")}
       <span class="ml-1 text-xs text-muted-foreground">({skillStore.executions.length})</span>
       {#if activeTab === "history"}
         <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>
@@ -239,7 +239,7 @@
               class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
               onclick={() => skillStore.openCreateEditor()}
             >
-              Create your first skill
+              {t("skills_emptyCta")}
             </button>
           {/if}
         </div>
@@ -350,8 +350,7 @@
       </div>
 
       <p class="mb-6 text-sm">
-        Are you sure you want to delete <span class="font-medium">/{skillToDelete.name}</span>? This
-        will permanently remove the skill and cannot be recovered.
+        {t("skills_deleteConfirmBody", { name: skillToDelete.name })}
       </p>
 
       <div class="flex justify-end gap-3">
@@ -359,13 +358,13 @@
           class="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
           onclick={cancelDelete}
         >
-          Cancel
+          {t("common_cancel")}
         </button>
         <button
           class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-destructive/90 transition-colors"
           onclick={confirmDelete}
         >
-          Delete
+          {t("common_delete")}
         </button>
       </div>
     </div>
