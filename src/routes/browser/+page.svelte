@@ -31,7 +31,7 @@
       <p class="description">{t("browser_description")}</p>
     </div>
     <div class="header-actions">
-      <button class="btn btn-icon" onclick={() => (showSettings = !showSettings)}> ⚙️ </button>
+      <button class="btn btn-icon" title={t("browser_settings")} aria-label={t("browser_settings")} onclick={() => (showSettings = !showSettings)}> ⚙️ </button>
     </div>
   </div>
 
@@ -66,7 +66,7 @@
       <div class="settings-panel" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
         <div class="settings-header">
           <h2>{t("browser_settings")}</h2>
-          <button class="btn btn-icon" onclick={() => (showSettings = false)}> × </button>
+          <button class="btn btn-icon" title={t("common_close")} aria-label={t("common_close")} onclick={() => (showSettings = false)}> × </button>
         </div>
         <div class="settings-content">
           <div class="settings-section">
