@@ -86,6 +86,7 @@
   import { getTransport } from "$lib/transport";
   import { themeStore } from "$lib/stores/theme-store.svelte";
   import ToastHost from "$lib/components/ToastHost.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import {
     t,
     LOCALE_REGISTRY,
@@ -2398,9 +2399,7 @@
                   </div>
                 {:else if treeLoading}
                   <div class="flex items-center justify-center py-12">
-                    <div
-                      class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                    ></div>
+                    <Spinner size="sm" />
                   </div>
                 {:else if fileTree.length === 0}
                   <p class="px-2 py-8 text-xs text-muted-foreground text-center">
@@ -2769,9 +2768,7 @@
               <div class="flex-1 overflow-y-auto">
                 {#if searching && visibleSearchResults.length === 0}
                   <div class="flex items-center justify-center py-10">
-                    <div
-                      class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                    ></div>
+                    <Spinner size="sm" />
                   </div>
                 {:else if !searching && visibleSearchResults.length === 0}
                   <div class="flex items-center justify-center px-3 py-10 text-center">
