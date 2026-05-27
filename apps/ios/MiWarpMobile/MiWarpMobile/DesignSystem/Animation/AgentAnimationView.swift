@@ -24,3 +24,11 @@ struct AgentAnimationView: View {
             }
     }
 }
+
+#Preview {
+    HStack(spacing: 20) {
+        AgentAnimationView(isActive: false)
+        AgentAnimationView(isActive: true)
+    }
+    .padding()
+}

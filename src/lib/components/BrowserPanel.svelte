@@ -622,8 +622,8 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 68, 68, 0.1);
-    border: 1px solid var(--color-error, #ff4444);
+    background: hsl(var(--miwarp-status-error, 0 72% 60%) / 0.1);
+    border: 1px solid hsl(var(--miwarp-status-error, 0 72% 60%));
   }
 
   .error-icon {
@@ -633,7 +633,7 @@
   .error-text {
     flex: 1;
     font-size: 0.875rem;
-    color: var(--color-error, #ff4444);
+    color: hsl(var(--miwarp-status-error, 0 72% 60%));
   }
 
   .loading-overlay {
@@ -642,7 +642,7 @@
     justify-content: center;
     gap: 0.5rem;
     padding: 1rem;
-    background: rgba(0, 0, 0, 0.5);
+    background: hsl(var(--miwarp-overlay, 0 0% 0% / 0.55));
     position: absolute;
     top: 0;
     left: 0;

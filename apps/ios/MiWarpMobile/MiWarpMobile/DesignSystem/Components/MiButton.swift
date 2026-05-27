@@ -54,3 +54,13 @@ struct MiButton: View {
         }
     }
 }
+
+#Preview {
+    VStack(spacing: 12) {
+        MiButton("Primary", icon: "plus") {}
+        MiButton("Secondary", style: .secondary) {}
+        MiButton("Destructive", icon: "trash", style: .destructive) {}
+    }
+    .environmentObject(MWTheme())
+    .padding()
+}

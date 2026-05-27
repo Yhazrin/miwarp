@@ -20,3 +20,12 @@ struct MiProgressRing: View {
         .frame(width: size, height: size)
     }
 }
+
+#Preview {
+    HStack(spacing: 20) {
+        MiProgressRing(progress: 0.3)
+        MiProgressRing(progress: 0.7, color: .green)
+        MiProgressRing(progress: 1.0, color: .orange, lineWidth: 6)
+    }
+    .padding()
+}

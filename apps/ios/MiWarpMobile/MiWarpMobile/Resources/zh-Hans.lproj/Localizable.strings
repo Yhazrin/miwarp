@@ -48,6 +48,7 @@
 "action.send" = "发送消息";
 "action.stop" = "停止";
 "action.fork" = "分叉对话";
+"action.attach" = "附件";
 
 /* Pairing */
 "pairing.scanQR" = "扫描二维码";

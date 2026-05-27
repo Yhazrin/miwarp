@@ -33,7 +33,7 @@ struct ComposerBar: View {
                         .font(.system(size: 22))
                         .foregroundColor(theme.textTertiary)
                 }
-                .accessibilityLabel("Attach")
+                .accessibilityLabel(String(localized: "action.attach"))
 
                 // Input capsule
                 HStack(spacing: 6) {

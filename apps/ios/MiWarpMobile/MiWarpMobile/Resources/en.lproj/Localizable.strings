@@ -48,6 +48,7 @@
 "action.send" = "Send message";
 "action.stop" = "Stop";
 "action.fork" = "Fork conversation";
+"action.attach" = "Attach";
 
 /* Pairing */
 "pairing.scanQR" = "Scan QR Code";

@@ -24,6 +24,7 @@ struct HomeDashboardView: View {
             Circle()
                 .fill(statusColor)
                 .frame(width: 10, height: 10)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(connectionState.displayLabel)
@@ -50,6 +51,7 @@ struct HomeDashboardView: View {
                         .font(.caption.weight(.medium))
                         .foregroundColor(MWColors.accentPrimary)
                 }
+                .accessibilityLabel(String(localized: "connection.connect"))
             }
         }
         .padding(14)
@@ -118,4 +120,31 @@ struct HomeDashboardView: View {
                 .fill(theme.cardBg.opacity(0.5))
         )
     }
+}
+
+// MARK: - Preview
+
+#Preview("Disconnected") {
+    HomeDashboardView(
+        runs: [],
+        connectionState: .disconnected,
+        activeConnection: nil,
+        toastPresenter: MiToastPresenter()
+    )
+    .environmentObject(MWTheme())
+    .padding()
+}
+
+#Preview("Connected with runs") {
+    HomeDashboardView(
+        runs: [
+            MiWarpRun(id: "1", name: "Fix login bug", cwd: "/project", agent: "claude", status: .completed, startedAt: "2026-05-27T10:00:00Z"),
+            MiWarpRun(id: "2", name: "Add dark mode", cwd: "/project", agent: "claude", status: .running, startedAt: "2026-05-27T11:00:00Z"),
+        ],
+        connectionState: .connected,
+        activeConnection: MiWarpConnection(name: "Desktop", host: "192.168.1.100", port: 9222),
+        toastPresenter: MiToastPresenter()
+    )
+    .environmentObject(MWTheme())
+    .padding()
 }

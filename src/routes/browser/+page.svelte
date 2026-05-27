@@ -161,7 +161,7 @@
   .description {
     margin: 0;
     font-size: 0.875rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--miwarp-text-secondary, 220 10% 62%));
   }
 
   .header-actions {
@@ -174,7 +174,7 @@
     gap: 0.5rem;
     flex-shrink: 0;
     padding: 0.25rem;
-    background: var(--color-background, #0a0a0a);
+    background: hsl(var(--miwarp-bg-deepest, 220 18% 6%));
     border-radius: 8px;
     width: fit-content;
   }
@@ -187,18 +187,18 @@
     background: transparent;
     border: none;
     border-radius: 6px;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--miwarp-text-secondary, 220 10% 62%));
     cursor: pointer;
     transition: all 0.2s;
   }
 
   .tab-button:hover {
-    background: var(--color-hover, #222);
-    color: var(--color-text, white);
+    background: hsl(var(--miwarp-bg-hover, 220 10% 21%));
+    color: hsl(var(--miwarp-text-primary, 0 0% 94%));
   }
 
   .tab-button.active {
-    background: var(--color-primary, #6366f1);
+    background: hsl(var(--miwarp-accent-primary, 210 100% 60%));
     color: white;
   }
 
@@ -238,7 +238,7 @@
   }
 
   .settings-panel {
-    background: var(--color-surface, #1a1a1a);
+    background: hsl(var(--miwarp-bg-elevated, 220 12% 15%));
     border-radius: 12px;
     width: 100%;
     max-width: 500px;
@@ -253,7 +253,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 1.25rem;
-    border-bottom: 1px solid var(--color-border, #333);
+    border-bottom: 1px solid hsl(var(--miwarp-border, 220 10% 25%));
   }
 
   .settings-header h2 {
@@ -279,7 +279,7 @@
     margin: 0 0 1rem 0;
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--miwarp-text-secondary, 220 10% 62%));
   }
 
   .setting-item {
@@ -309,16 +309,16 @@
   .setting-input {
     width: 150px;
     padding: 0.5rem;
-    background: var(--color-background, #0a0a0a);
-    border: 1px solid var(--color-border, #333);
+    background: hsl(var(--miwarp-bg-deepest, 220 18% 6%));
+    border: 1px solid hsl(var(--miwarp-border, 220 10% 25%));
     border-radius: 4px;
-    color: var(--color-text, white);
+    color: hsl(var(--miwarp-text-primary, 0 0% 94%));
     font-size: 0.875rem;
   }
 
   .setting-input:focus {
     outline: none;
-    border-color: var(--color-primary, #6366f1);
+    border-color: hsl(var(--miwarp-accent-primary, 210 100% 60%));
   }
 
   .settings-footer {
@@ -326,7 +326,7 @@
     justify-content: flex-end;
     gap: 0.75rem;
     padding: 1rem 1.25rem;
-    border-top: 1px solid var(--color-border, #333);
+    border-top: 1px solid hsl(var(--miwarp-border, 220 10% 25%));
   }
 
   .btn {
@@ -341,16 +341,16 @@
   .btn-icon {
     padding: 0.5rem;
     background: transparent;
-    border: 1px solid var(--color-border, #333);
+    border: 1px solid hsl(var(--miwarp-border, 220 10% 25%));
     font-size: 1.25rem;
   }
 
   .btn-icon:hover {
-    background: var(--color-hover, #222);
+    background: hsl(var(--miwarp-bg-hover, 220 10% 21%));
   }
 
   .btn-primary {
-    background: var(--color-primary, #6366f1);
+    background: hsl(var(--miwarp-accent-primary, 210 100% 60%));
     color: white;
   }
 

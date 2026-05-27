@@ -122,7 +122,7 @@
 <div
   bind:this={containerEl}
   class="xterm-container {className}"
-  style="width: 100%; height: 100%; background: #0a0a0a;"
+  style="width: 100%; height: 100%; background: hsl(var(--miwarp-bg-deepest, 220 18% 6%));"
 ></div>
 
 <style>

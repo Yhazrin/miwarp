@@ -144,3 +144,13 @@ extension View {
         modifier(MiToastPresenterModifier(presenter: presenter))
     }
 }
+
+#Preview("Toast Variants") {
+    VStack(spacing: 12) {
+        MiToastView(toast: MiToastItem(title: "Info", message: "This is an info message", kind: .info))
+        MiToastView(toast: MiToastItem(title: "Success", message: "Operation completed", kind: .success))
+        MiToastView(toast: MiToastItem(title: "Warning", message: "Please check your input", kind: .warning))
+        MiToastView(toast: MiToastItem(title: "Error", message: "Something went wrong", kind: .error))
+    }
+    .padding()
+}

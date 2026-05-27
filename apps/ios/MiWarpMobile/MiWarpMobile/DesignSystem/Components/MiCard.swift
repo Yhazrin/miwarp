@@ -22,3 +22,17 @@ struct MiCard<Content: View>: View {
             )
     }
 }
+
+#Preview {
+    MiCard {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Card Title")
+                .font(.headline)
+            Text("Card content goes here")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+    }
+    .environmentObject(MWTheme())
+    .padding()
+}
