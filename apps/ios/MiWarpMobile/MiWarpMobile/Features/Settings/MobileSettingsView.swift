@@ -138,10 +138,10 @@ struct MobileSettingsView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
                         .strokeBorder(isSelected ? Color.white.opacity(0.6) : Color.clear, lineWidth: 2)
-                        .animation(.spring(duration: 0.3, bounce: 0.3), value: isSelected)
+                        .animation(MWMotion.springBouncy, value: isSelected)
                 )
                 .scaleEffect(isSelected ? 1.05 : 1.0)
-                .animation(.spring(duration: 0.3, bounce: 0.4), value: isSelected)
+                .animation(MWMotion.springBouncy, value: isSelected)
 
                 Text(accent.displayName)
                     .font(.system(size: 10))
