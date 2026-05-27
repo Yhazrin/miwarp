@@ -39,6 +39,20 @@ struct ArtifactsView: View {
                                     Image(systemName: pathIcon(path))
                                         .foregroundStyle(MWColors.accentPrimary)
                                 }
+                                .swipeActions(edge: .trailing) {
+                                    Button {
+                                        MiHaptics.lightImpact()
+                                        UIPasteboard.general.string = path
+                                    } label: {
+                                        Label(String(localized: "action.copyPath"), systemImage: "doc.on.doc")
+                                    }
+                                    .tint(MWColors.accentPrimary)
+
+                                    ShareLink(item: path) {
+                                        Label(String(localized: "action.share"), systemImage: "square.and.arrow.up")
+                                    }
+                                    .tint(MWColors.statusSuccess)
+                                }
                             }
                         }
                     }
@@ -50,6 +64,15 @@ struct ArtifactsView: View {
                                     .font(.caption.monospaced())
                                     .foregroundStyle(theme.cardTextSecondary)
                                     .textSelection(.enabled)
+                                    .swipeActions(edge: .trailing) {
+                                        Button {
+                                            MiHaptics.lightImpact()
+                                            UIPasteboard.general.string = command
+                                        } label: {
+                                            Label(String(localized: "action.copyPath"), systemImage: "doc.on.doc")
+                                        }
+                                        .tint(MWColors.accentPrimary)
+                                    }
                             }
                         }
                     }
@@ -73,6 +96,9 @@ struct ArtifactsView: View {
                 .listStyle(.insetGrouped)
                 .scrollContentBackground(.hidden)
                 .background(MWPatternedBackdrop())
+                .refreshable {
+                    await loadArtifacts()
+                }
             } else {
                 ContentUnavailableView {
                     Label(String(localized: "artifacts.noArtifacts"), systemImage: "archivebox")

@@ -10,3 +10,20 @@
 /* Live Activity - Dynamic Island Compact */
 "liveActivity.sync" = "同步";
 "liveActivity.run" = "运行";
+
+/* Sync Phase Labels */
+"syncPhase.preparing" = "准备中";
+"syncPhase.connecting" = "连接中";
+"syncPhase.syncing" = "同步中";
+"syncPhase.importing" = "导入中";
+"syncPhase.exporting" = "导出中";
+"syncPhase.finishing" = "完成中";
+"syncPhase.completed" = "已完成";
+"syncPhase.failed" = "失败";
+
+/* Agent Phase Labels */
+"agentPhase.queued" = "排队中";
+"agentPhase.running" = "运行中";
+"agentPhase.waiting" = "等待中";
+"agentPhase.completed" = "已完成";
+"agentPhase.failed" = "失败";

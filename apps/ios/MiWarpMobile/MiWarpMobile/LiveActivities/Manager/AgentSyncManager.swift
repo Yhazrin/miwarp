@@ -28,7 +28,7 @@ final class AgentSyncManager: ObservableObject {
 
         let workspaceName = store.activeConnection?.host
         let steps: [(String, () async throws -> Void)] = [
-            ("Fetching sessions", {
+            (String(localized: "agentSync.fetchingSessions"), {
                 let runs = try await rpc.listRuns()
                 guard !runs.isEmpty else { return }
                 // Load events for each to build full picture
@@ -36,16 +36,16 @@ final class AgentSyncManager: ObservableObject {
                     _ = try? await rpc.getBusEvents(runId: run.id)
                 }
             }),
-            ("Analyzing session data", {
+            (String(localized: "agentSync.analyzingSessionData"), {
                 try await Task.sleep(nanoseconds: 500_000_000)
             }),
-            ("Building index", {
+            (String(localized: "agentSync.buildingIndex"), {
                 try await Task.sleep(nanoseconds: 300_000_000)
             }),
         ]
 
         startTask(
-            title: "Organize Sessions",
+            title: String(localized: "agentSync.organizeSessions"),
             workspaceName: workspaceName,
             steps: steps
         )
@@ -55,22 +55,22 @@ final class AgentSyncManager: ObservableObject {
     func analyzeWorkspace(store: MiWarpConnectionStore) {
         guard store.isConnected, let rpc = store.rpc else { return }
 
-        let workspaceName = store.activeConnection?.host ?? "Unknown"
+        let workspaceName = store.activeConnection?.host ?? String(localized: "generic.unknown")
         let steps: [(String, () async throws -> Void)] = [
-            ("Loading session history", {
+            (String(localized: "agentSync.loadingSessionHistory"), {
                 let runs = try await rpc.listRuns()
                 // Load recent history
                 for run in runs.prefix(10) {
                     _ = try? await rpc.getBusEvents(runId: run.id)
                 }
             }),
-            ("Generating report", {
+            (String(localized: "agentSync.generatingReport"), {
                 try await Task.sleep(nanoseconds: 400_000_000)
             }),
         ]
 
         startTask(
-            title: "Analyze Workspace",
+            title: String(localized: "agentSync.analyzeWorkspace"),
             workspaceName: workspaceName,
             steps: steps
         )
@@ -82,19 +82,19 @@ final class AgentSyncManager: ObservableObject {
 
         let workspaceName = store.activeConnection?.host
         let steps: [(String, () async throws -> Void)] = [
-            ("Verifying connection", {
+            (String(localized: "agentSync.verifyingConnection"), {
                 _ = try await rpc.getWebServerStatus()
             }),
-            ("Refreshing session data", {
+            (String(localized: "agentSync.refreshingSessionData"), {
                 _ = try await rpc.listRuns()
             }),
-            ("Rebuilding index", {
+            (String(localized: "agentSync.rebuildingIndex"), {
                 try await Task.sleep(nanoseconds: 500_000_000)
             }),
         ]
 
         startTask(
-            title: "Rebuild Memory Index",
+            title: String(localized: "agentSync.rebuildMemoryIndex"),
             workspaceName: workspaceName,
             steps: steps
         )
@@ -152,12 +152,12 @@ final class AgentSyncManager: ObservableObject {
 
             // Complete
             phase = .completed
-            stepTitle = "Complete"
+            stepTitle = String(localized: "agentSync.complete")
             liveActivity.updateAgentTask(
                 phase: .completed,
                 currentStep: steps.count,
                 totalSteps: steps.count,
-                stepTitle: "Complete"
+                stepTitle: String(localized: "agentSync.complete")
             )
             liveActivity.endAgentTask()
             isRunning = false
@@ -167,7 +167,7 @@ final class AgentSyncManager: ObservableObject {
     func cancelTask() {
         task?.cancel()
         task = nil
-        failTask("Cancelled by user")
+        failTask(String(localized: "agentSync.cancelledByUser"))
     }
 
     private func updatePhase(_ newPhase: AgentPhase) {

@@ -14,14 +14,14 @@ enum SyncPhase: String, Codable, Hashable {
 
     var displayTitle: String {
         switch self {
-        case .preparing: return "Preparing"
-        case .connecting: return "Connecting"
-        case .syncing: return "Syncing"
-        case .importing: return "Importing"
-        case .exporting: return "Exporting"
-        case .finishing: return "Finishing"
-        case .completed: return "Completed"
-        case .failed: return "Failed"
+        case .preparing: return String(localized: "syncPhase.preparing")
+        case .connecting: return String(localized: "syncPhase.connecting")
+        case .syncing: return String(localized: "syncPhase.syncing")
+        case .importing: return String(localized: "syncPhase.importing")
+        case .exporting: return String(localized: "syncPhase.exporting")
+        case .finishing: return String(localized: "syncPhase.finishing")
+        case .completed: return String(localized: "syncPhase.completed")
+        case .failed: return String(localized: "syncPhase.failed")
         }
     }
 
@@ -44,11 +44,11 @@ enum AgentPhase: String, Codable, Hashable {
 
     var displayTitle: String {
         switch self {
-        case .queued: return "Queued"
-        case .running: return "Running"
-        case .waiting: return "Waiting"
-        case .completed: return "Completed"
-        case .failed: return "Failed"
+        case .queued: return String(localized: "agentPhase.queued")
+        case .running: return String(localized: "agentPhase.running")
+        case .waiting: return String(localized: "agentPhase.waiting")
+        case .completed: return String(localized: "agentPhase.completed")
+        case .failed: return String(localized: "agentPhase.failed")
         }
     }
 

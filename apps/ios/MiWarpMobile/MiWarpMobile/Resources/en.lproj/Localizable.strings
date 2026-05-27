@@ -192,6 +192,7 @@
 
 /* Generic */
 "error.somethingWentWrong" = "Something went wrong";
+"error.notConnected" = "Not connected";
 "loading.default" = "Loading...";
 
 /* Dashboard */
@@ -256,6 +257,67 @@
 "accentTheme.auroraPomelo" = "Aurora Pomelo";
 "accentTheme.pomegranateMist" = "Pomegranate Mist";
 "accentTheme.auroraLime" = "Aurora Lime";
+
+/* Sync Phase Labels */
+"syncPhase.preparing" = "Preparing";
+"syncPhase.connecting" = "Connecting";
+"syncPhase.syncing" = "Syncing";
+"syncPhase.importing" = "Importing";
+"syncPhase.exporting" = "Exporting";
+"syncPhase.finishing" = "Finishing";
+"syncPhase.completed" = "Completed";
+"syncPhase.failed" = "Failed";
+
+/* Agent Phase Labels */
+"agentPhase.queued" = "Queued";
+"agentPhase.running" = "Running";
+"agentPhase.waiting" = "Waiting";
+"agentPhase.completed" = "Completed";
+"agentPhase.failed" = "Failed";
+
+/* Agent Sync Steps */
+"agentSync.organizeSessions" = "Organize Sessions";
+"agentSync.fetchingSessions" = "Fetching sessions";
+"agentSync.analyzingSessionData" = "Analyzing session data";
+"agentSync.buildingIndex" = "Building index";
+"agentSync.analyzeWorkspace" = "Analyze Workspace";
+"agentSync.loadingSessionHistory" = "Loading session history";
+"agentSync.generatingReport" = "Generating report";
+"agentSync.rebuildMemoryIndex" = "Rebuild Memory Index";
+"agentSync.verifyingConnection" = "Verifying connection";
+"agentSync.refreshingSessionData" = "Refreshing session data";
+"agentSync.rebuildingIndex" = "Rebuilding index";
+"agentSync.complete" = "Complete";
+"agentSync.cancelledByUser" = "Cancelled by user";
+
+/* Session Sync */
+"sessionSync.notConnected" = "Not connected";
+"sessionSync.fetchedSessions" = "Fetched %lld sessions";
+"sessionSync.buildingIndex" = "Building index...";
+"sessionSync.cancelledByUser" = "Cancelled by user";
+
+/* WebSocket Errors */
+"wsError.notConnected" = "Not connected to server";
+"wsError.encodingFailed" = "Failed to encode request";
+"wsError.timeout" = "Request timed out";
+"wsError.maxReconnectAttempts" = "Max reconnect attempts reached";
+"wsError.tokenExpired" = "Token expired or rotated. Please reconnect from the desktop.";
+"wsError.localNetworkBlocked" = "MiWarp Mobile cannot reach the local server from inside the app. Since Safari can open it, check iOS Settings > Privacy & Security > Local Network > MiWarp, then reinstall the app if MiWarp is not listed.";
+"wsError.atsBlocked" = "iOS blocked local cleartext networking. Reinstall the latest build with local networking enabled.";
+"wsError.connectTimeout" = "Connection timed out. If Safari can open this address, reinstall MiWarp Mobile and allow Local Network permission.";
+
+/* Keychain Errors */
+"keychainError.encodingFailed" = "Failed to encode token data";
+"keychainError.decodingFailed" = "Failed to decode token data";
+"keychainError.saveFailed" = "Failed to save to keychain (status: %lld)";
+"keychainError.loadFailed" = "Failed to load from keychain (status: %lld)";
+
+/* Artifacts Actions */
+"action.copyPath" = "Copy Path";
+"action.share" = "Share";
+
+/* Generic */
+"generic.unknown" = "Unknown";
 
 /* Accessibility */
 "a11y.modeSelector" = "Mode selector";
