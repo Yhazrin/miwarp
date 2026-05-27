@@ -37,6 +37,7 @@
   import { shouldShowContextDetails } from "$lib/utils/process-visibility";
   import { IS_MAC } from "$lib/utils/platform";
   import { t } from "$lib/i18n/index.svelte";
+  import { showToast } from "$lib/stores/toast-store.svelte";
   import { formatPasteSize } from "$lib/utils/format";
   import {
     BINARY_ATTACHMENT_TYPES,
@@ -269,7 +270,7 @@
 
   let effectivePlaceholder = $derived(
     btwMode
-      ? "Ask a side question..."
+      ? t("promptInput_sideQuestionPlaceholder")
       : pendingPermission
         ? t("prompt_pendingPermission")
         : hasRun
@@ -440,19 +441,6 @@
       binary += String.fromCharCode.apply(null, slice as unknown as number[]);
     }
     return btoa(binary);
-  }
-
-  // ── File toast ──
-  let toastMessage = $state<string | null>(null);
-  let toastVariant = $state<"error" | "info">("error");
-  let toastTimeout: ReturnType<typeof setTimeout> | null = null;
-  function showFileToast(msg: string, variant: "error" | "info" = "error") {
-    toastMessage = msg;
-    toastVariant = variant;
-    if (toastTimeout) clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => {
-      toastMessage = null;
-    }, 3500);
   }
 
   // ── Slash menu state ──
@@ -1382,11 +1370,11 @@
       // PDF >20MB ≤100MB: save to temp, use path-reference (CLI handles via pdftoppm)
       if (effectivePdf && file.size > PDF_MAX_BINARY_SIZE) {
         if (file.size > PDF_MAX_PATH_SIZE) {
-          showFileToast(t("prompt_fileTooLarge", { limit: "100", name: file.name }));
+          showToast(t("prompt_fileTooLarge", { limit: "100", name: file.name }), "error");
           continue;
         }
         if (binaryRemaining <= 0) {
-          showFileToast(t("prompt_maxAttachments", { count: String(MAX_ATTACHMENTS) }));
+          showToast(t("prompt_maxAttachments", { count: String(MAX_ATTACHMENTS) }), "error");
           break;
         }
         binaryRemaining--;
@@ -1408,7 +1396,7 @@
         } catch (e) {
           binaryRemaining++;
           dbgWarn("prompt", "pdf-temp-save-failed", { name: file.name, error: e });
-          showFileToast(t("prompt_fileTooLarge", { limit: "20", name: file.name }));
+          showToast(t("prompt_fileTooLarge", { limit: "20", name: file.name }), "error");
         }
         continue;
       }
@@ -1417,14 +1405,14 @@
       const sizeLimit = getFileSizeLimit(file);
       if (file.size > sizeLimit) {
         const limitMB = sizeLimit / (1024 * 1024);
-        showFileToast(t("prompt_fileTooLarge", { limit: String(limitMB), name: file.name }));
+        showToast(t("prompt_fileTooLarge", { limit: String(limitMB), name: file.name }), "error");
         continue;
       }
 
       // 2) Binary attachment: images + PDF (≤20MB)
       if (BINARY_ATTACHMENT_TYPES.includes(file.type) || detectedPdf) {
         if (binaryRemaining <= 0) {
-          showFileToast(t("prompt_maxAttachments", { count: String(MAX_ATTACHMENTS) }));
+          showToast(t("prompt_maxAttachments", { count: String(MAX_ATTACHMENTS) }), "error");
           break;
         }
         binaryRemaining--;
@@ -1450,7 +1438,7 @@
       // 3) Text file → pastedBlock
       if (isTextFile(file)) {
         if (textRemaining <= 0) {
-          showFileToast(t("prompt_maxTextFiles", { count: String(MAX_PASTE_BLOCKS) }));
+          showToast(t("prompt_maxTextFiles", { count: String(MAX_PASTE_BLOCKS) }), "error");
           break;
         }
         textRemaining--; // Pre-decrement before async read to prevent race
@@ -1486,7 +1474,7 @@
       // 3.5) Convertible → await conversion, then add as pastedBlock
       if (isConvertibleFile(file)) {
         if (textRemaining <= 0) {
-          showFileToast(t("prompt_maxTextFiles", { count: String(MAX_PASTE_BLOCKS) }));
+          showToast(t("prompt_maxTextFiles", { count: String(MAX_PASTE_BLOCKS) }), "error");
           break;
         }
         textRemaining--;
@@ -1507,7 +1495,7 @@
           dbg("prompt", "converted-file", { name: file.name, lines: lineCount });
         } catch (e) {
           textRemaining++; // Roll back quota on failure
-          showFileToast(t("prompt_conversionFailed", { name: file.name }));
+          showToast(t("prompt_conversionFailed", { name: file.name }), "error");
           dbgWarn("prompt", "conversion-failed", { name: file.name, error: e });
         }
         continue;
@@ -1516,7 +1504,7 @@
       rejected.push(getFileExtension(file.name) || file.type || "unknown");
     }
     if (rejected.length > 0) {
-      showFileToast(t("prompt_unsupportedFile", { ext: rejected[0] }));
+      showToast(t("prompt_unsupportedFile", { ext: rejected[0] }), "error");
     }
   }
 
@@ -1610,7 +1598,7 @@
     // Long text → intercept, compress into chip
     e.preventDefault();
     if (store.pastedBlocks.length >= MAX_PASTE_BLOCKS) {
-      showFileToast(t("prompt_maxPasteBlocks", { count: String(MAX_PASTE_BLOCKS) }));
+      showToast(t("prompt_maxPasteBlocks", { count: String(MAX_PASTE_BLOCKS) }), "error");
       return;
     }
 
@@ -1659,7 +1647,7 @@
       const msg = e instanceof Error ? e.message : String(e);
       // Only show toast when user explicitly pasted files (no text in clipboard)
       if (snapshot === undefined && msg.includes("not yet supported")) {
-        showFileToast(t("prompt_clipboardUnsupported"));
+        showToast(t("prompt_clipboardUnsupported"), "error");
       }
       dbg("prompt", "native clipboard failed/timeout", e);
     }
@@ -1680,11 +1668,11 @@
       // PDF path-reference: >20MB ≤100MB → store path only, CLI handles via pdftoppm
       if (isPdf(effectiveMime) && file.size > PDF_MAX_BINARY_SIZE) {
         if (file.size > PDF_MAX_PATH_SIZE) {
-          showFileToast(t("prompt_fileTooLarge", { limit: "100", name: file.name }));
+          showToast(t("prompt_fileTooLarge", { limit: "100", name: file.name }), "error");
           continue;
         }
         if (binaryRemaining <= 0) {
-          showFileToast(t("prompt_maxAttachments", { count: String(MAX_ATTACHMENTS) }));
+          showToast(t("prompt_maxAttachments", { count: String(MAX_ATTACHMENTS) }), "error");
           break;
         }
         binaryRemaining--;
@@ -1709,14 +1697,14 @@
       const sizeLimit = getSizeLimitByMime(effectiveMime);
       if (file.size > sizeLimit) {
         const limitMB = sizeLimit / (1024 * 1024);
-        showFileToast(t("prompt_fileTooLarge", { limit: String(limitMB), name: file.name }));
+        showToast(t("prompt_fileTooLarge", { limit: String(limitMB), name: file.name }), "error");
         continue;
       }
       const cls = classifyByMime(effectiveMime);
 
       if (cls === "binary") {
         if (binaryRemaining <= 0) {
-          showFileToast(t("prompt_maxAttachments", { count: String(MAX_ATTACHMENTS) }));
+          showToast(t("prompt_maxAttachments", { count: String(MAX_ATTACHMENTS) }), "error");
           break;
         }
         binaryRemaining--;
@@ -1738,7 +1726,7 @@
         }
       } else if (cls === "text") {
         if (textRemaining <= 0) {
-          showFileToast(t("prompt_maxTextFiles", { count: String(MAX_PASTE_BLOCKS) }));
+          showToast(t("prompt_maxTextFiles", { count: String(MAX_PASTE_BLOCKS) }), "error");
           break;
         }
         textRemaining--;
@@ -1763,7 +1751,7 @@
         }
       } else if (cls === "convertible" || isConvertibleByExt(getFileExtension(file.name))) {
         if (textRemaining <= 0) {
-          showFileToast(t("prompt_maxTextFiles", { count: String(MAX_PASTE_BLOCKS) }));
+          showToast(t("prompt_maxTextFiles", { count: String(MAX_PASTE_BLOCKS) }), "error");
           break;
         }
         textRemaining--;
@@ -1789,7 +1777,7 @@
           dbg("prompt", "clipboard-converted", { name: file.name, lines: lineCount });
         } catch (e) {
           textRemaining++;
-          showFileToast(t("prompt_conversionFailed", { name: file.name }));
+          showToast(t("prompt_conversionFailed", { name: file.name }), "error");
           dbgWarn("prompt", "clipboard-convert-error", { name: file.name, error: e });
         }
       } else {
@@ -1797,7 +1785,7 @@
       }
     }
     if (rejected.length > 0) {
-      showFileToast(t("prompt_unsupportedFile", { ext: rejected[0] }));
+      showToast(t("prompt_unsupportedFile", { ext: rejected[0] }), "error");
     }
   }
 
@@ -1958,10 +1946,6 @@
     store.pendingPathRefs = store.pendingPathRefs.filter((r) => r.id !== id);
   }
 
-  export function showToast(message: string, variant: "error" | "info" = "info") {
-    showFileToast(message, variant);
-  }
-
   export function getInputSnapshot(): PromptInputSnapshot {
     return store.getSnapshot();
   }
@@ -2003,29 +1987,6 @@
       class="absolute inset-0 z-10 flex items-center justify-center rounded-[28px] border-2 border-dashed border-primary/40 bg-primary/6 backdrop-blur-[2px]"
     >
       <span class="text-sm font-medium text-primary/70">{t("prompt_dropFiles")}</span>
-    </div>
-  {/if}
-
-  <!-- File toast -->
-  {#if toastMessage}
-    <div
-      class="absolute -top-10 left-4 right-4 z-20 flex items-center gap-2 rounded-md px-3 py-1.5 text-xs shadow-lg animate-fade-in {toastVariant ===
-      'error'
-        ? 'bg-destructive/90 text-destructive-foreground'
-        : 'bg-muted text-foreground'}"
-    >
-      <svg
-        class="h-3.5 w-3.5 shrink-0"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" />
-      </svg>
-      <span>{toastMessage}</span>
     </div>
   {/if}
 

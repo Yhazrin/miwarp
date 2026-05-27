@@ -18,8 +18,7 @@
     {
       file_name: "Explore",
       name: "Explore",
-      description:
-        "Fast agent specialized for exploring codebases. Use for finding files, searching code, or answering questions about the codebase.",
+      description: t("agentsPanel_exploreDesc"),
       model: "haiku",
       source: "built-in",
       scope: "user",
@@ -29,8 +28,7 @@
     {
       file_name: "Plan",
       name: "Plan",
-      description:
-        "Software architect agent for designing implementation plans. Returns step-by-step plans and identifies critical files.",
+      description: t("agentsPanel_planDesc"),
       model: undefined,
       source: "built-in",
       scope: "user",
@@ -40,8 +38,7 @@
     {
       file_name: "general-purpose",
       name: "general-purpose",
-      description:
-        "General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks.",
+      description: t("agentsPanel_generalPurposeDesc"),
       model: undefined,
       source: "built-in",
       scope: "user",
@@ -50,8 +47,7 @@
     {
       file_name: "claude-code-guide",
       name: "claude-code-guide",
-      description:
-        "Agent for answering questions about Claude Code features, hooks, slash commands, MCP servers, settings, and IDE integrations.",
+      description: t("agentsPanel_claudeCodeGuideDesc"),
       model: "haiku",
       source: "built-in",
       scope: "user",

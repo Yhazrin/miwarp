@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount } from "svelte";
   import { getCliConfig, updateCliConfig } from "$lib/api";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
+  import { showToast } from "$lib/stores/toast-store.svelte";
   import {
     HOOK_EVENT_TYPES,
     normalizeForDisplay,
@@ -19,11 +20,6 @@
   let loading = $state(true);
   let loadError = $state<string | null>(null);
   let saving = $state(false);
-
-  // Toast
-  let toastMessage = $state<string | null>(null);
-  let toastType = $state<"success" | "error">("success");
-  let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // Editor
   let editorMode = $state<null | "new" | "edit">(null);
@@ -48,13 +44,6 @@
   // ── Lifecycle ──
   onMount(() => {
     loadConfig();
-  });
-
-  onDestroy(() => {
-    if (toastTimeout) {
-      clearTimeout(toastTimeout);
-      toastTimeout = null;
-    }
   });
 
   async function loadConfig() {
@@ -85,15 +74,6 @@
     } finally {
       saving = false;
     }
-  }
-
-  function showToast(message: string, type: "success" | "error") {
-    toastMessage = message;
-    toastType = type;
-    if (toastTimeout) clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => {
-      toastMessage = null;
-    }, 4000);
   }
 
   // ── Editor ──
@@ -223,18 +203,6 @@
     return parts.join(" · ") || "—";
   }
 </script>
-
-<!-- Toast -->
-{#if toastMessage}
-  <div
-    class="fixed top-4 right-4 z-50 rounded-lg border px-4 py-2 text-sm shadow-lg transition-opacity {toastType ===
-    'success'
-      ? 'border-miwarp-status-success/30 bg-miwarp-status-success/10 text-miwarp-status-success'
-      : 'border-destructive/30 bg-destructive/10 text-destructive'}"
-  >
-    {toastMessage}
-  </div>
-{/if}
 
 <!-- Confirm dialog -->
 {#if confirmAction}

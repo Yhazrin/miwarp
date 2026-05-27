@@ -2,6 +2,7 @@ import * as api from "$lib/api";
 import { isSessionDragActive } from "$lib/utils/session-drag-state";
 import { mapSettled } from "$lib/utils/async-utils";
 import { dbg, dbgWarn } from "$lib/utils/debug";
+import { showToast } from "$lib/stores/toast-store.svelte";
 
 interface PathRef {
   path: string;
@@ -12,7 +13,6 @@ interface PathRef {
 interface PromptInputRef {
   addPathRefs(refs: PathRef[]): void;
   addFiles(files: File[]): Promise<void>;
-  showToast(msg: string): void;
 }
 
 export interface TauriDropContext {
@@ -122,7 +122,7 @@ export async function handleTauriDrop(
       if (fileRefs.length > 0) {
         parts.push(t("drag_filesAsPathRef", { count: String(fileRefs.length) }));
       }
-      input.showToast(parts.join(t("common_listSeparator")));
+      showToast(parts.join(t("common_listSeparator")));
     }
   } finally {
     onProcessingEnd();

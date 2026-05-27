@@ -3,6 +3,7 @@
   import { readFileBase64 } from "$lib/api";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { onDestroy } from "svelte";
+  import { t } from "$lib/i18n/index.svelte";
 
   let {
     text = "",
@@ -121,15 +122,16 @@
     const cleanups: Array<() => void> = [];
 
     buttons.forEach((btn) => {
+      btn.textContent = t("markdown_copy");
       const handler = async () => {
         const codeEl = btn.closest(".code-block")?.querySelector("pre code");
         if (!codeEl) return;
         try {
           await navigator.clipboard.writeText(codeEl.textContent || "");
-          btn.textContent = "Copied!";
+          btn.textContent = t("markdown_copied");
           btn.classList.add("copied");
           setTimeout(() => {
-            btn.textContent = "Copy";
+            btn.textContent = t("markdown_copy");
             btn.classList.remove("copied");
           }, 1500);
         } catch {
@@ -192,12 +194,12 @@
         if (expanded) {
           block.dataset.expanded = "true";
           wrapper.style.maxHeight = `${preEl.scrollHeight}px`;
-          toggleBtn.textContent = "Show less";
+          toggleBtn.textContent = t("markdown_showLess");
           expandedBlocks.add(key);
         } else {
           block.dataset.expanded = "false";
           wrapper.style.maxHeight = `${collapsedHeight}px`;
-          toggleBtn.textContent = "Show more";
+          toggleBtn.textContent = t("markdown_showMore");
           expandedBlocks.delete(key);
         }
       }

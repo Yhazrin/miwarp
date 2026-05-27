@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount } from "svelte";
   import { beforeNavigate } from "$app/navigation";
   import { page } from "$app/stores";
   import * as api from "$lib/api";
@@ -7,6 +7,7 @@
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
   import CodeEditor from "$lib/components/CodeEditor.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import { showToast } from "$lib/stores/toast-store.svelte";
   import { dbgWarn } from "$lib/utils/debug";
   import { memoryStore } from "$lib/stores/memory-store.svelte";
   import { getMemoryStats } from "$lib/services/memory-service";
@@ -16,27 +17,7 @@
   let savedContent = $state("");
   let loading = $state(true);
   let saving = $state(false);
-  let toastVisible = $state(false);
-  let toastFading = $state(false);
   let error = $state("");
-  let toastTimers: ReturnType<typeof setTimeout>[] = [];
-
-  function showToast(durationMs = 2500) {
-    for (const t of toastTimers) clearTimeout(t);
-    toastTimers = [];
-    toastFading = false;
-    toastVisible = true;
-    toastTimers.push(
-      setTimeout(() => {
-        toastFading = true;
-        toastTimers.push(setTimeout(() => (toastVisible = false), 250));
-      }, durationMs),
-    );
-  }
-
-  onDestroy(() => {
-    for (const t of toastTimers) clearTimeout(t);
-  });
 
   // The cwd that was active when the current content was loaded.
   // Used by save() so that switching projects before saving doesn't break permissions.
@@ -317,7 +298,7 @@
       memoryStore.setSavedContent(content);
       // Notify layout to refresh candidates (updates exists status in sidebar)
       window.dispatchEvent(new Event("ocv:memory-file-saved"));
-      showToast();
+      showToast(t("memory_saved"), "success");
     } catch (e) {
       error = String(e);
     } finally {
@@ -339,7 +320,7 @@
       if (result.errors.length > 0) {
         error = result.errors.join(", ");
       } else {
-        showToast();
+        showToast(t("memory_saved"), "success");
       }
     } catch (e) {
       error = String(e);
@@ -356,7 +337,7 @@
     error = "";
     try {
       await memoryStore.syncMemory();
-      showToast();
+      showToast(t("memory_saved"), "success");
     } catch (e) {
       error = String(e);
     } finally {
@@ -364,30 +345,6 @@
     }
   }
 </script>
-
-<!-- Toast notification -->
-{#if toastVisible}
-  <div
-    class="fixed top-4 left-1/2 -translate-x-1/2 z-50 {toastFading
-      ? 'animate-toast-out'
-      : 'animate-toast-in'}"
-  >
-    <div
-      class="flex items-center gap-2 rounded-lg bg-[hsl(var(--miwarp-status-success))] px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-lg"
-    >
-      <svg
-        class="h-4 w-4"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-      >
-      {t("memory_saved")}
-    </div>
-  </div>
-{/if}
 
 <div class="flex h-full flex-col">
   <!-- Header bar: filename + dirty dot + path + edit/preview toggle -->

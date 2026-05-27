@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { MediaArtifact } from "$lib/types";
   import { fade, scale } from "svelte/transition";
+  import { t } from "$lib/i18n/index.svelte";
 
   let { artifact }: { artifact: MediaArtifact } = $props();
 
@@ -59,7 +60,7 @@
       <button
         class="absolute top-4 right-4 text-[hsl(var(--miwarp-text-primary)/0.8)] hover:text-[hsl(var(--miwarp-text-primary))]"
         onclick={() => (showModal = false)}
-        aria-label="Close preview"
+        aria-label={t("imageArtifact_closePreview")}
       >
         <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 6 6 18M6 6l12 12" />

@@ -56,7 +56,6 @@ export interface PromptInputRef {
   clearAll(): void;
   addFiles(files: File[]): Promise<void>;
   setValue(text: string): void;
-  showToast(msg: string): void;
   addPathRefs(refs: { path: string; name: string; isDir: boolean }[]): void;
 }
 

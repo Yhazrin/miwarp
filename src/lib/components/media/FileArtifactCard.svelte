@@ -31,7 +31,7 @@
   async function copyPath() {
     try {
       await navigator.clipboard.writeText(artifact.path);
-      showToast("Path copied", "success");
+      showToast(t("fileArtifact_pathCopied"), "success");
     } catch {
       showToast(artifact.path, "info");
     }

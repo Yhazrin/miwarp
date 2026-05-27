@@ -33,7 +33,7 @@
     }
   }
 
-  let timers = $state<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  let timers = new Map<string, ReturnType<typeof setTimeout>>();
 
   $effect(() => {
     for (const toast of toasts) {

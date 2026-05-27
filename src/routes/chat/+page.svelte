@@ -27,6 +27,7 @@
   import type { PromptInputSnapshot } from "$lib/types";
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
   import { t } from "$lib/i18n/index.svelte";
+  import { showToast as _showToast } from "$lib/stores/toast-store.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { setLastTarget, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
   import { shouldAutoName } from "$lib/utils/auto-name";
@@ -737,7 +738,7 @@
   const handlePermissionModeChange = createPermissionModeHandler({
     store,
     t: t as unknown as (key: string, params?: Record<string, string>) => string,
-    showToast: showChatToast,
+    showToast: _showToast,
     getPermModeLabel,
   });
 
@@ -842,7 +843,7 @@
   const chatActions = createChatActions({
     store,
     t: t as unknown as (key: string, params?: Record<string, string>) => string,
-    showToast: showChatToast,
+    showToast: _showToast,
     setBtwState: (v) => {
       btwState = v;
     },
@@ -947,21 +948,8 @@
     await execVirtualCommand(ctx, action, args);
   }
 
-  // ── Chat-level toast (same pattern as PromptInput's showFileToast) ──
-  let chatToast = $state<string | null>(null);
-  let chatToastTimeout: ReturnType<typeof setTimeout> | null = null;
-  function showChatToast(msg: string) {
-    chatToast = msg;
-    if (chatToastTimeout) clearTimeout(chatToastTimeout);
-    chatToastTimeout = setTimeout(() => {
-      chatToast = null;
-    }, 2500);
-  }
+
   onDestroy(() => {
-    if (chatToastTimeout) {
-      clearTimeout(chatToastTimeout);
-      chatToastTimeout = null;
-    }
     // Save UI view state before leaving the chat page
     saveChatViewState({
       runId: store.run?.id ?? "",
@@ -978,14 +966,14 @@
     getTimeline: () => store.timeline,
     getUsage: () => store.usage,
     getNumTurns: () => store.numTurns || 0,
-    showToast: showChatToast,
+    showToast: _showToast,
   });
 
   const sendMessage = createSendMessage({
     store,
     thinking,
     getRemoteHosts: () => remoteHosts,
-    showToast: showChatToast,
+    showToast: _showToast,
     openFolderPicker,
     handleResume,
     loadCliVersionInfo,
@@ -1106,7 +1094,7 @@
     setSidebarRequestedTab: (v) => {
       sidebarRequestedTab = v;
     },
-    setShowChatToast: showChatToast,
+    setShowChatToast: _showToast,
     setPageDragActive: (v) => {
       pageDragActive = v;
     },
@@ -1387,7 +1375,7 @@
             handleElicitationRespond,
             handleBtwSend,
             handleRalphCancel,
-            showChatToast,
+            showChatToast: _showToast,
           }}
           bind:stashedInput
           bind:shortcutHelpOpen
@@ -1462,9 +1450,9 @@
         },
       ];
       if (info.degraded) {
-        showChatToast(t("rewind_degradedToFull"));
+        _showToast(t("rewind_degradedToFull"));
       } else {
-        showChatToast(t("toast_rewindSuccess"));
+        _showToast(t("toast_rewindSuccess"));
       }
       tick().then(() => {
         document
@@ -1502,13 +1490,4 @@
   />
 
   <!-- Chat toast (fixed bottom-center, auto-dismiss) -->
-  {#if chatToast}
-    <div
-      class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50
-      rounded-lg border bg-background/95 px-4 py-2 text-sm shadow-lg backdrop-blur-sm
-      animate-in fade-in slide-in-from-bottom-2 duration-200"
-    >
-      {chatToast}
-    </div>
-  {/if}
 </div>

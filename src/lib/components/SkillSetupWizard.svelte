@@ -179,7 +179,7 @@ step by step, * with progress tracking and helpful hints. */
   <div class="shrink-0 px-4 pt-4">
     <div class="flex items-center justify-between mb-2">
       <span class="text-xs text-muted-foreground">
-        Step {stepIndex + 1} of 5
+        {t("skillWizard_stepProgress", { step: String(stepIndex + 1), total: String(WIZARD_STEPS.length) })}
       </span>
       <span class="text-xs text-muted-foreground">{Math.round(progress)}%</span>
     </div>
