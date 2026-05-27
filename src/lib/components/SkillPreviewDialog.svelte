@@ -79,13 +79,13 @@
         <div class="flex items-center gap-3">
           <span class="text-2xl">{skill?.icon || "📋"}</span>
           <div>
-            <h2 class="text-lg font-semibold">Skill Preview</h2>
+            <h2 class="text-lg font-semibold">{t('skillPreview_title')}</h2>
             <p class="text-sm text-muted-foreground">/{preview.skillName}</p>
           </div>
         </div>
         <button
           class="rounded-md p-1.5 hover:bg-accent transition-colors"
-          aria-label="Close"
+          aria-label={t('common_close')}
           onclick={handleCancel}
         >
           <svg
@@ -122,7 +122,7 @@
                 <line x1="12" y1="9" x2="12" y2="13" />
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
-              <span class="text-sm font-medium">Warnings</span>
+              <span class="text-sm font-medium">{t('skillPreview_warnings')}</span>
             </div>
             <ul class="space-y-1 text-xs text-amber-700 dark:text-amber-300">
               {#each preview.warnings as warning}
@@ -149,7 +149,7 @@
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 16v-4M12 8h.01" />
               </svg>
-              <span class="text-sm font-medium">Prerequisites</span>
+              <span class="text-sm font-medium">{t('skillPreview_prerequisites')}</span>
             </div>
             <ul class="space-y-1 text-xs text-blue-700 dark:text-blue-300">
               {#each preview.prerequisites as prereq}
