@@ -130,6 +130,7 @@
                 : 'opacity-0'}"
               onclick={copyContent}
               title={t("chat_copyMessage")}
+              aria-label={t("chat_copyMessage")}
               data-export-exclude
             >
               {#if copied}
@@ -164,6 +165,7 @@
                   : 'opacity-0'}"
                 onclick={onRewind}
                 title={t("rewind_toHere")}
+                aria-label={t("rewind_toHere")}
                 data-export-exclude
               >
                 <svg
@@ -213,6 +215,7 @@
                   : 'opacity-0'}"
                 onclick={onRewind}
                 title={t("rewind_toHere")}
+                aria-label={t("rewind_toHere")}
                 data-export-exclude
               >
                 <svg
@@ -238,6 +241,7 @@
                 : 'opacity-0'}"
               onclick={copyContent}
               title={t("chat_copyMessage")}
+              aria-label={t("chat_copyMessage")}
               data-export-exclude
             >
               {#if copied}
@@ -305,6 +309,10 @@
               <button
                 class="mt-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 onclick={() => (collapsed = !collapsed)}
+                aria-expanded={!collapsed}
+                aria-label={collapsed
+                  ? t("common_showAllLines", { count: String(lineCount) })
+                  : t("common_collapse")}
               >
                 {collapsed
                   ? t("common_showAllLines", { count: String(lineCount) })
@@ -320,6 +328,8 @@
                   class="mb-2 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] text-[hsl(var(--miwarp-text-secondary))] opacity-70 hover:opacity-100 transition-opacity"
                   onclick={() => (thinkingCollapsed = false)}
                   title={t("common_expand")}
+                  aria-label={t("common_expand")}
+                  aria-expanded="false"
                 >
                   <svg
                     class="h-2.5 w-2.5 shrink-0"
@@ -359,6 +369,8 @@
                       class="ml-auto opacity-50 hover:opacity-100 transition-opacity"
                       onclick={() => (thinkingCollapsed = true)}
                       title={t("common_collapse")}
+                      aria-label={t("common_collapse")}
+                      aria-expanded="true"
                     >
                       <svg
                         class="h-2.5 w-2.5"

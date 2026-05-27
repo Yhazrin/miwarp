@@ -787,6 +787,7 @@
               type="button"
               role="tab"
               aria-selected={toolPanelActiveTab === tab}
+              aria-label={tabLabel(tab)}
               class="session-island-tab transition-colors {toolPanelActiveTab === tab
                 ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-border/45'
                 : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
@@ -889,6 +890,7 @@
               type="button"
               role="tab"
               aria-selected={toolPanelActiveTab === tab}
+              aria-label={tabLabel(tab)}
               class="session-island-tab transition-colors {toolPanelActiveTab === tab
                 ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-border/45'
                 : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
@@ -928,6 +930,7 @@
               class="session-island-tab text-muted-foreground hover:bg-muted/45 hover:text-foreground transition-colors"
               onclick={onSummarize}
               title={t("statusbar_summarize")}
+              aria-label={t("statusbar_summarize")}
             >
               <svg
                 class="h-4 w-4 shrink-0 opacity-90"
@@ -963,6 +966,7 @@
           class="inline-flex items-center gap-1 shrink-0 rounded px-1 hover:bg-muted/50 transition-colors"
           onclick={onStatusClick}
           title={t("toolActivity_tabInfo")}
+          aria-label={t("toolActivity_tabInfo")}
         >
           <span
             class="inline-block h-2 w-2 rounded-full {statusDotKind === 'running' ||
@@ -1009,6 +1013,7 @@
             }}
             aria-expanded={dropdownOpen}
             aria-haspopup="listbox"
+            aria-label={modelLabel}
           >
             <span class="truncate">{modelLabel}</span>
             {#if !effortDisabled && effort}
@@ -1042,6 +1047,7 @@
           }}
           aria-expanded={pvMenuOpen}
           aria-haspopup="listbox"
+          aria-label={t("settings_processVisibility")}
           title={t("settings_processVisibility")}
         >
           <span class="truncate font-medium">{processVisibilityShort(processVisibility)}</span>

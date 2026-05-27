@@ -2210,6 +2210,7 @@
       placeholder={effectivePlaceholder}
       rows={1}
       {disabled}
+      aria-label={t("prompt_chatInput")}
       class="no-drag w-full resize-none bg-transparent px-4 pt-3 pb-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
       style="min-height: 36px;"
     ></textarea>

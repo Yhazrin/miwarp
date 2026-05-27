@@ -70,6 +70,8 @@
 
 <div
   bind:this={menuEl}
+  role="listbox"
+  aria-label={t("atMention_label")}
   class="fixed z-[9999] rounded-lg border border-border bg-background shadow-lg animate-fade-in"
   style="bottom: {bottom}px; left: {left}px; width: {width}px;"
 >
@@ -88,6 +90,8 @@
       {#each entries as entry, i (entry.name)}
         <button
           data-at-index={i}
+          role="option"
+          aria-selected={i === selectedIndex}
           class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors {i ===
           selectedIndex
             ? 'bg-accent text-foreground'

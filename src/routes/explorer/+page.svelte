@@ -2,6 +2,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { onMount } from "svelte";
   import FilePreviewPane from "$lib/components/FilePreviewPane.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { getCachedFile, setCachedFile, clearCachedFile } from "$lib/utils/explorer-state";
 
@@ -21,6 +22,10 @@
   /** Mirror of FilePreviewPane.fileDirty for navigation guards. */
   let paneDirty = $state(false);
 
+  /** Track loading and error state from FilePreviewPane callbacks. */
+  let fileLoading = $state(false);
+  let fileError = $state<string | null>(null);
+
   /** Returns true if it's safe to navigate away (no dirty changes, or user confirmed discard). */
   function canDiscardEdits(): boolean {
     if (!paneDirty) return true;
@@ -35,6 +40,8 @@
     selectedFilePath = path;
     activeView = "preview";
     diffViewFile = null;
+    fileLoading = !!path;
+    fileError = null;
   }
 
   function openFileDiff(filePath: string) {
@@ -51,14 +58,19 @@
   function handleLoaded(p: string) {
     setCachedFile(projectCwd, p);
     restoringFromCache = false;
+    fileLoading = false;
+    fileError = null;
   }
 
   function handleLoadFailed(p: string, err: string) {
+    fileLoading = false;
+    fileError = err;
     if (restoringFromCache) {
       dbgWarn("explorer", "cache restore failed, clearing", { cwd: projectCwd, cached: p, err });
       clearCachedFile(projectCwd);
       selectedFilePath = "";
       restoringFromCache = false;
+      fileError = null;
       window.dispatchEvent(new CustomEvent("ocv:explorer-file-selected", { detail: { path: "" } }));
     }
   }
@@ -141,16 +153,63 @@
 </script>
 
 <div class="flex h-full flex-col overflow-hidden">
-  <FilePreviewPane
-    cwd={projectCwd}
-    path={panePath}
-    mode={activeView}
-    editable={true}
-    isRemote={false}
-    scopeKey={projectCwd}
-    onLoaded={handleLoaded}
-    onLoadFailed={handleLoadFailed}
-    onCloseDiff={closeDiffView}
-    onDirtyChange={(d) => (paneDirty = d)}
-  />
+  {#if !panePath && !fileLoading}
+    <div class="flex h-full items-center justify-center bg-background">
+      <EmptyState
+        icon="&#128196;"
+        title={t("explorer_noFileSelected")}
+        description={t("explorer_emptyStateDesc")}
+      />
+    </div>
+  {:else if fileLoading && !fileError}
+    <div class="flex h-full flex-col items-center justify-center gap-3 bg-background">
+      <div
+        class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
+      ></div>
+      <p class="text-sm text-muted-foreground">{t("explorer_loading")}</p>
+    </div>
+  {:else if fileError}
+    <div class="flex h-full flex-col items-center justify-center gap-3 bg-background p-4">
+      <svg
+        class="h-8 w-8 text-destructive/60"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line
+          x1="12"
+          y1="16"
+          x2="12.01"
+          y2="16"
+        />
+      </svg>
+      <p class="text-sm font-medium text-foreground">{t("explorer_loadFailed")}</p>
+      <p class="text-xs text-muted-foreground text-center max-w-[300px]">{fileError}</p>
+      <button
+        class="mt-2 rounded-md px-3 py-1.5 text-xs font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors"
+        onclick={() => {
+          fileError = null;
+          fileLoading = !!selectedFilePath;
+        }}
+      >
+        {t("common_retry")}
+      </button>
+    </div>
+  {:else}
+    <FilePreviewPane
+      cwd={projectCwd}
+      path={panePath}
+      mode={activeView}
+      editable={true}
+      isRemote={false}
+      scopeKey={projectCwd}
+      onLoaded={handleLoaded}
+      onLoadFailed={handleLoadFailed}
+      onCloseDiff={closeDiffView}
+      onDirtyChange={(d) => (paneDirty = d)}
+    />
+  {/if}
 </div>

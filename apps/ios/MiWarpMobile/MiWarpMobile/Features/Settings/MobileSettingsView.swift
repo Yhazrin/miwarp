@@ -90,24 +90,24 @@ struct MobileSettingsView: View {
     }
 
     private var accentThemePicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: MWSpacing.sm) {
             Label(String(localized: "settings.accentTheme"), systemImage: "swatchpalette")
                 .font(.body)
 
             LazyVGrid(
                 columns: [
-                    GridItem(.flexible(), spacing: 6),
-                    GridItem(.flexible(), spacing: 6),
-                    GridItem(.flexible(), spacing: 6)
+                    GridItem(.flexible(), spacing: MWSpacing.sm),
+                    GridItem(.flexible(), spacing: MWSpacing.sm),
+                    GridItem(.flexible(), spacing: MWSpacing.sm)
                 ],
-                spacing: 6
+                spacing: MWSpacing.sm
             ) {
                 ForEach(MWAccentTheme.allCases.prefix(6)) { accent in
                     accentSwatchButton(accent)
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, MWSpacing.xs)
     }
 
     private func accentSwatchButton(_ accent: MWAccentTheme) -> some View {
@@ -134,9 +134,9 @@ struct MobileSettingsView: View {
                             .transition(.scale(scale: 0.5).combined(with: .opacity))
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: MWRadius.sm))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: MWRadius.sm)
                         .strokeBorder(isSelected ? MWColors.accentOnAccent.opacity(0.6) : Color.clear, lineWidth: 2)
                         .animation(MWMotion.springBouncy, value: isSelected)
                 )
@@ -168,6 +168,7 @@ struct MobileSettingsView: View {
                 }
 
                 Button(role: .destructive) {
+                    MiHaptics.lightImpact()
                     store.disconnect()
                 } label: {
                     Label(String(localized: "action.disconnect"), systemImage: "xmark.circle")
@@ -175,6 +176,7 @@ struct MobileSettingsView: View {
                 }
 
                 Button {
+                    MiHaptics.lightImpact()
                     store.reconnect()
                 } label: {
                     Label(String(localized: "action.reconnect"), systemImage: "arrow.clockwise")
@@ -185,6 +187,7 @@ struct MobileSettingsView: View {
                     .foregroundStyle(theme.cardTextTertiary)
 
                 Button {
+                    MiHaptics.lightImpact()
                     store.connectToDefault()
                 } label: {
                     Label(String(localized: "action.connect"), systemImage: "play.circle")
@@ -206,6 +209,7 @@ struct MobileSettingsView: View {
                 .foregroundStyle(theme.cardTextSecondary)
 
             Button(role: .destructive) {
+                MiHaptics.lightImpact()
                 // Clear session history
             } label: {
                 Label(String(localized: "settings.clearSessionHistory"), systemImage: "trash")
@@ -246,6 +250,7 @@ struct MobileSettingsView: View {
             }
 
             Button {
+                MiHaptics.lightImpact()
                 copyDebugInfo()
             } label: {
                 Label(String(localized: "settings.copyDebugInfo"), systemImage: "doc.on.doc")
@@ -269,6 +274,7 @@ struct MobileSettingsView: View {
             }
 
             Button(role: .destructive) {
+                MiHaptics.lightImpact()
                 showClearTokensConfirm = true
             } label: {
                 Label(String(localized: "settings.clearTokens"), systemImage: "key")
@@ -390,7 +396,7 @@ struct AboutView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 32) {
+            VStack(spacing: MWSpacing.xxxl) {
                 Spacer()
 
                 ZStack {
@@ -402,7 +408,7 @@ struct AboutView: View {
                         .foregroundStyle(theme.accentPrimary, theme.accentSecondary)
                 }
 
-                VStack(spacing: 6) {
+                VStack(spacing: MWSpacing.sm) {
                     Text(String(localized: "about.appName"))
                         .font(.title2.weight(.semibold))
                     Text(String(format: String(localized: "about.version"), Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"))
@@ -415,7 +421,7 @@ struct AboutView: View {
                     .foregroundStyle(theme.cardTextSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 32)
+                    .padding(.horizontal, MWSpacing.xxxl)
 
                 Spacer()
             }
@@ -440,10 +446,10 @@ struct ComponentLabView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(spacing: MWSpacing.xxl) {
                     // MWTaskProgressRing
                     componentSection(title: "MWTaskProgressRing") {
-                        HStack(spacing: 20) {
+                        HStack(spacing: MWSpacing.xl) {
                             MWTaskProgressRing(progress: ringProgress, state: .running, size: 50)
                             MWTaskProgressRing(progress: ringProgress, state: .waiting, size: 50)
                             MWTaskProgressRing(progress: 1.0, state: .completed, size: 50)
@@ -455,14 +461,14 @@ struct ComponentLabView: View {
 
                     // MWThinkingIndicator
                     componentSection(title: "MWThinkingIndicator") {
-                        VStack(spacing: 12) {
-                            HStack(spacing: 20) {
+                        VStack(spacing: MWSpacing.md) {
+                            HStack(spacing: MWSpacing.xl) {
                                 Text(String(localized: "component.small"))
                                     .font(.caption)
                                     .foregroundStyle(theme.cardTextSecondary)
                                 MWThinkingIndicator(size: .small)
                             }
-                            HStack(spacing: 20) {
+                            HStack(spacing: MWSpacing.xl) {
                                 Text(String(localized: "component.medium"))
                                     .font(.caption)
                                     .foregroundStyle(theme.cardTextSecondary)
@@ -473,13 +479,13 @@ struct ComponentLabView: View {
 
                     // MWStatusBadge
                     componentSection(title: "MWStatusBadge") {
-                        VStack(spacing: 8) {
-                            HStack(spacing: 8) {
+                        VStack(spacing: MWSpacing.sm) {
+                            HStack(spacing: MWSpacing.sm) {
                                 MWStatusBadge(text: "Running", style: .info)
                                 MWStatusBadge(text: "Completed", style: .success)
                                 MWStatusBadge(text: "Warning", style: .warning)
                             }
-                            HStack(spacing: 8) {
+                            HStack(spacing: MWSpacing.sm) {
                                 MWStatusBadge(text: "Failed", style: .error)
                                 MWStatusBadge(text: "Idle", style: .neutral)
                             }
@@ -488,38 +494,38 @@ struct ComponentLabView: View {
 
                     // MWStatusDot
                     componentSection(title: "MWStatusDot") {
-                        HStack(spacing: 16) {
-                            VStack(spacing: 8) {
+                        HStack(spacing: MWSpacing.lg) {
+                            VStack(spacing: MWSpacing.sm) {
                                 MWStatusDot(status: .connected)
                                 Text(String(localized: "connection.connected"))
                                     .font(.caption2)
                                     .foregroundStyle(theme.cardTextSecondary)
                             }
-                            VStack(spacing: 8) {
+                            VStack(spacing: MWSpacing.sm) {
                                 MWStatusDot(status: .running, showGlow: true)
                                 Text(String(localized: "runStatus.running"))
                                     .font(.caption2)
                                     .foregroundStyle(theme.cardTextSecondary)
                             }
-                            VStack(spacing: 8) {
+                            VStack(spacing: MWSpacing.sm) {
                                 MWStatusDot(status: .syncing)
                                 Text("syncing")
                                     .font(.caption2)
                                     .foregroundStyle(theme.cardTextSecondary)
                             }
-                            VStack(spacing: 8) {
+                            VStack(spacing: MWSpacing.sm) {
                                 MWStatusDot(status: .failed)
                                 Text(String(localized: "runStatus.failed"))
                                     .font(.caption2)
                                     .foregroundStyle(theme.cardTextSecondary)
                             }
-                            VStack(spacing: 8) {
+                            VStack(spacing: MWSpacing.sm) {
                                 MWStatusDot(status: .waiting)
                                 Text(String(localized: "runStatus.waitingApproval"))
                                     .font(.caption2)
                                     .foregroundStyle(theme.cardTextSecondary)
                             }
-                            VStack(spacing: 8) {
+                            VStack(spacing: MWSpacing.sm) {
                                 MWStatusDot(status: .localOnly)
                                 Text("localOnly")
                                     .font(.caption2)
@@ -530,7 +536,7 @@ struct ComponentLabView: View {
 
                     // MWStatusBadge with RunStatus
                     componentSection(title: "MWStatusBadge (RunStatus)") {
-                        LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 8) {
+                        LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: MWSpacing.sm) {
                             ForEach(RunStatus.allCases, id: \.self) { status in
                                 HStack {
                                     MWStatusBadge(status: status)
@@ -554,7 +560,7 @@ struct ComponentLabView: View {
 
     @ViewBuilder
     private func componentSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MWSpacing.md) {
             Text(title)
                 .font(.headline)
                 .foregroundStyle(theme.accentPrimary)
@@ -564,10 +570,10 @@ struct ComponentLabView: View {
         }
         .padding()
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: MWRadius.card)
                 .fill(theme.cardBg)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: MWRadius.card)
                         .strokeBorder(theme.divider, lineWidth: 0.5)
                 )
         )
