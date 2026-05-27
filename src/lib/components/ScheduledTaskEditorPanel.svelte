@@ -200,7 +200,7 @@
         ? t("scheduledTasks_create")
         : t("schedEditor_editTitle")}
     </h3>
-    <Button variant="ghost" size="icon" onclick={handleCancel} class="h-6 w-6">
+    <Button variant="ghost" size="icon" onclick={handleCancel} class="h-6 w-6" title={t("common_close")}>
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <line x1="18" y1="6" x2="6" y2="18" />
         <line x1="6" y1="6" x2="18" y2="18" />
