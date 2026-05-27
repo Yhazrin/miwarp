@@ -426,7 +426,7 @@
                       <span class="text-[10px] text-muted-foreground">v{server.version}</span>
                     {/if}
                     <span
-                      class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-teal-500/10 text-teal-600 dark:text-teal-400"
+                      class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]"
                     >
                       {getTransportLabel(server)}
                     </span>
@@ -469,7 +469,7 @@
                       <span class="text-[10px] text-muted-foreground">v{detail.version}</span>
                     {/if}
                     <span
-                      class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-teal-500/10 text-teal-600 dark:text-teal-400"
+                      class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]"
                     >
                       {getTransportLabel(detail)}
                     </span>

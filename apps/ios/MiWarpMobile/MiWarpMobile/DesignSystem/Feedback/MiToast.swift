@@ -87,11 +87,11 @@ struct MiToastView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(toast.title)
                     .font(.subheadline.weight(.medium))
-                    .foregroundColor(.primary)
+                    .foregroundColor(MWColors.textPrimary)
                 if let message = toast.message {
                     Text(message)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(MWColors.textSecondary)
                         .lineLimit(2)
                 }
             }
@@ -103,7 +103,7 @@ struct MiToastView: View {
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(MWColors.textTertiary)
                     .padding(6)
             }
         }

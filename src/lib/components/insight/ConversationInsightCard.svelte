@@ -148,7 +148,7 @@
 
 <style>
   .insight-card {
-    border: 1px solid var(--border, #e5e5e5);
+    border: 1px solid hsl(var(--miwarp-border));
     border-radius: 12px;
     overflow: hidden;
   }
@@ -159,7 +159,7 @@
     align-items: flex-start;
     gap: 16px;
     padding: 20px;
-    background: var(--bg, #fafafa);
+    background: hsl(var(--miwarp-bg-surface));
   }
 
   .generating-icon {
@@ -169,9 +169,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--accent-light, #eef2ff);
+    background: hsl(var(--miwarp-accent-primary) / 0.1);
     border-radius: 10px;
-    color: var(--accent, #6366f1);
+    color: hsl(var(--miwarp-accent-primary));
     animation: spin 2s linear infinite;
   }
 
@@ -196,13 +196,13 @@
   .generating-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: hsl(var(--miwarp-text-primary));
     margin-bottom: 4px;
   }
 
   .generating-desc {
     font-size: 13px;
-    color: var(--text-secondary, #666666);
+    color: hsl(var(--miwarp-text-secondary));
     margin: 0;
   }
 
@@ -212,7 +212,7 @@
     align-items: flex-start;
     gap: 16px;
     padding: 20px;
-    background: #fef2f2;
+    background: hsl(var(--miwarp-status-error) / 0.08);
   }
 
   .error-icon {
@@ -222,9 +222,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #fee2e2;
+    background: hsl(var(--miwarp-status-error) / 0.15);
     border-radius: 10px;
-    color: #ef4444;
+    color: hsl(var(--miwarp-status-error));
   }
 
   .error-icon svg {
@@ -239,20 +239,20 @@
   .error-title {
     font-size: 14px;
     font-weight: 600;
-    color: #991b1b;
+    color: hsl(var(--miwarp-status-error));
     margin-bottom: 4px;
   }
 
   .error-desc {
     font-size: 13px;
-    color: #b91c1c;
+    color: hsl(var(--miwarp-status-error) / 0.8);
     margin: 0 0 12px 0;
   }
 
   /* Ready state */
   .insight-ready {
     padding: 20px;
-    background: var(--surface, #ffffff);
+    background: hsl(var(--miwarp-bg-surface));
   }
 
   .insight-header {
@@ -269,9 +269,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+    background: hsl(var(--miwarp-accent-primary));
     border-radius: 8px;
-    color: white;
+    color: hsl(var(--miwarp-accent-on-accent));
   }
 
   .insight-icon svg {
@@ -287,13 +287,13 @@
   .insight-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--text-primary, #1a1a1a);
+    color: hsl(var(--miwarp-text-primary));
     margin: 0 0 2px 0;
   }
 
   .insight-subtitle {
     font-size: 12px;
-    color: var(--text-muted, #999999);
+    color: hsl(var(--miwarp-text-tertiary));
     margin: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -302,14 +302,14 @@
 
   .insight-summary {
     padding: 12px;
-    background: var(--bg, #fafafa);
+    background: hsl(var(--miwarp-bg-base));
     border-radius: 8px;
     margin-bottom: 16px;
   }
 
   .insight-summary p {
     font-size: 13px;
-    color: var(--text-secondary, #666666);
+    color: hsl(var(--miwarp-text-secondary));
     line-height: 1.5;
     margin: 0;
   }
@@ -331,7 +331,7 @@
     border-radius: 8px;
     border: none;
     cursor: pointer;
-    transition: all var(--motion-fast) var(--ease-standard);
+    transition: all 120ms ease;
   }
 
   .btn-icon {
@@ -340,8 +340,8 @@
   }
 
   .btn-primary {
-    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
-    color: white;
+    background: hsl(var(--miwarp-accent-primary));
+    color: hsl(var(--miwarp-accent-on-accent));
   }
 
   .btn-primary:hover {
@@ -350,22 +350,22 @@
   }
 
   .btn-secondary {
-    background: var(--bg, #f5f5f5);
-    color: var(--text-primary, #1a1a1a);
-    border: 1px solid var(--border, #e5e5e5);
+    background: hsl(var(--miwarp-bg-base));
+    color: hsl(var(--miwarp-text-primary));
+    border: 1px solid hsl(var(--miwarp-border));
   }
 
   .btn-secondary:hover {
-    background: var(--border, #e5e5e5);
+    background: hsl(var(--miwarp-bg-elevated));
   }
 
   .btn-ghost {
     background: transparent;
-    color: var(--text-secondary, #666666);
+    color: hsl(var(--miwarp-text-secondary));
   }
 
   .btn-ghost:hover {
-    background: var(--bg, #f5f5f5);
-    color: var(--text-primary, #1a1a1a);
+    background: hsl(var(--miwarp-bg-base));
+    color: hsl(var(--miwarp-text-primary));
   }
 </style>

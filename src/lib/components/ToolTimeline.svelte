@@ -102,7 +102,7 @@
           border-color: {isExpanded
           ? 'hsl(var(--miwarp-accent-primary) / 0.3)'
           : 'hsl(var(--border))'};
-          {isExpanded ? 'box-shadow: 0 0 12px hsla(239, 84%, 67%, 0.1);' : ''}
+          {isExpanded ? 'box-shadow: 0 0 12px hsl(var(--miwarp-accent-primary) / 0.1);' : ''}
         "
       >
         <!-- Header -->

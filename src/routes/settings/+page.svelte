@@ -1879,7 +1879,7 @@
                     }}
                   >
                     <span
-                      class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {webStatus?.enabled
+                      class="inline-block h-4 w-4 transform rounded-full bg-primary-foreground transition-transform {webStatus?.enabled
                         ? 'translate-x-6'
                         : 'translate-x-1'}"
                     ></span>
@@ -2394,7 +2394,7 @@
                     }}
                   >
                     <span
-                      class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {settings?.auto_commit_on_complete
+                      class="inline-block h-4 w-4 transform rounded-full bg-primary-foreground transition-transform {settings?.auto_commit_on_complete
                         ? 'translate-x-6'
                         : 'translate-x-1'}"
                     ></span>
@@ -2421,7 +2421,7 @@
                       }}
                     >
                       <span
-                        class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {settings?.auto_pr_on_complete
+                        class="inline-block h-4 w-4 transform rounded-full bg-primary-foreground transition-transform {settings?.auto_pr_on_complete
                           ? 'translate-x-6'
                           : 'translate-x-1'}"
                       ></span>
@@ -2451,7 +2451,7 @@
                     }}
                   >
                     <span
-                      class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {settings?.auto_cleanup_worktree !==
+                      class="inline-block h-4 w-4 transform rounded-full bg-primary-foreground transition-transform {settings?.auto_cleanup_worktree !==
                       false
                         ? 'translate-x-6'
                         : 'translate-x-1'}"
@@ -3463,7 +3463,7 @@
                   }}
                 >
                   <span
-                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {webStatus?.enabled
+                    class="inline-block h-4 w-4 transform rounded-full bg-primary-foreground transition-transform {webStatus?.enabled
                       ? 'translate-x-6'
                       : 'translate-x-1'}"
                   ></span>
@@ -3743,7 +3743,7 @@
                         }}
                       >
                         <span
-                          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 {getCliConfigValue(
+                          class="inline-block h-4 w-4 transform rounded-full bg-primary-foreground transition-transform duration-200 {getCliConfigValue(
                             def.key,
                             def,
                           ) === true
@@ -3813,7 +3813,7 @@
                         }}
                       >
                         <span
-                          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 {getCliConfigValue(
+                          class="inline-block h-4 w-4 transform rounded-full bg-primary-foreground transition-transform duration-200 {getCliConfigValue(
                             def.key,
                             def,
                           ) === true
@@ -3902,7 +3902,7 @@
                         }}
                       >
                         <span
-                          class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 {getCliConfigValue(
+                          class="inline-block h-4 w-4 transform rounded-full bg-primary-foreground transition-transform duration-200 {getCliConfigValue(
                             def.key,
                             def,
                           ) === true
@@ -4525,7 +4525,7 @@
                 }}
               >
                 <span
-                  class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 {debugOn
+                  class="inline-block h-4 w-4 transform rounded-full bg-primary-foreground transition-transform duration-200 {debugOn
                     ? 'translate-x-6'
                     : 'translate-x-1'}"
                 ></span>

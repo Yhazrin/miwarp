@@ -38,6 +38,7 @@ struct MiSkeletonCard: View {
                 )
         )
         .overlay(shimmerOverlay)
+        .accessibilityHidden(true)
         .onAppear {
             withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
                 shimmerPhase = 1

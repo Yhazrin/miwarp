@@ -1329,9 +1329,9 @@
               {/if}
               {#if toolStats.searches > 0}
                 <span class="text-muted-foreground/40">&middot;</span>
-                <span class="flex items-center gap-0.5 text-purple-500 dark:text-purple-400">
+                <span class="flex items-center gap-0.5 text-[hsl(var(--miwarp-accent-violet))]">
                   {@render categoryIcon(
-                    "bg-purple-500",
+                    "bg-[hsl(var(--miwarp-accent-violet))]",
                     "M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM21 21l-4.35-4.35",
                   )}
                   {toolStats.searches}
@@ -1339,16 +1339,16 @@
               {/if}
               {#if toolStats.bash > 0}
                 <span class="text-muted-foreground/40">&middot;</span>
-                <span class="flex items-center gap-0.5 text-emerald-500 dark:text-emerald-400">
-                  {@render categoryIcon("bg-emerald-500", "M4 17l6-6-6-6M12 19h8")}
+                <span class="flex items-center gap-0.5 text-[hsl(var(--miwarp-status-success))]">
+                  {@render categoryIcon("bg-[hsl(var(--miwarp-status-success))]", "M4 17l6-6-6-6M12 19h8")}
                   {toolStats.bash}
                 </span>
               {/if}
               {#if toolStats.writes > 0}
                 <span class="text-muted-foreground/40">&middot;</span>
-                <span class="flex items-center gap-0.5 text-amber-500 dark:text-amber-400">
+                <span class="flex items-center gap-0.5 text-[hsl(var(--miwarp-status-warning))]">
                   {@render categoryIcon(
-                    "bg-amber-500",
+                    "bg-[hsl(var(--miwarp-status-warning))]",
                     "M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z",
                   )}
                   {toolStats.writes}

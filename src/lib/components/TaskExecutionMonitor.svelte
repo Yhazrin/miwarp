@@ -53,8 +53,8 @@
     },
     paused: {
       label: "Paused",
-      color: "text-amber-600 dark:text-amber-400",
-      bgColor: "bg-amber-500/10",
+      color: "text-[hsl(var(--miwarp-status-warning))]",
+      bgColor: "bg-[hsl(var(--miwarp-status-warning)/0.1)]",
     },
     completed: {
       label: "Completed",

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { fade, fly } from "svelte/transition";
   import {
     checkAppUpdateStatus,
     installInAppUpdate,
@@ -101,6 +102,7 @@
 {#if open}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay backdrop-blur-sm"
+    transition:fade={{ duration: 200 }}
     role="dialog"
     aria-modal="true"
     tabindex="-1"
@@ -109,6 +111,7 @@
   >
     <div
       class="relative flex max-h-[85vh] w-full max-w-3xl flex-col rounded-xl border border-border bg-background shadow-2xl"
+      transition:fly={{ y: 10, duration: 200 }}
     >
       <!-- Header -->
       <div class="flex items-center justify-between border-b border-border px-6 py-4">

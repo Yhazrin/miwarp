@@ -104,7 +104,7 @@
   } {
     if (latency === null) return { label: "Unknown", color: "text-muted-foreground", icon: "⚪" };
     if (latency < 50) return { label: "Excellent", color: "text-[hsl(var(--miwarp-status-success))]", icon: "🟢" };
-    if (latency < 100) return { label: "Good", color: "text-emerald-600", icon: "🟢" };
+    if (latency < 100) return { label: "Good", color: "text-[hsl(var(--miwarp-status-success))]", icon: "🟢" };
     if (latency < 200) return { label: "Fair", color: "text-[hsl(var(--miwarp-status-warning))]", icon: "🟡" };
     if (latency < 500) return { label: "Poor", color: "text-[hsl(var(--miwarp-status-warning))]", icon: "🟠" };
     return { label: "Critical", color: "text-[hsl(var(--miwarp-status-error))]", icon: "🔴" };

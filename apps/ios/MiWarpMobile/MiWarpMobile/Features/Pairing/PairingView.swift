@@ -135,7 +135,7 @@ struct PairingView: View {
         .padding(.vertical, 4)
         .background(
             Capsule()
-                .fill(Color.white.opacity(0.2))
+                .fill(MWColors.accentOnAccent.opacity(0.2))
         )
     }
 }

@@ -350,20 +350,20 @@
   }
 
   .btn-primary {
-    background: hsl(var(--miwarp-accent-primary, 210 100% 60%));
-    color: white;
+    background: hsl(var(--miwarp-accent-primary));
+    color: hsl(var(--miwarp-accent-on-accent));
   }
 
   .btn-primary:hover {
-    background: var(--color-primary-hover, #4f46e5);
+    opacity: 0.9;
   }
 
   .btn-secondary {
-    background: var(--color-secondary, #333);
-    color: white;
+    background: hsl(var(--miwarp-bg-surface));
+    color: hsl(var(--miwarp-text-primary));
   }
 
   .btn-secondary:hover {
-    background: var(--color-secondary-hover, #444);
+    background: hsl(var(--miwarp-bg-elevated));
   }
 </style>

@@ -46,8 +46,8 @@
       : warningLevel === "high"
         ? "bg-[hsl(var(--miwarp-status-warning))]"
         : warningLevel === "moderate"
-          ? "bg-amber-500"
-          : "bg-emerald-500",
+          ? "bg-[hsl(var(--miwarp-status-warning))]"
+          : "bg-[hsl(var(--miwarp-status-success))]",
   );
 
   const textColor = $derived(
@@ -56,16 +56,16 @@
       : warningLevel === "high"
         ? "text-[hsl(var(--miwarp-status-warning))]"
         : warningLevel === "moderate"
-          ? "text-amber-500"
+          ? "text-[hsl(var(--miwarp-status-warning))]"
           : "text-foreground/60",
   );
 
   // Segment colors (matching segment types)
   const segmentColors: Record<ContextSegment["type"], string> = {
-    system: "bg-violet-500",
+    system: "bg-[hsl(var(--miwarp-accent-violet))]",
     env: "bg-[hsl(var(--miwarp-status-info))]",
-    claudeMd: "bg-emerald-500",
-    files: "bg-amber-500",
+    claudeMd: "bg-[hsl(var(--miwarp-status-success))]",
+    files: "bg-[hsl(var(--miwarp-status-warning))]",
     tools: "bg-[hsl(var(--miwarp-status-warning))]",
   };
 

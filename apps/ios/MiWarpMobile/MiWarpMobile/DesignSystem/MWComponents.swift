@@ -1121,6 +1121,7 @@ struct MWStatusBadge: View {
             .overlay(
                 Capsule().stroke(style.tint.opacity(0.2), lineWidth: 0.5)
             )
+            .accessibilityLabel(text)
     }
 }
 
@@ -1182,5 +1183,6 @@ struct MWStatusDot: View {
             color: showGlow ? status.color.opacity(0.5) : .clear,
             radius: showGlow ? 4 : 0
         )
+        .accessibilityHidden(true)
     }
 }

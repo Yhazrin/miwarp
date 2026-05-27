@@ -362,7 +362,7 @@
           Cancel
         </button>
         <button
-          class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-white hover:bg-destructive/90 transition-colors"
+          class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-destructive/90 transition-colors"
           onclick={confirmDelete}
         >
           Delete

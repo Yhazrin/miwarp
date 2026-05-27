@@ -5,6 +5,7 @@
   import { onMount } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import type { MessageKey } from "$lib/i18n/types";
+  import { scale } from "svelte/transition";
 
   const CATEGORY_I18N: Record<SlashCategory, MessageKey> = {
     session: "slashMenu_catSession",
@@ -123,7 +124,8 @@
   bind:this={menuEl}
   role="listbox"
   aria-label={t("cmd_placeholder")}
-  class="fixed z-[9999] rounded-lg border border-border bg-background shadow-lg animate-fade-in"
+  class="fixed z-[9999] rounded-lg border border-border bg-background shadow-lg"
+  transition:scale={{ start: 0.95, duration: 100 }}
   style="bottom: {bottom}px; left: {left}px; width: {width}px;"
 >
   {#if phase === "commands"}

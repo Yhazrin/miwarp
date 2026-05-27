@@ -118,7 +118,7 @@
         onkeydown={handleKeyDown}
         class="url-input"
       />
-      <button class="btn btn-primary" onclick={fetchUrl} disabled={isLoading || !url}>
+      <button class="rounded-lg px-6 py-3 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={fetchUrl} disabled={isLoading || !url}>
         {isLoading ? t("webfetch_fetching") : t("webfetch_fetch")}
       </button>
     </div>
@@ -129,7 +129,7 @@
     <div class="history-section">
       <div class="history-header">
         <span class="history-label">{t("webfetch_recentUrls")}</span>
-        <button class="btn btn-text" onclick={() => (fetchHistory = [])}>
+        <button class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors" onclick={() => (fetchHistory = [])}>
           {t("webfetch_clear")}
         </button>
       </div>
@@ -163,7 +163,7 @@
       </div>
 
       <!-- Toggle Headers -->
-      <button class="btn btn-secondary toggle-headers" onclick={() => (showHeaders = !showHeaders)}>
+      <button class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer border-none transition-colors mb-3" onclick={() => (showHeaders = !showHeaders)}>
         {showHeaders ? t("webfetch_hideHeaders") : t("webfetch_showHeaders")}
       </button>
 
@@ -187,8 +187,8 @@
       <div class="content-header">
         <h4>{t("webfetch_content")}</h4>
         <div class="content-actions">
-          <button class="btn btn-text" onclick={copyContent}> {t("webfetch_copy")} </button>
-          <button class="btn btn-text" onclick={clearContent}> {t("webfetch_clear")} </button>
+          <button class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors" onclick={copyContent}> {t("webfetch_copy")} </button>
+          <button class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors" onclick={clearContent}> {t("webfetch_clear")} </button>
         </div>
       </div>
       <div class="content-display">
@@ -202,7 +202,7 @@
     <div class="error-section">
       <span class="error-icon">⚠️</span>
       <span class="error-message">{error}</span>
-      <button class="btn btn-icon" onclick={() => (error = null)}> × </button>
+      <button class="px-2 py-1 bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onclick={() => (error = null)}> × </button>
     </div>
   {/if}
 
@@ -221,7 +221,7 @@
     flex-direction: column;
     gap: 1rem;
     padding: 1rem;
-    background: var(--color-surface, #1a1a1a);
+    background: hsl(var(--miwarp-bg-surface));
     border-radius: 8px;
     max-height: 100%;
     overflow-y: auto;
@@ -232,7 +232,7 @@
     flex-direction: column;
     gap: 0.25rem;
     padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--color-border, #333);
+    border-bottom: 1px solid hsl(var(--miwarp-border));
   }
 
   .panel-header h3 {
@@ -243,7 +243,7 @@
 
   .subtitle {
     font-size: 0.875rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--miwarp-text-secondary));
   }
 
   .fetch-form {
@@ -260,75 +260,21 @@
   .url-input {
     flex: 1;
     padding: 0.75rem;
-    background: var(--color-background, #0a0a0a);
-    border: 1px solid var(--color-border, #333);
+    background: hsl(var(--miwarp-bg-deepest));
+    border: 1px solid hsl(var(--miwarp-border));
     border-radius: 4px;
-    color: var(--color-text, white);
+    color: hsl(var(--miwarp-text-primary));
     font-size: 0.875rem;
   }
 
   .url-input:focus {
     outline: none;
-    border-color: var(--color-primary, #6366f1);
-  }
-
-  .btn {
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    transition: all var(--motion-normal) var(--ease-standard);
-  }
-
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .btn-primary {
-    background: var(--color-primary, #6366f1);
-    color: white;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    background: var(--color-primary-hover, #4f46e5);
-  }
-
-  .btn-secondary {
-    background: var(--color-secondary, #333);
-    color: white;
-  }
-
-  .btn-secondary:hover:not(:disabled) {
-    background: var(--color-secondary-hover, #444);
-  }
-
-  .btn-text {
-    background: transparent;
-    color: var(--color-text-secondary, #888);
-    padding: 0.25rem 0.5rem;
-  }
-
-  .btn-text:hover {
-    color: var(--color-text, white);
-  }
-
-  .btn-icon {
-    padding: 0.25rem 0.5rem;
-    background: transparent;
-    border: none;
-    color: var(--color-text-secondary, #888);
-    cursor: pointer;
-  }
-
-  .btn-icon:hover {
-    color: var(--color-text, white);
+    border-color: hsl(var(--miwarp-accent-primary));
   }
 
   .history-section {
     padding: 0.75rem;
-    background: var(--color-background, #0a0a0a);
+    background: hsl(var(--miwarp-bg-deepest));
     border-radius: 6px;
   }
 
@@ -341,7 +287,7 @@
 
   .history-label {
     font-size: 0.875rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--miwarp-text-secondary));
   }
 
   .history-list {
@@ -352,26 +298,27 @@
 
   .history-item {
     padding: 0.25rem 0.5rem;
-    background: var(--color-surface, #1a1a1a);
-    border: 1px solid var(--color-border, #333);
+    background: hsl(var(--miwarp-bg-surface));
+    border: 1px solid hsl(var(--miwarp-border));
     border-radius: 4px;
-    color: var(--color-text, white);
+    color: hsl(var(--miwarp-text-primary));
     font-size: 0.75rem;
     cursor: pointer;
     max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
   }
 
   .history-item:hover {
-    background: var(--color-hover, #222);
-    border-color: var(--color-primary, #6366f1);
+    background: hsl(var(--miwarp-bg-elevated));
+    border-color: hsl(var(--miwarp-accent-primary));
   }
 
   .results-section {
     padding: 0.75rem;
-    background: var(--color-background, #0a0a0a);
+    background: hsl(var(--miwarp-bg-deepest));
     border-radius: 6px;
   }
 
@@ -385,7 +332,7 @@
   .results-header h4 {
     margin: 0;
     font-size: 0.875rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--miwarp-text-secondary));
   }
 
   .results-meta {
@@ -402,27 +349,23 @@
   }
 
   .status-badge.success {
-    background: var(--color-success, #44ff44);
+    background: hsl(var(--miwarp-status-success));
     color: black;
   }
 
   .status-badge.error {
-    background: var(--color-error, #ff4444);
+    background: hsl(var(--miwarp-status-error));
     color: white;
   }
 
   .content-type {
     font-size: 0.75rem;
-    color: var(--color-text-secondary, #888);
-  }
-
-  .toggle-headers {
-    margin-bottom: 0.75rem;
+    color: hsl(var(--miwarp-text-secondary));
   }
 
   .headers-display {
     padding: 0.75rem;
-    background: var(--color-surface, #1a1a1a);
+    background: hsl(var(--miwarp-bg-surface));
     border-radius: 4px;
     max-height: 150px;
     overflow: auto;
@@ -433,17 +376,17 @@
     gap: 0.5rem;
     padding: 0.25rem 0;
     font-size: 0.75rem;
-    border-bottom: 1px solid var(--color-border, #333);
+    border-bottom: 1px solid hsl(var(--miwarp-border));
   }
 
   .header-key {
-    color: var(--color-primary, #6366f1);
+    color: hsl(var(--miwarp-accent-primary));
     font-weight: 500;
     min-width: 150px;
   }
 
   .header-value {
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--miwarp-text-secondary));
     word-break: break-all;
   }
 
@@ -464,7 +407,7 @@
   .content-header h4 {
     margin: 0;
     font-size: 0.875rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--miwarp-text-secondary));
   }
 
   .content-actions {
@@ -474,7 +417,7 @@
 
   .content-display {
     flex: 1;
-    background: var(--color-background, #0a0a0a);
+    background: hsl(var(--miwarp-bg-deepest));
     border-radius: 6px;
     overflow: auto;
     max-height: 300px;
@@ -487,7 +430,7 @@
     font-family: "Courier New", monospace;
     white-space: pre-wrap;
     word-break: break-word;
-    color: var(--color-text, white);
+    color: hsl(var(--miwarp-text-primary));
   }
 
   .error-section {
@@ -495,8 +438,8 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem;
-    background: rgba(255, 68, 68, 0.1);
-    border: 1px solid var(--color-error, #ff4444);
+    background: hsl(var(--miwarp-status-error) / 0.1);
+    border: 1px solid hsl(var(--miwarp-status-error));
     border-radius: 6px;
   }
 
@@ -507,7 +450,7 @@
   .error-message {
     flex: 1;
     font-size: 0.875rem;
-    color: var(--color-error, #ff4444);
+    color: hsl(var(--miwarp-status-error));
   }
 
   .loading-section {
@@ -516,7 +459,7 @@
     justify-content: center;
     gap: 0.5rem;
     padding: 1.5rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--miwarp-text-secondary));
   }
 
   .loading-spinner {

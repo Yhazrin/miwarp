@@ -134,7 +134,7 @@
             >
               {#if copied}
                 <svg
-                  class="h-3.5 w-3.5 text-emerald-500"
+                  class="h-3.5 w-3.5 text-[hsl(var(--miwarp-status-success))]"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -242,7 +242,7 @@
             >
               {#if copied}
                 <svg
-                  class="h-3.5 w-3.5 text-emerald-500"
+                  class="h-3.5 w-3.5 text-[hsl(var(--miwarp-status-success))]"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"

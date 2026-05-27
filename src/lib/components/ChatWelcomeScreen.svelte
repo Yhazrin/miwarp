@@ -104,7 +104,7 @@
         onclick={onQuickFix}
       >
         <svg
-          class="h-4 w-4 shrink-0 text-amber-400/70"
+          class="h-4 w-4 shrink-0 text-[hsl(var(--miwarp-status-warning)/0.7)]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -140,7 +140,7 @@
         onclick={onGotoSchedule}
       >
         <svg
-          class="h-4 w-4 shrink-0 text-violet-400/70"
+          class="h-4 w-4 shrink-0 text-[hsl(var(--miwarp-accent-violet)/0.7)]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

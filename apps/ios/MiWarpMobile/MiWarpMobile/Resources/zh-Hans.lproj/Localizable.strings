@@ -202,3 +202,33 @@
 
 /* Component */
 "component.progress" = "进度";
+
+/* Live Activity */
+"liveActivity.title" = "实时活动演示";
+"liveActivity.deviceCapability" = "设备能力";
+"liveActivity.taskId" = "任务 ID";
+"liveActivity.phase" = "阶段";
+"liveActivity.progress" = "进度";
+"liveActivity.startSync" = "开始同步活动";
+"liveActivity.advanceSync" = "推进同步";
+"liveActivity.completeSync" = "完成同步";
+"liveActivity.failSync" = "同步失败";
+"liveActivity.reset" = "重置";
+"liveActivity.sessionSync" = "会话同步";
+"liveActivity.startAgent" = "开始 Agent 活动";
+"liveActivity.advanceAgent" = "推进 Agent";
+"liveActivity.completeAgent" = "完成 Agent";
+"liveActivity.failAgent" = "Agent 失败";
+"liveActivity.agentTask" = "Agent 任务";
+"liveActivity.dynamicIslandHint" = "灵动岛：仅在 iPhone 14 Pro 及更高版本可用";
+"liveActivity.enableHint" = "前往 设置 -> MiWarp -> 实时活动 并开启";
+"liveActivity.lockScreenOnly" = "其他 iPhone 仅显示锁屏实时活动。";
+
+/* Theme */
+"theme.mode.system" = "跟随系统";
+"theme.mode.light" = "浅色";
+"theme.mode.dark" = "深色";
+"theme.mode.custom" = "自定义";
+"theme.texture.off" = "关闭";
+"theme.texture.subtle" = "轻微";
+"theme.texture.strong" = "强烈";

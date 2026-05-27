@@ -316,7 +316,7 @@
       >
       <span class="text-sm font-medium text-foreground min-w-0 truncate">{displayName}</span>
       {#if fileDirty}
-        <span class="h-2 w-2 rounded-full bg-amber-400 shrink-0" title={t("explorer_modified")}
+        <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-warning))] shrink-0" title={t("explorer_modified")}
         ></span>
       {/if}
       <span class="text-[11px] text-muted-foreground truncate flex-1 min-w-0">{path}</span>

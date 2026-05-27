@@ -518,7 +518,7 @@
     </svg>
     <span class="text-sm">{scheduledTasksStore.error}</span>
     <button
-      class="ml-2 p-1 hover:bg-white/20 rounded"
+      class="ml-2 p-1 hover:bg-[hsl(var(--miwarp-text-primary)/0.15)] rounded"
       aria-label="Dismiss error"
       onclick={() => scheduledTasksStore.clearError()}
     >

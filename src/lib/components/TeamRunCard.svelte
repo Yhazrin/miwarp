@@ -20,9 +20,9 @@
 
   const STATUS_COLORS: Record<TeamRunStatus, string> = {
     created: "bg-muted-foreground/30",
-    planning: "bg-violet-500",
+    planning: "bg-[hsl(var(--miwarp-accent-violet))]",
     running: "bg-[hsl(var(--miwarp-status-info))]",
-    completed: "bg-emerald-500",
+    completed: "bg-[hsl(var(--miwarp-status-success))]",
     failed: "bg-[hsl(var(--miwarp-status-error))]",
     cancelled: "bg-muted-foreground/30",
   };

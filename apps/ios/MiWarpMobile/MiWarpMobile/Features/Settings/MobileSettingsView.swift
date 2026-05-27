@@ -137,7 +137,7 @@ struct MobileSettingsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
-                        .strokeBorder(isSelected ? Color.white.opacity(0.6) : Color.clear, lineWidth: 2)
+                        .strokeBorder(isSelected ? MWColors.accentOnAccent.opacity(0.6) : Color.clear, lineWidth: 2)
                         .animation(MWMotion.springBouncy, value: isSelected)
                 )
                 .scaleEffect(isSelected ? 1.05 : 1.0)

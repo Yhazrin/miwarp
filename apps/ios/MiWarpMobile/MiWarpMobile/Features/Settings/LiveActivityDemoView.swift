@@ -34,30 +34,30 @@ struct LiveActivityDemoView: View {
                     HStack {
                         Image(systemName: "capsule.portrait.fill")
                             .foregroundColor(MWColors.accentPrimary)
-                        Text("Dynamic Island: available on iPhone 14 Pro or later")
+                        Text(String(localized: "liveActivity.dynamicIslandHint"))
                             .foregroundColor(theme.cardTextPrimary)
                     }
 
                     if !activitiesEnabled {
-                        Text("⚠️ Go to Settings → MiWarp → Live Activities and enable it")
+                        Text(String(localized: "liveActivity.enableHint"))
                             .font(.caption)
                             .foregroundColor(MWColors.statusWarning)
                     }
 
-                    Text("Other iPhones show Lock Screen Live Activity only.")
+                    Text(String(localized: "liveActivity.lockScreenOnly"))
                         .font(.caption2)
                         .foregroundColor(theme.cardTextSecondary)
                 }
                 .font(.callout)
             } header: {
-                Text("Device Capability")
+                Text(String(localized: "liveActivity.deviceCapability"))
                     .foregroundColor(theme.cardTextSecondary)
             }
 
             // MARK: - Session Sync Demo
             Section {
                 HStack {
-                    Text("Task ID")
+                    Text(String(localized: "liveActivity.taskId"))
                         .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text(syncTaskId)
@@ -66,7 +66,7 @@ struct LiveActivityDemoView: View {
                 }
 
                 HStack {
-                    Text("Phase")
+                    Text(String(localized: "liveActivity.phase"))
                         .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text(syncPhase.displayTitle)
@@ -74,7 +74,7 @@ struct LiveActivityDemoView: View {
                 }
 
                 HStack {
-                    Text("Progress")
+                    Text(String(localized: "liveActivity.progress"))
                         .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text("\(syncCount) / \(syncTotal)")
@@ -98,7 +98,7 @@ struct LiveActivityDemoView: View {
                 Button {
                     startSync()
                 } label: {
-                    Label("Start Sync Activity", systemImage: "play.fill")
+                    Label(String(localized: "liveActivity.startSync"), systemImage: "play.fill")
                         .foregroundColor(theme.cardTextPrimary)
                 }
                 .disabled(syncPhase != .preparing)
@@ -106,7 +106,7 @@ struct LiveActivityDemoView: View {
                 Button {
                     advanceSync()
                 } label: {
-                    Label("Advance Sync", systemImage: "arrow.right.circle")
+                    Label(String(localized: "liveActivity.advanceSync"), systemImage: "arrow.right.circle")
                         .foregroundColor(theme.cardTextPrimary)
                 }
                 .disabled(!syncPhase.isActive)
@@ -114,7 +114,7 @@ struct LiveActivityDemoView: View {
                 Button {
                     completeSync()
                 } label: {
-                    Label("Complete Sync", systemImage: "checkmark.circle")
+                    Label(String(localized: "liveActivity.completeSync"), systemImage: "checkmark.circle")
                         .foregroundColor(theme.cardTextPrimary)
                 }
                 .disabled(!syncPhase.isActive)
@@ -122,7 +122,7 @@ struct LiveActivityDemoView: View {
                 Button {
                     failSync()
                 } label: {
-                    Label("Fail Sync", systemImage: "xmark.circle")
+                    Label(String(localized: "liveActivity.failSync"), systemImage: "xmark.circle")
                         .foregroundColor(MWColors.statusError)
                 }
                 .disabled(!syncPhase.isActive)
@@ -130,18 +130,18 @@ struct LiveActivityDemoView: View {
                 Button {
                     resetSync()
                 } label: {
-                    Label("Reset", systemImage: "arrow.counterclockwise")
+                    Label(String(localized: "liveActivity.reset"), systemImage: "arrow.counterclockwise")
                         .foregroundColor(theme.cardTextPrimary)
                 }
             } header: {
-                Label("Session Sync", systemImage: "arrow.triangle.2.circlepath")
+                Label(String(localized: "liveActivity.sessionSync"), systemImage: "arrow.triangle.2.circlepath")
                     .foregroundColor(theme.cardTextSecondary)
             }
 
             // MARK: - Agent Task Demo
             Section {
                 HStack {
-                    Text("Task ID")
+                    Text(String(localized: "liveActivity.taskId"))
                         .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text(agentTaskId)
@@ -150,7 +150,7 @@ struct LiveActivityDemoView: View {
                 }
 
                 HStack {
-                    Text("Phase")
+                    Text(String(localized: "liveActivity.phase"))
                         .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text(agentPhase.displayTitle)
@@ -158,7 +158,7 @@ struct LiveActivityDemoView: View {
                 }
 
                 HStack {
-                    Text("Progress")
+                    Text(String(localized: "liveActivity.progress"))
                         .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text("\(agentStep) / \(agentTotal)")
@@ -182,7 +182,7 @@ struct LiveActivityDemoView: View {
                 Button {
                     startAgent()
                 } label: {
-                    Label("Start Agent Activity", systemImage: "play.fill")
+                    Label(String(localized: "liveActivity.startAgent"), systemImage: "play.fill")
                         .foregroundColor(theme.cardTextPrimary)
                 }
                 .disabled(agentPhase != .queued)
@@ -190,7 +190,7 @@ struct LiveActivityDemoView: View {
                 Button {
                     advanceAgent()
                 } label: {
-                    Label("Advance Agent", systemImage: "arrow.right.circle")
+                    Label(String(localized: "liveActivity.advanceAgent"), systemImage: "arrow.right.circle")
                         .foregroundColor(theme.cardTextPrimary)
                 }
                 .disabled(!agentPhase.isActive)
@@ -198,7 +198,7 @@ struct LiveActivityDemoView: View {
                 Button {
                     completeAgent()
                 } label: {
-                    Label("Complete Agent", systemImage: "checkmark.circle")
+                    Label(String(localized: "liveActivity.completeAgent"), systemImage: "checkmark.circle")
                         .foregroundColor(theme.cardTextPrimary)
                 }
                 .disabled(!agentPhase.isActive)
@@ -206,7 +206,7 @@ struct LiveActivityDemoView: View {
                 Button {
                     failAgent()
                 } label: {
-                    Label("Fail Agent", systemImage: "xmark.circle")
+                    Label(String(localized: "liveActivity.failAgent"), systemImage: "xmark.circle")
                         .foregroundColor(MWColors.statusError)
                 }
                 .disabled(!agentPhase.isActive)
@@ -214,14 +214,14 @@ struct LiveActivityDemoView: View {
                 Button {
                     resetAgent()
                 } label: {
-                    Label("Reset", systemImage: "arrow.counterclockwise")
+                    Label(String(localized: "liveActivity.reset"), systemImage: "arrow.counterclockwise")
                         .foregroundColor(theme.cardTextPrimary)
                 }
             } header: {
-                Label("Agent Task", systemImage: "brain")
+                Label(String(localized: "liveActivity.agentTask"), systemImage: "brain")
             }
         }
-        .navigationTitle("Live Activity Demo")
+        .navigationTitle(String(localized: "liveActivity.title"))
         .task {
             checkCapabilities()
         }

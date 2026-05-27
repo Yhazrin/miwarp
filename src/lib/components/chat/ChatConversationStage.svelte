@@ -504,7 +504,7 @@
 
     {#if store.recoveryNotice}
       <div
-        class="mx-4 mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+        class="mx-4 mb-2 rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-3 py-2 text-xs text-[hsl(var(--miwarp-status-warning))]"
         role="status"
       >
         {store.recoveryNotice}

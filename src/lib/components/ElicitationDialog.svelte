@@ -3,6 +3,7 @@
   import type { ElicitationFieldSchema } from "$lib/types";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
+  import { fly } from "svelte/transition";
 
   let {
     elicitations,
@@ -147,7 +148,8 @@
 </script>
 
 {#if current}
-  <div class="elicitation-card" role="dialog" aria-label={t("elicitation_title")}>
+  <div class="elicitation-card" role="dialog" aria-label={t("elicitation_title")}
+    transition:fly={{ y: 10, duration: 200 }}>
     <!-- Header -->
     <div class="elicitation-header">
       <div class="elicitation-header-left">
@@ -315,7 +317,6 @@
     background: hsl(var(--miwarp-bg-elevated) / 0.9);
     border: 1px solid hsl(var(--border) / 0.5);
     box-shadow: 0 4px 24px -8px hsl(var(--miwarp-bg-deep) / 0.4);
-    animation: fade-in 0.2s ease-out both;
 
     /* Content-fit width */
     width: fit-content;
@@ -328,17 +329,6 @@
       width: 100%;
       min-width: unset;
       max-width: 100%;
-    }
-  }
-
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-      transform: translateY(6px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
     }
   }
 

@@ -38,7 +38,7 @@
       </div>
     {/if}
     <div
-      class="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded truncate max-w-[120px]"
+      class="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-miwarp-overlay text-[hsl(var(--miwarp-text-primary))] text-[10px] px-1.5 py-0.5 rounded truncate max-w-[120px]"
     >
       {artifact.name}
     </div>
@@ -46,7 +46,7 @@
 
   {#if showModal}
     <div
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-[hsl(var(--miwarp-bg-deepest)/0.9)]"
       onclick={() => (showModal = false)}
       onkeydown={(e) => {
         if (e.key === "Escape") showModal = false;
@@ -56,7 +56,7 @@
       tabindex="-1"
     >
       <button
-        class="absolute top-4 right-4 text-white/80 hover:text-white"
+        class="absolute top-4 right-4 text-[hsl(var(--miwarp-text-primary)/0.8)] hover:text-[hsl(var(--miwarp-text-primary))]"
         onclick={() => (showModal = false)}
         aria-label="Close preview"
       >
@@ -71,7 +71,7 @@
         onclick={(e) => e.stopPropagation()}
         role="presentation"
       />
-      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-xs">
+      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-[hsl(var(--miwarp-text-primary)/0.6)] text-xs">
         {artifact.name} · {formatBytes(artifact.size)}
       </div>
     </div>

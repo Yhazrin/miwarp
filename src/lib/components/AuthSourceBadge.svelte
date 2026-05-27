@@ -44,7 +44,7 @@
 
   // ── Badge colors based on auth source category ──
   const BADGE_COLORS: Record<string, string> = {
-    login: "bg-emerald-500/15 text-emerald-500",
+    login: "bg-[hsl(var(--miwarp-status-success)/0.15)] text-[hsl(var(--miwarp-status-success))]",
     env_key: "bg-miwarp-status-info/10 text-miwarp-status-info",
     none: "bg-miwarp-status-warning/15 text-miwarp-status-warning",
     other: "bg-foreground/10 text-foreground/60",

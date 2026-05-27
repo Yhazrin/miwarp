@@ -234,12 +234,12 @@
 
   /* Glow effect for active/running states */
   .glow-active {
-    box-shadow: 0 0 16px hsla(239, 84%, 67%, 0.2);
+    box-shadow: 0 0 16px hsl(var(--miwarp-accent-primary) / 0.2);
   }
   .glow-active-strong {
     box-shadow:
-      0 0 24px hsla(239, 84%, 67%, 0.35),
-      0 0 48px hsla(258, 90%, 66%, 0.15);
+      0 0 24px hsl(var(--miwarp-accent-primary) / 0.35),
+      0 0 48px hsl(var(--miwarp-accent-violet) / 0.15);
   }
 }
 

@@ -93,9 +93,9 @@
       case "stdio":
         return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]";
       case "http":
-        return "bg-teal-500/10 text-teal-600 dark:text-teal-400";
+        return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]";
       case "sse":
-        return "bg-purple-500/10 text-purple-600 dark:text-purple-400";
+        return "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]";
       default:
         return "bg-muted text-muted-foreground";
     }

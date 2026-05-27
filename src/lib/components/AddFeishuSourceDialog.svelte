@@ -4,6 +4,7 @@
   import type { SkillSourcesStore } from "$lib/stores/skill-source-store.svelte";
 
   import { showToast as globalToast } from "$lib/stores/toast-store.svelte";
+  import { fade, fly } from "svelte/transition";
 
   interface Props {
     open?: boolean;
@@ -57,7 +58,8 @@
 
 {#if open}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay backdrop-blur-sm"
+    transition:fade={{ duration: 150 }}
     role="presentation"
     onclick={(e) => {
       if (e.target === e.currentTarget) {
@@ -68,6 +70,7 @@
   >
     <div
       class="w-full max-w-md mx-4 rounded-2xl border border-border bg-background shadow-2xl p-5 space-y-4"
+      transition:fly={{ y: 10, duration: 200 }}
     >
       <div class="flex items-center justify-between">
         <h3 class="text-sm font-semibold">{t("skillSources_dialog_title")}</h3>

@@ -92,7 +92,7 @@
     <!-- Key-value pairs -->
     <div class="grid gap-y-1" style="grid-template-columns: auto 1fr;">
       <span class="text-muted-foreground pr-4">{t("cost_totalCost")}</span>
-      <span class="text-emerald-400 font-bold">{parsed.totalCost}</span>
+      <span class="text-[hsl(var(--miwarp-status-success))] font-bold">{parsed.totalCost}</span>
 
       <span class="text-muted-foreground pr-4">{t("cost_durationApi")}</span>
       <span class="text-foreground">{parsed.durationApi}</span>

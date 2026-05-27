@@ -87,7 +87,7 @@
 
   function deltaColor(d: number): string {
     if (d > 0) return "text-miwarp-status-warning";
-    if (d < 0) return "text-emerald-500";
+    if (d < 0) return "text-[hsl(var(--miwarp-status-success))]";
     return "text-muted-foreground/50";
   }
 

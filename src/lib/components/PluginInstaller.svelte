@@ -161,7 +161,7 @@
 </script>
 
 <div
-  class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+  class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay"
   role="button"
   tabindex="0"
   onclick={handleClose}

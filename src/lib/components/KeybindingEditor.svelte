@@ -129,7 +129,7 @@
           title={conflictWarning}>{conflictWarning}</span
         >
         <button
-          class="rounded p-1 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+          class="rounded p-1 text-[hsl(var(--miwarp-status-success))] hover:text-[hsl(var(--miwarp-status-success)/0.8)] hover:bg-[hsl(var(--miwarp-status-success)/0.1)] transition-colors"
           onclick={confirmKey}
           title={t("keybinding_useAnyway")}
         >
@@ -160,7 +160,7 @@
         </button>
       {:else if pendingKey}
         <button
-          class="rounded p-1 text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+          class="rounded p-1 text-[hsl(var(--miwarp-status-success))] hover:text-[hsl(var(--miwarp-status-success)/0.8)] hover:bg-[hsl(var(--miwarp-status-success)/0.1)] transition-colors"
           onclick={confirmKey}
           title={t("keybinding_confirm")}
         >

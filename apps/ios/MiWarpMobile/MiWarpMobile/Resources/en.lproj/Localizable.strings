@@ -202,3 +202,33 @@
 
 /* Component */
 "component.progress" = "Progress";
+
+/* Live Activity */
+"liveActivity.title" = "Live Activity Demo";
+"liveActivity.deviceCapability" = "Device Capability";
+"liveActivity.taskId" = "Task ID";
+"liveActivity.phase" = "Phase";
+"liveActivity.progress" = "Progress";
+"liveActivity.startSync" = "Start Sync Activity";
+"liveActivity.advanceSync" = "Advance Sync";
+"liveActivity.completeSync" = "Complete Sync";
+"liveActivity.failSync" = "Fail Sync";
+"liveActivity.reset" = "Reset";
+"liveActivity.sessionSync" = "Session Sync";
+"liveActivity.startAgent" = "Start Agent Activity";
+"liveActivity.advanceAgent" = "Advance Agent";
+"liveActivity.completeAgent" = "Complete Agent";
+"liveActivity.failAgent" = "Fail Agent";
+"liveActivity.agentTask" = "Agent Task";
+"liveActivity.dynamicIslandHint" = "Dynamic Island: available on iPhone 14 Pro or later";
+"liveActivity.enableHint" = "Go to Settings -> MiWarp -> Live Activities and enable it";
+"liveActivity.lockScreenOnly" = "Other iPhones show Lock Screen Live Activity only.";
+
+/* Theme */
+"theme.mode.system" = "System";
+"theme.mode.light" = "Light";
+"theme.mode.dark" = "Dark";
+"theme.mode.custom" = "Custom";
+"theme.texture.off" = "Off";
+"theme.texture.subtle" = "Subtle";
+"theme.texture.strong" = "Strong";

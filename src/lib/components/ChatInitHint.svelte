@@ -11,7 +11,7 @@
 </script>
 
 {#if visible}
-  <div class="mt-3 flex items-center gap-2 text-[11px] text-amber-400/80">
+  <div class="mt-3 flex items-center gap-2 text-[11px] text-[hsl(var(--miwarp-status-warning)/0.8)]">
     <svg
       class="h-3.5 w-3.5 shrink-0"
       viewBox="0 0 24 24"
@@ -27,7 +27,7 @@
     <span>
       Run
       <button
-        class="font-mono text-amber-300 hover:text-amber-200 underline underline-offset-2 transition-colors"
+        class="font-mono text-[hsl(var(--miwarp-status-warning))] hover:text-[hsl(var(--miwarp-status-warning)/0.8)] underline underline-offset-2 transition-colors"
         onclick={onRunInit}>{t("chat_initHintAction")}</button
       >
       to create CLAUDE.md

@@ -17,6 +17,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
   import { getIcon, commandIconMap } from "$lib/icons";
+  import { fade, fly } from "svelte/transition";
 
   let {
     open = $bindable(false),
@@ -506,6 +507,7 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div
       class="fixed inset-0 bg-miwarp-overlay backdrop-blur-sm"
+      transition:fade={{ duration: 150 }}
       onclick={() => (open = false)}
       onkeydown={(e) => {
         if (e.key === "Escape" || e.key === "Enter" || e.key === " ") open = false;
@@ -515,7 +517,8 @@
     <!-- Palette Container -->
     <div class="relative z-50 w-full max-w-xl">
       <!-- Main Palette -->
-      <div class="rounded-lg border bg-background shadow-2xl animate-fade-in overflow-hidden">
+      <div class="rounded-lg border bg-background shadow-2xl overflow-hidden"
+        transition:fly={{ y: -10, duration: 200 }}>
         <!-- Search -->
         <div class="flex items-center gap-3 border-b px-4 py-3">
           <span class="text-muted-foreground shrink-0">{@html getIcon("search")}</span>

@@ -86,9 +86,9 @@
       case "high":
         return "text-[hsl(var(--miwarp-status-warning))] bg-[hsl(var(--miwarp-status-warning)/0.1)] border-[hsl(var(--miwarp-status-warning)/0.3)]";
       case "moderate":
-        return "text-amber-500 bg-amber-500/10 border-amber-500/30";
+        return "text-[hsl(var(--miwarp-status-warning))] bg-[hsl(var(--miwarp-status-warning)/0.1)] border-[hsl(var(--miwarp-status-warning)/0.3)]";
       default:
-        return "text-emerald-500 bg-emerald-500/10 border-emerald-500/30";
+        return "text-[hsl(var(--miwarp-status-success))] bg-[hsl(var(--miwarp-status-success)/0.1)] border-[hsl(var(--miwarp-status-success)/0.3)]";
     }
   });
 
@@ -165,8 +165,8 @@
       >
         <span class="session-context-pill-inner {barColor}">
           <span class="flex items-center justify-center whitespace-nowrap">
-            <span class="text-[10px] font-bold text-white/90 w-8 text-center">{pct}%</span>
-            <span class="session-context-ctx-label text-[10px] font-bold text-white/70">ctx</span>
+            <span class="text-[10px] font-bold text-[hsl(var(--miwarp-accent-on-accent)/0.9)] w-8 text-center">{pct}%</span>
+            <span class="session-context-ctx-label text-[10px] font-bold text-[hsl(var(--miwarp-accent-on-accent)/0.7)]">ctx</span>
           </span>
         </span>
       </span>

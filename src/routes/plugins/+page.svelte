@@ -820,7 +820,7 @@
 <!-- Confirmation dialog -->
 {#if confirmAction}
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay backdrop-blur-sm"
     onclick={() => (confirmAction = null)}
     onkeydown={(e) => {
       if (e.key === "Escape") confirmAction = null;
@@ -1420,7 +1420,7 @@
       <!-- Create / Edit Skill modal -->
       {#if editorMode === "new" || editorMode === "edit"}
         <div
-          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay backdrop-blur-sm"
           onclick={(e) => {
             if (e.target === e.currentTarget) cancelEditor();
           }}

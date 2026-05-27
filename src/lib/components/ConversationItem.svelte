@@ -392,7 +392,7 @@
     <div class="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
       {#if run.worktree_branch}
         <span
-          class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-violet-500/10 text-violet-400/80 font-mono text-[10px] max-w-[110px] truncate"
+          class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet)/0.8)] font-mono text-[10px] max-w-[110px] truncate"
           title={run.worktree_branch}
         >
           <svg
@@ -414,7 +414,7 @@
       {/if}
       {#if run.remote_host_name}
         <svg
-          class="h-2.5 w-2.5 shrink-0 text-sky-400/60"
+          class="h-2.5 w-2.5 shrink-0 text-[hsl(var(--miwarp-status-info)/0.6)]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

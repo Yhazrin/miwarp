@@ -704,6 +704,8 @@ struct SessionRowView: View {
             }
         }
         .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(run.displayTitle), status: \(run.status)")
     }
 }
 

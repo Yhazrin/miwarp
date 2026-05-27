@@ -318,7 +318,7 @@
 </script>
 
 {#if scheduledTasksStore.showEditor}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay backdrop-blur-sm">
     <div
       class="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-background rounded-xl shadow-2xl border"
     >

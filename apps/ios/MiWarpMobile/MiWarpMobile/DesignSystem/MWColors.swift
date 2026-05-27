@@ -51,10 +51,10 @@ enum MWAppearanceMode: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .system: return "System"
-        case .light: return "Light"
-        case .dark: return "Dark"
-        case .custom: return "Custom"
+        case .system: return String(localized: "theme.mode.system")
+        case .light: return String(localized: "theme.mode.light")
+        case .dark: return String(localized: "theme.mode.dark")
+        case .custom: return String(localized: "theme.mode.custom")
         }
     }
 
@@ -77,9 +77,9 @@ enum MWTextureStrength: String, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .off: return "Off"
-        case .subtle: return "Subtle"
-        case .strong: return "Strong"
+        case .off: return String(localized: "theme.texture.off")
+        case .subtle: return String(localized: "theme.texture.subtle")
+        case .strong: return String(localized: "theme.texture.strong")
         }
     }
 

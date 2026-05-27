@@ -9,7 +9,7 @@ struct AgentAnimationView: View {
     var body: some View {
         Image(systemName: "brain.head.profile")
             .font(.system(size: size * 0.6))
-            .foregroundColor(isActive ? MWColors.accentPrimary : .secondary)
+            .foregroundColor(isActive ? MWColors.accentPrimary : MWColors.textTertiary)
             .rotationEffect(.degrees(rotation))
             .onChange(of: isActive) { _, active in
                 if active {

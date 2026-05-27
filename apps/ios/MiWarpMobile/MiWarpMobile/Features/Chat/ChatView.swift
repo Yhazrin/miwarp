@@ -233,9 +233,9 @@ struct ChatView: View {
         case .waitingApproval: return MWColors.statusWarning
         case .failed: return MWColors.statusError
         case .completed: return MWColors.statusSuccess
-        case .pending: return .secondary
-        case .idle: return .secondary
-        case .stopped: return .gray
+        case .pending: return MWColors.statusPending
+        case .idle: return MWColors.statusIdle
+        case .stopped: return MWColors.statusStopped
         }
     }
 

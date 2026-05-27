@@ -461,7 +461,7 @@
     M: "text-[hsl(var(--miwarp-status-info))]",
     A: "text-[hsl(var(--miwarp-status-success))]",
     D: "text-[hsl(var(--miwarp-status-error))]",
-    R: "text-purple-400",
+    R: "text-[hsl(var(--miwarp-accent-violet))]",
     "?": "text-muted-foreground",
   };
 
@@ -1947,7 +1947,7 @@
           <button
             class="flex h-7 w-7 items-center justify-center rounded-md transition-colors cursor-pointer
               {sidebarUpdateAvailable
-              ? 'text-amber-400 hover:text-amber-300 hover:bg-amber-400/10'
+              ? 'text-[hsl(var(--miwarp-status-warning))] hover:text-[hsl(var(--miwarp-status-warning)/0.8)] hover:bg-[hsl(var(--miwarp-status-warning)/0.1)]'
               : 'text-muted-foreground/60 hover:text-muted-foreground hover:bg-sidebar-accent/50'}"
             onclick={() => (showAbout = true)}
             title={sidebarUpdateAvailable
@@ -2283,7 +2283,7 @@
                 >{t("sidebar_git")}
                 {#if gitSummary && gitSummary.total_files > 0}
                   <span
-                    class="ml-0.5 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-[hsl(var(--miwarp-status-info)/0.8)] px-1 text-[10px] font-bold text-white"
+                    class="ml-0.5 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-[hsl(var(--miwarp-status-info)/0.8)] px-1 text-[10px] font-bold text-primary-foreground"
                     >{gitSummary.total_files}</span
                   >
                 {/if}
@@ -2553,7 +2553,7 @@
                       >
                         <svg
                           class="h-3 w-3 shrink-0 {file.scope === 'memory'
-                            ? 'text-amber-400'
+                            ? 'text-[hsl(var(--miwarp-status-warning))]'
                             : file.exists
                               ? 'text-[hsl(var(--miwarp-status-info))]'
                               : 'text-muted-foreground/40'}"
@@ -2704,7 +2704,7 @@
                     onclick={() => teamStore.selectTeam(team.name)}
                   >
                     <div class="flex items-center gap-1.5">
-                      <span class="h-2 w-2 rounded-full bg-teal-500 shrink-0"></span>
+                      <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-info))] shrink-0"></span>
                       <span class="text-[13px] font-medium min-w-0 truncate">{team.name}</span>
                     </div>
                     {#if team.description}

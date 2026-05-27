@@ -344,8 +344,8 @@
         label: t("sessionStatus_bypass"),
         cls: "bg-miwarp-status-warning/15 text-miwarp-status-warning",
       },
-      plan: { label: t("sessionStatus_plan"), cls: "bg-purple-500/15 text-purple-400" },
-      auto: { label: t("sessionStatus_auto"), cls: "bg-teal-500/15 text-teal-400" },
+      plan: { label: t("sessionStatus_plan"), cls: "bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-[hsl(var(--miwarp-accent-violet))]" },
+      auto: { label: t("sessionStatus_auto"), cls: "bg-[hsl(var(--miwarp-status-info)/0.15)] text-[hsl(var(--miwarp-status-info))]" },
       dontAsk: { label: "no-ask", cls: "bg-[hsl(var(--miwarp-status-error)/0.15)] text-miwarp-status-error" },
     };
     return (
@@ -692,10 +692,10 @@
     mcpAggregateStatus === "error"
       ? "bg-destructive"
       : mcpAggregateStatus === "pending"
-        ? "bg-amber-500"
+        ? "bg-[hsl(var(--miwarp-status-warning))]"
         : mcpAggregateStatus === "disabled"
           ? "bg-muted-foreground/30"
-          : "bg-emerald-500",
+          : "bg-[hsl(var(--miwarp-status-success))]",
   );
 
   // Find model info: exact match first, then fuzzy (model ID contains alias)
@@ -847,8 +847,8 @@
               : contextWarningLevel === "high"
                 ? "bg-[hsl(var(--miwarp-status-warning))]"
                 : contextWarningLevel === "moderate"
-                  ? "bg-amber-500"
-                  : "bg-emerald-500"}
+                  ? "bg-[hsl(var(--miwarp-status-warning))]"
+                  : "bg-[hsl(var(--miwarp-status-success))]"}
           <span
             class="session-context-pill text-foreground/60"
             title={t("statusbar_contextTitle", {

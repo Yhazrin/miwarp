@@ -239,11 +239,11 @@
           <div class="w-full py-3">
             <div class="chat-content-width">
               <div class="flex items-center gap-3">
-                <div class="h-px flex-1 bg-amber-500/20"></div>
-                <span class="text-xs text-amber-500/70 font-medium whitespace-nowrap">
+                <div class="h-px flex-1 bg-[hsl(var(--miwarp-status-warning)/0.2)]"></div>
+                <span class="text-xs text-[hsl(var(--miwarp-status-warning)/0.7)] font-medium whitespace-nowrap">
                   {t("chat_contextCleared")}
                 </span>
-                <div class="h-px flex-1 bg-amber-500/20"></div>
+                <div class="h-px flex-1 bg-[hsl(var(--miwarp-status-warning)/0.2)]"></div>
               </div>
             </div>
           </div>
@@ -251,7 +251,7 @@
           <div class="w-full py-2">
             <div class="chat-content-width pl-7">
               <div
-                class="command-output rounded-lg border border-border/40 bg-[#1a1b26] px-4 py-3 text-sm overflow-x-auto"
+                class="command-output rounded-lg border border-border/40 bg-[hsl(var(--miwarp-bg-deepest))] px-4 py-3 text-sm overflow-x-auto"
               >
                 {#if entry.content.includes("## Context Usage")}
                   <ContextUsageGrid text={entry.content} />
@@ -263,7 +263,7 @@
                   <ReleaseNotesCard text={entry.content} />
                 {:else if hasAnsiCodes(entry.content)}
                   <pre
-                    class="whitespace-pre font-mono text-xs leading-relaxed text-[#c0caf5] m-0">{@html ansiToHtml(
+                    class="whitespace-pre font-mono text-xs leading-relaxed text-[hsl(var(--miwarp-text-primary))] m-0">{@html ansiToHtml(
                       entry.content,
                     )}</pre>
                 {:else}

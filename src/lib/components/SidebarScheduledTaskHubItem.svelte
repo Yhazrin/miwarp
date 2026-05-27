@@ -36,7 +36,7 @@
   aria-current={selected ? "page" : undefined}
 >
   <svg
-    class="h-3.5 w-3.5 shrink-0 text-amber-500/80"
+    class="h-3.5 w-3.5 shrink-0 text-[hsl(var(--miwarp-status-warning)/0.8)]"
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"

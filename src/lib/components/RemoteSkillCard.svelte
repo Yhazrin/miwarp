@@ -13,11 +13,11 @@
   function badgeClass(status: string) {
     switch (status) {
       case "installed":
-        return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400";
+        return "bg-[hsl(var(--miwarp-status-success)/0.15)] text-[hsl(var(--miwarp-status-success))]";
       case "update_available":
-        return "bg-sky-500/15 text-sky-700 dark:text-sky-400";
+        return "bg-[hsl(var(--miwarp-status-info)/0.15)] text-[hsl(var(--miwarp-status-info))]";
       case "conflict":
-        return "bg-amber-500/15 text-amber-800 dark:text-amber-400";
+        return "bg-[hsl(var(--miwarp-status-warning)/0.15)] text-[hsl(var(--miwarp-status-warning))]";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -40,7 +40,7 @@
       <div class="flex items-center gap-2 flex-wrap">
         <h4 class="text-sm font-semibold text-foreground truncate">{candidate.name}</h4>
         <span
-          class="text-[10px] font-medium rounded-full px-1.5 py-0.5 bg-violet-500/10 text-violet-700 dark:text-violet-400"
+          class="text-[10px] font-medium rounded-full px-1.5 py-0.5 bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]"
           >{t("skillSources_badge_feishu")}</span
         >
         <span
@@ -53,7 +53,7 @@
         <p class="text-xs text-muted-foreground mt-1 line-clamp-2">{candidate.description}</p>
       {/if}
       {#if candidate.skipped && candidate.skipReason}
-        <p class="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+        <p class="text-[11px] text-[hsl(var(--miwarp-status-warning))] mt-1">
           {candidate.skipReason}
         </p>
       {/if}

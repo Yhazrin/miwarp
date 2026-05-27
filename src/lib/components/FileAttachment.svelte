@@ -26,21 +26,21 @@
     if (isDir) {
       return {
         border: isPathRef
-          ? "border-dashed border-amber-400/50 dark:border-amber-500/40"
-          : "border-amber-200 dark:border-amber-800",
-        bg: "bg-amber-50 dark:bg-amber-950/40",
-        icon: "text-amber-600 dark:text-amber-400",
-        size: "text-amber-400 dark:text-amber-500",
+          ? "border-dashed border-[hsl(var(--miwarp-status-warning)/0.5)]"
+          : "border-[hsl(var(--miwarp-status-warning)/0.3)]",
+        bg: "bg-[hsl(var(--miwarp-status-warning)/0.08)]",
+        icon: "text-[hsl(var(--miwarp-status-warning))]",
+        size: "text-[hsl(var(--miwarp-status-warning)/0.6)]",
       };
     }
     if (isImage) {
       return {
         border: isPathRef
-          ? "border-dashed border-sky-400/50 dark:border-sky-500/40"
-          : "border-sky-200 dark:border-sky-800",
-        bg: "bg-sky-50 dark:bg-sky-950/40",
-        icon: "text-sky-600 dark:text-sky-400",
-        size: "text-sky-400 dark:text-sky-500",
+          ? "border-dashed border-[hsl(var(--miwarp-status-info)/0.5)]"
+          : "border-[hsl(var(--miwarp-status-info)/0.3)]",
+        bg: "bg-[hsl(var(--miwarp-status-info)/0.08)]",
+        icon: "text-[hsl(var(--miwarp-status-info))]",
+        size: "text-[hsl(var(--miwarp-status-info)/0.6)]",
       };
     }
     if (isDoc) {

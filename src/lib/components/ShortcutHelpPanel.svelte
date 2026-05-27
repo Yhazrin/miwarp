@@ -2,6 +2,7 @@
   import { getContext } from "svelte";
   import { KeybindingStore, formatKeyDisplay } from "$lib/stores/keybindings.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import { fade, fly } from "svelte/transition";
 
   let { open = $bindable(false) }: { open?: boolean } = $props();
 
@@ -44,7 +45,8 @@
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay backdrop-blur-sm animate-fade-in"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay backdrop-blur-sm"
+    transition:fade={{ duration: 150 }}
     onclick={() => (open = false)}
     onkeydown={(e) => {
       if (e.key === "Escape" || e.key === "Enter" || e.key === " ") open = false;
@@ -56,7 +58,8 @@
       tabindex="-1"
       role="dialog"
       aria-modal="true"
-      class="w-full max-w-md rounded-xl border border-border bg-background shadow-2xl outline-none animate-slide-up"
+      class="w-full max-w-md rounded-xl border border-border bg-background shadow-2xl outline-none"
+      transition:fly={{ y: 10, duration: 200 }}
       onclick={(e) => e.stopPropagation()}
     >
       <!-- Header -->

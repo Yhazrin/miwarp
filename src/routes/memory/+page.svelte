@@ -373,7 +373,7 @@
       : 'animate-toast-in'}"
   >
     <div
-      class="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg"
+      class="flex items-center gap-2 rounded-lg bg-[hsl(var(--miwarp-status-success))] px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-lg"
     >
       <svg
         class="h-4 w-4"

@@ -128,7 +128,7 @@
   {#if !connected}
     <div class="section">
       <h4>{t("browser_connect")}</h4>
-      <button class="btn btn-primary" onclick={handleConnectBrowser}>
+      <button class="rounded-lg px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={handleConnectBrowser}>
         {t("browser_listBrowsers")}
       </button>
 
@@ -154,11 +154,11 @@
     <div class="section navigation-section">
       <!-- Back/Forward/Refresh -->
       <div class="nav-controls">
-        <button class="btn btn-icon" onclick={handleGoBack} title={t("browser_goBack")}> ← </button>
-        <button class="btn btn-icon" onclick={handleGoForward} title={t("browser_goForward")}>
+        <button class="btn-icon" onclick={handleGoBack} title={t("browser_goBack")}> ← </button>
+        <button class="btn-icon" onclick={handleGoForward} title={t("browser_goForward")}>
           →
         </button>
-        <button class="btn btn-icon" onclick={handleRefresh} title={t("browser_refresh")}>
+        <button class="btn-icon" onclick={handleRefresh} title={t("browser_refresh")}>
           ↻
         </button>
       </div>
@@ -172,7 +172,7 @@
           onkeydown={handleKeyDown}
           class="url-input"
         />
-        <button class="btn btn-primary" onclick={handleNavigate} disabled={isNavigating}>
+        <button class="rounded-lg px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={handleNavigate} disabled={isNavigating}>
           {isNavigating ? "..." : t("browser_go")}
         </button>
       </div>
@@ -201,7 +201,7 @@
             </span>
           </button>
         {/each}
-        <button class="btn btn-icon add-tab" onclick={handleCreateTab} title={t("browser_newTab")}>
+        <button class="btn-icon add-tab" onclick={handleCreateTab} title={t("browser_newTab")}>
           +
         </button>
       </div>
@@ -210,7 +210,7 @@
     <!-- Quick Actions -->
     <div class="section quick-actions">
       {#each quickActions as action}
-        <button class="btn btn-secondary" onclick={() => handleQuickAction(action.action)}>
+        <button class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer border-none transition-colors" onclick={() => handleQuickAction(action.action)}>
           <span class="action-icon">{action.icon}</span>
           {action.label}
         </button>
@@ -226,7 +226,7 @@
         placeholder={t("browser_findElements")}
         class="search-input"
       />
-      <button class="btn btn-secondary" onclick={handleFind} disabled={isFinding}>
+      <button class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={handleFind} disabled={isFinding}>
         {isFinding ? "..." : t("browser_find")}
       </button>
 
@@ -281,7 +281,7 @@
       <span class="error-icon">⚠️</span>
       <span class="error-text">{error}</span>
       <button
-        class="btn btn-icon"
+        class="btn-icon"
         onclick={() => browserStore.dispatch({ type: "SET_ERROR", error: null })}
       >
         ×
@@ -315,7 +315,7 @@
     justify-content: space-between;
     align-items: center;
     padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--color-border, #333);
+    border-bottom: 1px solid hsl(var(--miwarp-border));
   }
 
   .panel-header h3 {
@@ -351,49 +351,20 @@
   .section h4 {
     margin: 0 0 0.75rem 0;
     font-size: 0.875rem;
-    color: var(--color-text-secondary, #888);
-  }
-
-  .btn {
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.875rem;
-    transition: all var(--motion-normal) var(--ease-standard);
-  }
-
-  .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .btn-primary {
-    background: hsl(var(--miwarp-accent-primary, 210 100% 60%));
-    color: white;
-  }
-
-  .btn-primary:hover:not(:disabled) {
-    background: hsl(var(--miwarp-accent-primary, 210 100% 55%));
-  }
-
-  .btn-secondary {
-    background: var(--color-secondary, #333);
-    color: white;
-  }
-
-  .btn-secondary:hover:not(:disabled) {
-    background: var(--color-secondary-hover, #444);
+    color: hsl(var(--miwarp-text-secondary));
   }
 
   .btn-icon {
     padding: 0.5rem;
     background: transparent;
-    border: 1px solid var(--color-border, #333);
+    border: 1px solid hsl(var(--miwarp-border));
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.15s ease;
   }
 
   .btn-icon:hover:not(:disabled) {
-    background: var(--color-hover, #222);
+    background: hsl(var(--miwarp-bg-surface));
   }
 
   .browser-list {
@@ -409,15 +380,15 @@
     gap: 0.75rem;
     padding: 0.75rem;
     background: hsl(var(--miwarp-bg-deepest, 220 18% 6%));
-    border: 1px solid var(--color-border, #333);
+    border: 1px solid hsl(var(--miwarp-border));
     border-radius: 6px;
     cursor: pointer;
-    transition: all var(--motion-normal) var(--ease-standard);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
   }
 
   .browser-item:hover {
-    background: var(--color-hover, #222);
-    border-color: hsl(var(--miwarp-accent-primary, 210 100% 60%));
+    background: hsl(var(--miwarp-bg-surface));
+    border-color: hsl(var(--miwarp-accent-primary));
   }
 
   .browser-icon {
@@ -436,7 +407,7 @@
 
   .browser-platform {
     font-size: 0.75rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--miwarp-text-secondary));
   }
 
   .badge {
@@ -463,16 +434,16 @@
     flex: 1;
     padding: 0.5rem;
     background: hsl(var(--miwarp-bg-deepest, 220 18% 6%));
-    border: 1px solid var(--color-border, #333);
+    border: 1px solid hsl(var(--miwarp-border));
     border-radius: 4px;
-    color: var(--color-text, white);
+    color: hsl(var(--miwarp-text-primary));
     font-size: 0.875rem;
   }
 
   .url-input:focus,
   .search-input:focus {
     outline: none;
-    border-color: hsl(var(--miwarp-accent-primary, 210 100% 60%));
+    border-color: hsl(var(--miwarp-accent-primary));
   }
 
   .tabs-section {
@@ -494,19 +465,19 @@
     background: transparent;
     border: 1px solid transparent;
     border-radius: 4px;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--miwarp-text-secondary));
     cursor: pointer;
     white-space: nowrap;
     max-width: 150px;
-    transition: all var(--motion-normal) var(--ease-standard);
+    transition: background-color 0.15s ease;
   }
 
   .tab-item:hover {
-    background: var(--color-hover, #222);
+    background: hsl(var(--miwarp-bg-surface));
   }
 
   .tab-item.active {
-    background: hsl(var(--miwarp-accent-primary, 210 100% 60%));
+    background: hsl(var(--miwarp-accent-primary));
     color: white;
   }
 
@@ -554,7 +525,7 @@
   .found-elements h5 {
     margin: 0 0 0.5rem 0;
     font-size: 0.875rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--miwarp-text-secondary));
   }
 
   .element-item {
@@ -562,16 +533,16 @@
     gap: 0.5rem;
     padding: 0.25rem 0;
     font-size: 0.75rem;
-    border-bottom: 1px solid var(--color-border, #333);
+    border-bottom: 1px solid hsl(var(--miwarp-border));
   }
 
   .element-ref {
-    color: hsl(var(--miwarp-accent-primary, 210 100% 60%));
+    color: hsl(var(--miwarp-accent-primary));
     font-family: monospace;
   }
 
   .element-text {
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--miwarp-text-secondary));
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -599,7 +570,7 @@
   .element-count {
     margin-top: 0.5rem;
     font-size: 0.75rem;
-    color: var(--color-text-secondary, #888);
+    color: hsl(var(--miwarp-text-secondary));
   }
 
   .screenshot-section {
@@ -615,7 +586,7 @@
     max-width: 100%;
     max-height: 200px;
     border-radius: 4px;
-    border: 1px solid var(--color-border, #333);
+    border: 1px solid hsl(var(--miwarp-border));
   }
 
   .error-section {

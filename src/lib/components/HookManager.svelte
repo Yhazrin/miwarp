@@ -614,7 +614,7 @@
                         : 'bg-muted-foreground/25'}"
                     >
                       <div
-                        class="inline-block h-3 w-3 transform rounded-full bg-white transition-transform duration-200 {handler.async
+                        class="inline-block h-3 w-3 transform rounded-full bg-primary-foreground transition-transform duration-200 {handler.async
                           ? 'translate-x-3.5'
                           : 'translate-x-0.5'}"
                       ></div>
@@ -637,7 +637,7 @@
                         : 'bg-muted-foreground/25'}"
                     >
                       <div
-                        class="inline-block h-3 w-3 transform rounded-full bg-white transition-transform duration-200 {handler.once
+                        class="inline-block h-3 w-3 transform rounded-full bg-primary-foreground transition-transform duration-200 {handler.once
                           ? 'translate-x-3.5'
                           : 'translate-x-0.5'}"
                       ></div>

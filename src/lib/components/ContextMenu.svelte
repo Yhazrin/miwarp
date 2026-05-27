@@ -12,6 +12,7 @@
    */
 
   import { portal } from "$lib/utils/portal";
+  import { scale } from "svelte/transition";
 
   export interface MenuItem {
     id: string;
@@ -133,6 +134,7 @@
   class="fixed z-[45] min-w-[160px] rounded-xl border border-border/50 bg-background/95
          backdrop-blur-sm shadow-lg p-1"
   style="left: {adjustedX}px; top: {adjustedY}px;"
+  transition:scale={{ start: 0.95, duration: 100 }}
   role="menu"
   tabindex="-1"
   oncontextmenu={handleContextMenu}

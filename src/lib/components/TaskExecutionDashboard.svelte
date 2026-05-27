@@ -19,9 +19,10 @@
   let healthColor = $derived.by(() => {
     switch (health.status) {
       case "healthy":
-        return "text-emerald-500";
+        return "text-[hsl(var(--miwarp-status-success))]";
       case "warning":
-        return "text-amber-500";
+        return "text-[hsl(var(--miwarp-status-warning))]";
+
       case "critical":
         return "text-[hsl(var(--miwarp-status-error))]";
     }
@@ -30,9 +31,10 @@
   let healthBg = $derived.by(() => {
     switch (health.status) {
       case "healthy":
-        return "bg-emerald-500";
+        return "bg-[hsl(var(--miwarp-status-success))]";
       case "warning":
-        return "bg-amber-500";
+        return "bg-[hsl(var(--miwarp-status-warning))]";
+
       case "critical":
         return "bg-[hsl(var(--miwarp-status-error))]";
     }

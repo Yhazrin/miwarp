@@ -22,11 +22,11 @@
   const dotClass = $derived.by(() => {
     switch (entry.type) {
       case "working_tree":
-        return entry.is_dirty ? "bg-amber-400" : "bg-emerald-400";
+        return entry.is_dirty ? "bg-[hsl(var(--miwarp-status-warning))]" : "bg-[hsl(var(--miwarp-status-success))]";
       case "branch_ref":
         return "bg-[hsl(var(--miwarp-status-info))]";
       case "remote_ref":
-        return "bg-violet-400";
+        return "bg-[hsl(var(--miwarp-accent-violet))]";
       case "base":
         return "bg-transparent border border-muted-foreground/30";
       default:

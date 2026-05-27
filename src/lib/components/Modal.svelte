@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
+  import { fade, fly } from "svelte/transition";
 
   let {
     open = $bindable(false),
@@ -48,6 +49,7 @@
 {#if open}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center"
+    transition:fade={{ duration: 200 }}
     role="dialog"
     aria-modal="true"
     tabindex="-1"
@@ -63,7 +65,8 @@
 
     <!-- Content -->
     <div
-      class="elevation-3 relative z-50 w-full max-w-lg p-6 animate-modal-in rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] backdrop-blur-2xl"
+      class="elevation-3 relative z-50 w-full max-w-lg p-6 rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] backdrop-blur-2xl"
+      transition:fly={{ y: 10, duration: 200 }}
       style="background: hsl(var(--miwarp-bg-deep) / 0.94);"
     >
       {#if title}
