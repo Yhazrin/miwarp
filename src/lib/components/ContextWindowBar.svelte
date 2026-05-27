@@ -42,9 +42,9 @@
 
   const barColor = $derived(
     warningLevel === "critical"
-      ? "bg-red-500"
+      ? "bg-[hsl(var(--miwarp-status-error))]"
       : warningLevel === "high"
-        ? "bg-orange-500"
+        ? "bg-[hsl(var(--miwarp-status-warning))]"
         : warningLevel === "moderate"
           ? "bg-amber-500"
           : "bg-emerald-500",
@@ -52,9 +52,9 @@
 
   const textColor = $derived(
     warningLevel === "critical"
-      ? "text-red-500"
+      ? "text-[hsl(var(--miwarp-status-error))]"
       : warningLevel === "high"
-        ? "text-orange-500"
+        ? "text-[hsl(var(--miwarp-status-warning))]"
         : warningLevel === "moderate"
           ? "text-amber-500"
           : "text-foreground/60",
@@ -63,10 +63,10 @@
   // Segment colors (matching segment types)
   const segmentColors: Record<ContextSegment["type"], string> = {
     system: "bg-violet-500",
-    env: "bg-blue-500",
+    env: "bg-[hsl(var(--miwarp-status-info))]",
     claudeMd: "bg-emerald-500",
     files: "bg-amber-500",
-    tools: "bg-orange-500",
+    tools: "bg-[hsl(var(--miwarp-status-warning))]",
   };
 
   // Calculate segment widths as percentage of total bar

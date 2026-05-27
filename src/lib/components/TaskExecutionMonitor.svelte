@@ -48,8 +48,8 @@
     queued: { label: "Queued", color: "text-muted-foreground", bgColor: "bg-muted" },
     running: {
       label: "Running",
-      color: "text-blue-600 dark:text-blue-400",
-      bgColor: "bg-blue-500/10",
+      color: "text-[hsl(var(--miwarp-status-info))]",
+      bgColor: "bg-[hsl(var(--miwarp-status-info)/0.1)]",
     },
     paused: {
       label: "Paused",
@@ -58,10 +58,10 @@
     },
     completed: {
       label: "Completed",
-      color: "text-green-600 dark:text-green-400",
-      bgColor: "bg-green-500/10",
+      color: "text-[hsl(var(--miwarp-status-success))]",
+      bgColor: "bg-[hsl(var(--miwarp-status-success)/0.1)]",
     },
-    failed: { label: "Failed", color: "text-red-600 dark:text-red-400", bgColor: "bg-red-500/10" },
+    failed: { label: "Failed", color: "text-[hsl(var(--miwarp-status-error))]", bgColor: "bg-[hsl(var(--miwarp-status-error)/0.1)]" },
   };
 
   let config = $derived(statusConfig[status] || statusConfig.queued);
@@ -98,7 +98,7 @@
   function getLogColor(level: string): string {
     switch (level) {
       case "error":
-        return "text-red-600 dark:text-red-400";
+        return "text-[hsl(var(--miwarp-status-error))]";
       case "warn":
         return "text-amber-600 dark:text-amber-400";
       default:
@@ -194,9 +194,9 @@
       <div
         class="h-full rounded-full transition-all duration-300
           {status === 'failed'
-          ? 'bg-red-500'
+          ? 'bg-[hsl(var(--miwarp-status-error))]'
           : status === 'completed'
-            ? 'bg-green-500'
+            ? 'bg-[hsl(var(--miwarp-status-success))]'
             : 'bg-primary'}"
         style="width: {progress}%"
       ></div>
@@ -239,15 +239,15 @@
     <div class="text-xs text-muted-foreground">
       {#if status === "running"}
         <span class="flex items-center gap-1">
-          <span class="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"></span>
           Processing...
         </span>
       {:else if status === "completed"}
-        <span class="flex items-center gap-1 text-green-600 dark:text-green-400">
+        <span class="flex items-center gap-1 text-[hsl(var(--miwarp-status-success))]">
           ✓ Completed successfully
         </span>
       {:else if status === "failed"}
-        <span class="flex items-center gap-1 text-red-600 dark:text-red-400">
+        <span class="flex items-center gap-1 text-[hsl(var(--miwarp-status-error))]">
           ✗ Execution failed
         </span>
       {/if}

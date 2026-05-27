@@ -23,7 +23,7 @@
       case "warning":
         return "text-amber-500";
       case "critical":
-        return "text-red-500";
+        return "text-[hsl(var(--miwarp-status-error))]";
     }
   });
 
@@ -34,7 +34,7 @@
       case "warning":
         return "bg-amber-500";
       case "critical":
-        return "bg-red-500";
+        return "bg-[hsl(var(--miwarp-status-error))]";
     }
   });
 
@@ -79,7 +79,7 @@
               ? "bg-emerald-500/10 text-emerald-500"
               : factor.status === "warning"
                 ? "bg-amber-500/10 text-amber-500"
-                : "bg-red-500/10 text-red-500"
+                : "bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]"
           }`}
         >
           {factor.name}: {Math.round(factor.value)}%
@@ -96,7 +96,7 @@
     </div>
     <div class="rounded-lg border border-border/40 bg-card p-3">
       <div class="text-xs text-muted-foreground">进行中</div>
-      <div class="text-xl font-bold text-blue-500">{stats.activeTasks}</div>
+      <div class="text-xl font-bold text-[hsl(var(--miwarp-status-info))]">{stats.activeTasks}</div>
     </div>
     <div class="rounded-lg border border-border/40 bg-card p-3">
       <div class="text-xs text-muted-foreground">成功率</div>
@@ -116,7 +116,7 @@
       <span class="ml-auto font-medium">{stats.completedTasks}</span>
     </div>
     <div class="flex items-center gap-2">
-      <span class="h-2 w-2 rounded-full bg-red-500"></span>
+      <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-error))]"></span>
       <span class="text-muted-foreground">失败</span>
       <span class="ml-auto font-medium">{stats.failedTasks}</span>
     </div>
@@ -158,7 +158,7 @@
               {/if}
               {#if trend.failed > 0}
                 <div
-                  class="bg-red-500"
+                  class="bg-[hsl(var(--miwarp-status-error))]"
                   style:height={`${(trend.failed / (trend.completed + trend.failed + trend.cancelled)) * 100}%`}
                 ></div>
               {/if}
@@ -195,7 +195,7 @@
                   ? "text-emerald-500"
                   : skill.successRate >= 50
                     ? "text-amber-500"
-                    : "text-red-500"}
+                    : "text-[hsl(var(--miwarp-status-error))]"}
               >
                 {Math.round(skill.successRate)}%
               </span>

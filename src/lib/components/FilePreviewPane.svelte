@@ -454,11 +454,11 @@
               {#each diffLines as dl}
                 <tr
                   class={dl.type === "add"
-                    ? "bg-green-500/10"
+                    ? "bg-[hsl(var(--miwarp-status-success)/0.1)]"
                     : dl.type === "del"
-                      ? "bg-red-500/10"
+                      ? "bg-[hsl(var(--miwarp-status-error)/0.1)]"
                       : dl.type === "hunk"
-                        ? "bg-blue-500/5"
+                        ? "bg-[hsl(var(--miwarp-status-info)/0.05)]"
                         : ""}
                 >
                   <td
@@ -475,11 +475,11 @@
                   >
                   <td
                     class="whitespace-pre pr-4 {dl.type === 'add'
-                      ? 'text-green-600 dark:text-green-400'
+                      ? 'text-[hsl(var(--miwarp-status-success))]'
                       : dl.type === 'del'
-                        ? 'text-red-500 dark:text-red-400'
+                        ? 'text-[hsl(var(--miwarp-status-error))]'
                         : dl.type === 'hunk'
-                          ? 'text-blue-500 dark:text-blue-400'
+                          ? 'text-[hsl(var(--miwarp-status-info))]'
                           : dl.type === 'header'
                             ? 'font-bold text-foreground'
                             : ''} {dl.type === 'hunk' || dl.type === 'header'

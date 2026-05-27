@@ -46,11 +46,11 @@
     if (isDoc) {
       return {
         border: isPathRef
-          ? "border-dashed border-red-400/50 dark:border-red-500/40"
-          : "border-red-200 dark:border-red-800",
-        bg: "bg-red-50 dark:bg-red-950/40",
-        icon: "text-red-600 dark:text-red-400",
-        size: "text-red-400 dark:text-red-500",
+          ? "border-dashed border-[hsl(var(--miwarp-status-error)/0.4)]"
+          : "border-[hsl(var(--miwarp-status-error)/0.3)]",
+        bg: "bg-[hsl(var(--miwarp-status-error)/0.05)]",
+        icon: "text-[hsl(var(--miwarp-status-error))]",
+        size: "text-[hsl(var(--miwarp-status-error)/0.7)]",
       };
     }
     // Default (other files)

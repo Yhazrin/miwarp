@@ -44,7 +44,7 @@
     {
       key: "commands",
       label: t("pluginCard_commands"),
-      color: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+      color: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
     },
     {
       key: "agents",
@@ -64,18 +64,18 @@
     {
       key: "lsp_servers",
       label: t("pluginCard_lsp"),
-      color: "bg-green-500/10 text-green-600 dark:text-green-400",
+      color: "bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]",
     },
   ];
 
   const categoryColors: Record<string, string> = {
-    development: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    development: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
     productivity: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
-    security: "bg-red-500/10 text-red-600 dark:text-red-400",
+    security: "bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]",
     testing: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
     learning: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-    database: "bg-green-500/10 text-green-600 dark:text-green-400",
-    monitoring: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+    database: "bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]",
+    monitoring: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]",
     deployment: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
     design: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
   };
@@ -144,7 +144,7 @@
       <!-- Enable/Disable toggle -->
       <button
         class="rounded-md border px-2 py-1 text-xs transition-colors disabled:opacity-50 {enabled
-          ? 'text-green-600 dark:text-green-400 border-green-500/30 hover:bg-green-500/10'
+          ? 'text-[hsl(var(--miwarp-status-success))] border-[hsl(var(--miwarp-status-success)/0.3)] hover:bg-[hsl(var(--miwarp-status-success)/0.1)]'
           : 'text-muted-foreground hover:bg-muted'}"
         onclick={() => onToggle?.(installedPlugin, !enabled)}
         disabled={isLoading}

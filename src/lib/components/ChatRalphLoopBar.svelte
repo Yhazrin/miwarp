@@ -13,22 +13,22 @@
 
 <div class="mx-auto w-full max-w-3xl px-4 pb-2">
   <div
-    class="flex items-center justify-between rounded-lg border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm"
+    class="flex items-center justify-between rounded-lg border border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.1)] px-4 py-2 text-sm"
   >
-    <div class="flex items-center gap-2 text-blue-400">
+    <div class="flex items-center gap-2 text-[hsl(var(--miwarp-status-info))]">
       <span class="animate-pulse">🔄</span>
       <span class="font-medium">{t("chat_ralphLoop")}</span>
-      <span class="text-blue-400/70">
+      <span class="text-[hsl(var(--miwarp-status-info)/0.7)]">
         iteration {iteration}/{maxIterations || "∞"}
       </span>
       {#if completionPromise}
-        <span class="text-blue-400/50">
+        <span class="text-[hsl(var(--miwarp-status-info)/0.5)]">
           · promise: "{completionPromise}"
         </span>
       {/if}
     </div>
     <button
-      class="rounded px-2 py-0.5 text-xs text-red-400 hover:bg-red-500/20 transition-colors"
+      class="rounded px-2 py-0.5 text-xs text-[hsl(var(--miwarp-status-error))] hover:bg-[hsl(var(--miwarp-status-error)/0.2)] transition-colors"
       onclick={onCancel}
     >
       Cancel

@@ -103,11 +103,11 @@
     icon: string;
   } {
     if (latency === null) return { label: "Unknown", color: "text-muted-foreground", icon: "⚪" };
-    if (latency < 50) return { label: "Excellent", color: "text-green-600", icon: "🟢" };
+    if (latency < 50) return { label: "Excellent", color: "text-[hsl(var(--miwarp-status-success))]", icon: "🟢" };
     if (latency < 100) return { label: "Good", color: "text-emerald-600", icon: "🟢" };
-    if (latency < 200) return { label: "Fair", color: "text-yellow-600", icon: "🟡" };
-    if (latency < 500) return { label: "Poor", color: "text-orange-600", icon: "🟠" };
-    return { label: "Critical", color: "text-red-600", icon: "🔴" };
+    if (latency < 200) return { label: "Fair", color: "text-[hsl(var(--miwarp-status-warning))]", icon: "🟡" };
+    if (latency < 500) return { label: "Poor", color: "text-[hsl(var(--miwarp-status-warning))]", icon: "🟠" };
+    return { label: "Critical", color: "text-[hsl(var(--miwarp-status-error))]", icon: "🔴" };
   }
 
   async function refresh() {
@@ -384,10 +384,10 @@ diagnostics and history * - Quick reconnect with health check */
                         {@const height = maxLatency > 0 ? (latency / maxLatency) * 24 : 0}
                         <div
                           class="w-2 rounded-t transition-all {latency < 100
-                            ? 'bg-green-500'
+                            ? 'bg-[hsl(var(--miwarp-status-success))]'
                             : latency < 300
-                              ? 'bg-yellow-500'
-                              : 'bg-red-500'}"
+                              ? 'bg-[hsl(var(--miwarp-status-warning))]'
+                              : 'bg-[hsl(var(--miwarp-status-error))]'}"
                           style="height: {Math.max(2, height)}px"
                           title="{latency}ms"
                         ></div>

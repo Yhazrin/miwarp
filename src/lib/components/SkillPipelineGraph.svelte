@@ -129,28 +129,28 @@
       case "running":
         return {
           bgClass: "fill-blue-500/20 stroke-blue-500",
-          borderClass: "border-blue-500",
+          borderClass: "border-[hsl(var(--miwarp-status-info))]",
           icon: "▶",
           label: "Running",
         };
       case "completed":
         return {
           bgClass: "fill-green-500/20 stroke-green-500",
-          borderClass: "border-green-500",
+          borderClass: "border-[hsl(var(--miwarp-status-success))]",
           icon: "✓",
           label: "Completed",
         };
       case "failed":
         return {
           bgClass: "fill-red-500/20 stroke-red-500",
-          borderClass: "border-red-500",
+          borderClass: "border-[hsl(var(--miwarp-status-error))]",
           icon: "✗",
           label: "Failed",
         };
       case "skipped":
         return {
           bgClass: "fill-gray-500/20 stroke-gray-500",
-          borderClass: "border-gray-500",
+          borderClass: "border-muted-foreground",
           icon: "○",
           label: "Skipped",
         };
@@ -342,15 +342,15 @@ running, completed, failed * - Dependency arrows with proper layout */
         <span>Pending</span>
       </div>
       <div class="flex items-center gap-1">
-        <div class="w-2.5 h-2.5 rounded-full bg-blue-500/20 border border-blue-500"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-[hsl(var(--miwarp-status-info)/0.2)] border border-[hsl(var(--miwarp-status-info))]"></div>
         <span>Running</span>
       </div>
       <div class="flex items-center gap-1">
-        <div class="w-2.5 h-2.5 rounded-full bg-green-500/20 border border-green-500"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-[hsl(var(--miwarp-status-success)/0.2)] border border-[hsl(var(--miwarp-status-success))]"></div>
         <span>Completed</span>
       </div>
       <div class="flex items-center gap-1">
-        <div class="w-2.5 h-2.5 rounded-full bg-red-500/20 border border-red-500"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-[hsl(var(--miwarp-status-error)/0.2)] border border-[hsl(var(--miwarp-status-error))]"></div>
         <span>Failed</span>
       </div>
     </div>

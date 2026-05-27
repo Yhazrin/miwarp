@@ -335,12 +335,12 @@
           {#each networkResults as result}
             <div
               class="flex items-center gap-3 rounded-lg border {result.ok
-                ? 'border-green-500/30 bg-green-500/5'
-                : 'border-red-500/30 bg-red-500/5'} p-3"
+                ? 'border-[hsl(var(--miwarp-status-success)/0.3)] bg-[hsl(var(--miwarp-status-success)/0.05)]'
+                : 'border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.05)]'} p-3"
             >
               {#if result.ok}
                 <svg
-                  class="h-5 w-5 text-green-500 shrink-0"
+                  class="h-5 w-5 text-[hsl(var(--miwarp-status-success))] shrink-0"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -348,7 +348,7 @@
                 >
               {:else}
                 <svg
-                  class="h-5 w-5 text-red-500 shrink-0"
+                  class="h-5 w-5 text-[hsl(var(--miwarp-status-error))] shrink-0"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -366,7 +366,7 @@
                 {#if result.ok && result.latency}
                   <p class="text-xs text-muted-foreground">{result.latency}ms</p>
                 {:else if !result.ok && result.error}
-                  <p class="text-xs text-red-500 truncate">{result.error}</p>
+                  <p class="text-xs text-[hsl(var(--miwarp-status-error))] truncate">{result.error}</p>
                 {/if}
               </div>
             </div>
@@ -596,7 +596,7 @@
           <div
             class="rounded-lg border border-miwarp-status-error/30 bg-miwarp-status-error/10 p-3 w-full max-w-sm"
           >
-            <p class="text-sm text-red-500">{error}</p>
+            <p class="text-sm text-[hsl(var(--miwarp-status-error))]">{error}</p>
           </div>
         {/if}
 
@@ -731,7 +731,7 @@
               <div
                 class="rounded-lg border border-miwarp-status-error/30 bg-miwarp-status-error/10 p-2"
               >
-                <p class="text-xs text-red-500">{error}</p>
+                <p class="text-xs text-[hsl(var(--miwarp-status-error))]">{error}</p>
               </div>
             {/if}
 
@@ -761,7 +761,7 @@
           class="flex h-16 w-16 items-center justify-center rounded-full bg-miwarp-status-success/10"
         >
           <svg
-            class="h-8 w-8 text-green-500"
+            class="h-8 w-8 text-[hsl(var(--miwarp-status-success))]"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
