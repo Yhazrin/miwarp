@@ -6,6 +6,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { fmtRelative } from "$lib/i18n/format";
   import { cwdDisplayLabel } from "$lib/utils/format";
+  import Icon from "$lib/components/Icon.svelte";
   import type { CliSessionSummary, DiscoverResult, ImportResult, SyncResult } from "$lib/types";
 
   function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
@@ -244,13 +245,7 @@
           onclick={onclose}
           aria-label={t("common_close")}
         >
-          <svg
-            class="h-5 w-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"><path d="M18 6 6 18M6 6l12 12" /></svg
-          >
+          <Icon name="x" size="lg" />
         </button>
       </div>
 

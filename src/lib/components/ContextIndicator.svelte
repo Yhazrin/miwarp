@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
   import { formatTokenCount } from "$lib/utils/format";
+  import Icon from "$lib/components/Icon.svelte";
 
   let {
     contextUtilization = 0,
@@ -191,15 +192,7 @@
           onclick={closeDetail}
           aria-label={t("common_close")}
         >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M18 6 6 18M6 6l12 12" />
-          </svg>
+          <Icon name="x" size="sm" />
         </button>
       </div>
 

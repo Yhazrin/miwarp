@@ -71,6 +71,7 @@
     hasMultipleVisualLines,
   } from "$lib/utils/input-history";
   import { misencodedNavigationDirection, moveTextareaCaret } from "$lib/utils/prompt-text";
+  import Icon from "$lib/components/Icon.svelte";
 
   const PRIVATE_USE_KEYBOARD_MIN = 0xf700;
   const PRIVATE_USE_KEYBOARD_MAX = 0xf8ff;
@@ -2055,17 +2056,7 @@
             class="ml-0.5 rounded p-0.5 transition-colors hover:bg-[hsl(var(--miwarp-status-info)/0.15)]"
             title={t("prompt_removePaste")}
           >
-            <svg
-              class="h-3 w-3"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-            </svg>
+            <Icon name="x" size="xs" />
           </button>
         </span>
       {/each}

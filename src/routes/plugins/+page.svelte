@@ -38,6 +38,8 @@
   import PluginInstaller from "$lib/components/PluginInstaller.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import { fade } from "svelte/transition";
   import type {
     MarketplacePlugin,
@@ -1082,11 +1084,11 @@
       </div>
 
       {#if totalInstalledCount === 0}
-        <!-- Empty state -->
-        <div class="rounded-xl border border-dashed border-border/50 p-8 text-center">
-          <p class="text-sm text-muted-foreground">{t("extensions_noExtensions")}</p>
-          <p class="text-xs text-muted-foreground/70 mt-1">{t("extensions_noExtensionsDesc")}</p>
-        </div>
+        <EmptyState
+          title={t("extensions_noExtensions")}
+          description={t("extensions_noExtensionsDesc")}
+          variant="dashed"
+        />
       {/if}
 
       <!-- Recommended Actions -->
@@ -1447,13 +1449,7 @@
                 aria-label="Close"
                 onclick={cancelEditor}
               >
-                <svg
-                  class="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
-                >
+                <Icon name="x" size="md" />
               </button>
             </div>
 
@@ -1835,16 +1831,7 @@
                           onclick={() => (communityDetail = null)}
                           title={t("plugin_closePreview")}
                         >
-                          <svg
-                            class="h-3.5 w-3.5"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            ><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
-                          >
+                          <Icon name="x" size="sm" />
                         </button>
                       </div>
 

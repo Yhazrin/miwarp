@@ -9,6 +9,7 @@
   } from "$lib/utils/app-updater";
   import { renderMarkdown } from "$lib/utils/markdown";
   import { currentLocale, t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import readmeEn from "../../../README.md?raw";
   import readmeZhCN from "../../../README.zh-CN.md?raw";
 
@@ -132,13 +133,7 @@
           onclick={() => (open = false)}
           aria-label={t("common_close")}
         >
-          <svg
-            class="h-5 w-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"><path d="M18 6 6 18M6 6l12 12" /></svg
-          >
+          <Icon name="x" size="lg" />
         </button>
       </div>
 

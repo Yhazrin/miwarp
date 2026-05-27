@@ -43,6 +43,7 @@
   import { IS_WINDOWS } from "$lib/utils/platform";
   import { t, LOCALE_REGISTRY, currentLocale, switchLocale } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import { getTransport } from "$lib/transport";
   import {
     PROCESS_VISIBILITY_LEVELS,
@@ -2902,13 +2903,7 @@
                               }}
                               title={t("settings_general_deleteCustom")}
                             >
-                              <svg
-                                class="h-3 w-3"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
-                              >
+                              <Icon name="x" size="xs" />
                             </span>
                           {/if}
                           {#if preset.category === "local"}
@@ -3324,17 +3319,7 @@
                               persistCurrentPlatform();
                             }}
                           >
-                            <svg
-                              class="h-3.5 w-3.5"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-width="2"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                            >
-                              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-                            </svg>
+                            <Icon name="x" size="sm" />
                           </button>
                         </div>
                       {/each}

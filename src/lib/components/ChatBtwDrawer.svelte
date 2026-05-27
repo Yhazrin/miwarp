@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
   import MarkdownContent from "./MarkdownContent.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   interface Props {
     question: string;
@@ -25,17 +26,7 @@
       aria-label={t("chat_closeSideQuestion")}
       class="text-muted-foreground hover:text-foreground transition-colors"
     >
-      <svg
-        class="h-3.5 w-3.5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-      </svg>
+      <Icon name="x" size="sm" />
     </button>
   </div>
   <div class="px-4 py-3 space-y-2">

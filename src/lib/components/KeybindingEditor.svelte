@@ -6,6 +6,7 @@
     RESERVED_KEYS,
   } from "$lib/stores/keybindings.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   let {
     binding,
@@ -113,15 +114,7 @@
           onclick={cancelRecording}
           title={t("common_cancel")}
         >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
-          >
+          <Icon name="x" size="sm" />
         </button>
       {:else if conflictWarning && pendingKey}
         <span
@@ -148,15 +141,7 @@
           onclick={cancelRecording}
           title={t("common_cancel")}
         >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
-          >
+          <Icon name="x" size="sm" />
         </button>
       {:else if pendingKey}
         <button
@@ -179,15 +164,7 @@
           onclick={cancelRecording}
           title={t("common_cancel")}
         >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
-          >
+          <Icon name="x" size="sm" />
         </button>
       {:else}
         <button
@@ -195,15 +172,7 @@
           onclick={cancelRecording}
           title={t("common_cancel")}
         >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg
-          >
+          <Icon name="x" size="sm" />
         </button>
       {/if}
     {:else if binding.editable}

@@ -3,6 +3,7 @@
   import { fade, scale } from "svelte/transition";
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   let { artifact }: { artifact: MediaArtifact } = $props();
 
@@ -61,9 +62,7 @@
         onclick={() => (showModal = false)}
         aria-label={t("imageArtifact_closePreview")}
       >
-        <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
+        <Icon name="x" class="h-8 w-8" />
       </button>
       <img
         src="data:{artifact.mimeType};base64,{artifact.contentBase64}"

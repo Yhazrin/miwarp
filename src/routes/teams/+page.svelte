@@ -7,6 +7,7 @@
   import { dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
 
   const teamStore = getContext<TeamStore>("teamStore");
 
@@ -519,34 +520,20 @@
               >
             </div>
           {:else if teamRuns.length === 0}
-            <!-- Empty state -->
-            <div class="flex flex-col items-center justify-center py-12 px-4 text-center">
-              <div
-                class="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted"
-              >
-                <svg
-                  class="h-5 w-5 text-muted-foreground"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+            <EmptyState
+              icon="👥"
+              description={t("teamRun_emptyDesc")}
+              class="px-4"
+            >
+              {#snippet action()}
+                <button
+                  class="mt-2 rounded-md px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  onclick={goToChat}
                 >
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              </div>
-              <p class="text-xs text-muted-foreground mb-3">{t("teamRun_emptyDesc")}</p>
-              <button
-                class="rounded-md px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                onclick={goToChat}
-              >
-                {t("teamRun_goToChat")}
-              </button>
-            </div>
+                  {t("teamRun_goToChat")}
+                </button>
+              {/snippet}
+            </EmptyState>
           {:else}
             <div class="py-1">
               {#each teamRuns as run (run.id)}
@@ -754,30 +741,12 @@
     <!-- ═══ Legacy Team Monitor Mode ═══ -->
     <div class="flex-1 min-h-0">
       {#if teamStore.teams.length === 0 && !teamStore.loading}
-        <div class="flex flex-col items-center justify-center h-full text-center px-6">
-          <div
-            class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-muted"
-          >
-            <svg
-              class="h-6 w-6 text-muted-foreground"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-          </div>
-          <h2 class="text-sm font-medium text-foreground mb-1">{t("team_noActiveTeams")}</h2>
-          <p class="text-xs text-muted-foreground max-w-sm">
-            {t("team_emptyDesc")}
-          </p>
-        </div>
+        <EmptyState
+          icon="👥"
+          title={t("team_noActiveTeams")}
+          description={t("team_emptyDesc")}
+          class="h-full px-6"
+        />
       {:else if teamStore.loading}
         <div class="flex items-center justify-center h-full">
           <Spinner size="md" />

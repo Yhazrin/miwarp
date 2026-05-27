@@ -3,6 +3,7 @@
   import { KeybindingStore, formatKeyDisplay } from "$lib/stores/keybindings.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { fade, fly } from "svelte/transition";
+  import Icon from "$lib/components/Icon.svelte";
 
   let { open = $bindable(false) }: { open?: boolean } = $props();
 
@@ -70,17 +71,7 @@
           aria-label="Close"
           onclick={() => (open = false)}
         >
-          <svg
-            class="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-          </svg>
+          <Icon name="x" size="md" />
         </button>
       </div>
 

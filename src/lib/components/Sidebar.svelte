@@ -6,6 +6,7 @@
   import SidebarProjectGroup from "./SidebarProjectGroup.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
 
   interface Props {
     /** Whether the sidebar is visible */
@@ -244,22 +245,11 @@
 
         <!-- Empty state -->
         {#if projectFolders.length === 0}
-          <div class="flex flex-col items-center gap-2 px-3 py-8 text-center">
-            <svg
-              class="h-10 w-10 text-muted-foreground/20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-            </svg>
-            <p class="text-xs text-muted-foreground">
-              {t('sidebar_emptyTitle')}<br />{t('sidebar_emptySubtitle')}
-            </p>
-          </div>
+          <EmptyState
+            title={t('sidebar_emptyTitle')}
+            description={t('sidebar_emptySubtitle')}
+            class="px-3 py-8"
+          />
         {/if}
       {/if}
     </div>

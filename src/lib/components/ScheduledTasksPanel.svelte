@@ -3,6 +3,7 @@
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
   import ScheduledTaskCard from "$lib/components/ScheduledTaskCard.svelte";
   import ScheduledTaskEditorPanel from "$lib/components/ScheduledTaskEditorPanel.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
 
   let { cwd = "" }: { cwd?: string } = $props();
 
@@ -69,21 +70,11 @@
           {t("scheduledTasks_loading")}
         </div>
       {:else if filteredTasks.length === 0}
-        <div
-          class="flex flex-col items-center justify-center h-32 gap-2 text-xs text-muted-foreground/50"
-        >
-          <svg
-            class="h-8 w-8 text-muted-foreground/30"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-          <span>{cwd ? t("scheduledTasks_empty") : t("scheduledTasks_empty")}</span>
-        </div>
+        <EmptyState
+          icon="🕐"
+          title={t("scheduledTasks_empty")}
+          class="h-32"
+        />
       {:else}
         <div class="p-2 space-y-2">
           {#if filteredActiveTasks.length > 0}

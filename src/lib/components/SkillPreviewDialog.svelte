@@ -9,6 +9,7 @@
   import { generateSkillPreview, type SkillPreview } from "$lib/services/skill-preview";
   import { t } from "$lib/i18n/index.svelte";
   import { fade, fly } from "svelte/transition";
+  import Icon from "$lib/components/Icon.svelte";
 
   interface Props {
     open?: boolean;
@@ -91,15 +92,7 @@
           aria-label={t('common_close')}
           onclick={handleCancel}
         >
-          <svg
-            class="h-5 w-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M18 6 6 18M6 6l12 12" />
-          </svg>
+          <Icon name="x" size="lg" />
         </button>
       </div>
 

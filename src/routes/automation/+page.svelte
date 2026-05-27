@@ -10,6 +10,7 @@
   import { createEmptyScript } from "$lib/types/automation";
   import AutomationScriptCard from "$lib/components/AutomationScriptCard.svelte";
   import AutomationEditor from "$lib/components/AutomationEditor.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import { fade, fly } from "svelte/transition";
 
   // State
@@ -211,19 +212,21 @@
 
     <!-- Scripts grid -->
     {#if filteredScripts.length === 0}
-      <div class="rounded-lg border border-dashed p-12 text-center">
-        <span class="text-5xl mb-4 block">⚡</span>
-        <h3 class="text-lg font-medium mb-2">{t("automation_emptyTitle")}</h3>
-        <p class="text-sm text-muted-foreground mb-4">
-          {t("automation_emptyDesc")}
-        </p>
-        <button
-          class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          onclick={() => (showNewScriptDialog = true)}
-        >
-          {t("automation_createScript")}
-        </button>
-      </div>
+      <EmptyState
+        icon="⚡"
+        title={t("automation_emptyTitle")}
+        description={t("automation_emptyDesc")}
+        variant="dashed"
+      >
+        {#snippet action()}
+          <button
+            class="mt-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            onclick={() => (showNewScriptDialog = true)}
+          >
+            {t("automation_createScript")}
+          </button>
+        {/snippet}
+      </EmptyState>
     {:else}
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {#each filteredScripts as script (script.id)}

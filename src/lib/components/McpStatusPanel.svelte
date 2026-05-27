@@ -3,6 +3,7 @@
   import * as api from "$lib/api";
   import { slide } from "svelte/transition";
   import { dbg, dbgWarn } from "$lib/utils/debug";
+  import Icon from "$lib/components/Icon.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { statusDotClass, statusLabel, parseServersFromResponse } from "$lib/utils/mcp";
   import { relativeTime } from "$lib/utils/format";
@@ -262,17 +263,7 @@ diagnostics and history * - Quick reconnect with health check */
         onclick={onClose}
         title={t("common_close")}
       >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M18 6 6 18" /><path d="m6 6 12 12" />
-        </svg>
+        <Icon name="x" size="sm" />
       </button>
     </div>
   </div>
