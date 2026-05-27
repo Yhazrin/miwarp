@@ -192,6 +192,7 @@
 
 /* Generic */
 "error.somethingWentWrong" = "出了点问题";
+"error.notConnected" = "未连接";
 "loading.default" = "加载中...";
 
 /* Dashboard */
@@ -256,6 +257,67 @@
 "accentTheme.auroraPomelo" = "极光蜜柚";
 "accentTheme.pomegranateMist" = "石榴薄雾";
 "accentTheme.auroraLime" = "极光青柠";
+
+/* Sync Phase Labels */
+"syncPhase.preparing" = "准备中";
+"syncPhase.connecting" = "连接中";
+"syncPhase.syncing" = "同步中";
+"syncPhase.importing" = "导入中";
+"syncPhase.exporting" = "导出中";
+"syncPhase.finishing" = "完成中";
+"syncPhase.completed" = "已完成";
+"syncPhase.failed" = "失败";
+
+/* Agent Phase Labels */
+"agentPhase.queued" = "排队中";
+"agentPhase.running" = "运行中";
+"agentPhase.waiting" = "等待中";
+"agentPhase.completed" = "已完成";
+"agentPhase.failed" = "失败";
+
+/* Agent Sync Steps */
+"agentSync.organizeSessions" = "整理会话";
+"agentSync.fetchingSessions" = "正在获取会话";
+"agentSync.analyzingSessionData" = "正在分析会话数据";
+"agentSync.buildingIndex" = "正在构建索引";
+"agentSync.analyzeWorkspace" = "分析工作区";
+"agentSync.loadingSessionHistory" = "正在加载会话历史";
+"agentSync.generatingReport" = "正在生成报告";
+"agentSync.rebuildMemoryIndex" = "重建记忆索引";
+"agentSync.verifyingConnection" = "正在验证连接";
+"agentSync.refreshingSessionData" = "正在刷新会话数据";
+"agentSync.rebuildingIndex" = "正在重建索引";
+"agentSync.complete" = "完成";
+"agentSync.cancelledByUser" = "已取消";
+
+/* Session Sync */
+"sessionSync.notConnected" = "未连接";
+"sessionSync.fetchedSessions" = "已获取 %lld 个会话";
+"sessionSync.buildingIndex" = "正在构建索引...";
+"sessionSync.cancelledByUser" = "已取消";
+
+/* WebSocket Errors */
+"wsError.notConnected" = "未连接到服务器";
+"wsError.encodingFailed" = "请求编码失败";
+"wsError.timeout" = "请求超时";
+"wsError.maxReconnectAttempts" = "已达到最大重连次数";
+"wsError.tokenExpired" = "令牌已过期或已轮换。请从桌面端重新连接。";
+"wsError.localNetworkBlocked" = "MiWarp Mobile 无法从应用内访问本地服务器。由于 Safari 可以打开该地址，请检查 iOS 设置 > 隐私与安全 > 局域网 > MiWarp，若未列出请重新安装应用。";
+"wsError.atsBlocked" = "iOS 阻止了本地明文网络请求。请重新安装已启用本地网络的最新版本。";
+"wsError.connectTimeout" = "连接超时。如果 Safari 可以打开该地址，请重新安装 MiWarp Mobile 并允许局域网权限。";
+
+/* Keychain Errors */
+"keychainError.encodingFailed" = "令牌数据编码失败";
+"keychainError.decodingFailed" = "令牌数据解码失败";
+"keychainError.saveFailed" = "保存到钥匙串失败（状态码：%lld）";
+"keychainError.loadFailed" = "从钥匙串加载失败（状态码：%lld）";
+
+/* Artifacts Actions */
+"action.copyPath" = "复制路径";
+"action.share" = "分享";
+
+/* Generic */
+"generic.unknown" = "未知";
 
 /* Accessibility */
 "a11y.modeSelector" = "模式选择器";

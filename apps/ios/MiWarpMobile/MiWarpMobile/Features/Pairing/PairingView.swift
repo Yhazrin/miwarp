@@ -331,10 +331,21 @@ struct QRScannerSheet: View {
                 }
 
                 if let error {
-                    Text(error)
-                        .foregroundStyle(MWColors.statusError)
-                        .font(.callout)
-                        .padding()
+                    VStack(spacing: 8) {
+                        Text(error)
+                            .foregroundStyle(MWColors.statusError)
+                            .font(.callout)
+
+                        Button {
+                            MiHaptics.lightImpact()
+                            self.error = nil
+                        } label: {
+                            Label(String(localized: "action.retry"), systemImage: "arrow.clockwise")
+                                .font(.callout.weight(.medium))
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding()
                 }
             }
             .navigationTitle(String(localized: "pairing.scanQR"))

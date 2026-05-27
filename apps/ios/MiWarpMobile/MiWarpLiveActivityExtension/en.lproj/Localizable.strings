@@ -10,3 +10,20 @@
 /* Live Activity - Dynamic Island Compact */
 "liveActivity.sync" = "Sync";
 "liveActivity.run" = "Run";
+
+/* Sync Phase Labels */
+"syncPhase.preparing" = "Preparing";
+"syncPhase.connecting" = "Connecting";
+"syncPhase.syncing" = "Syncing";
+"syncPhase.importing" = "Importing";
+"syncPhase.exporting" = "Exporting";
+"syncPhase.finishing" = "Finishing";
+"syncPhase.completed" = "Completed";
+"syncPhase.failed" = "Failed";
+
+/* Agent Phase Labels */
+"agentPhase.queued" = "Queued";
+"agentPhase.running" = "Running";
+"agentPhase.waiting" = "Waiting";
+"agentPhase.completed" = "Completed";
+"agentPhase.failed" = "Failed";

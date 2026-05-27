@@ -357,7 +357,7 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
     private func scheduleReconnect(generation: UInt64) {
         guard generation == connectionGeneration else { return }
         guard !isIntentionalClose, reconnectAttempt < maxReconnectAttempt else {
-            connectionState = .serverUnavailable(reason: "Max reconnect attempts reached")
+            connectionState = .serverUnavailable(reason: String(localized: "wsError.maxReconnectAttempts"))
             return
         }
 
@@ -388,7 +388,7 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
             self.logger.wsError("Connection timed out: \(self.maskedURL(url))")
             task.cancel(with: .goingAway, reason: nil)
             self.connectionState = .serverUnavailable(
-                reason: "Connection timed out. If Safari can open this address, reinstall MiWarp Mobile and allow Local Network permission."
+                reason: String(localized: "wsError.connectTimeout")
             )
         }
     }
@@ -435,10 +435,10 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
     private func connectionTroubleshootingReason(for error: Error) -> String {
         let nsError = error as NSError
         if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorNotConnectedToInternet {
-            return "MiWarp Mobile cannot reach the local server from inside the app. Since Safari can open it, check iOS Settings > Privacy & Security > Local Network > MiWarp, then reinstall the app if MiWarp is not listed."
+            return String(localized: "wsError.localNetworkBlocked")
         }
         if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorAppTransportSecurityRequiresSecureConnection {
-            return "iOS blocked local cleartext networking. Reinstall the latest build with local networking enabled."
+            return String(localized: "wsError.atsBlocked")
         }
         return error.localizedDescription
     }
@@ -480,9 +480,9 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
 
         var errorDescription: String? {
             switch self {
-            case .notConnected: return "Not connected to server"
-            case .encodingFailed: return "Failed to encode request"
-            case .timeout: return "Request timed out"
+            case .notConnected: return String(localized: "wsError.notConnected")
+            case .encodingFailed: return String(localized: "wsError.encodingFailed")
+            case .timeout: return String(localized: "wsError.timeout")
             case .serverError(let msg): return msg
             }
         }
@@ -515,7 +515,7 @@ extension MiWarpWebSocketClient: URLSessionWebSocketDelegate {
         // 4401 = token rotated / session expired / token version mismatch
         // Reconnecting won't help — surface auth error immediately
         if closeCode.rawValue == 4401 {
-            connectionState = .authFailed(reason: "Token expired or rotated. Please reconnect from the desktop.")
+            connectionState = .authFailed(reason: String(localized: "wsError.tokenExpired"))
             return
         }
 

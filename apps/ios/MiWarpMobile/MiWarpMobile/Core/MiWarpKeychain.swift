@@ -89,13 +89,13 @@ enum MiWarpKeychain {
         var errorDescription: String? {
             switch self {
             case .encodingFailed:
-                return "Failed to encode token data"
+                return String(localized: "keychainError.encodingFailed")
             case .decodingFailed:
-                return "Failed to decode token data"
+                return String(localized: "keychainError.decodingFailed")
             case .saveFailed(let status):
-                return "Failed to save to keychain (status: \(status))"
+                return String.localizedStringWithFormat(String(localized: "keychainError.saveFailed"), Int(status))
             case .loadFailed(let status):
-                return "Failed to load from keychain (status: \(status))"
+                return String.localizedStringWithFormat(String(localized: "keychainError.loadFailed"), Int(status))
             }
         }
     }

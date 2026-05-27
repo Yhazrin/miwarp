@@ -23,7 +23,7 @@ final class SessionSyncManager: ObservableObject {
     func startSync(store: MiWarpConnectionStore) {
         guard !isSyncing else { return }
         guard store.isConnected, let rpc = store.rpc else {
-            errorMessage = "Not connected"
+            errorMessage = String(localized: "sessionSync.notConnected")
             return
         }
 
@@ -68,7 +68,7 @@ final class SessionSyncManager: ObservableObject {
             }
 
             totalCount = runs.count
-            updateProgress(count: 0, total: runs.count, item: "Fetched \(runs.count) sessions")
+            updateProgress(count: 0, total: runs.count, item: String.localizedStringWithFormat(String(localized: "sessionSync.fetchedSessions"), runs.count))
 
             // Phase 4: Importing — load history for each run
             updatePhase(.importing)
@@ -95,7 +95,7 @@ final class SessionSyncManager: ObservableObject {
 
             // Phase 5: Finishing — build index
             updatePhase(.finishing)
-            updateProgress(count: runs.count, total: runs.count, item: "Building index...")
+            updateProgress(count: runs.count, total: runs.count, item: String(localized: "sessionSync.buildingIndex"))
             try? await Task.sleep(nanoseconds: 800_000_000)
 
             // Phase 6: Complete
@@ -110,7 +110,7 @@ final class SessionSyncManager: ObservableObject {
     func cancelSync() {
         syncTask?.cancel()
         syncTask = nil
-        failSync("Cancelled by user")
+        failSync(String(localized: "sessionSync.cancelledByUser"))
     }
 
     private func updatePhase(_ phase: SyncPhase) {
