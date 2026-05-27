@@ -366,7 +366,7 @@ diagnostics and history * - Quick reconnect with health check */
             <div class="px-3 pb-3 pl-8 space-y-2 text-[10px]">
               {#if server.error}
                 <div class="p-2 rounded bg-destructive/10 border border-destructive/20">
-                  <div class="font-medium text-destructive mb-0.5">Error</div>
+                  <div class="font-medium text-destructive mb-0.5">{t('mcpStatus_error')}</div>
                   <div class="text-destructive/80 font-mono">{server.error}</div>
                 </div>
               {/if}
@@ -376,7 +376,7 @@ diagnostics and history * - Quick reconnect with health check */
                 {#if health.latencyHistory.length > 1}
                   <div class="space-y-1">
                     <div class="text-muted-foreground uppercase tracking-wider">
-                      Latency History
+                      {t('mcpStatus_latencyHistory')}
                     </div>
                     <div class="flex items-end gap-0.5 h-6">
                       {#each health.latencyHistory as latency, _i}
