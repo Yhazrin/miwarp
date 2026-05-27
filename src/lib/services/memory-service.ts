@@ -422,7 +422,7 @@ class MemoryService {
 
 let defaultService: MemoryService | null = null;
 
-function getMemoryService(cwd?: string): MemoryService {
+function _getMemoryService(cwd?: string): MemoryService {
   if (!defaultService) {
     defaultService = new MemoryService(cwd);
   }
@@ -437,7 +437,7 @@ function getMemoryService(cwd?: string): MemoryService {
 /**
  * Format memory file for display.
  */
-function formatMemoryLabel(path: string, scope: string): string {
+function _formatMemoryLabel(path: string, scope: string): string {
   const parts = path.split("/");
   const filename = parts.pop() ?? path;
 
@@ -459,7 +459,7 @@ function formatMemoryLabel(path: string, scope: string): string {
 /**
  * Check if a memory file should be auto-included.
  */
-function shouldAutoInclude(filename: string): boolean {
+function _shouldAutoInclude(filename: string): boolean {
   const autoIncludePatterns = [
     /^CLAUDE\.md$/i,
     /^CLAUDE\.local\.md$/i,
@@ -473,7 +473,7 @@ function shouldAutoInclude(filename: string): boolean {
 /**
  * Extract tags from memory content.
  */
-function extractTags(content: string): string[] {
+function _extractTags(content: string): string[] {
   const tags: string[] = [];
 
   // Check frontmatter

@@ -81,7 +81,7 @@
   }
 
   // Param field component based on type
-  function getParamInputType(key: string): "text" | "number" | "checkbox" {
+  function _getParamInputType(key: string): "text" | "number" | "checkbox" {
     switch (key) {
       case "duration":
       case "scrollAmount":

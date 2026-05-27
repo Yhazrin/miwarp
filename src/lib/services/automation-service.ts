@@ -42,7 +42,7 @@ declare function mcp__Claude_in_Chrome__tabs_context_mcp(args: {
   createIfEmpty?: boolean;
 }): Promise<{ tabs: Array<{ id: number; url?: string }> }>;
 
-declare function mcp__Claude_in_Chrome__tabs_create_mcp(
+declare function _mcp__Claude_in_Chrome__tabs_create_mcp(
   args: Record<string, unknown>,
 ): Promise<{ id: number }>;
 
@@ -333,7 +333,7 @@ async function executeScroll(step: AutomationStep, tabId: number): Promise<unkno
 
 async function executeScreenshot(step: AutomationStep, tabId: number): Promise<unknown> {
   const region = step.params.region;
-  const fullPage = step.params.fullPage ?? false;
+  const _fullPage = step.params.fullPage ?? false;
 
   dbg(TAG, "Taking screenshot");
   return mcp__Claude_in_Chrome__computer({
@@ -426,9 +426,9 @@ async function executeCloseTab(step: AutomationStep): Promise<void> {
   await mcp__Claude_in_Chrome__tabs_close_mcp({ tabId });
 }
 
-async function executeUploadFile(step: AutomationStep, tabId: number): Promise<void> {
+async function executeUploadFile(step: AutomationStep, _tabId: number): Promise<void> {
   const filePath = step.params.filePath;
-  const coordinate = step.params.coordinate;
+  const _coordinate = step.params.coordinate;
 
   if (!filePath) {
     throw new Error("Upload file step requires filePath parameter");
