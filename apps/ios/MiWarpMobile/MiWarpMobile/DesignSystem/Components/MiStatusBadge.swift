@@ -7,7 +7,7 @@ struct MiStatusBadge: View {
     var body: some View {
         Text(text)
             .font(.caption2.weight(.medium))
-            .foregroundColor(.white)
+            .foregroundColor(MWColors.accentOnAccent)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(color, in: Capsule())

@@ -190,55 +190,55 @@
     let preview = "";
     switch (cmd.action) {
       case "navigate":
-        preview = `导航到: ${cmd.payload || "/"}`;
+        preview = `${t("cmd_previewNavigate")}: ${cmd.payload || "/"}`;
         break;
       case "send_prompt":
-        preview = `发送提示: ${cmd.payload?.slice(0, 60)}${cmd.payload && cmd.payload.length > 60 ? "..." : ""}`;
+        preview = `${t("cmd_previewSendPrompt")}: ${cmd.payload?.slice(0, 60)}${cmd.payload && cmd.payload.length > 60 ? "..." : ""}`;
         break;
       case "toggle_state":
-        preview = cmd.payload === "plan_mode" ? "切换计划模式" : `切换状态: ${cmd.payload}`;
+        preview = cmd.payload === "plan_mode" ? t("cmd_previewTogglePlan") : `${t("cmd_previewToggleState")}: ${cmd.payload}`;
         break;
       case "open_modal": {
         const modalNames: Record<string, string> = {
-          "model-selector": "模型选择器",
-          "folder-browser": "文件夹浏览器",
-          "version-info": "版本信息",
-          permissions: "权限设置",
+          "model-selector": t("cmd_modalModelSelector"),
+          "folder-browser": t("cmd_modalFolderBrowser"),
+          "version-info": t("cmd_modalVersionInfo"),
+          permissions: t("cmd_modalPermissions"),
         };
-        preview = `打开: ${modalNames[cmd.payload || ""] || cmd.payload}`;
+        preview = `${t("cmd_previewOpen")}: ${modalNames[cmd.payload || ""] || cmd.payload}`;
         break;
       }
       case "ipc_command": {
         const ipcNames: Record<string, string> = {
-          get_git_diff: "获取 Git 差异",
-          get_git_status: "获取 Git 状态",
-          get_run_artifacts: "获取运行统计",
-          export_conversation: "导出对话 (Markdown)",
-          export_conversation_html: "导出对话 (HTML)",
-          stop_run: "停止当前运行",
-          check_agent_cli: "检查 CLI 安装状态",
+          get_git_diff: t("cmd_ipcGitDiff"),
+          get_git_status: t("cmd_ipcGitStatus"),
+          get_run_artifacts: t("cmd_ipcRunArtifacts"),
+          export_conversation: t("cmd_ipcExportMd"),
+          export_conversation_html: t("cmd_ipcExportHtml"),
+          stop_run: t("cmd_ipcStopRun"),
+          check_agent_cli: t("cmd_ipcCheckCli"),
         };
-        preview = `执行: ${ipcNames[cmd.payload || ""] || cmd.payload}`;
+        preview = `${t("cmd_previewExecute")}: ${ipcNames[cmd.payload || ""] || cmd.payload}`;
         break;
       }
       case "panel:multi-agent":
-        preview = "打开多 Agent 面板";
+        preview = t("cmd_previewMultiAgent");
         break;
       case "preset:fullstack":
-        preview = "🚀 启动全栈开发模式";
+        preview = `🚀 ${t("cmd_previewFullstack")}`;
         break;
       case "preset:review":
-        preview = "🔍 代码审查模式";
+        preview = `🔍 ${t("cmd_previewReview")}`;
         break;
       case "preset:test":
-        preview = "🧪 测试驱动开发";
+        preview = `🧪 ${t("cmd_previewTest")}`;
         break;
       case "preset:docs":
-        preview = "📝 生成文档";
+        preview = `📝 ${t("cmd_previewDocs")}`;
         break;
       default:
         if (cmd.payload) {
-          preview = `执行: ${cmd.payload}`;
+          preview = `${t("cmd_previewExecute")}: ${cmd.payload}`;
         }
     }
 
@@ -249,7 +249,7 @@
 
     // Add permission hint
     if (requiresPermission(cmd)) {
-      preview += " ⚠️ 需要确认";
+      preview += ` ⚠️ ${t("cmd_requiresConfirm")}`;
     }
 
     previewContent = preview;
@@ -330,9 +330,9 @@
           try {
             const a = await api.getRunArtifacts(runId);
             const info = [
-              `Cost: ${a.cost_estimate != null ? "$" + a.cost_estimate.toFixed(4) : "N/A"}`,
-              `Files changed: ${a.files_changed.length}`,
-              `Commands: ${a.commands.length}`,
+              `${t("cmd_artifactCost")}: ${a.cost_estimate != null ? "$" + a.cost_estimate.toFixed(4) : "N/A"}`,
+              `${t("cmd_artifactFiles")}: ${a.files_changed.length}`,
+              `${t("cmd_artifactCommands")}: ${a.commands.length}`,
             ].join("\n");
             showResultModal(t("cmd_runInfo"), info);
           } catch (e) {
@@ -387,8 +387,8 @@
           const claude = await api.checkAgentCli("claude");
           const lines = [
             `Claude: ${claude.found ? t("cmd_cliInstalled") : t("cmd_cliNotFound")}`,
-            claude.path ? `  Path: ${claude.path}` : "",
-            claude.version ? `  Version: ${claude.version}` : "",
+            claude.path ? `  ${t("cmd_cliPath")}: ${claude.path}` : "",
+            claude.version ? `  ${t("cmd_cliVersion")}: ${claude.version}` : "",
           ]
             .filter(Boolean)
             .join("\n");
@@ -474,11 +474,11 @@
   let searchModeLabel = $derived.by(() => {
     switch (searchMode) {
       case "fuzzy":
-        return "模糊搜索";
+        return t("cmd_searchFuzzy");
       case "nl":
-        return "语义搜索";
+        return t("cmd_searchSemantic");
       default:
-        return "精确搜索";
+        return t("cmd_searchExact");
     }
   });
 
@@ -545,7 +545,7 @@
                 const currentIdx = modes.indexOf(searchMode);
                 searchMode = modes[(currentIdx + 1) % modes.length];
               }}
-              title="切换搜索模式 (Ctrl+F 模糊, Ctrl+N 语义)"
+              title={t("cmd_searchModeTooltip")}
             >
               {searchModeLabel}
             </button>
@@ -651,7 +651,7 @@
                     {#if requiresPermission(cmd) && idx === selectedIndex}
                       <span
                         class="text-[10px] text-amber-600 dark:text-amber-400 shrink-0"
-                        title="需要确认"
+                        title={t("cmd_requiresConfirm")}
                       >
                         ⚠️
                       </span>
@@ -664,7 +664,7 @@
 
           {#if indexMap.size === 0}
             <div class="py-6 text-center text-sm text-muted-foreground">
-              {query ? t("cmd_noCommandsFound") : "没有可用的命令"}
+              {query ? t("cmd_noCommandsFound") : t("cmd_noCommandsAvailable")}
             </div>
           {/if}
         </div>
@@ -673,9 +673,9 @@
         <div
           class="border-t px-4 py-2 flex items-center justify-between text-xs text-muted-foreground"
         >
-          <span>↑↓ 导航 · Enter 执行 · Tab 预览 · Ctrl+F 模糊 · Ctrl+N 语义</span>
+          <span>{t("cmd_footerHints")}</span>
           {#if indexMap.size > 0}
-            <span>{indexMap.size} 条命令</span>
+            <span>{t("cmd_footerCount", { count: indexMap.size.toString() })}</span>
           {/if}
         </div>
       </div>
@@ -690,7 +690,7 @@
           }}
         >
           <span>⚡</span>
-          <span>工作流</span>
+          <span>{t("cmd_quickWorkflows")}</span>
         </button>
         <button
           class="flex items-center gap-1.5 rounded-md bg-accent/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors"
@@ -700,7 +700,7 @@
           }}
         >
           <span>🧩</span>
-          <span>技能</span>
+          <span>{t("cmd_quickSkills")}</span>
         </button>
         <button
           class="flex items-center gap-1.5 rounded-md bg-accent/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors"
@@ -710,7 +710,7 @@
           }}
         >
           <span>📜</span>
-          <span>历史</span>
+          <span>{t("cmd_quickHistory")}</span>
         </button>
         <!-- Natural language shortcut -->
         <button
@@ -719,10 +719,10 @@
             searchMode = "nl";
             inputEl?.focus();
           }}
-          title="切换到语义搜索模式，用自然语言描述你想做什么"
+          title={t("cmd_semanticTooltip")}
         >
           <span>✨</span>
-          <span>语义搜索</span>
+          <span>{t("cmd_searchSemantic")}</span>
         </button>
       </div>
     </div>

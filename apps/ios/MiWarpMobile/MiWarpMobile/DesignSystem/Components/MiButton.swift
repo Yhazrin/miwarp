@@ -40,9 +40,9 @@ struct MiButton: View {
 
     private var foregroundColor: Color {
         switch style {
-        case .primary: return .white
+        case .primary: return MWColors.accentOnAccent
         case .secondary: return theme.textPrimary
-        case .destructive: return .white
+        case .destructive: return MWColors.accentOnAccent
         }
     }
 

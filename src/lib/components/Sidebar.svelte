@@ -157,7 +157,7 @@
           <p
             class="flex items-center justify-between text-[11px] text-muted-foreground px-1 pt-0.5"
           >
-            <span>{searchResultCount} result{searchResultCount !== 1 ? "s" : ""}</span>
+            <span>{t("sidebar_searchResults", { count: searchResultCount.toString() })}</span>
           </p>
         {/if}
       {/if}

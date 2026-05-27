@@ -72,13 +72,13 @@
     aria-valuemax={100}
     aria-label={t("context_usageMeter", { pct: percentage.toString() })}
   >
-    <div class="w-16 h-1.5 bg-neutral-700 rounded-full overflow-hidden">
+    <div class="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
       <div
         class="h-full rounded-full transition-all duration-300 {progressColor}"
         style="width: {percentage}%"
       ></div>
     </div>
-    <span class="text-xs text-neutral-400 tabular-nums">
+    <span class="text-xs text-muted-foreground tabular-nums">
       {percentage}%
     </span>
   </div>
@@ -94,11 +94,11 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-2">
       <div class="flex items-center gap-2">
-        <span class="text-xs font-medium text-neutral-300">
+        <span class="text-xs font-medium text-foreground">
           {t("context.tokenUsage")}
         </span>
         {#if model}
-          <span class="text-xs text-neutral-500">{model}</span>
+          <span class="text-xs text-muted-foreground">{model}</span>
         {/if}
       </div>
       <div class="flex items-center gap-2">
@@ -108,7 +108,7 @@
           </span>
         {/if}
         {#if showCost && cost > 0}
-          <span class="text-xs text-neutral-400 tabular-nums">
+          <span class="text-xs text-muted-foreground tabular-nums">
             {formatCost(cost)}
           </span>
         {/if}
@@ -116,11 +116,11 @@
     </div>
 
     <!-- Progress bar -->
-    <div class="relative h-2.5 bg-neutral-800 rounded-full overflow-hidden">
+    <div class="relative h-2.5 bg-muted rounded-full overflow-hidden">
       <!-- Threshold markers -->
       <div class="absolute inset-0 flex">
-        <div class="w-1/2 border-r border-dashed border-neutral-700"></div>
-        <div class="w-3/4 border-r border-dashed border-neutral-700"></div>
+        <div class="w-1/2 border-r border-dashed border-border"></div>
+        <div class="w-3/4 border-r border-dashed border-border"></div>
       </div>
 
       <!-- Fill -->
@@ -132,7 +132,7 @@
 
     <!-- Percentage label -->
     <div class="flex justify-end mt-1">
-      <span class="text-xs text-neutral-400 tabular-nums">
+      <span class="text-xs text-muted-foreground tabular-nums">
         {percentage}%
       </span>
     </div>
@@ -142,8 +142,8 @@
       <!-- Input -->
       <div class="flex items-center gap-1">
         <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-        <span class="text-xs text-neutral-400">{t('context_input')}</span>
-        <span class="text-xs tabular-nums text-neutral-300">
+        <span class="text-xs text-muted-foreground">{t('context_input')}</span>
+        <span class="text-xs tabular-nums text-foreground">
           {formatTokens(inputTokens)}
         </span>
       </div>
@@ -151,8 +151,8 @@
       <!-- Output -->
       <div class="flex items-center gap-1">
         <span class="w-2 h-2 rounded-full bg-purple-500"></span>
-        <span class="text-xs text-neutral-400">{t('context_output')}</span>
-        <span class="text-xs tabular-nums text-neutral-300">
+        <span class="text-xs text-muted-foreground">{t('context_output')}</span>
+        <span class="text-xs tabular-nums text-foreground">
           {formatTokens(outputTokens)}
         </span>
       </div>
@@ -161,8 +161,8 @@
       {#if cacheReadTokens > 0}
         <div class="flex items-center gap-1">
           <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span class="text-xs text-neutral-400">{t('context_cache')}</span>
-          <span class="text-xs tabular-nums text-neutral-300">
+          <span class="text-xs text-muted-foreground">{t('context_cache')}</span>
+          <span class="text-xs tabular-nums text-foreground">
             {formatTokens(cacheReadTokens)}
           </span>
         </div>
@@ -172,8 +172,8 @@
       {#if cacheWriteTokens > 0}
         <div class="flex items-center gap-1">
           <span class="w-2 h-2 rounded-full bg-amber-500"></span>
-          <span class="text-xs text-neutral-400">{t('context_write')}</span>
-          <span class="text-xs tabular-nums text-neutral-300">
+          <span class="text-xs text-muted-foreground">{t('context_write')}</span>
+          <span class="text-xs tabular-nums text-foreground">
             {formatTokens(cacheWriteTokens)}
           </span>
         </div>
@@ -181,8 +181,8 @@
 
       <!-- Total -->
       <div class="flex items-center gap-1 ml-auto">
-        <span class="text-xs text-neutral-400">{t('context_totalTokens')}</span>
-        <span class="text-xs tabular-nums font-medium text-neutral-200">
+        <span class="text-xs text-muted-foreground">{t('context_totalTokens')}</span>
+        <span class="text-xs tabular-nums font-medium text-foreground">
           {formatTokens(totalTokens)}
         </span>
       </div>
@@ -190,7 +190,7 @@
 
     <!-- Warning message -->
     {#if warningLevel !== "none"}
-      <div class="mt-2 text-xs text-neutral-400 flex items-center gap-1">
+      <div class="mt-2 text-xs text-muted-foreground flex items-center gap-1">
         <span>{getWarningMessage(warningLevel)}</span>
       </div>
     {/if}
@@ -198,20 +198,20 @@
     <!-- Tooltip (detailed breakdown on hover) -->
     {#if showTooltip}
       <div
-        class="absolute left-0 right-0 bottom-full mb-2 p-3 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl z-50"
+        class="absolute left-0 right-0 bottom-full mb-2 p-3 bg-popover border border-border rounded-lg shadow-xl z-50"
       >
         <div class="text-xs space-y-1">
           <div class="flex justify-between">
-            <span class="text-neutral-400">{t('context_totalTokens')}</span>
-            <span class="tabular-nums text-neutral-200">{totalTokens.toLocaleString()}</span>
+            <span class="text-muted-foreground">{t('context_totalTokens')}</span>
+            <span class="tabular-nums text-foreground">{totalTokens.toLocaleString()}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-neutral-400">{t('context_effective')} (in + out):</span>
-            <span class="tabular-nums text-neutral-200">{effectiveTokens.toLocaleString()}</span>
+            <span class="text-muted-foreground">{t('context_effective')} (in + out):</span>
+            <span class="tabular-nums text-foreground">{effectiveTokens.toLocaleString()}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-neutral-400">{t('context_cacheEfficiency')}</span>
-            <span class="tabular-nums text-neutral-200">
+            <span class="text-muted-foreground">{t('context_cacheEfficiency')}</span>
+            <span class="tabular-nums text-foreground">
               {effectiveTokens > 0
                 ? ((cacheReadTokens / effectiveTokens) * 100).toFixed(1) + "%"
                 : "N/A"}
@@ -219,8 +219,8 @@
           </div>
           {#if cost > 0}
             <div class="flex justify-between">
-              <span class="text-neutral-400">Cost:</span>
-              <span class="tabular-nums text-neutral-200">{formatCost(cost)}</span>
+              <span class="text-muted-foreground">{t('context_cost')}</span>
+              <span class="tabular-nums text-foreground">{formatCost(cost)}</span>
             </div>
           {/if}
         </div>

@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import type { ExecutionLog } from "$lib/types/task-execution-monitor";
+  import { t } from "$lib/i18n/index.svelte";
 
   interface Props {
     taskId?: string;
