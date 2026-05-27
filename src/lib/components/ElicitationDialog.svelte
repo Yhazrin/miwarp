@@ -501,7 +501,7 @@
     border: 1px solid hsl(var(--border) / 0.6);
     border-radius: 8px;
     outline: none;
-    transition: border-color 0.15s ease;
+    transition: border-color var(--motion-fast) var(--ease-standard);
   }
 
   .elicitation-select:focus,
