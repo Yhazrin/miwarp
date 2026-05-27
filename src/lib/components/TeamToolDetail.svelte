@@ -16,7 +16,7 @@
     <div class="rounded bg-muted p-2">
       <div class="text-xs text-muted-foreground">
         {#if tool.input?.team_name}
-          <span class="font-medium text-teal-600 dark:text-teal-400">{tool.input.team_name}</span>
+          <span class="font-medium text-[hsl(var(--miwarp-status-info))]">{tool.input.team_name}</span>
         {/if}
         {#if tool.input?.description}
           <p class="mt-1 text-muted-foreground/80 line-clamp-2">{tool.input.description}</p>
@@ -26,7 +26,7 @@
     {#if tool.status === "success" && outputText}
       <div class="rounded bg-muted p-2">
         <span
-          class="inline-flex items-center gap-1 rounded-full bg-teal-500/10 px-2 py-0.5 text-[11px] font-medium text-teal-600 dark:text-teal-400"
+          class="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--miwarp-status-info)/0.1)] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--miwarp-status-info))]"
         >
           <svg
             class="h-3 w-3"
@@ -78,7 +78,7 @@
           <span
             class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium {taskStatus ===
             'completed'
-              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+              ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
               : taskStatus === 'in_progress'
                 ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
                 : 'bg-muted text-muted-foreground'}">{taskStatus}</span
@@ -147,7 +147,7 @@
           <span
             class="inline-flex items-center rounded-full px-1.5 py-0.5 font-medium {statusChange.from ===
             'completed'
-              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+              ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
               : statusChange.from === 'in_progress'
                 ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
                 : 'bg-muted text-muted-foreground'}">{statusChange.from}</span
@@ -156,7 +156,7 @@
           <span
             class="inline-flex items-center rounded-full px-1.5 py-0.5 font-medium {statusChange.to ===
             'completed'
-              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+              ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
               : statusChange.to === 'in_progress'
                 ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
                 : 'bg-muted text-muted-foreground'}">{statusChange.to}</span
@@ -166,7 +166,7 @@
         <span
           class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium {updatedStatus ===
           'completed'
-            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+            ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
             : updatedStatus === 'in_progress'
               ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
               : 'bg-muted text-muted-foreground'}">{updatedStatus}</span
@@ -201,7 +201,7 @@
                   <span
                     class="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium {task.status ===
                     'completed'
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                      ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
                       : task.status === 'in_progress'
                         ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
                         : 'bg-muted text-muted-foreground'}">{task.status}</span
@@ -253,7 +253,7 @@
               <span
                 class="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium {task.status ===
                 'completed'
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                  ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
                   : task.status === 'in_progress'
                     ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
                     : 'bg-muted text-muted-foreground'}">{task.status}</span
@@ -328,10 +328,10 @@
           <span
             class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium {tool
               .input.type === 'broadcast'
-              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+              ? 'bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]'
               : tool.input.type === 'shutdown_request'
                 ? 'bg-miwarp-status-error/10 text-miwarp-status-error'
-                : 'bg-violet-500/10 text-violet-600 dark:text-violet-400'}">{tool.input.type}</span
+                : 'bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]'}">{tool.input.type}</span
           >
         {/if}
         {#if tool.input?.recipient}
@@ -354,7 +354,7 @@
     {#if tool.status === "success"}
       <div class="rounded bg-muted p-2">
         <span
-          class="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400"
+          class="inline-flex items-center gap-1 text-[11px] text-[hsl(var(--miwarp-status-success))]"
         >
           <svg
             class="h-3 w-3"

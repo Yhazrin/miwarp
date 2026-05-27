@@ -39,7 +39,7 @@
     {
       key: "skills",
       label: t("pluginCard_skills"),
-      color: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+      color: "bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]",
     },
     {
       key: "commands",
@@ -49,17 +49,17 @@
     {
       key: "agents",
       label: t("pluginCard_agents"),
-      color: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+      color: "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]",
     },
     {
       key: "hooks",
       label: t("pluginCard_hooks"),
-      color: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+      color: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]",
     },
     {
       key: "mcp_servers",
       label: t("pluginCard_mcp"),
-      color: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+      color: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
     },
     {
       key: "lsp_servers",
@@ -70,14 +70,14 @@
 
   const categoryColors: Record<string, string> = {
     development: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
-    productivity: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+    productivity: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
     security: "bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]",
-    testing: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    learning: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+    testing: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]",
+    learning: "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]",
     database: "bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]",
     monitoring: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]",
-    deployment: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
-    design: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+    deployment: "bg-[hsl(var(--miwarp-accent-primary)/0.1)] text-[hsl(var(--miwarp-accent-primary))]",
+    design: "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]",
   };
 
   function hasComponent(

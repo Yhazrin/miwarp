@@ -1468,13 +1468,13 @@
                               >{bk.reads}R</span
                             >{/if}
                           {#if bk.searches > 0}<span
-                              class="text-purple-500/70 dark:text-purple-400/70"
+                              class="text-[hsl(var(--miwarp-accent-violet)/0.7)]"
                               >{bk.searches}S</span
                             >{/if}
                           {#if bk.bash > 0}<span
-                              class="text-emerald-500/70 dark:text-emerald-400/70">{bk.bash}B</span
+                              class="text-[hsl(var(--miwarp-status-success)/0.7)]">{bk.bash}B</span
                             >{/if}
-                          {#if bk.writes > 0}<span class="text-amber-500/70 dark:text-amber-400/70"
+                          {#if bk.writes > 0}<span class="text-[hsl(var(--miwarp-status-warning)/0.7)]"
                               >{bk.writes}W</span
                             >{/if}
                           <span

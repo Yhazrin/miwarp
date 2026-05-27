@@ -395,7 +395,7 @@
             <h2 class="text-sm font-semibold text-foreground">{teamStore.selectedTeam}</h2>
             {#if teamStore.teamConfig}
               <span
-                class="rounded-full bg-teal-500/10 px-2 py-0.5 text-[10px] font-medium text-teal-600 dark:text-teal-400"
+                class="rounded-full bg-[hsl(var(--miwarp-status-info)/0.1)] px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--miwarp-status-info))]"
                 >{t("team_membersCount", {
                   count: String(teamStore.teamConfig.members.length),
                 })}</span
@@ -575,7 +575,7 @@
                     <span
                       class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium
                         {run.status === 'completed'
-                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                        ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
                         : run.status === 'failed'
                           ? 'bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]'
                           : run.status === 'running' || run.status === 'planning'
@@ -632,7 +632,7 @@
               <span
                 class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium
                   {selectedRun.status === 'completed'
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                  ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
                   : selectedRun.status === 'failed'
                     ? 'bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]'
                     : selectedRun.status === 'running' || selectedRun.status === 'planning'
@@ -698,7 +698,7 @@
                       {#if member.status === "running"}
                         <span class="ml-auto text-[10px] text-[hsl(var(--miwarp-status-info))] animate-pulse">...</span>
                       {:else if member.status === "completed"}
-                        <span class="ml-auto text-[10px] text-emerald-500">{t("teamRun_done")}</span
+                        <span class="ml-auto text-[10px] text-[hsl(var(--miwarp-status-success))]">{t("teamRun_done")}</span
                         >
                       {:else if member.status === "failed"}
                         <span class="ml-auto text-[10px] text-[hsl(var(--miwarp-status-error))]">{t("teamRun_failed")}</span>
@@ -798,7 +798,7 @@
                     {teamStore.teamConfig.name}
                   </h1>
                   <span
-                    class="rounded-full bg-teal-500/10 px-2 py-0.5 text-[10px] font-medium text-teal-600 dark:text-teal-400"
+                    class="rounded-full bg-[hsl(var(--miwarp-status-info)/0.1)] px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--miwarp-status-info))]"
                     >{t("team_membersCount", {
                       count: String(teamStore.teamConfig.members.length),
                     })}</span
@@ -891,13 +891,13 @@
                     {/if}
                     {#if member.isActive}
                       <span
-                        class="rounded bg-emerald-500/10 px-1 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+                        class="rounded bg-[hsl(var(--miwarp-status-success)/0.1)] px-1 py-0.5 text-[10px] font-medium text-[hsl(var(--miwarp-status-success))]"
                         >{t("team_badgeActive")}</span
                       >
                     {/if}
                     {#if member.planModeRequired}
                       <span
-                        class="rounded bg-violet-500/10 px-1 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400"
+                        class="rounded bg-[hsl(var(--miwarp-accent-violet)/0.1)] px-1 py-0.5 text-[10px] font-medium text-[hsl(var(--miwarp-accent-violet))]"
                         >{t("team_badgePlan")}</span
                       >
                     {/if}
@@ -1073,13 +1073,13 @@
                                   {/if}
                                 </div>
                               {:else if parsed.type === "task_completed"}
-                                <div class="text-[11px] text-emerald-600 dark:text-emerald-400">
+                                <div class="text-[11px] text-[hsl(var(--miwarp-status-success))]">
                                   {t("team_msgCompleted", {
                                     id: String(parsed.data.taskId),
                                   })}{parsed.data.taskSubject ? `: ${parsed.data.taskSubject}` : ""}
                                 </div>
                               {:else if parsed.type === "task_assignment"}
-                                <div class="text-[11px] text-teal-600 dark:text-teal-400">
+                                <div class="text-[11px] text-[hsl(var(--miwarp-status-info))]">
                                   {t("team_msgAssigned", { id: String(parsed.data.taskId) })}{parsed
                                     .data.subject
                                     ? `: ${parsed.data.subject}`
@@ -1105,13 +1105,13 @@
                                   {t("team_msgShutDown")}
                                 </div>
                               {:else if parsed.type === "shutdown_rejected"}
-                                <div class="text-[11px] text-amber-500">
+                                <div class="text-[11px] text-[hsl(var(--miwarp-status-warning))]">
                                   {t("team_msgShutdownRejected")}{parsed.data.reason
                                     ? `: ${parsed.data.reason}`
                                     : ""}
                                 </div>
                               {:else if parsed.type === "plan_approval_request"}
-                                <div class="text-[11px] text-violet-600 dark:text-violet-400">
+                                <div class="text-[11px] text-[hsl(var(--miwarp-accent-violet))]">
                                   {t("team_msgPlanApprovalNeeded")}
                                   {#if parsed.data.planFilePath}
                                     <span class="text-muted-foreground/60 ml-1"
@@ -1137,7 +1137,7 @@
                               {:else if parsed.type === "plan_approval_response"}
                                 <div
                                   class="text-[11px] {parsed.data.approved
-                                    ? 'text-emerald-500'
+                                    ? 'text-[hsl(var(--miwarp-status-success))]'
                                     : 'text-[hsl(var(--miwarp-status-error))]'}"
                                 >
                                   {parsed.data.approved
@@ -1152,7 +1152,7 @@
                                   {/if}
                                 </div>
                               {:else if parsed.type === "permission_request"}
-                                <div class="text-[11px] text-amber-600 dark:text-amber-400">
+                                <div class="text-[11px] text-[hsl(var(--miwarp-status-warning))]">
                                   {t("team_msgPermission", {
                                     tool: String(parsed.data.tool_name ?? "tool"),
                                   })}{parsed.data.description
@@ -1317,12 +1317,12 @@
                                 </div>
                                 {#if task.blockedBy.length > 0}
                                   <div class="flex items-center gap-1 mt-1 flex-wrap">
-                                    <span class="text-[10px] text-amber-600 dark:text-amber-400"
+                                    <span class="text-[10px] text-[hsl(var(--miwarp-status-warning))]"
                                       >{t("team_blockedBy")}</span
                                     >
                                     {#each task.blockedBy as dep}
                                       <span
-                                        class="rounded bg-amber-500/10 px-1 py-0.5 text-[10px] font-mono text-amber-600 dark:text-amber-400"
+                                        class="rounded bg-[hsl(var(--miwarp-status-warning)/0.1)] px-1 py-0.5 text-[10px] font-mono text-[hsl(var(--miwarp-status-warning))]"
                                         >#{dep}</span
                                       >
                                     {/each}
@@ -1330,12 +1330,12 @@
                                 {/if}
                                 {#if task.blocks.length > 0}
                                   <div class="flex items-center gap-1 mt-0.5 flex-wrap">
-                                    <span class="text-[10px] text-emerald-600 dark:text-emerald-400"
+                                    <span class="text-[10px] text-[hsl(var(--miwarp-status-success))]"
                                       >{t("team_unblocks")}</span
                                     >
                                     {#each task.blocks as dep}
                                       <span
-                                        class="rounded bg-emerald-500/10 px-1 py-0.5 text-[10px] font-mono text-emerald-600 dark:text-emerald-400"
+                                        class="rounded bg-[hsl(var(--miwarp-status-success)/0.1)] px-1 py-0.5 text-[10px] font-mono text-[hsl(var(--miwarp-status-success))]"
                                         >#{dep}</span
                                       >
                                     {/each}
@@ -1435,12 +1435,12 @@
                                 </div>
                                 {#if task.blockedBy.length > 0}
                                   <div class="flex items-center gap-1 mt-1 flex-wrap">
-                                    <span class="text-[10px] text-amber-600 dark:text-amber-400"
+                                    <span class="text-[10px] text-[hsl(var(--miwarp-status-warning))]"
                                       >{t("team_blockedBy")}</span
                                     >
                                     {#each task.blockedBy as dep}
                                       <span
-                                        class="rounded bg-amber-500/10 px-1 py-0.5 text-[10px] font-mono text-amber-600 dark:text-amber-400"
+                                        class="rounded bg-[hsl(var(--miwarp-status-warning)/0.1)] px-1 py-0.5 text-[10px] font-mono text-[hsl(var(--miwarp-status-warning))]"
                                         >#{dep}</span
                                       >
                                     {/each}
@@ -1448,12 +1448,12 @@
                                 {/if}
                                 {#if task.blocks.length > 0}
                                   <div class="flex items-center gap-1 mt-0.5 flex-wrap">
-                                    <span class="text-[10px] text-emerald-600 dark:text-emerald-400"
+                                    <span class="text-[10px] text-[hsl(var(--miwarp-status-success))]"
                                       >{t("team_unblocks")}</span
                                     >
                                     {#each task.blocks as dep}
                                       <span
-                                        class="rounded bg-emerald-500/10 px-1 py-0.5 text-[10px] font-mono text-emerald-600 dark:text-emerald-400"
+                                        class="rounded bg-[hsl(var(--miwarp-status-success)/0.1)] px-1 py-0.5 text-[10px] font-mono text-[hsl(var(--miwarp-status-success))]"
                                         >#{dep}</span
                                       >
                                     {/each}
@@ -1512,7 +1512,7 @@
                 {#if teamStore.completedTasks.length > 0}
                   <div>
                     <button
-                      class="flex w-full items-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 transition-colors py-1"
+                      class="flex w-full items-center gap-1.5 text-[11px] font-medium text-[hsl(var(--miwarp-status-success))] hover:text-[hsl(var(--miwarp-status-success))] transition-colors py-1"
                       onclick={() => (expandCompleted = !expandCompleted)}
                     >
                       <svg
@@ -1529,12 +1529,12 @@
                         {#each teamStore.completedTasks as task (task.id)}
                           {@const isExpanded = teamStore.expandedTaskId === task.id}
                           <button
-                            class="w-full text-left rounded-lg border border-emerald-500/15 bg-emerald-500/5 px-2.5 py-2 hover:bg-emerald-500/10 transition-colors"
+                            class="w-full text-left rounded-lg border border-[hsl(var(--miwarp-status-success)/0.15)] bg-[hsl(var(--miwarp-status-success)/0.05)] px-2.5 py-2 hover:bg-[hsl(var(--miwarp-status-success)/0.1)] transition-colors"
                             onclick={() => toggleTaskExpand(task)}
                           >
                             <div class="flex items-start gap-1.5">
                               <span
-                                class="text-[11px] font-mono text-emerald-500/50 shrink-0 mt-0.5"
+                                class="text-[11px] font-mono text-[hsl(var(--miwarp-status-success)/0.5)] shrink-0 mt-0.5"
                                 >#{task.id}</span
                               >
                               <div class="flex-1 min-w-0">
@@ -1550,19 +1550,19 @@
                                     >
                                   {/if}
                                   {#if task.activeForm}
-                                    <span class="text-[10px] text-emerald-400/60 italic"
+                                    <span class="text-[10px] text-[hsl(var(--miwarp-status-success)/0.6)] italic"
                                       >{task.activeForm}</span
                                     >
                                   {/if}
                                 </div>
                                 {#if task.blockedBy.length > 0}
                                   <div class="flex items-center gap-1 mt-1 flex-wrap">
-                                    <span class="text-[10px] text-amber-600 dark:text-amber-400"
+                                    <span class="text-[10px] text-[hsl(var(--miwarp-status-warning))]"
                                       >{t("team_blockedBy")}</span
                                     >
                                     {#each task.blockedBy as dep}
                                       <span
-                                        class="rounded bg-amber-500/10 px-1 py-0.5 text-[10px] font-mono text-amber-600 dark:text-amber-400"
+                                        class="rounded bg-[hsl(var(--miwarp-status-warning)/0.1)] px-1 py-0.5 text-[10px] font-mono text-[hsl(var(--miwarp-status-warning))]"
                                         >#{dep}</span
                                       >
                                     {/each}
@@ -1570,12 +1570,12 @@
                                 {/if}
                                 {#if task.blocks.length > 0}
                                   <div class="flex items-center gap-1 mt-0.5 flex-wrap">
-                                    <span class="text-[10px] text-emerald-600 dark:text-emerald-400"
+                                    <span class="text-[10px] text-[hsl(var(--miwarp-status-success))]"
                                       >{t("team_unblocks")}</span
                                     >
                                     {#each task.blocks as dep}
                                       <span
-                                        class="rounded bg-emerald-500/10 px-1 py-0.5 text-[10px] font-mono text-emerald-600 dark:text-emerald-400"
+                                        class="rounded bg-[hsl(var(--miwarp-status-success)/0.1)] px-1 py-0.5 text-[10px] font-mono text-[hsl(var(--miwarp-status-success))]"
                                         >#{dep}</span
                                       >
                                     {/each}
@@ -1593,7 +1593,7 @@
                               >
                             </div>
                             {#if isExpanded}
-                              <div class="mt-2 pt-2 border-t border-emerald-500/10">
+                              <div class="mt-2 pt-2 border-t border-[hsl(var(--miwarp-status-success)/0.1)]">
                                 {#if taskDescLoading[task.id]}
                                   <div
                                     class="flex items-center gap-1.5 text-[10px] text-muted-foreground"

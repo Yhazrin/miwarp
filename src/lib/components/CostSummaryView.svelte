@@ -122,7 +122,7 @@
                   style="background-color: {modelColor(idx)}"
                 ></span>
                 <span class="text-foreground font-medium">{model.name}</span>
-                <span class="text-emerald-400 ml-auto">{model.cost}</span>
+                <span class="text-[hsl(var(--miwarp-status-success))] ml-auto">{model.cost}</span>
               </div>
               <div class="ml-3.5 text-muted-foreground">
                 {model.input} in · {model.output} out · {model.cacheRead} cache r · {model.cacheWrite}

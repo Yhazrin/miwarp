@@ -232,7 +232,7 @@
         </div>
         <div class="flex items-center justify-between text-xs">
           <span class="text-muted-foreground">{t("context_remainingTokens")}</span>
-          <span class="font-mono font-medium text-emerald-500"
+          <span class="font-mono font-medium text-[hsl(var(--miwarp-status-success))]"
             >{formatTokenCount(remainingTokens)}</span
           >
         </div>

@@ -653,7 +653,7 @@
                     <!-- Permission indicator -->
                     {#if requiresPermission(cmd) && idx === selectedIndex}
                       <span
-                        class="text-[10px] text-amber-600 dark:text-amber-400 shrink-0"
+                        class="text-[10px] text-[hsl(var(--miwarp-status-warning))] shrink-0"
                         title={t("cmd_requiresConfirm")}
                       >
                         ⚠️

@@ -150,7 +150,7 @@
 
       <!-- Output -->
       <div class="flex items-center gap-1">
-        <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+        <span class="w-2 h-2 rounded-full bg-[hsl(var(--miwarp-accent-violet))]"></span>
         <span class="text-xs text-muted-foreground">{t('context_output')}</span>
         <span class="text-xs tabular-nums text-foreground">
           {formatTokens(outputTokens)}
@@ -160,7 +160,7 @@
       <!-- Cache Read -->
       {#if cacheReadTokens > 0}
         <div class="flex items-center gap-1">
-          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span class="w-2 h-2 rounded-full bg-[hsl(var(--miwarp-status-success))]"></span>
           <span class="text-xs text-muted-foreground">{t('context_cache')}</span>
           <span class="text-xs tabular-nums text-foreground">
             {formatTokens(cacheReadTokens)}
@@ -171,7 +171,7 @@
       <!-- Cache Write -->
       {#if cacheWriteTokens > 0}
         <div class="flex items-center gap-1">
-          <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+          <span class="w-2 h-2 rounded-full bg-[hsl(var(--miwarp-status-warning))]"></span>
           <span class="text-xs text-muted-foreground">{t('context_write')}</span>
           <span class="text-xs tabular-nums text-foreground">
             {formatTokens(cacheWriteTokens)}

@@ -914,7 +914,7 @@
     <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
       <div class="text-xs font-mono text-muted-foreground flex items-center gap-2">
         <span>
-          {#if tool.input?.pattern}<span class="text-purple-400">/{tool.input.pattern}/</span>{/if}
+          {#if tool.input?.pattern}<span class="text-[hsl(var(--miwarp-accent-violet))]">/{tool.input.pattern}/</span>{/if}
           {#if tool.input?.path}<span class="text-muted-foreground/60 ml-2">{tool.input.path}</span
             >{/if}
           {#if tool.input?.glob}<span class="text-muted-foreground/60 ml-2"
@@ -963,7 +963,7 @@
     <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
       <div class="text-xs font-mono text-muted-foreground flex items-center gap-2">
         <span>
-          {#if tool.input?.pattern}<span class="text-purple-400">{tool.input.pattern}</span>{/if}
+          {#if tool.input?.pattern}<span class="text-[hsl(var(--miwarp-accent-violet))]">{tool.input.pattern}</span>{/if}
           {#if tool.input?.path}<span class="text-muted-foreground/60 ml-2"
               >in {tool.input.path}</span
             >{/if}
@@ -1001,7 +1001,7 @@
     <!-- WebFetch: URL + HTTP status + response metadata -->
     <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
       <div class="text-xs font-mono text-muted-foreground flex items-center gap-2">
-        <span class="text-sky-400 truncate">{tool.input?.url ?? ""}</span>
+        <span class="text-[hsl(var(--miwarp-status-info))] truncate">{tool.input?.url ?? ""}</span>
         {#if webFetchResult}
           <span class="ml-auto shrink-0 flex items-center gap-1.5 text-[10px]">
             <span
@@ -1045,7 +1045,7 @@
     <!-- WebSearch: query + structured result links -->
     <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
       <div class="text-xs font-mono text-muted-foreground truncate">
-        <span class="text-sky-400">{tool.input?.query ?? ""}</span>
+        <span class="text-[hsl(var(--miwarp-status-info))]">{tool.input?.query ?? ""}</span>
         {#if webSearchResult}
           <span class="text-[10px] text-muted-foreground ml-2">
             {t("tool_resultsCount", {
@@ -1068,7 +1068,7 @@
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="block text-xs text-sky-500 hover:text-sky-400 hover:underline truncate"
+                class="block text-xs text-[hsl(var(--miwarp-status-info))] hover:text-[hsl(var(--miwarp-status-info))] hover:underline truncate"
               >
                 {link.title}
                 <span class="text-muted-foreground text-[10px] ml-1">{link.url}</span>
@@ -1230,7 +1230,7 @@
         {#if skillResult?.status}
           <span
             class="px-1.5 py-0.5 rounded text-[10px] font-medium {skillResult.status === 'forked'
-              ? 'bg-purple-500/15 text-purple-600 dark:text-purple-400'
+              ? 'bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-[hsl(var(--miwarp-accent-violet))]'
               : 'bg-[hsl(var(--miwarp-status-info)/0.15)] text-[hsl(var(--miwarp-status-info))]'}"
           >
             {skillResult.status}

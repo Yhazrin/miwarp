@@ -14,7 +14,7 @@
   function lineClass(kind: SkillSourceSyncLogEntry["kind"]) {
     switch (kind) {
       case "success":
-        return "text-emerald-600 dark:text-emerald-400";
+        return "text-[hsl(var(--miwarp-status-success))]";
       case "error":
         return "text-destructive";
       default:

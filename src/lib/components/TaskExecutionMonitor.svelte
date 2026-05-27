@@ -100,7 +100,7 @@
       case "error":
         return "text-[hsl(var(--miwarp-status-error))]";
       case "warn":
-        return "text-amber-600 dark:text-amber-400";
+        return "text-[hsl(var(--miwarp-status-warning))]";
       default:
         return "text-foreground";
     }

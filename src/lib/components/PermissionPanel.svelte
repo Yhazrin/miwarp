@@ -112,7 +112,7 @@
 {#if pendingTools.length > 0}
   <div class="fixed bottom-0 left-0 right-0 z-[99999] flex justify-center pb-5 pointer-events-auto">
     <div class="w-full chat-content-width pb-2 pt-1">
-      <div class="rounded-lg border border-amber-500/30 bg-background shadow-lg animate-fade-in">
+      <div class="rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-background shadow-lg animate-fade-in">
         {#if isSingle}
           <!-- Single permission: compact card -->
           {@const item = pendingTools[0]}
@@ -175,7 +175,7 @@
               >
             </div>
             {#if item.tool.suggestions && item.tool.suggestions.length > 0}
-              <div class="flex flex-wrap gap-2 mt-2 pt-2 border-t border-amber-500/20">
+              <div class="flex flex-wrap gap-2 mt-2 pt-2 border-t border-[hsl(var(--miwarp-status-warning)/0.2)]">
                 {#each item.tool.suggestions as suggestion}
                   {@const label = formatSuggestionLabel(
                     suggestion,
@@ -279,7 +279,7 @@
             </div>
 
             <!-- Batch buttons -->
-            <div class="flex gap-2 pt-2 border-t border-amber-500/20">
+            <div class="flex gap-2 pt-2 border-t border-[hsl(var(--miwarp-status-warning)/0.2)]">
               <button
                 class="rounded-md bg-miwarp-status-success px-4 py-1.5 text-xs font-medium text-white hover:opacity-80 transition-all disabled:opacity-50"
                 disabled={submittingAll || submittingIds.size > 0}

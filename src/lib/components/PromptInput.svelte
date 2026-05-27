@@ -310,7 +310,7 @@
     { bg: "bg-green-500/15", text: "text-green-400" },
     { bg: "bg-miwarp-status-info/10", text: "text-miwarp-status-info" },
     { bg: "bg-indigo-500/15", text: "text-indigo-400" },
-    { bg: "bg-purple-500/15", text: "text-purple-400" },
+    { bg: "bg-purple-500/15", text: "text-[hsl(var(--miwarp-accent-violet))]" },
   ];
 
   function branchColor(name: string) {
@@ -350,29 +350,29 @@
       shortLabel: () => t("prompt_permAutoAllShort"),
       description: () => t("prompt_permAutoAllDesc"),
       cls: "text-miwarp-status-warning",
-      dotCls: "bg-amber-500",
+      dotCls: "bg-[hsl(var(--miwarp-status-warning))]",
       borderCls:
-        "border-amber-500/40 focus-within:border-amber-500/60 focus-within:shadow-[0_0_0_1px_rgba(245,158,11,0.15)]",
+        "border-[hsl(var(--miwarp-status-warning)/0.4)] focus-within:border-[hsl(var(--miwarp-status-warning)/0.6)] focus-within:shadow-[0_0_0_1px_hsl(var(--miwarp-status-warning)/0.15)]",
     },
     {
       value: "plan",
       label: () => t("prompt_permPlanLabel"),
       shortLabel: () => t("prompt_permPlanShort"),
       description: () => t("prompt_permPlanDesc"),
-      cls: "text-purple-400",
-      dotCls: "bg-purple-400",
+      cls: "text-[hsl(var(--miwarp-accent-violet))]",
+      dotCls: "bg-[hsl(var(--miwarp-accent-violet))]",
       borderCls:
-        "border-purple-400/40 focus-within:border-purple-400/60 focus-within:shadow-[0_0_0_1px_rgba(192,132,252,0.15)]",
+        "border-[hsl(var(--miwarp-accent-violet)/0.4)] focus-within:border-[hsl(var(--miwarp-accent-violet)/0.6)] focus-within:shadow-[0_0_0_1px_hsl(var(--miwarp-accent-violet)/0.15)]",
     },
     {
       value: "auto",
       label: () => t("prompt_permAutoLabel"),
       shortLabel: () => t("prompt_permAutoShort"),
       description: () => t("prompt_permAutoDesc"),
-      cls: "text-teal-400",
-      dotCls: "bg-teal-400",
+      cls: "text-[hsl(var(--miwarp-status-info))]",
+      dotCls: "bg-[hsl(var(--miwarp-status-info))]",
       borderCls:
-        "border-teal-400/40 focus-within:border-teal-400/60 focus-within:shadow-[0_0_0_1px_rgba(45,212,191,0.15)]",
+        "border-[hsl(var(--miwarp-status-info)/0.4)] focus-within:border-[hsl(var(--miwarp-status-info)/0.6)] focus-within:shadow-[0_0_0_1px_hsl(var(--miwarp-status-info)/0.15)]",
     },
     {
       value: "dontAsk",
@@ -2313,7 +2313,7 @@
         />
         {#if hasStash && onRestoreStash}
           <button
-            class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-violet-500/15 text-violet-400 hover:bg-violet-500/25 transition-colors"
+            class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-[hsl(var(--miwarp-accent-violet))] hover:bg-[hsl(var(--miwarp-accent-violet)/0.25)] transition-colors"
             title={t("prompt_stashRestore")}
             onclick={onRestoreStash}
           >

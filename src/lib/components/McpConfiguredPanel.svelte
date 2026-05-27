@@ -104,7 +104,7 @@
   function scopeBadgeColor(scope: string): string {
     switch (scope) {
       case "local":
-        return "bg-amber-500/10 text-amber-600 dark:text-amber-400";
+        return "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]";
       case "user":
         return "bg-muted text-muted-foreground";
       case "project":

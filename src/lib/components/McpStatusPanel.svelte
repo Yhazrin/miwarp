@@ -343,7 +343,7 @@ diagnostics and history * - Quick reconnect with health check */
               <button
                 class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50 {server.status ===
                 'disabled'
-                  ? 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/30'
+                  ? 'text-[hsl(var(--miwarp-status-success))] hover:bg-[hsl(var(--miwarp-status-success)/0.1)] border border-[hsl(var(--miwarp-status-success)/0.3)]'
                   : 'text-foreground/70 hover:text-foreground hover:bg-accent border border-border/50'}"
                 disabled={togglingServer === server.name}
                 onclick={() => toggle(server.name, server.status !== "disabled")}
@@ -444,7 +444,7 @@ diagnostics and history * - Quick reconnect with health check */
   <!-- Success message -->
   {#if successMsg}
     <div
-      class="px-3 py-2 border-t border-emerald-500/20 bg-emerald-500/5 text-xs text-emerald-600 dark:text-emerald-400"
+      class="px-3 py-2 border-t border-[hsl(var(--miwarp-status-success)/0.2)] bg-[hsl(var(--miwarp-status-success)/0.05)] text-xs text-[hsl(var(--miwarp-status-success))]"
     >
       {successMsg}
     </div>

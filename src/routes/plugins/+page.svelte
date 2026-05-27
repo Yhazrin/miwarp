@@ -144,14 +144,14 @@
 
   const categoryColors: Record<string, string> = {
     development: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
-    productivity: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+    productivity: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
     security: "bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]",
-    testing: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-    learning: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+    testing: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]",
+    learning: "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]",
     database: "bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]",
     monitoring: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]",
-    deployment: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
-    design: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+    deployment: "bg-[hsl(var(--miwarp-accent-primary)/0.1)] text-[hsl(var(--miwarp-accent-primary))]",
+    design: "bg-[hsl(var(--miwarp-accent-secondary)/0.1)] text-[hsl(var(--miwarp-accent-secondary))]",
   };
 
   const componentBadges: {
@@ -162,7 +162,7 @@
     {
       key: "skills",
       label: () => t("plugin_badgeSkills"),
-      color: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+      color: "bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]",
     },
     {
       key: "commands",
@@ -172,17 +172,17 @@
     {
       key: "agents",
       label: () => t("plugin_badgeAgents"),
-      color: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+      color: "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]",
     },
     {
       key: "hooks",
       label: () => t("plugin_badgeHooks"),
-      color: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+      color: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]",
     },
     {
       key: "mcp_servers",
       label: () => t("plugin_badgeMcp"),
-      color: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+      color: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
     },
     {
       key: "lsp_servers",
@@ -870,7 +870,7 @@
     <!-- Partial load warning -->
     {#if loadWarnings.length > 0}
       <div
-        class="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-600 dark:text-amber-400 mb-4"
+        class="rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-4 py-2.5 text-xs text-[hsl(var(--miwarp-status-warning))] mb-4"
       >
         {t("plugin_couldNotLoad", { items: loadWarnings.join(", ") })}
       </div>
@@ -895,14 +895,14 @@
         </h3>
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
           <button
-            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-rose-500/30 hover:bg-rose-500/5 transition-all"
+            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-[hsl(var(--miwarp-status-error)/0.3)] hover:bg-[hsl(var(--miwarp-status-error)/0.05)] transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "skills";
             }}
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-rose-600 text-white"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-error))] text-white"
               >
                 <svg
                   class="h-3 w-3"
@@ -945,14 +945,14 @@
             <div class="text-[11px] text-muted-foreground mt-0.5">{t("sidebar_plugins")}</div>
           </button>
           <button
-            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-teal-500/30 hover:bg-teal-500/5 transition-all"
+            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-[hsl(var(--miwarp-status-info)/0.3)] hover:bg-[hsl(var(--miwarp-status-info)/0.05)] transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "mcp";
             }}
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-teal-600 text-white"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-info))] text-white"
               >
                 <svg
                   class="h-3 w-3"
@@ -975,14 +975,14 @@
             <div class="text-[11px] text-muted-foreground mt-0.5">{t("sidebar_mcpServers")}</div>
           </button>
           <button
-            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-amber-500/30 hover:bg-amber-500/5 transition-all"
+            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-[hsl(var(--miwarp-status-warning)/0.3)] hover:bg-[hsl(var(--miwarp-status-warning)/0.05)] transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "hooks";
             }}
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-amber-600 text-white"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-warning))] text-white"
               >
                 <svg
                   class="h-3 w-3"
@@ -1000,14 +1000,14 @@
             <div class="text-[11px] text-muted-foreground mt-0.5">{t("sidebar_hooks")}</div>
           </button>
           <button
-            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-purple-500/30 hover:bg-purple-500/5 transition-all"
+            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-[hsl(var(--miwarp-accent-violet)/0.3)] hover:bg-[hsl(var(--miwarp-accent-violet)/0.05)] transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "agents";
             }}
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-purple-600 text-white"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-accent-violet))] text-white"
               >
                 <svg
                   class="h-3 w-3"
@@ -1103,7 +1103,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-600 text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-error))] text-white"
             >
               <svg
                 class="h-4 w-4"
@@ -1147,7 +1147,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-600 text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-info))] text-white"
             >
               <svg
                 class="h-4 w-4"
@@ -1176,7 +1176,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-warning))] text-white"
             >
               <svg
                 class="h-4 w-4"
@@ -1230,7 +1230,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-600 text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-error))] text-white"
             >
               <svg
                 class="h-4 w-4"
@@ -1257,7 +1257,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-600 text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-accent-violet))] text-white"
             >
               <svg
                 class="h-4 w-4"
@@ -1284,7 +1284,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-600 text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-info))] text-white"
             >
               <svg
                 class="h-4 w-4"
@@ -1321,7 +1321,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-warning))] text-white"
             >
               <svg
                 class="h-4 w-4"
@@ -1512,7 +1512,7 @@
                       : t("extensions_scopeProjectDesc")}
                   </p>
                   {#if !projectCwd && editorScope === "user"}
-                    <p class="text-[11px] text-amber-500/80 mt-0.5">
+                    <p class="text-[11px] text-[hsl(var(--miwarp-status-warning)/0.8)] mt-0.5">
                       {t("extensions_noWorkspaceForProjectScope")}
                     </p>
                   {/if}
@@ -1744,7 +1744,7 @@
                         </div>
                         <button
                           class="rounded-lg px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 shrink-0 {isInstalled
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 cursor-default'
+                            ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))] cursor-default'
                             : 'bg-primary text-primary-foreground hover:bg-primary/90'}"
                           onclick={(e) => {
                             e.stopPropagation();
@@ -1947,7 +1947,7 @@
                       {/if}
                       {#if skill.remoteRef?.sourceType === "feishu"}
                         <span
-                          class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                          class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]"
                           >{t("skillSources_badge_feishu")}</span
                         >
                       {/if}
@@ -2216,7 +2216,7 @@
               ? t("extensions_scopeProjectDesc")
               : t("extensions_scopeLocalDesc")}
           {#if !projectCwd && installScope !== "user"}
-            <span class="text-amber-500/80 ml-1">
+            <span class="text-[hsl(var(--miwarp-status-warning)/0.8)] ml-1">
               {t("extensions_noWorkspaceForProjectScope")}
             </span>
           {/if}

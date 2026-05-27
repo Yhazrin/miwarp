@@ -488,7 +488,7 @@
           {#if errors.prompt}
             <p class="text-xs text-destructive">{errors.prompt}</p>
           {:else if promptContextWarning()}
-            <p class="text-xs text-amber-500 flex items-center gap-1">
+            <p class="text-xs text-[hsl(var(--miwarp-status-warning))] flex items-center gap-1">
               <svg
                 class="h-3 w-3 shrink-0"
                 viewBox="0 0 24 24"

@@ -48,7 +48,7 @@
       case "running":
         return "bg-[hsl(var(--miwarp-status-info))]";
       case "idle":
-        return "bg-emerald-500";
+        return "bg-[hsl(var(--miwarp-status-success))]";
       default:
         return "bg-muted-foreground/30";
     }

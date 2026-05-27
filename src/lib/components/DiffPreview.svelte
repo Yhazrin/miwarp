@@ -181,7 +181,7 @@
       <!-- 操作按钮 -->
       {#if onApply}
         <button
-          class="rounded-lg bg-emerald-500 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-emerald-600 transition-colors"
+          class="rounded-lg bg-[hsl(var(--miwarp-status-success))] px-2.5 py-1 text-[11px] font-medium text-white hover:bg-[hsl(var(--miwarp-status-success)/0.9)] transition-colors"
           onclick={onApply}
         >
           Apply
