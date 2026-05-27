@@ -8,6 +8,7 @@ struct SessionHubView: View {
     @StateObject private var syncManager = SessionSyncManager.shared
     #endif
     @State private var runs: [MiWarpRun] = []
+    @State private var pendingSpotlightSessionId: String?
     @State private var isLoading = false
     @State private var error: String?
     @State private var searchText = ""
@@ -68,6 +69,15 @@ struct SessionHubView: View {
                 inlineSplitBody(layout: layout)
             } else {
                 compactBody(layout: layout)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .spotlightSessionOpen)) { notification in
+            guard let sessionId = notification.object as? String else { return }
+            if let run = runs.first(where: { $0.id == sessionId }) {
+                selectRun(run)
+            } else {
+                // Runs not loaded yet; store and resolve after load
+                pendingSpotlightSessionId = sessionId
             }
         }
     }
@@ -667,6 +677,14 @@ struct SessionHubView: View {
                 isLoading = false
             }
             MiHaptics.success()
+            SpotlightIndexer.indexSessions(loaded)
+
+            // Resolve any pending Spotlight session after load
+            if let pendingId = pendingSpotlightSessionId,
+               let run = loaded.first(where: { $0.id == pendingId }) {
+                pendingSpotlightSessionId = nil
+                selectRun(run)
+            }
         } catch {
             withAnimation(MWMotion.springStandard) {
                 self.error = error.localizedDescription

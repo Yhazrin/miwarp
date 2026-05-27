@@ -37,6 +37,10 @@ struct AppRouter: View {
                 handleLiveActivityDeepLink(deepLink)
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .spotlightSessionOpen)) { _ in
+            selectedTab = 0
+            selectedSection = .sessions
+        }
     }
 
     private var tabLayout: some View {
