@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { getTransport } from "$lib/transport";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { fmtRelative } from "$lib/i18n/format";
   import { cwdDisplayLabel } from "$lib/utils/format";
@@ -308,9 +309,7 @@
     <div class="flex-1 overflow-y-auto px-6 py-3">
       {#if loading}
         <div class="flex items-center justify-center py-12">
-          <div
-            class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-          ></div>
+          <Spinner size="md" />
         </div>
       {:else if error && sessions.length === 0}
         <div class="flex flex-col items-center gap-2 py-12 text-center">
@@ -407,9 +406,7 @@
                       disabled={!!importingId}
                     >
                       {#if importingId === session.existingRunId}
-                        <span
-                          class="inline-block h-3 w-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                        ></span>
+                        <Spinner size="xs" />
                       {:else}
                         {t("cliSync_sync")}
                       {/if}
@@ -427,9 +424,7 @@
                       disabled={!!importingId}
                     >
                       {#if isImporting}
-                        <span
-                          class="inline-block h-3 w-3 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"
-                        ></span>
+                        <Spinner size="xs" class="border-primary-foreground/30 border-t-primary-foreground" />
                       {:else}
                         {t("cliSync_import")}
                       {/if}
@@ -461,9 +456,7 @@
           >
             {#if importingAll}
               <span class="flex items-center gap-2">
-                <span
-                  class="inline-block h-3.5 w-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"
-                ></span>
+                <Spinner size="sm" class="border-primary-foreground/30 border-t-primary-foreground" />
                 {t("cliSync_importing")}
               </span>
             {:else}

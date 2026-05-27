@@ -26,6 +26,7 @@
   import ToolDetailView from "$lib/components/ToolDetailView.svelte";
   import StatusIcon from "$lib/components/StatusIcon.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { slide } from "svelte/transition";
   import { dbg } from "$lib/utils/debug";
   import { viewModeStore } from "$lib/stores/view-mode-store.svelte";
