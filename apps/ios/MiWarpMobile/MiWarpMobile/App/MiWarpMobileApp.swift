@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreSpotlight
 
 @main
 struct MiWarpMobileApp: App {
@@ -13,6 +14,9 @@ struct MiWarpMobileApp: App {
                 .preferredColorScheme(theme.preferredColorScheme)
                 .onOpenURL { url in
                     handleDeepLink(url)
+                }
+                .onContinueUserActivity(CSSearchableItemActionType) { userActivity in
+                    SpotlightIndexer.handleUserActivity(userActivity)
                 }
                 .onAppear {
                     Task {
