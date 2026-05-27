@@ -18,6 +18,7 @@
   import { slide } from "svelte/transition";
   import { showToast } from "$lib/stores/toast-store.svelte";
   import { formatTokenCount } from "$lib/utils/format";
+  import Icon from "$lib/components/Icon.svelte";
 
   interface Props {
     cwd?: string;
@@ -449,18 +450,7 @@
           class="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-accent/20 transition-colors"
           onclick={() => (showWorktreeList = !showWorktreeList)}
         >
-          <svg
-            class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform {showWorktreeList
-              ? 'rotate-90'
-              : ''}"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            aria-hidden="true"
-          >
-            <path d="m9 18 6-6-6-6" />
-          </svg>
+          <Icon name="chevron-right" size="xs" class="shrink-0 text-muted-foreground/60 transition-transform {showWorktreeList ? 'rotate-90' : ''}" />
           <span class="text-[10px] font-medium text-muted-foreground/70">
             {t("gitWorktree_all_worktrees", { count: String(panelState.worktrees.length) })}
           </span>

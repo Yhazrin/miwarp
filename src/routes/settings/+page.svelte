@@ -2089,15 +2089,7 @@
                       <span class="flex-1 text-left"
                         >{t("settings_general_mobileOpenTab") || "Open Mobile Settings"}</span
                       >
-                      <svg
-                        class="h-4 w-4 text-muted-foreground/50"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path d="m9 18 6-6-6-6" />
-                      </svg>
+                      <Icon name="chevron-right" size="md" class="text-muted-foreground/50" />
                     </button>
                   </div>
 
@@ -2192,13 +2184,7 @@
                       class="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                       onclick={() => (webAdvancedOpen = !webAdvancedOpen)}
                     >
-                      <svg
-                        class="h-3 w-3 transition-transform {webAdvancedOpen ? 'rotate-90' : ''}"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"><path d="m9 18 6-6-6-6" /></svg
-                      >
+                      <Icon name="chevron-right" size="xs" class="transition-transform {webAdvancedOpen ? 'rotate-90' : ''}" />
                       {t("settings_general_webAdvanced")}
                     </button>
 
@@ -3986,15 +3972,7 @@
                 class="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors w-full mb-3"
                 onclick={() => (cliSectionOpen = !cliSectionOpen)}
               >
-                <svg
-                  class="h-3 w-3 transition-transform {cliSectionOpen ? 'rotate-90' : ''}"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg
-                >
+                <Icon name="chevron-right" size="xs" class="transition-transform {cliSectionOpen ? 'rotate-90' : ''}" />
                 {t("settings_shortcuts_cliShortcuts")}
                 <span
                   class="text-[10px] font-normal normal-case tracking-normal text-muted-foreground/50 ml-1"

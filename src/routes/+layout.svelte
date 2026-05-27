@@ -1747,17 +1747,7 @@
       onclick={() => (node.is_dir ? toggleFolder(node) : selectFile(node))}
     >
       {#if node.is_dir}
-        <svg
-          class="h-3 w-3 shrink-0 transition-transform duration-150 {node.expanded
-            ? 'rotate-90'
-            : ''}"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg
-        >
+        <Icon name="chevron-right" size="xs" class="shrink-0 transition-transform duration-150 {node.expanded ? 'rotate-90' : ''}" />
         <svg
           class="h-3.5 w-3.5 shrink-0 text-[hsl(var(--miwarp-status-info)/0.7)]"
           viewBox="0 0 24 24"

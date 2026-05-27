@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
   import type { TeamRun, TeamRunStatus } from "$lib/types";
+  import Icon from "$lib/components/Icon.svelte";
   import { goto } from "$app/navigation";
 
   let {
@@ -163,19 +164,7 @@
               <p class="text-[11px] font-semibold text-foreground truncate">{member.memberName}</p>
               <p class="text-[10px] text-muted-foreground/60 truncate">{member.role}</p>
             </div>
-            <svg
-              class="h-3 w-3 shrink-0 text-muted-foreground/50 transition-transform duration-200 {isExpanded
-                ? 'rotate-90'
-                : ''}"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="m9 18 6-6-6-6" />
-            </svg>
+            <Icon name="chevron-right" size="xs" class="shrink-0 text-muted-foreground/50 transition-transform duration-200 {isExpanded ? 'rotate-90' : ''}" />
           </button>
 
           <!-- Expanded content -->

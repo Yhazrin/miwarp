@@ -287,17 +287,7 @@ diagnostics and history * - Quick reconnect with health check */
               aria-label="Toggle server details"
               class="text-muted-foreground hover:text-foreground transition-colors"
             >
-              <svg
-                class="h-3 w-3 transition-transform {expandedServer === server.name
-                  ? 'rotate-90'
-                  : ''}"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="m9 18 6-6-6-6" />
-              </svg>
+              <Icon name="chevron-right" size="xs" class="transition-transform {expandedServer === server.name ? 'rotate-90' : ''}" />
             </button>
 
             <!-- Status dot with quality indicator -->

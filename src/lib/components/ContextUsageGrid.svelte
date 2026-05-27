@@ -4,6 +4,7 @@
    * Input: raw markdown text from CLI's non-interactive /context handler.
    */
   import { t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import { slide } from "svelte/transition";
   import {
     parseContextMarkdown,
@@ -121,17 +122,7 @@
               class="flex items-center gap-1 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors"
               onclick={() => toggleSection(table.title)}
             >
-              <svg
-                class="h-3 w-3 transition-transform {expandedSections.has(table.title)
-                  ? 'rotate-90'
-                  : ''}"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></svg
-              >
+              <Icon name="chevron-right" size="xs" class="transition-transform {expandedSections.has(table.title) ? 'rotate-90' : ''}" />
               {table.title}
               <span class="text-muted-foreground/40">({table.rows.length})</span>
             </button>

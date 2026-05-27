@@ -12,6 +12,7 @@
    */
 
   import { portal } from "$lib/utils/portal";
+  import Icon from "$lib/components/Icon.svelte";
   import { scale } from "svelte/transition";
 
   export interface MenuItem {
@@ -281,17 +282,7 @@
       {/if}
       <span class="flex-1 text-left">{item.label}</span>
       {#if item.icon === "chevron-right"}
-        <svg
-          class="h-3 w-3 shrink-0 opacity-50"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="m9 18 6-6-6-6" />
-        </svg>
+        <Icon name="chevron-right" size="xs" class="shrink-0 opacity-50" />
       {/if}
     </button>
   {/each}

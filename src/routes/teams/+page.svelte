@@ -8,6 +8,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   const teamStore = getContext<TeamStore>("teamStore");
 
@@ -1218,17 +1219,7 @@
                   title={t("team_collapseTaskBoard")}
                   onclick={() => (sidebarCollapsed = true)}
                 >
-                  <svg
-                    class="h-3.5 w-3.5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="m9 18 6-6-6-6" />
-                  </svg>
+                  <Icon name="chevron-right" size="sm" />
                 </button>
               </div>
 
@@ -1243,13 +1234,7 @@
                       class="flex w-full items-center gap-1.5 text-[11px] font-medium text-[hsl(var(--miwarp-status-info))] hover:text-[hsl(var(--miwarp-status-info))] transition-colors py-1"
                       onclick={() => (expandInProgress = !expandInProgress)}
                     >
-                      <svg
-                        class="h-3 w-3 transition-transform {expandInProgress ? 'rotate-90' : ''}"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"><path d="m9 18 6-6-6-6" /></svg
-                      >
+                      <Icon name="chevron-right" size="xs" class="transition-transform {expandInProgress ? 'rotate-90' : ''}" />
                       {t("team_inProgress", { count: String(teamStore.inProgressTasks.length) })}
                     </button>
                     {#if expandInProgress}
@@ -1360,13 +1345,7 @@
                       class="flex w-full items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors py-1"
                       onclick={() => (expandPending = !expandPending)}
                     >
-                      <svg
-                        class="h-3 w-3 transition-transform {expandPending ? 'rotate-90' : ''}"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"><path d="m9 18 6-6-6-6" /></svg
-                      >
+                      <Icon name="chevron-right" size="xs" class="transition-transform {expandPending ? 'rotate-90' : ''}" />
                       {t("team_pending", { count: String(teamStore.pendingTasks.length) })}
                     </button>
                     {#if expandPending}
@@ -1476,13 +1455,7 @@
                       class="flex w-full items-center gap-1.5 text-[11px] font-medium text-[hsl(var(--miwarp-status-success))] hover:text-[hsl(var(--miwarp-status-success))] transition-colors py-1"
                       onclick={() => (expandCompleted = !expandCompleted)}
                     >
-                      <svg
-                        class="h-3 w-3 transition-transform {expandCompleted ? 'rotate-90' : ''}"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"><path d="m9 18 6-6-6-6" /></svg
-                      >
+                      <Icon name="chevron-right" size="xs" class="transition-transform {expandCompleted ? 'rotate-90' : ''}" />
                       {t("team_completed", { count: String(teamStore.completedTasks.length) })}
                     </button>
                     {#if expandCompleted}
