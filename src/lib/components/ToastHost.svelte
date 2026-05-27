@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getToasts, dismissToast, type ToastType } from "$lib/stores/toast-store.svelte";
   import { onMount } from "svelte";
+  import { fly } from "svelte/transition";
 
   const toasts = $derived(getToasts());
 
@@ -60,7 +61,8 @@
   >
     {#each toasts as toast (toast.id)}
       <div
-        class="pointer-events-auto motion-slide-up flex items-start gap-2.5 px-3.5 py-2.5
+        transition:fly={{ y: 20, duration: 250 }}
+        class="pointer-events-auto flex items-start gap-2.5 px-3.5 py-2.5
           bg-card/95 backdrop-blur-sm border border-border/50 border-l-2 {colorClass(toast.type)}
           rounded-lg shadow-lg max-w-[340px]"
         role="alert"

@@ -2170,9 +2170,9 @@
 
   <!-- Unified input container -->
   <div
-    class="rounded-[28px] border bg-background/72 backdrop-blur-2xl transition-colors shadow-[0_4px_24px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.07)] {btwMode
+    class="rounded-[28px] border bg-background/72 backdrop-blur-2xl transition-all duration-200 shadow-[0_4px_24px_rgba(0,0,0,0.10),inset_0_1px_0_rgba(255,255,255,0.07)] {btwMode
       ? 'border-miwarp-status-info/80'
-      : currentMode.borderCls || 'border-white/10 focus-within:border-white/20'} {pendingPermission
+      : currentMode.borderCls || 'border-white/10 focus-within:border-white/20 focus-within:shadow-[0_4px_24px_rgba(0,0,0,0.10),0_0_0_2px_rgba(var(--miwarp-accent-rgb,59,130,246),0.15)]'} {pendingPermission
       ? 'motion-attention-pulse'
       : ''}"
   >
