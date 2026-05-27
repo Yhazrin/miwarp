@@ -320,7 +320,7 @@ struct InlineApprovalView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                         .background(.tint, in: RoundedRectangle(cornerRadius: MWRadius.md))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(MWColors.accentOnAccent)
                 }
                 .disabled(didRespond)
                 .accessibilityLabel(String(localized: "action.allow"))

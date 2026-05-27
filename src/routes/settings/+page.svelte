@@ -2125,7 +2125,7 @@
                       }}
                     />
                     {#if webTunnelError}
-                      <p class="text-xs text-red-400 mt-1">{webTunnelError}</p>
+                      <p class="text-xs text-[hsl(var(--miwarp-status-error))] mt-1">{webTunnelError}</p>
                     {:else}
                       <p class="text-xs text-muted-foreground mt-1">
                         {t("settings_general_webTunnelDesc")}
@@ -2249,7 +2249,7 @@
                           </button>
                         </div>
                         {#if webOriginError}
-                          <p class="text-xs text-red-400">{webOriginError}</p>
+                          <p class="text-xs text-[hsl(var(--miwarp-status-error))]">{webOriginError}</p>
                         {/if}
                         <p class="text-xs text-muted-foreground">
                           {t("settings_general_webAllowedOriginsDesc")}
@@ -2261,7 +2261,7 @@
                   <!-- Apply + feedback -->
                   <div class="space-y-2 pt-2 border-t border-border">
                     {#if webRestartError}
-                      <p class="text-xs text-red-400">
+                      <p class="text-xs text-[hsl(var(--miwarp-status-error))]">
                         {t("settings_general_webRestartFailed", { error: webRestartError })}
                       </p>
                     {/if}
@@ -2807,8 +2807,8 @@
                           </Button>
                         </div>
                         {#if cliLoginError}
-                          <div class="rounded border border-red-500/30 bg-red-500/5 px-2 py-1">
-                            <p class="text-xs text-red-500">{cliLoginError}</p>
+                          <div class="rounded border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.05)] px-2 py-1">
+                            <p class="text-xs text-[hsl(var(--miwarp-status-error))]">{cliLoginError}</p>
                           </div>
                         {/if}
                       </div>
@@ -2918,7 +2918,7 @@
                             <span
                               class="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full {ps?.running &&
                               !ps.needsAuth
-                                ? 'bg-green-500'
+                                ? 'bg-[hsl(var(--miwarp-status-success))]'
                                 : ps?.running && ps.needsAuth
                                   ? 'bg-amber-500'
                                   : 'bg-muted-foreground/30'}"
@@ -2930,7 +2930,7 @@
                             ></span>
                           {:else if findCredential(platformCredentials, preset.id)?.api_key}
                             <span
-                              class="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-green-500"
+                              class="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-success))]"
                               title="Key saved"
                             ></span>
                           {/if}
@@ -2961,7 +2961,7 @@
                           <span class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
                           <span class="text-sm">{t("settings_local_checking")}</span>
                         {:else if localProxyStatus?.running && !localProxyStatus.needsAuth}
-                          <span class="h-2 w-2 rounded-full bg-green-500"></span>
+                          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-success))]"></span>
                           <span class="text-sm font-medium">{t("settings_local_running")}</span>
                         {:else if localProxyStatus?.running && localProxyStatus.needsAuth}
                           <span class="h-2 w-2 rounded-full bg-amber-500"></span>
@@ -3185,8 +3185,8 @@
                         </div>
                       {:else if apiTestResult?.success && apiTestResult.partial}
                         <div class="mt-1.5 flex items-center gap-1.5">
-                          <span class="h-2 w-2 rounded-full bg-green-500"></span>
-                          <span class="text-xs text-green-600 dark:text-green-400"
+                          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-success))]"></span>
+                          <span class="text-xs text-[hsl(var(--miwarp-status-success))]"
                             >{t("settings_apiTest_partial", {
                               latency: String(apiTestResult.latencyMs),
                             })}</span
@@ -3194,8 +3194,8 @@
                         </div>
                       {:else if apiTestResult?.success}
                         <div class="mt-1.5 flex items-center gap-1.5">
-                          <span class="h-2 w-2 rounded-full bg-green-500"></span>
-                          <span class="text-xs text-green-600 dark:text-green-400"
+                          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-success))]"></span>
+                          <span class="text-xs text-[hsl(var(--miwarp-status-success))]"
                             >{t("settings_apiTest_success", {
                               latency: String(apiTestResult.latencyMs),
                             })}</span
@@ -3203,8 +3203,8 @@
                         </div>
                       {:else if apiTestResult && !apiTestResult.success}
                         <div class="mt-1.5 flex items-center gap-1.5">
-                          <span class="h-2 w-2 rounded-full bg-red-500"></span>
-                          <span class="text-xs text-red-600 dark:text-red-400"
+                          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-error))]"></span>
+                          <span class="text-xs text-[hsl(var(--miwarp-status-error))] dark:text-[hsl(var(--miwarp-status-error))]"
                             >{apiTestResult.error ?? t("settings_apiTest_failed")}</span
                           >
                         </div>
@@ -3536,8 +3536,8 @@
 
               <!-- Error/Warning -->
               {#if webRestartError}
-                <div class="rounded-md border border-red-500/30 bg-red-500/5 px-3 py-2">
-                  <p class="text-xs text-red-400">{webRestartError}</p>
+                <div class="rounded-md border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.05)] px-3 py-2">
+                  <p class="text-xs text-[hsl(var(--miwarp-status-error))]">{webRestartError}</p>
                 </div>
               {/if}
               {#if webRestartWarning}
@@ -3693,7 +3693,7 @@
             </div>
           {:else if cliConfigError}
             <Card class="p-6">
-              <p class="text-sm text-red-400">
+              <p class="text-sm text-[hsl(var(--miwarp-status-error))]">
                 {t("settings_cliConfig_loadFailed", { error: cliConfigError })}
               </p>
               <button
@@ -3734,7 +3734,7 @@
                           def,
                         ) === true
                           ? 'bg-primary'
-                          : 'bg-neutral-700'}"
+                          : 'bg-muted'}"
                         onclick={() => {
                           const current = getCliConfigValue(def.key, def);
                           const next = current === true ? false : true;
@@ -3804,7 +3804,7 @@
                           def,
                         ) === true
                           ? 'bg-primary'
-                          : 'bg-neutral-700'}"
+                          : 'bg-muted'}"
                         onclick={() => {
                           const current = getCliConfigValue(def.key, def);
                           const next = current === true ? false : true;
@@ -3893,7 +3893,7 @@
                           def,
                         ) === true
                           ? 'bg-primary'
-                          : 'bg-neutral-700'}"
+                          : 'bg-muted'}"
                         onclick={() => {
                           const current = getCliConfigValue(def.key, def);
                           const next = current === true ? false : true;
@@ -4153,7 +4153,7 @@
                     placeholder="mac-mini"
                     class="w-full text-sm px-2 py-1.5 rounded border bg-background {remoteFormTouched &&
                     !remoteFormName.trim()
-                      ? 'border-red-500'
+                      ? 'border-[hsl(var(--miwarp-status-error))]'
                       : 'border-input'}"
                   />
                 </label>
@@ -4167,7 +4167,7 @@
                     placeholder="macmini.local"
                     class="w-full text-sm px-2 py-1.5 rounded border bg-background {remoteFormTouched &&
                     !remoteFormHost.trim()
-                      ? 'border-red-500'
+                      ? 'border-[hsl(var(--miwarp-status-error))]'
                       : 'border-input'}"
                   />
                 </label>
@@ -4181,7 +4181,7 @@
                     placeholder={currentUsername || "username"}
                     class="w-full text-sm px-2 py-1.5 rounded border bg-background {remoteFormTouched &&
                     !remoteFormUser.trim()
-                      ? 'border-red-500'
+                      ? 'border-[hsl(var(--miwarp-status-error))]'
                       : 'border-input'}"
                   />
                 </label>
@@ -4346,7 +4346,7 @@
                           </div>
 
                           {#if sshKeyError && sshKeyStep === "has_key"}
-                            <p class="text-red-400 text-[11px]">
+                            <p class="text-[hsl(var(--miwarp-status-error))] text-[11px]">
                               {t(
                                 IS_WINDOWS
                                   ? "settings_remote_sshKeyFailed_win"
@@ -4374,7 +4374,7 @@
                           {t("settings_remote_sshKeyClose")}
                         </button>
                       {:else if sshKeyStep === "error"}
-                        <p class="text-red-400">
+                        <p class="text-[hsl(var(--miwarp-status-error))]">
                           {t("settings_remote_sshKeyGenError", { error: sshKeyError })}
                         </p>
                         <button
@@ -4419,7 +4419,7 @@
 
               {#if remoteFormForwardKey}
                 <div
-                  class="flex items-start gap-2 p-2 rounded bg-yellow-500/10 border border-yellow-500/20 text-xs text-yellow-600 dark:text-yellow-400"
+                  class="flex items-start gap-2 p-2 rounded bg-[hsl(var(--miwarp-status-warning)/0.1)] border border-[hsl(var(--miwarp-status-warning)/0.2)] text-xs text-[hsl(var(--miwarp-status-warning))]"
                 >
                   <span class="shrink-0 mt-0.5">&#9888;</span>
                   <span>{t("settings_remote_forwardKeyWarning")}</span>
@@ -4457,8 +4457,8 @@
               {#if remoteTestResult}
                 <div
                   class="text-xs space-y-1 p-2 rounded border {remoteTestResult.ssh_ok
-                    ? 'border-green-500/30 bg-green-500/5'
-                    : 'border-red-500/30 bg-red-500/5'}"
+                    ? 'border-[hsl(var(--miwarp-status-success)/0.3)] bg-[hsl(var(--miwarp-status-success)/0.05)]'
+                    : 'border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.05)]'}"
                 >
                   <p>
                     {t("settings_remote_sshLabel")}
@@ -4495,7 +4495,7 @@
                     {/if}
                   {/if}
                   {#if remoteTestResult.error}
-                    <p class="text-red-500">{remoteTestResult.error}</p>
+                    <p class="text-[hsl(var(--miwarp-status-error))]">{remoteTestResult.error}</p>
                   {/if}
                 </div>
               {/if}
@@ -4518,7 +4518,7 @@
                 aria-label={t("settings_debugMode")}
                 class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 {debugOn
                   ? 'bg-primary'
-                  : 'bg-neutral-700'}"
+                  : 'bg-muted'}"
                 onclick={() => {
                   debugOn = !debugOn;
                   setDebugMode(debugOn);
@@ -4917,7 +4917,7 @@
                     </div>
                     <div class="ml-2 text-xs">
                       {#if session.alreadyImported}
-                        <span class="text-green-600">
+                        <span class="text-[hsl(var(--miwarp-status-success))]">
                           {t("settings_data_imported") || "Imported"}
                         </span>
                       {:else}
@@ -4965,15 +4965,15 @@
                 </div>
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                   <span>{t("settings_data_imported_count") || "Imported"}:</span>
-                  <span class="text-green-600">{importReport.imported}</span>
+                  <span class="text-[hsl(var(--miwarp-status-success))]">{importReport.imported}</span>
                   <span>{t("settings_data_duplicates") || "Duplicates"}:</span>
-                  <span class="text-yellow-600">{importReport.duplicates}</span>
+                  <span class="text-[hsl(var(--miwarp-status-warning))]">{importReport.duplicates}</span>
                   <span>{t("settings_data_skipped") || "Skipped"}:</span>
-                  <span class="text-yellow-600">{importReport.skipped}</span>
+                  <span class="text-[hsl(var(--miwarp-status-warning))]">{importReport.skipped}</span>
                   <span>{t("settings_data_failed") || "Failed"}:</span>
-                  <span class="text-red-600">{importReport.failed}</span>
+                  <span class="text-[hsl(var(--miwarp-status-error))]">{importReport.failed}</span>
                   <span>{t("settings_data_missing_cwd") || "Missing CWD"}:</span>
-                  <span class="text-orange-600">{importReport.missingCwd}</span>
+                  <span class="text-[hsl(var(--miwarp-status-warning))]">{importReport.missingCwd}</span>
                 </div>
               </div>
             {/if}
@@ -4981,7 +4981,7 @@
             <!-- Error -->
             {#if historyError}
               <div
-                class="p-3 bg-red-500/10 border border-red-500/30 rounded-md text-sm text-red-600"
+                class="p-3 bg-[hsl(var(--miwarp-status-error)/0.1)] border border-[hsl(var(--miwarp-status-error))]/30 rounded-md text-sm text-[hsl(var(--miwarp-status-error))]"
               >
                 {historyError}
               </div>

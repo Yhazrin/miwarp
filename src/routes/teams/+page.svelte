@@ -119,12 +119,12 @@
 
   // ── Status helpers ──
   const STATUS_COLORS: Record<TeamRunStatus, string> = {
-    created: "bg-gray-400",
-    planning: "bg-violet-500",
-    running: "bg-blue-500",
-    completed: "bg-emerald-500",
-    failed: "bg-red-500",
-    cancelled: "bg-gray-400",
+    created: "bg-muted-foreground/30",
+    planning: "bg-[hsl(var(--miwarp-accent-secondary))]",
+    running: "bg-[hsl(var(--miwarp-status-info))]",
+    completed: "bg-[hsl(var(--miwarp-status-success))]",
+    failed: "bg-[hsl(var(--miwarp-status-error))]",
+    cancelled: "bg-muted-foreground/30",
   };
 
   const STATUS_TEXT: Record<TeamRunStatus, () => string> = {
@@ -138,9 +138,9 @@
 
   const MEMBER_STATUS_COLORS: Record<string, string> = {
     pending: "bg-muted-foreground/30",
-    running: "bg-blue-500",
-    completed: "bg-emerald-500",
-    failed: "bg-red-500",
+    running: "bg-[hsl(var(--miwarp-status-info))]",
+    completed: "bg-[hsl(var(--miwarp-status-success))]",
+    failed: "bg-[hsl(var(--miwarp-status-error))]",
   };
 
   function relativeTime(iso: string): string {
@@ -294,9 +294,9 @@
   function msgColorClass(color: string): string {
     const map: Record<string, string> = {
       purple: "text-purple-500",
-      blue: "text-blue-500",
+      blue: "text-[hsl(var(--miwarp-status-info))]",
       green: "text-green-500",
-      red: "text-red-500",
+      red: "text-[hsl(var(--miwarp-status-error))]",
       orange: "text-orange-500",
       yellow: "text-yellow-500",
       cyan: "text-cyan-500",
@@ -512,7 +512,7 @@
             </div>
           {:else if runsError}
             <div class="px-3 py-6 text-center">
-              <p class="text-xs text-red-500">{runsError}</p>
+              <p class="text-xs text-[hsl(var(--miwarp-status-error))]">{runsError}</p>
               <button
                 class="mt-2 text-xs text-primary hover:text-primary/80 transition-colors"
                 onclick={loadTeamRuns}>{t("teamRun_retry")}</button
@@ -577,9 +577,9 @@
                         {run.status === 'completed'
                         ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                         : run.status === 'failed'
-                          ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                          ? 'bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]'
                           : run.status === 'running' || run.status === 'planning'
-                            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                            ? 'bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]'
                             : 'bg-muted text-muted-foreground'}"
                     >
                       {STATUS_TEXT[run.status]()}
@@ -634,9 +634,9 @@
                   {selectedRun.status === 'completed'
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                   : selectedRun.status === 'failed'
-                    ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                    ? 'bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]'
                     : selectedRun.status === 'running' || selectedRun.status === 'planning'
-                      ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                      ? 'bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]'
                       : 'bg-muted text-muted-foreground'}"
               >
                 <span
@@ -650,7 +650,7 @@
               </span>
               {#if selectedRun.status === "running" || selectedRun.status === "planning"}
                 <button
-                  class="ml-auto rounded-md px-2.5 py-1 text-[11px] font-medium border border-red-500/30 text-red-500 hover:bg-red-500/10 transition-colors"
+                  class="ml-auto rounded-md px-2.5 py-1 text-[11px] font-medium border border-[hsl(var(--miwarp-status-error)/0.3)] text-[hsl(var(--miwarp-status-error))] hover:bg-[hsl(var(--miwarp-status-error)/0.1)] transition-colors"
                   onclick={() => handleCancelRun(selectedRun!.id)}
                 >
                   {t("teamRun_cancel")}
@@ -696,12 +696,12 @@
                       <span class="text-xs font-medium text-foreground">{member.memberName}</span>
                       <span class="text-[10px] text-muted-foreground/60">{member.role}</span>
                       {#if member.status === "running"}
-                        <span class="ml-auto text-[10px] text-blue-500 animate-pulse">...</span>
+                        <span class="ml-auto text-[10px] text-[hsl(var(--miwarp-status-info))] animate-pulse">...</span>
                       {:else if member.status === "completed"}
                         <span class="ml-auto text-[10px] text-emerald-500">{t("teamRun_done")}</span
                         >
                       {:else if member.status === "failed"}
-                        <span class="ml-auto text-[10px] text-red-500">{t("teamRun_failed")}</span>
+                        <span class="ml-auto text-[10px] text-[hsl(var(--miwarp-status-error))]">{t("teamRun_failed")}</span>
                       {:else}
                         <span class="ml-auto text-[10px] text-muted-foreground/40"
                           >{t("teamRun_pending")}</span
@@ -718,7 +718,7 @@
                     {/if}
                     {#if member.error}
                       <div
-                        class="mt-1.5 pt-1.5 border-t border-red-500/20 text-[11px] text-red-500"
+                        class="mt-1.5 pt-1.5 border-t border-[hsl(var(--miwarp-status-error)/0.2)] text-[11px] text-[hsl(var(--miwarp-status-error))]"
                       >
                         {member.error}
                       </div>
@@ -743,7 +743,7 @@
             <!-- Error -->
             {#if selectedRun.error}
               <div
-                class="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-[11px] text-red-500"
+                class="rounded-lg border border-[hsl(var(--miwarp-status-error)/0.2)] bg-[hsl(var(--miwarp-status-error)/0.05)] px-3 py-2 text-[11px] text-[hsl(var(--miwarp-status-error))]"
               >
                 {selectedRun.error}
               </div>
@@ -804,7 +804,7 @@
                     })}</span
                   >
                   <span
-                    class="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400"
+                    class="rounded-full bg-[hsl(var(--miwarp-status-info)/0.1)] px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--miwarp-status-info))]"
                     >{t("team_tasksCount", { count: String(teamStore.tasks.length) })}</span
                   >
                   {#if teamStore.teamConfig.createdAt}
@@ -1051,7 +1051,7 @@
                                 <div
                                   class="flex items-center gap-1.5 text-[11px] text-muted-foreground flex-wrap"
                                 >
-                                  <span class="text-blue-400"
+                                  <span class="text-[hsl(var(--miwarp-status-info))]"
                                     >{parsed.data.idleReason ?? t("team_msgIdle")}</span
                                   >
                                   {#if parsed.data.completedTaskId}
@@ -1064,7 +1064,7 @@
                                     >
                                   {/if}
                                   {#if parsed.data.failureReason}
-                                    <span class="text-red-400">{parsed.data.failureReason}</span>
+                                    <span class="text-[hsl(var(--miwarp-status-error))]">{parsed.data.failureReason}</span>
                                   {/if}
                                   {#if parsed.data.peerDmSummary}
                                     <span class="text-muted-foreground/60"
@@ -1095,13 +1095,13 @@
                                   {/if}
                                 </div>
                               {:else if parsed.type === "shutdown_request"}
-                                <div class="text-[11px] text-red-500">
+                                <div class="text-[11px] text-[hsl(var(--miwarp-status-error))]">
                                   {t("team_msgShutdownRequested")}{parsed.data.reason
                                     ? `: ${parsed.data.reason}`
                                     : ""}
                                 </div>
                               {:else if parsed.type === "shutdown_approved"}
-                                <div class="text-[11px] text-red-400/70">
+                                <div class="text-[11px] text-[hsl(var(--miwarp-status-error))]/70">
                                   {t("team_msgShutDown")}
                                 </div>
                               {:else if parsed.type === "shutdown_rejected"}
@@ -1138,7 +1138,7 @@
                                 <div
                                   class="text-[11px] {parsed.data.approved
                                     ? 'text-emerald-500'
-                                    : 'text-red-500'}"
+                                    : 'text-[hsl(var(--miwarp-status-error))]'}"
                                 >
                                   {parsed.data.approved
                                     ? t("team_msgPlanApproved")
@@ -1275,7 +1275,7 @@
                 {#if teamStore.inProgressTasks.length > 0}
                   <div>
                     <button
-                      class="flex w-full items-center gap-1.5 text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 transition-colors py-1"
+                      class="flex w-full items-center gap-1.5 text-[11px] font-medium text-[hsl(var(--miwarp-status-info))] hover:text-[hsl(var(--miwarp-status-info))] transition-colors py-1"
                       onclick={() => (expandInProgress = !expandInProgress)}
                     >
                       <svg
@@ -1292,11 +1292,11 @@
                         {#each teamStore.inProgressTasks as task (task.id)}
                           {@const isExpanded = teamStore.expandedTaskId === task.id}
                           <button
-                            class="w-full text-left rounded-lg border border-blue-500/20 bg-blue-500/5 px-2.5 py-2 hover:bg-blue-500/10 transition-colors"
+                            class="w-full text-left rounded-lg border border-[hsl(var(--miwarp-status-info)/0.2)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-2.5 py-2 hover:bg-[hsl(var(--miwarp-status-info)/0.1)] transition-colors"
                             onclick={() => toggleTaskExpand(task)}
                           >
                             <div class="flex items-start gap-1.5">
-                              <span class="text-[11px] font-mono text-blue-500/60 shrink-0 mt-0.5"
+                              <span class="text-[11px] font-mono text-[hsl(var(--miwarp-status-info))]/60 shrink-0 mt-0.5"
                                 >#{task.id}</span
                               >
                               <div class="flex-1 min-w-0">
@@ -1310,7 +1310,7 @@
                                     >
                                   {/if}
                                   {#if task.activeForm}
-                                    <span class="text-[10px] text-blue-400 italic"
+                                    <span class="text-[10px] text-[hsl(var(--miwarp-status-info))] italic"
                                       >{task.activeForm}</span
                                     >
                                   {/if}
@@ -1353,7 +1353,7 @@
                               >
                             </div>
                             {#if isExpanded}
-                              <div class="mt-2 pt-2 border-t border-blue-500/10">
+                              <div class="mt-2 pt-2 border-t border-[hsl(var(--miwarp-status-info)/0.1)]">
                                 {#if taskDescLoading[task.id]}
                                   <div
                                     class="flex items-center gap-1.5 text-[10px] text-muted-foreground"

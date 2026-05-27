@@ -67,7 +67,7 @@ struct MessageListView: View {
             Spacer(minLength: 48)
             Text(content)
                 .font(.body)
-                .foregroundStyle(.white)
+                .foregroundStyle(MWColors.accentOnAccent)
                 .textSelection(.enabled)
                 .frame(maxWidth: layout.chatUserBubbleMaxWidth, alignment: .leading)
                 .padding(.horizontal, 14)

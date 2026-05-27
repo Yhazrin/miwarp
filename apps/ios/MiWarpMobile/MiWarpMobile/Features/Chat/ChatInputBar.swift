@@ -32,9 +32,9 @@ struct ChatInputBar: View {
                     } label: {
                         Image(systemName: "stop.fill")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(MWColors.accentOnAccent)
                             .frame(width: 28, height: 28)
-                            .background(.red, in: Circle())
+                            .background(MWColors.statusError, in: Circle())
                     }
                     .accessibilityLabel(String(localized: "action.stop"))
                     .sensoryFeedback(.impact(flexibility: .solid, intensity: 0.7), trigger: isRunning)
@@ -62,7 +62,7 @@ struct ChatInputBar: View {
                     } label: {
                         Image(systemName: "arrow.up")
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(canSubmit ? Color.white : Color.gray.opacity(0.4))
+                            .foregroundStyle(canSubmit ? MWColors.accentOnAccent : Color(.systemFill))
                             .frame(width: 28, height: 28)
                             .background(canSubmit ? theme.accentPrimary : Color(.systemFill), in: Circle())
                             .scaleEffect(sendScale)

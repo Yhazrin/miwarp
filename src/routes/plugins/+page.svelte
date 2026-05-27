@@ -143,13 +143,13 @@
   );
 
   const categoryColors: Record<string, string> = {
-    development: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    development: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
     productivity: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
-    security: "bg-red-500/10 text-red-600 dark:text-red-400",
+    security: "bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]",
     testing: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
     learning: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-    database: "bg-green-500/10 text-green-600 dark:text-green-400",
-    monitoring: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+    database: "bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]",
+    monitoring: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]",
     deployment: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
     design: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
   };
@@ -167,7 +167,7 @@
     {
       key: "commands",
       label: () => t("plugin_badgeCommands"),
-      color: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+      color: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
     },
     {
       key: "agents",
@@ -187,7 +187,7 @@
     {
       key: "lsp_servers",
       label: () => t("plugin_badgeLsp"),
-      color: "bg-green-500/10 text-green-600 dark:text-green-400",
+      color: "bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]",
     },
   ];
 
@@ -920,14 +920,14 @@
             <div class="text-[11px] text-muted-foreground mt-0.5">{t("sidebar_skills")}</div>
           </button>
           <button
-            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-green-500/30 hover:bg-green-500/5 transition-all"
+            class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-[hsl(var(--miwarp-status-success)/0.3)] hover:bg-[hsl(var(--miwarp-status-success))]/5 transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "plugins";
             }}
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-green-600 text-white"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-success))] text-white"
               >
                 <svg
                   class="h-3 w-3"
@@ -1125,7 +1125,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-info))] text-white"
             >
               <svg
                 class="h-4 w-4"
@@ -1199,7 +1199,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-600 text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-success))] text-white"
             >
               <svg
                 class="h-4 w-4"
@@ -1350,7 +1350,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-600 text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-success))] text-white"
             >
               <svg
                 class="h-4 w-4"
@@ -1569,8 +1569,8 @@
                 class="inline-block h-2 w-2 rounded-full {communityHealth === null
                   ? 'bg-muted-foreground/40'
                   : communityHealth.available
-                    ? 'bg-green-500'
-                    : 'bg-red-500'}"
+                    ? 'bg-[hsl(var(--miwarp-status-success))]'
+                    : 'bg-[hsl(var(--miwarp-status-error))]'}"
               ></span>
               <span class="text-[10px] text-muted-foreground">skills.sh</span>
             </div>
@@ -1941,7 +1941,7 @@
                         <span
                           class="rounded-full px-1.5 py-0.5 text-[10px] font-medium {skill.scope ===
                           'project'
-                            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                            ? 'bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]'
                             : 'bg-muted text-muted-foreground'}">{skill.scope}</span
                         >
                       {/if}
@@ -2430,7 +2430,7 @@
                   <button
                     class="rounded-lg border border-border px-2.5 py-1 text-xs {plugin.enabled !==
                     false
-                      ? 'text-green-600 dark:text-green-400 border-green-500/30'
+                      ? 'text-[hsl(var(--miwarp-status-success))] border-[hsl(var(--miwarp-status-success)/0.3)]'
                       : 'text-muted-foreground'} hover:bg-muted transition-colors disabled:opacity-50"
                     onclick={() => handleToggleEnabled(plugin)}
                     disabled={operationLoading === plugin.name}

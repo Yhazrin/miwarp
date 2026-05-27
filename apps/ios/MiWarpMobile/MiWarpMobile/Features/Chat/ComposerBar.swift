@@ -84,9 +84,9 @@ struct ComposerBar: View {
         } label: {
             Image(systemName: "stop.fill")
                 .font(.system(size: 14, weight: .bold))
-                .foregroundColor(.white)
+                .foregroundColor(MWColors.accentOnAccent)
                 .frame(width: 28, height: 28)
-                .background(.red, in: Circle())
+                .background(MWColors.statusError, in: Circle())
         }
         .accessibilityLabel(String(localized: "action.stop"))
     }
