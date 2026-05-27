@@ -1,0 +1,12 @@
+/* Live Activity - Lock Screen */
+"liveActivity.syncing" = "同步会话中";
+"liveActivity.allSynced" = "全部已同步";
+"liveActivity.tapToView" = "点击查看";
+"liveActivity.done" = "完成";
+"liveActivity.fail" = "失败";
+"liveActivity.stepOf" = "步骤 %lld / %lld";
+"liveActivity.countOf" = "%lld / %lld";
+
+/* Live Activity - Dynamic Island Compact */
+"liveActivity.sync" = "同步";
+"liveActivity.run" = "运行";

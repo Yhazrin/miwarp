@@ -224,6 +224,15 @@
 "liveActivity.dynamicIslandHint" = "Dynamic Island: available on iPhone 14 Pro or later";
 "liveActivity.enableHint" = "Go to Settings -> MiWarp -> Live Activities and enable it";
 "liveActivity.lockScreenOnly" = "Other iPhones show Lock Screen Live Activity only.";
+"liveActivity.syncing" = "Syncing Sessions";
+"liveActivity.allSynced" = "All synced";
+"liveActivity.tapToView" = "Tap to view";
+"liveActivity.done" = "Done";
+"liveActivity.fail" = "Fail";
+"liveActivity.stepOf" = "Step %lld of %lld";
+"liveActivity.countOf" = "%lld of %lld";
+"liveActivity.sync" = "Sync";
+"liveActivity.run" = "Run";
 
 /* Theme */
 "theme.mode.system" = "System";

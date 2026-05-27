@@ -1,0 +1,12 @@
+/* Live Activity - Lock Screen */
+"liveActivity.syncing" = "Syncing Sessions";
+"liveActivity.allSynced" = "All synced";
+"liveActivity.tapToView" = "Tap to view";
+"liveActivity.done" = "Done";
+"liveActivity.fail" = "Fail";
+"liveActivity.stepOf" = "Step %lld of %lld";
+"liveActivity.countOf" = "%lld of %lld";
+
+/* Live Activity - Dynamic Island Compact */
+"liveActivity.sync" = "Sync";
+"liveActivity.run" = "Run";

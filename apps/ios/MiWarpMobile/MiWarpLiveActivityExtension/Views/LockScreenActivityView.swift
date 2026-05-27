@@ -20,7 +20,7 @@ struct SyncLockScreenView: View {
             .opacity(isLuminanceReduced ? 0.6 : 1.0)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("Syncing Sessions")
+                Text(String(localized: "liveActivity.syncing"))
                     .font(.system(size: isLuminanceReduced ? 13 : 15, weight: .semibold))
                     .foregroundColor(.white)
 
@@ -50,7 +50,7 @@ struct SyncLockScreenView: View {
 
             VStack(alignment: .trailing, spacing: 3) {
                 if state.totalCount > 0 {
-                    Text("\(state.currentCount) of \(state.totalCount)")
+                    Text(String(format: String(localized: "liveActivity.countOf"), state.currentCount, state.totalCount))
                         .font(.system(size: isLuminanceReduced ? 13 : 16, weight: .semibold).monospacedDigit())
                         .foregroundColor(.white)
                 } else {
@@ -60,7 +60,7 @@ struct SyncLockScreenView: View {
                 }
 
                 if !state.phase.isActive {
-                    Text(state.phase == .completed ? "All synced" : "Tap to view")
+                    Text(state.phase == .completed ? String(localized: "liveActivity.allSynced") : String(localized: "liveActivity.tapToView"))
                         .font(.system(size: 10))
                         .foregroundColor(.white.opacity(0.45))
                 }
@@ -130,7 +130,7 @@ struct AgentLockScreenView: View {
 
             VStack(alignment: .trailing, spacing: 3) {
                 if state.totalSteps > 0 {
-                    Text("Step \(state.currentStep) of \(state.totalSteps)")
+                    Text(String(format: String(localized: "liveActivity.stepOf"), state.currentStep, state.totalSteps))
                         .font(.system(size: isLuminanceReduced ? 13 : 16, weight: .semibold).monospacedDigit())
                         .foregroundColor(.white)
                 } else {
@@ -140,7 +140,7 @@ struct AgentLockScreenView: View {
                 }
 
                 if !state.phase.isActive {
-                    Text(state.phase == .completed ? "Done" : "Tap to view")
+                    Text(state.phase == .completed ? String(localized: "liveActivity.done") : String(localized: "liveActivity.tapToView"))
                         .font(.system(size: 10))
                         .foregroundColor(.white.opacity(0.45))
                 }
