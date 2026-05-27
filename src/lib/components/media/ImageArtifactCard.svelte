@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { MediaArtifact } from "$lib/types";
+  import { fade, scale } from "svelte/transition";
   // import { t } from "$lib/i18n/index.svelte";
 
   let { artifact }: { artifact: MediaArtifact } = $props();
@@ -25,7 +26,7 @@
     <img
       src="data:{artifact.mimeType};base64,{artifact.contentBase64}"
       alt={artifact.name}
-      class="max-h-48 max-w-xs rounded-lg border border-border object-contain transition-opacity opacity-0"
+      class="max-h-48 max-w-xs rounded-lg border border-border object-contain transition-opacity transition-transform duration-200 hover:scale-[1.02] opacity-0"
       class:opacity-100={loaded}
       onload={() => (loaded = true)}
       loading="lazy"
@@ -47,6 +48,7 @@
   {#if showModal}
     <div
       class="fixed inset-0 z-50 flex items-center justify-center bg-[hsl(var(--miwarp-bg-deepest)/0.9)]"
+      transition:fade={{ duration: 200 }}
       onclick={() => (showModal = false)}
       onkeydown={(e) => {
         if (e.key === "Escape") showModal = false;
@@ -68,6 +70,7 @@
         src="data:{artifact.mimeType};base64,{artifact.contentBase64}"
         alt={artifact.name}
         class="max-w-[90vw] max-h-[90vh] object-contain"
+        transition:scale={{ start: 0.95, duration: 200 }}
         onclick={(e) => e.stopPropagation()}
         role="presentation"
       />
