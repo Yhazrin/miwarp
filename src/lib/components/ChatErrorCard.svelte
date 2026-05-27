@@ -76,7 +76,7 @@
       {/if}
       {#if classified.canFork && sessionId}
         <button
-          class="rounded px-2.5 py-1 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors"
+          class="rounded px-2.5 py-1 text-xs bg-[hsl(var(--miwarp-status-info)/0.2)] hover:bg-[hsl(var(--miwarp-status-info)/0.3)] text-[hsl(var(--miwarp-status-info))] transition-colors"
           onclick={onFork}>{t("statusbar_fork")}</button
         >
       {/if}

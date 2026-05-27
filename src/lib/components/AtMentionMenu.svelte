@@ -98,7 +98,7 @@
           <!-- Icon: folder or file -->
           {#if entry.is_dir}
             <svg
-              class="h-3.5 w-3.5 shrink-0 text-blue-400"
+              class="h-3.5 w-3.5 shrink-0 text-[hsl(var(--miwarp-status-info))]"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"

@@ -301,7 +301,7 @@
     <div class="flex items-center gap-1.5 min-w-0">
       {#if conversation.isFavorite}
         <svg
-          class="h-3 w-3 shrink-0 text-yellow-500/70"
+          class="h-3 w-3 shrink-0 text-[hsl(var(--miwarp-status-warning)/0.7)]"
           viewBox="0 0 24 24"
           fill="currentColor"
           stroke="currentColor"
