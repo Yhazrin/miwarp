@@ -414,7 +414,7 @@
     border: 1px solid hsl(var(--miwarp-status-info) / 0.2);
     border-radius: 8px;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--motion-fast) var(--ease-standard);
   }
 
   .elicitation-url-btn:hover {
@@ -441,7 +441,7 @@
     border: 1px solid hsl(var(--border) / 0.7);
     border-radius: 10px;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--motion-fast) var(--ease-standard);
   }
 
   .elicitation-chip:hover {
@@ -528,7 +528,7 @@
     font-weight: 500;
     border-radius: 10px;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--motion-fast) var(--ease-standard);
   }
 
   .elicitation-btn--deny {

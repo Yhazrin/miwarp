@@ -331,7 +331,7 @@
     border-radius: 8px;
     border: none;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--motion-fast) var(--ease-standard);
   }
 
   .btn-icon {
