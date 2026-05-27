@@ -81,10 +81,16 @@ struct ChatView: View {
 
             // Messages
             if viewModel.isLoading {
-                ContentUnavailableView {
-                    Label(String(localized: "chat.loadingMessages"), systemImage: "arrow.clockwise")
-                } description: {
-                    Text(String(localized: "chat.fetchingHistory"))
+                ScrollView {
+                    VStack(spacing: MWSpacing.md) {
+                        MiSkeletonCard(lines: 4, height: 168)
+                        MiSkeletonCard(lines: 3, showsAvatar: true)
+                        MiSkeletonCard(lines: 3, showsAvatar: true)
+                    }
+                    .padding(.horizontal, MWSpacing.lg)
+                    .padding(.top, MWSpacing.xl)
+                    .frame(maxWidth: layout.contentMaxWidth)
+                    .frame(maxWidth: .infinity)
                 }
                 .transition(.opacity)
             } else if let error = viewModel.error {

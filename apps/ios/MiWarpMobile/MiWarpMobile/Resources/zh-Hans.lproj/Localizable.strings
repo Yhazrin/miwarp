@@ -224,6 +224,15 @@
 "liveActivity.dynamicIslandHint" = "灵动岛：仅在 iPhone 14 Pro 及更高版本可用";
 "liveActivity.enableHint" = "前往 设置 -> MiWarp -> 实时活动 并开启";
 "liveActivity.lockScreenOnly" = "其他 iPhone 仅显示锁屏实时活动。";
+"liveActivity.syncing" = "同步会话中";
+"liveActivity.allSynced" = "全部已同步";
+"liveActivity.tapToView" = "点击查看";
+"liveActivity.done" = "完成";
+"liveActivity.fail" = "失败";
+"liveActivity.stepOf" = "步骤 %lld / %lld";
+"liveActivity.countOf" = "%lld / %lld";
+"liveActivity.sync" = "同步";
+"liveActivity.run" = "运行";
 
 /* Theme */
 "theme.mode.system" = "跟随系统";

@@ -50,11 +50,11 @@ struct SyncCompactTrailing: View {
     private var label: String {
         switch phase {
         case .completed:
-            return "Done"
+            return String(localized: "liveActivity.done")
         case .failed:
-            return "Fail"
+            return String(localized: "liveActivity.fail")
         default:
-            return totalCount > 0 ? "\(currentCount)/\(totalCount)" : "Sync"
+            return totalCount > 0 ? "\(currentCount)/\(totalCount)" : String(localized: "liveActivity.sync")
         }
     }
 }
@@ -99,11 +99,11 @@ struct AgentCompactTrailing: View {
     private var label: String {
         switch phase {
         case .completed:
-            return "Done"
+            return String(localized: "liveActivity.done")
         case .failed:
-            return "Fail"
+            return String(localized: "liveActivity.fail")
         default:
-            return totalSteps > 0 ? "\(currentStep)/\(totalSteps)" : "Run"
+            return totalSteps > 0 ? "\(currentStep)/\(totalSteps)" : String(localized: "liveActivity.run")
         }
     }
 }
