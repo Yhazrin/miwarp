@@ -212,7 +212,7 @@ struct ChatView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
-        .animation(.spring(duration: 0.3, bounce: 0.2), value: viewModel.reducer.usage.costUsd)
+        .animation(MWMotion.springQuick, value: viewModel.reducer.usage.costUsd)
     }
 
     private func statusPill(_ status: RunStatus) -> some View {
@@ -223,7 +223,7 @@ struct ChatView: View {
             .padding(.vertical, 3)
             .background(statusColor(status).opacity(0.18), in: Capsule())
             .contentTransition(.opacity)
-            .animation(.spring(duration: 0.3, bounce: 0.2), value: status)
+            .animation(MWMotion.springQuick, value: status)
     }
 
     private func statusColor(_ status: RunStatus) -> Color {
@@ -334,7 +334,7 @@ struct InlineApprovalView: View {
             insertion: .scale(scale: 0.95).combined(with: .opacity),
             removal: .scale(scale: 0.95).combined(with: .opacity)
         ))
-        .animation(.spring(duration: 0.4, bounce: 0.3), value: didRespond)
+        .animation(MWMotion.springStandard, value: didRespond)
         .sensoryFeedback(.warning, trigger: didRespond)
     }
 }

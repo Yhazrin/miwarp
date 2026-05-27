@@ -974,13 +974,13 @@ struct MWTaskProgressRing: View {
                 )
                 .rotationEffect(.degrees(-90))
                 .opacity(state == .failed ? 0.5 : 1.0)
-                .animation(.spring(duration: 0.6, bounce: 0.2), value: normalizedProgress)
+                .animation(MWMotion.springGentle, value: normalizedProgress)
 
             stateIcon
                 .transition(.scale(scale: 0.5).combined(with: .opacity))
         }
         .frame(width: size, height: size)
-        .animation(.spring(duration: 0.4, bounce: 0.3), value: state)
+        .animation(MWMotion.springStandard, value: state)
     }
 
     @ViewBuilder

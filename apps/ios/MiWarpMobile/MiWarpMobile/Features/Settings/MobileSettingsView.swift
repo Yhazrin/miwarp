@@ -113,7 +113,7 @@ struct MobileSettingsView: View {
     private func accentSwatchButton(_ accent: MWAccentTheme) -> some View {
         let isSelected = theme.accentTheme == accent
         return Button {
-            withAnimation(.spring(duration: 0.35, bounce: 0.35)) {
+            withAnimation(MWMotion.springBouncy) {
                 theme.accentTheme = accent
             }
         } label: {

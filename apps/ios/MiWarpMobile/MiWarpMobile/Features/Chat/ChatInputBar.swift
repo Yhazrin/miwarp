@@ -50,11 +50,11 @@ struct ChatInputBar: View {
                     .accessibilityLabel(String(localized: "action.fork"))
                 } else {
                     Button {
-                        withAnimation(.spring(duration: 0.2, bounce: 0.4)) {
+                        withAnimation(MWMotion.springQuick) {
                             sendScale = 0.85
                         }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                            withAnimation(.spring(duration: 0.3, bounce: 0.5)) {
+                            withAnimation(MWMotion.springBouncy) {
                                 sendScale = 1.0
                             }
                         }
@@ -70,7 +70,7 @@ struct ChatInputBar: View {
                     .disabled(!canSubmit)
                     .accessibilityLabel(String(localized: "action.send"))
                     .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.6), trigger: canSubmit)
-                    .animation(.spring(duration: 0.25, bounce: 0.3), value: canSubmit)
+                    .animation(MWMotion.springQuick, value: canSubmit)
                 }
             }
             .padding(.leading, 14)
@@ -83,7 +83,7 @@ struct ChatInputBar: View {
                         isFocused ? theme.accentPrimary.opacity(0.3) : Color(.separator).opacity(0.3),
                         lineWidth: isFocused ? 1 : 0.5
                     )
-                    .animation(.spring(duration: 0.3, bounce: 0.2), value: isFocused)
+                    .animation(MWMotion.springQuick, value: isFocused)
             )
         }
         .padding(.horizontal, 12)

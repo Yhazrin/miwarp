@@ -47,6 +47,6 @@ struct MWStatusIndicator: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
         .background(color.opacity(0.12), in: Capsule())
-        .animation(.spring(duration: 0.3, bounce: 0.2), value: state)
+        .animation(MWMotion.springQuick, value: state)
     }
 }
