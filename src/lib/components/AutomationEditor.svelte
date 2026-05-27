@@ -16,6 +16,7 @@
   } from "$lib/types/automation";
   import { executeScript, cancelExecution, validateScript } from "$lib/services/automation-service";
   import { browserStore } from "$lib/stores/browser-store.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import StepEditor from "./StepEditor.svelte";
 
   interface Props {
@@ -434,17 +435,7 @@
                         handleDeleteStep(index);
                       }}
                     >
-                      <svg
-                        class="h-3.5 w-3.5"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <path
-                          d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
-                        />
-                      </svg>
+                      <Icon name="trash" size="sm" />
                     </button>
                   </div>
                 </div>

@@ -313,17 +313,7 @@
     <div class="w-[400px] p-6">
       <div class="flex items-center gap-3 mb-4">
         <div class="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
-          <svg
-            class="h-5 w-5 text-destructive"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path
-              d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
-            />
-          </svg>
+          <Icon name="trash" size="lg" class="text-destructive" />
         </div>
         <div>
           <h3 class="text-lg font-semibold">{t("skills_deleteTitle")}</h3>

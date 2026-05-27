@@ -6,6 +6,7 @@
   import { IMAGE_TYPES } from "$lib/utils/file-types";
   import type { ChatMessage, Attachment, MediaArtifact } from "$lib/types";
   import AgentIdentity from "./AgentIdentity.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import type { ProcessVisibility } from "$lib/utils/process-visibility";
   import { shouldShowRawDebug } from "$lib/utils/process-visibility";
   import { resolveArtifactsFromText } from "$lib/media-resolver";
@@ -144,18 +145,7 @@
                   stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
                 >
               {:else}
-                <svg
-                  class="h-3.5 w-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><rect width="14" height="14" x="8" y="8" rx="2" /><path
-                    d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
-                  /></svg
-                >
+                <Icon name="copy" size="sm" />
               {/if}
             </button>
             {#if onRewind}
@@ -255,18 +245,7 @@
                   stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
                 >
               {:else}
-                <svg
-                  class="h-3.5 w-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><rect width="14" height="14" x="8" y="8" rx="2" /><path
-                    d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
-                  /></svg
-                >
+                <Icon name="copy" size="sm" />
               {/if}
             </button>
             <span

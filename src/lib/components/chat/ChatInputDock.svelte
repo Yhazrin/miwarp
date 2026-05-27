@@ -12,6 +12,7 @@
   import ChatBtwDrawer from "$lib/components/ChatBtwDrawer.svelte";
   import ChatRalphLoopBar from "$lib/components/ChatRalphLoopBar.svelte";
   import PromptInput from "$lib/components/PromptInput.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   const t = tFn;
 
@@ -204,20 +205,7 @@
           <div
             class="mx-2 mb-1 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-muted-foreground animate-in fade-in slide-in-from-bottom-1 duration-150"
           >
-            <svg
-              class="h-3.5 w-3.5 shrink-0 text-primary"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
+            <Icon name="users" size="sm" class="shrink-0 text-primary" />
             <span>{t("teamRun_teamHint")}</span>
           </div>
         {/if}

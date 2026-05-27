@@ -490,20 +490,7 @@
             aria-label={t("teamRun_refresh")}
             onclick={loadTeamRuns}
           >
-            <svg
-              class="h-3.5 w-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-              <path d="M3 3v5h5" />
-              <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-              <path d="M16 16h5v5" />
-            </svg>
+            <Icon name="refresh-cw" size="sm" />
           </button>
         </div>
 
@@ -594,20 +581,7 @@
           </div>
         {:else if !selectedRun}
           <div class="flex flex-col items-center justify-center h-full text-center px-6">
-            <svg
-              class="h-8 w-8 text-muted-foreground/30 mb-3"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
+            <Icon name="users" size="lg" class="text-muted-foreground/30 mb-3" />
             <p class="text-sm text-muted-foreground">{t("teamRun_selectRun")}</p>
           </div>
         {:else}
@@ -805,19 +779,7 @@
                       title={t("team_deleteTeam")}
                       onclick={() => (deleteConfirm = teamStore.selectedTeam)}
                     >
-                      <svg
-                        class="h-3.5 w-3.5"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path
-                          d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"
-                        />
-                      </svg>
+                      <Icon name="trash" size="sm" />
                     </button>
                   {/if}
                 </div>
