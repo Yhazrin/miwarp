@@ -607,6 +607,106 @@ export function buildEnrichedProjectFolders(
   return folders;
 }
 
+// ── Flat list builder (Cursor-style) ──
+
+export interface FlatListResult {
+  /** Pinned conversations, sorted by latest activity desc. */
+  pinned: ConversationGroup[];
+  /** All non-pinned non-archived conversations, sorted by latest activity desc. */
+  recent: ConversationGroup[];
+  /** Archived conversations (completed/idle for > 1 hour). */
+  archived: ConversationGroup[];
+}
+
+const ARCHIVE_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
+
+/**
+ * Build a flat sorted list of conversations from all runs.
+ * Groups by session_id, sorts by activity, partitions into pinned/recent/archived.
+ */
+export function buildFlatConversationList(
+  runs: TaskRun[],
+  favoriteRunIds: Set<string>,
+): FlatListResult {
+  // Group by session_id
+  const sessionMap = new Map<string, TaskRun[]>();
+  const standalone: TaskRun[] = [];
+
+  for (const run of runs) {
+    if (run.session_id) {
+      let group = sessionMap.get(run.session_id);
+      if (!group) {
+        group = [];
+        sessionMap.set(run.session_id, group);
+      }
+      group.push(run);
+    } else {
+      standalone.push(run);
+    }
+  }
+
+  const allConversations: ConversationGroup[] = [];
+
+  for (const [, sessionRuns] of sessionMap) {
+    sessionRuns.sort((a, b) => b.started_at.localeCompare(a.started_at));
+    const latestRun = sessionRuns[0];
+    const earliestRun = sessionRuns[sessionRuns.length - 1];
+    const title = latestRun.name?.trim() || earliestRun.prompt?.trim() || "Untitled";
+    const isFavorite = sessionRuns.some((r) => favoriteRunIds.has(r.id));
+    const totalMessages = sessionRuns.reduce((sum, r) => sum + (r.message_count ?? 0), 0);
+    allConversations.push({
+      groupKey: `s:${latestRun.session_id}`,
+      runs: sessionRuns,
+      title,
+      latestRun,
+      isFavorite,
+      totalMessages,
+    });
+  }
+
+  for (const run of standalone) {
+    const title = run.name?.trim() || run.prompt?.trim() || "Untitled";
+    allConversations.push({
+      groupKey: `r:${run.id}`,
+      runs: [run],
+      title,
+      latestRun: run,
+      isFavorite: favoriteRunIds.has(run.id),
+      totalMessages: run.message_count ?? 0,
+    });
+  }
+
+  // Sort by latest activity desc
+  allConversations.sort((a, b) =>
+    sortKey(b.latestRun).localeCompare(sortKey(a.latestRun)),
+  );
+
+  // Partition: pinned / recent / archived
+  const pinned: ConversationGroup[] = [];
+  const recent: ConversationGroup[] = [];
+  const archived: ConversationGroup[] = [];
+  const now = Date.now();
+
+  for (const conv of allConversations) {
+    if (conv.isFavorite) {
+      pinned.push(conv);
+      continue;
+    }
+    const status = conv.latestRun.status;
+    const isTerminal = status === "completed" || status === "idle" || status === "error" || status === "stopped";
+    const lastActivity = new Date(conv.latestRun.last_activity_at ?? conv.latestRun.started_at).getTime();
+    const isStale = now - lastActivity > ARCHIVE_THRESHOLD_MS;
+
+    if (isTerminal && isStale) {
+      archived.push(conv);
+    } else {
+      recent.push(conv);
+    }
+  }
+
+  return { pinned, recent, archived };
+}
+
 // ── Session folder groups ──
 
 export function buildSessionFolderGroups(
