@@ -355,6 +355,9 @@ class ThemeStore {
     const resolvedId = theme?.id ?? "codex-light";
     const isDark = theme?.type === "dark";
 
+    // Enable smooth transition during theme switch
+    root.classList.add("theme-transitioning");
+
     // Step 1: Set data-theme attribute — CSS applies built-in theme variables
     root.setAttribute("data-theme", resolvedId);
 
@@ -370,6 +373,9 @@ class ThemeStore {
         root.style.setProperty(varName, hslValue);
       }
     }
+
+    // Remove transition class after animation completes
+    setTimeout(() => root.classList.remove("theme-transitioning"), 350);
   }
 
   private _persistSettings() {
