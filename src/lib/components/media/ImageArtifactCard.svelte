@@ -2,6 +2,7 @@
   import type { MediaArtifact } from "$lib/types";
   import { fade, scale } from "svelte/transition";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
 
   let { artifact }: { artifact: MediaArtifact } = $props();
 
@@ -33,9 +34,7 @@
     />
     {#if !loaded}
       <div class="absolute inset-0 flex items-center justify-center bg-muted/30 rounded-lg">
-        <div
-          class="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin"
-        ></div>
+        <Spinner size="md" class="border-primary border-t-transparent" />
       </div>
     {/if}
     <div

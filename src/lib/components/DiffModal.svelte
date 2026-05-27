@@ -2,6 +2,7 @@
   import Modal from "./Modal.svelte";
   import * as api from "$lib/api";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
 
   let {
     open = $bindable(false),
@@ -59,9 +60,7 @@
 
     {#if loading}
       <div class="flex items-center justify-center py-8">
-        <div
-          class="h-5 w-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-        ></div>
+        <Spinner size="md" />
       </div>
     {:else if diff.trim()}
       <pre

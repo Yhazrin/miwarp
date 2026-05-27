@@ -2,6 +2,7 @@
   import { listConfiguredMcpServers, removeMcpServer } from "$lib/api";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import type { ConfiguredMcpServer } from "$lib/types";
 
   let {
@@ -117,9 +118,7 @@
 
 {#if loading}
   <div class="flex items-center justify-center py-8">
-    <div
-      class="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-    ></div>
+    <Spinner size="sm" />
     <span class="ml-2 text-xs text-muted-foreground">{t("mcp_loadingConfigured")}</span>
   </div>
 {:else if servers.length === 0}
@@ -197,9 +196,7 @@
               disabled={operationLoading === server.name}
             >
               {#if operationLoading === server.name}
-                <div
-                  class="h-3.5 w-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin"
-                ></div>
+                <Spinner size="sm" />
               {:else}
                 <svg
                   class="h-3.5 w-3.5"
