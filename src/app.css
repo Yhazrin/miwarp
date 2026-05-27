@@ -725,6 +725,69 @@ html.theme-transitioning *::after {
   font-size: inherit;
 }
 
+/* ── Collapsible code blocks ── */
+.code-block-collapsible {
+  position: relative;
+  overflow-y: hidden;
+  transition: max-height 0.3s ease-in-out;
+}
+.code-block-collapsible pre {
+  margin: 0;
+}
+.code-block-fade {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3.5rem;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent 0%, hsl(var(--muted) / 0.85) 100%);
+  transition: opacity 0.2s ease;
+}
+.code-block[data-expanded="true"] .code-block-fade {
+  opacity: 0;
+}
+.code-block-toggle {
+  display: block;
+  width: 100%;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: hsl(var(--primary));
+  background: hsl(var(--muted) / 0.6);
+  border: none;
+  border-top: 1px solid hsl(var(--border) / 0.3);
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+  transition:
+    color 0.15s,
+    background-color 0.15s;
+}
+.code-block-toggle:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+.code-block-lines {
+  font-size: 0.625rem;
+  color: hsl(var(--muted-foreground) / 0.7);
+  margin-right: auto;
+  margin-left: 0.5rem;
+  font-weight: 400;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .code-block-collapsible {
+    transition: none;
+  }
+  .code-block-fade {
+    transition: none;
+  }
+  .code-block-toggle {
+    transition: none;
+  }
+}
+
 /* Tool terminal output (Bash, shell commands) */
 .tool-terminal {
   background: hsl(0 0% 5%);
@@ -901,6 +964,16 @@ html.theme-transitioning *::after {
 }
 .dark .code-block-header {
   background: hsl(var(--muted) / 0.8);
+}
+.dark .code-block-fade {
+  background: linear-gradient(to bottom, transparent 0%, hsl(var(--muted)) 100%);
+}
+.dark .code-block-toggle {
+  background: hsl(var(--muted) / 0.9);
+  border-top-color: hsl(var(--border) / 0.2);
+}
+.dark .code-block-toggle:hover {
+  background: hsl(var(--muted));
 }
 
 /* Diff section — dark mode deeper background */

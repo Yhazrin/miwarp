@@ -57,8 +57,14 @@ marked.use({
       }
 
       const displayLang = language || "text";
+      const lineCount = text.split("\n").length;
+      const collapsible = lineCount > 15;
+      const lineBadge = collapsible
+        ? `<span class="code-block-lines">${lineCount} lines</span>`
+        : "";
+      const collapsibleAttr = collapsible ? ' data-collapsible="true"' : "";
 
-      return `<div class="code-block"><div class="code-block-header"><span class="code-block-lang">${escapeHtml(displayLang)}</span><button class="code-block-copy" data-code-copy>Copy</button></div><pre><code class="hljs language-${escapeHtml(language)}">${highlighted}</code></pre></div>`;
+      return `<div class="code-block"${collapsibleAttr}><div class="code-block-header"><span class="code-block-lang">${escapeHtml(displayLang)}</span>${lineBadge}<button class="code-block-copy" data-code-copy>Copy</button></div><pre><code class="hljs language-${escapeHtml(language)}">${highlighted}</code></pre></div>`;
     },
   },
 });
@@ -70,7 +76,7 @@ export function renderMarkdown(text: string): string {
       const raw = marked.parse(text);
       if (typeof raw !== "string") return "";
       return DOMPurify.sanitize(raw, {
-        ADD_ATTR: ["class", "target", "data-code-copy"],
+        ADD_ATTR: ["class", "target", "data-code-copy", "data-collapsible"],
       });
     },
     { chars: text.length, codeFenceCount: text.match(/```/g)?.length ?? 0 },
