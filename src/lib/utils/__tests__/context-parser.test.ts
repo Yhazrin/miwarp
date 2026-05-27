@@ -166,17 +166,17 @@ describe("computeContextDelta", () => {
 
 describe("getColor / getIcon", () => {
   it("returns correct color for known categories", () => {
-    expect(getColor("System prompt")).toBe("#a78bfa");
-    expect(getColor("Messages")).toBe("#f472b6");
-    expect(getColor("MCP tools")).toBe("#34d399");
+    expect(getColor("System prompt")).toBe("hsl(var(--miwarp-accent-violet))");
+    expect(getColor("Messages")).toBe("hsl(var(--miwarp-accent-violet))");
+    expect(getColor("MCP tools")).toBe("hsl(var(--miwarp-status-success))");
   });
 
   it("returns gray for free space", () => {
-    expect(getColor("Free space")).toBe("#6b7280");
+    expect(getColor("Free space")).toBe("hsl(var(--miwarp-text-tertiary))");
   });
 
   it("returns fallback for unknown categories", () => {
-    expect(getColor("Unknown Category")).toBe("#9ca3af");
+    expect(getColor("Unknown Category")).toBe("hsl(var(--miwarp-text-tertiary))");
   });
 
   it("returns correct icons", () => {
