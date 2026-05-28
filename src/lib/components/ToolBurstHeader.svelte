@@ -2,6 +2,7 @@
   import type { ToolBurst } from "$lib/utils/tool-rendering";
   import { t } from "$lib/i18n/index.svelte";
   import DualStatusIndicator from "./DualStatusIndicator.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   let {
     burst,
@@ -38,15 +39,7 @@
 
     <!-- Status indicator -->
     {#if allDone}
-      <svg
-        class="h-3 w-3 text-[hsl(var(--miwarp-status-success))] shrink-0"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-      >
+      <Icon name="check" size="xs" class="text-[hsl(var(--miwarp-status-success))] shrink-0" />
     {:else if burst.stats.running > 0}
       <DualStatusIndicator state="running" processStatus="active" size="xs" />
     {/if}

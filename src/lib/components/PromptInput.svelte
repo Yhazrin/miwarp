@@ -2480,13 +2480,7 @@
             onclick={() => selectMode(mode.value)}
           >
             {#if permissionMode === mode.value}
-              <svg
-                class="h-3 w-3 text-primary shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"><path d="M20 6 9 17l-5-5" /></svg
-              >
+              <Icon name="check" size="xs" class="text-primary shrink-0" />
             {:else}
               <span class="w-3 shrink-0"></span>
             {/if}

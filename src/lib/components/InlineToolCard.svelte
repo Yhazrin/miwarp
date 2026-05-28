@@ -1,6 +1,7 @@
 <script lang="ts">
   import InlineToolCard from "./InlineToolCard.svelte";
   import type { BusToolItem, TimelineEntry, PermissionSuggestion } from "$lib/types";
+  import Icon from "$lib/components/Icon.svelte";
   import type { TaskNotificationItem } from "$lib/stores/session-store.svelte";
   import { getToolColor } from "$lib/utils/tool-colors";
   import { getToolSummary } from "$lib/utils/tool-summaries";
@@ -727,17 +728,7 @@
                       onclick={() => toggleMulti(option)}
                     >
                       {#if multiChecked[option]}
-                        <svg
-                          class="inline h-3 w-3 mr-1 -mt-0.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        >
-                          <path d="M20 6 9 17l-5-5" />
-                        </svg>
+                        <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
                       {/if}
                       {option}
                     </button>
@@ -848,17 +839,7 @@
                   >{t("common_denied")}</span
                 >
               {:else}
-                <svg
-                  class="h-3.5 w-3.5 text-[hsl(var(--miwarp-status-success))] shrink-0 ml-auto"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
+                <Icon name="check" size="sm" class="text-[hsl(var(--miwarp-status-success))] shrink-0 ml-auto" />
               {/if}
             </div>
             {#if hasMultipleQuestions}
@@ -888,15 +869,7 @@
                               : 'border-border/50 bg-transparent text-muted-foreground/50'}"
                           >
                             {#if isSelected}
-                              <svg
-                                class="inline h-3 w-3 mr-0.5 -mt-0.5"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2.5"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-                              >
+                              <Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />
                             {/if}
                             {option.label}
                           </span>
@@ -905,15 +878,7 @@
                           <span
                             class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
                           >
-                            <svg
-                              class="inline h-3 w-3 mr-0.5 -mt-0.5"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              stroke-width="2.5"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-                            >
+                            <Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />
                             {askAnnotationsMap[pq.question]}
                           </span>
                         {/if}
@@ -922,30 +887,14 @@
                       <span
                         class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
                       >
-                        <svg
-                          class="inline h-3 w-3 mr-0.5 -mt-0.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-                        >
+                        <Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />
                         {askAnnotationsMap[pq.question]}
                       </span>
                     {:else if askAnswersMap[pq.question]}
                       <span
                         class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
                       >
-                        <svg
-                          class="inline h-3 w-3 mr-0.5 -mt-0.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-                        >
+                        <Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />
                         {askAnswersMap[pq.question]}
                       </span>
                     {/if}
@@ -969,17 +918,7 @@
                         : 'border-border/50 bg-transparent text-muted-foreground/50'}"
                     >
                       {#if askAnswerSet.has(option)}
-                        <svg
-                          class="inline h-3 w-3 mr-1 -mt-0.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        >
-                          <path d="M20 6 9 17l-5-5" />
-                        </svg>
+                        <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
                       {/if}
                       {option}
                     </span>
@@ -988,17 +927,7 @@
                     <span
                       class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
                     >
-                      <svg
-                        class="inline h-3 w-3 mr-1 -mt-0.5"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <path d="M20 6 9 17l-5-5" />
-                      </svg>
+                      <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
                       {askAnnotationsMap[askQuestion]}
                     </span>
                   {/if}
@@ -1007,34 +936,14 @@
                 <span
                   class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
                 >
-                  <svg
-                    class="inline h-3 w-3 mr-1 -mt-0.5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
+                  <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
                   {askAnnotationsMap[askQuestion]}
                 </span>
               {:else if askAnswer}
                 <span
                   class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
                 >
-                  <svg
-                    class="inline h-3 w-3 mr-1 -mt-0.5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M20 6 9 17l-5-5" />
-                  </svg>
+                  <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
                   {askAnswer}
                 </span>
               {/if}
@@ -1106,15 +1015,7 @@
                             }}
                           >
                             {#if questionAnswers[pq.question] === option.label}
-                              <svg
-                                class="inline h-3 w-3 mr-0.5 -mt-0.5"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2.5"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-                              >
+                              <Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />
                             {/if}
                             <span>{option.label}</span>
                             {#if option.description}
@@ -1199,17 +1100,7 @@
                       onclick={() => toggleMulti(option)}
                     >
                       {#if multiChecked[option]}
-                        <svg
-                          class="inline h-3 w-3 mr-1 -mt-0.5"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        >
-                          <path d="M20 6 9 17l-5-5" />
-                        </svg>
+                        <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
                       {/if}
                       {option}
                     </button>
@@ -1851,15 +1742,7 @@
             ></div>
             <span>{taskNotification.summary || taskNotification.message}</span>
           {:else if taskNotification.status === "completed" || taskNotification.status === "done"}
-            <svg
-              class="h-2.5 w-2.5 text-[hsl(var(--miwarp-status-success))] shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-            >
+            <Icon name="check" size="xs" class="text-[hsl(var(--miwarp-status-success))] shrink-0" />
             <span>{taskNotification.summary || taskNotification.message}</span>
           {:else if taskNotification.status === "error" || taskNotification.status === "failed"}
             <svg

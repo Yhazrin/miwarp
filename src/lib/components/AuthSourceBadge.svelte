@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { scale } from "svelte/transition";
+  import Icon from "$lib/components/Icon.svelte";
   import type { AuthOverview, PlatformCredential } from "$lib/types";
   import { t } from "$lib/i18n/index.svelte";
   import {
@@ -367,13 +368,7 @@
                           : 'text-foreground/80'}">{platform.name}</span
                       >
                       {#if isSelected}
-                        <svg
-                          class="h-3 w-3 text-primary shrink-0"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"><path d="M20 6 9 17l-5-5" /></svg
-                        >
+                        <Icon name="check" size="xs" class="text-primary shrink-0" />
                       {/if}
                     </button>
                   {/each}

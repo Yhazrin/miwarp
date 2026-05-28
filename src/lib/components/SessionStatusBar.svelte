@@ -1067,15 +1067,7 @@
         onclick={() => selectProcessVisibility(mode)}
       >
         {#if processVisibility === mode}
-          <svg
-            class="h-3.5 w-3.5 shrink-0 text-primary"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-          >
+          <Icon name="check" size="sm" class="shrink-0 text-primary" />
         {:else}
           <span class="h-3.5 w-3.5 shrink-0"></span>
         {/if}
@@ -1124,15 +1116,7 @@
           onclick={() => selectModel(m.value)}
         >
           {#if model === m.value}
-            <svg
-              class="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-            >
+            <Icon name="check" size="sm" class="mt-0.5 shrink-0 text-primary" />
           {:else}
             <span class="mt-0.5 h-3.5 w-3.5 shrink-0"></span>
           {/if}

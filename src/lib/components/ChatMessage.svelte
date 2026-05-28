@@ -135,15 +135,7 @@
               data-export-exclude
             >
               {#if copied}
-                <svg
-                  class="h-3.5 w-3.5 text-[hsl(var(--miwarp-status-success))]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-                >
+                <Icon name="check" size="sm" class="text-[hsl(var(--miwarp-status-success))]" />
               {:else}
                 <Icon name="copy" size="sm" />
               {/if}
@@ -235,15 +227,7 @@
               data-export-exclude
             >
               {#if copied}
-                <svg
-                  class="h-3.5 w-3.5 text-[hsl(var(--miwarp-status-success))]"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-                >
+                <Icon name="check" size="sm" class="text-[hsl(var(--miwarp-status-success))]" />
               {:else}
                 <Icon name="copy" size="sm" />
               {/if}

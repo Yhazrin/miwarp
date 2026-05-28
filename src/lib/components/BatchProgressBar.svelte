@@ -3,6 +3,7 @@
   import { aggregateBatchStatus } from "$lib/utils/tool-rendering";
   import { dbg } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   let { tools }: { tools: BusToolItem[] } = $props();
 
@@ -24,15 +25,7 @@
 <div class="rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
   <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
     {#if allDone}
-      <svg
-        class="h-3 w-3 text-[hsl(var(--miwarp-status-success))] shrink-0"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2.5"
-        stroke-linecap="round"
-        stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-      >
+      <Icon name="check" size="xs" class="text-[hsl(var(--miwarp-status-success))] shrink-0" />
     {:else if stats.running > 0}
       <span class="inline-block h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse shrink-0"></span>
     {/if}

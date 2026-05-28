@@ -2476,13 +2476,7 @@
                 {:else}
                   <div class="flex-1 flex items-center justify-center px-3">
                     <div class="flex flex-col items-center gap-1.5 text-center">
-                      <svg
-                        class="h-6 w-6 text-muted-foreground/30"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"><path d="M20 6 9 17l-5-5" /></svg
-                      >
+                      <Icon name="check" size="md" class="text-muted-foreground/30" />
                       <p class="text-xs text-muted-foreground">{t("sidebar_workingTreeClean")}</p>
                     </div>
                   </div>
@@ -2825,13 +2819,7 @@
 
                 {#if enrichedProjectFolders.length === 0}
                   <div class="flex flex-col items-center gap-2 px-3 py-6 text-center">
-                    <svg
-                      class="h-6 w-6 text-muted-foreground/30"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.5"><path d="M20 6 9 17l-5-5" /></svg
-                    >
+                    <Icon name="check" size="md" class="text-muted-foreground/30" />
                     <p class="text-xs text-muted-foreground">{t("sidebar_workingTreeClean")}</p>
                   </div>
                 {/if}

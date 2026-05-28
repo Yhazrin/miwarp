@@ -126,15 +126,7 @@
           onclick={confirmKey}
           title={t("keybinding_useAnyway")}
         >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-          >
+          <Icon name="check" size="sm" />
         </button>
         <button
           class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
@@ -149,15 +141,7 @@
           onclick={confirmKey}
           title={t("keybinding_confirm")}
         >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-          >
+          <Icon name="check" size="sm" />
         </button>
         <button
           class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"

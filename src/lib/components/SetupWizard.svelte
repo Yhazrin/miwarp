@@ -13,6 +13,7 @@
   import { IS_WINDOWS } from "$lib/utils/platform";
   import { getTransport } from "$lib/transport";
   import { t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/Icon.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
   import { slide } from "svelte/transition";
   import { buildDoctorReport } from "$lib/utils/doctor";
@@ -339,13 +340,7 @@
                 : 'border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.05)]'} p-3"
             >
               {#if result.ok}
-                <svg
-                  class="h-5 w-5 text-[hsl(var(--miwarp-status-success))] shrink-0"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"><path d="M20 6 9 17l-5-5" /></svg
-                >
+                <Icon name="check" size="sm" class="text-[hsl(var(--miwarp-status-success))] shrink-0" />
               {:else}
                 <svg
                   class="h-5 w-5 text-[hsl(var(--miwarp-status-error))] shrink-0"
@@ -754,15 +749,7 @@
         <div
           class="flex h-16 w-16 items-center justify-center rounded-full bg-miwarp-status-success/10"
         >
-          <svg
-            class="h-8 w-8 text-[hsl(var(--miwarp-status-success))]"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-          >
+          <Icon name="check" size="lg" class="text-[hsl(var(--miwarp-status-success))]" />
         </div>
         <h2 class="text-xl font-semibold">{t("setup_allSet")}</h2>
         <p class="text-sm text-muted-foreground">{t("setup_allSetDesc")}</p>

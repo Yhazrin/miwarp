@@ -3,6 +3,7 @@
   import { extractOutputText, extractStructuredOutput } from "$lib/utils/tool-rendering";
   import { t } from "$lib/i18n/index.svelte";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   let { tool }: { tool: BusToolItem } = $props();
 
@@ -29,15 +30,7 @@
         <span
           class="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--miwarp-status-info)/0.1)] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--miwarp-status-info))]"
         >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-          >
+          <Icon name="check" size="xs" />
           {t("tool_teamCreated")}
         </span>
       </div>
@@ -303,15 +296,7 @@
         <span
           class="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--miwarp-status-error)/0.1)] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--miwarp-status-error))]"
         >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-          >
+          <Icon name="check" size="xs" />
           {t("tool_teamDeleted")}
         </span>
       </div>
@@ -357,15 +342,7 @@
         <span
           class="inline-flex items-center gap-1 text-[11px] text-[hsl(var(--miwarp-status-success))]"
         >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-          >
+          <Icon name="check" size="xs" />
           {t("tool_messageSent")}
         </span>
       </div>

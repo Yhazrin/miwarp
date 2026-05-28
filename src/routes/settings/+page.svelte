@@ -1779,15 +1779,7 @@
                 </h2>
                 {#if displaySaved}
                   <span class="text-xs text-[hsl(var(--miwarp-status-success))] flex items-center gap-1 animate-fade-in">
-                    <svg
-                      class="h-3 w-3"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-                    >
+                    <Icon name="check" size="xs" />
                     {t("settings_general_saved")}
                   </span>
                 {/if}
@@ -2628,15 +2620,7 @@
                 </h2>
                 {#if generalSaved}
                   <span class="text-xs text-[hsl(var(--miwarp-status-success))] flex items-center gap-1 animate-fade-in">
-                    <svg
-                      class="h-3 w-3"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-                    >
+                    <Icon name="check" size="xs" />
                     {t("settings_general_saved")}
                   </span>
                 {/if}
@@ -4041,15 +4025,7 @@
               </div>
               {#if remoteSaved}
                 <span class="text-xs text-[hsl(var(--miwarp-status-success))] flex items-center gap-1 animate-fade-in">
-                  <svg
-                    class="h-3 w-3"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg
-                  >
+                  <Icon name="check" size="xs" />
                   {t("settings_general_saved")}
                 </span>
               {/if}

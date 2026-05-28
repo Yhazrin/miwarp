@@ -3,6 +3,7 @@
   import * as api from "$lib/api";
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   let {
     open = $bindable(false),
@@ -78,13 +79,7 @@
           {/if}{/each}</pre>
     {:else}
       <div class="flex flex-col items-center gap-2 py-8 text-center">
-        <svg
-          class="h-8 w-8 text-muted-foreground/40"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"><path d="M20 6 9 17l-5-5" /></svg
-        >
+        <Icon name="check" size="lg" class="text-muted-foreground/40" />
         <p class="text-sm text-muted-foreground">{t("diff_noChanges")}</p>
       </div>
     {/if}

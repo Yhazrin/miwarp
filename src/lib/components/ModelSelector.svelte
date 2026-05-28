@@ -3,6 +3,7 @@
   import { scale } from "svelte/transition";
   import { getCliModels } from "$lib/stores/cli-info.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   let {
     value = $bindable(""),
@@ -132,13 +133,7 @@
             onclick={() => selectModel(mdl.value)}
           >
             {#if value === mdl.value}
-              <svg
-                class="h-3.5 w-3.5 text-primary"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"><path d="M20 6 9 17l-5-5" /></svg
-              >
+              <Icon name="check" size="sm" class="text-primary" />
             {:else}
               <span class="w-3.5"></span>
             {/if}
