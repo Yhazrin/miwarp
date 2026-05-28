@@ -114,22 +114,22 @@
   let displayedContent = $derived(content ? formatContent(content) : "");
 </script>
 
-<div class="webfetch-panel">
+<div class="flex flex-col gap-4 p-4 bg-miwarp-bg-surface rounded-lg max-h-full overflow-y-auto">
   <!-- Header -->
-  <div class="panel-header">
-    <h3>{t("webfetch_title")}</h3>
-    <span class="subtitle">{t("webfetch_subtitle")}</span>
+  <div class="flex flex-col gap-1 pb-2 border-b border-miwarp-border">
+    <h3 class="m-0 text-xl font-semibold">{t("webfetch_title")}</h3>
+    <span class="text-sm text-miwarp-text-secondary">{t("webfetch_subtitle")}</span>
   </div>
 
   <!-- URL Input -->
-  <div class="fetch-form">
-    <div class="url-input-group">
+  <div class="flex flex-col gap-2">
+    <div class="flex gap-2">
       <input
         type="text"
         bind:value={url}
         placeholder={t("webfetch_enterUrl")}
         onkeydown={handleKeyDown}
-        class="url-input"
+        class="flex-1 p-3 bg-miwarp-bg-deepest border border-miwarp-border rounded text-miwarp-text-primary text-sm focus:outline-none focus:border-miwarp-accent-primary"
       />
       <button type="button" class="rounded-lg px-6 py-3 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={fetchUrl} disabled={isLoading || !url}>
         {isLoading ? t("webfetch_fetching") : t("webfetch_fetch")}
@@ -139,16 +139,16 @@
 
   <!-- History -->
   {#if fetchHistory.length > 0}
-    <div class="history-section">
-      <div class="history-header">
-        <span class="history-label">{t("webfetch_recentUrls")}</span>
+    <div class="p-3 bg-miwarp-bg-deepest rounded-md">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-sm text-miwarp-text-secondary">{t("webfetch_recentUrls")}</span>
         <button type="button" class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors" onclick={() => (fetchHistory = [])}>
           {t("webfetch_clear")}
         </button>
       </div>
-      <div class="history-list">
+      <div class="flex flex-wrap gap-2">
         {#each fetchHistory as historyUrl}
-          <button type="button" class="history-item" onclick={() => selectFromHistory(historyUrl)}>
+          <button type="button" class="px-2 py-1 bg-miwarp-bg-surface border border-miwarp-border rounded text-miwarp-text-primary text-xs cursor-pointer max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap transition-all duration-150 hover:bg-miwarp-bg-elevated hover:border-miwarp-accent-primary" onclick={() => selectFromHistory(historyUrl)}>
             {historyUrl}
           </button>
         {/each}
@@ -158,19 +158,17 @@
 
   <!-- Results -->
   {#if statusCode !== null}
-    <div class="results-section">
-      <div class="results-header">
-        <h4>{t("webfetch_response")}</h4>
-        <div class="results-meta">
+    <div class="p-3 bg-miwarp-bg-deepest rounded-md">
+      <div class="flex justify-between items-center mb-2">
+        <h4 class="m-0 text-sm text-miwarp-text-secondary">{t("webfetch_response")}</h4>
+        <div class="flex gap-2 items-center">
           <span
-            class="status-badge"
-            class:success={statusCode < 400}
-            class:error={statusCode >= 400}
+            class="px-2 py-1 rounded text-xs font-semibold {statusCode < 400 ? 'bg-miwarp-status-success text-miwarp-accent-on-accent' : 'bg-miwarp-status-error text-miwarp-accent-on-accent'}"
           >
             {statusCode}
           </span>
           {#if contentType}
-            <span class="content-type">{contentType.split(";")[0]}</span>
+            <span class="text-xs text-miwarp-text-secondary">{contentType.split(";")[0]}</span>
           {/if}
         </div>
       </div>
@@ -182,11 +180,11 @@
 
       <!-- Headers -->
       {#if showHeaders && Object.keys(headers).length > 0}
-        <div class="headers-display">
+        <div class="p-3 bg-miwarp-bg-surface rounded max-h-[150px] overflow-auto">
           {#each Object.entries(headers) as [key, value]}
-            <div class="header-row">
-              <span class="header-key">{key}:</span>
-              <span class="header-value">{value}</span>
+            <div class="flex gap-2 py-1 text-xs border-b border-miwarp-border">
+              <span class="text-miwarp-accent-primary font-medium min-w-[150px]">{key}:</span>
+              <span class="text-miwarp-text-secondary break-all">{value}</span>
             </div>
           {/each}
         </div>
@@ -196,296 +194,34 @@
 
   <!-- Content Display -->
   {#if content}
-    <div class="content-section">
-      <div class="content-header">
-        <h4>{t("webfetch_content")}</h4>
-        <div class="content-actions">
+    <div class="flex-1 flex flex-col min-h-0">
+      <div class="flex justify-between items-center mb-2">
+        <h4 class="m-0 text-sm text-miwarp-text-secondary">{t("webfetch_content")}</h4>
+        <div class="flex gap-2">
           <button type="button" class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors" onclick={copyContent}> {t("webfetch_copy")} </button>
           <button type="button" class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors" onclick={clearContent}> {t("webfetch_clear")} </button>
         </div>
       </div>
-      <div class="content-display">
-        <pre class="content-text">{displayedContent}</pre>
+      <div class="flex-1 bg-miwarp-bg-deepest rounded-md overflow-auto max-h-[300px]">
+        <pre class="m-0 p-3 text-xs font-[Courier_New,monospace] whitespace-pre-wrap break-words text-miwarp-text-primary">{displayedContent}</pre>
       </div>
     </div>
   {/if}
 
   <!-- Error Display -->
   {#if error}
-    <div class="error-section">
-      <span class="error-icon">⚠️</span>
-      <span class="error-message">{error}</span>
+    <div class="flex items-center gap-2 p-3 bg-miwarp-status-error/10 border border-miwarp-status-error rounded-md">
+      <span class="text-xl">⚠️</span>
+      <span class="flex-1 text-sm text-miwarp-status-error">{error}</span>
       <button type="button" class="px-2 py-1 bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onclick={() => (error = null)} title={t("common_close")} aria-label={t("common_close")}> × </button>
     </div>
   {/if}
 
   <!-- Loading -->
   {#if isLoading}
-    <div class="loading-section">
-      <span class="loading-spinner">⏳</span>
+    <div class="flex items-center justify-center gap-2 p-6 text-miwarp-text-secondary">
+      <span class="text-2xl animate-spin">⏳</span>
       <span>{t("webfetch_fetchingContent")}</span>
     </div>
   {/if}
 </div>
-
-<style>
-  .webfetch-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
-    background: hsl(var(--miwarp-bg-surface));
-    border-radius: 8px;
-    max-height: 100%;
-    overflow-y: auto;
-  }
-
-  .panel-header {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid hsl(var(--miwarp-border));
-  }
-
-  .panel-header h3 {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-  }
-
-  .subtitle {
-    font-size: 0.875rem;
-    color: hsl(var(--miwarp-text-secondary));
-  }
-
-  .fetch-form {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .url-input-group {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .url-input {
-    flex: 1;
-    padding: 0.75rem;
-    background: hsl(var(--miwarp-bg-deepest));
-    border: 1px solid hsl(var(--miwarp-border));
-    border-radius: 4px;
-    color: hsl(var(--miwarp-text-primary));
-    font-size: 0.875rem;
-  }
-
-  .url-input:focus {
-    outline: none;
-    border-color: hsl(var(--miwarp-accent-primary));
-  }
-
-  .history-section {
-    padding: 0.75rem;
-    background: hsl(var(--miwarp-bg-deepest));
-    border-radius: 6px;
-  }
-
-  .history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-  }
-
-  .history-label {
-    font-size: 0.875rem;
-    color: hsl(var(--miwarp-text-secondary));
-  }
-
-  .history-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .history-item {
-    padding: 0.25rem 0.5rem;
-    background: hsl(var(--miwarp-bg-surface));
-    border: 1px solid hsl(var(--miwarp-border));
-    border-radius: 4px;
-    color: hsl(var(--miwarp-text-primary));
-    font-size: 0.75rem;
-    cursor: pointer;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    transition: background-color 0.15s ease, border-color 0.15s ease;
-  }
-
-  .history-item:hover {
-    background: hsl(var(--miwarp-bg-elevated));
-    border-color: hsl(var(--miwarp-accent-primary));
-  }
-
-  .results-section {
-    padding: 0.75rem;
-    background: hsl(var(--miwarp-bg-deepest));
-    border-radius: 6px;
-  }
-
-  .results-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-  }
-
-  .results-header h4 {
-    margin: 0;
-    font-size: 0.875rem;
-    color: hsl(var(--miwarp-text-secondary));
-  }
-
-  .results-meta {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
-  .status-badge {
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 600;
-  }
-
-  .status-badge.success {
-    background: hsl(var(--miwarp-status-success));
-    color: hsl(var(--miwarp-accent-on-accent, 0 0% 100%));
-  }
-
-  .status-badge.error {
-    background: hsl(var(--miwarp-status-error));
-    color: hsl(var(--miwarp-accent-on-accent, 0 0% 100%));
-  }
-
-  .content-type {
-    font-size: 0.75rem;
-    color: hsl(var(--miwarp-text-secondary));
-  }
-
-  .headers-display {
-    padding: 0.75rem;
-    background: hsl(var(--miwarp-bg-surface));
-    border-radius: 4px;
-    max-height: 150px;
-    overflow: auto;
-  }
-
-  .header-row {
-    display: flex;
-    gap: 0.5rem;
-    padding: 0.25rem 0;
-    font-size: 0.75rem;
-    border-bottom: 1px solid hsl(var(--miwarp-border));
-  }
-
-  .header-key {
-    color: hsl(var(--miwarp-accent-primary));
-    font-weight: 500;
-    min-width: 150px;
-  }
-
-  .header-value {
-    color: hsl(var(--miwarp-text-secondary));
-    word-break: break-all;
-  }
-
-  .content-section {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
-
-  .content-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-  }
-
-  .content-header h4 {
-    margin: 0;
-    font-size: 0.875rem;
-    color: hsl(var(--miwarp-text-secondary));
-  }
-
-  .content-actions {
-    display: flex;
-    gap: 0.5rem;
-  }
-
-  .content-display {
-    flex: 1;
-    background: hsl(var(--miwarp-bg-deepest));
-    border-radius: 6px;
-    overflow: auto;
-    max-height: 300px;
-  }
-
-  .content-text {
-    margin: 0;
-    padding: 0.75rem;
-    font-size: 0.75rem;
-    font-family: "Courier New", monospace;
-    white-space: pre-wrap;
-    word-break: break-word;
-    color: hsl(var(--miwarp-text-primary));
-  }
-
-  .error-section {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    background: hsl(var(--miwarp-status-error) / 0.1);
-    border: 1px solid hsl(var(--miwarp-status-error));
-    border-radius: 6px;
-  }
-
-  .error-icon {
-    font-size: 1.25rem;
-  }
-
-  .error-message {
-    flex: 1;
-    font-size: 0.875rem;
-    color: hsl(var(--miwarp-status-error));
-  }
-
-  .loading-section {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 1.5rem;
-    color: hsl(var(--miwarp-text-secondary));
-  }
-
-  .loading-spinner {
-    font-size: 1.5rem;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
-  }
-</style>

@@ -114,35 +114,35 @@
   }
 </script>
 
-<div class="browser-panel">
+<div class="flex flex-col gap-4 p-4 bg-miwarp-bg-elevated rounded-lg max-h-full overflow-y-auto">
   <!-- Header -->
-  <div class="panel-header">
-    <h3>{t("browser_automation")}</h3>
-    <div class="connection-status" class:connected>
-      <span class="status-dot"></span>
+  <div class="flex justify-between items-center pb-2 border-b border-miwarp-border">
+    <h3 class="m-0 text-xl font-semibold">{t("browser_automation")}</h3>
+    <div class="flex items-center gap-2 text-sm">
+      <span class="w-2 h-2 rounded-full {connected ? 'bg-miwarp-status-success' : 'bg-miwarp-status-error'}"></span>
       {connected ? t("browser_connected") : t("browser_disconnected")}
     </div>
   </div>
 
   <!-- Connection Section -->
   {#if !connected}
-    <div class="section">
-      <h4>{t("browser_connect")}</h4>
+    <div class="p-3 bg-miwarp-bg-deepest rounded-md">
+      <h4 class="mb-3 text-sm text-miwarp-text-secondary">{t("browser_connect")}</h4>
       <button type="button" class="rounded-lg px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={handleConnectBrowser}>
         {t("browser_listBrowsers")}
       </button>
 
       {#if browsers.length > 0}
-        <div class="browser-list">
+        <div class="flex flex-col gap-2 mt-3">
           {#each browsers as browser}
-            <button type="button" class="browser-item" onclick={() => browserStore.connect(browser)}>
-              <span class="browser-icon">🌐</span>
-              <div class="browser-info">
-                <span class="browser-name">{browser.displayName}</span>
-                <span class="browser-platform">{browser.platform}</span>
+            <button type="button" class="flex items-center gap-3 p-3 bg-miwarp-bg-deepest border border-miwarp-border rounded-md cursor-pointer transition-all duration-150 hover:bg-miwarp-bg-surface hover:border-miwarp-accent-primary" onclick={() => browserStore.connect(browser)}>
+              <span class="text-2xl">🌐</span>
+              <div class="flex-1 flex flex-col">
+                <span class="font-medium">{browser.displayName}</span>
+                <span class="text-xs text-miwarp-text-secondary">{browser.platform}</span>
               </div>
               {#if browser.isThisComputer}
-                <span class="badge">{t("browser_thisDevice")}</span>
+                <span class="px-2 py-1 bg-miwarp-status-success text-miwarp-accent-on-accent text-xs rounded">{t("browser_thisDevice")}</span>
               {/if}
             </button>
           {/each}
@@ -151,26 +151,26 @@
     </div>
   {:else}
     <!-- Browser Controls -->
-    <div class="section navigation-section">
+    <div class="p-3 bg-miwarp-bg-deepest rounded-md">
       <!-- Back/Forward/Refresh -->
-      <div class="nav-controls">
-        <button type="button" class="btn-icon" onclick={handleGoBack} title={t("browser_goBack")} aria-label={t("browser_goBack")}> ← </button>
-        <button type="button" class="btn-icon" onclick={handleGoForward} title={t("browser_goForward")} aria-label={t("browser_goForward")}>
+      <div class="flex gap-1">
+        <button type="button" class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface" onclick={handleGoBack} title={t("browser_goBack")} aria-label={t("browser_goBack")}> ← </button>
+        <button type="button" class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface" onclick={handleGoForward} title={t("browser_goForward")} aria-label={t("browser_goForward")}>
           →
         </button>
-        <button type="button" class="btn-icon" onclick={handleRefresh} title={t("browser_refresh")} aria-label={t("browser_refresh")}>
+        <button type="button" class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface" onclick={handleRefresh} title={t("browser_refresh")} aria-label={t("browser_refresh")}>
           ↻
         </button>
       </div>
 
       <!-- URL Bar -->
-      <div class="url-bar">
+      <div class="flex gap-2 mt-2">
         <input
           type="text"
           bind:value={urlInput}
           placeholder={t("browser_enterUrl")}
           onkeydown={handleKeyDown}
-          class="url-input"
+          class="flex-1 p-2 bg-miwarp-bg-deepest border border-miwarp-border rounded text-miwarp-text-primary text-sm focus:outline-none focus:border-miwarp-accent-primary"
         />
         <button type="button" class="rounded-lg px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={handleNavigate} disabled={isNavigating}>
           {isNavigating ? "..." : t("browser_go")}
@@ -179,17 +179,16 @@
     </div>
 
     <!-- Tabs -->
-    <div class="section tabs-section">
-      <div class="tabs-list">
+    <div class="p-2 bg-miwarp-bg-deepest rounded-md">
+      <div class="flex gap-1 overflow-x-auto p-1">
         {#each tabs as tab}
           <button type="button"
-            class="tab-item"
-            class:active={tab.id === activeTabId}
+            class="flex items-center gap-2 py-2 px-3 bg-transparent border border-transparent rounded text-miwarp-text-secondary cursor-pointer whitespace-nowrap max-w-[150px] transition-all duration-150 hover:bg-miwarp-bg-surface {tab.id === activeTabId ? 'bg-miwarp-accent-primary text-miwarp-accent-on-accent' : ''}"
             onclick={() => handleSelectTab(tab.id)}
           >
-            <span class="tab-title">{tab.title || t("browser_newTab")}</span>
+            <span class="overflow-hidden text-ellipsis">{tab.title || t("browser_newTab")}</span>
             <span
-              class="tab-close"
+              class="px-1 bg-transparent border-none text-inherit cursor-pointer text-base opacity-70 hover:opacity-100"
               role="button"
               tabindex="0"
               aria-label={t("browser_closeTab")}
@@ -202,43 +201,43 @@
             </span>
           </button>
         {/each}
-        <button type="button" class="btn-icon add-tab" onclick={handleCreateTab} title={t("browser_newTab")} aria-label={t("browser_newTab")}>
+        <button type="button" class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface shrink-0 text-xl" onclick={handleCreateTab} title={t("browser_newTab")} aria-label={t("browser_newTab")}>
           +
         </button>
       </div>
     </div>
 
     <!-- Quick Actions -->
-    <div class="section quick-actions">
+    <div class="p-3 bg-miwarp-bg-deepest rounded-md flex gap-2 flex-wrap">
       {#each quickActions as action}
         <button type="button" class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer border-none transition-colors" onclick={() => handleQuickAction(action.action)}>
-          <span class="action-icon">{action.icon}</span>
+          <span class="mr-1">{action.icon}</span>
           {action.label}
         </button>
       {/each}
     </div>
 
     <!-- Search -->
-    <div class="section search-section">
+    <div class="p-3 bg-miwarp-bg-deepest rounded-md">
       <input
         id="search-input"
         type="text"
         bind:value={searchQuery}
         placeholder={t("browser_findElements")}
-        class="search-input"
+        class="flex-1 p-2 bg-miwarp-bg-deepest border border-miwarp-border rounded text-miwarp-text-primary text-sm focus:outline-none focus:border-miwarp-accent-primary"
       />
       <button type="button" class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={handleFind} disabled={isFinding}>
         {isFinding ? "..." : t("browser_find")}
       </button>
 
       {#if foundElements.length > 0}
-        <div class="found-elements">
-          <h5>{t("browser_foundElements", { count: String(foundElements.length) })}</h5>
+        <div class="mt-3 p-3 bg-miwarp-bg-deepest rounded">
+          <h5 class="mb-2 text-sm text-miwarp-text-secondary">{t("browser_foundElements", { count: String(foundElements.length) })}</h5>
           {#each foundElements as element}
-            <div class="element-item">
-              <span class="element-ref">{element.ref}</span>
+            <div class="flex gap-2 py-1 text-xs border-b border-miwarp-border">
+              <span class="text-miwarp-accent-primary font-mono">{element.ref}</span>
               {#if element.text}
-                <span class="element-text">{element.text}</span>
+                <span class="text-miwarp-text-secondary overflow-hidden text-ellipsis">{element.text}</span>
               {/if}
             </div>
           {/each}
@@ -248,14 +247,14 @@
 
     <!-- Page Content Preview -->
     {#if pageContent}
-      <div class="section content-section">
-        <h4>{t("browser_pageContent")}</h4>
-        <div class="content-preview">
-          <pre class="content-text">{pageContent.text.slice(0, 500)}{pageContent.text.length > 500
+      <div class="p-3 bg-miwarp-bg-deepest rounded-md max-h-[200px] overflow-hidden">
+        <h4 class="mb-3 text-sm text-miwarp-text-secondary">{t("browser_pageContent")}</h4>
+        <div class="max-h-[150px] overflow-auto bg-miwarp-bg-deepest rounded p-2">
+          <pre class="m-0 text-xs whitespace-pre-wrap break-words">{pageContent.text.slice(0, 500)}{pageContent.text.length > 500
               ? "..."
               : ""}</pre>
         </div>
-        <div class="element-count">
+        <div class="mt-2 text-xs text-miwarp-text-secondary">
           {t("browser_elementsDetected", { count: String(pageContent.elements.length) })}
         </div>
       </div>
@@ -263,13 +262,13 @@
 
     <!-- Last Screenshot -->
     {#if browserStore.state.lastScreenshot}
-      <div class="section screenshot-section">
-        <h4>{t("browser_lastScreenshot")}</h4>
-        <div class="screenshot-preview">
+      <div class="p-2 bg-miwarp-bg-deepest rounded-md">
+        <h4 class="mb-3 text-sm text-miwarp-text-secondary">{t("browser_lastScreenshot")}</h4>
+        <div class="flex justify-center">
           <img
             src={browserStore.state.lastScreenshot.imageUrl}
             alt={t("browser_pageScreenshot")}
-            class="screenshot-image"
+            class="max-w-full max-h-[200px] rounded border border-miwarp-border"
           />
         </div>
       </div>
@@ -278,11 +277,11 @@
 
   <!-- Error Display -->
   {#if error}
-    <div class="section error-section">
-      <span class="error-icon">⚠️</span>
-      <span class="error-text">{error}</span>
+    <div class="p-3 rounded-md flex items-center gap-2 bg-miwarp-status-error/10 border border-miwarp-status-error">
+      <span class="text-xl">⚠️</span>
+      <span class="flex-1 text-sm text-miwarp-status-error">{error}</span>
       <button type="button"
-        class="btn-icon"
+        class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface"
         onclick={() => browserStore.dispatch({ type: "SET_ERROR", error: null })}
       >
         ×
@@ -292,347 +291,9 @@
 
   <!-- Loading Indicator -->
   {#if isLoading}
-    <div class="loading-overlay">
-      <span class="loading-spinner">⏳</span>
+    <div class="flex items-center justify-center gap-2 p-4 bg-miwarp-overlay absolute inset-0">
+      <span class="text-2xl animate-spin">⏳</span>
       <span>{t("browser_loading")}</span>
     </div>
   {/if}
 </div>
-
-<style>
-  .browser-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1rem;
-    background: hsl(var(--miwarp-bg-elevated, 220 12% 15%));
-    border-radius: 8px;
-    max-height: 100%;
-    overflow-y: auto;
-  }
-
-  .panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid hsl(var(--miwarp-border));
-  }
-
-  .panel-header h3 {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-  }
-
-  .connection-status {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-  }
-
-  .status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: hsl(var(--miwarp-status-error, 0 72% 60%));
-  }
-
-  .connection-status.connected .status-dot {
-    background: hsl(var(--miwarp-status-success, 152 55% 55%));
-  }
-
-  .section {
-    padding: 0.75rem;
-    background: hsl(var(--miwarp-bg-deepest, 220 18% 6%));
-    border-radius: 6px;
-  }
-
-  .section h4 {
-    margin: 0 0 0.75rem 0;
-    font-size: 0.875rem;
-    color: hsl(var(--miwarp-text-secondary));
-  }
-
-  .btn-icon {
-    padding: 0.5rem;
-    background: transparent;
-    border: 1px solid hsl(var(--miwarp-border));
-    cursor: pointer;
-    border-radius: 4px;
-    transition: background-color 0.15s ease;
-  }
-
-  .btn-icon:hover:not(:disabled) {
-    background: hsl(var(--miwarp-bg-surface));
-  }
-
-  .browser-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-top: 0.75rem;
-  }
-
-  .browser-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    background: hsl(var(--miwarp-bg-deepest, 220 18% 6%));
-    border: 1px solid hsl(var(--miwarp-border));
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background-color 0.15s ease, border-color 0.15s ease;
-  }
-
-  .browser-item:hover {
-    background: hsl(var(--miwarp-bg-surface));
-    border-color: hsl(var(--miwarp-accent-primary));
-  }
-
-  .browser-icon {
-    font-size: 1.5rem;
-  }
-
-  .browser-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .browser-name {
-    font-weight: 500;
-  }
-
-  .browser-platform {
-    font-size: 0.75rem;
-    color: hsl(var(--miwarp-text-secondary));
-  }
-
-  .badge {
-    padding: 0.25rem 0.5rem;
-    background: hsl(var(--miwarp-status-success, 152 55% 55%));
-    color: hsl(var(--miwarp-accent-on-accent, 0 0% 100%));
-    font-size: 0.75rem;
-    border-radius: 4px;
-  }
-
-  .nav-controls {
-    display: flex;
-    gap: 0.25rem;
-  }
-
-  .url-bar {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-  }
-
-  .url-input,
-  .search-input {
-    flex: 1;
-    padding: 0.5rem;
-    background: hsl(var(--miwarp-bg-deepest, 220 18% 6%));
-    border: 1px solid hsl(var(--miwarp-border));
-    border-radius: 4px;
-    color: hsl(var(--miwarp-text-primary));
-    font-size: 0.875rem;
-  }
-
-  .url-input:focus,
-  .search-input:focus {
-    outline: none;
-    border-color: hsl(var(--miwarp-accent-primary));
-  }
-
-  .tabs-section {
-    padding: 0.5rem;
-  }
-
-  .tabs-list {
-    display: flex;
-    gap: 0.25rem;
-    overflow-x: auto;
-    padding: 0.25rem;
-  }
-
-  .tab-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    color: hsl(var(--miwarp-text-secondary));
-    cursor: pointer;
-    white-space: nowrap;
-    max-width: 150px;
-    transition: background-color 0.15s ease;
-  }
-
-  .tab-item:hover {
-    background: hsl(var(--miwarp-bg-surface));
-  }
-
-  .tab-item.active {
-    background: hsl(var(--miwarp-accent-primary));
-    color: hsl(var(--miwarp-accent-on-accent, 0 0% 100%));
-  }
-
-  .tab-title {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .tab-close {
-    padding: 0 0.25rem;
-    background: transparent;
-    border: none;
-    color: inherit;
-    cursor: pointer;
-    font-size: 1rem;
-    opacity: 0.7;
-  }
-
-  .tab-close:hover {
-    opacity: 1;
-  }
-
-  .add-tab {
-    flex-shrink: 0;
-    font-size: 1.25rem;
-  }
-
-  .quick-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
-  .action-icon {
-    margin-right: 0.25rem;
-  }
-
-  .found-elements {
-    margin-top: 0.75rem;
-    padding: 0.75rem;
-    background: hsl(var(--miwarp-bg-deepest, 220 18% 6%));
-    border-radius: 4px;
-  }
-
-  .found-elements h5 {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.875rem;
-    color: hsl(var(--miwarp-text-secondary));
-  }
-
-  .element-item {
-    display: flex;
-    gap: 0.5rem;
-    padding: 0.25rem 0;
-    font-size: 0.75rem;
-    border-bottom: 1px solid hsl(var(--miwarp-border));
-  }
-
-  .element-ref {
-    color: hsl(var(--miwarp-accent-primary));
-    font-family: monospace;
-  }
-
-  .element-text {
-    color: hsl(var(--miwarp-text-secondary));
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .content-section {
-    max-height: 200px;
-    overflow: hidden;
-  }
-
-  .content-preview {
-    max-height: 150px;
-    overflow: auto;
-    background: hsl(var(--miwarp-bg-deepest, 220 18% 6%));
-    border-radius: 4px;
-    padding: 0.5rem;
-  }
-
-  .content-text {
-    margin: 0;
-    font-size: 0.75rem;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-
-  .element-count {
-    margin-top: 0.5rem;
-    font-size: 0.75rem;
-    color: hsl(var(--miwarp-text-secondary));
-  }
-
-  .screenshot-section {
-    padding: 0.5rem;
-  }
-
-  .screenshot-preview {
-    display: flex;
-    justify-content: center;
-  }
-
-  .screenshot-image {
-    max-width: 100%;
-    max-height: 200px;
-    border-radius: 4px;
-    border: 1px solid hsl(var(--miwarp-border));
-  }
-
-  .error-section {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: hsl(var(--miwarp-status-error, 0 72% 60%) / 0.1);
-    border: 1px solid hsl(var(--miwarp-status-error, 0 72% 60%));
-  }
-
-  .error-icon {
-    font-size: 1.25rem;
-  }
-
-  .error-text {
-    flex: 1;
-    font-size: 0.875rem;
-    color: hsl(var(--miwarp-status-error, 0 72% 60%));
-  }
-
-  .loading-overlay {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 1rem;
-    background: hsl(var(--miwarp-overlay, 0 0% 0% / 0.55));
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-  }
-
-  .loading-spinner {
-    font-size: 1.5rem;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
-  }
-</style>
