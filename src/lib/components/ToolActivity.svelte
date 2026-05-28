@@ -745,7 +745,7 @@
 >
   {#if collapsed}
     <div
-      class="absolute inset-1 z-30 flex flex-col items-center gap-1 rounded-2xl border border-white/10 bg-background/55 px-1 py-1.5 backdrop-blur-2xl shadow-[0_4px_20px_rgba(0,0,0,0.12),inset_0_1px_0_rgba(255,255,255,0.07)]"
+      class="absolute inset-1 z-30 flex flex-col items-center gap-1 rounded-2xl border border-[hsl(var(--miwarp-glass-border)/0.1)] bg-background/55 px-1 py-1.5 backdrop-blur-2xl shadow-[0_4px_20px_rgba(0,0,0,0.12),inset_0_1px_0_hsl(var(--miwarp-glass-border)/0.07)]"
     >
       <button
         class="relative flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===

@@ -501,8 +501,8 @@ html.theme-transitioning *::after {
   color: hsl(var(--foreground));
 }
 .dark .prose-chat code {
-  background: hsl(0 0% 18%);
-  color: hsl(35 90% 72%);
+  background: hsl(var(--muted, 0 0% 18%));
+  color: hsl(var(--foreground, 35 90% 72%));
 }
 .prose-chat p {
   margin: 0.375rem 0;
@@ -777,8 +777,8 @@ html.theme-transitioning *::after {
 
 /* Tool terminal output (Bash, shell commands) */
 .tool-terminal {
-  background: hsl(0 0% 5%);
-  color: hsl(0 0% 85%);
+  background: hsl(var(--miwarp-bg-deepest, 0 0% 5%));
+  color: hsl(var(--miwarp-text-primary, 0 0% 85%));
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.8125rem;
   line-height: 1.5;

@@ -188,7 +188,7 @@
           onclick={() => handleThemeSelect(theme.id)}
         >
           <span
-            class="h-4 w-4 rounded-full border border-white/20"
+            class="h-4 w-4 rounded-full border border-border"
             style="background: {theme.accent};"
           ></span>
           <span class="text-miwarp-text-primary">{theme.name}</span>
@@ -216,7 +216,7 @@
           >
             <input
               type="color"
-              class="h-5 w-5 cursor-pointer rounded border border-white/10 bg-transparent"
+              class="h-5 w-5 cursor-pointer rounded border border-border bg-transparent"
               value={hslToHex(currentValue)}
               oninput={(e) => setVariable(colorVar.key, (e.target as HTMLInputElement).value)}
             />
@@ -247,7 +247,7 @@
         {t("theme_resetToDefaults")}
       </button>
       <button
-        class="rounded-md accent-gradient px-3 py-1.5 text-xs text-white"
+        class="rounded-md accent-gradient px-3 py-1.5 text-xs text-[hsl(var(--primary-foreground))]"
         onclick={handleSaveAsCustomTheme}
       >
         {t("theme_saveAsCustom")}
@@ -274,7 +274,7 @@
             {t("theme_cancel")}
           </button>
           <button
-            class="rounded-md accent-gradient px-3 py-1.5 text-xs text-white disabled:opacity-40"
+            class="rounded-md accent-gradient px-3 py-1.5 text-xs text-[hsl(var(--primary-foreground))] disabled:opacity-40"
             onclick={handleCreateCustomTheme}
             disabled={!customThemeName.trim()}
           >
@@ -313,7 +313,7 @@
           bind:value={importJson}
         ></textarea>
         <button
-          class="rounded-md accent-gradient px-3 py-1.5 text-xs text-white"
+          class="rounded-md accent-gradient px-3 py-1.5 text-xs text-[hsl(var(--primary-foreground))]"
           onclick={handleImport}
         >
           {t("theme_importTheme")}

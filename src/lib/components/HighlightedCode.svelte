@@ -92,3 +92,54 @@
   class="hljs h-full overflow-auto m-0 p-3 text-xs font-mono leading-relaxed whitespace-pre {className}"><code
     >{@html highlighted}</code
   ></pre>
+
+<style>
+  /* Light mode override for highlight.js (github-dark is imported globally) */
+  :global(.light .hljs) {
+    color: #24292e;
+    background: transparent;
+  }
+  :global(.light .hljs-comment),
+  :global(.light .hljs-quote) {
+    color: #6a737d;
+    font-style: italic;
+  }
+  :global(.light .hljs-keyword),
+  :global(.light .hljs-selector-tag) {
+    color: #d73a49;
+  }
+  :global(.light .hljs-string),
+  :global(.light .hljs-attr) {
+    color: #032f62;
+  }
+  :global(.light .hljs-number),
+  :global(.light .hljs-literal) {
+    color: #005cc5;
+  }
+  :global(.light .hljs-built_in),
+  :global(.light .hljs-type) {
+    color: #6f42c1;
+  }
+  :global(.light .hljs-function .hljs-title),
+  :global(.light .hljs-title.function_) {
+    color: #6f42c1;
+  }
+  :global(.light .hljs-variable),
+  :global(.light .hljs-params) {
+    color: #e36209;
+  }
+  :global(.light .hljs-meta) {
+    color: #005cc5;
+  }
+  :global(.light .hljs-symbol) {
+    color: #005cc5;
+  }
+  :global(.light .hljs-addition) {
+    color: #22863a;
+    background-color: #f0fff4;
+  }
+  :global(.light .hljs-deletion) {
+    color: #b31d28;
+    background-color: #ffeef0;
+  }
+</style>

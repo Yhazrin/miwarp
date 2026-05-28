@@ -138,7 +138,7 @@
                 >{t("inline_permissionRequired")}</span
               >
               <div class="h-3 w-3 shrink-0">
-                <Spinner size="xs" class="!h-2.5 !w-2.5 border-amber-500/30 border-t-amber-500" />
+                <Spinner size="xs" class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-status-warning)/0.3)] border-t-[hsl(var(--miwarp-status-warning))]" />
               </div>
             </div>
             <p class="text-sm text-foreground mb-1">
@@ -196,7 +196,7 @@
           <div class="px-4 py-3">
             <div class="flex items-center justify-between mb-2">
               <div class="flex items-center gap-2">
-                <Spinner size="xs" class="!h-2.5 !w-2.5 border-amber-500/30 border-t-amber-500" />
+                <Spinner size="xs" class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-status-warning)/0.3)] border-t-[hsl(var(--miwarp-status-warning))]" />
                 <span class="text-xs font-medium text-foreground">
                   {t("perm_nPermissions", { count: String(pendingTools.length) })}
                 </span>
