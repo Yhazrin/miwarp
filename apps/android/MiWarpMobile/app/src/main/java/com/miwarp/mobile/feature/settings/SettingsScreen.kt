@@ -129,7 +129,7 @@ fun SettingsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Logout,
-                            contentDescription = null,
+                            contentDescription = "Disconnect",
                             modifier = Modifier.size(spacing.md),
                         )
                     }
