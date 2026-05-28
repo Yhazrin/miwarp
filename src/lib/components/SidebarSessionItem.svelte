@@ -189,6 +189,7 @@
     : 'hover:bg-sidebar-accent/30 text-sidebar-foreground'} {isDragging ? 'opacity-40' : ''}"
   role="button"
   tabindex="0"
+  aria-label={label}
   onclick={() => onclick?.()}
   onkeydown={handleKeydown}
   oncontextmenu={openContextMenu}
@@ -290,6 +291,7 @@
             onresume(run.id, "resume");
           }}
           title={t("sidebar_resume")}
+          aria-label={t("sidebar_resume")}
         >
           <Icon name="play" size="xs" />
         </button>

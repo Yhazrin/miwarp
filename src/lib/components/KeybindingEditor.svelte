@@ -113,6 +113,7 @@
           class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           onclick={cancelRecording}
           title={t("common_cancel")}
+          aria-label={t("common_cancel")}
         >
           <Icon name="x" size="sm" />
         </button>
@@ -132,6 +133,7 @@
           class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           onclick={cancelRecording}
           title={t("common_cancel")}
+          aria-label={t("common_cancel")}
         >
           <Icon name="x" size="sm" />
         </button>
@@ -147,6 +149,7 @@
           class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           onclick={cancelRecording}
           title={t("common_cancel")}
+          aria-label={t("common_cancel")}
         >
           <Icon name="x" size="sm" />
         </button>
@@ -155,6 +158,7 @@
           class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           onclick={cancelRecording}
           title={t("common_cancel")}
+          aria-label={t("common_cancel")}
         >
           <Icon name="x" size="sm" />
         </button>
@@ -165,6 +169,7 @@
           class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors opacity-0 group-hover:opacity-100"
           onclick={onReset}
           title={t("keybinding_resetDefault")}
+          aria-label={t("keybinding_resetDefault")}
         >
           <Icon name="refresh-ccw" size="sm" />
         </button>
@@ -173,6 +178,7 @@
         class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors opacity-0 group-hover:opacity-100"
         onclick={startRecording}
         title={t("keybinding_editShortcut")}
+        aria-label={t("keybinding_editShortcut")}
       >
         <svg
           class="h-3.5 w-3.5"

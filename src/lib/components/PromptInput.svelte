@@ -2055,6 +2055,7 @@
             onclick={() => removePastedBlock(block.id)}
             class="ml-0.5 rounded p-0.5 transition-colors hover:bg-[hsl(var(--miwarp-status-info)/0.15)]"
             title={t("prompt_removePaste")}
+            aria-label={t("prompt_removePaste")}
           >
             <Icon name="x" size="xs" />
           </button>
@@ -2281,6 +2282,7 @@
               text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors"
             onclick={openSlashMenuFromButton}
             title={t("prompt_slashCommands")}
+            aria-label={t("prompt_slashCommands")}
           >
             <svg
               class="h-4 w-4"
@@ -2308,6 +2310,7 @@
           onclick={() => fileInput?.click()}
           disabled={store.pendingAttachments.length >= 8}
           title={t("prompt_attachFiles")}
+          aria-label={t("prompt_attachFiles")}
         >
           <svg
             class="h-4 w-4"

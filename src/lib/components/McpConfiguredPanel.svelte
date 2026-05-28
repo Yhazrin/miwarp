@@ -166,6 +166,7 @@
           }}
           role="button"
           tabindex="0"
+          aria-label={server.name}
         >
           <div class="flex items-center justify-between gap-2">
             <div class="flex-1 min-w-0">
@@ -194,6 +195,7 @@
                 handleRemove(server);
               }}
               title={t("mcp_removeServerTooltip")}
+              aria-label={t("mcp_removeServerTooltip")}
               disabled={operationLoading === server.name}
             >
               {#if operationLoading === server.name}
@@ -237,6 +239,7 @@
               class="shrink-0 text-muted-foreground hover:text-foreground"
               onclick={() => (selectedServer = null)}
               title={t("common_close")}
+              aria-label={t("common_close")}
             >
               <Icon name="x" size="sm" />
             </button>

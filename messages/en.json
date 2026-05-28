@@ -194,6 +194,7 @@
   "browser_autoSave": "Auto-save screenshots",
   "browser_automation": "Browser Automation",
   "browser_cancel": "Cancel",
+  "browser_closeTab": "Close Tab",
   "browser_connect": "Connect Browser",
   "browser_connected": "Connected",
   "browser_description": "Control browsers, automate web tasks, and extract data",

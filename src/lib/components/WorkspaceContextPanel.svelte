@@ -345,6 +345,7 @@
                       class="text-[9px] text-muted-foreground/50 hover:text-foreground transition-colors"
                       onclick={() => copyItem(item.text)}
                       title={t("workspaceContext_copyMemory")}
+                      aria-label={t("workspaceContext_copyMemory")}
                     >
                       <Icon name="external-link" size="xs" />
                     </button>

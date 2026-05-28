@@ -367,6 +367,7 @@
           class="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           onclick={() => onCloseDiff?.()}
           title={t("explorer_closeDiff")}
+          aria-label={t("explorer_closeDiff")}
         >
           <Icon name="chevron-left" size="md" />
         </button>

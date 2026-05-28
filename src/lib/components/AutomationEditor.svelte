@@ -410,6 +410,7 @@
                     <button
                       class="rounded p-1 hover:bg-accent"
                       title={t("automationEditor_duplicate")}
+                      aria-label={t("automationEditor_duplicate")}
                       onclick={(e) => {
                         e.stopPropagation();
                         handleDuplicateStep(index);
@@ -420,6 +421,7 @@
                     <button
                       class="rounded p-1 hover:bg-destructive/10 hover:text-destructive"
                       title={t("automationEditor_delete")}
+                      aria-label={t("automationEditor_delete")}
                       onclick={(e) => {
                         e.stopPropagation();
                         handleDeleteStep(index);

@@ -246,6 +246,7 @@
     <button
       class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
       title={t("hooks_refresh")}
+      aria-label={t("hooks_refresh")}
       onclick={loadConfig}
     >
       <svg
@@ -404,6 +405,7 @@
                       class="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                       onclick={() => removeHandler(hi)}
                       title={t("hooks_removeHandler")}
+                      aria-label={t("hooks_removeHandler")}
                     >
                       <Icon name="x" size="xs" />
                     </button>
@@ -731,6 +733,7 @@
                       class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                       onclick={() => startEditGroup(event, gi, group)}
                       title={t("hooks_editGroup")}
+                      aria-label={t("hooks_editGroup")}
                     >
                       <Icon name="pencil" size="sm" />
                     </button>
@@ -738,9 +741,9 @@
                       class="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                       onclick={() => handleDeleteGroup(event, gi)}
                       title={t("hooks_deleteGroup")}
+                      aria-label={t("hooks_deleteGroup")}
                     >
                       <Icon name="trash" size="sm" />
-                      >
                     </button>
                   </div>
                 </div>

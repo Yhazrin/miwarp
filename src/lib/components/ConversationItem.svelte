@@ -291,6 +291,7 @@
     : ''} {isDragging ? 'opacity-40' : ''}"
   role="button"
   tabindex="0"
+  aria-label={label}
   class:select-none={pointerDragging || isDragging}
   style:touch-action="pan-y"
   onclick={handleClick}
@@ -363,6 +364,7 @@
             onresume(run.id, "resume");
           }}
           title={t("runItem_resumeTitle")}
+          aria-label={t("runItem_resumeTitle")}
         >
           <Icon name="play" size="xs" />
         </button>

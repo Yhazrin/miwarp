@@ -2872,6 +2872,7 @@
                                 }
                               }}
                               title={t("settings_general_deleteCustom")}
+                              aria-label={t("settings_general_deleteCustom")}
                             >
                               <Icon name="x" size="xs" />
                             </span>

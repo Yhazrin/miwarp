@@ -153,6 +153,7 @@
   "browser_autoSave": "自动保存截图",
   "browser_automation": "浏览器自动化",
   "browser_cancel": "取消",
+  "browser_closeTab": "关闭标签页",
   "browser_connect": "连接浏览器",
   "browser_connected": "已连接",
   "browser_description": "控制浏览器、自动化网页任务和提取数据",

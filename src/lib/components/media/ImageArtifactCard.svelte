@@ -23,6 +23,7 @@
     onclick={() => (showModal = true)}
     role="button"
     tabindex="0"
+    aria-label={artifact.name}
     onkeydown={(e) => e.key === "Enter" && (showModal = true)}
   >
     <img

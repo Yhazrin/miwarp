@@ -101,6 +101,7 @@
         onclick={dismiss}
         disabled={busy}
         title={t("appUpdate_dismiss")}
+        aria-label={t("appUpdate_dismiss")}
       >
         <Icon name="x" size="sm" />
       </button>

@@ -9,6 +9,7 @@
     loading = false,
     class: className = "",
     title = "",
+    "aria-label": ariaLabel = "",
     type: buttonType = "button",
     onclick,
     children,
@@ -19,6 +20,7 @@
     loading?: boolean;
     class?: string;
     title?: string;
+    "aria-label"?: string;
     type?: "button" | "submit" | "reset";
     onclick?: (e: MouseEvent) => void;
     children?: import("svelte").Snippet;
@@ -49,6 +51,7 @@
   disabled={disabled || loading}
   type={buttonType}
   {title}
+  aria-label={ariaLabel || undefined}
   {onclick}
 >
   {#if loading}

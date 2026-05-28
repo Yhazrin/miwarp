@@ -192,6 +192,7 @@
               class="tab-close"
               role="button"
               tabindex="0"
+              aria-label={t("browser_closeTab")}
               onclick={(e) => handleCloseTab(tab.id, e)}
               onkeydown={(e) => {
                 if (e.key === "Enter") handleCloseTab(tab.id, e);

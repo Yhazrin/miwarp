@@ -285,6 +285,7 @@
     <button
       class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
       title={t("mcp_refreshTitle")}
+      aria-label={t("mcp_refreshTitle")}
       disabled={refreshing}
       onclick={refreshRegistry}
     >
@@ -407,6 +408,7 @@
               }}
               role="button"
               tabindex="0"
+              aria-label={server.name}
             >
               <div class="flex items-center justify-between gap-2">
                 <div class="flex-1 min-w-0">
@@ -482,6 +484,7 @@
                 <button
                   class="shrink-0 text-muted-foreground hover:text-foreground"
                   onclick={() => (detail = null)}
+                  aria-label={t("common_close")}
                   title={t("common_close")}
                 >
                   <Icon name="x" size="sm" />

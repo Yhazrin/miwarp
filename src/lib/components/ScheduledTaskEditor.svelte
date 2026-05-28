@@ -330,7 +330,7 @@
             ? t("schedEditor_createTitle")
             : t("schedEditor_editTitle")}
         </h2>
-        <Button variant="ghost" size="icon" onclick={handleCancel} title={t("common_close")}>
+        <Button variant="ghost" size="icon" onclick={handleCancel} title={t("common_close")} aria-label={t("common_close")}>
           <svg
             class="w-5 h-5"
             viewBox="0 0 24 24"

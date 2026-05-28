@@ -85,6 +85,7 @@
     : 'border-transparent hover:border-border hover:bg-muted/30'}"
   role="button"
   tabindex="0"
+  aria-label={task.name}
   onclick={handleSelect}
   onkeydown={(e) => e.key === "Enter" && handleSelect()}
 >
@@ -141,6 +142,7 @@
       variant="ghost"
       size="icon"
       title={t("schedCard_runNow")}
+      aria-label={t("schedCard_runNow")}
       loading={triggering}
       onclick={(e) => {
         e.stopPropagation();
@@ -162,6 +164,7 @@
       variant="ghost"
       size="icon"
       title={t("schedCard_edit")}
+      aria-label={t("schedCard_edit")}
       onclick={(e) => {
         e.stopPropagation();
         handleEdit();
@@ -183,6 +186,7 @@
       variant="ghost"
       size="icon"
       title={t("schedCard_delete")}
+      aria-label={t("schedCard_delete")}
       onclick={(e) => {
         e.stopPropagation();
         handleDelete();

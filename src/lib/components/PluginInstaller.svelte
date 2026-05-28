@@ -165,6 +165,7 @@
   class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay"
   role="button"
   tabindex="0"
+  aria-label={t("common_close")}
   onclick={handleClose}
   onkeydown={(e) => {
     if (e.key === "Escape") handleClose();
