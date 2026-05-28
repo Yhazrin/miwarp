@@ -21,7 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+
 import com.miwarp.mobile.design.MWApprovalCard
 import com.miwarp.mobile.design.MWErrorState
 import com.miwarp.mobile.design.MWLoadingState

@@ -24,7 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
+import com.miwarp.mobile.design.MiHaptics
 import com.miwarp.mobile.design.MWGlassCard
 import com.miwarp.mobile.design.MWStatusPill
 import com.miwarp.mobile.design.MWTheme
@@ -46,6 +46,7 @@ fun SettingsScreen(
     val colors = MWTheme.colors
     val spacing = MWTheme.spacing
     val radius = MWTheme.radius
+    val haptics = MiHaptics.rememberHaptics()
 
     Column(
         modifier = modifier
@@ -122,7 +123,7 @@ fun SettingsScreen(
 
                 if (activeConnection != null) {
                     Button(
-                        onClick = onDisconnect,
+                        onClick = { haptics.mediumImpact(); onDisconnect() },
                         colors = ButtonDefaults.buttonColors(containerColor = colors.statusError),
                         shape = RoundedCornerShape(radius.md),
                     ) {
@@ -211,7 +212,7 @@ private fun SettingsRow(
                 imageVector = icon,
                 contentDescription = null,
                 tint = colors.textSecondary,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(spacing.lg),
             )
             Text(
                 text = label,

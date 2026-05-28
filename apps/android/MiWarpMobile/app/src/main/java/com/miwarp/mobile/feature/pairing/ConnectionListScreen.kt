@@ -24,8 +24,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import com.miwarp.mobile.design.MWGlassCard
+import com.miwarp.mobile.design.MiHaptics
 import com.miwarp.mobile.design.MWStatusPill
 import com.miwarp.mobile.design.MWTheme
 import com.miwarp.mobile.design.MWTypography
@@ -45,6 +45,7 @@ fun ConnectionListScreen(
     val colors = MWTheme.colors
     val spacing = MWTheme.spacing
     val radius = MWTheme.radius
+    val haptics = MiHaptics.rememberHaptics()
 
     Column(
         modifier = modifier
@@ -85,7 +86,7 @@ fun ConnectionListScreen(
                     val isActive = connection.id == activeConnectionId
                     MWGlassCard(
                         modifier = Modifier.fillMaxWidth(),
-                        onClick = { onSelect(connection) },
+                        onClick = { haptics.lightImpact(); onSelect(connection) },
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -112,7 +113,7 @@ fun ConnectionListScreen(
                                 MWStatusPill(status = RunStatus.Running, label = "active")
                             }
                             IconButton(
-                                onClick = { onDelete(connection.id) },
+                                onClick = { haptics.mediumImpact(); onDelete(connection.id) },
                                 modifier = Modifier.size(spacing.xl),
                             ) {
                                 Icon(

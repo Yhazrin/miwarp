@@ -20,7 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import com.miwarp.mobile.design.MiHaptics
 import com.miwarp.mobile.design.MWGlassCard
 import com.miwarp.mobile.design.MWTheme
 import com.miwarp.mobile.design.MWTypography
@@ -37,6 +37,7 @@ fun PairingScreen(
     val colors = MWTheme.colors
     val radius = MWTheme.radius
     val spacing = MWTheme.spacing
+    val haptics = MiHaptics.rememberHaptics()
 
     var host by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("9476") }
@@ -146,6 +147,7 @@ fun PairingScreen(
                         token.isBlank() -> errorMessage = "Token is required"
                         else -> {
                             isConnecting = true
+                            haptics.success()
                             onConnect(
                                 MiWarpConnection(
                                     id = UUID.randomUUID().toString(),

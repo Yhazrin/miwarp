@@ -12,7 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
+
 import com.miwarp.mobile.design.MWTheme
 import com.miwarp.mobile.design.MWTypography
 
@@ -47,7 +47,7 @@ fun SessionFilters(
                     .clip(RoundedCornerShape(radius.sm))
                     .background(if (isActive) colors.accentPrimary.copy(alpha = 0.15f) else colors.bgSurface)
                     .clickable { onFilterChange(filter) }
-                    .padding(horizontal = spacing.sm, vertical = 6.dp),
+                    .padding(horizontal = spacing.sm, vertical = spacing.xxs),
             )
         }
     }
