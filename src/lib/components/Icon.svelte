@@ -8,7 +8,7 @@
     size = "md",
     class: className = "",
   }: {
-    name: "check" | "x" | "clock" | "chevron-right" | "chevron-left" | "chevron-down" | "arrow-right" | "search" | "trash" | "refresh-cw" | "loader-2" | "users" | "copy" | "file" | "file-text" | "plus" | "minus" | "home" | "monitor" | "wrench" | "folder" | "pencil" | "map-pin";
+    name: "check" | "x" | "clock" | "chevron-right" | "chevron-left" | "chevron-down" | "arrow-right" | "search" | "trash" | "refresh-cw" | "loader-2" | "users" | "copy" | "file" | "file-text" | "plus" | "minus" | "home" | "monitor" | "wrench" | "folder" | "pencil" | "map-pin" | "git-branch" | "triangle-alert";
     size?: "xs" | "sm" | "md" | "lg";
     class?: string;
   } = $props();
@@ -99,5 +99,14 @@
   {:else if name === "map-pin"}
     <path d="M12 2a8 8 0 0 1 8 8c0 5-8 13-8 13S4 15 4 10a8 8 0 0 1 8-8z" />
     <circle cx="12" cy="10" r="3" />
+  {:else if name === "git-branch"}
+    <line x1="6" y1="3" x2="6" y2="15" />
+    <circle cx="18" cy="6" r="3" />
+    <circle cx="6" cy="18" r="3" />
+    <path d="M18 9a9 9 0 0 1-9 9" />
+  {:else if name === "triangle-alert"}
+    <path d="M12 9v4" />
+    <path d="M12 17h.01" />
+    <path d="M3.6 15.4 10.2 4a2 2 0 0 1 3.6 0l6.6 11.4a2 2 0 0 1-1.8 3H5.4a2 2 0 0 1-1.8-3Z" />
   {/if}
 </svg>

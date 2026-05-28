@@ -17,6 +17,7 @@
   } from "$lib/types/scheduled-task";
   import { getUserSettings } from "$lib/api";
   import type { UserSettings } from "$lib/types";
+  import Icon from "./Icon.svelte";
 
   // Friendly schedule builder state
   type FrequencyType =
@@ -489,18 +490,7 @@
             <p class="text-xs text-destructive">{errors.prompt}</p>
           {:else if promptContextWarning()}
             <p class="text-xs text-[hsl(var(--miwarp-status-warning))] flex items-center gap-1">
-              <svg
-                class="h-3 w-3 shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><path d="M12 9v4" /><path d="M12 17h.01" /><path
-                  d="M3.6 15.4 10.2 4a2 2 0 0 1 3.6 0l6.6 11.4a2 2 0 0 1-1.8 3H5.4a2 2 0 0 1-1.8-3Z"
-                /></svg
-              >
+              <Icon name="triangle-alert" size="xs" class="shrink-0" />
               {promptContextWarning()}
             </p>
           {:else}

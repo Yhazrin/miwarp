@@ -8,6 +8,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { hasAttention } from "$lib/stores/attention-store.svelte";
   import ContextMenu from "./ContextMenu.svelte";
+  import Icon from "./Icon.svelte";
 
   const LONG_PRESS_MS = 480;
   const DRAG_THRESHOLD_PX = 10;
@@ -395,20 +396,7 @@
           class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet)/0.8)] font-mono text-[10px] max-w-[110px] truncate"
           title={run.worktree_branch}
         >
-          <svg
-            class="h-2.5 w-2.5 shrink-0 opacity-80"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <line x1="6" y1="3" x2="6" y2="15" />
-            <circle cx="18" cy="6" r="3" />
-            <circle cx="6" cy="18" r="3" />
-            <path d="M18 9a9 9 0 0 1-9 9" />
-          </svg>
+          <Icon name="git-branch" size="xs" class="shrink-0 opacity-80" />
           {run.worktree_branch}
         </span>
       {/if}

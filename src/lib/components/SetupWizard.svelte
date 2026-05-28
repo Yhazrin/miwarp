@@ -379,16 +379,7 @@
         {#if showProxyGuidance}
           <div class="rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] p-4" transition:slide={{ duration: 200 }}>
             <div class="flex items-start gap-2">
-              <svg
-                class="h-5 w-5 text-[hsl(var(--miwarp-status-warning))] shrink-0 mt-0.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                ><path d="M12 9v4" /><path d="M12 17h.01" /><path
-                  d="M3.6 15.4 10.2 4a2 2 0 0 1 3.6 0l6.6 11.4a2 2 0 0 1-1.8 3H5.4a2 2 0 0 1-1.8-3Z"
-                /></svg
-              >
+              <Icon name="triangle-alert" size="lg" class="text-[hsl(var(--miwarp-status-warning))] shrink-0 mt-0.5" />
               <div>
                 <p class="text-sm font-medium text-[hsl(var(--miwarp-status-warning))]">{t("setup_networkFailTitle")}</p>
                 <p class="text-xs text-muted-foreground mt-1">{t("setup_networkFailDesc")}</p>
