@@ -65,6 +65,7 @@ fun MWGlassCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = MWTheme.colors
+    val spacing = MWTheme.spacing
     val radius = MWTheme.radius
 
     val shape = RoundedCornerShape(radius.lg)
@@ -80,7 +81,7 @@ fun MWGlassCard(
             .clip(shape)
             .background(colors.glassBg)
             .border(1.dp, colors.glassBorder, shape)
-            .padding(16.dp),
+            .padding(spacing.md),
         content = content,
     )
 }
@@ -94,6 +95,7 @@ fun MWStatusPill(
     label: String? = null,
 ) {
     val colors = MWTheme.colors
+    val spacing = MWTheme.spacing
     val statusColor = colors.colorForStatus(status)
     val displayLabel = label ?: status.name.lowercase().replace("_", " ")
 
@@ -101,7 +103,7 @@ fun MWStatusPill(
         modifier = modifier
             .clip(RoundedCornerShape(50))
             .background(statusColor.copy(alpha = 0.15f))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
+            .padding(horizontal = 10.dp, vertical = spacing.xxs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -110,7 +112,7 @@ fun MWStatusPill(
                 .clip(RoundedCornerShape(50))
                 .background(statusColor),
         )
-        Spacer(modifier = Modifier.width(6.dp))
+        Spacer(modifier = Modifier.width(spacing.xxs))
         Text(
             text = displayLabel,
             style = MWTypography.label,
@@ -132,6 +134,7 @@ fun MWSessionCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = MWTheme.colors
+    val spacing = MWTheme.spacing
 
     MWGlassCard(
         modifier = modifier.fillMaxWidth(),
@@ -150,10 +153,10 @@ fun MWSessionCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(spacing.xs))
             MWStatusPill(status = status)
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(spacing.xs))
         Text(
             text = cwd,
             style = MWTypography.monoSmall,
@@ -161,9 +164,9 @@ fun MWSessionCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(spacing.xxs))
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
             if (model.isNotBlank()) {
                 Text(text = model, style = MWTypography.caption, color = colors.textSecondary)
@@ -172,12 +175,12 @@ fun MWSessionCard(
                 Text(text = "$messageCount msgs", style = MWTypography.caption, color = colors.textSecondary)
             }
         }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(spacing.xxs))
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = null,
             tint = colors.textTertiary,
-            modifier = Modifier.align(Alignment.End).size(16.dp),
+            modifier = Modifier.align(Alignment.End).size(spacing.md),
         )
     }
 }
@@ -194,6 +197,7 @@ fun MWChatBubble(
     content: @Composable (() -> Unit)? = null,
 ) {
     val colors = MWTheme.colors
+    val spacing = MWTheme.spacing
     val radius = MWTheme.radius
 
     val isUser = role == MessageRole.User
@@ -216,7 +220,7 @@ fun MWChatBubble(
                 .fillMaxWidth(if (isUser) 0.85f else 0.95f)
                 .clip(shape)
                 .background(bgColor)
-                .padding(12.dp),
+                .padding(spacing.sm),
         ) {
             if (!thinking.isNullOrBlank()) {
                 var thinkingExpanded by remember { mutableStateOf(false) }
@@ -231,10 +235,10 @@ fun MWChatBubble(
                         text = thinking,
                         style = MWTypography.monoSmall,
                         color = colors.textTertiary,
-                        modifier = Modifier.padding(top = 4.dp),
+                        modifier = Modifier.padding(top = spacing.xxs),
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(spacing.xxs))
             }
 
             if (text.isNotBlank()) {
@@ -248,7 +252,7 @@ fun MWChatBubble(
             content?.invoke()
 
             if (isStreaming) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(spacing.xxs))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(10.dp),
@@ -275,6 +279,7 @@ fun MWToolCallCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = MWTheme.colors
+    val spacing = MWTheme.spacing
     val radius = MWTheme.radius
     var expanded by remember { mutableStateOf(false) }
 
@@ -291,7 +296,7 @@ fun MWToolCallCard(
             .background(colors.bgElevated)
             .border(1.dp, borderColor, RoundedCornerShape(radius.md))
             .clickable { expanded = !expanded }
-            .padding(12.dp),
+            .padding(spacing.sm),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -309,7 +314,7 @@ fun MWToolCallCard(
                     .size(14.dp)
                     .rotate(iconRotation),
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(spacing.xs))
             Text(
                 text = tool.toolName,
                 style = MWTypography.mono.copy(fontSize = 12.sp),
@@ -358,7 +363,7 @@ fun MWToolCallCard(
             enter = expandVertically(animationSpec = tween(180)),
             exit = shrinkVertically(animationSpec = tween(180)),
         ) {
-            Column(modifier = Modifier.padding(top = 8.dp)) {
+            Column(modifier = Modifier.padding(top = spacing.xs)) {
                 if (tool.input.isNotBlank()) {
                     Text(
                         text = "Input",
@@ -374,11 +379,11 @@ fun MWToolCallCard(
                             .padding(top = 2.dp)
                             .clip(RoundedCornerShape(radius.sm))
                             .background(colors.bgDeep)
-                            .padding(8.dp),
+                            .padding(spacing.xs),
                     )
                 }
                 if (tool.output.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(spacing.xs))
                     Text(
                         text = "Output",
                         style = MWTypography.label,
@@ -395,7 +400,7 @@ fun MWToolCallCard(
                             .padding(top = 2.dp)
                             .clip(RoundedCornerShape(radius.sm))
                             .background(colors.bgDeep)
-                            .padding(8.dp),
+                            .padding(spacing.xs),
                     )
                 }
             }
@@ -414,6 +419,7 @@ fun MWApprovalCard(
     modifier: Modifier = Modifier,
 ) {
     val colors = MWTheme.colors
+    val spacing = MWTheme.spacing
     val radius = MWTheme.radius
 
     Column(
@@ -422,7 +428,7 @@ fun MWApprovalCard(
             .clip(RoundedCornerShape(radius.lg))
             .background(colors.statusWarning.copy(alpha = 0.1f))
             .border(1.dp, colors.statusWarning.copy(alpha = 0.3f), RoundedCornerShape(radius.lg))
-            .padding(16.dp),
+            .padding(spacing.md),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
@@ -431,30 +437,30 @@ fun MWApprovalCard(
                 tint = colors.statusWarning,
                 modifier = Modifier.size(18.dp),
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(spacing.xs))
             Text(
                 text = "Permission Required",
                 style = MWTypography.subheading,
                 color = colors.statusWarning,
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(spacing.xs))
         Text(
             text = toolName,
             style = MWTypography.mono,
             color = colors.accentCyan,
         )
         if (description.isNotBlank()) {
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(spacing.xxs))
             Text(
                 text = description,
                 style = MWTypography.bodySmall,
                 color = colors.textSecondary,
             )
         }
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(spacing.sm))
         Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(spacing.xs),
         ) {
             options.forEach { option ->
                 Button(
@@ -491,6 +497,7 @@ fun MWDiffFileRow(
     onClick: (() -> Unit)? = null,
 ) {
     val colors = MWTheme.colors
+    val spacing = MWTheme.spacing
     val radius = MWTheme.radius
 
     val clickableMod = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
@@ -508,7 +515,7 @@ fun MWDiffFileRow(
             .then(clickableMod)
             .clip(RoundedCornerShape(radius.sm))
             .background(colors.bgElevated)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = spacing.sm, vertical = spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -516,7 +523,7 @@ fun MWDiffFileRow(
                 .size(8.dp)
                 .background(statusColor, RoundedCornerShape(4.dp)),
         )
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(spacing.xs))
         Text(
             text = filePath.substringAfterLast('/'),
             style = MWTypography.body,
@@ -525,14 +532,14 @@ fun MWDiffFileRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(spacing.xs))
         if (additions != null && additions > 0) {
             Text(
                 text = "+$additions",
                 style = MWTypography.monoSmall,
                 color = colors.statusSuccess,
             )
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(spacing.xxs))
         }
         if (deletions != null && deletions > 0) {
             Text(
@@ -542,7 +549,7 @@ fun MWDiffFileRow(
             )
         }
         if (onClick != null) {
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(spacing.xxs))
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
@@ -568,6 +575,7 @@ fun MWInputBar(
     trailingContent: @Composable (() -> Unit)? = null,
 ) {
     val colors = MWTheme.colors
+    val spacing = MWTheme.spacing
     val radius = MWTheme.radius
 
     Surface(
@@ -580,7 +588,7 @@ fun MWInputBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .padding(horizontal = spacing.sm, vertical = spacing.xs),
             verticalAlignment = Alignment.Bottom,
         ) {
             leadingContent?.invoke()
@@ -616,7 +624,7 @@ fun MWInputBar(
                 },
             )
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(spacing.xs))
 
             trailingContent?.invoke()
 
@@ -653,11 +661,12 @@ fun MWEmptyState(
     action: (@Composable () -> Unit)? = null,
 ) {
     val colors = MWTheme.colors
+    val spacing = MWTheme.spacing
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(spacing.xxl),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -667,7 +676,7 @@ fun MWEmptyState(
             color = colors.textPrimary,
         )
         if (subtitle.isNotBlank()) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(spacing.xs))
             Text(
                 text = subtitle,
                 style = MWTypography.bodySmall,
@@ -675,7 +684,7 @@ fun MWEmptyState(
             )
         }
         action?.let {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(spacing.md))
             it()
         }
     }
@@ -688,11 +697,12 @@ fun MWErrorState(
     modifier: Modifier = Modifier,
 ) {
     val colors = MWTheme.colors
+    val spacing = MWTheme.spacing
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(spacing.xxl),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -700,22 +710,22 @@ fun MWErrorState(
             imageVector = Icons.Default.ErrorOutline,
             contentDescription = null,
             tint = colors.statusError,
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(spacing.xxxxl),
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(spacing.md))
         Text(
             text = "Something went wrong",
             style = MWTypography.subheading,
             color = colors.textPrimary,
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(spacing.xs))
         Text(
             text = message,
             style = MWTypography.bodySmall,
             color = colors.textSecondary,
         )
         if (onRetry != null) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(spacing.md))
             Button(
                 onClick = onRetry,
                 colors = ButtonDefaults.buttonColors(containerColor = colors.accentPrimary),
@@ -724,9 +734,9 @@ fun MWErrorState(
                 Icon(
                     imageVector = Icons.Default.Refresh,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(spacing.md),
                 )
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(spacing.xs))
                 Text(text = "Retry", style = MWTypography.buttonLabel, color = colors.accentOnAccent)
             }
         }
@@ -739,20 +749,21 @@ fun MWLoadingState(
     modifier: Modifier = Modifier,
 ) {
     val colors = MWTheme.colors
+    val spacing = MWTheme.spacing
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(spacing.xxl),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
         CircularProgressIndicator(
-            modifier = Modifier.size(32.dp),
+            modifier = Modifier.size(spacing.xxl),
             color = colors.accentPrimary,
             strokeWidth = 3.dp,
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(spacing.md))
         Text(
             text = message,
             style = MWTypography.body,
