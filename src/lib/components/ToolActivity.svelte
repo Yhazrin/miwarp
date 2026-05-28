@@ -804,18 +804,7 @@
         onclick={() => openCollapsedTab("preview")}
         title={t("toolActivity_tabPreview")}
       >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <rect x="2" y="3" width="20" height="14" rx="2" />
-          <path d="M8 21h8M12 17v4" />
-        </svg>
+        <Icon name="monitor" size="sm" />
       </button>
       <button
         class="relative flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
@@ -825,18 +814,7 @@
         onclick={() => openCollapsedTab("tasks")}
         title={t("toolActivity_tabTasks")}
       >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <path d="M9 12l2 2 4-4" />
-        </svg>
+        <Icon name="check-square" size="sm" />
         {#if activeBackgroundTasks.length > 0}
           <span
             class="absolute right-1 top-1 h-1.5 w-1.5 animate-pulse rounded-full bg-[hsl(var(--miwarp-status-info))]"
@@ -858,17 +836,7 @@
         onclick={onToggle}
         title={t("toolActivity_expand")}
       >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
+        <Icon name="chevron-right" size="sm" />
       </button>
     </div>
   {/if}
@@ -910,18 +878,7 @@
               onclick={() => (activeTab = "workspace")}
               title={t("toolActivity_tabWorkspace")}
             >
-              <svg
-                class="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                <polyline points="9 22 9 12 15 12 15 22" />
-              </svg>
+              <Icon name="home" size="sm" />
             </button>
             <!-- Activity (tools) icon -->
             <button
@@ -931,19 +888,7 @@
               onclick={() => (activeTab = "tools")}
               title={t("toolActivity_tabActivity")}
             >
-              <svg
-                class="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path
-                  d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
-                />
-              </svg>
+              <Icon name="wrench" size="sm" />
             </button>
             <!-- Context icon -->
             <button
@@ -1038,17 +983,7 @@
             onclick={onToggle}
             title={t("toolActivity_collapse")}
           >
-            <svg
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
+            <Icon name="chevron-left" size="md" />
           </button>
         </div>
       </div>
@@ -1343,19 +1278,9 @@
                     }}
                   >
                     {#if hasTools}
-                      <svg
-                        class="h-3 w-3 text-muted-foreground/50 shrink-0 transition-transform {isCollapsed
+                      <Icon name="chevron-right" size="xs" class="text-muted-foreground/50 shrink-0 transition-transform {isCollapsed
                           ? ''
-                          : 'rotate-90'}"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
+                          : 'rotate-90'}" />
                     {/if}
                     <span class="text-[11px] font-medium text-muted-foreground truncate">
                       {#if turn.userPreview}
@@ -1414,18 +1339,7 @@
                       }}
                       title={t("toolActivity_scrollToTurn")}
                     >
-                      <svg
-                        class="h-3 w-3"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        ><circle cx="12" cy="12" r="3" /><path
-                          d="M12 2v4m0 12v4M2 12h4m12 0h4"
-                        /></svg
-                      >
+                      <Icon name="crosshair" size="xs" />
                     </button>
                   {/if}
                 </div>
@@ -1517,17 +1431,7 @@
         onclick={onToggle}
         title={t("toolActivity_show")}
       >
-        <svg
-          class="h-4 w-4"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <polyline points="9 18 15 12 9 6" />
-        </svg>
+        <Icon name="chevron-right" size="md" />
       </button>
       <!-- Collapsed icon buttons -->
       <button
@@ -1588,18 +1492,7 @@
         }}
         title={t("toolActivity_tabTasks")}
       >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <path d="M9 12l2 2 4-4" />
-        </svg>
+        <Icon name="check-square" size="sm" />
         {#if activeBackgroundTasks.length > 0}
           <span
             class="absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"
