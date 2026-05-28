@@ -25,6 +25,7 @@ fun ChatInputBar(
     onStop: (() -> Unit)? = null,
 ) {
     val colors = MWTheme.colors
+    val spacing = MWTheme.spacing
 
     MWInputBar(
         value = value,
@@ -47,7 +48,7 @@ fun ChatInputBar(
                             tint = colors.statusError,
                         )
                     }
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(spacing.xxs))
                 }
             }
         },

@@ -100,14 +100,14 @@ fun ConnectionListScreen(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(spacing.xxs))
                                 Text(
                                     text = "${connection.host}:${connection.port}",
                                     style = MWTypography.monoSmall,
                                     color = colors.textTertiary,
                                 )
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(spacing.xs))
                             if (isActive) {
                                 MWStatusPill(status = RunStatus.Running, label = "active")
                             }

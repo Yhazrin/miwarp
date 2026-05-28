@@ -297,7 +297,7 @@ private fun ChatHeader(
                     )
                 }
             }
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(spacing.xxs))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(spacing.sm),
             ) {

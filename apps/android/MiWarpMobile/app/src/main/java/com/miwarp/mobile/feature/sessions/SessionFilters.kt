@@ -30,11 +30,12 @@ fun SessionFilters(
     modifier: Modifier = Modifier,
 ) {
     val colors = MWTheme.colors
+    val spacing = MWTheme.spacing
     val radius = MWTheme.radius
 
     Row(
         modifier = modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(spacing.xs),
     ) {
         SessionFilter.entries.forEach { filter ->
             val isActive = filter == activeFilter
@@ -46,7 +47,7 @@ fun SessionFilters(
                     .clip(RoundedCornerShape(radius.sm))
                     .background(if (isActive) colors.accentPrimary.copy(alpha = 0.15f) else colors.bgSurface)
                     .clickable { onFilterChange(filter) }
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                    .padding(horizontal = spacing.sm, vertical = 6.dp),
             )
         }
     }
