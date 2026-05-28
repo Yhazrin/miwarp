@@ -18,16 +18,20 @@ struct PairingView: View {
 
                 Section {
                     Button {
-                        showScanner = true
+                        withAnimation(MWMotion.springStandard) {
+                            showScanner = true
+                        }
                     } label: {
                         Label(String(localized: "pairing.scanQR"), systemImage: "qrcode.viewfinder")
                     }
+                    .accessibilityLabel(String(localized: "pairing.scanQR"))
 
                     NavigationLink {
                         ManualConnectionSheet()
                     } label: {
                         Label(String(localized: "pairing.manualSetup"), systemImage: "keyboard")
                     }
+                    .accessibilityLabel(String(localized: "pairing.manualSetup"))
                 } header: {
                     Text(String(localized: "pairing.addConnection"))
                 }

@@ -40,12 +40,12 @@ struct MWStatusIndicator: View {
             if state != .disconnected {
                 Text(state.displayLabel)
                     .font(MWTypography.caption())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(MWColors.textSecondary)
                     .contentTransition(.opacity)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
+        .padding(.horizontal, MWSpacing.sm)
+        .padding(.vertical, MWSpacing.nano)
         .background(color.opacity(0.12), in: Capsule())
         .animation(MWMotion.springQuick, value: state)
     }

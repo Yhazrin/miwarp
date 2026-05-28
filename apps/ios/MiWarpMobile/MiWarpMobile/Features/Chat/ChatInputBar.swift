@@ -48,7 +48,7 @@ struct ChatInputBar: View {
                     } label: {
                         Image(systemName: "arrow.branch")
                             .font(MWTypography.subheadlineMedium())
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(theme.textSecondary)
                             .frame(width: 28, height: 28)
                     }
                     .accessibilityLabel(String(localized: "action.fork"))
@@ -84,7 +84,7 @@ struct ChatInputBar: View {
             .overlay(
                 Capsule()
                     .strokeBorder(
-                        isFocused ? theme.accentPrimary.opacity(0.3) : Color(.separator).opacity(0.3),
+                        isFocused ? theme.accentPrimary.opacity(0.3) : theme.divider.opacity(0.3),
                         lineWidth: isFocused ? 1 : 0.5
                     )
                     .animation(MWMotion.springQuick, value: isFocused)
