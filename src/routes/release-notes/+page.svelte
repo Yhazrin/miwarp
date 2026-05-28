@@ -6,6 +6,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import SkeletonLine from "$lib/components/SkeletonLine.svelte";
   import Icon from "$lib/components/Icon.svelte";
 
   let entries = $state<ChangelogEntry[]>([]);
@@ -129,8 +130,18 @@
   <!-- Content -->
   <div class="flex-1 overflow-y-auto">
     {#if loading}
-      <div class="flex items-center justify-center py-20">
-        <Spinner size="md" />
+      <div class="space-y-4 px-6 py-6">
+        {#each Array(5) as _}
+          <div class="rounded-lg border border-border/50 bg-card/50 p-4 space-y-2">
+            <div class="flex items-center gap-2">
+              <SkeletonLine width="5rem" height="1.25rem" rounded="rounded-full" />
+              <SkeletonLine width="3rem" height="0.75rem" />
+            </div>
+            <SkeletonLine width="70%" height="1rem" />
+            <SkeletonLine width="100%" height="0.75rem" />
+            <SkeletonLine width="85%" height="0.75rem" />
+          </div>
+        {/each}
       </div>
     {:else if error}
       <div class="flex flex-col items-center gap-3 px-6 py-20 text-center">

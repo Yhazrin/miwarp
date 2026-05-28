@@ -8,6 +8,7 @@
   import CodeEditor from "$lib/components/CodeEditor.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import SkeletonLine from "$lib/components/SkeletonLine.svelte";
   import { showToast } from "$lib/stores/toast-store.svelte";
   import { dbgWarn } from "$lib/utils/debug";
   import { memoryStore } from "$lib/stores/memory-store.svelte";
@@ -431,8 +432,16 @@
       <p class="text-sm text-muted-foreground">{t("memory_setProjectFirst")}</p>
     </div>
   {:else if loading}
-    <div class="flex flex-1 items-center justify-center">
-      <Spinner size="lg" />
+    <div class="flex flex-1 flex-col gap-3 p-4">
+      <SkeletonLine width="40%" height="1.25rem" />
+      <SkeletonLine width="100%" height="0.75rem" />
+      <SkeletonLine width="90%" height="0.75rem" />
+      <SkeletonLine width="95%" height="0.75rem" />
+      <SkeletonLine width="60%" height="0.75rem" />
+      <div class="h-4"></div>
+      <SkeletonLine width="35%" height="1.25rem" />
+      <SkeletonLine width="100%" height="0.75rem" />
+      <SkeletonLine width="80%" height="0.75rem" />
     </div>
   {:else if viewMode === "preview" && isMarkdown}
     <div class="flex-1 overflow-y-auto p-4">

@@ -9,6 +9,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { formatCostDisplay, relativeTime } from "$lib/utils/format";
   import Spinner from "$lib/components/Spinner.svelte";
+  import SkeletonLine from "$lib/components/SkeletonLine.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
 
@@ -500,8 +501,16 @@
 
     <!-- Initial loading spinner (only when no data yet) -->
     {#if loading && !response}
-      <div class="flex items-center justify-center py-20">
-        <Spinner size="lg" class="border-primary border-t-transparent" />
+      <div class="space-y-2">
+        {#each Array(6) as _}
+          <div class="rounded-lg border border-border/50 bg-card/50 p-3 space-y-2">
+            <div class="flex items-center justify-between">
+              <SkeletonLine width="40%" height="0.875rem" />
+              <SkeletonLine width="4rem" height="1rem" rounded="rounded-full" />
+            </div>
+            <SkeletonLine width="60%" height="0.625rem" />
+          </div>
+        {/each}
       </div>
     {:else if error}
       <div class="rounded-lg border border-[hsl(var(--miwarp-status-error)/0.2)] bg-[hsl(var(--miwarp-status-error)/0.1)] p-4 text-sm text-[hsl(var(--miwarp-status-error))]">

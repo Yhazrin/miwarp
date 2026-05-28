@@ -11,6 +11,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import SkeletonLine from "$lib/components/SkeletonLine.svelte";
 
   // Local state
   let searchQuery = $state("");
@@ -205,8 +206,17 @@
   <div class="flex-1 overflow-auto p-4">
     {#if activeTab === "browse"}
       {#if skillStore.loading}
-        <div class="flex h-40 items-center justify-center">
-          <Spinner size="xl" class="border-primary border-t-transparent" />
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {#each Array(6) as _}
+            <div class="rounded-lg border border-border/50 bg-card/50 p-4 space-y-2">
+              <div class="flex items-center gap-2">
+                <SkeletonLine width="1.5rem" height="1.5rem" rounded="rounded-md" />
+                <SkeletonLine width="40%" height="0.875rem" />
+              </div>
+              <SkeletonLine width="100%" height="0.625rem" />
+              <SkeletonLine width="70%" height="0.625rem" />
+            </div>
+          {/each}
         </div>
       {:else if filteredSkills().length === 0 && searchQuery}
         <EmptyState icon="✨" title={t("skills_noResults")} class="h-40" />

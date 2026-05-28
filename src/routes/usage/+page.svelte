@@ -10,6 +10,7 @@
   import StackedModelChart from "$lib/components/StackedModelChart.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import SkeletonLine from "$lib/components/SkeletonLine.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { fmtDate, fmtNumber } from "$lib/i18n/format";
 
@@ -287,10 +288,25 @@
     </div>
 
     {#if loading}
-      <div class="flex flex-col items-center justify-center py-12 gap-3">
-        <Spinner size="lg" />
+      <div class="space-y-4">
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {#each Array(4) as _}
+            <div class="rounded-lg border border-border/50 bg-card/50 p-4 flex flex-col items-center gap-2">
+              <SkeletonLine width="4rem" height="2rem" rounded="rounded-md" />
+              <SkeletonLine width="5rem" height="0.5rem" />
+            </div>
+          {/each}
+        </div>
+        <div class="rounded-lg border border-border/50 bg-card/50 p-4">
+          <SkeletonLine width="8rem" height="1rem" class="mb-3" />
+          <div class="grid grid-cols-7 gap-1">
+            {#each Array(49) as _}
+              <SkeletonLine height="1.25rem" rounded="rounded-sm" />
+            {/each}
+          </div>
+        </div>
         {#if showFullScanMessage}
-          <p class="text-sm text-muted-foreground animate-fade-in">
+          <p class="text-sm text-muted-foreground animate-fade-in text-center">
             {t("usage_firstLoadMessage")}
           </p>
         {/if}
