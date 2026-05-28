@@ -1,5 +1,6 @@
 <script lang="ts">
   import { getAgentAsset } from "$lib/utils/agent-assets";
+  import { fade } from "svelte/transition";
 
   let {
     agent,
@@ -57,7 +58,7 @@
     />
   </div>
   {#if showName}
-    <div class="flex flex-col leading-tight">
+    <div class="flex flex-col leading-tight" transition:fade={{ duration: 150 }}>
       <span class="text-sm font-semibold text-foreground">{asset.displayName}</span>
       {#if showModel && model}
         <span class="text-[10px] text-muted-foreground">{model}</span>
