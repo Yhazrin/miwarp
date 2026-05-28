@@ -95,6 +95,17 @@
           <path d={iconFor(toast.type)} />
         </svg>
         <span class="text-sm text-foreground/90 flex-1">{toast.message}</span>
+        {#if toast.action}
+          <button
+            class="shrink-0 text-xs font-medium text-miwarp-accent-primary hover:underline transition-colors"
+            onclick={() => {
+              toast.action?.onClick();
+              dismissToast(toast.id);
+            }}
+          >
+            {toast.action.label}
+          </button>
+        {/if}
         <button
           class="shrink-0 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
           onclick={() => dismissToast(toast.id)}

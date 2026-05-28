@@ -6,6 +6,7 @@
     disabled = false,
     class: className = "",
     id,
+    "aria-label": ariaLabel,
     oninput,
     onblur,
     onpaste,
@@ -16,6 +17,7 @@
     disabled?: boolean;
     class?: string;
     id?: string;
+    "aria-label"?: string;
     oninput?: (e: Event) => void;
     onblur?: (e: FocusEvent) => void;
     onpaste?: (e: ClipboardEvent) => void;
@@ -27,6 +29,7 @@
   {type}
   {placeholder}
   {disabled}
+  aria-label={ariaLabel || undefined}
   bind:value
   {oninput}
   {onblur}
