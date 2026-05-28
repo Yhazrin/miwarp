@@ -4,6 +4,7 @@
   import type { TaskRun, McpServerInfo, CliModelInfo } from "$lib/types";
   import type { TurnUsage } from "$lib/stores/types";
   import { dbg } from "$lib/utils/debug";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import { getCliModels } from "$lib/stores/cli-info.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { fmtNumber } from "$lib/i18n/format";
@@ -1064,9 +1065,7 @@
     {/if}
     <div class="min-h-0 flex-1 overflow-y-auto p-1.5 [scrollbar-width:thin]">
       {#if filteredModels.length === 0}
-        <div class="px-2.5 py-6 text-center text-xs text-muted-foreground/60">
-          {t("modelFilter_noResults")}
-        </div>
+        <EmptyState icon="🔍" title={t("modelFilter_noResults")} class="py-4" />
       {/if}
       {#each filteredModels as m, i}
         <button

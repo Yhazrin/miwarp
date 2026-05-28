@@ -4,6 +4,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { dbg } from "$lib/utils/debug";
   import Icon from "$lib/components/Icon.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
 
   interface SkillItem {
     name: string;
@@ -116,9 +117,7 @@
       style={dropdownStyle}
     >
       {#if isEmpty}
-        <p class="px-3 py-4 text-xs text-muted-foreground text-center">
-          {t("skillSelector_empty")}
-        </p>
+        <EmptyState icon="⚡" title={t("skillSelector_empty")} class="py-4" />
       {:else}
         <div class="p-1">
           <!-- Skills group -->

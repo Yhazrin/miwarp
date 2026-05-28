@@ -9,6 +9,7 @@
   import { formatTokenCount, formatDuration, formatCost } from "$lib/utils/format";
   import { getColor, getIcon, computeContextDelta } from "$lib/utils/context-parser";
   import { t } from "$lib/i18n/index.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
 
   let {
     history = [],
@@ -147,11 +148,7 @@
 <div class="flex flex-col h-full overflow-hidden">
   {#if !latest && !hasResourceData}
     <!-- Empty state -->
-    <div
-      class="flex items-center justify-center h-32 text-xs text-muted-foreground/50 px-4 text-center"
-    >
-      {t("contextPanel_noData")}
-    </div>
+    <EmptyState icon="📊" title={t("contextPanel_noData")} class="h-32 py-4" />
   {:else}
     <div class="flex-1 overflow-y-auto">
       <!-- Context: Latest snapshot -->
