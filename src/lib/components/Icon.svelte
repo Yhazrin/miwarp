@@ -8,7 +8,7 @@
     size = "md",
     class: className = "",
   }: {
-    name: "check" | "x" | "clock" | "chevron-right" | "chevron-left" | "chevron-down" | "arrow-right" | "search" | "trash" | "refresh-cw" | "loader-2" | "users" | "copy" | "file" | "file-text" | "plus" | "minus" | "home" | "monitor" | "wrench" | "folder" | "pencil" | "map-pin" | "git-branch" | "triangle-alert";
+    name: "check" | "x" | "clock" | "chevron-right" | "chevron-left" | "chevron-down" | "arrow-right" | "search" | "trash" | "refresh-cw" | "refresh-ccw" | "loader-2" | "users" | "copy" | "external-link" | "file" | "file-text" | "plus" | "minus" | "home" | "monitor" | "wrench" | "folder" | "pencil" | "map-pin" | "git-branch" | "triangle-alert";
     size?: "xs" | "sm" | "md" | "lg";
     class?: string;
   } = $props();
@@ -54,6 +54,9 @@
     <path d="M21 3v5h-5" />
     <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
     <path d="M8 16H3v5" />
+  {:else if name === "refresh-ccw"}
+    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+    <path d="M3 3v5h5" />
   {:else if name === "users"}
     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
     <circle cx="9" cy="7" r="4" />
@@ -62,6 +65,10 @@
   {:else if name === "copy"}
     <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
     <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+  {:else if name === "external-link"}
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+    <polyline points="15 3 21 3 21 9" />
+    <line x1="10" y1="14" x2="21" y2="3" />
   {:else if name === "chevron-down"}
     <path d="m6 9 6 6 6-6" />
   {:else if name === "file"}

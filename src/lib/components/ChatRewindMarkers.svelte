@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
   import type { RewindMarker } from "$lib/utils/rewind";
+  import Icon from "./Icon.svelte";
 
   interface Props {
     markers: RewindMarker[];
@@ -15,18 +16,7 @@
       <div class="flex items-center gap-3">
         <div class="h-px flex-1 bg-[hsl(var(--miwarp-status-info)/0.2)]"></div>
         <div class="flex items-center gap-2 text-xs text-[hsl(var(--miwarp-status-info)/0.8)] font-medium">
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-            <path d="M3 3v5h5" />
-          </svg>
+          <Icon name="refresh-ccw" size="sm" />
           <span
             >{t("rewind_separatorLabel", {
               count: String(marker.filesReverted.length),
