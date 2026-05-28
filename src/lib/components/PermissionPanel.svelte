@@ -155,7 +155,7 @@
             {/if}
             <div class="flex gap-2">
               <button
-                class="rounded-md bg-miwarp-status-success px-4 py-1.5 text-xs font-medium text-white hover:opacity-80 transition-all disabled:opacity-50"
+                class="rounded-md bg-miwarp-status-success px-4 py-1.5 text-xs font-medium text-miwarp-accent-on-accent hover:opacity-80 transition-all disabled:opacity-50"
                 disabled={busy}
                 onclick={() => respondSingle(item.requestId, "allow", undefined, item.tool.input)}
                 >{t("common_allow")}</button
@@ -240,7 +240,7 @@
                   <!-- Per-row buttons -->
                   <div class="flex items-center gap-1 shrink-0">
                     <button
-                      class="rounded px-2 py-0.5 text-[10px] font-medium bg-miwarp-status-success/80 text-white hover:opacity-80 transition-all disabled:opacity-50"
+                      class="rounded px-2 py-0.5 text-[10px] font-medium bg-miwarp-status-success/80 text-miwarp-accent-on-accent hover:opacity-80 transition-all disabled:opacity-50"
                       disabled={busy}
                       onclick={() =>
                         respondSingle(item.requestId, "allow", undefined, item.tool.input)}
@@ -278,7 +278,7 @@
             <!-- Batch buttons -->
             <div class="flex gap-2 pt-2 border-t border-[hsl(var(--miwarp-status-warning)/0.2)]">
               <button
-                class="rounded-md bg-miwarp-status-success px-4 py-1.5 text-xs font-medium text-white hover:opacity-80 transition-all disabled:opacity-50"
+                class="rounded-md bg-miwarp-status-success px-4 py-1.5 text-xs font-medium text-miwarp-accent-on-accent hover:opacity-80 transition-all disabled:opacity-50"
                 disabled={submittingAll || submittingIds.size > 0}
                 onclick={allowAll}
                 >{t("perm_allowAll", { count: String(pendingTools.length) })}</button

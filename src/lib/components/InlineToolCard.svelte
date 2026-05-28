@@ -1509,7 +1509,7 @@
             {#if onPermissionRespond}
               <div class="flex gap-2">
                 <button
-                  class="rounded-md bg-[hsl(var(--miwarp-status-success))] px-4 py-1.5 text-xs font-medium text-white hover:bg-[hsl(var(--miwarp-status-success)/0.85)] transition-all disabled:opacity-50"
+                  class="rounded-md bg-[hsl(var(--miwarp-status-success))] px-4 py-1.5 text-xs font-medium text-miwarp-accent-on-accent hover:bg-[hsl(var(--miwarp-status-success)/0.85)] transition-all disabled:opacity-50"
                   disabled={submitting}
                   onclick={() => {
                     submitting = true;

@@ -2356,7 +2356,7 @@
             {#if btwMode}
               <!-- BTW send: blue theme -->
               <button
-                class="flex h-7 w-7 items-center justify-center rounded-full bg-miwarp-status-info text-white transition-colors hover:opacity-80"
+                class="flex h-7 w-7 items-center justify-center rounded-full bg-miwarp-status-info text-miwarp-accent-on-accent transition-colors hover:opacity-80"
                 onclick={handleBtwSend}
                 title={t("promptInput_sendSideQuestion")}
               >

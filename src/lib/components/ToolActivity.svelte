@@ -665,7 +665,7 @@
 {#snippet categoryIcon(color: string, iconPath: string)}
   <span class="flex h-3 w-3 shrink-0 items-center justify-center rounded {color}">
     <svg
-      class="h-1.5 w-1.5 text-white"
+      class="h-1.5 w-1.5 text-miwarp-accent-on-accent"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
