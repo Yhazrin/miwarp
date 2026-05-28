@@ -268,11 +268,11 @@ struct SessionHubView: View {
             VStack(alignment: .leading, spacing: MWSpacing.sm) {
                 Text(String(localized: "pairing.connectDesktop"))
                     .font(.title2.weight(.semibold))
-                    .foregroundColor(heroTextColor)
+                    .foregroundColor(theme.accentOnAccent)
 
                 Text(String(localized: "sessions.syncDescription"))
                     .font(.callout)
-                    .foregroundColor(heroTextColor.opacity(0.85))
+                    .foregroundColor(theme.accentOnAccent.opacity(0.85))
             }
 
             NavigationLink {
@@ -317,15 +317,6 @@ struct SessionHubView: View {
         .clipShape(RoundedRectangle(cornerRadius: MWRadius.bubble))
     }
 
-    private var heroTextColor: Color {
-        switch theme.accentTheme {
-        case .deepSeaMilk, .auroraPomelo, .auroraLime:
-            return .black
-        default:
-            return .white
-        }
-    }
-
     // MARK: - Connected Empty View
 
     private func connectedEmptyView(layout: MWAdaptiveLayout) -> some View {
@@ -357,12 +348,12 @@ struct SessionHubView: View {
 
                     Text(String(localized: "sessions.desktopConnected"))
                         .font(.title2.weight(.semibold))
-                        .foregroundColor(heroTextColor)
+                        .foregroundColor(theme.accentOnAccent)
                 }
 
                 Text(String(localized: "sessions.waitingSync"))
                     .font(.callout)
-                    .foregroundColor(heroTextColor.opacity(0.85))
+                    .foregroundColor(theme.accentOnAccent.opacity(0.85))
             }
 
             #if canImport(ActivityKit)
@@ -433,7 +424,7 @@ struct SessionHubView: View {
                     Text(conn.host)
                         .font(.caption)
                 }
-                .foregroundColor(heroTextColor.opacity(0.7))
+                .foregroundColor(theme.accentOnAccent.opacity(0.7))
             }
         }
         .padding(MWSpacing.lg)
@@ -499,12 +490,12 @@ struct SessionHubView: View {
             Text(label)
                 .font(.caption)
         }
-        .foregroundColor(heroTextColor.opacity(0.9))
+        .foregroundColor(theme.accentOnAccent.opacity(0.9))
         .padding(.horizontal, MWSpacing.sm)
         .padding(.vertical, MWSpacing.xs)
         .background(
             Capsule()
-                .fill(heroTextColor.opacity(0.2))
+                .fill(theme.accentOnAccent.opacity(0.2))
         )
     }
 

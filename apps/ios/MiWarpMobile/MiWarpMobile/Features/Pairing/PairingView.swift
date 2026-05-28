@@ -71,11 +71,11 @@ struct PairingView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(String(localized: "pairing.connectDesktop"))
                         .font(.title2.weight(.semibold))
-                        .foregroundColor(heroTextColor)
+                        .foregroundColor(MWColors.accentOnAccent)
 
                     Text(String(localized: "pairing.heroSubtitle"))
                         .font(.callout)
-                        .foregroundColor(heroSubtextColor)
+                        .foregroundColor(MWColors.accentOnAccent.opacity(0.85))
                 }
 
                 HStack(spacing: 8) {
@@ -103,26 +103,6 @@ struct PairingView: View {
         .listRowBackground(Color.clear)
     }
 
-    private var pillTextColor: Color {
-        switch theme.accentTheme {
-        case .deepSeaMilk, .auroraPomelo, .auroraLime:
-            return .black
-        default:
-            return .white
-        }
-    }
-
-    private var heroTextColor: Color { pillTextColor }
-
-    private var heroSubtextColor: Color {
-        switch theme.accentTheme {
-        case .deepSeaMilk, .auroraPomelo, .auroraLime:
-            return .black.opacity(0.75)
-        default:
-            return .white.opacity(0.85)
-        }
-    }
-
     private func heroPill(icon: String, label: String) -> some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
@@ -130,7 +110,7 @@ struct PairingView: View {
             Text(label)
                 .font(.caption)
         }
-        .foregroundColor(pillTextColor)
+        .foregroundColor(MWColors.accentOnAccent)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(
