@@ -8,7 +8,7 @@
     size = "md",
     class: className = "",
   }: {
-    name: "check" | "x" | "clock" | "chevron-right" | "chevron-down" | "arrow-right" | "search" | "trash" | "refresh-cw" | "users" | "copy" | "file" | "plus" | "minus" | "home" | "monitor" | "wrench" | "folder" | "pencil";
+    name: "check" | "x" | "clock" | "chevron-right" | "chevron-left" | "chevron-down" | "arrow-right" | "search" | "trash" | "refresh-cw" | "loader-2" | "users" | "copy" | "file" | "file-text" | "plus" | "minus" | "home" | "monitor" | "wrench" | "folder" | "pencil" | "map-pin";
     size?: "xs" | "sm" | "md" | "lg";
     class?: string;
   } = $props();
@@ -40,6 +40,8 @@
     <polyline points="12 6 12 12 16 14" />
   {:else if name === "chevron-right"}
     <path d="m9 18 6-6-6-6" />
+  {:else if name === "chevron-left"}
+    <path d="m15 18-6-6 6-6" />
   {:else if name === "search"}
     <circle cx="11" cy="11" r="8" />
     <path d="m21 21-4.3-4.3" />
@@ -87,5 +89,15 @@
   {:else if name === "pencil"}
     <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
     <path d="m15 5 4 4" />
+  {:else if name === "loader-2"}
+    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+  {:else if name === "file-text"}
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="16" y1="13" x2="8" y2="13" />
+    <line x1="16" y1="17" x2="8" y2="17" />
+  {:else if name === "map-pin"}
+    <path d="M12 2a8 8 0 0 1 8 8c0 5-8 13-8 13S4 15 4 10a8 8 0 0 1 8-8z" />
+    <circle cx="12" cy="10" r="3" />
   {/if}
 </svg>

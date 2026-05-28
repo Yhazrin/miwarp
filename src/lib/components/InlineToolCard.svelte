@@ -1822,18 +1822,7 @@
                   <summary
                     class="flex cursor-pointer list-none items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-info)/0.9)] hover:bg-[hsl(var(--miwarp-status-info)/0.08)] [&::-webkit-details-marker]:hidden"
                   >
-                    <svg
-                      class="h-3 w-3 shrink-0 opacity-60"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <path d="M12 2a8 8 0 0 1 8 8c0 5-8 13-8 13S4 15 4 10a8 8 0 0 1 8-8z" />
-                      <circle cx="12" cy="10" r="3" />
-                    </svg>
+                    <Icon name="map-pin" size="xs" class="shrink-0 opacity-60" />
                     {t("chat_thoughtProcess")}
                   </summary>
                   <div

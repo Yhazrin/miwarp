@@ -6,6 +6,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import type { MessageKey } from "$lib/i18n/types";
   import { scale } from "svelte/transition";
+  import Icon from "./Icon.svelte";
 
   const CATEGORY_I18N: Record<SlashCategory, MessageKey> = {
     session: "slashMenu_catSession",
@@ -206,17 +207,7 @@
         onclick={onBack}
         title={t("slashMenu_backToCommands")}
       >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="m15 18-6-6 6-6" />
-        </svg>
+        <Icon name="chevron-left" size="sm" />
       </button>
       <span class="text-xs font-mono text-muted-foreground">{inputDisplay}</span>
     </div>
@@ -258,17 +249,7 @@
         onclick={onBack}
         title={t("slashMenu_backToCommands")}
       >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="m15 18-6-6 6-6" />
-        </svg>
+        <Icon name="chevron-left" size="sm" />
       </button>
       <span class="text-xs font-mono text-muted-foreground">{inputDisplay}</span>
     </div>

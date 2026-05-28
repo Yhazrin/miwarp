@@ -294,18 +294,7 @@
                   aria-label={t("common_expand")}
                   aria-expanded="false"
                 >
-                  <svg
-                    class="h-2.5 w-2.5 shrink-0"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M12 2a8 8 0 0 1 8 8c0 5-8 13-8 13S4 15 4 10a8 8 0 0 1 8-8z" />
-                    <circle cx="12" cy="10" r="3" />
-                  </svg>
+                  <Icon name="map-pin" size="xs" class="shrink-0" />
                   <span class="thinking-shimmer">{t("chat_thoughtProcess")}</span>
                 </button>
               {:else}
@@ -315,18 +304,7 @@
                   <div
                     class="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] text-[hsl(var(--miwarp-text-secondary))]"
                   >
-                    <svg
-                      class="h-2.5 w-2.5 shrink-0 opacity-70"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <path d="M12 2a8 8 0 0 1 8 8c0 5-8 13-8 13S4 15 4 10a8 8 0 0 1 8-8z" />
-                      <circle cx="12" cy="10" r="3" />
-                    </svg>
+                    <Icon name="map-pin" size="xs" class="shrink-0 opacity-70" />
                     <span class="font-medium thinking-shimmer">{t("chat_thoughtProcess")}</span>
                     <button
                       class="ml-auto opacity-50 hover:opacity-100 transition-opacity"
