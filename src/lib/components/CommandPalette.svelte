@@ -18,6 +18,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { getIcon, commandIconMap } from "$lib/icons";
   import Icon from "$lib/components/Icon.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import { fade, fly } from "svelte/transition";
 
   let {
@@ -667,9 +668,11 @@
           {/each}
 
           {#if indexMap.size === 0}
-            <div class="py-6 text-center text-sm text-muted-foreground">
-              {query ? t("cmd_noCommandsFound") : t("cmd_noCommandsAvailable")}
-            </div>
+            <EmptyState
+              icon="🔍"
+              title={query ? t("cmd_noCommandsFound") : t("cmd_noCommandsAvailable")}
+              class="py-6"
+            />
           {/if}
         </div>
 

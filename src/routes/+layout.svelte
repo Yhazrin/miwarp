@@ -87,6 +87,7 @@
   import { themeStore } from "$lib/stores/theme-store.svelte";
   import ToastHost from "$lib/components/ToastHost.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import {
     t,
@@ -2338,21 +2339,19 @@
               <div class="flex-1 overflow-y-auto px-1 py-1">
                 {#if !projectCwd}
                   {@const lastRemote = getLastTarget()}
-                  <div class="flex items-center justify-center px-3 py-12">
-                    <p class="text-xs text-muted-foreground text-center">
-                      {lastRemote
-                        ? t("layout_remoteFileTreeUnavailable")
-                        : t("sidebar_selectProjectBrowse")}
-                    </p>
-                  </div>
+                  <EmptyState
+                    icon="📂"
+                    title={lastRemote
+                      ? t("layout_remoteFileTreeUnavailable")
+                      : t("sidebar_selectProjectBrowse")}
+                    class="py-8"
+                  />
                 {:else if treeLoading}
                   <div class="flex items-center justify-center py-12">
                     <Spinner size="sm" />
                   </div>
                 {:else if fileTree.length === 0}
-                  <p class="px-2 py-8 text-xs text-muted-foreground text-center">
-                    {t("sidebar_emptyDirectory")}
-                  </p>
+                  <EmptyState icon="📂" title={t("sidebar_emptyDirectory")} class="py-8" />
                 {:else}
                   {@render treeNodes(fileTree)}
                 {/if}
@@ -2361,9 +2360,7 @@
               <!-- Git tab -->
               {#if !projectCwd}
                 <div class="flex-1 flex items-center justify-center px-3">
-                  <p class="text-xs text-muted-foreground text-center">
-                    {t("sidebar_selectProjectGit")}
-                  </p>
+                  <EmptyState icon="🔀" title={t("sidebar_selectProjectGit")} class="py-8" />
                 </div>
               {:else if gitLoading}
                 <div class="flex-1 flex items-center justify-center">
@@ -2371,7 +2368,7 @@
                 </div>
               {:else if !gitSummary}
                 <div class="flex-1 flex items-center justify-center px-3">
-                  <p class="text-xs text-muted-foreground text-center">{t("sidebar_notGitRepo")}</p>
+                  <EmptyState icon="🔀" title={t("sidebar_notGitRepo")} class="py-8" />
                 </div>
               {:else}
                 <!-- Branch info -->

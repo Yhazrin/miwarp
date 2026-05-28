@@ -11,6 +11,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
   import Button from "./Button.svelte";
+  import EmptyState from "./EmptyState.svelte";
   import type { Snippet } from "svelte";
 
   export interface WizardStep {
@@ -260,9 +261,7 @@
           <p class="text-sm text-muted-foreground">{currentStep.description}</p>
         {/if}
         <!-- Placeholder for step content -->
-        <div class="border border-dashed border-border rounded-lg p-8 text-center text-muted-foreground">
-          {t("wizard_stepContentPlaceholder")}
-        </div>
+        <EmptyState variant="dashed" title={t("wizard_stepContentPlaceholder")} />
       </div>
     {/if}
   </div>

@@ -3,6 +3,7 @@
   import { slide } from "svelte/transition";
   import { t } from "$lib/i18n/index.svelte";
   import Button from "$lib/components/Button.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import ScheduledTaskCard from "$lib/components/ScheduledTaskCard.svelte";
   import ScheduledTaskEditor from "$lib/components/ScheduledTaskEditor.svelte";
   import TaskExecutionMonitor from "$lib/components/TaskExecutionMonitor.svelte";
@@ -450,11 +451,7 @@
             </div>
 
             {#if scheduledTasksStore.selectedTaskRuns.length === 0}
-              <div
-                class="p-8 text-center text-muted-foreground text-sm rounded-lg border border-dashed"
-              >
-                {t("sched_noExecutions")}
-              </div>
+              <EmptyState variant="dashed" icon="📊" title={t("sched_noExecutions")} />
             {:else}
               <div class="space-y-2">
                 {#each scheduledTasksStore.selectedTaskRuns as run (run.id)}

@@ -443,12 +443,7 @@
       {#if selectedStep}
         <StepEditor step={selectedStep} onUpdate={handleStepUpdate} />
       {:else}
-        <div
-          class="flex h-full flex-col items-center justify-center text-center text-muted-foreground"
-        >
-          <span class="text-4xl mb-3">👆</span>
-          <p class="text-sm">{t("automationEditor_selectStep")}</p>
-        </div>
+        <EmptyState icon="👆" title={t("automationEditor_selectStep")} />
       {/if}
 
       <!-- Execution controls -->

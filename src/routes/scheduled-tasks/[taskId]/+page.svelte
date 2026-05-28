@@ -5,6 +5,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import Button from "$lib/components/Button.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import ScheduledTaskEditor from "$lib/components/ScheduledTaskEditor.svelte";
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
   import { ScheduledTasksService } from "$lib/services/scheduled-tasks-service";
@@ -208,11 +209,7 @@
           </div>
 
           {#if taskExecutions.length === 0}
-            <div
-              class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground"
-            >
-              {t("sched_noExecutions")}
-            </div>
+            <EmptyState variant="dashed" icon="📊" title={t("sched_noExecutions")} />
           {:else}
             <div class="space-y-2">
               {#each taskExecutions as execution (execution.id)}
@@ -323,12 +320,7 @@
             {/if}
           </div>
         {:else}
-          <div
-            class="flex h-full flex-col items-center justify-center text-center text-muted-foreground"
-          >
-            <Icon name="clock" class="mb-4 h-16 w-16 opacity-40" />
-            <p class="text-sm">{t("schedHub_selectExecution")}</p>
-          </div>
+          <EmptyState icon="⏱️" title={t("schedHub_selectExecution")} />
         {/if}
       </div>
     </div>

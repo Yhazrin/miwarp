@@ -5,6 +5,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import Icon from "$lib/components/Icon.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { statusDotClass, statusLabel, parseServersFromResponse } from "$lib/utils/mcp";
   import { relativeTime } from "$lib/utils/format";
@@ -259,9 +260,7 @@ diagnostics and history * - Quick reconnect with health check */
   <!-- Server list -->
   <div class="max-h-80 overflow-y-auto">
     {#if servers.length === 0}
-      <div class="px-3 py-4 text-center text-xs text-muted-foreground">
-        {t("mcp_noConfiguredStatus")}
-      </div>
+      <EmptyState icon="🔌" title={t("mcp_noConfiguredStatus")} class="py-4" />
     {:else}
       {#each servers as server (server.name)}
         {@const health = healthMetrics[server.name]}

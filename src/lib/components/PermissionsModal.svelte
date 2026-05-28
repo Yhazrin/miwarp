@@ -5,6 +5,7 @@
   import { isAbsolutePath } from "$lib/utils/format";
   import Icon from "$lib/components/Icon.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import { filterRules } from "$lib/utils/permissions-helpers";
   import { dbg, dbgWarn } from "$lib/utils/debug";
 
@@ -290,9 +291,11 @@
     <!-- Rule list -->
     <div class="max-h-[40vh] overflow-y-auto rounded-md border">
       {#if filteredRules.length === 0}
-        <div class="py-6 text-center text-sm text-muted-foreground">
-          {search ? t("permissions_noResults") : t("permissions_noRules")}
-        </div>
+        <EmptyState
+          icon="🔒"
+          title={search ? t("permissions_noResults") : t("permissions_noRules")}
+          class="py-6"
+        />
       {:else}
         {#each filteredRules as rule}
           <div

@@ -1187,7 +1187,7 @@
 
               <div class="flex-1 overflow-y-auto px-3 py-2 space-y-2">
                 {#if teamStore.tasks.length === 0}
-                  <p class="text-xs text-muted-foreground py-6 text-center">{t("team_noTasks")}</p>
+                  <EmptyState icon="📋" title={t("team_noTasks")} class="py-6" />
                 {/if}
 
                 {#if teamStore.inProgressTasks.length > 0}
