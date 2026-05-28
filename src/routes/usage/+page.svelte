@@ -297,9 +297,15 @@
       </div>
     {:else if error}
       <div
-        class="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        class="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3"
       >
-        {error}
+        <span>{error}</span>
+        <button
+          class="shrink-0 rounded-md border border-destructive/30 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+          onclick={() => loadData()}
+        >
+          {t("common_retry")}
+        </button>
       </div>
     {:else if data}
       <!-- Summary cards -->
