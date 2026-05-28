@@ -187,11 +187,11 @@ struct SessionHubView: View {
                 } label: {
                     HStack(spacing: MWSpacing.xs) {
                         Text(activeFilterLabel)
-                            .font(.caption)
+                            .font(MWTypography.caption())
                         Image(systemName: "chevron.down")
                             .font(MWTypography.caption2().weight(.medium))
                     }
-                    .foregroundColor(filters.isActive ? theme.tabActive : .secondary)
+                    .foregroundColor(filters.isActive ? theme.tabActive : theme.textSecondary)
                 }
                 .accessibilityLabel(String(localized: "a11y.filterSessions"))
 
@@ -267,11 +267,11 @@ struct SessionHubView: View {
         VStack(alignment: .leading, spacing: MWSpacing.md) {
             VStack(alignment: .leading, spacing: MWSpacing.sm) {
                 Text(String(localized: "pairing.connectDesktop"))
-                    .font(.title2.weight(.semibold))
+                    .font(MWTypography.title2())
                     .foregroundColor(theme.accentOnAccent)
 
                 Text(String(localized: "sessions.syncDescription"))
-                    .font(.callout)
+                    .font(MWTypography.callout())
                     .foregroundColor(theme.accentOnAccent.opacity(0.85))
             }
 
@@ -282,7 +282,7 @@ struct SessionHubView: View {
                     Image(systemName: "plus.circle.fill")
                         .font(MWTypography.title3().weight(.medium))
                     Text(String(localized: "sessions.connectNow"))
-                        .font(.body.weight(.medium))
+                        .font(MWTypography.bodyMedium())
                     Spacer()
                     Image(systemName: "arrow.right")
                         .font(MWTypography.callout().weight(.medium))
@@ -347,12 +347,12 @@ struct SessionHubView: View {
                         .foregroundColor(MWColors.statusSuccess)
 
                     Text(String(localized: "sessions.desktopConnected"))
-                        .font(.title2.weight(.semibold))
+                        .font(MWTypography.title2())
                         .foregroundColor(theme.accentOnAccent)
                 }
 
                 Text(String(localized: "sessions.waitingSync"))
-                    .font(.callout)
+                    .font(MWTypography.callout())
                     .foregroundColor(theme.accentOnAccent.opacity(0.85))
             }
 
@@ -377,12 +377,12 @@ struct SessionHubView: View {
                         ProgressView()
                             .scaleEffect(0.8)
                         Text(syncManager.syncPhase.displayTitle)
-                            .font(.body.weight(.medium))
+                            .font(MWTypography.bodyMedium())
                     } else {
                         Image(systemName: "arrow.clockwise")
                             .font(MWTypography.callout().weight(.medium))
                         Text(String(localized: "sessions.syncNow"))
-                            .font(.body.weight(.medium))
+                            .font(MWTypography.bodyMedium())
                     }
                     Spacer()
                 }
@@ -404,7 +404,7 @@ struct SessionHubView: View {
                     Image(systemName: "arrow.clockwise")
                         .font(MWTypography.callout().weight(.medium))
                     Text(String(localized: "sessions.syncNow"))
-                        .font(.body.weight(.medium))
+                        .font(MWTypography.bodyMedium())
                     Spacer()
                 }
                 .foregroundColor(theme.accentPrimary)
@@ -422,7 +422,7 @@ struct SessionHubView: View {
                     Image(systemName: "desktopcomputer")
                         .font(MWTypography.caption2())
                     Text(conn.host)
-                        .font(.caption)
+                        .font(MWTypography.caption())
                 }
                 .foregroundColor(theme.accentOnAccent.opacity(0.7))
             }
@@ -446,10 +446,10 @@ struct SessionHubView: View {
     private var statusHint: some View {
         VStack(spacing: MWSpacing.xs) {
             Text(String(localized: "sessions.noDesktop"))
-                .font(.subheadline.weight(.medium))
+                .font(MWTypography.subheadlineMedium())
                 .foregroundStyle(theme.cardTextSecondary)
             Text(String(localized: "sessions.startDesktop"))
-                .font(.caption)
+                .font(MWTypography.caption())
                 .foregroundStyle(theme.cardTextTertiary)
                 .multilineTextAlignment(.center)
         }
@@ -465,10 +465,10 @@ struct SessionHubView: View {
     private var connectedStatusHint: some View {
         VStack(spacing: MWSpacing.xs) {
             Text(String(localized: "sessions.noSessions"))
-                .font(.subheadline.weight(.medium))
+                .font(MWTypography.subheadlineMedium())
                 .foregroundStyle(theme.cardTextSecondary)
             Text(String(localized: "sessions.startSession"))
-                .font(.caption)
+                .font(MWTypography.caption())
                 .foregroundStyle(theme.cardTextTertiary)
                 .multilineTextAlignment(.center)
         }
@@ -488,7 +488,7 @@ struct SessionHubView: View {
             Image(systemName: icon)
                 .font(MWTypography.caption2().weight(.medium))
             Text(label)
-                .font(.caption)
+                .font(MWTypography.caption())
         }
         .foregroundColor(theme.accentOnAccent.opacity(0.9))
         .padding(.horizontal, MWSpacing.sm)
@@ -525,21 +525,21 @@ struct SessionHubView: View {
                         .frame(width: 6, height: 6)
 
                     Text(store.isConnected ? String(localized: "connection.connected") : String(localized: "connection.disconnected"))
-                        .font(.caption)
+                        .font(MWTypography.caption())
                         .foregroundColor(theme.textTertiary)
 
                     if let conn = store.activeConnection {
                         Text("·")
                             .foregroundColor(theme.textTertiary)
                         Text(conn.host)
-                            .font(.caption.monospaced())
+                            .font(MWTypography.monoCaption())
                             .foregroundColor(theme.textTertiary)
                     }
 
                     Spacer()
 
                     Text(String(format: String(localized: "sessions.count"), filteredRuns.count))
-                        .font(.caption)
+                        .font(MWTypography.caption())
                         .foregroundColor(theme.textTertiary)
                 }
             }
@@ -711,15 +711,15 @@ struct SessionRowView: View {
             .frame(width: 14, height: 14)
             .padding(.top, MWSpacing.sm)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: MWSpacing.xxs) {
                 Text(run.displayTitle)
-                    .font(.body.weight(.medium))
+                    .font(MWTypography.bodyMedium())
                     .foregroundColor(theme.textPrimary)
                     .lineLimit(2)
 
                 if let cwd = run.displayCwd {
                     Text(cwd)
-                        .font(.caption.monospaced())
+                        .font(MWTypography.monoCaption())
                         .foregroundColor(theme.textTertiary)
                         .lineLimit(1)
                 }
@@ -727,16 +727,16 @@ struct SessionRowView: View {
 
             Spacer(minLength: 8)
 
-            VStack(alignment: .trailing, spacing: 3) {
+            VStack(alignment: .trailing, spacing: MWSpacing.xxs) {
                 if let time = run.displayRelativeTime {
                     Text(time)
-                        .font(.caption)
+                        .font(MWTypography.caption())
                         .foregroundColor(theme.textTertiary)
                 }
 
                 if let msgs = run.displayMessageCount {
                     Text(msgs)
-                        .font(.caption2)
+                        .font(MWTypography.caption2())
                         .foregroundColor(theme.textTertiary)
                 }
             }

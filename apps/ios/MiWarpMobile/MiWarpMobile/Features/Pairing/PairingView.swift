@@ -67,27 +67,27 @@ struct PairingView: View {
 
     private var heroSection: some View {
         Section {
-            VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: MWSpacing.md) {
+                VStack(alignment: .leading, spacing: MWSpacing.xs) {
                     Text(String(localized: "pairing.connectDesktop"))
-                        .font(.title2.weight(.semibold))
+                        .font(MWTypography.title2())
                         .foregroundColor(MWColors.accentOnAccent)
 
                     Text(String(localized: "pairing.heroSubtitle"))
-                        .font(.callout)
+                        .font(MWTypography.callout())
                         .foregroundColor(MWColors.accentOnAccent.opacity(0.85))
                 }
 
-                HStack(spacing: 8) {
+                HStack(spacing: MWSpacing.sm) {
                     heroPill(icon: "server.rack", label: String(localized: "pairing.enableServer"))
                     heroPill(icon: "network", label: String(localized: "pairing.lanAccess"))
                     heroPill(icon: "qrcode.viewfinder", label: String(localized: "pairing.scanQR"))
                 }
             }
-            .padding(.vertical, 8)
+            .padding(.vertical, MWSpacing.sm)
             .listRowInsets(EdgeInsets())
             .frame(maxWidth: .infinity)
-            .padding(16)
+            .padding(MWSpacing.lg)
             .background(
                 LinearGradient(
                     gradient: Gradient(colors: [
@@ -104,15 +104,15 @@ struct PairingView: View {
     }
 
     private func heroPill(icon: String, label: String) -> some View {
-        HStack(spacing: 4) {
+        HStack(spacing: MWSpacing.xs) {
             Image(systemName: icon)
                 .font(MWTypography.caption2().weight(.medium))
             Text(label)
-                .font(.caption)
+                .font(MWTypography.caption())
         }
         .foregroundColor(MWColors.accentOnAccent)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.horizontal, MWSpacing.sm)
+        .padding(.vertical, MWSpacing.xs)
         .background(
             Capsule()
                 .fill(MWColors.accentOnAccent.opacity(0.2))
@@ -133,20 +133,20 @@ struct ConnectionRow: View {
 
     var body: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
+            VStack(alignment: .leading, spacing: MWSpacing.xxs) {
+                HStack(spacing: MWSpacing.xs) {
                     Text(connection.name)
-                        .font(.body.weight(.medium))
+                        .font(MWTypography.bodyMedium())
 
                     if connection.isDefault {
                         Image(systemName: "star.fill")
-                            .font(.system(size: 9))
+                            .font(MWTypography.caption2())
                             .foregroundColor(MWColors.statusWarning)
                     }
                 }
 
                 Text("\(connection.host):\(connection.port)")
-                    .font(.caption.monospaced())
+                    .font(MWTypography.monoCaption())
                     .foregroundStyle(theme.cardTextSecondary)
             }
 
@@ -243,7 +243,7 @@ struct ManualConnectionSheet: View {
                     Section {
                         Text(error)
                             .foregroundStyle(MWColors.statusError)
-                            .font(.callout)
+                            .font(MWTypography.callout())
                     }
                 }
             }
@@ -301,27 +301,27 @@ struct QRScannerSheet: View {
                 .ignoresSafeArea()
 
                 if isAuthenticating {
-                    HStack(spacing: 8) {
+                    HStack(spacing: MWSpacing.sm) {
                         ProgressView()
                         Text(String(localized: "pairing.verifying"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(MWTypography.caption())
+                            .foregroundStyle(theme.textSecondary)
                     }
                     .padding()
                 }
 
                 if let error {
-                    VStack(spacing: 8) {
+                    VStack(spacing: MWSpacing.sm) {
                         Text(error)
                             .foregroundStyle(MWColors.statusError)
-                            .font(.callout)
+                            .font(MWTypography.callout())
 
                         Button {
                             MiHaptics.lightImpact()
                             self.error = nil
                         } label: {
                             Label(String(localized: "action.retry"), systemImage: "arrow.clockwise")
-                                .font(.callout.weight(.medium))
+                                .font(MWTypography.callout().weight(.medium))
                         }
                         .buttonStyle(.bordered)
                     }
