@@ -251,7 +251,7 @@
           <div class="w-full py-2">
             <div class="chat-content-width pl-7">
               <div
-                class="command-output rounded-lg border border-border/40 bg-[hsl(var(--miwarp-bg-deepest))] px-4 py-3 text-sm overflow-x-auto"
+                class="command-output rounded-lg border border-border/40 bg-miwarp-bg-deepest px-4 py-3 text-sm overflow-x-auto"
               >
                 {#if entry.content.includes("## Context Usage")}
                   <ContextUsageGrid text={entry.content} />
@@ -263,7 +263,7 @@
                   <ReleaseNotesCard text={entry.content} />
                 {:else if hasAnsiCodes(entry.content)}
                   <pre
-                    class="whitespace-pre font-mono text-xs leading-relaxed text-[hsl(var(--miwarp-text-primary))] m-0">{@html ansiToHtml(
+                    class="whitespace-pre font-mono text-xs leading-relaxed text-miwarp-text-primary m-0">{@html ansiToHtml(
                       entry.content,
                     )}</pre>
                 {:else}

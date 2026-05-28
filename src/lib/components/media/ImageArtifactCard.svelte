@@ -40,7 +40,7 @@
       </div>
     {/if}
     <div
-      class="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-miwarp-overlay text-[hsl(var(--miwarp-text-primary))] text-[10px] px-1.5 py-0.5 rounded truncate max-w-[120px]"
+      class="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-miwarp-overlay text-miwarp-text-primary text-[10px] px-1.5 py-0.5 rounded truncate max-w-[120px]"
     >
       {artifact.name}
     </div>
@@ -59,7 +59,7 @@
       tabindex="-1"
     >
       <button type="button"
-        class="absolute top-4 right-4 text-[hsl(var(--miwarp-text-primary)/0.8)] hover:text-[hsl(var(--miwarp-text-primary))]"
+        class="absolute top-4 right-4 text-[hsl(var(--miwarp-text-primary)/0.8)] hover:text-miwarp-text-primary"
         onclick={() => (showModal = false)}
         aria-label={t("imageArtifact_closePreview")}
       >

@@ -266,7 +266,7 @@
             {#if thinkingText && processVisibility !== "output"}
               {#if thinkingCollapsed}
                 <button type="button"
-                  class="mb-2 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] text-[hsl(var(--miwarp-text-secondary))] opacity-70 hover:opacity-100 transition-opacity"
+                  class="mb-2 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] text-miwarp-text-secondary opacity-70 hover:opacity-100 transition-opacity"
                   onclick={() => (thinkingCollapsed = false)}
                   title={t("common_expand")}
                   aria-label={t("common_expand")}
@@ -280,7 +280,7 @@
                   class="mb-2 max-h-28 overflow-hidden rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.18)] bg-[hsl(var(--miwarp-bg-deep)/0.6)]"
                 >
                   <div
-                    class="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] text-[hsl(var(--miwarp-text-secondary))]"
+                    class="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] text-miwarp-text-secondary"
                   >
                     <Icon name="map-pin" size="xs" class="shrink-0 opacity-70" />
                     <span class="font-medium thinking-shimmer">{t("chat_thoughtProcess")}</span>
@@ -305,7 +305,7 @@
                     </button>
                   </div>
                   <div
-                    class="border-t border-[hsl(var(--miwarp-accent-primary)/0.12)] px-2.5 py-2 text-[11px] leading-relaxed text-[hsl(var(--miwarp-text-secondary))] overflow-y-auto overscroll-y-contain max-h-[calc(7rem-2.25rem)]"
+                    class="border-t border-[hsl(var(--miwarp-accent-primary)/0.12)] px-2.5 py-2 text-[11px] leading-relaxed text-miwarp-text-secondary overflow-y-auto overscroll-y-contain max-h-[calc(7rem-2.25rem)]"
                   >
                     <pre
                       class="whitespace-pre-wrap break-words font-mono">{thinkingText.trimEnd()}</pre>

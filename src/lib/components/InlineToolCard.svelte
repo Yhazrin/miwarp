@@ -1818,7 +1818,7 @@
                     class="max-h-[min(40vh,18rem)] min-h-0 overflow-y-auto overscroll-y-contain border-t border-[hsl(var(--miwarp-text-secondary)/0.15)] px-2 py-1.5"
                   >
                     <pre
-                      class="text-xs font-mono whitespace-pre-wrap break-words text-[hsl(var(--miwarp-text-secondary))] italic leading-relaxed">{subEntry.thinkingText.trimEnd()}</pre>
+                      class="text-xs font-mono whitespace-pre-wrap break-words text-miwarp-text-secondary italic leading-relaxed">{subEntry.thinkingText.trimEnd()}</pre>
                   </div>
                 </details>
               {/if}
