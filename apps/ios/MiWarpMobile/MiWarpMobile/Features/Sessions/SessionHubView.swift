@@ -741,7 +741,7 @@ struct SessionRowView: View {
                 }
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, MWSpacing.xxs)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(run.displayTitle), \(String(localized: "a11y.status")): \(run.status)")
     }

@@ -138,7 +138,7 @@ fun AppNavGraph(
                     containerColor = MWTheme.colors.bgDeep,
                     contentColor = MWTheme.colors.textPrimary,
                     tonalElevation = 0.dp,
-                    modifier = Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
+                    modifier = Modifier.clip(RoundedCornerShape(topStart = MWTheme.spacing.md, topEnd = MWTheme.spacing.md)),
                 ) {
                     tabs.forEach { tab ->
                         val selected = currentRoute == tab.route

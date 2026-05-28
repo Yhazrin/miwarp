@@ -361,7 +361,7 @@ struct LogsView: View {
                         .foregroundStyle(theme.cardTextSecondary)
                         .textSelection(.enabled)
                 }
-                .padding(.vertical, 2)
+                .padding(.vertical, MWSpacing.xxs)
             }
             .listStyle(.plain)
             .navigationTitle(String(localized: "settings.logs"))

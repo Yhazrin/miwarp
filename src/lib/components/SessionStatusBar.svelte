@@ -838,13 +838,13 @@
                 : barColor}"
             >
               {#if compactVisible}
-                <span class="text-[10px] font-bold text-white animate-pulse whitespace-nowrap px-2"
+                <span class="text-[10px] font-bold text-miwarp-accent-on-accent animate-pulse whitespace-nowrap px-2"
                   >{t("statusbar_compacted")}</span
                 >
               {:else}
                 <span class="flex items-center justify-center whitespace-nowrap">
-                  <span class="text-[10px] font-bold text-white/90 w-8 text-center">{pct}%</span>
-                  <span class="session-context-ctx-label text-[10px] font-bold text-white/70"
+                  <span class="text-[10px] font-bold text-miwarp-accent-on-accent/90 w-8 text-center">{pct}%</span>
+                  <span class="session-context-ctx-label text-[10px] font-bold text-miwarp-accent-on-accent/70"
                     >ctx</span
                   >
                 </span>
@@ -854,7 +854,7 @@
         {:else}
           <span class="session-context-pill text-foreground/60">
             <span class="session-context-pill-inner bg-miwarp-accent-primary">
-              <span class="text-[10px] font-bold text-white/90">miw</span>
+              <span class="text-[10px] font-bold text-miwarp-accent-on-accent/90">miw</span>
             </span>
           </span>
         {/if}

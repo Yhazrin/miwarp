@@ -23,9 +23,9 @@ struct MessageListView: View {
                             .id(message.id)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .padding(.bottom, inputBarHeight + 16)
+                .padding(.horizontal, MWSpacing.lg)
+                .padding(.vertical, MWSpacing.md)
+                .padding(.bottom, inputBarHeight + MWSpacing.lg)
                 .frame(maxWidth: layout.chatContentMaxWidth)
                 .frame(maxWidth: .infinity)
             }
@@ -70,8 +70,8 @@ struct MessageListView: View {
                 .foregroundStyle(MWColors.accentOnAccent)
                 .textSelection(.enabled)
                 .frame(maxWidth: layout.chatUserBubbleMaxWidth, alignment: .leading)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                .padding(.horizontal, MWSpacing.comfortable)
+                .padding(.vertical, MWSpacing.relaxed)
                 .background(.tint, in: RoundedRectangle(cornerRadius: MWRadius.bubble, style: .continuous))
         }
     }
@@ -127,8 +127,8 @@ struct MessageListView: View {
                     .scaleEffect(0.7)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, MWSpacing.comfortable)
+        .padding(.vertical, MWSpacing.relaxed)
         .background(theme.cardBg, in: RoundedRectangle(cornerRadius: MWRadius.bubble, style: .continuous))
     }
 
@@ -169,8 +169,8 @@ struct MessageListView: View {
             Text(content)
                 .font(MWTypography.caption())
                 .foregroundStyle(theme.cardTextTertiary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
+                .padding(.horizontal, MWSpacing.md)
+                .padding(.vertical, MWSpacing.xs)
                 .background(.quaternary, in: Capsule())
             Spacer()
         }
@@ -212,7 +212,7 @@ struct ToolCallDisclosureView: View {
                     }
                 }
             }
-            .padding(.top, 4)
+            .padding(.top, MWSpacing.xs)
         } label: {
             HStack(spacing: MWSpacing.xs) {
                 Image(systemName: toolCall.isError ? "xmark.circle.fill" : (toolCall.isComplete ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath"))

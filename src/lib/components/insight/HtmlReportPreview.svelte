@@ -28,28 +28,12 @@
 </script>
 
 <Modal bind:open title={title || t("insight_preview_title")} size="xl">
-  <div class="preview-container">
+  <div class="-m-6 h-[70vh] min-h-[400px]">
     <iframe
       bind:this={iframeEl}
-      class="preview-iframe"
+      class="h-full w-full border-0 rounded-b-xl bg-white"
       title={t("insight_preview_title")}
       sandbox="allow-same-origin"
     ></iframe>
   </div>
 </Modal>
-
-<style>
-  .preview-container {
-    margin: -24px;
-    height: 70vh;
-    min-height: 400px;
-  }
-
-  .preview-iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-    border-radius: 0 0 12px 12px;
-    background: white;
-  }
-</style>

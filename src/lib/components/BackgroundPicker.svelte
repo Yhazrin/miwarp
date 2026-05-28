@@ -94,7 +94,7 @@
         type="text"
         class="flex-1 rounded-md border border-border bg-miwarp-bg-elevated px-3 py-1.5
                text-sm text-foreground placeholder:text-muted-foreground
-               focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+               focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         placeholder={t("background_urlPlaceholder")}
         value={config.imageUrl}
         oninput={(e) => update({ imageUrl: (e.target as HTMLInputElement).value })}
@@ -193,7 +193,7 @@
     <select
       id="bg-sizing"
       class="w-full rounded-md border border-border bg-miwarp-bg-elevated px-3 py-1.5
-             text-sm text-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+             text-sm text-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       value={config.sizingMode}
       onchange={(e) => update({ sizingMode: (e.target as HTMLSelectElement).value as SizingMode })}
     >
@@ -220,7 +220,7 @@
         type="text"
         class="flex-1 rounded-md border border-border bg-miwarp-bg-elevated px-3 py-1.5
                text-sm text-foreground placeholder:text-muted-foreground
-               focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+               focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         placeholder="#000000"
         value={config.colorOverlay}
         oninput={(e) => update({ colorOverlay: (e.target as HTMLInputElement).value })}
