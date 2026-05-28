@@ -184,13 +184,7 @@
     >
       <span class="inline-block h-1.5 w-1.5 rounded-full {preSessionDotColor}"></span>
       {preSessionLabel}
-      <svg
-        class="h-2.5 w-2.5 text-muted-foreground"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"><path d="m6 9 6 6 6-6" /></svg
-      >
+      <Icon name="chevron-down" size="xs" class="text-muted-foreground" />
     </button>
 
     {#if dropdownOpen}

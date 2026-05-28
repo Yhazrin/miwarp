@@ -1254,15 +1254,7 @@
                                   </div>
                                 {/if}
                               </div>
-                              <svg
-                                class="h-3 w-3 shrink-0 text-muted-foreground/40 mt-1 transition-transform {isExpanded
-                                  ? 'rotate-180'
-                                  : ''}"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"><path d="m6 9 6 6 6-6" /></svg
-                              >
+                              <Icon name="chevron-down" size="xs" class="shrink-0 text-muted-foreground/40 mt-1 transition-transform {isExpanded ? 'rotate-180' : ''}" />
                             </div>
                             {#if isExpanded}
                               <div class="mt-2 pt-2 border-t border-[hsl(var(--miwarp-status-info)/0.1)]">
@@ -1364,15 +1356,7 @@
                                   </div>
                                 {/if}
                               </div>
-                              <svg
-                                class="h-3 w-3 shrink-0 text-muted-foreground/40 mt-1 transition-transform {isExpanded
-                                  ? 'rotate-180'
-                                  : ''}"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"><path d="m6 9 6 6 6-6" /></svg
-                              >
+                              <Icon name="chevron-down" size="xs" class="shrink-0 text-muted-foreground/40 mt-1 transition-transform {isExpanded ? 'rotate-180' : ''}" />
                             </div>
                             {#if isExpanded}
                               <div class="mt-2 pt-2 border-t border-border/20">

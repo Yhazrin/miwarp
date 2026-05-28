@@ -1010,15 +1010,7 @@
             {#if !effortDisabled && effort}
               <span class="text-[10px] font-normal text-foreground/55">{effort}</span>
             {/if}
-            <svg
-              class="h-3 w-3 shrink-0 text-foreground/40 transition-transform duration-200 {dropdownOpen
-                ? 'rotate-180'
-                : ''}"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"><path d="m6 9 6 6 6-6" /></svg
-            >
+            <Icon name="chevron-down" size="xs" class="shrink-0 text-foreground/40 transition-transform duration-200 {dropdownOpen ? 'rotate-180' : ''}" />
           </button>
         {:else}
           <span class="truncate font-medium text-foreground/85">{model}</span>

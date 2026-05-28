@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
   import { dbg } from "$lib/utils/debug";
+  import Icon from "$lib/components/Icon.svelte";
   import type { RemoteHost } from "$lib/types";
 
   interface Props {
@@ -82,13 +83,7 @@
         /><line x1="12" y1="17" x2="12" y2="21" />
       </svg>
       <span>{currentRemoteHostName || t("chat_local")}</span>
-      <svg
-        class="h-2.5 w-2.5 opacity-60"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2.5"><path d="m6 9 6 6 6-6" /></svg
-      >
+      <Icon name="chevron-down" size="xs" class="opacity-60" />
     </button>
     {#if targetDropdownOpen}
       <div

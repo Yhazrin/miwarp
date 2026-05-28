@@ -1713,19 +1713,7 @@
         />
 
         <!-- Expand chevron: absolute to not affect right-edge alignment of status icon -->
-        <svg
-          class="absolute -right-5 top-1/2 -translate-y-1/2 h-3 w-3 transition-all
-          {renderLevel === 1 ? 'opacity-0 group-hover:opacity-40' : 'text-muted-foreground/40'}
-          {(hasSubTimeline ? showSubTimeline : expanded) ? 'rotate-180' : ''}"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+        <Icon name="chevron-down" size="xs" class="absolute -right-5 top-1/2 -translate-y-1/2 transition-all {renderLevel === 1 ? 'opacity-0 group-hover:opacity-40' : 'text-muted-foreground/40'} {(hasSubTimeline ? showSubTimeline : expanded) ? 'rotate-180' : ''}" />
       </div>
 
       <!-- Tool summary (from tool_use_summary) -->

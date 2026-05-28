@@ -107,13 +107,7 @@
       /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" /></svg
     >
     {displayValue}
-    <svg
-      class="h-3 w-3 text-muted-foreground"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"><path d="m6 9 6 6 6-6" /></svg
-    >
+    <Icon name="chevron-down" size="xs" class="text-muted-foreground" />
   </button>
 
   {#if dropdownOpen}

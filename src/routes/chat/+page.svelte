@@ -13,6 +13,7 @@
     loadCliVersionInfo,
   } from "$lib/stores";
   import type { UserSettings, AgentSettings, SessionMode, TimelineEntry } from "$lib/types";
+  import Icon from "$lib/components/Icon.svelte";
   import { useToolBurstCollapse } from "$lib/chat/use-tool-burst-collapse.svelte";
   import { useTimelineState } from "$lib/chat/use-timeline-state.svelte";
   import { useThinkingTimer } from "$lib/chat/use-thinking-timer.svelte";
@@ -1391,17 +1392,7 @@
         aria-label={t("chat_scrollToBottom")}
         onclick={scrollChatToBottom}
       >
-        <svg
-          class="h-4 w-4"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
+        <Icon name="chevron-down" size="md" />
       </button>
     {/if}
   </div>

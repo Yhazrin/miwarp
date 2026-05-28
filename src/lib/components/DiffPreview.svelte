@@ -196,15 +196,7 @@
           onclick={() => (expanded = !expanded)}
           aria-label={expanded ? "Collapse" : "Expand"}
         >
-          <svg
-            class="h-4 w-4 transition-transform {expanded ? 'rotate-180' : ''}"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="m6 9 6 6 6-6" />
-          </svg>
+          <Icon name="chevron-down" size="md" class="transition-transform {expanded ? 'rotate-180' : ''}" />
         </button>
       {/if}
 

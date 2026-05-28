@@ -175,17 +175,7 @@
               class="flex w-full items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
               onclick={() => (cliExpanded = !cliExpanded)}
             >
-              <svg
-                class="h-3 w-3 transition-transform {cliExpanded ? '' : '-rotate-90'}"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="m6 9 6 6 6-6" />
-              </svg>
+              <Icon name="chevron-down" size="xs" class="transition-transform {cliExpanded ? '' : '-rotate-90'}" />
               {t("shortcutHelp_cliRef")}
             </button>
             {#if cliExpanded}

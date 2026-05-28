@@ -2297,17 +2297,7 @@
                     ? cwdDisplayLabel(projectCwd)
                     : t("sidebar_selectProjectBrowse")}</span
                 >
-                <svg
-                  class="ml-auto h-3 w-3 shrink-0 text-muted-foreground/50 transition-transform {explorerProjectOpen
-                    ? 'rotate-180'
-                    : ''}"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg
-                >
+                <Icon name="chevron-down" size="xs" class="ml-auto shrink-0 text-muted-foreground/50 transition-transform {explorerProjectOpen ? 'rotate-180' : ''}" />
               </button>
               {#if explorerProjectOpen}
                 <div class="border-b border-sidebar-border bg-sidebar">

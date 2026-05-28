@@ -2233,13 +2233,7 @@
               />
             </svg>
             {currentMode.shortLabel()}
-            <svg
-              class="h-2.5 w-2.5 text-foreground/30"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"><path d="m6 9 6 6 6-6" /></svg
-            >
+            <Icon name="chevron-down" size="xs" class="text-foreground/30" />
           </button>
         {:else if !hasRun}
           <div class="w-1"></div>
