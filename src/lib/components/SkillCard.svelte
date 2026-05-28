@@ -5,6 +5,7 @@
   import { SKILL_CATEGORIES } from "$lib/types/skill";
   import { dbg } from "$lib/utils/debug";
   import SkillPreviewDialog from "./SkillPreviewDialog.svelte";
+  import Icon from "./Icon.svelte";
 
   interface Props {
     skill: Skill;
@@ -190,15 +191,7 @@
             bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
           onclick={handleSelect}
         >
-          <svg
-            class="h-3.5 w-3.5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <polygon points="5 3 19 12 5 21 5 3" />
-          </svg>
+          <Icon name="play" size="sm" />
           Execute
         </button>
       </div>

@@ -8,6 +8,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import ContextMenu from "./ContextMenu.svelte";
+  import Icon from "./Icon.svelte";
 
   function platformLabel(id: string): string {
     return PLATFORM_PRESETS.find((p) => p.id === id)?.name ?? id;
@@ -290,17 +291,7 @@
           }}
           title={t("sidebar_resume")}
         >
-          <svg
-            class="h-3 w-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <polygon points="5 3 19 12 5 21 5 3" />
-          </svg>
+          <Icon name="play" size="xs" />
         </button>
       {/if}
     </div>

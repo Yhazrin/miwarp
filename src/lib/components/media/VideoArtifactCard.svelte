@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { MediaArtifact } from "$lib/types";
+  import Icon from "../Icon.svelte";
 
   let { artifact }: { artifact: MediaArtifact } = $props();
 
@@ -30,15 +31,7 @@
     </div>
   {/if}
   <div class="px-3 py-2 bg-muted/30 flex items-center gap-2">
-    <svg
-      class="h-4 w-4 text-muted-foreground shrink-0"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-    >
-      <polygon points="5 3 19 12 5 21 5 3" />
-    </svg>
+    <Icon name="play" size="md" class="text-muted-foreground shrink-0" />
     <div class="flex-1 min-w-0">
       <div class="text-xs text-foreground truncate">{artifact.name}</div>
       <div class="text-[10px] text-muted-foreground">{formatBytes(artifact.size)}</div>

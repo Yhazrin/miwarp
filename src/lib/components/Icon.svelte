@@ -8,7 +8,7 @@
     size = "md",
     class: className = "",
   }: {
-    name: "check" | "x" | "clock" | "chevron-right" | "chevron-left" | "chevron-down" | "arrow-right" | "search" | "trash" | "refresh-cw" | "refresh-ccw" | "loader-2" | "users" | "copy" | "external-link" | "file" | "file-text" | "plus" | "minus" | "home" | "monitor" | "wrench" | "folder" | "pencil" | "map-pin" | "git-branch" | "triangle-alert";
+    name: "check" | "x" | "clock" | "chevron-right" | "chevron-left" | "chevron-down" | "arrow-right" | "search" | "trash" | "refresh-cw" | "refresh-ccw" | "loader-2" | "users" | "copy" | "external-link" | "file" | "file-text" | "plus" | "minus" | "home" | "monitor" | "wrench" | "folder" | "pencil" | "map-pin" | "git-branch" | "triangle-alert" | "play";
     size?: "xs" | "sm" | "md" | "lg";
     class?: string;
   } = $props();
@@ -115,5 +115,7 @@
     <path d="M12 9v4" />
     <path d="M12 17h.01" />
     <path d="M3.6 15.4 10.2 4a2 2 0 0 1 3.6 0l6.6 11.4a2 2 0 0 1-1.8 3H5.4a2 2 0 0 1-1.8-3Z" />
+  {:else if name === "play"}
+    <polygon points="5 3 19 12 5 21 5 3" />
   {/if}
 </svg>
