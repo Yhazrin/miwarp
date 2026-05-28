@@ -473,7 +473,7 @@
                   {:else if log.status === "running"}
                     <span class="h-3 w-3 animate-pulse rounded-full bg-primary"></span>
                   {:else if log.status === "success"}
-                    <span class="text-[hsl(var(--miwarp-status-success))]">✓</span>
+                    <span class="text-miwarp-status-success">✓</span>
                   {:else}
                     <span class="text-destructive">✗</span>
                   {/if}

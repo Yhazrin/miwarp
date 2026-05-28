@@ -210,7 +210,7 @@
             </span>
             {#if claudeMdExists}
               <span
-                class="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-[hsl(var(--miwarp-status-success)/0.15)] text-[hsl(var(--miwarp-status-success))] font-medium"
+                class="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-[hsl(var(--miwarp-status-success)/0.15)] text-miwarp-status-success font-medium"
               >
                 {t("workspaceContext_active")}
               </span>

@@ -51,7 +51,7 @@
     <div class="flex flex-col items-center gap-4 max-w-sm text-center animate-slide-up">
       <div class="flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--miwarp-status-info)/0.1)]">
         <svg
-          class="h-6 w-6 text-[hsl(var(--miwarp-status-info))] animate-spin"
+          class="h-6 w-6 text-miwarp-status-info animate-spin"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

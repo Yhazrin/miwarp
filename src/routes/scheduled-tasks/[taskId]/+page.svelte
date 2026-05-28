@@ -69,13 +69,13 @@
   function runStatusIcon(status: ScheduledTaskRun["status"]) {
     switch (status) {
       case "running":
-        return { icon: "⏳", color: "text-[hsl(var(--miwarp-status-info))]", label: t("sched_runRunning") };
+        return { icon: "⏳", color: "text-miwarp-status-info", label: t("sched_runRunning") };
       case "completed":
-        return { icon: "✓", color: "text-[hsl(var(--miwarp-status-success))]", label: t("sched_runCompleted") };
+        return { icon: "✓", color: "text-miwarp-status-success", label: t("sched_runCompleted") };
       case "failed":
-        return { icon: "✗", color: "text-[hsl(var(--miwarp-status-error))]", label: t("sched_runFailed") };
+        return { icon: "✗", color: "text-miwarp-status-error", label: t("sched_runFailed") };
       case "cancelled":
-        return { icon: "○", color: "text-[hsl(var(--miwarp-status-warning))]", label: t("sched_runCancelled") };
+        return { icon: "○", color: "text-miwarp-status-warning", label: t("sched_runCancelled") };
       default:
         return { icon: "○", color: "text-muted-foreground", label: t("sched_runQueued") };
     }
@@ -118,7 +118,7 @@
       <div class="flex items-center gap-2">
         <span
           class="rounded-full px-2 py-1 text-xs {task.enabled
-            ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
+            ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success'
             : 'bg-muted text-muted-foreground'}"
         >
           {task.enabled ? t("sched_active") : t("sched_paused")}

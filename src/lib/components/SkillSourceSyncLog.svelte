@@ -14,7 +14,7 @@
   function lineClass(kind: SkillSourceSyncLogEntry["kind"]) {
     switch (kind) {
       case "success":
-        return "text-[hsl(var(--miwarp-status-success))]";
+        return "text-miwarp-status-success";
       case "error":
         return "text-destructive";
       default:

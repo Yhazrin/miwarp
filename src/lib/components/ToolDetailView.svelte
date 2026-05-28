@@ -915,7 +915,7 @@
     <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
       <div class="text-xs font-mono text-muted-foreground flex items-center gap-2">
         <span>
-          {#if tool.input?.pattern}<span class="text-[hsl(var(--miwarp-accent-violet))]">/{tool.input.pattern}/</span>{/if}
+          {#if tool.input?.pattern}<span class="text-miwarp-accent-violet">/{tool.input.pattern}/</span>{/if}
           {#if tool.input?.path}<span class="text-muted-foreground/60 ml-2">{tool.input.path}</span
             >{/if}
           {#if tool.input?.glob}<span class="text-muted-foreground/60 ml-2"
@@ -964,7 +964,7 @@
     <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
       <div class="text-xs font-mono text-muted-foreground flex items-center gap-2">
         <span>
-          {#if tool.input?.pattern}<span class="text-[hsl(var(--miwarp-accent-violet))]">{tool.input.pattern}</span>{/if}
+          {#if tool.input?.pattern}<span class="text-miwarp-accent-violet">{tool.input.pattern}</span>{/if}
           {#if tool.input?.path}<span class="text-muted-foreground/60 ml-2"
               >in {tool.input.path}</span
             >{/if}
@@ -1002,13 +1002,13 @@
     <!-- WebFetch: URL + HTTP status + response metadata -->
     <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
       <div class="text-xs font-mono text-muted-foreground flex items-center gap-2">
-        <span class="text-[hsl(var(--miwarp-status-info))] truncate">{tool.input?.url ?? ""}</span>
+        <span class="text-miwarp-status-info truncate">{tool.input?.url ?? ""}</span>
         {#if webFetchResult}
           <span class="ml-auto shrink-0 flex items-center gap-1.5 text-[10px]">
             <span
               class="px-1.5 py-0.5 rounded font-medium {webFetchResult.code < 400
-                ? 'bg-[hsl(var(--miwarp-status-success)/0.15)] text-[hsl(var(--miwarp-status-success))]'
-                : 'bg-[hsl(var(--miwarp-status-error)/0.15)] text-[hsl(var(--miwarp-status-error))]'}"
+                ? 'bg-[hsl(var(--miwarp-status-success)/0.15)] text-miwarp-status-success'
+                : 'bg-[hsl(var(--miwarp-status-error)/0.15)] text-miwarp-status-error'}"
             >
               {webFetchResult.code}
               {webFetchResult.codeText}
@@ -1046,7 +1046,7 @@
     <!-- WebSearch: query + structured result links -->
     <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
       <div class="text-xs font-mono text-muted-foreground truncate">
-        <span class="text-[hsl(var(--miwarp-status-info))]">{tool.input?.query ?? ""}</span>
+        <span class="text-miwarp-status-info">{tool.input?.query ?? ""}</span>
         {#if webSearchResult}
           <span class="text-[10px] text-muted-foreground ml-2">
             {t("tool_resultsCount", {
@@ -1069,7 +1069,7 @@
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="block text-xs text-[hsl(var(--miwarp-status-info))] hover:text-[hsl(var(--miwarp-status-info))] hover:underline truncate"
+                class="block text-xs text-miwarp-status-info hover:text-miwarp-status-info hover:underline truncate"
               >
                 {link.title}
                 <span class="text-muted-foreground text-[10px] ml-1">{link.url}</span>
@@ -1104,7 +1104,7 @@
     <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
       <div class="text-xs text-muted-foreground">
         {#if tool.input?.subagent_type}
-          <span class="text-[hsl(var(--miwarp-status-info))] font-medium"
+          <span class="text-miwarp-status-info font-medium"
             >{tool.input.subagent_type}</span
           >
         {/if}
@@ -1117,7 +1117,7 @@
       <div class="flex items-center gap-2 px-2 py-1 text-[10px] text-muted-foreground/60">
         {#if taskResult.status === "async_launched"}
           <span
-            class="px-1.5 py-0.5 rounded bg-[hsl(var(--miwarp-status-info)/0.15)] text-[hsl(var(--miwarp-status-info))] font-medium"
+            class="px-1.5 py-0.5 rounded bg-[hsl(var(--miwarp-status-info)/0.15)] text-miwarp-status-info font-medium"
             >{t("tool_async")}</span
           >
           {#if taskResult.outputFile}
@@ -1172,9 +1172,9 @@
             <div class="flex items-center gap-2 text-xs">
               <span
                 class="px-1.5 py-0.5 rounded text-[10px] font-medium {todo.status === 'completed'
-                  ? 'bg-[hsl(var(--miwarp-status-success)/0.15)] text-[hsl(var(--miwarp-status-success))]'
+                  ? 'bg-[hsl(var(--miwarp-status-success)/0.15)] text-miwarp-status-success'
                   : todo.status === 'in_progress'
-                    ? 'bg-[hsl(var(--miwarp-status-info)/0.15)] text-[hsl(var(--miwarp-status-info))]'
+                    ? 'bg-[hsl(var(--miwarp-status-info)/0.15)] text-miwarp-status-info'
                     : 'bg-muted text-muted-foreground'}"
               >
                 {todo.status === "completed"
@@ -1231,8 +1231,8 @@
         {#if skillResult?.status}
           <span
             class="px-1.5 py-0.5 rounded text-[10px] font-medium {skillResult.status === 'forked'
-              ? 'bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-[hsl(var(--miwarp-accent-violet))]'
-              : 'bg-[hsl(var(--miwarp-status-info)/0.15)] text-[hsl(var(--miwarp-status-info))]'}"
+              ? 'bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-miwarp-accent-violet'
+              : 'bg-[hsl(var(--miwarp-status-info)/0.15)] text-miwarp-status-info'}"
           >
             {skillResult.status}
           </span>
@@ -1273,7 +1273,7 @@
     {#if exitPlanResult?.awaitingLeaderApproval}
       <div class="flex items-center gap-1.5 px-2 py-1">
         <span
-          class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[hsl(var(--miwarp-status-warning)/0.15)] text-[hsl(var(--miwarp-status-warning))]"
+          class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[hsl(var(--miwarp-status-warning)/0.15)] text-miwarp-status-warning"
         >
           {t("tool_awaitingApproval")}
         </span>
@@ -1316,7 +1316,7 @@
         <span class="truncate">{nbPath}</span>
         {#if notebookResult?.edit_mode}
           <span
-            class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[hsl(var(--miwarp-status-info)/0.15)] text-[hsl(var(--miwarp-status-info))] shrink-0"
+            class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[hsl(var(--miwarp-status-info)/0.15)] text-miwarp-status-info shrink-0"
           >
             {notebookResult.edit_mode}
           </span>

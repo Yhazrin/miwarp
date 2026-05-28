@@ -84,7 +84,7 @@
             <Icon name="file" size="sm" class="opacity-90" />
             {#if indicators.files}
               <span
-                class="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-warning))]"
+                class="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
               ></span>
             {/if}
           </span>

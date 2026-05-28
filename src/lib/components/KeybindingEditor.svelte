@@ -83,7 +83,7 @@
   {#if recording}
     <button
       bind:this={buttonRef}
-      class="flex items-center gap-1.5 rounded-md border-2 border-[hsl(var(--miwarp-status-info))] bg-miwarp-status-info/10 px-3 py-1 text-sm font-mono min-w-[120px] animate-pulse focus:outline-none"
+      class="flex items-center gap-1.5 rounded-md border-2 border-miwarp-status-info bg-miwarp-status-info/10 px-3 py-1 text-sm font-mono min-w-[120px] animate-pulse focus:outline-none"
       onkeydown={handleKeydown}
     >
       {#if pendingKey}
@@ -123,7 +123,7 @@
           title={conflictWarning}>{conflictWarning}</span
         >
         <button
-          class="rounded p-1 text-[hsl(var(--miwarp-status-success))] hover:text-[hsl(var(--miwarp-status-success)/0.8)] hover:bg-[hsl(var(--miwarp-status-success)/0.1)] transition-colors"
+          class="rounded p-1 text-miwarp-status-success hover:text-[hsl(var(--miwarp-status-success)/0.8)] hover:bg-[hsl(var(--miwarp-status-success)/0.1)] transition-colors"
           onclick={confirmKey}
           title={t("keybinding_useAnyway")}
         >
@@ -139,7 +139,7 @@
         </button>
       {:else if pendingKey}
         <button
-          class="rounded p-1 text-[hsl(var(--miwarp-status-success))] hover:text-[hsl(var(--miwarp-status-success)/0.8)] hover:bg-[hsl(var(--miwarp-status-success)/0.1)] transition-colors"
+          class="rounded p-1 text-miwarp-status-success hover:text-[hsl(var(--miwarp-status-success)/0.8)] hover:bg-[hsl(var(--miwarp-status-success)/0.1)] transition-colors"
           onclick={confirmKey}
           title={t("keybinding_confirm")}
         >

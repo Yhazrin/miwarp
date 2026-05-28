@@ -80,13 +80,13 @@
   let warningColor = $derived.by(() => {
     switch (contextWarningLevel) {
       case "critical":
-        return "text-[hsl(var(--miwarp-status-error))] bg-[hsl(var(--miwarp-status-error)/0.1)] border-[hsl(var(--miwarp-status-error)/0.3)]";
+        return "text-miwarp-status-error bg-[hsl(var(--miwarp-status-error)/0.1)] border-[hsl(var(--miwarp-status-error)/0.3)]";
       case "high":
-        return "text-[hsl(var(--miwarp-status-warning))] bg-[hsl(var(--miwarp-status-warning)/0.1)] border-[hsl(var(--miwarp-status-warning)/0.3)]";
+        return "text-miwarp-status-warning bg-[hsl(var(--miwarp-status-warning)/0.1)] border-[hsl(var(--miwarp-status-warning)/0.3)]";
       case "moderate":
-        return "text-[hsl(var(--miwarp-status-warning))] bg-[hsl(var(--miwarp-status-warning)/0.1)] border-[hsl(var(--miwarp-status-warning)/0.3)]";
+        return "text-miwarp-status-warning bg-[hsl(var(--miwarp-status-warning)/0.1)] border-[hsl(var(--miwarp-status-warning)/0.3)]";
       default:
-        return "text-[hsl(var(--miwarp-status-success))] bg-[hsl(var(--miwarp-status-success)/0.1)] border-[hsl(var(--miwarp-status-success)/0.3)]";
+        return "text-miwarp-status-success bg-[hsl(var(--miwarp-status-success)/0.1)] border-[hsl(var(--miwarp-status-success)/0.3)]";
     }
   });
 
@@ -220,7 +220,7 @@
         </div>
         <div class="flex items-center justify-between text-xs">
           <span class="text-muted-foreground">{t("context_remainingTokens")}</span>
-          <span class="font-mono font-medium text-[hsl(var(--miwarp-status-success))]"
+          <span class="font-mono font-medium text-miwarp-status-success"
             >{formatTokenCount(remainingTokens)}</span
           >
         </div>

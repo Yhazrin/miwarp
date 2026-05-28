@@ -132,7 +132,7 @@
                   </div>
                 {/if}
                 {#if result.error}
-                  <div class="text-sm text-[hsl(var(--miwarp-status-error))] mt-1">{result.error}</div>
+                  <div class="text-sm text-miwarp-status-error mt-1">{result.error}</div>
                 {/if}
                 {#if result.result}
                   <div class="text-sm mt-1">{result.result}</div>

@@ -25,9 +25,9 @@
 <div class="rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
   <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
     {#if allDone}
-      <Icon name="check" size="xs" class="text-[hsl(var(--miwarp-status-success))] shrink-0" />
+      <Icon name="check" size="xs" class="text-miwarp-status-success shrink-0" />
     {:else if stats.running > 0}
-      <span class="inline-block h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse shrink-0"></span>
+      <span class="inline-block h-1.5 w-1.5 rounded-full bg-miwarp-status-info animate-pulse shrink-0"></span>
     {/if}
     <span>
       {t("batch_status", {
@@ -46,7 +46,7 @@
   <div class="mt-1.5 h-1.5 rounded-full bg-border/30 overflow-hidden flex">
     {#if stats.completed > 0}
       <div
-        class="bg-[hsl(var(--miwarp-status-success))] transition-all duration-300"
+        class="bg-miwarp-status-success transition-all duration-300"
         style:width="{(stats.completed / stats.total) * 100}%"
       ></div>
     {/if}

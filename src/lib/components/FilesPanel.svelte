@@ -25,13 +25,13 @@
   function actionColor(action: FileEntry["action"]): { bg: string; text: string } {
     switch (action) {
       case "write":
-        return { bg: "bg-[hsl(var(--miwarp-status-warning)/0.15)]", text: "text-[hsl(var(--miwarp-status-warning))]" };
+        return { bg: "bg-[hsl(var(--miwarp-status-warning)/0.15)]", text: "text-miwarp-status-warning" };
       case "edit":
-        return { bg: "bg-[hsl(var(--miwarp-status-warning)/0.15)]", text: "text-[hsl(var(--miwarp-status-warning))]" };
+        return { bg: "bg-[hsl(var(--miwarp-status-warning)/0.15)]", text: "text-miwarp-status-warning" };
       case "read":
-        return { bg: "bg-[hsl(var(--miwarp-status-info)/0.15)]", text: "text-[hsl(var(--miwarp-status-info))]" };
+        return { bg: "bg-[hsl(var(--miwarp-status-info)/0.15)]", text: "text-miwarp-status-info" };
       case "persisted":
-        return { bg: "bg-[hsl(var(--miwarp-status-success)/0.15)]", text: "text-[hsl(var(--miwarp-status-success))]" };
+        return { bg: "bg-[hsl(var(--miwarp-status-success)/0.15)]", text: "text-miwarp-status-success" };
     }
   }
 

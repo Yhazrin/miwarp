@@ -93,11 +93,11 @@
   function typeBadgeColor(serverType: string): string {
     switch (serverType) {
       case "stdio":
-        return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]";
+        return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info";
       case "http":
-        return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]";
+        return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info";
       case "sse":
-        return "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]";
+        return "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-miwarp-accent-violet";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -106,11 +106,11 @@
   function scopeBadgeColor(scope: string): string {
     switch (scope) {
       case "local":
-        return "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]";
+        return "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-miwarp-status-warning";
       case "user":
         return "bg-muted text-muted-foreground";
       case "project":
-        return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]";
+        return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info";
       default:
         return "bg-muted text-muted-foreground";
     }

@@ -405,17 +405,17 @@ step by step, * with progress tracking and helpful hints. */
             <div class="flex items-center gap-2 mb-2">
               {#if testResult.success}
                 <span class="text-xl">✅</span>
-                <span class="font-medium text-[hsl(var(--miwarp-status-success))]">{t("skillWizard_testPassed")}</span>
+                <span class="font-medium text-miwarp-status-success">{t("skillWizard_testPassed")}</span>
               {:else}
                 <span class="text-xl">❌</span>
-                <span class="font-medium text-[hsl(var(--miwarp-status-error))]">{t("skillWizard_testFailed")}</span>
+                <span class="font-medium text-miwarp-status-error">{t("skillWizard_testFailed")}</span>
               {/if}
             </div>
             {#if testResult.output}
               <div class="text-sm text-muted-foreground font-mono">{testResult.output}</div>
             {/if}
             {#if testResult.error}
-              <div class="text-sm text-[hsl(var(--miwarp-status-error))] font-mono">{testResult.error}</div>
+              <div class="text-sm text-miwarp-status-error font-mono">{testResult.error}</div>
             {/if}
           </div>
         {/if}

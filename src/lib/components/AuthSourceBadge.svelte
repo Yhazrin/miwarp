@@ -46,7 +46,7 @@
 
   // ── Badge colors based on auth source category ──
   const BADGE_COLORS: Record<string, string> = {
-    login: "bg-[hsl(var(--miwarp-status-success)/0.15)] text-[hsl(var(--miwarp-status-success))]",
+    login: "bg-[hsl(var(--miwarp-status-success)/0.15)] text-miwarp-status-success",
     env_key: "bg-miwarp-status-info/10 text-miwarp-status-info",
     none: "bg-miwarp-status-warning/15 text-miwarp-status-warning",
     other: "bg-foreground/10 text-foreground/60",
@@ -84,19 +84,19 @@
     if (!authOverview) return "bg-muted-foreground/30";
     if (authOverview.auth_mode === "cli") {
       return authOverview.cli_login_available || authOverview.cli_has_api_key
-        ? "bg-[hsl(var(--miwarp-status-success))]"
-        : "bg-[hsl(var(--miwarp-status-warning))]";
+        ? "bg-miwarp-status-success"
+        : "bg-miwarp-status-warning";
     }
     // For api mode: local platforms use running status, others use API key
     const selectedPreset = platforms.find((p) => p.id === platformId);
     if (selectedPreset?.category === "local") {
       const ps = localProxyStatuses?.[platformId];
-      if (ps?.running && !ps.needsAuth) return "bg-[hsl(var(--miwarp-status-success))]";
-      if (ps?.running && ps.needsAuth) return "bg-[hsl(var(--miwarp-status-warning))]";
+      if (ps?.running && !ps.needsAuth) return "bg-miwarp-status-success";
+      if (ps?.running && ps.needsAuth) return "bg-miwarp-status-warning";
       return "bg-muted-foreground/30";
     }
     const hasCred = !!findCredential(platformCredentials, platformId)?.api_key;
-    return hasCred ? "bg-[hsl(var(--miwarp-status-success))]" : "bg-[hsl(var(--miwarp-status-warning))]";
+    return hasCred ? "bg-miwarp-status-success" : "bg-miwarp-status-warning";
   });
 
   // ── Loading label (shown before authOverview loads) ──
@@ -237,8 +237,8 @@
             <div class="flex-1 text-left">
               <p class="font-medium text-xs">{t("auth_cliAuth")}</p>
               {#if authOverview.cli_login_available}
-                <p class="text-[10px] text-[hsl(var(--miwarp-status-success))]">
-                  <span class="inline-block h-1 w-1 rounded-full bg-[hsl(var(--miwarp-status-success))] mr-0.5 align-middle"
+                <p class="text-[10px] text-miwarp-status-success">
+                  <span class="inline-block h-1 w-1 rounded-full bg-miwarp-status-success mr-0.5 align-middle"
                   ></span>
                   {t("auth_loggedIn")}{authOverview.cli_login_account
                     ? `: ${authOverview.cli_login_account}`
@@ -253,8 +253,8 @@
                 </p>
               {/if}
               {#if authOverview.cli_has_api_key}
-                <p class="text-[10px] text-[hsl(var(--miwarp-status-success))]">
-                  <span class="inline-block h-1 w-1 rounded-full bg-[hsl(var(--miwarp-status-success))] mr-0.5 align-middle"
+                <p class="text-[10px] text-miwarp-status-success">
+                  <span class="inline-block h-1 w-1 rounded-full bg-miwarp-status-success mr-0.5 align-middle"
                   ></span>
                   {t("auth_cliKeyHint", { hint: authOverview.cli_api_key_hint ?? "" })}
                 </p>
@@ -311,15 +311,15 @@
                   {/if}
                 </p>
                 {#if authOverview.app_has_credentials}
-                  <p class="text-[10px] text-[hsl(var(--miwarp-status-success))]">
+                  <p class="text-[10px] text-miwarp-status-success">
                     <span
-                      class="inline-block h-1 w-1 rounded-full bg-[hsl(var(--miwarp-status-success))] mr-0.5 align-middle"
+                      class="inline-block h-1 w-1 rounded-full bg-miwarp-status-success mr-0.5 align-middle"
                     ></span>
                     {t("auth_loggedIn")}
                   </p>
                 {:else}
                   <p class="text-[10px] text-miwarp-status-warning">
-                    <span class="inline-block h-1 w-1 rounded-full bg-[hsl(var(--miwarp-status-warning))] mr-0.5 align-middle"
+                    <span class="inline-block h-1 w-1 rounded-full bg-miwarp-status-warning mr-0.5 align-middle"
                     ></span>
                     {t("prompt_noPlatformKey")}
                   </p>
@@ -348,12 +348,12 @@
                       <span
                         class="inline-block h-1 w-1 rounded-full shrink-0 {isLocal
                           ? lps?.running && !lps.needsAuth
-                            ? 'bg-[hsl(var(--miwarp-status-success))]'
+                            ? 'bg-miwarp-status-success'
                             : lps?.running && lps.needsAuth
-                              ? 'bg-[hsl(var(--miwarp-status-warning))]'
+                              ? 'bg-miwarp-status-warning'
                               : 'bg-muted-foreground/30'
                           : hasCred
-                            ? 'bg-[hsl(var(--miwarp-status-success))]'
+                            ? 'bg-miwarp-status-success'
                             : 'bg-muted-foreground/30'}"
                       ></span>
                       <span

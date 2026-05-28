@@ -147,15 +147,15 @@
   );
 
   const categoryColors: Record<string, string> = {
-    development: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
-    productivity: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
-    security: "bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]",
-    testing: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]",
-    learning: "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]",
-    database: "bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]",
-    monitoring: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]",
-    deployment: "bg-[hsl(var(--miwarp-accent-primary)/0.1)] text-[hsl(var(--miwarp-accent-primary))]",
-    design: "bg-[hsl(var(--miwarp-accent-secondary)/0.1)] text-[hsl(var(--miwarp-accent-secondary))]",
+    development: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info",
+    productivity: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info",
+    security: "bg-[hsl(var(--miwarp-status-error)/0.1)] text-miwarp-status-error",
+    testing: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-miwarp-status-warning",
+    learning: "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-miwarp-accent-violet",
+    database: "bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success",
+    monitoring: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-miwarp-status-warning",
+    deployment: "bg-[hsl(var(--miwarp-accent-primary)/0.1)] text-miwarp-accent-primary",
+    design: "bg-[hsl(var(--miwarp-accent-secondary)/0.1)] text-miwarp-accent-secondary",
   };
 
   const componentBadges: {
@@ -166,32 +166,32 @@
     {
       key: "skills",
       label: () => t("plugin_badgeSkills"),
-      color: "bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]",
+      color: "bg-[hsl(var(--miwarp-status-error)/0.1)] text-miwarp-status-error",
     },
     {
       key: "commands",
       label: () => t("plugin_badgeCommands"),
-      color: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
+      color: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info",
     },
     {
       key: "agents",
       label: () => t("plugin_badgeAgents"),
-      color: "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]",
+      color: "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-miwarp-accent-violet",
     },
     {
       key: "hooks",
       label: () => t("plugin_badgeHooks"),
-      color: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]",
+      color: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-miwarp-status-warning",
     },
     {
       key: "mcp_servers",
       label: () => t("plugin_badgeMcp"),
-      color: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
+      color: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info",
     },
     {
       key: "lsp_servers",
       label: () => t("plugin_badgeLsp"),
-      color: "bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]",
+      color: "bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success",
     },
   ];
 
@@ -872,7 +872,7 @@
     <!-- Partial load warning -->
     {#if loadWarnings.length > 0}
       <div
-        class="rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-4 py-2.5 text-xs text-[hsl(var(--miwarp-status-warning))] mb-4"
+        class="rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-4 py-2.5 text-xs text-miwarp-status-warning mb-4"
       >
         {t("plugin_couldNotLoad", { items: loadWarnings.join(", ") })}
       </div>
@@ -904,7 +904,7 @@
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-error))] text-miwarp-accent-on-accent"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-miwarp-status-error text-miwarp-accent-on-accent"
               >
                 <svg
                   class="h-3 w-3"
@@ -929,7 +929,7 @@
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-success))] text-miwarp-accent-on-accent"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-miwarp-status-success text-miwarp-accent-on-accent"
               >
                 <svg
                   class="h-3 w-3"
@@ -954,7 +954,7 @@
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-info))] text-miwarp-accent-on-accent"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-miwarp-status-info text-miwarp-accent-on-accent"
               >
                 <svg
                   class="h-3 w-3"
@@ -984,7 +984,7 @@
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-warning))] text-miwarp-accent-on-accent"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-miwarp-status-warning text-miwarp-accent-on-accent"
               >
                 <svg
                   class="h-3 w-3"
@@ -1009,7 +1009,7 @@
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-accent-violet))] text-miwarp-accent-on-accent"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-miwarp-accent-violet text-miwarp-accent-on-accent"
               >
                 <svg
                   class="h-3 w-3"
@@ -1105,7 +1105,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-error))] text-miwarp-accent-on-accent"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-miwarp-status-error text-miwarp-accent-on-accent"
             >
               <Icon name="plus" size="md" />
             </div>
@@ -1121,7 +1121,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-info))] text-miwarp-accent-on-accent"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-miwarp-status-info text-miwarp-accent-on-accent"
             >
               <Icon name="search" size="md" />
             </div>
@@ -1137,7 +1137,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-info))] text-miwarp-accent-on-accent"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-miwarp-status-info text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
@@ -1166,7 +1166,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-warning))] text-miwarp-accent-on-accent"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-miwarp-status-warning text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
@@ -1189,7 +1189,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-success))] text-miwarp-accent-on-accent"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-miwarp-status-success text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
@@ -1220,7 +1220,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-error))] text-miwarp-accent-on-accent"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-miwarp-status-error text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
@@ -1247,7 +1247,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-accent-violet))] text-miwarp-accent-on-accent"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-miwarp-accent-violet text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
@@ -1274,7 +1274,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-info))] text-miwarp-accent-on-accent"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-miwarp-status-info text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
@@ -1311,7 +1311,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-warning))] text-miwarp-accent-on-accent"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-miwarp-status-warning text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
@@ -1340,7 +1340,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-success))] text-miwarp-accent-on-accent"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-miwarp-status-success text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
@@ -1553,8 +1553,8 @@
                 class="inline-block h-2 w-2 rounded-full {communityHealth === null
                   ? 'bg-muted-foreground/40'
                   : communityHealth.available
-                    ? 'bg-[hsl(var(--miwarp-status-success))]'
-                    : 'bg-[hsl(var(--miwarp-status-error))]'}"
+                    ? 'bg-miwarp-status-success'
+                    : 'bg-miwarp-status-error'}"
               ></span>
               <span class="text-[10px] text-muted-foreground">skills.sh</span>
             </div>
@@ -1718,7 +1718,7 @@
                         </div>
                         <button
                           class="rounded-lg px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 shrink-0 {isInstalled
-                            ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))] cursor-default'
+                            ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success cursor-default'
                             : 'bg-primary text-primary-foreground hover:bg-primary/90'}"
                           onclick={(e) => {
                             e.stopPropagation();
@@ -1904,13 +1904,13 @@
                         <span
                           class="rounded-full px-1.5 py-0.5 text-[10px] font-medium {skill.scope ===
                           'project'
-                            ? 'bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]'
+                            ? 'bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info'
                             : 'bg-muted text-muted-foreground'}">{skill.scope}</span
                         >
                       {/if}
                       {#if skill.remoteRef?.sourceType === "feishu"}
                         <span
-                          class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]"
+                          class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-miwarp-accent-violet"
                           >{t("skillSources_badge_feishu")}</span
                         >
                       {/if}
@@ -2374,7 +2374,7 @@
                   <button
                     class="rounded-lg border border-border px-2.5 py-1 text-xs {plugin.enabled !==
                     false
-                      ? 'text-[hsl(var(--miwarp-status-success))] border-[hsl(var(--miwarp-status-success)/0.3)]'
+                      ? 'text-miwarp-status-success border-[hsl(var(--miwarp-status-success)/0.3)]'
                       : 'text-muted-foreground'} hover:bg-muted transition-colors disabled:opacity-50"
                     onclick={() => handleToggleEnabled(plugin)}
                     disabled={operationLoading === plugin.name}

@@ -107,11 +107,11 @@
     icon: string;
   } {
     if (latency === null) return { label: "Unknown", color: "text-muted-foreground", icon: "⚪" };
-    if (latency < 50) return { label: "Excellent", color: "text-[hsl(var(--miwarp-status-success))]", icon: "🟢" };
-    if (latency < 100) return { label: "Good", color: "text-[hsl(var(--miwarp-status-success))]", icon: "🟢" };
-    if (latency < 200) return { label: "Fair", color: "text-[hsl(var(--miwarp-status-warning))]", icon: "🟡" };
-    if (latency < 500) return { label: "Poor", color: "text-[hsl(var(--miwarp-status-warning))]", icon: "🟠" };
-    return { label: "Critical", color: "text-[hsl(var(--miwarp-status-error))]", icon: "🔴" };
+    if (latency < 50) return { label: "Excellent", color: "text-miwarp-status-success", icon: "🟢" };
+    if (latency < 100) return { label: "Good", color: "text-miwarp-status-success", icon: "🟢" };
+    if (latency < 200) return { label: "Fair", color: "text-miwarp-status-warning", icon: "🟡" };
+    if (latency < 500) return { label: "Poor", color: "text-miwarp-status-warning", icon: "🟠" };
+    return { label: "Critical", color: "text-miwarp-status-error", icon: "🔴" };
   }
 
   async function refresh() {
@@ -312,7 +312,7 @@ diagnostics and history * - Quick reconnect with health check */
               <button
                 class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50 {server.status ===
                 'disabled'
-                  ? 'text-[hsl(var(--miwarp-status-success))] hover:bg-[hsl(var(--miwarp-status-success)/0.1)] border border-[hsl(var(--miwarp-status-success)/0.3)]'
+                  ? 'text-miwarp-status-success hover:bg-[hsl(var(--miwarp-status-success)/0.1)] border border-[hsl(var(--miwarp-status-success)/0.3)]'
                   : 'text-foreground/70 hover:text-foreground hover:bg-accent border border-border/50'}"
                 disabled={togglingServer === server.name}
                 onclick={() => toggle(server.name, server.status !== "disabled")}
@@ -351,10 +351,10 @@ diagnostics and history * - Quick reconnect with health check */
                         {@const height = maxLatency > 0 ? (latency / maxLatency) * 24 : 0}
                         <div
                           class="w-2 rounded-t transition-all {latency < 100
-                            ? 'bg-[hsl(var(--miwarp-status-success))]'
+                            ? 'bg-miwarp-status-success'
                             : latency < 300
-                              ? 'bg-[hsl(var(--miwarp-status-warning))]'
-                              : 'bg-[hsl(var(--miwarp-status-error))]'}"
+                              ? 'bg-miwarp-status-warning'
+                              : 'bg-miwarp-status-error'}"
                           style="height: {Math.max(2, height)}px"
                           title="{latency}ms"
                         ></div>
@@ -411,7 +411,7 @@ diagnostics and history * - Quick reconnect with health check */
   <!-- Success message -->
   {#if successMsg}
     <div
-      class="px-3 py-2 border-t border-[hsl(var(--miwarp-status-success)/0.2)] bg-[hsl(var(--miwarp-status-success)/0.05)] text-xs text-[hsl(var(--miwarp-status-success))]"
+      class="px-3 py-2 border-t border-[hsl(var(--miwarp-status-success)/0.2)] bg-[hsl(var(--miwarp-status-success)/0.05)] text-xs text-miwarp-status-success"
     >
       {successMsg}
     </div>

@@ -343,7 +343,7 @@
       shortLabel: () => t("prompt_permAutoReadShort"),
       description: () => t("prompt_permAutoReadDesc"),
       cls: "text-miwarp-status-info",
-      dotCls: "bg-[hsl(var(--miwarp-status-info))]",
+      dotCls: "bg-miwarp-status-info",
       borderCls:
         "border-[hsl(var(--miwarp-status-info)/0.4)] focus-within:border-[hsl(var(--miwarp-status-info)/0.6)] focus-within:shadow-[0_0_0_1px_hsl(var(--miwarp-status-info)/0.15)]",
     },
@@ -353,7 +353,7 @@
       shortLabel: () => t("prompt_permAutoAllShort"),
       description: () => t("prompt_permAutoAllDesc"),
       cls: "text-miwarp-status-warning",
-      dotCls: "bg-[hsl(var(--miwarp-status-warning))]",
+      dotCls: "bg-miwarp-status-warning",
       borderCls:
         "border-[hsl(var(--miwarp-status-warning)/0.4)] focus-within:border-[hsl(var(--miwarp-status-warning)/0.6)] focus-within:shadow-[0_0_0_1px_hsl(var(--miwarp-status-warning)/0.15)]",
     },
@@ -362,8 +362,8 @@
       label: () => t("prompt_permPlanLabel"),
       shortLabel: () => t("prompt_permPlanShort"),
       description: () => t("prompt_permPlanDesc"),
-      cls: "text-[hsl(var(--miwarp-accent-violet))]",
-      dotCls: "bg-[hsl(var(--miwarp-accent-violet))]",
+      cls: "text-miwarp-accent-violet",
+      dotCls: "bg-miwarp-accent-violet",
       borderCls:
         "border-[hsl(var(--miwarp-accent-violet)/0.4)] focus-within:border-[hsl(var(--miwarp-accent-violet)/0.6)] focus-within:shadow-[0_0_0_1px_hsl(var(--miwarp-accent-violet)/0.15)]",
     },
@@ -372,8 +372,8 @@
       label: () => t("prompt_permAutoLabel"),
       shortLabel: () => t("prompt_permAutoShort"),
       description: () => t("prompt_permAutoDesc"),
-      cls: "text-[hsl(var(--miwarp-status-info))]",
-      dotCls: "bg-[hsl(var(--miwarp-status-info))]",
+      cls: "text-miwarp-status-info",
+      dotCls: "bg-miwarp-status-info",
       borderCls:
         "border-[hsl(var(--miwarp-status-info)/0.4)] focus-within:border-[hsl(var(--miwarp-status-info)/0.6)] focus-within:shadow-[0_0_0_1px_hsl(var(--miwarp-status-info)/0.15)]",
     },
@@ -382,8 +382,8 @@
       label: () => t("prompt_permDontAskLabel"),
       shortLabel: () => t("prompt_permDontAskShort"),
       description: () => t("prompt_permDontAskDesc"),
-      cls: "text-[hsl(var(--miwarp-status-error))]",
-      dotCls: "bg-[hsl(var(--miwarp-status-error))]",
+      cls: "text-miwarp-status-error",
+      dotCls: "bg-miwarp-status-error",
       borderCls:
         "border-[hsl(var(--miwarp-status-error)/0.4)] focus-within:border-[hsl(var(--miwarp-status-error)/0.6)] focus-within:shadow-[0_0_0_1px_hsl(var(--miwarp-status-error)/0.15)]",
     },
@@ -2015,7 +2015,7 @@
       {#each store.pastedBlocks as block (block.id)}
         {@const isSpreadsheet = block.ext ? isSpreadsheetExt(block.ext) : false}
         <span
-          class="inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)] text-[hsl(var(--miwarp-status-info))] px-2 py-1 text-xs"
+          class="inline-flex items-center gap-1.5 rounded-md border border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)] text-miwarp-status-info px-2 py-1 text-xs"
         >
           {#if isSpreadsheet}
             <!-- Table/spreadsheet icon -->
@@ -2249,7 +2249,7 @@
         />
         {#if hasStash && onRestoreStash}
           <button
-            class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-[hsl(var(--miwarp-accent-violet))] hover:bg-[hsl(var(--miwarp-accent-violet)/0.25)] transition-colors"
+            class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-miwarp-accent-violet hover:bg-[hsl(var(--miwarp-accent-violet)/0.25)] transition-colors"
             title={t("prompt_stashRestore")}
             onclick={onRestoreStash}
           >

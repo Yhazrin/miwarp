@@ -18,7 +18,7 @@
     <div class="rounded bg-muted p-2">
       <div class="text-xs text-muted-foreground">
         {#if tool.input?.team_name}
-          <span class="font-medium text-[hsl(var(--miwarp-status-info))]">{tool.input.team_name}</span>
+          <span class="font-medium text-miwarp-status-info">{tool.input.team_name}</span>
         {/if}
         {#if tool.input?.description}
           <p class="mt-1 text-muted-foreground/80 line-clamp-2">{tool.input.description}</p>
@@ -28,7 +28,7 @@
     {#if tool.status === "success" && outputText}
       <div class="rounded bg-muted p-2">
         <span
-          class="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--miwarp-status-info)/0.1)] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--miwarp-status-info))]"
+          class="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--miwarp-status-info)/0.1)] px-2 py-0.5 text-[11px] font-medium text-miwarp-status-info"
         >
           <Icon name="check" size="xs" />
           {t("tool_teamCreated")}
@@ -72,7 +72,7 @@
           <span
             class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium {taskStatus ===
             'completed'
-              ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
+              ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success'
               : taskStatus === 'in_progress'
                 ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
                 : 'bg-muted text-muted-foreground'}">{taskStatus}</span
@@ -141,7 +141,7 @@
           <span
             class="inline-flex items-center rounded-full px-1.5 py-0.5 font-medium {statusChange.from ===
             'completed'
-              ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
+              ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success'
               : statusChange.from === 'in_progress'
                 ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
                 : 'bg-muted text-muted-foreground'}">{statusChange.from}</span
@@ -150,7 +150,7 @@
           <span
             class="inline-flex items-center rounded-full px-1.5 py-0.5 font-medium {statusChange.to ===
             'completed'
-              ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
+              ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success'
               : statusChange.to === 'in_progress'
                 ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
                 : 'bg-muted text-muted-foreground'}">{statusChange.to}</span
@@ -160,7 +160,7 @@
         <span
           class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium {updatedStatus ===
           'completed'
-            ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
+            ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success'
             : updatedStatus === 'in_progress'
               ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
               : 'bg-muted text-muted-foreground'}">{updatedStatus}</span
@@ -195,7 +195,7 @@
                   <span
                     class="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium {task.status ===
                     'completed'
-                      ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
+                      ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success'
                       : task.status === 'in_progress'
                         ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
                         : 'bg-muted text-muted-foreground'}">{task.status}</span
@@ -247,7 +247,7 @@
               <span
                 class="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium {task.status ===
                 'completed'
-                  ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
+                  ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success'
                   : task.status === 'in_progress'
                     ? 'bg-miwarp-status-info/10 text-miwarp-status-info'
                     : 'bg-muted text-muted-foreground'}">{task.status}</span
@@ -294,7 +294,7 @@
     {#if tool.status === "success"}
       <div class="rounded bg-muted p-2">
         <span
-          class="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--miwarp-status-error)/0.1)] px-2 py-0.5 text-[11px] font-medium text-[hsl(var(--miwarp-status-error))]"
+          class="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--miwarp-status-error)/0.1)] px-2 py-0.5 text-[11px] font-medium text-miwarp-status-error"
         >
           <Icon name="check" size="xs" />
           {t("tool_teamDeleted")}
@@ -314,10 +314,10 @@
           <span
             class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium {tool
               .input.type === 'broadcast'
-              ? 'bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]'
+              ? 'bg-[hsl(var(--miwarp-status-warning)/0.1)] text-miwarp-status-warning'
               : tool.input.type === 'shutdown_request'
                 ? 'bg-miwarp-status-error/10 text-miwarp-status-error'
-                : 'bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]'}">{tool.input.type}</span
+                : 'bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-miwarp-accent-violet'}">{tool.input.type}</span
           >
         {/if}
         {#if tool.input?.recipient}
@@ -340,7 +340,7 @@
     {#if tool.status === "success"}
       <div class="rounded bg-muted p-2">
         <span
-          class="inline-flex items-center gap-1 text-[11px] text-[hsl(var(--miwarp-status-success))]"
+          class="inline-flex items-center gap-1 text-[11px] text-miwarp-status-success"
         >
           <Icon name="check" size="xs" />
           {t("tool_messageSent")}

@@ -778,7 +778,7 @@
         <Icon name="clock" size="sm" />
         {#if contextHistory.length > 0}
           <span
-            class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-success))]"
+            class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-miwarp-status-success"
           ></span>
         {/if}
       </button>
@@ -793,7 +793,7 @@
         <Icon name="file" size="sm" />
         {#if fileEntries.length > 0}
           <span
-            class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-warning))]"
+            class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
           ></span>
         {/if}
       </button>
@@ -818,7 +818,7 @@
         <Icon name="check-square" size="sm" />
         {#if activeBackgroundTasks.length > 0}
           <span
-            class="absolute right-1 top-1 h-1.5 w-1.5 animate-pulse rounded-full bg-[hsl(var(--miwarp-status-info))]"
+            class="absolute right-1 top-1 h-1.5 w-1.5 animate-pulse rounded-full bg-miwarp-status-info"
           ></span>
         {/if}
       </button>
@@ -902,7 +902,7 @@
               <Icon name="clock" size="sm" />
               {#if contextHistory.length > 0}
                 <span
-                  class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-success))]"
+                  class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-success"
                 ></span>
               {/if}
             </button>
@@ -917,7 +917,7 @@
               <Icon name="file" size="sm" />
               {#if fileEntries.length > 0}
                 <span
-                  class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-warning))]"
+                  class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
                 ></span>
               {/if}
             </button>
@@ -964,7 +964,7 @@
               </svg>
               {#if activeBackgroundTasks.length > 0}
                 <span
-                  class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"
+                  class="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-info animate-pulse"
                 ></span>
               {/if}
             </button>
@@ -1167,9 +1167,9 @@
               >
               {#if toolStats.reads > 0}
                 <span class="text-muted-foreground/40">&middot;</span>
-                <span class="flex items-center gap-0.5 text-[hsl(var(--miwarp-status-info))]">
+                <span class="flex items-center gap-0.5 text-miwarp-status-info">
                   {@render categoryIcon(
-                    "bg-[hsl(var(--miwarp-status-info))]",
+                    "bg-miwarp-status-info",
                     "M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z",
                   )}
                   {toolStats.reads}
@@ -1177,9 +1177,9 @@
               {/if}
               {#if toolStats.searches > 0}
                 <span class="text-muted-foreground/40">&middot;</span>
-                <span class="flex items-center gap-0.5 text-[hsl(var(--miwarp-accent-violet))]">
+                <span class="flex items-center gap-0.5 text-miwarp-accent-violet">
                   {@render categoryIcon(
-                    "bg-[hsl(var(--miwarp-accent-violet))]",
+                    "bg-miwarp-accent-violet",
                     "M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM21 21l-4.35-4.35",
                   )}
                   {toolStats.searches}
@@ -1187,16 +1187,16 @@
               {/if}
               {#if toolStats.bash > 0}
                 <span class="text-muted-foreground/40">&middot;</span>
-                <span class="flex items-center gap-0.5 text-[hsl(var(--miwarp-status-success))]">
-                  {@render categoryIcon("bg-[hsl(var(--miwarp-status-success))]", "M4 17l6-6-6-6M12 19h8")}
+                <span class="flex items-center gap-0.5 text-miwarp-status-success">
+                  {@render categoryIcon("bg-miwarp-status-success", "M4 17l6-6-6-6M12 19h8")}
                   {toolStats.bash}
                 </span>
               {/if}
               {#if toolStats.writes > 0}
                 <span class="text-muted-foreground/40">&middot;</span>
-                <span class="flex items-center gap-0.5 text-[hsl(var(--miwarp-status-warning))]">
+                <span class="flex items-center gap-0.5 text-miwarp-status-warning">
                   {@render categoryIcon(
-                    "bg-[hsl(var(--miwarp-status-warning))]",
+                    "bg-miwarp-status-warning",
                     "M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z",
                   )}
                   {toolStats.writes}
@@ -1204,7 +1204,7 @@
               {/if}
               {#if toolStats.errorCount > 0}
                 <span class="text-muted-foreground/40">&middot;</span>
-                <span class="flex items-center gap-0.5 text-[hsl(var(--miwarp-status-error))]">
+                <span class="flex items-center gap-0.5 text-miwarp-status-error">
                   <StatusIcon status="error" size="xs" />
                   {toolStats.errorCount}
                 </span>
@@ -1387,7 +1387,7 @@
             <div class="border-t border-border px-3 py-1.5">
               <div class="flex items-center gap-3 text-[11px]">
                 {#if toolStats.doneCount > 0}
-                  <span class="flex items-center gap-1 text-[hsl(var(--miwarp-status-success))]">
+                  <span class="flex items-center gap-1 text-miwarp-status-success">
                     <StatusIcon status="done" size="sm" />
                     {toolStats.doneCount}
                   </span>
@@ -1486,7 +1486,7 @@
         <Icon name="check-square" size="sm" />
         {#if activeBackgroundTasks.length > 0}
           <span
-            class="absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"
+            class="absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-miwarp-status-info animate-pulse"
           ></span>
         {/if}
       </button>

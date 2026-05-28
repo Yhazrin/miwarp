@@ -347,8 +347,8 @@
         label: t("sessionStatus_bypass"),
         cls: "bg-miwarp-status-warning/15 text-miwarp-status-warning",
       },
-      plan: { label: t("sessionStatus_plan"), cls: "bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-[hsl(var(--miwarp-accent-violet))]" },
-      auto: { label: t("sessionStatus_auto"), cls: "bg-[hsl(var(--miwarp-status-info)/0.15)] text-[hsl(var(--miwarp-status-info))]" },
+      plan: { label: t("sessionStatus_plan"), cls: "bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-miwarp-accent-violet" },
+      auto: { label: t("sessionStatus_auto"), cls: "bg-[hsl(var(--miwarp-status-info)/0.15)] text-miwarp-status-info" },
       dontAsk: { label: "no-ask", cls: "bg-[hsl(var(--miwarp-status-error)/0.15)] text-miwarp-status-error" },
     };
     return (
@@ -695,10 +695,10 @@
     mcpAggregateStatus === "error"
       ? "bg-destructive"
       : mcpAggregateStatus === "pending"
-        ? "bg-[hsl(var(--miwarp-status-warning))]"
+        ? "bg-miwarp-status-warning"
         : mcpAggregateStatus === "disabled"
           ? "bg-muted-foreground/30"
-          : "bg-[hsl(var(--miwarp-status-success))]",
+          : "bg-miwarp-status-success",
   );
 
   // Find model info: exact match first, then fuzzy (model ID contains alias)
@@ -806,7 +806,7 @@
                   <Icon name="file" size="sm" class="opacity-90" />
                   {#if toolPanelIndicators?.files}
                     <span
-                      class="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-warning))]"
+                      class="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
                     ></span>
                   {/if}
                 </span>
@@ -819,12 +819,12 @@
           {@const pct = Math.round(contextUtilization! * 100)}
           {@const barColor =
             contextWarningLevel === "critical"
-              ? "bg-[hsl(var(--miwarp-status-warning))]"
+              ? "bg-miwarp-status-warning"
               : contextWarningLevel === "high"
-                ? "bg-[hsl(var(--miwarp-status-warning))]"
+                ? "bg-miwarp-status-warning"
                 : contextWarningLevel === "moderate"
-                  ? "bg-[hsl(var(--miwarp-status-warning))]"
-                  : "bg-[hsl(var(--miwarp-status-success))]"}
+                  ? "bg-miwarp-status-warning"
+                  : "bg-miwarp-status-success"}
           <span
             class="session-context-pill text-foreground/60"
             title={t("statusbar_contextTitle", {
@@ -853,7 +853,7 @@
           </span>
         {:else}
           <span class="session-context-pill text-foreground/60">
-            <span class="session-context-pill-inner bg-[hsl(var(--miwarp-accent-primary))]">
+            <span class="session-context-pill-inner bg-miwarp-accent-primary">
               <span class="text-[10px] font-bold text-white/90">miw</span>
             </span>
           </span>
@@ -955,7 +955,7 @@
           class="flex items-center gap-1 text-miwarp-status-info"
           title={t("bgTask_activeTitle", { count: String(activeTaskCount) })}
         >
-          <span class="inline-block h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"></span>
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-miwarp-status-info animate-pulse"></span>
           <span>{t("bgTask_active", { count: String(activeTaskCount) })}</span>
         </span>
         <span class="session-island-tier2-divider" aria-hidden="true">|</span>

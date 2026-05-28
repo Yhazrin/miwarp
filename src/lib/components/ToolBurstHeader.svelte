@@ -39,7 +39,7 @@
 
     <!-- Status indicator -->
     {#if allDone}
-      <Icon name="check" size="xs" class="text-[hsl(var(--miwarp-status-success))] shrink-0" />
+      <Icon name="check" size="xs" class="text-miwarp-status-success shrink-0" />
     {:else if burst.stats.running > 0}
       <DualStatusIndicator state="running" processStatus="active" size="xs" />
     {/if}
@@ -67,7 +67,7 @@
   <div class="mt-1.5 h-1.5 rounded-full bg-border/30 overflow-hidden flex">
     {#if burst.stats.completed > 0}
       <div
-        class="bg-[hsl(var(--miwarp-status-success))] transition-all duration-300"
+        class="bg-miwarp-status-success transition-all duration-300"
         style:width="{(burst.stats.completed / burst.stats.total) * 100}%"
       ></div>
     {/if}

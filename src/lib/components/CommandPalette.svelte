@@ -655,7 +655,7 @@
                     <!-- Permission indicator -->
                     {#if requiresPermission(cmd) && idx === selectedIndex}
                       <span
-                        class="text-[10px] text-[hsl(var(--miwarp-status-warning))] shrink-0"
+                        class="text-[10px] text-miwarp-status-warning shrink-0"
                         title={t("cmd_requiresConfirm")}
                       >
                         ⚠️
@@ -721,7 +721,7 @@
         </button>
         <!-- Natural language shortcut -->
         <button
-          class="flex items-center gap-1.5 rounded-md bg-[hsl(var(--miwarp-accent-primary)/0.15)] px-3 py-1.5 text-xs text-[hsl(var(--miwarp-accent-primary))] hover:bg-[hsl(var(--miwarp-accent-primary)/0.25)] transition-colors"
+          class="flex items-center gap-1.5 rounded-md bg-[hsl(var(--miwarp-accent-primary)/0.15)] px-3 py-1.5 text-xs text-miwarp-accent-primary hover:bg-[hsl(var(--miwarp-accent-primary)/0.25)] transition-colors"
           onclick={() => {
             searchMode = "nl";
             inputEl?.focus();

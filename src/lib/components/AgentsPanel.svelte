@@ -212,9 +212,9 @@
 
   function scopeColor(agent: AgentDefinitionSummary): string {
     if (agent.source === "built-in") return "bg-muted text-muted-foreground";
-    if (agent.scope === "user") return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]";
-    if (agent.scope === "project") return "bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]";
-    if (agent.scope === "plugin") return "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]";
+    if (agent.scope === "user") return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info";
+    if (agent.scope === "project") return "bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success";
+    if (agent.scope === "plugin") return "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-miwarp-accent-violet";
     return "bg-muted text-muted-foreground";
   }
 

@@ -40,45 +40,45 @@
     {
       key: "skills",
       label: t("pluginCard_skills"),
-      color: "bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]",
+      color: "bg-[hsl(var(--miwarp-status-error)/0.1)] text-miwarp-status-error",
     },
     {
       key: "commands",
       label: t("pluginCard_commands"),
-      color: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
+      color: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info",
     },
     {
       key: "agents",
       label: t("pluginCard_agents"),
-      color: "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]",
+      color: "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-miwarp-accent-violet",
     },
     {
       key: "hooks",
       label: t("pluginCard_hooks"),
-      color: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]",
+      color: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-miwarp-status-warning",
     },
     {
       key: "mcp_servers",
       label: t("pluginCard_mcp"),
-      color: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
+      color: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info",
     },
     {
       key: "lsp_servers",
       label: t("pluginCard_lsp"),
-      color: "bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]",
+      color: "bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success",
     },
   ];
 
   const categoryColors: Record<string, string> = {
-    development: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
-    productivity: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]",
-    security: "bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]",
-    testing: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]",
-    learning: "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]",
-    database: "bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]",
-    monitoring: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]",
-    deployment: "bg-[hsl(var(--miwarp-accent-primary)/0.1)] text-[hsl(var(--miwarp-accent-primary))]",
-    design: "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-[hsl(var(--miwarp-accent-violet))]",
+    development: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info",
+    productivity: "bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info",
+    security: "bg-[hsl(var(--miwarp-status-error)/0.1)] text-miwarp-status-error",
+    testing: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-miwarp-status-warning",
+    learning: "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-miwarp-accent-violet",
+    database: "bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success",
+    monitoring: "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-miwarp-status-warning",
+    deployment: "bg-[hsl(var(--miwarp-accent-primary)/0.1)] text-miwarp-accent-primary",
+    design: "bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-miwarp-accent-violet",
   };
 
   function hasComponent(
@@ -145,7 +145,7 @@
       <!-- Enable/Disable toggle -->
       <button
         class="rounded-md border px-2 py-1 text-xs transition-colors disabled:opacity-50 {enabled
-          ? 'text-[hsl(var(--miwarp-status-success))] border-[hsl(var(--miwarp-status-success)/0.3)] hover:bg-[hsl(var(--miwarp-status-success)/0.1)]'
+          ? 'text-miwarp-status-success border-[hsl(var(--miwarp-status-success)/0.3)] hover:bg-[hsl(var(--miwarp-status-success)/0.1)]'
           : 'text-muted-foreground hover:bg-muted'}"
         onclick={() => onToggle?.(installedPlugin, !enabled)}
         disabled={isLoading}

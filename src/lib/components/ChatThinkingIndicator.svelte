@@ -20,7 +20,7 @@
   <div class="chat-content-width py-4">
     <div class="mb-1.5 flex items-center gap-2">
       <div
-        class="flex h-5 w-5 items-center justify-center rounded-sm bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]"
+        class="flex h-5 w-5 items-center justify-center rounded-sm bg-[hsl(var(--miwarp-status-warning)/0.1)] text-miwarp-status-warning"
       >
         <svg
           class="h-3 w-3"

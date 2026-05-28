@@ -100,7 +100,7 @@
     <!-- Key-value pairs -->
     <div class="grid gap-y-1" style="grid-template-columns: auto 1fr;">
       <span class="text-muted-foreground pr-4">{t("cost_totalCost")}</span>
-      <span class="text-[hsl(var(--miwarp-status-success))] font-bold">{parsed.totalCost}</span>
+      <span class="text-miwarp-status-success font-bold">{parsed.totalCost}</span>
 
       <span class="text-muted-foreground pr-4">{t("cost_durationApi")}</span>
       <span class="text-foreground">{parsed.durationApi}</span>
@@ -110,9 +110,9 @@
 
       <span class="text-muted-foreground pr-4">{t("cost_codeChanges")}</span>
       <span class="text-foreground">
-        <span class="text-[hsl(var(--miwarp-status-success))]">+{parsed.linesAdded}</span>
+        <span class="text-miwarp-status-success">+{parsed.linesAdded}</span>
         <span class="text-muted-foreground">/</span>
-        <span class="text-[hsl(var(--miwarp-status-error))]">-{parsed.linesRemoved}</span>
+        <span class="text-miwarp-status-error">-{parsed.linesRemoved}</span>
         <span class="text-muted-foreground ml-1">{t("cost_lines")}</span>
       </span>
     </div>
@@ -130,7 +130,7 @@
                   style="background-color: {modelColor(idx)}"
                 ></span>
                 <span class="text-foreground font-medium">{model.name}</span>
-                <span class="text-[hsl(var(--miwarp-status-success))] ml-auto">{model.cost}</span>
+                <span class="text-miwarp-status-success ml-auto">{model.cost}</span>
               </div>
               <div class="ml-3.5 text-muted-foreground">
                 {model.input} in · {model.output} out · {model.cacheRead} cache r · {model.cacheWrite}

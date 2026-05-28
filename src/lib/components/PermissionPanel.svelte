@@ -247,7 +247,7 @@
                       >{t("common_allow")}</button
                     >
                     <button
-                      class="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-[hsl(var(--miwarp-status-error))] hover:bg-[hsl(var(--miwarp-status-error)/0.1)] transition-all disabled:opacity-50"
+                      class="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-miwarp-status-error hover:bg-[hsl(var(--miwarp-status-error)/0.1)] transition-all disabled:opacity-50"
                       disabled={busy}
                       onclick={() => respondSingle(item.requestId, "deny")}
                       title={t("common_deny")}>&times;</button

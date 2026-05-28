@@ -489,7 +489,7 @@
           {#if errors.prompt}
             <p class="text-xs text-destructive">{errors.prompt}</p>
           {:else if promptContextWarning()}
-            <p class="text-xs text-[hsl(var(--miwarp-status-warning))] flex items-center gap-1">
+            <p class="text-xs text-miwarp-status-warning flex items-center gap-1">
               <Icon name="triangle-alert" size="xs" class="shrink-0" />
               {promptContextWarning()}
             </p>

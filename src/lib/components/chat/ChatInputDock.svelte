@@ -79,7 +79,7 @@
 <div class="chat-input-dock pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col">
   {#if canResumeNow(store.run, store.phase, agentSettings?.no_session_persistence ?? false) && getResumeWarning(store.run)}
     <div
-      class="pointer-events-auto mx-3 mb-2 rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-4 py-2 text-xs text-[hsl(var(--miwarp-status-warning))]"
+      class="pointer-events-auto mx-3 mb-2 rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-4 py-2 text-xs text-miwarp-status-warning"
     >
       {getResumeWarning(store.run)}
     </div>

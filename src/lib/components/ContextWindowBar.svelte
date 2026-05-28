@@ -43,31 +43,31 @@
 
   const barColor = $derived(
     warningLevel === "critical"
-      ? "bg-[hsl(var(--miwarp-status-error))]"
+      ? "bg-miwarp-status-error"
       : warningLevel === "high"
-        ? "bg-[hsl(var(--miwarp-status-warning))]"
+        ? "bg-miwarp-status-warning"
         : warningLevel === "moderate"
-          ? "bg-[hsl(var(--miwarp-status-warning))]"
-          : "bg-[hsl(var(--miwarp-status-success))]",
+          ? "bg-miwarp-status-warning"
+          : "bg-miwarp-status-success",
   );
 
   const textColor = $derived(
     warningLevel === "critical"
-      ? "text-[hsl(var(--miwarp-status-error))]"
+      ? "text-miwarp-status-error"
       : warningLevel === "high"
-        ? "text-[hsl(var(--miwarp-status-warning))]"
+        ? "text-miwarp-status-warning"
         : warningLevel === "moderate"
-          ? "text-[hsl(var(--miwarp-status-warning))]"
+          ? "text-miwarp-status-warning"
           : "text-foreground/60",
   );
 
   // Segment colors (matching segment types)
   const segmentColors: Record<ContextSegment["type"], string> = {
-    system: "bg-[hsl(var(--miwarp-accent-violet))]",
-    env: "bg-[hsl(var(--miwarp-status-info))]",
-    claudeMd: "bg-[hsl(var(--miwarp-status-success))]",
-    files: "bg-[hsl(var(--miwarp-status-warning))]",
-    tools: "bg-[hsl(var(--miwarp-status-warning))]",
+    system: "bg-miwarp-accent-violet",
+    env: "bg-miwarp-status-info",
+    claudeMd: "bg-miwarp-status-success",
+    files: "bg-miwarp-status-warning",
+    tools: "bg-miwarp-status-warning",
   };
 
   // Calculate segment widths as percentage of total bar

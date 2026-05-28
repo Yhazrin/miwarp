@@ -18,7 +18,7 @@
     <span>
       Run
       <button
-        class="font-mono text-[hsl(var(--miwarp-status-warning))] hover:text-[hsl(var(--miwarp-status-warning)/0.8)] underline underline-offset-2 transition-colors"
+        class="font-mono text-miwarp-status-warning hover:text-[hsl(var(--miwarp-status-warning)/0.8)] underline underline-offset-2 transition-colors"
         onclick={onRunInit}>{t("chat_initHintAction")}</button
       >
       to create CLAUDE.md

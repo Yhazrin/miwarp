@@ -21,10 +21,10 @@
 
   const STATUS_COLORS: Record<TeamRunStatus, string> = {
     created: "bg-muted-foreground/30",
-    planning: "bg-[hsl(var(--miwarp-accent-violet))]",
-    running: "bg-[hsl(var(--miwarp-status-info))]",
-    completed: "bg-[hsl(var(--miwarp-status-success))]",
-    failed: "bg-[hsl(var(--miwarp-status-error))]",
+    planning: "bg-miwarp-accent-violet",
+    running: "bg-miwarp-status-info",
+    completed: "bg-miwarp-status-success",
+    failed: "bg-miwarp-status-error",
     cancelled: "bg-muted-foreground/30",
   };
 
@@ -47,9 +47,9 @@
       label: "待命",
       pulse: false,
     },
-    running: { dot: "bg-[hsl(var(--miwarp-status-info))]", ring: "ring-[hsl(var(--miwarp-status-info)/0.3)]", label: "运行中", pulse: true },
-    completed: { dot: "bg-[hsl(var(--miwarp-status-success))]", ring: "ring-[hsl(var(--miwarp-status-success)/0.3)]", label: "完成", pulse: false },
-    failed: { dot: "bg-[hsl(var(--miwarp-status-error))]", ring: "ring-[hsl(var(--miwarp-status-error)/0.3)]", label: "失败", pulse: false },
+    running: { dot: "bg-miwarp-status-info", ring: "ring-[hsl(var(--miwarp-status-info)/0.3)]", label: "运行中", pulse: true },
+    completed: { dot: "bg-miwarp-status-success", ring: "ring-[hsl(var(--miwarp-status-success)/0.3)]", label: "完成", pulse: false },
+    failed: { dot: "bg-miwarp-status-error", ring: "ring-[hsl(var(--miwarp-status-error)/0.3)]", label: "失败", pulse: false },
   };
 
   function toggleExpand(id: string) {
@@ -83,11 +83,11 @@
         <span
           class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium
           {teamRun.status === 'completed'
-            ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
+            ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success'
             : teamRun.status === 'failed'
-              ? 'bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]'
+              ? 'bg-[hsl(var(--miwarp-status-error)/0.1)] text-miwarp-status-error'
               : teamRun.status === 'running' || teamRun.status === 'planning'
-                ? 'bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]'
+                ? 'bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info'
                 : 'bg-muted text-muted-foreground'}"
         >
           <span
@@ -109,7 +109,7 @@
     <div class="px-3.5 pt-2 pb-1">
       <div class="h-1 w-full rounded-full bg-muted overflow-hidden">
         {#if teamRun.status === "planning"}
-          <div class="h-full rounded-full bg-[hsl(var(--miwarp-accent-violet))] animate-pulse" style="width: 30%"></div>
+          <div class="h-full rounded-full bg-miwarp-accent-violet animate-pulse" style="width: 30%"></div>
         {:else}
           <div
             class="h-full rounded-full bg-primary transition-all duration-500"
@@ -171,7 +171,7 @@
                 </p>
               {/if}
               {#if member.error}
-                <p class="text-[10px] text-[hsl(var(--miwarp-status-error))] leading-relaxed">{member.error}</p>
+                <p class="text-[10px] text-miwarp-status-error leading-relaxed">{member.error}</p>
               {/if}
             </div>
           {/if}
@@ -192,7 +192,7 @@
   <!-- Error -->
   {#if teamRun.error}
     <div class="border-t border-[hsl(var(--miwarp-status-error)/0.2)] px-3.5 py-2 bg-[hsl(var(--miwarp-status-error)/0.05)]">
-      <p class="text-[11px] text-[hsl(var(--miwarp-status-error))]">{teamRun.error}</p>
+      <p class="text-[11px] text-miwarp-status-error">{teamRun.error}</p>
     </div>
   {/if}
 

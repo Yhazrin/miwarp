@@ -2692,7 +2692,7 @@
                       class="flex h-10 w-10 items-center justify-center rounded-full bg-[hsl(var(--miwarp-accent-violet)/0.1)]"
                     >
                       <svg
-                        class="h-5 w-5 text-[hsl(var(--miwarp-accent-violet))]"
+                        class="h-5 w-5 text-miwarp-accent-violet"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -4069,7 +4069,7 @@
                     placeholder="mac-mini"
                     class="w-full text-sm px-2 py-1.5 rounded border bg-background {remoteFormTouched &&
                     !remoteFormName.trim()
-                      ? 'border-[hsl(var(--miwarp-status-error))]'
+                      ? 'border-miwarp-status-error'
                       : 'border-input'}"
                   />
                 </label>
@@ -4083,7 +4083,7 @@
                     placeholder="macmini.local"
                     class="w-full text-sm px-2 py-1.5 rounded border bg-background {remoteFormTouched &&
                     !remoteFormHost.trim()
-                      ? 'border-[hsl(var(--miwarp-status-error))]'
+                      ? 'border-miwarp-status-error'
                       : 'border-input'}"
                   />
                 </label>
@@ -4097,7 +4097,7 @@
                     placeholder={currentUsername || "username"}
                     class="w-full text-sm px-2 py-1.5 rounded border bg-background {remoteFormTouched &&
                     !remoteFormUser.trim()
-                      ? 'border-[hsl(var(--miwarp-status-error))]'
+                      ? 'border-miwarp-status-error'
                       : 'border-input'}"
                   />
                 </label>

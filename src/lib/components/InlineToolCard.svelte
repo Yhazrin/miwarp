@@ -834,11 +834,11 @@
               <span class="text-xs font-medium text-muted-foreground">{t("inline_question")}</span>
               {#if isAskDenied}
                 <span
-                  class="ml-auto rounded-full border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.1)] px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--miwarp-status-error))]"
+                  class="ml-auto rounded-full border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.1)] px-2 py-0.5 text-[10px] font-medium text-miwarp-status-error"
                   >{t("common_denied")}</span
                 >
               {:else}
-                <Icon name="check" size="sm" class="text-[hsl(var(--miwarp-status-success))] shrink-0 ml-auto" />
+                <Icon name="check" size="sm" class="text-miwarp-status-success shrink-0 ml-auto" />
               {/if}
             </div>
             {#if hasMultipleQuestions}
@@ -864,7 +864,7 @@
                             askAnswersMap[pq.question]?.split(", ").includes(option.label)}
                           <span
                             class="rounded-md border px-3 py-1 text-xs font-medium {isSelected
-                              ? 'border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
+                              ? 'border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success'
                               : 'border-border/50 bg-transparent text-muted-foreground/50'}"
                           >
                             {#if isSelected}
@@ -875,7 +875,7 @@
                         {/each}
                         {#if askAnnotationsMap[pq.question]}
                           <span
-                            class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
+                            class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1 text-xs font-medium text-miwarp-status-success"
                           >
                             <Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />
                             {askAnnotationsMap[pq.question]}
@@ -884,14 +884,14 @@
                       </div>
                     {:else if askAnnotationsMap[pq.question]}
                       <span
-                        class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
+                        class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1 text-xs font-medium text-miwarp-status-success"
                       >
                         <Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />
                         {askAnnotationsMap[pq.question]}
                       </span>
                     {:else if askAnswersMap[pq.question]}
                       <span
-                        class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
+                        class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1 text-xs font-medium text-miwarp-status-success"
                       >
                         <Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />
                         {askAnswersMap[pq.question]}
@@ -913,7 +913,7 @@
                       class="rounded-md border px-3 py-1.5 text-xs font-medium transition-all {askAnswerSet.has(
                         option,
                       )
-                        ? 'border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]'
+                        ? 'border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success'
                         : 'border-border/50 bg-transparent text-muted-foreground/50'}"
                     >
                       {#if askAnswerSet.has(option)}
@@ -924,7 +924,7 @@
                   {/each}
                   {#if askAnnotationsMap[askQuestion]}
                     <span
-                      class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
+                      class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-xs font-medium text-miwarp-status-success"
                     >
                       <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
                       {askAnnotationsMap[askQuestion]}
@@ -933,14 +933,14 @@
                 </div>
               {:else if askAnnotationsMap[askQuestion]}
                 <span
-                  class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
+                  class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-xs font-medium text-miwarp-status-success"
                 >
                   <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
                   {askAnnotationsMap[askQuestion]}
                 </span>
               {:else if askAnswer}
                 <span
-                  class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-success))]"
+                  class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-xs font-medium text-miwarp-status-success"
                 >
                   <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
                   {askAnswer}
@@ -1208,7 +1208,7 @@
                 class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[hsl(var(--miwarp-accent-primary)/0.1)]"
               >
                 <svg
-                  class="h-3 w-3 text-[hsl(var(--miwarp-accent-primary))]"
+                  class="h-3 w-3 text-miwarp-accent-primary"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -1241,8 +1241,8 @@
                 <div
                   class="flex items-center gap-1.5 px-3 py-1.5 border-b border-[hsl(var(--miwarp-accent-primary)/0.1)] bg-[hsl(var(--miwarp-accent-primary)/0.05)]"
                 >
-                  <Icon name="file" size="xs" class="text-[hsl(var(--miwarp-accent-primary))]" />
-                  <span class="text-[11px] font-medium text-[hsl(var(--miwarp-accent-primary))]"
+                  <Icon name="file" size="xs" class="text-miwarp-accent-primary" />
+                  <span class="text-[11px] font-medium text-miwarp-accent-primary"
                     >{planContent.fileName}</span
                   >
                 </div>
@@ -1257,7 +1257,7 @@
               <div
                 class="mb-3 rounded border border-[hsl(var(--miwarp-accent-primary)/0.1)] bg-[hsl(var(--miwarp-accent-primary)/0.05)] px-2.5 py-2"
               >
-                <p class="text-[10px] font-medium text-[hsl(var(--miwarp-accent-primary))] mb-1.5">
+                <p class="text-[10px] font-medium text-miwarp-accent-primary mb-1.5">
                   {t("plan_requestedPermissions")}
                 </p>
                 <ul class="space-y-0.5">
@@ -1269,7 +1269,7 @@
                         >&bull;</span
                       >
                       <span
-                        ><span class="font-medium text-[hsl(var(--miwarp-accent-primary))]"
+                        ><span class="font-medium text-miwarp-accent-primary"
                           >{friendlyToolName(toolName)}</span
                         >{#if prompt}: {prompt}{/if}</span
                       >
@@ -1285,7 +1285,7 @@
                 href={String(tool.input.remoteSessionUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="mb-3 flex items-center gap-1.5 rounded border border-[hsl(var(--miwarp-status-info)/0.2)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-2.5 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-info))] hover:bg-[hsl(var(--miwarp-status-info)/0.1)] transition-colors w-fit"
+                class="mb-3 flex items-center gap-1.5 rounded border border-[hsl(var(--miwarp-status-info)/0.2)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-2.5 py-1.5 text-xs font-medium text-miwarp-status-info hover:bg-[hsl(var(--miwarp-status-info)/0.1)] transition-colors w-fit"
               >
                 <svg
                   class="h-3 w-3 shrink-0"
@@ -1308,7 +1308,7 @@
               {#if skipPermissionMode}
                 <!-- Session already in skip-permission mode -->
                 <button
-                  class="w-full rounded-lg border border-[hsl(var(--miwarp-status-success)/0.4)] bg-[hsl(var(--miwarp-status-success)/0.12)] px-3 py-2 text-xs font-medium text-[hsl(var(--miwarp-status-success))] hover:bg-[hsl(var(--miwarp-status-success)/0.22)] transition-all disabled:opacity-50"
+                  class="w-full rounded-lg border border-[hsl(var(--miwarp-status-success)/0.4)] bg-[hsl(var(--miwarp-status-success)/0.12)] px-3 py-2 text-xs font-medium text-miwarp-status-success hover:bg-[hsl(var(--miwarp-status-success)/0.22)] transition-all disabled:opacity-50"
                   disabled={submitting}
                   onclick={() => {
                     submitting = true;
@@ -1345,12 +1345,12 @@
                       class="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--miwarp-status-success)/0.2)] px-1.5 py-0.5 mb-1.5"
                     >
                       <span
-                        class="text-[9px] font-semibold uppercase tracking-wider text-[hsl(var(--miwarp-status-success))]"
+                        class="text-[9px] font-semibold uppercase tracking-wider text-miwarp-status-success"
                         >{t("planConfirm_autoBadge")}</span
                       >
                     </span>
                     <span
-                      class="text-xs font-semibold text-[hsl(var(--miwarp-status-success))] leading-tight mb-1"
+                      class="text-xs font-semibold text-miwarp-status-success leading-tight mb-1"
                       >{t("planConfirm_autoTitle")}</span
                     >
                     <span class="text-[10px] text-muted-foreground leading-snug"
@@ -1371,12 +1371,12 @@
                       class="inline-flex items-center gap-1 rounded-full bg-[hsl(var(--miwarp-status-warning)/0.2)] px-1.5 py-0.5 mb-1.5"
                     >
                       <span
-                        class="text-[9px] font-semibold uppercase tracking-wider text-[hsl(var(--miwarp-status-warning))]"
+                        class="text-[9px] font-semibold uppercase tracking-wider text-miwarp-status-warning"
                         >{t("planConfirm_bypassBadge")}</span
                       >
                     </span>
                     <span
-                      class="text-xs font-semibold text-[hsl(var(--miwarp-status-warning))] leading-tight mb-1"
+                      class="text-xs font-semibold text-miwarp-status-warning leading-tight mb-1"
                       >{t("planConfirm_bypassTitle")}</span
                     >
                     <span class="text-[10px] text-muted-foreground leading-snug"
@@ -1443,7 +1443,7 @@
                     }}
                   ></textarea>
                   <button
-                    class="shrink-0 rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.3)] bg-[hsl(var(--miwarp-accent-primary)/0.08)] hover:bg-[hsl(var(--miwarp-accent-primary)/0.16)] px-3 py-2 text-xs font-medium text-[hsl(var(--miwarp-accent-primary))] transition-all disabled:opacity-50"
+                    class="shrink-0 rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.3)] bg-[hsl(var(--miwarp-accent-primary)/0.08)] hover:bg-[hsl(var(--miwarp-accent-primary)/0.16)] px-3 py-2 text-xs font-medium text-miwarp-accent-primary transition-all disabled:opacity-50"
                     disabled={submitting}
                     onclick={() => {
                       submitting = true;
@@ -1509,7 +1509,7 @@
             {#if onPermissionRespond}
               <div class="flex gap-2">
                 <button
-                  class="rounded-md bg-[hsl(var(--miwarp-status-success))] px-4 py-1.5 text-xs font-medium text-miwarp-accent-on-accent hover:bg-[hsl(var(--miwarp-status-success)/0.85)] transition-all disabled:opacity-50"
+                  class="rounded-md bg-miwarp-status-success px-4 py-1.5 text-xs font-medium text-miwarp-accent-on-accent hover:bg-[hsl(var(--miwarp-status-success)/0.85)] transition-all disabled:opacity-50"
                   disabled={submitting}
                   onclick={() => {
                     submitting = true;
@@ -1530,7 +1530,7 @@
                   }}>{t("common_deny")}</button
                 >
                 <button
-                  class="rounded-md border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.1)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-error))] hover:bg-[hsl(var(--miwarp-status-error)/0.2)] transition-all disabled:opacity-50"
+                  class="rounded-md border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.1)] px-3 py-1.5 text-xs font-medium text-miwarp-status-error hover:bg-[hsl(var(--miwarp-status-error)/0.2)] transition-all disabled:opacity-50"
                   disabled={submitting}
                   onclick={() => {
                     submitting = true;
@@ -1552,7 +1552,7 @@
                   {#each tool.suggestions as suggestion}
                     {@const label = formatSuggestionLabel(suggestion)}
                     <button
-                      class="rounded-md border border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-3 py-1.5 text-xs font-medium text-[hsl(var(--miwarp-status-info))] hover:bg-[hsl(var(--miwarp-status-info)/0.1)] transition-all disabled:opacity-50"
+                      class="rounded-md border border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-3 py-1.5 text-xs font-medium text-miwarp-status-info hover:bg-[hsl(var(--miwarp-status-info)/0.1)] transition-all disabled:opacity-50"
                       disabled={submitting}
                       onclick={() => {
                         submitting = true;
@@ -1612,7 +1612,7 @@
               <span class="text-xs font-medium text-foreground">{taskMeta.subagentType}</span>
               {#if taskMeta.model}
                 <span
-                  class="text-[10px] px-1 py-0.5 rounded bg-[hsl(var(--miwarp-status-info)/0.15)] text-[hsl(var(--miwarp-status-info))] font-medium"
+                  class="text-[10px] px-1 py-0.5 rounded bg-[hsl(var(--miwarp-status-info)/0.15)] text-miwarp-status-info font-medium"
                   >{taskMeta.model}</span
                 >
               {/if}
@@ -1708,7 +1708,7 @@
             <Spinner size="xxs" class="border-border border-t-muted-foreground shrink-0" />
             <span>{taskNotification.summary || taskNotification.message}</span>
           {:else if taskNotification.status === "completed" || taskNotification.status === "done"}
-            <Icon name="check" size="xs" class="text-[hsl(var(--miwarp-status-success))] shrink-0" />
+            <Icon name="check" size="xs" class="text-miwarp-status-success shrink-0" />
             <span>{taskNotification.summary || taskNotification.message}</span>
           {:else if taskNotification.status === "error" || taskNotification.status === "failed"}
             <svg
@@ -1788,8 +1788,8 @@
         <div
           class="flex items-center gap-1.5 px-3 py-1.5 border-b border-[hsl(var(--miwarp-accent-primary)/0.1)] bg-[hsl(var(--miwarp-accent-primary)/0.05)]"
         >
-          <Icon name="file" size="xs" class="text-[hsl(var(--miwarp-accent-primary))]" />
-          <span class="text-[11px] font-medium text-[hsl(var(--miwarp-accent-primary))]"
+          <Icon name="file" size="xs" class="text-miwarp-accent-primary" />
+          <span class="text-[11px] font-medium text-miwarp-accent-primary"
             >{planContent.fileName}</span
           >
         </div>

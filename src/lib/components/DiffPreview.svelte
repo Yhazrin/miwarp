@@ -92,9 +92,9 @@
 
   // 处理行高亮
   function getLineClass(line: string): string {
-    if (line.startsWith("+")) return "bg-[hsl(var(--miwarp-status-success)/0.15)] text-[hsl(var(--miwarp-status-success))]";
-    if (line.startsWith("-")) return "bg-[hsl(var(--miwarp-status-error)/0.15)] text-[hsl(var(--miwarp-status-error))]";
-    if (line.startsWith("@@")) return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))] font-medium";
+    if (line.startsWith("+")) return "bg-[hsl(var(--miwarp-status-success)/0.15)] text-miwarp-status-success";
+    if (line.startsWith("-")) return "bg-[hsl(var(--miwarp-status-error)/0.15)] text-miwarp-status-error";
+    if (line.startsWith("@@")) return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info font-medium";
     if (
       line.startsWith("diff") ||
       line.startsWith("index") ||
@@ -152,8 +152,8 @@
       {/if}
       {#if stats.added > 0 || stats.removed > 0}
         <div class="flex items-center gap-1.5 text-[11px]">
-          <span class="text-[hsl(var(--miwarp-status-success))]">+{stats.added}</span>
-          <span class="text-[hsl(var(--miwarp-status-error))]">-{stats.removed}</span>
+          <span class="text-miwarp-status-success">+{stats.added}</span>
+          <span class="text-miwarp-status-error">-{stats.removed}</span>
         </div>
       {/if}
     </div>
@@ -183,7 +183,7 @@
       <!-- 操作按钮 -->
       {#if onApply}
         <button
-          class="rounded-lg bg-[hsl(var(--miwarp-status-success))] px-2.5 py-1 text-[11px] font-medium text-miwarp-accent-on-accent hover:bg-[hsl(var(--miwarp-status-success)/0.9)] transition-colors"
+          class="rounded-lg bg-miwarp-status-success px-2.5 py-1 text-[11px] font-medium text-miwarp-accent-on-accent hover:bg-[hsl(var(--miwarp-status-success)/0.9)] transition-colors"
           onclick={onApply}
         >
           Apply

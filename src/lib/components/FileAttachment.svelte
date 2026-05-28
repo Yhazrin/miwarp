@@ -30,7 +30,7 @@
           ? "border-dashed border-[hsl(var(--miwarp-status-warning)/0.5)]"
           : "border-[hsl(var(--miwarp-status-warning)/0.3)]",
         bg: "bg-[hsl(var(--miwarp-status-warning)/0.08)]",
-        icon: "text-[hsl(var(--miwarp-status-warning))]",
+        icon: "text-miwarp-status-warning",
         size: "text-[hsl(var(--miwarp-status-warning)/0.6)]",
       };
     }
@@ -40,7 +40,7 @@
           ? "border-dashed border-[hsl(var(--miwarp-status-info)/0.5)]"
           : "border-[hsl(var(--miwarp-status-info)/0.3)]",
         bg: "bg-[hsl(var(--miwarp-status-info)/0.08)]",
-        icon: "text-[hsl(var(--miwarp-status-info))]",
+        icon: "text-miwarp-status-info",
         size: "text-[hsl(var(--miwarp-status-info)/0.6)]",
       };
     }
@@ -50,7 +50,7 @@
           ? "border-dashed border-[hsl(var(--miwarp-status-error)/0.4)]"
           : "border-[hsl(var(--miwarp-status-error)/0.3)]",
         bg: "bg-[hsl(var(--miwarp-status-error)/0.05)]",
-        icon: "text-[hsl(var(--miwarp-status-error))]",
+        icon: "text-miwarp-status-error",
         size: "text-[hsl(var(--miwarp-status-error)/0.7)]",
       };
     }

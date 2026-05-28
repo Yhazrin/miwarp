@@ -461,10 +461,10 @@
   let gitLoading = $state(false);
 
   const GIT_STATUS_COLORS: Record<string, string> = {
-    M: "text-[hsl(var(--miwarp-status-info))]",
-    A: "text-[hsl(var(--miwarp-status-success))]",
-    D: "text-[hsl(var(--miwarp-status-error))]",
-    R: "text-[hsl(var(--miwarp-accent-violet))]",
+    M: "text-miwarp-status-info",
+    A: "text-miwarp-status-success",
+    D: "text-miwarp-status-error",
+    R: "text-miwarp-accent-violet",
     "?": "text-muted-foreground",
   };
 
@@ -1926,7 +1926,7 @@
           <button
             class="flex h-7 w-7 items-center justify-center rounded-md transition-colors cursor-pointer
               {sidebarUpdateAvailable
-              ? 'text-[hsl(var(--miwarp-status-warning))] hover:text-[hsl(var(--miwarp-status-warning)/0.8)] hover:bg-[hsl(var(--miwarp-status-warning)/0.1)]'
+              ? 'text-miwarp-status-warning hover:text-[hsl(var(--miwarp-status-warning)/0.8)] hover:bg-[hsl(var(--miwarp-status-warning)/0.1)]'
               : 'text-muted-foreground/60 hover:text-muted-foreground hover:bg-sidebar-accent/50'}"
             onclick={() => (showAbout = true)}
             aria-label={t("settings_checkUpdate")}
@@ -2413,11 +2413,11 @@
                         : t("sidebar_changedFile", { count: String(gitSummary.total_files) })}</span
                     >
                     {#if gitSummary.total_insertions > 0}
-                      <span class="text-[hsl(var(--miwarp-status-success))] tabular-nums">+{gitSummary.total_insertions}</span
+                      <span class="text-miwarp-status-success tabular-nums">+{gitSummary.total_insertions}</span
                       >
                     {/if}
                     {#if gitSummary.total_deletions > 0}
-                      <span class="text-[hsl(var(--miwarp-status-error))] tabular-nums">-{gitSummary.total_deletions}</span>
+                      <span class="text-miwarp-status-error tabular-nums">-{gitSummary.total_deletions}</span>
                     {/if}
                   </div>
                   <!-- Changed files list -->
@@ -2436,10 +2436,10 @@
                           >{file.path}</span
                         >
                         {#if file.insertions > 0}
-                          <span class="text-[10px] text-[hsl(var(--miwarp-status-success))]">+{file.insertions}</span>
+                          <span class="text-[10px] text-miwarp-status-success">+{file.insertions}</span>
                         {/if}
                         {#if file.deletions > 0}
-                          <span class="text-[10px] text-[hsl(var(--miwarp-status-error))]">-{file.deletions}</span>
+                          <span class="text-[10px] text-miwarp-status-error">-{file.deletions}</span>
                         {/if}
                       </button>
                     {/each}
@@ -2484,9 +2484,9 @@
                       >
                         <svg
                           class="h-3 w-3 shrink-0 {file.scope === 'memory'
-                            ? 'text-[hsl(var(--miwarp-status-warning))]'
+                            ? 'text-miwarp-status-warning'
                             : file.exists
-                              ? 'text-[hsl(var(--miwarp-status-info))]'
+                              ? 'text-miwarp-status-info'
                               : 'text-muted-foreground/40'}"
                           viewBox="0 0 24 24"
                           fill="none"
@@ -2561,7 +2561,7 @@
                         >
                           <svg
                             class="h-3 w-3 shrink-0 {file.exists
-                              ? 'text-[hsl(var(--miwarp-status-info))]'
+                              ? 'text-miwarp-status-info'
                               : 'text-muted-foreground/40'}"
                             viewBox="0 0 24 24"
                             fill="none"
@@ -2625,7 +2625,7 @@
                     onclick={() => teamStore.selectTeam(team.name)}
                   >
                     <div class="flex items-center gap-1.5">
-                      <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-info))] shrink-0"></span>
+                      <span class="h-2 w-2 rounded-full bg-miwarp-status-info shrink-0"></span>
                       <span class="text-[13px] font-medium min-w-0 truncate">{team.name}</span>
                     </div>
                     {#if team.description}
@@ -2935,7 +2935,7 @@
       {t("sidebar_deleteCancel")}
     </button>
     <button
-      class="px-3 py-1.5 text-sm rounded-md border border-[hsl(var(--miwarp-status-warning))] text-[hsl(var(--miwarp-status-warning))] hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
+      class="px-3 py-1.5 text-sm rounded-md border border-miwarp-status-warning text-miwarp-status-warning hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
       onclick={confirmDeleteConversation}
     >
       {t("sidebar_softDelete")}
@@ -2961,7 +2961,7 @@
       {t("sidebar_deleteCancel")}
     </button>
     <button
-      class="px-3 py-1.5 text-sm rounded-md border border-[hsl(var(--miwarp-status-warning))] text-[hsl(var(--miwarp-status-warning))] hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
+      class="px-3 py-1.5 text-sm rounded-md border border-miwarp-status-warning text-miwarp-status-warning hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
       onclick={batchDelete}
     >
       {t("sidebar_softDelete")}
@@ -3081,7 +3081,7 @@
       {t("sidebar_deleteCancel")}
     </button>
     <button
-      class="px-3 py-1.5 text-sm rounded-md border border-[hsl(var(--miwarp-status-warning))] text-[hsl(var(--miwarp-status-warning))] hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
+      class="px-3 py-1.5 text-sm rounded-md border border-miwarp-status-warning text-miwarp-status-warning hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
       onclick={() => doDeleteFolder(false)}
     >
       {t("sidebar_deleteFolderKeep")}

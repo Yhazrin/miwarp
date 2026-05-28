@@ -19,7 +19,7 @@
   style="max-height: 40vh; overflow-y: auto;"
 >
   <div class="flex items-center justify-between px-4 py-2 border-b border-border/50">
-    <span class="text-xs font-medium text-[hsl(var(--miwarp-status-info))]">{t("chat_btw")}</span>
+    <span class="text-xs font-medium text-miwarp-status-info">{t("chat_btw")}</span>
     <button
       onclick={onClose}
       title={t("chat_closeSideQuestion")}
@@ -38,7 +38,7 @@
         <MarkdownContent text={answer} streaming={loading} />
       {/if}
       {#if loading}
-        <span class="inline-block w-2 h-4 bg-[hsl(var(--miwarp-status-info))] animate-pulse rounded-sm"></span>
+        <span class="inline-block w-2 h-4 bg-miwarp-status-info animate-pulse rounded-sm"></span>
       {/if}
     </div>
   </div>

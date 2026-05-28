@@ -45,15 +45,15 @@
   function statusColor(status: string): string {
     switch (status) {
       case "completed":
-        return "bg-[hsl(var(--miwarp-status-success))]";
+        return "bg-miwarp-status-success";
       case "failed":
-        return "bg-[hsl(var(--miwarp-status-error))]";
+        return "bg-miwarp-status-error";
       case "stopped":
-        return "bg-[hsl(var(--miwarp-status-warning))]";
+        return "bg-miwarp-status-warning";
       case "running":
-        return "bg-[hsl(var(--miwarp-status-info))]";
+        return "bg-miwarp-status-info";
       case "idle":
-        return "bg-[hsl(var(--miwarp-status-success))]";
+        return "bg-miwarp-status-success";
       default:
         return "bg-muted-foreground/30";
     }
@@ -513,7 +513,7 @@
         {/each}
       </div>
     {:else if error}
-      <div class="rounded-lg border border-[hsl(var(--miwarp-status-error)/0.2)] bg-[hsl(var(--miwarp-status-error)/0.1)] p-4 text-sm text-[hsl(var(--miwarp-status-error))]">
+      <div class="rounded-lg border border-[hsl(var(--miwarp-status-error)/0.2)] bg-[hsl(var(--miwarp-status-error)/0.1)] p-4 text-sm text-miwarp-status-error">
         {error}
       </div>
     {:else if response && response.results.length === 0 && !loading}
@@ -539,7 +539,7 @@
                   </span>
                   {#if run.hasErrors}
                     <span
-                      class="rounded bg-[hsl(var(--miwarp-status-error)/0.15)] px-1.5 py-0.5 text-[10px] font-medium text-[hsl(var(--miwarp-status-error))]"
+                      class="rounded bg-[hsl(var(--miwarp-status-error)/0.15)] px-1.5 py-0.5 text-[10px] font-medium text-miwarp-status-error"
                     >
                       {t("history_errors")}
                     </span>

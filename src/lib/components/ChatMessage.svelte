@@ -135,7 +135,7 @@
               data-export-exclude
             >
               {#if copied}
-                <Icon name="check" size="sm" class="text-[hsl(var(--miwarp-status-success))]" />
+                <Icon name="check" size="sm" class="text-miwarp-status-success" />
               {:else}
                 <Icon name="copy" size="sm" />
               {/if}
@@ -205,7 +205,7 @@
               data-export-exclude
             >
               {#if copied}
-                <Icon name="check" size="sm" class="text-[hsl(var(--miwarp-status-success))]" />
+                <Icon name="check" size="sm" class="text-miwarp-status-success" />
               {:else}
                 <Icon name="copy" size="sm" />
               {/if}

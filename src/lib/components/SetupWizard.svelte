@@ -340,10 +340,10 @@
                 : 'border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.05)]'} p-3"
             >
               {#if result.ok}
-                <Icon name="check" size="sm" class="text-[hsl(var(--miwarp-status-success))] shrink-0" />
+                <Icon name="check" size="sm" class="text-miwarp-status-success shrink-0" />
               {:else}
                 <svg
-                  class="h-5 w-5 text-[hsl(var(--miwarp-status-error))] shrink-0"
+                  class="h-5 w-5 text-miwarp-status-error shrink-0"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -361,7 +361,7 @@
                 {#if result.ok && result.latency}
                   <p class="text-xs text-muted-foreground">{result.latency}ms</p>
                 {:else if !result.ok && result.error}
-                  <p class="text-xs text-[hsl(var(--miwarp-status-error))] truncate">{result.error}</p>
+                  <p class="text-xs text-miwarp-status-error truncate">{result.error}</p>
                 {/if}
               </div>
             </div>
@@ -379,9 +379,9 @@
         {#if showProxyGuidance}
           <div class="rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] p-4" transition:slide={{ duration: 200 }}>
             <div class="flex items-start gap-2">
-              <Icon name="triangle-alert" size="lg" class="text-[hsl(var(--miwarp-status-warning))] shrink-0 mt-0.5" />
+              <Icon name="triangle-alert" size="lg" class="text-miwarp-status-warning shrink-0 mt-0.5" />
               <div>
-                <p class="text-sm font-medium text-[hsl(var(--miwarp-status-warning))]">{t("setup_networkFailTitle")}</p>
+                <p class="text-sm font-medium text-miwarp-status-warning">{t("setup_networkFailTitle")}</p>
                 <p class="text-xs text-muted-foreground mt-1">{t("setup_networkFailDesc")}</p>
                 <ul class="text-xs text-muted-foreground mt-2 space-y-1 list-disc list-inside">
                   <li>{t("setup_networkTipProxy")}</li>
@@ -578,7 +578,7 @@
           <div
             class="rounded-lg border border-miwarp-status-error/30 bg-miwarp-status-error/10 p-3 w-full max-w-sm"
           >
-            <p class="text-sm text-[hsl(var(--miwarp-status-error))]">{error}</p>
+            <p class="text-sm text-miwarp-status-error">{error}</p>
           </div>
         {/if}
 
@@ -705,7 +705,7 @@
               <div
                 class="rounded-lg border border-miwarp-status-error/30 bg-miwarp-status-error/10 p-2"
               >
-                <p class="text-xs text-[hsl(var(--miwarp-status-error))]">{error}</p>
+                <p class="text-xs text-miwarp-status-error">{error}</p>
               </div>
             {/if}
 
@@ -732,7 +732,7 @@
         <div
           class="flex h-16 w-16 items-center justify-center rounded-full bg-miwarp-status-success/10"
         >
-          <Icon name="check" size="lg" class="text-[hsl(var(--miwarp-status-success))]" />
+          <Icon name="check" size="lg" class="text-miwarp-status-success" />
         </div>
         <h2 class="text-xl font-semibold">{t("setup_allSet")}</h2>
         <p class="text-sm text-muted-foreground">{t("setup_allSetDesc")}</p>

@@ -50,20 +50,20 @@
     queued: { label: t("taskExec_queued"), color: "text-muted-foreground", bgColor: "bg-muted" },
     running: {
       label: t("taskExec_running"),
-      color: "text-[hsl(var(--miwarp-status-info))]",
+      color: "text-miwarp-status-info",
       bgColor: "bg-[hsl(var(--miwarp-status-info)/0.1)]",
     },
     paused: {
       label: t("taskExec_paused"),
-      color: "text-[hsl(var(--miwarp-status-warning))]",
+      color: "text-miwarp-status-warning",
       bgColor: "bg-[hsl(var(--miwarp-status-warning)/0.1)]",
     },
     completed: {
       label: t("taskExec_completed"),
-      color: "text-[hsl(var(--miwarp-status-success))]",
+      color: "text-miwarp-status-success",
       bgColor: "bg-[hsl(var(--miwarp-status-success)/0.1)]",
     },
-    failed: { label: t("taskExec_failed"), color: "text-[hsl(var(--miwarp-status-error))]", bgColor: "bg-[hsl(var(--miwarp-status-error)/0.1)]" },
+    failed: { label: t("taskExec_failed"), color: "text-miwarp-status-error", bgColor: "bg-[hsl(var(--miwarp-status-error)/0.1)]" },
   };
 
   let config = $derived(statusConfig[status] || statusConfig.queued);
@@ -100,9 +100,9 @@
   function getLogColor(level: string): string {
     switch (level) {
       case "error":
-        return "text-[hsl(var(--miwarp-status-error))]";
+        return "text-miwarp-status-error";
       case "warn":
-        return "text-[hsl(var(--miwarp-status-warning))]";
+        return "text-miwarp-status-warning";
       default:
         return "text-foreground";
     }
@@ -177,9 +177,9 @@
       <div
         class="h-full rounded-full transition-all duration-300
           {status === 'failed'
-          ? 'bg-[hsl(var(--miwarp-status-error))]'
+          ? 'bg-miwarp-status-error'
           : status === 'completed'
-            ? 'bg-[hsl(var(--miwarp-status-success))]'
+            ? 'bg-miwarp-status-success'
             : 'bg-primary'}"
         style="width: {progress}%"
       ></div>
@@ -218,15 +218,15 @@
     <div class="text-xs text-muted-foreground">
       {#if status === "running"}
         <span class="flex items-center gap-1">
-          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-info))] animate-pulse"></span>
+          <span class="h-2 w-2 rounded-full bg-miwarp-status-info animate-pulse"></span>
           {t("taskExec_processing")}
         </span>
       {:else if status === "completed"}
-        <span class="flex items-center gap-1 text-[hsl(var(--miwarp-status-success))]">
+        <span class="flex items-center gap-1 text-miwarp-status-success">
           ✓ {t("taskExec_completedSuccess")}
         </span>
       {:else if status === "failed"}
-        <span class="flex items-center gap-1 text-[hsl(var(--miwarp-status-error))]">
+        <span class="flex items-center gap-1 text-miwarp-status-error">
           ✗ {t("taskExec_execFailed")}
         </span>
       {/if}

@@ -329,8 +329,8 @@
                   <div class="flex items-center gap-2">
                     <span
                       class="inline-block h-2 w-2 shrink-0 rounded-full {isImported
-                        ? 'bg-[hsl(var(--miwarp-status-success))]'
-                        : 'bg-[hsl(var(--miwarp-status-info))]'}"
+                        ? 'bg-miwarp-status-success'
+                        : 'bg-miwarp-status-info'}"
                     ></span>
                     <span class="text-xs text-muted-foreground shrink-0">
                       {fmtRelative(session.lastActivityAt)}
@@ -364,7 +364,7 @@
                     {/if}
                     {#if isImported && session.existingRunId}
                       <span>&middot;</span>
-                      <span class="text-[hsl(var(--miwarp-status-success))]">
+                      <span class="text-miwarp-status-success">
                         {t("cliSync_alreadyImported")}
                       </span>
                     {/if}

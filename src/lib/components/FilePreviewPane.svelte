@@ -318,7 +318,7 @@
       >
       <span class="text-sm font-medium text-foreground min-w-0 truncate">{displayName}</span>
       {#if fileDirty}
-        <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-warning))] shrink-0" title={t("explorer_modified")}
+        <span class="h-2 w-2 rounded-full bg-miwarp-status-warning shrink-0" title={t("explorer_modified")}
         ></span>
       {/if}
       <span class="text-[11px] text-muted-foreground truncate flex-1 min-w-0">{path}</span>
@@ -468,11 +468,11 @@
                   >
                   <td
                     class="whitespace-pre pr-4 {dl.type === 'add'
-                      ? 'text-[hsl(var(--miwarp-status-success))]'
+                      ? 'text-miwarp-status-success'
                       : dl.type === 'del'
-                        ? 'text-[hsl(var(--miwarp-status-error))]'
+                        ? 'text-miwarp-status-error'
                         : dl.type === 'hunk'
-                          ? 'text-[hsl(var(--miwarp-status-info))]'
+                          ? 'text-miwarp-status-info'
                           : dl.type === 'header'
                             ? 'font-bold text-foreground'
                             : ''} {dl.type === 'hunk' || dl.type === 'header'

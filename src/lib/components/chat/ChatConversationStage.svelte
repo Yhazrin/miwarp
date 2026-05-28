@@ -472,7 +472,7 @@
 
     {#if store.recoveryNotice}
       <div
-        class="mx-4 mb-2 rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-3 py-2 text-xs text-[hsl(var(--miwarp-status-warning))]"
+        class="mx-4 mb-2 rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-3 py-2 text-xs text-miwarp-status-warning"
         role="status"
       >
         {store.recoveryNotice}

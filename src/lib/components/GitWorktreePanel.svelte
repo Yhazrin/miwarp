@@ -247,7 +247,7 @@
 
   const statusClass = $derived.by(() => {
     if (panelState.loading || !panelState.isRepo) return "text-muted-foreground";
-    return panelState.isClean ? "text-[hsl(var(--miwarp-status-success))]" : "text-[hsl(var(--miwarp-status-warning))]";
+    return panelState.isClean ? "text-miwarp-status-success" : "text-miwarp-status-warning";
   });
 </script>
 
@@ -275,7 +275,7 @@
         <!-- Worktree badge -->
         {#if isWorktreeSession}
           <span
-            class="text-[9px] px-1 py-0.5 rounded bg-[hsl(var(--miwarp-status-success)/0.12)] text-[hsl(var(--miwarp-status-success))] font-medium shrink-0"
+            class="text-[9px] px-1 py-0.5 rounded bg-[hsl(var(--miwarp-status-success)/0.12)] text-miwarp-status-success font-medium shrink-0"
           >
             WT
           </span>
@@ -359,7 +359,7 @@
               />
               <button
                 type="button"
-                class="h-7 rounded-md bg-[hsl(var(--miwarp-status-success)/0.15)] px-2.5 text-[10px] font-medium text-[hsl(var(--miwarp-status-success))] hover:bg-[hsl(var(--miwarp-status-success)/0.25)] transition-colors disabled:opacity-40"
+                class="h-7 rounded-md bg-[hsl(var(--miwarp-status-success)/0.15)] px-2.5 text-[10px] font-medium text-miwarp-status-success hover:bg-[hsl(var(--miwarp-status-success)/0.25)] transition-colors disabled:opacity-40"
                 onclick={handleAutoCommit}
                 disabled={commitBusy}
               >
@@ -392,7 +392,7 @@
             {#if !panelState.isClean}
               <button
                 type="button"
-                class="h-7 rounded-md bg-[hsl(var(--miwarp-status-success)/0.12)] px-2.5 text-[10px] font-medium text-[hsl(var(--miwarp-status-success))] hover:bg-[hsl(var(--miwarp-status-success)/0.2)] transition-colors disabled:opacity-40"
+                class="h-7 rounded-md bg-[hsl(var(--miwarp-status-success)/0.12)] px-2.5 text-[10px] font-medium text-miwarp-status-success hover:bg-[hsl(var(--miwarp-status-success)/0.2)] transition-colors disabled:opacity-40"
                 onclick={() => (showCommitInput = !showCommitInput)}
                 disabled={commitBusy}
               >
@@ -404,7 +404,7 @@
             {#if !panelState.isClean && runId}
               <button
                 type="button"
-                class="h-7 rounded-md bg-[hsl(var(--miwarp-accent-primary)/0.12)] px-2.5 text-[10px] font-medium text-[hsl(var(--miwarp-accent-primary))] hover:bg-[hsl(var(--miwarp-accent-primary)/0.2)] transition-colors disabled:opacity-40"
+                class="h-7 rounded-md bg-[hsl(var(--miwarp-accent-primary)/0.12)] px-2.5 text-[10px] font-medium text-miwarp-accent-primary hover:bg-[hsl(var(--miwarp-accent-primary)/0.2)] transition-colors disabled:opacity-40"
                 onclick={handleCommitAndPush}
                 disabled={commitAndPushBusy}
               >
@@ -416,7 +416,7 @@
             {#if displayedBranch && !isDetached}
               <button
                 type="button"
-                class="h-7 rounded-md bg-[hsl(var(--miwarp-status-info)/0.12)] px-2.5 text-[10px] font-medium text-[hsl(var(--miwarp-status-info))] hover:bg-[hsl(var(--miwarp-status-info)/0.2)] transition-colors disabled:opacity-40"
+                class="h-7 rounded-md bg-[hsl(var(--miwarp-status-info)/0.12)] px-2.5 text-[10px] font-medium text-miwarp-status-info hover:bg-[hsl(var(--miwarp-status-info)/0.2)] transition-colors disabled:opacity-40"
                 onclick={handleCreatePr}
                 disabled={prBusy}
               >

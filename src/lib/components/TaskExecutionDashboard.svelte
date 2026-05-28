@@ -18,24 +18,24 @@
   let healthColor = $derived.by(() => {
     switch (health.status) {
       case "healthy":
-        return "text-[hsl(var(--miwarp-status-success))]";
+        return "text-miwarp-status-success";
       case "warning":
-        return "text-[hsl(var(--miwarp-status-warning))]";
+        return "text-miwarp-status-warning";
 
       case "critical":
-        return "text-[hsl(var(--miwarp-status-error))]";
+        return "text-miwarp-status-error";
     }
   });
 
   let healthBg = $derived.by(() => {
     switch (health.status) {
       case "healthy":
-        return "bg-[hsl(var(--miwarp-status-success))]";
+        return "bg-miwarp-status-success";
       case "warning":
-        return "bg-[hsl(var(--miwarp-status-warning))]";
+        return "bg-miwarp-status-warning";
 
       case "critical":
-        return "bg-[hsl(var(--miwarp-status-error))]";
+        return "bg-miwarp-status-error";
     }
   });
 
@@ -77,10 +77,10 @@
         <span
           class={`text-xs px-2 py-0.5 rounded ${
             factor.status === "good"
-              ? "bg-[hsl(var(--miwarp-status-success)/0.1)] text-[hsl(var(--miwarp-status-success))]"
+              ? "bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success"
               : factor.status === "warning"
-                ? "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-[hsl(var(--miwarp-status-warning))]"
-                : "bg-[hsl(var(--miwarp-status-error)/0.1)] text-[hsl(var(--miwarp-status-error))]"
+                ? "bg-[hsl(var(--miwarp-status-warning)/0.1)] text-miwarp-status-warning"
+                : "bg-[hsl(var(--miwarp-status-error)/0.1)] text-miwarp-status-error"
           }`}
         >
           {factor.name}: {Math.round(factor.value)}%
@@ -97,11 +97,11 @@
     </div>
     <div class="rounded-lg border border-border/40 bg-card p-3">
       <div class="text-xs text-muted-foreground">进行中</div>
-      <div class="text-xl font-bold text-[hsl(var(--miwarp-status-info))]">{stats.activeTasks}</div>
+      <div class="text-xl font-bold text-miwarp-status-info">{stats.activeTasks}</div>
     </div>
     <div class="rounded-lg border border-border/40 bg-card p-3">
       <div class="text-xs text-muted-foreground">成功率</div>
-      <div class="text-xl font-bold text-[hsl(var(--miwarp-status-success))]">{Math.round(stats.avgSuccessRate)}%</div>
+      <div class="text-xl font-bold text-miwarp-status-success">{Math.round(stats.avgSuccessRate)}%</div>
     </div>
     <div class="rounded-lg border border-border/40 bg-card p-3">
       <div class="text-xs text-muted-foreground">平均时长</div>
@@ -112,17 +112,17 @@
   <!-- 详细统计 -->
   <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
     <div class="flex items-center gap-2">
-      <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-success))]"></span>
+      <span class="h-2 w-2 rounded-full bg-miwarp-status-success"></span>
       <span class="text-muted-foreground">已完成</span>
       <span class="ml-auto font-medium">{stats.completedTasks}</span>
     </div>
     <div class="flex items-center gap-2">
-      <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-error))]"></span>
+      <span class="h-2 w-2 rounded-full bg-miwarp-status-error"></span>
       <span class="text-muted-foreground">失败</span>
       <span class="ml-auto font-medium">{stats.failedTasks}</span>
     </div>
     <div class="flex items-center gap-2">
-      <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-warning))]"></span>
+      <span class="h-2 w-2 rounded-full bg-miwarp-status-warning"></span>
       <span class="text-muted-foreground">待处理</span>
       <span class="ml-auto font-medium">{stats.pendingTasks}</span>
     </div>
@@ -153,13 +153,13 @@
             <div class="w-full flex flex-col-reverse rounded-t" style:height={`${height}%`}>
               {#if trend.completed > 0}
                 <div
-                  class="bg-[hsl(var(--miwarp-status-success))] flex-1"
+                  class="bg-miwarp-status-success flex-1"
                   style:height={`${(trend.completed / (trend.completed + trend.failed + trend.cancelled)) * 100}%`}
                 ></div>
               {/if}
               {#if trend.failed > 0}
                 <div
-                  class="bg-[hsl(var(--miwarp-status-error))]"
+                  class="bg-miwarp-status-error"
                   style:height={`${(trend.failed / (trend.completed + trend.failed + trend.cancelled)) * 100}%`}
                 ></div>
               {/if}
@@ -193,10 +193,10 @@
             <span class="w-16 text-right">
               <span
                 class={skill.successRate >= 80
-                  ? "text-[hsl(var(--miwarp-status-success))]"
+                  ? "text-miwarp-status-success"
                   : skill.successRate >= 50
-                    ? "text-[hsl(var(--miwarp-status-warning))]"
-                    : "text-[hsl(var(--miwarp-status-error))]"}
+                    ? "text-miwarp-status-warning"
+                    : "text-miwarp-status-error"}
               >
                 {Math.round(skill.successRate)}%
               </span>

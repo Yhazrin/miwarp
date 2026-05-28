@@ -104,7 +104,7 @@
         <!-- Warnings -->
         {#if preview.warnings.length > 0}
           <div class="mb-4 rounded-md bg-[hsl(var(--miwarp-status-warning)/0.1)] border border-[hsl(var(--miwarp-status-warning)/0.2)] p-3">
-            <div class="flex items-center gap-2 text-[hsl(var(--miwarp-status-warning))] mb-2">
+            <div class="flex items-center gap-2 text-miwarp-status-warning mb-2">
               <svg
                 class="h-4 w-4"
                 viewBox="0 0 24 24"
@@ -134,7 +134,7 @@
         <!-- Prerequisites -->
         {#if preview.prerequisites.length > 0}
           <div class="mb-4 rounded-md bg-[hsl(var(--miwarp-status-info)/0.1)] border border-[hsl(var(--miwarp-status-info)/0.2)] p-3">
-            <div class="flex items-center gap-2 text-[hsl(var(--miwarp-status-info))] mb-2">
+            <div class="flex items-center gap-2 text-miwarp-status-info mb-2">
               <svg
                 class="h-4 w-4"
                 viewBox="0 0 24 24"

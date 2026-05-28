@@ -66,12 +66,12 @@
     {:else if diff.trim()}
       <pre
         class="max-h-[60vh] overflow-auto rounded-lg bg-muted/50 p-4 text-xs font-mono leading-relaxed">{#each diff.split("\n") as line}{#if line.startsWith("+") && !line.startsWith("+++")}<span
-              class="text-[hsl(var(--miwarp-status-success))]">{line}</span
+              class="text-miwarp-status-success">{line}</span
             >
           {:else if line.startsWith("-") && !line.startsWith("---")}<span
-              class="text-[hsl(var(--miwarp-status-error))]">{line}</span
+              class="text-miwarp-status-error">{line}</span
             >
-          {:else if line.startsWith("@@")}<span class="text-[hsl(var(--miwarp-status-info))]"
+          {:else if line.startsWith("@@")}<span class="text-miwarp-status-info"
               >{line}</span
             >
           {:else if line.startsWith("diff ")}<span class="font-bold">{line}</span>

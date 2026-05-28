@@ -277,8 +277,8 @@
         class="inline-block h-2 w-2 rounded-full {registryHealth === null
           ? 'bg-muted-foreground/40'
           : registryHealth.available
-            ? 'bg-[hsl(var(--miwarp-status-success))]'
-            : 'bg-[hsl(var(--miwarp-status-error))]'}"
+            ? 'bg-miwarp-status-success'
+            : 'bg-miwarp-status-error'}"
       ></span>
       <span class="text-[10px] text-muted-foreground">{t("mcp_registry")}</span>
     </div>
@@ -430,7 +430,7 @@
                       <span class="text-[10px] text-muted-foreground">v{server.version}</span>
                     {/if}
                     <span
-                      class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]"
+                      class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info"
                     >
                       {getTransportLabel(server)}
                     </span>
@@ -473,7 +473,7 @@
                       <span class="text-[10px] text-muted-foreground">v{detail.version}</span>
                     {/if}
                     <span
-                      class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-status-info)/0.1)] text-[hsl(var(--miwarp-status-info))]"
+                      class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info"
                     >
                       {getTransportLabel(detail)}
                     </span>

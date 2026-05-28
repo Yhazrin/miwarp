@@ -130,21 +130,21 @@
       case "running":
         return {
           bgClass: "fill-[hsl(var(--miwarp-status-info)/0.2)] stroke-[hsl(var(--miwarp-status-info))]",
-          borderClass: "border-[hsl(var(--miwarp-status-info))]",
+          borderClass: "border-miwarp-status-info",
           icon: "▶",
           label: t("skillPipeline_running"),
         };
       case "completed":
         return {
           bgClass: "fill-[hsl(var(--miwarp-status-success)/0.2)] stroke-[hsl(var(--miwarp-status-success))]",
-          borderClass: "border-[hsl(var(--miwarp-status-success))]",
+          borderClass: "border-miwarp-status-success",
           icon: "✓",
           label: t("skillPipeline_completed"),
         };
       case "failed":
         return {
           bgClass: "fill-[hsl(var(--miwarp-status-error)/0.2)] stroke-[hsl(var(--miwarp-status-error))]",
-          borderClass: "border-[hsl(var(--miwarp-status-error))]",
+          borderClass: "border-miwarp-status-error",
           icon: "✗",
           label: t("skillPipeline_failed"),
         };
@@ -343,15 +343,15 @@ running, completed, failed * - Dependency arrows with proper layout */
         <span>{t("skillPipeline_pending")}</span>
       </div>
       <div class="flex items-center gap-1">
-        <div class="w-2.5 h-2.5 rounded-full bg-[hsl(var(--miwarp-status-info)/0.2)] border border-[hsl(var(--miwarp-status-info))]"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-[hsl(var(--miwarp-status-info)/0.2)] border border-miwarp-status-info"></div>
         <span>{t("skillPipeline_running")}</span>
       </div>
       <div class="flex items-center gap-1">
-        <div class="w-2.5 h-2.5 rounded-full bg-[hsl(var(--miwarp-status-success)/0.2)] border border-[hsl(var(--miwarp-status-success))]"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-[hsl(var(--miwarp-status-success)/0.2)] border border-miwarp-status-success"></div>
         <span>{t("skillPipeline_completed")}</span>
       </div>
       <div class="flex items-center gap-1">
-        <div class="w-2.5 h-2.5 rounded-full bg-[hsl(var(--miwarp-status-error)/0.2)] border border-[hsl(var(--miwarp-status-error))]"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-[hsl(var(--miwarp-status-error)/0.2)] border border-miwarp-status-error"></div>
         <span>{t("skillPipeline_failed")}</span>
       </div>
     </div>

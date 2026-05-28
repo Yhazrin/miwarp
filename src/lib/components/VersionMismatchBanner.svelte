@@ -25,7 +25,7 @@
 
 {#if visible}
   <div
-    class="shrink-0 border-b border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-4 py-2 text-sm text-[hsl(var(--miwarp-status-warning))] flex items-start gap-3"
+    class="shrink-0 border-b border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-4 py-2 text-sm text-miwarp-status-warning flex items-start gap-3"
     role="status"
     transition:fade={{ duration: 200 }}
   >
@@ -37,7 +37,7 @@
     </p>
     <button
       type="button"
-      class="shrink-0 text-xs text-[hsl(var(--miwarp-status-warning)/0.9)] hover:text-[hsl(var(--miwarp-status-warning))] underline-offset-2 hover:underline"
+      class="shrink-0 text-xs text-[hsl(var(--miwarp-status-warning)/0.9)] hover:text-miwarp-status-warning underline-offset-2 hover:underline"
       onclick={dismiss}
     >
       {t("versionMismatch_dismiss")}
