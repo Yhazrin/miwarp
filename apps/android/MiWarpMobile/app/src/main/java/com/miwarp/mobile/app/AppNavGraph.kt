@@ -41,6 +41,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.miwarp.mobile.design.MWTheme
+import com.miwarp.mobile.design.MWTypography
 import com.miwarp.mobile.feature.artifacts.ArtifactsScreen
 import com.miwarp.mobile.feature.artifacts.DiffPreviewScreen
 import com.miwarp.mobile.feature.chat.ChatScreen
@@ -161,7 +162,7 @@ fun AppNavGraph(
                             label = {
                                 Text(
                                     text = tab.label,
-                                    style = MWTheme.typography.caption,
+                                    style = MWTypography.caption,
                                 )
                             },
                             colors = NavigationBarItemDefaults.colors(

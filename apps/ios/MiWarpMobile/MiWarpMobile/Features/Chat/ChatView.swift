@@ -236,26 +236,9 @@ struct ChatView: View {
     }
 
     private func statusPill(_ status: RunStatus) -> some View {
-        Text(status.displayLabel)
-            .font(.caption.weight(.medium))
-            .foregroundStyle(statusColor(status))
-            .padding(.horizontal, MWSpacing.sm)
-            .padding(.vertical, 3)
-            .background(statusColor(status).opacity(0.18), in: Capsule())
+        MWStatusPill(status: status)
             .contentTransition(.opacity)
             .animation(MWMotion.springQuick, value: status)
-    }
-
-    private func statusColor(_ status: RunStatus) -> Color {
-        switch status {
-        case .running: return theme.accentPrimary
-        case .waitingApproval: return MWColors.statusWarning
-        case .failed: return MWColors.statusError
-        case .completed: return MWColors.statusSuccess
-        case .pending: return MWColors.statusPending
-        case .idle: return MWColors.statusIdle
-        case .stopped: return MWColors.statusStopped
-        }
     }
 
     // MARK: - Reconnect Banner

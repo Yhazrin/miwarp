@@ -23,6 +23,7 @@ data class MWColorTokens(
     val accentPrimary: Color,
     val accentCyan: Color,
     val accentBlue: Color,
+    val accentOnAccent: Color,
 
     // Text
     val textPrimary: Color,
@@ -63,6 +64,7 @@ private val darkColors = MWColorTokens(
     accentPrimary = Color.hsl(hue = 210f, saturation = 1.00f, lightness = 0.60f),
     accentCyan = Color.hsl(hue = 185f, saturation = 0.85f, lightness = 0.55f),
     accentBlue = Color.hsl(hue = 199f, saturation = 0.89f, lightness = 0.48f),
+    accentOnAccent = Color.White,
 
     // Text
     textPrimary = Color.hsl(hue = 0f, saturation = 0.00f, lightness = 0.94f),
@@ -101,6 +103,7 @@ private val lightColors = MWColorTokens(
     accentPrimary = Color.hsl(hue = 210f, saturation = 1.00f, lightness = 0.50f),
     accentCyan = Color.hsl(hue = 185f, saturation = 0.85f, lightness = 0.42f),
     accentBlue = Color.hsl(hue = 199f, saturation = 0.89f, lightness = 0.40f),
+    accentOnAccent = Color.White,
 
     // Text
     textPrimary = Color.hsl(hue = 220f, saturation = 0.18f, lightness = 0.12f),

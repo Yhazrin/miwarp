@@ -47,7 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -472,7 +471,7 @@ fun MWApprovalCard(
                     Text(
                         text = option.replaceFirstChar { it.uppercase() },
                         style = MWTypography.buttonLabel,
-                        color = Color.White,
+                        color = colors.accentOnAccent,
                     )
                 }
             }
@@ -728,7 +727,7 @@ fun MWErrorState(
                     modifier = Modifier.size(16.dp),
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(text = "Retry", style = MWTypography.buttonLabel, color = Color.White)
+                Text(text = "Retry", style = MWTypography.buttonLabel, color = colors.accentOnAccent)
             }
         }
     }

@@ -20,7 +20,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.miwarp.mobile.design.MWGlassCard
 import com.miwarp.mobile.design.MWTheme
@@ -168,7 +167,7 @@ fun PairingScreen(
                 Text(
                     text = if (isConnecting) "Connecting..." else "Connect",
                     style = MWTypography.buttonLabel,
-                    color = Color.White,
+                    color = MWTheme.colors.accentOnAccent,
                 )
             }
         }

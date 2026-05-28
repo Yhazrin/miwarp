@@ -23,7 +23,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.miwarp.mobile.design.MWGlassCard
@@ -118,7 +117,7 @@ fun SettingsScreen(
                     shape = RoundedCornerShape(radius.md),
                     modifier = Modifier.weight(1f),
                 ) {
-                    Text(text = "Change Connection", style = MWTypography.buttonLabel, color = Color.White)
+                    Text(text = "Change Connection", style = MWTypography.buttonLabel, color = MWTheme.colors.accentOnAccent)
                 }
 
                 if (activeConnection != null) {
