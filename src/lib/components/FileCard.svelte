@@ -116,8 +116,9 @@
 {#if onOpen}
   <button
     type="button"
-    class="file-card group flex items-center gap-3 p-3 rounded-xl border border-border/40
+    class="group flex items-center gap-3 p-3 rounded-xl border border-border/40
            bg-card/30 hover:bg-card/50 hover:border-border/60 transition-all cursor-pointer
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
            {compact ? 'p-2' : ''}"
     onclick={onOpen}
   >
@@ -256,10 +257,3 @@
     {/if}
   </div>
 {/if}
-
-<style>
-  .file-card:focus-visible {
-    outline: 2px solid var(--ring, hsl(var(--primary)));
-    outline-offset: 2px;
-  }
-</style>

@@ -59,7 +59,7 @@
 </script>
 
 <div
-  class="ask-question w-full max-w-md"
+  class="w-full max-w-md p-4 focus:outline-none"
   role="listbox"
   aria-label={question}
   tabindex="0"
@@ -74,7 +74,8 @@
   <div class="options-list flex flex-col gap-2">
     {#each options as option, i}
       <button
-        class="option-button flex items-start gap-3 p-3 rounded-lg border transition-all text-left w-full
+        class="flex items-start gap-3 p-3 rounded-lg border transition-all text-left w-full cursor-pointer
+               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
                {selectedIndex === i
           ? 'border-primary bg-primary/5 shadow-sm'
           : 'border-border/50 bg-card/30 hover:border-primary/50 hover:bg-card/50'}"
@@ -135,23 +136,3 @@
     </button>
   {/if}
 </div>
-
-<style>
-  .ask-question {
-    padding: 1rem;
-  }
-
-  .ask-question:focus {
-    outline: none;
-  }
-
-  .option-button {
-    cursor: pointer;
-  }
-
-  .option-button:focus-visible {
-    outline: 2px solid var(--ring, hsl(var(--primary)));
-    outline-offset: 2px;
-    border-radius: 0.5rem;
-  }
-</style>

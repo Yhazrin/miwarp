@@ -148,12 +148,16 @@
 </script>
 
 {#if current}
-  <div class="elicitation-card" role="dialog" aria-label={t("elicitation_title")}
-    transition:fly={{ y: 10, duration: 200 }}>
+  <div
+    class="relative isolate overflow-hidden rounded-[18px] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--miwarp-bg-elevated)/0.9)] px-[22px] py-[18px] shadow-[0_4px_24px_-8px_hsl(var(--miwarp-bg-deep)/0.4)] w-fit min-w-[520px] max-w-[760px] max-sm:w-full max-sm:min-w-0 max-sm:max-w-full"
+    role="dialog"
+    aria-label={t("elicitation_title")}
+    transition:fly={{ y: 10, duration: 200 }}
+  >
     <!-- Header -->
-    <div class="elicitation-header">
-      <div class="elicitation-header-left">
-        <div class="elicitation-icon">
+    <div class="mb-[12px] flex items-center justify-between gap-[12px]">
+      <div class="flex items-center gap-2">
+        <div class="flex h-7 w-7 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-info)/0.12)] text-miwarp-status-info">
           <svg
             class="h-4 w-4"
             viewBox="0 0 24 24"
@@ -168,29 +172,29 @@
             <path d="M12 17h.01" />
           </svg>
         </div>
-        <span class="elicitation-type-label">{t("elicitation_title")}</span>
+        <span class="text-[13px] font-medium text-foreground">{t("elicitation_title")}</span>
       </div>
-      <div class="elicitation-header-right">
+      <div class="shrink-0">
         {#if submitting}
-          <span class="elicitation-status submitting">...</span>
+          <span class="text-[11px] text-miwarp-status-info">...</span>
         {:else if missingRequired.length > 0}
-          <span class="elicitation-status waiting">{t("elicitation_waiting") ?? "waiting"}</span>
+          <span class="text-[11px] text-miwarp-status-info">{t("elicitation_waiting") ?? "waiting"}</span>
         {:else}
-          <span class="elicitation-status ready">{t("elicitation_ready") ?? "ready"}</span>
+          <span class="text-[11px] text-miwarp-status-success">{t("elicitation_ready") ?? "ready"}</span>
         {/if}
       </div>
     </div>
 
     <!-- Message -->
     {#if current.message}
-      <p class="elicitation-message">{current.message}</p>
+      <p class="mb-[14px] text-[14px]/[1.6] text-[hsl(var(--foreground)/0.9)]">{current.message}</p>
     {/if}
 
     <!-- URL button -->
     {#if current.url}
-      <div class="elicitation-url">
+      <div class="mb-[14px]">
         <button
-          class="elicitation-url-btn"
+          class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[hsl(var(--miwarp-status-info)/0.2)] bg-[hsl(var(--miwarp-status-info)/0.1)] px-3 py-1.5 text-xs text-miwarp-status-info transition-all duration-150 hover:border-[hsl(var(--miwarp-status-info)/0.35)] hover:bg-[hsl(var(--miwarp-status-info)/0.18)]"
           onclick={() => current?.url && openElicitationUrl(current.url)}
         >
           {t("elicitation_open_url")}
@@ -200,11 +204,12 @@
 
     <!-- Simple choice chips -->
     {#if isSimpleChoice && choices.length > 0}
-      <div class="elicitation-chips">
+      <div class="mb-4 flex flex-wrap gap-2">
         {#each choices as choice}
           <button
-            class="elicitation-chip"
-            class:selected={selectedChoice === choice}
+            class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center gap-[5px] rounded-lg border border-[hsl(var(--border)/0.7)] bg-background px-[14px] py-[7px] text-[13px] font-[450] text-[hsl(var(--foreground)/0.8)] transition-all duration-150 hover:border-[hsl(var(--primary)/0.3)] hover:bg-accent {selectedChoice === choice
+              ? 'border-[hsl(var(--primary)/0.5)] bg-[hsl(var(--primary)/0.1)] text-primary'
+              : ''}"
             onclick={() => selectChoice(choice)}
           >
             {#if selectedChoice === choice}
@@ -226,23 +231,23 @@
       </div>
     {:else if current.requestedSchema?.properties}
       <!-- Full form fields -->
-      <div class="elicitation-fields">
+      <div class="mb-4 flex flex-col gap-[14px]">
         {#each Object.entries(current.requestedSchema.properties) as [key, field]}
           {@const fieldType = renderFieldType(field)}
           {@const isRequired = current.requestedSchema?.required?.includes(key) ?? field.required}
-          <div class="elicitation-field">
-            <label class="elicitation-field-label" for="elic-{key}">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-[hsl(var(--foreground)/0.85)]" for="elic-{key}">
               {field.title ?? key}
               {#if isRequired}
                 <span class="text-destructive">*</span>
               {/if}
             </label>
             {#if field.description}
-              <p class="elicitation-field-hint">{field.description}</p>
+              <p class="mb-0.5 text-[11px] text-muted-foreground">{field.description}</p>
             {/if}
 
             {#if fieldType === "boolean"}
-              <label class="elicitation-checkbox-row">
+              <label class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring flex cursor-pointer items-center gap-2 rounded-md border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--background)/0.5)] px-3 py-2">
                 <input
                   id="elic-{key}"
                   type="checkbox"
@@ -257,7 +262,7 @@
                 id="elic-{key}"
                 value={String(formValues[key] ?? "")}
                 onchange={(e) => updateField(key, (e.target as HTMLSelectElement).value)}
-                class="elicitation-select"
+                class="w-full rounded-md border border-[hsl(var(--border)/0.6)] bg-background px-3 py-2 text-[13px] text-foreground outline-none transition-[border-color] duration-150 focus:border-[hsl(var(--primary)/0.5)] focus:shadow-[0_0_0_2px_hsl(var(--primary)/0.1)]"
               >
                 <option value="">--</option>
                 {#each field.enum as opt}
@@ -270,7 +275,7 @@
                 type="number"
                 value={formValues[key] as number}
                 oninput={(e) => updateField(key, Number((e.target as HTMLInputElement).value))}
-                class="elicitation-input"
+                class="w-full rounded-md border border-[hsl(var(--border)/0.6)] bg-background px-3 py-2 text-[13px] text-foreground outline-none transition-[border-color] duration-150 focus:border-[hsl(var(--primary)/0.5)] focus:shadow-[0_0_0_2px_hsl(var(--primary)/0.1)]"
               />
             {:else}
               <input
@@ -278,7 +283,7 @@
                 type="text"
                 value={String(formValues[key] ?? "")}
                 oninput={(e) => updateField(key, (e.target as HTMLInputElement).value)}
-                class="elicitation-input"
+                class="w-full rounded-md border border-[hsl(var(--border)/0.6)] bg-background px-3 py-2 text-[13px] text-foreground outline-none transition-[border-color] duration-150 focus:border-[hsl(var(--primary)/0.5)] focus:shadow-[0_0_0_2px_hsl(var(--primary)/0.1)]"
                 placeholder={field.title ?? key}
               />
             {/if}
@@ -288,16 +293,16 @@
     {/if}
 
     <!-- Footer actions -->
-    <div class="elicitation-footer">
+    <div class="flex items-center justify-end gap-2 border-t border-[hsl(var(--border)/0.4)] pt-[14px]">
       <button
-        class="elicitation-btn elicitation-btn--deny"
+        class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center justify-center rounded-lg border border-[hsl(var(--border)/0.7)] bg-transparent px-[18px] py-2 text-[13px] font-medium text-muted-foreground transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
         disabled={submitting}
         onclick={handleDecline}
       >
         {t("elicitation_decline")}
       </button>
       <button
-        class="elicitation-btn elicitation-btn--primary"
+        class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center justify-center rounded-lg border border-primary bg-primary px-[18px] py-2 text-[13px] font-medium text-primary-foreground transition-all duration-150 hover:bg-[hsl(var(--primary)/0.9)] disabled:cursor-not-allowed disabled:opacity-50"
         disabled={submitting || missingRequired.length > 0}
         onclick={handleAccept}
       >
@@ -306,245 +311,3 @@
     </div>
   </div>
 {/if}
-
-<style>
-  .elicitation-card {
-    position: relative;
-    isolation: isolate;
-    overflow: hidden;
-    border-radius: 18px;
-    padding: 18px 22px;
-    background: hsl(var(--miwarp-bg-elevated) / 0.9);
-    border: 1px solid hsl(var(--border) / 0.5);
-    box-shadow: 0 4px 24px -8px hsl(var(--miwarp-bg-deep) / 0.4);
-
-    /* Content-fit width */
-    width: fit-content;
-    min-width: 520px;
-    max-width: 760px;
-  }
-
-  @media (max-width: 640px) {
-    .elicitation-card {
-      width: 100%;
-      min-width: unset;
-      max-width: 100%;
-    }
-  }
-
-  .elicitation-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
-  }
-
-  .elicitation-header-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .elicitation-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    background: hsl(var(--miwarp-status-info) / 0.12);
-    color: hsl(var(--miwarp-status-info));
-  }
-
-  .elicitation-type-label {
-    font-size: 13px;
-    font-weight: 500;
-    color: hsl(var(--foreground));
-  }
-
-  .elicitation-header-right {
-    flex-shrink: 0;
-  }
-
-  .elicitation-status {
-    font-size: 11px;
-    color: hsl(var(--muted-foreground));
-  }
-
-  .elicitation-status.waiting {
-    color: hsl(var(--miwarp-status-info));
-  }
-  .elicitation-status.submitting {
-    color: hsl(var(--miwarp-status-info));
-  }
-  .elicitation-status.ready {
-    color: hsl(var(--miwarp-status-success));
-  }
-
-  .elicitation-message {
-    font-size: 14px;
-    line-height: 1.6;
-    color: hsl(var(--foreground) / 0.9);
-    margin-bottom: 14px;
-  }
-
-  .elicitation-url {
-    margin-bottom: 14px;
-  }
-
-  .elicitation-url-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    font-size: 12px;
-    color: hsl(var(--miwarp-status-info));
-    background: hsl(var(--miwarp-status-info) / 0.1);
-    border: 1px solid hsl(var(--miwarp-status-info) / 0.2);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all var(--motion-fast) var(--ease-standard);
-  }
-
-  .elicitation-url-btn:hover {
-    background: hsl(var(--miwarp-status-info) / 0.18);
-    border-color: hsl(var(--miwarp-status-info) / 0.35);
-  }
-
-  .elicitation-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-
-  .elicitation-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 7px 14px;
-    font-size: 13px;
-    font-weight: 450;
-    color: hsl(var(--foreground) / 0.8);
-    background: hsl(var(--background));
-    border: 1px solid hsl(var(--border) / 0.7);
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all var(--motion-fast) var(--ease-standard);
-  }
-
-  .elicitation-chip:hover {
-    background: hsl(var(--accent));
-    border-color: hsl(var(--primary) / 0.3);
-  }
-
-  .elicitation-chip.selected {
-    background: hsl(var(--primary) / 0.1);
-    border-color: hsl(var(--primary) / 0.5);
-    color: hsl(var(--primary));
-  }
-
-  .elicitation-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    margin-bottom: 16px;
-  }
-
-  .elicitation-field {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .elicitation-field-label {
-    font-size: 12px;
-    font-weight: 500;
-    color: hsl(var(--foreground) / 0.85);
-  }
-
-  .elicitation-field-hint {
-    font-size: 11px;
-    color: hsl(var(--muted-foreground));
-    margin-bottom: 2px;
-  }
-
-  .elicitation-checkbox-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: hsl(var(--background) / 0.5);
-    border: 1px solid hsl(var(--border) / 0.5);
-    border-radius: 8px;
-    cursor: pointer;
-  }
-
-  .elicitation-select,
-  .elicitation-input {
-    width: 100%;
-    padding: 8px 12px;
-    font-size: 13px;
-    color: hsl(var(--foreground));
-    background: hsl(var(--background));
-    border: 1px solid hsl(var(--border) / 0.6);
-    border-radius: 8px;
-    outline: none;
-    transition: border-color var(--motion-fast) var(--ease-standard);
-  }
-
-  .elicitation-select:focus,
-  .elicitation-input:focus {
-    border-color: hsl(var(--primary) / 0.5);
-    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
-  }
-
-  .elicitation-footer {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-    padding-top: 14px;
-    border-top: 1px solid hsl(var(--border) / 0.4);
-  }
-
-  .elicitation-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 18px;
-    font-size: 13px;
-    font-weight: 500;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all var(--motion-fast) var(--ease-standard);
-  }
-
-  .elicitation-btn--deny {
-    color: hsl(var(--muted-foreground));
-    background: transparent;
-    border: 1px solid hsl(var(--border) / 0.7);
-  }
-
-  .elicitation-btn--deny:hover:not(:disabled) {
-    background: hsl(var(--accent));
-    color: hsl(var(--foreground));
-    border-color: hsl(var(--border));
-  }
-
-  .elicitation-btn--primary {
-    color: hsl(var(--primary-foreground));
-    background: hsl(var(--primary));
-    border: 1px solid hsl(var(--primary));
-  }
-
-  .elicitation-btn--primary:hover:not(:disabled) {
-    background: hsl(var(--primary) / 0.9);
-  }
-
-  .elicitation-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-</style>
