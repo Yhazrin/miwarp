@@ -200,28 +200,28 @@ struct ChatView: View {
 
             if viewModel.reducer.usage.costUsd > 0 {
                 Text(String(format: "$%.4f", viewModel.reducer.usage.costUsd))
-                    .font(.caption.monospaced())
+                    .font(MWTypography.monoCaption())
                     .foregroundStyle(MWColors.statusWarning)
                     .contentTransition(.numericText())
             }
 
             if viewModel.reducer.usage.inputTokens > 0 {
-                HStack(spacing: 2) {
+                HStack(spacing: MWSpacing.xxs) {
                     Image(systemName: "arrow.down.circle")
-                        .font(.caption)
+                        .font(MWTypography.caption())
                     Text(viewModel.formatTokens(viewModel.reducer.usage.inputTokens))
-                        .font(.caption.monospaced())
+                        .font(MWTypography.monoCaption())
                 }
                 .foregroundStyle(theme.cardTextTertiary)
                 .contentTransition(.numericText())
             }
 
             if viewModel.reducer.usage.outputTokens > 0 {
-                HStack(spacing: 2) {
+                HStack(spacing: MWSpacing.xxs) {
                     Image(systemName: "arrow.up.circle")
-                        .font(.caption)
+                        .font(MWTypography.caption())
                     Text(viewModel.formatTokens(viewModel.reducer.usage.outputTokens))
-                        .font(.caption.monospaced())
+                        .font(MWTypography.monoCaption())
                 }
                 .foregroundStyle(theme.cardTextTertiary)
                 .contentTransition(.numericText())
@@ -249,16 +249,16 @@ struct ChatView: View {
                 .scaleEffect(0.75)
             VStack(alignment: .leading, spacing: 1) {
                 Text(String(localized: "chat.reconnecting"))
-                    .font(.subheadline.weight(.medium))
+                    .font(MWTypography.subheadlineMedium())
                 Text(String(format: String(localized: "chat.attempt"), attempt))
-                    .font(.caption2)
+                    .font(MWTypography.caption2())
                     .foregroundStyle(theme.cardTextSecondary)
             }
             Spacer()
             Button(String(localized: "action.cancel")) {
                 store.disconnect()
             }
-            .font(.subheadline)
+            .font(MWTypography.subheadline())
         }
         .padding(.horizontal, MWSpacing.lg)
         .padding(.vertical, MWSpacing.sm)
@@ -284,17 +284,17 @@ struct InlineApprovalView: View {
                     .symbolEffect(.pulse.byLayer, options: .repeating)
                     .foregroundStyle(MWColors.statusWarning)
                 Text(String(localized: "chat.permissionRequired"))
-                    .font(.subheadline.weight(.semibold))
+                    .font(MWTypography.subheadline().weight(.semibold))
                     .foregroundStyle(MWColors.statusWarning)
             }
 
             Label(toolName, systemImage: "wrench.and.screwdriver")
-                .font(.caption.monospaced())
+                .font(MWTypography.monoCaption())
                 .foregroundStyle(theme.cardTextSecondary)
 
             if let desc = description, !desc.isEmpty {
                 Text(desc)
-                    .font(.callout)
+                    .font(MWTypography.callout())
                     .foregroundStyle(theme.cardTextSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -305,7 +305,7 @@ struct InlineApprovalView: View {
                     onApprove?(false)
                 } label: {
                     Text(String(localized: "action.deny"))
-                        .font(.subheadline.weight(.medium))
+                        .font(MWTypography.subheadlineMedium())
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, MWSpacing.sm)
                         .background(.quaternary, in: RoundedRectangle(cornerRadius: MWRadius.md))
@@ -318,7 +318,7 @@ struct InlineApprovalView: View {
                     onApprove?(true)
                 } label: {
                     Text(String(localized: "action.allow"))
-                        .font(.subheadline.weight(.medium))
+                        .font(MWTypography.subheadlineMedium())
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, MWSpacing.sm)
                         .background(.tint, in: RoundedRectangle(cornerRadius: MWRadius.md))
@@ -328,7 +328,7 @@ struct InlineApprovalView: View {
                 .accessibilityLabel(String(localized: "action.allow"))
             }
         }
-        .padding(14)
+        .padding(MWSpacing.lg)
         .background(MWColors.cardBg, in: RoundedRectangle(cornerRadius: MWRadius.card))
         .overlay(
             RoundedRectangle(cornerRadius: MWRadius.card)

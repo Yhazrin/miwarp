@@ -92,7 +92,7 @@ struct MobileSettingsView: View {
     private var accentThemePicker: some View {
         VStack(alignment: .leading, spacing: MWSpacing.sm) {
             Label(String(localized: "settings.accentTheme"), systemImage: "swatchpalette")
-                .font(.body)
+                .font(MWTypography.body())
 
             LazyVGrid(
                 columns: [
@@ -117,7 +117,7 @@ struct MobileSettingsView: View {
                 theme.accentTheme = accent
             }
         } label: {
-            VStack(spacing: 3) {
+            VStack(spacing: MWSpacing.xxs) {
                 ZStack {
                     // Top-left triangle: primary color (clash!)
                     TopLeftTriangle()
@@ -128,7 +128,7 @@ struct MobileSettingsView: View {
 
                     if isSelected {
                         Image(systemName: "checkmark")
-                            .font(.caption.bold())
+                            .font(MWTypography.caption().bold())
                             .foregroundColor(theme.cardTextPrimary)
                             .shadow(color: .black.opacity(0.4), radius: 2, x: 0, y: 1)
                             .transition(.scale(scale: 0.5).combined(with: .opacity))
@@ -160,7 +160,7 @@ struct MobileSettingsView: View {
             if let connection = store.activeConnection, store.isConnected {
                 LabeledContent {
                     Text(connection.host)
-                        .font(.caption.monospaced())
+                        .font(MWTypography.monoCaption())
                         .foregroundStyle(theme.cardTextSecondary)
                 } label: {
                     Label(connection.name, systemImage: "checkmark.circle.fill")
@@ -228,7 +228,7 @@ struct MobileSettingsView: View {
         Section {
             LabeledContent(String(localized: "settings.defaultMode")) {
                 Text(String(localized: "settings.defaultFocus"))
-                    .font(.caption.monospaced())
+                    .font(MWTypography.monoCaption())
                     .foregroundStyle(theme.cardTextSecondary)
             }
         } header: {
@@ -293,7 +293,7 @@ struct MobileSettingsView: View {
                         .foregroundStyle(theme.cardTextPrimary)
                     Spacer()
                     Text("v\(appVersion)")
-                        .font(.caption.monospaced())
+                        .font(MWTypography.monoCaption())
                         .foregroundStyle(theme.cardTextTertiary)
                 }
             }
@@ -343,21 +343,21 @@ struct LogsView: View {
     var body: some View {
         NavigationStack {
             List(logger.recentLogs) { entry in
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: MWSpacing.xxs) {
                     HStack {
                         Text(entry.timestamp, style: .time)
-                            .font(.caption.monospaced())
+                            .font(MWTypography.monoCaption())
                             .foregroundStyle(theme.cardTextTertiary)
                         Text("[\(entry.category)]")
-                            .font(.caption.monospaced())
+                            .font(MWTypography.monoCaption())
                             .foregroundStyle(theme.cardTextSecondary)
                         Spacer()
                         Text(entry.level.rawValue.uppercased())
-                            .font(.caption2.weight(.medium))
+                            .font(MWTypography.caption2().weight(.medium))
                             .foregroundStyle(logLevelColor(entry.level))
                     }
                     Text(entry.message)
-                        .font(.caption.monospaced())
+                        .font(MWTypography.monoCaption())
                         .foregroundStyle(theme.cardTextSecondary)
                         .textSelection(.enabled)
                 }
@@ -410,14 +410,14 @@ struct AboutView: View {
 
                 VStack(spacing: MWSpacing.sm) {
                     Text(String(localized: "about.appName"))
-                        .font(.title2.weight(.semibold))
+                        .font(MWTypography.title2())
                     Text(String(format: String(localized: "about.version"), Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"))
-                        .font(.caption)
+                        .font(MWTypography.caption())
                         .foregroundStyle(theme.cardTextTertiary)
                 }
 
                 Text(String(localized: "about.description"))
-                    .font(.callout)
+                    .font(MWTypography.callout())
                     .foregroundStyle(theme.cardTextSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
@@ -464,13 +464,13 @@ struct ComponentLabView: View {
                         VStack(spacing: MWSpacing.md) {
                             HStack(spacing: MWSpacing.xl) {
                                 Text(String(localized: "component.small"))
-                                    .font(.caption)
+                                    .font(MWTypography.caption())
                                     .foregroundStyle(theme.cardTextSecondary)
                                 MWThinkingIndicator(size: .small)
                             }
                             HStack(spacing: MWSpacing.xl) {
                                 Text(String(localized: "component.medium"))
-                                    .font(.caption)
+                                    .font(MWTypography.caption())
                                     .foregroundStyle(theme.cardTextSecondary)
                                 MWThinkingIndicator(size: .medium)
                             }
@@ -498,37 +498,37 @@ struct ComponentLabView: View {
                             VStack(spacing: MWSpacing.sm) {
                                 MWStatusDot(status: .connected)
                                 Text(String(localized: "connection.connected"))
-                                    .font(.caption2)
+                                    .font(MWTypography.caption2())
                                     .foregroundStyle(theme.cardTextSecondary)
                             }
                             VStack(spacing: MWSpacing.sm) {
                                 MWStatusDot(status: .running, showGlow: true)
                                 Text(String(localized: "runStatus.running"))
-                                    .font(.caption2)
+                                    .font(MWTypography.caption2())
                                     .foregroundStyle(theme.cardTextSecondary)
                             }
                             VStack(spacing: MWSpacing.sm) {
                                 MWStatusDot(status: .syncing)
                                 Text("syncing")
-                                    .font(.caption2)
+                                    .font(MWTypography.caption2())
                                     .foregroundStyle(theme.cardTextSecondary)
                             }
                             VStack(spacing: MWSpacing.sm) {
                                 MWStatusDot(status: .failed)
                                 Text(String(localized: "runStatus.failed"))
-                                    .font(.caption2)
+                                    .font(MWTypography.caption2())
                                     .foregroundStyle(theme.cardTextSecondary)
                             }
                             VStack(spacing: MWSpacing.sm) {
                                 MWStatusDot(status: .waiting)
                                 Text(String(localized: "runStatus.waitingApproval"))
-                                    .font(.caption2)
+                                    .font(MWTypography.caption2())
                                     .foregroundStyle(theme.cardTextSecondary)
                             }
                             VStack(spacing: MWSpacing.sm) {
                                 MWStatusDot(status: .localOnly)
                                 Text("localOnly")
-                                    .font(.caption2)
+                                    .font(MWTypography.caption2())
                                     .foregroundStyle(theme.cardTextSecondary)
                             }
                         }
@@ -562,7 +562,7 @@ struct ComponentLabView: View {
     private func componentSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: MWSpacing.md) {
             Text(title)
-                .font(.headline)
+                .font(MWTypography.title3())
                 .foregroundStyle(theme.accentPrimary)
 
             content()

@@ -17,7 +17,7 @@ struct MessageListView: View {
     private func content(layout: MWAdaptiveLayout) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 10) {
+                LazyVStack(spacing: MWSpacing.sm) {
                     ForEach(messages) { message in
                         messageContent(message, layout: layout)
                             .id(message.id)
@@ -66,7 +66,7 @@ struct MessageListView: View {
         HStack {
             Spacer(minLength: 48)
             Text(content)
-                .font(.body)
+                .font(MWTypography.body())
                 .foregroundStyle(MWColors.accentOnAccent)
                 .textSelection(.enabled)
                 .frame(maxWidth: layout.chatUserBubbleMaxWidth, alignment: .leading)
@@ -80,21 +80,21 @@ struct MessageListView: View {
 
     @ViewBuilder
     private func assistantContent(_ message: DisplayMessage, layout: MWAdaptiveLayout) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: MWSpacing.sm) {
             // Thinking (developer/raw mode only)
             if complexityMode == .developer || complexityMode == .raw {
                 if let thinking = message.thinking, !thinking.isEmpty {
                     DisclosureGroup {
                         Text(thinking)
-                            .font(.caption.monospaced())
+                            .font(MWTypography.monoCaption())
                             .foregroundStyle(theme.cardTextTertiary)
                             .textSelection(.enabled)
                     } label: {
                         Label(String(localized: "chat.thinking"), systemImage: "brain")
-                            .font(.caption)
+                            .font(MWTypography.caption())
                             .foregroundStyle(theme.cardTextTertiary)
                     }
-                    .padding(10)
+                    .padding(MWSpacing.sm)
                     .frame(maxWidth: layout.chatAssistantBubbleMaxWidth, alignment: .leading)
                     .background(.quaternary, in: RoundedRectangle(cornerRadius: MWRadius.md))
                 }
@@ -115,9 +115,9 @@ struct MessageListView: View {
     }
 
     private func assistantBubble(_ content: String, isStreaming: Bool, layout: MWAdaptiveLayout) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: MWSpacing.sm) {
             Text(content)
-                .font(.body)
+                .font(MWTypography.body())
                 .foregroundStyle(theme.cardTextPrimary)
                 .textSelection(.enabled)
                 .frame(maxWidth: layout.chatAssistantBubbleMaxWidth, alignment: .leading)
@@ -140,19 +140,19 @@ struct MessageListView: View {
         case .simple:
             if toolCall.isComplete && toolCall.isError {
                 Label(toolCall.toolName, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
+                    .font(MWTypography.caption())
                     .foregroundStyle(MWColors.statusError)
             }
 
         case .focus:
             Label {
                 Text(toolCall.toolName)
-                    .font(.caption.monospaced())
+                    .font(MWTypography.monoCaption())
             } icon: {
                 Image(systemName: toolCall.isError ? "xmark.circle.fill" : (toolCall.isComplete ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath"))
                     .foregroundStyle(toolCall.isError ? MWColors.statusError : (toolCall.isComplete ? MWColors.statusSuccess : MWColors.accentPrimary))
             }
-            .font(.caption)
+            .font(MWTypography.caption())
             .foregroundStyle(theme.cardTextSecondary)
 
         case .developer, .raw:
@@ -167,7 +167,7 @@ struct MessageListView: View {
         HStack {
             Spacer()
             Text(content)
-                .font(.caption)
+                .font(MWTypography.caption())
                 .foregroundStyle(theme.cardTextTertiary)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 4)
@@ -186,26 +186,26 @@ struct ToolCallDisclosureView: View {
 
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: MWSpacing.sm) {
                 if let input = toolCall.inputPreview, !input.isEmpty {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: MWSpacing.xxs) {
                         Text(String(localized: "chat.toolInput"))
-                            .font(.caption2.weight(.medium))
+                            .font(MWTypography.caption2().weight(.medium))
                             .foregroundStyle(theme.cardTextTertiary)
                         Text(input)
-                            .font(.caption.monospaced())
+                            .font(MWTypography.monoCaption())
                             .foregroundStyle(theme.cardTextSecondary)
                             .textSelection(.enabled)
                     }
                 }
 
                 if let output = toolCall.output, !output.isEmpty {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: MWSpacing.xxs) {
                         Text(String(localized: "chat.toolOutput"))
-                            .font(.caption2.weight(.medium))
+                            .font(MWTypography.caption2().weight(.medium))
                             .foregroundStyle(theme.cardTextTertiary)
                         Text(output)
-                            .font(.caption.monospaced())
+                            .font(MWTypography.monoCaption())
                             .foregroundStyle(toolCall.isError ? MWColors.statusError : theme.cardTextSecondary)
                             .lineLimit(15)
                             .textSelection(.enabled)
@@ -214,13 +214,13 @@ struct ToolCallDisclosureView: View {
             }
             .padding(.top, 4)
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: MWSpacing.xs) {
                 Image(systemName: toolCall.isError ? "xmark.circle.fill" : (toolCall.isComplete ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath"))
                     .font(MWTypography.footnote())
                     .foregroundStyle(toolCall.isError ? MWColors.statusError : (toolCall.isComplete ? MWColors.statusSuccess : MWColors.accentPrimary))
 
                 Text(toolCall.toolName)
-                    .font(.caption.monospaced())
+                    .font(MWTypography.monoCaption())
                     .foregroundStyle(MWColors.accentPrimary)
 
                 if !toolCall.isComplete && !toolCall.isError {
@@ -229,7 +229,7 @@ struct ToolCallDisclosureView: View {
                 }
             }
         }
-        .padding(10)
+        .padding(MWSpacing.sm)
         .background(MWColors.bgElevated, in: RoundedRectangle(cornerRadius: MWRadius.md))
     }
 }
