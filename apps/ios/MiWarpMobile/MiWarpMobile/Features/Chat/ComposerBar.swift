@@ -24,7 +24,7 @@ struct ComposerBar: View {
             Divider()
                 .opacity(0.3)
 
-            HStack(alignment: .bottom, spacing: 10) {
+            HStack(alignment: .bottom, spacing: MWSpacing.sm) {
                 // Attach button
                 Button {
                     onAttach?()
@@ -36,10 +36,10 @@ struct ComposerBar: View {
                 .accessibilityLabel(String(localized: "action.attach"))
 
                 // Input capsule
-                HStack(spacing: 6) {
+                HStack(spacing: MWSpacing.xs) {
                     TextField(String(localized: "chat.typeMessage"), text: $text, axis: .vertical)
                         .textFieldStyle(.plain)
-                        .font(.body)
+                        .font(MWTypography.body())
                         .lineLimit(1...6)
                         .focused($isFocused)
                         .submitLabel(.send)
@@ -53,8 +53,8 @@ struct ComposerBar: View {
                         sendButton
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
+                .padding(.horizontal, MWSpacing.md)
+                .padding(.vertical, MWSpacing.sm)
                 .background(
                     Capsule()
                         .fill(theme.cardBg)
@@ -64,8 +64,8 @@ struct ComposerBar: View {
                         )
                 )
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.horizontal, MWSpacing.lg)
+            .padding(.vertical, MWSpacing.sm)
             .background(.ultraThinMaterial)
         }
     }

@@ -46,27 +46,27 @@ struct RawEventView: View {
     // MARK: - Event Row
 
     private func eventRow(_ event: BusEvent) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: MWSpacing.xs) {
             HStack {
                 Text(event.payloadTypeName)
-                    .font(.caption.weight(.medium))
+                    .font(MWTypography.caption().weight(.medium))
                     .foregroundStyle(MWColors.accentPrimary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, MWSpacing.xs)
+                    .padding(.vertical, MWSpacing.xxs)
                     .background(MWColors.accentPrimary.opacity(0.12), in: Capsule())
 
                 Spacer()
 
                 Text("#\(event.seq)")
-                    .font(.caption2.monospaced())
+                    .font(MWTypography.monoSmall())
                     .foregroundStyle(.tertiary)
             }
 
             Text(event.runId.prefix(12) + "...")
-                .font(.caption2.monospaced())
+                .font(MWTypography.monoSmall())
                 .foregroundStyle(.tertiary)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, MWSpacing.xxs)
     }
 
     // MARK: - Event Detail Sheet
@@ -74,21 +74,21 @@ struct RawEventView: View {
     private func eventDetailSheet(_ event: BusEvent) -> some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: MWSpacing.md) {
                     // Header
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: MWSpacing.xs) {
                         Text(event.payloadTypeName)
-                            .font(.headline)
+                            .font(MWTypography.title3())
                             .foregroundStyle(MWColors.accentPrimary)
                         Text("seq: \(event.seq) · run: \(event.runId.prefix(12))...")
-                            .font(.caption.monospaced())
+                            .font(MWTypography.monoCaption())
                             .foregroundStyle(theme.cardTextTertiary)
                     }
 
                     Divider()
 
                     Text(formattedPayload(event))
-                        .font(.caption.monospaced())
+                        .font(MWTypography.monoCaption())
                         .foregroundStyle(theme.cardTextSecondary)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)

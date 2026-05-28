@@ -23,7 +23,7 @@ struct LiveActivityDemoView: View {
         List {
             // MARK: - Device Capability Check
             Section {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: MWSpacing.sm) {
                     HStack {
                         Image(systemName: activitiesEnabled ? "checkmark.circle.fill" : "xmark.circle.fill")
                             .foregroundColor(activitiesEnabled ? MWColors.statusSuccess : MWColors.statusError)
@@ -40,15 +40,15 @@ struct LiveActivityDemoView: View {
 
                     if !activitiesEnabled {
                         Text(String(localized: "liveActivity.enableHint"))
-                            .font(.caption)
+                            .font(MWTypography.caption())
                             .foregroundColor(MWColors.statusWarning)
                     }
 
                     Text(String(localized: "liveActivity.lockScreenOnly"))
-                        .font(.caption2)
+                        .font(MWTypography.caption2())
                         .foregroundColor(theme.cardTextSecondary)
                 }
-                .font(.callout)
+                .font(MWTypography.callout())
             } header: {
                 Text(String(localized: "liveActivity.deviceCapability"))
                     .foregroundColor(theme.cardTextSecondary)
@@ -61,7 +61,7 @@ struct LiveActivityDemoView: View {
                         .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text(syncTaskId)
-                        .font(.caption.monospaced())
+                        .font(MWTypography.monoCaption())
                         .foregroundColor(theme.cardTextSecondary)
                 }
 
@@ -78,21 +78,21 @@ struct LiveActivityDemoView: View {
                         .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text("\(syncCount) / \(syncTotal)")
-                        .font(.caption.monospaced())
+                        .font(MWTypography.monoCaption())
                         .foregroundColor(theme.cardTextSecondary)
                 }
 
                 if let result = syncResult {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: MWSpacing.xs) {
                         HStack {
                             Image(systemName: result.isSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
                                 .foregroundColor(result.isSuccess ? MWColors.statusSuccess : MWColors.statusError)
                             Text(result.displayMessage)
-                                .font(.caption)
+                                .font(MWTypography.caption())
                                 .foregroundColor(theme.cardTextPrimary)
                         }
                     }
-                    .padding(.vertical, 4)
+                    .padding(.vertical, MWSpacing.xs)
                 }
 
                 Button {
@@ -145,7 +145,7 @@ struct LiveActivityDemoView: View {
                         .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text(agentTaskId)
-                        .font(.caption.monospaced())
+                        .font(MWTypography.monoCaption())
                         .foregroundColor(theme.cardTextSecondary)
                 }
 
@@ -162,21 +162,21 @@ struct LiveActivityDemoView: View {
                         .foregroundColor(theme.cardTextPrimary)
                     Spacer()
                     Text("\(agentStep) / \(agentTotal)")
-                        .font(.caption.monospaced())
+                        .font(MWTypography.monoCaption())
                         .foregroundColor(theme.cardTextSecondary)
                 }
 
                 if let result = agentResult {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: MWSpacing.xs) {
                         HStack {
                             Image(systemName: result.isSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
                                 .foregroundColor(result.isSuccess ? MWColors.statusSuccess : MWColors.statusError)
                             Text(result.displayMessage)
-                                .font(.caption)
+                                .font(MWTypography.caption())
                                 .foregroundColor(theme.cardTextPrimary)
                         }
                     }
-                    .padding(.vertical, 4)
+                    .padding(.vertical, MWSpacing.xs)
                 }
 
                 Button {

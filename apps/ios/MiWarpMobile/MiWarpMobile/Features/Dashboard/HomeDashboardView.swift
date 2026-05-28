@@ -9,7 +9,7 @@ struct HomeDashboardView: View {
     @EnvironmentObject private var theme: MWTheme
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: MWSpacing.lg) {
             connectionCard
             if !runs.isEmpty {
                 recentRunsSection
@@ -20,20 +20,20 @@ struct HomeDashboardView: View {
     // MARK: - Connection Card
 
     private var connectionCard: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MWSpacing.md) {
             Circle()
                 .fill(statusColor)
                 .frame(width: 10, height: 10)
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: MWSpacing.xxs) {
                 Text(connectionState.displayLabel)
-                    .font(.subheadline.weight(.medium))
+                    .font(MWTypography.subheadlineMedium())
                     .foregroundColor(theme.textPrimary)
 
                 if let conn = activeConnection {
                     Text(conn.host)
-                        .font(.caption)
+                        .font(MWTypography.caption())
                         .foregroundColor(theme.textTertiary)
                 }
             }
@@ -49,13 +49,13 @@ struct HomeDashboardView: View {
                     )
                 } label: {
                     Text(String(localized: "connection.connect"))
-                        .font(.caption.weight(.medium))
+                        .font(MWTypography.caption().weight(.medium))
                         .foregroundColor(MWColors.accentPrimary)
                 }
                 .accessibilityLabel(String(localized: "connection.connect"))
             }
         }
-        .padding(14)
+        .padding(MWSpacing.lg)
         .background(
             RoundedRectangle(cornerRadius: MWRadius.card)
                 .fill(theme.cardBg)
@@ -82,9 +82,9 @@ struct HomeDashboardView: View {
     // MARK: - Recent Runs
 
     private var recentRunsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: MWSpacing.sm) {
             Text(String(localized: "dashboard.recentActivity"))
-                .font(.footnote.weight(.semibold))
+                .font(MWTypography.footnote().weight(.semibold))
                 .foregroundColor(theme.textSecondary)
                 .textCase(.uppercase)
                 .accessibilityAddTraits(.isHeader)
@@ -96,28 +96,28 @@ struct HomeDashboardView: View {
     }
 
     private func recentRunRow(_ run: MiWarpRun) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: MWSpacing.sm) {
             Image(systemName: run.status == .completed ? "checkmark.circle.fill" : "clock.fill")
                 .font(MWTypography.callout())
                 .foregroundColor(run.status == .completed ? MWColors.statusSuccess : MWColors.statusWarning)
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: MWSpacing.xxs) {
                 Text(run.name ?? String(localized: "dashboard.run"))
-                    .font(.subheadline)
+                    .font(MWTypography.subheadline())
                     .foregroundColor(theme.textPrimary)
                     .lineLimit(1)
 
                 if let date = run.createdAt {
                     Text(date, style: .relative)
-                        .font(.caption2)
+                        .font(MWTypography.caption2())
                         .foregroundColor(theme.textTertiary)
                 }
             }
 
             Spacer()
         }
-        .padding(10)
+        .padding(MWSpacing.sm)
         .accessibilityElement(children: .combine)
         .background(
             RoundedRectangle(cornerRadius: MWRadius.md)

@@ -32,7 +32,7 @@ struct ArtifactsView: View {
                             ForEach(artifacts.filesChanged, id: \.self) { path in
                                 Label {
                                     Text(path)
-                                        .font(.caption.monospaced())
+                                        .font(MWTypography.monoCaption())
                                         .foregroundStyle(theme.cardTextSecondary)
                                         .textSelection(.enabled)
                                 } icon: {
@@ -61,7 +61,7 @@ struct ArtifactsView: View {
                         Section(String(format: String(localized: "artifacts.commands"), artifacts.commands.count)) {
                             ForEach(artifacts.commands, id: \.self) { command in
                                 Label(command, systemImage: "terminal")
-                                    .font(.caption.monospaced())
+                                    .font(MWTypography.monoCaption())
                                     .foregroundStyle(theme.cardTextSecondary)
                                     .textSelection(.enabled)
                                     .swipeActions(edge: .trailing) {
@@ -87,7 +87,7 @@ struct ArtifactsView: View {
                         Section(String(localized: "artifacts.cost")) {
                             LabeledContent(String(localized: "artifacts.estimatedCost")) {
                                 Text(String(format: "$%.4f", cost))
-                                    .font(.body.monospaced())
+                                    .font(MWTypography.monoBody())
                                     .foregroundStyle(MWColors.statusWarning)
                             }
                         }

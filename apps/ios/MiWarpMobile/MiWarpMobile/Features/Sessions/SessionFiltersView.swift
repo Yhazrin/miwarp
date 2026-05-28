@@ -41,7 +41,7 @@ struct SessionFiltersView: View {
                                 let count = statusCount(status)
                                 if count > 0 {
                                     Text("\(count)")
-                                        .font(.caption.monospaced())
+                                        .font(MWTypography.monoCaption())
                                         .foregroundStyle(.tertiary)
                                 }
                             }

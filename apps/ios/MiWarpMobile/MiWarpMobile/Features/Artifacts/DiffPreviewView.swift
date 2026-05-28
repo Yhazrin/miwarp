@@ -9,22 +9,22 @@ struct DiffPreviewView: View {
     private var deletionCount: Int { parsedLines.filter { $0.prefix == "-" }.count }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: MWSpacing.xs) {
             // Summary
-            HStack(spacing: 12) {
+            HStack(spacing: MWSpacing.md) {
                 if additionCount > 0 {
                     Label("\(additionCount)", systemImage: "plus.circle.fill")
-                        .font(.caption.weight(.medium))
+                        .font(MWTypography.caption().weight(.medium))
                         .foregroundStyle(MWColors.statusSuccess)
                 }
                 if deletionCount > 0 {
                     Label("\(deletionCount)", systemImage: "minus.circle.fill")
-                        .font(.caption.weight(.medium))
+                        .font(MWTypography.caption().weight(.medium))
                         .foregroundStyle(MWColors.statusError)
                 }
                 Spacer()
                 Text(String(format: String(localized: "diff.lineCount"), parsedLines.count))
-                    .font(.caption2)
+                    .font(MWTypography.caption2())
                     .foregroundStyle(.tertiary)
             }
 
@@ -34,19 +34,19 @@ struct DiffPreviewView: View {
                     ForEach(parsedLines) { line in
                         HStack(spacing: 0) {
                             Text(line.prefix)
-                                .font(.caption2.monospaced())
+                                .font(MWTypography.monoSmall())
                                 .foregroundStyle(line.color.opacity(0.6))
                                 .frame(width: 20, alignment: .leading)
 
                             Text(line.text)
-                                .font(.caption2.monospaced())
+                                .font(MWTypography.monoSmall())
                                 .foregroundStyle(line.color)
                         }
                         .padding(.vertical, 1)
                         .background(line.background)
                     }
                 }
-                .padding(8)
+                .padding(MWSpacing.sm)
             }
             .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: MWRadius.md))
         }

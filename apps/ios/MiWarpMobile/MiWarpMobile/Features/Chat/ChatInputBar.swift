@@ -17,12 +17,12 @@ struct ChatInputBar: View {
     }
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 10) {
+        HStack(alignment: .bottom, spacing: MWSpacing.sm) {
             // Input capsule
-            HStack(spacing: 6) {
+            HStack(spacing: MWSpacing.xs) {
                 TextField(String(localized: "chat.inputPlaceholder"), text: $text, axis: .vertical)
                     .textFieldStyle(.plain)
-                    .font(.body)
+                    .font(MWTypography.body())
                     .lineLimit(1...6)
                     .focused($isFocused)
                     .submitLabel(.send)
@@ -77,9 +77,9 @@ struct ChatInputBar: View {
                     .animation(MWMotion.springQuick, value: canSubmit)
                 }
             }
-            .padding(.leading, 14)
-            .padding(.trailing, 6)
-            .padding(.vertical, 6)
+            .padding(.leading, MWSpacing.lg)
+            .padding(.trailing, MWSpacing.xs)
+            .padding(.vertical, MWSpacing.xs)
             .background(.ultraThinMaterial, in: Capsule())
             .overlay(
                 Capsule()
@@ -90,7 +90,7 @@ struct ChatInputBar: View {
                     .animation(MWMotion.springQuick, value: isFocused)
             )
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, MWSpacing.md)
+        .padding(.vertical, MWSpacing.sm)
     }
 }
