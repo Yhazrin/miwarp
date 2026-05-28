@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.miwarp.mobile.design.MWEmptyState
+import com.miwarp.mobile.design.MWSessionCard
 import com.miwarp.mobile.design.MWErrorState
 import com.miwarp.mobile.design.MWLoadingState
 import com.miwarp.mobile.design.MWTheme
@@ -103,8 +104,12 @@ fun SessionHubScreen(
                             verticalArrangement = Arrangement.spacedBy(spacing.sm),
                         ) {
                             items(filteredRuns, key = { it.id }) { run ->
-                                SessionCard(
-                                    run = run,
+                                MWSessionCard(
+                                    title = run.displayTitle,
+                                    status = run.status,
+                                    cwd = run.shortCwd,
+                                    model = run.model,
+                                    messageCount = run.messageCount,
                                     onClick = { onSessionClick(run.id) },
                                 )
                             }
