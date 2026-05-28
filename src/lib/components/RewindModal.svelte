@@ -14,6 +14,8 @@
     isFilesParamUnsupported,
   } from "$lib/utils/rewind";
   import Modal from "./Modal.svelte";
+  import Icon from "$lib/components/Icon.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
 
   let {
     open = $bindable(false),
@@ -272,24 +274,15 @@
   <!-- Phase: select -->
   {#if phase === "select"}
     {#if candidates.length === 0}
-      <div class="flex flex-col items-center gap-2 py-8 text-center text-muted-foreground">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-10 w-10 opacity-40"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          stroke-width="1.5"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <p class="text-sm font-medium">{t("rewind_noCheckpoints")}</p>
-        <p class="text-xs opacity-70">{t("rewind_noCheckpointsHint")}</p>
-      </div>
+      <EmptyState
+        title={t("rewind_noCheckpoints")}
+        description={t("rewind_noCheckpointsHint")}
+        class="py-8 text-muted-foreground"
+      >
+        {#snippet iconComponent()}
+          <Icon name="clock" size="lg" class="opacity-40" />
+        {/snippet}
+      </EmptyState>
     {:else}
       <p class="mb-3 text-sm text-muted-foreground">{t("rewind_selectCheckpoint")}</p>
       {@render candidateList()}

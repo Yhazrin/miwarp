@@ -7,6 +7,7 @@
   import { fmtRelative } from "$lib/i18n/format";
   import { cwdDisplayLabel } from "$lib/utils/format";
   import Icon from "$lib/components/Icon.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import type { CliSessionSummary, DiscoverResult, ImportResult, SyncResult } from "$lib/types";
 
   function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
@@ -297,35 +298,13 @@
           <Spinner size="md" />
         </div>
       {:else if error && sessions.length === 0}
-        <div class="flex flex-col items-center gap-2 py-12 text-center">
-          <svg
-            class="h-8 w-8 text-destructive/60"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          <p class="text-sm text-destructive">{error}</p>
-        </div>
+        <EmptyState title={error} class="py-12 text-destructive">
+          {#snippet iconComponent()}
+            <Icon name="triangle-alert" size="lg" class="text-destructive/60" />
+          {/snippet}
+        </EmptyState>
       {:else if filtered.length === 0}
-        <div class="flex flex-col items-center gap-2 py-12 text-center">
-          <svg
-            class="h-8 w-8 text-muted-foreground/40"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <path
-              d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"
-            />
-          </svg>
-          <p class="text-sm text-muted-foreground">{t("cliSync_noSessions")}</p>
-        </div>
+        <EmptyState icon="📁" title={t("cliSync_noSessions")} />
       {:else}
         <div class="space-y-2">
           {#each filtered as session (session.sessionId)}

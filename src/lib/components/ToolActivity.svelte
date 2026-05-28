@@ -9,6 +9,7 @@
   import { sortTasksByPriority, formatElapsed } from "$lib/utils/task-sort";
   import { t } from "$lib/i18n/index.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import ContextHistoryPanel from "$lib/components/ContextHistoryPanel.svelte";
   import WorkspaceContextPanel from "$lib/components/WorkspaceContextPanel.svelte";
   import FilesPanel from "$lib/components/FilesPanel.svelte";
@@ -1229,25 +1230,15 @@
           <!-- Tool list -->
           <div class="flex-1 overflow-y-auto py-0.5 scrollbar-hide">
             {#if toolStats.totalToolCount === 0}
-              <div class="flex flex-col items-center justify-center h-32 px-4 text-center">
-                <svg
-                  class="h-8 w-8 text-muted-foreground/20 mb-2"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path
-                    d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
-                  />
-                </svg>
-                <p class="text-xs text-muted-foreground/50">{t("toolActivity_noToolCalls")}</p>
-                <p class="text-[10px] text-muted-foreground/30 mt-1">
-                  {t("toolActivity_emptyHint")}
-                </p>
-              </div>
+              <EmptyState
+                title={t("toolActivity_noToolCalls")}
+                description={t("toolActivity_emptyHint")}
+                class="h-32 px-4 py-4"
+              >
+                {#snippet iconComponent()}
+                  <Icon name="wrench" size="lg" class="text-muted-foreground/20 mb-2" />
+                {/snippet}
+              </EmptyState>
             {:else if useTimeline}
               <!-- Timeline mode: grouped by turn -->
               {#each turns as turn (turn.turnIndex)}

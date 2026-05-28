@@ -8,6 +8,7 @@
     variant = "default" as "default" | "dashed",
     class: className = "",
     action,
+    iconComponent,
   }: {
     icon?: string;
     title?: string;
@@ -15,6 +16,7 @@
     variant?: "default" | "dashed";
     class?: string;
     action?: Snippet;
+    iconComponent?: Snippet;
   } = $props();
 
   const wrapperClass = $derived(
@@ -25,7 +27,9 @@
 </script>
 
 <div class="flex flex-col items-center justify-center gap-3 py-12 text-center {wrapperClass} {className}">
-  {#if icon}
+  {#if iconComponent}
+    {@render iconComponent()}
+  {:else if icon}
     <div class="text-4xl opacity-50">{icon}</div>
   {/if}
   {#if title}

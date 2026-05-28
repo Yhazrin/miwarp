@@ -14,6 +14,7 @@
   import { executeScript, cancelExecution, validateScript } from "$lib/services/automation-service";
   import { browserStore } from "$lib/stores/browser-store.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import StepEditor from "./StepEditor.svelte";
 
   interface Props {
@@ -333,10 +334,11 @@
         </div>
 
         {#if editedScript.steps.length === 0}
-          <div class="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-            <span class="text-3xl mb-2 block">📋</span>
-            <p class="text-sm">{t("automationEditor_noSteps")}</p>
-          </div>
+          <EmptyState
+            icon="📋"
+            title={t("automationEditor_noSteps")}
+            variant="dashed"
+          />
         {:else}
           <div class="space-y-2">
             {#each editedScript.steps as step, index (step.id)}

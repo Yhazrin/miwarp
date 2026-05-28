@@ -3,6 +3,8 @@
   import { getTransport } from "$lib/transport";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/Icon.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
 
   const WEBVIEW_LABEL = "chat-preview-pane";
   const PREVIEW_URL_KEY = "ocv:preview-url";
@@ -392,23 +394,14 @@
         <div
           class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-2xl bg-background/70 px-6 backdrop-blur-xl"
         >
-          <div class="text-center">
-            <svg
-              class="mx-auto mb-3 h-10 w-10 text-muted-foreground/30"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <rect x="2" y="3" width="20" height="14" rx="2" />
-              <line x1="8" y1="21" x2="16" y2="21" />
-              <line x1="12" y1="17" x2="12" y2="21" />
-            </svg>
-            <p class="text-sm text-muted-foreground">{t("preview_emptyTitle")}</p>
-            <p class="mt-1 text-xs text-muted-foreground/70">{t("preview_emptyHint")}</p>
-          </div>
+          <EmptyState
+            title={t("preview_emptyTitle")}
+            description={t("preview_emptyHint")}
+          >
+            {#snippet iconComponent()}
+              <Icon name="monitor" size="lg" class="text-muted-foreground/30" />
+            {/snippet}
+          </EmptyState>
           <div class="flex flex-wrap items-center justify-center gap-2">
             <span class="text-[10px] text-muted-foreground/50">本地端口：</span>
             {#each QUICK_PORTS as qp}

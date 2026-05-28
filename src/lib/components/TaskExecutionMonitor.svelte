@@ -8,6 +8,7 @@
   import type { ExecutionLog } from "$lib/types/task-execution-monitor";
   import { t } from "$lib/i18n/index.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
 
   interface Props {
     taskId?: string;
@@ -188,18 +189,14 @@
   <!-- Logs -->
   <div bind:this={logContainer} class="flex-1 overflow-y-auto p-4 font-mono text-xs">
     {#if logs.length === 0}
-      <div class="flex flex-col items-center justify-center h-full text-muted-foreground">
-        <svg
-          class="h-8 w-8 mb-2 opacity-50"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-        >
-          <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <p>{t('taskExecution_waiting')}</p>
-      </div>
+      <EmptyState
+        title={t("taskExecution_waiting")}
+        class="h-full text-muted-foreground"
+      >
+        {#snippet iconComponent()}
+          <Icon name="clock" size="lg" class="opacity-50 mb-2" />
+        {/snippet}
+      </EmptyState>
     {:else}
       <div class="space-y-1">
         {#each logs as log}

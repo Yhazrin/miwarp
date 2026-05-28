@@ -9,6 +9,7 @@
   import Modal from "$lib/components/Modal.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import EmptyState from "$lib/components/EmptyState.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
 
   // Local state
@@ -207,31 +208,19 @@
         <div class="flex h-40 items-center justify-center">
           <Spinner size="xl" class="border-primary border-t-transparent" />
         </div>
+      {:else if filteredSkills().length === 0 && searchQuery}
+        <EmptyState icon="✨" title={t("skills_noResults")} class="h-40" />
       {:else if filteredSkills().length === 0}
-        <div class="flex h-40 flex-col items-center justify-center gap-2 text-center">
-          <svg
-            class="h-12 w-12 text-muted-foreground/50"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-          >
-            <path
-              d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"
-            />
-          </svg>
-          <p class="text-sm text-muted-foreground">
-            {searchQuery ? t("skills_noResults") : t("skills_empty")}
-          </p>
-          {#if !searchQuery}
+        <EmptyState icon="✨" title={t("skills_empty")} class="h-40">
+          {#snippet action()}
             <button
               class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
               onclick={() => skillStore.openCreateEditor()}
             >
               {t("skills_emptyCta")}
             </button>
-          {/if}
-        </div>
+          {/snippet}
+        </EmptyState>
       {:else}
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {#each filteredSkills() as skill (skill.id)}
@@ -246,10 +235,7 @@
       {/if}
     {:else if activeTab === "history"}
       {#if skillStore.executions.length === 0}
-        <div class="flex h-40 flex-col items-center justify-center gap-2 text-center">
-          <Icon name="clock" class="h-12 w-12 text-muted-foreground/50" />
-          <p class="text-sm text-muted-foreground">{t("skills_noHistory")}</p>
-        </div>
+        <EmptyState icon="⏱️" title={t("skills_noHistory")} class="h-40" />
       {:else}
         <div class="space-y-3">
           {#each skillStore.recentExecutions as execution (execution.id)}
