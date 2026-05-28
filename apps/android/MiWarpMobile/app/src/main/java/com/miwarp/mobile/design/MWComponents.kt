@@ -178,7 +178,7 @@ fun MWSessionCard(
         Spacer(modifier = Modifier.height(spacing.xxs))
         Icon(
             imageVector = Icons.Default.ChevronRight,
-            contentDescription = null,
+            contentDescription = "View session details",
             tint = colors.textTertiary,
             modifier = Modifier.align(Alignment.End).size(spacing.md),
         )
@@ -308,7 +308,7 @@ fun MWToolCallCard(
             )
             Icon(
                 imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
+                contentDescription = "Expand tool call",
                 tint = colors.textTertiary,
                 modifier = Modifier
                     .size(14.dp)
@@ -433,7 +433,7 @@ fun MWApprovalCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 imageVector = Icons.Default.Warning,
-                contentDescription = null,
+                contentDescription = "Warning",
                 tint = colors.statusWarning,
                 modifier = Modifier.size(18.dp),
             )
@@ -552,7 +552,7 @@ fun MWDiffFileRow(
             Spacer(modifier = Modifier.width(spacing.xxs))
             Icon(
                 imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
+                contentDescription = "View diff",
                 tint = colors.textTertiary,
                 modifier = Modifier.size(14.dp),
             )
@@ -708,7 +708,7 @@ fun MWErrorState(
     ) {
         Icon(
             imageVector = Icons.Default.ErrorOutline,
-            contentDescription = null,
+            contentDescription = "Error",
             tint = colors.statusError,
             modifier = Modifier.size(spacing.xxxxl),
         )
@@ -733,7 +733,7 @@ fun MWErrorState(
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
-                    contentDescription = null,
+                    contentDescription = "Retry",
                     modifier = Modifier.size(spacing.md),
                 )
                 Spacer(modifier = Modifier.width(spacing.xs))
@@ -802,7 +802,7 @@ fun MWReconnectBanner(
                 } else {
                     Icon(
                         imageVector = Icons.Default.ErrorOutline,
-                        contentDescription = null,
+                        contentDescription = "Connection error",
                         tint = colors.statusError,
                         modifier = Modifier.size(14.dp),
                     )

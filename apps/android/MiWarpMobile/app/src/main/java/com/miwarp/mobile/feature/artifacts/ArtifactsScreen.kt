@@ -105,7 +105,7 @@ fun ArtifactsScreen(
                                     headlineContent = {
                                         Text(
                                             text = filePath,
-                                            style = MWTypography.monoCaption,
+                                            style = MWTypography.monoSmall,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                         )
@@ -113,7 +113,7 @@ fun ArtifactsScreen(
                                     leadingContent = {
                                         Icon(
                                             imageVector = Icons.Outlined.Description,
-                                            contentDescription = null,
+                                            contentDescription = "File",
                                             tint = colors.accentCyan,
                                         )
                                     },

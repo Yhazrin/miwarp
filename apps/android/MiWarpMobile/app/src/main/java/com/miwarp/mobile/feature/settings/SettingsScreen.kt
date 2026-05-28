@@ -210,7 +210,7 @@ private fun SettingsRow(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = null,
+                contentDescription = label,
                 tint = colors.textSecondary,
                 modifier = Modifier.size(spacing.lg),
             )
