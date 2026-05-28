@@ -189,7 +189,7 @@ struct SessionHubView: View {
                         Text(activeFilterLabel)
                             .font(.caption)
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 10, weight: .medium))
+                            .font(MWTypography.caption2().weight(.medium))
                     }
                     .foregroundColor(filters.isActive ? theme.tabActive : .secondary)
                 }
@@ -280,12 +280,12 @@ struct SessionHubView: View {
             } label: {
                 HStack(spacing: MWSpacing.sm) {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(MWTypography.title3().weight(.medium))
                     Text(String(localized: "sessions.connectNow"))
                         .font(.body.weight(.medium))
                     Spacer()
                     Image(systemName: "arrow.right")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(MWTypography.callout().weight(.medium))
                 }
                 .foregroundColor(theme.accentPrimary)
                 .padding(.horizontal, MWSpacing.lg)
@@ -352,7 +352,7 @@ struct SessionHubView: View {
             VStack(alignment: .leading, spacing: MWSpacing.sm) {
                 HStack(spacing: MWSpacing.sm) {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 18))
+                        .font(MWTypography.title2().weight(.regular))
                         .foregroundColor(MWColors.statusSuccess)
 
                     Text(String(localized: "sessions.desktopConnected"))
@@ -389,7 +389,7 @@ struct SessionHubView: View {
                             .font(.body.weight(.medium))
                     } else {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(MWTypography.callout().weight(.medium))
                         Text(String(localized: "sessions.syncNow"))
                             .font(.body.weight(.medium))
                     }
@@ -411,7 +411,7 @@ struct SessionHubView: View {
             } label: {
                 HStack(spacing: MWSpacing.sm) {
                     Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(MWTypography.callout().weight(.medium))
                     Text(String(localized: "sessions.syncNow"))
                         .font(.body.weight(.medium))
                     Spacer()
@@ -429,7 +429,7 @@ struct SessionHubView: View {
             if let conn = store.activeConnection {
                 HStack(spacing: MWSpacing.xs) {
                     Image(systemName: "desktopcomputer")
-                        .font(.system(size: 10))
+                        .font(MWTypography.caption2())
                     Text(conn.host)
                         .font(.caption)
                 }
@@ -495,7 +495,7 @@ struct SessionHubView: View {
     private func heroPill(icon: String, label: String) -> some View {
         HStack(spacing: MWSpacing.xs) {
             Image(systemName: icon)
-                .font(.system(size: 10, weight: .medium))
+                .font(MWTypography.caption2().weight(.medium))
             Text(label)
                 .font(.caption)
         }

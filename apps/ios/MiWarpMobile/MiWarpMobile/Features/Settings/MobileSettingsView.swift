@@ -144,7 +144,7 @@ struct MobileSettingsView: View {
                 .animation(MWMotion.springBouncy, value: isSelected)
 
                 Text(accent.displayName)
-                    .font(.system(size: 10))
+                    .font(MWTypography.caption2())
                     .foregroundColor(theme.cardTextSecondary)
                     .lineLimit(1)
             }
@@ -404,7 +404,7 @@ struct AboutView: View {
                         .fill(theme.accentPrimary.opacity(0.08))
                         .frame(width: 88, height: 88)
                     Image(systemName: "cpu")
-                        .font(.system(size: 40))
+                        .font(MWTypography.iconLarge())
                         .foregroundStyle(theme.accentPrimary, theme.accentSecondary)
                 }
 

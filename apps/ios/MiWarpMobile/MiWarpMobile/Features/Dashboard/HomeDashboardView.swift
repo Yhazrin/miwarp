@@ -98,7 +98,7 @@ struct HomeDashboardView: View {
     private func recentRunRow(_ run: MiWarpRun) -> some View {
         HStack(spacing: 10) {
             Image(systemName: run.status == .completed ? "checkmark.circle.fill" : "clock.fill")
-                .font(.system(size: 14))
+                .font(MWTypography.callout())
                 .foregroundColor(run.status == .completed ? MWColors.statusSuccess : MWColors.statusWarning)
                 .accessibilityHidden(true)
 

@@ -30,7 +30,7 @@ struct ComposerBar: View {
                     onAttach?()
                 } label: {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 22))
+                        .font(MWTypography.title())
                         .foregroundColor(theme.textTertiary)
                 }
                 .accessibilityLabel(String(localized: "action.attach"))
@@ -87,7 +87,7 @@ struct ComposerBar: View {
             onStop?()
         } label: {
             Image(systemName: "stop.fill")
-                .font(.system(size: 14, weight: .bold))
+                .font(MWTypography.callout().bold())
                 .foregroundColor(MWColors.accentOnAccent)
                 .frame(width: 28, height: 28)
                 .background(MWColors.statusError, in: Circle())

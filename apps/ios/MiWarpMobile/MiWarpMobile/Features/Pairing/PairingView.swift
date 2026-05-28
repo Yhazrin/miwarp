@@ -126,7 +126,7 @@ struct PairingView: View {
     private func heroPill(icon: String, label: String) -> some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
-                .font(.system(size: 10, weight: .medium))
+                .font(MWTypography.caption2().weight(.medium))
             Text(label)
                 .font(.caption)
         }

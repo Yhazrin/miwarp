@@ -216,7 +216,7 @@ struct ToolCallDisclosureView: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: toolCall.isError ? "xmark.circle.fill" : (toolCall.isComplete ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath"))
-                    .font(.system(size: 12))
+                    .font(MWTypography.footnote())
                     .foregroundStyle(toolCall.isError ? MWColors.statusError : (toolCall.isComplete ? MWColors.statusSuccess : MWColors.accentPrimary))
 
                 Text(toolCall.toolName)

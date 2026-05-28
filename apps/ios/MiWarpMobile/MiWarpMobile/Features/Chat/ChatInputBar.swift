@@ -35,7 +35,7 @@ struct ChatInputBar: View {
                         onStop?()
                     } label: {
                         Image(systemName: "stop.fill")
-                            .font(.system(size: 14, weight: .bold))
+                            .font(MWTypography.callout().bold())
                             .foregroundStyle(MWColors.accentOnAccent)
                             .frame(width: 28, height: 28)
                             .background(MWColors.statusError, in: Circle())
@@ -47,7 +47,7 @@ struct ChatInputBar: View {
                         onFork?()
                     } label: {
                         Image(systemName: "arrow.branch")
-                            .font(.system(size: 13, weight: .medium))
+                            .font(MWTypography.subheadlineMedium())
                             .foregroundStyle(.secondary)
                             .frame(width: 28, height: 28)
                     }
@@ -65,7 +65,7 @@ struct ChatInputBar: View {
                         onSend?()
                     } label: {
                         Image(systemName: "arrow.up")
-                            .font(.system(size: 14, weight: .bold))
+                            .font(MWTypography.callout().bold())
                             .foregroundStyle(canSubmit ? MWColors.accentOnAccent : Color(.systemFill))
                             .frame(width: 28, height: 28)
                             .background(canSubmit ? theme.accentPrimary : Color(.systemFill), in: Circle())
