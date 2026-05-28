@@ -10,7 +10,6 @@
   import { t } from "$lib/i18n/index.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
-  import Spinner from "$lib/components/Spinner.svelte";
   import SkeletonLine from "$lib/components/SkeletonLine.svelte";
 
   // Local state

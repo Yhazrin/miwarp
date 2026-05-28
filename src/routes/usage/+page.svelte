@@ -9,7 +9,6 @@
   import HeatmapCalendar from "$lib/components/HeatmapCalendar.svelte";
   import StackedModelChart from "$lib/components/StackedModelChart.svelte";
   import { t } from "$lib/i18n/index.svelte";
-  import Spinner from "$lib/components/Spinner.svelte";
   import SkeletonLine from "$lib/components/SkeletonLine.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { fmtDate, fmtNumber } from "$lib/i18n/format";

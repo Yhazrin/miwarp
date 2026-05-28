@@ -363,12 +363,12 @@
 
   .status-badge.success {
     background: hsl(var(--miwarp-status-success));
-    color: black;
+    color: hsl(var(--miwarp-accent-on-accent, 0 0% 100%));
   }
 
   .status-badge.error {
     background: hsl(var(--miwarp-status-error));
-    color: white;
+    color: hsl(var(--miwarp-accent-on-accent, 0 0% 100%));
   }
 
   .content-type {

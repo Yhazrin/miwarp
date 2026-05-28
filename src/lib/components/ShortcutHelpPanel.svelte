@@ -171,13 +171,15 @@
         <!-- CLI Reference (collapsible) -->
         {#if cliBindings.length > 0}
           <section>
-            <button
-              class="flex w-full items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
-              onclick={() => (cliExpanded = !cliExpanded)}
-            >
-              <Icon name="chevron-down" size="xs" class="transition-transform {cliExpanded ? '' : '-rotate-90'}" />
-              {t("shortcutHelp_cliRef")}
-            </button>
+            <h3>
+              <button
+                class="flex w-full items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+                onclick={() => (cliExpanded = !cliExpanded)}
+              >
+                <Icon name="chevron-down" size="xs" class="transition-transform {cliExpanded ? '' : '-rotate-90'}" />
+                {t("shortcutHelp_cliRef")}
+              </button>
+            </h3>
             {#if cliExpanded}
               <div class="mt-2 space-y-1">
                 {#each cliBindings as b (b.command)}

@@ -506,7 +506,7 @@
       </div>
     {:else if kind === "image" && imageDataUrl}
       <div
-        class="absolute inset-0 flex items-center justify-center overflow-auto p-4 bg-black/5 dark:bg-white/5"
+        class="absolute inset-0 flex items-center justify-center overflow-auto p-4 bg-[hsl(var(--miwarp-text-primary)/0.05)]"
       >
         <img
           src={imageDataUrl}

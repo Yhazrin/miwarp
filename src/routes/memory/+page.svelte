@@ -7,7 +7,6 @@
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
   import CodeEditor from "$lib/components/CodeEditor.svelte";
   import { t } from "$lib/i18n/index.svelte";
-  import Spinner from "$lib/components/Spinner.svelte";
   import SkeletonLine from "$lib/components/SkeletonLine.svelte";
   import { showToast } from "$lib/stores/toast-store.svelte";
   import { dbgWarn } from "$lib/utils/debug";

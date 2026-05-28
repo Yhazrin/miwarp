@@ -414,7 +414,7 @@
   .badge {
     padding: 0.25rem 0.5rem;
     background: hsl(var(--miwarp-status-success, 152 55% 55%));
-    color: black;
+    color: hsl(var(--miwarp-accent-on-accent, 0 0% 100%));
     font-size: 0.75rem;
     border-radius: 4px;
   }
@@ -479,7 +479,7 @@
 
   .tab-item.active {
     background: hsl(var(--miwarp-accent-primary));
-    color: white;
+    color: hsl(var(--miwarp-accent-on-accent, 0 0% 100%));
   }
 
   .tab-title {
