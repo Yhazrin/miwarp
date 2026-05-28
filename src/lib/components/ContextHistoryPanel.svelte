@@ -8,6 +8,7 @@
   import type { TurnUsage } from "$lib/stores/types";
   import { formatTokenCount, formatDuration, formatCost } from "$lib/utils/format";
   import { getColor, getIcon, computeContextDelta } from "$lib/utils/context-parser";
+  import { slide } from "svelte/transition";
   import { t } from "$lib/i18n/index.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
 
@@ -379,7 +380,7 @@
               {/if}
             </button>
             {#if isExpanded}
-              <div class="px-4 py-1.5 bg-muted/20 border-b border-border/20">
+              <div class="px-4 py-1.5 bg-muted/20 border-b border-border/20" transition:slide={{ duration: 200 }}>
                 {#if entry.snap}
                   {#each entry.snap.data.categories as cat}
                     <div class="flex items-center gap-1.5 text-[10px] py-0.5">

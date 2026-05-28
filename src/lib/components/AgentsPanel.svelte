@@ -5,6 +5,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import type { AgentDefinitionSummary } from "$lib/types";
   import AgentEditor from "./AgentEditor.svelte";
+  import { fade } from "svelte/transition";
 
   let {
     projectCwd = "",
@@ -235,6 +236,7 @@
 {#if confirmDelete}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay"
+    transition:fade={{ duration: 150 }}
     role="dialog"
     aria-modal="true"
     onclick={() => (confirmDelete = null)}

@@ -3,6 +3,7 @@
   import type { TeamRun, TeamRunStatus } from "$lib/types";
   import Icon from "$lib/components/Icon.svelte";
   import { goto } from "$app/navigation";
+  import { slide } from "svelte/transition";
 
   let {
     teamRun,
@@ -156,7 +157,7 @@
 
           <!-- Expanded content -->
           {#if isExpanded}
-            <div class="border-t border-border/30 px-2.5 py-2 space-y-1.5">
+            <div class="border-t border-border/30 px-2.5 py-2 space-y-1.5" transition:slide={{ duration: 200 }}>
               <div class="flex items-center justify-between">
                 <span class="text-[10px] text-muted-foreground">状态</span>
                 <span class="text-[10px] font-medium {st.dot.replace('bg-', 'text-')}"

@@ -4,6 +4,7 @@
    * Shows tool calls as nodes on a vertical timeline with status colors.
    */
   import { t } from "$lib/i18n/index.svelte";
+  import { slide } from "svelte/transition";
 
   interface ToolCall {
     id: string;
@@ -126,7 +127,7 @@
 
         <!-- Summary (when expanded) -->
         {#if isExpanded && tool.summary}
-          <div class="mt-2 border-t border-border pt-2">
+          <div class="mt-2 border-t border-border pt-2" transition:slide={{ duration: 200 }}>
             <p class="text-xs text-miwarp-text-secondary leading-relaxed">
               {tool.summary}
             </p>

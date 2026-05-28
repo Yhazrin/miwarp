@@ -149,13 +149,13 @@
 
 {#if current}
   <div
-    class="relative isolate overflow-hidden rounded-[18px] border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--miwarp-bg-elevated)/0.9)] px-[22px] py-[18px] shadow-[0_4px_24px_-8px_hsl(var(--miwarp-bg-deep)/0.4)] w-fit min-w-[520px] max-w-[760px] max-sm:w-full max-sm:min-w-0 max-sm:max-w-full"
+    class="relative isolate overflow-hidden rounded-2xl border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--miwarp-bg-elevated)/0.9)] px-6 py-5 shadow-[0_4px_24px_-8px_hsl(var(--miwarp-bg-deep)/0.4)] w-fit min-w-[520px] max-w-[760px] max-sm:w-full max-sm:min-w-0 max-sm:max-w-full"
     role="dialog"
     aria-label={t("elicitation_title")}
     transition:fly={{ y: 10, duration: 200 }}
   >
     <!-- Header -->
-    <div class="mb-[12px] flex items-center justify-between gap-[12px]">
+    <div class="mb-3 flex items-center justify-between gap-3">
       <div class="flex items-center gap-2">
         <div class="flex h-7 w-7 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-info)/0.12)] text-miwarp-status-info">
           <svg
@@ -187,12 +187,12 @@
 
     <!-- Message -->
     {#if current.message}
-      <p class="mb-[14px] text-[14px]/[1.6] text-[hsl(var(--foreground)/0.9)]">{current.message}</p>
+      <p class="mb-3.5 text-sm/[1.6] text-[hsl(var(--foreground)/0.9)]">{current.message}</p>
     {/if}
 
     <!-- URL button -->
     {#if current.url}
-      <div class="mb-[14px]">
+      <div class="mb-3.5">
         <button type="button"
           class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[hsl(var(--miwarp-status-info)/0.2)] bg-[hsl(var(--miwarp-status-info)/0.1)] px-3 py-1.5 text-xs text-miwarp-status-info transition-all duration-150 hover:border-[hsl(var(--miwarp-status-info)/0.35)] hover:bg-[hsl(var(--miwarp-status-info)/0.18)]"
           onclick={() => current?.url && openElicitationUrl(current.url)}
@@ -207,7 +207,7 @@
       <div class="mb-4 flex flex-wrap gap-2">
         {#each choices as choice}
           <button type="button"
-            class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center gap-[5px] rounded-lg border border-[hsl(var(--border)/0.7)] bg-background px-[14px] py-[7px] text-[13px] font-[450] text-[hsl(var(--foreground)/0.8)] transition-all duration-150 hover:border-[hsl(var(--primary)/0.3)] hover:bg-accent {selectedChoice === choice
+            class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[hsl(var(--border)/0.7)] bg-background px-3.5 py-1.5 text-[13px] font-medium text-[hsl(var(--foreground)/0.8)] transition-all duration-150 hover:border-[hsl(var(--primary)/0.3)] hover:bg-accent {selectedChoice === choice
               ? 'border-[hsl(var(--primary)/0.5)] bg-[hsl(var(--primary)/0.1)] text-primary'
               : ''}"
             onclick={() => selectChoice(choice)}
@@ -231,7 +231,7 @@
       </div>
     {:else if current.requestedSchema?.properties}
       <!-- Full form fields -->
-      <div class="mb-4 flex flex-col gap-[14px]">
+      <div class="mb-4 flex flex-col gap-3.5">
         {#each Object.entries(current.requestedSchema.properties) as [key, field]}
           {@const fieldType = renderFieldType(field)}
           {@const isRequired = current.requestedSchema?.required?.includes(key) ?? field.required}
@@ -293,7 +293,7 @@
     {/if}
 
     <!-- Footer actions -->
-    <div class="flex items-center justify-end gap-2 border-t border-[hsl(var(--border)/0.4)] pt-[14px]">
+    <div class="flex items-center justify-end gap-2 border-t border-[hsl(var(--border)/0.4)] pt-3.5">
       <button type="button"
         class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center justify-center rounded-lg border border-[hsl(var(--border)/0.7)] bg-transparent px-[18px] py-2 text-[13px] font-medium text-muted-foreground transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
         disabled={submitting}
