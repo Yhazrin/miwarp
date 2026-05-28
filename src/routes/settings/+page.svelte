@@ -1778,7 +1778,7 @@
                   {t("settings_general_display")}
                 </h2>
                 {#if displaySaved}
-                  <span class="text-xs text-[hsl(var(--miwarp-status-success))] flex items-center gap-1 animate-fade-in">
+                  <span class="text-xs text-miwarp-status-success flex items-center gap-1 animate-fade-in">
                     <Icon name="check" size="xs" />
                     {t("settings_general_saved")}
                   </span>
@@ -1886,7 +1886,7 @@
                   <!-- Startup warning banner -->
                   {#if webStatus?.warning}
                     <div class="rounded-md border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] px-3 py-2">
-                      <p class="text-xs text-[hsl(var(--miwarp-status-warning))] whitespace-pre-line">
+                      <p class="text-xs text-miwarp-status-warning whitespace-pre-line">
                         {t("settings_general_webStartupWarning", { warning: webStatus.warning })}
                       </p>
                     </div>
@@ -1994,7 +1994,7 @@
                           </button>
                         </div>
                       {:else if isAllInterfaces}
-                        <p class="text-xs text-[hsl(var(--miwarp-status-warning))]">
+                        <p class="text-xs text-miwarp-status-warning">
                           {t("settings_general_webLanIpFailed")}
                         </p>
                       {/if}
@@ -2033,7 +2033,7 @@
                         {/if}
                         <span class="text-border">|</span>
                         <button
-                          class="text-[hsl(var(--miwarp-status-warning)/0.7)] hover:text-[hsl(var(--miwarp-status-warning))] transition-colors"
+                          class="text-[hsl(var(--miwarp-status-warning)/0.7)] hover:text-miwarp-status-warning transition-colors"
                           onclick={async () => {
                             try {
                               const newToken = await api.regenerateWebServerToken();
@@ -2112,7 +2112,7 @@
                       }}
                     />
                     {#if webTunnelError}
-                      <p class="text-xs text-[hsl(var(--miwarp-status-error))] mt-1">{webTunnelError}</p>
+                      <p class="text-xs text-miwarp-status-error mt-1">{webTunnelError}</p>
                     {:else}
                       <p class="text-xs text-muted-foreground mt-1">
                         {t("settings_general_webTunnelDesc")}
@@ -2230,7 +2230,7 @@
                           </button>
                         </div>
                         {#if webOriginError}
-                          <p class="text-xs text-[hsl(var(--miwarp-status-error))]">{webOriginError}</p>
+                          <p class="text-xs text-miwarp-status-error">{webOriginError}</p>
                         {/if}
                         <p class="text-xs text-muted-foreground">
                           {t("settings_general_webAllowedOriginsDesc")}
@@ -2242,12 +2242,12 @@
                   <!-- Apply + feedback -->
                   <div class="space-y-2 pt-2 border-t border-border">
                     {#if webRestartError}
-                      <p class="text-xs text-[hsl(var(--miwarp-status-error))]">
+                      <p class="text-xs text-miwarp-status-error">
                         {t("settings_general_webRestartFailed", { error: webRestartError })}
                       </p>
                     {/if}
                     {#if webRestartWarning}
-                      <p class="text-xs text-[hsl(var(--miwarp-status-warning))]">{webRestartWarning}</p>
+                      <p class="text-xs text-miwarp-status-warning">{webRestartWarning}</p>
                     {/if}
                     <button
                       class="rounded-md border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
@@ -2619,7 +2619,7 @@
                   {t("settings_general_connection")}
                 </h2>
                 {#if generalSaved}
-                  <span class="text-xs text-[hsl(var(--miwarp-status-success))] flex items-center gap-1 animate-fade-in">
+                  <span class="text-xs text-miwarp-status-success flex items-center gap-1 animate-fade-in">
                     <Icon name="check" size="xs" />
                     {t("settings_general_saved")}
                   </span>
@@ -2656,7 +2656,7 @@
                       class="flex h-10 w-10 items-center justify-center rounded-full bg-[hsl(var(--miwarp-status-success)/0.1)]"
                     >
                       <svg
-                        class="h-5 w-5 text-[hsl(var(--miwarp-status-success))]"
+                        class="h-5 w-5 text-miwarp-status-success"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -2724,8 +2724,8 @@
                     </p>
                     {#if authOverview?.cli_login_available}
                       <div class="flex items-center gap-2">
-                        <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-success))]"></span>
-                        <span class="text-xs text-[hsl(var(--miwarp-status-success))]">
+                        <span class="h-2 w-2 rounded-full bg-miwarp-status-success"></span>
+                        <span class="text-xs text-miwarp-status-success">
                           {t("auth_loggedIn")}{authOverview.cli_login_account
                             ? `: ${authOverview.cli_login_account}`
                             : ""}
@@ -2777,7 +2777,7 @@
                         </div>
                         {#if cliLoginError}
                           <div class="rounded border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.05)] px-2 py-1">
-                            <p class="text-xs text-[hsl(var(--miwarp-status-error))]">{cliLoginError}</p>
+                            <p class="text-xs text-miwarp-status-error">{cliLoginError}</p>
                           </div>
                         {/if}
                       </div>
@@ -2789,8 +2789,8 @@
                     <h3 class="text-sm font-medium mb-1">{t("settings_auth_cliApiKeyTitle")}</h3>
                     {#if authOverview?.cli_has_api_key}
                       <div class="flex items-center gap-2">
-                        <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-success))]"></span>
-                        <span class="text-xs text-[hsl(var(--miwarp-status-success))]"
+                        <span class="h-2 w-2 rounded-full bg-miwarp-status-success"></span>
+                        <span class="text-xs text-miwarp-status-success"
                           >{t("auth_cliKeyHint", {
                             hint: authOverview.cli_api_key_hint ?? "",
                           })}</span
@@ -2882,9 +2882,9 @@
                             <span
                               class="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full {ps?.running &&
                               !ps.needsAuth
-                                ? 'bg-[hsl(var(--miwarp-status-success))]'
+                                ? 'bg-miwarp-status-success'
                                 : ps?.running && ps.needsAuth
-                                  ? 'bg-[hsl(var(--miwarp-status-warning))]'
+                                  ? 'bg-miwarp-status-warning'
                                   : 'bg-muted-foreground/30'}"
                               title={ps?.running && !ps.needsAuth
                                 ? t("settings_local_running")
@@ -2894,7 +2894,7 @@
                             ></span>
                           {:else if findCredential(platformCredentials, preset.id)?.api_key}
                             <span
-                              class="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-success))]"
+                              class="absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full bg-miwarp-status-success"
                               title="Key saved"
                             ></span>
                           {/if}
@@ -2916,13 +2916,13 @@
                     <div class="rounded-lg border p-4 space-y-3">
                       <div class="flex items-center gap-2">
                         {#if localProxyChecking}
-                          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-warning))] animate-pulse"></span>
+                          <span class="h-2 w-2 rounded-full bg-miwarp-status-warning animate-pulse"></span>
                           <span class="text-sm">{t("settings_local_checking")}</span>
                         {:else if localProxyStatus?.running && !localProxyStatus.needsAuth}
-                          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-success))]"></span>
+                          <span class="h-2 w-2 rounded-full bg-miwarp-status-success"></span>
                           <span class="text-sm font-medium">{t("settings_local_running")}</span>
                         {:else if localProxyStatus?.running && localProxyStatus.needsAuth}
-                          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-warning))]"></span>
+                          <span class="h-2 w-2 rounded-full bg-miwarp-status-warning"></span>
                           <span class="text-sm font-medium">{t("settings_local_needsAuth")}</span>
                         {:else}
                           <span class="h-2 w-2 rounded-full bg-muted-foreground/30"></span>
@@ -2935,7 +2935,7 @@
                       </div>
                       <p class="text-xs text-muted-foreground font-mono">{anthropicBaseUrl}</p>
                       {#if localProxyStatus && !localProxyStatus.running}
-                        <p class="text-xs text-[hsl(var(--miwarp-status-warning))]">
+                        <p class="text-xs text-miwarp-status-warning">
                           {selectedPlatform.setup_hint
                             ? t(selectedPlatform.setup_hint as Parameters<typeof t>[0])
                             : t("settings_local_startHint", { name: selectedPlatform.name })}
@@ -3136,15 +3136,15 @@
                       <!-- API test result -->
                       {#if apiTestLoading}
                         <div class="mt-1.5 flex items-center gap-1.5">
-                          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-warning))] animate-pulse"></span>
+                          <span class="h-2 w-2 rounded-full bg-miwarp-status-warning animate-pulse"></span>
                           <span class="text-xs text-muted-foreground"
                             >{t("settings_apiTest_testing")}</span
                           >
                         </div>
                       {:else if apiTestResult?.success && apiTestResult.partial}
                         <div class="mt-1.5 flex items-center gap-1.5">
-                          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-success))]"></span>
-                          <span class="text-xs text-[hsl(var(--miwarp-status-success))]"
+                          <span class="h-2 w-2 rounded-full bg-miwarp-status-success"></span>
+                          <span class="text-xs text-miwarp-status-success"
                             >{t("settings_apiTest_partial", {
                               latency: String(apiTestResult.latencyMs),
                             })}</span
@@ -3152,8 +3152,8 @@
                         </div>
                       {:else if apiTestResult?.success}
                         <div class="mt-1.5 flex items-center gap-1.5">
-                          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-success))]"></span>
-                          <span class="text-xs text-[hsl(var(--miwarp-status-success))]"
+                          <span class="h-2 w-2 rounded-full bg-miwarp-status-success"></span>
+                          <span class="text-xs text-miwarp-status-success"
                             >{t("settings_apiTest_success", {
                               latency: String(apiTestResult.latencyMs),
                             })}</span
@@ -3161,8 +3161,8 @@
                         </div>
                       {:else if apiTestResult && !apiTestResult.success}
                         <div class="mt-1.5 flex items-center gap-1.5">
-                          <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-error))]"></span>
-                          <span class="text-xs text-[hsl(var(--miwarp-status-error))] dark:text-[hsl(var(--miwarp-status-error))]"
+                          <span class="h-2 w-2 rounded-full bg-miwarp-status-error"></span>
+                          <span class="text-xs text-miwarp-status-error dark:text-miwarp-status-error"
                             >{apiTestResult.error ?? t("settings_apiTest_failed")}</span
                           >
                         </div>
@@ -3329,8 +3329,8 @@
                   {t("settings_mobile_server") || "Web Server"}
                 </h2>
                 {#if webStatus?.running}
-                  <span class="flex items-center gap-1.5 text-xs text-[hsl(var(--miwarp-status-success))]">
-                    <span class="h-2 w-2 rounded-full bg-[hsl(var(--miwarp-status-success))] animate-pulse"></span>
+                  <span class="flex items-center gap-1.5 text-xs text-miwarp-status-success">
+                    <span class="h-2 w-2 rounded-full bg-miwarp-status-success animate-pulse"></span>
                     {t("settings_mobile_serverRunning") || "Running"}
                   </span>
                 {:else}
@@ -3413,8 +3413,8 @@
                 <div class="flex items-center justify-between mb-2">
                   <p class="text-sm font-medium">{t("settings_general_webAccess")}</p>
                   {#if webStatus?.running && webStatus.bind !== webBindValue}
-                    <span class="text-xs text-[hsl(var(--miwarp-status-warning))] flex items-center gap-1">
-                      <span class="h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-warning))] animate-pulse"></span>
+                    <span class="text-xs text-miwarp-status-warning flex items-center gap-1">
+                      <span class="h-1.5 w-1.5 rounded-full bg-miwarp-status-warning animate-pulse"></span>
                       {t("settings_mobile_pendingRestart") || "Pending restart"}
                     </span>
                   {/if}
@@ -3473,12 +3473,12 @@
               <!-- Error/Warning -->
               {#if webRestartError}
                 <div class="rounded-md border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.05)] px-3 py-2">
-                  <p class="text-xs text-[hsl(var(--miwarp-status-error))]">{webRestartError}</p>
+                  <p class="text-xs text-miwarp-status-error">{webRestartError}</p>
                 </div>
               {/if}
               {#if webRestartWarning}
                 <div class="rounded-md border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] px-3 py-2">
-                  <p class="text-xs text-[hsl(var(--miwarp-status-warning))]">{webRestartWarning}</p>
+                  <p class="text-xs text-miwarp-status-warning">{webRestartWarning}</p>
                 </div>
               {/if}
             </Card>
@@ -3521,7 +3521,7 @@
                       {@html `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="h-10 w-10 text-[hsl(var(--miwarp-status-warning)/0.7)]"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`}
                     </div>
                     <div>
-                      <p class="text-sm font-medium text-[hsl(var(--miwarp-status-warning))]">
+                      <p class="text-sm font-medium text-miwarp-status-warning">
                         {t("settings_mobile_bindWarning") || "LAN Mode Required"}
                       </p>
                       <p class="text-xs text-muted-foreground mt-1">
@@ -3625,7 +3625,7 @@
             </div>
           {:else if cliConfigError}
             <Card class="p-6">
-              <p class="text-sm text-[hsl(var(--miwarp-status-error))]">
+              <p class="text-sm text-miwarp-status-error">
                 {t("settings_cliConfig_loadFailed", { error: cliConfigError })}
               </p>
               <button
@@ -3650,7 +3650,7 @@
                         <p class="text-sm font-medium">{def.label}</p>
                         {#if isProjectOverride(def.key)}
                           <span
-                            class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-status-warning)/0.15)] text-[hsl(var(--miwarp-status-warning))] border border-[hsl(var(--miwarp-status-warning)/0.2)]"
+                            class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-status-warning)/0.15)] text-miwarp-status-warning border border-[hsl(var(--miwarp-status-warning)/0.2)]"
                           >
                             {t("settings_cliConfig_projectOverride")}
                           </span>
@@ -3720,7 +3720,7 @@
                         <p class="text-sm font-medium">{def.label}</p>
                         {#if isProjectOverride(def.key)}
                           <span
-                            class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-status-warning)/0.15)] text-[hsl(var(--miwarp-status-warning))] border border-[hsl(var(--miwarp-status-warning)/0.2)]"
+                            class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-status-warning)/0.15)] text-miwarp-status-warning border border-[hsl(var(--miwarp-status-warning)/0.2)]"
                           >
                             {t("settings_cliConfig_projectOverride")}
                           </span>
@@ -3809,7 +3809,7 @@
                         <p class="text-sm font-medium">{def.label}</p>
                         {#if isProjectOverride(def.key)}
                           <span
-                            class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-status-warning)/0.15)] text-[hsl(var(--miwarp-status-warning))] border border-[hsl(var(--miwarp-status-warning)/0.2)]"
+                            class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-status-warning)/0.15)] text-miwarp-status-warning border border-[hsl(var(--miwarp-status-warning)/0.2)]"
                           >
                             {t("settings_cliConfig_projectOverride")}
                           </span>
@@ -4009,7 +4009,7 @@
                 </p>
               </div>
               {#if remoteSaved}
-                <span class="text-xs text-[hsl(var(--miwarp-status-success))] flex items-center gap-1 animate-fade-in">
+                <span class="text-xs text-miwarp-status-success flex items-center gap-1 animate-fade-in">
                   <Icon name="check" size="xs" />
                   {t("settings_general_saved")}
                 </span>
@@ -4158,7 +4158,7 @@
                           {t("settings_remote_sshKeyGenerating")}
                         </div>
                       {:else if sshKeyStep === "pub_missing" && sshKeyInfo}
-                        <p class="text-[hsl(var(--miwarp-status-warning))]">
+                        <p class="text-miwarp-status-warning">
                           {t(
                             IS_WINDOWS
                               ? "settings_remote_sshKeyPubMissing_win"
@@ -4194,7 +4194,7 @@
                           {t("settings_remote_sshKeyClose")}
                         </button>
                       {:else if sshKeyStep === "has_key" && sshKeyInfo}
-                        <p class="text-[hsl(var(--miwarp-status-success))]">
+                        <p class="text-miwarp-status-success">
                           {t("settings_remote_sshKeyFound", { keyType: sshKeyInfo.key_type })}
                           <span class="text-muted-foreground ml-1 font-mono"
                             >{sshKeyInfo.key_path}</span
@@ -4258,7 +4258,7 @@
                           </div>
 
                           {#if sshKeyError && sshKeyStep === "has_key"}
-                            <p class="text-[hsl(var(--miwarp-status-error))] text-[11px]">
+                            <p class="text-miwarp-status-error text-[11px]">
                               {t(
                                 IS_WINDOWS
                                   ? "settings_remote_sshKeyFailed_win"
@@ -4278,7 +4278,7 @@
                           </button>
                         {/if}
                       {:else if sshKeyStep === "done"}
-                        <p class="text-[hsl(var(--miwarp-status-success))]">{t("settings_remote_sshKeySuccess")}</p>
+                        <p class="text-miwarp-status-success">{t("settings_remote_sshKeySuccess")}</p>
                         <button
                           class="text-[10px] text-muted-foreground hover:underline"
                           onclick={closeSshWizard}
@@ -4286,7 +4286,7 @@
                           {t("settings_remote_sshKeyClose")}
                         </button>
                       {:else if sshKeyStep === "error"}
-                        <p class="text-[hsl(var(--miwarp-status-error))]">
+                        <p class="text-miwarp-status-error">
                           {t("settings_remote_sshKeyGenError", { error: sshKeyError })}
                         </p>
                         <button
@@ -4331,7 +4331,7 @@
 
               {#if remoteFormForwardKey}
                 <div
-                  class="flex items-start gap-2 p-2 rounded bg-[hsl(var(--miwarp-status-warning)/0.1)] border border-[hsl(var(--miwarp-status-warning)/0.2)] text-xs text-[hsl(var(--miwarp-status-warning))]"
+                  class="flex items-start gap-2 p-2 rounded bg-[hsl(var(--miwarp-status-warning)/0.1)] border border-[hsl(var(--miwarp-status-warning)/0.2)] text-xs text-miwarp-status-warning"
                 >
                   <span class="shrink-0 mt-0.5">&#9888;</span>
                   <span>{t("settings_remote_forwardKeyWarning")}</span>
@@ -4397,7 +4397,7 @@
                       <div
                         class="mt-1.5 p-2 rounded bg-[hsl(var(--miwarp-status-warning)/0.1)] border border-[hsl(var(--miwarp-status-warning)/0.2)] space-y-1"
                       >
-                        <p class="text-[hsl(var(--miwarp-status-warning))]">{t("settings_remote_cliNotFoundHint")}</p>
+                        <p class="text-miwarp-status-warning">{t("settings_remote_cliNotFoundHint")}</p>
                         <code
                           class="block rounded bg-muted px-2 py-1 font-mono text-[11px] select-all"
                           >which claude</code
@@ -4407,7 +4407,7 @@
                     {/if}
                   {/if}
                   {#if remoteTestResult.error}
-                    <p class="text-[hsl(var(--miwarp-status-error))]">{remoteTestResult.error}</p>
+                    <p class="text-miwarp-status-error">{remoteTestResult.error}</p>
                   {/if}
                 </div>
               {/if}
@@ -4531,7 +4531,7 @@
                 {t("settings_notif_title") || "System Notifications"}
               </h2>
               {#if notifSaved}
-                <span class="text-xs text-[hsl(var(--miwarp-status-success))] flex items-center gap-1 animate-fade-in">
+                <span class="text-xs text-miwarp-status-success flex items-center gap-1 animate-fade-in">
                   <svg
                     class="h-3 w-3"
                     viewBox="0 0 24 24"
@@ -4651,7 +4651,7 @@
                 {t("settings_notif_feishuTitle") || "Feishu Webhook"}
               </h2>
               {#if feishuSaved}
-                <span class="text-xs text-[hsl(var(--miwarp-status-success))] flex items-center gap-1 animate-fade-in">
+                <span class="text-xs text-miwarp-status-success flex items-center gap-1 animate-fade-in">
                   <svg
                     class="h-3 w-3"
                     viewBox="0 0 24 24"
@@ -4734,7 +4734,7 @@
                   class="text-xs {feishuTestResult.includes('Failed') ||
                   feishuTestResult.includes('Error')
                     ? 'text-destructive'
-                    : 'text-[hsl(var(--miwarp-status-success))]'}"
+                    : 'text-miwarp-status-success'}"
                 >
                   {feishuTestResult}
                 </span>
@@ -4829,7 +4829,7 @@
                     </div>
                     <div class="ml-2 text-xs">
                       {#if session.alreadyImported}
-                        <span class="text-[hsl(var(--miwarp-status-success))]">
+                        <span class="text-miwarp-status-success">
                           {t("settings_data_imported") || "Imported"}
                         </span>
                       {:else}
@@ -4877,15 +4877,15 @@
                 </div>
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                   <span>{t("settings_data_imported_count") || "Imported"}:</span>
-                  <span class="text-[hsl(var(--miwarp-status-success))]">{importReport.imported}</span>
+                  <span class="text-miwarp-status-success">{importReport.imported}</span>
                   <span>{t("settings_data_duplicates") || "Duplicates"}:</span>
-                  <span class="text-[hsl(var(--miwarp-status-warning))]">{importReport.duplicates}</span>
+                  <span class="text-miwarp-status-warning">{importReport.duplicates}</span>
                   <span>{t("settings_data_skipped") || "Skipped"}:</span>
-                  <span class="text-[hsl(var(--miwarp-status-warning))]">{importReport.skipped}</span>
+                  <span class="text-miwarp-status-warning">{importReport.skipped}</span>
                   <span>{t("settings_data_failed") || "Failed"}:</span>
-                  <span class="text-[hsl(var(--miwarp-status-error))]">{importReport.failed}</span>
+                  <span class="text-miwarp-status-error">{importReport.failed}</span>
                   <span>{t("settings_data_missing_cwd") || "Missing CWD"}:</span>
-                  <span class="text-[hsl(var(--miwarp-status-warning))]">{importReport.missingCwd}</span>
+                  <span class="text-miwarp-status-warning">{importReport.missingCwd}</span>
                 </div>
               </div>
             {/if}
@@ -4893,7 +4893,7 @@
             <!-- Error -->
             {#if historyError}
               <div
-                class="p-3 bg-[hsl(var(--miwarp-status-error)/0.1)] border border-[hsl(var(--miwarp-status-error)/0.3)] rounded-md text-sm text-[hsl(var(--miwarp-status-error))]"
+                class="p-3 bg-[hsl(var(--miwarp-status-error)/0.1)] border border-[hsl(var(--miwarp-status-error)/0.3)] rounded-md text-sm text-miwarp-status-error"
               >
                 {historyError}
               </div>
