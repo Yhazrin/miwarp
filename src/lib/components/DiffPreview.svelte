@@ -139,7 +139,7 @@
 /** * DiffPreview: 内联Diff预览组件 * * Codex 设计灵感: * 1. side-by-side 或 unified diff 视图 * 2.
 语法高亮 * 3. 展开/折叠变更块 * 4. 快速应用/撤销 */
 <div
-  class="diff-preview rounded-xl border border-border/60 bg-background/95 overflow-hidden shadow-lg"
+  class="font-mono rounded-xl border border-border/60 bg-background/95 overflow-hidden shadow-lg"
 >
   <!-- Header -->
   <div class="flex items-center justify-between border-b border-border/40 px-4 py-2 bg-muted/30">
@@ -225,7 +225,7 @@
         </div>
       {:else}
         <!-- 语法高亮容器 -->
-        <div class="diff-lines font-mono text-[12px] leading-5">
+        <div class="tab-2 font-mono text-[12px] leading-5">
           {#each diffLines as line, i}
             {@const lineNum = lineNumbers[i]}
             <div class="flex {getLineClass(line)}">
@@ -241,7 +241,7 @@
                 >
                   {lineNum.newLine ?? ""}
                 </span>
-                <span class="diff-line-content px-2">{line}</span>
+                <span class="whitespace-pre px-2">{line}</span>
               {:else}
                 <!-- 分列模式 -->
                 <div class="flex-1 flex">
@@ -251,18 +251,18 @@
                     {lineNum.oldLine ?? ""}
                   </span>
                   <span
-                    class="diff-line-content px-1 flex-1 {line.startsWith('-') ? '' : 'opacity-30'}"
+                    class="whitespace-pre px-1 flex-1 {line.startsWith('-') ? '' : 'opacity-30'}"
                     >{line}</span
                   >
                 </div>
                 <div class="flex-1 flex border-l border-border/40">
                   <span
-                    class="diff-line-num w-8 shrink-0 select-none text-right pr-2 text-muted-foreground/40"
+                    class="w-8 shrink-0 select-none text-right pr-2 text-muted-foreground/40"
                   >
                     {lineNum.newLine ?? ""}
                   </span>
                   <span
-                    class="diff-line-content px-1 flex-1 {line.startsWith('+') ? '' : 'opacity-30'}"
+                    class="whitespace-pre px-1 flex-1 {line.startsWith('+') ? '' : 'opacity-30'}"
                     >{line}</span
                   >
                 </div>
@@ -285,18 +285,6 @@
 </div>
 
 <style>
-  .diff-preview {
-    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
-  }
-
-  .diff-lines {
-    tab-size: 2;
-  }
-
-  .diff-line-content {
-    white-space: pre;
-  }
-
   .diff-content::-webkit-scrollbar {
     width: 6px;
     height: 6px;

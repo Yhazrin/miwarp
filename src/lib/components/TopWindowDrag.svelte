@@ -59,22 +59,8 @@
 </script>
 
 <div
-  class="top-window-drag"
+  class="fixed top-0 pointer-events-none [-webkit-app-region:drag] bg-transparent"
   data-tauri-drag-region
   aria-hidden="true"
   style="height: {height}px; left: {leftInset}px; right: {rightInset}px; z-index: {zIndex};"
 ></div>
-
-<style>
-  .top-window-drag {
-    position: fixed;
-    top: 0;
-    pointer-events: none;
-    -webkit-app-region: drag;
-    /* Tauri/Electron also accept the unprefixed form. svelte-check warns it's
-       non-standard CSS — silenced via the global rule in src/app.css where
-       app-region: no-drag is already used for buttons. We omit it here on
-       purpose to keep the component warning-free. */
-    background: transparent;
-  }
-</style>
