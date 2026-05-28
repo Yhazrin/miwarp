@@ -49,7 +49,7 @@
     steps,
     initialStep = 0,
     onComplete,
-    onCancel,
+    onCancel: _onCancel,
     showProgress = true,
     allowSkip = true,
   }: Props = $props();
@@ -62,7 +62,7 @@
 
   // Navigation state
   let isTransitioning = $state(false);
-  let transitionDirection = $state<"forward" | "back">("forward");
+  let _transitionDirection = $state<"forward" | "back">("forward");
 
   // Collected data from all steps
   let collectedData = $state<Record<string, unknown>>({});
@@ -127,7 +127,7 @@
     }
 
     isTransitioning = true;
-    transitionDirection = "forward";
+    _transitionDirection = "forward";
 
     await new Promise((resolve) => setTimeout(resolve, 200)); // Animation delay
 
@@ -148,7 +148,7 @@
     currentStep.onBack?.();
 
     isTransitioning = true;
-    transitionDirection = "back";
+    _transitionDirection = "back";
 
     setTimeout(() => {
       if (currentStepIndex > 0) {
@@ -174,10 +174,10 @@
     }, 200);
   }
 
-  function goToStep(index: number) {
+  function _goToStep(index: number) {
     if (isTransitioning || index < 0 || index >= totalSteps) return;
 
-    transitionDirection = index > currentStepIndex ? "forward" : "back";
+    _transitionDirection = index > currentStepIndex ? "forward" : "back";
     isTransitioning = true;
 
     setTimeout(() => {
@@ -187,7 +187,7 @@
   }
 
   // Update collected data (can be called from child components)
-  function updateStepData(stepId: string, data: unknown) {
+  function _updateStepData(stepId: string, data: unknown) {
     collectedData = { ...collectedData, [stepId]: data };
   }
 </script>

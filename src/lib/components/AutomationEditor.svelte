@@ -8,9 +8,6 @@
   import {
     type AutomationScript,
     type AutomationStep,
-    type StepType,
-    STEP_TYPES,
-    getCategoryInfo,
     getStepTypeInfo,
     createEmptyStep,
   } from "$lib/types/automation";
@@ -215,7 +212,7 @@
     e.dataTransfer.setData("text/plain", index.toString());
   }
 
-  function handleDragOver(e: DragEvent, index: number) {
+  function handleDragOver(e: DragEvent, _index: number) {
     e.preventDefault();
     if (e.dataTransfer) {
       e.dataTransfer.dropEffect = "move";

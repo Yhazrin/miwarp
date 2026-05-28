@@ -137,7 +137,7 @@
     onOpenDirectory,
     onRenameWorkspace,
     onWorkspaceSettings,
-    isRunning = false,
+    isRunning: _isRunning = false,
     mascotStatus = "idle",
     showMascot = false,
     onMascotClick,
