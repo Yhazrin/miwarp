@@ -10,6 +10,7 @@
   import SidebarScheduledTaskHubItem from "./SidebarScheduledTaskHubItem.svelte";
   import VirtualList from "./VirtualList.svelte";
   import ContextMenu, { type MenuItem } from "./ContextMenu.svelte";
+  import Icon from "./Icon.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { slide } from "svelte/transition";
   import { SESSION_DROP_FOLDER_ATTR } from "$lib/utils/session-drag-state";
@@ -492,17 +493,7 @@
       </svg>
     {:else}
       <!-- Folder icon -->
-      <svg
-        class="h-4 w-4 shrink-0 text-muted-foreground/70"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-      </svg>
+      <Icon name="folder" size="md" class="shrink-0 text-muted-foreground/70" />
     {/if}
     <!-- Label -->
     <span class="truncate">{label}</span>

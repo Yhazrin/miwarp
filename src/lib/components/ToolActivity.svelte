@@ -754,18 +754,7 @@
         onclick={() => openCollapsedTab("workspace")}
         title={t("toolActivity_tabWorkspace")}
       >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
+        <Icon name="home" size="sm" />
       </button>
       <button
         class="relative flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
@@ -775,19 +764,7 @@
         onclick={() => openCollapsedTab("tools")}
         title={t("toolActivity_tabActivity")}
       >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path
-            d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
-          />
-        </svg>
+        <Icon name="wrench" size="sm" />
       </button>
       <button
         class="relative flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
@@ -1563,18 +1540,7 @@
         }}
         title={t("toolActivity_tabWorkspace")}
       >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
+        <Icon name="home" size="sm" />
       </button>
       <button
         class="p-1 rounded transition-colors {activeTab === 'tools'
@@ -1586,19 +1552,7 @@
         }}
         title={t("toolActivity_tabActivity")}
       >
-        <svg
-          class="h-3.5 w-3.5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path
-            d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
-          />
-        </svg>
+        <Icon name="wrench" size="sm" />
       </button>
       <button
         class="p-1 rounded transition-colors {activeTab === 'context'

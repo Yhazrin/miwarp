@@ -8,7 +8,7 @@
     size = "md",
     class: className = "",
   }: {
-    name: "check" | "x" | "clock" | "chevron-right" | "chevron-down" | "arrow-right" | "search" | "trash" | "refresh-cw" | "users" | "copy" | "file" | "plus" | "minus" | "home" | "monitor";
+    name: "check" | "x" | "clock" | "chevron-right" | "chevron-down" | "arrow-right" | "search" | "trash" | "refresh-cw" | "users" | "copy" | "file" | "plus" | "minus" | "home" | "monitor" | "wrench" | "folder" | "pencil";
     size?: "xs" | "sm" | "md" | "lg";
     class?: string;
   } = $props();
@@ -80,5 +80,12 @@
   {:else if name === "arrow-right"}
     <line x1="5" y1="12" x2="19" y2="12" />
     <polyline points="12 5 19 12 12 19" />
+  {:else if name === "wrench"}
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+  {:else if name === "folder"}
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+  {:else if name === "pencil"}
+    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    <path d="m15 5 4 4" />
   {/if}
 </svg>
