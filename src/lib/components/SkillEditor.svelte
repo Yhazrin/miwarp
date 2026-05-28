@@ -307,7 +307,7 @@ Provide some examples..."
             </div>
           </div>
 
-          <div class="markdown-preview">
+          <div class="leading-[1.7]">
             {@html renderMarkdown(content)}
           </div>
         </div>
@@ -323,11 +323,7 @@ Provide some examples..."
 </div>
 
 <style>
-  .markdown-preview {
-    line-height: 1.7;
-  }
-
-  .markdown-preview :global(code) {
+  :global(code) {
     background: var(--secondary);
     padding: 0.125rem 0.375rem;
     border-radius: 0.25rem;
