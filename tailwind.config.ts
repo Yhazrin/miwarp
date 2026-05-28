@@ -66,6 +66,7 @@ export default {
           yellow: "hsl(var(--miwarp-accent-yellow))",
           pink: "hsl(var(--miwarp-accent-pink))",
           teal: "hsl(var(--miwarp-accent-teal))",
+          "on-accent": "hsl(var(--miwarp-accent-on-accent))",
         },
         "miwarp-status": {
           success: "hsl(var(--miwarp-status-success))",

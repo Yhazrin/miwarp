@@ -30,6 +30,7 @@ html.dark:not([data-theme]) {
   --miwarp-accent-yellow: 48 96% 47%;
   --miwarp-accent-pink: 330 81% 60%;
   --miwarp-accent-teal: 174 68% 40%;
+  --miwarp-accent-on-accent: 0 0% 100%;
 
   /* Text hierarchy */
   --miwarp-text-primary: 0 0% 94%;
@@ -103,6 +104,7 @@ html.light:not([data-theme]) {
   --miwarp-accent-yellow: 48 96% 47%;
   --miwarp-accent-pink: 330 81% 60%;
   --miwarp-accent-teal: 174 68% 40%;
+  --miwarp-accent-on-accent: 0 0% 100%;
 
   --miwarp-text-primary: 220 18% 12%;
   --miwarp-text-secondary: 220 10% 42%;
@@ -171,6 +173,7 @@ html.light:not([data-theme]) {
   --miwarp-accent-yellow: 48 96% 47%;
   --miwarp-accent-pink: 330 81% 60%;
   --miwarp-accent-teal: 174 68% 40%;
+  --miwarp-accent-on-accent: 0 0% 100%;
 
   --miwarp-text-primary: 210 40% 95%;
   --miwarp-text-secondary: 210 20% 60%;
@@ -239,6 +242,7 @@ html.light:not([data-theme]) {
   --miwarp-accent-yellow: 48 96% 47%;
   --miwarp-accent-pink: 330 81% 60%;
   --miwarp-accent-teal: 174 68% 40%;
+  --miwarp-accent-on-accent: 0 0% 100%;
 
   --miwarp-text-primary: 190 30% 95%;
   --miwarp-text-secondary: 190 15% 60%;
@@ -307,6 +311,7 @@ html.light:not([data-theme]) {
   --miwarp-accent-yellow: 48 96% 47%;
   --miwarp-accent-pink: 330 81% 60%;
   --miwarp-accent-teal: 174 68% 40%;
+  --miwarp-accent-on-accent: 0 0% 100%;
 
   --miwarp-text-primary: 60 30% 90%;
   --miwarp-text-secondary: 60 10% 60%;
@@ -375,6 +380,7 @@ html.light:not([data-theme]) {
   --miwarp-accent-yellow: 48 96% 47%;
   --miwarp-accent-pink: 330 81% 60%;
   --miwarp-accent-teal: 174 68% 40%;
+  --miwarp-accent-on-accent: 0 0% 100%;
 
   --miwarp-text-primary: 218 28% 88%;
   --miwarp-text-secondary: 218 12% 58%;
@@ -446,6 +452,7 @@ html.light:not([data-theme]) {
   --miwarp-accent-yellow: 48 96% 47%;
   --miwarp-accent-pink: 330 81% 60%;
   --miwarp-accent-teal: 174 68% 40%;
+  --miwarp-accent-on-accent: 0 0% 10%;
 
   /* 文字层次 �?暖白、米�?*/
   --miwarp-text-primary: 40 10% 92%;
@@ -518,6 +525,7 @@ html.light:not([data-theme]) {
   --miwarp-accent-yellow: 48 96% 47%;
   --miwarp-accent-pink: 330 81% 60%;
   --miwarp-accent-teal: 174 68% 40%;
+  --miwarp-accent-on-accent: 30 12% 18%;
 
   --miwarp-text-primary: 30 12% 18%;
   --miwarp-text-secondary: 30 8% 42%;
@@ -593,6 +601,7 @@ html.light:not([data-theme]) {
   --miwarp-accent-yellow: 48 96% 47%;
   --miwarp-accent-pink: 330 81% 60%;
   --miwarp-accent-teal: 174 68% 40%;
+  --miwarp-accent-on-accent: 0 0% 100%;
 
   /* 文字层次 �?高对比度 */
   --miwarp-text-primary: 0 0% 96%;
@@ -670,6 +679,7 @@ html.light:not([data-theme]) {
   --miwarp-accent-yellow: 48 96% 47%;
   --miwarp-accent-pink: 330 81% 60%;
   --miwarp-accent-teal: 174 68% 40%;
+  --miwarp-accent-on-accent: 0 0% 100%;
 
   --miwarp-text-primary: 220 15% 12%;
   --miwarp-text-secondary: 220 8% 40%;
@@ -747,6 +757,7 @@ html.light:not([data-theme]) {
   --miwarp-accent-yellow: 48 96% 47%;
   --miwarp-accent-pink: 330 81% 60%;
   --miwarp-accent-teal: 174 68% 40%;
+  --miwarp-accent-on-accent: 0 0% 100%;
 
   --miwarp-text-primary: 330 28% 96%;
   --miwarp-text-secondary: 330 14% 68%;
@@ -814,6 +825,7 @@ html.light:not([data-theme]) {
   --miwarp-accent-yellow: 48 96% 47%;
   --miwarp-accent-pink: 330 81% 60%;
   --miwarp-accent-teal: 174 68% 40%;
+  --miwarp-accent-on-accent: 0 0% 100%;
 
   --miwarp-text-primary: 44 70% 94%;
   --miwarp-text-secondary: 42 28% 72%;
@@ -881,6 +893,7 @@ html.light:not([data-theme]) {
   --miwarp-accent-yellow: 48 96% 47%;
   --miwarp-accent-pink: 330 81% 60%;
   --miwarp-accent-teal: 174 68% 40%;
+  --miwarp-accent-on-accent: 0 0% 100%;
 
   --miwarp-text-primary: 24 38% 16%;
   --miwarp-text-secondary: 24 18% 42%;
@@ -948,6 +961,7 @@ html.light:not([data-theme]) {
   --miwarp-accent-yellow: 48 96% 47%;
   --miwarp-accent-pink: 330 81% 60%;
   --miwarp-accent-teal: 174 68% 40%;
+  --miwarp-accent-on-accent: 0 0% 100%;
 
   --miwarp-text-primary: 346 42% 16%;
   --miwarp-text-secondary: 346 18% 42%;
@@ -1015,6 +1029,7 @@ html.light:not([data-theme]) {
   --miwarp-accent-yellow: 48 96% 47%;
   --miwarp-accent-pink: 330 81% 60%;
   --miwarp-accent-teal: 174 68% 40%;
+  --miwarp-accent-on-accent: 0 0% 100%;
 
   --miwarp-text-primary: 86 38% 94%;
   --miwarp-text-secondary: 88 18% 68%;
