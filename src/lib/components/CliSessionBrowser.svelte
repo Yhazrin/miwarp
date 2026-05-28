@@ -286,8 +286,18 @@
           type="text"
           bind:value={searchQuery}
           placeholder={t("cliSync_searchPlaceholder")}
-          class="w-full rounded-lg border border-border bg-muted/50 py-2 pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          onkeydown={(e) => { if (e.key === "Escape") searchQuery = ""; }}
+          class="w-full rounded-lg border border-border bg-muted/50 py-2 pl-10 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         />
+        {#if searchQuery}
+          <button
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+            onclick={() => (searchQuery = "")}
+            aria-label={t("common_clear")}
+          >
+            <Icon name="x" class="h-3.5 w-3.5" />
+          </button>
+        {/if}
       </div>
     </div>
 

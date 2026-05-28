@@ -308,10 +308,20 @@
     <input
       type="text"
       placeholder={t("mcp_searchPlaceholder")}
-      class="w-full rounded-md border border-border bg-background pl-8 pr-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+      class="w-full rounded-md border border-border bg-background pl-8 pr-8 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
       bind:value={query}
       oninput={handleSearch}
+      onkeydown={(e) => { if (e.key === "Escape") { query = ""; handleSearch(); } }}
     />
+    {#if query}
+      <button
+        class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+        onclick={() => { query = ""; handleSearch(); }}
+        aria-label={t("common_clear")}
+      >
+        <Icon name="x" class="h-3 w-3" />
+      </button>
+    {/if}
   </div>
 
   <!-- Scope selector -->

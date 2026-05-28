@@ -263,12 +263,22 @@
     {/if}
 
     <!-- Search + Add -->
-    <div class="flex gap-2 mb-3">
+    <div class="relative mb-3">
       <input
         bind:value={search}
-        class="flex-1 rounded-md border bg-transparent px-2.5 py-1.5 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
+        class="w-full rounded-md border bg-transparent px-2.5 py-1.5 pr-7 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
         placeholder={t("permissions_search")}
+        onkeydown={(e) => { if (e.key === "Escape") search = ""; }}
       />
+      {#if search}
+        <button
+          class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          onclick={() => (search = "")}
+          aria-label={t("common_clear")}
+        >
+          <Icon name="x" class="h-3 w-3" />
+        </button>
+      {/if}
     </div>
 
     <div class="flex gap-2 mb-3">
