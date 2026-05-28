@@ -2904,13 +2904,7 @@
                         class="flex flex-col items-center justify-center gap-1 rounded-md border border-dashed border-muted-foreground/30 p-2 text-muted-foreground hover:border-primary/50 hover:text-foreground hover:bg-muted/40 transition-colors"
                         onclick={() => addCustomEndpoint()}
                       >
-                        <svg
-                          class="h-4 w-4"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"><path d="M12 5v14" /><path d="M5 12h14" /></svg
-                        >
+                        <Icon name="plus" size="md" />
                         <span class="text-[10px]">{t("settings_general_addCustom")}</span>
                       </button>
                     </div>
@@ -3299,17 +3293,7 @@
                           platformExtraEnv = [...platformExtraEnv, { key: "", value: "" }];
                         }}
                       >
-                        <svg
-                          class="h-3 w-3"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        >
-                          <path d="M12 5v14" /><path d="M5 12h14" />
-                        </svg>
+                        <Icon name="plus" size="xs" />
                         {t("settings_general_addEnvVar")}
                       </button>
                       <p class="mt-1 text-xs text-muted-foreground">

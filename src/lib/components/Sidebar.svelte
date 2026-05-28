@@ -124,18 +124,7 @@
           title={t("sidebar_newConversation")}
           aria-label={t("sidebar_newConversation")}
         >
-          <svg
-            class="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M12 5v14" />
-            <path d="M5 12h14" />
-          </svg>
+          <Icon name="plus" size="md" />
         </button>
       {/if}
     </div>
@@ -217,18 +206,7 @@
             class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
             onclick={() => onPickFolder?.()}
           >
-            <svg
-              class="h-3.5 w-3.5 shrink-0"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M12 5v14" />
-              <path d="M5 12h14" />
-            </svg>
+            <Icon name="plus" size="sm" class="shrink-0" />
             <span>{t('sidebar_openFolder')}</span>
           </button>
         {/if}

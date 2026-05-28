@@ -2099,15 +2099,7 @@
                 aria-label={t("sidebar_newChat")}
                 title={t("layout_newConversation")}
               >
-                <svg
-                  class="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg
-                >
+                <Icon name="plus" size="md" />
               </button>
             </div>
           </div>
@@ -2334,15 +2326,7 @@
                       explorerProjectOpen = false;
                     }}
                   >
-                    <svg
-                      class="h-3 w-3 shrink-0"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg
-                    >
+                    <Icon name="plus" size="xs" class="shrink-0" />
                     <span>{t("project_openFolder")}</span>
                   </button>
                 </div>
@@ -2610,15 +2594,7 @@
                 class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
                 onclick={pickFolder}
               >
-                <svg
-                  class="h-3.5 w-3.5 shrink-0"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"><path d="M12 5v14" /><path d="M5 12h14" /></svg
-                >
+                <Icon name="plus" size="sm" class="shrink-0" />
                 <span>+ {t("project_openFolder")}</span>
               </button>
             </div>

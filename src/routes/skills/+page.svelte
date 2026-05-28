@@ -128,9 +128,7 @@
       class="flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
       onclick={() => skillStore.openCreateEditor()}
     >
-      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 5v14M5 12h14" />
-      </svg>
+      <Icon name="plus" size="md" />
       {t("skills_createSkill")}
     </button>
   </div>

@@ -2370,17 +2370,7 @@
                 onclick={handleBtwSend}
                 title={t("promptInput_sendSideQuestion")}
               >
-                <svg
-                  class="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
-                </svg>
+                <Icon name="arrow-right" size="md" />
               </button>
             {:else}
               <!-- Mid-turn send: allow injecting a message while agent is running -->
@@ -2389,17 +2379,7 @@
                 onclick={handleSend}
                 title={t("prompt_send")}
               >
-                <svg
-                  class="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
-                </svg>
+                <Icon name="arrow-right" size="md" />
               </button>
             {/if}
           {/if}
@@ -2443,17 +2423,7 @@
             disabled={!canSend}
             title={t("prompt_send")}
           >
-            <svg
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
-            </svg>
+            <Icon name="arrow-right" size="md" />
           </button>
         {/if}
       </div>

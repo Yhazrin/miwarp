@@ -1107,13 +1107,7 @@
             <div
               class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-error))] text-white"
             >
-              <svg
-                class="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"><path d="M12 5v14" /><path d="M5 12h14" /></svg
-              >
+              <Icon name="plus" size="md" />
             </div>
             <span class="text-xs font-medium text-foreground"
               >{t("extensions_createProjectSkill")}</span
