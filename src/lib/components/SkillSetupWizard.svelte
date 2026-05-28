@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import type { MessageKey } from "$lib/i18n/types";
   import Button from "./Button.svelte";
   import type { Skill, SkillCategory } from "$lib/types/skill";
@@ -421,9 +422,7 @@ step by step, * with progress tracking and helpful hints. */
 
         {#if testing}
           <div class="flex items-center justify-center py-8">
-            <div
-              class="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full"
-            ></div>
+            <Spinner size="xl" class="border-primary/30 border-t-transparent" />
             <span class="ml-3 text-sm text-muted-foreground">{t("skillWizard_runningTest")}</span>
           </div>
         {/if}

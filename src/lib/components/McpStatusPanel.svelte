@@ -4,6 +4,7 @@
   import { slide } from "svelte/transition";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import Icon from "$lib/components/Icon.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { statusDotClass, statusLabel, parseServersFromResponse } from "$lib/utils/mcp";
   import { relativeTime } from "$lib/utils/format";
@@ -319,9 +320,7 @@ diagnostics and history * - Quick reconnect with health check */
               >
                 {#if togglingServer === server.name}
                   <span class="flex items-center gap-1">
-                    <span
-                      class="h-2.5 w-2.5 border border-current/30 border-t-current rounded-full animate-spin"
-                    ></span>
+                    <Spinner size="xs" class="!h-2.5 !w-2.5 border-current/30 border-t-current" />
                   </span>
                 {:else}
                   {server.status === "disabled" ? t("mcp_enable") : t("mcp_disable")}

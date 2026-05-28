@@ -594,9 +594,7 @@
             disabled={loading}
           >
             {#if loading}
-              <span
-                class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"
-              ></span>
+              <Spinner size="sm" class="border-primary/30 border-t-transparent" />
             {:else}
               {t("history_loadMore")}
             {/if}

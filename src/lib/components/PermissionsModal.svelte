@@ -4,6 +4,7 @@
   import { getCliPermissions, updateCliPermissions, type CliPermissions } from "$lib/api";
   import { isAbsolutePath } from "$lib/utils/format";
   import Icon from "$lib/components/Icon.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { filterRules } from "$lib/utils/permissions-helpers";
   import { dbg, dbgWarn } from "$lib/utils/debug";
 
@@ -228,9 +229,7 @@
 <Modal bind:open title={t("permissions_title")}>
   {#if loading && !permissions}
     <div class="flex items-center justify-center py-8">
-      <div
-        class="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"
-      ></div>
+      <Spinner size="md" class="border-muted-foreground/30 border-t-muted-foreground" />
     </div>
   {:else if error && !permissions}
     <div class="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
@@ -323,9 +322,7 @@
     <!-- Saving indicator -->
     {#if saving}
       <div class="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <div
-          class="h-3 w-3 animate-spin rounded-full border border-muted-foreground border-t-transparent"
-        ></div>
+        <Spinner size="xs" class="border-muted-foreground/30 border-t-muted-foreground" />
         Saving...
       </div>
     {/if}

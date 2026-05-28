@@ -2,6 +2,7 @@
   import InlineToolCard from "./InlineToolCard.svelte";
   import type { BusToolItem, TimelineEntry, PermissionSuggestion } from "$lib/types";
   import Icon from "$lib/components/Icon.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import type { TaskNotificationItem } from "$lib/stores/session-store.svelte";
   import { getToolColor } from "$lib/utils/tool-colors";
   import { getToolSummary } from "$lib/utils/tool-summaries";
@@ -705,9 +706,7 @@
               <span class="text-xs font-medium text-foreground">{t("inline_question")}</span>
               <PhaseIndicator phase={currentPhase} elapsed={tool.elapsed_time_seconds} />
               <div class="h-3 w-3 shrink-0 ml-auto">
-                <div
-                  class="h-2.5 w-2.5 rounded-full border-2 border-border border-t-[hsl(var(--miwarp-status-warning))] animate-spin"
-                ></div>
+                <Spinner size="xs" class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-status-warning)/0.3)] border-t-[hsl(var(--miwarp-status-warning))]" />
               </div>
             </div>
             <MarkdownContent
@@ -978,9 +977,7 @@
               </span>
               {#if !submitting}
                 <div class="h-3 w-3 shrink-0">
-                  <div
-                    class="h-2.5 w-2.5 rounded-full border-2 border-border border-t-[hsl(var(--miwarp-status-warning))] animate-spin"
-                  ></div>
+                  <Spinner size="xs" class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-status-warning)/0.3)] border-t-[hsl(var(--miwarp-status-warning))]" />
                 </div>
               {/if}
             </div>
@@ -1227,9 +1224,7 @@
               <span class="text-xs font-semibold text-foreground">{t("planConfirm_title")}</span>
               <PhaseIndicator phase={currentPhase} elapsed={tool.elapsed_time_seconds} />
               <div class="h-3 w-3 shrink-0 ml-auto">
-                <div
-                  class="h-2.5 w-2.5 rounded-full border-2 border-border border-t-[hsl(var(--miwarp-accent-primary))] animate-spin"
-                ></div>
+                <Spinner size="xs" class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-accent-primary)/0.3)] border-t-[hsl(var(--miwarp-accent-primary))]" />
               </div>
             </div>
 
@@ -1471,9 +1466,7 @@
         {:else if showPermissionInPanel && tool.status === "permission_prompt" && tool.permission_request_id && tool.tool_name !== "AskUserQuestion" && tool.tool_name !== "ExitPlanMode"}
           <!-- Permission handled by floating panel — show lightweight placeholder -->
           <div class="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground/60">
-            <div
-              class="h-2 w-2 rounded-full border border-[hsl(var(--miwarp-status-warning)/0.4)] border-t-[hsl(var(--miwarp-status-warning))] animate-spin"
-            ></div>
+            <Spinner size="xxs" class="border-[hsl(var(--miwarp-status-warning)/0.4)] border-t-[hsl(var(--miwarp-status-warning))]" />
             <span>{t("inline_permissionPending")}</span>
           </div>
         {:else if tool.status === "permission_prompt" && tool.permission_request_id}
@@ -1498,9 +1491,7 @@
               >
               <PhaseIndicator phase={currentPhase} elapsed={tool.elapsed_time_seconds} />
               <div class="h-3 w-3 shrink-0 ml-auto">
-                <div
-                  class="h-2.5 w-2.5 rounded-full border-2 border-border border-t-[hsl(var(--miwarp-status-warning))] animate-spin"
-                ></div>
+                <Spinner size="xs" class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-status-warning)/0.3)] border-t-[hsl(var(--miwarp-status-warning))]" />
               </div>
             </div>
             <p class="text-sm text-foreground mb-1">
@@ -1714,9 +1705,7 @@
       {#if taskNotification}
         <div class="ml-7 mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground">
           {#if taskNotification.status === "running" || taskNotification.status === "pending"}
-            <div
-              class="h-2 w-2 rounded-full border border-border border-t-muted-foreground animate-spin shrink-0"
-            ></div>
+            <Spinner size="xxs" class="border-border border-t-muted-foreground shrink-0" />
             <span>{taskNotification.summary || taskNotification.message}</span>
           {:else if taskNotification.status === "completed" || taskNotification.status === "done"}
             <Icon name="check" size="xs" class="text-[hsl(var(--miwarp-status-success))] shrink-0" />

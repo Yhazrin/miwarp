@@ -4,6 +4,7 @@
   import { getToolDetail, formatSuggestionLabel } from "$lib/utils/tool-rendering";
   import { isAbsolutePath } from "$lib/utils/format";
   import { t } from "$lib/i18n/index.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
 
   let {
@@ -137,9 +138,7 @@
                 >{t("inline_permissionRequired")}</span
               >
               <div class="h-3 w-3 shrink-0">
-                <div
-                  class="h-2.5 w-2.5 rounded-full border-2 border-border border-t-amber-500 animate-spin"
-                ></div>
+                <Spinner size="xs" class="!h-2.5 !w-2.5 border-amber-500/30 border-t-amber-500" />
               </div>
             </div>
             <p class="text-sm text-foreground mb-1">
@@ -197,9 +196,7 @@
           <div class="px-4 py-3">
             <div class="flex items-center justify-between mb-2">
               <div class="flex items-center gap-2">
-                <div
-                  class="h-2.5 w-2.5 rounded-full border-2 border-border border-t-amber-500 animate-spin"
-                ></div>
+                <Spinner size="xs" class="!h-2.5 !w-2.5 border-amber-500/30 border-t-amber-500" />
                 <span class="text-xs font-medium text-foreground">
                   {t("perm_nPermissions", { count: String(pendingTools.length) })}
                 </span>

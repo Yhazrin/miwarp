@@ -3,6 +3,8 @@
    * Shared status icon: checkmark (done), X (error), spinner (running), or dot (other).
    * Used by ToolActivity and InlineToolCard for tool status display.
    */
+  import Spinner from "$lib/components/Spinner.svelte";
+
   let {
     status,
     size = "sm",
@@ -42,10 +44,13 @@
     ><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg
   >
 {:else if status === "running"}
-  <div
-    class="{sizeClass[size]} rounded-full border-2 border-border animate-spin shrink-0"
-    style="border-top-color: var(--miwarp-status-running);"
-  ></div>
+  {#if size === "xs"}
+    <Spinner size="xxs" class="!h-2.5 !w-2.5 border-border border-t-miwarp-status-running shrink-0" />
+  {:else if size === "md"}
+    <Spinner size="xs" class="!h-3.5 !w-3.5 border-border border-t-miwarp-status-running shrink-0" />
+  {:else}
+    <Spinner size="xs" class="!h-3 !w-3 border-border border-t-miwarp-status-running shrink-0" />
+  {/if}
 {:else}
   <div
     class="{sizeClass[size]} rounded-full shrink-0"
