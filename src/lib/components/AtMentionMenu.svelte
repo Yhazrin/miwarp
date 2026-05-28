@@ -4,7 +4,6 @@
   import { formatBytes } from "$lib/utils/format";
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
-  import Icon from "$lib/components/Icon.svelte";
 
   let {
     entries,
