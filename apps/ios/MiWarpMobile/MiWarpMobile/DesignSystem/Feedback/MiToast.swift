@@ -79,18 +79,18 @@ struct MiToastView: View {
     var onDismiss: (() -> Void)?
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: MWSpacing.relaxed) {
             Image(systemName: toast.kind.icon)
-                .font(.system(size: 16, weight: .semibold))
+                .font(MWTypography.title3())
                 .foregroundColor(toast.kind.color)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: MWSpacing.xxs) {
                 Text(toast.title)
-                    .font(.subheadline.weight(.medium))
+                    .font(MWTypography.subheadlineMedium())
                     .foregroundColor(MWColors.textPrimary)
                 if let message = toast.message {
                     Text(message)
-                        .font(.caption)
+                        .font(MWTypography.caption())
                         .foregroundColor(MWColors.textSecondary)
                         .lineLimit(2)
                 }
@@ -102,13 +102,13 @@ struct MiToastView: View {
                 onDismiss?()
             } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 12, weight: .medium))
+                    .font(MWTypography.footnoteMedium())
                     .foregroundColor(MWColors.textTertiary)
-                    .padding(6)
+                    .padding(MWSpacing.compact)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.horizontal, MWSpacing.comfortable)
+        .padding(.vertical, MWSpacing.relaxed)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: MWRadius.card))
         .overlay(
             RoundedRectangle(cornerRadius: MWRadius.card)
@@ -130,8 +130,8 @@ private struct MiToastPresenterModifier: ViewModifier {
                     MiToastView(toast: toast) {
                         presenter.dismiss()
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
+                    .padding(.horizontal, MWSpacing.lg)
+                    .padding(.top, MWSpacing.sm)
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .zIndex(1000)
                 }
@@ -146,7 +146,7 @@ extension View {
 }
 
 #Preview("Toast Variants") {
-    VStack(spacing: 12) {
+    VStack(spacing: MWSpacing.md) {
         MiToastView(toast: MiToastItem(title: "Info", message: "This is an info message", kind: .info))
         MiToastView(toast: MiToastItem(title: "Success", message: "Operation completed", kind: .success))
         MiToastView(toast: MiToastItem(title: "Warning", message: "Please check your input", kind: .warning))

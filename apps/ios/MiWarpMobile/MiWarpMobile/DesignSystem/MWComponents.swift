@@ -291,7 +291,7 @@ struct MWSessionCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: MWSpacing.nano) {
             // Row 1: status dot + title + time
             HStack(alignment: .top, spacing: MWSpacing.sm) {
                 // Status dot — 8pt, with pulse glow for active states
@@ -310,7 +310,7 @@ struct MWSessionCard: View {
 
                 // Title — semibold, 2 lines max
                 Text(run.displayTitle)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(MWTypography.bodyMedium())
                     .foregroundColor(MWColors.textPrimary)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -318,7 +318,7 @@ struct MWSessionCard: View {
                 // Time — right aligned, muted
                 if let time = run.displayRelativeTime {
                     Text(time)
-                        .font(.system(size: 12))
+                        .font(MWTypography.footnote())
                         .foregroundColor(MWColors.textTertiary)
                         .frame(alignment: .trailing)
                 }
@@ -326,7 +326,7 @@ struct MWSessionCard: View {
 
             // Row 2: agent · model
             Text(run.displayAgentModel)
-                .font(.system(size: 12))
+                .font(MWTypography.footnote())
                 .foregroundColor(MWColors.textTertiary)
                 .lineLimit(1)
 
@@ -335,7 +335,7 @@ struct MWSessionCard: View {
                 HStack(spacing: MWSpacing.sm) {
                     if let cwd = run.displayCwd {
                         Text(cwd)
-                            .font(.system(size: 11).monospaced())
+                            .font(MWTypography.monoSmall())
                             .foregroundColor(MWColors.textTertiary.opacity(0.7))
                             .lineLimit(1)
                     }
@@ -345,7 +345,7 @@ struct MWSessionCard: View {
                     }
                     if let msgs = run.displayMessageCount {
                         Text(msgs)
-                            .font(.system(size: 11))
+                            .font(MWTypography.caption())
                             .foregroundColor(MWColors.textTertiary.opacity(0.7))
                             .lineLimit(1)
                     }
@@ -440,7 +440,7 @@ struct MWToolCallCard: View {
             } label: {
                 HStack(spacing: MWSpacing.sm) {
                     Image(systemName: statusIcon)
-                        .font(.system(size: 12))
+                        .font(MWTypography.footnote())
                         .foregroundColor(statusColor)
 
                     Text(toolName)
@@ -518,7 +518,7 @@ struct MWApprovalCard: View {
             // Header
             HStack(spacing: MWSpacing.sm) {
                 Image(systemName: "exclamationmark.shield.fill")
-                    .font(.system(size: 16))
+                    .font(MWTypography.title3())
                     .foregroundColor(theme.statusWarning)
 
                 Text(String(localized: "chat.permissionRequired"))
@@ -716,7 +716,7 @@ struct MWEmptyState: View {
     var body: some View {
         VStack(spacing: MWSpacing.xl) {
             Image(systemName: icon)
-                .font(.system(size: 52))
+                .font(MWTypography.iconXXL())
                 .foregroundStyle(MWColors.accentPrimary, MWColors.accentCyan)
                 .padding(.bottom, MWSpacing.sm)
 
@@ -776,7 +776,7 @@ struct MWErrorState: View {
     var body: some View {
         VStack(spacing: MWSpacing.xl) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 48))
+                .font(MWTypography.iconXL())
                 .foregroundColor(MWColors.statusError)
 
             VStack(spacing: MWSpacing.sm) {
@@ -862,7 +862,7 @@ struct MWReconnectBanner: View {
                 .scaleEffect(0.75)
                 .tint(MWColors.statusWarning)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: MWSpacing.xxs) {
                 Text(String(localized: "chat.reconnecting"))
                     .font(MWTypography.subheadlineMedium())
                     .foregroundColor(MWColors.statusWarning)
@@ -1110,10 +1110,10 @@ struct MWStatusBadge: View {
 
     var body: some View {
         Text(text)
-            .font(.caption)
+            .font(MWTypography.caption())
             .fontWeight(.medium)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
+            .padding(.horizontal, MWSpacing.sm)
+            .padding(.vertical, MWSpacing.nano)
             .foregroundStyle(style.tint)
             .background(
                 Capsule().fill(style.tint.opacity(0.12))

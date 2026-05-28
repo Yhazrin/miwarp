@@ -26,7 +26,7 @@ struct AgentAnimationView: View {
 }
 
 #Preview {
-    HStack(spacing: 20) {
+    HStack(spacing: MWSpacing.xl) {
         AgentAnimationView(isActive: false)
         AgentAnimationView(isActive: true)
     }

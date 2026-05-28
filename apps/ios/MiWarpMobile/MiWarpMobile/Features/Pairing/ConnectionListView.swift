@@ -23,7 +23,7 @@ struct MWStatusIndicator: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: MWSpacing.xs) {
             ZStack {
                 if isAnimating {
                     Circle()
@@ -39,7 +39,7 @@ struct MWStatusIndicator: View {
 
             if state != .disconnected {
                 Text(state.displayLabel)
-                    .font(.caption)
+                    .font(MWTypography.caption())
                     .foregroundStyle(.secondary)
                     .contentTransition(.opacity)
             }

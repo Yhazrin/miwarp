@@ -4,9 +4,13 @@ import SwiftUI
 
 enum MWSpacing {
     static let xxs: CGFloat = 2
+    static let nano: CGFloat = 3
     static let xs: CGFloat = 4
+    static let compact: CGFloat = 6
     static let sm: CGFloat = 8
+    static let relaxed: CGFloat = 10
     static let md: CGFloat = 12
+    static let comfortable: CGFloat = 14
     static let lg: CGFloat = 16
     static let xl: CGFloat = 20
     static let xxl: CGFloat = 24

@@ -11,11 +11,11 @@ struct MiSkeletonCard: View {
     @State private var shimmerPhase: CGFloat = -1
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: MWSpacing.relaxed) {
             if showsAvatar {
-                HStack(spacing: 10) {
+                HStack(spacing: MWSpacing.relaxed) {
                     skeletonCircle(size: 32)
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: MWSpacing.compact) {
                         skeletonLine(width: 0.4)
                         skeletonLine(width: 0.25)
                     }
@@ -26,7 +26,7 @@ struct MiSkeletonCard: View {
                 skeletonLine(width: index == lines - 1 ? 0.6 : 1.0)
             }
         }
-        .padding(16)
+        .padding(MWSpacing.lg)
         .frame(maxWidth: .infinity)
         .frame(height: height)
         .background(

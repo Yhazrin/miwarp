@@ -323,7 +323,7 @@ fun MWToolCallCard(
             Spacer(modifier = Modifier.weight(1f))
             if (tool.isRunning) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(12.dp),
+                    modifier = Modifier.size(spacing.sm),
                     strokeWidth = 1.5.dp,
                     color = colors.statusRunning,
                 )
@@ -520,7 +520,7 @@ fun MWDiffFileRow(
     ) {
         Box(
             modifier = Modifier
-                .size(8.dp)
+                .size(spacing.xs)
                 .background(statusColor, RoundedCornerShape(4.dp)),
         )
         Spacer(modifier = Modifier.width(spacing.xs))
@@ -779,6 +779,7 @@ fun MWReconnectBanner(
     modifier: Modifier = Modifier,
 ) {
     val colors = MWTheme.colors
+    val spacing = MWTheme.spacing
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -787,7 +788,7 @@ fun MWReconnectBanner(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = spacing.md, vertical = spacing.xs),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -806,7 +807,7 @@ fun MWReconnectBanner(
                         modifier = Modifier.size(14.dp),
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(spacing.xs))
                 Text(
                     text = if (isReconnecting) "Reconnecting..." else "Connection lost",
                     style = MWTypography.bodySmall,

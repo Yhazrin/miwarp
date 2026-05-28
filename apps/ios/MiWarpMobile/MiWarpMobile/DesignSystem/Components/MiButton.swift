@@ -25,17 +25,17 @@ struct MiButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
+            HStack(spacing: MWSpacing.compact) {
                 if let icon {
                     Image(systemName: icon)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(MWTypography.calloutSemibold())
                 }
                 Text(title)
-                    .font(.subheadline.weight(.medium))
+                    .font(MWTypography.subheadlineMedium())
             }
             .foregroundColor(foregroundColor)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.horizontal, MWSpacing.lg)
+            .padding(.vertical, MWSpacing.relaxed)
             .background(backgroundColor, in: RoundedRectangle(cornerRadius: MWRadius.lg))
         }
         .accessibilityLabel(accessibilityLabel ?? title)
@@ -59,7 +59,7 @@ struct MiButton: View {
 }
 
 #Preview {
-    VStack(spacing: 12) {
+    VStack(spacing: MWSpacing.md) {
         MiButton("Primary", icon: "plus") {}
         MiButton("Secondary", style: .secondary) {}
         MiButton("Destructive", icon: "trash", style: .destructive) {}

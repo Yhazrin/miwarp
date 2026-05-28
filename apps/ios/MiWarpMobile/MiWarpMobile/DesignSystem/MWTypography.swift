@@ -35,6 +35,10 @@ enum MWTypography {
         .system(size: 14, weight: .regular, design: .default)
     }
 
+    static func calloutSemibold() -> Font {
+        .system(size: 14, weight: .semibold, design: .default)
+    }
+
     // Subheadline
     static func subheadline() -> Font {
         .system(size: 13, weight: .regular, design: .default)
@@ -47,6 +51,10 @@ enum MWTypography {
     // Footnote
     static func footnote() -> Font {
         .system(size: 12, weight: .regular, design: .default)
+    }
+
+    static func footnoteMedium() -> Font {
+        .system(size: 12, weight: .medium, design: .default)
     }
 
     // Caption
@@ -74,5 +82,13 @@ enum MWTypography {
     // Icons
     static func iconLarge() -> Font {
         .system(size: 40, weight: .regular, design: .default)
+    }
+
+    static func iconXL() -> Font {
+        .system(size: 48, weight: .regular, design: .default)
+    }
+
+    static func iconXXL() -> Font {
+        .system(size: 52, weight: .regular, design: .default)
     }
 }

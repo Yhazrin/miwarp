@@ -11,7 +11,7 @@ struct MiCard<Content: View>: View {
 
     var body: some View {
         content
-            .padding(16)
+            .padding(MWSpacing.lg)
             .background(
                 RoundedRectangle(cornerRadius: MWRadius.card)
                     .fill(theme.cardBg)
@@ -25,11 +25,11 @@ struct MiCard<Content: View>: View {
 
 #Preview {
     MiCard {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: MWSpacing.sm) {
             Text("Card Title")
-                .font(.headline)
+                .font(MWTypography.title2())
             Text("Card content goes here")
-                .font(.subheadline)
+                .font(MWTypography.subheadline())
                 .foregroundColor(.secondary)
         }
     }
