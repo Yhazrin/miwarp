@@ -191,7 +191,7 @@
           {t("plugin_installationFailed")}
         {/if}
       </h2>
-      <button
+      <button type="button"
         class="text-muted-foreground hover:text-foreground transition-colors"
         aria-label="Close"
         onclick={handleClose}
@@ -224,7 +224,7 @@
               </div>
             {:else}
               {#each filteredPlugins as plugin}
-                <button
+                <button type="button"
                   class="w-full text-left rounded-lg border border-border/50 bg-muted/30 px-3 py-2 transition-colors hover:bg-muted/50"
                   onclick={() => selectPlugin(plugin)}
                 >
@@ -269,7 +269,7 @@
                 {t("plugin_installScope")}
               </span>
               <div class="flex rounded-md border border-border p-0.5">
-                <button
+                <button type="button"
                   class="flex-1 rounded px-3 py-1.5 text-xs font-medium transition-colors {selectedScope ===
                   'user'
                     ? 'bg-primary text-primary-foreground'
@@ -278,7 +278,7 @@
                 >
                   {t("plugin_scopeUser")}
                 </button>
-                <button
+                <button type="button"
                   class="flex-1 rounded px-3 py-1.5 text-xs font-medium transition-colors {selectedScope ===
                   'project'
                     ? 'bg-primary text-primary-foreground'
@@ -290,7 +290,7 @@
                 >
                   {t("plugin_scopeProject")}
                 </button>
-                <button
+                <button type="button"
                   class="flex-1 rounded px-3 py-1.5 text-xs font-medium transition-colors {selectedScope ===
                   'local'
                     ? 'bg-primary text-primary-foreground'
@@ -381,27 +381,27 @@
     <!-- Footer -->
     <div class="flex items-center justify-end gap-2 border-t border-border px-4 py-3">
       {#if currentStep === "select"}
-        <button
+        <button type="button"
           class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           onclick={handleClose}
         >
           {t("common_cancel")}
         </button>
       {:else if currentStep === "configure"}
-        <button
+        <button type="button"
           class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           onclick={goBack}
         >
           {t("common_back")}
         </button>
-        <button
+        <button type="button"
           class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           onclick={startInstallation}
         >
           {t("plugin_install")}
         </button>
       {:else if currentStep === "complete" || currentStep === "error"}
-        <button
+        <button type="button"
           class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           onclick={handleClose}
         >

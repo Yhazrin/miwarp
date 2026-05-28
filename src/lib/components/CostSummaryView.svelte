@@ -145,7 +145,7 @@
 
     <!-- Link to usage page -->
     <div class="mt-3 pt-2 border-t border-border/20">
-      <button
+      <button type="button"
         class="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
         onclick={() => goto("/usage")}
       >

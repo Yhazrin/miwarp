@@ -173,7 +173,7 @@
 {:else if !hasRun && authOverview}
   <!-- Phase A: Before session — clickable badge with dropdown -->
   <div bind:this={wrapperEl} class="inline-flex items-center">
-    <button
+    <button type="button"
       bind:this={buttonEl}
       class="flex items-center gap-1.5 rounded-md transition-colors cursor-pointer
         {variant === 'hero'
@@ -201,7 +201,7 @@
           </p>
 
           <!-- CLI Auth option -->
-          <button
+          <button type="button"
             class="flex w-full items-start gap-2.5 rounded-sm px-2.5 py-2 text-sm hover:bg-accent transition-colors
               {authOverview.auth_mode === 'cli' ? 'bg-accent' : ''}"
             onclick={() => selectMode("cli")}
@@ -269,7 +269,7 @@
 
           <!-- App API Key option (div wrapper for expandable platform sublist) -->
           <div class="rounded-sm {authOverview.auth_mode === 'api' ? 'bg-accent' : ''}">
-            <button
+            <button type="button"
               class="flex w-full items-start gap-2.5 px-2.5 py-2 text-sm hover:bg-accent transition-colors rounded-sm"
               onclick={() => selectMode("api")}
             >
@@ -341,7 +341,7 @@
                     {@const lps = isLocal ? localProxyStatuses?.[platform.id] : undefined}
                     {@const hasCred = !!findCredential(platformCredentials, platform.id)?.api_key}
                     {@const isSelected = platform.id === platformId}
-                    <button
+                    <button type="button"
                       class="flex w-full items-center gap-1.5 rounded-sm px-1.5 py-1 text-xs hover:bg-accent/70 transition-colors"
                       onclick={() => selectPlatform(platform.id)}
                     >
@@ -372,7 +372,7 @@
           </div>
 
           <!-- Configure link -->
-          <button
+          <button type="button"
             class="flex w-full items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             onclick={() => {
               dropdownOpen = false;

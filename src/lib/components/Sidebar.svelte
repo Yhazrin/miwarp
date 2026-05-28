@@ -118,7 +118,7 @@
         {pageLabel}
       </span>
       {#if onNewChat}
-        <button
+        <button type="button"
           class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
           onclick={() => onNewChat?.()}
           title={t("sidebar_newConversation")}
@@ -202,7 +202,7 @@
 
         <!-- Open folder button -->
         {#if onPickFolder}
-          <button
+          <button type="button"
             class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
             onclick={() => onPickFolder?.()}
           >

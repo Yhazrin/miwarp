@@ -155,7 +155,7 @@
       <span class="rounded-md px-2 py-1 text-xs font-medium {config.bgColor} {config.color}">
         {config.label}
       </span>
-      <button
+      <button type="button"
         class="rounded-md p-1.5 hover:bg-accent transition-colors"
         aria-label="Close"
         onclick={() => onClose?.()}
@@ -233,7 +233,7 @@
     </div>
     <div class="flex items-center gap-2">
       {#if status === "running"}
-        <button
+        <button type="button"
           class="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent transition-colors"
           onclick={() => onCancel?.()}
         >
@@ -241,7 +241,7 @@
         </button>
       {/if}
       {#if status === "failed"}
-        <button
+        <button type="button"
           class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           onclick={() => onRetry?.()}
         >

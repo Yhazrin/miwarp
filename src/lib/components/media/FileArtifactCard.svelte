@@ -48,5 +48,5 @@
       {artifact.mimeType} · {formatBytes(artifact.size)}
     </div>
   </div>
-  <button class="shrink-0 text-xs text-primary hover:underline" onclick={copyPath} aria-label={t('common_copy')}> {t('common_copy')} </button>
+  <button type="button" class="shrink-0 text-xs text-primary hover:underline" onclick={copyPath} aria-label={t('common_copy')}> {t('common_copy')} </button>
 </div>

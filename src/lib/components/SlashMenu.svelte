@@ -140,7 +140,7 @@
     {#snippet commandItem(cmd: import("$lib/types").CliCommand, idx: number, py: string)}
       {@const interaction = getCommandInteraction(cmd)}
       {@const hint = getArgumentHint(cmd)}
-      <button
+      <button type="button"
         data-index={idx}
         role="option"
         aria-selected={idx === selectedIndex}
@@ -202,7 +202,7 @@
   {:else if phase === "sub-model"}
     <!-- Sub-view header -->
     <div class="flex items-center gap-2 px-3 py-2 border-b border-border">
-      <button
+      <button type="button"
         class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         onclick={onBack}
         title={t("slashMenu_backToCommands")}
@@ -215,7 +215,7 @@
     {#if models.length > 0}
       <div class="max-h-[240px] overflow-y-auto">
         {#each models as model, i (model.value)}
-          <button
+          <button type="button"
             data-sub-index={i}
             class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors {i ===
             subSelectedIndex
@@ -244,7 +244,7 @@
   {:else if phase === "sub-fast"}
     <!-- Sub-view header -->
     <div class="flex items-center gap-2 px-3 py-2 border-b border-border">
-      <button
+      <button type="button"
         class="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         onclick={onBack}
         title={t("slashMenu_backToCommands")}
@@ -263,7 +263,7 @@
     <!-- Options -->
     <div class="max-h-[240px] overflow-y-auto">
       <!-- OFF option -->
-      <button
+      <button type="button"
         data-sub-index={0}
         class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors {0 ===
         subSelectedIndex
@@ -282,7 +282,7 @@
         <span class="font-medium text-xs text-foreground">{t("slashMenu_fastOff")}</span>
       </button>
       <!-- ON option -->
-      <button
+      <button type="button"
         data-sub-index={1}
         class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors {1 ===
         subSelectedIndex

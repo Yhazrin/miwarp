@@ -357,7 +357,7 @@
         >
       {/if}
       {#if canResume && onresume}
-        <button
+        <button type="button"
           class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-accent/20 transition-opacity"
           onclick={(e) => {
             e.stopPropagation();

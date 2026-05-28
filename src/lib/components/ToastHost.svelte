@@ -96,7 +96,7 @@
         </svg>
         <span class="text-sm text-foreground/90 flex-1">{toast.message}</span>
         {#if toast.action}
-          <button
+          <button type="button"
             class="shrink-0 text-xs font-medium text-miwarp-accent-primary hover:underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
             onclick={() => {
               toast.action?.onClick();
@@ -106,7 +106,7 @@
             {toast.action.label}
           </button>
         {/if}
-        <button
+        <button type="button"
           class="shrink-0 rounded-sm text-muted-foreground/50 hover:text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onclick={() => dismissToast(toast.id)}
           aria-label={t("common_dismiss")}

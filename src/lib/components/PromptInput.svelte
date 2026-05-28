@@ -2051,7 +2051,7 @@
           <span class="text-miwarp-status-info dark:text-miwarp-status-info"
             >{formatPasteSize(block.lineCount, block.charCount)}</span
           >
-          <button
+          <button type="button"
             onclick={() => removePastedBlock(block.id)}
             class="ml-0.5 rounded p-0.5 transition-colors hover:bg-[hsl(var(--miwarp-status-info)/0.15)]"
             title={t("prompt_removePaste")}
@@ -2070,7 +2070,7 @@
       {#if slashEnabled && quickActions.length > 0}
         <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide">
           {#each quickActions as cmd (cmd.name)}
-            <button
+            <button type="button"
               class="shrink-0 rounded-md border border-border/50 px-2 py-0.5 text-[11px]
                 bg-background/60 backdrop-blur-sm text-muted-foreground/70
                 hover:text-foreground hover:bg-background/80 hover:border-border/50
@@ -2082,7 +2082,7 @@
               {t(`quickAction_${cmd.name}` as MessageKey)}
             </button>
           {/each}
-          <button
+          <button type="button"
             class="shrink-0 rounded-md border border-border/50 px-2 py-0.5 text-[11px]
               bg-background/60 backdrop-blur-sm text-muted-foreground/70
               hover:text-foreground hover:bg-background/80 hover:border-border/50
@@ -2201,7 +2201,7 @@
           <AgentSelector value={agent} onchange={(a) => onAgentChange?.(a)} />
         {/if}
         {#if onPermissionModeChange}
-          <button
+          <button type="button"
             bind:this={modeBtnEl}
             class="flex items-center gap-1 rounded-full border border-transparent px-1.5 py-0.5 text-[11px] font-medium transition-colors {currentMode.cls} hover:border-border/40 hover:bg-accent/15"
             onclick={toggleModeDropdown}
@@ -2248,7 +2248,7 @@
           onSelect={handleSkillSelect}
         />
         {#if hasStash && onRestoreStash}
-          <button
+          <button type="button"
             class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-miwarp-accent-violet hover:bg-[hsl(var(--miwarp-accent-violet)/0.25)] transition-colors"
             title={t("prompt_stashRestore")}
             onclick={onRestoreStash}
@@ -2276,7 +2276,7 @@
           </span>
         {/if}
         {#if slashEnabled}
-          <button
+          <button type="button"
             bind:this={slashBtnEl}
             class="flex h-7 w-7 items-center justify-center rounded-full
               text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors"
@@ -2305,7 +2305,7 @@
           class="hidden"
           onchange={handleFileSelect}
         />
-        <button
+        <button type="button"
           class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
           onclick={() => fileInput?.click()}
           disabled={store.pendingAttachments.length >= 8}
@@ -2328,7 +2328,7 @@
         </button>
         {#if IS_MAC}
           <!-- Screenshot capture button (macOS only) -->
-          <button
+          <button type="button"
             class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
             onclick={() => api.captureScreenshot()}
             disabled={store.pendingAttachments.length >= 8}
@@ -2355,7 +2355,7 @@
           {#if canSend}
             {#if btwMode}
               <!-- BTW send: blue theme -->
-              <button
+              <button type="button"
                 class="flex h-7 w-7 items-center justify-center rounded-full bg-miwarp-status-info text-miwarp-accent-on-accent transition-colors hover:opacity-80"
                 onclick={handleBtwSend}
                 title={t("promptInput_sendSideQuestion")}
@@ -2364,7 +2364,7 @@
               </button>
             {:else}
               <!-- Mid-turn send: allow injecting a message while agent is running -->
-              <button
+              <button type="button"
                 class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
                 onclick={handleSend}
                 title={t("prompt_send")}
@@ -2375,7 +2375,7 @@
           {/if}
           <!-- BTW toggle button (only during running) -->
           {#if onBtwSend}
-            <button
+            <button type="button"
               onclick={() => (btwMode = !btwMode)}
               title={t("promptInput_sideQuestion")}
               class="flex h-7 w-7 items-center justify-center rounded-full transition-colors {btwMode
@@ -2395,7 +2395,7 @@
               </svg>
             </button>
           {/if}
-          <button
+          <button type="button"
             class="flex h-7 w-7 items-center justify-center rounded-full text-destructive transition-colors hover:bg-destructive/10"
             onclick={onInterrupt}
             title={t("prompt_stop")}
@@ -2405,7 +2405,7 @@
             </svg>
           </button>
         {:else}
-          <button
+          <button type="button"
             class="flex h-7 w-7 items-center justify-center rounded-full transition-colors {canSend
               ? 'bg-primary text-primary-foreground hover:bg-primary/90'
               : 'text-muted-foreground/40'}"
@@ -2428,7 +2428,7 @@
     >
       <div class="p-1">
         {#each PERMISSION_MODES as mode}
-          <button
+          <button type="button"
             class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs transition-colors hover:bg-accent/20
               {permissionMode === mode.value ? 'bg-accent/20 font-medium' : ''}"
             onclick={() => selectMode(mode.value)}

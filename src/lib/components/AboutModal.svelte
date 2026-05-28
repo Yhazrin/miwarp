@@ -120,7 +120,7 @@
           <span class="text-xs text-muted-foreground"
             >{appVersion ? `MiWarp v${appVersion}` : ""}</span
           >
-          <button
+          <button type="button"
             class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
             onclick={updateToLatest}
             disabled={checkingUpdate}
@@ -128,7 +128,7 @@
             {updateButtonLabel}
           </button>
         </div>
-        <button
+        <button type="button"
           class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           onclick={() => (open = false)}
           aria-label={t("common_close")}

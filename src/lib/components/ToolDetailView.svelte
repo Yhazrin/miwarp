@@ -606,7 +606,7 @@
             class="inline-block w-1.5 h-3 ml-0.5 bg-[hsl(var(--miwarp-status-success)/0.5)] animate-pulse align-middle"
           ></span>
         {/if}
-        <button
+        <button type="button"
           class="absolute top-1.5 right-1.5 text-xs text-muted-foreground hover:text-foreground opacity-0 group-hover/copy:opacity-100 transition-opacity"
           onclick={() => handleCopy(`$ ${tool.input?.command}\n${terminalPlainText}`)}
           >{copyFeedback ?? t("common_copy")}</button
@@ -614,7 +614,7 @@
         {@render truncateOverlay(needsExpand)}
       </div>
       {#if needsExpand}
-        <button
+        <button type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -643,7 +643,7 @@
             <span class="text-[10px] text-muted-foreground/60">{readLineInfo}</span>
           {/if}
           {#if readContent}
-            <button
+            <button type="button"
               class="text-xs text-muted-foreground hover:text-foreground transition-colors"
               onclick={() => handleCopy(readContent)}>{copyFeedback ?? t("common_copy")}</button
             >
@@ -671,7 +671,7 @@
           {@render truncateOverlay(fallbackNeedsExpand)}
         </div>
         {#if fallbackNeedsExpand || outputExpanded}
-          <button
+          <button type="button"
             class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
             onclick={toggleOutputExpand}
           >
@@ -694,7 +694,7 @@
         {@render truncateOverlay(countLines(readContent) > 20)}
       </div>
       {#if countLines(readContent) > 20}
-        <button
+        <button type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -742,7 +742,7 @@
       </div>
       {@const patchLineCount = adjustedEditHunks.reduce((n, h) => n + h.lines.length, 0)}
       {#if patchLineCount > 20}
-        <button
+        <button type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -777,7 +777,7 @@
       </div>
       {@const fallbackLineCount = fallbackHunks.reduce((n, h) => n + h.lines.length, 0)}
       {#if fallbackLineCount > 20}
-        <button
+        <button type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -824,7 +824,7 @@
         {@render truncateOverlay(countLines(planText) > 20)}
       </div>
       {#if countLines(planText) > 20}
-        <button
+        <button type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -857,7 +857,7 @@
       </div>
       {@const writePatchLines = adjustedWriteHunks.reduce((n, h) => n + h.lines.length, 0)}
       {#if writePatchLines > 20}
-        <button
+        <button type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -885,13 +885,13 @@
           </div>
         {/if}
         {@render truncateOverlay(truncated)}
-        <button
+        <button type="button"
           class="absolute top-1.5 right-1.5 text-[10px] text-muted-foreground hover:text-foreground opacity-0 group-hover/copy:opacity-100 transition-opacity"
           onclick={() => handleCopy(content)}>{copyFeedback ?? t("common_copy")}</button
         >
       </div>
       {#if truncated}
-        <button
+        <button type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={() => (outputExpanded = !outputExpanded)}
         >
@@ -942,14 +942,14 @@
       >
         <pre
           class="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">{outputText}</pre>
-        <button
+        <button type="button"
           class="absolute top-1.5 right-1.5 text-[10px] text-muted-foreground hover:text-foreground opacity-0 group-hover/copy:opacity-100 transition-opacity"
           onclick={() => handleCopy(outputText)}>{copyFeedback ?? t("common_copy")}</button
         >
         {@render truncateOverlay(needsExpand)}
       </div>
       {#if needsExpand}
-        <button
+        <button type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -988,7 +988,7 @@
         {@render truncateOverlay(needsExpand)}
       </div>
       {#if needsExpand}
-        <button
+        <button type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1032,7 +1032,7 @@
         {@render truncateOverlay(needsExpand)}
       </div>
       {#if needsExpand}
-        <button
+        <button type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1090,7 +1090,7 @@
       </div>
     {/if}
     {#if needsExpand}
-      <button
+      <button type="button"
         class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
         onclick={toggleOutputExpand}
       >
@@ -1153,7 +1153,7 @@
         {@render truncateOverlay(needsExpand)}
       </div>
       {#if needsExpand}
-        <button
+        <button type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1194,7 +1194,7 @@
         {@render truncateOverlay(todoResult.newTodos.length > 20)}
       </div>
       {#if todoResult.newTodos.length > 20}
-        <button
+        <button type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1213,7 +1213,7 @@
         {@render truncateOverlay(fallbackNeedsExpand)}
       </div>
       {#if fallbackNeedsExpand || outputExpanded}
-        <button
+        <button type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1259,7 +1259,7 @@
       </div>
     {/if}
     {#if needsExpand}
-      <button
+      <button type="button"
         class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
         onclick={toggleOutputExpand}
       >
@@ -1289,7 +1289,7 @@
         {@render truncateOverlay(countLines(exitPlanResult.plan) > 20)}
       </div>
       {#if countLines(exitPlanResult.plan) > 20}
-        <button
+        <button type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1334,7 +1334,7 @@
         {@render truncateOverlay(countLines(notebookResult.new_source) > 20)}
       </div>
       {#if countLines(notebookResult.new_source) > 20}
-        <button
+        <button type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1353,7 +1353,7 @@
         {@render truncateOverlay(fallbackNeedsExpand)}
       </div>
       {#if fallbackNeedsExpand || outputExpanded}
-        <button
+        <button type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1377,7 +1377,7 @@
             JSON.stringify(tool.input, null, 2),
             "json",
           )}</pre>
-        <button
+        <button type="button"
           class="absolute top-1.5 right-1.5 text-[10px] text-muted-foreground hover:text-foreground opacity-0 group-hover/copy:opacity-100 transition-opacity"
           onclick={() => handleCopy(JSON.stringify(tool.input, null, 2))}
           >{copyFeedback ?? t("common_copy")}</button
@@ -1395,14 +1395,14 @@
         </div>
         <pre
           class="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">{outputText}</pre>
-        <button
+        <button type="button"
           class="absolute top-1.5 right-1.5 text-[10px] text-muted-foreground hover:text-foreground opacity-0 group-hover/copy:opacity-100 transition-opacity"
           onclick={() => handleCopy(outputText)}>{copyFeedback ?? t("common_copy")}</button
         >
         {@render truncateOverlay(needsExpand)}
       </div>
       {#if needsExpand}
-        <button
+        <button type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >

@@ -221,11 +221,11 @@
       <h3 class="text-sm font-semibold text-foreground mb-2">{confirmAction.title}</h3>
       <p class="text-xs text-muted-foreground mb-4">{confirmAction.message}</p>
       <div class="flex justify-end gap-2">
-        <button
+        <button type="button"
           class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
           onclick={() => (confirmAction = null)}>{t("common_cancel")}</button
         >
-        <button
+        <button type="button"
           class="rounded-md bg-destructive px-3 py-1.5 text-xs text-destructive-foreground hover:bg-destructive/90"
           onclick={() => {
             confirmAction?.onConfirm();
@@ -243,7 +243,7 @@
       <h2 class="text-sm font-semibold text-foreground">{t("hooks_title")}</h2>
       <p class="text-[11px] text-muted-foreground">{t("hooks_desc")}</p>
     </div>
-    <button
+    <button type="button"
       class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
       title={t("hooks_refresh")}
       aria-label={t("hooks_refresh")}
@@ -276,7 +276,7 @@
   {:else}
     <!-- Add button -->
     <div class="flex items-center gap-3">
-      <button
+      <button type="button"
         class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
         onclick={startAddGroup}
       >
@@ -296,7 +296,7 @@
           <h3 class="text-sm font-medium text-foreground">
             {editorMode === "new" ? t("hooks_addGroup") : t("hooks_editGroup")}
           </h3>
-          <button class="text-xs text-muted-foreground hover:text-foreground" onclick={cancelEditor}
+          <button type="button" class="text-xs text-muted-foreground hover:text-foreground" onclick={cancelEditor}
             >{t("common_cancel")}</button
           >
         </div>
@@ -317,7 +317,7 @@
           >
           <div class="flex flex-wrap gap-1">
             {#each HOOK_EVENT_TYPES as ev}
-              <button
+              <button type="button"
                 class="rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors
                   {editorEvent === ev
                   ? 'bg-primary text-primary-foreground'
@@ -358,7 +358,7 @@
         <div>
           <div class="flex items-center justify-between mb-2">
             <span class="text-[11px] font-medium text-muted-foreground">{t("hooks_handlers")}</span>
-            <button
+            <button type="button"
               class="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               onclick={addHandler}
             >
@@ -372,7 +372,7 @@
                 <div class="flex items-center justify-between gap-2">
                   <!-- Type toggle -->
                   <div class="flex gap-1 rounded-md border border-border p-0.5">
-                    <button
+                    <button type="button"
                       class="rounded px-2 py-0.5 text-xs font-medium transition-colors {handler.type ===
                       'command'
                         ? 'bg-primary text-primary-foreground'
@@ -381,7 +381,7 @@
                         editorHandlers[hi] = { ...handler, type: "command" };
                       }}>{t("hooks_handlerCommand")}</button
                     >
-                    <button
+                    <button type="button"
                       class="rounded px-2 py-0.5 text-xs font-medium transition-colors {handler.type ===
                       'prompt'
                         ? 'bg-primary text-primary-foreground'
@@ -390,7 +390,7 @@
                         editorHandlers[hi] = { ...handler, type: "prompt" };
                       }}>{t("hooks_handlerPrompt")}</button
                     >
-                    <button
+                    <button type="button"
                       class="rounded px-2 py-0.5 text-xs font-medium transition-colors {handler.type ===
                       'mcp_tool'
                         ? 'bg-primary text-primary-foreground'
@@ -401,7 +401,7 @@
                     >
                   </div>
                   {#if editorHandlers.length > 1}
-                    <button
+                    <button type="button"
                       class="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                       onclick={() => removeHandler(hi)}
                       title={t("hooks_removeHandler")}
@@ -561,7 +561,7 @@
                     />
                   </div>
                   <!-- Async toggle -->
-                  <button
+                  <button type="button"
                     class="flex items-center gap-1.5"
                     onclick={() => {
                       editorHandlers[hi] = {
@@ -584,7 +584,7 @@
                     <span class="text-[10px] text-muted-foreground">{t("hooks_async")}</span>
                   </button>
                   <!-- Once toggle -->
-                  <button
+                  <button type="button"
                     class="flex items-center gap-1.5"
                     onclick={() => {
                       editorHandlers[hi] = {
@@ -660,11 +660,11 @@
 
         <!-- Save / Cancel -->
         <div class="flex justify-end gap-2 pt-1">
-          <button
+          <button type="button"
             class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             onclick={cancelEditor}>{t("common_cancel")}</button
           >
-          <button
+          <button type="button"
             class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
             onclick={handleSaveEditor}
             disabled={saving}
@@ -698,7 +698,7 @@
         <p class="text-xs text-muted-foreground max-w-sm mb-3">
           {t("hooks_noHooksDesc")}
         </p>
-        <button
+        <button type="button"
           class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           onclick={startAddGroup}
         >
@@ -729,7 +729,7 @@
                     <span class="text-xs text-foreground">{groupSummary(group)}</span>
                   </div>
                   <div class="flex items-center gap-1 shrink-0">
-                    <button
+                    <button type="button"
                       class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                       onclick={() => startEditGroup(event, gi, group)}
                       title={t("hooks_editGroup")}
@@ -737,7 +737,7 @@
                     >
                       <Icon name="pencil" size="sm" />
                     </button>
-                    <button
+                    <button type="button"
                       class="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                       onclick={() => handleDeleteGroup(event, gi)}
                       title={t("hooks_deleteGroup")}

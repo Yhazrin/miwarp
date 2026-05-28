@@ -356,7 +356,7 @@
           }
         }}
       />
-      <button
+      <button type="button"
         class="rounded-xl border border-border/50 bg-background/30 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent/20 disabled:opacity-50"
         onclick={handleGo}
         disabled={creating}
@@ -364,7 +364,7 @@
         {creating ? "..." : "前往"}
       </button>
       {#if hasLoaded}
-        <button
+        <button type="button"
           class="rounded-xl border border-border/50 bg-background/30 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent/20 hover:text-foreground"
           onclick={() => void handleResetSession()}
           title={t("preview_resetSession")}
@@ -405,7 +405,7 @@
           <div class="flex flex-wrap items-center justify-center gap-2">
             <span class="text-[10px] text-muted-foreground/50">本地端口：</span>
             {#each QUICK_PORTS as qp}
-              <button
+              <button type="button"
                 class="rounded-lg border border-border/50 bg-background/40 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent/20 hover:text-foreground font-mono"
                 onclick={() => handleQuickPort(qp.url)}
               >

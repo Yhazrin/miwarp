@@ -88,7 +88,7 @@
         >
           {cwd}
         </span>
-        <button
+        <button type="button"
           class="shrink-0 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground
                  hover:bg-accent hover:text-foreground transition-colors"
           onclick={handleOpenDirectory}
@@ -101,7 +101,7 @@
     <!-- Actions -->
     <div class="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
       {#if onRemove}
-        <button
+        <button type="button"
           class="mr-auto rounded-lg border border-destructive/50 px-3 py-2 text-xs text-destructive
                  hover:bg-destructive/10 transition-colors"
           onclick={() => {
@@ -112,14 +112,14 @@
           {t("sidebar_removeProject") ?? "Remove from sidebar"}
         </button>
       {/if}
-      <button
+      <button type="button"
         class="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground
                hover:bg-accent transition-colors"
         onclick={onClose}
       >
         {t("common_cancel") ?? "Cancel"}
       </button>
-      <button
+      <button type="button"
         class="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground
                hover:bg-primary/90 transition-colors disabled:opacity-50"
         onclick={handleSave}

@@ -29,7 +29,7 @@
       {/if}
     </div>
   {/if}
-  <button
+  <button type="button"
     role="switch"
     aria-checked={checked}
     aria-label={label || "Toggle setting"}

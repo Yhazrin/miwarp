@@ -41,7 +41,7 @@
 <Modal bind:open {title}>
   <div class="space-y-3">
     <div class="flex gap-1 border-b">
-      <button
+      <button type="button"
         class="px-3 py-1.5 text-sm transition-colors {tab === 'unstaged'
           ? 'border-b-2 border-primary font-medium'
           : 'text-muted-foreground hover:text-foreground'}"
@@ -49,7 +49,7 @@
       >
         {t("diff_unstaged")}
       </button>
-      <button
+      <button type="button"
         class="px-3 py-1.5 text-sm transition-colors {tab === 'staged'
           ? 'border-b-2 border-primary font-medium'
           : 'text-muted-foreground hover:text-foreground'}"

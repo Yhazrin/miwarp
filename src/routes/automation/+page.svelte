@@ -146,13 +146,13 @@
         </p>
       </div>
       <div class="flex items-center gap-2">
-        <button
+        <button type="button"
           class="rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
           onclick={handleImportScript}
         >
           📥 {t("automation_import")}
         </button>
-        <button
+        <button type="button"
           class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           onclick={() => (showNewScriptDialog = true)}
         >
@@ -177,7 +177,7 @@
       </div>
 
       <div class="flex flex-wrap gap-2">
-        <button
+        <button type="button"
           class="rounded-full px-3 py-1 text-xs font-medium transition-colors
             {selectedCategory === null
             ? 'bg-primary text-primary-foreground'
@@ -188,7 +188,7 @@
         </button>
         {#each AUTOMATION_CATEGORIES as cat}
           {@const count = groupedScripts[cat.value]?.length ?? 0}
-          <button
+          <button type="button"
             class="rounded-full px-3 py-1 text-xs font-medium transition-colors
               {selectedCategory === cat.value
               ? 'bg-primary text-primary-foreground'
@@ -211,7 +211,7 @@
         variant="dashed"
       >
         {#snippet action()}
-          <button
+          <button type="button"
             class="mt-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             onclick={() => (showNewScriptDialog = true)}
           >
@@ -271,7 +271,7 @@
       </div>
 
       <div class="mt-6 flex justify-end gap-3">
-        <button
+        <button type="button"
           class="rounded-md border px-4 py-2 text-sm hover:bg-accent"
           onclick={() => {
             showNewScriptDialog = false;
@@ -280,7 +280,7 @@
         >
           {t("automation_cancel")}
         </button>
-        <button
+        <button type="button"
           class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           onclick={handleNewScript}
           disabled={!newScriptName.trim()}

@@ -81,7 +81,7 @@
   {/each}
 
   {#if hiddenCount > 0}
-    <button
+    <button type="button"
       class="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
       onclick={() => goto("/release-notes")}
     >

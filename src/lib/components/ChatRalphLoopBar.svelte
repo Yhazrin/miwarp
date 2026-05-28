@@ -27,7 +27,7 @@
         </span>
       {/if}
     </div>
-    <button
+    <button type="button"
       class="rounded px-2 py-0.5 text-xs text-miwarp-status-error hover:bg-[hsl(var(--miwarp-status-error)/0.2)] transition-colors"
       onclick={onCancel}
     >

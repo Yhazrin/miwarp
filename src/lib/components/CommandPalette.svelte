@@ -542,7 +542,7 @@
               </span>
             {/if}
             <!-- Search mode indicator -->
-            <button
+            <button type="button"
               class="text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-0.5 hover:bg-accent transition-colors"
               onclick={() => {
                 // Cycle through: basic -> fuzzy -> nl -> basic
@@ -572,7 +572,7 @@
               {#each recentCommands as cmd (cmd.id)}
                 {@const idx = indexMap.get(cmd.id) ?? 0}
                 {@const usage = getCommandUsageCount(cmd.id)}
-                <button
+                <button type="button"
                   data-cmd-idx={idx}
                   class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors
                     {idx === selectedIndex
@@ -609,7 +609,7 @@
                 {#each grouped[cat as CommandCategory] as cmd (cmd.id)}
                   {@const idx = indexMap.get(cmd.id) ?? 0}
                   {@const usage = getCommandUsageCount(cmd.id)}
-                  <button
+                  <button type="button"
                     data-cmd-idx={idx}
                     class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors
                       {idx === selectedIndex
@@ -689,7 +689,7 @@
 
       <!-- Quick Actions Bar (Claude Code style) -->
       <div class="mt-2 flex items-center gap-2 px-1">
-        <button
+        <button type="button"
           class="flex items-center gap-1.5 rounded-md bg-accent/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors"
           onclick={() => {
             open = false;
@@ -699,7 +699,7 @@
           <span>⚡</span>
           <span>{t("cmd_quickWorkflows")}</span>
         </button>
-        <button
+        <button type="button"
           class="flex items-center gap-1.5 rounded-md bg-accent/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors"
           onclick={() => {
             open = false;
@@ -709,7 +709,7 @@
           <span>🧩</span>
           <span>{t("cmd_quickSkills")}</span>
         </button>
-        <button
+        <button type="button"
           class="flex items-center gap-1.5 rounded-md bg-accent/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors"
           onclick={() => {
             open = false;
@@ -720,7 +720,7 @@
           <span>{t("cmd_quickHistory")}</span>
         </button>
         <!-- Natural language shortcut -->
-        <button
+        <button type="button"
           class="flex items-center gap-1.5 rounded-md bg-[hsl(var(--miwarp-accent-primary)/0.15)] px-3 py-1.5 text-xs text-miwarp-accent-primary hover:bg-[hsl(var(--miwarp-accent-primary)/0.25)] transition-colors"
           onclick={() => {
             searchMode = "nl";
@@ -758,7 +758,7 @@
     >
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold">{resultModalTitle}</h2>
-        <button
+        <button type="button"
           class="rounded-md p-1 hover:bg-accent transition-colors"
           aria-label="Close"
           onclick={() => (resultModalOpen = false)}

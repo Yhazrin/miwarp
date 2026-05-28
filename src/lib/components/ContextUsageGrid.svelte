@@ -118,7 +118,7 @@
       <div class="mt-3 flex flex-col gap-1">
         {#each parsed.subTables as table}
           <div>
-            <button
+            <button type="button"
               class="flex items-center gap-1 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors"
               onclick={() => toggleSection(table.title)}
             >

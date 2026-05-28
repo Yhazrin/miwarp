@@ -115,7 +115,7 @@
 
   <!-- Actions -->
   <div class="mt-3 flex items-center gap-2">
-    <button
+    <button type="button"
       class="flex-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
       onclick={(e) => {
         e.stopPropagation();
@@ -124,7 +124,7 @@
     >
       ▶ {t("automationCard_run")}
     </button>
-    <button
+    <button type="button"
       class="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
       onclick={(e) => {
         e.stopPropagation();
@@ -136,7 +136,7 @@
 
     <!-- More menu -->
     <div class="relative">
-      <button
+      <button type="button"
         class="rounded-md p-1.5 hover:bg-accent transition-colors"
         aria-label={t("automationCard_moreOptions")}
         onclick={(e) => {
@@ -158,7 +158,7 @@
           role="none"
           onclick={(e) => e.stopPropagation()}
         >
-          <button
+          <button type="button"
             class="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent"
             onclick={() => {
               showMenu = false;
@@ -167,7 +167,7 @@
           >
             <span>📋</span> {t("automationCard_duplicate")}
           </button>
-          <button
+          <button type="button"
             class="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
             onclick={() => {
               showMenu = false;

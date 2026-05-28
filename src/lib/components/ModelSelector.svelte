@@ -87,7 +87,7 @@
 </script>
 
 <div bind:this={wrapperEl}>
-  <button
+  <button type="button"
     bind:this={buttonEl}
     aria-expanded={dropdownOpen}
     aria-haspopup="listbox"
@@ -119,7 +119,7 @@
     >
       <div class="p-1">
         {#each models as mdl}
-          <button
+          <button type="button"
             class="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent transition-colors {value ===
             mdl.value
               ? 'bg-accent font-medium'
@@ -147,7 +147,7 @@
               placeholder={t("model_placeholder")}
               onkeydown={(e) => e.key === "Enter" && applyCustom()}
             />
-            <button
+            <button type="button"
               class="rounded-sm bg-primary px-2 py-1 text-xs text-primary-foreground"
               onclick={applyCustom}
             >
@@ -155,7 +155,7 @@
             </button>
           </div>
         {:else}
-          <button
+          <button type="button"
             class="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent transition-colors text-muted-foreground"
             onclick={() => (showCustom = true)}
           >

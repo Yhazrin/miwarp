@@ -841,11 +841,11 @@
       <h3 class="text-sm font-semibold text-foreground mb-2">{confirmAction.title}</h3>
       <p class="text-xs text-muted-foreground mb-5 leading-relaxed">{confirmAction.message}</p>
       <div class="flex justify-end gap-2">
-        <button
+        <button type="button"
           class="rounded-lg border border-border px-3.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
           onclick={() => (confirmAction = null)}>{t("common_cancel")}</button
         >
-        <button
+        <button type="button"
           class="rounded-lg bg-destructive px-3.5 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors"
           onclick={() => {
             confirmAction?.onConfirm();
@@ -896,7 +896,7 @@
           {t("extensions_installedSummary")}
         </h3>
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-          <button
+          <button type="button"
             class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-[hsl(var(--miwarp-status-error)/0.3)] hover:bg-[hsl(var(--miwarp-status-error)/0.05)] transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "skills";
@@ -921,7 +921,7 @@
             <div class="text-xl font-bold text-foreground">{installedSkillCount}</div>
             <div class="text-[11px] text-muted-foreground mt-0.5">{t("sidebar_skills")}</div>
           </button>
-          <button
+          <button type="button"
             class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-[hsl(var(--miwarp-status-success)/0.3)] hover:bg-[hsl(var(--miwarp-status-success)/0.05)] transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "plugins";
@@ -946,7 +946,7 @@
             <div class="text-xl font-bold text-foreground">{installedPluginCount}</div>
             <div class="text-[11px] text-muted-foreground mt-0.5">{t("sidebar_plugins")}</div>
           </button>
-          <button
+          <button type="button"
             class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-[hsl(var(--miwarp-status-info)/0.3)] hover:bg-[hsl(var(--miwarp-status-info)/0.05)] transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "mcp";
@@ -976,7 +976,7 @@
             <div class="text-xl font-bold text-foreground">{mcpConfiguredCount}</div>
             <div class="text-[11px] text-muted-foreground mt-0.5">{t("sidebar_mcpServers")}</div>
           </button>
-          <button
+          <button type="button"
             class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-[hsl(var(--miwarp-status-warning)/0.3)] hover:bg-[hsl(var(--miwarp-status-warning)/0.05)] transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "hooks";
@@ -1001,7 +1001,7 @@
             <div class="text-xl font-bold text-foreground">{hooksCount}</div>
             <div class="text-[11px] text-muted-foreground mt-0.5">{t("sidebar_hooks")}</div>
           </button>
-          <button
+          <button type="button"
             class="group rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3.5 text-left hover:border-[hsl(var(--miwarp-accent-violet)/0.3)] hover:bg-[hsl(var(--miwarp-accent-violet)/0.05)] transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "agents";
@@ -1097,7 +1097,7 @@
           {t("extensions_recommendedActions")}
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <button
+          <button type="button"
             class="flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
             onclick={() => {
               startNewSkill();
@@ -1113,7 +1113,7 @@
               >{t("extensions_createProjectSkill")}</span
             >
           </button>
-          <button
+          <button type="button"
             class="flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
             onclick={() => {
               skillsSource = "discover";
@@ -1129,7 +1129,7 @@
               >{t("extensions_installCommunitySkill")}</span
             >
           </button>
-          <button
+          <button type="button"
             class="flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
             onclick={() => {
               mcpSource = "discover";
@@ -1159,7 +1159,7 @@
               >{t("extensions_configureMcpServer")}</span
             >
           </button>
-          <button
+          <button type="button"
             class="flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "hooks";
@@ -1181,7 +1181,7 @@
             </div>
             <span class="text-xs font-medium text-foreground">{t("extensions_reviewHooks")}</span>
           </button>
-          <button
+          <button type="button"
             class="flex items-center gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all sm:col-span-2"
             onclick={() => {
               pluginsSource = "marketplace";
@@ -1213,7 +1213,7 @@
       <div>
         <h3 class="text-xs font-medium text-muted-foreground mb-3">{t("extensions_typeGuide")}</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          <button
+          <button type="button"
             class="flex items-start gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "skills";
@@ -1240,7 +1240,7 @@
               </div>
             </div>
           </button>
-          <button
+          <button type="button"
             class="flex items-start gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "agents";
@@ -1267,7 +1267,7 @@
               </div>
             </div>
           </button>
-          <button
+          <button type="button"
             class="flex items-start gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "mcp";
@@ -1304,7 +1304,7 @@
               </div>
             </div>
           </button>
-          <button
+          <button type="button"
             class="flex items-start gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "hooks";
@@ -1333,7 +1333,7 @@
               </div>
             </div>
           </button>
-          <button
+          <button type="button"
             class="flex items-start gap-3 rounded-xl border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-left hover:border-primary/30 hover:bg-accent/5 transition-all"
             onclick={() => {
               if (sectionCtx) sectionCtx.active = "plugins";
@@ -1378,7 +1378,7 @@
       <!-- Source toggle + Create Skill -->
       <div class="flex items-center gap-3">
         <div class="flex gap-1 rounded-lg border border-border p-0.5 w-fit">
-          <button
+          <button type="button"
             class="rounded-md px-3 py-1 text-xs font-medium transition-colors {skillsSource ===
             'discover'
               ? 'bg-primary text-primary-foreground'
@@ -1388,7 +1388,7 @@
               syncUrl();
             }}>{t("plugin_discover")}</button
           >
-          <button
+          <button type="button"
             class="rounded-md px-3 py-1 text-xs font-medium transition-colors {skillsSource ===
             'installed'
               ? 'bg-primary text-primary-foreground'
@@ -1398,7 +1398,7 @@
               syncUrl();
             }}>{t("plugin_installed")}</button
           >
-          <button
+          <button type="button"
             class="rounded-md px-3 py-1 text-xs font-medium transition-colors {editorMode
               ? 'bg-primary text-primary-foreground'
               : 'text-muted-foreground hover:text-foreground'}"
@@ -1432,7 +1432,7 @@
               <h3 class="text-sm font-semibold text-foreground">
                 {editorMode === "new" ? t("plugin_createSkill") : t("extensions_editSkill")}
               </h3>
-              <button
+              <button type="button"
                 class="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 aria-label="Close"
                 onclick={cancelEditor}
@@ -1522,11 +1522,11 @@
             </div>
 
             <div class="flex justify-end gap-2 px-5 py-3 border-t border-border shrink-0">
-              <button
+              <button type="button"
                 class="rounded-lg border border-border px-3.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 onclick={cancelEditor}>{t("common_cancel")}</button
               >
-              <button
+              <button type="button"
                 class="rounded-lg bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
                 onclick={editorMode === "new" ? handleCreateSkill : handleSaveSkill}
                 disabled={editorSaving || (editorMode === "new" && !editorName.trim())}
@@ -1558,7 +1558,7 @@
               ></span>
               <span class="text-[10px] text-muted-foreground">skills.sh</span>
             </div>
-            <button
+            <button type="button"
               class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
               title={t("plugins_refresh")}
               aria-label={t("plugins_refresh")}
@@ -1594,14 +1594,14 @@
 
           <!-- Scope selector -->
           <div class="flex rounded-lg border border-border p-0.5 shrink-0">
-            <button
+            <button type="button"
               class="rounded-md px-2 py-1 text-xs font-medium transition-colors {communityScope ===
               'user'
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground'}"
               onclick={() => (communityScope = "user")}>{t("plugin_scopeUser")}</button
             >
-            <button
+            <button type="button"
               class="rounded-md px-2 py-1 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed {communityScope ===
               'project'
                 ? 'bg-primary text-primary-foreground'
@@ -1632,7 +1632,7 @@
         <!-- Quick filters -->
         <div class="flex flex-wrap gap-1.5 mb-4">
           {#each ["react", "python", "security", "testing", "devops", "best practices"] as filter}
-            <button
+            <button type="button"
               class="rounded-full border border-border px-2.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors {communityQuery ===
               filter
                 ? 'bg-primary/10 border-primary/30 text-foreground'
@@ -1671,7 +1671,7 @@
                       : t("plugin_couldNotLoadPopular")}
                 </p>
                 {#if communityQuery.trim().length < 2 && !communityRefreshing}
-                  <button
+                  <button type="button"
                     class="rounded-lg border border-border px-3 py-1.5 text-xs text-foreground hover:bg-muted transition-colors"
                     onclick={refreshCommunity}
                   >
@@ -1716,7 +1716,7 @@
                             >
                           </div>
                         </div>
-                        <button
+                        <button type="button"
                           class="rounded-lg px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 shrink-0 {isInstalled
                             ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success cursor-default'
                             : 'bg-primary text-primary-foreground hover:bg-primary/90'}"
@@ -1805,7 +1805,7 @@
                             </p>
                           {/if}
                         </div>
-                        <button
+                        <button type="button"
                           class="shrink-0 text-muted-foreground hover:text-foreground"
                           onclick={() => (communityDetail = null)}
                           title={t("plugin_closePreview")}
@@ -1873,7 +1873,7 @@
             <p class="text-xs text-muted-foreground max-w-sm mb-3">
               {t("plugin_skillsEmptyDesc")}
             </p>
-            <button
+            <button type="button"
               class="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
               onclick={startNewSkill}
             >
@@ -1920,7 +1920,7 @@
                     </div>
                   </div>
                   <div class="flex items-center gap-1 shrink-0">
-                    <button
+                    <button type="button"
                       class="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                       onclick={() => startEditSkill(skill)}
                       title={t("extensions_editSkill")}
@@ -1938,7 +1938,7 @@
                         /></svg
                       >
                     </button>
-                    <button
+                    <button type="button"
                       class="rounded-lg p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                       onclick={(e) => {
                         e.stopPropagation();
@@ -1986,7 +1986,7 @@
 
       <!-- Source toggle -->
       <div class="flex gap-1 rounded-lg border border-border p-0.5 w-fit">
-        <button
+        <button type="button"
           class="rounded-md px-3 py-1 text-xs font-medium transition-colors {mcpSource ===
           'discover'
             ? 'bg-primary text-primary-foreground'
@@ -1996,7 +1996,7 @@
             syncUrl();
           }}>{t("plugin_discover")}</button
         >
-        <button
+        <button type="button"
           class="rounded-md px-3 py-1 text-xs font-medium transition-colors {mcpSource ===
           'configured'
             ? 'bg-primary text-primary-foreground'
@@ -2055,7 +2055,7 @@
       <!-- Source toggle -->
       <div class="flex items-center gap-3">
         <div class="flex gap-1 rounded-lg border border-border p-0.5 w-fit">
-          <button
+          <button type="button"
             class="rounded-md px-3 py-1 text-xs font-medium transition-colors {pluginsSource ===
             'marketplace'
               ? 'bg-primary text-primary-foreground'
@@ -2065,7 +2065,7 @@
               syncUrl();
             }}>{t("plugin_marketplaceCount", { count: String(plugins.length) })}</button
           >
-          <button
+          <button type="button"
             class="rounded-md px-3 py-1 text-xs font-medium transition-colors {pluginsSource ===
             'installed'
               ? 'bg-primary text-primary-foreground'
@@ -2092,7 +2092,7 @@
             />
           </div>
           <!-- Guided Install Button -->
-          <button
+          <button type="button"
             class="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
             onclick={() => (showInstaller = true)}
           >
@@ -2112,14 +2112,14 @@
             {/each}
           </select>
           <div class="flex rounded-lg border border-border p-0.5 shrink-0">
-            <button
+            <button type="button"
               class="rounded-md px-2 py-1 text-xs font-medium transition-colors {installScope ===
               'user'
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground'}"
               onclick={() => (installScope = "user")}>{t("plugin_scopeUser")}</button
             >
-            <button
+            <button type="button"
               class="rounded-md px-2 py-1 text-xs font-medium transition-colors {installScope ===
               'project'
                 ? 'bg-primary text-primary-foreground'
@@ -2129,7 +2129,7 @@
               disabled={!projectCwd}
               onclick={() => (installScope = "project")}>{t("plugin_scopeProject")}</button
             >
-            <button
+            <button type="button"
               class="rounded-md px-2 py-1 text-xs font-medium transition-colors {installScope ===
               'local'
                 ? 'bg-primary text-primary-foreground'
@@ -2216,7 +2216,7 @@
                   </div>
                   <div class="flex items-center gap-2 shrink-0">
                     <!-- Install button -->
-                    <button
+                    <button type="button"
                       class="rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
                       onclick={() => handleInstall(plugin.name)}
                       disabled={operationLoading === plugin.name}
@@ -2371,7 +2371,7 @@
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                   <!-- Enable/Disable toggle -->
-                  <button
+                  <button type="button"
                     class="rounded-lg border border-border px-2.5 py-1 text-xs {plugin.enabled !==
                     false
                       ? 'text-miwarp-status-success border-[hsl(var(--miwarp-status-success)/0.3)]'
@@ -2382,7 +2382,7 @@
                     {plugin.enabled !== false ? t("plugin_enabled") : t("plugin_disabled")}
                   </button>
                   <!-- Update button -->
-                  <button
+                  <button type="button"
                     class="rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
                     onclick={() => handleUpdate(plugin)}
                     disabled={operationLoading === plugin.name}
@@ -2391,7 +2391,7 @@
                     {t("plugin_update")}
                   </button>
                   <!-- Uninstall button -->
-                  <button
+                  <button type="button"
                     class="rounded-lg border border-destructive/30 px-2.5 py-1 text-xs text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
                     onclick={() => handleUninstall(plugin)}
                     disabled={operationLoading === plugin.name}
@@ -2411,7 +2411,7 @@
 
       <!-- Registries (collapsible, always visible at bottom) -->
       <div class="mt-6 border-t border-border pt-4">
-        <button
+        <button type="button"
           class="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
           onclick={() => (registriesOpen = !registriesOpen)}
         >
@@ -2428,7 +2428,7 @@
                 class="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 bind:value={newMarketplaceSource}
               />
-              <button
+              <button type="button"
                 class="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
                 onclick={() => handleAddMarketplace()}
                 disabled={!newMarketplaceSource.trim() || operationLoading === "__marketplace_add"}
@@ -2464,7 +2464,7 @@
                         </div>
                       </div>
                       <div class="flex items-center gap-2">
-                        <button
+                        <button type="button"
                           class="rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
                           onclick={() => handleUpdateMarketplace(mp.name)}
                           disabled={operationLoading === `__mp_${mp.name}`}
@@ -2473,7 +2473,7 @@
                             ? t("plugin_updating")
                             : t("plugin_update")}
                         </button>
-                        <button
+                        <button type="button"
                           class="rounded-lg border border-destructive/30 px-2.5 py-1 text-xs text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
                           onclick={() => handleRemoveMarketplace(mp.name)}
                           disabled={operationLoading === `__mp_${mp.name}`}

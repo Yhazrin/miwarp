@@ -131,7 +131,7 @@
         onkeydown={handleKeyDown}
         class="url-input"
       />
-      <button class="rounded-lg px-6 py-3 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={fetchUrl} disabled={isLoading || !url}>
+      <button type="button" class="rounded-lg px-6 py-3 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={fetchUrl} disabled={isLoading || !url}>
         {isLoading ? t("webfetch_fetching") : t("webfetch_fetch")}
       </button>
     </div>
@@ -142,13 +142,13 @@
     <div class="history-section">
       <div class="history-header">
         <span class="history-label">{t("webfetch_recentUrls")}</span>
-        <button class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors" onclick={() => (fetchHistory = [])}>
+        <button type="button" class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors" onclick={() => (fetchHistory = [])}>
           {t("webfetch_clear")}
         </button>
       </div>
       <div class="history-list">
         {#each fetchHistory as historyUrl}
-          <button class="history-item" onclick={() => selectFromHistory(historyUrl)}>
+          <button type="button" class="history-item" onclick={() => selectFromHistory(historyUrl)}>
             {historyUrl}
           </button>
         {/each}
@@ -176,7 +176,7 @@
       </div>
 
       <!-- Toggle Headers -->
-      <button class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer border-none transition-colors mb-3" onclick={() => (showHeaders = !showHeaders)}>
+      <button type="button" class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer border-none transition-colors mb-3" onclick={() => (showHeaders = !showHeaders)}>
         {showHeaders ? t("webfetch_hideHeaders") : t("webfetch_showHeaders")}
       </button>
 
@@ -200,8 +200,8 @@
       <div class="content-header">
         <h4>{t("webfetch_content")}</h4>
         <div class="content-actions">
-          <button class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors" onclick={copyContent}> {t("webfetch_copy")} </button>
-          <button class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors" onclick={clearContent}> {t("webfetch_clear")} </button>
+          <button type="button" class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors" onclick={copyContent}> {t("webfetch_copy")} </button>
+          <button type="button" class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors" onclick={clearContent}> {t("webfetch_clear")} </button>
         </div>
       </div>
       <div class="content-display">
@@ -215,7 +215,7 @@
     <div class="error-section">
       <span class="error-icon">⚠️</span>
       <span class="error-message">{error}</span>
-      <button class="px-2 py-1 bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onclick={() => (error = null)} title={t("common_close")} aria-label={t("common_close")}> × </button>
+      <button type="button" class="px-2 py-1 bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onclick={() => (error = null)} title={t("common_close")} aria-label={t("common_close")}> × </button>
     </div>
   {/if}
 

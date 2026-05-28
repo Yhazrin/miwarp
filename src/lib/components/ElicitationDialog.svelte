@@ -193,7 +193,7 @@
     <!-- URL button -->
     {#if current.url}
       <div class="mb-[14px]">
-        <button
+        <button type="button"
           class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[hsl(var(--miwarp-status-info)/0.2)] bg-[hsl(var(--miwarp-status-info)/0.1)] px-3 py-1.5 text-xs text-miwarp-status-info transition-all duration-150 hover:border-[hsl(var(--miwarp-status-info)/0.35)] hover:bg-[hsl(var(--miwarp-status-info)/0.18)]"
           onclick={() => current?.url && openElicitationUrl(current.url)}
         >
@@ -206,7 +206,7 @@
     {#if isSimpleChoice && choices.length > 0}
       <div class="mb-4 flex flex-wrap gap-2">
         {#each choices as choice}
-          <button
+          <button type="button"
             class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center gap-[5px] rounded-lg border border-[hsl(var(--border)/0.7)] bg-background px-[14px] py-[7px] text-[13px] font-[450] text-[hsl(var(--foreground)/0.8)] transition-all duration-150 hover:border-[hsl(var(--primary)/0.3)] hover:bg-accent {selectedChoice === choice
               ? 'border-[hsl(var(--primary)/0.5)] bg-[hsl(var(--primary)/0.1)] text-primary'
               : ''}"
@@ -294,14 +294,14 @@
 
     <!-- Footer actions -->
     <div class="flex items-center justify-end gap-2 border-t border-[hsl(var(--border)/0.4)] pt-[14px]">
-      <button
+      <button type="button"
         class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center justify-center rounded-lg border border-[hsl(var(--border)/0.7)] bg-transparent px-[18px] py-2 text-[13px] font-medium text-muted-foreground transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
         disabled={submitting}
         onclick={handleDecline}
       >
         {t("elicitation_decline")}
       </button>
-      <button
+      <button type="button"
         class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center justify-center rounded-lg border border-primary bg-primary px-[18px] py-2 text-[13px] font-medium text-primary-foreground transition-all duration-150 hover:bg-[hsl(var(--primary)/0.9)] disabled:cursor-not-allowed disabled:opacity-50"
         disabled={submitting || missingRequired.length > 0}
         onclick={handleAccept}

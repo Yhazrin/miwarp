@@ -81,7 +81,7 @@
 
   <!-- Key display / recording -->
   {#if recording}
-    <button
+    <button type="button"
       bind:this={buttonRef}
       class="flex items-center gap-1.5 rounded-md border-2 border-miwarp-status-info bg-miwarp-status-info/10 px-3 py-1 text-sm font-mono min-w-[120px] animate-pulse focus:outline-none"
       onkeydown={handleKeydown}
@@ -109,7 +109,7 @@
     {#if recording}
       {#if reservedWarning}
         <span class="text-[11px] text-destructive">{reservedWarning}</span>
-        <button
+        <button type="button"
           class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           onclick={cancelRecording}
           title={t("common_cancel")}
@@ -122,14 +122,14 @@
           class="text-[11px] text-miwarp-status-warning max-w-[160px] truncate"
           title={conflictWarning}>{conflictWarning}</span
         >
-        <button
+        <button type="button"
           class="rounded p-1 text-miwarp-status-success hover:text-[hsl(var(--miwarp-status-success)/0.8)] hover:bg-[hsl(var(--miwarp-status-success)/0.1)] transition-colors"
           onclick={confirmKey}
           title={t("keybinding_useAnyway")}
         >
           <Icon name="check" size="sm" />
         </button>
-        <button
+        <button type="button"
           class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           onclick={cancelRecording}
           title={t("common_cancel")}
@@ -138,14 +138,14 @@
           <Icon name="x" size="sm" />
         </button>
       {:else if pendingKey}
-        <button
+        <button type="button"
           class="rounded p-1 text-miwarp-status-success hover:text-[hsl(var(--miwarp-status-success)/0.8)] hover:bg-[hsl(var(--miwarp-status-success)/0.1)] transition-colors"
           onclick={confirmKey}
           title={t("keybinding_confirm")}
         >
           <Icon name="check" size="sm" />
         </button>
-        <button
+        <button type="button"
           class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           onclick={cancelRecording}
           title={t("common_cancel")}
@@ -154,7 +154,7 @@
           <Icon name="x" size="sm" />
         </button>
       {:else}
-        <button
+        <button type="button"
           class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           onclick={cancelRecording}
           title={t("common_cancel")}
@@ -165,7 +165,7 @@
       {/if}
     {:else if binding.editable}
       {#if isOverridden && onReset}
-        <button
+        <button type="button"
           class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors opacity-0 group-hover:opacity-100"
           onclick={onReset}
           title={t("keybinding_resetDefault")}
@@ -174,7 +174,7 @@
           <Icon name="refresh-ccw" size="sm" />
         </button>
       {/if}
-      <button
+      <button type="button"
         class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors opacity-0 group-hover:opacity-100"
         onclick={startRecording}
         title={t("keybinding_editShortcut")}

@@ -66,7 +66,7 @@
       <!-- Header -->
       <div class="flex items-center justify-between border-b border-border px-5 py-3">
         <h2 class="text-sm font-semibold text-foreground">{t("shortcutHelp_title")}</h2>
-        <button
+        <button type="button"
           class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           aria-label="Close"
           onclick={() => (open = false)}
@@ -172,7 +172,7 @@
         {#if cliBindings.length > 0}
           <section>
             <h3>
-              <button
+              <button type="button"
                 class="flex w-full items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
                 onclick={() => (cliExpanded = !cliExpanded)}
               >

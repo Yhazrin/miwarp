@@ -1386,7 +1386,7 @@
     </ChatConversationStage>
 
     {#if showScrollButton}
-      <button
+      <button type="button"
         transition:fly={{ y: 10, duration: 200 }}
         class="absolute bottom-20 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-colors hover:bg-primary/90"
         aria-label={t("chat_scrollToBottom")}

@@ -31,7 +31,7 @@
       <p class="text-sm text-miwarp-text-secondary">{t("browser_description")}</p>
     </div>
     <div class="flex gap-2">
-      <button
+      <button type="button"
         class="rounded-md border border-border p-2 text-xl transition-colors hover:bg-miwarp-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         title={t("browser_settings")}
         aria-label={t("browser_settings")}
@@ -45,7 +45,7 @@
   <!-- Tab Navigation -->
   <div class="flex w-fit shrink-0 gap-2 rounded-lg bg-miwarp-bg-deepest p-1">
     {#each tabs as tab}
-      <button
+      <button type="button"
         class="flex items-center gap-2 rounded-md px-5 py-3 text-sm font-medium transition-all
           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
           {activeTab === tab.id
@@ -123,10 +123,10 @@
     </div>
 
     <div class="mt-6 flex justify-end gap-3">
-      <button class="rounded-md border border-border px-4 py-2 text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onclick={() => (showSettings = false)}>
+      <button type="button" class="rounded-md border border-border px-4 py-2 text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onclick={() => (showSettings = false)}>
         {t("browser_cancel")}
       </button>
-      <button class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <button type="button" class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         {t("browser_saveSettings")}
       </button>
     </div>

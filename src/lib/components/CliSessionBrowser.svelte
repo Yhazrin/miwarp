@@ -241,7 +241,7 @@
             {/if}
           </p>
         </div>
-        <button
+        <button type="button"
           class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           onclick={onclose}
           aria-label={t("common_close")}
@@ -253,7 +253,7 @@
       <!-- Project filter (inline in header) -->
       {#if isShowAll && projects.length > 1}
         <div class="mt-3 flex items-center gap-1.5 overflow-x-auto">
-          <button
+          <button type="button"
             class="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors
               {selectedProject === null
               ? 'bg-accent text-accent-foreground'
@@ -263,7 +263,7 @@
             {t("cliSync_filterAll")} ({sessions.length})
           </button>
           {#each projects as proj (proj.path)}
-            <button
+            <button type="button"
               class="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors
                 {selectedProject === proj.path
                 ? 'bg-accent text-accent-foreground'
@@ -290,7 +290,7 @@
           class="w-full rounded-lg border border-border bg-muted/50 py-2 pl-10 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         />
         {#if searchQuery}
-          <button
+          <button type="button"
             class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
             onclick={() => (searchQuery = "")}
             aria-label={t("common_clear")}
@@ -374,7 +374,7 @@
                 <!-- Right: action buttons -->
                 <div class="flex items-center gap-1.5 shrink-0 pt-0.5">
                   {#if isImported && session.existingRunId}
-                    <button
+                    <button type="button"
                       class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-50"
                       onclick={() => syncSession(session.existingRunId!)}
                       disabled={!!importingId}
@@ -385,14 +385,14 @@
                         {t("cliSync_sync")}
                       {/if}
                     </button>
-                    <button
+                    <button type="button"
                       class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors"
                       onclick={() => onimported(session.existingRunId!)}
                     >
                       {t("cliSync_open")}
                     </button>
                   {:else}
-                    <button
+                    <button type="button"
                       class="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
                       onclick={() => importSession(session)}
                       disabled={!!importingId}
@@ -423,7 +423,7 @@
           <div></div>
         {/if}
         {#if newCount > 0}
-          <button
+          <button type="button"
             class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
             onclick={importAllNew}
             disabled={!!importingId || importingAll}

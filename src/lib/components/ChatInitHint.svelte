@@ -17,13 +17,13 @@
     <Icon name="triangle-alert" size="sm" class="shrink-0" />
     <span>
       Run
-      <button
+      <button type="button"
         class="font-mono text-miwarp-status-warning hover:text-[hsl(var(--miwarp-status-warning)/0.8)] underline underline-offset-2 transition-colors"
         onclick={onRunInit}>{t("chat_initHintAction")}</button
       >
       to create CLAUDE.md
     </span>
-    <button
+    <button type="button"
       class="ml-auto text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
       onclick={onDismiss}
       title={t("chat_initHintDismiss")}

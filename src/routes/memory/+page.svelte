@@ -366,7 +366,7 @@
     <div class="flex items-center gap-2 shrink-0">
       {#if isMarkdown}
         <div class="flex rounded-md border bg-background p-0.5">
-          <button
+          <button type="button"
             class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors
               {viewMode === 'edit'
               ? 'bg-muted text-foreground'
@@ -387,7 +387,7 @@
             >
             {t("common_edit")}
           </button>
-          <button
+          <button type="button"
             class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors
               {viewMode === 'preview'
               ? 'bg-muted text-foreground'

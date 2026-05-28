@@ -926,7 +926,7 @@
   >
     <div class="session-island-tier2">
       {#if onStatusClick}
-        <button
+        <button type="button"
           class="inline-flex items-center gap-1 shrink-0 rounded px-1 hover:bg-muted/50 transition-colors"
           onclick={onStatusClick}
           title={t("toolActivity_tabInfo")}
@@ -966,7 +966,7 @@
 
       {#if model}
         {#if onModelChange}
-          <button
+          <button type="button"
             bind:this={modelBtnEl}
             class="inline-flex max-w-[9rem] items-center gap-1 truncate rounded-md border border-transparent px-1.5 py-0.5 font-medium text-foreground/85 hover:border-border/50 hover:bg-muted/50 hover:text-foreground transition-colors {dropdownOpen
               ? 'border-border/60 bg-muted/60 text-foreground'
@@ -992,7 +992,7 @@
 
       {#if onProcessVisibilityChange}
         <span class="session-island-tier2-divider" aria-hidden="true">|</span>
-        <button
+        <button type="button"
           bind:this={pvMenuBtnEl}
           class="inline-flex w-fit items-center gap-1 truncate rounded-md border border-transparent px-2 py-1 text-foreground/65 hover:border-border/50 hover:bg-muted/50 hover:text-foreground transition-colors {pvMenuOpen
             ? 'border-border/60 bg-muted/60 text-foreground'

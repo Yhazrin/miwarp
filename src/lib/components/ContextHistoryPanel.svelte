@@ -346,7 +346,7 @@
                 ? computeContextDelta(entry.prevSnap.data, entry.snap.data)
                 : null}
             {@const isExpanded = expandedEntries.has(entry.turnIndex)}
-            <button
+            <button type="button"
               class="w-full text-left px-3 py-1.5 hover:bg-accent/50 transition-colors text-[11px] border-b border-border/20"
               onclick={() => toggleEntry(entry.turnIndex)}
             >

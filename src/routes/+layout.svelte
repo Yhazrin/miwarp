@@ -1740,7 +1740,7 @@
 
 {#snippet treeNodes(nodes: TreeNode[])}
   {#each nodes as node}
-    <button
+    <button type="button"
       class="flex w-full items-center gap-1 py-0.5 text-[13px] transition-colors
         text-sidebar-foreground hover:bg-sidebar-accent/50
         {explorerSelectedFile === node.fullPath ? 'bg-sidebar-accent/70' : ''}"
@@ -1923,7 +1923,7 @@
       <!-- Rail version + locale + dark mode toggle -->
       <div class="py-2">
         <div class="flex items-center justify-center pb-1">
-          <button
+          <button type="button"
             class="flex h-7 w-7 items-center justify-center rounded-md transition-colors cursor-pointer
               {sidebarUpdateAvailable
               ? 'text-miwarp-status-warning hover:text-[hsl(var(--miwarp-status-warning)/0.8)] hover:bg-[hsl(var(--miwarp-status-warning)/0.1)]'
@@ -1981,7 +1981,7 @@
           </button>
         </div>
         <div class="mx-auto mb-0.5">
-          <button
+          <button type="button"
             class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
             onclick={toggleLocale}
             aria-label={t("settings_changeLanguage")}
@@ -1992,7 +1992,7 @@
             >
           </button>
         </div>
-        <button
+        <button type="button"
           class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
           onclick={() => themeStore.cycleTheme()}
           aria-label={t("settings_toggleTheme")}
@@ -2021,7 +2021,7 @@
             >
           {/if}
         </button>
-        <button
+        <button type="button"
           class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
           onclick={() =>
             themeStore.setColorScheme(themeStore.colorScheme === "warm" ? "neutral" : "warm")}
@@ -2075,7 +2075,7 @@
               <span class="flex-1 min-w-0 truncate text-sm font-medium text-sidebar-foreground"
                 >{pageName}</span
               >
-              <button
+              <button type="button"
                 class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
                 onclick={() => (showCliBrowser = true)}
                 aria-label={t("sidebar_cliBrowser")}
@@ -2094,7 +2094,7 @@
                   /></svg
                 >
               </button>
-              <button
+              <button type="button"
                 class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
                 onclick={newChat}
                 aria-label={t("sidebar_newChat")}
@@ -2113,7 +2113,7 @@
                   <div class="mx-3 my-1 border-t border-sidebar-border"></div>
                 {/if}
                 {@const isActive = pluginActiveSection === section.id}
-                <button
+                <button type="button"
                   class="flex w-full items-center gap-2 py-2 px-3 text-xs font-medium transition-colors
                   {isActive
                     ? 'bg-sidebar-accent text-sidebar-foreground'
@@ -2244,14 +2244,14 @@
           {:else if isExplorerPage}
             <!-- Explorer tab bar: Files / Git -->
             <div class="flex shrink-0 border-b border-sidebar-border">
-              <button
+              <button type="button"
                 class="flex-1 py-1.5 text-xs font-medium text-center transition-colors
               {explorerTab === 'files'
                   ? 'text-sidebar-foreground border-b-2 border-primary'
                   : 'text-muted-foreground hover:text-sidebar-foreground'}"
                 onclick={() => (explorerTab = "files")}>{t("sidebar_files")}</button
               >
-              <button
+              <button type="button"
                 class="relative flex-1 py-1.5 text-xs font-medium text-center transition-colors
               {explorerTab === 'git'
                   ? 'text-sidebar-foreground border-b-2 border-primary'
@@ -2269,7 +2269,7 @@
 
             <!-- Compact project picker (below tabs) -->
             <div class="relative shrink-0 border-b border-sidebar-border">
-              <button
+              <button type="button"
                 class="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-xs transition-colors hover:bg-sidebar-accent/50"
                 onclick={() => (explorerProjectOpen = !explorerProjectOpen)}
               >
@@ -2295,7 +2295,7 @@
               {#if explorerProjectOpen}
                 <div class="border-b border-sidebar-border bg-sidebar">
                   {#each selectableFolders as folder (folder.folderKey)}
-                    <button
+                    <button type="button"
                       class="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-xs transition-colors
                       {folder.cwd === projectCwd
                         ? 'bg-sidebar-accent text-sidebar-foreground'
@@ -2320,7 +2320,7 @@
                       <span class="min-w-0 truncate">{cwdDisplayLabel(folder.cwd)}</span>
                     </button>
                   {/each}
-                  <button
+                  <button type="button"
                     class="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
                     onclick={() => {
                       pickFolder();
@@ -2393,7 +2393,7 @@
                   <span class="text-[12px] font-medium text-sidebar-foreground min-w-0 truncate"
                     >{gitSummary.branch || t("sidebar_detached")}</span
                   >
-                  <button
+                  <button type="button"
                     class="ml-auto flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
                     onclick={loadGitSummary}
                     aria-label={t("sidebar_refresh")}
@@ -2423,7 +2423,7 @@
                   <!-- Changed files list -->
                   <div class="flex-1 overflow-y-auto">
                     {#each gitSummary.files as file}
-                      <button
+                      <button type="button"
                         class="flex w-full items-center gap-1.5 px-3 py-1 text-[12px] hover:bg-sidebar-accent/50 transition-colors"
                         onclick={() => selectDiffFile(file.path)}
                       >
@@ -2474,7 +2474,7 @@
                     </div>
                   {:else if memoryScopeFolder.length > 0}
                     {#each filterVisibleCandidates(memoryScopeFolder, true, memorySelectedFile) as file}
-                      <button
+                      <button type="button"
                         class="flex w-full items-center gap-1.5 py-1 pl-4 pr-3 text-xs transition-colors
                         {memorySelectedFile === file.path
                           ? 'bg-sidebar-accent text-sidebar-foreground'
@@ -2516,7 +2516,7 @@
               <!-- Global scope (same style as project folders, globe icon) -->
               {#if memoryScopeGlobal.length > 0}
                 <div class="mb-0.5">
-                  <button
+                  <button type="button"
                     class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
                     onclick={() => toggleMemoryScope("global")}
                   >
@@ -2551,7 +2551,7 @@
                   {#if memoryScopeExpanded["global"]}
                     <div class="pl-3">
                       {#each filterVisibleCandidates(memoryScopeGlobal, true, memorySelectedFile) as file}
-                        <button
+                        <button type="button"
                           class="flex w-full items-center gap-1.5 py-1 pl-4 pr-3 text-xs transition-colors
                           {memorySelectedFile === file.path
                             ? 'bg-sidebar-accent text-sidebar-foreground'
@@ -2587,7 +2587,7 @@
               {/if}
 
               <!-- Open folder button -->
-              <button
+              <button type="button"
                 class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
                 onclick={pickFolder}
               >
@@ -2617,7 +2617,7 @@
                 </div>
               {:else}
                 {#each filteredTeams as team}
-                  <button
+                  <button type="button"
                     class="flex w-full flex-col gap-0.5 rounded-md px-2.5 py-2 text-left transition-colors mb-0.5
                       {teamStore.selectedTeam === team.name
                       ? 'bg-sidebar-accent text-sidebar-foreground'
@@ -2688,7 +2688,7 @@
                   </div>
                 {:else}
                   {#each visibleSearchResults as result}
-                    <button
+                    <button type="button"
                       class="w-full text-left flex flex-col gap-0.5 px-3 py-2 hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground"
                       onclick={() => {
                         runSearchQuery = "";
@@ -2793,14 +2793,14 @@
                     <span class="text-[11px] text-muted-foreground px-1">
                       {t("sidebar_batchSelected", { count: String(selectedGroupKeys.size) })}
                     </span>
-                    <button
+                    <button type="button"
                       class="ml-auto rounded px-1.5 py-0.5 text-[11px] text-destructive hover:bg-destructive/10 transition-colors"
                       onclick={() => (batchDeleteConfirmOpen = true)}
                       title={t("sidebar_batchDelete")}
                     >
                       {t("sidebar_batchDelete")}
                     </button>
-                    <button
+                    <button type="button"
                       class="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent transition-colors"
                       onclick={clearBatchSelection}
                       title={t("sidebar_batchClear")}
@@ -2928,19 +2928,19 @@
 <Modal bind:open={deleteConfirmOpen} title={t("sidebar_deleteConfirm")}>
   <p class="text-sm text-muted-foreground mb-4">{t("sidebar_deleteDesc")}</p>
   <div class="flex justify-end gap-2">
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
       onclick={cancelDeleteConversation}
     >
       {t("sidebar_deleteCancel")}
     </button>
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-miwarp-status-warning text-miwarp-status-warning hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
       onclick={confirmDeleteConversation}
     >
       {t("sidebar_softDelete")}
     </button>
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
       onclick={confirmHardDeleteConversation}
     >
@@ -2954,19 +2954,19 @@
     {t("sidebar_batchDeleteConfirm", { count: String(selectedGroupKeys.size) })}
   </p>
   <div class="flex justify-end gap-2">
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
       onclick={() => (batchDeleteConfirmOpen = false)}
     >
       {t("sidebar_deleteCancel")}
     </button>
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-miwarp-status-warning text-miwarp-status-warning hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
       onclick={batchDelete}
     >
       {t("sidebar_softDelete")}
     </button>
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
       onclick={batchHardDelete}
     >
@@ -2978,13 +2978,13 @@
 <Modal bind:open={removeProjectConfirmOpen} title={t("sidebar_removeProjectConfirm")}>
   <p class="text-sm text-muted-foreground mb-4">{t("sidebar_removeProjectDesc")}</p>
   <div class="flex justify-end gap-2">
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
       onclick={cancelRemoveProject}
     >
       {t("sidebar_deleteCancel")}
     </button>
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
       onclick={confirmRemoveProject}
     >
@@ -3005,7 +3005,7 @@
     use:focusOnMount
   />
   <div class="flex justify-end gap-2">
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
       onclick={() => {
         folderCreateOpen = false;
@@ -3014,7 +3014,7 @@
     >
       {t("sidebar_deleteCancel")}
     </button>
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
       onclick={doCreateFolder}
     >
@@ -3047,7 +3047,7 @@
     use:focusOnMount
   />
   <div class="flex justify-end gap-2">
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
       onclick={() => {
         folderRenameOpen = false;
@@ -3056,7 +3056,7 @@
     >
       {t("sidebar_deleteCancel")}
     </button>
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
       onclick={doRenameFolder}
     >
@@ -3071,7 +3071,7 @@
     {t("sidebar_deleteFolderDesc", { name: folderDeleteTarget?.name ?? "" })}
   </p>
   <div class="flex justify-end gap-2">
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
       onclick={() => {
         folderDeleteOpen = false;
@@ -3080,13 +3080,13 @@
     >
       {t("sidebar_deleteCancel")}
     </button>
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-miwarp-status-warning text-miwarp-status-warning hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
       onclick={() => doDeleteFolder(false)}
     >
       {t("sidebar_deleteFolderKeep")}
     </button>
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
       onclick={() => doDeleteFolder(true)}
     >
@@ -3101,7 +3101,7 @@
     {t("sidebar_moveToFolderDesc", { count: String(moveToFolderRunIds.length) })}
   </p>
   <div class="flex flex-col gap-1.5 mb-4 max-h-48 overflow-y-auto">
-    <button
+    <button type="button"
       class="text-left px-3 py-2 text-sm rounded-md transition-colors"
       class:bg-primary={moveToFolderSelectedId === null}
       class:text-primary-foreground={moveToFolderSelectedId === null}
@@ -3111,7 +3111,7 @@
       {t("sidebar_uncategorized")}
     </button>
     {#each sessionFolders as folder}
-      <button
+      <button type="button"
         class="text-left px-3 py-2 text-sm rounded-md transition-colors"
         class:bg-primary={moveToFolderSelectedId === folder.id}
         class:text-primary-foreground={moveToFolderSelectedId === folder.id}
@@ -3123,7 +3123,7 @@
     {/each}
   </div>
   <div class="flex justify-end gap-2">
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
       onclick={() => {
         moveToFolderOpen = false;
@@ -3132,7 +3132,7 @@
     >
       {t("sidebar_deleteCancel")}
     </button>
-    <button
+    <button type="button"
       class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
       onclick={doMoveToFolder}
     >

@@ -251,13 +251,13 @@
         {t("agent_deleteConfirm", { name: confirmDelete.name })}
       </p>
       <div class="flex justify-end gap-2">
-        <button
+        <button type="button"
           class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
           onclick={() => (confirmDelete = null)}
         >
           {t("common_cancel")}
         </button>
-        <button
+        <button type="button"
           class="rounded-md bg-destructive px-3 py-1.5 text-xs text-destructive-foreground hover:bg-destructive/90"
           onclick={() => confirmDelete && handleDelete(confirmDelete)}
         >
@@ -275,7 +275,7 @@
       <h2 class="text-sm font-semibold text-foreground">{t("agent_title")}</h2>
       <p class="text-[11px] text-muted-foreground">{t("agent_desc")}</p>
     </div>
-    <button
+    <button type="button"
       class="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90"
       onclick={() => {
         editorState = { mode: "create", agent: null };
@@ -288,7 +288,7 @@
   <!-- Group tabs -->
   <div class="flex gap-1 mb-4">
     {#each [{ id: "built-in" as const, label: t("agent_builtIn"), count: builtInAgents.length }, { id: "custom" as const, label: t("agent_custom"), count: customAgents.length }, { id: "plugin" as const, label: t("agent_plugin"), count: pluginAgents.length }] as tab}
-      <button
+      <button type="button"
         class="px-3 py-1 text-xs rounded-md transition-colors
           {activeGroup === tab.id
           ? 'bg-primary text-primary-foreground'
@@ -333,7 +333,7 @@
           </div>
         {:else}
           {#each displayedAgents as agent}
-            <button
+            <button type="button"
               class="w-full text-left rounded-md border px-3 py-2.5 transition-colors
                 {selectedAgent?.file_name === agent.file_name &&
               selectedAgent?.source === agent.source
@@ -518,7 +518,7 @@
             <!-- Actions (only for custom agents) -->
             {#if !selectedAgent.readonly && (selectedAgent.scope === "user" || selectedAgent.scope === "project")}
               <div class="flex gap-2 pt-2 border-t border-border">
-                <button
+                <button type="button"
                   class="rounded-md bg-primary/10 px-3 py-1.5 text-xs text-primary hover:bg-primary/20 transition-colors"
                   onclick={() => {
                     editorState = { mode: "edit", agent: selectedAgent };
@@ -526,7 +526,7 @@
                 >
                   {t("agent_editAgent")}
                 </button>
-                <button
+                <button type="button"
                   class="rounded-md bg-muted px-3 py-1.5 text-xs text-foreground hover:bg-muted/80 transition-colors"
                   onclick={() => {
                     if (selectedAgent) {
@@ -540,7 +540,7 @@
                 >
                   {t("agent_renameAgent")}
                 </button>
-                <button
+                <button type="button"
                   class="rounded-md bg-destructive/10 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/20 transition-colors"
                   onclick={() => (confirmDelete = selectedAgent)}
                 >
@@ -594,13 +594,13 @@
         <p class="text-xs text-destructive mb-3">{renameState.error}</p>
       {/if}
       <div class="flex justify-end gap-2">
-        <button
+        <button type="button"
           class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
           onclick={() => (renameState = null)}
         >
           {t("common_cancel")}
         </button>
-        <button
+        <button type="button"
           class="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90
             disabled:opacity-50"
           disabled={!renameState.newName || renameState.newName === renameState.agent.file_name}

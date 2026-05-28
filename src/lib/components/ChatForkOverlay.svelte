@@ -36,11 +36,11 @@
         <p class="text-xs text-muted-foreground">{error}</p>
       </div>
       <div class="flex items-center gap-2">
-        <button
+        <button type="button"
           class="rounded-lg border border-border bg-muted px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
           onclick={onCancel}>{t("common_cancel")}</button
         >
-        <button
+        <button type="button"
           class="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           disabled={resuming}
           onclick={onRetry}>{t("common_retry")}</button
@@ -73,7 +73,7 @@
       {#if elapsed > 0}
         <span class="text-xs tabular-nums text-muted-foreground">{formatElapsed(elapsed)}</span>
       {/if}
-      <button
+      <button type="button"
         class="rounded-lg border border-border bg-muted px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
         onclick={onCancel}>{t("common_cancel")}</button
       >

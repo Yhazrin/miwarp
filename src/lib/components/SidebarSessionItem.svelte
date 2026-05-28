@@ -258,7 +258,7 @@
         </span>
       {/if}
       {#if onpin}
-        <button
+        <button type="button"
           class="opacity-0 group-hover/item:opacity-100 p-0.5 rounded hover:bg-accent/20 transition-opacity {pinned
             ? 'text-primary'
             : 'text-muted-foreground'}"
@@ -285,7 +285,7 @@
         </button>
       {/if}
       {#if canResume && onresume}
-        <button
+        <button type="button"
           class="opacity-0 group-hover/item:opacity-100 p-0.5 rounded hover:bg-accent/20 transition-opacity text-muted-foreground"
           onclick={(e) => {
             e.stopPropagation();

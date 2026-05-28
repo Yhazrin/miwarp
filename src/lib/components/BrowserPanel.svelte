@@ -128,14 +128,14 @@
   {#if !connected}
     <div class="section">
       <h4>{t("browser_connect")}</h4>
-      <button class="rounded-lg px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={handleConnectBrowser}>
+      <button type="button" class="rounded-lg px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={handleConnectBrowser}>
         {t("browser_listBrowsers")}
       </button>
 
       {#if browsers.length > 0}
         <div class="browser-list">
           {#each browsers as browser}
-            <button class="browser-item" onclick={() => browserStore.connect(browser)}>
+            <button type="button" class="browser-item" onclick={() => browserStore.connect(browser)}>
               <span class="browser-icon">🌐</span>
               <div class="browser-info">
                 <span class="browser-name">{browser.displayName}</span>
@@ -154,11 +154,11 @@
     <div class="section navigation-section">
       <!-- Back/Forward/Refresh -->
       <div class="nav-controls">
-        <button class="btn-icon" onclick={handleGoBack} title={t("browser_goBack")} aria-label={t("browser_goBack")}> ← </button>
-        <button class="btn-icon" onclick={handleGoForward} title={t("browser_goForward")} aria-label={t("browser_goForward")}>
+        <button type="button" class="btn-icon" onclick={handleGoBack} title={t("browser_goBack")} aria-label={t("browser_goBack")}> ← </button>
+        <button type="button" class="btn-icon" onclick={handleGoForward} title={t("browser_goForward")} aria-label={t("browser_goForward")}>
           →
         </button>
-        <button class="btn-icon" onclick={handleRefresh} title={t("browser_refresh")} aria-label={t("browser_refresh")}>
+        <button type="button" class="btn-icon" onclick={handleRefresh} title={t("browser_refresh")} aria-label={t("browser_refresh")}>
           ↻
         </button>
       </div>
@@ -172,7 +172,7 @@
           onkeydown={handleKeyDown}
           class="url-input"
         />
-        <button class="rounded-lg px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={handleNavigate} disabled={isNavigating}>
+        <button type="button" class="rounded-lg px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={handleNavigate} disabled={isNavigating}>
           {isNavigating ? "..." : t("browser_go")}
         </button>
       </div>
@@ -182,7 +182,7 @@
     <div class="section tabs-section">
       <div class="tabs-list">
         {#each tabs as tab}
-          <button
+          <button type="button"
             class="tab-item"
             class:active={tab.id === activeTabId}
             onclick={() => handleSelectTab(tab.id)}
@@ -202,7 +202,7 @@
             </span>
           </button>
         {/each}
-        <button class="btn-icon add-tab" onclick={handleCreateTab} title={t("browser_newTab")} aria-label={t("browser_newTab")}>
+        <button type="button" class="btn-icon add-tab" onclick={handleCreateTab} title={t("browser_newTab")} aria-label={t("browser_newTab")}>
           +
         </button>
       </div>
@@ -211,7 +211,7 @@
     <!-- Quick Actions -->
     <div class="section quick-actions">
       {#each quickActions as action}
-        <button class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer border-none transition-colors" onclick={() => handleQuickAction(action.action)}>
+        <button type="button" class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer border-none transition-colors" onclick={() => handleQuickAction(action.action)}>
           <span class="action-icon">{action.icon}</span>
           {action.label}
         </button>
@@ -227,7 +227,7 @@
         placeholder={t("browser_findElements")}
         class="search-input"
       />
-      <button class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={handleFind} disabled={isFinding}>
+      <button type="button" class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={handleFind} disabled={isFinding}>
         {isFinding ? "..." : t("browser_find")}
       </button>
 
@@ -281,7 +281,7 @@
     <div class="section error-section">
       <span class="error-icon">⚠️</span>
       <span class="error-text">{error}</span>
-      <button
+      <button type="button"
         class="btn-icon"
         onclick={() => browserStore.dispatch({ type: "SET_ERROR", error: null })}
       >

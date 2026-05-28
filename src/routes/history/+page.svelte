@@ -243,7 +243,7 @@
         />
       </div>
       <div class="flex items-center rounded-lg border border-border text-xs overflow-hidden">
-        <button
+        <button type="button"
           onclick={() => {
             searchMode = "keyword";
           }}
@@ -253,7 +253,7 @@
         >
           {t("history_searchKeyword")}
         </button>
-        <button
+        <button type="button"
           onclick={() => {
             searchMode = "semantic";
           }}
@@ -266,7 +266,7 @@
           <span class="ml-0.5 text-[9px] opacity-70">&#946;</span>
         </button>
       </div>
-      <button
+      <button type="button"
         onclick={() => (showAdvancedFilters = !showAdvancedFilters)}
         class="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm transition-colors {showAdvancedFilters
           ? 'bg-primary/10 text-primary'
@@ -282,7 +282,7 @@
     <!-- Status pills -->
     <div class="mb-4 flex flex-wrap gap-2">
       {#each [{ key: "all", label: t("history_allStatuses") }, { key: "completed", label: t("history_statusCompleted") }, { key: "failed", label: t("history_statusFailed") }, { key: "stopped", label: t("history_statusStopped") }, { key: "running", label: t("history_statusRunning") }, { key: "idle", label: t("history_statusDone") }] as pill}
-        <button
+        <button type="button"
           onclick={() => onStatusFilter(pill.key)}
           class="rounded-full px-3 py-1 text-xs font-medium transition-colors {activeStatusFilter ===
           pill.key
@@ -370,7 +370,7 @@
             >
             <div class="flex gap-1">
               {#each [{ key: "all", label: t("history_dateAll") }, { key: "today", label: t("history_dateToday") }, { key: "7d", label: t("history_date7d") }, { key: "30d", label: t("history_date30d") }, { key: "90d", label: t("history_date90d") }] as opt}
-                <button
+                <button type="button"
                   onclick={() => onDateRange(opt.key)}
                   class="h-8 rounded-md px-3 text-[13px] transition-colors {activeDateRange ===
                   opt.key
@@ -432,7 +432,7 @@
           </div>
           <!-- Clear filters button -->
           <div class="col-span-2 flex items-end justify-end">
-            <button
+            <button type="button"
               onclick={clearFilters}
               class="rounded-md px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
@@ -449,7 +449,7 @@
             >
             <div class="flex flex-wrap gap-1.5">
               {#each stableTools as tool (tool.value)}
-                <button
+                <button type="button"
                   onclick={() => onToolToggle(tool.value)}
                   class="rounded-md px-2 py-1 text-xs transition-colors {filters.tools?.includes(
                     tool.value,
@@ -481,7 +481,7 @@
         <!-- Sort buttons -->
         <div class="flex items-center gap-1">
           {#each [{ key: "date", label: t("history_sortDate") }, { key: "cost", label: t("history_sortCost") }, { key: "tokens", label: t("history_sortTokens") }, { key: "turns", label: t("history_sortTurns") }] as sortOpt}
-            <button
+            <button type="button"
               onclick={() => onSortChange(sortOpt.key as "date" | "cost" | "tokens" | "turns")}
               class="rounded px-2 py-0.5 text-xs transition-colors {filters.sortBy ===
                 sortOpt.key ||
@@ -525,7 +525,7 @@
       <!-- Run cards (subtle opacity during reload to avoid layout jump) -->
       <div class="space-y-2 transition-opacity" class:opacity-50={loading}>
         {#each response.results as run}
-          <button
+          <button type="button"
             onclick={() => goToRun(run.runId)}
             class="w-full rounded-lg border border-border bg-card p-4 text-left transition-colors hover:bg-muted/30"
           >
@@ -597,7 +597,7 @@
       <!-- Load more -->
       {#if response.results.length < response.totalMatching}
         <div class="mt-4 flex justify-center">
-          <button
+          <button type="button"
             onclick={() => loadData(true)}
             class="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
             disabled={loading}

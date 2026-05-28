@@ -75,7 +75,7 @@
 </script>
 
 <div bind:this={wrapperEl} class="inline-flex items-center">
-  <button
+  <button type="button"
     bind:this={buttonEl}
     aria-expanded={dropdownOpen}
     aria-haspopup="listbox"
@@ -123,7 +123,7 @@
           <!-- Skills group -->
           {#if skills.length > 0}
             {#each skills as skill}
-              <button
+              <button type="button"
                 class="group flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left hover:bg-accent transition-colors"
                 onclick={() => selectSkill(skill.name)}
               >

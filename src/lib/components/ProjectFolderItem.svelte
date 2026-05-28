@@ -500,7 +500,7 @@
 
     <!-- Canvas mascot — shown when enabled, regardless of status -->
     {#if showMascot}
-      <button
+      <button type="button"
         class="ml-auto shrink-0 cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity rounded"
         onclick={onMascotClick}
         title={t("mascot_clickToOpen") ?? "查看运行状态"}
@@ -702,7 +702,7 @@
           {/each}
         {/if}
         {#if hasMore}
-          <button
+          <button type="button"
             class="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md transition-colors"
             onclick={showMore}
           >

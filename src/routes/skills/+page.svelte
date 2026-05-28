@@ -125,7 +125,7 @@
         {t("skills_available", { count: String(skillStore.skills.length) })}
       </p>
     </div>
-    <button
+    <button type="button"
       class="flex items-center gap-2 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
       onclick={() => skillStore.openCreateEditor()}
     >
@@ -151,7 +151,7 @@
 
       <!-- Category filter -->
       <div class="flex items-center gap-1">
-        <button
+        <button type="button"
           class="rounded-md px-2 py-1 text-xs font-medium transition-colors
             {selectedCategory === null
             ? 'bg-primary text-primary-foreground'
@@ -161,7 +161,7 @@
           {t("skills_categoryAll")}
         </button>
         {#each SKILL_CATEGORIES as cat (cat.value)}
-          <button
+          <button type="button"
             class="rounded-md px-2 py-1 text-xs font-medium transition-colors
               {selectedCategory === cat.value
               ? 'bg-primary text-primary-foreground'
@@ -178,7 +178,7 @@
 
   <!-- Tabs -->
   <div class="flex border-b px-4">
-    <button
+    <button type="button"
       class="px-4 py-2 text-sm font-medium transition-colors relative
         {activeTab === 'browse' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}"
       onclick={() => (activeTab = "browse")}
@@ -188,7 +188,7 @@
         <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>
       {/if}
     </button>
-    <button
+    <button type="button"
       class="px-4 py-2 text-sm font-medium transition-colors relative
         {activeTab === 'history' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}"
       onclick={() => (activeTab = "history")}
@@ -222,7 +222,7 @@
       {:else if filteredSkills().length === 0}
         <EmptyState icon="✨" title={t("skills_empty")} class="h-40">
           {#snippet action()}
-            <button
+            <button type="button"
               class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
               onclick={() => skillStore.openCreateEditor()}
             >
@@ -319,13 +319,13 @@
       </p>
 
       <div class="flex justify-end gap-3">
-        <button
+        <button type="button"
           class="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent transition-colors"
           onclick={cancelDelete}
         >
           {t("common_cancel")}
         </button>
-        <button
+        <button type="button"
           class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-destructive/90 transition-colors"
           onclick={confirmDelete}
         >

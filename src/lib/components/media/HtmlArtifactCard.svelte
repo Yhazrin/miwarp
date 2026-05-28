@@ -31,7 +31,7 @@
         <div class="text-[10px] text-muted-foreground">{formatBytes(artifact.size)}</div>
       </div>
     </div>
-    <button
+    <button type="button"
       class="shrink-0 text-xs text-primary hover:underline ml-2"
       onclick={() => (showPreview = !showPreview)}
     >

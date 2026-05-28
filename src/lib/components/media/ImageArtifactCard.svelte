@@ -58,7 +58,7 @@
       aria-modal="true"
       tabindex="-1"
     >
-      <button
+      <button type="button"
         class="absolute top-4 right-4 text-[hsl(var(--miwarp-text-primary)/0.8)] hover:text-[hsl(var(--miwarp-text-primary))]"
         onclick={() => (showModal = false)}
         aria-label={t("imageArtifact_closePreview")}

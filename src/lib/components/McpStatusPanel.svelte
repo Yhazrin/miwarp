@@ -239,7 +239,7 @@ diagnostics and history * - Quick reconnect with health check */
       {/if}
     </div>
     <div class="flex items-center gap-1">
-      <button
+      <button type="button"
         class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
         disabled={loading || !sessionAlive}
         onclick={refresh}
@@ -247,7 +247,7 @@ diagnostics and history * - Quick reconnect with health check */
       >
         <Icon name="refresh-cw" size="sm" class={loading ? 'animate-spin' : ''} />
       </button>
-      <button
+      <button type="button"
         class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         onclick={onClose}
         title={t("common_close")}
@@ -269,7 +269,7 @@ diagnostics and history * - Quick reconnect with health check */
           <!-- Main row -->
           <div class="flex items-center gap-2 px-3 py-2">
             <!-- Expand toggle -->
-            <button
+            <button type="button"
               onclick={() => toggleExpand(server.name)}
               aria-label="Toggle server details"
               class="text-muted-foreground hover:text-foreground transition-colors"
@@ -301,7 +301,7 @@ diagnostics and history * - Quick reconnect with health check */
             <!-- Actions -->
             <div class="flex items-center gap-1 shrink-0">
               {#if sessionAlive && (server.status === "failed" || server.status === "needs-auth")}
-                <button
+                <button type="button"
                   class="rounded px-1.5 py-0.5 text-[10px] font-medium text-foreground/70 hover:text-foreground hover:bg-accent border border-border/50 transition-colors disabled:opacity-50"
                   disabled={loading}
                   onclick={() => reconnect(server.name)}
@@ -309,7 +309,7 @@ diagnostics and history * - Quick reconnect with health check */
                   {t("mcp_reconnect")}
                 </button>
               {/if}
-              <button
+              <button type="button"
                 class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50 {server.status ===
                 'disabled'
                   ? 'text-miwarp-status-success hover:bg-[hsl(var(--miwarp-status-success)/0.1)] border border-[hsl(var(--miwarp-status-success)/0.3)]'

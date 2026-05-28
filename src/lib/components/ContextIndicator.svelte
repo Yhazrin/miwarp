@@ -187,7 +187,7 @@
       <!-- Header -->
       <div class="mb-3 flex items-center justify-between">
         <h4 class="text-sm font-semibold text-foreground">{t("context_detailTitle")}</h4>
-        <button
+        <button type="button"
           class="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           onclick={closeDetail}
           aria-label={t("common_close")}

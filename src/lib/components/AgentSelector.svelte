@@ -37,7 +37,7 @@
 <svelte:window onclick={handleClickOutside} />
 
 <div class="relative {className}" data-agent-selector>
-  <button
+  <button type="button"
     class="flex items-center gap-1 rounded-lg border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
     onclick={() => (open = !open)}
   >
@@ -51,7 +51,7 @@
       class="absolute bottom-full left-0 mb-1 min-w-[120px] rounded-xl border border-border bg-background py-1 shadow-lg z-[9999]"
     >
       {#each agents as agent}
-        <button
+        <button type="button"
           class="flex w-full items-center gap-2 px-3 py-1.5 text-xs transition-colors
             {value === agent.id
             ? 'text-foreground bg-accent'

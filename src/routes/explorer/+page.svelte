@@ -187,7 +187,7 @@
       </svg>
       <p class="text-sm font-medium text-foreground">{t("explorer_loadFailed")}</p>
       <p class="text-xs text-muted-foreground text-center max-w-[300px]">{fileError}</p>
-      <button
+      <button type="button"
         class="mt-2 rounded-md px-3 py-1.5 text-xs font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors"
         onclick={() => {
           fileError = null;

@@ -133,7 +133,7 @@
           class="rounded-lg border bg-background/60 overflow-hidden ring-1 {st.ring} transition-all duration-200"
         >
           <!-- Agent card header -->
-          <button
+          <button type="button"
             class="w-full flex items-center gap-2 px-2.5 py-2 text-left hover:bg-accent/20 transition-colors"
             onclick={() => toggleExpand(member.id)}
           >
@@ -198,14 +198,14 @@
 
   <!-- Footer -->
   <div class="flex items-center gap-3 border-t border-border/40 px-3.5 py-2">
-    <button
+    <button type="button"
       class="text-[11px] text-primary hover:text-primary/80 transition-colors font-medium"
       onclick={handleViewTeams}
     >
       {t("teamRun_viewDetails")}
     </button>
     {#if onViewDetails}
-      <button
+      <button type="button"
         class="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
         onclick={onViewDetails}
       >

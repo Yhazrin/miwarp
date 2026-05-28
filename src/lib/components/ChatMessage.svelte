@@ -124,7 +124,7 @@
             >
               {formatTime(message.timestamp)}
             </span>
-            <button
+            <button type="button"
               class="rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered ||
               copied
                 ? 'opacity-100'
@@ -141,7 +141,7 @@
               {/if}
             </button>
             {#if onRewind}
-              <button
+              <button type="button"
                 class="rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered
                   ? 'opacity-100'
                   : 'opacity-0'}"
@@ -180,7 +180,7 @@
               showModel={false}
             />
             {#if onRewind}
-              <button
+              <button type="button"
                 class="ml-auto rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered
                   ? 'opacity-100'
                   : 'opacity-0'}"
@@ -192,7 +192,7 @@
                 <Icon name="refresh-ccw" size="sm" />
               </button>
             {/if}
-            <button
+            <button type="button"
               class="{onRewind
                 ? ''
                 : 'ml-auto'} rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered ||
@@ -247,7 +247,7 @@
               >
                 {message.content}
               </p>
-              <button
+              <button type="button"
                 class="mt-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 onclick={() => (collapsed = !collapsed)}
                 aria-expanded={!collapsed}
@@ -265,7 +265,7 @@
           {:else}
             {#if thinkingText && processVisibility !== "output"}
               {#if thinkingCollapsed}
-                <button
+                <button type="button"
                   class="mb-2 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] text-[hsl(var(--miwarp-text-secondary))] opacity-70 hover:opacity-100 transition-opacity"
                   onclick={() => (thinkingCollapsed = false)}
                   title={t("common_expand")}
@@ -284,7 +284,7 @@
                   >
                     <Icon name="map-pin" size="xs" class="shrink-0 opacity-70" />
                     <span class="font-medium thinking-shimmer">{t("chat_thoughtProcess")}</span>
-                    <button
+                    <button type="button"
                       class="ml-auto opacity-50 hover:opacity-100 transition-opacity"
                       onclick={() => (thinkingCollapsed = true)}
                       title={t("common_collapse")}

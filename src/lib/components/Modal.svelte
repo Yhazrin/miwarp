@@ -90,7 +90,7 @@
         <h2 class="mb-4 text-lg font-semibold text-foreground">{title}</h2>
       {/if}
       {#if closeable}
-        <button
+        <button type="button"
           class="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-md
                  text-miwarp-text-tertiary transition-colors
                  hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary"

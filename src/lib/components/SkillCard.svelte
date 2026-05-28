@@ -76,7 +76,7 @@
   <!-- Header -->
   <div class="flex items-start justify-between gap-3">
     <!-- Icon and name -->
-    <button class="flex items-center gap-2 text-left flex-1 min-w-0" onclick={handleSelect}>
+    <button type="button" class="flex items-center gap-2 text-left flex-1 min-w-0" onclick={handleSelect}>
       <span class="text-xl shrink-0">{skill.icon || "✨"}</span>
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2">
@@ -100,7 +100,7 @@
     <!-- Menu button (for custom skills) -->
     {#if !skill.isBuiltIn}
       <div bind:this={menuEl} class="relative shrink-0">
-        <button
+        <button type="button"
           class="opacity-0 group-hover:opacity-100 rounded-md p-1 hover:bg-accent transition-all"
           onclick={toggleMenu}
           aria-label={t("skillCard_options")}
@@ -117,7 +117,7 @@
             transition:scale={{ start: 0.95, duration: 100 }}
             class="absolute right-0 top-full mt-1 z-10 w-32 rounded-lg border bg-popover shadow-lg"
           >
-            <button
+            <button type="button"
               class="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors"
               onclick={handleEdit}
             >
@@ -133,7 +133,7 @@
               </svg>
               Edit
             </button>
-            <button
+            <button type="button"
               class="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
               onclick={handleDelete}
             >
@@ -167,7 +167,7 @@
 
       <!-- Action buttons -->
       <div class="flex items-center gap-2">
-        <button
+        <button type="button"
           class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium
             bg-secondary/50 hover:bg-secondary text-secondary-foreground transition-colors
             opacity-0 group-hover:opacity-100"
@@ -186,7 +186,7 @@
           </svg>
           Preview
         </button>
-        <button
+        <button type="button"
           class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium
             bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
           onclick={handleSelect}

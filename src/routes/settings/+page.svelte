@@ -1591,7 +1591,7 @@
         {#each ["general"] as tabId (tabId)}
           {@const tab = tabs.find((t) => t.id === tabId)}
           {#if tab}
-            <button
+            <button type="button"
               class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] transition-colors text-left
               {activeTab === tab.id
                 ? 'bg-accent text-foreground font-medium'
@@ -1621,7 +1621,7 @@
         {#each ["connection", "mobile"] as tabId (tabId)}
           {@const tab = tabs.find((t) => t.id === tabId)}
           {#if tab}
-            <button
+            <button type="button"
               class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] transition-colors text-left
               {activeTab === tab.id
                 ? 'bg-accent text-foreground font-medium'
@@ -1651,7 +1651,7 @@
         {#each ["cli-config"] as tabId (tabId)}
           {@const tab = tabs.find((t) => t.id === tabId)}
           {#if tab}
-            <button
+            <button type="button"
               class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] transition-colors text-left
               {activeTab === tab.id
                 ? 'bg-accent text-foreground font-medium'
@@ -1681,7 +1681,7 @@
         {#each ["shortcuts", "remote"] as tabId (tabId)}
           {@const tab = tabs.find((t) => t.id === tabId)}
           {#if tab}
-            <button
+            <button type="button"
               class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] transition-colors text-left
               {activeTab === tab.id
                 ? 'bg-accent text-foreground font-medium'
@@ -1711,7 +1711,7 @@
         {#each ["notifications", "theme", "debug", "data"] as tabId (tabId)}
           {@const tab = tabs.find((t) => t.id === tabId)}
           {#if tab}
-            <button
+            <button type="button"
               class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] transition-colors text-left
               {activeTab === tab.id
                 ? 'bg-accent text-foreground font-medium'
@@ -1822,7 +1822,7 @@
                       {t("settings_general_webEnabledDesc")}
                     </p>
                   </div>
-                  <button
+                  <button type="button"
                     class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {webStatus?.enabled
                       ? 'bg-primary'
                       : 'bg-muted'}"
@@ -1917,7 +1917,7 @@
                             class="flex-1 rounded-md border bg-muted/50 px-3 py-1.5 font-mono text-xs overflow-hidden text-ellipsis whitespace-nowrap"
                             >{tunnelUrl.replace(/[?#]token=.*$/, "?token=...")}</code
                           >
-                          <button
+                          <button type="button"
                             class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
                             onclick={async () => {
                               await navigator.clipboard.writeText(tunnelUrl);
@@ -1930,7 +1930,7 @@
                               ? t("settings_general_webCopied")
                               : t("settings_general_webCopyLink")}
                           </button>
-                          <button
+                          <button type="button"
                             class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
                             onclick={async () => {
                               try {
@@ -1955,7 +1955,7 @@
                               class="flex-1 rounded-md border bg-muted/30 px-3 py-1.5 font-mono text-xs text-muted-foreground overflow-hidden text-ellipsis whitespace-nowrap"
                               >{localUrl.replace(/#token=.*$/, "#token=...")}</code
                             >
-                            <button
+                            <button type="button"
                               class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
                               onclick={async () => {
                                 if (localUrl) {
@@ -1978,7 +1978,7 @@
                             class="flex-1 rounded-md border bg-muted/50 px-3 py-1.5 font-mono text-xs overflow-hidden text-ellipsis whitespace-nowrap"
                             >{`http://${displayHost}:${webStatus.port}/login#token=...`}</code
                           >
-                          <button
+                          <button type="button"
                             class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
                             onclick={copyAccessLink}
                           >
@@ -1986,7 +1986,7 @@
                               ? t("settings_general_webCopied")
                               : t("settings_general_webCopyLink")}
                           </button>
-                          <button
+                          <button type="button"
                             class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
                             onclick={openAccessLink}
                           >
@@ -2002,13 +2002,13 @@
                       <div class="flex items-center gap-3 text-xs text-muted-foreground">
                         {#if showWebToken}
                           <code class="font-mono text-[11px] select-all" transition:slide={{ duration: 200 }}>{webToken}</code>
-                          <button
+                          <button type="button"
                             class="hover:text-foreground transition-colors shrink-0"
                             onclick={() => (showWebToken = false)}
                           >
                             {t("settings_general_hide")}
                           </button>
-                          <button
+                          <button type="button"
                             class="hover:text-foreground transition-colors shrink-0"
                             onclick={async () => {
                               if (webToken) {
@@ -2024,7 +2024,7 @@
                               : t("settings_general_webCopy")}
                           </button>
                         {:else}
-                          <button
+                          <button type="button"
                             class="hover:text-foreground transition-colors"
                             onclick={() => (showWebToken = true)}
                           >
@@ -2032,7 +2032,7 @@
                           </button>
                         {/if}
                         <span class="text-border">|</span>
-                        <button
+                        <button type="button"
                           class="text-[hsl(var(--miwarp-status-warning)/0.7)] hover:text-miwarp-status-warning transition-colors"
                           onclick={async () => {
                             try {
@@ -2064,7 +2064,7 @@
                       {t("settings_general_mobileAccessDesc")}
                     </p>
 
-                    <button
+                    <button type="button"
                       class="flex items-center gap-2 rounded-lg border border-border/40 bg-muted/30 px-4 py-3 text-sm hover:bg-muted/50 transition-colors w-full"
                       onclick={() => setActiveTab("mobile")}
                     >
@@ -2125,7 +2125,7 @@
                     <div>
                       <p class="text-sm font-medium mb-1.5">{t("settings_general_webAccess")}</p>
                       <div class="flex gap-2">
-                        <button
+                        <button type="button"
                           class="flex-1 rounded-md border px-3 py-2 text-[13px] transition-colors {webBindValue ===
                           '127.0.0.1'
                             ? 'border-primary bg-primary/10 text-primary'
@@ -2134,7 +2134,7 @@
                         >
                           {t("settings_general_webAccessLocal")}
                         </button>
-                        <button
+                        <button type="button"
                           class="flex-1 rounded-md border px-3 py-2 text-[13px] transition-colors {webBindValue ===
                           '0.0.0.0'
                             ? 'border-primary bg-primary/10 text-primary'
@@ -2172,7 +2172,7 @@
 
                   <!-- Advanced (collapsible) -->
                   <div>
-                    <button
+                    <button type="button"
                       class="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                       onclick={() => (webAdvancedOpen = !webAdvancedOpen)}
                     >
@@ -2190,7 +2190,7 @@
                                 class="inline-flex items-center gap-1 rounded-full border bg-muted/50 px-2.5 py-0.5 text-xs"
                               >
                                 {origin}
-                                <button
+                                <button type="button"
                                   class="text-muted-foreground hover:text-foreground"
                                   aria-label="Remove origin"
                                   onclick={() => {
@@ -2222,7 +2222,7 @@
                               }
                             }}
                           />
-                          <button
+                          <button type="button"
                             class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors shrink-0"
                             onclick={addWebOrigin}
                           >
@@ -2249,7 +2249,7 @@
                     {#if webRestartWarning}
                       <p class="text-xs text-miwarp-status-warning">{webRestartWarning}</p>
                     {/if}
-                    <button
+                    <button type="button"
                       class="rounded-md border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
                       disabled={webRestarting}
                       onclick={applyWebServerSettings}
@@ -2359,7 +2359,7 @@
                     <p class="text-sm font-medium">{t("settings_autoCommit")}</p>
                     <p class="text-xs text-muted-foreground">{t("settings_autoCommitDesc")}</p>
                   </div>
-                  <button
+                  <button type="button"
                     class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {settings?.auto_commit_on_complete
                       ? 'bg-primary'
                       : 'bg-muted'}"
@@ -2386,7 +2386,7 @@
                       <p class="text-sm font-medium">{t("settings_autoPR")}</p>
                       <p class="text-xs text-muted-foreground">{t("settings_autoPRDesc")}</p>
                     </div>
-                    <button
+                    <button type="button"
                       class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {settings?.auto_pr_on_complete
                         ? 'bg-primary'
                         : 'bg-muted'}"
@@ -2415,7 +2415,7 @@
                       {t("settings_autoCleanupWorktreeDesc")}
                     </p>
                   </div>
-                  <button
+                  <button type="button"
                     class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {settings?.auto_cleanup_worktree !==
                     false
                       ? 'bg-primary'
@@ -2630,7 +2630,7 @@
               <div>
                 <span class="text-sm font-medium mb-2 block">{t("settings_auth_modeLabel")}</span>
                 <div class="mt-1 grid grid-cols-2 gap-3">
-                  <button
+                  <button type="button"
                     class="flex flex-col items-center gap-2 rounded-lg border p-4 text-sm transition-all duration-150
                 {authMode === 'cli'
                       ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
@@ -2674,7 +2674,7 @@
                       >{t("settings_auth_modeCliDesc")}</span
                     >
                   </button>
-                  <button
+                  <button type="button"
                     class="flex flex-col items-center gap-2 rounded-lg border p-4 text-sm transition-all duration-150
                 {authMode === 'api'
                       ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
@@ -2845,7 +2845,7 @@
                     <!-- Platform grid (always visible) -->
                     <div class="grid grid-cols-4 gap-1.5">
                       {#each platformList.filter((p) => p.id !== "custom") as preset (preset.id)}
-                        <button
+                        <button type="button"
                           class="flex flex-col gap-0 rounded-md p-2 text-left transition-colors relative group
                       {selectedPlatformId === preset.id
                             ? 'bg-primary/10 ring-1 ring-primary'
@@ -2901,7 +2901,7 @@
                         </button>
                       {/each}
                       <!-- Add Custom -->
-                      <button
+                      <button type="button"
                         class="flex flex-col items-center justify-center gap-1 rounded-md border border-dashed border-muted-foreground/30 p-2 text-muted-foreground hover:border-primary/50 hover:text-foreground hover:bg-muted/40 transition-colors"
                         onclick={() => addCustomEndpoint()}
                       >
@@ -2928,7 +2928,7 @@
                           <span class="h-2 w-2 rounded-full bg-muted-foreground/30"></span>
                           <span class="text-sm">{t("settings_local_notDetected")}</span>
                         {/if}
-                        <button
+                        <button type="button"
                           class="ml-auto rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                           onclick={checkLocalProxy}>{t("settings_local_refresh")}</button
                         >
@@ -2953,7 +2953,7 @@
                     </div>
 
                     <!-- Advanced settings toggle -->
-                    <button
+                    <button type="button"
                       class="text-xs text-muted-foreground hover:text-foreground transition-colors"
                       onclick={() => (localAdvancedOpen = !localAdvancedOpen)}
                     >
@@ -2992,7 +2992,7 @@
                             >{t("settings_general_authType")}</span
                           >
                           <div class="mt-1 flex rounded-md border border-input overflow-hidden">
-                            <button
+                            <button type="button"
                               class="px-3 py-1.5 text-xs font-medium transition-colors {(findCredential(
                                 platformCredentials,
                                 selectedPlatformId ?? '',
@@ -3008,7 +3008,7 @@
                                 }
                               }}>{t("settings_bearer")}</button
                             >
-                            <button
+                            <button type="button"
                               class="px-3 py-1.5 text-xs font-medium transition-colors border-l border-input {(findCredential(
                                 platformCredentials,
                                 selectedPlatformId ?? '',
@@ -3044,7 +3044,7 @@
                             onblur={() => persistCurrentPlatform()}
                           />
                         </div>
-                        <button
+                        <button type="button"
                           class="rounded-md border px-3 py-2 text-xs text-muted-foreground hover:bg-accent transition-colors"
                           onclick={() => (showApiKey = !showApiKey)}
                         >
@@ -3076,7 +3076,7 @@
                             : noUrl
                               ? t("settings_apiTest_noUrl")
                               : ""}
-                          <button
+                          <button type="button"
                             class="rounded-md border px-3 py-2 text-xs transition-colors {disableReason ||
                             apiTestLoading
                               ? 'text-muted-foreground/50 cursor-not-allowed'
@@ -3275,7 +3275,7 @@
                             oninput={() => markExtraEnvTouched()}
                             onblur={() => persistCurrentPlatform()}
                           />
-                          <button
+                          <button type="button"
                             class="shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                             aria-label={t("settings_remote_delete")}
                             onclick={() => {
@@ -3288,7 +3288,7 @@
                           </button>
                         </div>
                       {/each}
-                      <button
+                      <button type="button"
                         class="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                         onclick={() => {
                           platformExtraEnv = [...platformExtraEnv, { key: "", value: "" }];
@@ -3312,7 +3312,7 @@
                 <p class="text-sm font-medium">{t("settings_general_setupWizard")}</p>
                 <p class="text-xs text-muted-foreground">{t("settings_general_setupWizardDesc")}</p>
               </div>
-              <button
+              <button type="button"
                 class="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onclick={openSetupWizard}>{t("settings_general_runWizard")}</button
               >
@@ -3349,7 +3349,7 @@
                     {t("settings_general_webEnabledDesc")}
                   </p>
                 </div>
-                <button
+                <button type="button"
                   class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {webStatus?.enabled
                     ? 'bg-primary'
                     : 'bg-muted'}"
@@ -3420,7 +3420,7 @@
                   {/if}
                 </div>
                 <div class="flex gap-2">
-                  <button
+                  <button type="button"
                     class="flex-1 rounded-md border px-3 py-2.5 text-[13px] transition-colors {webBindValue ===
                     '127.0.0.1'
                       ? 'border-primary bg-primary/10 text-primary'
@@ -3429,7 +3429,7 @@
                   >
                     {t("settings_general_webAccessLocal")}
                   </button>
-                  <button
+                  <button type="button"
                     class="flex-1 rounded-md border px-3 py-2.5 text-[13px] transition-colors {webBindValue ===
                     '0.0.0.0'
                       ? 'border-primary bg-primary/10 text-primary'
@@ -3456,7 +3456,7 @@
                     max="65535"
                   />
                 </div>
-                <button
+                <button type="button"
                   class="mt-6 rounded-md border border-primary/50 bg-primary/10 px-4 py-2 text-sm text-primary hover:bg-primary/20 transition-colors disabled:opacity-50 flex items-center gap-2"
                   disabled={webRestarting}
                   onclick={applyWebServerSettings}
@@ -3577,7 +3577,7 @@
                         class="flex-1 rounded-md border bg-muted/50 px-3 py-2 font-mono text-xs overflow-hidden text-ellipsis whitespace-nowrap"
                         >{buildPairingLink()?.replace(/token=.*$/, "token=...") ?? ""}</code
                       >
-                      <button
+                      <button type="button"
                         class="shrink-0 rounded-md border px-3 py-2 text-xs text-muted-foreground hover:bg-accent transition-colors"
                         onclick={copyPairingLink}
                       >
@@ -3590,7 +3590,7 @@
 
                   <!-- Reset Token -->
                   <div class="flex items-center gap-2">
-                    <button
+                    <button type="button"
                       class="rounded-md border border-[hsl(var(--miwarp-status-warning)/0.3)] px-3 py-1.5 text-xs text-[hsl(var(--miwarp-status-warning)/0.8)] hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
                       onclick={async () => {
                         try {
@@ -3628,7 +3628,7 @@
               <p class="text-sm text-miwarp-status-error">
                 {t("settings_cliConfig_loadFailed", { error: cliConfigError })}
               </p>
-              <button
+              <button type="button"
                 class="mt-3 rounded-md border px-3 py-1.5 text-xs hover:bg-accent transition-colors"
                 onclick={() => {
                   cliConfigLoaded = false;
@@ -3659,7 +3659,7 @@
                       <p class="text-xs text-muted-foreground mt-0.5">{def.description}</p>
                     </div>
                     {#if def.type === "boolean"}
-                      <button
+                      <button type="button"
                         aria-label={def.label}
                         class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 {getCliConfigValue(
                           def.key,
@@ -3729,7 +3729,7 @@
                       <p class="text-xs text-muted-foreground mt-0.5">{def.description}</p>
                     </div>
                     {#if def.type === "boolean"}
-                      <button
+                      <button type="button"
                         aria-label={def.label}
                         class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 {getCliConfigValue(
                           def.key,
@@ -3818,7 +3818,7 @@
                       <p class="text-xs text-muted-foreground mt-0.5">{def.description}</p>
                     </div>
                     {#if def.type === "boolean"}
-                      <button
+                      <button type="button"
                         aria-label={def.label}
                         class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 {getCliConfigValue(
                           def.key,
@@ -3937,7 +3937,7 @@
 
             <!-- CLI shortcuts (collapsible) -->
             <Card class="p-5">
-              <button
+              <button type="button"
                 class="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors w-full mb-3"
                 onclick={() => (cliSectionOpen = !cliSectionOpen)}
               >
@@ -3976,7 +3976,7 @@
             <!-- Reset all -->
             {#if hasOverrides}
               <div class="flex justify-end pt-1">
-                <button
+                <button type="button"
                   class="inline-flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 hover:border-destructive/50 transition-colors"
                   onclick={() => keybindingStore.resetAll()}
                 >
@@ -4033,11 +4033,11 @@
                       {/if}
                     </div>
                     <div class="flex gap-2">
-                      <button
+                      <button type="button"
                         class="text-xs px-2 py-1 rounded hover:bg-accent text-muted-foreground"
                         onclick={() => editRemoteHost(host)}>{t("settings_remote_edit")}</button
                       >
-                      <button
+                      <button type="button"
                         class="text-xs px-2 py-1 rounded hover:bg-destructive/10 text-destructive"
                         onclick={() => deleteRemoteHost(host.name)}
                         >{t("settings_remote_delete")}</button
@@ -4125,7 +4125,7 @@
                       class="flex-1 text-sm px-2 py-1.5 rounded border border-input bg-background"
                     />
                     {#if sshKeyStep === "idle"}
-                      <button
+                      <button type="button"
                         class="shrink-0 text-xs px-2 py-1.5 rounded border border-input hover:bg-accent transition-colors text-muted-foreground"
                         onclick={startSshKeyWizard}
                       >
@@ -4146,7 +4146,7 @@
                         </div>
                       {:else if sshKeyStep === "no_key"}
                         <p class="text-muted-foreground">{t("settings_remote_sshKeyNotFound")}</p>
-                        <button
+                        <button type="button"
                           class="rounded border px-3 py-1.5 text-xs hover:bg-accent transition-colors"
                           onclick={generateSshKey}
                         >
@@ -4171,7 +4171,7 @@
                           >
                             {buildRebuildPubKeyCommand(sshKeyInfo)}
                           </code>
-                          <button
+                          <button type="button"
                             class="shrink-0 rounded border px-2 py-1 text-[10px] hover:bg-accent transition-colors"
                             onclick={async () => {
                               await navigator.clipboard.writeText(
@@ -4187,7 +4187,7 @@
                         <p class="text-muted-foreground text-[10px]">
                           After running the command, click "Setup SSH Key" again.
                         </p>
-                        <button
+                        <button type="button"
                           class="text-[10px] text-muted-foreground hover:underline"
                           onclick={closeSshWizard}
                         >
@@ -4220,7 +4220,7 @@
                                 remoteFormPort || 22,
                               )}
                             </code>
-                            <button
+                            <button type="button"
                               class="shrink-0 rounded border px-2 py-1 text-[10px] hover:bg-accent transition-colors"
                               onclick={async () => {
                                 await navigator.clipboard.writeText(
@@ -4240,7 +4240,7 @@
                           </div>
 
                           <div class="flex items-center gap-2 mt-1">
-                            <button
+                            <button type="button"
                               class="rounded border px-3 py-1.5 text-xs hover:bg-accent transition-colors"
                               disabled={sshVerifying}
                               onclick={verifySshConnection}
@@ -4249,7 +4249,7 @@
                                 ? t("settings_remote_sshKeyVerifying")
                                 : t("settings_remote_sshKeyVerify")}
                             </button>
-                            <button
+                            <button type="button"
                               class="text-[10px] text-muted-foreground hover:underline"
                               onclick={closeSshWizard}
                             >
@@ -4270,7 +4270,7 @@
                           <p class="text-muted-foreground text-[10px]">
                             Fill in Host and User above, then come back to copy the install command.
                           </p>
-                          <button
+                          <button type="button"
                             class="text-[10px] text-muted-foreground hover:underline"
                             onclick={closeSshWizard}
                           >
@@ -4279,7 +4279,7 @@
                         {/if}
                       {:else if sshKeyStep === "done"}
                         <p class="text-miwarp-status-success">{t("settings_remote_sshKeySuccess")}</p>
-                        <button
+                        <button type="button"
                           class="text-[10px] text-muted-foreground hover:underline"
                           onclick={closeSshWizard}
                         >
@@ -4289,7 +4289,7 @@
                         <p class="text-miwarp-status-error">
                           {t("settings_remote_sshKeyGenError", { error: sshKeyError })}
                         </p>
-                        <button
+                        <button type="button"
                           class="text-[10px] text-muted-foreground hover:underline"
                           onclick={closeSshWizard}
                         >
@@ -4358,7 +4358,7 @@
                       : t("settings_remote_add")}
                 </Button>
                 {#if editingRemote}
-                  <button
+                  <button type="button"
                     class="text-xs text-muted-foreground hover:underline"
                     onclick={resetRemoteForm}>{t("settings_remote_cancel")}</button
                   >
@@ -4426,7 +4426,7 @@
                   <code class="text-xs">RUST_LOG=debug cargo tauri dev</code>
                 </p>
               </div>
-              <button
+              <button type="button"
                 aria-label={t("settings_debugMode")}
                 class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 {debugOn
                   ? 'bg-primary'
@@ -4470,7 +4470,7 @@
 
               <!-- Log actions -->
               <div class="flex items-center gap-3">
-                <button
+                <button type="button"
                   class="rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent"
                   onclick={async () => {
                     logCopied = await copyDebugLogs();
@@ -4481,7 +4481,7 @@
                     ? t("settings_debug_copied")
                     : t("settings_debug_copyLogs", { count: String(logCount) })}
                 </button>
-                <button
+                <button type="button"
                   class="rounded-md border px-3 py-1.5 text-xs transition-colors hover:bg-accent text-muted-foreground"
                   onclick={() => {
                     clearDebugLogs();
@@ -4504,7 +4504,7 @@
                   <code class="flex-1 text-xs font-mono break-all"
                     >RUST_LOG=debug cargo tauri dev</code
                   >
-                  <button
+                  <button type="button"
                     class="shrink-0 rounded border px-2 py-1 text-[10px] transition-colors hover:bg-accent"
                     onclick={async () => {
                       await navigator.clipboard.writeText("RUST_LOG=debug cargo tauri dev");
@@ -4710,7 +4710,7 @@
 
             <!-- Test button -->
             <div class="flex items-center gap-2">
-              <button
+              <button type="button"
                 class="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs
                 font-medium hover:bg-muted transition-colors disabled:opacity-50"
                 disabled={feishuTesting || !feishuWebhookUrl}

@@ -64,7 +64,7 @@
     class="w-full rounded-md border border-sidebar-border bg-sidebar py-1.5 pl-8 pr-7 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50 transition-colors"
   />
   {#if query}
-    <button
+    <button type="button"
       class="absolute right-1.5 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded text-muted-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
       onclick={clear}
       aria-label={t("sidebarSearch_clear")}

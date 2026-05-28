@@ -73,7 +73,7 @@
 
   <div class="options-list flex flex-col gap-2">
     {#each options as option, i}
-      <button
+      <button type="button"
         class="flex items-start gap-3 p-3 rounded-lg border transition-all text-left w-full cursor-pointer
                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
                {selectedIndex === i
@@ -128,7 +128,7 @@
   </div>
 
   {#if showCancel && onCancel}
-    <button
+    <button type="button"
       class="cancel-btn mt-4 text-xs text-muted-foreground hover:text-foreground transition-colors"
       onclick={onCancel}
     >

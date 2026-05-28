@@ -49,12 +49,12 @@
       {t("hook_tool", { name: hookName })}
     </p>
     <div class="flex gap-2">
-      <button
+      <button type="button"
         class="rounded-md border border-miwarp-status-success/30 bg-miwarp-status-success/10 px-3 py-1.5 text-xs font-medium text-miwarp-status-success hover:bg-miwarp-status-success/20 transition-all disabled:opacity-50"
         disabled={submitting}
         onclick={() => handleRespond("allow")}>{t("common_allow")}</button
       >
-      <button
+      <button type="button"
         class="rounded-md border border-miwarp-status-error/30 bg-miwarp-status-error/10 px-3 py-1.5 text-xs font-medium text-miwarp-status-error hover:bg-miwarp-status-error/20 transition-all disabled:opacity-50"
         disabled={submitting}
         onclick={() => handleRespond("deny")}>{t("common_deny")}</button

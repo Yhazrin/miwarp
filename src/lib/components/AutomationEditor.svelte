@@ -256,13 +256,13 @@
           {validationResult.errors.length} {t("automationEditor_validationErrors")}
         </span>
       {/if}
-      <button
+      <button type="button"
         class="rounded-md border px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50"
         onclick={handleSave}
       >
         {t("automationEditor_save")}
       </button>
-      <button class="rounded-md border px-3 py-1.5 text-sm hover:bg-accent" onclick={onClose}>
+      <button type="button" class="rounded-md border px-3 py-1.5 text-sm hover:bg-accent" onclick={onClose}>
         {t("automationEditor_close")}
       </button>
     </div>
@@ -306,7 +306,7 @@
             {#each editedScript.tags as tag}
               <span class="inline-flex items-center gap-1 rounded bg-accent px-2 py-0.5 text-xs">
                 {tag}
-                <button class="hover:text-destructive" onclick={() => handleRemoveTag(tag)} aria-label={t("common_remove")}>
+                <button type="button" class="hover:text-destructive" onclick={() => handleRemoveTag(tag)} aria-label={t("common_remove")}>
                   ×
                 </button>
               </span>
@@ -325,7 +325,7 @@
       <div class="p-4">
         <div class="mb-3 flex items-center justify-between">
           <span class="text-sm font-medium">{t("automationEditor_steps")} ({editedScript.steps.length})</span>
-          <button
+          <button type="button"
             class="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90"
             onclick={handleAddStep}
           >
@@ -407,7 +407,7 @@
 
                   <!-- Actions -->
                   <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                    <button
+                    <button type="button"
                       class="rounded p-1 hover:bg-accent"
                       title={t("automationEditor_duplicate")}
                       aria-label={t("automationEditor_duplicate")}
@@ -418,7 +418,7 @@
                     >
                       <Icon name="external-link" size="sm" />
                     </button>
-                    <button
+                    <button type="button"
                       class="rounded p-1 hover:bg-destructive/10 hover:text-destructive"
                       title={t("automationEditor_delete")}
                       aria-label={t("automationEditor_delete")}
@@ -483,7 +483,7 @@
                 </div>
               {/each}
             </div>
-            <button
+            <button type="button"
               class="w-full rounded-md border border-destructive px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
               onclick={handleCancelExecution}
             >
@@ -491,7 +491,7 @@
             </button>
           </div>
         {:else}
-          <button
+          <button type="button"
             class="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             onclick={handleExecute}
             disabled={!canExecute}

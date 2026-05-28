@@ -161,7 +161,7 @@
     <div class="flex items-center gap-2">
       <!-- 模式切换 -->
       <div class="flex rounded-lg border border-border/40 p-0.5">
-        <button
+        <button type="button"
           class="rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors {mode ===
           'unified'
             ? 'bg-primary text-primary-foreground'
@@ -170,7 +170,7 @@
         >
           Unified
         </button>
-        <button
+        <button type="button"
           class="rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors {mode === 'split'
             ? 'bg-primary text-primary-foreground'
             : 'text-muted-foreground hover:text-foreground'}"
@@ -182,7 +182,7 @@
 
       <!-- 操作按钮 -->
       {#if onApply}
-        <button
+        <button type="button"
           class="rounded-lg bg-miwarp-status-success px-2.5 py-1 text-[11px] font-medium text-miwarp-accent-on-accent hover:bg-[hsl(var(--miwarp-status-success)/0.9)] transition-colors"
           onclick={onApply}
         >
@@ -191,7 +191,7 @@
       {/if}
 
       {#if collapsible}
-        <button
+        <button type="button"
           class="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           onclick={() => (expanded = !expanded)}
           aria-label={expanded ? "Collapse" : "Expand"}
@@ -201,7 +201,7 @@
       {/if}
 
       {#if onClose}
-        <button
+        <button type="button"
           class="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           onclick={onClose}
           aria-label={t("common_close")}

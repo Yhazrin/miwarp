@@ -61,7 +61,7 @@
           {error || t("insight_error_default")}
         </p>
         {#if onRegenerate}
-          <button
+          <button type="button"
             class="inline-flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium rounded-lg border-none cursor-pointer transition-all duration-[120ms] bg-miwarp-bg-base text-miwarp-text-primary border border-miwarp-border hover:bg-miwarp-bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onclick={onRegenerate}
           >
@@ -110,7 +110,7 @@
 
       <div class="flex flex-wrap gap-2">
         {#if onPreview}
-          <button
+          <button type="button"
             class="inline-flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium rounded-lg border-none cursor-pointer transition-all duration-[120ms] bg-miwarp-bg-base text-miwarp-text-primary border border-miwarp-border hover:bg-miwarp-bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onclick={onPreview}
           >
@@ -128,7 +128,7 @@
           </button>
         {/if}
         {#if onCopy}
-          <button
+          <button type="button"
             class="inline-flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium rounded-lg border-none cursor-pointer transition-all duration-[120ms] bg-miwarp-bg-base text-miwarp-text-primary border border-miwarp-border hover:bg-miwarp-bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onclick={onCopy}
           >
@@ -146,7 +146,7 @@
           </button>
         {/if}
         {#if onExport}
-          <button
+          <button type="button"
             class="inline-flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium rounded-lg border-none cursor-pointer transition-all duration-[120ms] bg-miwarp-accent-primary text-miwarp-accent-on-accent hover:opacity-90 hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onclick={onExport}
           >
@@ -165,7 +165,7 @@
           </button>
         {/if}
         {#if onRegenerate}
-          <button
+          <button type="button"
             class="inline-flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium rounded-lg border-none cursor-pointer transition-all duration-[120ms] bg-transparent text-miwarp-text-secondary hover:bg-miwarp-bg-base hover:text-miwarp-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onclick={onRegenerate}
           >

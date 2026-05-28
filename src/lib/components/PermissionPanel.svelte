@@ -154,18 +154,18 @@
               </p>
             {/if}
             <div class="flex gap-2">
-              <button
+              <button type="button"
                 class="rounded-md bg-miwarp-status-success px-4 py-1.5 text-xs font-medium text-miwarp-accent-on-accent hover:opacity-80 transition-all disabled:opacity-50"
                 disabled={busy}
                 onclick={() => respondSingle(item.requestId, "allow", undefined, item.tool.input)}
                 >{t("common_allow")}</button
               >
-              <button
+              <button type="button"
                 class="rounded-md border border-border px-4 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-all disabled:opacity-50"
                 disabled={busy}
                 onclick={() => respondSingle(item.requestId, "deny")}>{t("common_deny")}</button
               >
-              <button
+              <button type="button"
                 class="rounded-md border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.1)] px-3 py-1.5 text-xs font-medium text-miwarp-status-error hover:bg-miwarp-status-error/20 transition-all disabled:opacity-50"
                 disabled={busy}
                 onclick={() =>
@@ -180,7 +180,7 @@
                     suggestion,
                     t as (key: string, params?: Record<string, string>) => string,
                   )}
-                  <button
+                  <button type="button"
                     class="rounded-md border border-miwarp-status-info/30 bg-miwarp-status-info/10 px-3 py-1.5 text-xs font-medium text-miwarp-status-info hover:bg-miwarp-status-info/10 transition-all disabled:opacity-50"
                     disabled={busy}
                     onclick={() =>
@@ -239,14 +239,14 @@
                   </span>
                   <!-- Per-row buttons -->
                   <div class="flex items-center gap-1 shrink-0">
-                    <button
+                    <button type="button"
                       class="rounded px-2 py-0.5 text-[10px] font-medium bg-miwarp-status-success/80 text-miwarp-accent-on-accent hover:opacity-80 transition-all disabled:opacity-50"
                       disabled={busy}
                       onclick={() =>
                         respondSingle(item.requestId, "allow", undefined, item.tool.input)}
                       >{t("common_allow")}</button
                     >
-                    <button
+                    <button type="button"
                       class="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-miwarp-status-error hover:bg-[hsl(var(--miwarp-status-error)/0.1)] transition-all disabled:opacity-50"
                       disabled={busy}
                       onclick={() => respondSingle(item.requestId, "deny")}
@@ -262,7 +262,7 @@
                         suggestion,
                         t as (key: string, params?: Record<string, string>) => string,
                       )}
-                      <button
+                      <button type="button"
                         class="rounded border border-miwarp-status-info/30 bg-miwarp-status-info/10 px-2 py-0.5 text-[10px] font-medium text-miwarp-status-info hover:bg-miwarp-status-info/10 transition-all disabled:opacity-50"
                         disabled={busy}
                         onclick={() =>
@@ -277,13 +277,13 @@
 
             <!-- Batch buttons -->
             <div class="flex gap-2 pt-2 border-t border-[hsl(var(--miwarp-status-warning)/0.2)]">
-              <button
+              <button type="button"
                 class="rounded-md bg-miwarp-status-success px-4 py-1.5 text-xs font-medium text-miwarp-accent-on-accent hover:opacity-80 transition-all disabled:opacity-50"
                 disabled={submittingAll || submittingIds.size > 0}
                 onclick={allowAll}
                 >{t("perm_allowAll", { count: String(pendingTools.length) })}</button
               >
-              <button
+              <button type="button"
                 class="rounded-md border border-border px-4 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-all disabled:opacity-50"
                 disabled={submittingAll || submittingIds.size > 0}
                 onclick={denyAll}>{t("perm_denyAll")}</button
