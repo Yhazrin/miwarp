@@ -500,10 +500,6 @@ html.theme-transitioning *::after {
   border-radius: 0.25rem;
   color: hsl(var(--foreground));
 }
-.dark .prose-chat code {
-  background: hsl(var(--muted, 0 0% 18%));
-  color: hsl(var(--foreground, 35 90% 72%));
-}
 .prose-chat p {
   margin: 0.375rem 0;
 }
