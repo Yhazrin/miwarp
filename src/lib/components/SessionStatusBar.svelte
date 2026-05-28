@@ -750,7 +750,7 @@
       aria-hidden="true"
     >
       <span
-        class="text-base font-black tracking-widest text-white {morphShell === 'waiting'
+        class="text-base font-black tracking-widest text-miwarp-accent-on-accent {morphShell === 'waiting'
           ? 'animate-slow-pulse'
           : ''}"
         style="font-family: 'FonWorker', sans-serif;"

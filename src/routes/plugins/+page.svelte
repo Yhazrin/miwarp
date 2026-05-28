@@ -904,7 +904,7 @@
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-error))] text-white"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-error))] text-miwarp-accent-on-accent"
               >
                 <svg
                   class="h-3 w-3"
@@ -929,7 +929,7 @@
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-success))] text-white"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-success))] text-miwarp-accent-on-accent"
               >
                 <svg
                   class="h-3 w-3"
@@ -954,7 +954,7 @@
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-info))] text-white"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-info))] text-miwarp-accent-on-accent"
               >
                 <svg
                   class="h-3 w-3"
@@ -984,7 +984,7 @@
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-warning))] text-white"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-warning))] text-miwarp-accent-on-accent"
               >
                 <svg
                   class="h-3 w-3"
@@ -1009,7 +1009,7 @@
           >
             <div class="flex items-center gap-2 mb-1.5">
               <div
-                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-accent-violet))] text-white"
+                class="flex h-6 w-6 items-center justify-center rounded-md bg-[hsl(var(--miwarp-accent-violet))] text-miwarp-accent-on-accent"
               >
                 <svg
                   class="h-3 w-3"
@@ -1105,7 +1105,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-error))] text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-error))] text-miwarp-accent-on-accent"
             >
               <Icon name="plus" size="md" />
             </div>
@@ -1121,7 +1121,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-info))] text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-info))] text-miwarp-accent-on-accent"
             >
               <Icon name="search" size="md" />
             </div>
@@ -1137,7 +1137,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-info))] text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-info))] text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
@@ -1166,7 +1166,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-warning))] text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-warning))] text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
@@ -1189,7 +1189,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-success))] text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-success))] text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
@@ -1220,7 +1220,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-error))] text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-error))] text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
@@ -1247,7 +1247,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-accent-violet))] text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-accent-violet))] text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
@@ -1274,7 +1274,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-info))] text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-info))] text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
@@ -1311,7 +1311,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-warning))] text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-warning))] text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
@@ -1340,7 +1340,7 @@
             }}
           >
             <div
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-success))] text-white"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[hsl(var(--miwarp-status-success))] text-miwarp-accent-on-accent"
             >
               <svg
                 class="h-4 w-4"
