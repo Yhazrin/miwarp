@@ -41,7 +41,7 @@
 <div class="group/folder mb-1">
   <!-- Folder header -->
   <div
-    class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/30 transition-colors cursor-pointer"
+    class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent/30 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     role="button"
     tabindex="0"
     onclick={() => onToggle?.()}

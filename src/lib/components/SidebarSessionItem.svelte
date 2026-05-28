@@ -184,6 +184,7 @@
 
 <div
   class="group/item w-full text-left px-2.5 py-1.5 rounded-md transition-colors cursor-pointer
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
     {selected
     ? 'bg-sidebar-accent/70 text-sidebar-accent-foreground'
     : 'hover:bg-sidebar-accent/30 text-sidebar-foreground'} {isDragging ? 'opacity-40' : ''}"
