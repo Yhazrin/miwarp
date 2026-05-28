@@ -1,11 +1,11 @@
-/* ═══════════════════════════════════════════════════════════
-   MiWarp Design Tokens — Warp-Inspired Visual Language
-   ═══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════�?
+   MiWarp Design Tokens �?Warp-Inspired Visual Language
+   ══════════════════════════════════════════════════════════�?*/
 
-/* ── Codex Dark Theme (default) — 纯蓝青色调 ── */
+/* ── Codex Dark Theme (default) �?纯蓝青色�?── */
 html[data-theme="codex"],
 html.dark:not([data-theme]) {
-  /* Background hierarchy (deepest → lightest) */
+  /* Background hierarchy (deepest �?lightest) */
   --miwarp-bg-deepest: 220 18% 6%;
   --miwarp-bg-deep: 220 16% 9%;
   --miwarp-bg-base: 220 14% 12%;
@@ -23,10 +23,13 @@ html.dark:not([data-theme]) {
   /* Overlay / scrim */
   --miwarp-overlay: 0 0% 0% / 0.55;
 
-  /* Accent colors — 纯蓝青渐变，无紫色 */
+  /* Accent colors �?纯蓝青渐变，无紫�?*/
   --miwarp-accent-primary: 210 100% 60%; /* #33A6FF */
   --miwarp-accent-violet: 185 85% 55%; /* #20B2D9 */
   --miwarp-accent-blue: 199 89% 48%; /* #2D9FD9 */
+  --miwarp-accent-yellow: 48 96% 47%;
+  --miwarp-accent-pink: 330 81% 60%;
+  --miwarp-accent-teal: 174 68% 40%;
 
   /* Text hierarchy */
   --miwarp-text-primary: 0 0% 94%;
@@ -97,6 +100,9 @@ html.light:not([data-theme]) {
   --miwarp-accent-primary: 210 90% 48%;
   --miwarp-accent-violet: 185 75% 45%;
   --miwarp-accent-blue: 199 75% 42%;
+  --miwarp-accent-yellow: 48 96% 47%;
+  --miwarp-accent-pink: 330 81% 60%;
+  --miwarp-accent-teal: 174 68% 40%;
 
   --miwarp-text-primary: 220 18% 12%;
   --miwarp-text-secondary: 220 10% 42%;
@@ -162,6 +168,9 @@ html.light:not([data-theme]) {
   --miwarp-accent-primary: 217 91% 60%;
   --miwarp-accent-violet: 239 84% 67%;
   --miwarp-accent-blue: 199 89% 48%;
+  --miwarp-accent-yellow: 48 96% 47%;
+  --miwarp-accent-pink: 330 81% 60%;
+  --miwarp-accent-teal: 174 68% 40%;
 
   --miwarp-text-primary: 210 40% 95%;
   --miwarp-text-secondary: 210 20% 60%;
@@ -227,6 +236,9 @@ html.light:not([data-theme]) {
   --miwarp-accent-primary: 187 70% 50%;
   --miwarp-accent-violet: 199 89% 48%;
   --miwarp-accent-blue: 200 80% 55%;
+  --miwarp-accent-yellow: 48 96% 47%;
+  --miwarp-accent-pink: 330 81% 60%;
+  --miwarp-accent-teal: 174 68% 40%;
 
   --miwarp-text-primary: 190 30% 95%;
   --miwarp-text-secondary: 190 15% 60%;
@@ -292,6 +304,9 @@ html.light:not([data-theme]) {
   --miwarp-accent-primary: 265 80% 70%;
   --miwarp-accent-violet: 315 70% 70%;
   --miwarp-accent-blue: 197 80% 65%;
+  --miwarp-accent-yellow: 48 96% 47%;
+  --miwarp-accent-pink: 330 81% 60%;
+  --miwarp-accent-teal: 174 68% 40%;
 
   --miwarp-text-primary: 60 30% 90%;
   --miwarp-text-secondary: 60 10% 60%;
@@ -357,6 +372,9 @@ html.light:not([data-theme]) {
   --miwarp-accent-primary: 213 80% 62%;
   --miwarp-accent-violet: 213 40% 55%;
   --miwarp-accent-blue: 197 45% 55%;
+  --miwarp-accent-yellow: 48 96% 47%;
+  --miwarp-accent-pink: 330 81% 60%;
+  --miwarp-accent-teal: 174 68% 40%;
 
   --miwarp-text-primary: 218 28% 88%;
   --miwarp-text-secondary: 218 12% 58%;
@@ -401,9 +419,9 @@ html.light:not([data-theme]) {
   --popover-foreground: 218 28% 88%;
 }
 
-/* ── Morandi Theme — 莫兰迪色系，低饱和度柔和 ── */
+/* ── Morandi Theme �?莫兰迪色系，低饱和度柔和 ── */
 [data-theme="morandi"] {
-  /* 背景层级 — 暖灰调，低饱和度 */
+  /* 背景层级 �?暖灰调，低饱和度 */
   --miwarp-bg-deepest: 30 8% 12%;
   --miwarp-bg-deep: 30 8% 16%;
   --miwarp-bg-base: 30 8% 20%;
@@ -411,7 +429,7 @@ html.light:not([data-theme]) {
   --miwarp-bg-surface: 30 6% 28%;
   --miwarp-bg-hover: 28 6% 32%;
 
-  /* 毛玻璃层 — 略带暖色调 */
+  /* 毛玻璃层 �?略带暖色�?*/
   --miwarp-glass-bg: 30 8% 18%;
   --miwarp-glass-opacity: 0.75;
   --miwarp-glass-border: 30 15% 55%;
@@ -421,20 +439,23 @@ html.light:not([data-theme]) {
   /* Overlay / scrim */
   --miwarp-overlay: 30 10% 0% / 0.5;
 
-  /* 强调色 — 莫兰迪风格：灰粉、灰蓝、灰绿 */
+  /* 强调�?�?莫兰迪风格：灰粉、灰蓝、灰�?*/
   --miwarp-accent-primary: 340 12% 62%; /* 灰粉 */
   --miwarp-accent-violet: 200 15% 58%; /* 灰蓝 */
   --miwarp-accent-blue: 160 12% 55%; /* 灰绿 */
+  --miwarp-accent-yellow: 48 96% 47%;
+  --miwarp-accent-pink: 330 81% 60%;
+  --miwarp-accent-teal: 174 68% 40%;
 
-  /* 文字层次 — 暖白、米白 */
+  /* 文字层次 �?暖白、米�?*/
   --miwarp-text-primary: 40 10% 92%;
   --miwarp-text-secondary: 40 8% 60%;
   --miwarp-text-tertiary: 40 6% 45%;
 
-  /* 状态色 — 柔和的莫兰迪色调 */
+  /* 状态色 �?柔和的莫兰迪色调 */
   --miwarp-status-success: 152 18% 52%; /* 灰绿 */
   --miwarp-status-warning: 38 20% 58%; /* 灰黄 */
-  --miwarp-status-error: 15 18% 58%; /* 灰橙红 */
+  --miwarp-status-error: 15 18% 58%; /* 灰橙�?*/
   --miwarp-status-info: 200 18% 55%; /* 灰蓝 */
   --miwarp-status-running: 217 91% 60%;
   --miwarp-status-done: 160 84% 39%;
@@ -444,7 +465,7 @@ html.light:not([data-theme]) {
   --miwarp-status-blocked: 27 95% 53%;
   --miwarp-status-idle: 220 9% 64%;
 
-  /* 映射到 shadcn CSS 变量 */
+  /* 映射�?shadcn CSS 变量 */
   --background: 30 8% 12%;
   --foreground: 40 10% 92%;
   --primary: 340 12% 62%;
@@ -494,6 +515,9 @@ html.light:not([data-theme]) {
   --miwarp-accent-primary: 340 15% 55%;
   --miwarp-accent-violet: 200 18% 50%;
   --miwarp-accent-blue: 160 15% 48%;
+  --miwarp-accent-yellow: 48 96% 47%;
+  --miwarp-accent-pink: 330 81% 60%;
+  --miwarp-accent-teal: 174 68% 40%;
 
   --miwarp-text-primary: 30 12% 18%;
   --miwarp-text-secondary: 30 8% 42%;
@@ -538,13 +562,13 @@ html.light:not([data-theme]) {
   --popover-foreground: 30 12% 18%;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   Dev Preview Sidebar Theme — 开发预览侧边栏专用色系
-   ═══════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════�?
+   Dev Preview Sidebar Theme �?开发预览侧边栏专用色系
+   ══════════════════════════════════════════════════════════�?*/
 
-/* ── Dev Preview Dark — IDE 风格，深色编辑器感 ── */
+/* ── Dev Preview Dark �?IDE 风格，深色编辑器�?── */
 [data-theme="dev-preview"] {
-  /* 背景层级 — 经典 IDE 配色 */
+  /* 背景层级 �?经典 IDE 配色 */
   --miwarp-bg-deepest: 220 20% 5%;
   --miwarp-bg-deep: 220 18% 8%;
   --miwarp-bg-base: 220 16% 11%;
@@ -562,17 +586,20 @@ html.light:not([data-theme]) {
   /* Overlay / scrim */
   --miwarp-overlay: 0 0% 0% / 0.6;
 
-  /* 强调色 — 科技蓝绿 + 暖色点缀 */
+  /* 强调�?�?科技蓝绿 + 暖色点缀 */
   --miwarp-accent-primary: 174 70% 55%; /* #26C2A3 青绿 */
   --miwarp-accent-violet: 207 85% 65%; /* #30A4E8 天蓝 */
   --miwarp-accent-blue: 210 90% 60%; /* #2DADE6 主蓝 */
+  --miwarp-accent-yellow: 48 96% 47%;
+  --miwarp-accent-pink: 330 81% 60%;
+  --miwarp-accent-teal: 174 68% 40%;
 
-  /* 文字层次 — 高对比度 */
+  /* 文字层次 �?高对比度 */
   --miwarp-text-primary: 0 0% 96%;
   --miwarp-text-secondary: 220 8% 60%;
   --miwarp-text-tertiary: 220 8% 40%;
 
-  /* 状态色 — 调试友好 */
+  /* 状态色 �?调试友好 */
   --miwarp-status-success: 152 55% 55%; /* 青绿成功 */
   --miwarp-status-warning: 45 90% 58%; /* 琥珀警告 */
   --miwarp-status-error: 0 75% 62%; /* 亮红错误 */
@@ -585,13 +612,13 @@ html.light:not([data-theme]) {
   --miwarp-status-blocked: 27 95% 53%;
   --miwarp-status-idle: 220 9% 64%;
 
-  /* 调试专用色 — 预览侧边栏特有 */
+  /* 调试专用�?�?预览侧边栏特�?*/
   --miwarp-debug-trace: 270 60% 70%; /* 紫色 trace */
   --miwarp-debug-span: 45 80% 65%; /* 橙色 span */
   --miwarp-debug-meta: 220 50% 55%; /* 蓝灰 meta */
   --miwarp-debug-metric: 160 55% 55%; /* 青绿 metric */
 
-  /* 映射到 shadcn CSS 变量 */
+  /* 映射�?shadcn CSS 变量 */
   --background: 220 20% 5%;
   --foreground: 0 0% 96%;
   --primary: 174 70% 55%;
@@ -620,7 +647,7 @@ html.light:not([data-theme]) {
   --popover-foreground: 0 0% 96%;
 }
 
-/* ── Dev Preview Light — 浅色 IDE 风格 ── */
+/* ── Dev Preview Light �?浅色 IDE 风格 ── */
 [data-theme="dev-preview-light"] {
   --miwarp-bg-deepest: 0 0% 100%;
   --miwarp-bg-deep: 220 12% 97%;
@@ -640,6 +667,9 @@ html.light:not([data-theme]) {
   --miwarp-accent-primary: 174 60% 42%;
   --miwarp-accent-violet: 207 70% 50%;
   --miwarp-accent-blue: 210 75% 48%;
+  --miwarp-accent-yellow: 48 96% 47%;
+  --miwarp-accent-pink: 330 81% 60%;
+  --miwarp-accent-teal: 174 68% 40%;
 
   --miwarp-text-primary: 220 15% 12%;
   --miwarp-text-secondary: 220 8% 40%;
@@ -689,11 +719,11 @@ html.light:not([data-theme]) {
   --popover-foreground: 220 15% 12%;
 }
 
-/* ═══════════════════════════════════════════════════════════
+/* ══════════════════════════════════════════════════════════�?
    High-contrast MiWarp collision themes
    These themes are self-contained token sets so they do not fall back to
    the system light/dark canvas when selected through custom appearance.
-   ═══════════════════════════════════════════════════════════ */
+   ══════════════════════════════════════════════════════════�?*/
 
 [data-theme="carbonPink"] {
   --miwarp-bg-deepest: 224 18% 7%;
@@ -714,6 +744,9 @@ html.light:not([data-theme]) {
   --miwarp-accent-primary: 333 89% 60%;
   --miwarp-accent-violet: 292 84% 64%;
   --miwarp-accent-blue: 199 88% 60%;
+  --miwarp-accent-yellow: 48 96% 47%;
+  --miwarp-accent-pink: 330 81% 60%;
+  --miwarp-accent-teal: 174 68% 40%;
 
   --miwarp-text-primary: 330 28% 96%;
   --miwarp-text-secondary: 330 14% 68%;
@@ -778,6 +811,9 @@ html.light:not([data-theme]) {
   --miwarp-accent-primary: 194 92% 72%;
   --miwarp-accent-violet: 43 78% 84%;
   --miwarp-accent-blue: 185 76% 55%;
+  --miwarp-accent-yellow: 48 96% 47%;
+  --miwarp-accent-pink: 330 81% 60%;
+  --miwarp-accent-teal: 174 68% 40%;
 
   --miwarp-text-primary: 44 70% 94%;
   --miwarp-text-secondary: 42 28% 72%;
@@ -842,6 +878,9 @@ html.light:not([data-theme]) {
   --miwarp-accent-primary: 18 92% 54%;
   --miwarp-accent-violet: 288 82% 62%;
   --miwarp-accent-blue: 177 64% 42%;
+  --miwarp-accent-yellow: 48 96% 47%;
+  --miwarp-accent-pink: 330 81% 60%;
+  --miwarp-accent-teal: 174 68% 40%;
 
   --miwarp-text-primary: 24 38% 16%;
   --miwarp-text-secondary: 24 18% 42%;
@@ -906,6 +945,9 @@ html.light:not([data-theme]) {
   --miwarp-accent-primary: 345 78% 48%;
   --miwarp-accent-violet: 267 72% 58%;
   --miwarp-accent-blue: 198 62% 42%;
+  --miwarp-accent-yellow: 48 96% 47%;
+  --miwarp-accent-pink: 330 81% 60%;
+  --miwarp-accent-teal: 174 68% 40%;
 
   --miwarp-text-primary: 346 42% 16%;
   --miwarp-text-secondary: 346 18% 42%;
@@ -970,6 +1012,9 @@ html.light:not([data-theme]) {
   --miwarp-accent-primary: 80 88% 62%;
   --miwarp-accent-violet: 170 78% 48%;
   --miwarp-accent-blue: 204 92% 62%;
+  --miwarp-accent-yellow: 48 96% 47%;
+  --miwarp-accent-pink: 330 81% 60%;
+  --miwarp-accent-teal: 174 68% 40%;
 
   --miwarp-text-primary: 86 38% 94%;
   --miwarp-text-secondary: 88 18% 68%;

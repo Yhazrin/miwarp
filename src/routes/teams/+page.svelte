@@ -286,10 +286,10 @@
       green: "bg-miwarp-status-success",
       red: "bg-miwarp-status-error",
       orange: "bg-miwarp-status-warning",
-      yellow: "bg-yellow-500",
+      yellow: "bg-miwarp-accent-yellow",
       cyan: "bg-miwarp-accent-blue",
-      pink: "bg-pink-500",
-      teal: "bg-teal-500",
+      pink: "bg-miwarp-accent-pink",
+      teal: "bg-miwarp-accent-teal",
     };
     return map[color] ?? "bg-muted-foreground";
   }
@@ -301,10 +301,10 @@
       green: "text-miwarp-status-success",
       red: "text-miwarp-status-error",
       orange: "text-miwarp-status-warning",
-      yellow: "text-yellow-500",
+      yellow: "text-miwarp-accent-yellow",
       cyan: "text-miwarp-accent-blue",
-      pink: "text-pink-500",
-      teal: "text-teal-500",
+      pink: "text-miwarp-accent-pink",
+      teal: "text-miwarp-accent-teal",
     };
     return map[color] ?? "text-muted-foreground";
   }

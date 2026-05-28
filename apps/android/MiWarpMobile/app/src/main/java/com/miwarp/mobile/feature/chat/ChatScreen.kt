@@ -22,6 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.miwarp.mobile.design.MWApprovalCard
 import com.miwarp.mobile.design.MWErrorState
 import com.miwarp.mobile.design.MWLoadingState
 import com.miwarp.mobile.design.MWReconnectBanner
@@ -232,7 +233,7 @@ fun ChatScreen(
                 // Pending approval (show first one)
                 val firstPermission = pendingPermissions.firstOrNull()
                 if (firstPermission != null) {
-                    ApprovalCard(
+                    MWApprovalCard(
                         toolName = firstPermission.toolName,
                         description = firstPermission.description,
                         options = firstPermission.options,
