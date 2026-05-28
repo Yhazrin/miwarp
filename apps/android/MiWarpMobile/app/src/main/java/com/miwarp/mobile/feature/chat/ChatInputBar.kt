@@ -40,7 +40,7 @@ fun ChatInputBar(
                 if (onStop != null) {
                     IconButton(
                         onClick = onStop,
-                        modifier = Modifier.width(32.dp),
+                        modifier = Modifier.width(spacing.xl),
                     ) {
                         Icon(
                             imageVector = Icons.Default.Stop,

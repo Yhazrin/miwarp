@@ -113,13 +113,13 @@ fun ConnectionListScreen(
                             }
                             IconButton(
                                 onClick = { onDelete(connection.id) },
-                                modifier = Modifier.size(32.dp),
+                                modifier = Modifier.size(spacing.xl),
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = "Delete",
                                     tint = colors.textTertiary,
-                                    modifier = Modifier.size(16.dp),
+                                    modifier = Modifier.size(spacing.md),
                                 )
                             }
                         }

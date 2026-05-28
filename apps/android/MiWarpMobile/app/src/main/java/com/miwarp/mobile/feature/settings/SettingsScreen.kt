@@ -129,7 +129,7 @@ fun SettingsScreen(
                         Icon(
                             imageVector = Icons.Default.Logout,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(spacing.md),
                         )
                     }
                 }
