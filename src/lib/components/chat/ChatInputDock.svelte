@@ -74,9 +74,37 @@
     handleRalphCancel,
     showChatToast,
   } = $derived(handlers);
+
+  let dockEl = $state<HTMLDivElement | undefined>();
+
+  /** Sync scroll fade / padding with real dock height (fixed 11rem was much taller than the capsule). */
+  $effect(() => {
+    const dock = dockEl;
+    if (!dock) return;
+    const stage = dock.closest(".chat-conversation-stage") as HTMLElement | null;
+    if (!stage) return;
+
+    const sync = () => {
+      const height = Math.ceil(dock.getBoundingClientRect().height);
+      const scrollPad = height + 12;
+      stage.style.setProperty("--chat-input-dock-offset", `${scrollPad}px`);
+      stage.style.setProperty(
+        "--chat-scroll-fade-height",
+        `${Math.min(scrollPad + 36, 200)}px`,
+      );
+    };
+
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(dock);
+    return () => ro.disconnect();
+  });
 </script>
 
-<div class="chat-input-dock pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col">
+<div
+  bind:this={dockEl}
+  class="chat-input-dock pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col"
+>
   {#if canResumeNow(store.run, store.phase, agentSettings?.no_session_persistence ?? false) && getResumeWarning(store.run)}
     <div
       class="pointer-events-auto mx-3 mb-2 rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-4 py-2 text-xs text-miwarp-status-warning"
@@ -137,7 +165,7 @@
 
   {#if store.sessionAlive || !store.run || store.phase === "empty" || store.phase === "ready" || TERMINAL_PHASES.includes(store.phase)}
     <div
-      class="pointer-events-auto relative z-10 px-2 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-1"
+      class="pointer-events-auto relative z-10 px-2 pt-0 pb-[calc(var(--chat-input-dock-bottom-gap,1rem)+env(safe-area-inset-bottom,0px))]"
     >
       <div class="pointer-events-auto">
         <PromptInput

@@ -113,11 +113,19 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
       const beforeScroll = chatArea?.scrollTop ?? 0;
 
       const ft = getFilteredTimeline();
-      setRenderLimit(Math.min(getRenderLimit() + RENDER_GROWTH_STEP, ft.length));
+      const prevRenderLimit = getRenderLimit();
+      setRenderLimit(Math.min(prevRenderLimit + RENDER_GROWTH_STEP, ft.length));
       await tick();
-      await yieldToMain();
 
       if (anchorId && chatArea) {
+        // Wait two rAFs so the browser has done layout + paint and `content-visibility:
+        // auto` entries have been measured (their real height, not the 300px placeholder).
+        // Without this, getBoundingClientRect on the anchor uses placeholder sizes and
+        // the scroll restoration lands at the wrong position, causing a visible jump.
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        );
+
         let after: HTMLElement | null = null;
         try {
           after = chatArea.querySelector<HTMLElement>(`[data-entry-id="${CSS.escape(anchorId)}"]`);
@@ -128,6 +136,15 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
             ) ?? null;
         }
         if (after) {
+          // Force synchronous layout of all newly-inserted entries so their real
+          // heights are committed before we measure the anchor.
+          const newlyInserted = chatArea.querySelectorAll<HTMLElement>(
+            `[data-entry-id]:nth-child(n+${prevRenderLimit + 1})`,
+          );
+          for (const el of newlyInserted) {
+            el.getBoundingClientRect();
+          }
+          // Re-measure the anchor after the forced layout.
           const afterTop = after.getBoundingClientRect().top;
           setSuppressLoadMoreRearm(true);
           chatArea.scrollTop = beforeScroll + (afterTop - beforeTop);

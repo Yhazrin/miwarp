@@ -331,6 +331,43 @@ export interface EnrichedProjectFolder extends ProjectFolder {
   conversations: ConversationGroup[];
 }
 
+const MASCOT_DONE_WINDOW_MS = 5000;
+
+/** Derive ClaudeCanvas mascot state from workspace session activity. */
+export function getWorkspaceMascotStatus(
+  folder: Pick<EnrichedProjectFolder, "conversations" | "subFolders">,
+): "idle" | "running" | "waiting" | "done" {
+  const conversations: ConversationGroup[] = [
+    ...folder.conversations,
+    ...folder.subFolders.flatMap((sf) => sf.conversations),
+  ];
+  let hasRunning = false;
+  let hasWaiting = false;
+  let hasRecentDone = false;
+  const now = Date.now();
+
+  for (const conv of conversations) {
+    const status = conv.latestRun.status;
+    if (status === "waiting_input" || status === "waiting_approval") {
+      hasWaiting = true;
+    } else if (status === "running" || status === "pending") {
+      hasRunning = true;
+    } else if (status === "completed") {
+      const lastActivity = new Date(
+        conv.latestRun.last_activity_at ?? conv.latestRun.started_at,
+      ).getTime();
+      if (now - lastActivity < MASCOT_DONE_WINDOW_MS) {
+        hasRecentDone = true;
+      }
+    }
+  }
+
+  if (hasWaiting) return "waiting";
+  if (hasRunning) return "running";
+  if (hasRecentDone) return "done";
+  return "idle";
+}
+
 export function isScheduledTaskRun(run: TaskRun): boolean {
   return !!run.scheduled_task_id;
 }

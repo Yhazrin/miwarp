@@ -264,6 +264,18 @@
   // ── BTW mode (side question) ──
   let btwMode = $state(false);
 
+  /** Single-line capsule strip vs stacked multi-line composer. */
+  let capsuleExpanded = $state(false);
+  const CAPSULE_LINE_HEIGHT_PX = 22;
+  const CAPSULE_STACK_THRESHOLD_PX = 32;
+  const useCapsuleStrip = $derived(!capsuleExpanded && !pendingPermission);
+
+  $effect(() => {
+    const _layout = useCapsuleStrip;
+    void _layout;
+    requestAnimationFrame(() => autoResize());
+  });
+
   // Auto-close BTW mode when agent stops running
   $effect(() => {
     if (!running) btwMode = false;
@@ -335,7 +347,6 @@
       description: () => t("prompt_permAskDesc"),
       cls: "text-foreground/70",
       dotCls: "bg-foreground/40",
-      borderCls: "",
     },
     {
       value: "acceptEdits",
@@ -344,8 +355,6 @@
       description: () => t("prompt_permAutoReadDesc"),
       cls: "text-miwarp-status-info",
       dotCls: "bg-miwarp-status-info",
-      borderCls:
-        "border-[hsl(var(--miwarp-status-info)/0.4)] focus-within:border-[hsl(var(--miwarp-status-info)/0.6)] focus-within:shadow-[0_0_0_1px_hsl(var(--miwarp-status-info)/0.15)]",
     },
     {
       value: "bypassPermissions",
@@ -354,8 +363,6 @@
       description: () => t("prompt_permAutoAllDesc"),
       cls: "text-miwarp-status-warning",
       dotCls: "bg-miwarp-status-warning",
-      borderCls:
-        "border-[hsl(var(--miwarp-status-warning)/0.4)] focus-within:border-[hsl(var(--miwarp-status-warning)/0.6)] focus-within:shadow-[0_0_0_1px_hsl(var(--miwarp-status-warning)/0.15)]",
     },
     {
       value: "plan",
@@ -364,8 +371,6 @@
       description: () => t("prompt_permPlanDesc"),
       cls: "text-miwarp-accent-violet",
       dotCls: "bg-miwarp-accent-violet",
-      borderCls:
-        "border-[hsl(var(--miwarp-accent-violet)/0.4)] focus-within:border-[hsl(var(--miwarp-accent-violet)/0.6)] focus-within:shadow-[0_0_0_1px_hsl(var(--miwarp-accent-violet)/0.15)]",
     },
     {
       value: "auto",
@@ -374,8 +379,6 @@
       description: () => t("prompt_permAutoDesc"),
       cls: "text-miwarp-status-info",
       dotCls: "bg-miwarp-status-info",
-      borderCls:
-        "border-[hsl(var(--miwarp-status-info)/0.4)] focus-within:border-[hsl(var(--miwarp-status-info)/0.6)] focus-within:shadow-[0_0_0_1px_hsl(var(--miwarp-status-info)/0.15)]",
     },
     {
       value: "dontAsk",
@@ -384,8 +387,6 @@
       description: () => t("prompt_permDontAskDesc"),
       cls: "text-miwarp-status-error",
       dotCls: "bg-miwarp-status-error",
-      borderCls:
-        "border-[hsl(var(--miwarp-status-error)/0.4)] focus-within:border-[hsl(var(--miwarp-status-error)/0.6)] focus-within:shadow-[0_0_0_1px_hsl(var(--miwarp-status-error)/0.15)]",
     },
   ];
 
@@ -1805,9 +1806,41 @@
 
   function autoResize() {
     if (!store.textareaEl) return;
-    store.textareaEl.style.height = "auto";
+    const el = store.textareaEl;
     const maxHeight = 4 * 24; // ~4 lines
-    store.textareaEl.style.height = Math.min(store.textareaEl.scrollHeight, maxHeight) + "px";
+    const hasNewline = store.inputText.includes("\n");
+
+    if (pendingPermission) {
+      capsuleExpanded = true;
+    }
+
+    el.style.height = "auto";
+    const scrollH = el.scrollHeight;
+
+    if (!capsuleExpanded && !pendingPermission) {
+      if (hasNewline || scrollH > CAPSULE_STACK_THRESHOLD_PX) {
+        capsuleExpanded = true;
+      } else {
+        el.style.height = `${CAPSULE_LINE_HEIGHT_PX}px`;
+        el.style.overflowY = "hidden";
+        return;
+      }
+    }
+
+    if (
+      capsuleExpanded &&
+      !pendingPermission &&
+      !hasNewline &&
+      scrollH <= CAPSULE_STACK_THRESHOLD_PX
+    ) {
+      capsuleExpanded = false;
+      el.style.height = `${CAPSULE_LINE_HEIGHT_PX}px`;
+      el.style.overflowY = "hidden";
+      return;
+    }
+
+    el.style.overflowY = "auto";
+    el.style.height = `${Math.min(scrollH, maxHeight)}px`;
   }
 
   // ── Drag-drop state ──
@@ -1974,7 +2007,7 @@
 <!-- Web drag handlers — only fire when Tauri dragDropEnabled is false (non-Tauri builds).
      When dragDropEnabled: true, Tauri intercepts OS drag events and Web drag events do not fire. -->
 <div
-  class="relative mx-auto w-full max-w-5xl px-4 py-0"
+  class="relative mx-auto w-full px-4 py-0 {useCapsuleStrip ? 'max-w-4xl' : 'max-w-5xl'}"
   ondragenter={handleDragEnter}
   ondragleave={handleDragLeave}
   ondragover={handleDragOver}
@@ -1985,7 +2018,7 @@
   <!-- Drag overlay -->
   {#if dragActive}
     <div
-      class="absolute inset-0 z-10 flex items-center justify-center rounded-[28px] border-2 border-dashed border-primary/40 bg-primary/6 backdrop-blur-[2px]"
+      class="absolute inset-0 z-10 flex items-center justify-center rounded-full border-2 border-dashed border-primary/40 bg-primary/6 backdrop-blur-[2px]"
     >
       <span class="text-sm font-medium text-primary/70">{t("prompt_dropFiles")}</span>
     </div>
@@ -2109,11 +2142,232 @@
     </div>
   {/if}
 
+  {#snippet promptToolbarLeft(compact: boolean)}
+    {#if !hasRun && onAgentChange}
+      <AgentSelector value={agent} onchange={(a) => onAgentChange?.(a)} />
+    {/if}
+    {#if onPermissionModeChange}
+      <button type="button"
+        bind:this={modeBtnEl}
+        class="flex items-center gap-1 rounded-full border border-transparent px-1.5 py-0.5 text-[11px] font-medium transition-colors {currentMode.cls} hover:border-border/40 hover:bg-accent/15"
+        onclick={toggleModeDropdown}
+        title={t("prompt_permissionModeTitle", { mode: currentMode.label() })}
+      >
+        <svg
+          class="h-3 w-3"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+          />
+        </svg>
+        {currentMode.shortLabel()}
+        <Icon name="chevron-down" size="xs" class="text-foreground/30" />
+      </button>
+    {:else if !hasRun}
+      <div class="w-1"></div>
+    {/if}
+    {#if showAuthBadge && !hasRun && !compact}
+      <AuthSourceBadge
+        {authOverview}
+        {authSourceLabel}
+        {authSourceCategory}
+        {apiKeySource}
+        {hasRun}
+        {authMode}
+        {platformCredentials}
+        {platformId}
+        {onAuthModeChange}
+        {onPlatformChange}
+        {localProxyStatuses}
+      />
+    {/if}
+    <SkillSelector
+      skills={skillItems}
+      {agents}
+      disabled={disabled || running}
+      onSelect={handleSkillSelect}
+    />
+    {#if hasStash && onRestoreStash}
+      <button type="button"
+        class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-miwarp-accent-violet hover:bg-[hsl(var(--miwarp-accent-violet)/0.25)] transition-colors"
+        title={t("prompt_stashRestore")}
+        onclick={onRestoreStash}
+      >
+        <Icon name="refresh-cw" size="xs" />
+        {#if !compact}
+          {t("prompt_stashBadge")}
+        {/if}
+      </button>
+    {/if}
+  {/snippet}
+
+  {#snippet promptToolbarRight(compact: boolean)}
+    {#if showTokenEstimateUi && !compact}
+      <span
+        class="text-[10px] tabular-nums px-1.5 shrink-0 {tokenWarning
+          ? 'text-miwarp-status-warning'
+          : 'text-muted-foreground/50'}"
+        title={contextWindow > 0 ? t("prompt_tokenPercent", { pct: String(tokenPercent) }) : ""}
+      >
+        {t("prompt_tokenEstimate", { tokens: String(tokenEstimate) })}
+        {#if contextWindow > 0}<span class="ml-0.5"
+            >{t("prompt_tokenPercent", { pct: String(tokenPercent) })}</span
+          >{/if}
+        {#if tokenWarning}<span class="ml-0.5" title={t("prompt_tokenWarning")}>⚠</span>{/if}
+      </span>
+    {/if}
+    {#if slashEnabled}
+      <button type="button"
+        bind:this={slashBtnEl}
+        class="flex h-7 w-7 items-center justify-center rounded-full
+          text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors"
+        onclick={openSlashMenuFromButton}
+        title={t("prompt_slashCommands")}
+        aria-label={t("prompt_slashCommands")}
+      >
+        <svg
+          class="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M17 3 7 21" />
+        </svg>
+      </button>
+    {/if}
+    <input
+      bind:this={fileInput}
+      type="file"
+      multiple
+      accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.txt,.md,.json,.ts,.tsx,.js,.jsx,.py,.rs,.svelte,.html,.css,.yaml,.yml,.toml,.xml,.sh,.sql,.go,.java,.c,.cpp,.h,.rb,.php,.swift,.csv,.log,.docx,.xlsx"
+      class="hidden"
+      onchange={handleFileSelect}
+    />
+    <button type="button"
+      class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
+      onclick={() => fileInput?.click()}
+      disabled={store.pendingAttachments.length >= 8}
+      title={t("prompt_attachFiles")}
+      aria-label={t("prompt_attachFiles")}
+    >
+      <svg
+        class="h-4 w-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path
+          d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"
+        />
+      </svg>
+    </button>
+    {#if IS_MAC && !compact}
+      <button type="button"
+        class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
+        onclick={() => api.captureScreenshot()}
+        disabled={store.pendingAttachments.length >= 8}
+        title={t("prompt_screenshot")}
+      >
+        <svg
+          class="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"
+          />
+          <circle cx="12" cy="13" r="3" />
+        </svg>
+      </button>
+    {/if}
+
+    {#if running && onInterrupt}
+      {#if canSend}
+        {#if btwMode}
+          <button type="button"
+            class="flex h-7 w-7 items-center justify-center rounded-full bg-miwarp-status-info text-miwarp-accent-on-accent transition-colors hover:opacity-80"
+            onclick={handleBtwSend}
+            title={t("promptInput_sendSideQuestion")}
+          >
+            <Icon name="arrow-right" size="md" />
+          </button>
+        {:else}
+          <button type="button"
+            class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
+            onclick={handleSend}
+            title={t("prompt_send")}
+          >
+            <Icon name="arrow-right" size="md" />
+          </button>
+        {/if}
+      {/if}
+      {#if onBtwSend}
+        <button type="button"
+          onclick={() => (btwMode = !btwMode)}
+          title={t("promptInput_sideQuestion")}
+          class="flex h-7 w-7 items-center justify-center rounded-full transition-colors {btwMode
+            ? 'text-miwarp-status-info bg-miwarp-status-info/10'
+            : 'text-muted-foreground/60 hover:text-foreground hover:bg-accent/15'}"
+        >
+          <svg
+            class="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+          </svg>
+        </button>
+      {/if}
+      <button type="button"
+        class="flex h-7 w-7 items-center justify-center rounded-full text-destructive transition-colors hover:bg-destructive/10"
+        onclick={onInterrupt}
+        title={t("prompt_stop")}
+      >
+        <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="6" y="6" width="12" height="12" rx="2" />
+        </svg>
+      </button>
+    {:else}
+      <button type="button"
+        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors {canSend
+          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+          : 'text-muted-foreground/40'}"
+        onclick={handleSend}
+        disabled={!canSend}
+        title={t("prompt_send")}
+      >
+        <Icon name="arrow-right" size="md" />
+      </button>
+    {/if}
+  {/snippet}
+
   <!-- Unified input container -->
   <div
-    class="rounded-[28px] border bg-background/72 backdrop-blur-2xl transition-all duration-200 shadow-[0_4px_24px_rgba(0,0,0,0.10),inset_0_1px_0_hsl(var(--miwarp-glass-border,0_0%_100%)/0.07)] {btwMode
+    class="overflow-hidden border bg-background/72 backdrop-blur-2xl transition-[border-radius,border-color,box-shadow] duration-200 shadow-[0_4px_24px_rgba(0,0,0,0.10),inset_0_1px_0_hsl(var(--miwarp-glass-border,0_0%_100%)/0.07)] {useCapsuleStrip
+      ? 'rounded-full'
+      : 'rounded-[1.75rem]'} {btwMode
       ? 'border-miwarp-status-info/80'
-      : currentMode.borderCls || 'border-[hsl(var(--miwarp-glass-border,0_0%_100%)/0.1)] focus-within:border-[hsl(var(--miwarp-glass-border,0_0%_100%)/0.2)] focus-within:shadow-[0_4px_24px_rgba(0,0,0,0.10),0_0_0_2px_rgba(var(--miwarp-accent-rgb,59,130,246),0.15)]'} {pendingPermission
+      : 'border-[hsl(var(--miwarp-glass-border,0_0%_100%)/0.1)] focus-within:border-[hsl(var(--miwarp-glass-border,0_0%_100%)/0.2)] focus-within:shadow-[0_4px_24px_rgba(0,0,0,0.10),0_0_0_2px_rgba(var(--miwarp-accent-rgb,59,130,246),0.15)]'} {pendingPermission
       ? 'motion-attention-pulse'
       : ''}"
   >
@@ -2121,7 +2375,7 @@
       <div
         role="status"
         aria-live="polite"
-        class="flex items-center gap-2 px-4 pt-2.5 pb-0.5 text-xs text-miwarp-status-warning"
+        class="flex items-center gap-2 px-5 pt-3 pb-0.5 text-xs text-miwarp-status-warning"
       >
         <svg
           class="h-3.5 w-3.5 shrink-0"
@@ -2140,21 +2394,54 @@
       </div>
     {/if}
 
-    <!-- Textarea -->
-    <textarea
-      bind:this={store.textareaEl}
-      bind:value={store.inputText}
-      onkeydown={handleKeydown}
-      onbeforeinput={handleBeforeInput}
-      oninput={handleInput}
-      onpaste={handlePaste}
-      placeholder={effectivePlaceholder}
-      rows={1}
-      {disabled}
-      aria-label={t("prompt_chatInput")}
-      class="no-drag w-full resize-none bg-transparent px-4 pt-3 pb-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
-      style="min-height: 36px;"
-    ></textarea>
+    {#if useCapsuleStrip}
+      <div class="flex min-h-[38px] items-center gap-1 py-0.5 pl-2 pr-1.5">
+        <div class="flex max-w-[38%] shrink-0 items-center gap-0.5 overflow-hidden">
+          {@render promptToolbarLeft(true)}
+        </div>
+        <textarea
+          bind:this={store.textareaEl}
+          bind:value={store.inputText}
+          onkeydown={handleKeydown}
+          onbeforeinput={handleBeforeInput}
+          oninput={handleInput}
+          onpaste={handlePaste}
+          placeholder={effectivePlaceholder}
+          rows={1}
+          {disabled}
+          aria-label={t("prompt_chatInput")}
+          class="no-drag min-h-[22px] min-w-0 flex-1 resize-none overflow-x-auto overflow-y-hidden bg-transparent px-2 py-0 text-sm leading-5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
+          style="height: {CAPSULE_LINE_HEIGHT_PX}px;"
+        ></textarea>
+        <div class="flex shrink-0 items-center gap-0.5">
+          {@render promptToolbarRight(true)}
+        </div>
+      </div>
+    {:else}
+      <textarea
+        bind:this={store.textareaEl}
+        bind:value={store.inputText}
+        onkeydown={handleKeydown}
+        onbeforeinput={handleBeforeInput}
+        oninput={handleInput}
+        onpaste={handlePaste}
+        placeholder={effectivePlaceholder}
+        rows={1}
+        {disabled}
+        aria-label={t("prompt_chatInput")}
+        class="no-drag w-full resize-none bg-transparent px-5 pt-3 pb-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
+        style="min-height: 40px;"
+      ></textarea>
+
+      <div class="flex items-center justify-between px-4 pb-3.5 pt-0.5">
+        <div class="flex min-w-0 items-center gap-1">
+          {@render promptToolbarLeft(false)}
+        </div>
+        <div class="flex shrink-0 items-center gap-0.5">
+          {@render promptToolbarRight(false)}
+        </div>
+      </div>
+    {/if}
 
     {#if atMenuOpen}
       <AtMentionMenu
@@ -2192,232 +2479,6 @@
         onDismiss={() => closeSlashMenu("click-outside")}
       />
     {/if}
-
-    <!-- Bottom action bar -->
-    <div class="flex items-center justify-between px-3 pb-3">
-      <!-- Left: agent selector + permission mode -->
-      <div class="flex items-center gap-1">
-        {#if !hasRun && onAgentChange}
-          <AgentSelector value={agent} onchange={(a) => onAgentChange?.(a)} />
-        {/if}
-        {#if onPermissionModeChange}
-          <button type="button"
-            bind:this={modeBtnEl}
-            class="flex items-center gap-1 rounded-full border border-transparent px-1.5 py-0.5 text-[11px] font-medium transition-colors {currentMode.cls} hover:border-border/40 hover:bg-accent/15"
-            onclick={toggleModeDropdown}
-            title={t("prompt_permissionModeTitle", { mode: currentMode.label() })}
-          >
-            <svg
-              class="h-3 w-3"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
-              />
-            </svg>
-            {currentMode.shortLabel()}
-            <Icon name="chevron-down" size="xs" class="text-foreground/30" />
-          </button>
-        {:else if !hasRun}
-          <div class="w-1"></div>
-        {/if}
-        {#if showAuthBadge && !hasRun}
-          <AuthSourceBadge
-            {authOverview}
-            {authSourceLabel}
-            {authSourceCategory}
-            {apiKeySource}
-            {hasRun}
-            {authMode}
-            {platformCredentials}
-            {platformId}
-            {onAuthModeChange}
-            {onPlatformChange}
-            {localProxyStatuses}
-          />
-        {/if}
-        <SkillSelector
-          skills={skillItems}
-          {agents}
-          disabled={disabled || running}
-          onSelect={handleSkillSelect}
-        />
-        {#if hasStash && onRestoreStash}
-          <button type="button"
-            class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-miwarp-accent-violet hover:bg-[hsl(var(--miwarp-accent-violet)/0.25)] transition-colors"
-            title={t("prompt_stashRestore")}
-            onclick={onRestoreStash}
-          >
-            <Icon name="refresh-cw" size="xs" />
-            {t("prompt_stashBadge")}
-          </button>
-        {/if}
-      </div>
-
-      <!-- Right: actions -->
-      <div class="flex items-center gap-0.5">
-        {#if showTokenEstimateUi}
-          <span
-            class="text-[10px] tabular-nums px-1.5 shrink-0 {tokenWarning
-              ? 'text-miwarp-status-warning'
-              : 'text-muted-foreground/50'}"
-            title={contextWindow > 0 ? t("prompt_tokenPercent", { pct: String(tokenPercent) }) : ""}
-          >
-            {t("prompt_tokenEstimate", { tokens: String(tokenEstimate) })}
-            {#if contextWindow > 0}<span class="ml-0.5"
-                >{t("prompt_tokenPercent", { pct: String(tokenPercent) })}</span
-              >{/if}
-            {#if tokenWarning}<span class="ml-0.5" title={t("prompt_tokenWarning")}>⚠</span>{/if}
-          </span>
-        {/if}
-        {#if slashEnabled}
-          <button type="button"
-            bind:this={slashBtnEl}
-            class="flex h-7 w-7 items-center justify-center rounded-full
-              text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors"
-            onclick={openSlashMenuFromButton}
-            title={t("prompt_slashCommands")}
-            aria-label={t("prompt_slashCommands")}
-          >
-            <svg
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M17 3 7 21" />
-            </svg>
-          </button>
-        {/if}
-        <input
-          bind:this={fileInput}
-          type="file"
-          multiple
-          accept="image/png,image/jpeg,image/webp,image/gif,application/pdf,.txt,.md,.json,.ts,.tsx,.js,.jsx,.py,.rs,.svelte,.html,.css,.yaml,.yml,.toml,.xml,.sh,.sql,.go,.java,.c,.cpp,.h,.rb,.php,.swift,.csv,.log,.docx,.xlsx"
-          class="hidden"
-          onchange={handleFileSelect}
-        />
-        <button type="button"
-          class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
-          onclick={() => fileInput?.click()}
-          disabled={store.pendingAttachments.length >= 8}
-          title={t("prompt_attachFiles")}
-          aria-label={t("prompt_attachFiles")}
-        >
-          <svg
-            class="h-4 w-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path
-              d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"
-            />
-          </svg>
-        </button>
-        {#if IS_MAC}
-          <!-- Screenshot capture button (macOS only) -->
-          <button type="button"
-            class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
-            onclick={() => api.captureScreenshot()}
-            disabled={store.pendingAttachments.length >= 8}
-            title={t("prompt_screenshot")}
-          >
-            <svg
-              class="h-4 w-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path
-                d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"
-              />
-              <circle cx="12" cy="13" r="3" />
-            </svg>
-          </button>
-        {/if}
-
-        {#if running && onInterrupt}
-          {#if canSend}
-            {#if btwMode}
-              <!-- BTW send: blue theme -->
-              <button type="button"
-                class="flex h-7 w-7 items-center justify-center rounded-full bg-miwarp-status-info text-miwarp-accent-on-accent transition-colors hover:opacity-80"
-                onclick={handleBtwSend}
-                title={t("promptInput_sendSideQuestion")}
-              >
-                <Icon name="arrow-right" size="md" />
-              </button>
-            {:else}
-              <!-- Mid-turn send: allow injecting a message while agent is running -->
-              <button type="button"
-                class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
-                onclick={handleSend}
-                title={t("prompt_send")}
-              >
-                <Icon name="arrow-right" size="md" />
-              </button>
-            {/if}
-          {/if}
-          <!-- BTW toggle button (only during running) -->
-          {#if onBtwSend}
-            <button type="button"
-              onclick={() => (btwMode = !btwMode)}
-              title={t("promptInput_sideQuestion")}
-              class="flex h-7 w-7 items-center justify-center rounded-full transition-colors {btwMode
-                ? 'text-miwarp-status-info bg-miwarp-status-info/10'
-                : 'text-muted-foreground/60 hover:text-foreground hover:bg-accent/15'}"
-            >
-              <svg
-                class="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-              </svg>
-            </button>
-          {/if}
-          <button type="button"
-            class="flex h-7 w-7 items-center justify-center rounded-full text-destructive transition-colors hover:bg-destructive/10"
-            onclick={onInterrupt}
-            title={t("prompt_stop")}
-          >
-            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-              <rect x="6" y="6" width="12" height="12" rx="2" />
-            </svg>
-          </button>
-        {:else}
-          <button type="button"
-            class="flex h-7 w-7 items-center justify-center rounded-full transition-colors {canSend
-              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-              : 'text-muted-foreground/40'}"
-            onclick={handleSend}
-            disabled={!canSend}
-            title={t("prompt_send")}
-          >
-            <Icon name="arrow-right" size="md" />
-          </button>
-        {/if}
-      </div>
-    </div>
   </div>
 
   {#if modeDropdownOpen}

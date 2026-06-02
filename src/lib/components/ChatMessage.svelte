@@ -220,48 +220,53 @@
         </div>
         <!-- Content -->
         <div
-          class={`${isUser ? "pr-7 text-right" : "pl-7"} text-sm leading-relaxed text-foreground`}
+          class={`${isUser ? "pr-7 flex justify-end" : "pl-7"} text-sm leading-relaxed text-foreground`}
         >
           {#if isUser}
-            {#if attachments && attachments.length > 0}
-              <div class={`mb-2 flex flex-wrap gap-2 ${isUser ? "justify-end" : ""}`}>
-                {#each attachments as att}
-                  {#if isImage(att) && att.contentBase64}
-                    <img
-                      src="data:{att.type};base64,{att.contentBase64}"
-                      alt={att.name}
-                      class="max-h-48 max-w-xs rounded-md border border-border object-contain"
-                    />
-                  {:else}
-                    <FileAttachment name={att.name} size={att.size} mimeType={att.type} />
-                  {/if}
-                {/each}
-              </div>
-            {/if}
-            {#if isLong}
-              <p
-                class="whitespace-pre-wrap {collapsed ? 'max-h-24 overflow-hidden' : ''}"
-                style={collapsed
-                  ? "mask-image: linear-gradient(to bottom, black 70%, transparent);"
-                  : ""}
-              >
-                {message.content}
-              </p>
-              <button type="button"
-                class="mt-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                onclick={() => (collapsed = !collapsed)}
-                aria-expanded={!collapsed}
-                aria-label={collapsed
-                  ? t("common_showAllLines", { count: String(lineCount) })
-                  : t("common_collapse")}
-              >
-                {collapsed
-                  ? t("common_showAllLines", { count: String(lineCount) })
-                  : t("common_collapse")}
-              </button>
-            {:else}
-              <p class="whitespace-pre-wrap">{message.content}</p>
-            {/if}
+            <div
+              class="user-bubble inline-block max-w-3xl rounded-2xl rounded-tr-none px-4 py-2.5 text-left
+                bg-primary text-primary-foreground"
+            >
+              {#if attachments && attachments.length > 0}
+                <div class="mb-2 flex flex-wrap gap-2">
+                  {#each attachments as att}
+                    {#if isImage(att) && att.contentBase64}
+                      <img
+                        src="data:{att.type};base64,{att.contentBase64}"
+                        alt={att.name}
+                        class="max-h-48 max-w-xs rounded-md border border-border object-contain"
+                      />
+                    {:else}
+                      <FileAttachment name={att.name} size={att.size} mimeType={att.type} />
+                    {/if}
+                  {/each}
+                </div>
+              {/if}
+              {#if isLong}
+                <p
+                  class="whitespace-pre-wrap {collapsed ? 'max-h-24 overflow-hidden' : ''}"
+                  style={collapsed
+                    ? "mask-image: linear-gradient(to bottom, black 70%, transparent);"
+                    : ""}
+                >
+                  {message.content}
+                </p>
+                <button type="button"
+                  class="mt-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  onclick={() => (collapsed = !collapsed)}
+                  aria-expanded={!collapsed}
+                  aria-label={collapsed
+                    ? t("common_showAllLines", { count: String(lineCount) })
+                    : t("common_collapse")}
+                >
+                  {collapsed
+                    ? t("common_showAllLines", { count: String(lineCount) })
+                    : t("common_collapse")}
+                </button>
+              {:else}
+                <p class="whitespace-pre-wrap break-words">{message.content}</p>
+              {/if}
+            </div>
           {:else}
             {#if thinkingText && processVisibility !== "output"}
               {#if thinkingCollapsed}

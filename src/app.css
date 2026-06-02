@@ -1090,6 +1090,26 @@ code.hljs {
   }
 }
 
+/*
+ * Titlebar chrome — keep in sync with src-tauri/tauri.conf.json trafficLightPosition.
+ * macOS overlay traffic lights: 12px controls at (16, 16), 8px spacing between lights.
+ */
+:root {
+  --miwarp-titlebar-y: 8px;
+  --miwarp-titlebar-control: 14px;
+  --miwarp-titlebar-gap: 6px;
+  --miwarp-titlebar-actions-inset: 12px;
+  --miwarp-titlebar-band: 32px;
+}
+
+.platform-macos {
+  --miwarp-titlebar-y: 16px;
+  --miwarp-titlebar-control: 12px;
+  --miwarp-titlebar-gap: 8px;
+  --miwarp-titlebar-actions-inset: 80px;
+  --miwarp-titlebar-band: 28px;
+}
+
 /* ── macOS drag region for overlay title bar ── */
 /*
  * .window-drag-area is the original spacer-style drag region. It must keep
@@ -1393,10 +1413,11 @@ textarea,
 
 /* Chat: full-height scroll; bottom fade overlay (not a dock background panel) */
 .chat-conversation-stage {
-  /* Space so last message can scroll above the input dock */
-  --chat-input-dock-offset: 11rem;
-  /* Fade band from above the input down to the bottom edge */
-  --chat-scroll-fade-height: 15rem;
+  /* Gap between input dock and window bottom (larger = dock sits higher). */
+  --chat-input-dock-bottom-gap: 1rem;
+  /* Overwritten at runtime by ChatInputDock ResizeObserver; fallback ≈ capsule + bottom gap */
+  --chat-input-dock-offset: 6.5rem;
+  --chat-scroll-fade-height: 9rem;
 }
 
 .chat-messages-scroll {

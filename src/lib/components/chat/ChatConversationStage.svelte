@@ -216,7 +216,7 @@
       <!-- API mode: chat messages -->
       <div
         class="chat-messages-scroll h-full overflow-y-auto relative z-0"
-        style="overflow-anchor:auto"
+        style="overflow-anchor:none"
         bind:this={chatAreaRef}
         onscroll={handleChatScroll}
       >

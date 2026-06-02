@@ -331,6 +331,12 @@ pub struct UserSettings {
     /// Show token usage report at the bottom of each chat.
     #[serde(default = "default_true")]
     pub show_token_usage_report: bool,
+    /// Show pixel-art mascot in sidebar for Claude Code workspaces.
+    #[serde(default = "default_true")]
+    pub mascot_enabled: bool,
+    /// Show left icon rail (Chat / Teams / Memory / Settings shortcuts).
+    #[serde(default = "default_true")]
+    pub icon_rail_enabled: bool,
     /// Process visibility: output | guided | developer | expert (default developer).
     #[serde(default = "default_process_visibility")]
     pub process_visibility: String,
@@ -481,6 +487,8 @@ impl Default for UserSettings {
             auto_pr_on_complete: false,
             auto_cleanup_worktree: true,
             show_token_usage_report: true,
+            mascot_enabled: true,
+            icon_rail_enabled: true,
             process_visibility: "developer".to_string(),
             visual_performance_mode: "auto".to_string(),
             session_status_colors: None,

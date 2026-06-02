@@ -141,6 +141,23 @@
     },
   ];
 
+  const settingsNavGroups: { label: () => string; tabIds: SettingsTab[] }[] = [
+    { label: () => t("settings_nav_general") || "General", tabIds: ["general"] },
+    {
+      label: () => t("settings_nav_providers") || "Providers",
+      tabIds: ["connection", "mobile"],
+    },
+    { label: () => t("settings_nav_cli") || "CLI", tabIds: ["cli-config"] },
+    {
+      label: () => t("settings_nav_workspace") || "Workspace",
+      tabIds: ["shortcuts", "remote"],
+    },
+    {
+      label: () => t("settings_nav_system") || "System",
+      tabIds: ["notifications", "theme", "debug", "data"],
+    },
+  ];
+
   let settings = $state<UserSettings | null>(null);
   let authMode = $state("cli");
   let anthropicApiKey = $state("");
@@ -1578,158 +1595,59 @@
     <aside
       class="w-56 shrink-0 border-r border-border/50 overflow-y-auto flex flex-col bg-background/50"
     >
-      <div class="p-4 pb-2">
-        <h1 class="text-base font-bold">{t("settings_title")}</h1>
+      <div class="shrink-0 h-[var(--miwarp-titlebar-band)]" aria-hidden="true"></div>
+      <div
+        class="relative flex shrink-0 items-center gap-2 border-b border-border/40 px-3 py-2.5"
+      >
+        <button
+          type="button"
+          class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+          onclick={() => history.back()}
+          title={t("common_back")}
+          aria-label={t("common_back")}
+        >
+          <Icon name="chevron-left" size="sm" />
+        </button>
+        <h1 class="min-w-0 truncate text-[13px] font-semibold leading-snug tracking-tight text-foreground">
+          {t("settings_title")}
+        </h1>
       </div>
-      <nav class="flex-1 px-2 pb-4 space-y-0.5">
-        <!-- General -->
-        <p
-          class="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-2 pt-3 pb-1"
-        >
-          {t("settings_nav_general") || "General"}
-        </p>
-        {#each ["general"] as tabId (tabId)}
-          {@const tab = tabs.find((t) => t.id === tabId)}
-          {#if tab}
-            <button type="button"
-              class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] transition-colors text-left
-              {activeTab === tab.id
-                ? 'bg-accent text-foreground font-medium'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
-              onclick={() => setActiveTab(tab.id)}
+      <nav class="flex flex-1 flex-col gap-5 px-2.5 pb-4 pt-3">
+        {#each settingsNavGroups as group (group.label())}
+          <section class="flex flex-col gap-1.5">
+            <p
+              class="px-2 text-[11px] font-medium leading-none tracking-wide text-muted-foreground/70"
             >
-              <svg
-                class="h-3.5 w-3.5 shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"><path d={tab.icon} /></svg
-              >
-              {tabLabels[tab.id]()}
-            </button>
-          {/if}
-        {/each}
-
-        <!-- Models & Providers -->
-        <p
-          class="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-2 pt-3 pb-1"
-        >
-          {t("settings_nav_providers") || "Providers"}
-        </p>
-        {#each ["connection", "mobile"] as tabId (tabId)}
-          {@const tab = tabs.find((t) => t.id === tabId)}
-          {#if tab}
-            <button type="button"
-              class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] transition-colors text-left
-              {activeTab === tab.id
-                ? 'bg-accent text-foreground font-medium'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
-              onclick={() => setActiveTab(tab.id)}
-            >
-              <svg
-                class="h-3.5 w-3.5 shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"><path d={tab.icon} /></svg
-              >
-              {tabLabels[tab.id]()}
-            </button>
-          {/if}
-        {/each}
-
-        <!-- CLI -->
-        <p
-          class="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-2 pt-3 pb-1"
-        >
-          {t("settings_nav_cli") || "CLI"}
-        </p>
-        {#each ["cli-config"] as tabId (tabId)}
-          {@const tab = tabs.find((t) => t.id === tabId)}
-          {#if tab}
-            <button type="button"
-              class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] transition-colors text-left
-              {activeTab === tab.id
-                ? 'bg-accent text-foreground font-medium'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
-              onclick={() => setActiveTab(tab.id)}
-            >
-              <svg
-                class="h-3.5 w-3.5 shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"><path d={tab.icon} /></svg
-              >
-              {tabLabels[tab.id]()}
-            </button>
-          {/if}
-        {/each}
-
-        <!-- Workspace -->
-        <p
-          class="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-2 pt-3 pb-1"
-        >
-          {t("settings_nav_workspace") || "Workspace"}
-        </p>
-        {#each ["shortcuts", "remote"] as tabId (tabId)}
-          {@const tab = tabs.find((t) => t.id === tabId)}
-          {#if tab}
-            <button type="button"
-              class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] transition-colors text-left
-              {activeTab === tab.id
-                ? 'bg-accent text-foreground font-medium'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
-              onclick={() => setActiveTab(tab.id)}
-            >
-              <svg
-                class="h-3.5 w-3.5 shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"><path d={tab.icon} /></svg
-              >
-              {tabLabels[tab.id]()}
-            </button>
-          {/if}
-        {/each}
-
-        <!-- System -->
-        <p
-          class="text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest px-2 pt-3 pb-1"
-        >
-          {t("settings_nav_system") || "System"}
-        </p>
-        {#each ["notifications", "theme", "debug", "data"] as tabId (tabId)}
-          {@const tab = tabs.find((t) => t.id === tabId)}
-          {#if tab}
-            <button type="button"
-              class="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[13px] transition-colors text-left
-              {activeTab === tab.id
-                ? 'bg-accent text-foreground font-medium'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
-              onclick={() => setActiveTab(tab.id)}
-            >
-              <svg
-                class="h-3.5 w-3.5 shrink-0"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"><path d={tab.icon} /></svg
-              >
-              {tabLabels[tab.id]()}
-            </button>
-          {/if}
+              {group.label()}
+            </p>
+            <div class="flex flex-col gap-0.5">
+              {#each group.tabIds as tabId (tabId)}
+                {@const tab = tabs.find((entry) => entry.id === tabId)}
+                {#if tab}
+                  <button
+                    type="button"
+                    class="flex min-h-[32px] w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13px] leading-snug transition-colors
+                    {activeTab === tab.id
+                      ? 'bg-accent/90 font-medium text-foreground'
+                      : 'font-normal text-muted-foreground hover:bg-accent/45 hover:text-foreground'}"
+                    onclick={() => setActiveTab(tab.id)}
+                  >
+                    <svg
+                      class="h-3.5 w-3.5 shrink-0 opacity-80"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"><path d={tab.icon} /></svg
+                    >
+                    <span class="min-w-0 truncate">{tabLabels[tab.id]()}</span>
+                  </button>
+                {/if}
+              {/each}
+            </div>
+          </section>
         {/each}
       </nav>
     </aside>
@@ -2594,13 +2512,36 @@
               <SettingsToggle
                 checked={settings?.mascot_enabled !== false}
                 onchange={async (v) => {
-                  settings = await api.updateUserSettings({
-                    mascot_enabled: v,
-                  } as Partial<UserSettings>);
+                  const prev = settings;
+                  if (settings) settings = { ...settings, mascot_enabled: v };
+                  try {
+                    settings = await api.updateUserSettings({
+                      mascot_enabled: v,
+                    } as Partial<UserSettings>);
+                  } catch {
+                    settings = prev;
+                  }
                 }}
                 label={t("settings_mascotEnabled") || "侧边栏动画吉祥物"}
                 description={t("settings_mascotEnabledDesc") ||
                   "在侧边栏工作区行显示 Claude Code 像素动画吉祥物"}
+              />
+              <SettingsToggle
+                checked={settings?.icon_rail_enabled !== false}
+                onchange={async (v) => {
+                  const prev = settings;
+                  if (settings) settings = { ...settings, icon_rail_enabled: v };
+                  try {
+                    settings = await api.updateUserSettings({
+                      icon_rail_enabled: v,
+                    } as Partial<UserSettings>);
+                  } catch {
+                    settings = prev;
+                  }
+                }}
+                label={t("settings_iconRailEnabled") || "左侧图标栏"}
+                description={t("settings_iconRailEnabledDesc") ||
+                  "在窗口左侧显示包含聊天/团队/记忆等入口的纵向图标栏。关闭后，设置入口会显示在会话列表左下角；收起会话列表时，设置图标悬浮在窗口左下角。"}
               />
             </Card>
 

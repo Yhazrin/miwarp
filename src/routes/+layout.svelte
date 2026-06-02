@@ -6,6 +6,7 @@
     listRuns,
     listRunsSince,
     getUserSettings,
+    USER_SETTINGS_CHANGED_EVENT,
     updateUserSettings,
     listDirectory,
     getGitSummary,
@@ -42,6 +43,7 @@
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
   import TopWindowDrag from "$lib/components/TopWindowDrag.svelte";
+  import { IS_MAC } from "$lib/utils/platform";
   import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
   import type {
     TaskRun,
@@ -57,6 +59,7 @@
   import { filterVisibleCandidates } from "$lib/utils/memory-helpers";
   import {
     buildEnrichedProjectFolders,
+    getWorkspaceMascotStatus,
     autoExpandForRun,
     expandForProjectChange,
     normalizeCwd,
@@ -1169,6 +1172,16 @@
     };
     window.addEventListener("miwarp:visual-performance-changed", onPerfModeChanged);
 
+    const onUserSettingsChanged = (e: Event) => {
+      const next = (e as CustomEvent<UserSettings>).detail;
+      if (!next) return;
+      settings = next;
+      persistCachedProcessVisibility(normalizeProcessVisibility(next.process_visibility));
+      applyZoom(next.ui_zoom);
+      applyVisualPerformance(next.visual_performance_mode);
+    };
+    window.addEventListener(USER_SETTINGS_CHANGED_EVENT, onUserSettingsChanged);
+
     return () => {
       resizeCleanup?.(); // Clean up resize drag if component unmounts mid-drag
       unlistenStatus?.();
@@ -1193,6 +1206,7 @@
       document.removeEventListener("click", handleExternalLink, true);
       window.removeEventListener("ocv:explorer-file-selected", onExplorerFileSelected);
       window.removeEventListener("miwarp:visual-performance-changed", onPerfModeChanged);
+      window.removeEventListener(USER_SETTINGS_CHANGED_EVENT, onUserSettingsChanged);
       cleanupOverscroll();
     };
   });
@@ -1564,10 +1578,37 @@
   let isExplorerPage = $derived(currentPath.startsWith("/explorer"));
   let isMemoryPage = $derived(currentPath.startsWith("/memory"));
   let isTeamsPage = $derived(currentPath.startsWith("/teams"));
+  let isSettingsPage = $derived(currentPath.startsWith("/settings"));
   // Whether the current page uses the layout's content panel (vs managing its own layout)
   let needsLayoutContentPanel = $derived(
     isChatPage || isPluginsPage || isExplorerPage || isMemoryPage || isTeamsPage,
   );
+
+  // Icon rail visibility (driven by user setting, default true)
+  const iconRailEnabled = $derived(settings?.icon_rail_enabled !== false);
+  const mascotEnabled = $derived(settings?.mascot_enabled !== false);
+  /** Left inset for TopWindowDrag — matches titlebar action buttons after traffic lights. */
+  const windowChromeLeftInset = $derived.by(() => {
+    const actionsInset = IS_MAC ? 80 : 12;
+    const control = IS_MAC ? 12 : 14;
+    const gap = IS_MAC ? 8 : 6;
+    let actions = 1;
+    if (!isSettingsPage) actions += 1;
+    if (needsLayoutContentPanel) actions += 2;
+    return actionsInset + actions * control + Math.max(0, actions - 1) * gap + 8;
+  });
+  const titlebarBandHeight = $derived(IS_MAC ? 28 : 32);
+  // Effective sidebar width depends on whether the rail is shown
+  const sidebarEffectiveWidth = $derived(
+    !iconRailEnabled
+      ? sidebarOpen && needsLayoutContentPanel
+        ? sidebarWidth
+        : 0
+      : sidebarOpen && needsLayoutContentPanel
+        ? 44 + sidebarWidth
+        : 44,
+  );
+  const sidebarLogicallyCollapsed = $derived(!sidebarOpen || !needsLayoutContentPanel);
 
   // Plugin sidebar navigation (shown when on /plugins route)
   const pluginSections = [
@@ -1784,31 +1825,134 @@
   {/each}
 {/snippet}
 
+{#snippet windowChromeToolbar()}
+  {@const chromeBtn =
+    "flex shrink-0 items-center justify-center rounded-full text-sidebar-foreground/75 transition-colors duration-150 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground h-[var(--miwarp-titlebar-control)] w-[var(--miwarp-titlebar-control)]"}
+  {@const chromeIcon =
+    "h-[var(--miwarp-titlebar-control)] w-[var(--miwarp-titlebar-control)]"}
+  <nav
+    class="window-chrome-toolbar no-drag fixed left-0 z-[35] flex items-center gap-[var(--miwarp-titlebar-gap)] pl-[var(--miwarp-titlebar-actions-inset)]"
+    style="top: var(--miwarp-titlebar-y); height: var(--miwarp-titlebar-control);"
+    aria-label={t("layout_windowChrome")}
+  >
+    <button
+      type="button"
+      class={chromeBtn}
+      onclick={toggleSidebar}
+      title={t("keybind_toggleSidebar")}
+      aria-label={t("keybind_toggleSidebar")}
+      aria-expanded={sidebarOpen && needsLayoutContentPanel}
+    >
+      <svg
+        class={chromeIcon}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.75"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M9 3v18" />
+        {#if sidebarOpen && needsLayoutContentPanel}
+          <path d="m14 10-2 2 2 2" />
+        {:else}
+          <path d="m10 10 2 2-2 2" />
+        {/if}
+      </svg>
+    </button>
+
+    {#if !isSettingsPage}
+      <button
+        type="button"
+        class={chromeBtn}
+        onclick={() => goto("/settings")}
+        title={t("nav_settings")}
+        aria-label={t("nav_settings")}
+      >
+        <svg
+          class={chromeIcon}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path
+            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+          />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
+    {/if}
+
+    {#if needsLayoutContentPanel}
+      <button
+        type="button"
+        class={chromeBtn}
+        onclick={() => (showCliBrowser = true)}
+        title={t("cliSync_title")}
+        aria-label={t("sidebar_cliBrowser")}
+      >
+        <svg
+          class={chromeIcon}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+          <path
+            d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"
+          />
+        </svg>
+      </button>
+      <button
+        type="button"
+        class={chromeBtn}
+        onclick={newChat}
+        title={t("layout_newConversation")}
+        aria-label={t("sidebar_newChat")}
+      >
+        <Icon name="plus" size="xs" class={chromeIcon} />
+      </button>
+    {/if}
+  </nav>
+{/snippet}
+
 <svelte:window onkeydown={handleKeydown} />
+
+{@render windowChromeToolbar()}
 
 <!-- eslint-disable-next-line svelte/no-dupe-style-properties — 100vh is a fallback for browsers without dvh support -->
 <div class="flex w-screen overflow-hidden" style="height: 100vh; height: 100dvh; {statusColorVars}">
   <!-- Sidebar: Icon Rail + Content Panel -->
   <aside
     class="sidebar-container shrink-0 glass-sidebar text-sidebar-foreground"
-    class:sidebar-collapsed={!sidebarOpen || !needsLayoutContentPanel}
+    class:sidebar-collapsed={sidebarLogicallyCollapsed}
+    class:sidebar-no-icon-rail={!iconRailEnabled}
     class:sidebar-no-transition={sidebarResizing}
-    style="width: {sidebarOpen && needsLayoutContentPanel
-      ? 44 + sidebarWidth
-      : 44}px; --sidebar-inner-width: {sidebarWidth}px"
+    style="width: {sidebarEffectiveWidth}px; --sidebar-inner-width: {sidebarWidth}px"
   >
+    {#if iconRailEnabled}
     <!-- A. Icon Rail -->
     <div class="flex w-[44px] flex-col items-center bg-[hsl(var(--miwarp-bg-deepest)/0.88)]">
       <!-- Rail logo (OC) -->
-      <div class="relative flex h-14 w-full items-center justify-center pt-[42px]">
-        <!-- Left drag area -->
-        <WindowDragArea class="absolute left-0 top-0 bottom-0 w-8" />
-        <!-- Right drag area -->
-        <WindowDragArea class="absolute right-0 top-0 bottom-0 w-8" />
+      <div
+        class="relative w-full shrink-0 h-[var(--miwarp-titlebar-band)]"
+        aria-hidden="true"
+      >
+        <WindowDragArea class="absolute inset-0" />
       </div>
 
       <!-- Rail nav icons -->
-      <nav class="flex flex-1 flex-col items-center gap-1 py-2 pt-6">
+      <nav class="flex flex-1 flex-col items-center gap-1 py-2 pt-2">
         {#each navItems as item, idx}
           {#if idx > 0 && item.group !== navItems[idx - 1].group}
             <div class="my-1 h-px w-5 bg-border/40"></div>
@@ -2056,6 +2200,7 @@
         </button>
       </div>
     </div>
+    {/if}
 
     <!-- B. Content Panel (only rendered for pages that use it) -->
     {#if needsLayoutContentPanel}
@@ -2064,46 +2209,24 @@
           class="sidebar-inner flex flex-col h-full relative"
           class:sidebar-inner-collapsed={!sidebarOpen}
         >
-          <!-- Panel header: Project selector + new chat -->
-          <div class="relative flex h-14 items-center gap-1.5 px-3 pt-[42px]">
-            <!-- Left drag spacer -->
-            <WindowDragArea class="absolute left-0 top-0 bottom-0 w-16" />
-            <!-- Right drag spacer -->
-            <WindowDragArea class="absolute right-0 top-0 bottom-0 w-16" />
-            <!-- Clickable content -->
-            <div class="no-drag relative z-10 flex items-center gap-1.5 flex-1 min-w-0">
-              <span class="flex-1 min-w-0 truncate text-sm font-medium text-sidebar-foreground"
-                >{pageName}</span
-              >
-              <button type="button"
-                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-                onclick={() => (showCliBrowser = true)}
-                aria-label={t("sidebar_cliBrowser")}
-                title={t("cliSync_title")}
-              >
-                <svg
-                  class="h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path
-                    d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"
-                  /></svg
-                >
-              </button>
-              <button type="button"
-                class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-                onclick={newChat}
-                aria-label={t("sidebar_newChat")}
-                title={t("layout_newConversation")}
-              >
-                <Icon name="plus" size="md" />
-              </button>
-            </div>
+          <!-- Titlebar band spacer (window chrome toolbar overlays this row) -->
+          <div
+            class="relative shrink-0 h-[var(--miwarp-titlebar-band)]"
+            aria-hidden="true"
+          >
+            <WindowDragArea class="absolute inset-0" />
           </div>
+          {#if isChatPage}
+            <div class="no-drag relative z-10 shrink-0 px-3 pb-2.5 pt-1">
+              <input
+                type="text"
+                bind:value={runSearchQuery}
+                oninput={onDeepQueryInput}
+                placeholder={t("sidebar_searchChats")}
+                class="w-full min-w-0 rounded-full border border-sidebar-border bg-sidebar px-3.5 py-1.5 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
+              />
+            </div>
+          {/if}
 
           {#if isPluginsPage}
             <!-- Plugin section navigation (replaces Chats/Files when on /plugins) -->
@@ -2642,39 +2765,6 @@
               {/if}
             </div>
           {:else if isChatPage}
-            <!-- Chats sidebar -->
-            <div class="px-2 pt-2 pb-1 shrink-0">
-              <input
-                type="text"
-                bind:value={runSearchQuery}
-                oninput={onDeepQueryInput}
-                placeholder={t("sidebar_searchChats")}
-                class="w-full rounded-full border border-sidebar-border bg-sidebar px-3 py-1 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
-              />
-              {#if runSearchQuery.trim()}
-                {#if searching}
-                  <p class="text-xs text-muted-foreground px-1 pt-0.5">
-                    {t("runs_searching")}
-                  </p>
-                {:else if visibleSearchResults.length > 0}
-                  <p
-                    class="flex items-center justify-between text-xs text-muted-foreground px-1 pt-0.5"
-                  >
-                    <span
-                      >{t("runs_resultsCount", {
-                        count: String(visibleSearchResults.length),
-                      })}</span
-                    >
-                    <a
-                      href="/history?q={encodeURIComponent(runSearchQuery)}"
-                      class="text-primary/70 hover:text-primary transition-colors"
-                      >{t("history_advancedSearch")}</a
-                    >
-                  </p>
-                {/if}
-              {/if}
-            </div>
-
             {#if runSearchQuery.trim()}
               <!-- Search results -->
               <div class="flex-1 overflow-y-auto">
@@ -2777,6 +2867,8 @@
                             dbgWarn("layout", "openDirectory failed", e);
                           }
                         }}
+                    showMascot={mascotEnabled && !folder.isUncategorized}
+                    mascotStatus={getWorkspaceMascotStatus(folder)}
                   />
                 {/each}
 
@@ -2815,6 +2907,7 @@
               {/if}
             {/if}
           {/if}
+
         </div>
         <!-- Resize handle -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -2886,7 +2979,7 @@
   there are buttons underneath. On Linux/Windows this is a no-op overlay and
   the legacy <WindowDragArea> spacers continue to do the work.
 -->
-<TopWindowDrag height={40} />
+<TopWindowDrag height={titlebarBandHeight} leftInset={windowChromeLeftInset} />
 
 <CommandPalette
   bind:open={commandPaletteOpen}

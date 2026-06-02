@@ -299,9 +299,18 @@ export async function getUserSettings(): Promise<UserSettings> {
   return invoke<UserSettings>("get_user_settings");
 }
 
+export const USER_SETTINGS_CHANGED_EVENT = "miwarp:user-settings-changed";
+
+export function notifyUserSettingsChanged(settings: UserSettings): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(USER_SETTINGS_CHANGED_EVENT, { detail: settings }));
+}
+
 export async function updateUserSettings(patch: Partial<UserSettings>): Promise<UserSettings> {
   dbg("api", "updateUserSettings");
-  return invoke<UserSettings>("update_user_settings", { patch });
+  const settings = await invoke<UserSettings>("update_user_settings", { patch });
+  notifyUserSettingsChanged(settings);
+  return settings;
 }
 
 export async function getAgentSettings(agent: string): Promise<AgentSettings> {

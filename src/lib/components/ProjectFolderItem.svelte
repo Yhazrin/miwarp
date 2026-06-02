@@ -19,7 +19,8 @@
 
   const PAGE_SIZE = 20;
   const VIRTUAL_THRESHOLD = 40;
-  const ITEM_HEIGHT = 44;
+  /** Row height for virtualized conversation list (card + bottom margin). */
+  const ITEM_HEIGHT = 64;
 
   type BaseProps = {
     folder: ProjectFolder;

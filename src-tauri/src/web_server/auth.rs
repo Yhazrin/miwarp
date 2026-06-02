@@ -45,7 +45,10 @@ pub async fn authenticate_ws(
     }
     // 2. Try header auth: Authorization: Bearer <token> or X-MiWarp-Token: <token>
     if let Some(bearer) = headers.get("authorization").and_then(|v| v.to_str().ok()) {
-        if let Some(token) = bearer.strip_prefix("Bearer ").or(bearer.strip_prefix("bearer ")) {
+        if let Some(token) = bearer
+            .strip_prefix("Bearer ")
+            .or(bearer.strip_prefix("bearer "))
+        {
             if token == state.token.read().await.as_str() {
                 log::debug!("[auth] WS auth: valid Bearer token");
                 return Some(WsAuthSubject::QueryToken);
@@ -300,7 +303,10 @@ pub async fn validate_ws_auth_extracted(
 
     // 2. Try header auth: Authorization: Bearer <token> or X-MiWarp-Token: <token>
     if let Some(bearer) = headers.get("authorization").and_then(|v| v.to_str().ok()) {
-        if let Some(token) = bearer.strip_prefix("Bearer ").or(bearer.strip_prefix("bearer ")) {
+        if let Some(token) = bearer
+            .strip_prefix("Bearer ")
+            .or(bearer.strip_prefix("bearer "))
+        {
             if token == state.token.read().await.as_str() {
                 log::debug!("[auth] WS auth: valid Bearer token");
                 return true;

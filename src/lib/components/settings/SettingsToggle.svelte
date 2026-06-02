@@ -14,10 +14,18 @@
   } = $props();
 </script>
 
-<label
-  class="flex items-center justify-between gap-4 py-1.5 cursor-pointer {disabled
-    ? 'opacity-50 pointer-events-none'
+<button
+  type="button"
+  class="flex w-full items-center justify-between gap-4 py-1.5 cursor-pointer text-left relative z-10 {disabled
+    ? 'opacity-50 cursor-not-allowed'
     : ''}"
+  role="switch"
+  aria-checked={checked}
+  aria-label={label || "Toggle setting"}
+  {disabled}
+  onclick={() => {
+    if (!disabled) onchange(!checked);
+  }}
 >
   {#if label || description}
     <div class="min-w-0 flex-1">
@@ -29,18 +37,15 @@
       {/if}
     </div>
   {/if}
-  <button type="button"
-    role="switch"
-    aria-checked={checked}
-    aria-label={label || "Toggle setting"}
-    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50
-      {checked ? 'bg-primary' : 'bg-input'}"
-    onclick={() => onchange(!checked)}
-    {disabled}
+  <div
+    aria-hidden="true"
+    class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200 {checked
+      ? 'bg-primary'
+      : 'bg-input'}"
   >
     <span
       class="pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform duration-200
       {checked ? 'translate-x-5' : 'translate-x-0'}"
     ></span>
-  </button>
-</label>
+  </div>
+</button>

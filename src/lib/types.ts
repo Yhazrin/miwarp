@@ -262,6 +262,8 @@ export interface UserSettings {
   avatar_path?: string;
   /** Enable canvas mascot animation in sidebar. Default true. */
   mascot_enabled?: boolean;
+  /** Show the left icon rail (Chat/Teams/Memory/.../Settings). Default true. */
+  icon_rail_enabled?: boolean;
   updated_at: string;
 }
 

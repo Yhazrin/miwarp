@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from "$app/stores";
-  import { goto, replaceState } from "$app/navigation";
-  import { tick, onMount, onDestroy, untrack, getContext } from "svelte";
+  import { goto, replaceState, beforeNavigate } from "$app/navigation";
+  import { tick, onMount, untrack, getContext } from "svelte";
   import { fly } from "svelte/transition";
   import * as api from "$lib/api";
   import {
@@ -950,7 +950,7 @@
   }
 
 
-  onDestroy(() => {
+  beforeNavigate(() => {
     // Save UI view state before leaving the chat page
     saveChatViewState({
       runId: store.run?.id ?? "",

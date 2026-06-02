@@ -183,7 +183,7 @@
 </script>
 
 <div
-  class="group/item w-full text-left px-2.5 py-1.5 rounded-md transition-colors cursor-pointer
+  class="group/item w-full text-left px-2.5 py-2.5 rounded-md transition-colors cursor-pointer
     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
     {selected
     ? 'bg-sidebar-accent/70 text-sidebar-accent-foreground'
@@ -195,8 +195,8 @@
   onkeydown={handleKeydown}
   oncontextmenu={openContextMenu}
 >
-  <div class="flex items-center justify-between gap-1.5">
-    <div class="flex items-center gap-1.5 min-w-0">
+  <div class="flex items-center justify-between gap-1.5 h-full">
+    <div class="flex items-center gap-1.5 min-w-0 flex-1">
       <span
         class="inline-block h-[6px] w-[6px] rounded-full shrink-0 {statusDot.animated
           ? 'animate-slow-pulse'

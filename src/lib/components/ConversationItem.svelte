@@ -283,7 +283,7 @@
 
 <div
   class="group w-full text-left rounded-md transition-colors cursor-pointer
-    {isSidebar ? 'px-2 py-1 text-[11px]' : 'px-3 py-1.5 text-xs'}
+    {isSidebar ? 'mb-1.5 px-2.5 py-2.5 text-xs' : 'px-3 py-1.5 text-xs'}
     {selected
     ? 'bg-sidebar-accent/70 text-sidebar-accent-foreground'
     : 'hover:bg-sidebar-accent/30 text-sidebar-foreground'} {batchSelected
@@ -299,8 +299,8 @@
   oncontextmenu={openContextMenu}
   onpointerdown={handlePointerDown}
 >
-  <div class="flex items-center justify-between gap-2">
-    <div class="flex items-center gap-1.5 min-w-0">
+  <div class="flex items-center justify-between {isSidebar ? 'gap-2.5' : 'gap-2'}">
+    <div class="flex items-center {isSidebar ? 'gap-2' : 'gap-1.5'} min-w-0">
       {#if conversation.isFavorite}
         <svg
           class="h-3 w-3 shrink-0 text-[hsl(var(--miwarp-status-warning)/0.7)]"
@@ -337,8 +337,8 @@
         />
       {:else}
         <span
-          class="truncate leading-tight {isSidebar
-            ? 'text-[11px] font-normal text-sidebar-foreground/85'
+          class="truncate leading-snug {isSidebar
+            ? 'text-[13px] font-medium text-sidebar-foreground/90'
             : 'text-[13px] font-medium'}"
           role="button"
           tabindex={0}
@@ -380,9 +380,9 @@
   </div>
   <!-- Meta row: branch / platform / remote / time -->
   <div
-    class="mt-0.5 flex items-center gap-1 text-muted-foreground/45 leading-none {isSidebar
-      ? 'text-[10px]'
-      : 'text-[10.5px]'}"
+    class="flex items-center gap-1.5 text-muted-foreground/45 leading-snug {isSidebar
+      ? 'mt-1.5 text-[11px]'
+      : 'mt-0.5 text-[10.5px]'}"
   >
     <div class="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
       {#if run.worktree_branch}

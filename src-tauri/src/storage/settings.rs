@@ -603,6 +603,12 @@ pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, St
     if let Some(v) = patch.get("show_token_usage_report") {
         all.user.show_token_usage_report = v.as_bool().unwrap_or(true);
     }
+    if let Some(v) = patch.get("mascot_enabled") {
+        all.user.mascot_enabled = v.as_bool().unwrap_or(true);
+    }
+    if let Some(v) = patch.get("icon_rail_enabled") {
+        all.user.icon_rail_enabled = v.as_bool().unwrap_or(true);
+    }
     if let Some(v) = patch.get("process_visibility").and_then(|v| v.as_str()) {
         if matches!(v, "output" | "guided" | "developer" | "expert") {
             all.user.process_visibility = v.to_string();

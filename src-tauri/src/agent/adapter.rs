@@ -57,27 +57,49 @@ pub fn map_permission_mode(mode: &str) -> String {
 }
 
 /// When a third-party provider supplies a default model (injected as `ANTHROPIC_MODEL` env var),
-/// clear `adapter.model` if it only came from the `user.default_model` fallback.
-/// This prevents the `--model` CLI flag from overriding the provider's env var.
-/// Explicit choices (UI model_override or agent config) are preserved.
+/// clear `adapter.model` if it only came from the `user.default_model` fallback AND
+/// the model matches one of the provider's known defaults (meaning the user just accepted
+/// the preset default). This lets the ANTHROPIC_MODEL env var take effect in that case.
+///
+/// If the user typed a completely custom model (not in provider's model list), we preserve
+/// it — they intentionally chose something the provider doesn't know about.
 pub fn clear_model_if_provider_overrides(
     adapter: &mut AdapterSettings,
     model_override: &Option<String>,
     agent_model: &Option<String>,
     provider_models: &Option<Vec<String>>,
 ) {
-    if provider_models.as_ref().is_none_or(|m| m.is_empty()) {
+    let Some(provider_list) =
+        provider_models
+            .as_ref()
+            .and_then(|m| if m.is_empty() { None } else { Some(m) })
+    else {
         return;
-    }
+    };
+
     let has_explicit_ui = model_override.as_ref().is_some_and(|m| !m.is_empty());
     let has_explicit_agent = agent_model.as_ref().is_some_and(|m| !m.is_empty());
-    if !has_explicit_ui && !has_explicit_agent {
+    if has_explicit_ui || has_explicit_agent {
+        return;
+    }
+
+    // User's model (from default_model / UI settings) — only clear if it matches
+    // one of the provider's known defaults, so the ANTHROPIC_MODEL env var can win.
+    let Some(adapter_model) = adapter.model.as_ref() else {
+        return;
+    };
+
+    if provider_list
+        .iter()
+        .any(|p| p.eq_ignore_ascii_case(adapter_model))
+    {
         log::debug!(
-            "[adapter] provider has default_model, clearing --model flag (was {:?}) to let ANTHROPIC_MODEL env var take effect",
-            adapter.model
+            "[adapter] model '{}' matches provider default, clearing --model flag to let ANTHROPIC_MODEL env var take effect",
+            adapter_model
         );
         adapter.model = None;
     }
+    // else: model is custom / not in provider list — preserve it
 }
 
 /// Build a unified `AdapterSettings` from agent + user settings.
@@ -575,5 +597,88 @@ mod tests {
         s.agents_json = Some("".into());
         let args = build_settings_args(&s, false);
         assert!(!args.contains(&"--agents".to_string()));
+    }
+
+    // ── clear_model_if_provider_overrides tests ──
+
+    /// Custom model NOT in provider list → preserved (not cleared).
+    #[test]
+    fn clear_model_preserves_custom_model() {
+        let mut adapter = make_settings();
+        adapter.model = Some("MiniMax-M3".into());
+        clear_model_if_provider_overrides(
+            &mut adapter,
+            &None,                              // no UI override
+            &None,                              // no agent model
+            &Some(vec!["MiniMax-M2.7".into()]), // provider only knows M2.7
+        );
+        assert_eq!(adapter.model.as_deref(), Some("MiniMax-M3"));
+    }
+
+    /// Model matching provider default → cleared (env var takes precedence).
+    #[test]
+    fn clear_model_clears_matching_default() {
+        let mut adapter = make_settings();
+        adapter.model = Some("MiniMax-M2.7".into());
+        clear_model_if_provider_overrides(
+            &mut adapter,
+            &None,
+            &None,
+            &Some(vec!["MiniMax-M2.7".into()]),
+        );
+        assert_eq!(adapter.model, None);
+    }
+
+    /// Explicit UI override → never cleared.
+    #[test]
+    fn clear_model_preserves_explicit_ui_override() {
+        let mut adapter = make_settings();
+        adapter.model = Some("custom-model".into());
+        clear_model_if_provider_overrides(
+            &mut adapter,
+            &Some("custom-model".into()), // explicit UI override
+            &None,
+            &Some(vec!["MiniMax-M2.7".into()]),
+        );
+        assert_eq!(adapter.model.as_deref(), Some("custom-model"));
+    }
+
+    /// Explicit agent model → never cleared.
+    #[test]
+    fn clear_model_preserves_explicit_agent_model() {
+        let mut adapter = make_settings();
+        adapter.model = Some("custom-model".into());
+        clear_model_if_provider_overrides(
+            &mut adapter,
+            &None,
+            &Some("custom-model".into()), // explicit agent model
+            &Some(vec!["MiniMax-M2.7".into()]),
+        );
+        assert_eq!(adapter.model.as_deref(), Some("custom-model"));
+    }
+
+    /// No provider models list → never cleared.
+    #[test]
+    fn clear_model_no_provider_list_preserves() {
+        let mut adapter = make_settings();
+        adapter.model = Some("any-model".into());
+        clear_model_if_provider_overrides(&mut adapter, &None, &None, &None);
+        assert_eq!(adapter.model.as_deref(), Some("any-model"));
+        clear_model_if_provider_overrides(&mut adapter, &None, &None, &Some(vec![]));
+        assert_eq!(adapter.model.as_deref(), Some("any-model"));
+    }
+
+    /// Case-insensitive match → cleared.
+    #[test]
+    fn clear_model_case_insensitive_match() {
+        let mut adapter = make_settings();
+        adapter.model = Some("minimax-m2.7".into());
+        clear_model_if_provider_overrides(
+            &mut adapter,
+            &None,
+            &None,
+            &Some(vec!["MiniMax-M2.7".into()]),
+        );
+        assert_eq!(adapter.model, None);
     }
 }
