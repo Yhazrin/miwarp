@@ -403,6 +403,8 @@
   const hiddenCount = $derived(children ? 0 : folder.conversationCount - visibleCount);
   const hasMore = $derived(hiddenCount > 0);
 
+  const workspaceFolderIcon = $derived(expanded ? "folder-open" : "folder");
+
   function showMore() {
     visibleCount = Math.min(visibleCount + PAGE_SIZE, folder.conversationCount);
   }
@@ -461,20 +463,6 @@
         }
       : undefined}
   >
-    <!-- Chevron -->
-    <svg
-      class="h-3.5 w-3.5 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded
-        ? 'rotate-90'
-        : ''}"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <path d="M9 18l6-6-6-6" />
-    </svg>
     <!-- Icon -->
     {#if folder.isUncategorized}
       <!-- Inbox icon -->
@@ -493,16 +481,15 @@
         />
       </svg>
     {:else}
-      <!-- Folder icon -->
-      <Icon name="folder" size="md" class="shrink-0 text-muted-foreground/70" />
+      <Icon name={workspaceFolderIcon} size="md" class="shrink-0 text-muted-foreground/70" />
     {/if}
     <!-- Label -->
-    <span class="truncate">{label}</span>
+    <span class="min-w-0 flex-1 truncate">{label}</span>
 
     <!-- Canvas mascot — shown when enabled, regardless of status -->
     {#if showMascot}
       <button type="button"
-        class="ml-auto shrink-0 cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity rounded"
+        class="shrink-0 cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity rounded"
         onclick={onMascotClick}
         title={t("mascot_clickToOpen") ?? "查看运行状态"}
         aria-label={t("mascot_clickToOpen") ?? "查看运行状态"}
@@ -510,6 +497,21 @@
         <ClaudeCanvas status={mascotStatus} size={16} />
       </button>
     {/if}
+
+    <svg
+      class="h-3.5 w-3.5 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded
+        ? 'rotate-90'
+        : ''}"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9 18l6-6-6-6" />
+    </svg>
   </div>
 
   <!-- Add menu -->
@@ -562,17 +564,6 @@
                   }}
                   oncontextmenu={(e) => openSfContextMenu(e, sf)}
                 >
-                  <svg
-                    class="h-3 w-3 shrink-0 text-muted-foreground/50 transition-transform duration-150 {sfExpanded
-                      ? 'rotate-90'
-                      : ''}"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"><path d="M9 18l6-6-6-6" /></svg
-                  >
                   <!-- Bookmark icon for logical sub-folder -->
                   <svg
                     class="h-3.5 w-3.5 shrink-0 text-muted-foreground/60"
@@ -592,6 +583,18 @@
                       {sf.conversationCount}
                     </span>
                   {/if}
+                  <svg
+                    class="h-3 w-3 shrink-0 text-muted-foreground/50 transition-transform duration-150 {sfExpanded
+                      ? 'rotate-90'
+                      : ''}"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg
+                  >
                 </div>
                 <!-- Sub-folder sessions -->
                 {#if sfExpanded}

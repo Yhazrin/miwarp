@@ -1,4 +1,5 @@
 pub mod agent;
+pub mod cli_auto_sync;
 pub mod commands;
 pub mod hooks;
 pub mod models;
@@ -360,6 +361,12 @@ pub fn run() {
             // Start team file watcher for ~/.claude/teams/ and ~/.claude/tasks/
             let cancel = app.state::<CancellationToken>().inner().clone();
             hooks::team_watcher::start_team_watcher(app.handle().clone(), cancel.clone());
+
+            cli_auto_sync::start_cli_auto_sync_loop(
+                app.handle().clone(),
+                cancel.clone(),
+                app.state::<Arc<EventWriter>>().inner().clone(),
+            );
 
             // Start background scheduler for scheduled tasks
             scheduler::start_scheduler_loop(app.handle().clone(), cancel);

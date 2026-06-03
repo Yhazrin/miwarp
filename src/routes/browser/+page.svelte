@@ -9,13 +9,15 @@
   import WebFetch from "$lib/components/WebFetch.svelte";
   import Modal from "$lib/components/Modal.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/Icon.svelte";
+  import type { LucideIconName } from "$lib/lucide-icon";
 
   let activeTab = $state<"browser" | "webfetch">("browser");
   let showSettings = $state(false);
 
-  let tabs = [
-    { id: "browser", label: t("browser_automation"), icon: "🌐" },
-    { id: "webfetch", label: t("webfetch_title"), icon: "📡" },
+  let tabs: { id: "browser" | "webfetch"; label: string; iconName: LucideIconName }[] = [
+    { id: "browser", label: t("browser_automation"), iconName: "globe" },
+    { id: "webfetch", label: t("webfetch_title"), iconName: "radio" },
   ];
 </script>
 
@@ -37,7 +39,7 @@
         aria-label={t("browser_settings")}
         onclick={() => (showSettings = !showSettings)}
       >
-        ⚙️
+        <Icon name="settings" size="md" />
       </button>
     </div>
   </div>
@@ -53,7 +55,7 @@
           : 'text-miwarp-text-secondary hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary'}"
         onclick={() => (activeTab = tab.id as "browser" | "webfetch")}
       >
-        <span class="text-xl">{tab.icon}</span>
+        <Icon name={tab.iconName} size="md" />
         <span>{tab.label}</span>
       </button>
     {/each}

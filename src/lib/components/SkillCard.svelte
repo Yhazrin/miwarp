@@ -6,6 +6,8 @@
   import { dbg } from "$lib/utils/debug";
   import SkillPreviewDialog from "./SkillPreviewDialog.svelte";
   import Icon from "./Icon.svelte";
+  import ResolvedIcon from "./ResolvedIcon.svelte";
+  import { DEFAULT_SKILL_ICON } from "$lib/types/skill";
 
   interface Props {
     skill: Skill;
@@ -77,7 +79,7 @@
   <div class="flex items-start justify-between gap-3">
     <!-- Icon and name -->
     <button type="button" class="flex items-center gap-2 text-left flex-1 min-w-0" onclick={handleSelect}>
-      <span class="text-xl shrink-0">{skill.icon || "✨"}</span>
+      <ResolvedIcon icon={skill.icon} fallback={DEFAULT_SKILL_ICON} size="lg" class="shrink-0 text-muted-foreground" />
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-2">
           <span class="font-medium text-foreground truncate">/{skill.name}</span>
@@ -161,7 +163,7 @@
     <div class="mt-3 flex items-center justify-between">
       <!-- Category badge -->
       <div class="flex items-center gap-2">
-        <span class="text-xs text-muted-foreground">{categoryInfo.icon}</span>
+        <Icon name={categoryInfo.icon} size="xs" class="text-muted-foreground" />
         <span class="text-xs text-muted-foreground">{categoryInfo.label}</span>
       </div>
 

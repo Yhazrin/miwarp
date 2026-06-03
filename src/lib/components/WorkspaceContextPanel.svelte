@@ -1,5 +1,4 @@
 <script lang="ts">
-  import type { SessionInfoData } from "$lib/types";
   import { t } from "$lib/i18n/index.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
   import { memoryStore } from "$lib/stores/memory-store.svelte";
@@ -13,7 +12,6 @@
   let {
     cwd = "",
     runId = "",
-    sessionInfo = null,
     toolStats,
     onSwitchToActivity,
     onSwitchToFiles,
@@ -25,7 +23,6 @@
   }: {
     cwd?: string;
     runId?: string;
-    sessionInfo?: SessionInfoData | null;
     toolStats: {
       totalToolCount: number;
       reads: number;
@@ -176,7 +173,7 @@
 <div class="flex flex-col h-full overflow-y-auto scrollbar-hide">
   {#if !cwd}
     <!-- No workspace selected -->
-    <EmptyState icon="🏠" title={t("workspaceContext_noWorkspace")} />
+    <EmptyState iconName="home" title={t("workspaceContext_noWorkspace")} />
   {:else}
     <div class="p-4 space-y-4">
       {#if minimalOutputWorkspace}
@@ -228,7 +225,8 @@
                 <p class="text-[11px] text-foreground/70 leading-relaxed line-clamp-2">{rule}</p>
               {/each}
               {#if claudeMdSummary.length > 3}
-                <button type="button"
+                <button
+                  type="button"
                   class="text-[10px] text-primary/70 hover:text-primary transition-colors mt-0.5"
                   onclick={() => (claudeMdExpanded = !claudeMdExpanded)}
                 >
@@ -242,7 +240,8 @@
               <span class="text-[10px] text-muted-foreground/50 truncate flex-1"
                 >{claudeMdPath.split("/").pop()}</span
               >
-              <button type="button"
+              <button
+                type="button"
                 class="text-[10px] text-primary/60 hover:text-primary transition-colors shrink-0"
                 onclick={openClaudeMd}
               >
@@ -252,7 +251,8 @@
           {:else}
             <div class="px-3 pb-2">
               <p class="text-[11px] text-muted-foreground/50">{t("workspaceContext_noClaudeMd")}</p>
-              <button type="button"
+              <button
+                type="button"
                 class="text-[10px] text-primary/60 hover:text-primary transition-colors mt-1"
                 onclick={onSwitchToFiles}
               >
@@ -315,7 +315,8 @@
                     class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     {#if item.text.length > 80}
-                      <button type="button"
+                      <button
+                        type="button"
                         class="text-[9px] text-muted-foreground/50 hover:text-foreground transition-colors"
                         onclick={() => {
                           if (expandedMemory.has(item.id)) {
@@ -328,7 +329,8 @@
                         {expandedMemory.has(item.id) ? "Less" : "More"}
                       </button>
                     {/if}
-                    <button type="button"
+                    <button
+                      type="button"
                       class="text-[9px] text-muted-foreground/50 hover:text-foreground transition-colors"
                       onclick={() => copyItem(item.text)}
                       title={t("workspaceContext_copyMemory")}
@@ -348,15 +350,7 @@
         </div>
       {/if}
 
-      <GitWorktreePanel
-        {cwd}
-        {worktreePath}
-        {parentCwd}
-        {worktreeBranch}
-        {creationMode}
-        {runId}
-        {sessionInfo}
-      />
+      <GitWorktreePanel {cwd} {worktreePath} {parentCwd} {worktreeBranch} {creationMode} {runId} />
 
       <!-- Recent Activity summary -->
       {#if !minimalOutputWorkspace}
@@ -367,7 +361,8 @@
               {t("workspaceContext_recentActivity")}
             </span>
             {#if toolStats.totalToolCount > 0}
-              <button type="button"
+              <button
+                type="button"
                 class="ml-auto text-[10px] text-primary/60 hover:text-primary transition-colors"
                 onclick={() => onSwitchToActivity?.()}
               >

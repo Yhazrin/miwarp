@@ -2,8 +2,11 @@
   import type { Skill, SkillMetadata, SkillCategory } from "$lib/types/skill";
   import { t } from "$lib/i18n/index.svelte";
   import { SKILL_CATEGORIES, DEFAULT_SKILL_ICON } from "$lib/types/skill";
+  import type { LucideIconName } from "$lib/lucide-icon";
+  import { resolveIconName } from "$lib/lucide-icon";
   import { renderMarkdown } from "$lib/utils/markdown";
   import { dbg, dbgWarn } from "$lib/utils/debug";
+  import Icon from "./Icon.svelte";
 
   interface Props {
     skill?: Skill | null;
@@ -27,7 +30,7 @@
       name = skill.name || "";
       description = skill.description || "";
       category = skill.category || "custom";
-      icon = skill.icon || DEFAULT_SKILL_ICON;
+      icon = resolveIconName(skill.icon, DEFAULT_SKILL_ICON);
       author = skill.author || "";
       content = skill.content || "";
     }
@@ -99,7 +102,20 @@
     }
   }
 
-  const iconOptions = ["✨", "⚡", "🔧", "🤖", "🧠", "📁", "🔗", "🚀", "📝", "🎯", "💡", "🔒"];
+  const iconOptions: LucideIconName[] = [
+    "sparkles",
+    "zap",
+    "wrench",
+    "bot",
+    "brain",
+    "folder",
+    "link",
+    "rocket",
+    "file-text",
+    "target",
+    "lightbulb",
+    "lock",
+  ];
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -219,7 +235,7 @@
                   : 'border-input hover:bg-accent'}"
                 onclick={() => (category = cat.value)}
               >
-                <span>{cat.icon}</span>
+                <Icon name={cat.icon} size="sm" />
                 <span>{cat.label}</span>
               </button>
             {/each}
@@ -232,13 +248,13 @@
           <div class="flex flex-wrap gap-2" aria-labelledby="skill-icon-label">
             {#each iconOptions as iconOption (iconOption)}
               <button type="button"
-                class="flex h-10 w-10 items-center justify-center rounded-md border text-lg transition-colors
+                class="flex h-10 w-10 items-center justify-center rounded-md border transition-colors
                   {icon === iconOption
-                  ? 'border-primary bg-primary/5'
-                  : 'border-input hover:bg-accent'}"
+                  ? 'border-primary bg-primary/5 text-primary'
+                  : 'border-input hover:bg-accent text-muted-foreground'}"
                 onclick={() => (icon = iconOption)}
               >
-                {iconOption}
+                <Icon name={iconOption} size="md" />
               </button>
             {/each}
           </div>

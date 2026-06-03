@@ -56,6 +56,8 @@
     chatAreaRef = $bindable<HTMLDivElement | undefined>(),
     // Local UI state
     showChatScrollHint,
+    isChatAutoScroll = true,
+    readingHistory = false,
     // Snippets
     heroMetaFooter,
     inputDock,
@@ -73,6 +75,9 @@
     xtermRef?: XTerminal;
     chatAreaRef?: HTMLDivElement;
     showChatScrollHint: boolean;
+    /** When false, disable content-visibility and enable overflow anchoring for stable history scroll. */
+    isChatAutoScroll?: boolean;
+    readingHistory?: boolean;
     heroMetaFooter: import("svelte").Snippet;
     inputDock: import("svelte").Snippet;
   } = $props();
@@ -216,7 +221,7 @@
       <!-- API mode: chat messages -->
       <div
         class="chat-messages-scroll h-full overflow-y-auto relative z-0"
-        style="overflow-anchor:none"
+        style:overflow-anchor={readingHistory ? "auto" : "none"}
         bind:this={chatAreaRef}
         onscroll={handleChatScroll}
       >
@@ -295,6 +300,7 @@
               <div use:onTopSentinelMount aria-hidden="true" class="h-px w-full"></div>
             {/if}
             <ChatTimelineEntries
+              contentVisibilityEnabled={!readingHistory}
               {visibleTimeline}
               {store}
               {burstCollapse}

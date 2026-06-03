@@ -33,7 +33,7 @@ struct MessageListView: View {
             .onChange(of: messages.last?.id) { _, _ in
                 scrollToBottom(proxy: proxy)
             }
-            .onChange(of: messages.last?.isStreaming) { _, streaming in
+            .onChange(of: messages.last?.isStreaming ?? false) { _, streaming in
                 if streaming {
                     scrollToBottom(proxy: proxy)
                 }

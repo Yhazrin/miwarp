@@ -15,6 +15,8 @@
     ExecutionLog,
   } from "$lib/types/task-execution-monitor";
   import { dbg } from "$lib/utils/debug";
+  import Icon from "$lib/components/Icon.svelte";
+  import type { LucideIconName } from "$lib/lucide-icon";
 
   let activeTab = $state<"all" | "active" | "paused">("all");
   let runningNow = $state(false);
@@ -189,18 +191,42 @@
     scheduledTasksStore.loadAllRuns();
   });
 
-  function runStatusIcon(status: ScheduledTaskRun["status"]) {
+  function runStatusIcon(status: ScheduledTaskRun["status"]): {
+    iconName: LucideIconName;
+    color: string;
+    label: string;
+  } {
     switch (status) {
       case "running":
-        return { icon: "⏳", color: "text-miwarp-status-info", label: t("sched_runRunning") };
+        return {
+          iconName: "loader-2",
+          color: "text-miwarp-status-info",
+          label: t("sched_runRunning"),
+        };
       case "completed":
-        return { icon: "✓", color: "text-miwarp-status-success", label: t("sched_runCompleted") };
+        return {
+          iconName: "check",
+          color: "text-miwarp-status-success",
+          label: t("sched_runCompleted"),
+        };
       case "failed":
-        return { icon: "✗", color: "text-miwarp-status-error", label: t("sched_runFailed") };
+        return {
+          iconName: "x",
+          color: "text-miwarp-status-error",
+          label: t("sched_runFailed"),
+        };
       case "cancelled":
-        return { icon: "○", color: "text-miwarp-status-warning", label: t("sched_runCancelled") };
+        return {
+          iconName: "circle",
+          color: "text-miwarp-status-warning",
+          label: t("sched_runCancelled"),
+        };
       case "queued":
-        return { icon: "○", color: "text-muted-foreground", label: t("sched_runQueued") };
+        return {
+          iconName: "circle",
+          color: "text-muted-foreground",
+          label: t("sched_runQueued"),
+        };
     }
   }
 
@@ -451,13 +477,13 @@
             </div>
 
             {#if scheduledTasksStore.selectedTaskRuns.length === 0}
-              <EmptyState variant="dashed" icon="📊" title={t("sched_noExecutions")} />
+              <EmptyState iconName="bar-chart-2" variant="dashed" title={t("sched_noExecutions")} />
             {:else}
               <div class="space-y-2">
                 {#each scheduledTasksStore.selectedTaskRuns as run (run.id)}
                   {@const statusInfo = runStatusIcon(run.status)}
                   <div class="p-3 rounded-lg bg-muted/30 flex items-center gap-3">
-                    <span class={statusInfo.color}>{statusInfo.icon}</span>
+                    <Icon name={statusInfo.iconName} size="sm" class={statusInfo.color} />
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2 text-sm">
                         <span>{statusInfo.label}</span>

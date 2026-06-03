@@ -7,6 +7,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import type { MarketplacePlugin, MarketplaceInfo } from "$lib/types";
   import Icon from "$lib/components/Icon.svelte";
+  import type { LucideIconName } from "$lib/lucide-icon";
 
   type InstallStep = "select" | "configure" | "installing" | "complete" | "error";
 
@@ -129,33 +130,33 @@
   }
 
   // Stage icons and descriptions
-  const stageInfo: Record<string, { icon: string; description: string }> = {
+  const stageInfo: Record<string, { iconName: LucideIconName; description: string }> = {
     preparing: {
-      icon: "⏳",
+      iconName: "loader-2",
       description: t("pluginInstaller_preparing"),
     },
     validating: {
-      icon: "✓",
+      iconName: "check",
       description: t("pluginInstaller_validating"),
     },
     downloading: {
-      icon: "⬇",
+      iconName: "download",
       description: t("pluginInstaller_downloading"),
     },
     installing: {
-      icon: "⚙",
+      iconName: "settings",
       description: t("pluginInstaller_installing"),
     },
     enabling: {
-      icon: "▶",
+      iconName: "play",
       description: t("pluginInstaller_enabling"),
     },
     complete: {
-      icon: "✓",
+      iconName: "check",
       description: t("pluginInstaller_complete"),
     },
     error: {
-      icon: "✗",
+      iconName: "x",
       description: t("pluginInstaller_failed"),
     },
   };
@@ -343,7 +344,11 @@
 
           <!-- Stage info -->
           <div class="flex items-center gap-3">
-            <span class="text-lg">{stageInfo[installStage]?.icon || "○"}</span>
+            <Icon
+              name={stageInfo[installStage]?.iconName ?? "circle"}
+              size="md"
+              class={installStage === "preparing" ? "animate-spin" : ""}
+            />
             <span class="text-sm text-foreground">{installMessage}</span>
           </div>
         </div>
@@ -351,7 +356,7 @@
         <!-- Success -->
         <div class="flex flex-col items-center justify-center py-8 text-center">
           <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--miwarp-status-success)/0.1)]">
-            <span class="text-2xl">✓</span>
+            <Icon name="check" size="lg" class="text-miwarp-status-success" />
           </div>
           <h3 class="text-sm font-medium text-foreground mb-1">
             {t("plugin_installationSuccessful")}
@@ -366,7 +371,7 @@
           <div
             class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10"
           >
-            <span class="text-2xl">✗</span>
+            <Icon name="x" size="lg" class="text-destructive" />
           </div>
           <h3 class="text-sm font-medium text-destructive mb-1">
             {t("plugin_installationFailed")}

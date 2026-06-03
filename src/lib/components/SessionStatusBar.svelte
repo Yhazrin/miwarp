@@ -41,7 +41,7 @@
     mcpServers,
     onMcpToggle: _onMcpToggle,
     cliVersion: _cliVersion,
-    permissionMode,
+    permissionMode = "default",
     fastModeState: _fastModeState,
     numTurns: _numTurns,
     durationMs: _durationMs,
@@ -55,7 +55,7 @@
     compactCount: _compactCount = 0,
     microcompactCount: _microcompactCount = 0,
     turnUsages: _turnUsages = [],
-    activeTaskCount = 0,
+    activeTaskCount: _activeTaskCount = 0,
     mode: _mode = "",
     remoteHostName: _remoteHostName,
     onRename,
@@ -66,7 +66,7 @@
     apiKeySource: _apiKeySource,
     effort,
     onEffortChange,
-    onStatusClick,
+    onStatusClick: _onStatusClick,
     onSummarize,
     onShare: _onShare,
     toolPanelActiveTab,
@@ -75,6 +75,11 @@
     fuseToolRailCapsule: _fuseToolRailCapsule = false,
     processVisibility = "developer" as ProcessVisibility,
     onProcessVisibilityChange,
+    layoutSidebarOpen = false,
+    onToggleLayoutSidebar,
+    onOpenSettings,
+    onOpenCliImport,
+    onNewChat,
   }: {
     run?: TaskRun | null;
     agent?: string;
@@ -130,21 +135,20 @@
     fuseToolRailCapsule?: boolean;
     processVisibility?: ProcessVisibility;
     onProcessVisibilityChange?: (mode: ProcessVisibility) => void;
+    /** Layout left sidebar expanded (for toggle icon direction). */
+    layoutSidebarOpen?: boolean;
+    onToggleLayoutSidebar?: () => void;
+    onOpenSettings?: () => void;
+    onOpenCliImport?: () => void;
+    onNewChat?: () => void;
   } = $props();
 
-  $effect(() => {
-    dbg("status", "state", {
-      agent,
-      model,
-      running,
-      taskRunning,
-      taskWaiting,
-      sessionPhase,
-      runId: run?.id,
-      morphFlash,
-      morphShell,
-    });
-  });
+  let showChromeActions = $derived(
+    !!(onToggleLayoutSidebar || onOpenSettings || onOpenCliImport || onNewChat),
+  );
+  let tier2HasMeta = $derived(
+    !!(run && onRename) || !!model || !!onProcessVisibilityChange,
+  );
 
   // ── Capsule morph: running / done / stopped (flash) + waiting (persistent) ──
   type MorphFlash = "none" | "running" | "done" | "stopped";
@@ -248,7 +252,6 @@
     }
 
     prevSessionPhase = phase;
-    return () => clearTimeout(morphFlashTimer);
   });
 
   // ── Compact indicator (context bar only — does NOT expand tier 2) ──
@@ -283,32 +286,7 @@
     compactTimer = setTimeout(() => {
       compactVisible = false;
     }, 8000);
-    return () => clearTimeout(compactTimer);
   });
-
-  let _cwdShort = $derived.by(() => {
-    const val = cwd || run?.cwd || "";
-    if (!val || val === "/") return "";
-    const home = val
-      .replace(/^\/Users\/[^/]+/, "~")
-      .replace(/^\/home\/[^/]+/, "~")
-      .replace(/^[A-Za-z]:[/\\](?:Users|users)[/\\][^/\\]+/, "~");
-    return home.length > 30 ? "..." + home.slice(-27) : home;
-  });
-
-  let _sessionIdShort = $derived(run?.session_id ? run.session_id.slice(0, 8) : "");
-  let _sidCopied = $state(false);
-
-  async function _copySessionId() {
-    if (!run?.session_id) return;
-    try {
-      await navigator.clipboard.writeText(run.session_id);
-      _sidCopied = true;
-      setTimeout(() => (_sidCopied = false), 1500);
-    } catch {
-      /* ignore */
-    }
-  }
 
   // ── Title inline editing ──
   let titleEditing = $state(false);
@@ -335,26 +313,6 @@
   }
 
   const _formatCost = formatCostDisplay;
-
-  let _permissionBadge = $derived.by(() => {
-    if (!permissionMode || permissionMode === "default") return null;
-    const map: Record<string, { label: string; cls: string }> = {
-      acceptEdits: {
-        label: "accept-edits",
-        cls: "bg-miwarp-status-info/15 text-miwarp-status-info",
-      },
-      bypassPermissions: {
-        label: t("sessionStatus_bypass"),
-        cls: "bg-miwarp-status-warning/15 text-miwarp-status-warning",
-      },
-      plan: { label: t("sessionStatus_plan"), cls: "bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-miwarp-accent-violet" },
-      auto: { label: t("sessionStatus_auto"), cls: "bg-[hsl(var(--miwarp-status-info)/0.15)] text-miwarp-status-info" },
-      dontAsk: { label: "no-ask", cls: "bg-[hsl(var(--miwarp-status-error)/0.15)] text-miwarp-status-error" },
-    };
-    return (
-      map[permissionMode] ?? { label: permissionMode, cls: "bg-foreground/10 text-foreground/60" }
-    );
-  });
 
   // ── Model selector dropdown ──
   // Use platform-specific models when a third-party provider is active
@@ -446,10 +404,10 @@
     morphShell === "none" && compactVisible ? "session-island-compact-pill" : "",
   );
 
-  let statusDotKind = $derived(taskWaiting ? "pending" : taskRunning ? "running" : "idle");
+  let tier2HasContent = $derived(tier2HasMeta);
 
-  /** Tier 2 expands on hover/menus — never during morph overlay. */
-  let islandExpanded = $derived(morphShell === "none" && islandActive);
+  /** Tier 2 expands on hover/menus when there is something to show. */
+  let islandExpanded = $derived(morphShell === "none" && islandActive && tier2HasContent);
 
   // Dispatch event when island expansion state changes (for tool panel positioning)
   $effect(() => {
@@ -736,9 +694,9 @@
 <div
   class="session-status-drag session-island-shell {morphShellClass(
     morphShell,
-  )} {islandInteractionClass} {islandCompactClass} {islandExpanded
-    ? 'session-island-expanded'
-    : ''}"
+  )} {islandInteractionClass} {islandCompactClass} {tier2HasContent
+    ? 'session-island-has-tier2'
+    : ''} {islandExpanded ? 'session-island-expanded' : ''}"
   data-tauri-drag-region
   onpointerenter={onShellPointerEnter}
   onpointerleave={onShellPointerLeave}
@@ -762,7 +720,7 @@
 
   <!-- Tier 1: icon rail -->
   <div
-    class="session-island-tier1-frame relative inline-flex h-9 w-full items-center transition-opacity duration-300 {morphHidesContent
+    class="session-island-tier1-frame relative inline-flex h-9 w-max max-w-full shrink-0 items-center transition-opacity duration-300 {morphHidesContent
       ? 'opacity-0'
       : ''}"
   >
@@ -782,37 +740,81 @@
       <div
         class="session-island-tier1 {showContextPill
           ? 'session-island-tier1-has-context'
-          : 'session-island-tier1-no-context'}"
+          : 'session-island-tier1-no-context'}{showChromeActions
+          ? ' session-island-tier1-with-chrome'
+          : ''}"
       >
-        <div class="session-island-tab-group">
-          {#each leftTabs as tab (tab)}
-            <button
-              type="button"
-              role="tab"
-              aria-selected={toolPanelActiveTab === tab}
-              aria-label={tabLabel(tab)}
-              class="session-island-tab transition-colors {toolPanelActiveTab === tab
-                ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-border/45'
-                : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
-              onclick={() => onToolPanelTabChange(tab)}
-              title={tabLabel(tab)}
-            >
-              {#if tab === "workspace"}
-                <Icon name="home" size="md" class="shrink-0 opacity-90" />
-              {:else if tab === "tools"}
-                <Icon name="wrench" size="md" class="shrink-0 opacity-90" />
-              {:else if tab === "files"}
-                <span class="relative inline-flex shrink-0">
-                  <Icon name="file" size="sm" class="opacity-90" />
-                  {#if toolPanelIndicators?.files}
-                    <span
-                      class="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
-                    ></span>
-                  {/if}
-                </span>
-              {/if}
-            </button>
-          {/each}
+        {#if showChromeActions}
+          <div
+            class="session-island-chrome-actions session-island-chrome-actions-left"
+            role="toolbar"
+            aria-label={t("layout_windowChrome")}
+            aria-hidden={!islandActive}
+          >
+            {#if onToggleLayoutSidebar}
+              <button
+                type="button"
+                class="session-island-tab text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+                tabindex={islandActive ? 0 : -1}
+                onclick={(e) => {
+                  e.stopPropagation();
+                  onToggleLayoutSidebar();
+                }}
+                title={t("keybind_toggleSidebar")}
+                aria-label={t("keybind_toggleSidebar")}
+                aria-expanded={layoutSidebarOpen}
+              >
+                <Icon name="layout" size="md" class="shrink-0 opacity-90" />
+              </button>
+            {/if}
+
+            {#if onOpenSettings}
+              <button
+                type="button"
+                class="session-island-tab text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+                tabindex={islandActive ? 0 : -1}
+                onclick={(e) => {
+                  e.stopPropagation();
+                  onOpenSettings();
+                }}
+                title={t("nav_settings")}
+                aria-label={t("nav_settings")}
+              >
+                <Icon name="settings" size="md" class="shrink-0 opacity-90" />
+              </button>
+            {/if}
+          </div>
+        {/if}
+
+        <div class="session-island-tab-group session-island-tab-group-leading">
+            {#each leftTabs as tab (tab)}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={toolPanelActiveTab === tab}
+                aria-label={tabLabel(tab)}
+                class="session-island-tab transition-colors {toolPanelActiveTab === tab
+                  ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
+                  : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
+                onclick={() => onToolPanelTabChange(tab)}
+                title={tabLabel(tab)}
+              >
+                {#if tab === "workspace"}
+                  <Icon name="home" size="md" class="shrink-0 opacity-90" />
+                {:else if tab === "tools"}
+                  <Icon name="wrench" size="md" class="shrink-0 opacity-90" />
+                {:else if tab === "files"}
+                  <span class="relative inline-flex shrink-0">
+                    <Icon name="file" size="md" class="opacity-90" />
+                    {#if toolPanelIndicators?.files}
+                      <span
+                        class="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
+                      ></span>
+                    {/if}
+                  </span>
+                {/if}
+              </button>
+            {/each}
         </div>
 
         {#if showContextPill}
@@ -859,116 +861,125 @@
           </span>
         {/if}
 
-        <div class="session-island-tab-group">
-          {#each rightTabs as tab (tab)}
-            <button
-              type="button"
-              role="tab"
-              aria-selected={toolPanelActiveTab === tab}
-              aria-label={tabLabel(tab)}
-              class="session-island-tab transition-colors {toolPanelActiveTab === tab
-                ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-border/45'
-                : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
-              onclick={() => onToolPanelTabChange(tab)}
-              title={tabLabel(tab)}
-            >
-              {#if tab === "preview"}
-                <svg
-                  class="h-4 w-4 shrink-0 opacity-90"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                >
-                  <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" />
-                </svg>
-              {:else if tab === "scheduled-tasks"}
-                <Icon name="clock" size="md" class="shrink-0 opacity-90" />
-              {/if}
-            </button>
-          {/each}
-
-          {#if onSummarize}
-            <button
-              type="button"
-              class="session-island-tab text-muted-foreground hover:bg-muted/45 hover:text-foreground transition-colors"
-              onclick={onSummarize}
-              title={t("statusbar_summarize")}
-              aria-label={t("statusbar_summarize")}
-            >
-              <svg
-                class="h-4 w-4 shrink-0 opacity-90"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
+        <div class="session-island-tab-group session-island-tab-group-trailing">
+            {#each rightTabs as tab (tab)}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={toolPanelActiveTab === tab}
+                aria-label={tabLabel(tab)}
+                class="session-island-tab transition-colors {toolPanelActiveTab === tab
+                  ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
+                  : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
+                onclick={() => onToolPanelTabChange(tab)}
+                title={tabLabel(tab)}
               >
-                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" x2="8" y1="13" y2="13" />
-                <line x1="16" x2="8" y1="17" y2="17" />
-                <line x1="10" x2="8" y1="9" y2="9" />
-              </svg>
-            </button>
-          {/if}
+                {#if tab === "preview"}
+                  <Icon name="monitor" size="md" class="shrink-0 opacity-90" />
+                {:else if tab === "scheduled-tasks"}
+                  <Icon name="clock" size="md" class="shrink-0 opacity-90" />
+                {/if}
+              </button>
+            {/each}
+
+            {#if onSummarize}
+              <button
+                type="button"
+                class="session-island-tab text-muted-foreground hover:bg-muted/45 hover:text-foreground transition-colors"
+                onclick={onSummarize}
+                title={t("statusbar_summarize")}
+                aria-label={t("statusbar_summarize")}
+              >
+                <Icon name="scroll-text" size="md" class="shrink-0 opacity-90" />
+              </button>
+            {/if}
         </div>
+
+        {#if showChromeActions}
+          <div
+            class="session-island-chrome-actions session-island-chrome-actions-right"
+            role="toolbar"
+            aria-label={t("layout_windowChrome")}
+            aria-hidden={!islandActive}
+          >
+            {#if onOpenCliImport}
+              <button
+                type="button"
+                class="session-island-tab text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+                tabindex={islandActive ? 0 : -1}
+                onclick={(e) => {
+                  e.stopPropagation();
+                  onOpenCliImport();
+                }}
+                title={t("cliSync_title")}
+                aria-label={t("sidebar_cliBrowser")}
+              >
+                <Icon name="plug" size="md" class="shrink-0 opacity-90" />
+              </button>
+            {/if}
+
+            {#if onNewChat}
+              <button
+                type="button"
+                class="session-island-tab text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+                tabindex={islandActive ? 0 : -1}
+                onclick={(e) => {
+                  e.stopPropagation();
+                  onNewChat();
+                }}
+                title={t("layout_newConversation")}
+                aria-label={t("sidebar_newChat")}
+              >
+                <Icon name="plus" size="md" class="shrink-0 opacity-90" />
+              </button>
+            {/if}
+          </div>
+        {/if}
       </div>
     {/if}
   </div>
 
-  <!-- Tier 2: status + model + session id -->
-  <div
-    class="tier-2-content flex h-8 shrink-0 items-center justify-start overflow-hidden border-t border-border/20 transition-opacity duration-300 {islandExpanded
-      ? 'session-island-tier2-open border-border/20'
-      : 'session-island-tier2-closed border-transparent'} {morphHidesContent ? 'opacity-0' : ''}"
-  >
-    <div class="session-island-tier2">
-      {#if onStatusClick}
-        <button type="button"
-          class="inline-flex items-center gap-1 shrink-0 rounded px-1 hover:bg-muted/50 transition-colors"
-          onclick={onStatusClick}
-          title={t("toolActivity_tabInfo")}
-          aria-label={t("toolActivity_tabInfo")}
-        >
-          <span
-            class="inline-block h-2 w-2 rounded-full {statusDotKind === 'running' ||
-            statusDotKind === 'pending'
-              ? 'animate-slow-pulse'
-              : ''}"
-            style="background-color: var(--miwarp-status-{statusDotKind});"
-          ></span>
-        </button>
-      {:else}
-        <span
-          class="inline-block h-2 w-2 rounded-full shrink-0 {statusDotKind === 'running' ||
-          statusDotKind === 'pending'
-            ? 'animate-slow-pulse'
-            : ''}"
-          style="background-color: var(--miwarp-status-{statusDotKind});"
-        ></span>
-      {/if}
-
-      {#if activeTaskCount && activeTaskCount > 0}
-        <span
-          class="flex items-center gap-1 text-miwarp-status-info"
-          title={t("bgTask_activeTitle", { count: String(activeTaskCount) })}
-        >
-          <span class="inline-block h-1.5 w-1.5 rounded-full bg-miwarp-status-info animate-pulse"></span>
-          <span>{t("bgTask_active", { count: String(activeTaskCount) })}</span>
-        </span>
-        <span class="session-island-tier2-divider" aria-hidden="true">|</span>
-      {:else}
-        <span class="text-[10px] text-muted-foreground/50">{t("statusbar_noIdleTasks")}</span>
-        <span class="session-island-tier2-divider" aria-hidden="true">|</span>
+  {#if tier2HasContent}
+    <!-- Tier 2: title, model, process visibility (omitted from layout when collapsed) -->
+    <div
+      class="tier-2-content flex min-h-0 min-w-0 shrink-0 items-center justify-start overflow-hidden {islandActive
+        ? 'session-island-tier2-open border-t border-border/20'
+        : 'border-0'} {morphHidesContent ? 'opacity-0 pointer-events-none' : ''}"
+    >
+      <div class="session-island-tier2">
+      {#if run && onRename}
+        {#if titleEditing}
+          <input
+            bind:this={titleInputEl}
+            bind:value={titleEditValue}
+            class="max-w-[12rem] min-w-0 rounded border border-border/50 bg-muted/30 px-1.5 py-0.5 text-[11px] text-foreground outline-none focus:border-primary/50"
+            onkeydown={(e) => {
+              if (e.key === "Enter") _commitTitleEdit();
+              if (e.key === "Escape") _cancelTitleEdit();
+            }}
+            onblur={_commitTitleEdit}
+          />
+        {:else}
+          <button
+            type="button"
+            class="max-w-[12rem] truncate rounded px-1 text-[11px] font-medium text-foreground/75 hover:bg-muted/50 hover:text-foreground transition-colors"
+            title={run.name || run.prompt}
+            onclick={_startTitleEdit}
+          >
+            {run.name || run.prompt}
+          </button>
+        {/if}
       {/if}
 
       {#if model}
+        {#if run && onRename}
+          <span class="session-island-tier2-divider" aria-hidden="true">|</span>
+        {/if}
         {#if onModelChange}
-          <button type="button"
+          <button
+            type="button"
             bind:this={modelBtnEl}
-            class="inline-flex max-w-[9rem] items-center gap-1 truncate rounded-md border border-transparent px-1.5 py-0.5 font-medium text-foreground/85 hover:border-border/50 hover:bg-muted/50 hover:text-foreground transition-colors {dropdownOpen
+            class="inline-flex max-w-[11rem] shrink-0 items-center gap-1 truncate rounded-md border border-transparent px-1.5 py-0.5 font-medium text-foreground/85 hover:border-border/50 hover:bg-muted/50 hover:text-foreground transition-colors {dropdownOpen
               ? 'border-border/60 bg-muted/60 text-foreground'
               : ''}"
             onclick={(e) => {
@@ -983,18 +994,27 @@
             {#if !effortDisabled && effort}
               <span class="text-[10px] font-normal text-foreground/55">{effort}</span>
             {/if}
-            <Icon name="chevron-down" size="xs" class="shrink-0 text-foreground/40 transition-transform duration-200 {dropdownOpen ? 'rotate-180' : ''}" />
+            <Icon
+              name="chevron-down"
+              size="xs"
+              class="shrink-0 text-foreground/40 transition-transform duration-200 {dropdownOpen
+                ? 'rotate-180'
+                : ''}"
+            />
           </button>
         {:else}
-          <span class="truncate font-medium text-foreground/85">{model}</span>
+          <span class="max-w-[11rem] truncate font-medium text-foreground/85">{model}</span>
         {/if}
       {/if}
 
       {#if onProcessVisibilityChange}
-        <span class="session-island-tier2-divider" aria-hidden="true">|</span>
-        <button type="button"
+        {#if (run && onRename) || model}
+          <span class="session-island-tier2-divider" aria-hidden="true">|</span>
+        {/if}
+        <button
+          type="button"
           bind:this={pvMenuBtnEl}
-          class="inline-flex w-fit items-center gap-1 truncate rounded-md border border-transparent px-2 py-1 text-foreground/65 hover:border-border/50 hover:bg-muted/50 hover:text-foreground transition-colors {pvMenuOpen
+          class="inline-flex shrink-0 items-center gap-1 truncate rounded-md border border-transparent px-2 py-1 text-foreground/65 hover:border-border/50 hover:bg-muted/50 hover:text-foreground transition-colors {pvMenuOpen
             ? 'border-border/60 bg-muted/60 text-foreground'
             : ''}"
           onclick={(e) => {
@@ -1006,11 +1026,19 @@
           aria-label={t("settings_processVisibility")}
           title={t("settings_processVisibility")}
         >
-          <span class="truncate font-medium">{processVisibilityShort(processVisibility)}</span>
+          <span class="truncate font-medium">{processVisibilityLabel(processVisibility)}</span>
+          <Icon
+            name="chevron-down"
+            size="xs"
+            class="shrink-0 text-foreground/40 transition-transform duration-200 {pvMenuOpen
+              ? 'rotate-180'
+              : ''}"
+          />
         </button>
       {/if}
+      </div>
     </div>
-  </div>
+  {/if}
 </div>
 
 {#if pvMenuOpen}
@@ -1065,7 +1093,7 @@
     {/if}
     <div class="min-h-0 flex-1 overflow-y-auto p-1.5 [scrollbar-width:thin]">
       {#if filteredModels.length === 0}
-        <EmptyState icon="🔍" title={t("modelFilter_noResults")} class="py-4" />
+        <EmptyState iconName="search" title={t("modelFilter_noResults")} class="py-4" />
       {/if}
       {#each filteredModels as m, i}
         <button

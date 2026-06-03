@@ -1,8 +1,12 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
+  import type { LucideIconName } from "$lib/lucide-icon";
+  import { resolveIconName } from "$lib/lucide-icon";
+  import Icon from "./Icon.svelte";
 
   let {
     icon = "" as string,
+    iconName,
     title = "",
     description = "",
     variant = "default" as "default" | "dashed",
@@ -10,7 +14,9 @@
     action,
     iconComponent,
   }: {
+    /** @deprecated Use iconName — legacy emoji strings are migrated via resolveIconName */
     icon?: string;
+    iconName?: LucideIconName;
     title?: string;
     description?: string;
     variant?: "default" | "dashed";
@@ -18,6 +24,10 @@
     action?: Snippet;
     iconComponent?: Snippet;
   } = $props();
+
+  const resolvedIcon = $derived(
+    iconName ?? (icon ? resolveIconName(icon) : undefined),
+  );
 
   const wrapperClass = $derived(
     variant === "dashed"
@@ -29,8 +39,8 @@
 <div class="flex flex-col items-center justify-center gap-3 py-12 text-center {wrapperClass} {className}">
   {#if iconComponent}
     {@render iconComponent()}
-  {:else if icon}
-    <div class="text-4xl opacity-50">{icon}</div>
+  {:else if resolvedIcon}
+    <Icon name={resolvedIcon} size="xl" class="opacity-50 text-muted-foreground" />
   {/if}
   {#if title}
     <h3 class="text-sm font-medium text-foreground">{title}</h3>

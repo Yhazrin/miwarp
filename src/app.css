@@ -19,8 +19,13 @@ html.theme-transitioning,
 html.theme-transitioning *,
 html.theme-transitioning *::before,
 html.theme-transitioning *::after {
-  transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease,
-    box-shadow 300ms ease, fill 300ms ease, stroke 300ms ease !important;
+  transition:
+    background-color 300ms ease,
+    color 300ms ease,
+    border-color 300ms ease,
+    box-shadow 300ms ease,
+    fill 300ms ease,
+    stroke 300ms ease !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -241,10 +246,11 @@ html.theme-transitioning *::after {
   .gradient-border-left {
     border-left: 3px solid;
     border-image: linear-gradient(
-      180deg,
-      hsl(var(--miwarp-accent-primary)),
-      hsl(var(--miwarp-accent-violet))
-    ) 1;
+        180deg,
+        hsl(var(--miwarp-accent-primary)),
+        hsl(var(--miwarp-accent-violet))
+      )
+      1;
   }
 }
 
@@ -358,6 +364,19 @@ html.theme-transitioning *::after {
 
 .animate-slide-up {
   animation: slide-up 0.3s ease-out both;
+}
+
+/* Chat ↔ settings: skip expensive shell/sidebar transitions during SvelteKit navigation */
+html.miwarp-skip-route-motion .session-island-shell,
+html.miwarp-skip-route-motion .session-island-shell *,
+html.miwarp-skip-route-motion .sidebar-container,
+html.miwarp-skip-route-motion .sidebar-container *,
+html.miwarp-skip-route-motion .tool-activity-aside,
+html.miwarp-skip-route-motion .tool-activity-aside * {
+  transition-duration: 0ms !important;
+  transition-delay: 0ms !important;
+  animation-duration: 0ms !important;
+  animation-delay: 0ms !important;
 }
 
 .animate-toast-in {
@@ -619,6 +638,40 @@ html.theme-transitioning *::after {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+/* User bubble: primary fill — inherit readable markdown on primary-foreground */
+.prose-chat-on-primary {
+  color: hsl(var(--primary-foreground));
+}
+.prose-chat-on-primary h1,
+.prose-chat-on-primary h2,
+.prose-chat-on-primary h3,
+.prose-chat-on-primary h4 {
+  color: hsl(var(--primary-foreground));
+}
+.prose-chat-on-primary h1,
+.prose-chat-on-primary h2 {
+  border-bottom-color: hsl(var(--primary-foreground) / 0.28);
+}
+.prose-chat-on-primary li::marker {
+  color: hsl(var(--primary-foreground) / 0.65);
+}
+.prose-chat-on-primary code {
+  background: hsl(var(--primary-foreground) / 0.15);
+  color: hsl(var(--primary-foreground));
+}
+.prose-chat-on-primary blockquote {
+  border-left-color: hsl(var(--primary-foreground) / 0.45);
+  background: hsl(var(--primary-foreground) / 0.12);
+}
+.prose-chat-on-primary hr {
+  background: linear-gradient(
+    to right,
+    transparent,
+    hsl(var(--primary-foreground) / 0.35),
+    transparent
+  );
 }
 
 /* Table wrapper (rounded container + zebra stripes + horizontal scroll) */
@@ -940,6 +993,40 @@ html.theme-transitioning *::after {
   @apply bg-muted-foreground/40;
 }
 
+/* Sidebar session list — scrollbar only visible when the scroll area is hovered/focused */
+.sidebar-scroll {
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+}
+.sidebar-scroll:hover,
+.sidebar-scroll:focus-within {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.25) transparent;
+}
+.sidebar-scroll:not(:hover):not(:focus-within)::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.sidebar-scroll:hover::-webkit-scrollbar,
+.sidebar-scroll:focus-within::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-scroll:not(:hover):not(:focus-within)::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+.sidebar-scroll:hover::-webkit-scrollbar-thumb,
+.sidebar-scroll:focus-within::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.25);
+  border-radius: 9999px;
+}
+.sidebar-scroll:hover::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.45);
+}
+
 /* Code block — dark mode deeper backgrounds (terminal-like) */
 .dark .code-block {
   background: hsl(var(--muted));
@@ -1092,22 +1179,29 @@ code.hljs {
 
 /*
  * Titlebar chrome — keep in sync with src-tauri/tauri.conf.json trafficLightPosition.
- * macOS overlay traffic lights: 12px controls at (16, 16), 8px spacing between lights.
+ * macOS overlay traffic lights: 12px controls at (16, 20), 8px spacing between lights.
+ *
+ * --miwarp-ui-zoom is set from applyZoom() (Tauri webview zoom). Native traffic lights do
+ * not scale with webview zoom, so titlebar layout px are divided by zoom to keep alignment.
  */
 :root {
-  --miwarp-titlebar-y: 8px;
-  --miwarp-titlebar-control: 14px;
-  --miwarp-titlebar-gap: 6px;
-  --miwarp-titlebar-actions-inset: 12px;
-  --miwarp-titlebar-band: 32px;
+  --miwarp-ui-zoom: 1;
+  --miwarp-titlebar-y: calc(8px / var(--miwarp-ui-zoom));
+  --miwarp-titlebar-control: calc(14px / var(--miwarp-ui-zoom));
+  --miwarp-titlebar-gap: calc(6px / var(--miwarp-ui-zoom));
+  --miwarp-titlebar-actions-inset: calc(12px / var(--miwarp-ui-zoom));
+  --miwarp-titlebar-band: calc(32px / var(--miwarp-ui-zoom));
+  --session-statusbar-top: calc(12px / var(--miwarp-ui-zoom));
+  --session-statusbar-offset-rest: calc(2.25rem / var(--miwarp-ui-zoom));
+  --session-statusbar-offset-expanded: calc(4.5rem / var(--miwarp-ui-zoom));
 }
 
 .platform-macos {
-  --miwarp-titlebar-y: 16px;
-  --miwarp-titlebar-control: 12px;
-  --miwarp-titlebar-gap: 8px;
-  --miwarp-titlebar-actions-inset: 80px;
-  --miwarp-titlebar-band: 28px;
+  --miwarp-titlebar-y: calc(20px / var(--miwarp-ui-zoom));
+  --miwarp-titlebar-control: calc(12px / var(--miwarp-ui-zoom));
+  --miwarp-titlebar-gap: calc(8px / var(--miwarp-ui-zoom));
+  --miwarp-titlebar-actions-inset: calc(80px / var(--miwarp-ui-zoom));
+  --miwarp-titlebar-band: calc(32px / var(--miwarp-ui-zoom));
 }
 
 /* ── macOS drag region for overlay title bar ── */
@@ -1164,29 +1258,50 @@ textarea,
    Floating above content, not pushing it
    ═══════════════════════════════════════════════════════════ */
 
+@property --context-pill-slot-width {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 36px;
+}
+
+@property --session-chrome-slot-width {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --session-island-tier2-max-width {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
 :root {
-  /* Shared island motion — shell .session-island-active drives inner + outer together */
+  /* Shared island motion — shell + children share one duration/easing */
   --session-island-duration: 560ms;
   --session-island-ease: cubic-bezier(0.4, 0, 0.2, 1);
-  --context-pill-width-rest: 56px;
+  /* Tier 2 expands in parallel with tier 1 (no stagger) */
+  --session-island-tier2-stagger: 0ms;
+  --context-pill-width-rest: 44px;
   --context-pill-width-hover: 120px;
   --context-pill-width-compact: 100px;
-  --session-island-side-rail-width: 88px;
-  --session-island-shell-width-rest: 260px;
-  --session-island-shell-width-hover: 580px;
-  --session-island-shell-width-compact: 304px;
-  --session-island-shell-width-current: var(--session-island-shell-width-rest);
   --context-pill-slot-width: var(--context-pill-width-rest);
+  /* 2×28px tabs + 4px gap — animates on shell so capsule width grows with chrome */
+  --session-chrome-width-active: 4.75rem;
+  --session-chrome-slot-width: 0px;
+  /* Single gap between every tier-1 capsule (tabs, chrome, center pill columns) */
+  --session-island-rail-gap: 6px;
+  --session-island-tier2-width-cap: min(calc(100vw - 96px), 42rem);
   --session-island-morph-width: min(180px, calc(100vw - 32px));
 }
 
 .session-island-shell {
-  /* Fixed center anchor — width from CSS vars only, never content-driven */
+  /* Center anchor — width from tier 1 + animated chrome/pill; tier 2 excluded when collapsed */
   position: fixed;
-  top: 12px; /* Match sidebar top margin */
+  top: var(--session-statusbar-top); /* Visual 12px; compensates webview zoom */
   left: 50%;
   right: auto;
-  transform: translateX(-50%);
+  transform: translate3d(-50%, 0, 0);
   transform-origin: top center;
   z-index: 35;
 
@@ -1194,19 +1309,22 @@ textarea,
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  width: min(var(--session-island-shell-width-current), calc(100vw - 80px));
-  max-width: min(calc(100vw - 80px), 560px);
+  width: max-content;
+  max-width: calc(100vw - 80px);
   padding-inline: 6px;
   overflow: hidden;
+  backface-visibility: hidden;
+  --context-pill-slot-width: var(--context-pill-width-rest);
+  --session-chrome-slot-width: 0px;
 
   transition:
-    width var(--session-island-duration) var(--session-island-ease),
+    --context-pill-slot-width var(--session-island-duration) var(--session-island-ease),
+    --session-chrome-slot-width var(--session-island-duration) var(--session-island-ease),
+    --session-island-tier2-max-width var(--session-island-duration) var(--session-island-ease),
     border-radius var(--session-island-duration) var(--session-island-ease),
     min-height var(--session-island-duration) var(--session-island-ease),
     background-color 300ms ease,
-    backdrop-filter var(--session-island-duration) var(--session-island-ease),
-    box-shadow 520ms var(--session-island-ease);
-  will-change: width, border-radius, min-height, background-color, backdrop-filter, box-shadow;
+    box-shadow var(--session-island-duration) var(--session-island-ease);
 
   /* Compact state defaults */
   min-height: 36px;
@@ -1221,83 +1339,156 @@ textarea,
 }
 
 .session-island-shell.session-island-active {
-  --session-island-shell-width-current: var(--session-island-shell-width-hover);
   --context-pill-slot-width: var(--context-pill-width-hover);
 }
 
+.session-island-shell.session-island-active:has(.session-island-chrome-actions):not(
+    .session-island-has-tier2
+  ) {
+  --session-chrome-slot-width: var(--session-chrome-width-active);
+  transition:
+    --context-pill-slot-width var(--session-island-duration) var(--session-island-ease),
+    --session-chrome-slot-width var(--session-island-duration) var(--session-island-ease) 80ms,
+    border-radius var(--session-island-duration) var(--session-island-ease),
+    min-height var(--session-island-duration) var(--session-island-ease),
+    background-color 300ms ease,
+    box-shadow var(--session-island-duration) var(--session-island-ease);
+}
+
+.session-island-shell.session-island-active.session-island-has-tier2:has(
+    .session-island-chrome-actions
+  ) {
+  --session-chrome-slot-width: var(--session-chrome-width-active);
+  transition:
+    grid-template-rows var(--session-island-duration) var(--session-island-ease),
+    --context-pill-slot-width var(--session-island-duration) var(--session-island-ease),
+    --session-chrome-slot-width var(--session-island-duration) var(--session-island-ease) 80ms,
+    --session-island-tier2-max-width var(--session-island-duration) var(--session-island-ease),
+    border-radius var(--session-island-duration) var(--session-island-ease),
+    min-height var(--session-island-duration) var(--session-island-ease),
+    background-color 300ms ease,
+    box-shadow var(--session-island-duration) var(--session-island-ease);
+}
+
+.session-island-shell:not(.session-island-active):has(.session-island-chrome-actions):not(
+    .session-island-has-tier2
+  ) {
+  transition:
+    --context-pill-slot-width var(--session-island-duration) var(--session-island-ease),
+    --session-chrome-slot-width var(--session-island-duration) var(--session-island-ease) 0ms,
+    border-radius var(--session-island-duration) var(--session-island-ease),
+    min-height var(--session-island-duration) var(--session-island-ease),
+    background-color 300ms ease,
+    box-shadow var(--session-island-duration) var(--session-island-ease);
+}
+
 .session-island-shell.session-island-compact-pill {
-  --session-island-shell-width-current: var(--session-island-shell-width-compact);
   --context-pill-slot-width: var(--context-pill-width-compact);
 }
 
-.session-island-tier1-frame {
-  width: 100%;
-  justify-content: center;
-  min-width: 0;
+/* Tier 2 row: grid 0fr ↔ 1fr; width 0 ↔ cap (never eases to tier-1 width on collapse) */
+.session-island-shell.session-island-has-tier2 {
+  display: grid;
+  grid-template-columns: minmax(0, max-content);
+  justify-items: center;
+  align-content: start;
+  grid-template-rows: auto 0fr;
+  --session-island-tier2-max-width: 0px;
+  transition:
+    grid-template-rows var(--session-island-duration) var(--session-island-ease),
+    --context-pill-slot-width var(--session-island-duration) var(--session-island-ease),
+    --session-chrome-slot-width var(--session-island-duration) var(--session-island-ease),
+    --session-island-tier2-max-width var(--session-island-duration) var(--session-island-ease),
+    border-radius var(--session-island-duration) var(--session-island-ease),
+    min-height var(--session-island-duration) var(--session-island-ease),
+    background-color 300ms ease,
+    box-shadow var(--session-island-duration) var(--session-island-ease);
 }
 
-/* Tier 1: [left icons] — [context pill] — [right icons] */
+.session-island-shell.session-island-active.session-island-has-tier2 {
+  grid-template-rows: auto 1fr;
+  --session-island-tier2-max-width: var(--session-island-tier2-width-cap);
+}
+
+/* Collapse: tier-2 must not keep layout width while row height animates */
+.session-island-shell.session-island-has-tier2:not(.session-island-active) .tier-2-content {
+  width: 0;
+  max-width: 0;
+  min-width: 0;
+  padding: 0;
+  border-width: 0 !important;
+}
+
+.session-island-tier1-frame {
+  grid-row: 1;
+  width: max-content;
+  max-width: 100%;
+  justify-content: center;
+  min-width: 0;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+/* Tier 1: chrome | tabs | context pill | tabs | chrome — one grid gap everywhere */
 .session-island-tier1 {
-  display: flex;
+  display: grid;
   align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
-  width: 100%;
+  justify-content: center;
+  column-gap: var(--session-island-rail-gap);
+  width: max-content;
+  max-width: 100%;
   padding: 0;
 }
 
 .session-island-tier1-has-context {
-  display: grid;
-  grid-template-columns:
-    var(--session-island-side-rail-width)
-    var(--context-pill-slot-width)
-    var(--session-island-side-rail-width);
-  justify-content: center;
-  column-gap: 8px;
-  transition: grid-template-columns var(--session-island-duration) var(--session-island-ease);
+  grid-template-columns: auto var(--context-pill-slot-width) auto;
 }
 
-.session-island-tier1-has-context .session-island-tab-group:first-child {
+.session-island-tier1-has-context.session-island-tier1-with-chrome {
+  grid-template-columns:
+    var(--session-chrome-slot-width)
+    auto
+    var(--context-pill-slot-width)
+    auto
+    var(--session-chrome-slot-width);
+}
+
+.session-island-tier1-no-context {
+  grid-template-columns: auto auto auto;
+}
+
+.session-island-tier1-no-context.session-island-tier1-with-chrome {
+  grid-template-columns:
+    var(--session-chrome-slot-width)
+    auto
+    auto
+    auto
+    var(--session-chrome-slot-width);
+}
+
+.session-island-tab-group-leading {
   justify-self: end;
 }
 
-.session-island-tier1-has-context .session-context-pill {
-  justify-self: center;
-}
-
-.session-island-tier1-has-context .session-island-tab-group:last-child {
+.session-island-tab-group-trailing {
   justify-self: start;
 }
 
-/* No-session fallback: grid layout with narrow center slot for the miwarp pill */
-.session-island-tier1-no-context {
-  display: grid;
-  grid-template-columns:
-    var(--session-island-side-rail-width)
-    auto
-    var(--session-island-side-rail-width);
-  justify-content: center;
-  column-gap: 8px;
-}
-
-.session-island-tier1-no-context .session-island-tab-group:first-child {
-  justify-self: end;
+.session-island-tier1-has-context .session-context-pill,
+.session-island-tier1-no-context .session-context-pill {
+  justify-self: center;
 }
 
 .session-island-tier1-no-context .session-context-pill {
   width: auto;
-  justify-self: center;
-}
-
-.session-island-tier1-no-context .session-island-tab-group:last-child {
-  justify-self: start;
 }
 
 .session-island-tab-group {
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  gap: 2px;
+  gap: var(--session-island-rail-gap);
+  transform: translateZ(0);
 }
 
 .session-island-tab {
@@ -1308,6 +1499,7 @@ textarea,
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
+  box-sizing: border-box;
 }
 
 /* Context pill fills the stable center track, so icon rails do not remeasure during hover. */
@@ -1316,22 +1508,33 @@ textarea,
   flex-shrink: 0;
   box-sizing: border-box;
   width: 100%;
+  min-width: 0;
   height: 18px;
   border-radius: 9999px;
   overflow: hidden;
+  isolation: isolate;
   transition: background-color 300ms ease;
 }
 
 .session-context-ctx-label {
+  display: inline-block;
   max-width: 0;
   margin-left: 0;
   opacity: 0;
   overflow: hidden;
   white-space: nowrap;
+  vertical-align: middle;
   transition:
     max-width var(--session-island-duration) var(--session-island-ease),
     margin-left var(--session-island-duration) var(--session-island-ease),
-    opacity var(--session-island-duration) var(--session-island-ease);
+    opacity var(--session-island-duration) var(--session-island-ease),
+    transform var(--session-island-duration) var(--session-island-ease);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.session-island-shell.session-island-active .session-context-ctx-label {
+  transform: scaleX(1);
 }
 
 .session-island-shell.session-island-active .session-context-ctx-label {
@@ -1355,7 +1558,7 @@ textarea,
 .session-island-done,
 .session-island-waiting,
 .session-island-stopped {
-  --session-island-shell-width-current: var(--session-island-morph-width);
+  width: var(--session-island-morph-width);
   min-height: 48px;
   border-radius: 24px;
   backdrop-filter: none;
@@ -1363,9 +1566,8 @@ textarea,
   transition:
     border-radius var(--session-island-duration) var(--session-island-ease),
     min-height var(--session-island-duration) var(--session-island-ease),
-    width var(--session-island-duration) var(--session-island-ease),
     background-color 300ms ease,
-    box-shadow 520ms var(--session-island-ease);
+    box-shadow var(--session-island-duration) var(--session-island-ease);
 }
 
 .session-island-running {
@@ -1414,7 +1616,7 @@ textarea,
 /* Chat: full-height scroll; bottom fade overlay (not a dock background panel) */
 .chat-conversation-stage {
   /* Gap between input dock and window bottom (larger = dock sits higher). */
-  --chat-input-dock-bottom-gap: 1rem;
+  --chat-input-dock-bottom-gap: 1.5rem;
   /* Overwritten at runtime by ChatInputDock ResizeObserver; fallback ≈ capsule + bottom gap */
   --chat-input-dock-offset: 6.5rem;
   --chat-scroll-fade-height: 9rem;
@@ -1456,9 +1658,7 @@ textarea,
     inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
-/* Expanded state — height only; width stays content-driven to avoid icon jitter */
 .session-island-expanded {
-  min-height: 69px;
   border-radius: 22px;
   background-color: hsl(var(--background) / 0.75);
   backdrop-filter: blur(32px) saturate(180%);
@@ -1469,45 +1669,62 @@ textarea,
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 
-/* Tier 2 content animation - slides in/out with capsule expansion */
+/* Tier 2 — grid row height + diagonal unfold from tier-1 center (no width:0 clip) */
 .tier-2-content {
-  align-self: stretch;
   box-sizing: border-box;
-  transition:
-    max-height var(--session-island-duration) var(--session-island-ease),
-    opacity 300ms ease,
-    border-color 300ms ease;
-}
-
-.session-island-tier2-closed {
-  max-height: 0 !important;
-  width: 0 !important;
-  min-width: 0 !important;
+  grid-row: 2;
+  min-width: 0;
+  min-height: 0;
+  width: max-content;
+  max-width: var(--session-island-tier2-max-width);
   overflow: hidden;
-  opacity: 0;
   pointer-events: none;
   border-color: transparent !important;
-  padding: 0 !important;
-  margin: 0 !important;
+  transition: border-color var(--session-island-duration) var(--session-island-ease);
 }
 
-.session-island-tier2-open {
-  max-height: 2rem;
-  width: 100%;
+.session-island-shell.session-island-active.session-island-has-tier2 .tier-2-content,
+.tier-2-content.session-island-tier2-open {
+  pointer-events: auto;
 }
 
+/* Unfold from top center of island (below ctx pill): down + slight outward scale */
 .session-island-tier2 {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   flex-wrap: nowrap;
   gap: 6px;
   width: max-content;
   max-width: 100%;
-  padding: 0 1px;
+  min-height: 2rem;
+  margin-inline: auto;
+  padding: 0 4px 2px;
   font-size: 11px;
-  line-height: 1;
+  line-height: 1.2;
   color: hsl(var(--foreground) / 0.72);
+  white-space: nowrap;
+  transform-origin: top center;
+  opacity: 0;
+  transform: translate3d(0, -10px, 0) scale(0.9);
+  transition:
+    opacity var(--session-island-duration) var(--session-island-ease),
+    transform var(--session-island-duration) var(--session-island-ease);
+  transition-delay: var(--session-island-tier2-stagger);
+  will-change: transform, opacity;
+}
+
+.session-island-shell.session-island-active.session-island-has-tier2 .session-island-tier2,
+.tier-2-content.session-island-tier2-open .session-island-tier2 {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+/* Collapse tier-2 visuals in parallel with row height + tier-1 width (no extra delay) */
+.session-island-shell.session-island-has-tier2:not(.session-island-active) .session-island-tier2 {
+  opacity: 0;
+  transform: translate3d(0, -8px, 0) scale(0.92);
+  transition-delay: 0ms;
 }
 
 .session-island-tier2-divider {
@@ -1515,10 +1732,76 @@ textarea,
   user-select: none;
 }
 
+/* Window chrome: max-width slot animates; content hugs tabs (no dead space inside slot) */
+.session-island-chrome-actions {
+  display: inline-flex;
+  width: max-content;
+  max-width: var(--session-chrome-slot-width);
+  min-width: 0;
+  align-items: center;
+  gap: var(--session-island-rail-gap);
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    opacity var(--session-island-duration) var(--session-island-ease),
+    transform var(--session-island-duration) var(--session-island-ease),
+    visibility 0ms linear var(--session-island-duration);
+}
+
+/* Emerge from the center pill toward the outer edges */
+.session-island-chrome-actions-left {
+  justify-self: end;
+  justify-content: flex-end;
+  transform-origin: right center;
+  transform: translateX(8px) scale(0.88);
+}
+
+.session-island-chrome-actions-right {
+  justify-self: start;
+  justify-content: flex-start;
+  transform-origin: left center;
+  transform: translateX(-8px) scale(0.88);
+}
+
+.session-island-shell.session-island-active .session-island-chrome-actions-left,
+.session-island-shell.session-island-active .session-island-chrome-actions-right {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+  transform: translateX(0) scale(1);
+  transition:
+    opacity var(--session-island-duration) var(--session-island-ease) 100ms,
+    transform var(--session-island-duration) var(--session-island-ease) 100ms,
+    visibility 0ms linear 0ms;
+}
+
+.session-island-shell:not(.session-island-active) .session-island-chrome-actions-left,
+.session-island-shell:not(.session-island-active) .session-island-chrome-actions-right {
+  transition:
+    opacity var(--session-island-duration) var(--session-island-ease) 0ms,
+    transform var(--session-island-duration) var(--session-island-ease) 0ms,
+    visibility 0ms linear var(--session-island-duration);
+}
+
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --session-island-tier2-stagger: 0ms;
+  }
+
   .session-island-shell,
-  .tier-2-content {
+  .session-island-shell.session-island-has-tier2,
+  .tier-2-content,
+  .session-island-tier2,
+  .session-island-chrome-actions,
+  .session-context-ctx-label {
+    transition-duration: 180ms;
+  }
+
+  .session-island-shell.session-island-active:has(.session-island-chrome-actions),
+  .session-island-shell:not(.session-island-active):has(.session-island-chrome-actions) {
     transition-duration: 180ms;
   }
 }

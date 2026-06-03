@@ -149,7 +149,7 @@
 <div class="flex flex-col h-full overflow-hidden">
   {#if !latest && !hasResourceData}
     <!-- Empty state -->
-    <EmptyState icon="📊" title={t("contextPanel_noData")} class="h-32 py-4" />
+    <EmptyState iconName="bar-chart-2" title={t("contextPanel_noData")} class="h-32 py-4" />
   {:else}
     <div class="flex-1 overflow-y-auto">
       <!-- Context: Latest snapshot -->

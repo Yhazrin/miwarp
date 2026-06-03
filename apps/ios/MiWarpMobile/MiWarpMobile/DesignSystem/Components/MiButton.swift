@@ -64,6 +64,6 @@ struct MiButton: View {
         MiButton("Secondary", style: .secondary) {}
         MiButton("Destructive", icon: "trash", style: .destructive) {}
     }
-    .environmentObject(MWTheme())
+    .environmentObject(MWTheme.shared)
     .padding()
 }

@@ -29,6 +29,9 @@ import type {
   BtwError,
 } from "$lib/types";
 import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
+import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
+import { consumeChatBootstrap } from "$lib/chat/chat-bootstrap-cache";
+import { disarmChatSettingsHop, isChatSettingsHop } from "$lib/utils/chat-settings-nav";
 
 // ── Inline type (originally from use-chat-actions.ts) ──
 
@@ -200,102 +203,127 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
     t,
   } = ctx;
 
+  function applyLoadedSettings(loadedSettings: UserSettings): void {
+    setSettings(loadedSettings);
+    persistCachedProcessVisibility(normalizeProcessVisibility(loadedSettings.process_visibility));
+    store.authMode = loadedSettings.auth_mode ?? "cli";
+    const hosts = loadedSettings.remote_hosts ?? [];
+    setRemoteHosts(hosts);
+    if (!store.run && hosts.length > 0) {
+      const lastTarget = getLastTarget();
+      if (lastTarget && hosts.some((h) => h.name === lastTarget)) {
+        store.remoteHostName = lastTarget;
+      }
+    }
+    if (!store.platformId) {
+      store.platformId =
+        loadedSettings.auth_mode === "api"
+          ? (loadedSettings.active_platform_id ?? "anthropic")
+          : "anthropic";
+    }
+    const runId = getRunId();
+    if (!store.model && !runId && store.phase !== "loading") {
+      const initCred = findCredential(
+        loadedSettings.platform_credentials ?? [],
+        store.platformId ?? "",
+      );
+      const initPreset = PLATFORM_PRESETS.find((p) => p.id === store.platformId);
+      const initModels = initCred?.models?.length ? initCred.models : initPreset?.models;
+      if (store.platformId !== "anthropic" && initModels?.[0]) {
+        store.model = initModels[0];
+      } else if (store.platformId === "anthropic" && loadedSettings.default_model) {
+        store.model = loadedSettings.default_model;
+      }
+    }
+  }
+
   // ════════════════════════════════════════════════════════════════════
   // Block 1: Settings loading onMount
   // ════════════════════════════════════════════════════════════════════
   onMount(async () => {
     const runId = getRunId();
-    // Phase 1: load settings (required by everything else)
-    try {
-      const loadedSettings = await api.getUserSettings();
-      setSettings(loadedSettings);
-      persistCachedProcessVisibility(normalizeProcessVisibility(loadedSettings.process_visibility));
-      store.authMode = loadedSettings.auth_mode ?? "cli";
-      const hosts = loadedSettings.remote_hosts ?? [];
-      setRemoteHosts(hosts);
-      // Restore last target selection (must validate against current settings — a
-      // configured host may have been removed since the value was persisted).
-      if (!store.run && hosts.length > 0) {
-        const lastTarget = getLastTarget();
-        if (lastTarget && hosts.some((h) => h.name === lastTarget)) {
-          store.remoteHostName = lastTarget;
-        }
+    const returningFromSettings = isChatSettingsHop();
+    const bootstrap = returningFromSettings ? consumeChatBootstrap() : null;
+    if (returningFromSettings) disarmChatSettingsHop();
+
+    if (bootstrap) {
+      dbg("chat", "bootstrap from settings return (skip cold API)");
+      applyLoadedSettings(bootstrap.settings);
+      if (bootstrap.agentSettings) {
+        setAgentSettings(bootstrap.agentSettings);
+        setCurrentEffort("");
       }
-      // Initialize per-session platform from global active
-      // Only use active_platform_id in App API Key mode; CLI Auth manages its own connection
-      if (!store.platformId) {
-        store.platformId =
-          loadedSettings.auth_mode === "api"
-            ? (loadedSettings.active_platform_id ?? "anthropic")
-            : "anthropic";
-      }
-      // Initialize model: for third-party platforms, use credential > preset default model
-      // Only for new sessions — if runId is set, loadRun will handle model restoration.
-      if (!store.model && !runId && store.phase !== "loading") {
-        const initCred = findCredential(
-          loadedSettings.platform_credentials ?? [],
-          store.platformId ?? "",
-        );
-        const initPreset = PLATFORM_PRESETS.find((p) => p.id === store.platformId);
-        const initModels = initCred?.models?.length ? initCred.models : initPreset?.models;
-        if (store.platformId !== "anthropic" && initModels?.[0]) {
-          store.model = initModels[0];
-        } else if (store.platformId === "anthropic" && loadedSettings.default_model) {
-          store.model = loadedSettings.default_model;
-        }
-      }
-      // Load auth overview for AuthSourceBadge (fire-and-forget)
       api
         .getAuthOverview()
         .then((ov) => setAuthOverview(ov))
         .catch((e) => dbgWarn("chat", "getAuthOverview failed:", e));
-      // Detect local proxy statuses for AuthSourceBadge
-      checkAllLocalProxies();
-    } catch (e) {
-      dbgWarn("chat", "failed to load settings:", e);
-    }
-
-    // Phase 2: parallel fetch of independent data
-    const [agentResult, runsResult] = await Promise.allSettled([
-      api.getAgentSettings("claude"),
-      api.listRuns(),
-    ]);
-
-    if (agentResult.status === "fulfilled") {
-      setAgentSettings(agentResult.value);
+    } else {
+      // Phase 1: load settings (required by everything else)
       try {
-        const cliCfg = await api.getCliConfig();
-        const cliEffort = cliCfg.effortLevel;
-        setCurrentEffort(typeof cliEffort === "string" && cliEffort ? cliEffort : "");
-      } catch {
-        setCurrentEffort("");
-      }
-      // One-time migration: clear stale agentSettings.effort to prevent --effort at spawn
-      if (agentResult.value?.effort) {
+        const loadedSettings = await api.getUserSettings();
+        applyLoadedSettings(loadedSettings);
         api
-          .updateAgentSettings("claude", { effort: "" })
-          .catch((e) => dbgWarn("chat", "clear effort failed:", e));
+          .getAuthOverview()
+          .then((ov) => setAuthOverview(ov))
+          .catch((e) => dbgWarn("chat", "getAuthOverview failed:", e));
+        checkAllLocalProxies();
+      } catch (e) {
+        dbgWarn("chat", "failed to load settings:", e);
       }
-    } else {
-      dbgWarn("chat", "failed to load agent settings:", agentResult.reason);
     }
 
-    if (runsResult.status === "fulfilled") {
-      const continuable =
-        runsResult.value.find(
-          (r) =>
-            r.session_id &&
-            (r.status === "completed" || r.status === "stopped" || r.status === "failed"),
-        ) ?? null;
-      setLastContinuableRun(continuable);
+    const hasRunContext = Boolean(runId || chatViewCache.lastRunId);
+    const skipRunsFetch = Boolean(bootstrap && hasRunContext);
 
-      // Auto-load last session if no runId is specified, instead of showing welcome screen
-      if (!runId && continuable) {
-        goto(`/chat?run=${continuable.id}&resume=continue`, { replaceState: true });
-        return;
+    if (!bootstrap || !skipRunsFetch) {
+      checkAllLocalProxies();
+    }
+
+    // Phase 2: parallel fetch of independent data (skipped when returning to an active run)
+    if (!skipRunsFetch) {
+      const [agentResult, runsResult] = await Promise.allSettled([
+        bootstrap ? Promise.resolve(null) : api.getAgentSettings("claude"),
+        api.listRuns(),
+      ]);
+
+      if (!bootstrap && agentResult.status === "fulfilled") {
+        setAgentSettings(agentResult.value);
+        try {
+          const cliCfg = await api.getCliConfig();
+          const cliEffort = cliCfg.effortLevel;
+          setCurrentEffort(typeof cliEffort === "string" && cliEffort ? cliEffort : "");
+        } catch {
+          setCurrentEffort("");
+        }
+        if (agentResult.value?.effort) {
+          api
+            .updateAgentSettings("claude", { effort: "" })
+            .catch((e) => dbgWarn("chat", "clear effort failed:", e));
+        }
+      } else if (!bootstrap && agentResult.status === "rejected") {
+        dbgWarn("chat", "failed to load agent settings:", agentResult.reason);
       }
-    } else {
-      dbgWarn("chat", "failed to load runs for continue:", runsResult.reason);
+
+      if (runsResult.status === "fulfilled") {
+        const continuable =
+          runsResult.value.find(
+            (r) =>
+              r.session_id &&
+              (r.status === "completed" || r.status === "stopped" || r.status === "failed"),
+          ) ?? null;
+        setLastContinuableRun(continuable);
+
+        if (!runId && continuable) {
+          goto(`/chat?run=${continuable.id}&resume=continue`, { replaceState: true });
+          return;
+        }
+      } else {
+        dbgWarn("chat", "failed to load runs for continue:", runsResult.reason);
+      }
+    } else if (bootstrap?.agentSettings?.effort) {
+      api
+        .updateAgentSettings("claude", { effort: "" })
+        .catch((e) => dbgWarn("chat", "clear effort failed:", e));
     }
 
     // Phase 3: permission mode init (depends on settings + agentSettings)
@@ -432,6 +460,9 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
   // ════════════════════════════════════════════════════════════════════
   onMount(() => {
     let destroyed = false;
+    if (middleware.isStarted()) {
+      setMiddlewareReady(true);
+    }
     (async () => {
       try {
         await middleware.start();
@@ -482,7 +513,11 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
           .catch((e) => dbgWarn("chat", "stopSession on unmount failed:", e));
       }
       store.unmountGuards();
-      middleware.destroy();
+      if (isChatSettingsHop()) {
+        dbg("chat", "middleware preserved (navigating to settings)");
+      } else {
+        middleware.destroy();
+      }
     };
   });
 

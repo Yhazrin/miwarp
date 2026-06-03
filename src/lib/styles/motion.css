@@ -9,8 +9,13 @@
   --motion-fast: 120ms;
   --motion-normal: 180ms;
   --motion-slow: 280ms;
+  --motion-sidebar: 380ms;
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Panel width: inertia + damped deceleration (no width overshoot) */
+  --ease-sidebar-width: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Panel content slide: light spring settle */
+  --ease-sidebar-spring: cubic-bezier(0.34, 1.28, 0.56, 1);
 }
 
 /* ── Utility classes ── */

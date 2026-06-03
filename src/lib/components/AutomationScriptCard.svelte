@@ -8,6 +8,7 @@
   import { scale } from "svelte/transition";
   import type { AutomationScript } from "$lib/types/automation";
   import { getCategoryInfo } from "$lib/types/automation";
+  import Icon from "$lib/components/Icon.svelte";
 
   interface Props {
     script: AutomationScript;
@@ -50,7 +51,7 @@
   <!-- Header -->
   <div class="flex items-start justify-between gap-3">
     <div class="flex items-center gap-2">
-      <span class="text-xl">{categoryInfo.icon}</span>
+      <Icon name={categoryInfo.icon} size="lg" class="text-muted-foreground shrink-0" />
       <div>
         <div class="font-medium">{script.name}</div>
         <div class="text-xs text-muted-foreground">
@@ -82,16 +83,16 @@
   <!-- Stats -->
   <div class="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
     <span class="flex items-center gap-1">
-      <span>📋</span>
+      <Icon name="clipboard-list" size="sm" class="inline" />
       {t("automationCard_steps", { count: String(script.steps.length) })}
     </span>
     <span class="flex items-center gap-1">
-      <span>▶</span>
+      <Icon name="play" size="sm" class="inline" />
       {t("automationCard_runs", { count: String(script.usageCount) })}
     </span>
     {#if script.lastRunAt}
       <span class="flex items-center gap-1">
-        <span>🕐</span>
+        <Icon name="clock" size="sm" class="inline" />
         {formatDate(script.lastRunAt)}
       </span>
     {/if}
@@ -122,7 +123,8 @@
         onExecute?.(script);
       }}
     >
-      ▶ {t("automationCard_run")}
+      <Icon name="play" size="sm" class="inline" />
+      {t("automationCard_run")}
     </button>
     <button type="button"
       class="rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
@@ -165,7 +167,7 @@
               onDuplicate?.(script);
             }}
           >
-            <span>📋</span> {t("automationCard_duplicate")}
+            <Icon name="clipboard-list" size="sm" class="inline" /> {t("automationCard_duplicate")}
           </button>
           <button type="button"
             class="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
@@ -174,7 +176,8 @@
               onDelete?.(script);
             }}
           >
-            <span>🗑️</span> {t("automationCard_delete")}
+            <Icon name="trash" size="sm" class="inline" />
+            {t("automationCard_delete")}
           </button>
         </div>
       {/if}

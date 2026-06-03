@@ -11,6 +11,7 @@
     type AutomationStep,
     type StepType,
   } from "$lib/types/automation";
+  import Icon from "$lib/components/Icon.svelte";
 
   interface Props {
     step: AutomationStep;
@@ -100,7 +101,7 @@
 <div class="step-editor space-y-4">
   <!-- Header -->
   <div class="flex items-center gap-3">
-    <span class="text-2xl">{stepInfo.icon}</span>
+    <Icon name={stepInfo.icon} size="lg" class="text-muted-foreground shrink-0" />
     <div>
       <h3 class="text-sm font-medium">{stepInfo.label}</h3>
       <p class="text-xs text-muted-foreground">{stepInfo.description}</p>
@@ -117,7 +118,6 @@
     >
       {#each STEP_TYPES as type}
         <option value={type.value}>
-          {type.icon}
           {type.label} - {type.labelZh}
         </option>
       {/each}

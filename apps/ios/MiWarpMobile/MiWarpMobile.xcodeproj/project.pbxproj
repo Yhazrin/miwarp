@@ -22,6 +22,7 @@
 		27176FD90C32057D4DF0B2DC /* AgentTaskAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 582462DD41026975764CB27B /* AgentTaskAttributes.swift */; };
 		2DD50F246947160FB772ECF2 /* MascotState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656F809295E8CC07CB44BF0F /* MascotState.swift */; };
 		31752E8113DC5B9B09E5B8D0 /* DiffPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0F107680AD38109AD258F79 /* DiffPreviewView.swift */; };
+		A1B2C3D4E5F6012345678AB /* SpotlightIndexer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6012345678CD /* SpotlightIndexer.swift */; };
 		3F6BFBDB959EC1C975CA3F05 /* MiWarpLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3EF42EA4D95E49A3EE8DFCE5 /* MiWarpLogger.swift */; };
 		46C205483229F049CF7547B0 /* MobileSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BDC398FA44E521237508ED9 /* MobileSettingsView.swift */; };
 		4A1000000000000000000002 /* MiToast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A2000000000000000000002 /* MiToast.swift */; };
@@ -120,6 +121,7 @@
 		251C0C6808F6AE962B5773BF /* DynamicIslandExpandedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicIslandExpandedView.swift; sourceTree = "<group>"; };
 		265E79FD01704F5BC71CA337 /* LockScreenActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenActivityView.swift; sourceTree = "<group>"; };
 		289D60E42DA65D8A062D44C8 /* LiveActivityDeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityDeepLink.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5A6012345678CD /* SpotlightIndexer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotlightIndexer.swift; sourceTree = "<group>"; };
 		3EF42EA4D95E49A3EE8DFCE5 /* MiWarpLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpLogger.swift; sourceTree = "<group>"; };
 		3F6C0CCD921DD31844147DD1 /* RawEventView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RawEventView.swift; sourceTree = "<group>"; };
 		48092D2C4044F54B928D3A0D /* MWTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MWTheme.swift; sourceTree = "<group>"; };
@@ -188,6 +190,7 @@
 				9737E58B096F2A6DFBA00DFA /* MiWarpKeychain.swift */,
 				3EF42EA4D95E49A3EE8DFCE5 /* MiWarpLogger.swift */,
 				02342E23F233A1CF248129CF /* MiWarpModels.swift */,
+				B1C2D3E4F5A6012345678CD /* SpotlightIndexer.swift */,
 				87A3AF41B54A7D4AF4EF7B78 /* MiWarpRPC.swift */,
 				74358DE064BFA91D37F88C20 /* MiWarpWebSocketClient.swift */,
 			);
@@ -589,6 +592,7 @@
 				DFA039E9FFE6D381AA863AD2 /* MiWarpEventReducer.swift in Sources */,
 				F4EC3C0A42C3DA0D397A2F3F /* MiWarpKeychain.swift in Sources */,
 				3F6BFBDB959EC1C975CA3F05 /* MiWarpLogger.swift in Sources */,
+				A1B2C3D4E5F6012345678AB /* SpotlightIndexer.swift in Sources */,
 				C0A5C03FAD0BF00E36BCDB2E /* MiWarpMobileApp.swift in Sources */,
 				18E3370AE5AE152C060EB950 /* MiWarpModels.swift in Sources */,
 				18E246F86CCFC3D52E28E1DA /* MiWarpRPC.swift in Sources */,

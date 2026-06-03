@@ -518,7 +518,7 @@
       </div>
     {:else if response && response.results.length === 0 && !loading}
       <EmptyState
-        icon="🔍"
+        iconName="search"
         title={t("history_noResults")}
       />
     {:else if response}

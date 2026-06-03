@@ -135,7 +135,7 @@ struct HomeDashboardView: View {
         activeConnection: nil,
         toastPresenter: MiToastPresenter()
     )
-    .environmentObject(MWTheme())
+    .environmentObject(MWTheme.shared)
     .padding()
 }
 
@@ -149,6 +149,6 @@ struct HomeDashboardView: View {
         activeConnection: MiWarpConnection(name: "Desktop", host: "192.168.1.100", port: 9222),
         toastPresenter: MiToastPresenter()
     )
-    .environmentObject(MWTheme())
+    .environmentObject(MWTheme.shared)
     .padding()
 }

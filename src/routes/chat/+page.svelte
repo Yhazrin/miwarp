@@ -2,6 +2,10 @@
   import { page } from "$app/stores";
   import { goto, replaceState, beforeNavigate } from "$app/navigation";
   import { tick, onMount, untrack, getContext } from "svelte";
+  import {
+    LAYOUT_CHROME_CONTEXT_KEY,
+    type LayoutChromeContext,
+  } from "$lib/layout-chrome-context";
   import { fly } from "svelte/transition";
   import * as api from "$lib/api";
   import {
@@ -75,11 +79,13 @@
     getCachedScrollTop,
     getCachedRenderLimit,
   } from "$lib/chat/chat-view-cache.svelte";
+  import { snapshotChatBootstrap } from "$lib/chat/chat-bootstrap-cache";
 
   // ── Helpers ──
 
   // ── Layout context ──
   const _toggleLayoutSidebar = getContext<() => void>("toggleSidebar");
+  const layoutChrome = getContext<LayoutChromeContext>(LAYOUT_CHROME_CONTEXT_KEY);
   const keybindingStore = getContext<KeybindingStore>("keybindings");
 
   // ── Store + Middleware ──
@@ -109,6 +115,8 @@
   let folderCwdOverride = $state("");
   let chatAreaRef: HTMLDivElement | undefined = $state();
   let isChatAutoScroll = $state(true);
+  /** Latched when user leaves bottom — keeps full layout + overflow-anchor while reading history. */
+  let readingHistory = $state(false);
   /** Non-reactive flag: suppresses auto-scroll reset during search scroll-to navigation. */
   let _scrollToInFlight = false;
   /** Non-reactive flag: suppresses auto-scroll during scroll restoration from cache. */
@@ -531,6 +539,7 @@
           // Restore scroll position
           restoringScroll = true;
           isChatAutoScroll = false;
+          readingHistory = true;
           tick().then(() => {
             requestAnimationFrame(() => {
               if (chatAreaRef) {
@@ -642,6 +651,7 @@
     // restoringScroll is also non-reactive — don't override it during cache restoration.
     if (!restoringScroll) {
       isChatAutoScroll = !_scrollToInFlight;
+      readingHistory = false;
     }
     showChatScrollHint = false;
     prevTl = 0;
@@ -820,6 +830,9 @@
     setSuppressLoadMoreRearm: (v: boolean) => {
       _suppressLoadMoreRearm = v;
     },
+    setReadingHistory: (v: boolean) => {
+      readingHistory = v;
+    },
     setFolderCwdOverride: (v: string) => {
       folderCwdOverride = v;
     },
@@ -950,8 +963,7 @@
   }
 
 
-  beforeNavigate(() => {
-    // Save UI view state before leaving the chat page
+  beforeNavigate(({ to }) => {
     saveChatViewState({
       runId: store.run?.id ?? "",
       scrollTop: chatAreaRef?.scrollTop ?? 0,
@@ -960,6 +972,9 @@
       requestedPreviewPath,
       renderLimit: tl.renderLimit,
     });
+    if (to?.url.pathname.startsWith("/settings") && settings) {
+      snapshotChatBootstrap(settings, agentSettings);
+    }
   });
 
   const insight = useConversationInsight({
@@ -1222,11 +1237,21 @@
       {toolPanelIndicators}
       {processVisibility}
       onProcessVisibilityChange={handleProcessVisibilityChange}
+      layoutSidebarOpen={layoutChrome.state.sidebarOpen}
+      onToggleLayoutSidebar={layoutChrome.toggleSidebar}
+      onOpenSettings={layoutChrome.openSettings}
+      onOpenCliImport={layoutChrome.openCliBrowser}
+      onNewChat={layoutChrome.newChat}
     />
 
     <!-- MCP panel (floating below status bar) -->
     {#if mcpPanelOpen && store.mcpServers.length > 0}
-      <div class="absolute {statusBarExpanded ? 'top-16' : 'top-9'} right-3 z-30">
+      <div
+        class="absolute right-3 z-30"
+        style="top: {statusBarExpanded
+          ? 'var(--session-statusbar-offset-expanded)'
+          : 'var(--session-statusbar-offset-rest)'}"
+      >
         <McpStatusPanel
           runId={store.run?.id ?? ""}
           mcpServers={store.mcpServers}
@@ -1326,6 +1351,8 @@
       }}
       bind:thinkingExpanded={thinking.thinkingExpanded}
       {showChatScrollHint}
+      {isChatAutoScroll}
+      {readingHistory}
       bind:xtermRef
       bind:chatAreaRef
     >

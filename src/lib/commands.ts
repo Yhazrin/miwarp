@@ -94,7 +94,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "open_modal",
     payload: "model-selector",
-    icon: "🎯",
     fuzzyKeywords: ["model", "ai", "provider", "claude", "anthropic"],
   },
   {
@@ -105,7 +104,6 @@ export const commands: CommandDef[] = [
     agent: "claude",
     action: "send_prompt",
     payload: "/compact",
-    icon: "📦",
     fuzzyKeywords: ["compact", "compress", "reduce", "context"],
   },
   {
@@ -116,7 +114,6 @@ export const commands: CommandDef[] = [
     agent: "claude",
     action: "toggle_state",
     payload: "plan_mode",
-    icon: "📋",
     fuzzyKeywords: ["plan", "mode", "thinking"],
   },
   {
@@ -128,7 +125,6 @@ export const commands: CommandDef[] = [
     action: "send_prompt",
     payload:
       "Review my recent changes. Look at the git diff and provide feedback on code quality, potential bugs, and improvements.",
-    icon: "🔍",
     fuzzyKeywords: ["review", "code review", "pr", "pull request", "feedback"],
     showWhenIdle: true, // Only relevant when session is idle
   },
@@ -141,7 +137,6 @@ export const commands: CommandDef[] = [
     shortcut: "Cmd+Shift+E",
     action: "ipc_command",
     payload: "export_conversation",
-    icon: "📤",
     fuzzyKeywords: ["export", "save", "download", "chat history"],
   },
   {
@@ -153,7 +148,6 @@ export const commands: CommandDef[] = [
     shortcut: "Cmd+Shift+H",
     action: "ipc_command",
     payload: "export_conversation_html",
-    icon: "🌐",
     fuzzyKeywords: ["export", "html", "web", "save"],
   },
   {
@@ -164,7 +158,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/chat?agent=claude",
-    icon: "💬",
     fuzzyKeywords: ["new", "chat", "conversation", "claude"],
   },
   {
@@ -175,7 +168,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "ipc_command",
     payload: "stop_run",
-    icon: "⏹",
     fuzzyKeywords: ["stop", "cancel", "abort", "interrupt"],
     showDuringRun: true, // Only show during running
   },
@@ -190,7 +182,6 @@ export const commands: CommandDef[] = [
     shortcut: "Cmd+Shift+D",
     action: "ipc_command",
     payload: "get_git_diff",
-    icon: "📊",
     fuzzyKeywords: ["git", "diff", "changes", "modifications"],
   },
   {
@@ -201,7 +192,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "ipc_command",
     payload: "get_git_status",
-    icon: "📁",
     fuzzyKeywords: ["git", "status", "files", "staged", "untracked"],
   },
   {
@@ -212,7 +202,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "ipc_command",
     payload: "get_run_artifacts",
-    icon: "💰",
     fuzzyKeywords: ["token", "cost", "usage", "billing", "price"],
   },
 
@@ -225,7 +214,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/scheduled-tasks",
-    icon: "⏰",
     fuzzyKeywords: ["schedule", "tasks", "automated", "cron", "jobs"],
   },
   {
@@ -236,7 +224,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/chat",
-    icon: "💬",
     fuzzyKeywords: ["chat", "conversation", "message"],
   },
   {
@@ -247,7 +234,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/settings",
-    icon: "⚙️",
     fuzzyKeywords: ["settings", "preferences", "config", "options"],
   },
   {
@@ -258,7 +244,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/memory",
-    icon: "🧠",
     fuzzyKeywords: ["memory", "context", "notes", "knowledge"],
   },
   {
@@ -269,7 +254,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/usage",
-    icon: "📈",
     fuzzyKeywords: ["usage", "statistics", "stats", "analytics", "billing"],
   },
   {
@@ -280,7 +264,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/plugins",
-    icon: "🧩",
     fuzzyKeywords: ["plugins", "extensions", "skills", "addons", "marketplace"],
   },
 
@@ -293,7 +276,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "open_modal",
     payload: "model-selector",
-    icon: "🤖",
     fuzzyKeywords: ["default", "model", "ai", "change"],
   },
   {
@@ -304,7 +286,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "open_modal",
     payload: "folder-browser",
-    icon: "📂",
     fuzzyKeywords: ["directory", "folder", "workspace", "path", "cwd"],
   },
   {
@@ -315,7 +296,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "navigate",
     payload: "/settings",
-    icon: "🔧",
     fuzzyKeywords: ["tools", "configure", "permissions", "allowed"],
   },
   {
@@ -326,7 +306,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "open_modal",
     payload: "permissions",
-    icon: "🔐",
     fuzzyKeywords: ["permissions", "security", "rules", "allow", "deny"],
   },
 
@@ -339,7 +318,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "ipc_command",
     payload: "check_agent_cli",
-    icon: "🩺",
     fuzzyKeywords: ["doctor", "check", "diagnose", "health", "status"],
   },
   {
@@ -350,7 +328,6 @@ export const commands: CommandDef[] = [
     agent: "both",
     action: "open_modal",
     payload: "version-info",
-    icon: "ℹ️",
     fuzzyKeywords: ["version", "info", "about", "miwarp"],
   },
 ];
@@ -503,7 +480,6 @@ export const multiAgentCommands: CommandDef[] = [
     category: "system",
     agent: "claude",
     action: "panel:multi-agent",
-    icon: "👥",
     fuzzyKeywords: ["multi", "agent", "team", "collaborate"],
   },
   {
@@ -513,7 +489,6 @@ export const multiAgentCommands: CommandDef[] = [
     category: "system",
     agent: "claude",
     action: "preset:fullstack",
-    icon: "🚀",
     fuzzyKeywords: ["fullstack", "frontend", "backend", "full"],
   },
   {
@@ -523,7 +498,6 @@ export const multiAgentCommands: CommandDef[] = [
     category: "system",
     agent: "claude",
     action: "preset:review",
-    icon: "🔍",
     fuzzyKeywords: ["review", "all", "code", "pr"],
   },
   {
@@ -533,7 +507,6 @@ export const multiAgentCommands: CommandDef[] = [
     category: "system",
     agent: "claude",
     action: "preset:upgrade",
-    icon: "⚡",
     fuzzyKeywords: ["implement", "upgrade", "improve", "all"],
   },
   {
@@ -543,7 +516,6 @@ export const multiAgentCommands: CommandDef[] = [
     category: "system",
     agent: "claude",
     action: "preset:test",
-    icon: "🧪",
     fuzzyKeywords: ["test", "testing", "all", "run"],
   },
   {
@@ -553,7 +525,6 @@ export const multiAgentCommands: CommandDef[] = [
     category: "system",
     agent: "claude",
     action: "preset:docs",
-    icon: "📝",
     fuzzyKeywords: ["docs", "documentation", "all", "generate"],
   },
 ];
@@ -823,7 +794,6 @@ export function getContextAwareCommands(context: ContextFilter): CommandDef[] {
       agent: "both",
       action: "open_modal",
       payload: "recent-files",
-      icon: "📄",
       fuzzyKeywords: ["recent", "files", "edited", "open"],
     });
   }
@@ -838,7 +808,6 @@ export function getContextAwareCommands(context: ContextFilter): CommandDef[] {
       agent: "both",
       action: "ipc_command",
       payload: "get_git_log",
-      icon: "📜",
       fuzzyKeywords: ["git", "log", "commits", "history"],
       showWhenIdle: true,
     });

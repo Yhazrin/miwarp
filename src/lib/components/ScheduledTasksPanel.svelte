@@ -71,7 +71,7 @@
         </div>
       {:else if filteredTasks.length === 0}
         <EmptyState
-          icon="🕐"
+          iconName="clock"
           title={t("scheduledTasks_empty")}
           class="h-32"
         />

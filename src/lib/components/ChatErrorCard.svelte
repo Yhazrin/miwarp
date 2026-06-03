@@ -1,6 +1,8 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
   import { classifyError } from "$lib/stores/types";
+  import Icon from "./Icon.svelte";
+  import type { LucideIconName } from "$lib/lucide-icon";
 
   interface Props {
     error: string;
@@ -25,21 +27,24 @@
   }: Props = $props();
 
   let classified = $derived(classifyError(resultSubtype, error));
-  let catIcon = $derived(
-    classified.category === "context_limit"
-      ? "⚠"
-      : classified.category === "auth_issue"
-        ? "🔑"
-        : classified.category === "budget_limit"
-          ? "💰"
-          : classified.category === "server_issue"
-            ? "☁"
-            : classified.category === "session_timeout"
-              ? "⏱"
-              : classified.category === "tool_issue"
-                ? "🔧"
-                : "❌",
-  );
+  let catIconName = $derived.by((): LucideIconName => {
+    switch (classified.category) {
+      case "context_limit":
+        return "triangle-alert";
+      case "auth_issue":
+        return "lock";
+      case "budget_limit":
+        return "target";
+      case "server_issue":
+        return "globe";
+      case "session_timeout":
+        return "timer";
+      case "tool_issue":
+        return "wrench";
+      default:
+        return "x";
+    }
+  });
 </script>
 
 <div
@@ -50,7 +55,7 @@
     class="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm backdrop-blur-sm animate-fade-in"
   >
     <div class="flex items-start gap-2">
-      <span class="shrink-0 text-base leading-none mt-0.5">{catIcon}</span>
+      <Icon name={catIconName} size="sm" class="shrink-0 text-destructive mt-0.5" />
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-1">
           <span class="text-[10px] font-medium uppercase tracking-wider text-destructive/70"
@@ -80,10 +85,10 @@
           onclick={onFork}>{t("statusbar_fork")}</button
         >
       {/if}
-      {#if classified.settingsLink}
+      {#if classified.settingsPath}
         <button type="button"
-          class="rounded px-2.5 py-1 text-xs bg-destructive/20 hover:bg-destructive/30 text-destructive transition-colors"
-          onclick={() => onGotoSettings(classified.settingsLink)}>{t("chat_checkSettings")}</button
+          class="rounded px-2.5 py-1 text-xs bg-accent hover:bg-accent/80 text-foreground transition-colors"
+          onclick={() => onGotoSettings(classified.settingsPath!)}>{t("error_openSettings")}</button
         >
       {/if}
     </div>

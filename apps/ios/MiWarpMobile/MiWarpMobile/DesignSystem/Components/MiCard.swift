@@ -33,6 +33,6 @@ struct MiCard<Content: View>: View {
                 .foregroundColor(.secondary)
         }
     }
-    .environmentObject(MWTheme())
+    .environmentObject(MWTheme.shared)
     .padding()
 }

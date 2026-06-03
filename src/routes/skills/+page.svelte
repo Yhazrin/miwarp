@@ -168,7 +168,7 @@
               : 'text-muted-foreground hover:bg-accent'}"
             onclick={() => (selectedCategory = cat.value)}
           >
-            {cat.icon}
+            <Icon name={cat.icon} size="xs" class="inline" />
             {cat.label}
           </button>
         {/each}
@@ -218,9 +218,9 @@
           {/each}
         </div>
       {:else if filteredSkills().length === 0 && searchQuery}
-        <EmptyState icon="✨" title={t("skills_noResults")} class="h-40" />
+        <EmptyState iconName="sparkles" title={t("skills_noResults")} class="h-40" />
       {:else if filteredSkills().length === 0}
-        <EmptyState icon="✨" title={t("skills_empty")} class="h-40">
+        <EmptyState iconName="sparkles" title={t("skills_empty")} class="h-40">
           {#snippet action()}
             <button type="button"
               class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
@@ -244,7 +244,7 @@
       {/if}
     {:else if activeTab === "history"}
       {#if skillStore.executions.length === 0}
-        <EmptyState icon="⏱️" title={t("skills_noHistory")} class="h-40" />
+        <EmptyState iconName="timer" title={t("skills_noHistory")} class="h-40" />
       {:else}
         <div class="space-y-3">
           {#each skillStore.recentExecutions as execution (execution.id)}
