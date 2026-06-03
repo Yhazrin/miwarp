@@ -1,29 +1,38 @@
-name: Release
+name: Build Artifacts
 
 on:
   push:
-    tags: ["v*"]
+    branches: [master]
+  workflow_dispatch:
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: build-artifacts-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
     name: Build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
-    permissions:
-      contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-latest
             target: universal-apple-darwin
+            artifact_name: miwarp-macos
+            artifact_paths: |
+              src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+            artifact_name: miwarp-windows
+            artifact_paths: |
+              src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+            artifact_name: miwarp-linux
+            artifact_paths: |
+              src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
+              src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
 
     steps:
       - uses: actions/checkout@v4
@@ -48,17 +57,6 @@ jobs:
 
       - run: npm ci
 
-      - name: Verify package.json version matches git tag
-        shell: bash
-        run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          PKG="$(node -p "require('./package.json').version")"
-          echo "tag=v${TAG} package.json=${PKG}"
-          if [ "$TAG" != "$PKG" ]; then
-            echo "::error::Version mismatch: git tag v${TAG} but package.json is ${PKG}. Run: npm run release ${TAG}"
-            exit 1
-          fi
-
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target == 'universal-apple-darwin' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.target }}
@@ -66,20 +64,17 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          key: ${{ matrix.target }}
+          key: artifacts-${{ matrix.target }}
 
-      # Set repository secret TAURI_SIGNING_PRIVATE_KEY to the contents of src-tauri/miwarp.key
-      # (generate locally: npm run tauri signer generate -- -w src-tauri/miwarp.key -p "")
-      - name: Build Tauri app and upload release assets
+      - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: MiWarp ${{ github.ref_name }}
-          generateReleaseNotes: true
-          uploadUpdaterJson: true
-          updaterJsonPreferNsis: true
           args: --target ${{ matrix.target }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}-${{ github.sha }}
+          path: ${{ matrix.artifact_paths }}
+          if-no-files-found: error
+          retention-days: 14
