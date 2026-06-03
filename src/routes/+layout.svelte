@@ -44,6 +44,7 @@
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
   import TopWindowDrag from "$lib/components/TopWindowDrag.svelte";
   import { IS_MAC } from "$lib/utils/platform";
+  import { applyUiZoomCssVar, clampUiZoom, layoutPx } from "$lib/utils/ui-zoom";
   import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
   import type {
     TaskRun,
@@ -75,7 +76,12 @@
     setStoredRemoteCwd,
   } from "$lib/utils/remote-cwd";
   import { page } from "$app/stores";
-  import { goto, afterNavigate } from "$app/navigation";
+  import { goto, afterNavigate, beforeNavigate } from "$app/navigation";
+  import {
+    beginRouteTransition,
+    endRouteTransition,
+  } from "$lib/utils/route-transition";
+  import { armChatSettingsHop } from "$lib/utils/chat-settings-nav";
   import { onMount, setContext, untrack } from "svelte";
   import { fade } from "svelte/transition";
   import { installPreventRootOverscroll } from "$lib/utils/prevent-root-overscroll";
@@ -87,6 +93,7 @@
   import { TeamStore } from "$lib/stores/team-store.svelte";
   import { KeybindingStore } from "$lib/stores/keybindings.svelte";
   import { getTransport } from "$lib/transport";
+  import { LAYOUT_CHROME_CONTEXT_KEY, type LayoutChromeContext } from "$lib/layout-chrome-context";
   import { themeStore } from "$lib/stores/theme-store.svelte";
   import ToastHost from "$lib/components/ToastHost.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
@@ -805,7 +812,8 @@
   }
 
   function applyZoom(zoom?: number) {
-    const factor = Math.min(1.5, Math.max(0.75, zoom ?? 1.0));
+    const factor = clampUiZoom(zoom);
+    applyUiZoomCssVar(factor);
     import("@tauri-apps/api/webviewWindow")
       .then(({ getCurrentWebviewWindow }) => {
         getCurrentWebviewWindow()
@@ -1165,6 +1173,21 @@
         unlistenStatus = fn;
       });
 
+    let unlistenCliAutoSync: (() => void) | undefined;
+    transport
+      .listen("ocv:cli-auto-sync", (payload: unknown) => {
+        dbg("layout", "cli-auto-sync", payload);
+        loadRuns();
+        window.dispatchEvent(new Event("ocv:runs-changed"));
+      })
+      .then((fn) => {
+        if (destroyed) {
+          fn();
+          return;
+        }
+        unlistenCliAutoSync = fn;
+      });
+
     // Visual performance mode hot-update (dispatched from settings page)
     const onPerfModeChanged = (e: Event) => {
       const mode = (e as CustomEvent).detail?.mode;
@@ -1185,6 +1208,7 @@
     return () => {
       resizeCleanup?.(); // Clean up resize drag if component unmounts mid-drag
       unlistenStatus?.();
+      unlistenCliAutoSync?.();
       clearInterval(interval);
       clearInterval(teamPollInterval);
       if (debounceTimer) clearTimeout(debounceTimer);
@@ -1587,17 +1611,25 @@
   // Icon rail visibility (driven by user setting, default true)
   const iconRailEnabled = $derived(settings?.icon_rail_enabled !== false);
   const mascotEnabled = $derived(settings?.mascot_enabled !== false);
+  const uiZoom = $derived(clampUiZoom(settings?.ui_zoom));
+
   /** Left inset for TopWindowDrag — matches titlebar action buttons after traffic lights. */
   const windowChromeLeftInset = $derived.by(() => {
-    const actionsInset = IS_MAC ? 80 : 12;
-    const control = IS_MAC ? 12 : 14;
-    const gap = IS_MAC ? 8 : 6;
+    const z = uiZoom;
+    const actionsInset = layoutPx(IS_MAC ? 80 : 12, z);
+    const control = layoutPx(IS_MAC ? 12 : 14, z);
+    const gap = layoutPx(IS_MAC ? 8 : 6, z);
+    if (isChatPage) {
+      return Math.round(actionsInset + layoutPx(8, z));
+    }
     let actions = 1;
     if (!isSettingsPage) actions += 1;
     if (needsLayoutContentPanel) actions += 2;
-    return actionsInset + actions * control + Math.max(0, actions - 1) * gap + 8;
+    return Math.round(
+      actionsInset + actions * control + Math.max(0, actions - 1) * gap + layoutPx(8, z),
+    );
   });
-  const titlebarBandHeight = $derived(IS_MAC ? 28 : 32);
+  const titlebarBandHeight = $derived(Math.round(layoutPx(32, uiZoom)));
   // Effective sidebar width depends on whether the rail is shown
   const sidebarEffectiveWidth = $derived(
     !iconRailEnabled
@@ -1719,6 +1751,50 @@
   }
 
   setContext("toggleSidebar", toggleSidebar);
+
+  let layoutChromeState = $state({ sidebarOpen: true });
+  $effect(() => {
+    layoutChromeState.sidebarOpen = sidebarOpen && needsLayoutContentPanel;
+  });
+  setContext<LayoutChromeContext>(LAYOUT_CHROME_CONTEXT_KEY, {
+    get state() {
+      return layoutChromeState;
+    },
+    toggleSidebar,
+    newChat,
+    openCliBrowser: () => {
+      showCliBrowser = true;
+    },
+    openSettings: () => {
+      beginRouteTransition();
+      void goto("/settings").finally(endRouteTransition);
+    },
+  });
+
+  function pathIsChat(pathname: string): boolean {
+    return pathname === "/chat" || pathname === "/";
+  }
+
+  function pathIsSettings(pathname: string): boolean {
+    return pathname.startsWith("/settings");
+  }
+
+  beforeNavigate(({ from, to }) => {
+    if (!from || !to) return;
+    const a = from.url.pathname;
+    const b = to.url.pathname;
+    if (
+      (pathIsChat(a) && pathIsSettings(b)) ||
+      (pathIsSettings(a) && pathIsChat(b))
+    ) {
+      beginRouteTransition();
+      armChatSettingsHop();
+    }
+  });
+
+  afterNavigate(() => {
+    endRouteTransition();
+  });
 
   // Auto-expand folder containing selected run (chats tab only)
   // Track runId + runs.length as change signals. runs.length is the most
@@ -1928,7 +2004,9 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-{@render windowChromeToolbar()}
+{#if !isChatPage && !isSettingsPage}
+  {@render windowChromeToolbar()}
+{/if}
 
 <!-- eslint-disable-next-line svelte/no-dupe-style-properties — 100vh is a fallback for browsers without dvh support -->
 <div class="flex w-screen overflow-hidden" style="height: 100vh; height: 100dvh; {statusColorVars}">
@@ -2463,7 +2541,7 @@
                 {#if !projectCwd}
                   {@const lastRemote = getLastTarget()}
                   <EmptyState
-                    icon="📂"
+                    iconName="folder-open"
                     title={lastRemote
                       ? t("layout_remoteFileTreeUnavailable")
                       : t("sidebar_selectProjectBrowse")}
@@ -2474,7 +2552,7 @@
                     <Spinner size="sm" />
                   </div>
                 {:else if fileTree.length === 0}
-                  <EmptyState icon="📂" title={t("sidebar_emptyDirectory")} class="py-8" />
+                  <EmptyState iconName="folder-open" title={t("sidebar_emptyDirectory")} class="py-8" />
                 {:else}
                   {@render treeNodes(fileTree)}
                 {/if}
@@ -2483,7 +2561,7 @@
               <!-- Git tab -->
               {#if !projectCwd}
                 <div class="flex-1 flex items-center justify-center px-3">
-                  <EmptyState icon="🔀" title={t("sidebar_selectProjectGit")} class="py-8" />
+                  <EmptyState iconName="git-merge" title={t("sidebar_selectProjectGit")} class="py-8" />
                 </div>
               {:else if gitLoading}
                 <div class="flex-1 flex items-center justify-center">
@@ -2491,7 +2569,7 @@
                 </div>
               {:else if !gitSummary}
                 <div class="flex-1 flex items-center justify-center px-3">
-                  <EmptyState icon="🔀" title={t("sidebar_notGitRepo")} class="py-8" />
+                  <EmptyState iconName="git-merge" title={t("sidebar_notGitRepo")} class="py-8" />
                 </div>
               {:else}
                 <!-- Branch info -->
@@ -2767,7 +2845,7 @@
           {:else if isChatPage}
             {#if runSearchQuery.trim()}
               <!-- Search results -->
-              <div class="flex-1 overflow-y-auto">
+              <div class="sidebar-scroll flex-1 overflow-y-auto">
                 {#if searching && visibleSearchResults.length === 0}
                   <div class="flex items-center justify-center py-10">
                     <Spinner size="sm" />
@@ -2807,7 +2885,7 @@
               </div>
             {:else}
               <!-- Unified project + sub-folder tree -->
-              <div class="flex-1 overflow-y-auto px-2 py-1">
+              <div class="sidebar-scroll flex-1 overflow-y-auto px-2 py-1">
                 {#each enrichedProjectFolders as folder (folder.folderKey)}
                   <ProjectFolderItem
                     {folder}

@@ -1,5 +1,9 @@
 <script lang="ts">
   import { onMount, getContext } from "svelte";
+  import { goto } from "$app/navigation";
+  import { beginRouteTransition, endRouteTransition } from "$lib/utils/route-transition";
+  import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
+  import { disarmChatSettingsHop } from "$lib/utils/chat-settings-nav";
   import { slide } from "svelte/transition";
   import { page } from "$app/stores";
   import * as api from "$lib/api";
@@ -50,6 +54,7 @@
     normalizeProcessVisibility,
     persistCachedProcessVisibility,
   } from "$lib/utils/process-visibility";
+  import { applyUiZoomCssVar, clampUiZoom } from "$lib/utils/ui-zoom";
 
   // ── Tab state ──
   type SettingsTab =
@@ -365,16 +370,18 @@
   let zoomFlying = false;
 
   async function applyZoomQueued(factor: number) {
+    const zoom = clampUiZoom(factor);
+    applyUiZoomCssVar(zoom);
     if (zoomFlying) {
-      pendingZoom = factor;
+      pendingZoom = zoom;
       return;
     }
 
     zoomFlying = true;
     try {
       const wv = await getWebview();
-      await wv.setZoom(factor);
-      dbg("settings", "applyZoomQueued", { factor });
+      await wv.setZoom(zoom);
+      dbg("settings", "applyZoomQueued", { factor: zoom });
     } catch (e) {
       dbgWarn("settings", "applyZoomQueued failed", e);
     }
@@ -391,6 +398,7 @@
     const factor = clampZoom(raw);
     if (factor === null) return;
     zoomPreview = factor;
+    void applyZoomQueued(factor);
   }
 
   let displaySaved = $state(false);
@@ -408,7 +416,7 @@
     } catch (e) {
       dbgWarn("settings", "commitZoom save failed", e);
       // Rollback to last persisted value
-      const fallback = Math.min(1.5, Math.max(0.75, settings?.ui_zoom ?? 1.0));
+      const fallback = clampUiZoom(settings?.ui_zoom);
       zoomPreview = fallback;
       pendingZoom = null;
       void applyZoomQueued(fallback);
@@ -1256,7 +1264,15 @@
     window.dispatchEvent(new CustomEvent("ocv:show-wizard"));
   }
 
-  onMount(async () => {
+  function navigateBackFromSettings() {
+    const target = chatViewCache.lastChatHref || "/chat";
+    beginRouteTransition();
+    void goto(target).finally(endRouteTransition);
+  }
+
+  onMount(() => {
+    disarmChatSettingsHop();
+    void (async () => {
     try {
       settings = await api.getUserSettings();
       authMode = settings.auth_mode ?? "cli";
@@ -1288,56 +1304,61 @@
     } catch (e) {
       dbgWarn("settings", "error", e);
     }
-    // Load auth overview
-    api
-      .getAuthOverview()
-      .then((ov) => (authOverview = ov))
-      .catch((e) => {
-        dbgWarn("settings", "failed to load auth overview", e);
-      });
-    // Load web server status + token (desktop only)
-    if (getTransport().isDesktop()) {
-      Promise.all([api.getWebServerStatus(), api.getWebServerToken()])
-        .then(async ([status, token]) => {
-          webStatus = status;
-          webToken = token;
-          // Initialize form fields from settings
-          webPortInput = String(settings?.web_server_port ?? 9476);
-          webBindValue = settings?.web_server_bind ?? "127.0.0.1";
-          webOrigins = [...(settings?.web_server_allowed_origins ?? [])];
-          webTunnelUrl = settings?.web_server_tunnel_url ?? "";
-          dbg("settings", "webServer loaded", {
-            enabled: status?.enabled,
-            hasToken: !!token,
-            tunnel: webTunnelUrl,
-          });
-          if (status?.running) await refreshLanIp(status.bind);
-        })
+
+    const deferHeavy = () => {
+      api
+        .getAuthOverview()
+        .then((ov) => (authOverview = ov))
         .catch((e) => {
-          dbgWarn("settings", "webServer load failed", e);
+          dbgWarn("settings", "failed to load auth overview", e);
         });
+      if (getTransport().isDesktop()) {
+        Promise.all([api.getWebServerStatus(), api.getWebServerToken()])
+          .then(async ([status, token]) => {
+            webStatus = status;
+            webToken = token;
+            webPortInput = String(settings?.web_server_port ?? 9476);
+            webBindValue = settings?.web_server_bind ?? "127.0.0.1";
+            webOrigins = [...(settings?.web_server_allowed_origins ?? [])];
+            webTunnelUrl = settings?.web_server_tunnel_url ?? "";
+            dbg("settings", "webServer loaded", {
+              enabled: status?.enabled,
+              hasToken: !!token,
+              tunnel: webTunnelUrl,
+            });
+            if (status?.running) await refreshLanIp(status.bind);
+          })
+          .catch((e) => {
+            dbgWarn("settings", "webServer load failed", e);
+          });
+      }
+      loadCliInfo();
+      void checkAllLocalProxies();
+      if (selectedPlatform?.category === "local") {
+        void checkLocalProxy();
+      }
+      import("@tauri-apps/api/path")
+        .then(async (p) => {
+          const home = await p.homeDir();
+          const parts = splitPath(home.replace(/[/\\]+$/, ""));
+          currentUsername = parts[parts.length - 1] || "";
+          const absPath = await p.join(home, ".claude", "keybindings.json");
+          return api.readTextFile(absPath);
+        })
+        .then(() => {
+          cliSource = "file";
+        })
+        .catch(() => {
+          cliSource = "defaults";
+        });
+    };
+
+    if (typeof requestIdleCallback !== "undefined") {
+      requestIdleCallback(deferHeavy, { timeout: 120 });
+    } else {
+      requestAnimationFrame(deferHeavy);
     }
-    loadCliInfo();
-    // Auto-detect local proxies
-    checkAllLocalProxies();
-    if (selectedPlatform?.category === "local") {
-      checkLocalProxy();
-    }
-    // Detect current username + CLI keybindings source
-    import("@tauri-apps/api/path")
-      .then(async (p) => {
-        const home = await p.homeDir();
-        const parts = splitPath(home.replace(/[/\\]+$/, ""));
-        currentUsername = parts[parts.length - 1] || "";
-        const absPath = await p.join(home, ".claude", "keybindings.json");
-        return api.readTextFile(absPath);
-      })
-      .then(() => {
-        cliSource = "file";
-      })
-      .catch(() => {
-        cliSource = "defaults";
-      });
+    })();
   });
 
   async function saveGeneralPatch(patch: Record<string, unknown>) {
@@ -1602,7 +1623,7 @@
         <button
           type="button"
           class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-          onclick={() => history.back()}
+          onclick={navigateBackFromSettings}
           title={t("common_back")}
           aria-label={t("common_back")}
         >
@@ -2423,6 +2444,88 @@
                 </div>
               </div>
 
+              <!-- User Avatar -->
+              <div class="space-y-2">
+                <div>
+                  <p class="text-sm font-medium text-foreground">
+                    {t("settings_userAvatar") || "用户头像"}
+                  </p>
+                  <p class="text-xs text-muted-foreground mt-0.5">
+                    {t("settings_userAvatarDesc") ||
+                      "选择一张图片作为你发送消息时显示的头像。留空则使用默认占位。"}
+                  </p>
+                </div>
+                <div class="flex items-center gap-3">
+                  <div
+                    class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground overflow-hidden"
+                  >
+                    {#if settings?.avatar_path}
+                      <img
+                        src={`file://${settings.avatar_path}`}
+                        alt="avatar preview"
+                        class="h-full w-full object-cover"
+                      />
+                    {:else}
+                      <svg
+                        class="h-5 w-5"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                    {/if}
+                  </div>
+                  <div class="flex flex-col gap-1">
+                    <button type="button"
+                      class="rounded-md border border-border/40 bg-background/40 px-3 py-1 text-xs hover:bg-muted/30 transition-colors w-fit"
+                      onclick={async () => {
+                        try {
+                          const { open } = await import("@tauri-apps/plugin-dialog");
+                          const selected = await open({
+                            multiple: false,
+                            directory: false,
+                            filters: [
+                              {
+                                name: "Image",
+                                extensions: ["png", "jpg", "jpeg", "gif", "webp", "svg"],
+                              },
+                            ],
+                          });
+                          if (!selected) return;
+                          const path = selected as string;
+                          settings = await api.updateUserSettings({
+                            avatar_path: path,
+                          } as Partial<UserSettings>);
+                          window.dispatchEvent(new CustomEvent("user-settings-changed"));
+                        } catch (e) {
+                          dbgWarn("settings", "avatar pick failed", e);
+                        }
+                      }}
+                    >
+                      {t("settings_userAvatarChoose") || "选择图片…"}
+                    </button>
+                    {#if settings?.avatar_path}
+                      <button type="button"
+                        class="rounded-md px-3 py-1 text-xs text-muted-foreground hover:text-destructive transition-colors w-fit"
+                        onclick={async () => {
+                          settings = await api.updateUserSettings({
+                            avatar_path: undefined,
+                          } as unknown as Partial<UserSettings>);
+                          window.dispatchEvent(new CustomEvent("user-settings-changed"));
+                        }}
+                      >
+                        {t("settings_userAvatarClear") || "清除"}
+                      </button>
+                    {/if}
+                  </div>
+                </div>
+              </div>
+
               <!-- Visual Performance Mode -->
               <div class="space-y-2">
                 <div>
@@ -2543,6 +2646,71 @@
                 description={t("settings_iconRailEnabledDesc") ||
                   "在窗口左侧显示包含聊天/团队/记忆等入口的纵向图标栏。关闭后，设置入口会显示在会话列表左下角；收起会话列表时，设置图标悬浮在窗口左下角。"}
               />
+              <SettingsToggle
+                checked={settings?.cli_auto_sync_enabled !== false}
+                onchange={async (v) => {
+                  const prev = settings;
+                  if (settings) settings = { ...settings, cli_auto_sync_enabled: v };
+                  try {
+                    settings = await api.updateUserSettings({
+                      cli_auto_sync_enabled: v,
+                    } as Partial<UserSettings>);
+                  } catch {
+                    settings = prev;
+                  }
+                }}
+                label={t("settings_cliAutoSyncEnabled")}
+                description={t("settings_cliAutoSyncEnabledDesc")}
+              />
+              {#if settings?.cli_auto_sync_enabled !== false}
+                <div class="flex flex-col gap-1.5 pl-1">
+                  <label class="text-sm font-medium text-[var(--text-primary)]" for="cli-auto-sync-interval">
+                    {t("settings_cliAutoSyncInterval")}
+                  </label>
+                  <p class="text-xs text-[var(--text-muted)]">
+                    {t("settings_cliAutoSyncIntervalDesc")}
+                  </p>
+                  <input
+                    id="cli-auto-sync-interval"
+                    type="number"
+                    min="1"
+                    max="120"
+                    class="w-28 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-3 py-1.5 text-sm text-[var(--text-primary)]"
+                    value={settings?.cli_auto_sync_interval_minutes ?? 5}
+                    onchange={async (e) => {
+                      const raw = parseInt((e.currentTarget as HTMLInputElement).value, 10);
+                      const mins = Number.isFinite(raw) ? Math.min(120, Math.max(1, raw)) : 5;
+                      const prev = settings;
+                      if (settings) {
+                        settings = { ...settings, cli_auto_sync_interval_minutes: mins };
+                      }
+                      try {
+                        settings = await api.updateUserSettings({
+                          cli_auto_sync_interval_minutes: mins,
+                        } as Partial<UserSettings>);
+                      } catch {
+                        settings = prev;
+                      }
+                    }}
+                  />
+                </div>
+                <SettingsToggle
+                  checked={settings?.cli_auto_sync_import_new === true}
+                  onchange={async (v) => {
+                    const prev = settings;
+                    if (settings) settings = { ...settings, cli_auto_sync_import_new: v };
+                    try {
+                      settings = await api.updateUserSettings({
+                        cli_auto_sync_import_new: v,
+                      } as Partial<UserSettings>);
+                    } catch {
+                      settings = prev;
+                    }
+                  }}
+                  label={t("settings_cliAutoSyncImportNew")}
+                  description={t("settings_cliAutoSyncImportNewDesc")}
+                />
+              {/if}
             </Card>
 
             <Card class="p-6">

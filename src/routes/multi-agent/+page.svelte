@@ -11,6 +11,7 @@
   import Spinner from "$lib/components/Spinner.svelte";
   import { dbgWarn } from "$lib/utils/debug";
   import { fade } from "svelte/transition";
+  import Icon from "$lib/components/Icon.svelte";
 
   const presets = multiAgentService.getPresets();
   let _selectedConfig = $state<MultiAgentConfig | null>(null);
@@ -53,7 +54,7 @@
     <h2 class="text-lg font-medium mb-4">{t("multiAgent_presetSelect")}</h2>
     {#if presets.length === 0}
       <EmptyState
-        icon="🤖"
+        iconName="bot"
         title={t("multiAgent_noPresetsTitle")}
         description={t("multiAgent_noPresetsDesc")}
       />
@@ -118,11 +119,11 @@
           >
             <div class="flex items-center gap-3">
               {#if result.status === "completed"}
-                <span class="text-2xl">✅</span>
+                <Icon name="check-square" size="lg" class="text-miwarp-status-success shrink-0" />
               {:else if result.status === "failed"}
-                <span class="text-2xl">❌</span>
+                <Icon name="x" size="lg" class="text-miwarp-status-error shrink-0" />
               {:else}
-                <span class="text-2xl">⏳</span>
+                <Icon name="loader-2" size="lg" class="text-miwarp-status-warning shrink-0 animate-spin" />
               {/if}
               <div>
                 <div class="font-medium">{result.agentId}</div>

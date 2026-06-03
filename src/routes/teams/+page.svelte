@@ -509,7 +509,7 @@
             </div>
           {:else if teamRuns.length === 0}
             <EmptyState
-              icon="👥"
+              iconName="users"
               description={t("teamRun_emptyDesc")}
               class="px-4"
             >
@@ -717,7 +717,7 @@
     <div class="flex-1 min-h-0">
       {#if teamStore.teams.length === 0 && !teamStore.loading}
         <EmptyState
-          icon="👥"
+          iconName="users"
           title={t("team_noActiveTeams")}
           description={t("team_emptyDesc")}
           class="h-full px-6"
@@ -1187,7 +1187,7 @@
 
               <div class="flex-1 overflow-y-auto px-3 py-2 space-y-2">
                 {#if teamStore.tasks.length === 0}
-                  <EmptyState icon="📋" title={t("team_noTasks")} class="py-6" />
+                  <EmptyState iconName="clipboard-list" title={t("team_noTasks")} class="py-6" />
                 {/if}
 
                 {#if teamStore.inProgressTasks.length > 0}

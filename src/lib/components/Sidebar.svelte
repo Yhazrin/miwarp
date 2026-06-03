@@ -118,7 +118,8 @@
         {pageLabel}
       </span>
       {#if onNewChat}
-        <button type="button"
+        <button
+          type="button"
           class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
           onclick={() => onNewChat?.()}
           title={t("sidebar_newConversation")}
@@ -156,7 +157,7 @@
     </div>
 
     <!-- Content area -->
-    <div class="flex-1 overflow-y-auto px-2 py-1">
+    <div class="sidebar-scroll flex-1 overflow-y-auto px-2 py-1">
       {#if isSearching}
         <!-- Searching indicator -->
         {#if searching && searchResultCount === 0}
@@ -202,20 +203,21 @@
 
         <!-- Open folder button -->
         {#if onPickFolder}
-          <button type="button"
+          <button
+            type="button"
             class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
             onclick={() => onPickFolder?.()}
           >
             <Icon name="plus" size="sm" class="shrink-0" />
-            <span>{t('sidebar_openFolder')}</span>
+            <span>{t("sidebar_openFolder")}</span>
           </button>
         {/if}
 
         <!-- Empty state -->
         {#if projectFolders.length === 0}
           <EmptyState
-            title={t('sidebar_emptyTitle')}
-            description={t('sidebar_emptySubtitle')}
+            title={t("sidebar_emptyTitle")}
+            description={t("sidebar_emptySubtitle")}
             class="px-3 py-8"
           />
         {/if}

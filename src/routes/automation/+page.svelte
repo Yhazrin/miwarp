@@ -138,7 +138,7 @@
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-xl font-semibold flex items-center gap-2">
-          <span>⚡</span>
+          <Icon name="zap" size="lg" class="text-primary" />
           {t("automation_title") || "Automation Scripts"}
         </h1>
         <p class="text-sm text-muted-foreground mt-1">
@@ -150,7 +150,8 @@
           class="rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
           onclick={handleImportScript}
         >
-          📥 {t("automation_import")}
+          <Icon name="download" size="sm" class="inline" />
+          {t("automation_import")}
         </button>
         <button type="button"
           class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
@@ -195,7 +196,7 @@
               : 'bg-accent text-accent-foreground hover:bg-accent/80'}"
             onclick={() => (selectedCategory = cat.value)}
           >
-            {cat.icon}
+            <Icon name={cat.icon} size="xs" class="inline" />
             {CATEGORY_I18N[cat.value] ? t(CATEGORY_I18N[cat.value] as never) : cat.label} ({count})
           </button>
         {/each}
@@ -205,7 +206,7 @@
     <!-- Scripts grid -->
     {#if filteredScripts.length === 0}
       <EmptyState
-        icon="⚡"
+        iconName="zap"
         title={t("automation_emptyTitle")}
         description={t("automation_emptyDesc")}
         variant="dashed"

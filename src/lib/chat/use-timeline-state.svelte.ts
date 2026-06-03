@@ -149,42 +149,8 @@ export function useTimelineState(ctx: TimelineStateContext): TimelineStateHandle
     toolFilter = null;
   });
 
-  // ── Top-sentinel IntersectionObserver ──
-  // When the sentinel element enters the chat viewport, trigger loading more
-  // earlier timeline entries (progressive rendering).
-
-  let _topObserver: IntersectionObserver | null = null;
-
-  $effect(() => {
-    const sentinel = topSentinel;
-    const chatArea = getChatAreaRef();
-
-    if (!sentinel || !chatArea) {
-      _topObserver?.disconnect();
-      _topObserver = null;
-      return;
-    }
-
-    _topObserver?.disconnect();
-    _topObserver = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (!entry?.isIntersecting) return;
-        if (!loadMoreArmed || loadingMore) return;
-        const hidden = filteredTimeline.length - renderLimit;
-        if (hidden <= 0) return;
-        dbg("chat", "progressive-load-more", { renderLimit, hidden });
-        void loadMoreEarlier();
-      },
-      { root: chatArea, rootMargin: "200px 0px 0px 0px", threshold: 0 },
-    );
-    _topObserver.observe(sentinel);
-
-    return () => {
-      _topObserver?.disconnect();
-      _topObserver = null;
-    };
-  });
+  // Progressive "load earlier" is driven from handleChatScroll (scrollTop near top),
+  // not IntersectionObserver — IO + 200px rootMargin fired too early and fought scroll.
 
   // ── Public API ──
 

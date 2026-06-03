@@ -17,7 +17,6 @@
   import { t } from "$lib/i18n/index.svelte";
   import { slide } from "svelte/transition";
   import { showToast } from "$lib/stores/toast-store.svelte";
-  import { formatTokenCount } from "$lib/utils/format";
   import Icon from "$lib/components/Icon.svelte";
 
   interface Props {
@@ -28,14 +27,6 @@
     creationMode?: "single" | "worktree" | string | null;
     runId?: string;
     onViewChanges?: () => void;
-    sessionInfo?: {
-      model?: string;
-      agent?: string;
-      remoteHostName?: string | null;
-      inputTokens?: number;
-      outputTokens?: number;
-      contextUtilization?: number;
-    } | null;
   }
 
   let {
@@ -46,7 +37,6 @@
     creationMode = null,
     runId = "",
     onViewChanges,
-    sessionInfo = null,
   }: Props = $props();
 
   interface PanelState {
@@ -78,28 +68,6 @@
   const isWorktreeSession = $derived(creationMode === "worktree");
   const displayedBranch = $derived(panelState.branch || worktreeBranch?.trim() || "");
   const isDetached = $derived(panelState.isDetached);
-
-  // Session context items derived from sessionInfo
-  const sessionContextItems = $derived.by(() => {
-    const items: Array<{ label: string; value: string }> = [];
-    if (sessionInfo?.model) items.push({ label: "model", value: sessionInfo.model });
-    if (sessionInfo?.agent) items.push({ label: "agent", value: sessionInfo.agent });
-    if (sessionInfo?.remoteHostName)
-      items.push({ label: "remote", value: sessionInfo.remoteHostName });
-    if (sessionInfo?.inputTokens || sessionInfo?.outputTokens) {
-      items.push({
-        label: "tokens",
-        value: `${formatTokenCount((sessionInfo?.inputTokens ?? 0) + (sessionInfo?.outputTokens ?? 0))}`,
-      });
-    }
-    if (sessionInfo?.contextUtilization != null) {
-      items.push({
-        label: "context",
-        value: `${Math.round(sessionInfo.contextUtilization * 100)}%`,
-      });
-    }
-    return items;
-  });
 
   let showWorktreeList = $state(false);
   let prBusy = $state(false);
@@ -319,18 +287,6 @@
           {statusText}
         </div>
       {/if}
-
-      <!-- Row 3: session context items (model, agent, tokens, context) -->
-      {#if sessionContextItems.length > 0}
-        <div class="flex items-center gap-2 px-1 py-1 h-[28px] flex-wrap">
-          {#each sessionContextItems as ctx (ctx.label)}
-            <div class="flex items-center gap-1 text-[10px]">
-              <span class="text-muted-foreground/40">{ctx.label}</span>
-              <span class="text-foreground/60">{ctx.value}</span>
-            </div>
-          {/each}
-        </div>
-      {/if}
     </div>
 
     <!-- Timeline section -->
@@ -436,7 +392,13 @@
           class="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-accent/20 transition-colors"
           onclick={() => (showWorktreeList = !showWorktreeList)}
         >
-          <Icon name="chevron-right" size="xs" class="shrink-0 text-muted-foreground/60 transition-transform {showWorktreeList ? 'rotate-90' : ''}" />
+          <Icon
+            name="chevron-right"
+            size="xs"
+            class="shrink-0 text-muted-foreground/60 transition-transform {showWorktreeList
+              ? 'rotate-90'
+              : ''}"
+          />
           <span class="text-[10px] font-medium text-muted-foreground/70">
             {t("gitWorktree_all_worktrees", { count: String(panelState.worktrees.length) })}
           </span>

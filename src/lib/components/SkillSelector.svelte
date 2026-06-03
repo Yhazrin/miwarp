@@ -117,7 +117,7 @@
       style={dropdownStyle}
     >
       {#if isEmpty}
-        <EmptyState icon="⚡" title={t("skillSelector_empty")} class="py-4" />
+        <EmptyState iconName="zap" title={t("skillSelector_empty")} class="py-4" />
       {:else}
         <div class="p-1">
           <!-- Skills group -->

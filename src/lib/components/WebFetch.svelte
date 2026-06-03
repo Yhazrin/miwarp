@@ -5,6 +5,7 @@
    * Provides UI for fetching web pages and extracting content.
    */
   import { t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/Icon.svelte";
 
   interface WebFetchResult {
     content?: string;
@@ -211,7 +212,7 @@
   <!-- Error Display -->
   {#if error}
     <div class="flex items-center gap-2 p-3 bg-miwarp-status-error/10 border border-miwarp-status-error rounded-md">
-      <span class="text-xl">⚠️</span>
+      <Icon name="triangle-alert" size="lg" class="text-miwarp-status-error shrink-0" />
       <span class="flex-1 text-sm text-miwarp-status-error">{error}</span>
       <button type="button" class="px-2 py-1 bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onclick={() => (error = null)} title={t("common_close")} aria-label={t("common_close")}> × </button>
     </div>
@@ -220,7 +221,7 @@
   <!-- Loading -->
   {#if isLoading}
     <div class="flex items-center justify-center gap-2 p-6 text-miwarp-text-secondary">
-      <span class="text-2xl animate-spin">⏳</span>
+      <Icon name="loader-2" size="lg" class="animate-spin text-muted-foreground" />
       <span>{t("webfetch_fetchingContent")}</span>
     </div>
   {/if}

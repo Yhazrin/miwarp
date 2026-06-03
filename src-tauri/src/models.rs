@@ -337,6 +337,15 @@ pub struct UserSettings {
     /// Show left icon rail (Chat / Teams / Memory / Settings shortcuts).
     #[serde(default = "default_true")]
     pub icon_rail_enabled: bool,
+    /// Periodically sync CLI-imported sessions from ~/.claude transcript files.
+    #[serde(default = "default_true")]
+    pub cli_auto_sync_enabled: bool,
+    /// Minutes between automatic CLI sync passes.
+    #[serde(default = "default_cli_auto_sync_interval_minutes")]
+    pub cli_auto_sync_interval_minutes: u32,
+    /// Also import newly discovered CLI sessions (not only sync existing imports).
+    #[serde(default)]
+    pub cli_auto_sync_import_new: bool,
     /// Process visibility: output | guided | developer | expert (default developer).
     #[serde(default = "default_process_visibility")]
     pub process_visibility: String,
@@ -427,6 +436,10 @@ fn default_true() -> bool {
     true
 }
 
+fn default_cli_auto_sync_interval_minutes() -> u32 {
+    5
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlatformCredential {
     pub platform_id: String,
@@ -489,6 +502,9 @@ impl Default for UserSettings {
             show_token_usage_report: true,
             mascot_enabled: true,
             icon_rail_enabled: true,
+            cli_auto_sync_enabled: true,
+            cli_auto_sync_interval_minutes: 5,
+            cli_auto_sync_import_new: false,
             process_visibility: "developer".to_string(),
             visual_performance_mode: "auto".to_string(),
             session_status_colors: None,

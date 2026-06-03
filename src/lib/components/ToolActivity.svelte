@@ -680,7 +680,8 @@
   {@const style = getToolColor(node.tool.tool_name)}
   {@const detail = getToolDetail(node.tool)}
   {@const cat = categorizeBusStatus(node.tool.status)}
-  <button type="button"
+  <button
+    type="button"
     class="w-full text-left px-2.5 py-1 hover:bg-accent/50 rounded-sm transition-colors group {cat ===
     'error'
       ? 'border-l-2 border-l-[hsl(var(--miwarp-status-error)/0.4)] bg-[hsl(var(--miwarp-status-error)/0.03)]'
@@ -736,7 +737,7 @@
 {/if}
 <aside
   bind:this={asideEl}
-  class="relative h-full overflow-hidden transition-[width] duration-250 ease-out {collapsed
+  class="tool-activity-aside relative h-full overflow-hidden {collapsed
     ? 'bg-transparent'
     : 'bg-background/40 backdrop-blur-[28px] [backdrop-filter:blur(28px)_saturate(180%)] [-webkit-backdrop-filter:blur(28px)_saturate(180%)]'}"
   style="width: {collapsed
@@ -747,7 +748,8 @@
     <div
       class="absolute inset-1 z-30 flex flex-col items-center gap-1 rounded-2xl border border-[hsl(var(--miwarp-glass-border)/0.1)] bg-background/55 px-1 py-1.5 backdrop-blur-2xl shadow-[0_4px_20px_rgba(0,0,0,0.12),inset_0_1px_0_hsl(var(--miwarp-glass-border)/0.07)]"
     >
-      <button type="button"
+      <button
+        type="button"
         class="relative flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
         'workspace'
           ? 'bg-accent/30 text-foreground'
@@ -757,7 +759,8 @@
       >
         <Icon name="home" size="sm" />
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="relative flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
         'tools'
           ? 'bg-accent/30 text-foreground'
@@ -767,7 +770,8 @@
       >
         <Icon name="wrench" size="sm" />
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="relative flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
         'context'
           ? 'bg-accent/30 text-foreground'
@@ -777,12 +781,12 @@
       >
         <Icon name="clock" size="sm" />
         {#if contextHistory.length > 0}
-          <span
-            class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-miwarp-status-success"
+          <span class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-miwarp-status-success"
           ></span>
         {/if}
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="relative flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
         'files'
           ? 'bg-accent/30 text-foreground'
@@ -792,12 +796,12 @@
       >
         <Icon name="file" size="sm" />
         {#if fileEntries.length > 0}
-          <span
-            class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
+          <span class="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
           ></span>
         {/if}
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
         'preview'
           ? 'bg-accent/30 text-foreground'
@@ -807,7 +811,8 @@
       >
         <Icon name="monitor" size="sm" />
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="relative flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
         'tasks'
           ? 'bg-accent/30 text-foreground'
@@ -822,7 +827,8 @@
           ></span>
         {/if}
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="flex h-8 w-8 items-center justify-center rounded-xl transition-colors {activeTab ===
         'scheduled-tasks'
           ? 'bg-accent/30 text-foreground'
@@ -832,7 +838,8 @@
       >
         <Icon name="clock" size="sm" />
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="mt-auto flex h-8 w-8 items-center justify-center rounded-xl bg-accent/20 text-foreground transition-colors hover:bg-accent/30"
         onclick={onToggle}
         title={t("toolActivity_expand")}
@@ -843,7 +850,7 @@
   {/if}
   <!-- Always-mounted expanded panel (hidden + translated off-canvas when collapsed) -->
   <div
-    class="absolute top-0 left-0 h-full flex flex-col transition-transform duration-200"
+    class="tool-activity-aside-inner absolute top-0 left-0 h-full flex flex-col"
     style="width: {effectiveWidth}px; transform: translateX({collapsed
       ? '100%'
       : '0'}); visibility: {collapsed ? 'hidden' : 'visible'}; pointer-events: {collapsed
@@ -872,7 +879,8 @@
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-0.5 overflow-x-auto pr-1 scrollbar-hide">
             <!-- Workspace icon -->
-            <button type="button"
+            <button
+              type="button"
               class="p-1.5 rounded-xl transition-colors {activeTab === 'workspace'
                 ? 'bg-accent/30 text-foreground'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
@@ -882,7 +890,8 @@
               <Icon name="home" size="sm" />
             </button>
             <!-- Activity (tools) icon -->
-            <button type="button"
+            <button
+              type="button"
               class="p-1.5 rounded-xl transition-colors {activeTab === 'tools'
                 ? 'bg-accent/30 text-foreground'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
@@ -892,7 +901,8 @@
               <Icon name="wrench" size="sm" />
             </button>
             <!-- Context icon -->
-            <button type="button"
+            <button
+              type="button"
               class="p-1.5 rounded-xl transition-colors relative {activeTab === 'context'
                 ? 'bg-accent/30 text-foreground'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
@@ -907,7 +917,8 @@
               {/if}
             </button>
             <!-- Files icon -->
-            <button type="button"
+            <button
+              type="button"
               class="p-1.5 rounded-xl transition-colors relative {activeTab === 'files'
                 ? 'bg-accent/30 text-foreground'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
@@ -922,7 +933,8 @@
               {/if}
             </button>
             <!-- Preview icon -->
-            <button type="button"
+            <button
+              type="button"
               class="p-1.5 rounded-xl transition-colors {activeTab === 'preview'
                 ? 'bg-accent/30 text-foreground'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
@@ -943,7 +955,8 @@
               </svg>
             </button>
             <!-- Tasks icon -->
-            <button type="button"
+            <button
+              type="button"
               class="p-1.5 rounded-xl transition-colors relative {activeTab === 'tasks'
                 ? 'bg-accent/30 text-foreground'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
@@ -969,7 +982,8 @@
               {/if}
             </button>
             <!-- Scheduled Tasks icon -->
-            <button type="button"
+            <button
+              type="button"
               class="p-1.5 rounded-xl transition-colors {activeTab === 'scheduled-tasks'
                 ? 'bg-accent/30 text-foreground'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'}"
@@ -979,7 +993,8 @@
               <Icon name="clock" size="sm" />
             </button>
           </div>
-          <button type="button"
+          <button
+            type="button"
             class="rounded-xl p-1 text-muted-foreground transition-colors hover:bg-accent/30 hover:text-foreground"
             onclick={onToggle}
             title={t("toolActivity_collapse")}
@@ -1006,7 +1021,6 @@
           <WorkspaceContextPanel
             {cwd}
             {runId}
-            {sessionInfo}
             {toolStats}
             onSwitchToActivity={() => (activeTab = "tools")}
             onSwitchToFiles={() => (activeTab = "files")}
@@ -1039,7 +1053,8 @@
                     | { duration_ms?: number; tool_uses?: number; total_tokens?: number }
                     | undefined}
                   {@const toolUseId = item.tool_use_id}
-                  <button type="button"
+                  <button
+                    type="button"
                     class="w-full text-left mx-1.5 rounded px-2 py-1.5 transition-colors {isDone
                       ? 'text-foreground/40 hover:bg-accent/30'
                       : isFailed
@@ -1254,7 +1269,8 @@
                     ? 'border-l-2 border-l-[hsl(var(--miwarp-status-error)/0.5)]'
                     : ''}"
                 >
-                  <button type="button"
+                  <button
+                    type="button"
                     class="flex-1 flex items-center gap-1.5 text-left min-w-0"
                     onclick={() => {
                       if (hasTools) {
@@ -1269,9 +1285,13 @@
                     }}
                   >
                     {#if hasTools}
-                      <Icon name="chevron-right" size="xs" class="text-muted-foreground/50 shrink-0 transition-transform {isCollapsed
+                      <Icon
+                        name="chevron-right"
+                        size="xs"
+                        class="text-muted-foreground/50 shrink-0 transition-transform {isCollapsed
                           ? ''
-                          : 'rotate-90'}" />
+                          : 'rotate-90'}"
+                      />
                     {/if}
                     <span class="text-[11px] font-medium text-muted-foreground truncate">
                       {#if turn.userPreview}
@@ -1302,7 +1322,8 @@
                           {#if bk.bash > 0}<span
                               class="text-[hsl(var(--miwarp-status-success)/0.7)]">{bk.bash}B</span
                             >{/if}
-                          {#if bk.writes > 0}<span class="text-[hsl(var(--miwarp-status-warning)/0.7)]"
+                          {#if bk.writes > 0}<span
+                              class="text-[hsl(var(--miwarp-status-warning)/0.7)]"
                               >{bk.writes}W</span
                             >{/if}
                           <span
@@ -1319,7 +1340,8 @@
                     </span>
                   </button>
                   {#if turn.anchorId}
-                    <button type="button"
+                    <button
+                      type="button"
                       class="shrink-0 ml-1 p-0.5 rounded text-muted-foreground/40 hover:text-foreground hover:bg-muted transition-colors"
                       onclick={() => {
                         dbg("tool-activity", "scroll to turn", {
@@ -1417,7 +1439,8 @@
       class="absolute top-0 left-0 h-full flex flex-col items-center py-2 px-1 gap-1"
       style="width: 0px;"
     >
-      <button type="button"
+      <button
+        type="button"
         class="text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-accent"
         onclick={onToggle}
         title={t("toolActivity_show")}
@@ -1425,7 +1448,8 @@
         <Icon name="chevron-right" size="md" />
       </button>
       <!-- Collapsed icon buttons -->
-      <button type="button"
+      <button
+        type="button"
         class="p-1 rounded transition-colors {activeTab === 'workspace'
           ? 'text-foreground bg-accent'
           : 'text-muted-foreground/50 hover:text-muted-foreground'}"
@@ -1437,7 +1461,8 @@
       >
         <Icon name="home" size="sm" />
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="p-1 rounded transition-colors {activeTab === 'tools'
           ? 'text-foreground bg-accent'
           : 'text-muted-foreground/50 hover:text-muted-foreground'}"
@@ -1449,7 +1474,8 @@
       >
         <Icon name="wrench" size="sm" />
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="p-1 rounded transition-colors {activeTab === 'context'
           ? 'text-foreground bg-accent'
           : 'text-muted-foreground/50 hover:text-muted-foreground'}"
@@ -1461,7 +1487,8 @@
       >
         <Icon name="clock" size="sm" />
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="p-1 rounded transition-colors {activeTab === 'files'
           ? 'text-foreground bg-accent'
           : 'text-muted-foreground/50 hover:text-muted-foreground'}"
@@ -1473,7 +1500,8 @@
       >
         <Icon name="file" size="sm" />
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="p-1 rounded transition-colors relative {activeTab === 'tasks'
           ? 'text-foreground bg-accent'
           : 'text-muted-foreground/50 hover:text-muted-foreground'}"
@@ -1490,7 +1518,8 @@
           ></span>
         {/if}
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="p-1 rounded transition-colors {activeTab === 'scheduled-tasks'
           ? 'text-foreground bg-accent'
           : 'text-muted-foreground/50 hover:text-muted-foreground'}"

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import type {
     Attachment,
@@ -13,7 +12,6 @@
   import { createGitBranchPoller } from "$lib/utils/git-branch";
   import AgentSelector from "./AgentSelector.svelte";
   import AuthSourceBadge from "./AuthSourceBadge.svelte";
-  import SkillSelector from "./SkillSelector.svelte";
   import FileAttachment from "./FileAttachment.svelte";
   import SlashMenu from "./SlashMenu.svelte";
   import AtMentionMenu from "./AtMentionMenu.svelte";
@@ -72,6 +70,7 @@
   } from "$lib/utils/input-history";
   import { misencodedNavigationDirection, moveTextareaCaret } from "$lib/utils/prompt-text";
   import Icon from "$lib/components/Icon.svelte";
+  import PermissionModePicker from "$lib/components/PermissionModePicker.svelte";
 
   const PRIVATE_USE_KEYBOARD_MIN = 0xf700;
   const PRIVATE_USE_KEYBOARD_MAX = 0xf8ff;
@@ -175,6 +174,7 @@
     onInterrupt,
     onModelSwitch,
     onPermissionModeChange,
+    showPermissionModeButton = true,
     onVirtualCommand,
     fastModeState = "",
     onFastModeSwitch,
@@ -222,6 +222,8 @@
     onInterrupt?: () => void;
     onModelSwitch?: (model: string) => void;
     onPermissionModeChange?: (mode: string) => void;
+    /** When false, hide the permission mode picker (e.g. pages without permission API). */
+    showPermissionModeButton?: boolean;
     onVirtualCommand?: (action: string, args: string) => void;
     fastModeState?: string;
     onFastModeSwitch?: (mode: "on" | "off") => void;
@@ -266,8 +268,8 @@
 
   /** Single-line capsule strip vs stacked multi-line composer. */
   let capsuleExpanded = $state(false);
-  const CAPSULE_LINE_HEIGHT_PX = 22;
-  const CAPSULE_STACK_THRESHOLD_PX = 32;
+  const CAPSULE_LINE_HEIGHT_PX = 24;
+  const CAPSULE_STACK_THRESHOLD_PX = 34;
   const useCapsuleStrip = $derived(!capsuleExpanded && !pendingPermission);
 
   $effect(() => {
@@ -337,89 +339,6 @@
   }
 
   let currentBranchColor = $derived(branchColor(gitBranch));
-
-  // ── Permission mode selector ──
-  const PERMISSION_MODES = [
-    {
-      value: "default",
-      label: () => t("prompt_permAskLabel"),
-      shortLabel: () => t("prompt_permAskShort"),
-      description: () => t("prompt_permAskDesc"),
-      cls: "text-foreground/70",
-      dotCls: "bg-foreground/40",
-    },
-    {
-      value: "acceptEdits",
-      label: () => t("prompt_permAutoReadLabel"),
-      shortLabel: () => t("prompt_permAutoReadShort"),
-      description: () => t("prompt_permAutoReadDesc"),
-      cls: "text-miwarp-status-info",
-      dotCls: "bg-miwarp-status-info",
-    },
-    {
-      value: "bypassPermissions",
-      label: () => t("prompt_permAutoAllLabel"),
-      shortLabel: () => t("prompt_permAutoAllShort"),
-      description: () => t("prompt_permAutoAllDesc"),
-      cls: "text-miwarp-status-warning",
-      dotCls: "bg-miwarp-status-warning",
-    },
-    {
-      value: "plan",
-      label: () => t("prompt_permPlanLabel"),
-      shortLabel: () => t("prompt_permPlanShort"),
-      description: () => t("prompt_permPlanDesc"),
-      cls: "text-miwarp-accent-violet",
-      dotCls: "bg-miwarp-accent-violet",
-    },
-    {
-      value: "auto",
-      label: () => t("prompt_permAutoLabel"),
-      shortLabel: () => t("prompt_permAutoShort"),
-      description: () => t("prompt_permAutoDesc"),
-      cls: "text-miwarp-status-info",
-      dotCls: "bg-miwarp-status-info",
-    },
-    {
-      value: "dontAsk",
-      label: () => t("prompt_permDontAskLabel"),
-      shortLabel: () => t("prompt_permDontAskShort"),
-      description: () => t("prompt_permDontAskDesc"),
-      cls: "text-miwarp-status-error",
-      dotCls: "bg-miwarp-status-error",
-    },
-  ];
-
-  let modeDropdownOpen = $state(false);
-  let modeBtnEl: HTMLButtonElement | undefined = $state();
-  let modeDropdownEl: HTMLDivElement | undefined = $state();
-  let modeDropdownStyle = $state("");
-
-  let currentMode = $derived(
-    PERMISSION_MODES.find((m) => m.value === permissionMode) ?? PERMISSION_MODES[0],
-  );
-
-  function toggleModeDropdown() {
-    if (modeDropdownOpen) {
-      modeDropdownOpen = false;
-      return;
-    }
-    // Close other menus
-    if (slashMenuOpen) closeSlashMenu("mode-open");
-    if (atMenuOpen) closeAtMenu("mode-open");
-
-    modeDropdownOpen = true;
-    if (modeBtnEl) {
-      const rect = modeBtnEl.getBoundingClientRect();
-      // Open upward (input is at bottom of screen)
-      modeDropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:9999;`;
-    }
-  }
-
-  function selectMode(mode: string) {
-    modeDropdownOpen = false;
-    onPermissionModeChange?.(mode);
-  }
 
   // Store-provided reactive state (store.inputText, store.pendingAttachments, store.pastedBlocks, store.pendingPathRefs, store.textareaEl)
 
@@ -519,7 +438,6 @@
     // Audit #6: disable @ completion in remote mode (local listDirectory not applicable)
     if (isRemote) return;
     if (slashMenuOpen) closeSlashMenu("at-open");
-    if (modeDropdownOpen) modeDropdownOpen = false;
     atMenuOpen = true;
     atStartPos = pos;
     atQuery = "";
@@ -753,7 +671,6 @@
       return;
     }
     if (atMenuOpen) closeAtMenu("slash-button");
-    if (modeDropdownOpen) modeDropdownOpen = false;
 
     savedInputForSlash = store.inputText;
     store.inputText = "/";
@@ -773,7 +690,6 @@
     if (interaction === "enum") {
       // e.g., model/fast: close other menus → save input → open sub-view
       if (atMenuOpen) closeAtMenu("quick-action");
-      if (modeDropdownOpen) modeDropdownOpen = false;
       savedInputForSlash = store.inputText;
       store.inputText = `/${cmd.name} `;
       activeSlashCmd = cmd;
@@ -792,7 +708,6 @@
     if (interaction === "free-text") {
       // Fill "/cmd " and focus — don't send, don't clear draft
       if (atMenuOpen) closeAtMenu("quick-action");
-      if (modeDropdownOpen) modeDropdownOpen = false;
       store.inputText = `/${cmd.name} `;
       moveCursorToEnd();
       return;
@@ -909,7 +824,6 @@
       slashSelectedIndex = 0;
       if (!slashMenuOpen) {
         dbg("slash", "open", { query: match[1] });
-        if (modeDropdownOpen) modeDropdownOpen = false;
         slashMenuOpen = true;
         slashPhase = "commands";
       }
@@ -1153,7 +1067,7 @@
       shouldIntercept(
         e.key,
         e,
-        { atMenuOpen, slashMenuOpen, modeDropdownOpen },
+        { atMenuOpen, slashMenuOpen, modeDropdownOpen: false },
         store.textareaEl?.selectionStart ?? 0,
         store.textareaEl?.selectionEnd ?? 0,
         userHistory.length,
@@ -1795,15 +1709,6 @@
     store.pastedBlocks = store.pastedBlocks.filter((b) => b.id !== id);
   }
 
-  function handleSkillSelect(skillName: string) {
-    dbg("prompt", "skill-select fill", { skillName });
-    store.inputText = `/${skillName} `;
-    requestAnimationFrame(() => {
-      autoResize();
-      store.textareaEl?.focus();
-    });
-  }
-
   function autoResize() {
     if (!store.textareaEl) return;
     const el = store.textareaEl;
@@ -1909,32 +1814,6 @@
   const showTokenEstimateUi = $derived(
     showTokenEstimate && shouldShowContextDetails(processVisibility),
   );
-
-  // ── Mode dropdown outside-click + Escape ──
-  onMount(() => {
-    function onDocClick(e: MouseEvent) {
-      if (
-        modeDropdownOpen &&
-        modeBtnEl &&
-        !modeBtnEl.contains(e.target as Node) &&
-        modeDropdownEl &&
-        !modeDropdownEl.contains(e.target as Node)
-      ) {
-        modeDropdownOpen = false;
-      }
-    }
-    function onDocKeydown(e: KeyboardEvent) {
-      if (modeDropdownOpen && e.key === "Escape") {
-        modeDropdownOpen = false;
-      }
-    }
-    document.addEventListener("mousedown", onDocClick, true);
-    document.addEventListener("keydown", onDocKeydown);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick, true);
-      document.removeEventListener("keydown", onDocKeydown);
-    };
-  });
 
   export function focus() {
     store.textareaEl?.focus();
@@ -2084,7 +1963,8 @@
           <span class="text-miwarp-status-info dark:text-miwarp-status-info"
             >{formatPasteSize(block.lineCount, block.charCount)}</span
           >
-          <button type="button"
+          <button
+            type="button"
             onclick={() => removePastedBlock(block.id)}
             class="ml-0.5 rounded p-0.5 transition-colors hover:bg-[hsl(var(--miwarp-status-info)/0.15)]"
             title={t("prompt_removePaste")}
@@ -2103,7 +1983,8 @@
       {#if slashEnabled && quickActions.length > 0}
         <div class="flex items-center gap-1 overflow-x-auto scrollbar-hide">
           {#each quickActions as cmd (cmd.name)}
-            <button type="button"
+            <button
+              type="button"
               class="shrink-0 rounded-md border border-border/50 px-2 py-0.5 text-[11px]
                 bg-background/60 backdrop-blur-sm text-muted-foreground/70
                 hover:text-foreground hover:bg-background/80 hover:border-border/50
@@ -2115,7 +1996,8 @@
               {t(`quickAction_${cmd.name}` as MessageKey)}
             </button>
           {/each}
-          <button type="button"
+          <button
+            type="button"
             class="shrink-0 rounded-md border border-border/50 px-2 py-0.5 text-[11px]
               bg-background/60 backdrop-blur-sm text-muted-foreground/70
               hover:text-foreground hover:bg-background/80 hover:border-border/50
@@ -2146,29 +2028,13 @@
     {#if !hasRun && onAgentChange}
       <AgentSelector value={agent} onchange={(a) => onAgentChange?.(a)} />
     {/if}
-    {#if onPermissionModeChange}
-      <button type="button"
-        bind:this={modeBtnEl}
-        class="flex items-center gap-1 rounded-full border border-transparent px-1.5 py-0.5 text-[11px] font-medium transition-colors {currentMode.cls} hover:border-border/40 hover:bg-accent/15"
-        onclick={toggleModeDropdown}
-        title={t("prompt_permissionModeTitle", { mode: currentMode.label() })}
-      >
-        <svg
-          class="h-3 w-3"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path
-            d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
-          />
-        </svg>
-        {currentMode.shortLabel()}
-        <Icon name="chevron-down" size="xs" class="text-foreground/30" />
-      </button>
+    {#if showPermissionModeButton && onPermissionModeChange}
+      <PermissionModePicker
+        {permissionMode}
+        onchange={onPermissionModeChange}
+        variant="input"
+        placement="above"
+      />
     {:else if !hasRun}
       <div class="w-1"></div>
     {/if}
@@ -2187,14 +2053,9 @@
         {localProxyStatuses}
       />
     {/if}
-    <SkillSelector
-      skills={skillItems}
-      {agents}
-      disabled={disabled || running}
-      onSelect={handleSkillSelect}
-    />
     {#if hasStash && onRestoreStash}
-      <button type="button"
+      <button
+        type="button"
         class="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-[hsl(var(--miwarp-accent-violet)/0.15)] text-miwarp-accent-violet hover:bg-[hsl(var(--miwarp-accent-violet)/0.25)] transition-colors"
         title={t("prompt_stashRestore")}
         onclick={onRestoreStash}
@@ -2205,6 +2066,26 @@
         {/if}
       </button>
     {/if}
+  {/snippet}
+
+  {#snippet promptSendButton(btw = false)}
+    {@const sendSizeClass = useCapsuleStrip ? "h-7 w-7" : "h-8 w-8"}
+    {@const sendIconSize = useCapsuleStrip ? "sm" : "md"}
+    {@const sendLookClass = canSend
+      ? btw
+        ? "bg-miwarp-status-info text-miwarp-accent-on-accent hover:opacity-90"
+        : "bg-primary text-primary-foreground hover:bg-primary/90"
+      : "bg-primary text-primary-foreground opacity-45 cursor-not-allowed"}
+    <button
+      type="button"
+      class="flex shrink-0 items-center justify-center rounded-full transition-[opacity,background-color] duration-200 {sendSizeClass} {sendLookClass}"
+      onclick={btw ? handleBtwSend : handleSend}
+      disabled={!canSend}
+      title={btw ? t("promptInput_sendSideQuestion") : t("prompt_send")}
+      aria-label={btw ? t("promptInput_sendSideQuestion") : t("prompt_send")}
+    >
+      <Icon name="arrow-right" size={sendIconSize} />
+    </button>
   {/snippet}
 
   {#snippet promptToolbarRight(compact: boolean)}
@@ -2219,11 +2100,17 @@
         {#if contextWindow > 0}<span class="ml-0.5"
             >{t("prompt_tokenPercent", { pct: String(tokenPercent) })}</span
           >{/if}
-        {#if tokenWarning}<span class="ml-0.5" title={t("prompt_tokenWarning")}>⚠</span>{/if}
+        {#if tokenWarning}<Icon
+            name="triangle-alert"
+            size="xs"
+            class="ml-0.5 inline text-miwarp-status-warning"
+            title={t("prompt_tokenWarning")}
+          />{/if}
       </span>
     {/if}
     {#if slashEnabled}
-      <button type="button"
+      <button
+        type="button"
         bind:this={slashBtnEl}
         class="flex h-7 w-7 items-center justify-center rounded-full
           text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors"
@@ -2252,7 +2139,8 @@
       class="hidden"
       onchange={handleFileSelect}
     />
-    <button type="button"
+    <button
+      type="button"
       class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
       onclick={() => fileInput?.click()}
       disabled={store.pendingAttachments.length >= 8}
@@ -2274,7 +2162,8 @@
       </svg>
     </button>
     {#if IS_MAC && !compact}
-      <button type="button"
+      <button
+        type="button"
         class="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-accent/15 transition-colors disabled:opacity-30"
         onclick={() => api.captureScreenshot()}
         disabled={store.pendingAttachments.length >= 8}
@@ -2299,26 +2188,11 @@
 
     {#if running && onInterrupt}
       {#if canSend}
-        {#if btwMode}
-          <button type="button"
-            class="flex h-7 w-7 items-center justify-center rounded-full bg-miwarp-status-info text-miwarp-accent-on-accent transition-colors hover:opacity-80"
-            onclick={handleBtwSend}
-            title={t("promptInput_sendSideQuestion")}
-          >
-            <Icon name="arrow-right" size="md" />
-          </button>
-        {:else}
-          <button type="button"
-            class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90"
-            onclick={handleSend}
-            title={t("prompt_send")}
-          >
-            <Icon name="arrow-right" size="md" />
-          </button>
-        {/if}
+        {@render promptSendButton(btwMode)}
       {/if}
       {#if onBtwSend}
-        <button type="button"
+        <button
+          type="button"
           onclick={() => (btwMode = !btwMode)}
           title={t("promptInput_sideQuestion")}
           class="flex h-7 w-7 items-center justify-center rounded-full transition-colors {btwMode
@@ -2338,7 +2212,8 @@
           </svg>
         </button>
       {/if}
-      <button type="button"
+      <button
+        type="button"
         class="flex h-7 w-7 items-center justify-center rounded-full text-destructive transition-colors hover:bg-destructive/10"
         onclick={onInterrupt}
         title={t("prompt_stop")}
@@ -2348,16 +2223,7 @@
         </svg>
       </button>
     {:else}
-      <button type="button"
-        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors {canSend
-          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-          : 'text-muted-foreground/40'}"
-        onclick={handleSend}
-        disabled={!canSend}
-        title={t("prompt_send")}
-      >
-        <Icon name="arrow-right" size="md" />
-      </button>
+      {@render promptSendButton(false)}
     {/if}
   {/snippet}
 
@@ -2367,7 +2233,7 @@
       ? 'rounded-full'
       : 'rounded-[1.75rem]'} {btwMode
       ? 'border-miwarp-status-info/80'
-      : 'border-[hsl(var(--miwarp-glass-border,0_0%_100%)/0.1)] focus-within:border-[hsl(var(--miwarp-glass-border,0_0%_100%)/0.2)] focus-within:shadow-[0_4px_24px_rgba(0,0,0,0.10),0_0_0_2px_rgba(var(--miwarp-accent-rgb,59,130,246),0.15)]'} {pendingPermission
+      : 'border-[hsl(var(--miwarp-glass-border,0_0%_100%)/0.1)]'} {pendingPermission
       ? 'motion-attention-pulse'
       : ''}"
   >
@@ -2395,8 +2261,10 @@
     {/if}
 
     {#if useCapsuleStrip}
-      <div class="flex min-h-[38px] items-center gap-1 py-0.5 pl-2 pr-1.5">
-        <div class="flex max-w-[38%] shrink-0 items-center gap-0.5 overflow-hidden">
+      <div class="flex min-h-[42px] items-center gap-1 py-1 pl-2.5 pr-1.5">
+        <div
+          class="no-drag relative z-10 flex max-w-[42%] shrink-0 items-center gap-0.5 overflow-visible pointer-events-auto"
+        >
           {@render promptToolbarLeft(true)}
         </div>
         <textarea
@@ -2410,7 +2278,7 @@
           rows={1}
           {disabled}
           aria-label={t("prompt_chatInput")}
-          class="no-drag min-h-[22px] min-w-0 flex-1 resize-none overflow-x-auto overflow-y-hidden bg-transparent px-2 py-0 text-sm leading-5 text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
+          class="no-drag min-h-[24px] min-w-0 flex-1 resize-none overflow-x-auto overflow-y-hidden bg-transparent px-2 py-0 text-sm leading-6 text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
           style="height: {CAPSULE_LINE_HEIGHT_PX}px;"
         ></textarea>
         <div class="flex shrink-0 items-center gap-0.5">
@@ -2434,7 +2302,7 @@
       ></textarea>
 
       <div class="flex items-center justify-between px-4 pb-3.5 pt-0.5">
-        <div class="flex min-w-0 items-center gap-1">
+        <div class="no-drag relative z-10 flex min-w-0 items-center gap-1 pointer-events-auto">
           {@render promptToolbarLeft(false)}
         </div>
         <div class="flex shrink-0 items-center gap-0.5">
@@ -2480,32 +2348,4 @@
       />
     {/if}
   </div>
-
-  {#if modeDropdownOpen}
-    <div
-      bind:this={modeDropdownEl}
-      class="min-w-[220px] w-max rounded-2xl border border-border/35 bg-background/86 backdrop-blur-xl animate-fade-in"
-      style={modeDropdownStyle}
-    >
-      <div class="p-1">
-        {#each PERMISSION_MODES as mode}
-          <button type="button"
-            class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs transition-colors hover:bg-accent/20
-              {permissionMode === mode.value ? 'bg-accent/20 font-medium' : ''}"
-            onclick={() => selectMode(mode.value)}
-          >
-            {#if permissionMode === mode.value}
-              <Icon name="check" size="xs" class="text-primary shrink-0" />
-            {:else}
-              <span class="w-3 shrink-0"></span>
-            {/if}
-            <span class="shrink-0 {mode.cls}">{mode.label()}</span>
-            <span class="flex-1 min-w-0 text-[10px] text-foreground/50 truncate"
-              >{mode.description()}</span
-            >
-          </button>
-        {/each}
-      </div>
-    </div>
-  {/if}
 </div>

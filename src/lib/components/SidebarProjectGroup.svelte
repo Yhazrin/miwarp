@@ -50,21 +50,6 @@
     aria-expanded={expanded}
     aria-label={label}
   >
-    <!-- Chevron -->
-    <svg
-      class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded
-        ? 'rotate-90'
-        : ''}"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-    >
-      <path d="M9 18l6-6-6-6" />
-    </svg>
-
     <!-- Folder / Inbox icon -->
     {#if folder.isUncategorized}
       <svg
@@ -82,18 +67,20 @@
         />
       </svg>
     {:else}
-      <Icon name="folder" size="sm" class="shrink-0 text-muted-foreground/70" />
+      <Icon
+        name={expanded ? "folder-open" : "folder"}
+        size="sm"
+        class="shrink-0 text-muted-foreground/70"
+      />
     {/if}
 
     <!-- Label -->
-    <span class="truncate">{label}</span>
+    <span class="min-w-0 flex-1 truncate">{label}</span>
 
     <!-- Count badge -->
     {#if showCount && folder.conversationCount > 0}
       <span
-        class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted/60 px-1 text-[10px] font-normal text-muted-foreground/60 {showRemove
-          ? ''
-          : 'ml-auto'}"
+        class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted/60 px-1 text-[10px] font-normal text-muted-foreground/60"
       >
         {folder.conversationCount}
       </span>
@@ -102,7 +89,7 @@
     <!-- Remove button -->
     {#if showRemove && onRemove}
       <button type="button"
-        class="ml-auto shrink-0 flex h-4 w-4 items-center justify-center rounded opacity-0 text-muted-foreground hover:text-destructive hover:opacity-100 focus-visible:opacity-100 group-hover/folder:opacity-100 transition-opacity"
+        class="shrink-0 flex h-4 w-4 items-center justify-center rounded opacity-0 text-muted-foreground hover:text-destructive hover:opacity-100 focus-visible:opacity-100 group-hover/folder:opacity-100 transition-opacity"
         aria-label={t("sidebar_removeProject")}
         onclick={(e) => {
           e.stopPropagation();
@@ -119,6 +106,21 @@
         <Icon name="x" size="xs" />
       </button>
     {/if}
+
+    <svg
+      class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded
+        ? 'rotate-90'
+        : ''}"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9 18l6-6-6-6" />
+    </svg>
   </div>
 
   <!-- Expanded children -->

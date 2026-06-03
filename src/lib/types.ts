@@ -264,6 +264,12 @@ export interface UserSettings {
   mascot_enabled?: boolean;
   /** Show the left icon rail (Chat/Teams/Memory/.../Settings). Default true. */
   icon_rail_enabled?: boolean;
+  /** Periodically sync CLI-imported sessions from ~/.claude transcripts. Default true. */
+  cli_auto_sync_enabled?: boolean;
+  /** Minutes between automatic CLI sync passes (1–120). Default 5. */
+  cli_auto_sync_interval_minutes?: number;
+  /** Also import newly discovered CLI sessions, not only sync existing imports. */
+  cli_auto_sync_import_new?: boolean;
   updated_at: string;
 }
 

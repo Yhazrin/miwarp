@@ -225,11 +225,13 @@
             onclick={() => onSubSelect(model)}
           >
             <span
-              class="w-4 shrink-0 text-xs {model.value === currentModel
+              class="w-4 shrink-0 flex items-center justify-center {model.value === currentModel
                 ? 'text-primary'
                 : 'text-transparent'}"
             >
-              {model.value === currentModel ? "✓" : ""}
+              {#if model.value === currentModel}
+                <Icon name="check" size="xs" />
+              {/if}
             </span>
             <span class="font-medium text-xs text-foreground">{model.displayName}</span>
             <span class="flex-1 min-w-0 truncate text-xs opacity-70">{model.description}</span>
@@ -273,11 +275,13 @@
         onclick={() => onFastSelect?.("off")}
       >
         <span
-          class="w-4 shrink-0 text-xs {fastModeState !== 'on'
+          class="w-4 shrink-0 flex items-center justify-center {fastModeState !== 'on'
             ? 'text-primary'
             : 'text-transparent'}"
         >
-          {fastModeState !== "on" ? "✓" : ""}
+          {#if fastModeState !== "on"}
+            <Icon name="check" size="xs" />
+          {/if}
         </span>
         <span class="font-medium text-xs text-foreground">{t("slashMenu_fastOff")}</span>
       </button>
@@ -292,11 +296,13 @@
         onclick={() => onFastSelect?.("on")}
       >
         <span
-          class="w-4 shrink-0 text-xs {fastModeState === 'on'
+          class="w-4 shrink-0 flex items-center justify-center {fastModeState === 'on'
             ? 'text-primary'
             : 'text-transparent'}"
         >
-          {fastModeState === "on" ? "✓" : ""}
+          {#if fastModeState === "on"}
+            <Icon name="check" size="xs" />
+          {/if}
         </span>
         <span class="font-medium text-xs text-foreground">{t("slashMenu_fastOn")}</span>
         <span class="flex-1 min-w-0 truncate text-xs opacity-70">{t("slashMenu_fastPricing")}</span>

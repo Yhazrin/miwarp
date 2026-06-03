@@ -25,8 +25,11 @@
     shouldShowContextDetails,
   } from "$lib/utils/process-visibility";
   import { t as tFn } from "$lib/i18n/index.svelte";
+  import { IS_WEBKIT } from "$lib/utils/platform";
 
   let {
+    /** Off when reading history — cv-auto placeholder heights cause scroll jitter on WebKit. */
+    contentVisibilityEnabled = false,
     visibleTimeline,
     store,
     burstCollapse,
@@ -83,7 +86,10 @@
     getPlanContentForExitPlan: (entryId: string) => { content: string; fileName: string } | null;
     openPreviewForPath: (path: string) => void;
     toggleBurst: (key: string) => void;
+    contentVisibilityEnabled?: boolean;
   } = $props();
+
+  const useCvAuto = $derived(contentVisibilityEnabled && !IS_WEBKIT);
 
   const t = tFn;
 
@@ -97,7 +103,7 @@
     <div
       id="msg-{entry.anchorId}"
       data-entry-id={entry.id}
-      class:cv-auto={true}
+      class:cv-auto={useCvAuto}
       class="group/msg"
       class:opacity-40={lastClearSepId !== null &&
         (timelineIdIndex.get(entry.id) ?? 0) < (timelineIdIndex.get(lastClearSepId) ?? 0)}

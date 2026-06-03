@@ -57,6 +57,10 @@ export class EventMiddleware {
 
   // ── Lifecycle ──
 
+  isStarted(): boolean {
+    return this._started;
+  }
+
   async start(): Promise<void> {
     if (this._started) {
       dbg("middleware", "start skipped (already started)");

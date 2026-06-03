@@ -9,6 +9,7 @@
   import { t } from "$lib/i18n/index.svelte";
   import { statusDotClass, statusLabel, parseServersFromResponse } from "$lib/utils/mcp";
   import { relativeTime } from "$lib/utils/format";
+  import type { LucideIconName } from "$lib/lucide-icon";
 
   let {
     runId,
@@ -104,14 +105,19 @@
   function getConnectionQuality(latency: number | null): {
     label: string;
     color: string;
-    icon: string;
+    iconName: LucideIconName;
   } {
-    if (latency === null) return { label: "Unknown", color: "text-muted-foreground", icon: "⚪" };
-    if (latency < 50) return { label: "Excellent", color: "text-miwarp-status-success", icon: "🟢" };
-    if (latency < 100) return { label: "Good", color: "text-miwarp-status-success", icon: "🟢" };
-    if (latency < 200) return { label: "Fair", color: "text-miwarp-status-warning", icon: "🟡" };
-    if (latency < 500) return { label: "Poor", color: "text-miwarp-status-warning", icon: "🟠" };
-    return { label: "Critical", color: "text-miwarp-status-error", icon: "🔴" };
+    if (latency === null)
+      return { label: "Unknown", color: "text-muted-foreground", iconName: "circle" };
+    if (latency < 50)
+      return { label: "Excellent", color: "text-miwarp-status-success", iconName: "circle-dot" };
+    if (latency < 100)
+      return { label: "Good", color: "text-miwarp-status-success", iconName: "circle-dot" };
+    if (latency < 200)
+      return { label: "Fair", color: "text-miwarp-status-warning", iconName: "circle-dot" };
+    if (latency < 500)
+      return { label: "Poor", color: "text-miwarp-status-warning", iconName: "circle-dot" };
+    return { label: "Critical", color: "text-miwarp-status-error", iconName: "circle-dot" };
   }
 
   async function refresh() {
@@ -260,7 +266,7 @@ diagnostics and history * - Quick reconnect with health check */
   <!-- Server list -->
   <div class="max-h-80 overflow-y-auto">
     {#if servers.length === 0}
-      <EmptyState icon="🔌" title={t("mcp_noConfiguredStatus")} class="py-4" />
+      <EmptyState iconName="plug" title={t("mcp_noConfiguredStatus")} class="py-4" />
     {:else}
       {#each servers as server (server.name)}
         {@const health = healthMetrics[server.name]}
@@ -282,7 +288,11 @@ diagnostics and history * - Quick reconnect with health check */
               <span class="h-2.5 w-2.5 shrink-0 rounded-full {statusDotClass(server.status)}"
               ></span>
               {#if server.status === "running" && health?.latency}
-                <span class="absolute -top-0.5 -right-0.5 text-[8px]">{quality.icon}</span>
+                <Icon
+                  name={quality.iconName}
+                  size="xs"
+                  class="absolute -top-1 -right-1 {quality.color} fill-current"
+                />
               {/if}
             </div>
 
@@ -387,8 +397,8 @@ diagnostics and history * - Quick reconnect with health check */
                 {#if health.latency !== null}
                   <div class="flex items-center justify-between p-1.5 rounded bg-muted/30">
                     <span class="text-muted-foreground">Connection Quality</span>
-                    <span class="{quality.color} font-medium">
-                      {quality.icon}
+                    <span class="{quality.color} font-medium inline-flex items-center gap-1">
+                      <Icon name={quality.iconName} size="xs" class="fill-current" />
                       {quality.label}
                     </span>
                   </div>

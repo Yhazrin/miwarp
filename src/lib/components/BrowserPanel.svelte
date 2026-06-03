@@ -6,6 +6,8 @@
    */
   import { browserStore } from "$lib/stores/browser-store.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import Icon from "$lib/components/Icon.svelte";
+  import type { LucideIconName } from "$lib/lucide-icon";
 
   let urlInput = $state("");
   let searchQuery = $state("");
@@ -14,11 +16,11 @@
   let foundElements = $state<Array<{ ref: string; text?: string }>>([]);
 
   // Quick actions
-  let quickActions = [
-    { label: t("browser_quickScreenshot"), icon: "📷", action: "screenshot" },
-    { label: t("browser_quickFindElements"), icon: "🔍", action: "find" },
-    { label: t("browser_quickNetwork"), icon: "🌐", action: "network" },
-    { label: t("browser_quickConsole"), icon: "💻", action: "console" },
+  let quickActions: { label: string; iconName: LucideIconName; action: string }[] = [
+    { label: t("browser_quickScreenshot"), iconName: "camera", action: "screenshot" },
+    { label: t("browser_quickFindElements"), iconName: "search", action: "find" },
+    { label: t("browser_quickNetwork"), iconName: "globe", action: "network" },
+    { label: t("browser_quickConsole"), iconName: "monitor", action: "console" },
   ];
 
   // Tabs list
@@ -136,7 +138,7 @@
         <div class="flex flex-col gap-2 mt-3">
           {#each browsers as browser}
             <button type="button" class="flex items-center gap-3 p-3 bg-miwarp-bg-deepest border border-miwarp-border rounded-md cursor-pointer transition-all duration-150 hover:bg-miwarp-bg-surface hover:border-miwarp-accent-primary" onclick={() => browserStore.connect(browser)}>
-              <span class="text-2xl">🌐</span>
+              <Icon name="globe" size="lg" class="text-muted-foreground shrink-0" />
               <div class="flex-1 flex flex-col">
                 <span class="font-medium">{browser.displayName}</span>
                 <span class="text-xs text-miwarp-text-secondary">{browser.platform}</span>
@@ -154,12 +156,14 @@
     <div class="p-3 bg-miwarp-bg-deepest rounded-md">
       <!-- Back/Forward/Refresh -->
       <div class="flex gap-1">
-        <button type="button" class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface" onclick={handleGoBack} title={t("browser_goBack")} aria-label={t("browser_goBack")}> ← </button>
+        <button type="button" class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface" onclick={handleGoBack} title={t("browser_goBack")} aria-label={t("browser_goBack")}>
+          <Icon name="chevron-left" size="sm" />
+        </button>
         <button type="button" class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface" onclick={handleGoForward} title={t("browser_goForward")} aria-label={t("browser_goForward")}>
-          →
+          <Icon name="chevron-right" size="sm" />
         </button>
         <button type="button" class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface" onclick={handleRefresh} title={t("browser_refresh")} aria-label={t("browser_refresh")}>
-          ↻
+          <Icon name="refresh-cw" size="sm" />
         </button>
       </div>
 
@@ -211,7 +215,7 @@
     <div class="p-3 bg-miwarp-bg-deepest rounded-md flex gap-2 flex-wrap">
       {#each quickActions as action}
         <button type="button" class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer border-none transition-colors" onclick={() => handleQuickAction(action.action)}>
-          <span class="mr-1">{action.icon}</span>
+          <Icon name={action.iconName} size="sm" class="mr-1 inline" />
           {action.label}
         </button>
       {/each}
@@ -278,7 +282,7 @@
   <!-- Error Display -->
   {#if error}
     <div class="p-3 rounded-md flex items-center gap-2 bg-miwarp-status-error/10 border border-miwarp-status-error">
-      <span class="text-xl">⚠️</span>
+      <Icon name="triangle-alert" size="lg" class="text-miwarp-status-error shrink-0" />
       <span class="flex-1 text-sm text-miwarp-status-error">{error}</span>
       <button type="button"
         class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface"
@@ -292,7 +296,7 @@
   <!-- Loading Indicator -->
   {#if isLoading}
     <div class="flex items-center justify-center gap-2 p-4 bg-miwarp-overlay absolute inset-0">
-      <span class="text-2xl animate-spin">⏳</span>
+      <Icon name="loader-2" size="lg" class="animate-spin text-muted-foreground" />
       <span>{t("browser_loading")}</span>
     </div>
   {/if}

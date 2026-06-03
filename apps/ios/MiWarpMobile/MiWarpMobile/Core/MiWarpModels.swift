@@ -174,6 +174,32 @@ struct MiWarpRun: Identifiable, Codable, Hashable {
         startedAt = try container.decodeIfPresent(String.self, forKey: .startedAt)
     }
 
+    init(
+        id: String,
+        name: String? = nil,
+        prompt: String? = nil,
+        cwd: String = "",
+        agent: String = "",
+        model: String? = nil,
+        status: RunStatus = .pending,
+        source: RunSource? = nil,
+        messageCount: Int? = nil,
+        lastActivityAt: String? = nil,
+        startedAt: String? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.prompt = prompt
+        self.cwd = cwd
+        self.agent = agent
+        self.model = model
+        self.status = status
+        self.source = source
+        self.messageCount = messageCount
+        self.lastActivityAt = lastActivityAt
+        self.startedAt = startedAt
+    }
+
     var displayTitle: String {
         name ?? prompt?.prefix(80).description ?? "Untitled Session"
     }

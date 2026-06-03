@@ -6,6 +6,7 @@
   import { IMAGE_TYPES } from "$lib/utils/file-types";
   import type { ChatMessage, Attachment, MediaArtifact } from "$lib/types";
   import AgentIdentity from "./AgentIdentity.svelte";
+  import UserAvatar from "./UserAvatar.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import type { ProcessVisibility } from "$lib/utils/process-visibility";
   import { shouldShowRawDebug } from "$lib/utils/process-visibility";
@@ -118,28 +119,6 @@
         <!-- Header -->
         <div class={`mb-1.5 flex items-center gap-2 ${isUser ? "justify-end" : ""}`}>
           {#if isUser}
-            <span
-              class="text-[10px] text-muted-foreground"
-              title={formatFullTime(message.timestamp)}
-            >
-              {formatTime(message.timestamp)}
-            </span>
-            <button type="button"
-              class="rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered ||
-              copied
-                ? 'opacity-100'
-                : 'opacity-0'}"
-              onclick={copyContent}
-              title={t("chat_copyMessage")}
-              aria-label={t("chat_copyMessage")}
-              data-export-exclude
-            >
-              {#if copied}
-                <Icon name="check" size="sm" class="text-miwarp-status-success" />
-              {:else}
-                <Icon name="copy" size="sm" />
-              {/if}
-            </button>
             {#if onRewind}
               <button type="button"
                 class="rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered
@@ -153,22 +132,13 @@
                 <Icon name="refresh-ccw" size="sm" />
               </button>
             {/if}
-            <div
-              class="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground"
+            <span
+              class="text-[10px] text-muted-foreground"
+              title={formatFullTime(message.timestamp)}
             >
-              <svg
-                class="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            </div>
+              {formatTime(message.timestamp)}
+            </span>
+            <UserAvatar size="sm" />
           {:else}
             <AgentIdentity
               {agent}
@@ -224,9 +194,23 @@
         >
           {#if isUser}
             <div
-              class="user-bubble inline-block max-w-3xl rounded-2xl rounded-tr-none px-4 py-2.5 text-left
+              class="group/user-bubble relative inline-block max-w-3xl rounded-2xl rounded-tr-none px-4 py-2.5 text-left
                 bg-primary text-primary-foreground"
             >
+              <button type="button"
+                class="absolute -bottom-2 -left-2 rounded-md p-1 bg-background text-muted-foreground shadow-sm border border-border opacity-0 transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-foreground group-hover/user-bubble:opacity-100 focus-visible:opacity-100
+                  {copied ? 'opacity-100 text-miwarp-status-success' : ''}"
+                onclick={copyContent}
+                title={t("chat_copyMessage")}
+                aria-label={t("chat_copyMessage")}
+                data-export-exclude
+              >
+                {#if copied}
+                  <Icon name="check" size="sm" />
+                {:else}
+                  <Icon name="copy" size="sm" />
+                {/if}
+              </button>
               {#if attachments && attachments.length > 0}
                 <div class="mb-2 flex flex-wrap gap-2">
                   {#each attachments as att}
@@ -242,17 +226,19 @@
                   {/each}
                 </div>
               {/if}
+              <div
+                class="prose-chat prose-chat-on-primary {isLong && collapsed
+                  ? 'max-h-24 overflow-hidden'
+                  : ''}"
+                style={isLong && collapsed
+                  ? "mask-image: linear-gradient(to bottom, black 70%, transparent);"
+                  : ""}
+              >
+                <MarkdownContent text={message.content} tone="on-primary" />
+              </div>
               {#if isLong}
-                <p
-                  class="whitespace-pre-wrap {collapsed ? 'max-h-24 overflow-hidden' : ''}"
-                  style={collapsed
-                    ? "mask-image: linear-gradient(to bottom, black 70%, transparent);"
-                    : ""}
-                >
-                  {message.content}
-                </p>
                 <button type="button"
-                  class="mt-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  class="mt-1 text-xs text-primary-foreground/70 hover:text-primary-foreground transition-colors"
                   onclick={() => (collapsed = !collapsed)}
                   aria-expanded={!collapsed}
                   aria-label={collapsed
@@ -263,8 +249,6 @@
                     ? t("common_showAllLines", { count: String(lineCount) })
                     : t("common_collapse")}
                 </button>
-              {:else}
-                <p class="whitespace-pre-wrap break-words">{message.content}</p>
               {/if}
             </div>
           {:else}

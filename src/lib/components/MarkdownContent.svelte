@@ -11,6 +11,7 @@
     basePath = "",
     class: className = "",
     lazy = true,
+    tone = "default",
   }: {
     text?: string;
     streaming?: boolean;
@@ -20,7 +21,29 @@
      *  Off-screen entries render raw <pre> until then. Pass false for places where
      *  the content is always visible and lazy-render would just add a re-render. */
     lazy?: boolean;
+    /** Text on primary-filled surfaces (e.g. user chat bubble). */
+    tone?: "default" | "on-primary";
   } = $props();
+
+  const proseClasses = $derived(
+    tone === "on-primary"
+      ? `prose prose-sm max-w-none
+      prose-p:text-primary-foreground prose-p:leading-relaxed
+      prose-a:text-primary-foreground prose-a:underline prose-a:underline-offset-2 prose-a:opacity-90
+      prose-code:rounded prose-code:bg-primary-foreground/15 prose-code:px-1 prose-code:py-0.5 prose-code:text-xs prose-code:text-primary-foreground prose-code:font-mono prose-code:before:content-none prose-code:after:content-none
+      prose-pre:m-0 prose-pre:p-0 prose-pre:bg-transparent prose-pre:border-0
+      prose-li:text-primary-foreground prose-strong:text-primary-foreground`
+      : `prose prose-sm dark:prose-invert max-w-none
+      prose-p:text-foreground prose-p:leading-relaxed
+      prose-a:text-primary prose-a:underline prose-a:underline-offset-2
+      prose-code:rounded prose-code:bg-muted/70 prose-code:px-1 prose-code:py-0.5 prose-code:text-xs prose-code:font-mono prose-code:before:content-none prose-code:after:content-none
+      prose-pre:m-0 prose-pre:p-0 prose-pre:bg-transparent prose-pre:border-0
+      prose-li:text-foreground`,
+  );
+
+  const lazyPreToneClass = $derived(
+    tone === "on-primary" ? "text-primary-foreground/90" : "text-foreground/90",
+  );
 
   let container: HTMLDivElement | undefined = $state();
   let lazyEl: HTMLElement | undefined = $state();
@@ -256,18 +279,11 @@
 {#if !renderMarkdownNow}
   <pre
     bind:this={lazyEl}
-    class="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-foreground/90 m-0 {className}">{displayText}</pre>
-{:else}
-  <div
-    bind:this={container}
-    class="prose prose-sm dark:prose-invert max-w-none
-      prose-p:text-foreground prose-p:leading-relaxed
-      prose-a:text-primary prose-a:underline prose-a:underline-offset-2
-      prose-code:rounded prose-code:bg-muted/70 prose-code:px-1 prose-code:py-0.5 prose-code:text-xs prose-code:font-mono prose-code:before:content-none prose-code:after:content-none
-      prose-pre:m-0 prose-pre:p-0 prose-pre:bg-transparent prose-pre:border-0
-      prose-li:text-foreground
-      {className}"
+    class="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed m-0 {lazyPreToneClass} {className}"
+    >{displayText}</pre
   >
+{:else}
+  <div bind:this={container} class="{proseClasses} {className}">
     {@html html}
   </div>
 {/if}

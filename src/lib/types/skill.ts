@@ -2,6 +2,8 @@
  * Skill types - enhanced with version management and dependency support.
  * Based on Claude Code/Cowork design patterns.
  */
+import type { LucideIconName } from "$lib/lucide-icon";
+
 export interface Skill {
   id: string;
   name: string;
@@ -196,17 +198,17 @@ interface _SkillManifest {
   updatedAt: string;
 }
 
-export const SKILL_CATEGORIES: { value: SkillCategory; label: string; icon: string }[] = [
-  { value: "productivity", label: "skillCat_productivity", icon: "⚡" },
-  { value: "development", label: "skillCat_development", icon: "🔧" },
-  { value: "automation", label: "skillCat_automation", icon: "🤖" },
-  { value: "memory", label: "skillCat_memory", icon: "🧠" },
-  { value: "organization", label: "skillCat_organization", icon: "📁" },
-  { value: "integrations", label: "skillCat_integrations", icon: "🔗" },
-  { value: "custom", label: "skillCat_custom", icon: "✨" },
+export const SKILL_CATEGORIES: { value: SkillCategory; label: string; icon: LucideIconName }[] = [
+  { value: "productivity", label: "skillCat_productivity", icon: "zap" },
+  { value: "development", label: "skillCat_development", icon: "wrench" },
+  { value: "automation", label: "skillCat_automation", icon: "bot" },
+  { value: "memory", label: "skillCat_memory", icon: "brain" },
+  { value: "organization", label: "skillCat_organization", icon: "folder" },
+  { value: "integrations", label: "skillCat_integrations", icon: "link" },
+  { value: "custom", label: "skillCat_custom", icon: "sparkles" },
 ];
 
-export const DEFAULT_SKILL_ICON = "✨";
+export const DEFAULT_SKILL_ICON: LucideIconName = "sparkles";
 
 /**
  * Check if a skill version satisfies a constraint.

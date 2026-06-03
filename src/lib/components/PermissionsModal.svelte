@@ -302,7 +302,7 @@
     <div class="max-h-[40vh] overflow-y-auto rounded-md border">
       {#if filteredRules.length === 0}
         <EmptyState
-          icon="🔒"
+          iconName="lock"
           title={search ? t("permissions_noResults") : t("permissions_noRules")}
           class="py-6"
         />

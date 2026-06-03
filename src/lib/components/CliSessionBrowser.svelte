@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { fade, fly } from "svelte/transition";
   import { getTransport } from "$lib/transport";
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
@@ -33,10 +34,10 @@
   let error = $state<string | null>(null);
   let warning = $state<string | null>(null);
   let importingAll = $state(false);
+  let dialogEl: HTMLDivElement | undefined = $state();
 
-  // ── Project filter ──
   const isShowAll = $derived(!cwd || cwd === "/");
-  let selectedProject = $state<string | null>(null); // null = all
+  let selectedProject = $state<string | null>(null);
 
   const projects = $derived.by(() => {
     const cwdMap = new Map<string, number>();
@@ -52,11 +53,9 @@
 
   const filtered = $derived.by(() => {
     let list = sessions;
-    // Project filter
     if (selectedProject) {
       list = list.filter((s) => s.cwd === selectedProject);
     }
-    // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(
@@ -70,17 +69,28 @@
   });
 
   const newCount = $derived(filtered.filter((s) => !s.alreadyImported).length);
+  const importedCount = $derived(filtered.filter((s) => s.alreadyImported).length);
 
-  /** Effective cwd for import — use the session's own cwd */
+  const subtitleText = $derived.by(() => {
+    if (isShowAll) {
+      if (truncated) {
+        return t("cliSync_foundTruncated", {
+          shown: String(sessions.length),
+          total: String(totalSessions),
+        });
+      }
+      return `${t("cliSync_allProjects")} · ${t("cliSync_found", { count: String(sessions.length) })}`;
+    }
+    return `${cwdDisplayLabel(cwd)} · ${t("cliSync_found", { count: String(sessions.length) })}`;
+  });
+
   function importCwd(session: CliSessionSummary): string {
     return session.cwd || cwd;
   }
 
-  // ── Load sessions on mount ──
-
-  // Load sessions on mount (cwd is a local const, not reactive)
   onMount(() => {
     discoverSessions();
+    dialogEl?.focus();
   });
 
   async function discoverSessions() {
@@ -162,7 +172,7 @@
     warning = null;
     dbg("cli-browser", "importing all new", { count: newSessions.length });
     let lastRunId: string | null = null;
-    let importedCount = 0;
+    let importedCountLocal = 0;
     try {
       for (const s of newSessions) {
         importingId = s.sessionId;
@@ -173,14 +183,14 @@
         });
         dbg("cli-browser", "imported", { sessionId: s.sessionId, runId: result.runId });
         lastRunId = result.runId;
-        importedCount++;
+        importedCountLocal++;
         if (result.usageIncomplete) {
           warning = t("cliSync_usageIncomplete");
         }
       }
       await discoverSessions();
       if (lastRunId) {
-        dbg("cli-browser", "import-all done, navigating", { importedCount, lastRunId });
+        dbg("cli-browser", "import-all done, navigating", { importedCountLocal, lastRunId });
         onimported(lastRunId);
       }
     } catch (e) {
@@ -200,74 +210,136 @@
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
-  function handleBackdropClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) onclose();
+  function handleBackdropClick() {
+    onclose();
   }
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === "Escape") onclose();
   }
+
+  const filterPillBase =
+    "shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-all duration-150";
+  const filterPillActive =
+    "bg-primary/15 text-primary ring-1 ring-primary/25 shadow-[inset_0_1px_0_hsl(var(--miwarp-glass-border)/0.12)]";
+  const filterPillIdle =
+    "text-muted-foreground hover:bg-muted/60 hover:text-foreground ring-1 ring-transparent";
+
+  const actionGhost =
+    "rounded-lg border border-[hsl(var(--miwarp-glass-border)/0.2)] bg-[hsl(var(--miwarp-bg-elevated)/0.35)] px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:border-[hsl(var(--miwarp-glass-border)/0.35)] hover:bg-[hsl(var(--miwarp-bg-elevated)/0.55)] disabled:opacity-50";
 </script>
 
 <div
-  class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay backdrop-blur-sm animate-fade-in"
+  class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
   role="dialog"
   aria-modal="true"
+  aria-labelledby="cli-sync-title"
   tabindex="-1"
-  onclick={handleBackdropClick}
+  bind:this={dialogEl}
   onkeydown={handleKeydown}
 >
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
-    class="relative flex max-h-[80vh] w-full max-w-2xl flex-col rounded-xl border border-border bg-background shadow-2xl animate-slide-up"
+    class="fixed inset-0 bg-miwarp-overlay backdrop-blur-md"
+    transition:fade={{ duration: 200 }}
+    onclick={handleBackdropClick}
+    onkeydown={(e) => {
+      if (e.key === "Escape") onclose();
+    }}
+  ></div>
+
+  <div
+    class="relative z-10 flex max-h-[min(82vh,720px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[hsl(var(--miwarp-glass-border)/0.28)] shadow-[0_24px_64px_-12px_rgba(0,0,0,0.45),inset_0_1px_0_hsl(var(--miwarp-glass-border)/0.12)] backdrop-blur-2xl"
+    style="background: hsl(var(--miwarp-bg-deep) / 0.94);"
+    transition:fly={{ y: 12, duration: 220 }}
   >
     <!-- Header -->
-    <div class="border-b border-border px-6 py-4">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-base font-semibold text-foreground">{t("cliSync_title")}</h2>
-          <p class="mt-0.5 text-xs text-muted-foreground">
-            {#if isShowAll}
-              {t("cliSync_allProjects")} &middot;
-              {#if truncated}
-                {t("cliSync_foundTruncated", {
-                  shown: String(sessions.length),
-                  total: String(totalSessions),
-                })}
-              {:else}
-                {t("cliSync_found", { count: String(sessions.length) })}
-              {/if}
-            {:else}
-              {cwd} &middot; {t("cliSync_found", { count: String(sessions.length) })}
+    <div
+      class="shrink-0 border-b border-[hsl(var(--miwarp-glass-border)/0.15)] bg-[hsl(var(--miwarp-bg-elevated)/0.25)] px-5 py-4"
+    >
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex min-w-0 items-start gap-3">
+          <div
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary ring-1 ring-primary/20"
+            aria-hidden="true"
+          >
+            <svg
+              class="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+              <path
+                d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"
+              />
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <h2 id="cli-sync-title" class="text-[15px] font-semibold tracking-tight text-foreground">
+              {t("cliSync_title")}
+            </h2>
+            <p class="mt-0.5 text-xs leading-relaxed text-muted-foreground">{subtitleText}</p>
+            {#if !loading && sessions.length > 0}
+              <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                {#if newCount > 0}
+                  <span
+                    class="inline-flex items-center rounded-full bg-miwarp-status-info/12 px-2 py-0.5 text-[10px] font-medium tabular-nums text-miwarp-status-info ring-1 ring-miwarp-status-info/20"
+                    title={t("cliSync_importAll", { count: String(newCount) })}
+                  >
+                    {newCount} · {t("cliSync_import")}
+                  </span>
+                {/if}
+                {#if importedCount > 0}
+                  <span
+                    class="inline-flex items-center rounded-full bg-miwarp-status-success/10 px-2 py-0.5 text-[10px] font-medium tabular-nums text-miwarp-status-success ring-1 ring-miwarp-status-success/20"
+                    title={t("cliSync_alreadyImported")}
+                  >
+                    {importedCount}
+                  </span>
+                {/if}
+              </div>
             {/if}
-          </p>
+          </div>
         </div>
-        <button type="button"
-          class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          onclick={onclose}
-          aria-label={t("common_close")}
-        >
-          <Icon name="x" size="lg" />
-        </button>
+        <div class="flex shrink-0 items-center gap-0.5">
+          <button
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-40"
+            onclick={() => discoverSessions()}
+            disabled={loading}
+            title={t("sidebar_refresh")}
+            aria-label={t("sidebar_refresh")}
+          >
+            <Icon name="refresh-cw" size="sm" class={loading ? "animate-spin" : ""} />
+          </button>
+          <button
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+            onclick={onclose}
+            aria-label={t("common_close")}
+          >
+            <Icon name="x" size="md" />
+          </button>
+        </div>
       </div>
 
-      <!-- Project filter (inline in header) -->
       {#if isShowAll && projects.length > 1}
-        <div class="mt-3 flex items-center gap-1.5 overflow-x-auto">
-          <button type="button"
-            class="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors
-              {selectedProject === null
-              ? 'bg-accent text-accent-foreground'
-              : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'}"
+        <div class="mt-3.5 flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
+          <button
+            type="button"
+            class="{filterPillBase} {selectedProject === null ? filterPillActive : filterPillIdle}"
             onclick={() => (selectedProject = null)}
           >
             {t("cliSync_filterAll")} ({sessions.length})
           </button>
           {#each projects as proj (proj.path)}
-            <button type="button"
-              class="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors
-                {selectedProject === proj.path
-                ? 'bg-accent text-accent-foreground'
-                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'}"
+            <button
+              type="button"
+              class="{filterPillBase} {selectedProject === proj.path ? filterPillActive : filterPillIdle}"
               onclick={() => (selectedProject = proj.path)}
               title={proj.path}
             >
@@ -279,158 +351,188 @@
     </div>
 
     <!-- Search -->
-    <div class="border-b border-border px-6 py-3">
+    <div class="shrink-0 border-b border-[hsl(var(--miwarp-glass-border)/0.12)] px-5 py-3">
       <div class="relative">
-        <Icon name="search" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Icon
+          name="search"
+          class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70"
+        />
         <input
-          type="text"
+          type="search"
           bind:value={searchQuery}
           placeholder={t("cliSync_searchPlaceholder")}
-          onkeydown={(e) => { if (e.key === "Escape") searchQuery = ""; }}
-          class="w-full rounded-lg border border-border bg-muted/50 py-2 pl-10 pr-8 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          onkeydown={(e) => {
+            if (e.key === "Escape") searchQuery = "";
+          }}
+          class="w-full rounded-full border border-[hsl(var(--miwarp-glass-border)/0.2)] bg-[hsl(var(--miwarp-bg-elevated)/0.4)] py-2 pl-10 pr-9 text-sm text-foreground placeholder:text-muted-foreground/55 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/15"
         />
         {#if searchQuery}
-          <button type="button"
-            class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          <button
+            type="button"
+            class="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground/60 transition-colors hover:bg-muted/50 hover:text-foreground"
             onclick={() => (searchQuery = "")}
             aria-label={t("common_clear")}
           >
-            <Icon name="x" class="h-3.5 w-3.5" />
+            <Icon name="x" size="xs" />
           </button>
         {/if}
       </div>
     </div>
 
     <!-- Session list -->
-    <div class="flex-1 overflow-y-auto px-6 py-3">
+    <div class="min-h-0 flex-1 overflow-y-auto px-5 py-3">
       {#if loading}
-        <div class="flex items-center justify-center py-12">
+        <div class="flex flex-col items-center justify-center gap-3 py-16">
           <Spinner size="md" />
+          <p class="text-xs text-muted-foreground">{t("common_loading")}</p>
         </div>
       {:else if error && sessions.length === 0}
-        <EmptyState title={error} class="py-12 text-destructive">
+        <EmptyState title={error} class="py-14 text-destructive">
           {#snippet iconComponent()}
-            <Icon name="triangle-alert" size="lg" class="text-destructive/60" />
+            <div
+              class="flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive ring-1 ring-destructive/20"
+            >
+              <Icon name="triangle-alert" size="lg" />
+            </div>
           {/snippet}
         </EmptyState>
       {:else if filtered.length === 0}
-        <EmptyState icon="📁" title={t("cliSync_noSessions")} />
+        <EmptyState title={t("cliSync_noSessions")} class="py-14">
+          {#snippet iconComponent()}
+            <div
+              class="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted/40 text-muted-foreground ring-1 ring-[hsl(var(--miwarp-glass-border)/0.15)]"
+            >
+              <Icon name="folder" size="lg" />
+            </div>
+          {/snippet}
+        </EmptyState>
       {:else}
-        <div class="space-y-2">
+        <ul class="flex flex-col gap-2" role="list">
           {#each filtered as session (session.sessionId)}
             {@const isImporting = importingId === session.sessionId}
             {@const isImported = session.alreadyImported}
-            <div
-              class="group rounded-lg border border-border p-3 transition-colors hover:bg-muted/30"
-            >
-              <div class="flex items-start justify-between gap-3">
-                <!-- Left: status dot + time + prompt -->
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-2">
-                    <span
-                      class="inline-block h-2 w-2 shrink-0 rounded-full {isImported
-                        ? 'bg-miwarp-status-success'
-                        : 'bg-miwarp-status-info'}"
-                    ></span>
-                    <span class="text-xs text-muted-foreground shrink-0">
-                      {fmtRelative(session.lastActivityAt)}
-                    </span>
-                    {#if isShowAll && !selectedProject && session.cwd}
-                      <span
-                        class="shrink-0 truncate max-w-[140px] rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-                        title={session.cwd}
-                      >
-                        {cwdDisplayLabel(session.cwd)}
+            <li>
+              <article
+                class="group rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.18)] bg-[hsl(var(--miwarp-bg-elevated)/0.32)] p-3.5 transition-all duration-150 hover:border-[hsl(var(--miwarp-glass-border)/0.32)] hover:bg-[hsl(var(--miwarp-bg-elevated)/0.48)] hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.35)]"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                      <span class="text-[11px] tabular-nums text-muted-foreground">
+                        {fmtRelative(session.lastActivityAt)}
                       </span>
-                    {/if}
-                    {#if session.model}
-                      <span
-                        class="ml-auto shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-                      >
-                        {session.model}
-                      </span>
-                    {/if}
+                      {#if isShowAll && !selectedProject && session.cwd}
+                        <span
+                          class="max-w-[160px] truncate rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                          title={session.cwd}
+                        >
+                          {cwdDisplayLabel(session.cwd)}
+                        </span>
+                      {/if}
+                      {#if session.model}
+                        <span
+                          class="ml-auto max-w-[120px] truncate rounded-md bg-primary/8 px-1.5 py-0.5 text-[10px] font-medium text-primary/90"
+                        >
+                          {session.model}
+                        </span>
+                      {/if}
+                    </div>
+                    <p class="mt-1.5 line-clamp-2 text-sm font-medium leading-snug text-foreground">
+                      {session.firstPrompt || "\u2014"}
+                    </p>
+                    <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                      <span>{t("cliSync_messages", { count: String(session.messageCount) })}</span>
+                      <span class="opacity-40" aria-hidden="true">·</span>
+                      <span>{formatSize(session.fileSize)}</span>
+                      {#if session.hasSubagents}
+                        <span class="opacity-40" aria-hidden="true">·</span>
+                        <span>{t("cliSync_subagents")}</span>
+                      {/if}
+                      {#if isImported && session.existingRunId}
+                        <span class="opacity-40" aria-hidden="true">·</span>
+                        <span class="font-medium text-miwarp-status-success">
+                          {t("cliSync_alreadyImported")}
+                        </span>
+                      {/if}
+                    </div>
                   </div>
-                  <p class="mt-1 truncate text-sm font-medium text-foreground">
-                    {session.firstPrompt || "\u2014"}
-                  </p>
-                  <div class="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{t("cliSync_messages", { count: String(session.messageCount) })}</span>
-                    <span>&middot;</span>
-                    <span>{formatSize(session.fileSize)}</span>
-                    {#if session.hasSubagents}
-                      <span>&middot;</span>
-                      <span>{t("cliSync_subagents")}</span>
-                    {/if}
-                    {#if isImported && session.existingRunId}
-                      <span>&middot;</span>
-                      <span class="text-miwarp-status-success">
-                        {t("cliSync_alreadyImported")}
-                      </span>
-                    {/if}
-                  </div>
-                </div>
 
-                <!-- Right: action buttons -->
-                <div class="flex items-center gap-1.5 shrink-0 pt-0.5">
-                  {#if isImported && session.existingRunId}
-                    <button type="button"
-                      class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-50"
-                      onclick={() => syncSession(session.existingRunId!)}
-                      disabled={!!importingId}
-                    >
-                      {#if importingId === session.existingRunId}
-                        <Spinner size="xs" />
-                      {:else}
-                        {t("cliSync_sync")}
-                      {/if}
-                    </button>
-                    <button type="button"
-                      class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors"
-                      onclick={() => onimported(session.existingRunId!)}
-                    >
-                      {t("cliSync_open")}
-                    </button>
-                  {:else}
-                    <button type="button"
-                      class="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-                      onclick={() => importSession(session)}
-                      disabled={!!importingId}
-                    >
-                      {#if isImporting}
-                        <Spinner size="xs" class="border-primary-foreground/30 border-t-primary-foreground" />
-                      {:else}
-                        {t("cliSync_import")}
-                      {/if}
-                    </button>
-                  {/if}
+                  <div
+                    class="flex shrink-0 items-center gap-1 pt-0.5 opacity-95 transition-opacity group-hover:opacity-100"
+                  >
+                    {#if isImported && session.existingRunId}
+                      <button
+                        type="button"
+                        class={actionGhost}
+                        onclick={() => syncSession(session.existingRunId!)}
+                        disabled={!!importingId}
+                      >
+                        {#if importingId === session.existingRunId}
+                          <Spinner size="xs" />
+                        {:else}
+                          {t("cliSync_sync")}
+                        {/if}
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded-lg bg-primary/90 px-2.5 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary disabled:opacity-50"
+                        onclick={() => onimported(session.existingRunId!)}
+                      >
+                        {t("cliSync_open")}
+                      </button>
+                    {:else}
+                      <button
+                        type="button"
+                        class="rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.5)] transition-colors hover:bg-primary/90 disabled:opacity-50"
+                        onclick={() => importSession(session)}
+                        disabled={!!importingId}
+                      >
+                        {#if isImporting}
+                          <Spinner
+                            size="xs"
+                            class="border-primary-foreground/30 border-t-primary-foreground"
+                          />
+                        {:else}
+                          {t("cliSync_import")}
+                        {/if}
+                      </button>
+                    {/if}
+                  </div>
                 </div>
-              </div>
-            </div>
+              </article>
+            </li>
           {/each}
-        </div>
+        </ul>
       {/if}
     </div>
 
     <!-- Footer -->
     {#if !loading && filtered.length > 0}
-      <div class="flex items-center justify-between border-t border-border px-6 py-3">
+      <div
+        class="flex shrink-0 items-center justify-between gap-3 border-t border-[hsl(var(--miwarp-glass-border)/0.15)] bg-[hsl(var(--miwarp-bg-elevated)/0.2)] px-5 py-3"
+      >
         {#if error}
-          <p class="text-xs text-destructive truncate max-w-[60%]">{error}</p>
+          <p class="min-w-0 flex-1 truncate text-xs text-destructive">{error}</p>
         {:else if warning}
-          <p class="text-xs text-miwarp-status-warning truncate max-w-[60%]">{warning}</p>
+          <p class="min-w-0 flex-1 truncate text-xs text-miwarp-status-warning">{warning}</p>
         {:else}
-          <div></div>
+          <p class="text-xs text-muted-foreground/70">
+            {t("cliSync_found", { count: String(filtered.length) })}
+          </p>
         {/if}
         {#if newCount > 0}
-          <button type="button"
-            class="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+          <button
+            type="button"
+            class="shrink-0 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-[0_4px_14px_-4px_hsl(var(--primary)/0.55)] transition-colors hover:bg-primary/90 disabled:opacity-50"
             onclick={importAllNew}
             disabled={!!importingId || importingAll}
           >
             {#if importingAll}
               <span class="flex items-center gap-2">
-                <Spinner size="sm" class="border-primary-foreground/30 border-t-primary-foreground" />
+                <Spinner
+                  size="sm"
+                  class="border-primary-foreground/30 border-t-primary-foreground"
+                />
                 {t("cliSync_importing")}
               </span>
             {:else}

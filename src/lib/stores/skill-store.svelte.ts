@@ -103,7 +103,7 @@ export class SkillStore {
         updatedAt: "2024-01-01T00:00:00Z",
         author: "MiWarp",
         tags: ["task", "schedule", "automation"],
-        icon: "⏰",
+        icon: "clock",
       },
       {
         id: "builtin-consolidate-memory",
@@ -118,7 +118,7 @@ export class SkillStore {
         updatedAt: "2024-01-01T00:00:00Z",
         author: "MiWarp",
         tags: ["memory", "organization", "cleanup"],
-        icon: "🧠",
+        icon: "brain",
       },
       {
         id: "builtin-setup-cowork",
@@ -132,7 +132,7 @@ export class SkillStore {
         updatedAt: "2024-01-01T00:00:00Z",
         author: "MiWarp",
         tags: ["setup", "cowork", "integration"],
-        icon: "🚀",
+        icon: "rocket",
       },
     ];
   }
@@ -166,7 +166,7 @@ export class SkillStore {
           updatedAt: new Date().toISOString(),
           author: metadata.author,
           tags: metadata.trigger || [],
-          icon: metadata.icon || "✨",
+          icon: metadata.icon || "sparkles",
         }),
       });
 

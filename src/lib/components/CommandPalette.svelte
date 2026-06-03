@@ -228,16 +228,16 @@
         preview = t("cmd_previewMultiAgent");
         break;
       case "preset:fullstack":
-        preview = `🚀 ${t("cmd_previewFullstack")}`;
+        preview = t("cmd_previewFullstack");
         break;
       case "preset:review":
-        preview = `🔍 ${t("cmd_previewReview")}`;
+        preview = t("cmd_previewReview");
         break;
       case "preset:test":
-        preview = `🧪 ${t("cmd_previewTest")}`;
+        preview = t("cmd_previewTest");
         break;
       case "preset:docs":
-        preview = `📝 ${t("cmd_previewDocs")}`;
+        preview = t("cmd_previewDocs");
         break;
       default:
         if (cmd.payload) {
@@ -252,7 +252,7 @@
 
     // Add permission hint
     if (requiresPermission(cmd)) {
-      preview += ` ⚠️ ${t("cmd_requiresConfirm")}`;
+      preview += ` — ${t("cmd_requiresConfirm")}`;
     }
 
     previewContent = preview;
@@ -658,7 +658,7 @@
                         class="text-[10px] text-miwarp-status-warning shrink-0"
                         title={t("cmd_requiresConfirm")}
                       >
-                        ⚠️
+                        <Icon name="triangle-alert" size="xs" />
                       </span>
                     {/if}
                   </button>
@@ -669,7 +669,7 @@
 
           {#if indexMap.size === 0}
             <EmptyState
-              icon="🔍"
+              iconName="search"
               title={query ? t("cmd_noCommandsFound") : t("cmd_noCommandsAvailable")}
               class="py-6"
             />
@@ -696,7 +696,7 @@
             window.dispatchEvent(new CustomEvent("miwarp:open-workflows"));
           }}
         >
-          <span>⚡</span>
+          <Icon name="zap" size="xs" />
           <span>{t("cmd_quickWorkflows")}</span>
         </button>
         <button type="button"
@@ -706,7 +706,7 @@
             window.dispatchEvent(new CustomEvent("miwarp:open-skills"));
           }}
         >
-          <span>🧩</span>
+          <Icon name="settings" size="xs" />
           <span>{t("cmd_quickSkills")}</span>
         </button>
         <button type="button"
@@ -716,7 +716,7 @@
             window.dispatchEvent(new CustomEvent("miwarp:open-history"));
           }}
         >
-          <span>📜</span>
+          <Icon name="scroll-text" size="xs" />
           <span>{t("cmd_quickHistory")}</span>
         </button>
         <!-- Natural language shortcut -->
@@ -728,7 +728,7 @@
           }}
           title={t("cmd_semanticTooltip")}
         >
-          <span>✨</span>
+          <Icon name="sparkles" size="xs" />
           <span>{t("cmd_searchSemantic")}</span>
         </button>
       </div>

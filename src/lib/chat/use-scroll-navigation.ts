@@ -10,6 +10,10 @@ import type { BurstCollapseHandle } from "$lib/chat/use-tool-burst-collapse.svel
 
 const RENDER_GROWTH_STEP = 100;
 const SCROLL_BOTTOM_THRESHOLD = 40;
+/** Only load older messages when the user has scrolled to the top edge (not 200px early). */
+const LOAD_MORE_TOP_THRESHOLD = 96;
+/** Re-allow load-more only after the user scrolls away from the top zone. */
+const LOAD_MORE_REARM_SCROLL = 240;
 
 export interface ScrollNavigationContext {
   store: SessionStore;
@@ -37,6 +41,8 @@ export interface ScrollNavigationContext {
   setScrollToInFlight: (v: boolean) => void;
   getSuppressLoadMoreRearm: () => boolean;
   setSuppressLoadMoreRearm: (v: boolean) => void;
+  /** Latch true when the user leaves the bottom — avoids toggling cv-auto at the threshold. */
+  setReadingHistory?: (v: boolean) => void;
   setFolderCwdOverride: (v: string) => void;
   reloadProjectData: (cwd: string) => void;
   getPageUrl: () => URL;
@@ -67,6 +73,7 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
     setScrollToInFlight,
     getSuppressLoadMoreRearm,
     setSuppressLoadMoreRearm,
+    setReadingHistory,
     setFolderCwdOverride,
     reloadProjectData,
     getPageUrl,
@@ -101,57 +108,50 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
     }
   }
 
+  /** First timeline row intersecting the viewport (anchor for scroll restoration). */
+  function getViewportAnchor(chatArea: HTMLElement): HTMLElement | null {
+    const rootTop = chatArea.getBoundingClientRect().top + 1;
+    for (const el of chatArea.querySelectorAll<HTMLElement>("[data-entry-id]")) {
+      if (el.getBoundingClientRect().bottom > rootTop) return el;
+    }
+    return null;
+  }
+
   async function loadMoreEarlier() {
     if (getLoadingMore() || !getLoadMoreArmed()) return;
+    const chatArea = getChatAreaRef();
+    if (!chatArea) return;
+
+    const ft = getFilteredTimeline();
+    const prevRenderLimit = getRenderLimit();
+    const nextLimit = Math.min(prevRenderLimit + RENDER_GROWTH_STEP, ft.length);
+    if (nextLimit <= prevRenderLimit) return;
+
     setLoadingMore(true);
     setLoadMoreArmed(false);
     try {
-      const chatArea = getChatAreaRef();
-      const anchor = chatArea?.querySelector<HTMLElement>("[data-entry-id]") ?? null;
-      const anchorId = anchor?.dataset.entryId ?? null;
-      const beforeTop = anchor?.getBoundingClientRect().top ?? 0;
-      const beforeScroll = chatArea?.scrollTop ?? 0;
+      const anchorEl = getViewportAnchor(chatArea);
+      const anchorTop = anchorEl?.getBoundingClientRect().top ?? 0;
+      const prevScrollTop = chatArea.scrollTop;
+      const prevScrollHeight = chatArea.scrollHeight;
 
-      const ft = getFilteredTimeline();
-      const prevRenderLimit = getRenderLimit();
-      setRenderLimit(Math.min(prevRenderLimit + RENDER_GROWTH_STEP, ft.length));
+      setRenderLimit(nextLimit);
       await tick();
 
-      if (anchorId && chatArea) {
-        // Wait two rAFs so the browser has done layout + paint and `content-visibility:
-        // auto` entries have been measured (their real height, not the 300px placeholder).
-        // Without this, getBoundingClientRect on the anchor uses placeholder sizes and
-        // the scroll restoration lands at the wrong position, causing a visible jump.
-        await new Promise<void>((resolve) =>
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-        );
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      );
 
-        let after: HTMLElement | null = null;
-        try {
-          after = chatArea.querySelector<HTMLElement>(`[data-entry-id="${CSS.escape(anchorId)}"]`);
-        } catch {
-          after =
-            Array.from(chatArea.querySelectorAll<HTMLElement>("[data-entry-id]")).find(
-              (el) => el.dataset.entryId === anchorId,
-            ) ?? null;
-        }
-        if (after) {
-          // Force synchronous layout of all newly-inserted entries so their real
-          // heights are committed before we measure the anchor.
-          const newlyInserted = chatArea.querySelectorAll<HTMLElement>(
-            `[data-entry-id]:nth-child(n+${prevRenderLimit + 1})`,
-          );
-          for (const el of newlyInserted) {
-            el.getBoundingClientRect();
-          }
-          // Re-measure the anchor after the forced layout.
-          const afterTop = after.getBoundingClientRect().top;
-          setSuppressLoadMoreRearm(true);
-          chatArea.scrollTop = beforeScroll + (afterTop - beforeTop);
-          await yieldToMain();
-          setSuppressLoadMoreRearm(false);
-        }
+      setSuppressLoadMoreRearm(true);
+      if (anchorEl?.isConnected) {
+        const afterTop = anchorEl.getBoundingClientRect().top;
+        chatArea.scrollTop = prevScrollTop + (afterTop - anchorTop);
+      } else {
+        const heightDelta = chatArea.scrollHeight - prevScrollHeight;
+        if (heightDelta > 0) chatArea.scrollTop = prevScrollTop + heightDelta;
       }
+      await yieldToMain();
+      setSuppressLoadMoreRearm(false);
     } finally {
       setLoadingMore(false);
     }
@@ -246,8 +246,28 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
       const dist = chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight;
       const nearBottom = dist < SCROLL_BOTTOM_THRESHOLD;
       setIsChatAutoScroll(nearBottom);
-      if (nearBottom) setShowChatScrollHint(false);
-      if (!getLoadMoreArmed() && !getSuppressLoadMoreRearm()) setLoadMoreArmed(true);
+      if (nearBottom) {
+        setReadingHistory?.(false);
+        setShowChatScrollHint(false);
+        if (!getLoadingMore()) setLoadMoreArmed(true);
+        return;
+      }
+
+      setReadingHistory?.(true);
+
+      if (!getLoadingMore() && !getSuppressLoadMoreRearm() && chatArea.scrollTop > LOAD_MORE_REARM_SCROLL) {
+        setLoadMoreArmed(true);
+      }
+
+      const hidden = getFilteredTimeline().length - getRenderLimit();
+      if (
+        hidden > 0 &&
+        getLoadMoreArmed() &&
+        !getLoadingMore() &&
+        chatArea.scrollTop <= LOAD_MORE_TOP_THRESHOLD
+      ) {
+        void loadMoreEarlier();
+      }
     });
   }
 
@@ -257,6 +277,7 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
       chatArea.scrollTop = chatArea.scrollHeight;
       setShowChatScrollHint(false);
       setIsChatAutoScroll(true);
+      setReadingHistory?.(false);
     }
   }
 

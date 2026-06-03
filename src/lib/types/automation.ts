@@ -4,6 +4,8 @@
  * Type definitions for browser automation scripts.
  * Based on Claude Cowork design patterns.
  */
+import type { LucideIconName } from "$lib/lucide-icon";
+
 export type AutomationCategory =
   | "web_scraping"
   | "form_automation"
@@ -176,7 +178,7 @@ export interface CategoryInfo {
   value: AutomationCategory;
   label: string;
   labelZh: string;
-  icon: string;
+  icon: LucideIconName;
   description: string;
 }
 
@@ -185,42 +187,42 @@ export const AUTOMATION_CATEGORIES: CategoryInfo[] = [
     value: "web_scraping",
     label: "Web Scraping",
     labelZh: "网页抓取",
-    icon: "🕷️",
+    icon: "network",
     description: "Extract data from websites",
   },
   {
     value: "form_automation",
     label: "Form Automation",
     labelZh: "表单自动化",
-    icon: "📝",
+    icon: "file-text",
     description: "Fill forms automatically",
   },
   {
     value: "testing",
     label: "Testing",
     labelZh: "测试",
-    icon: "🧪",
+    icon: "flask-conical",
     description: "Automated testing workflows",
   },
   {
     value: "data_entry",
     label: "Data Entry",
     labelZh: "数据录入",
-    icon: "📊",
+    icon: "bar-chart-2",
     description: "Batch data entry tasks",
   },
   {
     value: "monitoring",
     label: "Monitoring",
     labelZh: "监控",
-    icon: "👁️",
+    icon: "eye",
     description: "Website monitoring tasks",
   },
   {
     value: "custom",
     label: "Custom",
     labelZh: "自定义",
-    icon: "⚙️",
+    icon: "settings",
     description: "Custom automation scripts",
   },
 ];
@@ -230,7 +232,7 @@ export interface StepTypeInfo {
   value: StepType;
   label: string;
   labelZh: string;
-  icon: string;
+  icon: LucideIconName;
   description: string;
   paramFields: (keyof StepParams)[];
 }
@@ -240,7 +242,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "navigate",
     label: "Navigate",
     labelZh: "导航",
-    icon: "🌐",
+    icon: "globe",
     description: "Navigate to a URL",
     paramFields: ["url"],
   },
@@ -248,7 +250,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "click",
     label: "Click",
     labelZh: "点击",
-    icon: "👆",
+    icon: "mouse-pointer-click",
     description: "Click on an element",
     paramFields: ["coordinate", "ref"],
   },
@@ -256,7 +258,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "type",
     label: "Type",
     labelZh: "输入",
-    icon: "⌨️",
+    icon: "keyboard",
     description: "Type text into an element",
     paramFields: ["text", "coordinate"],
   },
@@ -264,7 +266,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "wait",
     label: "Wait",
     labelZh: "等待",
-    icon: "⏱️",
+    icon: "timer",
     description: "Wait for a duration or condition",
     paramFields: ["duration", "condition"],
   },
@@ -272,7 +274,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "scroll",
     label: "Scroll",
     labelZh: "滚动",
-    icon: "📜",
+    icon: "scroll-text",
     description: "Scroll the page",
     paramFields: ["direction", "scrollAmount", "coordinate"],
   },
@@ -280,7 +282,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "screenshot",
     label: "Screenshot",
     labelZh: "截图",
-    icon: "📷",
+    icon: "camera",
     description: "Take a screenshot",
     paramFields: ["region", "fullPage"],
   },
@@ -288,7 +290,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "find",
     label: "Find Element",
     labelZh: "查找元素",
-    icon: "🔍",
+    icon: "search",
     description: "Find an element on the page",
     paramFields: ["query"],
   },
@@ -296,7 +298,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "execute_js",
     label: "Execute JS",
     labelZh: "执行 JS",
-    icon: "📜",
+    icon: "scroll-text",
     description: "Execute JavaScript code",
     paramFields: ["script"],
   },
@@ -304,7 +306,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "switch_tab",
     label: "Switch Tab",
     labelZh: "切换标签",
-    icon: "📑",
+    icon: "layout",
     description: "Switch to a different tab",
     paramFields: ["tabId"],
   },
@@ -312,7 +314,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "close_tab",
     label: "Close Tab",
     labelZh: "关闭标签",
-    icon: "❌",
+    icon: "x",
     description: "Close a tab",
     paramFields: ["tabId"],
   },
@@ -320,7 +322,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "hover",
     label: "Hover",
     labelZh: "悬停",
-    icon: "👆",
+    icon: "mouse-pointer-click",
     description: "Hover over an element",
     paramFields: ["coordinate"],
   },
@@ -328,7 +330,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "drag_drop",
     label: "Drag & Drop",
     labelZh: "拖拽",
-    icon: "✋",
+    icon: "hand",
     description: "Drag and drop an element",
     paramFields: ["startCoordinate", "endCoordinate"],
   },
@@ -336,7 +338,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "double_click",
     label: "Double Click",
     labelZh: "双击",
-    icon: "👆👆",
+    icon: "mouse-pointer-click",
     description: "Double click on an element",
     paramFields: ["coordinate", "ref"],
   },
@@ -344,7 +346,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "right_click",
     label: "Right Click",
     labelZh: "右键点击",
-    icon: "🖱️",
+    icon: "mouse-pointer-2",
     description: "Right click on an element",
     paramFields: ["coordinate", "ref"],
   },
@@ -352,7 +354,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "upload_file",
     label: "Upload File",
     labelZh: "上传文件",
-    icon: "📁",
+    icon: "folder-up",
     description: "Upload a file",
     paramFields: ["coordinate", "filePath"],
   },
@@ -360,7 +362,7 @@ export const STEP_TYPES: StepTypeInfo[] = [
     value: "select_option",
     label: "Select Option",
     labelZh: "选择选项",
-    icon: "▼",
+    icon: "chevron-down",
     description: "Select an option from dropdown",
     paramFields: ["ref", "value", "index"],
   },

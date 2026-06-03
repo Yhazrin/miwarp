@@ -239,7 +239,7 @@
   <!-- Header -->
   <div class="flex items-center justify-between border-b px-4 py-3">
     <div class="flex items-center gap-3">
-      <span class="text-2xl">⚡</span>
+      <Icon name="zap" size="lg" class="text-primary shrink-0" />
       <div>
         <input
           type="text"
@@ -335,7 +335,7 @@
 
         {#if editedScript.steps.length === 0}
           <EmptyState
-            icon="📋"
+            iconName="clipboard-list"
             title={t("automationEditor_noSteps")}
             variant="dashed"
           />
@@ -380,7 +380,7 @@
                   >
                     {step.order}
                   </span>
-                  <span class="text-lg">{stepInfo.icon}</span>
+                  <Icon name={stepInfo.icon} size="md" class="text-muted-foreground shrink-0" />
                   <div class="flex-1 min-w-0">
                     <div class="font-medium">{stepInfo.label}</div>
                     {#if step.description}
@@ -443,7 +443,7 @@
       {#if selectedStep}
         <StepEditor step={selectedStep} onUpdate={handleStepUpdate} />
       {:else}
-        <EmptyState icon="👆" title={t("automationEditor_selectStep")} />
+        <EmptyState iconName="mouse-pointer-click" title={t("automationEditor_selectStep")} />
       {/if}
 
       <!-- Execution controls -->
@@ -452,7 +452,8 @@
 
         {#if !browserStore.state.connected}
           <div class="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-            ⚠️ {t("automationEditor_browserRequired")}
+            <Icon name="triangle-alert" size="sm" class="inline shrink-0" />
+            {t("automationEditor_browserRequired")}
           </div>
         {:else if isExecuting}
           <div class="space-y-3">
@@ -473,9 +474,9 @@
                   {:else if log.status === "running"}
                     <span class="h-3 w-3 animate-pulse rounded-full bg-primary"></span>
                   {:else if log.status === "success"}
-                    <span class="text-miwarp-status-success">✓</span>
+                    <Icon name="check" size="sm" class="text-miwarp-status-success" />
                   {:else}
-                    <span class="text-destructive">✗</span>
+                    <Icon name="x" size="sm" class="text-destructive" />
                   {/if}
                   <span class={log.status === "failed" ? "text-destructive" : ""}>
                     {log.step}
@@ -496,7 +497,8 @@
             onclick={handleExecute}
             disabled={!canExecute}
           >
-            ▶ {t("automationEditor_execute")}
+            <Icon name="play" size="sm" class="inline" />
+            {t("automationEditor_execute")}
           </button>
           {#if executionError}
             <div class="mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive">

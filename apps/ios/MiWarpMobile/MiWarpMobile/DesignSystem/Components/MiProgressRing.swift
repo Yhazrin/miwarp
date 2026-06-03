@@ -27,7 +27,7 @@ struct MiProgressRing: View {
     HStack(spacing: MWSpacing.xl) {
         MiProgressRing(progress: 0.3)
         MiProgressRing(progress: 0.7, color: .green)
-        MiProgressRing(progress: 1.0, color: .orange, lineWidth: 6)
+        MiProgressRing(progress: 1.0, lineWidth: 6, color: .orange)
     }
     .padding()
 }
