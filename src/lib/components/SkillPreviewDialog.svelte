@@ -8,8 +8,8 @@
   import type { Skill } from "$lib/types/skill";
   import { generateSkillPreview, type SkillPreview } from "$lib/services/skill-preview";
   import { t } from "$lib/i18n/index.svelte";
-  import { fade, fly } from "svelte/transition";
   import Icon from "$lib/components/Icon.svelte";
+  import MiDialog from "$lib/ui/MiDialog.svelte";
 
   interface Props {
     open?: boolean;
@@ -32,8 +32,11 @@
     }
   });
 
+  let closingViaConfirm = $state(false);
+
   function handleConfirm() {
     if (skill) {
+      closingViaConfirm = true;
       onConfirm?.(skill, args);
       open = false;
     }
@@ -42,6 +45,11 @@
   function handleCancel() {
     open = false;
     onCancel?.();
+  }
+
+  function handleDialogClose() {
+    if (!closingViaConfirm) handleCancel();
+    closingViaConfirm = false;
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -60,24 +68,9 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-{#if open && preview}
-  <div class="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
-    <!-- Backdrop -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-      class="fixed inset-0 bg-miwarp-overlay backdrop-blur-sm"
-      transition:fade={{ duration: 200 }}
-      onclick={handleCancel}
-      onkeydown={(e) => {
-        if (e.key === "Escape" || e.key === "Enter" || e.key === " ") handleCancel();
-      }}
-    ></div>
-
-    <!-- Dialog -->
-    <div
-      class="relative z-50 w-full max-w-lg rounded-lg border bg-background shadow-2xl"
-      transition:fly={{ y: 10, duration: 200 }}
-    >
+<MiDialog bind:open onClose={handleDialogClose} contentClass="max-w-lg overflow-hidden p-0">
+  {#if preview}
+    <div class="w-full">
       <!-- Header -->
       <div class="flex items-center justify-between border-b px-6 py-4">
         <div class="flex items-center gap-3">
@@ -257,5 +250,5 @@
         </div>
       </div>
     </div>
-  </div>
-{/if}
+  {/if}
+</MiDialog>

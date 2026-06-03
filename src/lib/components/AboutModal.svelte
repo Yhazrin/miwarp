@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { fade, fly } from "svelte/transition";
   import {
     checkAppUpdateStatus,
     installInAppUpdate,
@@ -9,7 +8,7 @@
   } from "$lib/utils/app-updater";
   import { renderMarkdown } from "$lib/utils/markdown";
   import { currentLocale, t } from "$lib/i18n/index.svelte";
-  import Icon from "$lib/components/Icon.svelte";
+  import MiDialog from "$lib/ui/MiDialog.svelte";
   import readmeEn from "../../../README.md?raw";
   import readmeZhCN from "../../../README.zh-CN.md?raw";
 
@@ -34,6 +33,7 @@
         return t("appUpdate_checking");
     }
   });
+
   onMount(async () => {
     try {
       const { getVersion } = await import("@tauri-apps/api/app");
@@ -43,7 +43,6 @@
     }
   });
 
-  /** Fix image paths for Tauri webview and remove redundant language switcher. */
   function processReadme(html: string): string {
     return html
       .replace(/src="static\//g, 'src="/')
@@ -60,14 +59,6 @@
   };
 
   let readmeHtml = $derived(readmeHtmlMap[currentLocale()] ?? readmeHtmlMap.en);
-
-  function handleBackdropClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) open = false;
-  }
-
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape") open = false;
-  }
 
   async function updateToLatest() {
     if (checkingUpdate) return;
@@ -100,57 +91,31 @@
   }
 </script>
 
-{#if open}
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay backdrop-blur-sm"
-    transition:fade={{ duration: 200 }}
-    role="dialog"
-    aria-modal="true"
-    tabindex="-1"
-    onclick={handleBackdropClick}
-    onkeydown={handleKeydown}
-  >
-    <div
-      class="relative flex max-h-[85vh] w-full max-w-3xl flex-col rounded-xl border border-border bg-background shadow-2xl"
-      transition:fly={{ y: 10, duration: 200 }}
-    >
-      <!-- Header -->
-      <div class="flex items-center justify-between border-b border-border px-6 py-4">
-        <div class="flex items-center gap-3">
-          <span class="text-xs text-muted-foreground"
-            >{appVersion ? `MiWarp v${appVersion}` : ""}</span
-          >
-          <button type="button"
-            class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-            onclick={updateToLatest}
-            disabled={checkingUpdate}
-          >
-            {updateButtonLabel}
-          </button>
-        </div>
-        <button type="button"
-          class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          onclick={() => (open = false)}
-          aria-label={t("common_close")}
-        >
-          <Icon name="x" size="lg" />
-        </button>
-      </div>
-
-      <!-- Content -->
-      <div class="flex-1 overflow-y-auto px-6 py-4">
-        <article class="prose prose-sm dark:prose-invert max-w-none">
-          {@html readmeHtml}
-        </article>
-      </div>
-
-      <!-- Footer -->
-      <div
-        class="flex items-center justify-between border-t border-border px-6 py-3 text-xs text-muted-foreground"
+<MiDialog bind:open size="lg" contentClass="overflow-hidden">
+  <div class="flex items-center justify-between border-b border-border px-6 py-4">
+    <div class="flex items-center gap-3">
+      <span class="text-xs text-muted-foreground">{appVersion ? `MiWarp v${appVersion}` : ""}</span>
+      <button
+        type="button"
+        class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+        onclick={updateToLatest}
+        disabled={checkingUpdate}
       >
-        <span>Apache License 2.0</span>
-        <span>Copyright 2025-2026 MiWarp Contributors</span>
-      </div>
+        {updateButtonLabel}
+      </button>
     </div>
   </div>
-{/if}
+
+  <div class="flex-1 overflow-y-auto px-6 py-4">
+    <article class="prose prose-sm dark:prose-invert max-w-none">
+      {@html readmeHtml}
+    </article>
+  </div>
+
+  <div
+    class="flex items-center justify-between border-t border-border px-6 py-3 text-xs text-muted-foreground"
+  >
+    <span>Apache License 2.0</span>
+    <span>Copyright 2025-2026 MiWarp Contributors</span>
+  </div>
+</MiDialog>

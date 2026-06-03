@@ -224,6 +224,7 @@
         style:overflow-anchor={readingHistory ? "auto" : "none"}
         bind:this={chatAreaRef}
         onscroll={handleChatScroll}
+        onwheel={handlers.handleChatWheel}
       >
         {#if welcomeVisible}
           <ChatWelcomeScreen
@@ -294,13 +295,14 @@
               <ChatNotificationBanner
                 taskId={latestNotification.task_id}
                 status={latestNotification.status}
+                onDismiss={handlers.dismissTaskNotificationBanner}
               />
             {/if}
             {#if filteredTimeline.length - renderLimit > 0}
               <div use:onTopSentinelMount aria-hidden="true" class="h-px w-full"></div>
             {/if}
             <ChatTimelineEntries
-              contentVisibilityEnabled={!readingHistory}
+              contentVisibilityEnabled={false}
               {visibleTimeline}
               {store}
               {burstCollapse}

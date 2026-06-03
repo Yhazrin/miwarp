@@ -2,30 +2,12 @@
   import { getContext } from "svelte";
   import { KeybindingStore, formatKeyDisplay } from "$lib/stores/keybindings.svelte";
   import { t } from "$lib/i18n/index.svelte";
-  import { fade, fly } from "svelte/transition";
   import Icon from "$lib/components/Icon.svelte";
+  import MiDialog from "$lib/ui/MiDialog.svelte";
 
   let { open = $bindable(false) }: { open?: boolean } = $props();
 
   const keybindingStore = getContext<KeybindingStore>("keybindings");
-
-  let panelEl: HTMLDivElement | undefined = $state();
-
-  // Window capture-phase keydown: intercepts ALL keys before layout dispatch
-  $effect(() => {
-    if (!open) return;
-    requestAnimationFrame(() => panelEl?.focus());
-
-    function captureKeydown(e: KeyboardEvent) {
-      e.stopPropagation();
-      e.preventDefault();
-      if (e.key === "Escape") {
-        open = false;
-      }
-    }
-    window.addEventListener("keydown", captureKeydown, true);
-    return () => window.removeEventListener("keydown", captureKeydown, true);
-  });
 
   let globalBindings = $derived(
     keybindingStore.resolved.filter((b) => b.context === "global" && b.source === "app"),
@@ -41,168 +23,125 @@
   let cliExpanded = $state(false);
 </script>
 
-{#if open}
-  <!-- Backdrop -->
-  <!-- svelte-ignore a11y_click_events_have_key_events -->
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div
-    class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay backdrop-blur-sm"
-    transition:fade={{ duration: 150 }}
-    onclick={() => (open = false)}
-    onkeydown={(e) => {
-      if (e.key === "Escape" || e.key === "Enter" || e.key === " ") open = false;
-    }}
-  >
-    <!-- Panel -->
-    <div
-      bind:this={panelEl}
-      tabindex="-1"
-      role="dialog"
-      aria-modal="true"
-      class="w-full max-w-md rounded-xl border border-border bg-background shadow-2xl outline-none"
-      transition:fly={{ y: 10, duration: 200 }}
-      onclick={(e) => e.stopPropagation()}
-    >
-      <!-- Header -->
-      <div class="flex items-center justify-between border-b border-border px-5 py-3">
-        <h2 class="text-sm font-semibold text-foreground">{t("shortcutHelp_title")}</h2>
-        <button type="button"
-          class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          aria-label="Close"
-          onclick={() => (open = false)}
-        >
-          <Icon name="x" size="md" />
-        </button>
+<MiDialog bind:open size="md" title={t("shortcutHelp_title")} contentClass="outline-none">
+  <div class="max-h-[60vh] space-y-5 overflow-y-auto px-5 py-4">
+    {#if globalBindings.length > 0}
+      <section>
+        <h3 class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {t("shortcutHelp_global")}
+        </h3>
+        <div class="space-y-1">
+          {#each globalBindings as b (b.command)}
+            <div class="flex items-center justify-between py-0.5">
+              <span class="text-xs text-foreground/80">{b.label}</span>
+              <kbd
+                class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70"
+                >{formatKeyDisplay(b.key)}</kbd
+              >
+            </div>
+          {/each}
+        </div>
+      </section>
+    {/if}
+
+    {#if chatBindings.length > 0}
+      <section>
+        <h3 class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {t("shortcutHelp_chat")}
+        </h3>
+        <div class="space-y-1">
+          {#each chatBindings as b (b.command)}
+            <div class="flex items-center justify-between py-0.5">
+              <span class="text-xs text-foreground/80">{b.label}</span>
+              <kbd
+                class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70"
+                >{formatKeyDisplay(b.key)}</kbd
+              >
+            </div>
+          {/each}
+        </div>
+      </section>
+    {/if}
+
+    <section>
+      <h3 class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {t("shortcutHelp_input")}
+      </h3>
+      <div class="space-y-1">
+        {#each promptBindings as b (b.command)}
+          <div class="flex items-center justify-between py-0.5">
+            <span class="text-xs text-foreground/80">{b.label}</span>
+            <kbd
+              class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70"
+              >{formatKeyDisplay(b.key)}</kbd
+            >
+          </div>
+        {/each}
+        <div class="flex items-center justify-between py-0.5">
+          <span class="text-xs text-foreground/80">{t("shortcutHelp_hintSlash")}</span>
+          <kbd
+            class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70"
+            >/</kbd
+          >
+        </div>
+        <div class="flex items-center justify-between py-0.5">
+          <span class="text-xs text-foreground/80">{t("shortcutHelp_hintAt")}</span>
+          <kbd
+            class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70"
+            >@</kbd
+          >
+        </div>
+        <div class="flex items-center justify-between py-0.5">
+          <span class="text-xs text-foreground/80">{t("shortcutHelp_hintDoubleEsc")}</span>
+          <kbd
+            class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70"
+            >⎋ ⎋</kbd
+          >
+        </div>
+        <div class="flex items-center justify-between py-0.5">
+          <span class="text-xs text-foreground/80">{t("shortcutHelp_hintNewline")}</span>
+          <kbd
+            class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70"
+            >⇧↵</kbd
+          >
+        </div>
       </div>
+    </section>
 
-      <!-- Body -->
-      <div class="max-h-[60vh] overflow-y-auto px-5 py-4 space-y-5">
-        <!-- Global -->
-        {#if globalBindings.length > 0}
-          <section>
-            <h3
-              class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2"
-            >
-              {t("shortcutHelp_global")}
-            </h3>
-            <div class="space-y-1">
-              {#each globalBindings as b (b.command)}
-                <div class="flex items-center justify-between py-0.5">
-                  <span class="text-xs text-foreground/80">{b.label}</span>
-                  <kbd
-                    class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70"
-                    >{formatKeyDisplay(b.key)}</kbd
-                  >
-                </div>
-              {/each}
-            </div>
-          </section>
-        {/if}
-
-        <!-- Chat -->
-        {#if chatBindings.length > 0}
-          <section>
-            <h3
-              class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2"
-            >
-              {t("shortcutHelp_chat")}
-            </h3>
-            <div class="space-y-1">
-              {#each chatBindings as b (b.command)}
-                <div class="flex items-center justify-between py-0.5">
-                  <span class="text-xs text-foreground/80">{b.label}</span>
-                  <kbd
-                    class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70"
-                    >{formatKeyDisplay(b.key)}</kbd
-                  >
-                </div>
-              {/each}
-            </div>
-          </section>
-        {/if}
-
-        <!-- Input -->
-        <section>
-          <h3 class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-            {t("shortcutHelp_input")}
-          </h3>
-          <div class="space-y-1">
-            {#each promptBindings as b (b.command)}
+    {#if cliBindings.length > 0}
+      <section>
+        <h3>
+          <button
+            type="button"
+            class="flex w-full items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+            onclick={() => (cliExpanded = !cliExpanded)}
+          >
+            <Icon
+              name="chevron-down"
+              size="xs"
+              class="transition-transform {cliExpanded ? '' : '-rotate-90'}"
+            />
+            {t("shortcutHelp_cliRef")}
+          </button>
+        </h3>
+        {#if cliExpanded}
+          <div class="mt-2 space-y-1">
+            {#each cliBindings as b (b.command)}
               <div class="flex items-center justify-between py-0.5">
-                <span class="text-xs text-foreground/80">{b.label}</span>
+                <span class="text-xs text-foreground/50">{b.label}</span>
                 <kbd
-                  class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70"
+                  class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/50"
                   >{formatKeyDisplay(b.key)}</kbd
                 >
               </div>
             {/each}
-            <!-- Custom hints -->
-            <div class="flex items-center justify-between py-0.5">
-              <span class="text-xs text-foreground/80">{t("shortcutHelp_hintSlash")}</span>
-              <kbd
-                class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70"
-                >/</kbd
-              >
-            </div>
-            <div class="flex items-center justify-between py-0.5">
-              <span class="text-xs text-foreground/80">{t("shortcutHelp_hintAt")}</span>
-              <kbd
-                class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70"
-                >@</kbd
-              >
-            </div>
-            <div class="flex items-center justify-between py-0.5">
-              <span class="text-xs text-foreground/80">{t("shortcutHelp_hintDoubleEsc")}</span>
-              <kbd
-                class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70"
-                >⎋ ⎋</kbd
-              >
-            </div>
-            <div class="flex items-center justify-between py-0.5">
-              <span class="text-xs text-foreground/80">{t("shortcutHelp_hintNewline")}</span>
-              <kbd
-                class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/70"
-                >⇧↵</kbd
-              >
-            </div>
           </div>
-        </section>
-
-        <!-- CLI Reference (collapsible) -->
-        {#if cliBindings.length > 0}
-          <section>
-            <h3>
-              <button type="button"
-                class="flex w-full items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
-                onclick={() => (cliExpanded = !cliExpanded)}
-              >
-                <Icon name="chevron-down" size="xs" class="transition-transform {cliExpanded ? '' : '-rotate-90'}" />
-                {t("shortcutHelp_cliRef")}
-              </button>
-            </h3>
-            {#if cliExpanded}
-              <div class="mt-2 space-y-1">
-                {#each cliBindings as b (b.command)}
-                  <div class="flex items-center justify-between py-0.5">
-                    <span class="text-xs text-foreground/50">{b.label}</span>
-                    <kbd
-                      class="inline-flex items-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] text-foreground/50"
-                      >{formatKeyDisplay(b.key)}</kbd
-                    >
-                  </div>
-                {/each}
-              </div>
-            {/if}
-          </section>
         {/if}
-      </div>
-
-      <!-- Footer -->
-      <div class="border-t border-border px-5 py-2.5">
-        <p class="text-[10px] text-muted-foreground">
-          {t("shortcutHelp_customize")}
-        </p>
-      </div>
-    </div>
+      </section>
+    {/if}
   </div>
-{/if}
+
+  <div class="border-t border-border px-5 py-2.5">
+    <p class="text-[10px] text-muted-foreground">{t("shortcutHelp_customize")}</p>
+  </div>
+</MiDialog>

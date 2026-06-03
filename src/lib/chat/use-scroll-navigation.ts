@@ -260,13 +260,9 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
       }
 
       const hidden = getFilteredTimeline().length - getRenderLimit();
-      if (
-        hidden > 0 &&
-        getLoadMoreArmed() &&
-        !getLoadingMore() &&
-        chatArea.scrollTop <= LOAD_MORE_TOP_THRESHOLD
-      ) {
-        void loadMoreEarlier();
+      if (hidden > 0 && chatArea.scrollTop <= LOAD_MORE_TOP_THRESHOLD) {
+        if (!getLoadMoreArmed()) setLoadMoreArmed(true);
+        if (!getLoadingMore()) void loadMoreEarlier();
       }
     });
   }
@@ -361,6 +357,17 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
     }
   }
 
+  /** Call before scroll events (wheel up) so auto-scroll does not fight the gesture. */
+  function latchReadingHistory() {
+    setIsChatAutoScroll(false);
+    setReadingHistory?.(true);
+    setShowChatScrollHint(false);
+  }
+
+  function handleChatWheel(e: WheelEvent) {
+    if (e.deltaY < 0) latchReadingHistory();
+  }
+
   return {
     cancelProgressive,
     expandRenderLimitTo,
@@ -368,6 +375,8 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
     loadMoreEarlier,
     loadRunProgressive,
     handleChatScroll,
+    handleChatWheel,
+    latchReadingHistory,
     scrollChatToBottom,
     scrollToTool,
     scrollToMessage,

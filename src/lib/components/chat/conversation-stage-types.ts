@@ -117,12 +117,14 @@ export interface StageHandlers {
     content?: Record<string, unknown>,
   ) => void | Promise<void>;
   handleChatScroll: () => void;
+  handleChatWheel: (e: WheelEvent) => void;
   scrollChatToBottom: () => void;
   handleTermResize: (cols: number, rows: number) => void;
   handleTermReady: (cols: number, rows: number) => void;
   handleForkCancel: () => void;
   handleForkRetry: () => void;
   dismissInitHint: () => void;
+  dismissTaskNotificationBanner: () => void;
   loadRunProgressive: (id: string, xtermRef: XTerminal | undefined) => void;
   setLastTarget: (hostName: string | null) => void;
 }

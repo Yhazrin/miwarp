@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import { scale } from "svelte/transition";
+  import { onDestroy } from "svelte";
   import type { TaskRun, McpServerInfo, CliModelInfo } from "$lib/types";
   import type { TurnUsage } from "$lib/stores/types";
   import { dbg } from "$lib/utils/debug";
-  import EmptyState from "$lib/components/EmptyState.svelte";
+  import ProcessVisibilityPicker from "$lib/components/ProcessVisibilityPicker.svelte";
+  import StatusBarModelMenu from "$lib/components/StatusBarModelMenu.svelte";
   import { getCliModels } from "$lib/stores/cli-info.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { fmtNumber } from "$lib/i18n/format";
@@ -13,10 +13,7 @@
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
   import type { ProcessVisibility } from "$lib/utils/process-visibility";
-  import {
-    PROCESS_VISIBILITY_LEVELS,
-    shouldShowContextDetails,
-  } from "$lib/utils/process-visibility";
+  import { shouldShowContextDetails } from "$lib/utils/process-visibility";
 
   let {
     run = null,
@@ -314,54 +311,10 @@
 
   const _formatCost = formatCostDisplay;
 
-  // ── Model selector dropdown ──
-  // Use platform-specific models when a third-party provider is active
+  // ── Model / process visibility menus (Bits UI) ──
   let models = $derived(platformModels.length > 0 ? platformModels : getCliModels());
-  let dropdownOpen = $state(false);
-  let focusedModelIdx = $state(-1);
-  let modelBtnEl: HTMLButtonElement | undefined = $state();
-  let dropdownEl: HTMLDivElement | undefined = $state();
-  let dropdownStyle = $state("");
-  let modelFilter = $state("");
-  let modelFilterEl: HTMLInputElement | undefined = $state();
-  const showModelFilter = $derived(models.length >= 10);
-  const filteredModels = $derived.by(() => {
-    if (!modelFilter) return models;
-    const q = modelFilter.toLowerCase();
-    return models.filter(
-      (m) =>
-        m.value.toLowerCase().includes(q) ||
-        m.displayName.toLowerCase().includes(q) ||
-        (m.description && m.description.toLowerCase().includes(q)),
-    );
-  });
-
+  let modelMenuOpen = $state(false);
   let pvMenuOpen = $state(false);
-  let pvMenuBtnEl: HTMLButtonElement | undefined = $state();
-  let pvMenuEl: HTMLDivElement | undefined = $state();
-  let pvMenuStyle = $state("");
-
-  const POPOVER_Z = 45;
-  const VIEWPORT_PAD = 8;
-  const POPOVER_GAP = 6;
-  const PV_MENU_WIDTH = 200;
-
-  function clampPopoverLeft(left: number, width: number): number {
-    return Math.max(VIEWPORT_PAD, Math.min(left, window.innerWidth - width - VIEWPORT_PAD));
-  }
-
-  function buildPopoverStyle(anchor: HTMLElement, width: number, flipThreshold = 200): string {
-    const rect = anchor.getBoundingClientRect();
-    const left = clampPopoverLeft(rect.left, width);
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    const openAbove = spaceBelow < flipThreshold && spaceAbove > spaceBelow;
-    const base = `position:fixed;left:${left}px;width:${width}px;z-index:${POPOVER_Z};`;
-    if (openAbove) {
-      return `${base}bottom:${window.innerHeight - rect.top + POPOVER_GAP}px;`;
-    }
-    return `${base}top:${rect.bottom + POPOVER_GAP}px;`;
-  }
 
   function processVisibilityLabel(mode: ProcessVisibility): string {
     switch (mode) {
@@ -393,7 +346,7 @@
   }
 
   /** Bar is "active" while pointer is inside or a shell menu is open. */
-  let islandActive = $derived(islandHover || dropdownOpen || pvMenuOpen || titleEditing);
+  let islandActive = $derived(islandHover || modelMenuOpen || pvMenuOpen || titleEditing);
 
   /** One class on the shell — context pill width + tier 2 + outer capsule share this. */
   let islandInteractionClass = $derived(
@@ -418,76 +371,19 @@
     }
   });
 
-  function processVisibilityShort(mode: ProcessVisibility): string {
-    switch (mode) {
-      case "output":
-        return t("processVisibility_short_output");
-      case "guided":
-        return t("processVisibility_short_guided");
-      case "expert":
-        return t("processVisibility_short_expert");
-      default:
-        return t("processVisibility_short_developer");
-    }
+  function handleModelMenuOpenChange(next: boolean) {
+    modelMenuOpen = next;
+    if (next) pvMenuOpen = false;
   }
 
-  function selectProcessVisibility(mode: ProcessVisibility) {
-    pvMenuOpen = false;
-    if (mode !== processVisibility) onProcessVisibilityChange?.(mode);
-  }
-
-  function positionPvMenu() {
-    if (!pvMenuBtnEl) return;
-    pvMenuStyle = buildPopoverStyle(pvMenuBtnEl, PV_MENU_WIDTH, 160);
-  }
-
-  function togglePvMenu() {
-    pvMenuOpen = !pvMenuOpen;
-    if (pvMenuOpen) {
-      dropdownOpen = false;
-      positionPvMenu();
-    }
-  }
-
-  function positionDropdown() {
-    if (!modelBtnEl) return;
-    const rect = modelBtnEl.getBoundingClientRect();
-    const maxW = Math.min(400, window.innerWidth - VIEWPORT_PAD * 2);
-    const width = Math.max(rect.width, 280, Math.min(maxW, 360));
-    dropdownStyle = buildPopoverStyle(modelBtnEl, width, 240);
-  }
-
-  function toggleModelDropdown() {
-    dropdownOpen = !dropdownOpen;
-    if (dropdownOpen) {
-      pvMenuOpen = false;
-      modelFilter = "";
-      positionDropdown();
-      focusedModelIdx = filteredModels.findIndex((m) => m.value === model);
-      if (focusedModelIdx < 0) focusedModelIdx = 0;
-      requestAnimationFrame(() => {
-        if (showModelFilter && modelFilterEl) modelFilterEl.focus();
-        else dropdownEl?.focus();
-      });
-    }
+  function handlePvMenuOpenChange(next: boolean) {
+    pvMenuOpen = next;
+    if (next) modelMenuOpen = false;
   }
 
   export function openModelDropdown() {
     pvMenuOpen = false;
-    dropdownOpen = true;
-    modelFilter = "";
-    positionDropdown();
-    focusedModelIdx = filteredModels.findIndex((m) => m.value === model);
-    if (focusedModelIdx < 0) focusedModelIdx = 0;
-    requestAnimationFrame(() => {
-      if (showModelFilter && modelFilterEl) modelFilterEl.focus();
-      else dropdownEl?.focus();
-    });
-  }
-
-  function selectModel(val: string) {
-    dropdownOpen = false;
-    onModelChange?.(val);
+    modelMenuOpen = true;
   }
 
   function tabLabel(tab: ToolActivityPanelTab): string {
@@ -512,102 +408,6 @@
         return tab;
     }
   }
-
-  function handleModelFilterKeydown(e: KeyboardEvent) {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      focusedModelIdx = Math.min(focusedModelIdx + 1, filteredModels.length - 1);
-      dropdownEl?.focus();
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      focusedModelIdx = Math.max(focusedModelIdx - 1, 0);
-      dropdownEl?.focus();
-    } else if (e.key === "Enter" && filteredModels.length > 0) {
-      e.preventDefault();
-      const idx = focusedModelIdx >= 0 ? focusedModelIdx : 0;
-      selectModel(filteredModels[idx].value);
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      if (modelFilter) modelFilter = "";
-      else dropdownOpen = false;
-    }
-    if (e.key !== "Tab") e.stopPropagation();
-  }
-
-  function handleDropdownKeydown(e: KeyboardEvent) {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      focusedModelIdx = Math.min(focusedModelIdx + 1, filteredModels.length - 1);
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      focusedModelIdx = Math.max(focusedModelIdx - 1, 0);
-    } else if (
-      e.key === "Enter" &&
-      focusedModelIdx >= 0 &&
-      focusedModelIdx < filteredModels.length
-    ) {
-      e.preventDefault();
-      dbg("statusbar", "model selected via keyboard", {
-        model: filteredModels[focusedModelIdx].value,
-      });
-      selectModel(filteredModels[focusedModelIdx].value);
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      dropdownOpen = false;
-    } else if (showModelFilter && e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
-      modelFilterEl?.focus();
-    }
-    if (e.key !== "Tab") e.stopPropagation();
-  }
-
-  onMount(() => {
-    function onDocClick(e: MouseEvent) {
-      if (
-        dropdownOpen &&
-        modelBtnEl &&
-        !modelBtnEl.contains(e.target as Node) &&
-        dropdownEl &&
-        !dropdownEl.contains(e.target as Node)
-      ) {
-        dropdownOpen = false;
-      }
-      if (
-        pvMenuOpen &&
-        pvMenuBtnEl &&
-        !pvMenuBtnEl.contains(e.target as Node) &&
-        pvMenuEl &&
-        !pvMenuEl.contains(e.target as Node)
-      ) {
-        pvMenuOpen = false;
-      }
-    }
-    function onDocKeydown(e: KeyboardEvent) {
-      if (dropdownOpen && e.key === "Escape") {
-        dropdownOpen = false;
-        e.preventDefault();
-        e.stopPropagation(); // Prevent bubble to window → keybindingStore.dispatch → chat:interrupt
-      }
-      if (pvMenuOpen && e.key === "Escape") {
-        pvMenuOpen = false;
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    }
-    function onViewportChange() {
-      if (dropdownOpen) positionDropdown();
-      if (pvMenuOpen) positionPvMenu();
-    }
-    document.addEventListener("mousedown", onDocClick, true);
-    document.addEventListener("keydown", onDocKeydown);
-    window.addEventListener("resize", onViewportChange);
-    window.addEventListener("scroll", onViewportChange, true);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick, true);
-      document.removeEventListener("keydown", onDocKeydown);
-      window.removeEventListener("resize", onViewportChange);
-      window.removeEventListener("scroll", onViewportChange, true);
-    };
-  });
 
   onDestroy(() => {
     clearTimeout(compactTimer);
@@ -976,32 +776,19 @@
           <span class="session-island-tier2-divider" aria-hidden="true">|</span>
         {/if}
         {#if onModelChange}
-          <button
-            type="button"
-            bind:this={modelBtnEl}
-            class="inline-flex max-w-[11rem] shrink-0 items-center gap-1 truncate rounded-md border border-transparent px-1.5 py-0.5 font-medium text-foreground/85 hover:border-border/50 hover:bg-muted/50 hover:text-foreground transition-colors {dropdownOpen
-              ? 'border-border/60 bg-muted/60 text-foreground'
-              : ''}"
-            onclick={(e) => {
-              e.stopPropagation();
-              toggleModelDropdown();
-            }}
-            aria-expanded={dropdownOpen}
-            aria-haspopup="listbox"
-            aria-label={modelLabel}
-          >
-            <span class="truncate">{modelLabel}</span>
-            {#if !effortDisabled && effort}
-              <span class="text-[10px] font-normal text-foreground/55">{effort}</span>
-            {/if}
-            <Icon
-              name="chevron-down"
-              size="xs"
-              class="shrink-0 text-foreground/40 transition-transform duration-200 {dropdownOpen
-                ? 'rotate-180'
-                : ''}"
-            />
-          </button>
+          <StatusBarModelMenu
+            bind:open={modelMenuOpen}
+            {model}
+            {models}
+            {modelLabel}
+            {effort}
+            {effortLevels}
+            {effortDisabled}
+            {currentModelInfo}
+            onModelChange={onModelChange}
+            onEffortChange={onEffortChange}
+            onOpenChange={handleModelMenuOpenChange}
+          />
         {:else}
           <span class="max-w-[11rem] truncate font-medium text-foreground/85">{model}</span>
         {/if}
@@ -1011,157 +798,15 @@
         {#if (run && onRename) || model}
           <span class="session-island-tier2-divider" aria-hidden="true">|</span>
         {/if}
-        <button
-          type="button"
-          bind:this={pvMenuBtnEl}
-          class="inline-flex shrink-0 items-center gap-1 truncate rounded-md border border-transparent px-2 py-1 text-foreground/65 hover:border-border/50 hover:bg-muted/50 hover:text-foreground transition-colors {pvMenuOpen
-            ? 'border-border/60 bg-muted/60 text-foreground'
-            : ''}"
-          onclick={(e) => {
-            e.stopPropagation();
-            togglePvMenu();
-          }}
-          aria-expanded={pvMenuOpen}
-          aria-haspopup="listbox"
-          aria-label={t("settings_processVisibility")}
-          title={t("settings_processVisibility")}
-        >
-          <span class="truncate font-medium">{processVisibilityLabel(processVisibility)}</span>
-          <Icon
-            name="chevron-down"
-            size="xs"
-            class="shrink-0 text-foreground/40 transition-transform duration-200 {pvMenuOpen
-              ? 'rotate-180'
-              : ''}"
-          />
-        </button>
+        <ProcessVisibilityPicker
+          bind:open={pvMenuOpen}
+          {processVisibility}
+          label={processVisibilityLabel(processVisibility)}
+          onchange={onProcessVisibilityChange}
+          onOpenChange={handlePvMenuOpenChange}
+        />
       {/if}
       </div>
     </div>
   {/if}
 </div>
-
-{#if pvMenuOpen}
-  <div
-    bind:this={pvMenuEl}
-    role="listbox"
-    class="statusbar-popover animate-fade-in overflow-hidden p-1"
-    style={pvMenuStyle}
-  >
-    {#each PROCESS_VISIBILITY_LEVELS as mode (mode)}
-      <button
-        type="button"
-        role="option"
-        aria-selected={processVisibility === mode}
-        class="flex w-full items-center gap-2 rounded-[10px] px-2.5 py-2 text-left text-xs transition-colors {processVisibility ===
-        mode
-          ? 'bg-primary/12 text-primary font-medium'
-          : 'text-foreground/75 hover:bg-muted/50 hover:text-foreground'}"
-        onclick={() => selectProcessVisibility(mode)}
-      >
-        {#if processVisibility === mode}
-          <Icon name="check" size="sm" class="shrink-0 text-primary" />
-        {:else}
-          <span class="h-3.5 w-3.5 shrink-0"></span>
-        {/if}
-        <span class="flex-1">{processVisibilityLabel(mode)}</span>
-      </button>
-    {/each}
-  </div>
-{/if}
-
-{#if dropdownOpen}
-  <div
-    transition:scale={{ start: 0.95, duration: 100 }}
-    bind:this={dropdownEl}
-    tabindex="-1"
-    role="listbox"
-    class="statusbar-popover flex max-h-[min(420px,70vh)] flex-col overflow-hidden outline-none"
-    style={dropdownStyle}
-    onkeydown={handleDropdownKeydown}
-  >
-    {#if showModelFilter}
-      <div class="shrink-0 border-b border-border/25 px-2.5 py-2">
-        <input
-          bind:this={modelFilterEl}
-          bind:value={modelFilter}
-          placeholder={t("modelFilter_placeholder")}
-          class="w-full rounded-[10px] border border-border/35 bg-muted/25 px-2.5 py-1.5 text-xs outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary/45 focus:bg-muted/35"
-          onkeydown={handleModelFilterKeydown}
-        />
-      </div>
-    {/if}
-    <div class="min-h-0 flex-1 overflow-y-auto p-1.5 [scrollbar-width:thin]">
-      {#if filteredModels.length === 0}
-        <EmptyState iconName="search" title={t("modelFilter_noResults")} class="py-4" />
-      {/if}
-      {#each filteredModels as m, i}
-        <button
-          type="button"
-          role="option"
-          aria-selected={model === m.value}
-          class="flex w-full items-start gap-2 rounded-[10px] px-2 py-2 text-left transition-colors {model ===
-          m.value
-            ? 'bg-primary/12'
-            : 'hover:bg-muted/45'} {i === focusedModelIdx ? 'ring-1 ring-primary/25' : ''}"
-          onclick={() => selectModel(m.value)}
-        >
-          {#if model === m.value}
-            <Icon name="check" size="sm" class="mt-0.5 shrink-0 text-primary" />
-          {:else}
-            <span class="mt-0.5 h-3.5 w-3.5 shrink-0"></span>
-          {/if}
-          <span class="min-w-0 flex-1">
-            <span
-              class="block truncate text-xs font-medium {model === m.value
-                ? 'text-primary'
-                : 'text-foreground'}">{m.displayName}</span
-            >
-            {#if m.description}
-              <span class="mt-0.5 block truncate text-[10px] leading-snug text-muted-foreground/65"
-                >{m.description}</span
-              >
-            {/if}
-          </span>
-        </button>
-      {/each}
-    </div>
-    {#if effortLevels.length > 0 && onEffortChange}
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div
-        class="shrink-0 border-t border-border/25"
-        onkeydown={(e) => {
-          if (["Enter", " ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
-            e.stopPropagation();
-          }
-        }}
-      >
-        <div class="px-3 py-2.5">
-          <div
-            class="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70"
-          >
-            {t("effort_label")}{#if effortDisabled}<span
-                class="ml-1 font-normal normal-case opacity-50"
-                >— {currentModelInfo?.displayName ?? model}</span
-              >{/if}
-          </div>
-          <div class="flex gap-1">
-            {#each effortLevels as level}
-              <button
-                type="button"
-                class="flex-1 rounded-[10px] px-2 py-1.5 text-xs transition-colors
-                  {effortDisabled
-                  ? 'cursor-not-allowed bg-muted/25 text-muted-foreground/40'
-                  : effort === level
-                    ? 'bg-primary font-medium text-primary-foreground shadow-sm'
-                    : 'bg-muted/35 text-muted-foreground hover:bg-muted/55 hover:text-foreground'}"
-                disabled={effortDisabled}
-                onclick={() => onEffortChange(level)}>{level}</button
-              >
-            {/each}
-          </div>
-        </div>
-      </div>
-    {/if}
-  </div>
-{/if}

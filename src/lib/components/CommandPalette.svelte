@@ -19,7 +19,7 @@
   import { getIcon, commandIconMap } from "$lib/icons";
   import Icon from "$lib/components/Icon.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
-  import { fade, fly } from "svelte/transition";
+  import MiDialog from "$lib/ui/MiDialog.svelte";
 
   let {
     open = $bindable(false),
@@ -498,29 +498,8 @@
   }
 </script>
 
-{#if open}
-  <div
-    class="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
-    role="dialog"
-    aria-modal="true"
-    tabindex="-1"
-  >
-    <!-- Backdrop -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-      class="fixed inset-0 bg-miwarp-overlay backdrop-blur-sm"
-      transition:fade={{ duration: 150 }}
-      onclick={() => (open = false)}
-      onkeydown={(e) => {
-        if (e.key === "Escape" || e.key === "Enter" || e.key === " ") open = false;
-      }}
-    ></div>
-
-    <!-- Palette Container -->
-    <div class="relative z-50 w-full max-w-xl">
-      <!-- Main Palette -->
-      <div class="rounded-lg border bg-background shadow-2xl overflow-hidden"
-        transition:fly={{ y: -10, duration: 200 }}>
+<MiDialog bind:open size="command" contentClass="overflow-hidden shadow-2xl">
+      <div class="overflow-hidden">
         <!-- Search -->
         <div class="flex items-center gap-3 border-b px-4 py-3">
           <span class="text-muted-foreground shrink-0">{@html getIcon("search")}</span>
@@ -732,42 +711,14 @@
           <span>{t("cmd_searchSemantic")}</span>
         </button>
       </div>
-    </div>
-  </div>
-{/if}
+</MiDialog>
 
-<!-- Result modal -->
-{#if resultModalOpen}
-  <div
-    class="fixed inset-0 z-[60] flex items-center justify-center"
-    role="dialog"
-    aria-modal="true"
-    tabindex="-1"
-    onkeydown={(e) => {
-      if (e.key === "Escape") resultModalOpen = false;
-    }}
-  >
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-      class="fixed inset-0 bg-miwarp-overlay backdrop-blur-sm"
-      onclick={() => (resultModalOpen = false)}
-      onkeydown={(e) => e.key === "Escape" && (resultModalOpen = false)}
-    ></div>
-    <div
-      class="relative z-[60] w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg animate-fade-in"
-    >
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold">{resultModalTitle}</h2>
-        <button type="button"
-          class="rounded-md p-1 hover:bg-accent transition-colors"
-          aria-label="Close"
-          onclick={() => (resultModalOpen = false)}
-        >
-          <Icon name="x" size="md" />
-        </button>
-      </div>
-      <pre
-        class="max-h-[50vh] overflow-auto rounded-lg bg-muted/50 p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap">{resultModalContent}</pre>
-    </div>
+<MiDialog bind:open={resultModalOpen} size="default" contentClass="max-w-lg p-6">
+  <div class="mb-4 flex items-center justify-between">
+    <h2 class="text-lg font-semibold">{resultModalTitle}</h2>
   </div>
-{/if}
+  <pre
+    class="max-h-[50vh] overflow-auto rounded-lg bg-muted/50 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap"
+    >{resultModalContent}</pre
+  >
+</MiDialog>

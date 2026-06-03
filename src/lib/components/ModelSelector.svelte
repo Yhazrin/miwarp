@@ -1,9 +1,8 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import { scale } from "svelte/transition";
   import { getCliModels } from "$lib/stores/cli-info.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import MiPopover from "$lib/ui/MiPopover.svelte";
 
   let {
     value = $bindable(""),
@@ -15,6 +14,7 @@
     onchange?: (model: string) => void;
   } = $props();
 
+  let open = $state(false);
   let showCustom = $state(false);
   let customModel = $state("");
 
@@ -25,32 +25,17 @@
     return found?.displayName ?? (value || t("modelSelector_default"));
   });
 
-  let dropdownOpen = $state(false);
-  let wrapperEl: HTMLDivElement | undefined = $state();
-  let buttonEl: HTMLButtonElement | undefined = $state();
-  let dropdownStyle = $state("");
+  const triggerClass =
+    "flex items-center gap-1.5 rounded-md border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent data-[state=open]:bg-accent";
 
-  function toggleDropdown() {
-    dropdownOpen = !dropdownOpen;
-    if (dropdownOpen && buttonEl) {
-      updateDropdownPosition();
-    }
-  }
-
-  function updateDropdownPosition() {
-    if (!buttonEl) return;
-    const rect = buttonEl.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    if (spaceBelow < 260) {
-      dropdownStyle = `position:fixed; bottom:${window.innerHeight - rect.top + 4}px; left:${rect.left}px; z-index:50;`;
-    } else {
-      dropdownStyle = `position:fixed; top:${rect.bottom + 4}px; left:${rect.left}px; z-index:50;`;
-    }
+  function handleOpenChange(next: boolean) {
+    open = next;
+    if (!next) showCustom = false;
   }
 
   function selectModel(val: string) {
     value = val;
-    dropdownOpen = false;
+    open = false;
     showCustom = false;
     onchange?.(val);
   }
@@ -61,109 +46,85 @@
       onchange?.(value);
     }
     showCustom = false;
-    dropdownOpen = false;
+    open = false;
   }
-
-  // Use onMount + explicit addEventListener for click-outside detection
-  // This avoids <svelte:window> which can interfere with SvelteKit navigation
-  onMount(() => {
-    function onDocClick(e: MouseEvent) {
-      if (dropdownOpen && wrapperEl && !wrapperEl.contains(e.target as Node)) {
-        dropdownOpen = false;
-      }
-    }
-    function onDocKeydown(e: KeyboardEvent) {
-      if (dropdownOpen && e.key === "Escape") {
-        dropdownOpen = false;
-      }
-    }
-    document.addEventListener("mousedown", onDocClick, true);
-    document.addEventListener("keydown", onDocKeydown);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick, true);
-      document.removeEventListener("keydown", onDocKeydown);
-    };
-  });
 </script>
 
-<div bind:this={wrapperEl}>
-  <button type="button"
-    bind:this={buttonEl}
-    aria-expanded={dropdownOpen}
-    aria-haspopup="listbox"
-    class="flex items-center gap-1.5 rounded-md border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
-    onclick={toggleDropdown}
-  >
-    <svg
-      class="h-3.5 w-3.5 text-muted-foreground"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="2"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      ><path d="M12 8V4H8" /><rect width="16" height="12" x="4" y="8" rx="2" /><path
-        d="M2 14h2"
-      /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" /></svg
-    >
-    {displayValue}
-    <Icon name="chevron-down" size="xs" class="text-muted-foreground" />
-  </button>
+<MiPopover bind:open onOpenChange={handleOpenChange} contentClass="w-80 p-0" sideOffset={4}>
+  {#snippet trigger({ props })}
+    <button {...props} type="button" class="{triggerClass} {props.class ?? ''}" aria-label={displayValue}>
+      <svg
+        class="h-3.5 w-3.5 text-muted-foreground"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        ><path d="M12 8V4H8" /><rect width="16" height="12" x="4" y="8" rx="2" /><path
+          d="M2 14h2"
+        /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" /></svg
+      >
+      {displayValue}
+      <Icon
+        name="chevron-down"
+        size="xs"
+        class="text-muted-foreground transition-transform duration-200 data-[state=open]:rotate-180"
+      />
+    </button>
+  {/snippet}
+  {#snippet children()}
+    <div class="p-1">
+      {#each models as mdl (mdl.value)}
+        <button
+          type="button"
+          role="option"
+          aria-selected={value === mdl.value}
+          class="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm transition-colors hover:bg-accent {value ===
+          mdl.value
+            ? 'bg-accent font-medium'
+            : ''}"
+          onclick={() => selectModel(mdl.value)}
+        >
+          {#if value === mdl.value}
+            <Icon name="check" size="sm" class="text-primary" />
+          {:else}
+            <span class="w-3.5"></span>
+          {/if}
+          <span>{mdl.displayName}</span>
+          <span class="text-xs text-muted-foreground/60">{mdl.description}</span>
+          <span class="ml-auto text-xs text-muted-foreground">{mdl.value}</span>
+        </button>
+      {/each}
 
-  {#if dropdownOpen}
-    <div
-      transition:scale={{ start: 0.95, duration: 100 }}
-      role="listbox"
-      class="w-80 rounded-md border bg-background shadow-lg"
-      style={dropdownStyle}
-    >
-      <div class="p-1">
-        {#each models as mdl}
-          <button type="button"
-            class="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent transition-colors {value ===
-            mdl.value
-              ? 'bg-accent font-medium'
-              : ''}"
-            onclick={() => selectModel(mdl.value)}
+      <div class="my-1 border-t"></div>
+
+      {#if showCustom}
+        <div class="flex items-center gap-1 px-2 py-1">
+          <input
+            class="flex-1 rounded-sm border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+            bind:value={customModel}
+            placeholder={t("model_placeholder")}
+            onkeydown={(e) => e.key === "Enter" && applyCustom()}
+          />
+          <button
+            type="button"
+            class="rounded-sm bg-primary px-2 py-1 text-xs text-primary-foreground"
+            onclick={applyCustom}
           >
-            {#if value === mdl.value}
-              <Icon name="check" size="sm" class="text-primary" />
-            {:else}
-              <span class="w-3.5"></span>
-            {/if}
-            <span>{mdl.displayName}</span>
-            <span class="text-xs text-muted-foreground/60">{mdl.description}</span>
-            <span class="ml-auto text-xs text-muted-foreground">{mdl.value}</span>
+            {t("model_set")}
           </button>
-        {/each}
-
-        <div class="my-1 border-t"></div>
-
-        {#if showCustom}
-          <div class="flex items-center gap-1 px-2 py-1">
-            <input
-              class="flex-1 rounded-sm border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-              bind:value={customModel}
-              placeholder={t("model_placeholder")}
-              onkeydown={(e) => e.key === "Enter" && applyCustom()}
-            />
-            <button type="button"
-              class="rounded-sm bg-primary px-2 py-1 text-xs text-primary-foreground"
-              onclick={applyCustom}
-            >
-              {t("model_set")}
-            </button>
-          </div>
-        {:else}
-          <button type="button"
-            class="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent transition-colors text-muted-foreground"
-            onclick={() => (showCustom = true)}
-          >
-            <Icon name="plus" size="sm" />
-            {t("model_customModel")}
-          </button>
-        {/if}
-      </div>
+        </div>
+      {:else}
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent"
+          onclick={() => (showCustom = true)}
+        >
+          <Icon name="plus" size="sm" />
+          {t("model_customModel")}
+        </button>
+      {/if}
     </div>
-  {/if}
-</div>
+  {/snippet}
+</MiPopover>

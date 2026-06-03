@@ -21,6 +21,10 @@
   import { useToolBurstCollapse } from "$lib/chat/use-tool-burst-collapse.svelte";
   import { useTimelineState } from "$lib/chat/use-timeline-state.svelte";
   import { useThinkingTimer } from "$lib/chat/use-thinking-timer.svelte";
+  import {
+    getLatestTaskNotification,
+    shouldShowTopTaskNotificationBanner,
+  } from "$lib/chat/task-notification-banner";
   import { useConversationInsight } from "$lib/conversation-insight/use-conversation-insight.svelte";
   import XTerminal from "$lib/components/XTerminal.svelte";
   import SessionStatusBar from "$lib/components/SessionStatusBar.svelte";
@@ -398,12 +402,20 @@
   // ── Thinking timer + slash command processing (composable) ──
   const thinking = useThinkingTimer({ store });
 
-  // Task notification: auto-show and dismiss after 5s
+  // Task notification top banner: active tasks only; always re-arm dismiss timer on map updates
   $effect(() => {
     const notifications = store.taskNotifications;
-    if (notifications.size === 0) return;
-    const latest = Array.from(notifications.values()).pop();
-    if (!latest) return;
+    if (notifications.size === 0) {
+      notificationVisible = false;
+      latestNotification = null;
+      return;
+    }
+    const latest = getLatestTaskNotification(notifications);
+    if (!latest || !shouldShowTopTaskNotificationBanner(latest)) {
+      notificationVisible = false;
+      latestNotification = null;
+      return;
+    }
     latestNotification = { task_id: latest.task_id, status: latest.status };
     notificationVisible = true;
     const timer = setTimeout(() => {
@@ -637,9 +649,11 @@
       const changed = tl !== prevTl || st !== prevSt;
       prevTl = tl;
       prevSt = st;
-      if (isChatAutoScroll) {
+      if (isChatAutoScroll && !readingHistory) {
         requestAnimationFrame(() => {
-          if (chatAreaRef) chatAreaRef.scrollTop = chatAreaRef.scrollHeight;
+          if (chatAreaRef && isChatAutoScroll && !readingHistory) {
+            chatAreaRef.scrollTop = chatAreaRef.scrollHeight;
+          }
         });
       } else if (changed) {
         showChatScrollHint = true;
@@ -687,9 +701,9 @@
     }
 
     if (needsApproval && !prevHadPermission) {
-      if (!chatAreaRef) return;
+      if (!chatAreaRef || readingHistory) return;
       requestAnimationFrame(() => {
-        scrollChatToBottom();
+        if (!readingHistory) scrollChatToBottom();
       });
       dbg("chat", "permission pending -> autoscroll to inline card", { runId });
     }
@@ -854,6 +868,7 @@
     loadMoreEarlier: _loadMoreEarlier,
     loadRunProgressive,
     handleChatScroll,
+    handleChatWheel,
     scrollChatToBottom,
     scrollToTool,
     scrollToMessage,
@@ -1346,12 +1361,16 @@
         handleHookCallbackRespond,
         handleElicitationRespond,
         handleChatScroll,
+        handleChatWheel,
         scrollChatToBottom,
         handleTermResize,
         handleTermReady,
         handleForkCancel,
         handleForkRetry,
         dismissInitHint,
+        dismissTaskNotificationBanner: () => {
+          notificationVisible = false;
+        },
         loadRunProgressive,
         setLastTarget,
       }}
