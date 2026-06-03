@@ -1018,6 +1018,19 @@ html.miwarp-skip-route-motion .tool-activity-aside * {
 .sidebar-scroll:not(:hover):not(:focus-within)::-webkit-scrollbar-thumb {
   background-color: transparent;
 }
+/* Sidebar session pointer-drag: prevent accidental text selection while moving */
+html.session-drag-active,
+html.session-drag-active * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  cursor: grabbing !important;
+}
+
+html.session-drag-active [data-session-folder-drop],
+html.session-drag-active [data-session-unfoldered-drop] {
+  cursor: copy !important;
+}
+
 .sidebar-scroll:hover::-webkit-scrollbar-thumb,
 .sidebar-scroll:focus-within::-webkit-scrollbar-thumb {
   background-color: hsl(var(--muted-foreground) / 0.25);

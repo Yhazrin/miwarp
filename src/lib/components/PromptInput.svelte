@@ -1245,6 +1245,10 @@
       agent,
     });
 
+    void import("$lib/services/sound-feedback-service")
+      .then((m) => m.unlockSoundEngine())
+      .catch(() => {});
+
     const attachments: Attachment[] = regularAtts.map((a) => ({
       name: a.name,
       type: a.type,

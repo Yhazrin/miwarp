@@ -236,6 +236,8 @@ export interface UserSettings {
   notify_on_schedule_completed?: boolean;
   notify_on_team_completed?: boolean;
   notification_min_duration_sec?: number;
+  /** Semantic sound feedback: off | minimal | standard | detailed */
+  sound_feedback_level?: string;
   feishu_webhook_url?: string;
   feishu_webhook_enabled?: boolean;
   feishu_webhook_triggers?: string[];

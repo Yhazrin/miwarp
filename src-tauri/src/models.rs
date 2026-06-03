@@ -316,6 +316,9 @@ pub struct UserSettings {
     pub notify_on_team_completed: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notification_min_duration_sec: Option<u32>,
+    /// Semantic UI sound feedback: off | minimal | standard | detailed. Default minimal.
+    #[serde(default = "default_sound_feedback_level")]
+    pub sound_feedback_level: String,
     /// Default session mode: "single" or "worktree". Default: "worktree".
     #[serde(default = "default_session_mode")]
     pub default_session_mode: String,
@@ -432,6 +435,10 @@ fn default_session_mode() -> String {
     "worktree".to_string()
 }
 
+fn default_sound_feedback_level() -> String {
+    "minimal".to_string()
+}
+
 fn default_true() -> bool {
     true
 }
@@ -495,6 +502,7 @@ impl Default for UserSettings {
             notify_on_schedule_completed: None,
             notify_on_team_completed: None,
             notification_min_duration_sec: None,
+            sound_feedback_level: default_sound_feedback_level(),
             default_session_mode: "worktree".to_string(),
             auto_commit_on_complete: false,
             auto_pr_on_complete: false,

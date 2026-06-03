@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { ConversationGroup } from "$lib/utils/sidebar-groups";
-  import { TERMINAL_PHASES, canResumeNow } from "$lib/stores";
-  import { getNoSessionPersistence } from "$lib/stores/agent-settings-cache.svelte";
+  import { TERMINAL_PHASES } from "$lib/stores";
   import { relativeTime, truncate } from "$lib/utils/format";
   import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
   import { t } from "$lib/i18n/index.svelte";
@@ -25,7 +24,6 @@
     density = "default",
     isDragging = false,
     onclick,
-    onresume,
     ondelete,
     onmovetofolder,
     onBatchClick,
@@ -44,7 +42,6 @@
     /** True when this conversation is currently being dragged. */
     isDragging?: boolean;
     onclick?: () => void;
-    onresume?: (runId: string, mode: "resume") => void;
     ondelete?: (conversation: ConversationGroup) => void;
     onmovetofolder?: (runIds: string[], folderId?: string | null) => void;
     onBatchClick?: (groupKey: string, e: MouseEvent) => void;
@@ -59,9 +56,7 @@
   const run = $derived(conversation.latestRun);
   const label = $derived(truncate(conversation.title, 28));
   const time = $derived(relativeTime(run.last_activity_at ?? run.started_at));
-  const canResume = $derived(canResumeNow(run, run.status, getNoSessionPersistence(run.agent)));
   const canDelete = $derived(conversation.runs.every((r) => TERMINAL_PHASES.includes(r.status)));
-  const runCount = $derived(conversation.runs.length);
   const _needsAttention = $derived(hasAttention(run.id));
 
   // Compact status dot for non-selected items
@@ -157,7 +152,7 @@
 
   function handlePointerDown(e: PointerEvent) {
     if (editing || e.button !== 0) return;
-    // Ignore if starting on interactive child (resume button, rename input)
+    // Ignore if starting on interactive child (buttons, rename input)
     const target = e.target as HTMLElement;
     if (target.closest("button, input, textarea, a")) return;
 
@@ -180,6 +175,11 @@
 
   function handlePointerMove(e: PointerEvent) {
     if (activePointerId !== e.pointerId || longPressFired) return;
+    if (pointerDragging) {
+      e.preventDefault();
+      onSessionDragMove?.(e);
+      return;
+    }
     const dx = e.clientX - pointerStartX;
     const dy = e.clientY - pointerStartY;
     if (Math.abs(dx) < DRAG_THRESHOLD_PX && Math.abs(dy) < DRAG_THRESHOLD_PX) return;
@@ -192,6 +192,7 @@
 
     pointerDragging = true;
     suppressNextClick = true;
+    e.preventDefault();
     onSessionDragStart(conversation.latestRun.id, conversation.title, e);
     onSessionDragMove?.(e);
   }
@@ -293,7 +294,7 @@
   tabindex="0"
   aria-label={label}
   class:select-none={pointerDragging || isDragging}
-  style:touch-action="pan-y"
+  style:touch-action={pointerDragging || isDragging ? "none" : "pan-y"}
   onclick={handleClick}
   onkeydown={handleKeydown}
   oncontextmenu={openContextMenu}
@@ -337,7 +338,7 @@
         />
       {:else}
         <span
-          class="truncate leading-snug {isSidebar
+          class="truncate leading-snug select-none {isSidebar
             ? 'text-[13px] font-medium text-sidebar-foreground/90'
             : 'text-[13px] font-medium'}"
           role="button"
@@ -350,25 +351,6 @@
       {/if}
     </div>
     <div class="flex items-center gap-0.5 shrink-0">
-      {#if runCount > 1}
-        <span
-          class="inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted/70 px-1 text-[10px] font-normal text-muted-foreground/70"
-          title={t("sidebar_conversations", { count: String(runCount) })}>{runCount}</span
-        >
-      {/if}
-      {#if canResume && onresume}
-        <button type="button"
-          class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-accent/20 transition-opacity"
-          onclick={(e) => {
-            e.stopPropagation();
-            onresume(run.id, "resume");
-          }}
-          title={t("runItem_resumeTitle")}
-          aria-label={t("runItem_resumeTitle")}
-        >
-          <Icon name="play" size="xs" />
-        </button>
-      {/if}
       <span
         class="inline-block h-[6px] w-[6px] rounded-full shrink-0 {statusDot.animated
           ? 'animate-slow-pulse'

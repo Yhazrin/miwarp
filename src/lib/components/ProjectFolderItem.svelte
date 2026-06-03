@@ -13,7 +13,10 @@
   import Icon from "./Icon.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { slide } from "svelte/transition";
-  import { SESSION_DROP_FOLDER_ATTR } from "$lib/utils/session-drag-state";
+  import {
+    SESSION_DROP_FOLDER_ATTR,
+    SESSION_DROP_UNFOLDERED_ATTR,
+  } from "$lib/utils/session-drag-state";
   import { dbgWarn } from "$lib/utils/debug";
   import ClaudeCanvas from "./ClaudeCanvas.svelte";
 
@@ -46,6 +49,8 @@
     onDeleteSubFolder?: (sf: SessionFolderGroup) => void;
     /** Drag-over state for a specific sub-folder (folderKey). */
     dragOverSubFolderKey?: string | null;
+    /** Highlight workspace unfoldered drop zone (move out of logical folder). */
+    dragOverUnfoldered?: boolean;
     /** ID of the run currently being dragged (used to dim the dragged conversation). */
     dragRunId?: string | null;
     onDragOverSubFolder?: (folderKey: string, folderId: string) => void;
@@ -68,7 +73,6 @@
     children?: never;
     selectedRunId?: string;
     onSelectConversation: (runId: string) => void;
-    onResume: (runId: string, mode: "resume") => void;
     onDelete?: (conversation: ConversationGroup) => void;
     onMoveToFolder?: (runIds: string[], folderId?: string | null) => void;
     onNewChat?: () => void;
@@ -85,7 +89,6 @@
     children: Snippet;
     selectedRunId?: never;
     onSelectConversation?: never;
-    onResume?: never;
     onDelete?: never;
     onMoveToFolder?: never;
     onNewChat?: never;
@@ -108,7 +111,6 @@
     children,
     selectedRunId = "",
     onSelectConversation,
-    onResume,
     onDelete,
     onMoveToFolder,
     onNewChat,
@@ -133,6 +135,7 @@
     onRenameSubFolder,
     onDeleteSubFolder,
     dragOverSubFolderKey = null,
+    dragOverUnfoldered = false,
     dragRunId = null,
     onDragOverSubFolder: _onDragOverSubFolder,
     onDropOnSubFolder: _onDropOnSubFolder,
@@ -421,11 +424,9 @@
       warnedMissingCallbacks = false;
       return;
     }
-    if (!warnedMissingCallbacks && (!onSelectConversation || !onResume)) {
+    if (!warnedMissingCallbacks && !onSelectConversation) {
       warnedMissingCallbacks = true;
-      if (!onSelectConversation)
-        dbgWarn("ProjectFolderItem", "onSelectConversation missing in conversation mode");
-      if (!onResume) dbgWarn("ProjectFolderItem", "onResume missing in conversation mode");
+      dbgWarn("ProjectFolderItem", "onSelectConversation missing in conversation mode");
     }
   });
 </script>
@@ -548,13 +549,16 @@
             {#each subFolders as sf (sf.folderKey)}
               {@const sfExpanded = expandedSubFolders.has(sf.folderKey)}
               {@const sfDragOver = dragOverSubFolderKey === sf.folderKey}
-              <div class="group/sf mb-0.5">
+              <!-- Whole logical folder (header + session list) is a drop target -->
+              <div
+                class="group/sf mb-0.5 rounded-md transition-colors
+                  {sfDragOver ? 'bg-primary/15 ring-1 ring-primary/40' : ''}"
+                {...{ [SESSION_DROP_FOLDER_ATTR]: sf.folderId }}
+              >
                 <div
-                  class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[12px] font-medium text-sidebar-foreground/90 hover:bg-sidebar-accent/40 transition-colors cursor-pointer
-                    {sfDragOver ? 'bg-primary/15 ring-1 ring-primary/40' : ''}"
+                  class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[12px] font-medium text-sidebar-foreground/90 hover:bg-sidebar-accent/40 transition-colors cursor-pointer"
                   role="button"
                   tabindex="0"
-                  {...{ [SESSION_DROP_FOLDER_ATTR]: sf.folderId }}
                   onclick={() => onToggleSubFolder?.(sf.folderKey)}
                   onkeydown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -564,21 +568,15 @@
                   }}
                   oncontextmenu={(e) => openSfContextMenu(e, sf)}
                 >
-                  <!-- Bookmark icon for logical sub-folder -->
-                  <svg
-                    class="h-3.5 w-3.5 shrink-0 text-muted-foreground/60"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    ><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg
-                  >
-                  <span class="truncate flex-1">{sf.name}</span>
+                  <Icon
+                    name={sfExpanded ? "folder-open" : "folder"}
+                    size="sm"
+                    class="shrink-0 text-muted-foreground/70"
+                  />
+                  <span class="truncate flex-1 select-none">{sf.name}</span>
                   {#if sf.conversationCount > 0}
                     <span
-                      class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground"
+                      class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground select-none"
                     >
                       {sf.conversationCount}
                     </span>
@@ -596,9 +594,9 @@
                     aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg
                   >
                 </div>
-                <!-- Sub-folder sessions -->
+                <!-- Sub-folder sessions (inside same drop zone) -->
                 {#if sfExpanded}
-                  <div class="ml-1 border-l border-border/20 pl-1.5">
+                  <div class="ml-1 border-l border-border/20 pl-1.5 pb-0.5 min-h-[1.25rem]">
                     {#each sf.conversations as conv (conv.groupKey)}
                       <ConversationItem
                         conversation={conv}
@@ -608,7 +606,6 @@
                         {batchModeActive}
                         isDragging={dragRunId === conv.latestRun.id}
                         onclick={() => onSelectConversation?.(conv.latestRun.id)}
-                        onresume={onResume}
                         ondelete={onDelete}
                         onmovetofolder={onMoveToFolder}
                         {onBatchClick}
@@ -619,7 +616,9 @@
                       />
                     {/each}
                     {#if sf.conversations.length === 0}
-                      <p class="px-3 py-1.5 text-[11px] text-muted-foreground/50 italic">
+                      <p
+                        class="px-3 py-1.5 text-[11px] text-muted-foreground/50 italic select-none pointer-events-none"
+                      >
                         {t("sidebar_folderEmpty") || "暂无会话"}
                       </p>
                     {/if}
@@ -654,15 +653,76 @@
           </p>
         {/if}
 
-        <!-- Unfoldered sessions in this project -->
-        {#if folder.conversations.length > 0 && subFolders.length > 0}
-          <div class="flex items-center px-2 py-0.5 mt-0.5 mb-0.5">
-            <span class="text-[10px] text-muted-foreground/50 uppercase tracking-wider"
-              >{t("sidebar_uncategorized") || "未归类"}</span
-            >
+        <!-- Unfoldered sessions (drop here to move out of logical folders) -->
+        {#if subFolders.length > 0}
+          <div
+            class="mb-0.5 rounded-md transition-colors
+              {dragOverUnfoldered ? 'bg-primary/15 ring-1 ring-primary/40' : ''}"
+            {...{ [SESSION_DROP_UNFOLDERED_ATTR]: folder.folderKey }}
+          >
+            <div class="flex items-center px-2 py-0.5 mt-0.5 mb-0.5">
+              <span
+                class="text-[10px] text-muted-foreground/50 uppercase tracking-wider select-none"
+                >{t("sidebar_uncategorized") || "未归类"}</span
+              >
+            </div>
+            {#if visibleConversations.length >= VIRTUAL_THRESHOLD}
+              <VirtualList items={visibleConversations} itemHeight={ITEM_HEIGHT} class="max-h-[60vh]">
+                {#snippet item(conv)}
+                  <ConversationItem
+                    conversation={conv}
+                    density="sidebar"
+                    selected={isConvSelected(conv)}
+                    batchSelected={selectedGroupKeys?.has(conv.groupKey) ?? false}
+                    {batchModeActive}
+                    isDragging={dragRunId === conv.latestRun.id}
+                    onclick={() => onSelectConversation?.(conv.latestRun.id)}
+                    ondelete={onDelete}
+                    onmovetofolder={onMoveToFolder}
+                    {onBatchClick}
+                    {onLongPressSelect}
+                    {onSessionDragStart}
+                    {onSessionDragMove}
+                    {onSessionDragEnd}
+                  />
+                {/snippet}
+              </VirtualList>
+            {:else if visibleConversations.length > 0}
+              {#each visibleConversations as conv (conv.groupKey)}
+                <ConversationItem
+                  conversation={conv}
+                  density="sidebar"
+                  selected={isConvSelected(conv)}
+                  batchSelected={selectedGroupKeys?.has(conv.groupKey) ?? false}
+                  {batchModeActive}
+                  isDragging={dragRunId === conv.latestRun.id}
+                  onclick={() => onSelectConversation?.(conv.latestRun.id)}
+                  ondelete={onDelete}
+                  onmovetofolder={onMoveToFolder}
+                  {onBatchClick}
+                  {onLongPressSelect}
+                  {onSessionDragStart}
+                  {onSessionDragMove}
+                  {onSessionDragEnd}
+                />
+              {/each}
+            {:else}
+              <p
+                class="px-3 py-2 text-[11px] text-muted-foreground/50 italic select-none pointer-events-none"
+              >
+                {t("sidebar_dropToUnfolder")}
+              </p>
+            {/if}
+            {#if hasMore}
+              <button type="button"
+                class="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md transition-colors"
+                onclick={showMore}
+              >
+                {t("sidebar_showMore", { count: String(Math.min(PAGE_SIZE, hiddenCount)) })}
+              </button>
+            {/if}
           </div>
-        {/if}
-        {#if visibleConversations.length >= VIRTUAL_THRESHOLD}
+        {:else if visibleConversations.length >= VIRTUAL_THRESHOLD}
           <VirtualList items={visibleConversations} itemHeight={ITEM_HEIGHT} class="max-h-[60vh]">
             {#snippet item(conv)}
               <ConversationItem
@@ -673,7 +733,6 @@
                 {batchModeActive}
                 isDragging={dragRunId === conv.latestRun.id}
                 onclick={() => onSelectConversation?.(conv.latestRun.id)}
-                onresume={onResume}
                 ondelete={onDelete}
                 onmovetofolder={onMoveToFolder}
                 {onBatchClick}
@@ -694,7 +753,6 @@
               {batchModeActive}
               isDragging={dragRunId === conv.latestRun.id}
               onclick={() => onSelectConversation?.(conv.latestRun.id)}
-              onresume={onResume}
               ondelete={onDelete}
               onmovetofolder={onMoveToFolder}
               {onBatchClick}
@@ -705,7 +763,7 @@
             />
           {/each}
         {/if}
-        {#if hasMore}
+        {#if subFolders.length === 0 && hasMore}
           <button type="button"
             class="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md transition-colors"
             onclick={showMore}

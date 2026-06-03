@@ -55,6 +55,11 @@
     persistCachedProcessVisibility,
   } from "$lib/utils/process-visibility";
   import { applyUiZoomCssVar, clampUiZoom } from "$lib/utils/ui-zoom";
+  import {
+    applySoundFeedbackLevel,
+    normalizeSoundFeedbackLevel,
+    previewSoundFeedback,
+  } from "$lib/services/sound-feedback-service";
 
   // ── Tab state ──
   type SettingsTab =
@@ -213,6 +218,8 @@
   let notifScheduleCompleted = $state(true);
   let notifTeamCompleted = $state(true);
   let notifMinDuration = $state(10);
+  let soundFeedbackLevel = $state<"off" | "minimal" | "standard" | "detailed">("minimal");
+  let soundPreviewing = $state(false);
   let notifSaved = $state(false);
 
   // ── Claude Code History Migration ──
@@ -1286,6 +1293,8 @@
       notifScheduleCompleted = settings.notify_on_schedule_completed ?? true;
       notifTeamCompleted = settings.notify_on_team_completed ?? true;
       notifMinDuration = settings.notification_min_duration_sec ?? 10;
+      soundFeedbackLevel = normalizeSoundFeedbackLevel(settings.sound_feedback_level);
+      applySoundFeedbackLevel(soundFeedbackLevel);
       // Feishu webhook settings
       feishuWebhookUrl = settings.feishu_webhook_url ?? "";
       feishuWebhookEnabled = settings.feishu_webhook_enabled ?? false;
@@ -1382,7 +1391,9 @@
         notify_on_schedule_completed: notifScheduleCompleted,
         notify_on_team_completed: notifTeamCompleted,
         notification_min_duration_sec: notifMinDuration,
+        sound_feedback_level: soundFeedbackLevel,
       } as Partial<UserSettings>);
+      applySoundFeedbackLevel(soundFeedbackLevel);
       notifSaved = true;
       setTimeout(() => (notifSaved = false), 1500);
     } catch (e) {
@@ -4671,6 +4682,57 @@
               description={t("settings_notif_enabledDesc") ||
                 "Allow MiWarp to send system notifications"}
             />
+
+            <div class="pt-4 border-t border-border/60 space-y-3">
+              <h3 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {t("settings_sound_title")}
+              </h3>
+              <p class="text-xs text-muted-foreground">{t("settings_sound_desc")}</p>
+              <div class="flex flex-wrap items-end gap-3">
+                <label class="flex flex-col gap-1.5 min-w-[12rem]">
+                  <span class="text-sm">{t("settings_sound_level")}</span>
+                  <select
+                    class="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    value={soundFeedbackLevel}
+                    onchange={(e) => {
+                      const v = (e.currentTarget as HTMLSelectElement).value as
+                        | "off"
+                        | "minimal"
+                        | "standard"
+                        | "detailed";
+                      soundFeedbackLevel = v;
+                      applySoundFeedbackLevel(v);
+                      saveNotificationSettings();
+                    }}
+                  >
+                    <option value="off">{t("settings_sound_off")}</option>
+                    <option value="minimal">{t("settings_sound_minimal")}</option>
+                    <option value="standard">{t("settings_sound_standard")}</option>
+                    <option value="detailed">{t("settings_sound_detailed")}</option>
+                  </select>
+                </label>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={soundFeedbackLevel === "off" || soundPreviewing}
+                  onclick={async () => {
+                    soundPreviewing = true;
+                    try {
+                      const { unlockSoundEngine } = await import(
+                        "$lib/services/sound-feedback-service"
+                      );
+                      await unlockSoundEngine();
+                      await previewSoundFeedback();
+                    } finally {
+                      soundPreviewing = false;
+                    }
+                  }}
+                >
+                  {t("settings_sound_preview")}
+                </Button>
+              </div>
+              <p class="text-[11px] text-muted-foreground">{t("settings_sound_a11y")}</p>
+            </div>
 
             {#if notifEnabled}
               <div class="space-y-3 pl-1 border-l-2 border-muted/50 ml-1">

@@ -5,6 +5,7 @@ import type { ThinkingTimerHandle } from "$lib/chat/use-thinking-timer.svelte";
 import { detectTeamTrigger } from "$lib/services/team-dispatcher";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { setLastTarget, getStoredRemoteCwd, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
+import { normalizeCwd } from "$lib/utils/sidebar-groups";
 
 export interface SendMessageContext {
   store: SessionStore;
@@ -30,6 +31,8 @@ export interface SendMessageContext {
   setTeamDispatchPrompt: (v: string) => void;
   setTeamDispatchOpen: (v: boolean) => void;
   t: (key: string, params?: Record<string, string>) => string;
+  /** Workspace cwd from ?folder= or sidebar new-chat-in-folder (before localStorage sync). */
+  getFolderCwdOverride?: () => string;
 }
 
 export function createSendMessage(ctx: SendMessageContext) {
@@ -48,6 +51,7 @@ export function createSendMessage(ctx: SendMessageContext) {
     setTeamDispatchPrompt,
     setTeamDispatchOpen,
     t,
+    getFolderCwdOverride,
   } = ctx;
 
   return async function sendMessage(text: string, attachments: Attachment[]) {
@@ -92,8 +96,9 @@ export function createSendMessage(ctx: SendMessageContext) {
             cwd = getStoredRemoteCwd(store.remoteHostName!);
           } else {
             cwd =
-              localStorage.getItem("ocv:project-cwd") ||
-              localStorage.getItem("ocv:settings-cwd") ||
+              normalizeCwd(getFolderCwdOverride?.() ?? "") ||
+              normalizeCwd(localStorage.getItem("ocv:project-cwd") ?? "") ||
+              normalizeCwd(localStorage.getItem("ocv:settings-cwd") ?? "") ||
               "";
           }
         }

@@ -374,6 +374,14 @@ describe("expandForProjectChange", () => {
   });
 });
 
+describe("sessionFolderWorkspaceId", () => {
+  it("maps empty cwd to default storage id", async () => {
+    const { sessionFolderWorkspaceId } = await import("./sidebar-groups");
+    expect(sessionFolderWorkspaceId("")).toBe("default");
+    expect(sessionFolderWorkspaceId("/a/b")).toBe("/a/b");
+  });
+});
+
 describe("buildEnrichedProjectFolders", () => {
   it("empty_session_folder_stays_in_workspace_not_uncategorized", () => {
     const runs: TaskRun[] = [makeRun({ id: "r1", cwd: "/project/miwarp", session_id: "s1" })];

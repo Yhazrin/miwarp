@@ -38,6 +38,11 @@ import * as snapshotCache from "$lib/utils/snapshot-cache";
 import { getTransport } from "$lib/transport";
 import { getAgentFeatures, type AgentFeatures } from "$lib/utils/agent-features";
 import { dedupeMcpServersByName } from "$lib/utils/mcp";
+import {
+  beginHistorySoundMute,
+  dispatchLiveBusSound,
+  endHistorySoundMute,
+} from "$lib/services/sound-feedback-service";
 
 // ── CLI permission mode normalization ──
 // CLI may return different names for the same mode across versions.
@@ -1328,37 +1333,42 @@ export class SessionStore {
     opts: { replayOnly?: boolean; isStale?: () => boolean } = {},
   ): Promise<number | null> {
     if (opts.isStale?.()) return null;
-    const t0 = performance.now();
-    const isStale = opts.isStale ?? (() => false);
-    const replayOnly = opts.replayOnly ?? false;
-    // Local accumulators — both ctx and `_lastProcessedSeq` stay isolated until commit.
-    // This prevents stale aborts from polluting store state mid-replay.
-    const ctx = this._createReduceCtx();
-    let localSeq = this._lastProcessedSeq;
-    const CHUNK = 200;
-    const CHUNK_THRESHOLD = 500;
-    const shouldYield = events.length > CHUNK_THRESHOLD;
-    for (let i = 0; i < events.length; i += CHUNK) {
-      if (isStale()) return null;
-      const end = Math.min(i + CHUNK, events.length);
-      for (let j = i; j < end; j++) {
-        const ev = events[j];
-        const evSeq = ((ev as Record<string, unknown>)._seq as number) ?? 0;
-        if (evSeq > 0 && evSeq > localSeq) localSeq = evSeq;
-        this._reduce(ev, ctx, replayOnly);
+    beginHistorySoundMute();
+    try {
+      const t0 = performance.now();
+      const isStale = opts.isStale ?? (() => false);
+      const replayOnly = opts.replayOnly ?? false;
+      // Local accumulators — both ctx and `_lastProcessedSeq` stay isolated until commit.
+      // This prevents stale aborts from polluting store state mid-replay.
+      const ctx = this._createReduceCtx();
+      let localSeq = this._lastProcessedSeq;
+      const CHUNK = 200;
+      const CHUNK_THRESHOLD = 500;
+      const shouldYield = events.length > CHUNK_THRESHOLD;
+      for (let i = 0; i < events.length; i += CHUNK) {
+        if (isStale()) return null;
+        const end = Math.min(i + CHUNK, events.length);
+        for (let j = i; j < end; j++) {
+          const ev = events[j];
+          const evSeq = ((ev as Record<string, unknown>)._seq as number) ?? 0;
+          if (evSeq > 0 && evSeq > localSeq) localSeq = evSeq;
+          this._reduce(ev, ctx, replayOnly);
+        }
+        if (shouldYield) await yieldToMain();
       }
-      if (shouldYield) await yieldToMain();
+      if (isStale()) return null;
+      // Atomic commit: seq + timeline + tools + phase land together.
+      this._lastProcessedSeq = localSeq;
+      this._commitReduceCtx(ctx, replayOnly);
+      const wallMs = performance.now() - t0;
+      dbg(
+        "store",
+        `applyEventBatch:async: ${events.length} events in ${wallMs.toFixed(1)}ms ${shouldYield ? "wall" : "cpu"}, timeline=${ctx.tl.length}`,
+      );
+      return wallMs;
+    } finally {
+      endHistorySoundMute();
     }
-    if (isStale()) return null;
-    // Atomic commit: seq + timeline + tools + phase land together.
-    this._lastProcessedSeq = localSeq;
-    this._commitReduceCtx(ctx, replayOnly);
-    const wallMs = performance.now() - t0;
-    dbg(
-      "store",
-      `applyEventBatch:async: ${events.length} events in ${wallMs.toFixed(1)}ms ${shouldYield ? "wall" : "cpu"}, timeline=${ctx.tl.length}`,
-    );
-    return wallMs;
   }
 
   /** Apply a hook event (from hook-event Tauri listener). */
@@ -3204,6 +3214,7 @@ export class SessionStore {
       }
 
       case "tool_end": {
+        if (!replayOnly) dispatchLiveBusSound(ev);
         // AskUserQuestion handling:
         // - pipe mode: CLI returns error → ask_pending (frontend shows interactive options)
         // - stream-json mode: CLI returns success (answer provided via updatedInput) → success
@@ -3333,6 +3344,7 @@ export class SessionStore {
       }
 
       case "run_state":
+        if (!replayOnly) dispatchLiveBusSound(ev);
         if (!replayOnly) {
           if (ev.state === "running" || ev.state === "spawning") {
             const newPhase: SessionPhase = ev.state === "spawning" ? "spawning" : "running";
@@ -3545,6 +3557,7 @@ export class SessionStore {
       }
 
       case "permission_prompt": {
+        if (!replayOnly) dispatchLiveBusSound(ev);
         dbg("store", "permission_prompt received", {
           tool_use_id: ev.tool_use_id,
           request_id: ev.request_id,

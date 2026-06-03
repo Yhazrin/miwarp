@@ -70,6 +70,20 @@ export function normalizeSessionFolderList(folders: SessionFolder[]): SessionFol
   }));
 }
 
+/** Workspace id persisted in session-folders.json (empty → legacy `default`). */
+export function sessionFolderWorkspaceId(cwd: string): string {
+  const n = normalizeCwd(cwd);
+  return n || LEGACY_DEFAULT_WORKSPACE;
+}
+
+export function sessionFoldersForWorkspace(
+  folders: SessionFolder[],
+  workspaceCwd: string,
+): SessionFolder[] {
+  const wid = normalizeCwd(workspaceCwd);
+  return folders.filter((f) => resolveSessionFolderWorkspaceId(f) === wid);
+}
+
 function subFolderDisplayCount(subFolders: SessionFolderGroup[]): number {
   return subFolders.reduce(
     (sum, sf) => sum + (sf.conversationCount > 0 ? sf.conversationCount : 1),

@@ -36,6 +36,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { setLastTarget, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
   import { shouldAutoName } from "$lib/utils/auto-name";
+  import { normalizeCwd } from "$lib/utils/sidebar-groups";
   import {
     normalizeProcessVisibility,
     getCachedProcessVisibility,
@@ -460,16 +461,20 @@
         setLastTarget(resolvedHost);
       }
       if (folder) {
+        const normalizedFolder = normalizeCwd(folder);
         if (resolvedHost) {
-          setStoredRemoteCwd(resolvedHost, folder);
-        } else {
+          setStoredRemoteCwd(resolvedHost, normalizedFolder);
+        } else if (normalizedFolder) {
           try {
-            localStorage.setItem("ocv:project-cwd", folder);
+            localStorage.setItem("ocv:project-cwd", normalizedFolder);
           } catch {
             // localStorage may fail in restricted contexts
           }
+          window.dispatchEvent(new Event("ocv:cwd-changed"));
         }
-        folderCwdOverride = folder;
+        folderCwdOverride = normalizedFolder;
+        store.sessionCwd = normalizedFolder;
+        chatViewCache.lastRunId = "";
         store.loadRun("", xtermRef);
       }
       const clean = new URL($page.url);
@@ -1008,6 +1013,7 @@
       team.setTeamDispatchOpen(v);
     },
     t: t as unknown as (key: string, params?: Record<string, string>) => string,
+    getFolderCwdOverride: () => folderCwdOverride,
   });
 
   // Chat keybinding callbacks — registered/unregistered via keybindingStore in onMount below

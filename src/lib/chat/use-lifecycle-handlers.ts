@@ -476,6 +476,14 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
       } catch {
         // Non-critical: notifications are best-effort
       }
+      try {
+        const { startSoundFeedbackListener } = await import(
+          "$lib/services/sound-feedback-listener"
+        );
+        await startSoundFeedbackListener();
+      } catch {
+        // Non-critical: semantic sounds are best-effort
+      }
       if (!destroyed) setMiddlewareReady(true);
     })();
 

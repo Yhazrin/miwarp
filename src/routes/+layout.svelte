@@ -15,7 +15,7 @@
     listMemoryFiles,
     softDeleteRuns,
     hardDeleteRuns,
-    listSessionFolders,
+    listAllSessionFolders,
     createSessionFolder,
     renameSessionFolder,
     deleteSessionFolder,
@@ -60,6 +60,9 @@
   import { filterVisibleCandidates } from "$lib/utils/memory-helpers";
   import {
     buildEnrichedProjectFolders,
+    normalizeSessionFolderList,
+    sessionFolderWorkspaceId,
+    sessionFoldersForWorkspace,
     getWorkspaceMascotStatus,
     autoExpandForRun,
     expandForProjectChange,
@@ -68,7 +71,11 @@
   } from "$lib/utils/sidebar-groups";
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
   import { loadRemovedCwds } from "$lib/utils/removed-cwds";
-  import { findSessionFolderDropTarget, setSessionDragActive } from "$lib/utils/session-drag-state";
+  import {
+    findSessionDropTarget,
+    setSessionDragActive,
+    type SessionDropTarget,
+  } from "$lib/utils/session-drag-state";
   import {
     getLastTarget,
     setLastTarget,
@@ -187,6 +194,7 @@
   // ── Pointer drag for sessions → folders (avoids Tauri file-drop conflict) ──
   let dragRunId = $state<string | null>(null);
   let dragOverFolderId = $state<string | null>(null);
+  let dragOverUnfolderedKey = $state<string | null>(null);
   let sessionDragLabel = $state("");
   let sessionDragX = $state(0);
   let sessionDragY = $state(0);
@@ -199,24 +207,53 @@
     setSessionDragActive(true);
   }
 
+  function folderKeyForRun(run: TaskRun): string {
+    const cwd = normalizeCwd(run.parent_cwd ?? run.cwd);
+    return cwd === "" ? "uncategorized" : `cwd:${cwd}`;
+  }
+
+  function applySessionDropHighlight(target: SessionDropTarget | null) {
+    dragOverFolderId = target?.type === "folder" ? target.folderId : null;
+    dragOverUnfolderedKey = target?.type === "unfoldered" ? target.workspaceKey : null;
+  }
+
   function handleSessionDragMove(e: PointerEvent) {
     sessionDragX = e.clientX;
     sessionDragY = e.clientY;
-    const folderId = findSessionFolderDropTarget(e.clientX, e.clientY);
-    dragOverFolderId = folderId;
+    applySessionDropHighlight(findSessionDropTarget(e.clientX, e.clientY));
   }
 
   async function handleSessionDragEnd(e: PointerEvent) {
     const runId = dragRunId;
-    const folderId = findSessionFolderDropTarget(e.clientX, e.clientY);
+    const dropTarget = findSessionDropTarget(e.clientX, e.clientY);
     dragRunId = null;
     dragOverFolderId = null;
+    dragOverUnfolderedKey = null;
     sessionDragLabel = "";
     setSessionDragActive(false);
-    if (!runId || !folderId) return;
+    if (!runId || !dropTarget) return;
+
+    const run = runs.find((r) => r.id === runId);
+    if (!run) return;
+
     try {
-      await moveRunToFolder(runId, folderId);
-      await loadSessionFolders();
+      if (dropTarget.type === "folder") {
+        await moveRunToFolder(runId, dropTarget.folderId);
+        runs = runs.map((r) =>
+          r.id === runId ? { ...r, folder_id: dropTarget.folderId } : r,
+        );
+        expandedSubFolders = new Set([...expandedSubFolders, `sf:${dropTarget.folderId}`]);
+        dbg("layout", "session pointer-drop moveToFolder success", {
+          runId,
+          folderId: dropTarget.folderId,
+        });
+      } else {
+        if (folderKeyForRun(run) !== dropTarget.workspaceKey) return;
+        await moveRunToFolder(runId, null);
+        runs = runs.map((r) => (r.id === runId ? { ...r, folder_id: undefined } : r));
+        dbg("layout", "session pointer-drop moveOutOfFolder success", { runId });
+      }
+      window.dispatchEvent(new Event("ocv:runs-changed"));
     } catch (err) {
       dbgWarn("layout", "session pointer-drop moveRunToFolder failed", err);
     }
@@ -224,7 +261,9 @@
 
   async function loadSessionFolders() {
     try {
-      sessionFolders = await listSessionFolders(projectCwd || "default");
+      const raw = await listAllSessionFolders();
+      sessionFolders = normalizeSessionFolderList(raw);
+      dbg("layout", "loadSessionFolders", { count: sessionFolders.length });
     } catch (e) {
       dbgWarn("layout", "loadSessionFolders failed", e);
     }
@@ -236,8 +275,10 @@
     folderCreateOpen = false;
     folderCreateName = "";
     try {
-      const folder = await createSessionFolder(name, projectCwd || "default");
-      sessionFolders = [...sessionFolders, folder];
+      const workspaceId = sessionFolderWorkspaceId(_folderCreateCwd || projectCwd);
+      const folder = await createSessionFolder(name, workspaceId);
+      _folderCreateCwd = "";
+      await loadSessionFolders();
       dbg("layout", "createFolder success", { id: folder.id, name });
     } catch (e) {
       dbgWarn("layout", "createFolder failed", e);
@@ -908,6 +949,14 @@
       loadRuns();
     })();
     loadSettings();
+    void import("$lib/services/sound-feedback-listener")
+      .then((m) => m.startSoundFeedbackListener())
+      .catch(() => {});
+    const unlockSoundOnce = () => {
+      void import("$lib/services/sound-feedback-service").then((m) => m.unlockSoundEngine());
+    };
+    window.addEventListener("pointerdown", unlockSoundOnce, { once: true, capture: true });
+    window.addEventListener("keydown", unlockSoundOnce, { once: true, capture: true });
     loadSidebarFavorites();
     loadSessionFolders();
     loadAgentSettingsCache();
@@ -1550,12 +1599,6 @@
     ),
   );
 
-  // Reload session folders when project context changes
-  $effect(() => {
-    const _cwd = projectCwd;
-    loadSessionFolders();
-  });
-
   // Selectable folders: real project folders (exclude Uncategorized)
   const selectableFolders = $derived(enrichedProjectFolders.filter((f) => !f.isUncategorized));
 
@@ -1580,12 +1623,19 @@
     });
   });
 
-  // Defensive fallback: reset projectCwd if it's no longer in selectable folders
+  // Logical folders for move-to-folder modal (scoped to current workspace)
+  const foldersForMoveDialog = $derived(sessionFoldersForWorkspace(sessionFolders, projectCwd));
+
+  // Defensive fallback: reset projectCwd only when it's not pinned and not in the tree
   $effect(() => {
-    if (!projectCwd) return; // "" is always valid (All Projects)
-    const validCwds = new Set(selectableFolders.map((f) => f.cwd));
-    if (!validCwds.has(projectCwd)) {
-      dbg("layout", "projectCwd not in selectable folders, resetting", { projectCwd });
+    if (!projectCwd) return;
+    const key = normalizeCwd(projectCwd);
+    const validCwds = new Set([
+      ...selectableFolders.map((f) => normalizeCwd(f.cwd)),
+      ...pinnedCwds.map(normalizeCwd),
+    ]);
+    if (!validCwds.has(key)) {
+      dbg("layout", "projectCwd not in selectable folders, resetting", { projectCwd: key });
       projectCwd = "";
     }
   });
@@ -1685,8 +1735,23 @@
   }
 
   function newChatInFolder(cwd: string) {
-    projectCwd = cwd;
-    goto(`/chat?folder=${encodeURIComponent(cwd)}`);
+    const normalized = normalizeCwd(cwd);
+    if (!normalized) return;
+    projectCwd = normalized;
+    try {
+      localStorage.setItem("ocv:project-cwd", normalized);
+    } catch {
+      // ignore
+    }
+    if (!pinnedCwds.includes(normalized)) {
+      pinnedCwds = [...pinnedCwds, normalized];
+      localStorage.setItem("ocv:pinned-cwds", JSON.stringify(pinnedCwds));
+    }
+    window.dispatchEvent(
+      new CustomEvent("ocv:project-changed", { detail: { cwd: normalized } }),
+    );
+    chatViewCache.lastRunId = "";
+    goto(`/chat?new=1&folder=${encodeURIComponent(normalized)}`);
   }
 
   function toggleProject(folderKey: string) {
@@ -2896,7 +2961,6 @@
                     {selectedRunId}
                     onToggle={() => toggleProject(folder.folderKey)}
                     onSelectConversation={(runId) => goto(`/chat?run=${runId}`)}
-                    onResume={(runId, mode) => goto(`/chat?run=${runId}&resume=${mode}`)}
                     onDelete={requestDeleteConversation}
                     onMoveToFolder={requestMoveToFolder}
                     {selectedGroupKeys}
@@ -2934,6 +2998,7 @@
                       if (f) requestDeleteFolder(f);
                     }}
                     dragOverSubFolderKey={dragOverFolderId ? `sf:${dragOverFolderId}` : null}
+                    dragOverUnfoldered={dragOverUnfolderedKey === folder.folderKey}
                     {dragRunId}
                     onOpenDirectory={folder.isUncategorized
                       ? undefined
@@ -3281,7 +3346,7 @@
     >
       {t("sidebar_uncategorized")}
     </button>
-    {#each sessionFolders as folder}
+    {#each foldersForMoveDialog as folder}
       <button type="button"
         class="text-left px-3 py-2 text-sm rounded-md transition-colors"
         class:bg-primary={moveToFolderSelectedId === folder.id}

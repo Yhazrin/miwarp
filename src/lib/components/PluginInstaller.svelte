@@ -102,6 +102,9 @@
         installProgress = 100;
         installStage = "complete";
         installMessage = t("plugin_installationComplete");
+        import("$lib/services/sound-feedback-service")
+          .then((m) => m.playMiWarpSound("plugin_installed"))
+          .catch(() => {});
         await new Promise((r) => setTimeout(r, 500));
         currentStep = "complete";
       } else {

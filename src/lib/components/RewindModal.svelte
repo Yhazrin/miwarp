@@ -188,6 +188,9 @@
           }
         }
         dbg("rewind-modal", "execute success", { degraded: degradedToFull });
+        import("$lib/services/sound-feedback-service")
+          .then((m) => m.playMiWarpSound("rewind_success"))
+          .catch(() => {});
         onSuccess?.({
           runId: runIdAtExec,
           targetContent: selectedAtExec.content,

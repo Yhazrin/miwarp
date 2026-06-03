@@ -574,6 +574,14 @@ pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, St
     if let Some(v) = patch.get("notification_min_duration_sec") {
         all.user.notification_min_duration_sec = v.as_u64().map(|n| n as u32);
     }
+    if let Some(v) = patch.get("sound_feedback_level") {
+        if let Some(s) = v.as_str() {
+            let level = s.trim();
+            if matches!(level, "off" | "minimal" | "standard" | "detailed") {
+                all.user.sound_feedback_level = level.to_string();
+            }
+        }
+    }
     // Feishu webhook settings
     if let Some(v) = patch.get("feishu_webhook_url") {
         all.user.feishu_webhook_url = if v.is_null() {
