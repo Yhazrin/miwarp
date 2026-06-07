@@ -2108,7 +2108,6 @@
             name="triangle-alert"
             size="xs"
             class="ml-0.5 inline text-miwarp-status-warning"
-            title={t("prompt_tokenWarning")}
           />{/if}
       </span>
     {/if}

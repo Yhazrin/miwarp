@@ -85,10 +85,10 @@
           onclick={onFork}>{t("statusbar_fork")}</button
         >
       {/if}
-      {#if classified.settingsPath}
+      {#if classified.settingsLink}
         <button type="button"
           class="rounded px-2.5 py-1 text-xs bg-accent hover:bg-accent/80 text-foreground transition-colors"
-          onclick={() => onGotoSettings(classified.settingsPath!)}>{t("error_openSettings")}</button
+          onclick={() => onGotoSettings(classified.settingsLink!)}>{t("error_openSettings")}</button
         >
       {/if}
     </div>

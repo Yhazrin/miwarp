@@ -945,6 +945,7 @@
   "nav_memory": "Memory",
   "nav_scheduledTasks": "Schedule",
   "nav_settings": "Settings",
+  "error_openSettings": "Open settings",
   "nav_teams": "Teams",
   "nav_usage": "Usage",
   "notes_cliTitle": "CLI Release Notes",

@@ -985,6 +985,7 @@
   "nav_memory": "记忆",
   "nav_scheduledTasks": "定时任务",
   "nav_settings": "设置",
+  "error_openSettings": "打开设置",
   "nav_teams": "团队",
   "nav_usage": "用量",
   "notes_cliTitle": "CLI 更新日志",
