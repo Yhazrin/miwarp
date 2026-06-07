@@ -128,59 +128,6 @@
     history.replaceState(null, "", url.toString());
   }
 
-  const tabLabels: Record<SettingsTab, () => string> = {
-    general: () => t("settings_tab_general"),
-    connection: () => t("settings_tab_connection"),
-    mobile: () => t("settings_tab_mobile") || "Mobile",
-    "cli-config": () => t("settings_tab_cliConfig"),
-    shortcuts: () => t("settings_tab_shortcuts"),
-    remote: () => t("settings_tab_remote"),
-    notifications: () => t("settings_tab_notifications") || "Notifications",
-    debug: () => t("settings_tab_debug"),
-    theme: () => t("settings_tab_theme") || "Theme",
-    data: () => t("settings_tab_data") || "Data",
-  };
-
-  const tabs: { id: SettingsTab; icon: string }[] = [
-    {
-      id: "general",
-      icon: "M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z",
-    },
-    {
-      id: "connection",
-      icon: "M12 2a4 4 0 0 0-4 4c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2 4 4 0 0 0-4-4z M8 8v2a4 4 0 0 0 8 0V8 M12 14v4 M8 18h8",
-    },
-    {
-      id: "mobile",
-      icon: "M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z",
-    },
-    {
-      id: "cli-config",
-      icon: "M4 17l6-6-6-6 M12 19h8",
-    },
-    {
-      id: "shortcuts",
-      icon: "M10 8h.01 M12 12h.01 M14 8h.01 M16 12h.01 M18 8h.01 M6 8h.01 M7 16h10 M8 12h.01 M2 4h20v16H2z",
-    },
-    {
-      id: "remote",
-      icon: "M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z",
-    },
-    {
-      id: "notifications",
-      icon: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 0 1-3.46 0",
-    },
-    { id: "debug", icon: "m18 16 4-4-4-4 M6 8l-4 4 4 4 M14.5 4l-5 16" },
-    {
-      id: "theme",
-      icon: "M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z",
-    },
-    {
-      id: "data",
-      icon: "M3 6h18M3 12h18M3 18h18",
-    },
-  ];
-
   // v1.0.6 follow-up: navigation is now registry-driven. The new
   // structure groups 8 tabs into 4 categories (display / integration
   // / automation / system). Each entry resolves to a new tab id;
