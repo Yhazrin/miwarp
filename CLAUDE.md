@@ -169,6 +169,23 @@ Always respond in Chinese (中文) unless the user writes in English. This inclu
 - Commit 前运行 `git diff --stat` 确认只包含预期的文件变更。
 - 合并冲突解决后必须运行完整构建验证。
 
+### 版本管理节奏（及时但不必频繁）
+
+> **目标**：每一次提交都是有意义的"快照"，避免微碎提交刷屏，也避免"攒一大坨一次性 commit"。
+
+- **攒到一组再提交**：把同一主题的多处改动攒成一个 commit（例：把"零章产品原则"+"侧边栏改造"+"斜杠命令修复"拆成 3 个独立 commit，而不是一个巨型 commit）
+- **每个 commit 独立可回滚**：commit 之间不应有"必须前一个才有意义"的强依赖；这样 bisect / cherry-pick / revert 都干净
+- **commit 前自检**：
+  1. `git status` 看有没有意外被 staged 的文件
+  2. `git diff --stat` 确认改动范围符合预期
+  3. `git diff --staged` 再扫一遍内容
+  4. 跑一遍 pre-commit 钩子能过的检查（`pnpm check` / `cargo clippy` 按改动域走）
+- **不要主动 push**：默认 commit 留在本地，等用户确认后再 push；不在用户没要求时 `git push`
+- **commit message 走 Conventional Commits**：`feat:` / `fix:` / `chore:` / `refactor:` / `docs:`，scope 写清楚（`feat(sidebar): ...` / `fix(shell-env): ...`）
+- **跨分支前先同步**：开新分支前确认 master 是干净的、本地 commit 已落到应到之处
+- **计划书 / 大文档改动**：可以一个 commit 包含多个文件（例：CLAUDE.md + docs/*.md），因为它们语义上是同一组约束
+- **改动后很久才想起还有补充**：单独再开一个 commit，不要 amend 前一个（除非用户明确要求）
+
 ### 项目架构备注
 
 - Windows 构建需要 MSVC C++ 工具链，如缺少则提醒用户安装而非反复尝试。

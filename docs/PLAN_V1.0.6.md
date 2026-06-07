@@ -1,9 +1,152 @@
 # MiWarp v1.0.6 计划书 · 下一阶段功能与实现路径
 
-> **文档定位**：面向 v1.0.6 后续开发的"做什么 / 怎么做"手册。
-> **范围**：v1.0.5 → v1.0.6 待落地的功能与多端整改续作；以"主题升级 + 技术路径"组织。
-> **不收录**：已删除分支的具体提交历史与 commit hash（分支已清理，无可参考对象）。
+> **文档定位**：面向 v1.0.6 后续开发的"做什么 / 怎么做"手册；以"零章产品原则 + 主体功能 / 实现路径"组织。
+> **范围**：v1.0.5 → v1.0.6 待落地的功能与多端整改续作。
+> **核心原则**：把 MiWarp 定位成 **Local-first Agent Workspace**，而不是 WebSocket Client。
 > **配套根因级证据**：[`MultiPlatform-Hardening-2026-06-06.md`](./MultiPlatform-Hardening-2026-06-06.md)。
+
+---
+
+## 零、Local-first 性能原则（v1.0.6 起的总章）
+
+> **一句话**：MiWarp 是本地优先的 Agent Workspace，不是每次重新加载的 WebSocket Client。
+
+事实来源 / 快速读模型 / 热状态 / 实时增量的分层：
+
+```text
+raw events.jsonl       → 事实来源（继续保留，永不丢）
+本地 manifest / index  → 快速读模型（runs 列表、last_seq、snapshot 状态、artifact 元数据）
+内存 Store             → 当前页面热状态（SessionStore / TeamStore / KeybindingStore）
+WebSocket              → 实时增量（不负责反复搬运历史大数据）
+```
+
+### 0.1 设计原则（六条铁律）
+
+1. **本地优先**：会话列表、会话快照、artifact 元数据、slash commands、workspace 状态优先从本地缓存读
+2. **增量同步**：后台按 `updated_at` / `last_seq` / `seq_high_watermark` 追新增量，不重复读完整 `events.jsonl`
+3. **按需恢复**：用户只查看历史会话不 spawn CLI；只有发消息 / 明确继续时才 lazy resume
+4. **大内容指针化**：WebSocket 只传事件 envelope 和小 payload；大文件走本地 IPC / file path / range read
+5. **可观测缓存**：所有 cache hit / miss / invalidate / replay fallback / reconcile 必须有日志和指标
+6. **多端一致**：Desktop / iOS / Android 都具备 runs list cache、snapshot cache、artifact LRU、since_seq watermark
+
+### 0.2 本地 Manifest 索引（取代"扫目录"）
+
+新增 `~/.miwarp/index.sqlite`，作为本地读模型层：
+
+```text
+runs
+- run_id, workspace_id, title, agent, phase
+- last_seq, last_activity_at, message_count
+- has_snapshot, has_partial_snapshot
+- preview_text, updated_at
+
+run_snapshots
+- run_id, seq_high_watermark, schema_version
+- snapshot_blob, is_partial, created_at
+
+artifacts
+- artifact_id, run_id, file_path, mime, size
+- sha256, thumbnail_path, cached_at
+
+workspaces
+- workspace_id, root_path, alias, last_opened_at
+```
+
+`events.jsonl` 仍是事实来源；SQLite 只是本地读模型。侧边栏不再扫所有 `meta.json + events.jsonl`，只跑：
+
+```sql
+SELECT * FROM runs ORDER BY last_activity_at DESC LIMIT 100;
+```
+
+本质是 **event log + local projection**，非常适合 Agent 会话软件。
+
+### 0.3 分层加载（避免"启动全量预加载"）
+
+| 阶段 | 时间窗 | 内容 |
+| --- | --- | --- |
+| **T0 启动壳** | 0~100ms | 应用壳、最近会话列表缓存、上次 `activeSessionId`、上次 active session 的 snapshot、基础设置 / 主题 / 当前 workspace |
+| **T1 后台同步** | 100ms 后 | 校验 runs 是否有新增、校验 `last_seq` 是否落后、同步最近 20 个 run 的 metadata、刷新 active workspace 状态（**不阻塞 UI**） |
+| **T2 空闲预热** | UI 稳了之后 | 最近 3~5 个会话 snapshot、slash commands、model / provider 配置、workspace git branch、memory sidebar summary、常用 artifact thumbnails |
+| **T3 意图触发** | 用户操作 | hover 会话 → 预加载 snapshot；打开 artifact tab → 加载 metadata；点 View Full → 加载完整大文件；输入 `/` → 加载完整 slash command detail |
+
+**反模式**：启动时把所有会话、artifact、snapshot 一次性预加载 → 等于把 Web 慢搬到本地。
+
+### 0.4 SessionStore Phase 状态机（cached / stale / live 三态细化）
+
+```ts
+type SessionPhase =
+  | "empty"          // 占位
+  | "cached"         // 本地 snapshot 命中，看起来新鲜
+  | "stale_cached"   // 本地 snapshot 命中，但 last_seq 可能落后
+  | "syncing"        // 正在后台追增量
+  | "live"           // 已接上 WS / session_actor
+  | "running"        // 当前有真实进程
+  | "completed"      // 已结束
+  | "failed";        // 失败
+```
+
+UI 轻量提示（不吓人）：
+
+```text
+已从本地缓存打开
+正在同步最新状态
+已连接实时会话
+```
+
+避免用户看到"内容突然变了"或"是不是没加载完"的疑虑。
+
+### 0.5 缓存失效规则（避免"越优化越玄学"）
+
+每个 snapshot 都带：
+
+```ts
+{
+  runId: string;
+  seqHighWatermark: number;
+  schemaVersion: number;
+  appVersion: string;
+  reducerVersion: string;
+  partial: boolean;
+  createdAt: number;
+}
+```
+
+`cacheKey = workspaceId + runId + seqHighWatermark + schemaVersion`
+
+失效规则：
+
+| 触发条件 | 行为 |
+| --- | --- |
+| `schemaVersion` 变了 | 丢弃 snapshot，重新 reducer replay |
+| `seqHighWatermark` 落后 | 先展示 cached 状态，后台追增量 |
+| raw events 校验失败（hash / 行数对不上） | 删除 snapshot，走完整回放 |
+| running 状态保存的 partial snapshot | 必须显示 `partial`，并后台补齐到 `seq_high_watermark` |
+
+### 0.6 性能验收指标（可被验证的硬指标）
+
+```text
+冷启动：
+- 100ms 内显示 shell + cached sidebar
+- 300ms 内显示 active session 的 cached snapshot
+- 1s 内完成后台 metadata reconcile
+
+会话切换：
+- snapshot 命中：50ms 内显示历史
+- snapshot 未命中：先显示 skeleton，500ms 内显示首屏事件
+
+资源：
+- 打开只读历史会话时不得 spawn CLI
+- 切换 10 次 idle 会话，CLI 进程数不增加
+- 单次启动不得全量读取所有 events.jsonl
+- 最近 100 个会话列表不得逐个扫描完整 events.jsonl
+
+缓存可观测：
+- cache hit rate 可观测（指标 / 日志）
+- snapshot replay fallback 可观测
+- artifact LRU 清理可观测
+```
+
+零章是后面所有特性的设计约束；第一节到第十二节都要以"是否违反零章"为设计校验。
 
 ---
 
@@ -300,16 +443,163 @@ flowchart TD
 - **主题升级**：多 agent 同时工作时任务堆栈可视化
 - **技术路径**：`AgentTaskStack.svelte` 渲染任务堆栈；后端 task 事件订阅
 
+### 4.9 斜杠命令执行环境修复
+
+- **主题升级**：斜杠命令在当前环境下不可执行的根因被根除；同时给"无法执行"提供明确降级路径
+- **现状问题**：
+  - 用户在聊天输入 `/` 触发 slash 菜单，选中命令后经常提示"无法在当前环境执行"
+  - 根因集中在四类：
+    1. **cwd 漂移**：session 启动时记录的 `cwd` 后续被 worktree / 路径切换覆盖，导致 shell 在错误目录里跑命令
+    2. **env 缺失**：spawn 进程时只透了少量变量（`PATH` / `HOME`），shell alias / conda / nvm / asdf / mise / 私有的 `.envrc` 没进来
+    3. **shell 解释器不匹配**：用户在设置里写 `zsh`，但 spawn 时落到 `sh`，导致 `source ~/.zshrc` / `conda activate` 全部失效
+    4. **权限与沙箱**：macOS Gatekeeper / Windows SmartScreen / Linux seccomp 在 spawn 时拦截
+- **主题升级**：
+  - 斜杠命令执行前**自我检测**当前环境（cwd、env 关键变量、shell、权限），不通过就给出可读原因
+  - 启动时持久化"该用户在该 workspace 下能跑通的 shell + env 快照"，避免每次重探测
+  - 失败时一键"用项目根 cwd + 用户 shell + 全量 env 重试"
+  - 不在错误时静默退化成"无法执行"，而是给降级方案（用本地 IPC 执行 / 改用 chat 内 prompt 模拟 / 提示用户去 terminal 跑）
+- **技术路径**：
+  - 新增 `lib/services/shell-env.ts`：
+    - `detectShellEnv()`：从用户设置 + `$SHELL` + `which` + `login -p` 探测
+    - `captureEnvSnapshot()`：spawn 一个无操作子 shell，把环境 dump 成 key=value
+    - `validateCwdForRun(runId)`：校验 cwd 是否在 `workspaceId` 范围内或 worktree 内
+  - 新增 `commands::shell::run_slash` Tauri command：
+    - 接受 `{ runId, command, args, env? }`，强制走 `cwd = workspace.root` + `env = capturedSnapshot + deltas`
+    - 失败时返回结构化 `ShellError { kind, message, hint, retryable }`
+  - SessionStore 新增 `shellEnv` 状态：
+    - 启动时调用 `captureEnvSnapshot` 缓存到 `~/.miwarp/runs/<id>/shell-env.json`
+    - 切换 workspace 时重新探测并提示用户
+  - SlashMenu UX：
+    - 执行前显示 "Running in: `<cwd>` · shell: `<zsh>`"
+    - 失败 toast：分类显示"目录不存在 / 权限不足 / shell 解释器不对 / 命令未找到"
+    - 提供"重试（用项目根）" / "改用 chat prompt 模拟" / "复制命令到剪贴板" 三种降级
+  - 测试：
+    - `npm test` 加 unit：cwd 漂移 / env 缺失 / shell 错误三类都能被检测和恢复
+    - `tauri dev` 手动：在 worktree / 多 workspace / 新开 terminal 切换 PATH 三个场景下走金路径
+
 ---
 
-## 五、侧边栏与导航
+## 五、侧边栏 / 顶部工具栏 / 右侧 Inspector
 
-### 5.1 记忆侧边栏组件
+> 本节同时承担左侧文件树侧边栏、顶部工具栏、右侧 Workspace Inspector 三个区域。所有改动都遵守"零、Local-first 性能原则"。
+
+### 5.1 顶部工具栏：5→11 图标 + 胶囊下放
+
+- **主题升级**：第一行不再塞太多图标；上下文胶囊下放让信息层级更清楚
+- **布局规则**：
+  - **第 1 行图标槽位**：收起态固定 **5 个**；展开后最多 **11 个**
+  - **去掉**：当前第一行的"上下文胶囊"（context capsule）
+  - **新增**：进度追踪按钮（见 5.2 Codex Progress）
+  - **第 2 行**：原上下文胶囊下放到第 2 行，宽度跟随第 1 行实际内容**自适应**（`width: 100%` of row 1 容器，不是固定 px）
+  - 收起 / 展开切换：第 1 行末尾的 chevron 按钮；状态写 localStorage
+- **图标优先级排序**（决定收起态显示哪些）：
+  1. New session
+  2. Workspace switcher
+  3. Model picker
+  4. Slash menu
+  5. **Progress tracker**（新增）
+  6. Files
+  7. Memory
+  8. History
+  9. Scheduled tasks
+  10. Plugins
+  11. Settings
+- **技术路径**：
+  - 新建 `src/lib/components/TopToolbar.svelte`：两行布局 + icon rail
+  - 图标槽位配置走 `src/lib/config/toolbar-icons.ts`（避免硬编码在 Svelte 里）
+  - 胶囊组件 `ContextCapsule.svelte`：从原 `+page.svelte` 抽出，接收 `parentWidth` prop（CSS container query 或运行时 measure）
+  - localStorage key：`ocv:topbar.collapsed`（沿用 `ocv:` 命名空间）
+
+### 5.2 Codex Progress（右侧进度追踪组件）
+
+- **主题升级**：Agent 在回复中列出的 todo / 步骤不再被淹没在长文本里
+- **行为**：
+  - 右侧边栏新增一个 tab：**Progress**
+  - 解析 Agent 回复中显式的 todo 列表（`TaskCreate` / `TaskUpdate` 事件、`TodoWrite`、markdown `- [ ]` / `- [x]`）聚合展示
+  - 每条 todo 实时反映状态：`pending` / `in_progress` / `completed` / `failed`
+  - 点击某条 todo 跳转到对应消息在聊天中的位置
+  - 会话结束或切换时保留最后一次快照（IndexedDB / 本地 manifest）
+- **技术路径**：
+  - 新增 `src/lib/components/CodexProgress.svelte` + `src/lib/components/CodexProgressPanel.svelte`
+  - 解析逻辑放 `src/lib/chat/progress-parser.ts`：
+    - 从 reducer 输出中抽 `todo` 事件
+    - 从 markdown 文本中解析 `- [ ]` / `- [x]` 作为兜底
+  - 状态走 `src/lib/stores/progress-store.svelte.ts`（独立 store，不污染 SessionStore）
+  - 路由：右侧边栏 tab 系统（`files / progress / memory / settings`），参考既有 `SessionPanelTabs.svelte`
+  - 数据来源满足零章：优先本地 cached → 后台增量 → lazy resume
+
+### 5.3 Workspace Inspector 多模式面板（Files / Preview / Source / Diff / Outline / References）
+
+- **主题升级**：右侧面板从"文件树"升级为 Agent 输出与本地产物的统一承载区
+- **触发入口**（统一派发 `InspectorOpenTarget`）：
+  - 聊天气泡里的文件路径：`[name](relative/path)` / `\`path:line\`` / inline code
+  - artifact 卡片点击
+  - 工具输出里的文件引用
+  - progress todo 引用
+  - slash 命令结果里的产物链接
+- **Inspector 模式**（tab 切换）：
+  - **Files**：保留原文件树
+  - **Preview**：Markdown / 图片 / HTML 报告 / artifact 预览
+  - **Source**：原始文本 / 代码（带行号）
+  - **Diff**：Agent 修改前后对比（接 `git diff` 渲染）
+  - **Outline**：Markdown 标题 / 代码符号（自动抽取 TOC）
+  - **References**：当前文件被哪些消息 / 工具调用 / 任务引用过
+- **技术路径**：
+  - 新增 `src/lib/components/inspector/WorkspaceInspector.svelte`：tab 系统 + 内容分发
+  - 路径解析与安全校验放 `src/lib/utils/inspector-path.ts`：
+    - 拒绝跳出当前 `workspace.root` 或 `runs/<id>/artifacts/` 的路径
+    - 拒绝 `file://` 外链、`javascript:` 链接、`iframe` / `script`
+  - Diff 复用 `DiffModal` 的渲染逻辑（不重新发明）
+  - Outline 用 `src/lib/utils/markdown-outline.ts`（H1-H6 抽取）+ 代码用 `tree-sitter` 或简单正则
+
+### 5.4 MiMarkdownRenderer（文档级 Markdown 渲染器）
+
+- **主题升级**：与聊天气泡内的轻量 `MarkdownContent` 区分；面向右侧 Preview / HTML 报告 / 长 Markdown 文件
+- **能力**：
+  - GFM 表格 / 任务列表
+  - 代码高亮（shiki / highlight.js，按需懒加载）
+  - 行号 + 复制代码按钮
+  - 标题目录（TOC）自动抽取
+  - callout（> [!NOTE] / [!WARNING] / [!TIP]）
+  - 文件链接：点击走 `InspectorOpenTarget`，不跳走页面
+  - 图片 lightbox
+  - 表格横向滚动
+  - 大文档分块渲染（按 viewport 高度懒渲染）
+- **安全边界**（默认视为不可信）：
+  - 禁用 `<script>` / `<iframe>` / 危险 HTML
+  - 禁用 `javascript:` 链接
+  - 禁用 `file://` 外链
+  - 本地文件只能通过 MiWarp IPC 打开
+  - 路径必须落在当前 workspace 或当前 run 的 artifact 目录内
+- **缓存策略**（遵守零章）：
+  - `cacheKey = workspaceId + path + mtime + size + contentHash + theme`
+  - 命中后展示缓存；后台 `stat` 校验文件变更
+  - 代码高亮结果、outline 抽取结果都进 IndexedDB
+- **技术路径**：
+  - 新增 `src/lib/components/markdown/MiMarkdownRenderer.svelte`
+  - 与 `MarkdownContent.svelte` 区分：前者文档级、后者气泡内
+  - parser 用 `marked` + `DOMPurify`，自定义 sanitizer 拦截危险节点
+  - 路由：
+    - 聊天气泡继续用 `MarkdownContent`（流式友好）
+    - 右侧 Preview / artifact / 长文件用 `MiMarkdownRenderer`
+  - 性能：大文件分块用 `IntersectionObserver` 懒渲染
+
+### 5.5 Inspector 验收标准
+
+- Agent 回复里的 `src/foo.ts:42` 点击后，右侧自动打开并定位第 42 行
+- Markdown 文件在右侧以文档级排版显示（TOC / 代码高亮 / 表格 / 任务列表 / callout）
+- 点击文件链接不触发页面跳转、不打开外部浏览器
+- 只查看文件预览不 spawn CLI（零章 0.3 T3 触发）
+- 大 Markdown 文件不阻塞主线程，代码高亮懒加载
+- 非 workspace 内路径被拦截，显示安全提示
+- 同一文件重复打开命中本地缓存（零章 0.5 cacheKey）
+
+### 5.6 记忆侧边栏组件
 
 - **主题升级**：memory 在 sidebar 不再散落
 - **技术路径**：`MemorySidebarGroup.svelte` 独立组件；按时间 / 类型分组
 
-### 5.2 Memory 语义块
+### 5.7 Memory 语义块
 
 - **主题升级**：memory 文件保留 type / level / children 层级
 - **技术路径**：
@@ -317,7 +607,7 @@ flowchart TD
   - `MemoryBlock` / `MemoryBlockType` / `ParsedMemoryFile` 类型
   - `MemoryBlockItem.svelte` 按类型显示
 
-### 5.3 Streaming Skeleton
+### 5.8 Streaming Skeleton
 
 - **主题升级**：流式响应不闪烁
 - **技术路径**：
@@ -326,7 +616,7 @@ flowchart TD
   - `InlineToolCard` 在 `isInputStreaming` 时延迟 300ms 展开
   - `ToolDetailView` 流式 output 显示 skeleton
 
-### 5.4 Git Worktree 集成
+### 5.9 Git Worktree 集成
 
 - **主题升级**：worktree 可视化
 - **技术路径**：
@@ -334,37 +624,37 @@ flowchart TD
   - `git-worktree-store.svelte.ts` 状态管理
   - 数据流：chat page → `ToolActivity` → `WorkspaceContextPanel` → `GitWorktreePanel`
 
-### 5.5 Worktree branch badge
+### 5.10 Worktree branch badge
 
 - **主题升级**：用户在 worktree 模式时 status bar 显示当前 branch
 - **技术路径**：`SessionStatusBar` 加 worktree branch badge（图标 + 名称）
 
-### 5.6 多会话 worktree 并行
+### 5.11 多会话 worktree 并行
 
 - **主题升级**：多分支并行开发时每个分支独立 session
 - **技术路径**：`GitWorktreePanel` 拓展 session chain 视图；每个 worktree 关联独立 `sessionId`
 
-### 5.7 Session folder 管理
+### 5.12 Session folder 管理
 
 - **主题升级**：会话可分组
 - **技术路径**：sidebar 显示 folder 树 + drag-drop 重排
 
-### 5.8 Session 硬删除
+### 5.13 Session 硬删除
 
 - **主题升级**：彻底删除会话
 - **技术路径**：API 新增 `hard_delete_session`；UI 二次确认对话框
 
-### 5.9 History 搜索模式切换 + Memory 上下文菜单
+### 5.14 History 搜索模式切换 + Memory 上下文菜单
 
 - **主题升级**：history 页可切换搜索模式，memory 有上下文菜单
 - **技术路径**：`history` 页加 mode toggle（关键词 / fuzzy / by date）；memory block 右键出菜单
 
-### 5.10 Settings toggle 一致性
+### 5.15 Settings toggle 一致性
 
 - **主题升级**：settings 各种 toggle 视觉统一
 - **技术路径**：统一 `SettingsToggle.svelte` 状态机、disabled / loading 态
 
-### 5.11 Session 自动恢复
+### 5.16 Session 自动恢复
 
 - **主题升级**：刷新 / 重启应用自动恢复上次活跃 session
 - **技术路径**：`SessionStore` 持久化 `activeSessionId` 到 localStorage；启动时回放
