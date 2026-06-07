@@ -350,7 +350,8 @@
         >
       {/if}
     </div>
-    <div class="flex items-center gap-0.5 shrink-0">
+    <div class="flex items-center gap-1.5 shrink-0">
+      <span class="tabular-nums text-muted-foreground/60 text-[10.5px]">{time}</span>
       <span
         class="inline-block h-[6px] w-[6px] rounded-full shrink-0 {statusDot.animated
           ? 'animate-slow-pulse'
@@ -396,7 +397,6 @@
         <span class="truncate opacity-70">{platformLabel(run.platform_id)}</span>
       {/if}
     </div>
-    <span class="shrink-0 tabular-nums">{time}</span>
   </div>
 </div>
 
