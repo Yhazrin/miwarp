@@ -33,6 +33,9 @@
     onImportHistory?: () => Promise<void>;
   } = $props();
   function lk(key: string): string { return t(key as MessageKey); }
+  function lkp(key: string, params: Record<string, string>): string {
+    return t(key as MessageKey, params);
+  }
 
 </script>
 
@@ -70,7 +73,7 @@
               </div>
               <div class="text-xs text-muted-foreground truncate">{session.cwd}</div>
               <div class="text-xs text-muted-foreground">
-                {session.messageCount} messages
+                {lkp("settings_data_messageCount", { count: String(session.messageCount) })}
                 {#if session.model}· {session.model}{/if}
               </div>
             </div>

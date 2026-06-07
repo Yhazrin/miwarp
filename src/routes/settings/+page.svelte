@@ -255,10 +255,18 @@
         return;
       }
       const result = await api.exportClaudeCodeHistoryArchive(outputPath);
+      const kb = (result.totalBytes / 1024).toFixed(1);
+      const failures =
+        result.failures.length > 0
+          ? t("settings_data_exportFailures", { count: String(result.failures.length) })
+          : "";
       alert(
-        `Exported ${result.sessionCount} sessions (${(result.totalBytes / 1024).toFixed(1)} KB) to:\n${outputPath}${
-          result.failures.length > 0 ? `\n${result.failures.length} failures` : ""
-        }`,
+        t("settings_data_exportToast", {
+          count: String(result.sessionCount),
+          kb,
+          path: outputPath,
+          failures,
+        }),
       );
     } catch (e) {
       historyError = String(e);
@@ -1463,7 +1471,7 @@
     ) {
       return null;
     }
-    return t("settings_notif_feishuUrlInvalid") || "Invalid Feishu webhook URL";
+    return t("settings_notif_feishuUrlInvalid");
   }
 
   async function saveFeishuSettings() {
@@ -1488,10 +1496,15 @@
     feishuTesting = true;
     feishuTestResult = null;
     try {
-      await api.sendFeishuNotification("Test", "Feishu webhook test from MiWarp", "test");
-      feishuTestResult = t("settings_notif_feishuTestOk") || "Test notification sent";
+      await api.sendFeishuNotification(
+        t("settings_notif_feishuTestTitle"),
+        t("settings_notif_feishuTestBody"),
+        "test",
+      );
+      feishuTestResult = t("settings_notif_feishuTestOk");
     } catch (e: unknown) {
-      feishuTestResult = (e as Error)?.message || "Failed to send";
+      feishuTestResult =
+        (e as Error)?.message || t("settings_notif_feishuTestFailed");
     } finally {
       feishuTesting = false;
     }
