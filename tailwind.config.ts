@@ -77,6 +77,9 @@ export default {
           done: "hsl(var(--miwarp-status-done))",
           failed: "hsl(var(--miwarp-status-failed))",
           pending: "hsl(var(--miwarp-status-pending))",
+          paused: "hsl(var(--miwarp-status-paused))",
+          blocked: "hsl(var(--miwarp-status-blocked))",
+          idle: "hsl(var(--miwarp-status-idle))",
         },
         // v1.0.6 / 8.1: Glass surface tokens. Use the same `hsl(var(...))`
         // pattern so the alpha modifier (e.g. `bg-miwarp-glass-bg/40`)
@@ -84,10 +87,6 @@ export default {
         "miwarp-glass": {
           bg: "hsl(var(--miwarp-glass-bg))",
           border: "hsl(var(--miwarp-glass-border))",
-        },
-          paused: "hsl(var(--miwarp-status-paused))",
-          blocked: "hsl(var(--miwarp-status-blocked))",
-          idle: "hsl(var(--miwarp-status-idle))",
         },
         "miwarp-text-status": {
           success: "hsl(var(--miwarp-status-success))",
