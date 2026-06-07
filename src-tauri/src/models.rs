@@ -432,7 +432,11 @@ fn default_permission_mode() -> String {
 }
 
 fn default_session_mode() -> String {
-    "worktree".to_string()
+    // v1.0.6 follow-up: prefer "single" by default so the user's
+    // workspace branch is shared across sessions unless they explicitly
+    // opt in to per-session worktrees. Multi-worktree mode is still
+    // available behind the settings toggle.
+    "single".to_string()
 }
 
 fn default_sound_feedback_level() -> String {

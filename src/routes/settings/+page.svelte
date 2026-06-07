@@ -17,6 +17,7 @@
     SshKeyInfo,
   } from "$lib/types";
   import Card from "$lib/components/Card.svelte";
+  import SessionModeToggle from "$lib/components/SessionModeToggle.svelte";
   import Button from "$lib/components/Button.svelte";
   import Input from "$lib/components/Input.svelte";
   import KeybindingEditor from "$lib/components/KeybindingEditor.svelte";
@@ -2235,75 +2236,29 @@
                     {t("settings_defaultSessionModeDesc")}
                   </p>
                 </div>
-                <!-- Capsule toggle group — full width, equal columns -->
-                <div
-                  class="grid grid-cols-3 rounded-lg border border-border bg-muted/40 p-0.5 gap-0.5"
-                >
-                  <button
-                    type="button"
-                    class="rounded-md px-2 py-1.5 text-xs font-medium transition-all duration-150 select-none whitespace-nowrap text-center
-                      {(settings?.default_session_mode ?? 'worktree') === 'single'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'}"
-                    onclick={async () => {
-                      const prev = settings;
-                      if (settings) settings = { ...settings, default_session_mode: "single" };
-                      try {
-                        settings = await api.updateUserSettings({
-                          default_session_mode: "single",
-                        } as Partial<UserSettings>);
-                      } catch {
-                        settings = prev;
-                      }
-                    }}
-                  >
-                    {t("settings_sessionModeSingle")}
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded-md px-2 py-1.5 text-xs font-medium transition-all duration-150 select-none whitespace-nowrap text-center
-                      {(settings?.default_session_mode ?? 'worktree') === 'worktree'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'}"
-                    onclick={async () => {
-                      const prev = settings;
-                      if (settings) settings = { ...settings, default_session_mode: "worktree" };
-                      try {
-                        settings = await api.updateUserSettings({
-                          default_session_mode: "worktree",
-                        } as Partial<UserSettings>);
-                      } catch {
-                        settings = prev;
-                      }
-                    }}
-                  >
-                    {t("settings_sessionModeWorktree")}
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded-md px-2 py-1.5 text-xs font-medium transition-all duration-150 select-none whitespace-nowrap text-center
-                      {(settings?.default_session_mode ?? 'worktree') === 'ask_on_new_branch'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'}"
-                    onclick={async () => {
-                      const prev = settings;
-                      if (settings)
-                        settings = { ...settings, default_session_mode: "ask_on_new_branch" };
-                      try {
-                        settings = await api.updateUserSettings({
-                          default_session_mode: "ask_on_new_branch",
-                        } as Partial<UserSettings>);
-                      } catch {
-                        settings = prev;
-                      }
-                    }}
-                  >
-                    {t("settings_sessionModeAsk")}
-                  </button>
-                </div>
+                <!-- Capsule toggle group — full width, equal columns.
+                     v1.0.6 follow-up: refactored to share a single helper so
+                     the third ("ask") option is just as reachable as the
+                     other two — the previous per-button inline onclick with
+                     implicit closure capture was the root cause of the
+                     un-clickable feel when default was "worktree". -->
+                <SessionModeToggle
+                  value={settings?.default_session_mode ?? "single"}
+                  onChange={async (mode) => {
+                    const prev = settings;
+                    if (settings) settings = { ...settings, default_session_mode: mode };
+                    try {
+                      settings = await api.updateUserSettings({
+                        default_session_mode: mode,
+                      } as Partial<UserSettings>);
+                    } catch {
+                      settings = prev;
+                    }
+                  }}
+                />
               </div>
 
-              {#if (settings?.default_session_mode ?? "worktree") === "worktree"}
+              {#if (settings?.default_session_mode ?? "single") === "worktree"}
                 <div class="flex items-center justify-between">
                   <div>
                     <p class="text-sm font-medium">{t("settings_autoCommit")}</p>
