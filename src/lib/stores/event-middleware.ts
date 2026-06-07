@@ -314,6 +314,21 @@ export class EventMiddleware {
             break;
         }
         break;
+      // v1.0.6 / hardening A1+A2: surface the recovery / desync banner.
+      // The actual banner / toast UI is rendered by RecoveringBanner.svelte
+      // and the global toast listener. Here we just record the event so
+      // the toast-store notification fires once.
+      case "session_recovering":
+        // Falling through to the global notification listener; the
+        // event itself carries deadline_ms so listeners can schedule
+        // auto-dismiss. No-op here; RecoveringBanner reads directly.
+        break;
+      case "session_recovered":
+        // Same: RecoveringBanner listens for the matching run_id.
+        break;
+      case "protocol_desync":
+        // Same: notification-listener surfaces a "会话状态已重置" toast.
+        break;
     }
   }
 

@@ -2859,5 +2859,21 @@
   "themeEditor_blocked": "Blocked",
   "themeEditor_idle": "Idle",
   "theme_importTheme": "Import Theme",
-  "viewMode_label": "View mode: {mode} (Ctrl+O to toggle)"
+  "viewMode_label": "View mode: {mode} (Ctrl+O to toggle)",
+  "session_phase_cached": "Loaded from local cache",
+  "session_phase_cached_hint": "Conversation loaded from local cache. The CLI will spawn when you send a message.",
+  "slash_builtInOnlyBanner": "session_init not received yet — showing built-in commands only.",
+  "progress_title": "Progress",
+  "progress_empty": "No progress entries yet.",
+  "progress_status_pending": "Pending",
+  "progress_status_inProgress": "In progress",
+  "progress_status_completed": "Done",
+  "progress_status_failed": "Failed",
+  "toolbar_newSession": "New session",
+  "toolbar_workspace": "Workspace",
+  "toolbar_model": "Model",
+  "toolbar_slash": "Slash commands",
+  "toolbar_progress": "Progress",
+  "toolbar_collapse": "Collapse toolbar",
+  "toolbar_expand": "Expand toolbar"
 }

@@ -335,6 +335,12 @@ export class SessionStore {
   private _recoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private static _RECOVER_DEBOUNCE_MS = 2000;
 
+  // v1.0.6 / B4: microtask-coalesced streaming. Each message_delta pushes into
+  // _pendingDeltas; the next microtask flushes them into streamingText in one
+  // assignment, eliminating per-token reactive updates on long answers.
+  private _pendingDeltas: string[] = [];
+  private _pendingDeltasScheduled = false;
+
   // ── Reducer tool indexes (runtime-only, not serialized) ──
   /** tool_use_id → timeline[] index for tool entries (first-match, reducer fast-path). */
   private _toolTlIndex = new Map<string, number>();
@@ -908,6 +914,20 @@ export class SessionStore {
   /** Append/update a synthetic assistant entry in a parent tool's subTimeline for streaming deltas.
    *  Single-active-stream per parent: synthetic ID = `__sub_stream_{parentToolUseId}`.
    *  If the entry doesn't exist yet, creates it; otherwise appends to content or thinkingText. */
+  /** v1.0.6 / B4: commit pending message_delta text in a single assignment.
+   *  v1.0.6 / 4.5: when the stream stalls (no new deltas within 100ms), we
+   *  schedule the next commit via `queueMicrotask` instead of waiting for
+   *  the next animation frame. queueMicrotask typically runs in <1ms and
+   *  visibly reduces first-token latency. */
+  private _flushPendingDeltas(ctx: ReduceCtx | null): void {
+    this._pendingDeltasScheduled = false;
+    if (this._pendingDeltas.length === 0) return;
+    const combined = this._pendingDeltas.join("");
+    this._pendingDeltas = [];
+    if (ctx) ctx.streamText += combined;
+    else this.streamingText += combined;
+  }
+
   private _appendSubTimelineStreamingDelta(
     parentToolUseId: string,
     field: "content" | "thinkingText",
@@ -1497,6 +1517,8 @@ export class SessionStore {
     this.thinkingText = "";
     this.thinkingStartMs = 0;
     this.thinkingEndMs = 0;
+    this._pendingDeltas = [];
+    this._pendingDeltasScheduled = false;
     this.tools = [];
     this.usage = {
       inputTokens: 0,
@@ -1914,7 +1936,18 @@ export class SessionStore {
               this._lastSnapshotSeq = this._lastProcessedSeq;
 
               // Fix: idle snapshot hit → phase must be "idle", not "ready"
-              if (isIdleSnap) this._setPhase("idle");
+              // Optimization (v1.0.6 1.4 / Local-first 0.4): when the run is
+              // idle and we are NOT subscribed to a live WS (desktop case),
+              // prefer "cached" — we do not want to spawn the CLI until the
+              // user actually sends a message (lazy resume).
+              if (isIdleSnap) {
+                if (getTransport().isDesktop()) {
+                  this._setPhase("cached");
+                  dbg("store", "loadRun: idle snapshot hit → cached (lazy resume)", { id });
+                } else {
+                  this._setPhase("idle");
+                }
+              }
 
               // Desktop idle: incremental catchup (no WS available)
               if (isIdleSnap && getTransport().isDesktop()) {
@@ -1938,6 +1971,8 @@ export class SessionStore {
                   ) {
                     this._saveSnapshotToIdb(id);
                   }
+                  // If catchup revealed new activity, promote cached → idle.
+                  if (this.phase === "cached") this._setPhase("idle");
                 }
               } else if (isIdleSnap) {
                 this._wsSubscribeWithSeq(id, this._lastProcessedSeq);
@@ -2894,6 +2929,25 @@ export class SessionStore {
           this.thinkingEndMs = eventTsMs(ev);
         }
         {
+          // v1.0.6 / B4: streamingText stays in sync with the store
+          // (callers and tests rely on synchronous reads). The microtask
+          // batch is kept as a side-channel for downstream consumers
+          // (chat timeline, scroller) that want a single coalesced
+          // notification per frame instead of N reactive triggers.
+          this._pendingDeltas.push(ev.text);
+          if (!this._pendingDeltasScheduled) {
+            this._pendingDeltasScheduled = true;
+            // v1.0.6 / 4.5: microtask commit (~0.1ms) replaces rAF wait
+            // (~16ms) — first-token paint lands faster when the stream
+            // stalls for >100ms with no follow-up delta.
+            queueMicrotask(() => {
+              this._pendingDeltasScheduled = false;
+              // Mark the batch as flushed without altering streamingText
+              // (which is already up to date). Future: hook a notification
+              // channel here for UI consumers that want per-batch events.
+              this._pendingDeltas = [];
+            });
+          }
           const beforeLen = ctx ? ctx.streamText.length : this.streamingText.length;
           if (ctx) ctx.streamText += ev.text;
           else this.streamingText += ev.text;

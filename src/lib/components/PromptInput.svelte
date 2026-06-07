@@ -275,7 +275,7 @@
   $effect(() => {
     const _layout = useCapsuleStrip;
     void _layout;
-    requestAnimationFrame(() => autoResize());
+    scheduleAutoResize();
   });
 
   // Auto-close BTW mode when agent stops running
@@ -371,7 +371,10 @@
   let slashSubSelectedIndex = $state(0);
   let activeSlashCmd: CliCommand | null = $state(null);
 
-  let slashEnabled = $derived(agent === "claude" && !!useStreamSession);
+  // v1.0.6 / 3.10 (A3): slash menu is keyed off agent alone. The previous
+  // `useStreamSession` guard meant the menu stayed dark until the user
+  // started a session, even though CLI commands are static + global.
+  let slashEnabled = $derived(agent === "claude");
   let slashBtnEl: HTMLButtonElement | undefined = $state();
   let savedInputForSlash = $state("");
 
@@ -381,7 +384,9 @@
 
   let slashQuery = $derived.by(() => {
     if (!slashMenuOpen || slashPhase !== "commands") return null;
-    const m = store.inputText.match(/^\/([a-zA-Z0-9_-]*)$/);
+    // v1.0.6 / 4.4: accept the Chinese pause mark (、) as an alias for
+    // `/` so Chinese users can use the same muscle memory.
+    const m = store.inputText.match(/^[/、]([a-zA-Z0-9_-]*)$/);
     return m?.[1] ?? "";
   });
 
@@ -888,6 +893,8 @@
           store.textareaEl.value.length;
       }
     });
+    // No scheduleAutoResize call here — the rAF above is for cursor positioning
+    // and autoResize is the side-effect we need only once per frame.
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -1713,6 +1720,19 @@
     store.pastedBlocks = store.pastedBlocks.filter((b) => b.id !== id);
   }
 
+  // v1.0.6 / B2: pendingResize coalesces every autoResize request that
+  // lands inside the same animation frame. Multiple `rAF(autoResize)` calls
+  // (8 spots in this file) used to schedule N callbacks; we now schedule 1.
+  let _pendingResize = false;
+  function scheduleAutoResize(): void {
+    if (_pendingResize) return;
+    _pendingResize = true;
+    requestAnimationFrame(() => {
+      _pendingResize = false;
+      autoResize();
+    });
+  }
+
   function autoResize() {
     if (!store.textareaEl) return;
     const el = store.textareaEl;
@@ -1879,7 +1899,7 @@
   export function clearAll(): void {
     store.clearAll();
     resetHistory(histState);
-    requestAnimationFrame(() => autoResize());
+    scheduleAutoResize();
   }
 
   function hasContent(): boolean {
@@ -2341,6 +2361,10 @@
         {hintText}
         inputDisplay={store.inputText}
         {fastModeState}
+        // v1.0.6 / 3.10 (A3): tell the menu if it should show the
+        // "session_init 未到达" banner — i.e. dynamic commands from CLI
+        // haven't arrived yet, so the menu is virtual-only.
+        showBuiltInOnlyBanner={!cliCommands || cliCommands.length === 0}
         onSelect={(cmd) => selectSlashCommand(cmd, "enter")}
         onHover={(i) => (slashSelectedIndex = i)}
         onSubHover={(i) => (slashSubSelectedIndex = i)}

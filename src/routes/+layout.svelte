@@ -23,6 +23,12 @@
     batchMoveToFolder,
   } from "$lib/api";
   import {
+    readRunsListCache,
+    writeRunsListCache,
+    mergeRunsIntoCache,
+    removeRunFromCache,
+  } from "$lib/utils/runs-list-cache";
+  import {
     normalizeProcessVisibility,
     persistCachedProcessVisibility,
   } from "$lib/utils/process-visibility";
@@ -96,6 +102,7 @@
   import { fpsCounter } from "$lib/utils/perf";
   import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
   import { loadAgentSettingsCache } from "$lib/stores/agent-settings-cache.svelte";
+  import { loadCliInfo } from "$lib/stores/cli-info.svelte";
   import type { PlatformCredential } from "$lib/types";
   import { TeamStore } from "$lib/stores/team-store.svelte";
   import { KeybindingStore } from "$lib/stores/keybindings.svelte";
@@ -755,6 +762,19 @@
 
   // Load initial data
   async function loadRuns() {
+    // v1.0.6 1.4: cache-first sidebar (Local-first 0.1).
+    // First call seeds from IDB so the sidebar renders instantly.
+    if (!runsLoadSucceededOnce) {
+      try {
+        const cached = await readRunsListCache();
+        if (cached.length > 0) {
+          runs = cached;
+          dbg("layout", "loadRuns: cache-first hit", { count: cached.length });
+        }
+      } catch (e) {
+        dbgWarn("layout", "loadRuns: cache read failed", e);
+      }
+    }
     try {
       if (lastRunsSync && runsLoadSucceededOnce && useIncrementalRunsSync()) {
         // Incremental: only fetch runs changed since last sync
@@ -769,10 +789,15 @@
             }
           }
           runs = [...map.values()].sort((a, b) => b.started_at.localeCompare(a.started_at));
+          // Background merge into IDB (no await on critical path).
+          void mergeRunsIntoCache(changed.filter((r) => !r.deleted_at));
         }
       } else {
         // Full load on first call or after failure
-        runs = await listRuns();
+        const fresh = await listRuns();
+        runs = fresh;
+        // Write back to IDB (no await on critical path).
+        void writeRunsListCache(fresh);
       }
       lastRunsSync = new Date().toISOString();
       runsLoadSucceededOnce = true;
@@ -960,6 +985,9 @@
     loadSidebarFavorites();
     loadSessionFolders();
     loadAgentSettingsCache();
+    // v1.0.6 / 3.10 (A3): pre-warm the CLI command cache so the slash menu
+    // has a populated list before any session has been started.
+    void loadCliInfo();
     void scheduledTasksStore.loadTasks();
     void scheduledTasksStore.loadAllRuns();
     themeStore.init();
@@ -1366,6 +1394,8 @@
       const ids = conv.runs.map((r) => r.id);
       await softDeleteRuns(ids);
       dbg("layout", "deleteConversation success", { ids });
+      // v1.0.6 1.4: keep IDB in sync with deletion
+      for (const id of ids) void removeRunFromCache(id);
       window.dispatchEvent(new Event("ocv:runs-changed"));
       if (conv.runs.some((r) => r.id === selectedRunId)) {
         goto("/chat");
@@ -1386,6 +1416,8 @@
       // Remove from local state immediately
       const idSet = new Set(ids);
       runs = runs.filter((r) => !idSet.has(r.id));
+      // v1.0.6 1.4: keep IDB in sync with deletion
+      for (const id of ids) void removeRunFromCache(id);
       dbg("layout", "hardDeleteConversation success", { ids });
       window.dispatchEvent(new Event("ocv:runs-changed"));
       if (ids.some((id) => id === selectedRunId)) {
@@ -1489,6 +1521,7 @@
     if (ids.length === 0) return;
     try {
       await softDeleteRuns(ids);
+      for (const id of ids) void removeRunFromCache(id);
       dbg("layout", "batchDelete success", { count: ids.length });
       window.dispatchEvent(new Event("ocv:runs-changed"));
       if (ids.includes(selectedRunId)) goto("/chat");
@@ -1506,6 +1539,7 @@
       await hardDeleteRuns(ids);
       const idSet = new Set(ids);
       runs = runs.filter((r) => !idSet.has(r.id));
+      for (const id of ids) void removeRunFromCache(id);
       dbg("layout", "batchHardDelete success", { count: ids.length });
       window.dispatchEvent(new Event("ocv:runs-changed"));
       if (ids.includes(selectedRunId)) goto("/chat");

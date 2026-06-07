@@ -147,9 +147,9 @@
     !!(run && onRename) || !!model || !!onProcessVisibilityChange,
   );
 
-  // ── Capsule morph: running / done / stopped (flash) + waiting (persistent) ──
-  type MorphFlash = "none" | "running" | "done" | "stopped";
-  type MorphShell = "none" | "running" | "done" | "stopped" | "waiting";
+  // ── Capsule morph: running / done / stopped / cached (flash) + waiting (persistent) ──
+  type MorphFlash = "none" | "running" | "done" | "stopped" | "cached";
+  type MorphShell = "none" | "running" | "done" | "stopped" | "cached" | "waiting";
 
   let morphFlash = $state<MorphFlash>("none");
   let morphFlashTimer: ReturnType<typeof setTimeout> | undefined;
@@ -191,6 +191,8 @@
         return "session-island-waiting";
       case "stopped":
         return "session-island-stopped";
+      case "cached":
+        return "session-island-cached";
       default:
         return "";
     }
@@ -206,6 +208,8 @@
         return "waiting";
       case "stopped":
         return "stopped";
+      case "cached":
+        return "cached";
       default:
         return "";
     }
@@ -234,6 +238,15 @@
 
     if (phase === "stopped" && prevSessionPhase !== "stopped") {
       showMorphFlash("stopped", 2000);
+      prevSessionPhase = phase;
+      prevTaskRunning = taskActive;
+      return;
+    }
+
+    // v1.0.6 1.6: surface "loaded from cache" so the user knows the
+    // conversation history is local and the CLI hasn't been spawned yet.
+    if (phase === "cached" && prevSessionPhase !== "cached") {
+      showMorphFlash("cached", 2200);
       prevSessionPhase = phase;
       prevTaskRunning = taskActive;
       return;

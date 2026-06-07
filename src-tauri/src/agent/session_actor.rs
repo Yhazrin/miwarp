@@ -12,7 +12,8 @@ use crate::agent::notify::notify_if_background;
 use crate::agent::turn_engine::{
     apply_activity_reset, ActiveTurn, ContextExtractor, InternalExtractor, InternalJob, TurnOrigin,
     TurnPhase, UserTurnKind, UserTurnTicket, INTERNAL_HARD_TIMEOUT, INTERNAL_SOFT_TIMEOUT,
-    QUARANTINE_DEADLINE, TICK_INTERVAL, USER_HARD_TIMEOUT, USER_SOFT_TIMEOUT,
+    PROTOCOL_DESYNC_THRESHOLD, PROTOCOL_DESYNC_WINDOW_SECS, QUARANTINE_DEADLINE, TICK_INTERVAL,
+    USER_HARD_TIMEOUT, USER_SOFT_TIMEOUT,
 };
 use crate::models::{
     max_attachment_size, now_iso, BusEvent, RalphCompleteReason, RunStatus, ALLOWED_DOC_TYPES,
@@ -227,6 +228,13 @@ struct SessionActor {
     /// JSON parse failures in handle_stdout_line (before map_event).
     /// Complements ParserStats.parse_warn_count (field-level malformation).
     json_parse_fail_count: u32,
+    /// v1.0.6 / hardening A2: sliding-window parse-fail timestamps (epoch ms).
+    /// Used to detect protocol desync when failures exceed the threshold
+    /// within PROTOCOL_DESYNC_WINDOW_SECS.
+    parse_fail_window: Vec<u64>,
+    /// v1.0.6 / hardening A2: a one-shot guard so we only emit ProtocolDesync
+    /// once per session even if parse failures keep coming.
+    desync_emitted: bool,
 
     // ── Ralph Loop fields ──
     /// Ralph loop state (None = inactive / completed).
@@ -312,6 +320,8 @@ pub fn spawn_actor(
         quarantine_from_internal: false,
         terminated: false,
         json_parse_fail_count: 0,
+        parse_fail_window: Vec::new(),
+        desync_emitted: false,
         ralph_loop: None,
         ralph_needs_dispatch: false,
         pending_interactive_request: None,
@@ -1060,6 +1070,11 @@ impl SessionActor {
                             .to_string()
                     };
                     self.emit_state("failed", None, Some(error_msg), true);
+                    // v1.0.6 / hardening A1: recovery attempt failed → tell UI
+                    self.persist_and_emit(&BusEvent::SessionRecovered {
+                        run_id: self.run_id.clone(),
+                        ok: false,
+                    });
                     self.fail_all_pending_replies("Session hard timeout");
                     self.terminated = true;
                     return;
@@ -1114,6 +1129,13 @@ impl SessionActor {
                 self.interrupt_sent_for_quarantine = false;
                 self.quarantine_deadline = None;
                 self.quarantine_from_internal = true;
+                // v1.0.6 / hardening A1: emit recovering so the UI can show a banner
+                self.persist_and_emit(&BusEvent::SessionRecovering {
+                    run_id: self.run_id.clone(),
+                    reason: "internal_hard_timeout".to_string(),
+                    deadline_ms: QUARANTINE_DEADLINE.as_millis() as u64,
+                    from_internal: true,
+                });
                 // on_tick_timeout will send interrupt on next tick
             } else if now >= turn.soft_deadline && matches!(turn.phase, TurnPhase::Active) {
                 // Transition to Draining
@@ -1146,6 +1168,13 @@ impl SessionActor {
             self.interrupt_sent_for_quarantine = false;
             self.quarantine_deadline = None;
             self.quarantine_from_internal = false;
+            // v1.0.6 / hardening A1: emit recovering so the UI can show a banner
+            self.persist_and_emit(&BusEvent::SessionRecovering {
+                run_id: self.run_id.clone(),
+                reason: "user_hard_timeout".to_string(),
+                deadline_ms: QUARANTINE_DEADLINE.as_millis() as u64,
+                from_internal: false,
+            });
         }
     }
 
@@ -1407,6 +1436,46 @@ impl SessionActor {
                     self.json_parse_fail_count,
                     truncate_str(text, 100)
                 );
+                // v1.0.6 / hardening A2: sliding-window desync detection.
+                // Record this failure's wall-clock time, evict old entries,
+                // and once we cross PROTOCOL_DESYNC_THRESHOLD inside the
+                // window, emit ProtocolDesync and force-fail the run.
+                let now_ms = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as u64)
+                    .unwrap_or(0);
+                self.parse_fail_window.push(now_ms);
+                let window_ms = (PROTOCOL_DESYNC_WINDOW_SECS as u64) * 1000;
+                self.parse_fail_window
+                    .retain(|&t| now_ms.saturating_sub(t) <= window_ms);
+                if !self.desync_emitted
+                    && self.parse_fail_window.len() as u32 >= PROTOCOL_DESYNC_THRESHOLD
+                {
+                    self.desync_emitted = true;
+                    let sample: String = text.chars().take(200).collect();
+                    log::error!(
+                        "[actor] protocol desync detected: {} parse failures within {}s window for run_id={}",
+                        self.parse_fail_window.len(),
+                        PROTOCOL_DESYNC_WINDOW_SECS,
+                        self.run_id
+                    );
+                    self.persist_and_emit(&BusEvent::ProtocolDesync {
+                        run_id: self.run_id.clone(),
+                        fail_count: self.parse_fail_window.len() as u32,
+                        sample,
+                    });
+                    // Force-fail the run so the turn engine unlocks. Frontend
+                    // will see a "会话状态已重置" toast via event-middleware.
+                    self.emit_state(
+                        "failed",
+                        None,
+                        Some("protocol_desync: too many unparseable lines from CLI".to_string()),
+                        true,
+                    );
+                    self.fail_all_pending_replies("protocol_desync");
+                    self.terminated = true;
+                    return;
+                }
                 // HC #16: parse failure during quarantine → swallow
                 if self.quarantine_until_result {
                     log::trace!("[turn] quarantine: swallowed parse-fail line");
@@ -1474,6 +1543,12 @@ impl SessionActor {
                         self.interrupt_sent_for_quarantine = false;
                         self.quarantine_from_internal = false;
                         self.protocol.set_pending_slash_command(None);
+                        // v1.0.6 / hardening A1: surface the recovery so the
+                        // UI banner can dismiss.
+                        self.persist_and_emit(&BusEvent::SessionRecovered {
+                            run_id: self.run_id.clone(),
+                            ok: state == "idle",
+                        });
                         // Don't emit quarantine RunState to frontend (it was an internal turn)
                         // Just try to dispatch next queued item
                         self.try_dispatch().await;
@@ -2127,9 +2202,42 @@ impl SessionActor {
                 None
             };
             self.emit_state(state_str, exit_code, error_msg, true);
+            // v1.0.6 / hardening A4: surface a desktop notification when a
+            // user-driven run finishes and the window is in the background.
+            // Internal turns / ralph iterations must NOT trigger this — we
+            // have a different in-app banner for those.
+            let is_internal = self.is_internal_turn();
+            if !is_internal {
+                let title = if state_str == "failed" {
+                    "MiWarp · 运行失败"
+                } else if state_str == "stopped" {
+                    "MiWarp · 会话已停止"
+                } else {
+                    "MiWarp · 运行完成"
+                };
+                let body = self
+                    .run
+                    .as_ref()
+                    .map(|m| m.title.clone())
+                    .unwrap_or_else(|| self.run_id.clone());
+                notify_if_background(self.emitter.app(), title, &body);
+            }
         } else {
             self.finalize_meta(exit_code);
             self.trigger_auto_commit();
+            // v1.0.6 / hardening A4: also notify on natural result completion
+            // when the window is in the background. Auto-commit failures
+            // (rare) are surfaced in app; we only ping on the happy path.
+            let is_internal = self.is_internal_turn();
+            if !is_internal {
+                let title = "MiWarp · 运行完成";
+                let body = self
+                    .run
+                    .as_ref()
+                    .map(|m| m.title.clone())
+                    .unwrap_or_else(|| self.run_id.clone());
+                notify_if_background(self.emitter.app(), title, &body);
+            }
         }
     }
 

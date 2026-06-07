@@ -149,7 +149,16 @@ pub const INTERNAL_SOFT_TIMEOUT: Duration = Duration::from_secs(15);
 pub const INTERNAL_HARD_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Quarantine secondary timeout (after interrupt sent, wait for CLI response)
-pub const QUARANTINE_DEADLINE: Duration = Duration::from_secs(10);
+/// v1.0.6 / hardening A1: tightened from 10s → 5s. Empirically, a CLI that
+/// fails to ack a control within 5s is effectively dead — UI shouldn't sit
+/// silent for the full original 10s.
+pub const QUARANTINE_DEADLINE: Duration = Duration::from_secs(5);
+
+/// Threshold (per 60s window) for json_parse_fail_count before we declare
+/// the CLI stream desynced and force-fail the run. See session_actor.rs.
+pub const PROTOCOL_DESYNC_THRESHOLD: u32 = 5;
+/// Sliding window (seconds) for the desync detector.
+pub const PROTOCOL_DESYNC_WINDOW_SECS: u64 = 60;
 
 /// Tick interval for the independent timeout clock
 pub const TICK_INTERVAL: Duration = Duration::from_millis(250);

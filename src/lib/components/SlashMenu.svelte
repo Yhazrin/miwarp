@@ -37,6 +37,7 @@
     onFastSelect,
     onBack,
     onDismiss,
+    showBuiltInOnlyBanner = false,
   }: {
     commands: CliCommand[];
     slashGroups?: SlashCommandGroups | null;
@@ -57,6 +58,9 @@
     onFastSelect?: (mode: "on" | "off") => void;
     onBack: () => void;
     onDismiss: () => void;
+    // v1.0.6 / 3.10 (A3): when true, the menu shows only built-in commands
+    // because session_init hasn't populated the dynamic list yet.
+    showBuiltInOnlyBanner?: boolean;
   } = $props();
 
   let menuEl: HTMLDivElement | undefined = $state();
@@ -135,6 +139,11 @@
         <span class="text-xs italic text-muted-foreground/50">{hintText}</span>
       </div>
       <div class="border-t border-border"></div>
+    {/if}
+    {#if showBuiltInOnlyBanner}
+      <div class="border-b border-border bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground">
+        {t("slash_builtInOnlyBanner")}
+      </div>
     {/if}
 
     {#snippet commandItem(cmd: import("$lib/types").CliCommand, idx: number, py: string)}

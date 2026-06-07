@@ -2756,5 +2756,21 @@
   "command_recommend_title": "命令推荐",
   "command_category_file": "文件操作",
   "command_category_git": "Git 操作",
-  "command_category_agent": "智能体控制"
+  "command_category_agent": "智能体控制",
+  "session_phase_cached": "已从本地缓存加载",
+  "session_phase_cached_hint": "会话已从本地缓存加载。发送消息时会自动启动 CLI。",
+  "slash_builtInOnlyBanner": "session_init 尚未到达,当前只显示内置命令。",
+  "progress_title": "进度",
+  "progress_empty": "暂无进度条目。",
+  "progress_status_pending": "待办",
+  "progress_status_inProgress": "进行中",
+  "progress_status_completed": "已完成",
+  "progress_status_failed": "失败",
+  "toolbar_newSession": "新建会话",
+  "toolbar_workspace": "工作区",
+  "toolbar_model": "模型",
+  "toolbar_slash": "斜杠命令",
+  "toolbar_progress": "进度",
+  "toolbar_collapse": "收起工具栏",
+  "toolbar_expand": "展开工具栏"
 }

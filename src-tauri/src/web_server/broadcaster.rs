@@ -231,5 +231,8 @@ fn event_type_name(event: &BusEvent) -> &'static str {
         BusEvent::RalphIteration { .. } => "ralph_iteration",
         BusEvent::RalphComplete { .. } => "ralph_complete",
         BusEvent::Raw { .. } => "raw",
+        BusEvent::SessionRecovering { .. } => "session_recovering",
+        BusEvent::SessionRecovered { .. } => "session_recovered",
+        BusEvent::ProtocolDesync { .. } => "protocol_desync",
     }
 }

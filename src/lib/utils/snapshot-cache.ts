@@ -14,21 +14,27 @@
 import { dbg, dbgWarn } from "$lib/utils/debug";
 
 const DB_NAME = "miwarp-snapshot";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAME = "snapshots";
 
 /** Bump when reducer logic changes to invalidate all cached snapshots. */
-const SNAPSHOT_VERSION = 2;
+const SNAPSHOT_VERSION = 3;
 
 /** Max cached snapshots. Evicts least-recently-accessed when exceeded. */
 const MAX_ENTRIES = 200;
 
-interface SnapshotRecord {
+export interface SnapshotRecord {
   runId: string; // primary key
   version: number; // SNAPSHOT_VERSION
   runStatus: string; // terminal status at save time
   body: string; // JSON.stringify of snapshot body
   savedAt: number; // Date.now()
+  /** True when the snapshot was captured mid-run and may be incomplete. */
+  partial?: boolean;
+  /** Highest seq number included in this snapshot (used for incremental catchup). */
+  seqHighWatermark?: number;
+  /** Schema version of the persisted body (decoupled from SNAPSHOT_VERSION). */
+  schemaVersion?: number;
 }
 
 // ── Singleton DB connection ──
@@ -68,8 +74,13 @@ function getDb(): Promise<IDBDatabase> {
  * Read a validated snapshot.
  * Returns body string on hit, null on miss/stale.
  * Validates: version === SNAPSHOT_VERSION && runStatus === expectedStatus.
+ * Pass `acceptPartial: true` to allow running-state snapshots that may be incomplete.
  */
-export async function readSnapshot(runId: string, expectedStatus: string): Promise<string | null> {
+export async function readSnapshot(
+  runId: string,
+  expectedStatus: string,
+  opts?: { acceptPartial?: boolean },
+): Promise<string | null> {
   try {
     const db = await getDb();
     const tx = db.transaction(STORE_NAME, "readonly");
@@ -82,6 +93,12 @@ export async function readSnapshot(runId: string, expectedStatus: string): Promi
 
     if (!record) {
       dbg("snapshot", "read:miss", { runId });
+      return null;
+    }
+
+    // Reject partial snapshots unless caller explicitly opts in.
+    if (record.partial && !opts?.acceptPartial) {
+      dbg("snapshot", "read:skipped-partial", { runId });
       return null;
     }
 
@@ -116,7 +133,12 @@ export async function readSnapshot(runId: string, expectedStatus: string): Promi
 }
 
 /** Write a snapshot. Evicts oldest entries if cache exceeds MAX_ENTRIES. */
-export async function writeSnapshot(runId: string, runStatus: string, body: string): Promise<void> {
+export async function writeSnapshot(
+  runId: string,
+  runStatus: string,
+  body: string,
+  opts?: { partial?: boolean; seqHighWatermark?: number; schemaVersion?: number },
+): Promise<void> {
   try {
     const db = await getDb();
 
@@ -130,6 +152,9 @@ export async function writeSnapshot(runId: string, runStatus: string, body: stri
         runStatus,
         body,
         savedAt: Date.now(),
+        partial: opts?.partial,
+        seqHighWatermark: opts?.seqHighWatermark,
+        schemaVersion: opts?.schemaVersion,
       };
       const req = store.put(record);
       req.onsuccess = () => resolve();
@@ -137,7 +162,13 @@ export async function writeSnapshot(runId: string, runStatus: string, body: stri
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
-    dbg("snapshot", "write", { runId, runStatus, bytes: body.length });
+    dbg("snapshot", "write", {
+      runId,
+      runStatus,
+      bytes: body.length,
+      partial: !!opts?.partial,
+      seqHighWatermark: opts?.seqHighWatermark,
+    });
 
     // LRU eviction in a separate transaction (IDB auto-commits after each await)
     const count = await new Promise<number>((resolve, reject) => {

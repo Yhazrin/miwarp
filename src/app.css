@@ -14,11 +14,23 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Theme transition — applied temporarily during theme switches */
+/* Theme transition — applied temporarily during theme switches.
+   v1.0.6 / B3: replace the `html.theme-transitioning *` wildcard with a
+   targeted selector set (shell + glass surfaces). The wildcard used to
+   schedule a 6-property transition on every DOM node, causing a full
+   layout/paint storm during theme switches. */
 html.theme-transitioning,
-html.theme-transitioning *,
-html.theme-transitioning *::before,
-html.theme-transitioning *::after {
+html.theme-transitioning :is(body, .glass-sidebar, .glass-panel, .chat-shell, header, main, nav) {
+  transition:
+    background-color 300ms ease,
+    color 300ms ease,
+    border-color 300ms ease,
+    box-shadow 300ms ease !important;
+}
+
+/* .theme-fade is opt-in for heavy properties (fill/stroke) — only apply
+   to specific elements that opt into the class. */
+html.theme-transitioning .theme-fade {
   transition:
     background-color 300ms ease,
     color 300ms ease,
@@ -30,9 +42,8 @@ html.theme-transitioning *::after {
 
 @media (prefers-reduced-motion: reduce) {
   html.theme-transitioning,
-  html.theme-transitioning *,
-  html.theme-transitioning *::before,
-  html.theme-transitioning *::after {
+  html.theme-transitioning :is(body, .glass-sidebar, .glass-panel, .chat-shell, header, main, nav),
+  html.theme-transitioning .theme-fade {
     transition: none !important;
   }
 }
@@ -1624,6 +1635,15 @@ textarea,
   box-shadow:
     0 8px 32px hsl(0 72% 51% / 0.35),
     0 0 0 1px hsl(0 65% 42% / 0.4);
+}
+
+/* v1.0.6 1.6: "loaded from local cache" indicator — neutral slate, no flash
+   so the user doesn't mistake it for an active state. */
+.session-island-cached {
+  background-color: hsl(220 14% 35%);
+  box-shadow:
+    0 8px 32px hsl(220 14% 35% / 0.3),
+    0 0 0 1px hsl(220 14% 28% / 0.4);
 }
 
 /* Chat: full-height scroll; bottom fade overlay (not a dock background panel) */

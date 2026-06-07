@@ -1512,6 +1512,31 @@ pub enum BusEvent {
         reason: RalphCompleteReason,
         iteration: u32,
     },
+    /// v1.0.6 / hardening A1: emitted when a session enters quarantine.
+    /// Lets the UI surface "会话恢复中…（最多 N 秒）" instead of going silent.
+    SessionRecovering {
+        run_id: String,
+        reason: String,
+        deadline_ms: u64,
+        #[serde(default)]
+        from_internal: bool,
+    },
+    /// v1.0.6 / hardening A1: emitted when a session exits quarantine.
+    /// `ok=true` means CLI responded; `ok=false` means the deadline hit and
+    /// the run was force-failed.
+    SessionRecovered {
+        run_id: String,
+        ok: bool,
+    },
+    /// v1.0.6 / hardening A2: emitted when JSON parse failures exceed the
+    /// threshold within a sliding window. Frontend uses this to surface a
+    /// "会话状态已重置" toast and unlock the input.
+    ProtocolDesync {
+        run_id: String,
+        fail_count: u32,
+        /// First 200 bytes of the most recent bad line, for debugging.
+        sample: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

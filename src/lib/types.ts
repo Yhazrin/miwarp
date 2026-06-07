@@ -1286,6 +1286,28 @@ export type BusEvent =
       run_id: string;
       reason: RalphCompleteReason;
       iteration: number;
+    }
+  // v1.0.6 / hardening A1: session entered quarantine; UI should show a banner
+  // that auto-dismisses when SessionRecovered arrives (or after deadline_ms).
+  | {
+      type: "session_recovering";
+      run_id: string;
+      reason: string;
+      deadline_ms: number;
+      from_internal?: boolean;
+    }
+  | {
+      type: "session_recovered";
+      run_id: string;
+      ok: boolean;
+    }
+  // v1.0.6 / hardening A2: too many unparseable JSON lines within a window.
+  // Force-fail already happened on the backend; UI shows a "会话状态已重置" toast.
+  | {
+      type: "protocol_desync";
+      run_id: string;
+      fail_count: number;
+      sample: string;
     };
 
 export type RalphCompleteReason =

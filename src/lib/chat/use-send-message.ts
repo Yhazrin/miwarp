@@ -147,10 +147,16 @@ export function createSendMessage(ctx: SendMessageContext) {
         goto(`/chat?run=${runId}`, { replaceState: true });
         window.dispatchEvent(new Event("ocv:runs-changed"));
         loadCliVersionInfo();
-      } else if (store.useStreamSession && !store.sessionAlive && store.run.session_id) {
+      } else if (
+        store.useStreamSession &&
+        !store.sessionAlive &&
+        store.run.session_id
+      ) {
         dbg("chat", "auto-resume on send", {
           runId: store.run.id,
           sessionId: store.run.session_id,
+          // v1.0.6 1.4: lazy resume — cached snapshot loaded but CLI not spawned yet
+          fromCached: store.phase === "cached",
         });
         if (slashCmd) {
           thinking.setProcessingSlashCmd(slashCmd);

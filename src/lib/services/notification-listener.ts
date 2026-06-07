@@ -175,6 +175,34 @@ export async function startNotificationListener(): Promise<void> {
         handleBusEvent(ev).catch((e) => dbgWarn("notif", "handler error", e));
       } else if (ev.type === "permission_prompt") {
         handlePermissionPrompt(ev);
+      } else if (ev.type === "protocol_desync") {
+        // v1.0.6 / hardening A2: surface a "会话状态已重置" toast so the
+        // user knows the backend gave up parsing this CLI stream.
+        showToast("会话状态已重置：协议解析失败过多。", "error");
+      } else if (ev.type === "session_recovering") {
+        // v1.0.6 / hardening A1: toast informs the user that the session
+        // entered quarantine. A separate RecoveringBanner component can
+        // also subscribe to display the countdown UI.
+        const secs = Math.round((ev.deadline_ms ?? 0) / 1000);
+        showToast(`会话恢复中…(最多 ${secs} 秒)`, "warning");
+      } else if (ev.type === "session_recovered") {
+        // Recovery finished — toast the outcome. (Successful or not, the
+        // user gets an explicit confirmation that the limbo is over.)
+        if (ev.ok) {
+          showToast("会话已恢复", "success");
+        } else {
+          showToast("会话恢复失败,已自动停止", "error");
+        }
+      } else if (ev.type === "task_notification") {
+        // v1.0.6 / hardening A4: scheduled tasks (not just run_state) can
+        // signal completion or failure — surface both as toasts.
+        const tn = ev as Extract<BusEvent, { type: "task_notification" }>;
+        const status = (tn as { status?: string }).status ?? "";
+        if (status === "completed" || status === "success") {
+          showToast("定时任务完成", "success");
+        } else if (status === "failed" || status === "error") {
+          showToast("定时任务失败", "error");
+        }
       }
     });
     _unlisteners.push(unlisten);
