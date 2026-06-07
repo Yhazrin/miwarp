@@ -73,7 +73,10 @@
   // SETTINGS_TABS once the body branches are extracted into sub-components.
   import {
     LEGACY_TAB_MAP,
+    SETTINGS_TABS,
+    SETTINGS_NAV_GROUPS,
     resolveTabId,
+    getTab,
     type SettingsTabId,
   } from "$lib/components/settings/tabs/registry";
   import SettingsPanels from "$lib/components/settings/SettingsPanels.svelte";
@@ -180,22 +183,26 @@
     },
   ];
 
-  const settingsNavGroups: { label: () => string; tabIds: SettingsTab[] }[] = [
-    { label: () => t("settings_nav_general") || "General", tabIds: ["general"] },
-    {
-      label: () => t("settings_nav_providers") || "Providers",
-      tabIds: ["connection", "mobile"],
+  // v1.0.6 follow-up: navigation is now registry-driven. The new
+  // structure groups 8 tabs into 4 categories (display / integration
+  // / automation / system). Each entry resolves to a new tab id;
+  // legacy id compatibility is handled by `setActiveTab` + the
+  // `SettingsPanels` dispatcher.
+  const settingsNavGroups = SETTINGS_NAV_GROUPS.map((g) => ({
+    label: () => {
+      const key = g.labelKey as Parameters<typeof t>[0];
+      return t(key) ?? g.fallbackLabel;
     },
-    { label: () => t("settings_nav_cli") || "CLI", tabIds: ["cli-config"] },
-    {
-      label: () => t("settings_nav_workspace") || "Workspace",
-      tabIds: ["shortcuts", "remote"],
-    },
-    {
-      label: () => t("settings_nav_system") || "System",
-      tabIds: ["notifications", "theme", "debug", "data"],
-    },
-  ];
+    tabs: SETTINGS_TABS.filter((t) => t.groupId === g.id),
+  }));
+
+  /** New tab id → first legacy id. Inverse of LEGACY_TAB_MAP. */
+  const NEW_TO_LEGACY: Record<string, string> = Object.fromEntries(
+    Object.entries(LEGACY_TAB_MAP).map(([legacy, next]) => [next, legacy]),
+  ) as Record<string, string>;
+  function newIdToLegacy(id: string): string {
+    return NEW_TO_LEGACY[id] ?? id;
+  }
 
   let settings = $state<UserSettings | null>(null);
   let authMode = $state("cli");
@@ -1735,30 +1742,29 @@
               {group.label()}
             </p>
             <div class="flex flex-col gap-0.5">
-              {#each group.tabIds as tabId (tabId)}
-                {@const tab = tabs.find((entry) => entry.id === tabId)}
-                {#if tab}
-                  <button
-                    type="button"
-                    class="flex min-h-[32px] w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13px] leading-snug transition-colors
-                    {activeTab === tab.id
-                      ? 'bg-accent/90 font-medium text-foreground'
-                      : 'font-normal text-muted-foreground hover:bg-accent/45 hover:text-foreground'}"
-                    onclick={() => setActiveTab(tab.id)}
+              {#each group.tabs as tab (tab.id)}
+                <button
+                  type="button"
+                  class="flex min-h-[32px] w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13px] leading-snug transition-colors
+                  {activeTab === newIdToLegacy(tab.id)
+                    ? 'bg-accent/90 font-medium text-foreground'
+                    : 'font-normal text-muted-foreground hover:bg-accent/45 hover:text-foreground'}"
+                  onclick={() => setActiveTab(newIdToLegacy(tab.id) as SettingsTab)}
+                >
+                  <svg
+                    class="h-3.5 w-3.5 shrink-0 opacity-80"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
                   >
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0 opacity-80"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"><path d={tab.icon} /></svg
-                    >
-                    <span class="min-w-0 truncate">{tabLabels[tab.id]()}</span>
-                  </button>
-                {/if}
+                    <path d={tab.iconPath} />
+                  </svg>
+                  <span class="min-w-0 truncate">{t(tab.labelKey as Parameters<typeof t>[0]) ?? tab.fallbackLabel}</span>
+                </button>
               {/each}
             </div>
           </section>
