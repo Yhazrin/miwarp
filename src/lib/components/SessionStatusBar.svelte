@@ -143,6 +143,15 @@
   let showChromeActions = $derived(
     !!(onToggleLayoutSidebar || onOpenSettings || onOpenCliImport || onNewChat),
   );
+
+  // v1.0.6 follow-up: hoist context-pill visibility so both tier 1 and
+  // tier 2 can read it without duplicating the predicate.
+  let showContextPill = $derived(
+    shouldShowContextDetails(processVisibility) &&
+      contextWindow != null &&
+      contextWindow > 0 &&
+      contextUtilization != null,
+  );
   let tier2HasMeta = $derived(
     !!(run && onRename) || !!model || !!onProcessVisibilityChange,
   );
@@ -545,11 +554,6 @@
     {#if onToolPanelTabChange && toolPanelActiveTab}
       {@const leftTabs: ToolActivityPanelTab[] = ["workspace", "tools", "files"]}
       {@const rightTabs: ToolActivityPanelTab[] = ["preview", "scheduled-tasks"]}
-      {@const showContextPill =
-        shouldShowContextDetails(processVisibility) &&
-        contextWindow != null &&
-        contextWindow > 0 &&
-        contextUtilization != null}
       <div
         class="session-island-tier1 {showContextPill
           ? 'session-island-tier1-has-context'
@@ -630,50 +634,6 @@
             {/each}
         </div>
 
-        {#if showContextPill}
-          {@const pct = Math.round(contextUtilization! * 100)}
-          {@const barColor =
-            contextWarningLevel === "critical"
-              ? "bg-miwarp-status-warning"
-              : contextWarningLevel === "high"
-                ? "bg-miwarp-status-warning"
-                : contextWarningLevel === "moderate"
-                  ? "bg-miwarp-status-warning"
-                  : "bg-miwarp-status-success"}
-          <span
-            class="session-context-pill text-foreground/60"
-            title={t("statusbar_contextTitle", {
-              pct: String(pct),
-              tokens: contextWindow ? fmtNumber(contextWindow) : "",
-            })}
-          >
-            <span
-              class="session-context-pill-inner {compactVisible
-                ? 'bg-[hsl(var(--miwarp-status-warning)/0.8)] animate-pulse'
-                : barColor}"
-            >
-              {#if compactVisible}
-                <span class="text-[10px] font-bold text-miwarp-accent-on-accent animate-pulse whitespace-nowrap px-2"
-                  >{t("statusbar_compacted")}</span
-                >
-              {:else}
-                <span class="flex items-center justify-center whitespace-nowrap">
-                  <span class="text-[10px] font-bold text-miwarp-accent-on-accent/90 w-8 text-center">{pct}%</span>
-                  <span class="session-context-ctx-label text-[10px] font-bold text-miwarp-accent-on-accent/70"
-                    >ctx</span
-                  >
-                </span>
-              {/if}
-            </span>
-          </span>
-        {:else}
-          <span class="session-context-pill text-foreground/60">
-            <span class="session-context-pill-inner bg-miwarp-accent-primary">
-              <span class="text-[10px] font-bold text-miwarp-accent-on-accent/90">miw</span>
-            </span>
-          </span>
-        {/if}
-
         <div class="session-island-tab-group session-island-tab-group-trailing">
             {#each rightTabs as tab (tab)}
               <button
@@ -753,9 +713,9 @@
   </div>
 
   {#if tier2HasContent}
-    <!-- Tier 2: title, model, process visibility (omitted from layout when collapsed) -->
+    <!-- Tier 2: title, model, process visibility, context pill (right) (omitted from layout when collapsed) -->
     <div
-      class="tier-2-content flex min-h-0 min-w-0 shrink-0 items-center justify-start overflow-hidden {islandActive
+      class="tier-2-content flex min-h-0 min-w-0 shrink-0 items-center justify-between overflow-hidden {islandActive
         ? 'session-island-tier2-open border-t border-border/20'
         : 'border-0'} {morphHidesContent ? 'opacity-0 pointer-events-none' : ''}"
     >
@@ -818,6 +778,51 @@
           onchange={onProcessVisibilityChange}
           onOpenChange={handlePvMenuOpenChange}
         />
+      {/if}
+
+      <!-- Context utilization pill (was on tier 1 center; v1.0.6 follow-up moved here) -->
+      {#if showContextPill}
+        {@const pct = Math.round(contextUtilization! * 100)}
+        {@const barColor =
+          contextWarningLevel === "critical"
+            ? "bg-miwarp-status-warning"
+            : contextWarningLevel === "high"
+              ? "bg-miwarp-status-warning"
+              : contextWarningLevel === "moderate"
+                ? "bg-miwarp-status-warning"
+                : "bg-miwarp-status-success"}
+        <span
+          class="session-context-pill text-foreground/60 ml-auto"
+          title={t("statusbar_contextTitle", {
+            pct: String(pct),
+            tokens: contextWindow ? fmtNumber(contextWindow) : "",
+          })}
+        >
+          <span
+            class="session-context-pill-inner {compactVisible
+              ? 'bg-[hsl(var(--miwarp-status-warning)/0.8)] animate-pulse'
+              : barColor}"
+          >
+            {#if compactVisible}
+              <span class="text-[10px] font-bold text-miwarp-accent-on-accent animate-pulse whitespace-nowrap px-2"
+                >{t("statusbar_compacted")}</span
+              >
+            {:else}
+              <span class="flex items-center justify-center whitespace-nowrap">
+                <span class="text-[10px] font-bold text-miwarp-accent-on-accent/90 w-8 text-center">{pct}%</span>
+                <span class="session-context-ctx-label text-[10px] font-bold text-miwarp-accent-on-accent/70"
+                  >ctx</span
+                >
+              </span>
+            {/if}
+          </span>
+        </span>
+      {:else}
+        <span class="session-context-pill text-foreground/60 ml-auto">
+          <span class="session-context-pill-inner bg-miwarp-accent-primary">
+            <span class="text-[10px] font-bold text-miwarp-accent-on-accent/90">miw</span>
+          </span>
+        </span>
       {/if}
       </div>
     </div>
