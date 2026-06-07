@@ -115,7 +115,7 @@
 >
   <div class="chat-content-width py-4">
     <div class={`flex ${isUser ? "justify-end" : ""}`}>
-      <div class={`w-full ${isUser ? "max-w-3xl" : ""}`}>
+      <div class={`min-w-0 flex-1 ${isUser ? "max-w-3xl" : ""}`}>
         <!-- Header -->
         <div class={`mb-1.5 flex items-center gap-2 ${isUser ? "justify-end" : ""}`}>
           {#if isUser}
@@ -194,7 +194,7 @@
         >
           {#if isUser}
             <div
-              class="group/user-bubble relative inline-block max-w-3xl rounded-2xl rounded-tr-none px-4 py-2.5 text-left
+              class="group/user-bubble relative ml-auto max-w-3xl min-w-0 break-words rounded-2xl rounded-tr-none px-4 py-2.5 text-left
                 bg-primary text-primary-foreground"
             >
               <button type="button"

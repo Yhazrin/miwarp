@@ -139,54 +139,62 @@
         {/if}
       {/if}
       {#if entry.kind === "user"}
-        <ChatRenderBoundary
-          runId={store.run?.id ?? null}
-          entryId={entry.id}
-          componentName="ChatMessage"
-          onReload={reloadFromEventLog}
-        >
-          <ChatMessage
-            message={{
-              id: entry.id,
-              role: "user",
-              content: entry.content,
-              timestamp: entry.ts,
-            }}
-            attachments={entry.attachments}
-            onRewind={entry.cliUuid && store.sessionAlive && !store.isRunning
-              ? () =>
-                  handleRewindToMessage({
-                    cliUuid: entry.cliUuid!,
-                    content: entry.content,
-                    ts: entry.ts,
-                  })
-              : undefined}
-          />
-        </ChatRenderBoundary>
+        <div class="w-full">
+          <div class="chat-content-width">
+            <ChatRenderBoundary
+              runId={store.run?.id ?? null}
+              entryId={entry.id}
+              componentName="ChatMessage"
+              onReload={reloadFromEventLog}
+            >
+              <ChatMessage
+                message={{
+                  id: entry.id,
+                  role: "user",
+                  content: entry.content,
+                  timestamp: entry.ts,
+                }}
+                attachments={entry.attachments}
+                onRewind={entry.cliUuid && store.sessionAlive && !store.isRunning
+                  ? () =>
+                      handleRewindToMessage({
+                        cliUuid: entry.cliUuid!,
+                        content: entry.content,
+                        ts: entry.ts,
+                      })
+                  : undefined}
+              />
+            </ChatRenderBoundary>
+          </div>
+        </div>
       {:else if entry.kind === "assistant"}
-        <ChatRenderBoundary
-          runId={store.run?.id ?? null}
-          entryId={entry.id}
-          componentName="ChatMessage"
-          onReload={reloadFromEventLog}
-        >
-          <ChatMessage
-            message={{
-              id: entry.id,
-              role: "assistant",
-              content: entry.content,
-              timestamp: entry.ts,
-            }}
-            thinkingText={entry.thinkingText}
-            agent={store.agent}
-            platformId={store.platformId ?? undefined}
-            model={store.run?.model ?? store.model}
-            animated={i === lastAssistantIdx && store.isRunning}
-            {processVisibility}
-            debugRunId={store.run?.id}
-            debugSessionId={store.run?.session_id ?? undefined}
-          />
-        </ChatRenderBoundary>
+        <div class="w-full">
+          <div class="chat-content-width">
+            <ChatRenderBoundary
+              runId={store.run?.id ?? null}
+              entryId={entry.id}
+              componentName="ChatMessage"
+              onReload={reloadFromEventLog}
+            >
+              <ChatMessage
+                message={{
+                  id: entry.id,
+                  role: "assistant",
+                  content: entry.content,
+                  timestamp: entry.ts,
+                }}
+                thinkingText={entry.thinkingText}
+                agent={store.agent}
+                platformId={store.platformId ?? undefined}
+                model={store.run?.model ?? store.model}
+                animated={i === lastAssistantIdx && store.isRunning}
+                {processVisibility}
+                debugRunId={store.run?.id}
+                debugSessionId={store.run?.session_id ?? undefined}
+              />
+            </ChatRenderBoundary>
+          </div>
+        </div>
       {:else if entry.kind === "tool"}
         {#if claudeTurnStarts.has(i)}
           <div class="pt-3"></div>
