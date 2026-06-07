@@ -2876,5 +2876,14 @@
   "toolbar_progress": "Progress",
   "toolbar_collapse": "Collapse toolbar",
   "toolbar_expand": "Expand toolbar",
-  "common_confirm": "Confirm"
+  "common_confirm": "Confirm",
+  "settings_nav_display": "Display",
+  "settings_nav_integration": "Integration",
+  "settings_nav_automation": "Automation",
+  "settings_nav_system": "System",
+  "settings_tab_appearance": "Appearance",
+  "settings_tab_providers": "Providers",
+  "settings_tab_devices": "Devices",
+  "settings_tab_remote": "Remote Hosts",
+  "settings_placeholder_inBatch": "(filled in by upcoming batch)"
 }

@@ -2773,5 +2773,14 @@
   "toolbar_progress": "进度",
   "toolbar_collapse": "收起工具栏",
   "toolbar_expand": "展开工具栏",
-  "common_confirm": "确认"
+  "common_confirm": "确认",
+  "settings_nav_display": "外观",
+  "settings_nav_integration": "集成",
+  "settings_nav_automation": "自动化",
+  "settings_nav_system": "系统",
+  "settings_tab_appearance": "外观",
+  "settings_tab_providers": "LLM 接入",
+  "settings_tab_devices": "设备",
+  "settings_tab_remote": "远程主机",
+  "settings_placeholder_inBatch": "（待后续批次填充）"
 }
