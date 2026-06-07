@@ -718,18 +718,23 @@ html.miwarp-skip-route-motion .tool-activity-aside * {
 
 /* Code block container (ChatGPT/Claude style) */
 .code-block {
-  border-radius: 0.375rem;
+  border-radius: 0.625rem; /* 10px — slightly softer than the previous 6px */
   overflow: hidden;
-  margin: 0.375rem 0;
+  margin: 0.5rem 0;
   background: hsl(var(--muted) / 0.5);
   border: 1px solid hsl(var(--border) / 0.5);
+  box-shadow: 0 1px 2px hsl(var(--background) / 0.04);
 }
 .code-block-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.2rem 0.625rem;
-  background: hsl(var(--muted) / 0.8);
+  padding: 0.3125rem 0.75rem; /* bumped from 0.2rem — gives the bar air */
+  /* v1.0.6 follow-up: drop the hard header background, use a soft
+     border-bottom so the label bar and the code flow into each other
+     without a visible color seam. */
+  background: transparent;
+  border-bottom: 1px solid hsl(var(--border) / 0.35);
 }
 .code-block-lang {
   font-size: 0.6875rem;
@@ -740,8 +745,8 @@ html.miwarp-skip-route-motion .tool-activity-aside * {
   font-size: 0.6875rem;
   color: hsl(var(--muted-foreground));
   cursor: pointer;
-  padding: 0.0625rem 0.375rem;
-  border-radius: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.375rem; /* matches container's softer feel */
   transition:
     color 0.15s,
     background-color 0.15s;
@@ -758,7 +763,10 @@ html.miwarp-skip-route-motion .tool-activity-aside * {
 }
 .code-block pre {
   margin: 0;
-  padding: 0.5rem 0.75rem;
+  /* bumped from 0.5rem / 0.75rem — wider left/right gutter to match
+     the header's horizontal padding, plus extra top padding for a
+     gentle breathing room below the label bar. */
+  padding: 0.75rem 0.875rem;
   border-radius: 0;
   background: transparent;
   overflow-x: auto;
