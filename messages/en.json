@@ -2860,6 +2860,7 @@
   "themeEditor_idle": "Idle",
   "theme_importTheme": "Import Theme",
   "viewMode_label": "View mode: {mode} (Ctrl+O to toggle)",
+  "settings_search_placeholder": "Search settings…",
   "session_phase_cached": "Loaded from local cache",
   "session_phase_cached_hint": "Conversation loaded from local cache. The CLI will spawn when you send a message.",
   "slash_builtInOnlyBanner": "session_init not received yet — showing built-in commands only.",

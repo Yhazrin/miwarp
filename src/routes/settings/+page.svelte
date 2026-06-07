@@ -112,9 +112,7 @@
     if (!urlTab) return "general";
     // New id → pick the first legacy id that maps to it
     if (Object.values(LEGACY_TAB_MAP).includes(urlTab as SettingsTabId)) {
-      const legacy = Object.entries(LEGACY_TAB_MAP).find(
-        ([, v]) => v === urlTab,
-      );
+      const legacy = Object.entries(LEGACY_TAB_MAP).find(([, v]) => v === urlTab);
       if (legacy) return legacy[0] as SettingsTab;
     }
     // Otherwise treat as legacy id directly
@@ -203,6 +201,26 @@
   function newIdToLegacy(id: string): string {
     return NEW_TO_LEGACY[id] ?? id;
   }
+
+  // ── Search (v1.0.6 follow-up: filter sidebar nav by query) ──
+  let searchQuery = $state("");
+  const trimmedQuery = $derived(searchQuery.trim().toLowerCase());
+  /** Filtered nav: groups with ≥1 tab whose label matches the query. */
+  const filteredNavGroups = $derived(
+    trimmedQuery
+      ? settingsNavGroups
+          .map((g) => ({
+            ...g,
+            tabs: g.tabs.filter((tab) => {
+              const hay = (
+                t(tab.labelKey as Parameters<typeof t>[0]) ?? tab.fallbackLabel
+              ).toLowerCase();
+              return hay.includes(trimmedQuery);
+            }),
+          }))
+          .filter((g) => g.tabs.length > 0)
+      : settingsNavGroups,
+  );
 
   let settings = $state<UserSettings | null>(null);
   let authMode = $state("cli");
@@ -1317,93 +1335,93 @@
   onMount(() => {
     disarmChatSettingsHop();
     void (async () => {
-    try {
-      settings = await api.getUserSettings();
-      authMode = settings.auth_mode ?? "cli";
-      remoteHosts = settings.remote_hosts ?? [];
-      platformCredentials = settings.platform_credentials ?? [];
-      // Notification settings
-      notifEnabled = settings.notifications_enabled ?? true;
-      notifRunCompleted = settings.notify_on_run_completed ?? true;
-      notifRunFailed = settings.notify_on_run_failed ?? true;
-      notifApprovalRequired = settings.notify_on_approval_required ?? true;
-      notifScheduleCompleted = settings.notify_on_schedule_completed ?? true;
-      notifTeamCompleted = settings.notify_on_team_completed ?? true;
-      notifMinDuration = settings.notification_min_duration_sec ?? 10;
-      soundFeedbackLevel = normalizeSoundFeedbackLevel(settings.sound_feedback_level);
-      applySoundFeedbackLevel(soundFeedbackLevel);
-      // Feishu webhook settings
-      feishuWebhookUrl = settings.feishu_webhook_url ?? "";
-      feishuWebhookEnabled = settings.feishu_webhook_enabled ?? false;
-      feishuWebhookTriggers = settings.feishu_webhook_triggers ?? [];
-      // Load display fields from credentials (not global fields)
-      if (authMode === "api") {
-        selectedPlatformId = detectPlatformFromUrl(
-          settings.anthropic_base_url ?? "",
-          settings.active_platform_id,
-        );
-        loadFieldsFromCredential(selectedPlatformId);
-      } else {
-        anthropicApiKey = settings.anthropic_api_key ?? "";
-        anthropicBaseUrl = settings.anthropic_base_url ?? "";
+      try {
+        settings = await api.getUserSettings();
+        authMode = settings.auth_mode ?? "cli";
+        remoteHosts = settings.remote_hosts ?? [];
+        platformCredentials = settings.platform_credentials ?? [];
+        // Notification settings
+        notifEnabled = settings.notifications_enabled ?? true;
+        notifRunCompleted = settings.notify_on_run_completed ?? true;
+        notifRunFailed = settings.notify_on_run_failed ?? true;
+        notifApprovalRequired = settings.notify_on_approval_required ?? true;
+        notifScheduleCompleted = settings.notify_on_schedule_completed ?? true;
+        notifTeamCompleted = settings.notify_on_team_completed ?? true;
+        notifMinDuration = settings.notification_min_duration_sec ?? 10;
+        soundFeedbackLevel = normalizeSoundFeedbackLevel(settings.sound_feedback_level);
+        applySoundFeedbackLevel(soundFeedbackLevel);
+        // Feishu webhook settings
+        feishuWebhookUrl = settings.feishu_webhook_url ?? "";
+        feishuWebhookEnabled = settings.feishu_webhook_enabled ?? false;
+        feishuWebhookTriggers = settings.feishu_webhook_triggers ?? [];
+        // Load display fields from credentials (not global fields)
+        if (authMode === "api") {
+          selectedPlatformId = detectPlatformFromUrl(
+            settings.anthropic_base_url ?? "",
+            settings.active_platform_id,
+          );
+          loadFieldsFromCredential(selectedPlatformId);
+        } else {
+          anthropicApiKey = settings.anthropic_api_key ?? "";
+          anthropicBaseUrl = settings.anthropic_base_url ?? "";
+        }
+      } catch (e) {
+        dbgWarn("settings", "error", e);
       }
-    } catch (e) {
-      dbgWarn("settings", "error", e);
-    }
 
-    const deferHeavy = () => {
-      api
-        .getAuthOverview()
-        .then((ov) => (authOverview = ov))
-        .catch((e) => {
-          dbgWarn("settings", "failed to load auth overview", e);
-        });
-      if (getTransport().isDesktop()) {
-        Promise.all([api.getWebServerStatus(), api.getWebServerToken()])
-          .then(async ([status, token]) => {
-            webStatus = status;
-            webToken = token;
-            webPortInput = String(settings?.web_server_port ?? 9476);
-            webBindValue = settings?.web_server_bind ?? "127.0.0.1";
-            webOrigins = [...(settings?.web_server_allowed_origins ?? [])];
-            webTunnelUrl = settings?.web_server_tunnel_url ?? "";
-            dbg("settings", "webServer loaded", {
-              enabled: status?.enabled,
-              hasToken: !!token,
-              tunnel: webTunnelUrl,
-            });
-            if (status?.running) await refreshLanIp(status.bind);
-          })
+      const deferHeavy = () => {
+        api
+          .getAuthOverview()
+          .then((ov) => (authOverview = ov))
           .catch((e) => {
-            dbgWarn("settings", "webServer load failed", e);
+            dbgWarn("settings", "failed to load auth overview", e);
           });
-      }
-      loadCliInfo();
-      void checkAllLocalProxies();
-      if (selectedPlatform?.category === "local") {
-        void checkLocalProxy();
-      }
-      import("@tauri-apps/api/path")
-        .then(async (p) => {
-          const home = await p.homeDir();
-          const parts = splitPath(home.replace(/[/\\]+$/, ""));
-          currentUsername = parts[parts.length - 1] || "";
-          const absPath = await p.join(home, ".claude", "keybindings.json");
-          return api.readTextFile(absPath);
-        })
-        .then(() => {
-          cliSource = "file";
-        })
-        .catch(() => {
-          cliSource = "defaults";
-        });
-    };
+        if (getTransport().isDesktop()) {
+          Promise.all([api.getWebServerStatus(), api.getWebServerToken()])
+            .then(async ([status, token]) => {
+              webStatus = status;
+              webToken = token;
+              webPortInput = String(settings?.web_server_port ?? 9476);
+              webBindValue = settings?.web_server_bind ?? "127.0.0.1";
+              webOrigins = [...(settings?.web_server_allowed_origins ?? [])];
+              webTunnelUrl = settings?.web_server_tunnel_url ?? "";
+              dbg("settings", "webServer loaded", {
+                enabled: status?.enabled,
+                hasToken: !!token,
+                tunnel: webTunnelUrl,
+              });
+              if (status?.running) await refreshLanIp(status.bind);
+            })
+            .catch((e) => {
+              dbgWarn("settings", "webServer load failed", e);
+            });
+        }
+        loadCliInfo();
+        void checkAllLocalProxies();
+        if (selectedPlatform?.category === "local") {
+          void checkLocalProxy();
+        }
+        import("@tauri-apps/api/path")
+          .then(async (p) => {
+            const home = await p.homeDir();
+            const parts = splitPath(home.replace(/[/\\]+$/, ""));
+            currentUsername = parts[parts.length - 1] || "";
+            const absPath = await p.join(home, ".claude", "keybindings.json");
+            return api.readTextFile(absPath);
+          })
+          .then(() => {
+            cliSource = "file";
+          })
+          .catch(() => {
+            cliSource = "defaults";
+          });
+      };
 
-    if (typeof requestIdleCallback !== "undefined") {
-      requestIdleCallback(deferHeavy, { timeout: 120 });
-    } else {
-      requestAnimationFrame(deferHeavy);
-    }
+      if (typeof requestIdleCallback !== "undefined") {
+        requestIdleCallback(deferHeavy, { timeout: 120 });
+      } else {
+        requestAnimationFrame(deferHeavy);
+      }
     })();
   });
 
@@ -1717,9 +1735,7 @@
       class="w-56 shrink-0 border-r border-border/50 overflow-y-auto flex flex-col bg-background/50"
     >
       <div class="shrink-0 h-[var(--miwarp-titlebar-band)]" aria-hidden="true"></div>
-      <div
-        class="relative flex shrink-0 items-center gap-2 border-b border-border/40 px-3 py-2.5"
-      >
+      <div class="relative flex shrink-0 items-center gap-2 border-b border-border/40 px-3 py-2.5">
         <button
           type="button"
           class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
@@ -1729,12 +1745,35 @@
         >
           <Icon name="chevron-left" size="sm" />
         </button>
-        <h1 class="min-w-0 truncate text-[13px] font-semibold leading-snug tracking-tight text-foreground">
+        <h1
+          class="min-w-0 truncate text-[13px] font-semibold leading-snug tracking-tight text-foreground"
+        >
           {t("settings_title")}
         </h1>
       </div>
       <nav class="flex flex-1 flex-col gap-5 px-2.5 pb-4 pt-3">
-        {#each settingsNavGroups as group (group.label())}
+        <!-- Search input (v1.0.6 follow-up) -->
+        <div class="relative px-1">
+          <input
+            type="text"
+            placeholder={t("settings_search_placeholder")}
+            bind:value={searchQuery}
+            aria-label={t("settings_search_placeholder")}
+            class="w-full rounded-md border border-border/60 bg-background/60 px-2.5 py-1.5 pr-6 text-xs placeholder:text-muted-foreground/60 focus:border-ring focus:outline-none"
+          />
+          {#if searchQuery}
+            <button
+              type="button"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Clear"
+              onclick={() => (searchQuery = "")}
+            >
+              <Icon name="x" size="xs" />
+            </button>
+          {/if}
+        </div>
+
+        {#each filteredNavGroups as group (group.label())}
           <section class="flex flex-col gap-1.5">
             <p
               class="px-2 text-[11px] font-medium leading-none tracking-wide text-muted-foreground/70"
@@ -1763,7 +1802,9 @@
                   >
                     <path d={tab.iconPath} />
                   </svg>
-                  <span class="min-w-0 truncate">{t(tab.labelKey as Parameters<typeof t>[0]) ?? tab.fallbackLabel}</span>
+                  <span class="min-w-0 truncate"
+                    >{t(tab.labelKey as Parameters<typeof t>[0]) ?? tab.fallbackLabel}</span
+                  >
                 </button>
               {/each}
             </div>
@@ -1779,77 +1820,77 @@
           <SettingsPanels
             tab={resolveTabId(activeTab)}
             state={{
-            settings,
-            saveGeneralPatch,
-            applyZoomQueued,
+              settings,
+              saveGeneralPatch,
+              applyZoomQueued,
 
-            platformCredentials,
-            selectedPlatformId,
-            authMode,
-            anthropicApiKey,
-            anthropicBaseUrl,
-            showApiKey,
-            onSelectPlatform,
-            onAuthModeChange,
-            saveApiAuth,
+              platformCredentials,
+              selectedPlatformId,
+              authMode,
+              anthropicApiKey,
+              anthropicBaseUrl,
+              showApiKey,
+              onSelectPlatform,
+              onAuthModeChange,
+              saveApiAuth,
 
-            webStatus,
-            webToken,
-            webTunnelUrl,
-            webLinkCopied,
-            webRestarting,
-            webRestartWarning,
-            webLanIp,
-            webAdvancedOpen,
-            webOrigins,
-            webRestartError,
-            mobileQrDataUrl,
-            mobilePairingLinkCopied,
-            toggleWebServer,
-            applyWebServerSettings,
-            copyAccessLink,
-            copyPairingLink,
+              webStatus,
+              webToken,
+              webTunnelUrl,
+              webLinkCopied,
+              webRestarting,
+              webRestartWarning,
+              webLanIp,
+              webAdvancedOpen,
+              webOrigins,
+              webRestartError,
+              mobileQrDataUrl,
+              mobilePairingLinkCopied,
+              toggleWebServer,
+              applyWebServerSettings,
+              copyAccessLink,
+              copyPairingLink,
 
-            cliConfig,
-            projectCliConfig,
-            cliConfigLoaded,
-            cliConfigLoading,
-            cliConfigError,
-            loadCliConfig,
-            saveCliConfigPatch,
+              cliConfig,
+              projectCliConfig,
+              cliConfigLoaded,
+              cliConfigLoading,
+              cliConfigError,
+              loadCliConfig,
+              saveCliConfigPatch,
 
-            remoteHosts,
-            editingRemote,
-            onStartEdit: (host) => (editingRemote = host),
-            deleteRemoteHost,
+              remoteHosts,
+              editingRemote,
+              onStartEdit: (host) => (editingRemote = host),
+              deleteRemoteHost,
 
-            notifEnabled,
-            notifRunCompleted,
-            notifRunFailed,
-            notifApprovalRequired,
-            notifScheduleCompleted,
-            notifTeamCompleted,
-            notifMinDuration,
-            soundFeedbackLevel,
-            feishuWebhookUrl,
-            feishuWebhookEnabled,
-            feishuWebhookTriggers,
-            feishuTestResult,
-            saveNotificationSettings,
-            saveFeishuSettings,
-            testFeishuWebhook,
+              notifEnabled,
+              notifRunCompleted,
+              notifRunFailed,
+              notifApprovalRequired,
+              notifScheduleCompleted,
+              notifTeamCompleted,
+              notifMinDuration,
+              soundFeedbackLevel,
+              feishuWebhookUrl,
+              feishuWebhookEnabled,
+              feishuWebhookTriggers,
+              feishuTestResult,
+              saveNotificationSettings,
+              saveFeishuSettings,
+              testFeishuWebhook,
 
-            scanningHistory,
-            exportingHistory,
-            importingHistory,
-            scanResult,
-            importReport,
-            historyError,
-            onScanHistory: scanHistory,
-            onExportHistory: exportHistory,
-            onImportHistory: importHistory,
-          }}
-        />
+              scanningHistory,
+              exportingHistory,
+              importingHistory,
+              scanResult,
+              importReport,
+              historyError,
+              onScanHistory: scanHistory,
+              onExportHistory: exportHistory,
+              onImportHistory: importHistory,
+            }}
+          />
         </div>
       </div>
     </main>
