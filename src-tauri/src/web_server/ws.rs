@@ -19,6 +19,15 @@ const REPLAY_BUFFER_CAPACITY: usize = 4096;
 /// Minimum interval between _full_reload signals per run (seconds)
 const FULL_RELOAD_COOLDOWN_SECS: u64 = 30;
 
+/// v1.0.6 / 3.5: WS envelope chunking.
+/// `> WS_CHUNK_THRESHOLD` bytes triggers a chunk_begin / chunk{N} / chunk_end
+/// triple correlated by a `msg_id`. The frontend reassembles before handing
+/// the payload off to the reducer.
+pub const WS_CHUNK_THRESHOLD: usize = 256 * 1024;
+/// Per-chunk payload size (192KB leaves 4-frame + envelope headroom under
+/// the 1MB WebSocket single-frame limit).
+pub const WS_CHUNK_PAYLOAD: usize = 192 * 1024;
+
 type WsSink = Arc<Mutex<futures_util::stream::SplitSink<WebSocket, Message>>>;
 
 #[derive(Deserialize, Default)]
@@ -71,6 +80,70 @@ impl WsSession {
             full_reload_cooldown: HashMap::new(),
         }
     }
+}
+
+/// v1.0.6 / 3.5: Send a JSON envelope over the WS sink, transparently
+/// chunking if it exceeds `WS_CHUNK_THRESHOLD`. Smaller envelopes are
+/// sent verbatim (no chunk metadata).
+pub async fn send_envelope(ws_tx: &WsSink, envelope: &Value) -> Result<(), String> {
+    let text = envelope.to_string();
+    if text.len() <= WS_CHUNK_THRESHOLD {
+        let mut guard = ws_tx.lock().await;
+        guard
+            .send(Message::Text(text))
+            .await
+            .map_err(|e| format!("ws send error: {e}"))?;
+        return Ok(());
+    }
+
+    // Large envelope — chunk it. The frontend reassembles by msg_id.
+    let msg_id = uuid::Uuid::new_v4().to_string();
+    let total = text.len().div_ceil(WS_CHUNK_PAYLOAD);
+    let bytes = text.as_bytes();
+
+    // chunk_begin: empty body, but echo msg_id + total
+    let begin = json!({
+        "type": "chunk_begin",
+        "msg_id": msg_id,
+        "total": total,
+        "size": text.len(),
+    });
+    {
+        let mut guard = ws_tx.lock().await;
+        guard
+            .send(Message::Text(begin.to_string()))
+            .await
+            .map_err(|e| format!("ws send error: {e}"))?;
+    }
+    for idx in 0..total {
+        let start = idx * WS_CHUNK_PAYLOAD;
+        let end = (start + WS_CHUNK_PAYLOAD).min(text.len());
+        let chunk_text = std::str::from_utf8(&bytes[start..end])
+            .map_err(|e| format!("chunk utf8 error: {e}"))?;
+        let chunk = json!({
+            "type": "chunk",
+            "msg_id": msg_id,
+            "idx": idx,
+            "data": chunk_text,
+        });
+        let mut guard = ws_tx.lock().await;
+        guard
+            .send(Message::Text(chunk.to_string()))
+            .await
+            .map_err(|e| format!("ws send error: {e}"))?;
+    }
+    let end = json!({
+        "type": "chunk_end",
+        "msg_id": msg_id,
+    });
+    {
+        let mut guard = ws_tx.lock().await;
+        guard
+            .send(Message::Text(end.to_string()))
+            .await
+            .map_err(|e| format!("ws send error: {e}"))?;
+    }
+    Ok(())
 }
 
 /// Send an RPC result response over WebSocket

@@ -8,6 +8,17 @@ struct AppRouter: View {
     @State private var selectedTab = 0
     @State private var selectedSection: AppRouterSection = .sessions
     @State private var selectedPadSession: MiWarpRun?
+    // v1.0.6 / 2.2 (C6): let the user fold / unfold the middle column
+    // on iPad. The chosen visibility is persisted to UserDefaults so it
+    // survives an app relaunch.
+    @AppStorage("miwarp.columnVisibility") private var columnVisibilityRaw: String =
+        NavigationSplitViewVisibility.allOnly.rawValue
+    private var columnVisibility: Binding<NavigationSplitViewVisibility> {
+        Binding(
+            get: { NavigationSplitViewVisibility(rawValue: columnVisibilityRaw) ?? .allOnly },
+            set: { columnVisibilityRaw = $0.rawValue }
+        )
+    }
 
     var body: some View {
         MWAdaptiveReader { layout in
@@ -66,7 +77,7 @@ struct AppRouter: View {
     }
 
     private func sidebarLayout(layout: MWAdaptiveLayout) -> some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: columnVisibility) {
             List {
                 ForEach(AppRouterSection.allCases) { section in
                     Button {

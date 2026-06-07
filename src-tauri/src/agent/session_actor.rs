@@ -1445,7 +1445,7 @@ impl SessionActor {
                     .map(|d| d.as_millis() as u64)
                     .unwrap_or(0);
                 self.parse_fail_window.push(now_ms);
-                let window_ms = (PROTOCOL_DESYNC_WINDOW_SECS as u64) * 1000;
+                let window_ms = PROTOCOL_DESYNC_WINDOW_SECS * 1000;
                 self.parse_fail_window
                     .retain(|&t| now_ms.saturating_sub(t) <= window_ms);
                 if !self.desync_emitted
@@ -2215,11 +2215,11 @@ impl SessionActor {
                 } else {
                     "MiWarp · 运行完成"
                 };
-                let body = self
-                    .run
-                    .as_ref()
-                    .map(|m| m.title.clone())
-                    .unwrap_or_else(|| self.run_id.clone());
+                // v1.0.6 / hardening A4: SessionActor doesn't keep the
+                // run metadata in memory, so the body uses the run_id as
+                // a stable, user-recognisable label. The frontend pairs
+                // the run_id with its title via the run cache.
+                let body = self.run_id.clone();
                 notify_if_background(self.emitter.app(), title, &body);
             }
         } else {
@@ -2231,11 +2231,7 @@ impl SessionActor {
             let is_internal = self.is_internal_turn();
             if !is_internal {
                 let title = "MiWarp · 运行完成";
-                let body = self
-                    .run
-                    .as_ref()
-                    .map(|m| m.title.clone())
-                    .unwrap_or_else(|| self.run_id.clone());
+                let body = self.run_id.clone();
                 notify_if_background(self.emitter.app(), title, &body);
             }
         }

@@ -52,6 +52,7 @@
   import { IS_MAC } from "$lib/utils/platform";
   import { applyUiZoomCssVar, clampUiZoom, layoutPx } from "$lib/utils/ui-zoom";
   import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
+  import { readActiveSessionId } from "$lib/utils/chat-persistence";
   import type {
     TaskRun,
     UserSettings,

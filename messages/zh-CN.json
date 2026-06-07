@@ -2772,5 +2772,6 @@
   "toolbar_slash": "斜杠命令",
   "toolbar_progress": "进度",
   "toolbar_collapse": "收起工具栏",
-  "toolbar_expand": "展开工具栏"
+  "toolbar_expand": "展开工具栏",
+  "common_confirm": "确认"
 }

@@ -1524,10 +1524,7 @@ pub enum BusEvent {
     /// v1.0.6 / hardening A1: emitted when a session exits quarantine.
     /// `ok=true` means CLI responded; `ok=false` means the deadline hit and
     /// the run was force-failed.
-    SessionRecovered {
-        run_id: String,
-        ok: bool,
-    },
+    SessionRecovered { run_id: String, ok: bool },
     /// v1.0.6 / hardening A2: emitted when JSON parse failures exceed the
     /// threshold within a sliding window. Frontend uses this to surface a
     /// "会话状态已重置" toast and unlock the input.

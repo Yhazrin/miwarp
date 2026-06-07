@@ -336,8 +336,9 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
     // MARK: - Heartbeat
 
     private func startHeartbeat(generation: UInt64) {
-        // URLSessionWebSocketTask handles ping/pong automatically
-        // We send periodic pings to keep the connection alive
+        // v1.0.6 / 3.7 (C2): tighten heartbeat from 30s → 30s (kept). The
+        // server-side cap dropped from 300s to 30s, so the client must
+        // ping at least every 30s to avoid the server killing the socket.
         heartbeatTask?.cancel()
         heartbeatTask = Task { [weak self] in
             while let self, !self.isIntentionalClose {
@@ -350,6 +351,17 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
                 }
             }
         }
+    }
+
+    // MARK: - v1.0.6 / 3.7 connectivity awareness
+
+    /// Called when the OS reports the network became available after a
+    /// gap. Bypasses the backoff schedule and tries to reconnect now.
+    func reconnectImmediate() {
+        guard !isIntentionalClose else { return }
+        logger.wsInfo("reconnectImmediate: network available, forcing reconnect")
+        backoffAttempt = 0
+        connect(host: lastHost ?? "", port: lastPort, token: lastToken ?? "")
     }
 
     // MARK: - Reconnect
