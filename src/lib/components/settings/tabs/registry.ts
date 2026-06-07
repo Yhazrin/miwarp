@@ -54,7 +54,7 @@ const ICON_TERMINAL = "M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a
 const ICON_BELL = "M12 2a6 6 0 0 0-6 6v3.5L4 14v1h16v-1l-2-2.5V8a6 6 0 0 0-6-6Zm-2 14a2 2 0 0 0 4 0h-4Z";
 const ICON_DATABASE = "M5 5c0-1.7 3.6-3 7-3s7 1.3 7 3v2c0 1.7-3.6 3-7 3s-7-1.3-7-3V5Zm0 5c0 1.7 3.6 3 7 3s7-1.3 7-3v-1.5c-1.4 1.3-4 2.1-7 2.1s-5.6-.8-7-2.1V10Zm0 5c0 1.7 3.6 3 7 3s7-1.3 7-3v-1.5c-1.4 1.3-4 2.1-7 2.1s-5.6-.8-7-2.1V15Z";
 
-import AppearanceTab from "./AppearanceTab.svelte";
+import ThemeCard from "./ThemeCard.svelte";
 import ProvidersTab from "./ProvidersTab.svelte";
 import DevicesTab from "./DevicesTab.svelte";
 import ShortcutsTab from "./ShortcutsTab.svelte";
@@ -69,7 +69,10 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     labelKey: "settings_tab_appearance",
     fallbackLabel: "Appearance",
     iconPath: ICON_EYE,
-    component: AppearanceTab,
+    // Phase 1: appearance = ThemeCard (editor + picker). Phase 2 will
+    // expand to a full AppearanceTab that also includes language + zoom
+    // + doctor (currently still inline in +page.svelte's general tab).
+    component: ThemeCard,
     groupId: "display",
   },
   {

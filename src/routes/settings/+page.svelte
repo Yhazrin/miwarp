@@ -62,7 +62,21 @@
     previewSoundFeedback,
   } from "$lib/services/sound-feedback-service";
 
-  // ── Tab state ──
+  // ── Tab state (v1.0.6: registry import + URL compatibility) ──
+  // v1.0.6 follow-up: import the new settings tab registry so:
+  //   1. URL ?tab= param accepts both legacy ids ("general", "connection")
+  //      and new ids ("appearance", "providers") via LEGACY_TAB_MAP
+  //   2. Future PRs can register new tabs in registry.ts without touching
+  //      this file's 5000-line body
+  // The legacy `tabs: { id: SettingsTab; icon: string }[]` array below
+  // is kept for the existing nav rendering; phase 2 will swap it for
+  // SETTINGS_TABS once the body branches are extracted into sub-components.
+  import {
+    LEGACY_TAB_MAP,
+    resolveTabId,
+    type SettingsTabId,
+  } from "$lib/components/settings/tabs/registry";
+
   type SettingsTab =
     | "general"
     | "connection"
@@ -87,9 +101,22 @@
     "data",
   ];
   const urlTab = $page.url.searchParams.get("tab");
-  const initialTab: SettingsTab = VALID_TABS.includes(urlTab as SettingsTab)
-    ? (urlTab as SettingsTab)
-    : "general";
+  // v1.0.6 URL compat: route new ids (e.g. ?tab=appearance) through
+  // the legacy map first, so the body branches still match. Users
+  // who bookmark old ?tab=general URLs still land on general.
+  const initialTab: SettingsTab = (() => {
+    if (!urlTab) return "general";
+    // New id → pick the first legacy id that maps to it
+    if (Object.values(LEGACY_TAB_MAP).includes(urlTab as SettingsTabId)) {
+      const legacy = Object.entries(LEGACY_TAB_MAP).find(
+        ([, v]) => v === urlTab,
+      );
+      if (legacy) return legacy[0] as SettingsTab;
+    }
+    // Otherwise treat as legacy id directly
+    if (VALID_TABS.includes(urlTab as SettingsTab)) return urlTab as SettingsTab;
+    return "general";
+  })();
   let activeTab = $state<SettingsTab>(initialTab);
 
   function setActiveTab(tabId: SettingsTab) {
