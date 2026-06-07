@@ -83,6 +83,77 @@ Always respond in Chinese (中文) unless the user writes in English. This inclu
 - When fixing bugs, write and run the fix immediately. Never stop to summarize findings without acting first.
 - If a fix doesn't work, try the next approach immediately rather than re-analyzing.
 
+### Code Quality — High Cohesion, Low Coupling
+
+开发过程中所有改动必须遵循"高内聚、低耦合"原则，让代码少异味。每改一处都对照下方的异味清单扫一遍。
+
+#### 高内聚（High Cohesion）— 相关的东西放一起
+
+- **一个文件 = 一个职责**。Svelte 组件 / composable / store / Rust 模块只做一件事，文件名要能精确描述它做什么（`useChatScroll` 只管滚动，不掺 API 调用）
+- **相关逻辑就近放**：
+  - chat 域 composables 放 `src/lib/chat/`（`useChatLifecycle` / `useChatHandlers` / `useChatDerived` / `useChatController` / `useChatScroll` / `useProgressiveTimeline` …）
+  - prompt 域放 `src/lib/prompt/`（`useFileHandling` / `useSlashMenu` / `useAtMention`）
+  - selectors 放 `src/lib/chat/selectors/`
+  - 后端按域分 `src-tauri/src/commands/{session,chat,runs,settings,files,git,mcp,teams,plugins,...}.rs`
+- **长文件立即拆**：
+  - Svelte 组件 > 500 行 → 抽 composable 或子组件
+  - Rust 文件 > 800 行 → 拆子模块
+  - `chat/+page.svelte` 历史上从 4600+ 行拆到 841 行就是这个原则的应用（参考 `docs/PLAN_V1.0.6.md`）
+- **types 按域分文件**：`types/teams.ts` / `types/plugins.ts` / `types/bus-events.ts` / `types/marketplace.ts` / `types/scheduled-task.ts` — 不要塞回 `types/index.ts`
+- **常量集中管理**：`utils/storage-keys.ts` 是 `localStorage` 键的模式参考；magic string / magic number 都应该有名有姓
+
+#### 低耦合（Low Coupling）— 模块之间少知道对方
+
+- **单向数据流**：Props down / Events up / 跨组件状态走 store。子组件不直接修改父组件的 state，父子之间通过 callback 通信
+- **跨组件共享走 store，不直接 import 内部状态**：
+  - `Sidebar` ↔ `ChatPage` ↔ `SessionStatusBar` 之间不互相 import 内部变量，共享走 `SessionStore` / `TeamStore` / `KeybindingStore`
+  - 后端 `session_actor` ↔ `turn_engine` ↔ `broadcaster` 之间不互相持有引用，通过 mpsc channel 通信
+- **Composable 边界清晰**：每个 composable 只暴露必要的 getter / action；内部 helper 私有（不 `export`）
+- **Backend 模块按域分 + service 层**：domain 之间不互相 import `commands/*` 内部实现，统一走 `src-tauri/src/agent/`（`session_actor.rs` / `turn_engine.rs` / `claude_protocol.rs` / `pipe_parser.rs` / `notify.rs`）
+- **Transport 抽象不绕过**：所有 IPC 必须走 `getTransport()`，永远不要在 component / page 里 `import { invoke } from '@tauri-apps/api/core'`（ESLint `no-restricted-imports` 强制）
+- **事件类型集中**：`BusEvent` 枚举统一在 `src-tauri/src/models.rs` 定义，新加事件必须扩 enum + 在 `broadcaster::event_type_name` 注册 + 前端 `BusEvent` union 同步
+- **i18n 不污染代码**：UI 字符串永远走 `t('key')`，不写中文 / 英文硬编码到 `.svelte` 模板
+
+#### 代码异味清单（Code Smell Checklist）
+
+每改一处 / 每个 PR 前必须对照扫一遍：
+
+- [ ] **God object**：一个类 / 组件 / store 做 > 1 件事 → 拆
+- [ ] **Prop drilling**：props 透传 > 2 层 → 提到 store 或 context
+- [ ] **循环依赖**：A import B，B import A → 重构到一个共同依赖
+- [ ] **重复代码**：相同 / 相似逻辑出现 ≥ 3 次 → 抽到 utility / composable
+- [ ] **魔法字符串**：硬编码 `"claude"` / `"session_actor"` / `"/var/folders/..."` → 抽命名常量
+- [ ] **魔法数字**：`5` / `10` / `300` 等无注释数字 → 抽命名常量（参考 `_IDLE_GAP_MS` / `QUARANTINE_DEADLINE`）
+- [ ] **`any` 类型**：禁用。实在不知道类型用 `unknown` + 类型守卫
+- [ ] **`// @ts-ignore` / `// @ts-expect-error`**：禁用。修复类型本身，不要绕过
+- [ ] **死代码**：注释掉的代码块 / 永远走不到的分支 / 未引用的 export → 立即删除（用 `git log -p` / `git show` 找回）
+- [ ] **冗余抽象**：为假想复用提前写 hook / base class / 泛型 → 等真有第二处用再抽（Three similar lines is better than a premature abstraction）
+- [ ] **跨层泄漏**：前端 `as any` 强转后端类型 / 后端 struct 字段乱给前端用 → 加 explicit 边界类型
+- [ ] **过度耦合测试**：测试依赖内部 state 变量名（而不是行为）→ 改 black-box
+- [ ] **可变全局**：跨模块 mutation 共享 state → 用 store 或参数传递
+- [ ] **过深缩进 / 嵌套 callback**：> 3 层 → 早返回 / 抽函数
+- [ ] **注释解释 WHAT**（不是 WHY）→ 删掉，命名应该自解释（`/// <summary>Sends a message</summary>` 这种都是噪音）
+- [ ] **Suspicious 名字**：`handleXxx` / `doXxx` / `processXxx` / `data` / `temp` / `result2` / `flag1` → 重命名为具体含义
+- [ ] **组件 > 500 行** → 拆 composable / 子组件
+- [ ] **函数 > 50 行** → 拆
+- [ ] **参数 > 4 个** → 引入 struct / options object（Rust 用 `#[allow(clippy::too_many_arguments)]` 是最后手段，先重构）
+- [ ] **混合关注点**：UI 组件里直接调 IPC / store 里写模板字符串 / composable 里操作 DOM → 各回各家
+
+#### 改动后自检（3 步必走）
+
+1. **类型 + lint**：`pnpm check` + `pnpm lint` 必须 0 错；Rust 改完跑 `cargo clippy -- -D warnings`
+2. **影响范围**：`git grep "<新类型/常量名>"` 检查所有引用点同步更新（特别是改 store / types 后）
+3. **回归测试**：改了 store / composable → 跑 `npm test`；改了 IPC → `cargo test`；改了 UI 行为 → `tauri dev` 手动走一遍金路径
+
+#### 重构前红线
+
+禁止"边修 bug 边大重构" — 改动前如果发现需要拆文件 / 拆模块：
+
+- **单开分支做**：`refactor/xxx` 独立分支，不和 `fix/yyy` / `feat/zzz` 混
+- **拆 commit**：重构和功能改动分成 2 个独立 commit（看 `git log --oneline feat/extensions-center` 那种粒度）
+- **行为不变**：现有 snapshots / tests / `pnpm check` / `cargo clippy` 全过才允许 merge
+- **不引入新功能**：refactor PR 不带 feature 改动，feature PR 不带大规模重构
+
 ### Build & Verify
 
 - After ANY Tauri config change (`tauri.conf.json`, `Cargo.toml`, plugins), verify the frontend is actually being rebuilt — check `beforeBuildCommand` is not empty.
