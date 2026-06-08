@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Popover } from "bits-ui";
+  import MiPopover from "$lib/ui/MiPopover.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { formatTokenCount } from "$lib/utils/format";
   import Icon from "$lib/components/Icon.svelte";
@@ -97,9 +97,6 @@
     detailOpen = false;
   }
 
-  function handleDetailKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape") e.stopPropagation();
-  }
 </script>
 
 {#snippet contextTrigger(props: Record<string, unknown>)}
@@ -214,22 +211,16 @@
     </div>
   </div>
 {:else}
-  <Popover.Root bind:open={detailOpen}>
-    <Popover.Trigger>
-      {#snippet child({ props })}
-        {@render contextTrigger(props)}
-      {/snippet}
-    </Popover.Trigger>
-    <Popover.Portal>
-      <Popover.Content
-        class={MIWARP_DETAIL_POPOVER_CLASS}
-        side="bottom"
-        align="end"
-        sideOffset={8}
-        onkeydown={handleDetailKeydown}
-      >
-        {@render contextDetailPanel()}
-      </Popover.Content>
-    </Popover.Portal>
-  </Popover.Root>
+  <MiPopover
+    bind:open={detailOpen}
+    contentClass={MIWARP_DETAIL_POPOVER_CLASS}
+    side="bottom"
+    align="end"
+    sideOffset={8}
+  >
+    {#snippet trigger({ props })}
+      {@render contextTrigger(props)}
+    {/snippet}
+    {@render contextDetailPanel()}
+  </MiPopover>
 {/if}

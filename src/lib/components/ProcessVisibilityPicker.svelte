@@ -1,12 +1,13 @@
 <script lang="ts">
-  import { Select } from "bits-ui";
+  import MiSelect from "$lib/ui/MiSelect.svelte";
+  import { Select } from "$lib/ui/select-primitives";
   import Icon from "$lib/components/Icon.svelte";
   import {
     PROCESS_VISIBILITY_LEVELS,
     type ProcessVisibility,
   } from "$lib/utils/process-visibility";
   import { t } from "$lib/i18n/index.svelte";
-  import { MIWARP_POPOVER_CONTENT_CLASS, MIWARP_SELECT_ITEM_CLASS } from "$lib/ui/miwarp-surfaces";
+  import { MIWARP_SELECT_ITEM_CLASS } from "$lib/ui/miwarp-surfaces";
 
   let {
     processVisibility = "developer",
@@ -59,52 +60,45 @@
   }
 </script>
 
-<Select.Root
-  type="single"
+<MiSelect
   bind:open
-  onOpenChange={handleOpenChange}
   value={processVisibility}
   onValueChange={handleValueChange}
+  onOpenChange={handleOpenChange}
   items={selectItems}
-  allowDeselect={false}
+  contentClass="w-[200px]"
 >
-  <Select.Trigger
-    class={triggerClass}
-    aria-label={t("settings_processVisibility")}
-    title={t("settings_processVisibility")}
-    onclick={(e: MouseEvent) => e.stopPropagation()}
-  >
-    {#snippet child({ props })}
-      <button {...props} type="button" class="{triggerClass} {props.class ?? ''}">
-        <span class="truncate font-medium">{label || visibilityLabel(processVisibility)}</span>
-        <Icon
-          name="chevron-down"
-          size="xs"
-          class="shrink-0 text-foreground/40 transition-transform duration-200 data-[state=open]:rotate-180"
-        />
-      </button>
-    {/snippet}
-  </Select.Trigger>
-  <Select.Portal>
-    <Select.Content class="{MIWARP_POPOVER_CONTENT_CLASS} w-[200px]" side="bottom" sideOffset={6}>
-      <Select.Viewport class="p-1">
-        {#each PROCESS_VISIBILITY_LEVELS as mode (mode)}
-          <Select.Item
-            value={mode}
-            label={visibilityLabel(mode)}
-            class="{MIWARP_SELECT_ITEM_CLASS} rounded-[10px] px-2.5 py-2 data-[state=checked]:bg-primary/12 data-[state=checked]:text-primary data-highlighted:bg-muted/50"
-          >
-            {#snippet children({ selected })}
-              {#if selected}
-                <Icon name="check" size="sm" class="shrink-0 text-primary" />
-              {:else}
-                <span class="h-3.5 w-3.5 shrink-0"></span>
-              {/if}
-              <span class="flex-1">{visibilityLabel(mode)}</span>
-            {/snippet}
-          </Select.Item>
-        {/each}
-      </Select.Viewport>
-    </Select.Content>
-  </Select.Portal>
-</Select.Root>
+  {#snippet trigger({ props })}
+    <button
+      {...props}
+      type="button"
+      class="{triggerClass} {props.class ?? ''}"
+      aria-label={t("settings_processVisibility")}
+      title={t("settings_processVisibility")}
+      onclick={(e: MouseEvent) => e.stopPropagation()}
+    >
+      <span class="truncate font-medium">{label || visibilityLabel(processVisibility)}</span>
+      <Icon
+        name="chevron-down"
+        size="xs"
+        class="shrink-0 text-foreground/40 transition-transform duration-200 data-[state=open]:rotate-180"
+      />
+    </button>
+  {/snippet}
+  {#each PROCESS_VISIBILITY_LEVELS as mode (mode)}
+    <Select.Item
+      value={mode}
+      label={visibilityLabel(mode)}
+      class="{MIWARP_SELECT_ITEM_CLASS} rounded-[10px] px-2.5 py-2 data-[state=checked]:bg-primary/12 data-[state=checked]:text-primary data-highlighted:bg-muted/50"
+    >
+      {#snippet children({ selected })}
+        {#if selected}
+          <Icon name="check" size="sm" class="shrink-0 text-primary" />
+        {:else}
+          <span class="h-3.5 w-3.5 shrink-0"></span>
+        {/if}
+        <span class="flex-1">{visibilityLabel(mode)}</span>
+      {/snippet}
+    </Select.Item>
+  {/each}
+</MiSelect>

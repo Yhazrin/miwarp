@@ -6,30 +6,36 @@
     MIWARP_DIALOG_CONTENT_COMMAND_CLASS,
     MIWARP_DIALOG_CONTENT_LG_CLASS,
     MIWARP_DIALOG_CONTENT_MD_CLASS,
+    MIWARP_DIALOG_CONTENT_SM_CLASS,
     MIWARP_DIALOG_CONTENT_STYLE,
     MIWARP_DIALOG_OVERLAY_CLASS,
-  } from "$lib/ui/miwarp-surfaces";
+  } from "./miwarp-surfaces";
 
   let {
     open = $bindable(false),
     title = "",
+    description = "",
     closeable = true,
-    size = "default" as "default" | "md" | "lg" | "command",
+    size = "default" as "default" | "sm" | "md" | "lg" | "command",
     contentClass = "",
     onClose,
     children,
+    actions,
   }: {
     open?: boolean;
     title?: string;
+    description?: string;
     closeable?: boolean;
-    size?: "default" | "md" | "lg" | "command";
+    size?: "default" | "sm" | "md" | "lg" | "command";
     contentClass?: string;
     onClose?: () => void;
     children?: import("svelte").Snippet;
+    actions?: import("svelte").Snippet;
   } = $props();
 
-  const SIZE_CLASS: Record<"default" | "md" | "lg" | "command", string> = {
+  const SIZE_CLASS: Record<"default" | "sm" | "md" | "lg" | "command", string> = {
     default: MIWARP_DIALOG_CONTENT_CLASS,
+    sm: MIWARP_DIALOG_CONTENT_SM_CLASS,
     md: MIWARP_DIALOG_CONTENT_MD_CLASS,
     lg: MIWARP_DIALOG_CONTENT_LG_CLASS,
     command: MIWARP_DIALOG_CONTENT_COMMAND_CLASS,
@@ -56,6 +62,9 @@
       {#if title}
         <Dialog.Title class="mb-4 pr-8 text-lg font-semibold text-foreground">{title}</Dialog.Title>
       {/if}
+      {#if description}
+        <Dialog.Description class="mb-3 text-sm text-muted-foreground">{description}</Dialog.Description>
+      {/if}
       {#if closeable}
         <Dialog.Close
           class="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-md text-miwarp-text-tertiary transition-colors hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary"
@@ -73,6 +82,11 @@
       {/if}
       {#if children}
         {@render children()}
+      {/if}
+      {#if actions}
+        <div class="mt-4 flex justify-end gap-2">
+          {@render actions()}
+        </div>
       {/if}
     </Dialog.Content>
   </Dialog.Portal>

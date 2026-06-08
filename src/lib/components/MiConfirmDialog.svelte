@@ -4,7 +4,7 @@
    * MiDialog underneath. Lets existing call sites drop bespoke modal
    * implementations.
    */
-  import MiDialog from "./MiDialog.svelte";
+  import MiDialog from "$lib/ui/MiDialog.svelte";
   import { t } from "$lib/i18n/index.svelte";
 
   let {

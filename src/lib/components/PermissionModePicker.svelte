@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { Select } from "bits-ui";
+  import MiSelect from "$lib/ui/MiSelect.svelte";
+  import { Select } from "$lib/ui/select-primitives";
   import Icon from "$lib/components/Icon.svelte";
   import { PERMISSION_MODE_OPTIONS, resolvePermissionMode } from "$lib/chat/permission-mode-options";
   import { t } from "$lib/i18n/index.svelte";
-  import { MIWARP_POPOVER_CONTENT_CLASS } from "$lib/ui/miwarp-surfaces";
 
   let {
     permissionMode = "default",
@@ -19,6 +19,7 @@
     placement?: "above" | "below";
   } = $props();
 
+  let open = $state(false);
   let current = $derived(resolvePermissionMode(permissionMode));
 
   let selectItems = $derived(
@@ -43,47 +44,37 @@
   }
 </script>
 
-<Select.Root
-  type="single"
+<MiSelect
+  bind:open
   value={permissionMode}
   onValueChange={handleValueChange}
   items={selectItems}
-  allowDeselect={false}
+  side={placement === "above" ? "top" : "bottom"}
+  contentClass="max-h-[min(420px,70vh)]"
+  viewportClass="p-0"
 >
-  <Select.Trigger title={triggerLabel} aria-label={triggerLabel}>
-    {#snippet child({ props })}
-      <button {...props} type="button" class="{btnClass} {props.class ?? ''}">
-        <Icon name={current.icon} size="md" class="shrink-0 opacity-90" />
-      </button>
-    {/snippet}
-  </Select.Trigger>
-  <Select.Portal>
-    <Select.Content
-      class="{MIWARP_POPOVER_CONTENT_CLASS} max-h-[min(420px,70vh)]"
-      side={placement === "above" ? "top" : "bottom"}
-      sideOffset={6}
+  {#snippet trigger({ props })}
+    <button {...props} type="button" class="{btnClass} {props.class ?? ''}" title={triggerLabel}>
+      <Icon name={current.icon} size="md" class="shrink-0 opacity-90" />
+    </button>
+  {/snippet}
+  {#each PERMISSION_MODE_OPTIONS as mode (mode.value)}
+    <Select.Item
+      value={mode.value}
+      label={t(mode.labelKey)}
+      class="flex w-full cursor-default select-none items-center gap-2 rounded-xl px-3 py-2 text-xs outline-hidden transition-colors data-highlighted:bg-accent/20 data-[state=checked]:bg-accent/20 data-[state=checked]:font-medium"
     >
-      <Select.Viewport class="p-0">
-        {#each PERMISSION_MODE_OPTIONS as mode (mode.value)}
-          <Select.Item
-            value={mode.value}
-            label={t(mode.labelKey)}
-            class="flex w-full cursor-default select-none items-center gap-2 rounded-xl px-3 py-2 text-xs outline-hidden transition-colors data-highlighted:bg-accent/20 data-[state=checked]:bg-accent/20 data-[state=checked]:font-medium"
-          >
-            {#snippet children({ selected })}
-              {#if selected}
-                <Icon name="check" size="xs" class="shrink-0 text-primary" />
-              {:else}
-                <Icon name={mode.icon} size="xs" class="shrink-0 opacity-55" />
-              {/if}
-              <span class="shrink-0 {mode.cls}">{t(mode.labelKey)}</span>
-              <span class="min-w-0 flex-1 truncate text-[10px] text-foreground/50"
-                >{t(mode.descKey)}</span
-              >
-            {/snippet}
-          </Select.Item>
-        {/each}
-      </Select.Viewport>
-    </Select.Content>
-  </Select.Portal>
-</Select.Root>
+      {#snippet children({ selected })}
+        {#if selected}
+          <Icon name="check" size="xs" class="shrink-0 text-primary" />
+        {:else}
+          <Icon name={mode.icon} size="xs" class="shrink-0 opacity-55" />
+        {/if}
+        <span class="shrink-0 {mode.cls}">{t(mode.labelKey)}</span>
+        <span class="min-w-0 flex-1 truncate text-[10px] text-foreground/50"
+          >{t(mode.descKey)}</span
+        >
+      {/snippet}
+    </Select.Item>
+  {/each}
+</MiSelect>

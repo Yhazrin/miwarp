@@ -37,3 +37,6 @@ export const MIWARP_DIALOG_CONTENT_COMMAND_CLASS =
 
 export const MIWARP_DIALOG_CONTENT_MD_CLASS =
   "elevation-3 outline-hidden fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] p-0 backdrop-blur-2xl";
+
+export const MIWARP_DIALOG_CONTENT_SM_CLASS =
+  "elevation-3 outline-hidden fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] p-5 backdrop-blur-2xl";
