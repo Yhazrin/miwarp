@@ -25,6 +25,20 @@ export interface RunEventHandler {
 
 // ── Middleware ──
 
+/** Event types that _trackAttention actually handles — all others are no-ops. */
+const ATTENTION_EVENT_TYPES = new Set([
+  "permission_prompt",
+  "elicitation_prompt",
+  "tool_end",
+  "permission_denied",
+  "control_cancelled",
+  "user_message",
+  "run_state",
+  "session_recovering",
+  "session_recovered",
+  "protocol_desync",
+]);
+
 export class EventMiddleware {
   private _unlisteners: (() => void)[] = [];
   private _subscriptions = new Map<string, SessionStore>();
@@ -239,7 +253,11 @@ export class EventMiddleware {
   // ── Internal ──
 
   private _handleBusEvent(ev: BusEvent): void {
-    this._trackAttention(ev);
+    // Only call _trackAttention for event types that can change attention state.
+    // Skipping the ~20 other event types avoids a function call + switch on every token.
+    if (ATTENTION_EVENT_TYPES.has(ev.type)) {
+      this._trackAttention(ev);
+    }
 
     const store = this._subscriptions.get(ev.run_id);
     if (!store) return;

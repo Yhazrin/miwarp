@@ -988,11 +988,9 @@
       setTimeout(() => splash.remove(), 300);
     }
 
-    void (async () => {
-      await initBackendCapabilities();
-      loadRuns();
-    })();
-    loadSettings();
+    // Fire all three concurrently — they are independent.
+    void initBackendCapabilities().then(() => loadRuns());
+    void loadSettings();
 
     // v1.0.6 / 5.16: restore last active session on cold start.
     // Only redirect if the URL has no explicit `run` param and we're on /chat.

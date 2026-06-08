@@ -68,7 +68,8 @@ export function createChatActions(ctx: ChatActionsContext) {
   }
 
   async function handleSummarize() {
-    if (!store.run) {
+    const run = store.run;
+    if (!run) {
       dbgWarn("chat", "handleSummarize: no run");
       showToast(t("export_noConversation"));
       return;
@@ -76,15 +77,15 @@ export function createChatActions(ctx: ChatActionsContext) {
     dbg("chat", "handleSummarize: start");
     try {
       showToast(t("summarize_generating"));
-      const summaryResult = await api.summarizeConversation(store.run.id);
+      const summaryResult = await api.summarizeConversation(run.id);
       const { summary, markdown } = summaryResult;
-      const title = store.run.name ?? store.run.prompt?.slice(0, 80) ?? "Conversation Summary";
+      const title = run.name ?? run.prompt?.slice(0, 80) ?? "Conversation Summary";
       const html = buildSummaryHtml(title, {
         summary,
         markdown,
         model: store.model,
         cwd: store.effectiveCwd,
-        startedAt: store.run.started_at,
+        startedAt: run.started_at,
         turnCount: store.numTurns || 0,
       });
       const { save } = await import("@tauri-apps/plugin-dialog");
@@ -106,9 +107,11 @@ export function createChatActions(ctx: ChatActionsContext) {
   }
 
   async function handleRename(name: string) {
-    if (!store.run) return;
+    const run = store.run;
+    if (!run) return;
     try {
-      await api.renameRun(store.run.id, name);
+      await api.renameRun(run.id, name);
+      if (store.run?.id !== run.id) return; // run switched during await
       store.run = { ...store.run, name };
       window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
       dbg("chat", "renamed run", { id: store.run.id, name });

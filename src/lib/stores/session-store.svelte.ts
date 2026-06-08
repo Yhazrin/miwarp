@@ -314,12 +314,6 @@ export class SessionStore {
   private _recoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private static _RECOVER_DEBOUNCE_MS = 2000;
 
-  // v1.0.6 / B4: microtask-coalesced streaming. Each message_delta pushes into
-  // _pendingDeltas; the next microtask flushes them into streamingText in one
-  // assignment, eliminating per-token reactive updates on long answers.
-  private _pendingDeltas: string[] = [];
-  private _pendingDeltasScheduled = false;
-
   // ── Reducer tool indexes (runtime-only, not serialized) ──
   /** tool_use_id → timeline[] index for tool entries (first-match, reducer fast-path). */
   private _toolTlIndex = new Map<string, number>();
@@ -894,20 +888,6 @@ export class SessionStore {
   /** Append/update a synthetic assistant entry in a parent tool's subTimeline for streaming deltas.
    *  Single-active-stream per parent: synthetic ID = `__sub_stream_{parentToolUseId}`.
    *  If the entry doesn't exist yet, creates it; otherwise appends to content or thinkingText. */
-  /** v1.0.6 / B4: commit pending message_delta text in a single assignment.
-   *  v1.0.6 / 4.5: when the stream stalls (no new deltas within 100ms), we
-   *  schedule the next commit via `queueMicrotask` instead of waiting for
-   *  the next animation frame. queueMicrotask typically runs in <1ms and
-   *  visibly reduces first-token latency. */
-  private _flushPendingDeltas(ctx: ReduceCtx | null): void {
-    this._pendingDeltasScheduled = false;
-    if (this._pendingDeltas.length === 0) return;
-    const combined = this._pendingDeltas.join("");
-    this._pendingDeltas = [];
-    if (ctx) ctx.streamText += combined;
-    else this.streamingText += combined;
-  }
-
   private _appendSubTimelineStreamingDelta(
     parentToolUseId: string,
     field: "content" | "thinkingText",
@@ -1266,6 +1246,10 @@ export class SessionStore {
     this._seenToolIds = ctx.seenToolIds;
     this._toolTlIndex = ctx.toolTlIndex;
     this._toolHeIndex = ctx.toolHeIndex;
+    // Always clear timeouts on batch commit — even replayOnly batches can carry
+    // terminal run_state events that should cancel pending spawn/response timers.
+    this._clearSpawnTimeout();
+    this._clearResponseTimeout();
     if (!replayOnly) {
       this._setPhase(ctx.phase);
       this.error = ctx.error;
@@ -1497,8 +1481,6 @@ export class SessionStore {
     this.thinkingText = "";
     this.thinkingStartMs = 0;
     this.thinkingEndMs = 0;
-    this._pendingDeltas = [];
-    this._pendingDeltasScheduled = false;
     this.tools = [];
     this.usage = {
       inputTokens: 0,
@@ -2798,14 +2780,6 @@ export class SessionStore {
         }
         if (this.thinkingStartMs && !this.thinkingEndMs) {
           this.thinkingEndMs = eventTsMs(ev);
-        }
-        this._pendingDeltas.push(ev.text);
-        if (!this._pendingDeltasScheduled) {
-          this._pendingDeltasScheduled = true;
-          queueMicrotask(() => {
-            this._pendingDeltasScheduled = false;
-            this._pendingDeltas = [];
-          });
         }
         if (ctx) ctx.streamText += ev.text;
         else this.streamingText += ev.text;

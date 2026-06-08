@@ -272,7 +272,13 @@ export class WsTransport implements Transport {
       });
 
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.ws.send(message);
+        try {
+          this.ws.send(message);
+        } catch (e) {
+          if (timer) clearTimeout(timer);
+          this.pending.delete(id);
+          reject(new Error(`WebSocket send failed: ${e}`));
+        }
       } else {
         if (timer) clearTimeout(timer);
         this.pending.delete(id);

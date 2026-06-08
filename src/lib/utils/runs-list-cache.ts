@@ -79,18 +79,9 @@ export async function readRunsListCache(): Promise<TaskRun[]> {
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
     const records: RunListEntry[] = await new Promise((resolve, reject) => {
-      const out: RunListEntry[] = [];
-      const cursorReq = store.openCursor();
-      cursorReq.onsuccess = () => {
-        const cursor = cursorReq.result;
-        if (cursor) {
-          out.push(cursor.value as RunListEntry);
-          cursor.continue();
-        } else {
-          resolve(out);
-        }
-      };
-      cursorReq.onerror = () => reject(cursorReq.error);
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result as RunListEntry[]);
+      req.onerror = () => reject(req.error);
     });
     const valid = records.filter((r) => r.version === RUNS_LIST_VERSION);
     const runs = valid
