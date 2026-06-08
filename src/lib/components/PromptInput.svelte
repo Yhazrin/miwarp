@@ -2301,7 +2301,7 @@
           rows={1}
           {disabled}
           aria-label={t("prompt_chatInput")}
-          class="no-drag min-h-[24px] min-w-0 flex-1 resize-none overflow-x-auto overflow-y-hidden bg-transparent px-2 py-0 text-sm leading-6 text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:opacity-50"
+          class="no-drag min-h-[24px] min-w-0 flex-1 resize-none overflow-x-auto overflow-y-hidden bg-transparent px-2 py-0 text-sm leading-6 text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
           style="height: {CAPSULE_LINE_HEIGHT_PX}px;"
         ></textarea>
         <div class="flex shrink-0 items-center gap-0.5">
@@ -2320,7 +2320,7 @@
         rows={1}
         {disabled}
         aria-label={t("prompt_chatInput")}
-        class="no-drag w-full resize-none bg-transparent px-5 pt-3 pb-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:opacity-50"
+        class="no-drag w-full resize-none bg-transparent px-5 pt-3 pb-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none disabled:opacity-50"
         style="min-height: 40px;"
       ></textarea>
 
