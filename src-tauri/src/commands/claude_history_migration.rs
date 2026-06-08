@@ -8,12 +8,11 @@ use crate::models::{
     BusEvent, ConversationRef, ExecutionPath, ImportWatermark, RunMeta, RunSource, RunStatus,
 };
 use crate::storage::cli_sessions::normalize_transcript_line;
-use crate::storage::shared;
 use crate::storage::events::{is_replayable, EventWriter};
+use crate::storage::shared;
 use crate::storage::{ensure_dir, run_dir, runs_dir};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, BufWriter, Read, Write};
@@ -85,8 +84,8 @@ struct ManifestSession {
 pub fn export_claude_code_history_archive(output_path: String) -> Result<ExportReport, String> {
     log::debug!("[migration] export: output_path={}", output_path);
 
-    let projects_dir =
-        shared::claude_projects_dir().ok_or_else(|| "cannot determine ~/.claude/projects".to_string())?;
+    let projects_dir = shared::claude_projects_dir()
+        .ok_or_else(|| "cannot determine ~/.claude/projects".to_string())?;
 
     if !projects_dir.exists() {
         return Err("~/.claude/projects/ does not exist".to_string());
@@ -1031,8 +1030,8 @@ fn flush_turn_usage(
 pub fn scan_claude_code_history() -> Result<Vec<CliSessionInfo>, String> {
     log::debug!("[migration] scan_claude_code_history");
 
-    let projects_dir =
-        shared::claude_projects_dir().ok_or_else(|| "cannot determine ~/.claude/projects".to_string())?;
+    let projects_dir = shared::claude_projects_dir()
+        .ok_or_else(|| "cannot determine ~/.claude/projects".to_string())?;
 
     if !projects_dir.exists() {
         return Ok(vec![]);

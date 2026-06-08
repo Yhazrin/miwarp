@@ -34,8 +34,6 @@ const ACTOR_SEND_TIMEOUT_MS: u64 = 45_000;
 /// Timeout for WaitReady after actor spawn
 const ACTOR_READY_TIMEOUT_MS: u64 = 5_000;
 
-
-
 /// Helper: get the actor command sender for a run_id.
 async fn get_cmd_tx(
     sessions: &ActorSessionMap,

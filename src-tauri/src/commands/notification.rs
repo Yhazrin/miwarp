@@ -72,12 +72,7 @@ fn build_card_payload(
 /// Fire-and-forget: POST a pre-built payload to a Feishu webhook URL.
 pub fn fire_webhook(url: String, payload: serde_json::Value) {
     tokio::spawn(async move {
-        match http_client()
-            .post(&url)
-            .json(&payload)
-            .send()
-            .await
-        {
+        match http_client().post(&url).json(&payload).send().await {
             Ok(resp) => {
                 if !resp.status().is_success() {
                     log::warn!(

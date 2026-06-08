@@ -77,7 +77,7 @@ fn validate_cli_path(path: &Path) -> Result<(), String> {
     let canonical = path
         .canonicalize()
         .map_err(|e| format!("canonicalize failed: {}", e))?;
-    let projects_dir = shared::shared::claude_projects_dir().ok_or("cannot determine home dir")?;
+    let projects_dir = shared::claude_projects_dir().ok_or("cannot determine home dir")?;
     if let Ok(canonical_projects) = projects_dir.canonicalize() {
         if !canonical.starts_with(&canonical_projects) {
             return Err(format!(
@@ -840,14 +840,6 @@ fn build_imported_index() -> HashMap<(String, String), String> {
         }
     }
     index
-}
-
-/// Check if a user message's text content is a candidate for "first prompt" extraction.
-/// Returns false for CLI-injected XML messages (command output, slash commands, task notifications).
-fn shared::is_first_prompt_text(text: &str) -> bool {
-    !(text.starts_with("<local-command-stdout>")
-        || text.contains("<command-name>")
-        || text.contains("<task-notification>") && text.contains("</task-notification>"))
 }
 
 fn extract_summary(
@@ -1898,7 +1890,7 @@ mod tests {
     }
 
     #[test]
-    fn test_shared::is_first_prompt_text() {
+    fn test_is_first_prompt_text() {
         // Real user prompts → true
         assert!(shared::is_first_prompt_text("Hello, help me fix a bug"));
         assert!(shared::is_first_prompt_text("Implement a new feature"));
@@ -1909,7 +1901,9 @@ mod tests {
         ));
 
         // Slash command → false
-        assert!(!shared::is_first_prompt_text("<command-name>/cost</command-name>"));
+        assert!(!shared::is_first_prompt_text(
+            "<command-name>/cost</command-name>"
+        ));
 
         // Task notification → false
         assert!(!shared::is_first_prompt_text(

@@ -43,8 +43,6 @@ fn extract_promise_tag(text: &str) -> Option<&str> {
     Some(text[start + 9..end].trim())
 }
 
-
-
 // ── Ralph Loop types ──
 
 #[derive(Debug, Clone, PartialEq)]
@@ -1415,7 +1413,11 @@ impl SessionActor {
         if text.is_empty() {
             return;
         }
-        log::trace!("[actor] stdout #{}: {}", line_num, shared::truncate_str(text, 200));
+        log::trace!(
+            "[actor] stdout #{}: {}",
+            line_num,
+            shared::truncate_str(text, 200)
+        );
 
         // Step 0: JSON parse
         let parsed = match serde_json::from_str::<Value>(text) {
