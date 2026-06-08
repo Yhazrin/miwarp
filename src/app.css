@@ -1444,11 +1444,12 @@ textarea,
   --session-island-tier2-max-width: var(--session-island-tier2-width-cap);
 }
 
-/* Collapse: tier-2 must not keep layout width while row height animates */
+/* Collapse: tier-2 must not keep layout width while row height animates.
+   width/max-width transition through the --session-island-tier2-max-width
+   custom property on .session-island-shell (registered via @property above),
+   so we leave them alone here — hardcoding 0 would short-circuit the
+   variable transition and snap tier 2 to invisible. */
 .session-island-shell.session-island-has-tier2:not(.session-island-active) .tier-2-content {
-  width: 0;
-  max-width: 0;
-  min-width: 0;
   padding: 0;
   border-width: 0 !important;
 }
@@ -1507,13 +1508,15 @@ textarea,
   padding: 0;
   border: 0;
   /* Collapse uses ease-in (slow start, fast end) — the mirror of the base
-     ease-out (fast start, slow end) used when the reveal grows in. Without
-     this asymmetry, the same ease-out curve running in reverse feels like
-     the element snaps 70% away then slowly finishes. */
+     ease-out (fast start, slow end) used when the reveal grows in. height
+     and margin are included so the element does not snap to 0-height
+     (overflow:hidden would otherwise clip the content instantly). */
   transition:
     opacity var(--session-island-duration) ease-in,
     transform var(--session-island-duration) ease-in,
-    width var(--session-island-duration) ease-in;
+    width var(--session-island-duration) ease-in,
+    height var(--session-island-duration) ease-in,
+    margin var(--session-island-duration) ease-in;
 }
 
 .session-island-shell.session-island-active .session-island-reveal {
@@ -1776,11 +1779,16 @@ textarea,
   transform: translate3d(0, 0, 0) scale(1);
 }
 
-/* Collapse tier-2 visuals in parallel with row height + tier-1 width (no extra delay) */
+/* Collapse tier-2 visuals in parallel with row height + tier-1 width (no extra delay).
+   ease-in mirrors the base ease-out, matching the tier-1 reveal collapse
+   curve so both rows feel symmetric on hover-out. */
 .session-island-shell.session-island-has-tier2:not(.session-island-active) .session-island-tier2 {
   opacity: 0;
   transform: translate3d(0, -8px, 0) scale(0.92);
   transition-delay: 0ms;
+  transition:
+    opacity var(--session-island-duration) ease-in,
+    transform var(--session-island-duration) ease-in;
 }
 
 .session-island-tier2-divider {
@@ -1806,7 +1814,9 @@ textarea,
   transition:
     opacity var(--session-island-duration) var(--session-island-ease),
     transform var(--session-island-duration) var(--session-island-ease),
-    width var(--session-island-duration) var(--session-island-ease);
+    width var(--session-island-duration) var(--session-island-ease),
+    height var(--session-island-duration) var(--session-island-ease),
+    margin var(--session-island-duration) var(--session-island-ease);
 }
 
 .session-island-reveal:last-child {
