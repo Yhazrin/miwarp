@@ -16,7 +16,8 @@ data class MiWarpConnection(
     val isDefault: Boolean = false,
     val lastConnectedAt: Long = 0L,
 ) {
-    val wsUrl: String get() = "ws://$host:$port/ws?token=$token"
+    /** WebSocket URL without token (token passed via Authorization header for security). */
+    val wsUrl: String get() = "ws://$host:$port/ws"
     val displayLabel: String get() = label.ifBlank { "$host:$port" }
 }
 

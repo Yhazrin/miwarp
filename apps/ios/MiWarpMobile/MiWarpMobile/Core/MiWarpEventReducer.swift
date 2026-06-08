@@ -124,6 +124,10 @@ final class MiWarpEventReducer: ObservableObject {
         case .sessionInit(let payload):
             handleSessionInit(payload)
 
+        case .fullReload:
+            // Server requests full state reset — clear and re-fetch
+            reset()
+
         default:
             break
         }

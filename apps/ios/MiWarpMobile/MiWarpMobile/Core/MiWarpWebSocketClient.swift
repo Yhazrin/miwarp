@@ -34,6 +34,10 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
     private var currentToken: String?
     private var connectionGeneration: UInt64 = 0
 
+    // v1.0.6 / 3.5: chunk reassembly buffers (msg_id → (total, parts))
+    private var chunkBuffers: [String: (total: Int, parts: [Int: String])] = [:]
+    private let chunkLock = NSLock()
+
     private(set) var connectionState: ConnectionState = .disconnected {
         didSet {
             if connectionState != oldValue {
@@ -258,6 +262,12 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
 
     private func handleMessage(_ text: String) {
         guard let data = text.data(using: .utf8) else { return }
+        handleMessage(data)
+    }
+
+    private func handleMessage(_ data: Data) {
+        // v1.0.6 / 3.5: check for chunk protocol messages before normal parsing
+        if handleChunkMessage(data) { return }
 
         do {
             let response = try JSONDecoder().decode(WSResponse.self, from: data)
@@ -289,6 +299,65 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         }
     }
 
+    /// v1.0.6 / 3.5: Handle chunk protocol messages (chunk_begin, chunk, chunk_end).
+    /// Returns true if the message was a chunk message (consumed), false otherwise.
+    private func handleChunkMessage(_ data: Data) -> Bool {
+        // Quick peek at the "type" field without full decode
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let type = json["type"] as? String
+        else {
+            return false
+        }
+
+        switch type {
+        case "chunk_begin":
+            guard let msgId = json["msg_id"] as? String,
+                  let total = json["total"] as? Int else { return true }
+            chunkLock.lock()
+            chunkBuffers[msgId] = (total: total, parts: [:])
+            chunkLock.unlock()
+            return true
+
+        case "chunk":
+            guard let msgId = json["msg_id"] as? String,
+                  let idx = json["idx"] as? Int,
+                  let chunkData = json["data"] as? String else { return true }
+            chunkLock.lock()
+            chunkBuffers[msgId]?.parts[idx] = chunkData
+            let buffer = chunkBuffers[msgId]
+            chunkLock.unlock()
+
+            // Check if all parts received
+            if let buffer, buffer.parts.count == buffer.total {
+                // Reassemble
+                let sorted = buffer.parts.sorted { $0.key < $1.key }
+                let combined = sorted.map(\.value).joined()
+                chunkLock.lock()
+                chunkBuffers.removeValue(forKey: msgId)
+                chunkLock.unlock()
+
+                logger.wsInfo("Chunk reassembly complete: \(msgId) (\(combined.count) bytes)")
+                // Process the reassembled message
+                if let combinedData = combined.data(using: .utf8) {
+                    handleMessage(combinedData)
+                }
+            }
+            return true
+
+        case "chunk_end":
+            // Cleanup any leftover buffer (should already be consumed)
+            if let msgId = json["msg_id"] as? String {
+                chunkLock.lock()
+                chunkBuffers.removeValue(forKey: msgId)
+                chunkLock.unlock()
+            }
+            return true
+
+        default:
+            return false
+        }
+    }
+
     private func handleBroadcast(response: WSResponse) {
         guard let eventName = response.event else { return }
 
@@ -297,6 +366,9 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
                 seqLock.lock()
                 seqTracker.removeValue(forKey: runId)
                 seqLock.unlock()
+                // Emit fullReload event so the reducer can clear its state
+                let event = BusEvent(seq: 0, runId: runId, payload: .fullReload)
+                eventContinuation?.yield(event)
                 logger.wsInfo("Full reload for run: \(runId)")
             }
             return
@@ -359,9 +431,10 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
     /// gap. Bypasses the backoff schedule and tries to reconnect now.
     func reconnectImmediate() {
         guard !isIntentionalClose else { return }
+        guard let url = currentURL, let token = currentToken else { return }
         logger.wsInfo("reconnectImmediate: network available, forcing reconnect")
-        backoffAttempt = 0
-        connect(host: lastHost ?? "", port: lastPort, token: lastToken ?? "")
+        reconnectAttempt = 0
+        connect(host: url.host ?? "", port: url.port ?? 9476, token: token)
     }
 
     // MARK: - Reconnect

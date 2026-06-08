@@ -44,7 +44,7 @@ class MiWarpRpcClient(
 
     val rawBroadcastEvents: SharedFlow<RpcBroadcast> = wsClient.broadcastEvents
 
-    fun connect(url: String) = wsClient.connect(url)
+    fun connect(url: String, token: String = "") = wsClient.connect(url, token)
 
     fun disconnect() = wsClient.disconnect()
 

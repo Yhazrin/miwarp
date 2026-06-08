@@ -364,10 +364,10 @@ private fun connectToServer(
     connection: MiWarpConnection,
     scope: kotlinx.coroutines.CoroutineScope,
 ) {
-    // Build wsUrl from stored token (not from the model, which may have token stripped)
+    // v1.0.6: token via header, not URL query
     val token = connection.token.ifBlank { connectionStore.getToken(connection.id) ?: "" }
-    val wsUrl = "ws://${connection.host}:${connection.port}/ws?token=$token"
-    rpcClient.connect(wsUrl)
+    val wsUrl = "ws://${connection.host}:${connection.port}/ws"
+    rpcClient.connect(wsUrl, token)
     scope.launch {
         connectionStore.saveConnection(connection, token)
         connectionStore.setActiveConnection(connection.id)

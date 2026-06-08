@@ -341,6 +341,7 @@ enum BusEventPayload: Codable {
     case ralphStarted(RalphStartedPayload)
     case ralphIteration(RalphIterationPayload)
     case ralphComplete(RalphCompletePayload)
+    case fullReload  // Server requests client to clear state and re-fetch
     case raw(RawPayload)
 
     enum CodingKeys: String, CodingKey {
@@ -378,6 +379,7 @@ enum BusEventPayload: Codable {
         case ralph_started
         case ralph_iteration
         case ralph_complete
+        case full_reload
         case raw
     }
 
@@ -455,6 +457,8 @@ enum BusEventPayload: Codable {
             self = .ralphIteration(try RalphIterationPayload(from: decoder))
         case .ralph_complete:
             self = .ralphComplete(try RalphCompletePayload(from: decoder))
+        case .full_reload:
+            self = .fullReload
         case .raw:
             let rawDict = try decoder.singleValueContainer().decode([String: AnyCodable].self)
             self = .raw(RawPayload(type: "raw", data: rawDict))
@@ -494,6 +498,7 @@ enum BusEventPayload: Codable {
         case .ralphStarted(let p): try p.encode(to: encoder)
         case .ralphIteration(let p): try p.encode(to: encoder)
         case .ralphComplete(let p): try p.encode(to: encoder)
+        case .fullReload: break  // No payload to encode
         case .raw(let p): try p.encode(to: encoder)
         }
     }

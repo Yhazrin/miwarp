@@ -59,6 +59,10 @@ class MiWarpWebSocketClient(
     private var shouldReconnect = false
     private var reconnectJob: kotlinx.coroutines.Job? = null
 
+    // v1.0.6 / 3.5: chunk reassembly buffers (msg_id → ChunkBuffer)
+    private data class ChunkBuffer(val total: Int, val parts: ConcurrentHashMap<Int, String> = ConcurrentHashMap())
+    private val chunkBuffers = ConcurrentHashMap<String, ChunkBuffer>()
+
     private val baseDelayMs = 1000L
     private val maxDelayMs = 30_000L
     private val maxReconnectAttempts = 20
@@ -66,10 +70,13 @@ class MiWarpWebSocketClient(
     /** RPC request timeout in milliseconds */
     private val rpcTimeoutMs = 30_000L
 
-    fun connect(url: String) {
+    private var currentToken: String = ""
+
+    fun connect(url: String, token: String = "") {
         if (_connectionState.value == ConnectionState.Connected && currentUrl == url) return
         disconnect()
         currentUrl = url
+        currentToken = token
         shouldReconnect = true
         reconnectAttempt = 0
         doConnect()
@@ -89,10 +96,15 @@ class MiWarpWebSocketClient(
     private fun doConnect() {
         _connectionState.value = if (reconnectAttempt == 0) ConnectionState.Connecting else ConnectionState.Reconnecting
 
-        // Build URL with token redacted for logging
-        val redactedUrl = currentUrl.replace(Regex("token=[^&]+"), "token=[REDACTED]")
+        val redactedUrl = currentUrl
 
-        val request = Request.Builder().url(currentUrl).build()
+        // v1.0.6: pass token via Authorization header (not URL query) for security
+        val requestBuilder = Request.Builder().url(currentUrl)
+        if (currentToken.isNotBlank()) {
+            requestBuilder.addHeader("Authorization", "Bearer $currentToken")
+            requestBuilder.addHeader("X-MiWarp-Token", currentToken)
+        }
+        val request = requestBuilder.build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(ws: WebSocket, response: Response) {
                 Logger.wsInfo("WebSocket connected to $redactedUrl")
@@ -144,6 +156,9 @@ class MiWarpWebSocketClient(
     private fun handleMessage(text: String) {
         val trimmed = text.trim()
 
+        // v1.0.6 / 3.5: check for chunk protocol messages
+        if (handleChunkMessage(trimmed)) return
+
         // Try parsing as RPC response first (has "id")
         if (trimmed.contains("\"id\"")) {
             try {
@@ -173,6 +188,47 @@ class MiWarpWebSocketClient(
             }
         } catch (e: Exception) {
             Logger.w("Failed to parse message: ${e.message}")
+        }
+    }
+
+    /**
+     * v1.0.6 / 3.5: Handle chunk protocol messages.
+     * Returns true if the message was consumed as a chunk message.
+     */
+    private fun handleChunkMessage(text: String): Boolean {
+        // Quick type extraction
+        val typeMatch = Regex(""""type"\s*:\s*"([^"]+)"""").find(text) ?: return false
+        val type = typeMatch.groupValues[1]
+
+        return when (type) {
+            "chunk_begin" -> {
+                val msgId = Regex(""""msg_id"\s*:\s*"([^"]+)"""").find(text)?.groupValues?.get(1) ?: return true
+                val total = Regex(""""total"\s*:\s*(\d+)""").find(text)?.groupValues?.get(1)?.toIntOrNull() ?: return true
+                chunkBuffers[msgId] = ChunkBuffer(total)
+                true
+            }
+            "chunk" -> {
+                val msgId = Regex(""""msg_id"\s*:\s*"([^"]+)"""").find(text)?.groupValues?.get(1) ?: return true
+                val idx = Regex(""""idx"\s*:\s*(\d+)""").find(text)?.groupValues?.get(1)?.toIntOrNull() ?: return true
+                val data = Regex(""""data"\s*:\s*"((?:[^"\\]|\\.)*)"""").find(text)?.groupValues?.get(1) ?: return true
+                val buffer = chunkBuffers[msgId] ?: return true
+                buffer.parts[idx] = data
+
+                // Check if all parts received
+                if (buffer.parts.size == buffer.total) {
+                    val combined = (0 until buffer.total).map { buffer.parts[it] ?: "" }.joinToString("")
+                    chunkBuffers.remove(msgId)
+                    Logger.wsInfo("Chunk reassembly complete: $msgId (${combined.length} chars)")
+                    handleMessage(combined)
+                }
+                true
+            }
+            "chunk_end" -> {
+                val msgId = Regex(""""msg_id"\s*:\s*"([^"]+)"""").find(text)?.groupValues?.get(1) ?: return true
+                chunkBuffers.remove(msgId)
+                true
+            }
+            else -> false
         }
     }
 

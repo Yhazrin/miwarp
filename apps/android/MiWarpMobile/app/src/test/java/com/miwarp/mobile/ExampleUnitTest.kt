@@ -113,7 +113,7 @@ class ExampleUnitTest {
         val conn = com.miwarp.mobile.model.MiWarpConnection(
             id = "test", host = "192.168.1.1", port = 9876, token = "abc123",
         )
-        assertEquals("ws://192.168.1.1:9876/ws?token=abc123", conn.wsUrl)
+        assertEquals("ws://192.168.1.1:9876/ws", conn.wsUrl)
     }
 
     @Test
