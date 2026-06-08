@@ -371,9 +371,6 @@ pub struct UserSettings {
     /// Custom session status colors.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_status_colors: Option<SessionStatusColors>,
-    /// Path to user's avatar image.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub avatar_path: Option<String>,
     pub updated_at: String,
 }
 
@@ -543,7 +540,6 @@ impl Default for UserSettings {
             process_visibility: "developer".to_string(),
             visual_performance_mode: "auto".to_string(),
             session_status_colors: None,
-            avatar_path: None,
             updated_at: now_iso(),
         }
     }

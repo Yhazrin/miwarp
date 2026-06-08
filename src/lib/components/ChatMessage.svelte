@@ -6,7 +6,6 @@
   import { IMAGE_TYPES } from "$lib/utils/file-types";
   import type { ChatMessage, Attachment, MediaArtifact } from "$lib/types";
   import AgentIdentity from "./AgentIdentity.svelte";
-  import UserAvatar from "./UserAvatar.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import type { ProcessVisibility } from "$lib/utils/process-visibility";
   import { shouldShowRawDebug } from "$lib/utils/process-visibility";
@@ -139,7 +138,6 @@
             >
               {formatTime(message.timestamp)}
             </span>
-            <UserAvatar size="sm" />
           {:else}
             <AgentIdentity
               {agent}
@@ -193,7 +191,7 @@
         </div>
         <!-- Content -->
         <div
-          class={`${isUser ? "pr-7 flex justify-end" : "pl-7"} text-sm leading-relaxed text-foreground`}
+          class={`${isUser ? "flex justify-end" : "pl-7"} text-sm leading-relaxed text-foreground`}
         >
           {#if isUser}
             <div
