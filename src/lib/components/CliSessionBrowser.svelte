@@ -249,7 +249,7 @@
   ></div>
 
   <div
-    class="relative z-10 flex max-h-[min(82vh,720px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[hsl(var(--miwarp-glass-border)/0.28)] shadow-[0_24px_64px_-12px_rgba(0,0,0,0.45),inset_0_1px_0_hsl(var(--miwarp-glass-border)/0.12)] backdrop-blur-2xl"
+    class="relative z-10 flex max-h-[min(82vh,720px)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[hsl(var(--miwarp-glass-border)/0.28)] shadow-[inset_0_1px_0_hsl(var(--miwarp-glass-border)/0.12)] backdrop-blur-2xl"
     style="background: hsl(var(--miwarp-bg-deep) / 0.94);"
     transition:fly={{ y: 12, duration: 220 }}
   >
