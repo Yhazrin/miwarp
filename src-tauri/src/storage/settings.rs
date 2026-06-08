@@ -463,6 +463,18 @@ fn validate_ui_zoom(v: &serde_json::Value) -> Result<Option<f64>, String> {
     Ok(Some(f))
 }
 
+/// v1.0.6 follow-up: reset all user settings to defaults.
+/// Returns `(old, new)` so the command layer can diff and rotate the web
+/// server token if it was cleared by the reset.
+pub fn reset_user_settings() -> Result<(UserSettings, UserSettings), String> {
+    let mut all = load();
+    let old = all.user.clone();
+    all.user = UserSettings::default();
+    save(&all)?;
+    log::info!("[storage/settings] user settings reset to defaults");
+    Ok((old, all.user))
+}
+
 pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, String> {
     let mut all = load();
     if let Some(agent) = patch.get("default_agent").and_then(|v| v.as_str()) {

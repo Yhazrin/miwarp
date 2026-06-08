@@ -177,6 +177,7 @@ pub fn run() {
             commands::artifacts::get_run_artifacts,
             commands::settings::get_user_settings,
             commands::settings::update_user_settings,
+            commands::settings::reset_user_settings,
             commands::settings::get_agent_settings,
             commands::settings::update_agent_settings,
             commands::fs::list_directory,

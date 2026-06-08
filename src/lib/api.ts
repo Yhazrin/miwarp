@@ -313,6 +313,13 @@ export async function updateUserSettings(patch: Partial<UserSettings>): Promise<
   return settings;
 }
 
+export async function resetUserSettings(): Promise<UserSettings> {
+  dbg("api", "resetUserSettings");
+  const settings = await invoke<UserSettings>("reset_user_settings");
+  notifyUserSettingsChanged(settings);
+  return settings;
+}
+
 export async function getAgentSettings(agent: string): Promise<AgentSettings> {
   dbg("api", "getAgentSettings", agent);
   return invoke<AgentSettings>("get_agent_settings", { agent });

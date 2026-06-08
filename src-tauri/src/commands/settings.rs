@@ -47,6 +47,28 @@ pub fn get_agent_settings(agent: String) -> AgentSettings {
     storage::settings::get_agent_settings(&agent)
 }
 
+/// v1.0.6 follow-up: reset all user settings to defaults.
+/// If the prior settings held a web server token and the reset cleared it,
+/// rotate the live token state so stale clients can no longer authenticate.
+#[tauri::command]
+pub async fn reset_user_settings(
+    token_ver: tauri::State<'_, crate::SharedTokenVersion>,
+    shutdown: tauri::State<'_, crate::WsShutdownSender>,
+    live_token: tauri::State<'_, crate::SharedLiveToken>,
+) -> Result<UserSettings, String> {
+    log::info!("[settings] reset_user_settings");
+    let (old_settings, new_settings) = storage::settings::reset_user_settings()?;
+    if old_settings.web_server_token != new_settings.web_server_token {
+        match &new_settings.web_server_token {
+            Some(tok) => *live_token.write().await = tok.clone(),
+            None => *live_token.write().await = String::new(),
+        }
+        token_ver.fetch_add(1, Ordering::Relaxed);
+        let _ = shutdown.send(());
+    }
+    Ok(new_settings)
+}
+
 #[tauri::command]
 pub fn update_agent_settings(
     agent: String,

@@ -58,5 +58,8 @@ AGENTS.md
 # Agent reference repos (local only)
 .agent-reference/
 
+# Harness: local Claude Code screenshots / scratch dir
+.harness/
+
 # Unrelated binaries
 forget_ptr
