@@ -8,6 +8,7 @@
     EVT_PROJECT_CHANGED,
     EVT_MEMORY_SELECT,
     EVT_MEMORY_FILE_SELECTED,
+    EVT_MEMORY_FILE_SAVED,
     EVT_FILE_DIRTY,
   } from "$lib/utils/bus-events";
   import Button from "$lib/components/Button.svelte";
@@ -303,7 +304,7 @@
       savedContent = content;
       memoryStore.setSavedContent(content);
       // Notify layout to refresh candidates (updates exists status in sidebar)
-      window.dispatchEvent(new Event("ocv:memory-file-saved"));
+      window.dispatchEvent(new Event(EVT_MEMORY_FILE_SAVED));
       showToast(t("memory_saved"), "success");
     } catch (e) {
       error = String(e);

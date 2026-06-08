@@ -80,7 +80,7 @@
     ) => void | Promise<void>;
     /** ExitPlanMode "clear context" handler. */
     onExitPlanClearContext?: () => void | Promise<void>;
-    /** ExitPlanMode "bypass" handler 鈥?sets bypassPermissions for current run only. */
+    /** ExitPlanMode "bypass" handler --sets bypassPermissions for current run only. */
     onExitPlanBypass?: () => void | Promise<void>;
     /** Background task notifications map (keyed by task_id, matched via tool_use_id). */
     taskNotifications?: Map<string, TaskNotificationItem>;
@@ -90,7 +90,7 @@
     latestPlanTool?: boolean;
     /** Whether generic tool permissions are handled by the floating PermissionPanel. */
     showPermissionInPanel?: boolean;
-    /** Click on Edit/Write/Read tool card's file path 鈫?open preview in right panel. */
+    /** Click on Edit/Write/Read tool card's file path ->open preview in right panel. */
     onPreviewFile?: (path: string) => void;
     /** Whether this is the last tool in the timeline (for reviewing phase detection). */
     isLastTool?: boolean;
@@ -111,7 +111,7 @@
   let userExpanded = $state<boolean | null>(null);
   let submitting = $state(false);
 
-  // 鈹€鈹€ Lazy loading for truncated tool results 鈹€鈹€
+  // ── Lazy loading for truncated tool results ──
   let lazyResult = $state<Record<string, unknown> | null>(null);
   let lazyLoading = $state(false);
   let lazyFailed = $state(false);
@@ -138,9 +138,9 @@
     lazyLoading = true;
     fetchToolResult(runId, tool.tool_use_id)
       .then((r) => {
-        if (reqId !== lazyReqId) return; // stale 鈥?component switched/collapsed
+        if (reqId !== lazyReqId) return; // stale --component switched/collapsed
         lazyResult = r;
-        if (!r) lazyFailed = true; // not found 鈫?terminal state
+        if (!r) lazyFailed = true; // not found ->terminal state
       })
       .catch(() => {
         if (reqId !== lazyReqId) return;
@@ -152,18 +152,12 @@
   });
 
   function retryLazyLoad() {
-    lazyFailed = false; // reset 鈥?effect will re-trigger
+    lazyFailed = false; // reset --effect will re-trigger
   }
-  let multiChecked: Record<string, boolean> = $state({});
-  // Per-question answers for multi-question AskUserQuestion
-  let questionAnswers: Record<string, string> = $state({});
-  // Per-question "Other" mode state
-  let otherActive: Record<string, boolean> = $state({});
-  let otherText: Record<string, string> = $state({});
   // ExitPlanMode "keep planning" feedback text
   let planFeedback = $state("");
 
-  // Reset submitting when tool status changes (e.g. permission_prompt 鈫?error/permission_denied)
+  // Reset submitting when tool status changes (e.g. permission_prompt ->error/permission_denied)
   $effect(() => {
     void tool.status;
     submitting = false;
@@ -172,7 +166,7 @@
   let isAgentLike = $derived(tool.tool_name === "Agent" || tool.tool_name === "Task");
   let isAsk = $derived(tool.tool_name === "AskUserQuestion");
 
-  // 鈹€鈹€ View mode: determine if this tool card should be visible 鈹€鈹€
+  // ── View mode: determine if this tool card should be visible ──
   let shouldShowInMode = $derived.by(() => {
     if (shouldHideToolCards(processVisibility) && !shouldMountFullToolCardInOutputMode(tool)) {
       return false;
@@ -201,7 +195,7 @@
   });
 
   // Auto-expand when input is streaming in (running + has input data)
-  // Skip Agent/Task 鈥?their input (full prompt) is too large to auto-expand.
+  // Skip Agent/Task --their input (full prompt) is too large to auto-expand.
   let isInputStreaming = $derived(
     tool.status === "running" &&
       !isAsk &&
@@ -277,7 +271,7 @@
   );
 
   // Detect if detail looks like an absolute file path (truncate from the front)
-  // Plan labels are not paths 鈥?skip RTL and path truncation for them.
+  // Plan labels are not paths --skip RTL and path truncation for them.
   let isPathLikeDetail = $derived(!planLabel && isAbsolutePath(detail));
 
   // For Bash commands, show description (preferred) or truncated command (fallback)
@@ -311,26 +305,6 @@
   );
 
   // AskUserQuestion detection
-  // Denied detection: explicit permission_denied status, OR error with no selected option
-  // (handles old snapshots where finalizer overwrote permission_denied 鈫?error)
-  let isAskDenied = $derived.by(() => {
-    if (!isAsk) return false;
-    if (tool.status === "permission_denied") return true;
-    // Fallback: error status + no option selected = denied/interrupted
-    if (tool.status === "error") {
-      const opts = parsedQuestions[0]?.options.map((o) => o.label) ?? [];
-      const ansText = extractOutputText(tool.output);
-      const ansSet = new Set(
-        ansText
-          .split(", ")
-          .map((s) => s.trim())
-          .filter(Boolean),
-      );
-      return !opts.some((o) => ansSet.has(o));
-    }
-    return false;
-  });
-
   // Parse ALL questions from the input (supports multi-question)
   interface ParsedOption {
     label: string;
@@ -384,69 +358,8 @@
     return [];
   });
 
-  // Backward-compat: first question's text, options, multiSelect (used by existing templates)
+  // Backward-compat: first question's text (used by template condition)
   let askQuestion = $derived(parsedQuestions[0]?.question ?? "");
-  // askOptions: string[] for backward-compat (non-permission mode, multiSelect tracking, done state)
-  let askOptions = $derived(parsedQuestions[0]?.options.map((o) => o.label) ?? ([] as string[]));
-  let isMultiSelect = $derived(parsedQuestions[0]?.multiSelect ?? false);
-  let hasMultipleQuestions = $derived(parsedQuestions.length > 1);
-
-  // Track how many questions are answered (for multi-question submit)
-  let allQuestionsAnswered = $derived(
-    parsedQuestions.length > 0 && parsedQuestions.every((q) => !!questionAnswers[q.question]),
-  );
-
-  // Output text (used by AskUserQuestion answer display)
-  let outputText = $derived(extractOutputText(tool.output));
-
-  // All answers for AskUserQuestion (supports multi-question via tool_use_result.answers)
-  let askAnswersMap = $derived.by((): Record<string, string> => {
-    if (!isAsk) return {};
-    // Primary: structured answers from tool_use_result (stream-json mode with updatedInput)
-    const tur = tool.tool_use_result as Record<string, unknown> | undefined;
-    if (tur?.answers && typeof tur.answers === "object") {
-      return tur.answers as Record<string, string>;
-    }
-    // Fallback: single answer from output
-    if (tool.output) {
-      const a = (tool.output as Record<string, unknown>).answer;
-      if (typeof a === "string" && askQuestion) return { [askQuestion]: a };
-    }
-    // Fallback: parse from output text
-    if (outputText && askQuestion) return { [askQuestion]: outputText };
-    return {};
-  });
-
-  // Annotations map for "Other" free text (from tool_use_result.annotations)
-  let askAnnotationsMap = $derived.by((): Record<string, string> => {
-    if (!isAsk) return {};
-    const tur = tool.tool_use_result as Record<string, unknown> | undefined;
-    if (tur?.annotations && typeof tur.annotations === "object") {
-      const ann = tur.annotations as Record<string, unknown>;
-      const result: Record<string, string> = {};
-      for (const [q, v] of Object.entries(ann)) {
-        if (v && typeof v === "object" && "notes" in (v as Record<string, unknown>)) {
-          const notes = (v as Record<string, unknown>).notes;
-          if (typeof notes === "string") result[q] = notes;
-        }
-      }
-      return result;
-    }
-    return {};
-  });
-
-  // Backward-compat: first question's answer (for single-question display)
-  let askAnswer = $derived(askQuestion ? (askAnswersMap[askQuestion] ?? "") : "");
-  // Set of selected answers for matching (handles "A, B, C" multi-select format)
-  let askAnswerSet = $derived.by(() => {
-    if (!askAnswer) return new Set<string>();
-    return new Set(
-      askAnswer
-        .split(", ")
-        .map((s) => s.trim())
-        .filter(Boolean),
-    );
-  });
 
   // Duration display
   let durationLabel = $derived(tool.duration_ms != null ? formatDuration(tool.duration_ms) : "");
@@ -484,9 +397,9 @@
           return `${nf} file${nf !== 1 ? "s" : ""}, ${nl} match${nl !== 1 ? "es" : ""}`;
         return `${nf} file${nf !== 1 ? "s" : ""}`;
       }
-      // Edit: patch line count 鈥?skip expensive lines traversal when collapsed
+      // Edit: patch line count --skip expensive lines traversal when collapsed
       if ("structuredPatch" in tur) {
-        // Backend pre-computed counts (summary mode 鈥?lines array stripped)
+        // Backend pre-computed counts (summary mode --lines array stripped)
         if ("_patchAdded" in tur || "_patchRemoved" in tur) {
           return `+${(tur._patchAdded as number) ?? 0} -${(tur._patchRemoved as number) ?? 0}`;
         }
@@ -541,7 +454,7 @@
         return `${n} item${n !== 1 ? "s" : ""}`;
       }
     }
-    // Fallback: count output lines 鈥?only when expanded (expensive split)
+    // Fallback: count output lines --only when expanded (expensive split)
     if (expanded) {
       const output = extractOutputText(tool.output);
       if (!output) return "";
@@ -552,89 +465,8 @@
     return "";
   });
 
-  function multiCount(): number {
-    return Object.values(multiChecked).filter(Boolean).length;
-  }
-
-  function toggleMulti(option: string) {
-    multiChecked = { ...multiChecked, [option]: !multiChecked[option] };
-  }
-
-  async function handleAnswer(answer: string) {
-    if (submitting) return;
-    submitting = true;
-    try {
-      onAnswer?.(answer);
-    } catch {
-      submitting = false;
-    }
-  }
-
-  function handleAskPermissionAllow(answer: string) {
-    if (submitting || !onPermissionRespond || !tool.permission_request_id) return;
-    if (hasMultipleQuestions) {
-      // Multi-question: store answer and wait for all questions
-      questionAnswers[askQuestion] = answer;
-      return;
-    }
-    submitting = true;
-    const answers: Record<string, string> = { [askQuestion]: answer };
-    const updatedInput = { ...tool.input, answers };
-    safePermissionRespond(tool.permission_request_id, "allow", undefined, updatedInput);
-  }
-
-  function submitMultiSelectPermission() {
-    if (submitting || !onPermissionRespond || !tool.permission_request_id) return;
-    let selected = Object.keys(multiChecked).filter((k) => multiChecked[k]);
-    const otherVal = otherActive[askQuestion] && otherText[askQuestion]?.trim();
-    if (otherVal) selected = [...selected, otherVal];
-    if (selected.length === 0) return;
-    submitting = true;
-    const answers: Record<string, string> = { [askQuestion]: selected.join(", ") };
-    const updatedInput = { ...tool.input, answers };
-    safePermissionRespond(tool.permission_request_id, "allow", undefined, updatedInput);
-  }
-
-  // Multi-question: select answer for a specific question
-  function selectQuestionAnswer(questionText: string, answer: string) {
-    questionAnswers[questionText] = answer;
-  }
-
-  // Multi-question: submit all answers at once
-  function submitAllQuestionAnswers() {
-    if (submitting || !onPermissionRespond || !tool.permission_request_id) return;
-    if (!allQuestionsAnswered) return;
-    submitting = true;
-    const annotations: Record<string, { notes: string }> = {};
-    for (const [q, ans] of Object.entries(questionAnswers)) {
-      if (ans === "Other" && otherText[q]?.trim()) {
-        annotations[q] = { notes: otherText[q].trim() };
-      }
-    }
-    const updatedInput = {
-      ...tool.input,
-      answers: { ...questionAnswers },
-      ...(Object.keys(annotations).length > 0 ? { annotations } : {}),
-    };
-    safePermissionRespond(tool.permission_request_id, "allow", undefined, updatedInput);
-  }
-
-  // Single-select "Other" submit (permission mode)
-  function handleAskPermissionOther(questionText: string) {
-    if (submitting || !onPermissionRespond || !tool.permission_request_id) return;
-    const text = (otherText[questionText] ?? "").trim();
-    if (!text) return;
-    submitting = true;
-    const answers: Record<string, string> = { [questionText]: "Other" };
-    const annotations: Record<string, { notes: string }> = {
-      [questionText]: { notes: text },
-    };
-    const updatedInput = { ...tool.input, answers, annotations };
-    safePermissionRespond(tool.permission_request_id, "allow", undefined, updatedInput);
-  }
-
-  // Wrapper: IPC success 鈫?submitting reset by $effect(tool.status);
-  // IPC failure 鈫?parent re-throws 鈫?catch unlocks immediately.
+  // Wrapper: IPC success ->submitting reset by $effect(tool.status);
+  // IPC failure ->parent re-throws ->catch unlocks immediately.
   async function safePermissionRespond(
     ...args: Parameters<NonNullable<typeof onPermissionRespond>>
   ) {
@@ -962,7 +794,7 @@
             {/if}
           </div>
         {:else if showPermissionInPanel && tool.status === "permission_prompt" && tool.permission_request_id && tool.tool_name !== "AskUserQuestion" && tool.tool_name !== "ExitPlanMode"}
-          <!-- Permission handled by floating panel 鈥?show lightweight placeholder -->
+          <!-- Permission handled by floating panel --show lightweight placeholder -->
           <div class="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground/60">
             <Spinner
               size="xxs"
