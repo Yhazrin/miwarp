@@ -28,8 +28,9 @@
   import { IS_WEBKIT } from "$lib/utils/platform";
 
   let {
-    /** Off when reading history — cv-auto placeholder heights cause scroll jitter on WebKit. */
-    contentVisibilityEnabled = false,
+    /** v1.0.6 / 3.1: enabled by default — browser skips off-screen rendering.
+     *  WebKit excluded due to scroll jitter with placeholder heights. */
+    contentVisibilityEnabled = true,
     visibleTimeline,
     store,
     burstCollapse,
@@ -105,6 +106,7 @@
       data-entry-id={entry.id}
       class:cv-auto={useCvAuto}
       class="group/msg"
+      style={useCvAuto ? "contain-intrinsic-block-size: 80px" : undefined}
       class:opacity-40={lastClearSepId !== null &&
         (timelineIdIndex.get(entry.id) ?? 0) < (timelineIdIndex.get(lastClearSepId) ?? 0)}
     >
