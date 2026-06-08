@@ -12,6 +12,8 @@
   import EmptyState from "$lib/components/EmptyState.svelte";
   import ContextHistoryPanel from "$lib/components/ContextHistoryPanel.svelte";
   import WorkspaceContextPanel from "$lib/components/WorkspaceContextPanel.svelte";
+  import AgentTaskStack from "$lib/components/AgentTaskStack.svelte";
+  import CodexProgressPanel from "$lib/components/CodexProgressPanel.svelte";
   import FilesPanel from "$lib/components/FilesPanel.svelte";
   import FilePreviewPane from "$lib/components/FilePreviewPane.svelte";
   import PreviewPanel from "$lib/components/PreviewPanel.svelte";
@@ -1025,6 +1027,12 @@
             onSwitchToActivity={() => (activeTab = "tools")}
             onSwitchToFiles={() => (activeTab = "files")}
           />
+          <!-- v1.0.6 / 4.8: Agent task stack (compact progress view) -->
+          {#if runId}
+            <div class="px-3 pb-2">
+              <AgentTaskStack {runId} />
+            </div>
+          {/if}
         </div>
       {/if}
       {#if mountedTabs.has("tasks")}
@@ -1034,6 +1042,10 @@
             ? 'visible'
             : 'hidden'}; pointer-events: {activeTab === 'tasks' ? 'auto' : 'none'};"
         >
+          <!-- v1.0.6 / 5.2: Codex Progress panel (todo tracking) -->
+          <div class="border-b border-border/30">
+            <CodexProgressPanel {runId} />
+          </div>
           <!-- Background tasks panel -->
           <div class="flex-1 overflow-y-auto scrollbar-hide p-4">
             {#if backgroundTasks.size === 0}

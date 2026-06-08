@@ -14,6 +14,7 @@
     copyToClipboard,
   } from "$lib/utils/tool-rendering";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
+  import LinkCard from "$lib/components/LinkCard.svelte";
   import TeamToolDetail from "$lib/components/TeamToolDetail.svelte";
   import { hljs } from "$lib/utils/hljs-init";
 
@@ -1065,15 +1066,7 @@
         {#each webSearchResult.results as entry}
           {#if typeof entry !== "string" && entry.content}
             {#each entry.content as link}
-              <a
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="block text-xs text-miwarp-status-info hover:text-miwarp-status-info hover:underline truncate"
-              >
-                {link.title}
-                <span class="text-muted-foreground text-[10px] ml-1">{link.url}</span>
-              </a>
+              <LinkCard title={link.title} url={link.url} />
             {/each}
           {/if}
         {/each}

@@ -116,6 +116,7 @@
   import ToastHost from "$lib/components/ToastHost.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
+  import MemorySidebarGroup from "$lib/components/MemorySidebarGroup.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import {
     t,
@@ -2838,78 +2839,14 @@
                   {/if}
                 </ProjectFolderItem>
               {/each}
-              <!-- Global scope (same style as project folders, globe icon) -->
-              {#if memoryScopeGlobal.length > 0}
-                <div class="mb-0.5">
-                  <button type="button"
-                    class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-                    onclick={() => toggleMemoryScope("global")}
-                  >
-                    <svg
-                      class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform duration-150 {memoryScopeExpanded[
-                        'global'
-                      ]
-                        ? 'rotate-90'
-                        : ''}"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"><path d="M9 18l6-6-6-6" /></svg
-                    >
-                    <!-- Globe icon -->
-                    <svg
-                      class="h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      ><circle cx="12" cy="12" r="10" /><path d="M2 12h20" /><path
-                        d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
-                      /></svg
-                    >
-                    <span class="truncate">{t("memory_tabGlobal")}</span>
-                  </button>
-                  {#if memoryScopeExpanded["global"]}
-                    <div class="pl-3">
-                      {#each filterVisibleCandidates(memoryScopeGlobal, true, memorySelectedFile) as file}
-                        <button type="button"
-                          class="flex w-full items-center gap-1.5 py-1 pl-4 pr-3 text-xs transition-colors
-                          {memorySelectedFile === file.path
-                            ? 'bg-sidebar-accent text-sidebar-foreground'
-                            : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
-                          onclick={() => selectMemoryFile(file)}
-                          title={file.path}
-                        >
-                          <svg
-                            class="h-3 w-3 shrink-0 {file.exists
-                              ? 'text-miwarp-status-info'
-                              : 'text-muted-foreground/40'}"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            ><path
-                              d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"
-                            /><path d="M14 2v4a2 2 0 0 0 2 2h4" /></svg
-                          >
-                          <span class="min-w-0 truncate">{file.label}</span>
-                          {#if !file.exists}
-                            <span class="ml-auto text-[10px] text-muted-foreground shrink-0"
-                              >{t("memory_new")}</span
-                            >
-                          {/if}
-                        </button>
-                      {/each}
-                    </div>
-                  {/if}
-                </div>
-              {/if}
+              <!-- Global scope (MemorySidebarGroup) -->
+              <MemorySidebarGroup
+                candidates={memoryScopeGlobal}
+                selectedFile={memorySelectedFile}
+                loading={memoryLoading}
+                bind:expanded={memoryScopeExpanded}
+                onSelectFile={selectMemoryFile}
+              />
 
               <!-- Open folder button -->
               <button type="button"

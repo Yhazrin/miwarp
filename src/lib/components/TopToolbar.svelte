@@ -1,11 +1,22 @@
 <script lang="ts">
   /**
-   * v1.0.6 / 5.1: top toolbar with collapsible row 1 (5→11 icons) and
-   * a context capsule on row 2. State is persisted via the parent
-   * (which calls the localStorage adapter `ocv:topbar.collapsed`).
+   * v1.0.6 / 5.1: Top toolbar with collapsible layout.
+   *
+   * Collapsed: 4 core icons centered.
+   * Expanded:  core stays centered; left/right groups flank with dividers.
+   *
+   *  ┌─────────────────────────────────────────────┐
+   *  │  [files] [memory] [history]  ┃  [+] [📂] [🤖] [⚡]  ┃  [✓] [⏰] [📦] [⚙]  [▼]  │
+   *  └─────────────────────────────────────────────┘
+   *                 left           ┃       core       ┃       right       toggle
    */
   import { goto } from "$app/navigation";
-  import { COLLAPSED_VISIBLE_COUNT, TOOLBAR_ICONS, type ToolbarIconId } from "$lib/config/toolbar-icons";
+  import {
+    CORE_ICONS,
+    TOOLBAR_GROUPS,
+    type ToolbarIconDef,
+    type ToolbarIconId,
+  } from "$lib/config/toolbar-icons";
   import Icon from "./Icon.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import type { MessageKey } from "$lib/i18n/types";
@@ -17,10 +28,6 @@
     collapsed?: boolean;
     contextCapsule?: import("svelte").Snippet | null;
   } = $props();
-
-  const visible = $derived(
-    collapsed ? TOOLBAR_ICONS.slice(0, COLLAPSED_VISIBLE_COUNT) : TOOLBAR_ICONS,
-  );
 
   function handleClick(id: ToolbarIconId, href: string | null) {
     if (id === "new-session") {
@@ -41,34 +48,104 @@
   function lk(key: string): string {
     return t(key as MessageKey);
   }
+
+  function renderIcon(def: ToolbarIconDef) {
+    return def;
+  }
 </script>
 
 <div class="mi-topbar flex flex-col gap-1.5">
-  <div class="flex flex-wrap items-center gap-1">
-    {#each visible as icon (icon.id)}
+  {#if collapsed}
+    <!-- Collapsed: 4 core icons centered + toggle on the right -->
+    <div class="flex items-center justify-center gap-1">
+      {#each CORE_ICONS as icon (icon.id)}
+        <button
+          type="button"
+          class="mi-topbar-btn"
+          title={lk(icon.labelKey)}
+          aria-label={lk(icon.labelKey)}
+          onclick={() => handleClick(icon.id, icon.href)}
+        >
+          <Icon name={icon.icon} size="sm" />
+        </button>
+      {/each}
       <button
         type="button"
-        class="mi-topbar-btn"
-        title={lk(icon.labelKey)}
-        aria-label={lk(icon.labelKey)}
-        onclick={() => handleClick(icon.id, icon.href)}
+        class="mi-topbar-btn ml-2"
+        title={lk("toolbar_expand")}
+        aria-label={lk("toolbar_expand")}
+        aria-expanded={false}
+        onclick={toggle}
       >
-        <Icon name={icon.icon} size="sm" />
+        <span class="inline-flex transition-transform duration-150">
+          <Icon name="chevron-down" size="sm" />
+        </span>
       </button>
-    {/each}
-    <button
-      type="button"
-      class="mi-topbar-btn ml-auto"
-      title={collapsed ? lk("toolbar_expand") : lk("toolbar_collapse")}
-      aria-label={collapsed ? lk("toolbar_expand") : lk("toolbar_collapse")}
-      aria-expanded={!collapsed}
-      onclick={toggle}
-    >
-      <span class="inline-flex transition-transform duration-150" class:rotate-180={!collapsed}>
-        <Icon name="chevron-down" size="sm" />
-      </span>
-    </button>
-  </div>
+    </div>
+  {:else}
+    <!-- Expanded: left ┃ core ┃ right ┃ toggle -->
+    <div class="flex items-center gap-1">
+      <!-- Left group -->
+      {#each TOOLBAR_GROUPS.left as icon (icon.id)}
+        <button
+          type="button"
+          class="mi-topbar-btn"
+          title={lk(icon.labelKey)}
+          aria-label={lk(icon.labelKey)}
+          onclick={() => handleClick(icon.id, icon.href)}
+        >
+          <Icon name={icon.icon} size="sm" />
+        </button>
+      {/each}
+
+      <!-- Divider -->
+      <div class="mx-0.5 h-4 w-px shrink-0 bg-border/50" aria-hidden="true"></div>
+
+      <!-- Core group (stays in center position) -->
+      {#each CORE_ICONS as icon (icon.id)}
+        <button
+          type="button"
+          class="mi-topbar-btn"
+          title={lk(icon.labelKey)}
+          aria-label={lk(icon.labelKey)}
+          onclick={() => handleClick(icon.id, icon.href)}
+        >
+          <Icon name={icon.icon} size="sm" />
+        </button>
+      {/each}
+
+      <!-- Divider -->
+      <div class="mx-0.5 h-4 w-px shrink-0 bg-border/50" aria-hidden="true"></div>
+
+      <!-- Right group -->
+      {#each TOOLBAR_GROUPS.right as icon (icon.id)}
+        <button
+          type="button"
+          class="mi-topbar-btn"
+          title={lk(icon.labelKey)}
+          aria-label={lk(icon.labelKey)}
+          onclick={() => handleClick(icon.id, icon.href)}
+        >
+          <Icon name={icon.icon} size="sm" />
+        </button>
+      {/each}
+
+      <!-- Toggle (collapse) -->
+      <button
+        type="button"
+        class="mi-topbar-btn ml-auto"
+        title={lk("toolbar_collapse")}
+        aria-label={lk("toolbar_collapse")}
+        aria-expanded={true}
+        onclick={toggle}
+      >
+        <span class="inline-flex rotate-180 transition-transform duration-150">
+          <Icon name="chevron-down" size="sm" />
+        </span>
+      </button>
+    </div>
+  {/if}
+
   {#if contextCapsule}
     <div class="mi-topbar-capsule-row w-full">
       {@render contextCapsule()}
