@@ -33,6 +33,7 @@ import {
   assertTransition,
 } from "./types";
 import { getEventMiddleware } from "./event-middleware";
+import type { ReduceCtx } from "./reducers/types";
 import { updateInstalledVersion, getCliCommands } from "./cli-info.svelte";
 import * as snapshotCache from "$lib/utils/snapshot-cache";
 import { getTransport } from "$lib/transport";
@@ -111,30 +112,7 @@ function eventTsMs(ev: BusEvent): number {
 
 // ── Internal batch state (plain objects, no reactivity) ──
 
-interface ReduceCtx {
-  tl: TimelineEntry[];
-  he: HookEvent[];
-  streamText: string;
-  thinkingText: string;
-  model: string;
-  phase: SessionPhase;
-  usage: UsageState;
-  error: string;
-  seenMessageIds: Set<string>;
-  seenToolIds: Set<string>;
-  /** Track run.status changes from non-terminal run_state events (running/idle). */
-  runStatus: string | null;
-  /** New session_id from session_init (e.g. fork generates a new CLI session). */
-  sessionId: string | null;
-  /** Whether this run uses stream-json mode (skip tools mirror writes). */
-  isStream: boolean;
-  /** Per-turn usage snapshots. */
-  turnUsages: TurnUsage[];
-  /** tool_use_id → tl[] index (only tool entries, first-match semantics). */
-  toolTlIndex: Map<string, number>;
-  /** tool_use_id → he[] index (only HookEvent entries with tool_use_id). */
-  toolHeIndex: Map<string, number>;
-}
+// ReduceCtx is imported from ./reducers/types
 
 // ── Helpers ──
 
