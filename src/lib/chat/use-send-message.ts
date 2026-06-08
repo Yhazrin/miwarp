@@ -149,13 +149,14 @@ export function createSendMessage(ctx: SendMessageContext) {
         loadCliVersionInfo();
       } else if (
         store.useStreamSession &&
-        !store.sessionAlive &&
-        store.run.session_id
+        // v1.0.6: explicit cached check MUST come before sessionAlive —
+        // cached is in SESSION_ALIVE_PHASES so sessionAlive===true, but
+        // we still need to resume the CLI before sending.
+        (store.phase === "cached" || (!store.sessionAlive && store.run.session_id))
       ) {
         dbg("chat", "auto-resume on send", {
           runId: store.run.id,
           sessionId: store.run.session_id,
-          // v1.0.6 1.4: lazy resume — cached snapshot loaded but CLI not spawned yet
           fromCached: store.phase === "cached",
         });
         if (slashCmd) {
