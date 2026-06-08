@@ -1,11 +1,5 @@
 import type { SessionStore } from "$lib/stores/session-store.svelte";
-
-export interface ForkOverlayData {
-  active: boolean;
-  sourceRunId: string;
-  startedAt: number;
-  error: string | null;
-}
+import type { ForkOverlayState } from "$lib/chat/use-fork-lifecycle";
 
 export interface ForkOverlayContext {
   store: SessionStore;
@@ -13,15 +7,15 @@ export interface ForkOverlayContext {
 }
 
 export interface ForkOverlayHandle {
-  forkOverlay: ForkOverlayData | null;
-  setForkOverlay: (v: ForkOverlayData | null) => void;
+  forkOverlay: ForkOverlayState | null;
+  setForkOverlay: (v: ForkOverlayState | null) => void;
   forkElapsed: number;
 }
 
 export function createForkOverlay(ctx: ForkOverlayContext): ForkOverlayHandle {
   const { store, t } = ctx;
 
-  let forkOverlay = $state<ForkOverlayData | null>(null);
+  let forkOverlay = $state<ForkOverlayState | null>(null);
   let forkElapsed = $state(0);
 
   // Fork overlay timer: tick elapsed seconds while active
@@ -49,7 +43,7 @@ export function createForkOverlay(ctx: ForkOverlayContext): ForkOverlayHandle {
     get forkOverlay() {
       return forkOverlay;
     },
-    setForkOverlay: (v: ForkOverlayData | null) => {
+    setForkOverlay: (v: ForkOverlayState | null) => {
       forkOverlay = v;
     },
     get forkElapsed() {

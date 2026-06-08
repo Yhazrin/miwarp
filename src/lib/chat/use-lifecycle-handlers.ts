@@ -41,17 +41,7 @@ import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
 import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
 import { consumeChatBootstrap } from "$lib/chat/chat-bootstrap-cache";
 import { disarmChatSettingsHop, isChatSettingsHop } from "$lib/utils/chat-settings-nav";
-
-// ── Inline type (originally from use-chat-actions.ts) ──
-
-export interface BtwStateData {
-  active: boolean;
-  btwId: string | null;
-  question: string;
-  answer: string;
-  error: string | null;
-  loading: boolean;
-}
+import type { BtwStateData } from "$lib/chat/use-chat-actions";
 
 // ── Component ref types (minimum interface needed by lifecycle handlers) ──
 
