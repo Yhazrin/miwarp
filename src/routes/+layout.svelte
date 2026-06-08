@@ -1723,6 +1723,22 @@
   const mascotEnabled = $derived(settings?.mascot_enabled !== false);
   const uiZoom = $derived(clampUiZoom(settings?.ui_zoom));
 
+  /** v1.0.6 follow-up: native window-level glass material for the whole
+   *  left sidebar (icon rail + content panel + session list). When false
+   *  the sidebar falls back to the legacy opaque `glass-sidebar` look. */
+  const nativeWindowGlassEnabled = $derived(settings?.native_window_glass_enabled !== false);
+
+  // Toggle an html-level class so app.css can flip body/html to transparent
+  // when the native glass effect is on. The right pane keeps its own
+  // `miwarp-main-surface` opaque background.
+  $effect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.classList.toggle(
+      "native-glass-enabled",
+      nativeWindowGlassEnabled,
+    );
+  });
+
   /** Left inset for TopWindowDrag — matches titlebar action buttons after traffic lights. */
   const windowChromeLeftInset = $derived.by(() => {
     const z = uiZoom;
@@ -2137,7 +2153,10 @@
 <div class="flex w-screen overflow-hidden" style="height: 100vh; height: 100dvh; {statusColorVars}">
   <!-- Sidebar: Icon Rail + Content Panel -->
   <aside
-    class="sidebar-container shrink-0 glass-sidebar text-sidebar-foreground"
+    class="sidebar-container shrink-0 text-sidebar-foreground"
+    class:glass-sidebar={!nativeWindowGlassEnabled}
+    class:native-glass-sidebar={nativeWindowGlassEnabled}
+    class:native-glass-sidebar-disabled={!nativeWindowGlassEnabled}
     class:sidebar-collapsed={sidebarLogicallyCollapsed}
     class:sidebar-no-icon-rail={!iconRailEnabled}
     class:sidebar-no-transition={sidebarResizing}
@@ -2145,7 +2164,7 @@
   >
     {#if iconRailEnabled}
     <!-- A. Icon Rail -->
-    <div class="flex w-[44px] flex-col items-center bg-[hsl(var(--miwarp-bg-deepest)/0.88)]">
+    <div class="sidebar-icon-rail flex w-[44px] flex-col items-center">
       <!-- Rail logo (OC) -->
       <div
         class="relative w-full shrink-0 h-[var(--miwarp-titlebar-band)]"
@@ -3098,8 +3117,10 @@
     ></div>
     <VersionMismatchBanner />
     <UpdateBanner />
-    <!-- Page content: overflow-hidden so route pages own scrolling (chat keeps input in normal flow). -->
-    <main class="flex-1 min-h-0 overflow-hidden flex flex-col">
+    <!-- Page content: overflow-hidden so route pages own scrolling (chat keeps input in normal flow).
+         `miwarp-main-surface` keeps the right pane opaque so the native window
+         glass on the left doesn't bleed through to the chat. -->
+    <main class="miwarp-main-surface flex-1 min-h-0 overflow-hidden flex flex-col">
       {#key $page.url.pathname}
         <div class="flex-1 min-h-0 flex flex-col" transition:fade={{ duration: 150 }}>
           {@render children()}

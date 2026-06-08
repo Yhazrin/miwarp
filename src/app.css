@@ -222,6 +222,122 @@ html.theme-transitioning .theme-fade {
     box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.08);
   }
 
+  /* ── Native window glass sidebar (v1.0.6 follow-up) ──
+   *
+   * The whole <aside.sidebar-container> becomes a transparent layer that
+   * shows the OS-blurred desktop behind it (macOS vibrancy, Windows mica
+   * or acrylic). The icon rail and the content panel (search, project
+   * tree, session list) are all kept transparent — only hover/selected
+   * items get a translucent tint so text stays readable.
+   */
+  .native-glass-sidebar {
+    position: relative;
+    background: transparent !important;
+    border-right: 1px solid hsl(var(--miwarp-glass-border) / 0.35);
+    box-shadow:
+      inset 1px 0 0 hsl(0 0% 100% / 0.05),
+      inset -1px 0 0 hsl(0 0% 0% / 0.08);
+    isolation: isolate;
+    overflow: hidden;
+  }
+  .native-glass-sidebar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    /* Faint dark tint to keep sidebar text readable over busy wallpapers. */
+    background: linear-gradient(
+      180deg,
+      hsl(var(--miwarp-bg-deep) / 0.32) 0%,
+      hsl(var(--miwarp-bg-deepest) / 0.42) 100%
+    );
+  }
+  /* Edge highlight on top to mimic native material */
+  .native-glass-sidebar::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    pointer-events: none;
+    z-index: 1;
+    background: linear-gradient(
+      90deg,
+      hsl(0 0% 100% / 0) 0%,
+      hsl(0 0% 100% / 0.18) 50%,
+      hsl(0 0% 100% / 0) 100%
+    );
+  }
+  .native-glass-sidebar > * {
+    position: relative;
+    z-index: 1;
+  }
+  /* Icon rail: fully transparent — no solid panel behind the icons. */
+  .native-glass-sidebar .sidebar-icon-rail {
+    background: transparent !important;
+  }
+  /* Content panel + nested scrollers: fully transparent so the whole
+     sidebar behaves as one continuous glass surface. */
+  .native-glass-sidebar .sidebar-content-panel,
+  .native-glass-sidebar .sidebar-inner,
+  .native-glass-sidebar .sidebar-scroll {
+    background: transparent !important;
+  }
+  /* Search input: subtle translucent pill so it still reads on busy
+     wallpapers. */
+  .native-glass-sidebar .sidebar-content-panel input[type="text"] {
+    background: hsl(var(--miwarp-bg-surface) / 0.55) !important;
+    border-color: hsl(var(--miwarp-glass-border) / 0.45) !important;
+  }
+  /* Selected / hover items inside the sidebar: use translucent tints
+     instead of solid backgrounds so the glass shows through. */
+  .native-glass-sidebar .sidebar-content-panel a[data-active="true"],
+  .native-glass-sidebar .sidebar-content-panel button[data-active="true"],
+  .native-glass-sidebar .sidebar-content-panel [data-selected="true"] {
+    background: hsl(var(--primary) / 0.18) !important;
+  }
+  .native-glass-sidebar .sidebar-content-panel a:hover,
+  .native-glass-sidebar .sidebar-content-panel button:hover {
+    background: hsl(var(--miwarp-bg-hover) / 0.55) !important;
+  }
+  /* Icon rail buttons: same translucent tints. The rail contains the
+     primary nav, the locale/theme toggles, and the update badge. */
+  .native-glass-sidebar .sidebar-icon-rail a[data-active="true"],
+  .native-glass-sidebar .sidebar-icon-rail a[aria-current="page"] {
+    background: hsl(var(--primary) / 0.22) !important;
+  }
+  .native-glass-sidebar .sidebar-icon-rail a:hover,
+  .native-glass-sidebar .sidebar-icon-rail button:hover {
+    background: hsl(var(--miwarp-bg-hover) / 0.55) !important;
+  }
+
+  /* Disabled variant — when the user has turned the native effect off we
+     fall back to the legacy opaque `glass-sidebar` look. This class is
+     kept for symmetry so we can override individual children if needed. */
+  .native-glass-sidebar-disabled {
+    background: hsl(var(--miwarp-bg-base));
+  }
+
+  /* Right-side main content surface — always opaque, regardless of
+     whether the native glass is on. Keeps chat / settings / etc. on a
+     solid surface so the wallpaper doesn't bleed through. */
+  .miwarp-main-surface {
+    background: hsl(var(--background));
+    background-image: none;
+  }
+
+  /* When the user has the native window glass effect on, drop the
+     html/body backgrounds so the OS-blurred desktop shows through. The
+     `<main class="miwarp-main-surface">` keeps the right pane solid. */
+  html.native-glass-enabled,
+  html.native-glass-enabled body,
+  html.native-glass-enabled #app-root {
+    background: transparent !important;
+    background-image: none !important;
+  }
+
   /* Elevation system */
   .elevation-1 {
     box-shadow:
@@ -1921,10 +2037,16 @@ pre,
 .perf-performance .glass-panel,
 .perf-performance .glass-card,
 .perf-performance .glass-sidebar,
+.perf-performance .native-glass-sidebar,
 .perf-performance .glass-panel-component {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
+}
+/* Performance fallback for native glass: rely on a solid tinted
+   background (still themed) instead of live blur compositing. */
+.perf-performance .native-glass-sidebar::before {
+  background: hsl(var(--miwarp-bg-deep) / 0.92);
 }
 
 .perf-performance .elevation-1,

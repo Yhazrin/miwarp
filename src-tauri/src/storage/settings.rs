@@ -640,6 +640,9 @@ pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, St
     if let Some(v) = patch.get("cli_auto_sync_import_new") {
         all.user.cli_auto_sync_import_new = v.as_bool().unwrap_or(false);
     }
+    if let Some(v) = patch.get("native_window_glass_enabled") {
+        all.user.native_window_glass_enabled = v.as_bool().unwrap_or(true);
+    }
     if let Some(v) = patch.get("process_visibility").and_then(|v| v.as_str()) {
         if matches!(v, "output" | "guided" | "developer" | "expert") {
             all.user.process_visibility = v.to_string();

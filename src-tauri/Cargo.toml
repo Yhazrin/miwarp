@@ -50,6 +50,7 @@ urlencoding = "2"
 rayon = "1"
 tempfile = "3"
 zip = "2"
+window-vibrancy = "0.6"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

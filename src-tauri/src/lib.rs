@@ -10,6 +10,7 @@ pub mod scheduler;
 pub mod skill_sources;
 pub mod storage;
 pub mod web_server;
+pub mod window_effect;
 
 use agent::adapter::new_actor_session_map;
 use agent::control::CliInfoCache;
@@ -384,6 +385,12 @@ pub fn run() {
                     log::warn!("[app] tray unavailable: {e}, window close = quit");
                 }
             }
+
+            // Apply native window-level blur (vibrancy / mica / acrylic) to the
+            // main window. Honors the `native_window_glass_enabled` user setting.
+            // No-op on Linux. The conf.json `effects` field is also set as a
+            // first-time hint; this runtime call lets us re-apply on toggle.
+            window_effect::apply_for_setting(app.handle());
 
             // Global shortcut plugin — must be registered inside setup() with a handler
             // so the event dispatch loop is properly initialized

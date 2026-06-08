@@ -272,6 +272,9 @@ export interface UserSettings {
   cli_auto_sync_interval_minutes?: number;
   /** Also import newly discovered CLI sessions, not only sync existing imports. */
   cli_auto_sync_import_new?: boolean;
+  /** Enable native window-level glass material for the left sidebar
+   * (macOS vibrancy / Windows mica-acrylic). Default true. */
+  native_window_glass_enabled?: boolean;
   updated_at: string;
 }
 

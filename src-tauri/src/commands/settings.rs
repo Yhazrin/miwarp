@@ -32,13 +32,20 @@ pub fn get_user_settings() -> UserSettings {
 
 #[tauri::command]
 pub async fn update_user_settings(
+    app: tauri::AppHandle,
     patch: serde_json::Value,
     token_ver: tauri::State<'_, crate::SharedTokenVersion>,
     shutdown: tauri::State<'_, crate::WsShutdownSender>,
     live_token: tauri::State<'_, crate::SharedLiveToken>,
 ) -> Result<UserSettings, String> {
     log::debug!("[settings] update_user_settings");
-    update_user_settings_with_rotation(patch, &token_ver, &shutdown, &live_token).await
+    let result =
+        update_user_settings_with_rotation(patch, &token_ver, &shutdown, &live_token).await?;
+    // v1.0.6 follow-up: re-apply native window blur when the user toggles
+    // the glass effect. The dispatch.rs WS path is a no-op for the visual
+    // (only the desktop process owns the window), so we handle it here.
+    crate::window_effect::apply_for_setting(&app);
+    Ok(result)
 }
 
 #[tauri::command]

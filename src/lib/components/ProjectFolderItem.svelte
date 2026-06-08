@@ -576,7 +576,7 @@
                   <span class="truncate flex-1 select-none">{sf.name}</span>
                   {#if sf.conversationCount > 0}
                     <span
-                      class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground select-none"
+                      class="shrink-0 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted/60 px-1 text-[10px] font-medium text-muted-foreground select-none"
                     >
                       {sf.conversationCount}
                     </span>

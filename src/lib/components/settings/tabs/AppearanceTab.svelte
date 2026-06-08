@@ -11,6 +11,7 @@
   import { LOCALE_REGISTRY, getEntry, currentLocale, switchLocale } from "$lib/i18n/index.svelte";
   import type { UserSettings } from "$lib/types";
   import Card from "$lib/components/Card.svelte";
+  import SettingsToggle from "../SettingsToggle.svelte";
   import SettingsDoctorPanel from "../SettingsDoctorPanel.svelte";
   import ThemeCard from "./ThemeCard.svelte";
 
@@ -100,6 +101,19 @@
 
   <!-- Doctor Panel (status at a glance) -->
   <SettingsDoctorPanel {settings} />
+
+  <!-- Window material: native OS blur for the entire left sidebar. -->
+  <Card class="p-6 space-y-4">
+    <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+      {t("settings_appearance_window")}
+    </h2>
+    <SettingsToggle
+      checked={settings?.native_window_glass_enabled !== false}
+      label={t("settings_appearance_nativeWindowGlass")}
+      description={t("settings_appearance_nativeWindowGlassDesc")}
+      onchange={(value) => onSaveGeneralPatch({ native_window_glass_enabled: value })}
+    />
+  </Card>
 
   <!-- Theme editor + background picker (moved from old "theme" tab) -->
   <ThemeCard />

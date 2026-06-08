@@ -343,6 +343,11 @@ pub struct UserSettings {
     /// Periodically sync CLI-imported sessions from ~/.claude transcript files.
     #[serde(default = "default_true")]
     pub cli_auto_sync_enabled: bool,
+    /// v1.0.6 follow-up: enable the native window-level glass material for the
+    /// left sidebar (macOS vibrancy / Windows mica or acrylic). When false the
+    /// sidebar falls back to the existing opaque background.
+    #[serde(default = "default_true")]
+    pub native_window_glass_enabled: bool,
     /// Minutes between automatic CLI sync passes.
     #[serde(default = "default_cli_auto_sync_interval_minutes")]
     pub cli_auto_sync_interval_minutes: u32,
@@ -516,6 +521,7 @@ impl Default for UserSettings {
             icon_rail_enabled: true,
             cli_auto_sync_enabled: true,
             cli_auto_sync_interval_minutes: 5,
+            native_window_glass_enabled: true,
             cli_auto_sync_import_new: false,
             process_visibility: "developer".to_string(),
             visual_performance_mode: "auto".to_string(),
