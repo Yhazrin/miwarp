@@ -25,7 +25,7 @@ if (!cargoMatch || cargoMatch[1] !== expected) {
 }
 
 const lock = readFileSync("src-tauri/Cargo.lock", "utf-8");
-const lockMatch = lock.match(/name = "MiWarp"\nversion = "([^"]*)"/);
+const lockMatch = lock.match(/name = "MiWarp"\r?\nversion = "([^"]*)"/);
 if (!lockMatch || lockMatch[1] !== expected) {
   errors.push(
     `Cargo.lock MiWarp: ${lockMatch?.[1] ?? "missing"} (expected ${expected}) — run: npm run version:sync`,
