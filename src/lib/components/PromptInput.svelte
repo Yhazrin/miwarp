@@ -2252,11 +2252,11 @@
 
   <!-- Unified input container -->
   <div
-    class="overflow-hidden border bg-background/72 backdrop-blur-2xl transition-[border-radius,border-color,box-shadow] duration-200 shadow-[0_4px_24px_rgba(0,0,0,0.10),inset_0_1px_0_hsl(var(--miwarp-glass-border,0_0%_100%)/0.07)] {useCapsuleStrip
+    class="overflow-hidden border border-primary bg-background/72 backdrop-blur-2xl transition-[border-radius,border-color] duration-200 {useCapsuleStrip
       ? 'rounded-full'
       : 'rounded-[1.75rem]'} {btwMode
       ? 'border-miwarp-status-info/80'
-      : 'border-[hsl(var(--miwarp-glass-border,0_0%_100%)/0.1)]'} {pendingPermission
+      : ''} {pendingPermission
       ? 'motion-attention-pulse'
       : ''}"
   >
