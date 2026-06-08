@@ -66,6 +66,16 @@ marked.use({
 
       return `<div class="code-block"${collapsibleAttr}><div class="code-block-header"><span class="code-block-lang">${escapeHtml(displayLang)}</span>${lineBadge}<button class="code-block-copy" data-code-copy>Copy</button></div><pre><code class="hljs language-${escapeHtml(language)}">${highlighted}</code></pre></div>`;
     },
+    // v1.0.6 / 5.4: inject id on headings so TOC anchor links work
+    heading({ text: rawText, depth }: { text: string; depth: number }) {
+      const text = rawText.replace(/<[^>]+>/g, "").trim();
+      const id = text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .slice(0, 80);
+      return `<h${depth} id="${escapeHtml(id)}">${rawText}</h${depth}>`;
+    },
   },
 });
 
@@ -76,7 +86,7 @@ export function renderMarkdown(text: string): string {
       const raw = marked.parse(text);
       if (typeof raw !== "string") return "";
       return DOMPurify.sanitize(raw, {
-        ADD_ATTR: ["class", "target", "data-code-copy", "data-collapsible"],
+        ADD_ATTR: ["class", "target", "data-code-copy", "data-collapsible", "id"],
       });
     },
     { chars: text.length, codeFenceCount: text.match(/```/g)?.length ?? 0 },

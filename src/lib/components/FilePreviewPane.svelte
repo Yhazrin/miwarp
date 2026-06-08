@@ -8,7 +8,9 @@
   import CodeEditor from "$lib/components/CodeEditor.svelte";
   import HighlightedCode from "$lib/components/HighlightedCode.svelte";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
+  import MiMarkdownRenderer from "$lib/components/MiMarkdownRenderer.svelte";
   import { classifyPath, getExtension, isImage, isPreviewable } from "$lib/utils/preview-ext";
+  import { validateInspectorPath } from "$lib/utils/inspector-path";
 
   // ── Props ──
   let {
@@ -104,6 +106,15 @@
 
   // ── Loaders ──
   async function loadPreview(p: string, c: string): Promise<void> {
+    // v1.0.6 / 5.3: path safety check before loading
+    const validation = validateInspectorPath(p, c);
+    if (!validation.valid) {
+      fileError = validation.reason ?? "Path not allowed";
+      fileContent = "";
+      fileLoading = false;
+      return;
+    }
+
     const seq = ++loadSeq;
     fileError = "";
     fileTooLarge = false;
@@ -517,7 +528,12 @@
     {:else if editorMode === "rendered" && kind === "markdown"}
       <div class="absolute inset-0 overflow-y-auto p-4 bg-background">
         {#if fileContent}
-          <MarkdownContent text={fileContent} basePath={path.replace(/[/\\][^/\\]*$/, "")} />
+          <!-- v1.0.6: use MiMarkdownRenderer for document-level rendering (TOC, callout, lightbox) -->
+          <MiMarkdownRenderer
+            text={fileContent}
+            basePath={path.replace(/[/\\][^/\\]*$/, "")}
+            showToc={fileContent.length > 2000}
+          />
         {:else}
           <p class="text-sm text-muted-foreground italic">{t("explorer_emptyFile")}</p>
         {/if}
