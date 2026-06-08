@@ -209,7 +209,7 @@ export function createPermissionHandlers(ctx: PermissionHandlerContext) {
         return;
       }
 
-      await api.interruptSession(runId).catch(() => {});
+      await api.interruptSession(runId).catch((e) => dbg("permission", "interrupt failed (session may have ended):", e));
       await api.stopSession(runId);
       dbg("chat", "ExitPlanMode: session stopped");
 

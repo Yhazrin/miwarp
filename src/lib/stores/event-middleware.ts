@@ -397,7 +397,14 @@ export class EventMiddleware {
     // Dual-bail: RAF for visual cadence, setTimeout as safety net when
     // the tab is backgrounded or WebView2 throttles RAF (Windows power-saving).
     if (typeof requestAnimationFrame !== "undefined") {
-      requestAnimationFrame(() => this._flush());
+      requestAnimationFrame(() => {
+        // Cancel the safety-net timer — RAF fired first
+        if (this._flushTimer !== null) {
+          clearTimeout(this._flushTimer);
+          this._flushTimer = null;
+        }
+        this._flush();
+      });
       this._flushTimer = setTimeout(() => this._flush(), this._BATCH_INTERVAL);
     } else {
       setTimeout(() => this._flush(), this._BATCH_INTERVAL);
@@ -454,9 +461,8 @@ export class EventMiddleware {
     for (const [runId, events] of this._batchBuffer) {
       const store = this._subscriptions.get(runId);
       if (!store) continue;
-      const batch = [...events];
       try {
-        this._applyBufferedEvents(runId, store, batch);
+        this._applyBufferedEvents(runId, store, events);
       } catch (e) {
         dbgWarn("middleware", `flush error for run ${runId}:`, e);
         void this.recoverRunFromDisk(runId, "flush error");

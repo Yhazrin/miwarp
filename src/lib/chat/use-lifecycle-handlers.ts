@@ -723,6 +723,11 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
         ? prev.map((s, i) => (i === existingIdx ? { runId, turnIndex, ts, data } : s))
         : [...prev, { runId, turnIndex, ts, data }];
       contextHistoryMap.set(runId, updated);
+      // Evict oldest runs if map grows beyond cap (keeps last 20 runs)
+      if (contextHistoryMap.size > 20) {
+        const oldest = contextHistoryMap.keys().next().value;
+        if (oldest) contextHistoryMap.delete(oldest);
+      }
       triggerContextHistoryReactivity();
       dbg("chat", "context-snapshot", { turn: turnIndex, pct: data.percentage, replaced });
     });

@@ -109,7 +109,7 @@ export async function readSnapshot(
         got: record.version,
         want: SNAPSHOT_VERSION,
       });
-      deleteSnapshot(runId).catch(() => {});
+      deleteSnapshot(runId).catch((e) => dbg("snapshot", "stale cleanup failed:", e));
       return null;
     }
 
@@ -120,7 +120,7 @@ export async function readSnapshot(
         got: record.runStatus,
         want: expectedStatus,
       });
-      deleteSnapshot(runId).catch(() => {});
+      deleteSnapshot(runId).catch((e) => dbg("snapshot", "stale cleanup failed:", e));
       return null;
     }
 

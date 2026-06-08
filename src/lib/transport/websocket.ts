@@ -94,14 +94,24 @@ export class WsTransport implements Transport {
         }
       };
 
-      // Timeout for initial connection
+      // Timeout for initial connection — flag prevents onclose from triggering
+      // a duplicate reconnect attempt when the timeout fires first.
+      let timedOut = false;
       setTimeout(() => {
         if (ws.readyState === WebSocket.CONNECTING) {
+          timedOut = true;
           ws.close();
           this.connectPromise = null;
           reject(new Error("WebSocket connection timeout"));
         }
       }, 10000);
+
+      // Patch onclose to skip reconnect when timeout already handled it
+      const origOnClose = ws.onclose;
+      ws.onclose = function (ev) {
+        if (timedOut) return; // timeout already rejected + cleaned up
+        origOnClose?.call(ws, ev);
+      };
     });
 
     return this.connectPromise;
@@ -258,12 +268,12 @@ export class WsTransport implements Transport {
         },
       });
 
-      if (timeoutMs > 0) {
-        timer = setTimeout(() => {
-          this.pending.delete(id);
-          reject(new Error(`IPC_TIMEOUT: ${cmd} did not respond in ${timeoutMs}ms`));
-        }, timeoutMs);
-      }
+      // Always set a timeout — prevents pending-entry leaks if server never responds
+      const effectiveTimeout = timeoutMs > 0 ? timeoutMs : 5 * 60 * 1000; // 5 min default
+      timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`IPC_TIMEOUT: ${cmd} did not respond in ${effectiveTimeout}ms`));
+      }, effectiveTimeout);
 
       const message = JSON.stringify({
         id,

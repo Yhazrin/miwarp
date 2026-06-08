@@ -1254,7 +1254,7 @@
 
     void import("$lib/services/sound-feedback-service")
       .then((m) => m.unlockSoundEngine())
-      .catch(() => {});
+      .catch((e) => console.debug("[sound] unlock failed:", e));
 
     const attachments: Attachment[] = regularAtts.map((a) => ({
       name: a.name,

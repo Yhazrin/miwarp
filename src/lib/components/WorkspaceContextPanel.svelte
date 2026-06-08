@@ -161,7 +161,7 @@
 
   // ── Copy single memory item ──
   function copyItem(text: string) {
-    navigator.clipboard.writeText(text).catch(() => {});
+    navigator.clipboard.writeText(text).catch((e) => console.debug("[clipboard] write failed:", e));
   }
 
   // ── Open CLAUDE.md in files tab ──

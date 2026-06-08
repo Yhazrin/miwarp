@@ -190,7 +190,7 @@
         dbg("rewind-modal", "execute success", { degraded: degradedToFull });
         import("$lib/services/sound-feedback-service")
           .then((m) => m.playMiWarpSound("rewind_success"))
-          .catch(() => {});
+          .catch((e) => console.debug("[sound] rewind_success sound failed:", e));
         onSuccess?.({
           runId: runIdAtExec,
           targetContent: selectedAtExec.content,

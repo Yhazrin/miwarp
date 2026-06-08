@@ -340,12 +340,12 @@
       .then((h) => {
         communityHealth = h;
       })
-      .catch(() => {});
+      .catch((e) => console.debug("[plugins] community health load failed:", e));
     searchCommunitySkills("skill", 20)
       .then((r) => {
         communityPopular = r;
       })
-      .catch(() => {});
+      .catch((e) => console.debug("[plugins] community popular load failed:", e));
   });
 
   // Sync project cwd when user switches projects

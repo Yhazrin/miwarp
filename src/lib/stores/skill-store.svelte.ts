@@ -416,9 +416,9 @@ export class SkillStore {
     this.currentExecution = execution;
     this.executions = [...this.executions, execution];
 
+    // Simulate progress for now - in real implementation, this would come from SSE or websocket
+    const progressTimers: ReturnType<typeof setTimeout>[] = [];
     try {
-      // Simulate progress for now - in real implementation, this would come from SSE or websocket
-      const progressTimers: ReturnType<typeof setTimeout>[] = [];
       if (onProgress) {
         onProgress(10, "Initializing skill...");
         progressTimers.push(setTimeout(() => onProgress(30, "Loading dependencies..."), 500));
@@ -435,8 +435,6 @@ export class SkillStore {
           args,
         }),
       });
-
-      for (const t of progressTimers) clearTimeout(t);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -467,6 +465,8 @@ export class SkillStore {
       });
       this.currentExecution = null;
       return false;
+    } finally {
+      for (const t of progressTimers) clearTimeout(t);
     }
   }
 

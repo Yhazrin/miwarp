@@ -145,6 +145,9 @@ export function createSendMessage(ctx: SendMessageContext) {
           thinking.setSlashCmdSeenRunning(false);
         }
 
+        // Re-check after folder picker — user may have navigated or sent another message
+        if (!store.canSend) return;
+
         const runId = await store.startSession(text, cwd, attachments);
         goto(`/chat?run=${runId}`, { replaceState: true });
         window.dispatchEvent(new Event(EVT_RUNS_CHANGED));

@@ -1008,7 +1008,7 @@
     }
     void import("$lib/services/sound-feedback-listener")
       .then((m) => m.startSoundFeedbackListener())
-      .catch(() => {});
+      .catch((e) => { if (typeof console !== "undefined") console.debug("[layout] sound listener init failed:", e); });
     const unlockSoundOnce = () => {
       void import("$lib/services/sound-feedback-service").then((m) => m.unlockSoundEngine());
     };

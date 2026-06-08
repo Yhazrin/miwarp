@@ -197,7 +197,7 @@
       const msg = String(e);
       dbgWarn("cli-browser", "import-all failed", msg);
       error = msg;
-      await discoverSessions().catch(() => {});
+      await discoverSessions().catch((e) => dbgWarn("cli-browser", "fallback discover failed:", e));
     } finally {
       importingId = null;
       importingAll = false;
