@@ -1461,7 +1461,11 @@ textarea,
   flex-shrink: 0;
 }
 
-/* Tier 1: chrome | tabs | context pill | tabs | chrome — one grid gap everywhere */
+/* Tier 1: 10-position row ordered to mirror the collapsed capsule.
+   chrome 1:1 paired with reveal tabs: layout · home · settings · wrench ·
+   file · plug · monitor · plus · clock · summarize. The middle 6
+   reveal columns collapse to 0 width in the collapsed state so only
+   the 4 chrome anchors remain visible. */
 .session-island-tier1 {
   display: grid;
   align-items: center;
@@ -1470,57 +1474,40 @@ textarea,
   width: max-content;
   max-width: 100%;
   padding: 0;
-}
-
-.session-island-tier1-has-context {
-  grid-template-columns: auto var(--context-pill-slot-width) auto;
-}
-
-.session-island-tier1-has-context.session-island-tier1-with-chrome {
   grid-template-columns:
-    var(--session-chrome-slot-width)
-    auto
-    var(--context-pill-slot-width)
-    auto
-    var(--session-chrome-slot-width);
+    auto /* 1 layout */
+    auto /* 2 home */
+    auto /* 3 settings */
+    auto /* 4 wrench */
+    auto /* 5 file */
+    auto /* 6 plug */
+    auto /* 7 monitor */
+    auto /* 8 plus */
+    auto /* 9 clock */
+    auto; /* 10 summarize */
 }
 
-.session-island-tier1-no-context {
-  grid-template-columns: auto auto auto;
+/* Collapsed capsule: only the 4 chrome anchors (layout / settings / plug /
+   plus) are visible. The 6 reveal tabs collapse to 0 width, and
+   column-gap drops to 0, so the 4 anchors sit close to center. Active
+   state grows them back with width + scale + opacity transitions. */
+.session-island-shell:not(.session-island-active) .session-island-tier1 {
+  column-gap: 0;
 }
 
-.session-island-tier1-no-context.session-island-tier1-with-chrome {
-  grid-template-columns:
-    var(--session-chrome-slot-width)
-    auto
-    auto
-    auto
-    var(--session-chrome-slot-width);
+.session-island-shell:not(.session-island-active) .session-island-reveal {
+  width: 0;
+  height: 0;
+  min-width: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
-.session-island-tab-group-leading {
-  justify-self: end;
-}
-
-.session-island-tab-group-trailing {
-  justify-self: start;
-}
-
-.session-island-tier1-has-context .session-context-pill,
-.session-island-tier1-no-context .session-context-pill {
-  justify-self: center;
-}
-
-.session-island-tier1-no-context .session-context-pill {
-  width: auto;
-}
-
-.session-island-tab-group {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  gap: var(--session-island-rail-gap);
-  transform: translateZ(0);
+.session-island-shell.session-island-active .session-island-reveal {
+  width: 28px;
+  height: 28px;
 }
 
 .session-island-tab {
@@ -1534,18 +1521,12 @@ textarea,
   box-sizing: border-box;
 }
 
-/* Context pill fills the stable center track, so icon rails do not remeasure during hover. */
-.session-context-pill {
-  display: inline-flex;
-  flex-shrink: 0;
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  height: 18px;
-  border-radius: 9999px;
-  overflow: hidden;
-  isolation: isolate;
-  transition: background-color 300ms ease;
+/* Context pill (tier-2 only) — tier 1 has no context pill. The tier-2
+   override below pins its width to the slot width so it doesn't stretch
+   across the wider tier-2 track. */
+.session-island-tier2 .session-context-pill {
+  width: var(--context-pill-slot-width);
+  max-width: var(--context-pill-slot-width);
 }
 
 .session-context-ctx-label {
@@ -1773,57 +1754,40 @@ textarea,
   user-select: none;
 }
 
-/* Window chrome: max-width slot animates; content hugs tabs (no dead space inside slot) */
-.session-island-chrome-actions {
-  display: inline-flex;
-  width: max-content;
-  max-width: var(--session-chrome-slot-width);
-  min-width: 0;
-  align-items: center;
-  gap: var(--session-island-rail-gap);
-  overflow: hidden;
+/* Reveal-only tier-1 buttons: hidden in the collapsed state and grow
+   outward from the center on hover. Transform-origin is set per side:
+   - .session-island-reveal-left (home, wrench, file): right-center → grows leftward
+   - .session-island-reveal-right (monitor, clock, summarize): left-center → grows rightward
+   Width + scale + opacity all transition together so the icon visibly
+   fades-and-grows in from the center pill. */
+.session-island-reveal {
   opacity: 0;
+  transform: scale(0);
+  width: 0;
+  height: 28px;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
   pointer-events: none;
-  visibility: hidden;
   transition:
     opacity var(--session-island-duration) var(--session-island-ease),
     transform var(--session-island-duration) var(--session-island-ease),
-    visibility 0ms linear var(--session-island-duration);
+    width var(--session-island-duration) var(--session-island-ease);
 }
 
-/* Emerge from the center pill toward the outer edges */
-.session-island-chrome-actions-left {
-  justify-self: end;
-  justify-content: flex-end;
-  transform-origin: right center;
-  transform: translateX(8px) scale(0.88);
-}
-
-.session-island-chrome-actions-right {
-  justify-self: start;
-  justify-content: flex-start;
-  transform-origin: left center;
-  transform: translateX(-8px) scale(0.88);
-}
-
-.session-island-shell.session-island-active .session-island-chrome-actions-left,
-.session-island-shell.session-island-active .session-island-chrome-actions-right {
+.session-island-shell.session-island-active .session-island-reveal {
   opacity: 1;
+  transform: scale(1);
+  width: 28px;
   pointer-events: auto;
-  visibility: visible;
-  transform: translateX(0) scale(1);
-  transition:
-    opacity var(--session-island-duration) var(--session-island-ease) 100ms,
-    transform var(--session-island-duration) var(--session-island-ease) 100ms,
-    visibility 0ms linear 0ms;
 }
 
-.session-island-shell:not(.session-island-active) .session-island-chrome-actions-left,
-.session-island-shell:not(.session-island-active) .session-island-chrome-actions-right {
-  transition:
-    opacity var(--session-island-duration) var(--session-island-ease) 0ms,
-    transform var(--session-island-duration) var(--session-island-ease) 0ms,
-    visibility 0ms linear var(--session-island-duration);
+.session-island-reveal-left {
+  transform-origin: right center;
+}
+
+.session-island-reveal-right {
+  transform-origin: left center;
 }
 
 /* Reduced motion preference */
@@ -1836,13 +1800,8 @@ textarea,
   .session-island-shell.session-island-has-tier2,
   .tier-2-content,
   .session-island-tier2,
-  .session-island-chrome-actions,
+  .session-island-reveal,
   .session-context-ctx-label {
-    transition-duration: 180ms;
-  }
-
-  .session-island-shell.session-island-active:has(.session-island-chrome-actions),
-  .session-island-shell:not(.session-island-active):has(.session-island-chrome-actions) {
     transition-duration: 180ms;
   }
 }

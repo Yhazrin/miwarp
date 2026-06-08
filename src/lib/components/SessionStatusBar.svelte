@@ -152,9 +152,7 @@
       contextWindow > 0 &&
       contextUtilization != null,
   );
-  let tier2HasMeta = $derived(
-    !!(run && onRename) || !!model || !!onProcessVisibilityChange,
-  );
+  let tier2HasMeta = $derived(!!(run && onRename) || !!model || !!onProcessVisibilityChange);
 
   // ── Capsule morph: running / done / stopped / cached (flash) + waiting (persistent) ──
   type MorphFlash = "none" | "running" | "done" | "stopped" | "cached";
@@ -530,7 +528,8 @@
       aria-hidden="true"
     >
       <span
-        class="text-base font-black tracking-widest text-miwarp-accent-on-accent {morphShell === 'waiting'
+        class="text-base font-black tracking-widest text-miwarp-accent-on-accent {morphShell ===
+        'waiting'
           ? 'animate-slow-pulse'
           : ''}"
         style="font-family: 'FonWorker', sans-serif;"
@@ -552,161 +551,185 @@
     <WindowDragArea class="absolute right-0 top-0 bottom-0 w-12" />
 
     {#if onToolPanelTabChange && toolPanelActiveTab}
-      {@const leftTabs: ToolActivityPanelTab[] = ["workspace", "tools", "files"]}
-      {@const rightTabs: ToolActivityPanelTab[] = ["preview", "scheduled-tasks"]}
       <div
-        class="session-island-tier1 {showContextPill
-          ? 'session-island-tier1-has-context'
-          : 'session-island-tier1-no-context'}{showChromeActions
-          ? ' session-island-tier1-with-chrome'
-          : ''}"
+        class="session-island-tier1 {showChromeActions ? 'session-island-tier1-with-chrome' : ''}"
       >
-        {#if showChromeActions}
-          <div
-            class="session-island-chrome-actions session-island-chrome-actions-left"
-            role="toolbar"
-            aria-label={t("layout_windowChrome")}
-            aria-hidden={!islandActive}
-          >
-            {#if onToggleLayoutSidebar}
-              <button
-                type="button"
-                class="session-island-tab text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
-                tabindex={islandActive ? 0 : -1}
-                onclick={(e) => {
-                  e.stopPropagation();
-                  onToggleLayoutSidebar();
-                }}
-                title={t("keybind_toggleSidebar")}
-                aria-label={t("keybind_toggleSidebar")}
-                aria-expanded={layoutSidebarOpen}
-              >
-                <Icon name="layout" size="md" class="shrink-0 opacity-90" />
-              </button>
-            {/if}
+        <!--
+          10-position row, ordered to mirror the collapsed capsule (4 chrome
+          anchors + 6 reveal tabs interleaved 1:1):
+            1 layout · 2 home (workspace) · 3 settings ·
+            4 wrench (tools) · 5 file (files) ·
+            6 plug · 7 monitor (preview) · 8 plus ·
+            9 clock (scheduled-tasks) · 10 summarize
+        -->
 
-            {#if onOpenSettings}
-              <button
-                type="button"
-                class="session-island-tab text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
-                tabindex={islandActive ? 0 : -1}
-                onclick={(e) => {
-                  e.stopPropagation();
-                  onOpenSettings();
-                }}
-                title={t("nav_settings")}
-                aria-label={t("nav_settings")}
-              >
-                <Icon name="settings" size="md" class="shrink-0 opacity-90" />
-              </button>
-            {/if}
-          </div>
+        <!-- 1: chrome anchor — layout (sidebar toggle) -->
+        {#if onToggleLayoutSidebar}
+          <button
+            type="button"
+            class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+            tabindex={islandActive ? 0 : -1}
+            onclick={(e) => {
+              e.stopPropagation();
+              onToggleLayoutSidebar();
+            }}
+            title={t("keybind_toggleSidebar")}
+            aria-label={t("keybind_toggleSidebar")}
+            aria-expanded={layoutSidebarOpen}
+          >
+            <Icon name="layout" size="md" class="shrink-0 opacity-90" />
+          </button>
         {/if}
 
-        <div class="session-island-tab-group session-island-tab-group-leading">
-            {#each leftTabs as tab (tab)}
-              <button
-                type="button"
-                role="tab"
-                aria-selected={toolPanelActiveTab === tab}
-                aria-label={tabLabel(tab)}
-                class="session-island-tab transition-colors {toolPanelActiveTab === tab
-                  ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
-                  : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
-                onclick={() => onToolPanelTabChange(tab)}
-                title={tabLabel(tab)}
-              >
-                {#if tab === "workspace"}
-                  <Icon name="home" size="md" class="shrink-0 opacity-90" />
-                {:else if tab === "tools"}
-                  <Icon name="wrench" size="md" class="shrink-0 opacity-90" />
-                {:else if tab === "files"}
-                  <span class="relative inline-flex shrink-0">
-                    <Icon name="file" size="md" class="opacity-90" />
-                    {#if toolPanelIndicators?.files}
-                      <span
-                        class="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
-                      ></span>
-                    {/if}
-                  </span>
-                {/if}
-              </button>
-            {/each}
-        </div>
+        <!-- 2: leading reveal — workspace (home) -->
+        <button
+          type="button"
+          role="tab"
+          aria-selected={toolPanelActiveTab === "workspace"}
+          aria-label={tabLabel("workspace")}
+          class="session-island-tab session-island-reveal session-island-reveal-left transition-colors {toolPanelActiveTab ===
+          'workspace'
+            ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
+            : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
+          onclick={() => onToolPanelTabChange("workspace")}
+          title={tabLabel("workspace")}
+        >
+          <Icon name="home" size="md" class="shrink-0 opacity-90" />
+        </button>
 
-        <div class="session-island-tab-group session-island-tab-group-trailing">
-            {#each rightTabs as tab (tab)}
-              <button
-                type="button"
-                role="tab"
-                aria-selected={toolPanelActiveTab === tab}
-                aria-label={tabLabel(tab)}
-                class="session-island-tab transition-colors {toolPanelActiveTab === tab
-                  ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
-                  : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
-                onclick={() => onToolPanelTabChange(tab)}
-                title={tabLabel(tab)}
-              >
-                {#if tab === "preview"}
-                  <Icon name="monitor" size="md" class="shrink-0 opacity-90" />
-                {:else if tab === "scheduled-tasks"}
-                  <Icon name="clock" size="md" class="shrink-0 opacity-90" />
-                {/if}
-              </button>
-            {/each}
-
-            {#if onSummarize}
-              <button
-                type="button"
-                class="session-island-tab text-muted-foreground hover:bg-muted/45 hover:text-foreground transition-colors"
-                onclick={onSummarize}
-                title={t("statusbar_summarize")}
-                aria-label={t("statusbar_summarize")}
-              >
-                <Icon name="scroll-text" size="md" class="shrink-0 opacity-90" />
-              </button>
-            {/if}
-        </div>
-
-        {#if showChromeActions}
-          <div
-            class="session-island-chrome-actions session-island-chrome-actions-right"
-            role="toolbar"
-            aria-label={t("layout_windowChrome")}
-            aria-hidden={!islandActive}
+        <!-- 3: chrome anchor — settings -->
+        {#if onOpenSettings}
+          <button
+            type="button"
+            class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+            tabindex={islandActive ? 0 : -1}
+            onclick={(e) => {
+              e.stopPropagation();
+              onOpenSettings();
+            }}
+            title={t("nav_settings")}
+            aria-label={t("nav_settings")}
           >
-            {#if onOpenCliImport}
-              <button
-                type="button"
-                class="session-island-tab text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
-                tabindex={islandActive ? 0 : -1}
-                onclick={(e) => {
-                  e.stopPropagation();
-                  onOpenCliImport();
-                }}
-                title={t("cliSync_title")}
-                aria-label={t("sidebar_cliBrowser")}
-              >
-                <Icon name="plug" size="md" class="shrink-0 opacity-90" />
-              </button>
-            {/if}
+            <Icon name="settings" size="md" class="shrink-0 opacity-90" />
+          </button>
+        {/if}
 
-            {#if onNewChat}
-              <button
-                type="button"
-                class="session-island-tab text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
-                tabindex={islandActive ? 0 : -1}
-                onclick={(e) => {
-                  e.stopPropagation();
-                  onNewChat();
-                }}
-                title={t("layout_newConversation")}
-                aria-label={t("sidebar_newChat")}
-              >
-                <Icon name="plus" size="md" class="shrink-0 opacity-90" />
-              </button>
+        <!-- 4: leading reveal — tools (wrench) -->
+        <button
+          type="button"
+          role="tab"
+          aria-selected={toolPanelActiveTab === "tools"}
+          aria-label={tabLabel("tools")}
+          class="session-island-tab session-island-reveal session-island-reveal-left transition-colors {toolPanelActiveTab ===
+          'tools'
+            ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
+            : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
+          onclick={() => onToolPanelTabChange("tools")}
+          title={tabLabel("tools")}
+        >
+          <Icon name="wrench" size="md" class="shrink-0 opacity-90" />
+        </button>
+
+        <!-- 5: leading reveal — files (file) -->
+        <button
+          type="button"
+          role="tab"
+          aria-selected={toolPanelActiveTab === "files"}
+          aria-label={tabLabel("files")}
+          class="session-island-tab session-island-reveal session-island-reveal-left transition-colors {toolPanelActiveTab ===
+          'files'
+            ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
+            : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
+          onclick={() => onToolPanelTabChange("files")}
+          title={tabLabel("files")}
+        >
+          <span class="relative inline-flex shrink-0">
+            <Icon name="file" size="md" class="opacity-90" />
+            {#if toolPanelIndicators?.files}
+              <span
+                class="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-miwarp-status-warning"
+              ></span>
             {/if}
-          </div>
+          </span>
+        </button>
+
+        <!-- 6: chrome anchor — plug (CLI import) -->
+        {#if onOpenCliImport}
+          <button
+            type="button"
+            class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+            tabindex={islandActive ? 0 : -1}
+            onclick={(e) => {
+              e.stopPropagation();
+              onOpenCliImport();
+            }}
+            title={t("cliSync_title")}
+            aria-label={t("sidebar_cliBrowser")}
+          >
+            <Icon name="plug" size="md" class="shrink-0 opacity-90" />
+          </button>
+        {/if}
+
+        <!-- 7: trailing reveal — preview (monitor) -->
+        <button
+          type="button"
+          role="tab"
+          aria-selected={toolPanelActiveTab === "preview"}
+          aria-label={tabLabel("preview")}
+          class="session-island-tab session-island-reveal session-island-reveal-right transition-colors {toolPanelActiveTab ===
+          'preview'
+            ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
+            : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
+          onclick={() => onToolPanelTabChange("preview")}
+          title={tabLabel("preview")}
+        >
+          <Icon name="monitor" size="md" class="shrink-0 opacity-90" />
+        </button>
+
+        <!-- 8: chrome anchor — plus (new chat) -->
+        {#if onNewChat}
+          <button
+            type="button"
+            class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+            tabindex={islandActive ? 0 : -1}
+            onclick={(e) => {
+              e.stopPropagation();
+              onNewChat();
+            }}
+            title={t("layout_newConversation")}
+            aria-label={t("sidebar_newChat")}
+          >
+            <Icon name="plus" size="md" class="shrink-0 opacity-90" />
+          </button>
+        {/if}
+
+        <!-- 9: trailing reveal — scheduled-tasks (clock) -->
+        <button
+          type="button"
+          role="tab"
+          aria-selected={toolPanelActiveTab === "scheduled-tasks"}
+          aria-label={tabLabel("scheduled-tasks")}
+          class="session-island-tab session-island-reveal session-island-reveal-right transition-colors {toolPanelActiveTab ===
+          'scheduled-tasks'
+            ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
+            : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
+          onclick={() => onToolPanelTabChange("scheduled-tasks")}
+          title={tabLabel("scheduled-tasks")}
+        >
+          <Icon name="clock" size="md" class="shrink-0 opacity-90" />
+        </button>
+
+        <!-- 10: trailing reveal — summarize (optional) -->
+        {#if onSummarize}
+          <button
+            type="button"
+            class="session-island-tab session-island-reveal session-island-reveal-right text-muted-foreground hover:bg-muted/45 hover:text-foreground transition-colors"
+            onclick={onSummarize}
+            title={t("statusbar_summarize")}
+            aria-label={t("statusbar_summarize")}
+          >
+            <Icon name="scroll-text" size="md" class="shrink-0 opacity-90" />
+          </button>
         {/if}
       </div>
     {/if}
@@ -720,110 +743,115 @@
         : 'border-0'} {morphHidesContent ? 'opacity-0 pointer-events-none' : ''}"
     >
       <div class="session-island-tier2">
-      {#if run && onRename}
-        {#if titleEditing}
-          <input
-            bind:this={titleInputEl}
-            bind:value={titleEditValue}
-            class="max-w-[12rem] min-w-0 rounded border border-border/50 bg-muted/30 px-1.5 py-0.5 text-[11px] text-foreground outline-none focus:border-primary/50"
-            onkeydown={(e) => {
-              if (e.key === "Enter") _commitTitleEdit();
-              if (e.key === "Escape") _cancelTitleEdit();
-            }}
-            onblur={_commitTitleEdit}
-          />
-        {:else}
-          <button
-            type="button"
-            class="max-w-[12rem] truncate rounded px-1 text-[11px] font-medium text-foreground/75 hover:bg-muted/50 hover:text-foreground transition-colors"
-            title={run.name || run.prompt}
-            onclick={_startTitleEdit}
-          >
-            {run.name || run.prompt}
-          </button>
-        {/if}
-      {/if}
-
-      {#if model}
         {#if run && onRename}
-          <span class="session-island-tier2-divider" aria-hidden="true">|</span>
+          {#if titleEditing}
+            <input
+              bind:this={titleInputEl}
+              bind:value={titleEditValue}
+              class="max-w-[12rem] min-w-0 rounded border border-border/50 bg-muted/30 px-1.5 py-0.5 text-[11px] text-foreground outline-none focus:border-primary/50"
+              onkeydown={(e) => {
+                if (e.key === "Enter") _commitTitleEdit();
+                if (e.key === "Escape") _cancelTitleEdit();
+              }}
+              onblur={_commitTitleEdit}
+            />
+          {:else}
+            <button
+              type="button"
+              class="max-w-[12rem] truncate rounded px-1 text-[11px] font-medium text-foreground/75 hover:bg-muted/50 hover:text-foreground transition-colors"
+              title={run.name || run.prompt}
+              onclick={_startTitleEdit}
+            >
+              {run.name || run.prompt}
+            </button>
+          {/if}
         {/if}
-        {#if onModelChange}
-          <StatusBarModelMenu
-            bind:open={modelMenuOpen}
-            {model}
-            {models}
-            {modelLabel}
-            {effort}
-            {effortLevels}
-            {effortDisabled}
-            {currentModelInfo}
-            onModelChange={onModelChange}
-            onEffortChange={onEffortChange}
-            onOpenChange={handleModelMenuOpenChange}
+
+        {#if model}
+          {#if run && onRename}
+            <span class="session-island-tier2-divider" aria-hidden="true">|</span>
+          {/if}
+          {#if onModelChange}
+            <StatusBarModelMenu
+              bind:open={modelMenuOpen}
+              {model}
+              {models}
+              {modelLabel}
+              {effort}
+              {effortLevels}
+              {effortDisabled}
+              {currentModelInfo}
+              {onModelChange}
+              {onEffortChange}
+              onOpenChange={handleModelMenuOpenChange}
+            />
+          {:else}
+            <span class="max-w-[11rem] truncate font-medium text-foreground/85">{model}</span>
+          {/if}
+        {/if}
+
+        {#if onProcessVisibilityChange}
+          {#if (run && onRename) || model}
+            <span class="session-island-tier2-divider" aria-hidden="true">|</span>
+          {/if}
+          <ProcessVisibilityPicker
+            bind:open={pvMenuOpen}
+            {processVisibility}
+            label={processVisibilityLabel(processVisibility)}
+            onchange={onProcessVisibilityChange}
+            onOpenChange={handlePvMenuOpenChange}
           />
-        {:else}
-          <span class="max-w-[11rem] truncate font-medium text-foreground/85">{model}</span>
         {/if}
-      {/if}
 
-      {#if onProcessVisibilityChange}
-        {#if (run && onRename) || model}
-          <span class="session-island-tier2-divider" aria-hidden="true">|</span>
-        {/if}
-        <ProcessVisibilityPicker
-          bind:open={pvMenuOpen}
-          {processVisibility}
-          label={processVisibilityLabel(processVisibility)}
-          onchange={onProcessVisibilityChange}
-          onOpenChange={handlePvMenuOpenChange}
-        />
-      {/if}
-
-      <!-- Context utilization pill (was on tier 1 center; v1.0.6 follow-up moved here) -->
-      {#if showContextPill}
-        {@const pct = Math.round(contextUtilization! * 100)}
-        {@const barColor =
-          contextWarningLevel === "critical"
-            ? "bg-miwarp-status-warning"
-            : contextWarningLevel === "high"
+        <!-- Context utilization pill (was on tier 1 center; v1.0.6 follow-up moved here) -->
+        {#if showContextPill}
+          {@const pct = Math.round(contextUtilization! * 100)}
+          {@const barColor =
+            contextWarningLevel === "critical"
               ? "bg-miwarp-status-warning"
-              : contextWarningLevel === "moderate"
+              : contextWarningLevel === "high"
                 ? "bg-miwarp-status-warning"
-                : "bg-miwarp-status-success"}
-        <span
-          class="session-context-pill text-foreground/60 ml-auto"
-          title={t("statusbar_contextTitle", {
-            pct: String(pct),
-            tokens: contextWindow ? fmtNumber(contextWindow) : "",
-          })}
-        >
+                : contextWarningLevel === "moderate"
+                  ? "bg-miwarp-status-warning"
+                  : "bg-miwarp-status-success"}
           <span
-            class="session-context-pill-inner {compactVisible
-              ? 'bg-[hsl(var(--miwarp-status-warning)/0.8)] animate-pulse'
-              : barColor}"
+            class="session-context-pill text-foreground/60 ml-auto"
+            title={t("statusbar_contextTitle", {
+              pct: String(pct),
+              tokens: contextWindow ? fmtNumber(contextWindow) : "",
+            })}
           >
-            {#if compactVisible}
-              <span class="text-[10px] font-bold text-miwarp-accent-on-accent animate-pulse whitespace-nowrap px-2"
-                >{t("statusbar_compacted")}</span
-              >
-            {:else}
-              <span class="flex items-center justify-center whitespace-nowrap">
-                <span class="text-[10px] font-bold text-miwarp-accent-on-accent/90 w-8 text-center">{pct}%</span>
-                <span class="session-context-ctx-label text-[10px] font-bold text-miwarp-accent-on-accent/70"
-                  >ctx</span
+            <span
+              class="session-context-pill-inner {compactVisible
+                ? 'bg-[hsl(var(--miwarp-status-warning)/0.8)] animate-pulse'
+                : barColor}"
+            >
+              {#if compactVisible}
+                <span
+                  class="text-[10px] font-bold text-miwarp-accent-on-accent animate-pulse whitespace-nowrap px-2"
+                  >{t("statusbar_compacted")}</span
                 >
-              </span>
-            {/if}
+              {:else}
+                <span class="flex items-center justify-center whitespace-nowrap">
+                  <span
+                    class="text-[10px] font-bold text-miwarp-accent-on-accent/90 w-8 text-center"
+                    >{pct}%</span
+                  >
+                  <span
+                    class="session-context-ctx-label text-[10px] font-bold text-miwarp-accent-on-accent/70"
+                    >ctx</span
+                  >
+                </span>
+              {/if}
+            </span>
           </span>
-        </span>
-      {:else}
-        <span class="session-context-pill text-foreground/60 ml-auto">
-          <span class="session-context-pill-inner bg-miwarp-accent-primary">
-            <span class="text-[10px] font-bold text-miwarp-accent-on-accent/90">miw</span>
+        {:else}
+          <span class="session-context-pill text-foreground/60 ml-auto">
+            <span class="session-context-pill-inner bg-miwarp-accent-primary">
+              <span class="text-[10px] font-bold text-miwarp-accent-on-accent/90">miw</span>
+            </span>
           </span>
-        </span>
-      {/if}
+        {/if}
       </div>
     </div>
   {/if}
