@@ -1,5 +1,6 @@
-<script lang="ts">
+﻿<script lang="ts">
   import InlineToolCard from "./InlineToolCard.svelte";
+  import AskUserQuestionCard from "./AskUserQuestionCard.svelte";
   import type { BusToolItem, TimelineEntry, PermissionSuggestion } from "$lib/types";
   import Icon from "$lib/components/Icon.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
@@ -79,7 +80,7 @@
     ) => void | Promise<void>;
     /** ExitPlanMode "clear context" handler. */
     onExitPlanClearContext?: () => void | Promise<void>;
-    /** ExitPlanMode "bypass" handler — sets bypassPermissions for current run only. */
+    /** ExitPlanMode "bypass" handler 鈥?sets bypassPermissions for current run only. */
     onExitPlanBypass?: () => void | Promise<void>;
     /** Background task notifications map (keyed by task_id, matched via tool_use_id). */
     taskNotifications?: Map<string, TaskNotificationItem>;
@@ -89,7 +90,7 @@
     latestPlanTool?: boolean;
     /** Whether generic tool permissions are handled by the floating PermissionPanel. */
     showPermissionInPanel?: boolean;
-    /** Click on Edit/Write/Read tool card's file path → open preview in right panel. */
+    /** Click on Edit/Write/Read tool card's file path 鈫?open preview in right panel. */
     onPreviewFile?: (path: string) => void;
     /** Whether this is the last tool in the timeline (for reviewing phase detection). */
     isLastTool?: boolean;
@@ -110,7 +111,7 @@
   let userExpanded = $state<boolean | null>(null);
   let submitting = $state(false);
 
-  // ── Lazy loading for truncated tool results ──
+  // 鈹€鈹€ Lazy loading for truncated tool results 鈹€鈹€
   let lazyResult = $state<Record<string, unknown> | null>(null);
   let lazyLoading = $state(false);
   let lazyFailed = $state(false);
@@ -137,9 +138,9 @@
     lazyLoading = true;
     fetchToolResult(runId, tool.tool_use_id)
       .then((r) => {
-        if (reqId !== lazyReqId) return; // stale — component switched/collapsed
+        if (reqId !== lazyReqId) return; // stale 鈥?component switched/collapsed
         lazyResult = r;
-        if (!r) lazyFailed = true; // not found → terminal state
+        if (!r) lazyFailed = true; // not found 鈫?terminal state
       })
       .catch(() => {
         if (reqId !== lazyReqId) return;
@@ -151,7 +152,7 @@
   });
 
   function retryLazyLoad() {
-    lazyFailed = false; // reset — effect will re-trigger
+    lazyFailed = false; // reset 鈥?effect will re-trigger
   }
   let multiChecked: Record<string, boolean> = $state({});
   // Per-question answers for multi-question AskUserQuestion
@@ -162,7 +163,7 @@
   // ExitPlanMode "keep planning" feedback text
   let planFeedback = $state("");
 
-  // Reset submitting when tool status changes (e.g. permission_prompt → error/permission_denied)
+  // Reset submitting when tool status changes (e.g. permission_prompt 鈫?error/permission_denied)
   $effect(() => {
     void tool.status;
     submitting = false;
@@ -171,7 +172,7 @@
   let isAgentLike = $derived(tool.tool_name === "Agent" || tool.tool_name === "Task");
   let isAsk = $derived(tool.tool_name === "AskUserQuestion");
 
-  // ── View mode: determine if this tool card should be visible ──
+  // 鈹€鈹€ View mode: determine if this tool card should be visible 鈹€鈹€
   let shouldShowInMode = $derived.by(() => {
     if (shouldHideToolCards(processVisibility) && !shouldMountFullToolCardInOutputMode(tool)) {
       return false;
@@ -200,7 +201,7 @@
   });
 
   // Auto-expand when input is streaming in (running + has input data)
-  // Skip Agent/Task — their input (full prompt) is too large to auto-expand.
+  // Skip Agent/Task 鈥?their input (full prompt) is too large to auto-expand.
   let isInputStreaming = $derived(
     tool.status === "running" &&
       !isAsk &&
@@ -276,7 +277,7 @@
   );
 
   // Detect if detail looks like an absolute file path (truncate from the front)
-  // Plan labels are not paths — skip RTL and path truncation for them.
+  // Plan labels are not paths 鈥?skip RTL and path truncation for them.
   let isPathLikeDetail = $derived(!planLabel && isAbsolutePath(detail));
 
   // For Bash commands, show description (preferred) or truncated command (fallback)
@@ -311,7 +312,7 @@
 
   // AskUserQuestion detection
   // Denied detection: explicit permission_denied status, OR error with no selected option
-  // (handles old snapshots where finalizer overwrote permission_denied → error)
+  // (handles old snapshots where finalizer overwrote permission_denied 鈫?error)
   let isAskDenied = $derived.by(() => {
     if (!isAsk) return false;
     if (tool.status === "permission_denied") return true;
@@ -483,9 +484,9 @@
           return `${nf} file${nf !== 1 ? "s" : ""}, ${nl} match${nl !== 1 ? "es" : ""}`;
         return `${nf} file${nf !== 1 ? "s" : ""}`;
       }
-      // Edit: patch line count — skip expensive lines traversal when collapsed
+      // Edit: patch line count 鈥?skip expensive lines traversal when collapsed
       if ("structuredPatch" in tur) {
-        // Backend pre-computed counts (summary mode — lines array stripped)
+        // Backend pre-computed counts (summary mode 鈥?lines array stripped)
         if ("_patchAdded" in tur || "_patchRemoved" in tur) {
           return `+${(tur._patchAdded as number) ?? 0} -${(tur._patchRemoved as number) ?? 0}`;
         }
@@ -540,7 +541,7 @@
         return `${n} item${n !== 1 ? "s" : ""}`;
       }
     }
-    // Fallback: count output lines — only when expanded (expensive split)
+    // Fallback: count output lines 鈥?only when expanded (expensive split)
     if (expanded) {
       const output = extractOutputText(tool.output);
       if (!output) return "";
@@ -632,8 +633,8 @@
     safePermissionRespond(tool.permission_request_id, "allow", undefined, updatedInput);
   }
 
-  // Wrapper: IPC success → submitting reset by $effect(tool.status);
-  // IPC failure → parent re-throws → catch unlocks immediately.
+  // Wrapper: IPC success 鈫?submitting reset by $effect(tool.status);
+  // IPC failure 鈫?parent re-throws 鈫?catch unlocks immediately.
   async function safePermissionRespond(
     ...args: Parameters<NonNullable<typeof onPermissionRespond>>
   ) {
@@ -684,519 +685,8 @@
     {#if renderLevel === 3}
       <!-- Level 3: interactive card -->
       <div>
-        {#if isAsk && (tool.status === "running" || tool.status === "ask_pending") && askQuestion}
-          <!-- AskUserQuestion: show question + option buttons -->
-          <div
-            class="glass-card gradient-border-left rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] px-4 py-3"
-          >
-            <div class="flex items-center gap-2 mb-2">
-              <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded {style.bg}">
-                <svg
-                  class="h-3 w-3 {style.text}"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d={style.icon} />
-                </svg>
-              </div>
-              <span class="text-xs font-medium text-foreground">{t("inline_question")}</span>
-              <PhaseIndicator phase={currentPhase} elapsed={tool.elapsed_time_seconds} />
-              <div class="h-3 w-3 shrink-0 ml-auto">
-                <Spinner size="xs" class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-status-warning)/0.3)] border-t-[hsl(var(--miwarp-status-warning))]" />
-              </div>
-            </div>
-            <MarkdownContent
-              text={askQuestion}
-              class="text-sm text-foreground mb-3 [&>*:last-child]:mb-0"
-            />
-            {#if askOptions.length > 0 && onAnswer}
-              {#if isMultiSelect}
-                <div class="flex flex-wrap items-center gap-2">
-                  {#each askOptions as option}
-                    <button type="button"
-                      class="rounded-md border px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed {multiChecked[
-                        option
-                      ]
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border bg-background text-foreground hover:bg-accent hover:border-ring/30'}"
-                      disabled={submitting}
-                      onclick={() => toggleMulti(option)}
-                    >
-                      {#if multiChecked[option]}
-                        <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
-                      {/if}
-                      {option}
-                    </button>
-                  {/each}
-                  <button type="button"
-                    class="rounded-md border border-dashed px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed {otherActive[
-                      askQuestion
-                    ]
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-background text-muted-foreground hover:bg-accent hover:border-ring/30'}"
-                    disabled={submitting}
-                    onclick={() => {
-                      otherActive = { ...otherActive, [askQuestion]: !otherActive[askQuestion] };
-                    }}
-                  >
-                    {t("inline_other")}
-                  </button>
-                  {#if otherActive[askQuestion]}
-                    <input
-                      type="text"
-                      bind:value={otherText[askQuestion]}
-                      placeholder={t("inline_otherPlaceholder")}
-                      class="w-full rounded-md border border-border bg-transparent px-2 py-1 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
-                    />
-                  {/if}
-                  <button type="button"
-                    class="rounded-md bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={submitting ||
-                      (multiCount() === 0 &&
-                        !(otherActive[askQuestion] && otherText[askQuestion]?.trim()))}
-                    onclick={() => {
-                      const selected = Object.keys(multiChecked).filter((k) => multiChecked[k]);
-                      const otherVal = otherActive[askQuestion] && otherText[askQuestion]?.trim();
-                      if (otherVal) selected.push(otherVal);
-                      if (selected.length > 0) handleAnswer(selected.join(", "));
-                    }}
-                  >
-                    {multiCount() > 0
-                      ? t("inline_submitCount", { count: String(multiCount()) })
-                      : t("inline_submit")}
-                  </button>
-                </div>
-              {:else}
-                <div class="flex flex-wrap gap-2">
-                  {#each askOptions as option}
-                    <button type="button"
-                      class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent hover:border-ring/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={submitting}
-                      onclick={() => handleAnswer(option)}
-                    >
-                      {option}
-                    </button>
-                  {/each}
-                  <button type="button"
-                    class="rounded-md border border-dashed border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:border-ring/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={submitting}
-                    onclick={() => {
-                      otherActive = { ...otherActive, [askQuestion]: true };
-                    }}
-                  >
-                    {t("inline_other")}
-                  </button>
-                  {#if otherActive[askQuestion]}
-                    <div class="flex gap-1.5 w-full mt-0.5">
-                      <input
-                        type="text"
-                        bind:value={otherText[askQuestion]}
-                        placeholder={t("inline_otherPlaceholder")}
-                        class="flex-1 rounded-md border border-border bg-transparent px-2 py-1 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
-                      />
-                      <button type="button"
-                        class="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={submitting || !otherText[askQuestion]?.trim()}
-                        onclick={() => {
-                          const text = otherText[askQuestion]?.trim();
-                          if (text) handleAnswer(text);
-                        }}
-                      >
-                        {t("inline_submitOther")}
-                      </button>
-                    </div>
-                  {/if}
-                </div>
-              {/if}
-            {/if}
-          </div>
-        {:else if isAsk && tool.status !== "running" && tool.status !== "ask_pending" && tool.status !== "permission_prompt"}
-          <!-- AskUserQuestion done: show question(s) + options with selected highlighted -->
-          <div class="glass-card rounded-lg px-4 py-3">
-            <div class="flex items-center gap-2 mb-2">
-              <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded {style.bg}">
-                <svg
-                  class="h-3 w-3 {style.text}"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d={style.icon} />
-                </svg>
-              </div>
-              <span class="text-xs font-medium text-muted-foreground">{t("inline_question")}</span>
-              {#if isAskDenied}
-                <span
-                  class="ml-auto rounded-full border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.1)] px-2 py-0.5 text-[10px] font-medium text-miwarp-status-error"
-                  >{t("common_denied")}</span
-                >
-              {:else}
-                <Icon name="check" size="sm" class="text-miwarp-status-success shrink-0 ml-auto" />
-              {/if}
-            </div>
-            {#if hasMultipleQuestions}
-              <!-- Multi-question done: show all questions with answers -->
-              <div class="space-y-2.5">
-                {#each parsedQuestions as pq}
-                  <div>
-                    {#if pq.header}
-                      <span
-                        class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-                        >{pq.header}</span
-                      >
-                    {/if}
-                    <MarkdownContent
-                      text={pq.question}
-                      class="text-sm text-foreground mb-1 [&>*:last-child]:mb-0"
-                    />
-                    {#if pq.options.length > 0}
-                      <div class="flex flex-wrap gap-1.5">
-                        {#each pq.options as option}
-                          {@const isSelected =
-                            askAnswersMap[pq.question] === option.label ||
-                            askAnswersMap[pq.question]?.split(", ").includes(option.label)}
-                          <span
-                            class="rounded-md border px-3 py-1 text-xs font-medium {isSelected
-                              ? 'border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success'
-                              : 'border-border/50 bg-transparent text-muted-foreground/50'}"
-                          >
-                            {#if isSelected}
-                              <Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />
-                            {/if}
-                            {option.label}
-                          </span>
-                        {/each}
-                        {#if askAnnotationsMap[pq.question]}
-                          <span
-                            class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1 text-xs font-medium text-miwarp-status-success"
-                          >
-                            <Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />
-                            {askAnnotationsMap[pq.question]}
-                          </span>
-                        {/if}
-                      </div>
-                    {:else if askAnnotationsMap[pq.question]}
-                      <span
-                        class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1 text-xs font-medium text-miwarp-status-success"
-                      >
-                        <Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />
-                        {askAnnotationsMap[pq.question]}
-                      </span>
-                    {:else if askAnswersMap[pq.question]}
-                      <span
-                        class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1 text-xs font-medium text-miwarp-status-success"
-                      >
-                        <Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />
-                        {askAnswersMap[pq.question]}
-                      </span>
-                    {/if}
-                  </div>
-                {/each}
-              </div>
-            {:else}
-              <!-- Single question done -->
-              <MarkdownContent
-                text={askQuestion}
-                class="text-sm text-foreground mb-3 [&>*:last-child]:mb-0"
-              />
-              {#if askOptions.length > 0}
-                <div class="flex flex-wrap gap-2">
-                  {#each askOptions as option}
-                    <span
-                      class="rounded-md border px-3 py-1.5 text-xs font-medium transition-all {askAnswerSet.has(
-                        option,
-                      )
-                        ? 'border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success'
-                        : 'border-border/50 bg-transparent text-muted-foreground/50'}"
-                    >
-                      {#if askAnswerSet.has(option)}
-                        <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
-                      {/if}
-                      {option}
-                    </span>
-                  {/each}
-                  {#if askAnnotationsMap[askQuestion]}
-                    <span
-                      class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-xs font-medium text-miwarp-status-success"
-                    >
-                      <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
-                      {askAnnotationsMap[askQuestion]}
-                    </span>
-                  {/if}
-                </div>
-              {:else if askAnnotationsMap[askQuestion]}
-                <span
-                  class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-xs font-medium text-miwarp-status-success"
-                >
-                  <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
-                  {askAnnotationsMap[askQuestion]}
-                </span>
-              {:else if askAnswer}
-                <span
-                  class="rounded-md border border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.1)] px-3 py-1.5 text-xs font-medium text-miwarp-status-success"
-                >
-                  <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
-                  {askAnswer}
-                </span>
-              {/if}
-            {/if}
-          </div>
-        {:else if isAsk && tool.status === "permission_prompt" && askQuestion && tool.permission_request_id}
-          <!-- AskUserQuestion permission prompt: show question(s) + options with Allow/Deny semantics -->
-          <div
-            class="glass-card rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] px-4 py-3"
-          >
-            <div class="flex items-center gap-2 mb-2">
-              <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded {style.bg}">
-                <svg
-                  class="h-3 w-3 {style.text}"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d={style.icon} />
-                </svg>
-              </div>
-              <span class="text-xs font-medium text-foreground">
-                {parsedQuestions.length > 1
-                  ? t("inline_questionsCount", {
-                      answered: String(Object.keys(questionAnswers).length),
-                      total: String(parsedQuestions.length),
-                    })
-                  : t("inline_question")}
-              </span>
-              {#if !submitting}
-                <div class="h-3 w-3 shrink-0">
-                  <Spinner size="xs" class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-status-warning)/0.3)] border-t-[hsl(var(--miwarp-status-warning))]" />
-                </div>
-              {/if}
-            </div>
-            {#if onPermissionRespond}
-              {#if hasMultipleQuestions}
-                <!-- Multi-question layout -->
-                <div class="space-y-3">
-                  {#each parsedQuestions as pq}
-                    <div>
-                      {#if pq.header}
-                        <span
-                          class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-                          >{pq.header}</span
-                        >
-                      {/if}
-                      <MarkdownContent
-                        text={pq.question}
-                        class="text-sm text-foreground mb-1.5 [&>*:last-child]:mb-0"
-                      />
-                      <div class="flex flex-wrap gap-1.5">
-                        {#each pq.options as option}
-                          <button type="button"
-                            class="rounded-md border px-3 py-1 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left {questionAnswers[
-                              pq.question
-                            ] === option.label
-                              ? 'border-primary bg-primary/10 text-primary'
-                              : 'border-border bg-background text-foreground hover:bg-accent hover:border-ring/30'}"
-                            disabled={submitting}
-                            onclick={() => {
-                              otherActive = { ...otherActive, [pq.question]: false };
-                              selectQuestionAnswer(pq.question, option.label);
-                            }}
-                          >
-                            {#if questionAnswers[pq.question] === option.label}
-                              <Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />
-                            {/if}
-                            <span>{option.label}</span>
-                            {#if option.description}
-                              <span
-                                class="block text-[10px] text-muted-foreground/70 font-normal mt-0.5"
-                              >
-                                <MarkdownContent
-                                  text={option.description}
-                                  class="[&>*:last-child]:mb-0 [&_p]:text-[10px] [&_p]:leading-snug"
-                                />
-                              </span>
-                            {/if}
-                          </button>
-                        {/each}
-                        <!-- Other option -->
-                        <button type="button"
-                          class="rounded-md border border-dashed px-3 py-1 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed {otherActive[
-                            pq.question
-                          ] && questionAnswers[pq.question] === 'Other'
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border bg-background text-muted-foreground hover:bg-accent hover:border-ring/30'}"
-                          disabled={submitting}
-                          onclick={() => {
-                            const wasActive = otherActive[pq.question];
-                            otherActive = { ...otherActive, [pq.question]: !wasActive };
-                            if (!wasActive) {
-                              selectQuestionAnswer(pq.question, "Other");
-                            } else if (questionAnswers[pq.question] === "Other") {
-                              const { [pq.question]: _, ...rest } = questionAnswers;
-                              questionAnswers = rest;
-                            }
-                          }}
-                        >
-                          {t("inline_other")}
-                        </button>
-                        {#if otherActive[pq.question]}
-                          <input
-                            type="text"
-                            bind:value={otherText[pq.question]}
-                            placeholder={t("inline_otherPlaceholder")}
-                            class="w-full mt-0.5 rounded-md border border-border bg-transparent px-2 py-1 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
-                          />
-                        {/if}
-                      </div>
-                    </div>
-                  {/each}
-                  <div class="flex gap-2 pt-1">
-                    <button type="button"
-                      class="rounded-md bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={submitting || !allQuestionsAnswered}
-                      onclick={submitAllQuestionAnswers}
-                    >
-                      {t("inline_submitCount", {
-                        count: `${Object.keys(questionAnswers).length}/${parsedQuestions.length}`,
-                      })}
-                    </button>
-                    <button type="button"
-                      class="rounded-md border border-border px-4 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent transition-all disabled:opacity-50"
-                      disabled={submitting}
-                      onclick={() => {
-                        submitting = true;
-                        safePermissionRespond(tool.permission_request_id!, "deny");
-                      }}>{t("common_deny")}</button
-                    >
-                  </div>
-                </div>
-              {:else if isMultiSelect}
-                <!-- Single multi-select question -->
-                <MarkdownContent
-                  text={askQuestion}
-                  class="text-sm text-foreground mb-3 [&>*:last-child]:mb-0"
-                />
-                <div class="flex flex-wrap items-center gap-2">
-                  {#each askOptions as option}
-                    <button type="button"
-                      class="rounded-md border px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed {multiChecked[
-                        option
-                      ]
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border bg-background text-foreground hover:bg-accent hover:border-ring/30'}"
-                      disabled={submitting}
-                      onclick={() => toggleMulti(option)}
-                    >
-                      {#if multiChecked[option]}
-                        <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
-                      {/if}
-                      {option}
-                    </button>
-                  {/each}
-                  <button type="button"
-                    class="rounded-md border border-dashed px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed {otherActive[
-                      askQuestion
-                    ]
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border bg-background text-muted-foreground hover:bg-accent hover:border-ring/30'}"
-                    disabled={submitting}
-                    onclick={() => {
-                      otherActive = { ...otherActive, [askQuestion]: !otherActive[askQuestion] };
-                    }}
-                  >
-                    {t("inline_other")}
-                  </button>
-                  {#if otherActive[askQuestion]}
-                    <input
-                      type="text"
-                      bind:value={otherText[askQuestion]}
-                      placeholder={t("inline_otherPlaceholder")}
-                      class="w-full rounded-md border border-border bg-transparent px-2 py-1 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
-                    />
-                  {/if}
-                  <button type="button"
-                    class="rounded-md bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={submitting ||
-                      (multiCount() === 0 &&
-                        !(otherActive[askQuestion] && otherText[askQuestion]?.trim()))}
-                    onclick={submitMultiSelectPermission}
-                  >
-                    {multiCount() > 0
-                      ? t("inline_submitCount", { count: String(multiCount()) })
-                      : t("inline_submit")}
-                  </button>
-                  <button type="button"
-                    class="rounded-md border border-border px-4 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-all disabled:opacity-50"
-                    disabled={submitting}
-                    onclick={() => {
-                      submitting = true;
-                      safePermissionRespond(tool.permission_request_id!, "deny");
-                    }}>{t("common_deny")}</button
-                  >
-                </div>
-              {:else}
-                <!-- Single question, single select -->
-                <MarkdownContent
-                  text={askQuestion}
-                  class="text-sm text-foreground mb-3 [&>*:last-child]:mb-0"
-                />
-                <div class="flex flex-wrap gap-2">
-                  {#each askOptions as option}
-                    <button type="button"
-                      class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent hover:border-ring/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={submitting}
-                      onclick={() => handleAskPermissionAllow(option)}
-                    >
-                      {option}
-                    </button>
-                  {/each}
-                  <button type="button"
-                    class="rounded-md border border-dashed border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:border-ring/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={submitting}
-                    onclick={() => {
-                      otherActive = { ...otherActive, [askQuestion]: true };
-                    }}
-                  >
-                    {t("inline_other")}
-                  </button>
-                  {#if otherActive[askQuestion]}
-                    <div class="flex gap-1.5 w-full mt-0.5">
-                      <input
-                        type="text"
-                        bind:value={otherText[askQuestion]}
-                        placeholder={t("inline_otherPlaceholder")}
-                        class="flex-1 rounded-md border border-border bg-transparent px-2 py-1 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
-                      />
-                      <button type="button"
-                        class="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={submitting || !otherText[askQuestion]?.trim()}
-                        onclick={() => handleAskPermissionOther(askQuestion)}
-                      >
-                        {t("inline_submitOther")}
-                      </button>
-                    </div>
-                  {/if}
-                  <button type="button"
-                    class="rounded-md border border-border px-4 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent transition-all disabled:opacity-50"
-                    disabled={submitting}
-                    onclick={() => {
-                      submitting = true;
-                      safePermissionRespond(tool.permission_request_id!, "deny");
-                    }}>{t("common_deny")}</button
-                  >
-                </div>
-              {/if}
-            {/if}
-          </div>
+        {#if isAsk && askQuestion}
+          <AskUserQuestionCard {tool} {style} {currentPhase} {onAnswer} {onPermissionRespond} />
         {:else if tool.status === "permission_prompt" && tool.permission_request_id && tool.tool_name === "ExitPlanMode"}
           <!-- ExitPlanMode: 3-option execution card + continue planning -->
           <div
@@ -1464,7 +954,7 @@
             {/if}
           </div>
         {:else if showPermissionInPanel && tool.status === "permission_prompt" && tool.permission_request_id && tool.tool_name !== "AskUserQuestion" && tool.tool_name !== "ExitPlanMode"}
-          <!-- Permission handled by floating panel — show lightweight placeholder -->
+          <!-- Permission handled by floating panel 鈥?show lightweight placeholder -->
           <div class="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground/60">
             <Spinner size="xxs" class="border-[hsl(var(--miwarp-status-warning)/0.4)] border-t-[hsl(var(--miwarp-status-warning))]" />
             <span>{t("inline_permissionPending")}</span>
