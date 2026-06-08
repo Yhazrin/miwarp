@@ -5,6 +5,7 @@ use crate::agent::spawn_locks::SpawnLocks;
 use crate::models::{BusEvent, RemoteHost, RunMeta, RunStatus, SessionMode, UserSettings};
 use crate::process_ext::HideConsole;
 use crate::storage;
+use crate::storage::shared;
 use crate::web_server::broadcaster::BroadcastEmitter;
 use std::sync::Arc;
 use std::time::Duration;
@@ -33,17 +34,7 @@ const ACTOR_SEND_TIMEOUT_MS: u64 = 45_000;
 /// Timeout for WaitReady after actor spawn
 const ACTOR_READY_TIMEOUT_MS: u64 = 5_000;
 
-/// Truncate a string to at most `max` bytes, snapping to a char boundary.
-fn truncate_str(s: &str, max: usize) -> &str {
-    if s.len() <= max {
-        return s;
-    }
-    let mut end = max;
-    while end > 0 && !s.is_char_boundary(end) {
-        end -= 1;
-    }
-    &s[..end]
-}
+
 
 /// Helper: get the actor command sender for a run_id.
 async fn get_cmd_tx(
@@ -541,7 +532,7 @@ pub(crate) async fn start_session_impl(
     log::debug!(
         "[session] meta loaded: agent={}, prompt={:?}, cwd={}, exec_path={:?}",
         meta.agent,
-        truncate_str(&meta.prompt, 80),
+        shared::truncate_str(&meta.prompt, 80),
         meta.cwd,
         exec_path
     );
@@ -1170,9 +1161,7 @@ pub(crate) async fn approve_session_tool_impl(
     // Tools that must never be permanently allowed — they require per-use approval.
     // ExitPlanMode: plan approval gate; adding it to allowedTools silently bypasses
     // the CLI's requiresUserInteraction check, permanently auto-approving plans.
-    const NEVER_ALLOW_TOOLS: &[&str] = &["ExitPlanMode", "EnterPlanMode"];
-
-    if NEVER_ALLOW_TOOLS.contains(&tool_name.as_str()) {
+    if shared::NEVER_ALLOW_TOOLS.contains(&tool_name.as_str()) {
         log::warn!(
             "[session] approve_session_tool: refusing to permanently allow '{}' (requires per-use approval)",
             tool_name
@@ -1809,7 +1798,7 @@ async fn spawn_cli_process(
         log::debug!(
             "[session] cwd: {}, prompt: {:?}",
             cwd,
-            truncate_str(prompt, 80)
+            shared::truncate_str(prompt, 80)
         );
         cmd.current_dir(cwd)
             .env("PATH", &path_env)
@@ -1899,7 +1888,7 @@ pub async fn side_question(
         "[btw] side_question: run_id={}, btw_id={}, question={}",
         run_id,
         btw_id,
-        truncate_str(&question, 80)
+        shared::truncate_str(&question, 80)
     );
 
     // 1. Read source run metadata

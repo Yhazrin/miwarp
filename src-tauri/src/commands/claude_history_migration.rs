@@ -8,6 +8,7 @@ use crate::models::{
     BusEvent, ConversationRef, ExecutionPath, ImportWatermark, RunMeta, RunSource, RunStatus,
 };
 use crate::storage::cli_sessions::normalize_transcript_line;
+use crate::storage::shared;
 use crate::storage::events::{is_replayable, EventWriter};
 use crate::storage::{ensure_dir, run_dir, runs_dir};
 use rayon::prelude::*;
@@ -78,62 +79,6 @@ struct ManifestSession {
     model: Option<String>,
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-fn claude_projects_dir() -> Option<PathBuf> {
-    crate::storage::dirs_next().map(|h| h.join(".claude").join("projects"))
-}
-
-fn sha256_short(s: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(s.as_bytes());
-    let result = hasher.finalize();
-    result[..6]
-        .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect::<String>()
-}
-
-fn line_key(raw: &serde_json::Value, byte_offset: u64, raw_trim: &str) -> String {
-    let hash = sha256_short(raw_trim);
-    let etype = raw
-        .get("type")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
-    if let Some(uuid) = raw.get("uuid").and_then(|v| v.as_str()) {
-        return uuid.to_string();
-    }
-    if let Some(ts) = raw.get("timestamp").and_then(|v| v.as_str()) {
-        return format!("v1:{}:{}:{}", ts, etype, hash);
-    }
-    format!("v1:{}:{}:{}", byte_offset, etype, hash)
-}
-
-fn event_key(lk: &str, event_type: &str, n: usize) -> String {
-    format!("v1:{}#{}#{}", lk, event_type, n)
-}
-
-fn bus_event_tag(event: &BusEvent) -> String {
-    if let Ok(v) = serde_json::to_value(event) {
-        if let Some(t) = v.get("type").and_then(|v| v.as_str()) {
-            return t.to_string();
-        }
-    }
-    "unknown".to_string()
-}
-
-fn extract_timestamp(raw: &serde_json::Value) -> Option<String> {
-    raw.get("timestamp")
-        .and_then(|v| v.as_str())
-        .map(String::from)
-}
-
-fn is_first_prompt_text(text: &str) -> bool {
-    !(text.starts_with("<local-command-stdout>")
-        || text.contains("<command-name>")
-        || text.contains("<task-notification>") && text.contains("</task-notification>"))
-}
-
 // ── Export ────────────────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -141,7 +86,7 @@ pub fn export_claude_code_history_archive(output_path: String) -> Result<ExportR
     log::debug!("[migration] export: output_path={}", output_path);
 
     let projects_dir =
-        claude_projects_dir().ok_or_else(|| "cannot determine ~/.claude/projects".to_string())?;
+        shared::claude_projects_dir().ok_or_else(|| "cannot determine ~/.claude/projects".to_string())?;
 
     if !projects_dir.exists() {
         return Err("~/.claude/projects/ does not exist".to_string());
@@ -307,7 +252,7 @@ fn export_single_session(
             {
                 let message = json_val.get("message").unwrap_or(&json_val);
                 if let Some(text) = message.get("content").and_then(|v| v.as_str()) {
-                    if is_first_prompt_text(text) {
+                    if shared::is_first_prompt_text(text) {
                         first_prompt = Some(if text.len() > 200 {
                             let end = text.floor_char_boundary(200);
                             format!("{}...", &text[..end])
@@ -674,7 +619,7 @@ fn run_import_pipeline(
             if first_prompt.is_empty() && etype == "user" {
                 let message = json_val.get("message").unwrap_or(&json_val);
                 if let Some(text) = message.get("content").and_then(|v| v.as_str()) {
-                    if is_first_prompt_text(text) {
+                    if shared::is_first_prompt_text(text) {
                         first_prompt = if text.len() > 200 {
                             let end = text.floor_char_boundary(200);
                             format!("{}...", &text[..end])
@@ -809,7 +754,7 @@ fn run_import_pipeline(
 
         // Process using the same logic as TranscriptImporter
         let raw_trim = trimmed;
-        let lk = line_key(&json_val, current_offset, raw_trim);
+        let lk = shared::line_key(&json_val, current_offset, raw_trim);
 
         let normalized = match normalize_transcript_line(&json_val) {
             Some(n) => n,
@@ -822,8 +767,8 @@ fn run_import_pipeline(
             .get("type")
             .and_then(|v| v.as_str())
             .unwrap_or("");
-        let ts = extract_timestamp(&json_val)
-            .or_else(|| extract_timestamp(&normalized))
+        let ts = shared::extract_timestamp(&json_val)
+            .or_else(|| shared::extract_timestamp(&normalized))
             .unwrap_or_default();
 
         let mut candidates: Vec<BusEvent> = Vec::new();
@@ -903,7 +848,7 @@ fn run_import_pipeline(
         let mut event_counts: HashMap<String, usize> = HashMap::new();
 
         for event in candidates {
-            let tag = bus_event_tag(&event);
+            let tag = shared::bus_event_tag(&event);
 
             // Replayable filter
             if !is_replayable(&event) {
@@ -927,7 +872,7 @@ fn run_import_pipeline(
             }
 
             let n = event_counts.entry(tag.clone()).or_insert(0);
-            let ek = event_key(&lk, &tag, *n);
+            let ek = shared::event_key(&lk, &tag, *n);
             *n += 1;
 
             let seq = event_writer.write_bus_event_with_ts(&run_id, &event, &ts)?;
@@ -953,8 +898,8 @@ fn run_import_pipeline(
             &mut usage_incomplete,
         ) {
             let lk = format!("v1:finalize:{}", turn_counter);
-            let tag = bus_event_tag(&event);
-            let ek = event_key(&lk, &tag, 0);
+            let tag = shared::bus_event_tag(&event);
+            let ek = shared::event_key(&lk, &tag, 0);
             let seq = event_writer.write_bus_event_with_ts(
                 &run_id,
                 &event,
@@ -1087,7 +1032,7 @@ pub fn scan_claude_code_history() -> Result<Vec<CliSessionInfo>, String> {
     log::debug!("[migration] scan_claude_code_history");
 
     let projects_dir =
-        claude_projects_dir().ok_or_else(|| "cannot determine ~/.claude/projects".to_string())?;
+        shared::claude_projects_dir().ok_or_else(|| "cannot determine ~/.claude/projects".to_string())?;
 
     if !projects_dir.exists() {
         return Ok(vec![]);
@@ -1132,7 +1077,7 @@ fn extract_session_info(path: &Path) -> Result<CliSessionInfo, String> {
         .unwrap_or("")
         .to_string();
 
-    let projects_dir = claude_projects_dir().ok_or("cannot determine projects dir")?;
+    let projects_dir = shared::claude_projects_dir().ok_or("cannot determine projects dir")?;
     let relative_path = path
         .strip_prefix(&projects_dir)
         .map(|p| p.to_string_lossy().into_owned())
@@ -1178,7 +1123,7 @@ fn extract_session_info(path: &Path) -> Result<CliSessionInfo, String> {
             {
                 let message = json_val.get("message").unwrap_or(&json_val);
                 if let Some(text) = message.get("content").and_then(|v| v.as_str()) {
-                    if is_first_prompt_text(text) {
+                    if shared::is_first_prompt_text(text) {
                         first_prompt = Some(if text.len() > 200 {
                             let end = text.floor_char_boundary(200);
                             format!("{}...", &text[..end])

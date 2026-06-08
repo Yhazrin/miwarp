@@ -6,9 +6,9 @@
 use crate::agent::claude_protocol::{validate_bus_event, ProtocolState};
 use crate::models::{BusEvent, ImportWatermark, RunMeta, RunSource, RunStatus};
 use crate::storage::events::{is_replayable, EventWriter};
+use crate::storage::shared;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, BufWriter, Seek, SeekFrom, Write};
@@ -72,17 +72,12 @@ pub fn encode_cwd(cwd: &str) -> String {
     cwd.replace(['/', '\\'], "-")
 }
 
-fn claude_projects_dir() -> Option<PathBuf> {
-    super::dirs_next().map(|h| h.join(".claude").join("projects"))
-}
-
 /// Validate that a path is within ~/.claude/projects/ (path traversal guard).
 fn validate_cli_path(path: &Path) -> Result<(), String> {
     let canonical = path
         .canonicalize()
         .map_err(|e| format!("canonicalize failed: {}", e))?;
-    let projects_dir = claude_projects_dir().ok_or("cannot determine home dir")?;
-    // projects_dir may not exist yet — canonicalize parent check
+    let projects_dir = shared::shared::claude_projects_dir().ok_or("cannot determine home dir")?;
     if let Ok(canonical_projects) = projects_dir.canonicalize() {
         if !canonical.starts_with(&canonical_projects) {
             return Err(format!(
@@ -95,59 +90,6 @@ fn validate_cli_path(path: &Path) -> Result<(), String> {
         return Err("file is not .jsonl".to_string());
     }
     Ok(())
-}
-
-/// SHA-256 hash of a string, returning first 12 hex chars.
-fn sha256_short(s: &str) -> String {
-    let mut hasher = Sha256::new();
-    hasher.update(s.as_bytes());
-    let result = hasher.finalize();
-    result[..6]
-        .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect::<String>()
-}
-
-/// Generate a source_key for a transcript line.
-fn line_key(raw: &Value, byte_offset: u64, raw_trim: &str) -> String {
-    let hash = sha256_short(raw_trim);
-    let etype = raw
-        .get("type")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
-    // uuid is most reliable
-    if let Some(uuid) = raw.get("uuid").and_then(|v| v.as_str()) {
-        return uuid.to_string();
-    }
-    // timestamp + type + hash as next best
-    if let Some(ts) = raw.get("timestamp").and_then(|v| v.as_str()) {
-        return format!("v1:{}:{}:{}", ts, etype, hash);
-    }
-    // byte offset fallback
-    format!("v1:{}:{}:{}", byte_offset, etype, hash)
-}
-
-/// Generate an event-level key from line_key + event type + index.
-fn event_key(lk: &str, event_type: &str, n: usize) -> String {
-    format!("v1:{}#{}#{}", lk, event_type, n)
-}
-
-/// Get the serde tag of a BusEvent.
-fn bus_event_tag(event: &BusEvent) -> String {
-    // Use serde to get the "type" tag
-    if let Ok(v) = serde_json::to_value(event) {
-        if let Some(t) = v.get("type").and_then(|v| v.as_str()) {
-            return t.to_string();
-        }
-    }
-    "unknown".to_string()
-}
-
-/// Extract timestamp from a raw JSON value (CLI transcript line).
-fn extract_timestamp(raw: &Value) -> Option<String> {
-    raw.get("timestamp")
-        .and_then(|v| v.as_str())
-        .map(String::from)
 }
 
 /// Path to import-index.jsonl for a run.
@@ -416,7 +358,7 @@ impl TranscriptImporter {
         skip_set: Option<&HashSet<String>>,
     ) -> Result<(), String> {
         let raw_trim = raw_line.trim();
-        let lk = line_key(raw_json, byte_offset, raw_trim);
+        let lk = shared::line_key(raw_json, byte_offset, raw_trim);
 
         let normalized = match normalize_transcript_line(raw_json) {
             Some(n) => n,
@@ -430,8 +372,8 @@ impl TranscriptImporter {
             .get("type")
             .and_then(|v| v.as_str())
             .unwrap_or("");
-        let ts = extract_timestamp(raw_json)
-            .or_else(|| extract_timestamp(&normalized))
+        let ts = shared::extract_timestamp(raw_json)
+            .or_else(|| shared::extract_timestamp(&normalized))
             .unwrap_or_default();
 
         // Track event counts per type for event_key generation
@@ -512,7 +454,7 @@ impl TranscriptImporter {
         // ── Phase 2: Filter and write ──
 
         for event in candidates {
-            let tag = bus_event_tag(&event);
+            let tag = shared::bus_event_tag(&event);
 
             // Replayable filter
             if !is_replayable(&event) {
@@ -537,7 +479,7 @@ impl TranscriptImporter {
             }
 
             let n = event_counts.entry(tag.clone()).or_insert(0);
-            let ek = event_key(&lk, &tag, *n);
+            let ek = shared::event_key(&lk, &tag, *n);
             *n += 1;
 
             // Skip-set check (reconcile mode)
@@ -642,8 +584,8 @@ impl TranscriptImporter {
         if self.turn_counter > 0 {
             if let Some(event) = self.flush_turn_usage() {
                 let lk = format!("v1:finalize:{}", self.turn_counter);
-                let tag = bus_event_tag(&event);
-                let ek = event_key(&lk, &tag, 0);
+                let tag = shared::bus_event_tag(&event);
+                let ek = shared::event_key(&lk, &tag, 0);
 
                 // Skip-set check (reconcile mode)
                 if let Some(ss) = skip_set {
@@ -758,7 +700,7 @@ const MAX_DISCOVER_CANDIDATES: usize = 500;
 /// Discover CLI sessions for a given working directory.
 pub fn discover_sessions(target_cwd: &str) -> Result<DiscoverResult, String> {
     let start = std::time::Instant::now();
-    let projects_dir = claude_projects_dir().ok_or("cannot determine home dir")?;
+    let projects_dir = shared::claude_projects_dir().ok_or("cannot determine home dir")?;
 
     if !projects_dir.exists() {
         log::debug!("[cli_sessions] discover: ~/.claude/projects/ does not exist");
@@ -902,7 +844,7 @@ fn build_imported_index() -> HashMap<(String, String), String> {
 
 /// Check if a user message's text content is a candidate for "first prompt" extraction.
 /// Returns false for CLI-injected XML messages (command output, slash commands, task notifications).
-fn is_first_prompt_text(text: &str) -> bool {
+fn shared::is_first_prompt_text(text: &str) -> bool {
     !(text.starts_with("<local-command-stdout>")
         || text.contains("<command-name>")
         || text.contains("<task-notification>") && text.contains("</task-notification>"))
@@ -981,7 +923,7 @@ fn extract_summary(
         if first_prompt.is_none() && json_val.get("type").and_then(|v| v.as_str()) == Some("user") {
             let message = json_val.get("message").unwrap_or(&json_val);
             if let Some(text) = message.get("content").and_then(|v| v.as_str()) {
-                if is_first_prompt_text(text) {
+                if shared::is_first_prompt_text(text) {
                     let truncated = if text.len() > 200 {
                         let end = text.floor_char_boundary(200);
                         format!("{}...", &text[..end])
@@ -1204,7 +1146,7 @@ pub fn import_session(
             if first_prompt.is_empty() && etype == "user" {
                 let message = json_val.get("message").unwrap_or(&json_val);
                 if let Some(text) = message.get("content").and_then(|v| v.as_str()) {
-                    if is_first_prompt_text(text) {
+                    if shared::is_first_prompt_text(text) {
                         first_prompt = if text.len() > 200 {
                             let end = text.floor_char_boundary(200);
                             format!("{}...", &text[..end])
@@ -1399,7 +1341,7 @@ pub fn import_session(
 }
 
 fn find_cli_session_path(session_id: &str, cwd: &str) -> Result<PathBuf, String> {
-    let projects_dir = claude_projects_dir().ok_or("cannot determine home dir")?;
+    let projects_dir = shared::claude_projects_dir().ok_or("cannot determine home dir")?;
     let filename = format!("{}.jsonl", session_id);
 
     // Quick path: encoded cwd directory
@@ -1583,7 +1525,7 @@ pub fn sync_session(
             continue;
         };
 
-        if let Some(ts) = extract_timestamp(&json_val) {
+        if let Some(ts) = shared::extract_timestamp(&json_val) {
             last_ts = ts;
         }
 
@@ -1678,7 +1620,7 @@ fn sync_reconcile(
             continue;
         };
 
-        if let Some(ts) = extract_timestamp(&json_val) {
+        if let Some(ts) = shared::extract_timestamp(&json_val) {
             last_ts = ts;
         }
 
@@ -1956,26 +1898,26 @@ mod tests {
     }
 
     #[test]
-    fn test_is_first_prompt_text() {
+    fn test_shared::is_first_prompt_text() {
         // Real user prompts → true
-        assert!(is_first_prompt_text("Hello, help me fix a bug"));
-        assert!(is_first_prompt_text("Implement a new feature"));
+        assert!(shared::is_first_prompt_text("Hello, help me fix a bug"));
+        assert!(shared::is_first_prompt_text("Implement a new feature"));
 
         // Command output → false
-        assert!(!is_first_prompt_text(
+        assert!(!shared::is_first_prompt_text(
             "<local-command-stdout>$ ls\nfile.txt</local-command-stdout>"
         ));
 
         // Slash command → false
-        assert!(!is_first_prompt_text("<command-name>/cost</command-name>"));
+        assert!(!shared::is_first_prompt_text("<command-name>/cost</command-name>"));
 
         // Task notification → false
-        assert!(!is_first_prompt_text(
+        assert!(!shared::is_first_prompt_text(
             "<task-notification>\n<task-id>t1</task-id>\n<status>completed</status>\n</task-notification>"
         ));
 
         // Only open tag without close → true (user discussing XML, not a real notification)
-        assert!(is_first_prompt_text(
+        assert!(shared::is_first_prompt_text(
             "The <task-notification> tag is used for..."
         ));
     }
@@ -1987,7 +1929,7 @@ mod tests {
             "uuid": "abc-def-123",
             "timestamp": "2026-01-01T00:00:00Z"
         });
-        let key = line_key(&raw, 100, "raw line");
+        let key = shared::line_key(&raw, 100, "raw line");
         assert_eq!(key, "abc-def-123");
     }
 
@@ -1997,20 +1939,20 @@ mod tests {
             "type": "user",
             "timestamp": "2026-01-01T00:00:00Z"
         });
-        let key = line_key(&raw, 100, "raw line");
+        let key = shared::line_key(&raw, 100, "raw line");
         assert!(key.starts_with("v1:2026-01-01T00:00:00Z:user:"));
     }
 
     #[test]
     fn test_source_key_offset_fallback() {
         let raw = json!({"type": "user"});
-        let key = line_key(&raw, 42, "raw line");
+        let key = shared::line_key(&raw, 42, "raw line");
         assert!(key.starts_with("v1:42:user:"));
     }
 
     #[test]
     fn test_event_key_format() {
-        let ek = event_key("abc-def", "tool_end", 1);
+        let ek = shared::event_key("abc-def", "tool_end", 1);
         assert_eq!(ek, "v1:abc-def#tool_end#1");
     }
 

@@ -227,12 +227,11 @@ pub fn build_settings_args(settings: &AdapterSettings, print_mode: bool) -> Vec<
     }
 
     // Allowed tools (filter out tools that require per-use approval)
-    const NEVER_ALLOW_TOOLS: &[&str] = &["ExitPlanMode", "EnterPlanMode"];
     let filtered_tools: Vec<&String> = settings
         .allowed_tools
         .iter()
         .filter(|t| {
-            if NEVER_ALLOW_TOOLS.contains(&t.as_str()) {
+            if crate::storage::shared::NEVER_ALLOW_TOOLS.contains(&t.as_str()) {
                 log::warn!(
                     "[adapter] filtered '{}' from --allowedTools (requires per-use approval)",
                     t

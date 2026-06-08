@@ -21,6 +21,7 @@ use crate::models::{
 };
 use crate::storage;
 use crate::storage::runs;
+use crate::storage::shared;
 use crate::web_server::broadcaster::BroadcastEmitter;
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
@@ -42,17 +43,7 @@ fn extract_promise_tag(text: &str) -> Option<&str> {
     Some(text[start + 9..end].trim())
 }
 
-/// Truncate a string to at most `max` bytes, snapping to a char boundary.
-fn truncate_str(s: &str, max: usize) -> &str {
-    if s.len() <= max {
-        return s;
-    }
-    let mut end = max;
-    while end > 0 && !s.is_char_boundary(end) {
-        end -= 1;
-    }
-    &s[..end]
-}
+
 
 // ── Ralph Loop types ──
 
@@ -1424,7 +1415,7 @@ impl SessionActor {
         if text.is_empty() {
             return;
         }
-        log::trace!("[actor] stdout #{}: {}", line_num, truncate_str(text, 200));
+        log::trace!("[actor] stdout #{}: {}", line_num, shared::truncate_str(text, 200));
 
         // Step 0: JSON parse
         let parsed = match serde_json::from_str::<Value>(text) {
@@ -1434,7 +1425,7 @@ impl SessionActor {
                 log::debug!(
                     "[actor] JSON parse failure #{}: {}",
                     self.json_parse_fail_count,
-                    truncate_str(text, 100)
+                    shared::truncate_str(text, 100)
                 );
                 // v1.0.6 / hardening A2: sliding-window desync detection.
                 // Record this failure's wall-clock time, evict old entries,
@@ -1768,7 +1759,7 @@ impl SessionActor {
             } else {
                 log::warn!(
                     "[actor] control_response missing request_id: {}",
-                    truncate_str(&parsed.to_string(), 200)
+                    shared::truncate_str(&parsed.to_string(), 200)
                 );
             }
             return;
@@ -1861,7 +1852,7 @@ impl SessionActor {
                     "Hook Review Required",
                     &format!(
                         "{} — PreToolUse: {}",
-                        truncate_str(&self.run_id, 8),
+                        shared::truncate_str(&self.run_id, 8),
                         hook_label
                     ),
                 );
@@ -1939,7 +1930,7 @@ impl SessionActor {
                 "MCP Input Required",
                 &format!(
                     "{}: {} needs input",
-                    truncate_str(&self.run_id, 8),
+                    shared::truncate_str(&self.run_id, 8),
                     &mcp_server_name
                 ),
             );
@@ -2007,7 +1998,7 @@ impl SessionActor {
                 "Permission Required",
                 &format!(
                     "{} wants to use: {}",
-                    truncate_str(&self.run_id, 8),
+                    shared::truncate_str(&self.run_id, 8),
                     &tool_label
                 ),
             );
@@ -2056,7 +2047,7 @@ impl SessionActor {
             } else {
                 log::warn!(
                     "[turn] internal control_response missing request_id: {}",
-                    truncate_str(&parsed.to_string(), 200)
+                    shared::truncate_str(&parsed.to_string(), 200)
                 );
             }
             return;
@@ -2141,7 +2132,7 @@ impl SessionActor {
         if self.cancel.is_cancelled() {
             log::trace!(
                 "[actor] stderr suppressed after cancel: {}",
-                truncate_str(text, 200)
+                shared::truncate_str(text, 200)
             );
             return;
         }
@@ -2152,7 +2143,7 @@ impl SessionActor {
         log::trace!(
             "[actor] stderr: {}: {}",
             self.run_id,
-            truncate_str(text, 200)
+            shared::truncate_str(text, 200)
         );
 
         let event = BusEvent::Raw {
