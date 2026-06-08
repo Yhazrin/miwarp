@@ -245,14 +245,12 @@ html.theme-transitioning .theme-fade {
     pointer-events: none;
     z-index: 0;
   }
-  /* Light theme: white wash, 0.72-0.88 — bright "white sidebar" feel
-     with just a hint of the wallpaper bleeding through the bottom. */
+  /* Light theme: white wash, 0.42-0.58 — pale tint that still
+     lets the wallpaper bleed through visibly. Mirrors the dark
+     theme's 0.36-0.48 range (slightly higher because white washes
+     tend to flatten the underlying image more than dark ones). */
   :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar::before {
-    background: linear-gradient(
-      180deg,
-      hsl(250 8% 100% / 0.72) 0%,
-      hsl(250 8% 100% / 0.88) 100%
-    );
+    background: linear-gradient(180deg, hsl(250 8% 100% / 0.42) 0%, hsl(250 8% 100% / 0.58) 100%);
   }
   /* Dark theme: dark wash within 0.36-0.48 range (slightly higher
      to keep text readable on top of dark desktop backgrounds). */
@@ -308,10 +306,16 @@ html.theme-transitioning .theme-fade {
   .native-glass-sidebar .sidebar-content-panel input[type="text"] {
     border-color: hsl(var(--miwarp-glass-border) / 0.35) !important;
   }
-  :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar .sidebar-content-panel input[type="text"] {
+  :is(html:not(.dark), html[data-color-scheme="light"])
+    .native-glass-sidebar
+    .sidebar-content-panel
+    input[type="text"] {
     background: hsl(0 0% 100% / 0.45) !important;
   }
-  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar .sidebar-content-panel input[type="text"] {
+  :is(html.dark, html[data-color-scheme="dark"])
+    .native-glass-sidebar
+    .sidebar-content-panel
+    input[type="text"] {
     background: hsl(var(--miwarp-bg-surface) / 0.28) !important;
   }
   /* Selected / hover items inside the sidebar: theme-aware tints.
@@ -320,28 +324,49 @@ html.theme-transitioning .theme-fade {
   .native-glass-sidebar .sidebar-content-panel a[data-active="true"],
   .native-glass-sidebar .sidebar-content-panel button[data-active="true"],
   .native-glass-sidebar .sidebar-content-panel [data-selected="true"] {
-    background: hsl(var(--primary) / 0.10) !important;
+    background: hsl(var(--primary) / 0.1) !important;
   }
-  :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar .sidebar-content-panel a:hover,
-  :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar .sidebar-content-panel button:hover {
+  :is(html:not(.dark), html[data-color-scheme="light"])
+    .native-glass-sidebar
+    .sidebar-content-panel
+    a:hover,
+  :is(html:not(.dark), html[data-color-scheme="light"])
+    .native-glass-sidebar
+    .sidebar-content-panel
+    button:hover {
     background: hsl(0 0% 0% / 0.06) !important;
   }
-  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar .sidebar-content-panel a:hover,
-  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar .sidebar-content-panel button:hover {
-    background: hsl(var(--miwarp-bg-hover) / 0.30) !important;
+  :is(html.dark, html[data-color-scheme="dark"])
+    .native-glass-sidebar
+    .sidebar-content-panel
+    a:hover,
+  :is(html.dark, html[data-color-scheme="dark"])
+    .native-glass-sidebar
+    .sidebar-content-panel
+    button:hover {
+    background: hsl(var(--miwarp-bg-hover) / 0.3) !important;
   }
   /* Icon rail buttons: same translucent tints, also theme-aware. */
   .native-glass-sidebar .sidebar-icon-rail a[data-active="true"],
   .native-glass-sidebar .sidebar-icon-rail a[aria-current="page"] {
     background: hsl(var(--primary) / 0.14) !important;
   }
-  :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar .sidebar-icon-rail a:hover,
-  :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar .sidebar-icon-rail button:hover {
+  :is(html:not(.dark), html[data-color-scheme="light"])
+    .native-glass-sidebar
+    .sidebar-icon-rail
+    a:hover,
+  :is(html:not(.dark), html[data-color-scheme="light"])
+    .native-glass-sidebar
+    .sidebar-icon-rail
+    button:hover {
     background: hsl(0 0% 0% / 0.06) !important;
   }
   :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar .sidebar-icon-rail a:hover,
-  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar .sidebar-icon-rail button:hover {
-    background: hsl(var(--miwarp-bg-hover) / 0.30) !important;
+  :is(html.dark, html[data-color-scheme="dark"])
+    .native-glass-sidebar
+    .sidebar-icon-rail
+    button:hover {
+    background: hsl(var(--miwarp-bg-hover) / 0.3) !important;
   }
 
   /* ── Mode B: native window glass INACTIVE / browser fallback
@@ -354,7 +379,7 @@ html.theme-transitioning .theme-fade {
     background: hsl(var(--miwarp-bg-base) / 0.55);
     backdrop-filter: blur(18px) saturate(140%);
     -webkit-backdrop-filter: blur(18px) saturate(140%);
-    border-right: 1px solid hsl(var(--miwarp-glass-border) / 0.30);
+    border-right: 1px solid hsl(var(--miwarp-glass-border) / 0.3);
     box-shadow: inset -1px 0 0 hsl(0 0% 0% / 0.06);
   }
 
