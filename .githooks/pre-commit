@@ -1,5 +1,6 @@
 #!/bin/sh
 # Pre-commit checklist:
+#   0. Root pollution check (no session reports in repo root)
 #   1. Rust formatting (cargo fmt)
 #   2. Frontend formatting (prettier)
 #   3. ESLint
@@ -8,6 +9,17 @@
 # Skip with: git commit --no-verify
 
 set -e
+
+# ── 0. Root pollution check (always — quick) ──
+echo "▶ Checking root for session-pollution files..."
+if ! node scripts/check-root-pollution.mjs 2>/dev/null; then
+  echo ""
+  echo "⚠  Repo root contains session-pollution files."
+  echo "   See scripts/check-root-pollution.mjs for the allow-list."
+  echo "   Run: node scripts/check-root-pollution.mjs"
+  echo ""
+  exit 1
+fi
 
 # ── 1. Rust formatting ──
 if git diff --cached --name-only | grep -q '\.rs$'; then

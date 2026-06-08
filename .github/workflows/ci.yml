@@ -32,6 +32,9 @@ jobs:
       - name: Version alignment
         run: npm run version:check
 
+      - name: Root pollution check
+        run: npm run check:root
+
       - name: Sync SvelteKit
         run: npx svelte-kit sync
 
