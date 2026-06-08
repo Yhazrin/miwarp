@@ -1506,6 +1506,14 @@ textarea,
   margin: 0;
   padding: 0;
   border: 0;
+  /* Collapse uses ease-in (slow start, fast end) — the mirror of the base
+     ease-out (fast start, slow end) used when the reveal grows in. Without
+     this asymmetry, the same ease-out curve running in reverse feels like
+     the element snaps 70% away then slowly finishes. */
+  transition:
+    opacity var(--session-island-duration) ease-in,
+    transform var(--session-island-duration) ease-in,
+    width var(--session-island-duration) ease-in;
 }
 
 .session-island-shell.session-island-active .session-island-reveal {
