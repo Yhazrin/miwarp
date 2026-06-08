@@ -1328,9 +1328,11 @@ textarea,
 }
 
 .session-island-shell {
-  /* Center anchor — width from tier 1 + animated chrome/pill; tier 2 excluded when collapsed */
-  position: fixed;
-  top: var(--session-statusbar-top); /* Visual 12px; compensates webview zoom */
+  /* v1.0.6: centered within the chat pane (not the full viewport).
+   * Parent (.chat-pane-anchor) is `relative`; this uses absolute + left:50% + translate
+   * so the island floats at the top-center of the chat content area. */
+  position: absolute;
+  top: var(--session-statusbar-top);
   left: 50%;
   right: auto;
   transform: translate3d(-50%, 0, 0);
@@ -1646,6 +1648,8 @@ textarea,
 
 .chat-messages-scroll {
   height: 100%;
+  /* v1.0.6: status bar is absolute within chat pane; add top padding to avoid overlap */
+  padding-top: calc(var(--session-statusbar-offset-rest) + 8px);
   padding-bottom: var(--chat-input-dock-offset);
   scroll-padding-bottom: calc(var(--chat-input-dock-offset) + 1rem);
 }
