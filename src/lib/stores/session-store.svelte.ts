@@ -2777,6 +2777,267 @@ export class SessionStore {
     }
   }
 
+  // ── Reducer helpers (extracted from _reduce for readability) ──
+
+  /** Handle message/streaming events: message_delta, thinking_delta, tool_input_delta,
+   *  message_complete, user_message. Returns true if the event was handled. */
+  private _reduceMessage(
+    ev: BusEvent,
+    ctx: ReduceCtx | null,
+    getTl: () => TimelineEntry[],
+    getSeenMsg: () => Set<string>,
+    getHe: () => HookEvent[],
+    replayOnly: boolean,
+  ): boolean {
+    switch (ev.type) {
+      case "message_delta": {
+        this._clearTimeoutError();
+        if (ev.parent_tool_use_id) {
+          this._appendSubTimelineStreamingDelta(ev.parent_tool_use_id, "content", ev.text, ctx);
+          return true;
+        }
+        if (this.thinkingStartMs && !this.thinkingEndMs) {
+          this.thinkingEndMs = eventTsMs(ev);
+        }
+        this._pendingDeltas.push(ev.text);
+        if (!this._pendingDeltasScheduled) {
+          this._pendingDeltasScheduled = true;
+          queueMicrotask(() => {
+            this._pendingDeltasScheduled = false;
+            this._pendingDeltas = [];
+          });
+        }
+        if (ctx) ctx.streamText += ev.text;
+        else this.streamingText += ev.text;
+        return true;
+      }
+      case "thinking_delta": {
+        this._clearTimeoutError();
+        if (ev.parent_tool_use_id) {
+          this._appendSubTimelineStreamingDelta(ev.parent_tool_use_id, "thinkingText", ev.text, ctx);
+          return true;
+        }
+        if (!this.thinkingStartMs) this.thinkingStartMs = eventTsMs(ev);
+        if (ctx) ctx.thinkingText += ev.text;
+        else this.thinkingText += ev.text;
+        return true;
+      }
+      case "tool_input_delta": {
+        if (ev.parent_tool_use_id) {
+          this._updateSubTimelineToolInput(ev.parent_tool_use_id, ev.tool_use_id, ev.partial_json, ctx);
+          return true;
+        }
+        const tl = getTl();
+        const tIdx = this._findToolIdx(ctx, ev.tool_use_id);
+        if (tIdx >= 0) {
+          const old = tl[tIdx] as Extract<TimelineEntry, { kind: "tool" }>;
+          const accum = SessionStore._accumulateJsonInput(
+            old.tool as Record<string, unknown>,
+            ev.partial_json,
+          );
+          const updated: TimelineEntry = { ...old, tool: { ...old.tool, ...accum } as typeof old.tool };
+          if (ctx) ctx.tl[tIdx] = updated;
+          else { const u = [...this.timeline]; u[tIdx] = updated; this.timeline = u; }
+        }
+        return true;
+      }
+      case "message_complete": {
+        const savedStreaming = ctx ? ctx.streamText : this.streamingText;
+        const finalText = ev.text && ev.text.length > 0 ? ev.text : savedStreaming;
+        if (getSeenMsg().has(ev.message_id)) {
+          this._patchAssistantContentIfEmpty(ctx, ev.message_id, finalText);
+          if (ev.parent_tool_use_id) this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
+          return true;
+        }
+        const existingAssistant = getTl().find((e) => e.kind === "assistant" && e.id === ev.message_id);
+        if (existingAssistant) {
+          this._patchAssistantContentIfEmpty(ctx, ev.message_id, finalText);
+          if (ev.parent_tool_use_id) this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
+          getSeenMsg().add(ev.message_id);
+          return true;
+        }
+        getSeenMsg().add(ev.message_id);
+        if (ev.parent_tool_use_id) {
+          const subThinking = this._extractSubTimelineThinking(ev.parent_tool_use_id, ctx);
+          const subStreaming = this._extractSubTimelineStreamingContent(ev.parent_tool_use_id, ctx);
+          const subFinalText = finalText.trim() ? finalText : subStreaming;
+          this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
+          const entry: TimelineEntry = {
+            kind: "assistant", id: ev.message_id, anchorId: ev.message_id,
+            content: subFinalText, ts: eventTs(ev),
+            ...(ev.model ? { model: ev.model } : {}),
+            ...(subThinking ? { thinkingText: subThinking } : {}),
+          };
+          const parentIdx = this._findParentToolIdx(ctx, ev.parent_tool_use_id);
+          if (parentIdx >= 0) { this._appendToSubTimeline(getTl(), parentIdx, entry, ctx); return true; }
+          this._pushTimeline(ctx, entry);
+          return true;
+        }
+        const savedThinking = ctx ? ctx.thinkingText : this.thinkingText;
+        if (ctx) { ctx.streamText = ""; ctx.thinkingText = ""; }
+        else { this.streamingText = ""; this.thinkingText = ""; }
+        this.thinkingStartMs = 0;
+        this.thinkingEndMs = 0;
+        const entry: TimelineEntry = {
+          kind: "assistant", id: ev.message_id, anchorId: ev.message_id,
+          content: finalText, ts: eventTs(ev),
+          ...(ev.model ? { model: ev.model } : {}),
+          ...(savedThinking ? { thinkingText: savedThinking } : {}),
+        };
+        this._pushTimeline(ctx, entry);
+        return true;
+      }
+      case "user_message": {
+        const tl = getTl();
+        if (!replayOnly) {
+          const match = tl.findLast((e) => e.kind === "user" && e.content === ev.text && !e.cliUuid);
+          if (match && match.kind === "user") {
+            if (ev.uuid) {
+              const idx = tl.indexOf(match);
+              const updated = { ...match, cliUuid: ev.uuid, anchorId: ev.uuid };
+              if (ctx) ctx.tl[idx] = updated;
+              else { const u = [...this.timeline]; u[idx] = updated; this.timeline = u; }
+            }
+            return true;
+          }
+        }
+        const newId = uuid();
+        const entry: TimelineEntry = {
+          kind: "user", id: newId, anchorId: ev.uuid || newId,
+          content: ev.text, ts: eventTs(ev),
+          ...(ev.uuid ? { cliUuid: ev.uuid } : {}),
+        };
+        this._pushTimeline(ctx, entry);
+        const pendingIdx = tl.findIndex((e) => e.kind === "tool" && e.tool.status === "ask_pending");
+        if (pendingIdx >= 0) {
+          const old = tl[pendingIdx] as Extract<TimelineEntry, { kind: "tool" }>;
+          const resolved: TimelineEntry = { ...old, tool: { ...old.tool, status: "success", output: { answer: ev.text } } };
+          if (ctx) ctx.tl[pendingIdx] = resolved;
+          else { const u = [...this.timeline]; u[pendingIdx] = resolved; this.timeline = u; }
+          if (!this._isStreamMode(ctx)) {
+            const he = getHe();
+            const hIdx = this._findHeIdxByStatus(ctx, old.id, "running");
+            if (hIdx >= 0) {
+              const updatedHe: HookEvent = { ...he[hIdx], status: "done", hook_type: "PostToolUse" };
+              if (ctx) ctx.he[hIdx] = updatedHe;
+              else { const u = [...this.tools]; u[hIdx] = updatedHe; this.tools = u; }
+            }
+          }
+        }
+        return true;
+      }
+      default:
+        return false;
+    }
+  }
+
+  /** Handle tool lifecycle events: tool_start, tool_end. Returns true if handled. */
+  private _reduceTool(
+    ev: BusEvent,
+    ctx: ReduceCtx | null,
+    replayOnly: boolean,
+    getTl: () => TimelineEntry[],
+    getHe: () => HookEvent[],
+    getSeenTool: () => Set<string>,
+  ): boolean {
+    switch (ev.type) {
+      case "tool_start": {
+        this._clearTimeoutError();
+        if (getSeenTool().has(ev.tool_use_id)) return true;
+        getSeenTool().add(ev.tool_use_id);
+        if (ev.parent_tool_use_id) {
+          const parentIdx = this._findParentToolIdx(ctx, ev.parent_tool_use_id);
+          if (parentIdx >= 0) {
+            const subEntry: TimelineEntry = {
+              kind: "tool", id: ev.tool_use_id, anchorId: ev.tool_use_id,
+              tool: { tool_use_id: ev.tool_use_id, tool_name: ev.tool_name, input: (ev.input as Record<string, unknown>) ?? {}, status: "running" },
+              ts: eventTs(ev),
+            };
+            this._appendToSubTimeline(getTl(), parentIdx, subEntry, ctx);
+            return true;
+          }
+        }
+        if (this._findToolIdx(ctx, ev.tool_use_id) >= 0) return true;
+        const tlEntry: TimelineEntry = {
+          kind: "tool", id: ev.tool_use_id, anchorId: ev.tool_use_id,
+          tool: { tool_use_id: ev.tool_use_id, tool_name: ev.tool_name, input: (ev.input as Record<string, unknown>) ?? {}, status: "running" },
+          ts: eventTs(ev),
+        };
+        this._pushTimeline(ctx, tlEntry);
+        if (!this._isStreamMode(ctx)) {
+          const heEntry: HookEvent = {
+            run_id: ev.run_id, hook_type: "PreToolUse", tool_name: ev.tool_name,
+            tool_input: ev.input as Record<string, unknown>, status: "running", timestamp: new Date().toISOString(),
+          };
+          (heEntry as Record<string, unknown>).tool_use_id = ev.tool_use_id;
+          this._pushHookEntry(ctx, heEntry);
+        }
+        return true;
+      }
+      case "tool_end": {
+        if (!replayOnly) dispatchLiveBusSound(ev);
+        const isAskUser = ev.tool_name === "AskUserQuestion";
+        const resolvedStatus = isAskUser && ev.status === "error" ? "ask_pending" as const
+          : ev.status === "error" ? "error" as const : "success" as const;
+        if (ev.parent_tool_use_id) {
+          if (this._updateSubTimelineTool(ev.parent_tool_use_id, ev.tool_use_id, (t) => ({
+            ...t, status: resolvedStatus, output: ev.output as Record<string, unknown>,
+            duration_ms: ev.duration_ms, tool_name: ev.tool_name || t.tool_name,
+            tool_use_result: ev.tool_use_result as Record<string, unknown> | undefined,
+          }), ctx)) return true;
+        }
+        const tl = getTl();
+        const tIdx = this._findToolIdx(ctx, ev.tool_use_id);
+        if (tIdx >= 0) {
+          const old = tl[tIdx] as Extract<TimelineEntry, { kind: "tool" }>;
+          const updated: TimelineEntry = { ...old, tool: {
+            ...old.tool, status: resolvedStatus, output: ev.output as Record<string, unknown>,
+            duration_ms: ev.duration_ms, tool_name: ev.tool_name || old.tool.tool_name,
+            tool_use_result: ev.tool_use_result as Record<string, unknown> | undefined,
+          }};
+          if (ctx) ctx.tl[tIdx] = updated;
+          else { const u = [...this.timeline]; u[tIdx] = updated; this.timeline = u; }
+        }
+        if (!replayOnly && ev.status !== "error" && !ev.parent_tool_use_id) {
+          if (ev.tool_name === "EnterPlanMode") {
+            this.previousPermissionMode = this.permissionMode || "default";
+            this.permissionMode = "plan";
+          } else if (ev.tool_name === "ExitPlanMode" && this.previousPermissionMode) {
+            if (this.pendingPermissionModeOverride) {
+              this.permissionMode = this.pendingPermissionModeOverride;
+              this.pendingPermissionModeOverride = null;
+            } else {
+              this.permissionMode = this.previousPermissionMode;
+            }
+            this.previousPermissionMode = "";
+            if (this.pendingClearContextPlan === "__pending__") {
+              const toolResult = ev.tool_use_result as Record<string, unknown> | undefined;
+              const plan = (ev.output as Record<string, unknown> | undefined)?.plan || toolResult?.plan;
+              if (plan && typeof plan === "string") this.pendingClearContextPlan = plan;
+              else this.pendingClearContextPlan = null;
+            }
+          }
+        }
+        if (!isAskUser && !this._isStreamMode(ctx)) {
+          const he = getHe();
+          const hIdx = this._findHeIdxByStatus(ctx, ev.tool_use_id, "running");
+          if (hIdx >= 0) {
+            const updatedHe: HookEvent = {
+              ...he[hIdx], status: "done", hook_type: "PostToolUse",
+              tool_name: ev.tool_name || he[hIdx].tool_name,
+              tool_output: ev.output as Record<string, unknown>,
+            };
+            if (ctx) ctx.he[hIdx] = updatedHe;
+            else { const u = [...this.tools]; u[hIdx] = updatedHe; this.tools = u; }
+          }
+        }
+        return true;
+      }
+      default:
+        return false;
+    }
+  }
+
   /** Core reducer: apply a single bus event. When ctx is null, mutates $state directly.
    *  replayOnly=true skips phase and error assignments (used during resume replay). */
   private _reduce(ev: BusEvent, ctx: ReduceCtx | null, replayOnly = false): void {
@@ -2787,15 +3048,16 @@ export class SessionStore {
     const getSeenTool = () => (ctx ? ctx.seenToolIds : this._seenToolIds);
     this._lastReduceEventType = ev.type;
 
+    // Delegate to domain-specific reducers
+    if (this._reduceMessage(ev, ctx, getTl, getSeenMsg, getHe, replayOnly)) return;
+    if (this._reduceTool(ev, ctx, replayOnly, getTl, getHe, getSeenTool)) return;
+
     switch (ev.type) {
       case "session_init":
         if (ev.model) {
           if (ctx) {
-            // Batch replay: always take CLI's model (loadRun restores per-run model afterward)
             ctx.model = ev.model;
           } else if (!this.run?.model) {
-            // Live: only adopt CLI's model when no per-run model is set
-            // (user's selection via ModelSelector takes priority)
             this.model = ev.model;
           }
         }
@@ -2892,490 +3154,6 @@ export class SessionStore {
           utilization: ev.utilization,
         });
         break;
-
-      case "message_delta":
-        this._clearTimeoutError();
-        if (ev.parent_tool_use_id) {
-          this._appendSubTimelineStreamingDelta(ev.parent_tool_use_id, "content", ev.text, ctx);
-          dbg("store", "message_delta subagent", {
-            parent: ev.parent_tool_use_id,
-            textLen: ev.text.length,
-            timelineLen: getTl().length,
-          });
-          break;
-        }
-        // Mark thinking end: first text delta after thinking started
-        if (this.thinkingStartMs && !this.thinkingEndMs) {
-          this.thinkingEndMs = eventTsMs(ev);
-        }
-        {
-          // v1.0.6 / B4: streamingText stays in sync with the store
-          // (callers and tests rely on synchronous reads). The microtask
-          // batch is kept as a side-channel for downstream consumers
-          // (chat timeline, scroller) that want a single coalesced
-          // notification per frame instead of N reactive triggers.
-          this._pendingDeltas.push(ev.text);
-          if (!this._pendingDeltasScheduled) {
-            this._pendingDeltasScheduled = true;
-            // v1.0.6 / 4.5: microtask commit (~0.1ms) replaces rAF wait
-            // (~16ms) — first-token paint lands faster when the stream
-            // stalls for >100ms with no follow-up delta.
-            queueMicrotask(() => {
-              this._pendingDeltasScheduled = false;
-              // Mark the batch as flushed without altering streamingText
-              // (which is already up to date). Future: hook a notification
-              // channel here for UI consumers that want per-batch events.
-              this._pendingDeltas = [];
-            });
-          }
-          const beforeLen = ctx ? ctx.streamText.length : this.streamingText.length;
-          if (ctx) ctx.streamText += ev.text;
-          else this.streamingText += ev.text;
-          const afterLen = ctx ? ctx.streamText.length : this.streamingText.length;
-          dbg("store", "message_delta", {
-            textLen: ev.text.length,
-            beforeStreamingLen: beforeLen,
-            afterStreamingLen: afterLen,
-            timelineLen: getTl().length,
-          });
-        }
-        break;
-
-      case "thinking_delta":
-        this._clearTimeoutError();
-        if (ev.parent_tool_use_id) {
-          this._appendSubTimelineStreamingDelta(
-            ev.parent_tool_use_id,
-            "thinkingText",
-            ev.text,
-            ctx,
-          );
-          break;
-        }
-        if (!this.thinkingStartMs) this.thinkingStartMs = eventTsMs(ev);
-        if (ctx) ctx.thinkingText += ev.text;
-        else this.thinkingText += ev.text;
-        break;
-
-      case "tool_input_delta": {
-        if (ev.parent_tool_use_id) {
-          this._updateSubTimelineToolInput(
-            ev.parent_tool_use_id,
-            ev.tool_use_id,
-            ev.partial_json,
-            ctx,
-          );
-          break;
-        }
-        // Update matching tool entry's input in real-time with accumulated partial JSON
-        const tl = getTl();
-        const tIdx = this._findToolIdx(ctx, ev.tool_use_id);
-        if (tIdx >= 0) {
-          const old = tl[tIdx] as Extract<TimelineEntry, { kind: "tool" }>;
-          const accum = SessionStore._accumulateJsonInput(
-            old.tool as Record<string, unknown>,
-            ev.partial_json,
-          );
-          const updated: TimelineEntry = {
-            ...old,
-            tool: { ...old.tool, ...accum } as typeof old.tool,
-          };
-          if (ctx) {
-            ctx.tl[tIdx] = updated;
-          } else {
-            const u = [...this.timeline];
-            u[tIdx] = updated;
-            this.timeline = u;
-          }
-        }
-        break;
-      }
-
-      case "message_complete": {
-        const savedStreaming = ctx ? ctx.streamText : this.streamingText;
-        const finalText = ev.text && ev.text.length > 0 ? ev.text : savedStreaming;
-        if (!ev.text.trim() && savedStreaming.trim()) {
-          dbgWarn("store", "message_complete empty text recovered from streamingText", {
-            runId: ev.run_id,
-            messageId: ev.message_id,
-            streamingTextLen: savedStreaming.length,
-            thinkingTextLen: ctx ? ctx.thinkingText.length : this.thinkingText.length,
-            parentToolUseId: ev.parent_tool_use_id,
-            lastProcessedSeq: this._lastProcessedSeq,
-          });
-        } else if (!ev.text.trim()) {
-          dbgWarn("store", "message_complete with empty text", {
-            runId: ev.run_id,
-            messageId: ev.message_id,
-            streamingTextLen: savedStreaming.length,
-            thinkingTextLen: ctx ? ctx.thinkingText.length : this.thinkingText.length,
-            parentToolUseId: ev.parent_tool_use_id,
-            lastProcessedSeq: this._lastProcessedSeq,
-          });
-        }
-
-        // Dedup guard — patch empty entries; always clean up synthetic entry first
-        if (getSeenMsg().has(ev.message_id)) {
-          this._patchAssistantContentIfEmpty(ctx, ev.message_id, finalText);
-          if (ev.parent_tool_use_id)
-            this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
-          break;
-        }
-        const existingAssistant = getTl().find(
-          (e) => e.kind === "assistant" && e.id === ev.message_id,
-        );
-        if (existingAssistant) {
-          this._patchAssistantContentIfEmpty(ctx, ev.message_id, finalText);
-          if (ev.parent_tool_use_id)
-            this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
-          getSeenMsg().add(ev.message_id);
-          break;
-        }
-        getSeenMsg().add(ev.message_id);
-
-        // Subagent path: extract thinking + streaming content → remove synthetic → create entry
-        if (ev.parent_tool_use_id) {
-          const subThinking = this._extractSubTimelineThinking(ev.parent_tool_use_id, ctx);
-          const subStreaming = this._extractSubTimelineStreamingContent(ev.parent_tool_use_id, ctx);
-          const subFinalText = finalText.trim() ? finalText : subStreaming;
-          this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
-
-          const entry: TimelineEntry = {
-            kind: "assistant",
-            id: ev.message_id,
-            anchorId: ev.message_id,
-            content: subFinalText,
-            ts: eventTs(ev),
-            ...(ev.model ? { model: ev.model } : {}),
-            ...(subThinking ? { thinkingText: subThinking } : {}),
-          };
-          dbg("store", "message_complete subagent", {
-            parent: ev.parent_tool_use_id,
-            textLen: subFinalText.length,
-            timelineLen: getTl().length,
-          });
-
-          const parentIdx = this._findParentToolIdx(ctx, ev.parent_tool_use_id);
-          if (parentIdx >= 0) {
-            this._appendToSubTimeline(getTl(), parentIdx, entry, ctx);
-            break;
-          }
-          dbgWarn(
-            "store",
-            "subagent message_complete: parent not found, fallback to main timeline",
-            { parent: ev.parent_tool_use_id },
-          );
-          this._pushTimeline(ctx, entry);
-          break;
-        }
-
-        // Main session path: save thinking before clearing
-        const savedThinking = ctx ? ctx.thinkingText : this.thinkingText;
-        if (ctx) {
-          ctx.streamText = "";
-          ctx.thinkingText = "";
-        } else {
-          this.streamingText = "";
-          this.thinkingText = "";
-        }
-        this.thinkingStartMs = 0;
-        this.thinkingEndMs = 0;
-
-        const entry: TimelineEntry = {
-          kind: "assistant",
-          id: ev.message_id,
-          anchorId: ev.message_id,
-          content: finalText,
-          ts: eventTs(ev),
-          ...(ev.model ? { model: ev.model } : {}),
-          ...(savedThinking ? { thinkingText: savedThinking } : {}),
-        };
-        if (savedThinking)
-          dbg("store", "thinking persisted to timeline", {
-            id: ev.message_id,
-            len: savedThinking.length,
-          });
-
-        dbg("store", "message_complete", {
-          messageId: ev.message_id,
-          textLen: finalText.length,
-          timelineLen: getTl().length + 1,
-        });
-        this._pushTimeline(ctx, entry);
-        break;
-      }
-
-      case "user_message": {
-        const tl = getTl();
-        // Content-based dedup: only in live mode (replayOnly=false) where an optimistic
-        // user entry was already added by startSession/sendMessage.  During replay
-        // (replayOnly=true), every event from events.jsonl is authoritative —
-        // the user may legitimately send the same text twice in different turns.
-        if (!replayOnly) {
-          // Find the most recent user entry with matching text that hasn't been UUID-confirmed yet.
-          // Using backward search (findLast) avoids matching old replayed entries from before
-          // Phase 1 (which also lack cliUuid). For rapid-fire identical messages, UUID assignment
-          // order is reversed (LIFO), but this is functionally correct — each entry still gets a
-          // unique UUID for checkpoint identification.
-          const match = tl.findLast(
-            (e) => e.kind === "user" && e.content === ev.text && !e.cliUuid,
-          );
-          if (match && match.kind === "user") {
-            // Merge cliUuid + anchorId from the confirmed backend event into the optimistic entry
-            if (ev.uuid) {
-              const idx = tl.indexOf(match);
-              const updated = { ...match, cliUuid: ev.uuid, anchorId: ev.uuid };
-              if (ctx) ctx.tl[idx] = updated;
-              else {
-                const u = [...this.timeline];
-                u[idx] = updated;
-                this.timeline = u;
-              }
-            }
-            break;
-          }
-        }
-        const newId = uuid();
-        const entry: TimelineEntry = {
-          kind: "user",
-          id: newId,
-          anchorId: ev.uuid || newId,
-          content: ev.text,
-          ts: eventTs(ev),
-          ...(ev.uuid ? { cliUuid: ev.uuid } : {}),
-        };
-        this._pushTimeline(ctx, entry);
-
-        // Resolve any ask_pending AskUserQuestion tool — the user_message following
-        // a tool_end(AskUserQuestion) is the user's answer.  Without this, navigating
-        // away and back replays bus events and resets the tool to ask_pending.
-        const pendingIdx = tl.findIndex(
-          (e) => e.kind === "tool" && e.tool.status === "ask_pending",
-        );
-        if (pendingIdx >= 0) {
-          const old = tl[pendingIdx] as Extract<TimelineEntry, { kind: "tool" }>;
-          const resolved: TimelineEntry = {
-            ...old,
-            tool: { ...old.tool, status: "success", output: { answer: ev.text } },
-          };
-          if (ctx) {
-            ctx.tl[pendingIdx] = resolved;
-          } else {
-            const u = [...this.timeline];
-            u[pendingIdx] = resolved;
-            this.timeline = u;
-          }
-          // Also resolve the matching HookEvent (non-stream mode only)
-          if (!this._isStreamMode(ctx)) {
-            const he = getHe();
-            const hIdx = this._findHeIdxByStatus(ctx, old.id, "running");
-            if (hIdx >= 0) {
-              const updatedHe: HookEvent = {
-                ...he[hIdx],
-                status: "done",
-                hook_type: "PostToolUse",
-              };
-              if (ctx) {
-                ctx.he[hIdx] = updatedHe;
-              } else {
-                const u = [...this.tools];
-                u[hIdx] = updatedHe;
-                this.tools = u;
-              }
-            }
-          }
-        }
-        break;
-      }
-
-      case "tool_start": {
-        this._clearTimeoutError();
-        if (getSeenTool().has(ev.tool_use_id)) break;
-        getSeenTool().add(ev.tool_use_id);
-        // Subagent routing: nest inside parent tool's subTimeline
-        if (ev.parent_tool_use_id) {
-          const parentIdx = this._findParentToolIdx(ctx, ev.parent_tool_use_id);
-          if (parentIdx >= 0) {
-            const subEntry: TimelineEntry = {
-              kind: "tool",
-              id: ev.tool_use_id,
-              anchorId: ev.tool_use_id,
-              tool: {
-                tool_use_id: ev.tool_use_id,
-                tool_name: ev.tool_name,
-                input: (ev.input as Record<string, unknown>) ?? {},
-                status: "running",
-              },
-              ts: eventTs(ev),
-            };
-            this._appendToSubTimeline(getTl(), parentIdx, subEntry, ctx);
-            break;
-          }
-          dbgWarn("store", "subagent tool_start: parent not found, fallback to main timeline", {
-            parent: ev.parent_tool_use_id,
-          });
-        }
-        if (this._findToolIdx(ctx, ev.tool_use_id) >= 0) break;
-
-        const tlEntry: TimelineEntry = {
-          kind: "tool",
-          id: ev.tool_use_id,
-          anchorId: ev.tool_use_id,
-          tool: {
-            tool_use_id: ev.tool_use_id,
-            tool_name: ev.tool_name,
-            input: (ev.input as Record<string, unknown>) ?? {},
-            status: "running",
-          },
-          ts: eventTs(ev),
-        };
-        this._pushTimeline(ctx, tlEntry);
-
-        // Mirror to tools[] (HookEvent) only in non-stream mode (pipe/PTY)
-        if (!this._isStreamMode(ctx)) {
-          const heEntry: HookEvent = {
-            run_id: ev.run_id,
-            hook_type: "PreToolUse",
-            tool_name: ev.tool_name,
-            tool_input: ev.input as Record<string, unknown>,
-            status: "running",
-            timestamp: new Date().toISOString(),
-          };
-          (heEntry as Record<string, unknown>).tool_use_id = ev.tool_use_id;
-          this._pushHookEntry(ctx, heEntry);
-        }
-        break;
-      }
-
-      case "tool_end": {
-        if (!replayOnly) dispatchLiveBusSound(ev);
-        // AskUserQuestion handling:
-        // - pipe mode: CLI returns error → ask_pending (frontend shows interactive options)
-        // - stream-json mode: CLI returns success (answer provided via updatedInput) → success
-        const isAskUser = ev.tool_name === "AskUserQuestion";
-        const resolvedStatus =
-          isAskUser && ev.status === "error"
-            ? ("ask_pending" as const)
-            : ev.status === "error"
-              ? ("error" as const)
-              : ("success" as const);
-
-        // Subagent routing: update child tool inside parent's subTimeline
-        if (ev.parent_tool_use_id) {
-          if (
-            this._updateSubTimelineTool(
-              ev.parent_tool_use_id,
-              ev.tool_use_id,
-              (t) => ({
-                ...t,
-                status: resolvedStatus,
-                output: ev.output as Record<string, unknown>,
-                duration_ms: ev.duration_ms,
-                tool_name: ev.tool_name || t.tool_name,
-                tool_use_result: ev.tool_use_result as Record<string, unknown> | undefined,
-              }),
-              ctx,
-            )
-          ) {
-            break;
-          }
-          dbgWarn(
-            "store",
-            "subagent tool_end: not found in subTimeline, fallback to main timeline",
-            { parent: ev.parent_tool_use_id, tool: ev.tool_use_id },
-          );
-          // fall through to main timeline logic
-        }
-
-        const tl = getTl();
-        const tIdx = this._findToolIdx(ctx, ev.tool_use_id);
-        if (tIdx >= 0) {
-          const old = tl[tIdx] as Extract<TimelineEntry, { kind: "tool" }>;
-          const updated: TimelineEntry = {
-            ...old,
-            tool: {
-              ...old.tool,
-              status: resolvedStatus,
-              output: ev.output as Record<string, unknown>,
-              duration_ms: ev.duration_ms,
-              tool_name: ev.tool_name || old.tool.tool_name,
-              tool_use_result: ev.tool_use_result as Record<string, unknown> | undefined,
-            },
-          };
-          if (ctx) {
-            ctx.tl[tIdx] = updated;
-          } else {
-            const u = [...this.timeline];
-            u[tIdx] = updated;
-            this.timeline = u;
-          }
-        }
-
-        // Plan mode inference: only top-level tools in live mode affect main session permissionMode.
-        // Subagent EnterPlanMode should not change the parent session's mode.
-        // replayOnly guard: replaying a historical session that ended mid-plan must not
-        // pollute the current permissionMode (which is a user-level preference, not snapshot state).
-        if (!replayOnly && ev.status !== "error" && !ev.parent_tool_use_id) {
-          if (ev.tool_name === "EnterPlanMode") {
-            this.previousPermissionMode = this.permissionMode || "default";
-            this.permissionMode = "plan";
-            dbg("store", "tool_end: EnterPlanMode → permissionMode=plan", {
-              previous: this.previousPermissionMode,
-            });
-          } else if (ev.tool_name === "ExitPlanMode" && this.previousPermissionMode) {
-            if (this.pendingPermissionModeOverride) {
-              // User chose a specific mode via ExitPlanMode approval card
-              this.permissionMode = this.pendingPermissionModeOverride;
-              this.pendingPermissionModeOverride = null;
-              dbg("store", "tool_end: ExitPlanMode → permissionMode overridden", {
-                mode: this.permissionMode,
-              });
-            } else {
-              const restored = this.previousPermissionMode;
-              this.permissionMode = restored;
-              dbg("store", "tool_end: ExitPlanMode → permissionMode restored", { restored });
-            }
-            this.previousPermissionMode = "";
-
-            // "Clear context" deferred handling: extract plan from tool result
-            if (this.pendingClearContextPlan === "__pending__") {
-              const toolResult = ev.tool_use_result as Record<string, unknown> | undefined;
-              const plan =
-                (ev.output as Record<string, unknown> | undefined)?.plan || toolResult?.plan;
-              if (plan && typeof plan === "string") {
-                this.pendingClearContextPlan = plan;
-                dbg("store", "ExitPlanMode: plan content captured for clear context");
-              } else {
-                this.pendingClearContextPlan = null;
-                dbgWarn("store", "ExitPlanMode: no plan found in tool result for clear context");
-              }
-            }
-          }
-        }
-
-        // Mirror to tools[] only in non-stream mode
-        if (!isAskUser && !this._isStreamMode(ctx)) {
-          const he = getHe();
-          const hIdx = this._findHeIdxByStatus(ctx, ev.tool_use_id, "running");
-          if (hIdx >= 0) {
-            const updatedHe: HookEvent = {
-              ...he[hIdx],
-              status: "done",
-              hook_type: "PostToolUse",
-              tool_name: ev.tool_name || he[hIdx].tool_name,
-              tool_output: ev.output as Record<string, unknown>,
-            };
-            if (ctx) {
-              ctx.he[hIdx] = updatedHe;
-            } else {
-              const u = [...this.tools];
-              u[hIdx] = updatedHe;
-              this.tools = u;
-            }
-          }
-        }
-        break;
-      }
 
       case "run_state":
         if (!replayOnly) dispatchLiveBusSound(ev);
