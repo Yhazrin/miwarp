@@ -17,5 +17,6 @@ export { default as MiSelect } from "./MiSelect.svelte";
 export { default as MiTooltip } from "./MiTooltip.svelte";
 export { default as MiDropdownMenu } from "./MiDropdownMenu.svelte";
 export { default as MiAlertDialog } from "./MiAlertDialog.svelte";
+export { default as MiTabs } from "./MiTabs.svelte";
 
 export * from "./miwarp-surfaces";
