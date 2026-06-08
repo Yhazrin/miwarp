@@ -16,13 +16,14 @@ Bits UI 是 MiWarp 的 headless UI 基础设施，提供 Dialog、Popover、Sele
 | `MiTooltip` | `src/lib/ui/MiTooltip.svelte` | 工具提示 |
 | `MiDropdownMenu` | `src/lib/ui/MiDropdownMenu.svelte` | 下拉菜单（右键菜单、操作菜单） |
 | `MiAlertDialog` | `src/lib/ui/MiAlertDialog.svelte` | 危险操作确认（删除、重置） |
+| `MiTabs` | `src/lib/ui/MiTabs.svelte` | 选项卡（Inspector、设置、右侧面板） |
 
 ## 导入方式
 
 ```svelte
 <!-- 简单场景：直接从 $lib/ui 导入 -->
 <script>
-  import { MiPopover, MiDialog, MiTooltip, MiAlertDialog } from "$lib/ui";
+  import { MiPopover, MiDialog, MiTooltip, MiAlertDialog, MiTabs } from "$lib/ui";
 </script>
 
 <!-- Select 自定义 item 渲染场景 -->
@@ -86,6 +87,22 @@ Bits UI 是 MiWarp 的 headless UI 基础设施，提供 Dialog、Popover、Sele
 | `AuthSourceBadge` | `MiPopover` |
 | `ModelSelector` | `MiPopover` |
 | `SkillSelector` | `MiPopover` |
+
+## 移动端连接流程组件
+
+基于 wrapper 构建的桌面端移动连接管理组件：
+
+| 组件 | 路径 | 用途 |
+|------|------|------|
+| `MobilePairingSheet` | `src/lib/components/mobile/MobilePairingSheet.svelte` | QR 配对弹窗 |
+| `MobileConnectionDialog` | `src/lib/components/mobile/MobileConnectionDialog.svelte` | 完整连接流程 |
+| `MobileServerPicker` | `src/lib/components/mobile/MobileServerPicker.svelte` | 远程主机选择 |
+| `MobileConnectionDiagnosticsDialog` | `src/lib/components/mobile/MobileConnectionDiagnosticsDialog.svelte` | 连接诊断 |
+
+所有移动端组件均使用 MiDialog/MiSelect/MiTabs wrapper，确保：
+- 窄屏不溢出（`max-w-sm`/`w-[min(...,calc(100vw-32px))]`）
+- 键盘导航（Tab/Esc）正常
+- 焦点陷阱由 bits-ui Dialog 自动管理
 
 ## 暂不迁移的组件
 
