@@ -3,6 +3,10 @@
   import { beforeNavigate } from "$app/navigation";
   import { page } from "$app/stores";
   import * as api from "$lib/api";
+  import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
+  import {
+    EVT_PROJECT_CHANGED, EVT_MEMORY_SELECT, EVT_MEMORY_FILE_SELECTED, EVT_FILE_DIRTY,
+  } from "$lib/utils/bus-events";
   import Button from "$lib/components/Button.svelte";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
   import CodeEditor from "$lib/components/CodeEditor.svelte";
@@ -31,7 +35,7 @@
   let selectedFile = $state("");
 
   let projectCwd = $state(
-    typeof window !== "undefined" ? (localStorage.getItem("ocv:project-cwd") ?? "") : "",
+    typeof window !== "undefined" ? (localStorage.getItem(LS_PROJECT_CWD) ?? "") : "",
   );
 
   // Memory stats display
@@ -59,7 +63,7 @@
   // Notify layout sidebar of dirty state
   $effect(() => {
     window.dispatchEvent(
-      new CustomEvent("ocv:file-dirty", {
+      new CustomEvent(EVT_FILE_DIRTY, {
         detail: { path: currentPath, dirty: isDirty },
       }),
     );
@@ -148,7 +152,7 @@
         // otherwise the sidebar would highlight a file the editor isn't showing.
         if (!customFile) {
           window.dispatchEvent(
-            new CustomEvent("ocv:memory-file-selected", { detail: { path: pick.path } }),
+            new CustomEvent(EVT_MEMORY_FILE_SELECTED, { detail: { path: pick.path } }),
           );
         }
       }
@@ -168,7 +172,7 @@
     selectedFile = newPath;
     // Ack sidebar: highlight now confirmed (layout waits for this before updating)
     window.dispatchEvent(
-      new CustomEvent("ocv:memory-file-selected", { detail: { path: newPath } }),
+      new CustomEvent(EVT_MEMORY_FILE_SELECTED, { detail: { path: newPath } }),
     );
     if (exists) {
       loadContentForPath(newPath);
@@ -248,8 +252,8 @@
         guardedFileSwitch(path, detail?.exists ?? true);
       }
     }
-    window.addEventListener("ocv:memory-select", onMemorySelect);
-    return () => window.removeEventListener("ocv:memory-select", onMemorySelect);
+    window.addEventListener(EVT_MEMORY_SELECT, onMemorySelect);
+    return () => window.removeEventListener(EVT_MEMORY_SELECT, onMemorySelect);
   });
 
   // Sync projectCwd when layout changes it
@@ -267,8 +271,8 @@
       }
       guardedProjectChange(cwd);
     }
-    window.addEventListener("ocv:project-changed", onProjectChanged);
-    return () => window.removeEventListener("ocv:project-changed", onProjectChanged);
+    window.addEventListener(EVT_PROJECT_CHANGED, onProjectChanged);
+    return () => window.removeEventListener(EVT_PROJECT_CHANGED, onProjectChanged);
   });
 
   // Warn before navigating away with unsaved changes

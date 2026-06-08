@@ -1,6 +1,7 @@
 <script lang="ts">
   import Modal from "./Modal.svelte";
   import * as api from "$lib/api";
+  import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
   import { t } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
   import Icon from "$lib/components/Icon.svelte";
@@ -19,7 +20,7 @@
 
   async function loadDiff(staged: boolean) {
     const cwd =
-      typeof window !== "undefined" ? localStorage.getItem("ocv:project-cwd") || "/" : "/";
+      typeof window !== "undefined" ? localStorage.getItem(LS_PROJECT_CWD) || "/" : "/";
     loading = true;
     try {
       diff = await api.getGitDiff(cwd, staged);

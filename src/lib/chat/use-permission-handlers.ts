@@ -1,4 +1,5 @@
 import * as api from "$lib/api";
+import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { isPlanFilePath, planFileName, extractPlanContent } from "$lib/utils/tool-rendering";
 import { resolvePermissionOptimistic } from "$lib/utils/resolve-permission";
@@ -167,7 +168,7 @@ export function createPermissionHandlers(ctx: PermissionHandlerContext) {
   async function handleExitPlanClearContext(): Promise<void> {
     if (!store.run) return;
     const runId = store.run.id;
-    const cwd = localStorage.getItem("ocv:project-cwd") || "";
+    const cwd = localStorage.getItem(LS_PROJECT_CWD) || "";
     dbg("chat", "ExitPlanMode: clear context + auto-accept");
 
     const exitPlanEntry = store.timeline.find(

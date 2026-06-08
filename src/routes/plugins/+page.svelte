@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy, getContext } from "svelte";
   import { goto } from "$app/navigation";
+  import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
+  import { EVT_PROJECT_CHANGED } from "$lib/utils/bus-events";
   import {
     listMarketplacePlugins,
     listStandaloneSkills,
@@ -258,7 +260,7 @@
       mcpSource = urlSource;
     }
 
-    projectCwd = localStorage.getItem("ocv:project-cwd") ?? "";
+    projectCwd = localStorage.getItem(LS_PROJECT_CWD) ?? "";
     loading = true;
     const warnings: string[] = [];
     try {
@@ -361,8 +363,8 @@
           dbgWarn("plugins", "skills reload on project-change failed", err);
         });
     }
-    window.addEventListener("ocv:project-changed", onProjectChanged);
-    return () => window.removeEventListener("ocv:project-changed", onProjectChanged);
+    window.addEventListener(EVT_PROJECT_CHANGED, onProjectChanged);
+    return () => window.removeEventListener(EVT_PROJECT_CHANGED, onProjectChanged);
   });
 
   onDestroy(() => {

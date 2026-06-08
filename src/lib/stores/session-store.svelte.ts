@@ -36,6 +36,7 @@ import { getEventMiddleware } from "./event-middleware";
 import { updateInstalledVersion, getCliCommands } from "./cli-info.svelte";
 import * as snapshotCache from "$lib/utils/snapshot-cache";
 import { getTransport } from "$lib/transport";
+import { LS_CLI_VERSION } from "$lib/utils/storage-keys";
 import { getAgentFeatures, type AgentFeatures } from "$lib/utils/agent-features";
 import { dedupeMcpServersByName } from "$lib/utils/mcp";
 import {
@@ -2850,7 +2851,7 @@ export class SessionStore {
           if (!replayOnly) {
             updateInstalledVersion(ev.claude_code_version);
             try {
-              localStorage.setItem("ocv:cli-version", ev.claude_code_version);
+              localStorage.setItem(LS_CLI_VERSION, ev.claude_code_version);
             } catch {
               /* ignore */
             }

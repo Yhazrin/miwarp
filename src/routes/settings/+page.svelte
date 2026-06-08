@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount, getContext } from "svelte";
   import { goto } from "$app/navigation";
+  import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
+  import { EVT_SHOW_WIZARD } from "$lib/utils/bus-events";
   import { beginRouteTransition, endRouteTransition } from "$lib/utils/route-transition";
   import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
   import { disarmChatSettingsHop } from "$lib/utils/chat-settings-nav";
@@ -954,7 +956,7 @@
     try {
       cliConfig = await api.getCliConfig();
       // Load project config for override indicators
-      const cwd = localStorage.getItem("ocv:project-cwd") || "";
+      const cwd = localStorage.getItem(LS_PROJECT_CWD) || "";
       if (cwd) {
         projectCliConfig = await api.getProjectCliConfig(cwd);
       }
@@ -1278,7 +1280,7 @@
   }
 
   function openSetupWizard() {
-    window.dispatchEvent(new CustomEvent("ocv:show-wizard"));
+    window.dispatchEvent(new CustomEvent(EVT_SHOW_WIZARD));
   }
 
   function navigateBackFromSettings() {

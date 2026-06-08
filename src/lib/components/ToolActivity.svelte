@@ -2,6 +2,7 @@
   import type { HookEvent, ContextSnapshot, SessionInfoData, FileEntry } from "$lib/types";
   import type { TimelineEntry, BusToolItem } from "$lib/types";
   import type { TurnUsage } from "$lib/stores/types";
+  import { LS_TOOLACTIVITY_WIDTH } from "$lib/utils/storage-keys";
   import { getToolColor } from "$lib/utils/tool-colors";
   import { truncate, formatTokenCount, formatDuration } from "$lib/utils/format";
   import { getToolDetail as getToolDetailRaw } from "$lib/utils/tool-rendering";
@@ -167,7 +168,7 @@
 
   onMount(() => {
     if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem("ocv:toolactivity-width");
+    const stored = window.localStorage.getItem(LS_TOOLACTIVITY_WIDTH);
     if (stored) {
       const n = parseInt(stored, 10);
       if (Number.isFinite(n)) savedWidth = clampWidth(n);
@@ -231,7 +232,7 @@
     if (pendingWidth !== null && pendingWidth !== savedWidth) {
       savedWidth = pendingWidth;
       if (typeof window !== "undefined") {
-        window.localStorage.setItem("ocv:toolactivity-width", String(savedWidth));
+        window.localStorage.setItem(LS_TOOLACTIVITY_WIDTH, String(savedWidth));
       }
     }
     pendingWidth = null;

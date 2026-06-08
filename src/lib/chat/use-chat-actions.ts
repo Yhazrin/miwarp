@@ -1,4 +1,6 @@
 import * as api from "$lib/api";
+import { LS_PREVIEW_URL } from "$lib/utils/storage-keys";
+import { EVT_RUNS_CHANGED } from "$lib/utils/bus-events";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { buildSummaryHtml } from "$lib/chat/utils/summary-html";
 import { uuid } from "$lib/utils/uuid";
@@ -108,7 +110,7 @@ export function createChatActions(ctx: ChatActionsContext) {
     try {
       await api.renameRun(store.run.id, name);
       store.run = { ...store.run, name };
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
       dbg("chat", "renamed run", { id: store.run.id, name });
     } catch (e) {
       dbgWarn("chat", "rename failed", e);
@@ -153,7 +155,7 @@ export function createChatActions(ctx: ChatActionsContext) {
   }
 
   function openPreviewInSidebar(url?: string) {
-    const targetUrl = url?.trim() || localStorage.getItem("ocv:preview-url") || "";
+    const targetUrl = url?.trim() || localStorage.getItem(LS_PREVIEW_URL) || "";
     if (!targetUrl) {
       appendCommandOutput(t("preview_usage"));
       return;
@@ -184,7 +186,7 @@ export function createChatActions(ctx: ChatActionsContext) {
 
   async function handleStop() {
     await store.stop();
-    window.dispatchEvent(new Event("ocv:runs-changed"));
+    window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
   }
 
   function fillPrompt(text: string) {

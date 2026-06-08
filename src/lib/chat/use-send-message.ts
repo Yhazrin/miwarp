@@ -3,6 +3,8 @@ import type { SessionStore } from "$lib/stores/session-store.svelte";
 import type { Attachment, SessionMode } from "$lib/types";
 import type { ThinkingTimerHandle } from "$lib/chat/use-thinking-timer.svelte";
 import { detectTeamTrigger } from "$lib/services/team-dispatcher";
+import { LS_PROJECT_CWD, LS_SETTINGS_CWD } from "$lib/utils/storage-keys";
+import { EVT_CWD_CHANGED, EVT_RUNS_CHANGED } from "$lib/utils/bus-events";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { setLastTarget, getStoredRemoteCwd, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
 import { normalizeCwd } from "$lib/utils/sidebar-groups";
@@ -97,8 +99,8 @@ export function createSendMessage(ctx: SendMessageContext) {
           } else {
             cwd =
               normalizeCwd(getFolderCwdOverride?.() ?? "") ||
-              normalizeCwd(localStorage.getItem("ocv:project-cwd") ?? "") ||
-              normalizeCwd(localStorage.getItem("ocv:settings-cwd") ?? "") ||
+              normalizeCwd(localStorage.getItem(LS_PROJECT_CWD) ?? "") ||
+              normalizeCwd(localStorage.getItem(LS_SETTINGS_CWD) ?? "") ||
               "";
           }
         }
@@ -121,8 +123,8 @@ export function createSendMessage(ctx: SendMessageContext) {
             });
             if (!selected) return;
             cwd = selected as string;
-            localStorage.setItem("ocv:project-cwd", cwd);
-            window.dispatchEvent(new Event("ocv:cwd-changed"));
+            localStorage.setItem(LS_PROJECT_CWD, cwd);
+            window.dispatchEvent(new Event(EVT_CWD_CHANGED));
           } else {
             const result = await openFolderPicker({ initialHost: null });
             if (!result || !result.path) return;
@@ -132,8 +134,8 @@ export function createSendMessage(ctx: SendMessageContext) {
               setLastTarget(result.hostName);
               setStoredRemoteCwd(result.hostName, cwd);
             } else {
-              localStorage.setItem("ocv:project-cwd", cwd);
-              window.dispatchEvent(new Event("ocv:cwd-changed"));
+              localStorage.setItem(LS_PROJECT_CWD, cwd);
+              window.dispatchEvent(new Event(EVT_CWD_CHANGED));
             }
           }
         }
@@ -145,7 +147,7 @@ export function createSendMessage(ctx: SendMessageContext) {
 
         const runId = await store.startSession(text, cwd, attachments);
         goto(`/chat?run=${runId}`, { replaceState: true });
-        window.dispatchEvent(new Event("ocv:runs-changed"));
+        window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
         loadCliVersionInfo();
       } else if (
         store.useStreamSession &&

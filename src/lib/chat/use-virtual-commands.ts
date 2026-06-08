@@ -1,4 +1,6 @@
 import * as api from "$lib/api";
+import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
+import { EVT_RUNS_CHANGED, EVT_OPEN_PERMISSIONS } from "$lib/utils/bus-events";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import {
   mergeWithVirtual,
@@ -116,7 +118,7 @@ async function _handleVirtualCommand(
   } else if (action === "run-doctor") {
     try {
       dbg("doctor", "run-doctor triggered", { cwd: store.effectiveCwd });
-      const cwd = store.effectiveCwd || localStorage.getItem("ocv:project-cwd") || "";
+      const cwd = store.effectiveCwd || localStorage.getItem(LS_PROJECT_CWD) || "";
       const mcpSvrs = store.sessionAlive ? store.mcpServers : undefined;
       const report = await buildDoctorReport(cwd, mcpSvrs);
       appendCommandOutput(report);
@@ -219,7 +221,7 @@ async function _handleVirtualCommand(
       await store.stop();
       dbg("chat", "clear-context: navigating to fresh chat");
       goto("/chat", { replaceState: true });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
     } catch (e) {
       dbgWarn("chat", "clear-context failed", e);
       store.error = String(e);
@@ -235,7 +237,7 @@ async function _handleVirtualCommand(
       handleRewind();
     }
   } else if (action === "open-permissions") {
-    window.dispatchEvent(new CustomEvent("ocv:open-permissions"));
+    window.dispatchEvent(new CustomEvent(EVT_OPEN_PERMISSIONS));
   } else if (action === "open-stickers") {
     const url = "https://www.stickermule.com/claudecode";
     dbg("chat", "open-stickers", { url });
@@ -291,7 +293,7 @@ async function _handleVirtualCommand(
 
 async function handleShowDiff(ctx: VirtualCommandContext): Promise<void> {
   const { store, appendCommandOutput, t } = ctx;
-  const cwd = store.effectiveCwd || localStorage.getItem("ocv:project-cwd") || "";
+  const cwd = store.effectiveCwd || localStorage.getItem(LS_PROJECT_CWD) || "";
   if (!cwd) {
     appendCommandOutput(t("diff_noCwd"));
     return;

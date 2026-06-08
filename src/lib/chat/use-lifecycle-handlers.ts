@@ -1,6 +1,15 @@
 import { onMount } from "svelte";
 import { getTransport } from "$lib/transport";
 import * as api from "$lib/api";
+import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
+import {
+  EVT_CWD_CHANGED,
+  EVT_PROJECT_CHANGED,
+  EVT_RUNS_CHANGED,
+  EVT_STATUSBAR_TOGGLE,
+  EVT_SUMMARIZE_CHAT,
+  EVT_SUMMARIZE_CHAT_ACK,
+} from "$lib/utils/bus-events";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
 import { APP_TO_CLI_MODE } from "$lib/chat/utils/permission-modes";
@@ -393,7 +402,7 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
     checkProjectInit();
     // Preload project data from filesystem (no session needed)
     if (!runId) {
-      const cwd = localStorage.getItem("ocv:project-cwd") || "";
+      const cwd = localStorage.getItem(LS_PROJECT_CWD) || "";
       reloadProjectData(cwd);
     }
   });
@@ -405,19 +414,19 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
     const handler = () => {
       checkProjectInit();
       if (!getRunId() && !store.run) {
-        const cwd = localStorage.getItem("ocv:project-cwd") || "";
+        const cwd = localStorage.getItem(LS_PROJECT_CWD) || "";
         reloadProjectData(cwd);
       }
     };
-    window.addEventListener("ocv:project-changed", handler);
-    return () => window.removeEventListener("ocv:project-changed", handler);
+    window.addEventListener(EVT_PROJECT_CHANGED, handler);
+    return () => window.removeEventListener(EVT_PROJECT_CHANGED, handler);
   });
 
   // ════════════════════════════════════════════════════════════════════
   // Block 3: File IPC warmup onMount
   // ════════════════════════════════════════════════════════════════════
   onMount(() => {
-    const cwd = localStorage.getItem("ocv:project-cwd") || "";
+    const cwd = localStorage.getItem(LS_PROJECT_CWD) || "";
     if (!cwd) return;
     const t0 = performance.now();
     api
@@ -451,8 +460,8 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
           dbgWarn("chat", "runs-changed: failed to sync name", e);
         });
     }
-    window.addEventListener("ocv:runs-changed", onRunsChanged);
-    return () => window.removeEventListener("ocv:runs-changed", onRunsChanged);
+    window.addEventListener(EVT_RUNS_CHANGED, onRunsChanged);
+    return () => window.removeEventListener(EVT_RUNS_CHANGED, onRunsChanged);
   });
 
   // ════════════════════════════════════════════════════════════════════
@@ -537,7 +546,7 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
     function onStatusBarToggle(e: Event) {
       setStatusBarExpanded((e as CustomEvent).detail.expanded);
     }
-    window.addEventListener("ocv:statusbar-toggle", onStatusBarToggle);
+    window.addEventListener(EVT_STATUSBAR_TOGGLE, onStatusBarToggle);
 
     keybindingStore.registerCallback("chat:interrupt", () => {
       if (getShortcutHelpOpen()) {
@@ -621,10 +630,10 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
     });
     keybindingStore.registerCallback("app:summarizeChat", () => void handleSummarize());
     const onSummarizeEvent = () => {
-      window.dispatchEvent(new CustomEvent("ocv:summarize-chat-ack"));
+      window.dispatchEvent(new CustomEvent(EVT_SUMMARIZE_CHAT_ACK));
       void handleSummarize();
     };
-    window.addEventListener("ocv:summarize-chat", onSummarizeEvent);
+    window.addEventListener(EVT_SUMMARIZE_CHAT, onSummarizeEvent);
 
     const chatTransport = getTransport();
     const screenshotUnlisten = chatTransport.listen<ScreenshotPayload>(
@@ -672,7 +681,7 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
     );
 
     return () => {
-      window.removeEventListener("ocv:statusbar-toggle", onStatusBarToggle);
+      window.removeEventListener(EVT_STATUSBAR_TOGGLE, onStatusBarToggle);
       keybindingStore.unregisterCallback("chat:interrupt");
       keybindingStore.unregisterCallback("chat:sendGlobal");
       keybindingStore.unregisterCallback("app:shortcutHelp");
@@ -684,7 +693,7 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
       keybindingStore.unregisterCallback("chat:toggleTasks");
       keybindingStore.unregisterCallback("chat:undoLastTurn");
       keybindingStore.unregisterCallback("app:summarizeChat");
-      window.removeEventListener("ocv:summarize-chat", onSummarizeEvent);
+      window.removeEventListener(EVT_SUMMARIZE_CHAT, onSummarizeEvent);
       screenshotUnlisten.then((fn) => fn());
       dragEnterUnlisten.then((fn) => fn());
       dragLeaveUnlisten.then((fn) => fn());

@@ -1,3 +1,4 @@
+import { LS_DEBUG } from "./storage-keys";
 import { dbg } from "./debug";
 
 /**
@@ -18,7 +19,7 @@ const PROD = import.meta.env.PROD;
 export function isPerfEnabled(): boolean {
   if (PROD) return false;
   if (typeof window === "undefined") return false;
-  if (localStorage.getItem("ocv:debug")) return true;
+  if (localStorage.getItem(LS_DEBUG)) return true;
   return window.location.search.includes("debug");
 }
 

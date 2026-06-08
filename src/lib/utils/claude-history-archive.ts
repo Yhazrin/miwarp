@@ -1,5 +1,7 @@
 /** Shared helpers for Claude Code history archive export/import (desktop/Tauri). */
 
+import { EVT_RUNS_CHANGED } from "./bus-events";
+
 export function claudeHistoryArchiveDefaultName(now = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   const stamp = [
@@ -40,5 +42,5 @@ export async function pickClaudeHistoryImportPath(): Promise<string | null> {
 }
 
 export function notifyRunsChanged(): void {
-  window.dispatchEvent(new Event("ocv:runs-changed"));
+  window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
 }

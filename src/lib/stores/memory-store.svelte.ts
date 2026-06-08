@@ -11,6 +11,7 @@
  */
 import * as api from "$lib/api";
 import type { MemoryFileCandidate } from "$lib/types";
+import { EVT_MEMORY_FILE_SAVED, EVT_MEMORY_FILE_CREATED } from "$lib/utils/bus-events";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -237,7 +238,7 @@ class MemoryStore {
       this._syncState.pendingChanges++;
 
       // Notify components to refresh
-      window.dispatchEvent(new Event("ocv:memory-file-saved"));
+      window.dispatchEvent(new Event(EVT_MEMORY_FILE_SAVED));
 
       dbg("memory-store", `Saved content to ${path}`);
       return true;
@@ -267,7 +268,7 @@ class MemoryStore {
       await this.loadContent(path, cwd);
 
       // Notify components
-      window.dispatchEvent(new Event("ocv:memory-file-created"));
+      window.dispatchEvent(new Event(EVT_MEMORY_FILE_CREATED));
 
       dbg("memory-store", `Created new memory file: ${path}`);
       return true;

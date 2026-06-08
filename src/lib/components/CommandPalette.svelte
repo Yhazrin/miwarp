@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
+  import { EVT_OPEN_PERMISSIONS, EVT_OPEN_MULTI_AGENT, EVT_EXPORT_HTML, EVT_EXPORT_HTML_ACK } from "$lib/utils/bus-events";
   import {
     filterCommands,
     groupByCategory,
@@ -286,7 +287,7 @@
         else if (cmd.payload === "folder-browser") onOpenFolderBrowser?.();
         else if (cmd.payload === "version-info") showVersionInfo();
         else if (cmd.payload === "permissions") {
-          window.dispatchEvent(new CustomEvent("ocv:open-permissions"));
+          window.dispatchEvent(new CustomEvent(EVT_OPEN_PERMISSIONS));
         }
         break;
 
@@ -295,7 +296,7 @@
         break;
 
       case "panel:multi-agent":
-        window.dispatchEvent(new CustomEvent("ocv:open-multi-agent"));
+        window.dispatchEvent(new CustomEvent(EVT_OPEN_MULTI_AGENT));
         break;
 
       case "preset:fullstack":
@@ -366,10 +367,10 @@
         const onAck = () => {
           acked = true;
         };
-        window.addEventListener("ocv:export-html-ack", onAck, { once: true });
-        window.dispatchEvent(new CustomEvent("ocv:export-html"));
+        window.addEventListener(EVT_EXPORT_HTML_ACK, onAck, { once: true });
+        window.dispatchEvent(new CustomEvent(EVT_EXPORT_HTML));
         setTimeout(() => {
-          window.removeEventListener("ocv:export-html-ack", onAck);
+          window.removeEventListener(EVT_EXPORT_HTML_ACK, onAck);
           if (!acked) dbgWarn("palette", "export-html: no ack — not on chat page?");
         }, 500);
         break;

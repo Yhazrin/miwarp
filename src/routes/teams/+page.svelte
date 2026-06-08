@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getContext, onMount } from "svelte";
   import { goto } from "$app/navigation";
+  import { LS_TEAMS_TAB } from "$lib/utils/storage-keys";
   import { getTeamTask, listTeamRuns, getTeamRun, cancelTeamRun } from "$lib/api";
   import type { TeamStore } from "$lib/stores/team-store.svelte";
   import type { TeamTask, TeamInboxMessage, TeamRun, TeamRunStatus } from "$lib/types";
@@ -15,13 +16,13 @@
   // ── Page mode: "chat" (Team Room), "runs" (TeamRun history), or "monitor" (legacy Team Monitor) ──
   let pageMode = $state<"chat" | "runs" | "monitor">(
     (typeof localStorage !== "undefined" &&
-      (localStorage.getItem("ocv:teams-tab") as "chat" | "runs" | "monitor")) ||
+      (localStorage.getItem(LS_TEAMS_TAB) as "chat" | "runs" | "monitor")) ||
       "chat",
   );
 
   $effect(() => {
     if (typeof localStorage !== "undefined") {
-      localStorage.setItem("ocv:teams-tab", pageMode);
+      localStorage.setItem(LS_TEAMS_TAB, pageMode);
     }
   });
 

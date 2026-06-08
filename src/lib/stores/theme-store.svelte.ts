@@ -7,6 +7,7 @@
  * Single source of truth: all theme state lives here.
  */
 import { t } from "$lib/i18n/index.svelte";
+import { LS_LEGACY_THEME, LS_LEGACY_COLOR_SCHEME } from "$lib/utils/storage-keys";
 import { dbgWarn } from "$lib/utils/debug";
 
 export interface ThemeDefinition {
@@ -302,8 +303,8 @@ class ThemeStore {
 
     // Fallback: migrate from old ocv:theme / ocv:colorScheme
     try {
-      const oldTheme = localStorage.getItem("ocv:theme");
-      const oldScheme = localStorage.getItem("ocv:colorScheme");
+      const oldTheme = localStorage.getItem(LS_LEGACY_THEME);
+      const oldScheme = localStorage.getItem(LS_LEGACY_COLOR_SCHEME);
 
       if (oldTheme === "light") {
         this.currentTheme = "codex-light";

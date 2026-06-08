@@ -50,6 +50,14 @@
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
   import TopWindowDrag from "$lib/components/TopWindowDrag.svelte";
   import { IS_MAC } from "$lib/utils/platform";
+  import {
+    LS_PROJECT_CWD, LS_SETTINGS_CWD, LS_PINNED_CWDS, LS_EXPANDED_PROJECTS, LS_REMOVED_CWDS, LS_SIDEBAR_WIDTH,
+  } from "$lib/utils/storage-keys";
+  import {
+    EVT_RUNS_CHANGED, EVT_CWD_CHANGED, EVT_PROJECT_CHANGED, EVT_FAVORITES_CHANGED,
+    EVT_OPEN_PERMISSIONS, EVT_SHOW_WIZARD, EVT_MEMORY_FILE_SELECTED, EVT_MEMORY_FILE_SAVED,
+    EVT_MEMORY_SELECT, EVT_EXPLORER_FILE, EVT_EXPLORER_DIFF, EVT_EXPLORER_FILE_SELECTED,
+  } from "$lib/utils/bus-events";
   import { applyUiZoomCssVar, clampUiZoom, layoutPx } from "$lib/utils/ui-zoom";
   import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
   import {
@@ -265,7 +273,7 @@
         runs = runs.map((r) => (r.id === runId ? { ...r, folder_id: undefined } : r));
         dbg("layout", "session pointer-drop moveOutOfFolder success", { runId });
       }
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
     } catch (err) {
       dbgWarn("layout", "session pointer-drop moveRunToFolder failed", err);
     }
@@ -356,7 +364,7 @@
           runs = runs.map((r) =>
             runIds.includes(r.id) ? { ...r, folder_id: folderId ?? undefined } : r,
           );
-          window.dispatchEvent(new Event("ocv:runs-changed"));
+          window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
           dbg("layout", "moveToFolder immediate success", { count: runIds.length, folderId });
         } catch (e) {
           dbgWarn("layout", "moveToFolder immediate failed", e);
@@ -385,7 +393,7 @@
       }
       // Optimistic update
       runs = runs.map((r) => (ids.includes(r.id) ? { ...r, folder_id: folderId ?? undefined } : r));
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
       dbg("layout", "moveToFolder success", { count: ids.length, folderId });
     } catch (e) {
       dbgWarn("layout", "moveToFolder failed", e);
@@ -435,7 +443,7 @@
     let raw = parseInt(localStorage.getItem(key) ?? "", 10);
     // Lazy migration: read legacy key once
     if (!Number.isFinite(raw)) {
-      const legacy = parseInt(localStorage.getItem("ocv:sidebar-width") ?? "", 10);
+      const legacy = parseInt(localStorage.getItem(LS_SIDEBAR_WIDTH) ?? "", 10);
       if (Number.isFinite(legacy)) {
         raw = legacy;
         localStorage.setItem(key, String(legacy));
@@ -585,7 +593,7 @@
   function selectFile(node: TreeNode) {
     explorerSelectedFile = node.fullPath;
     // Notify explorer page via custom event
-    window.dispatchEvent(new CustomEvent("ocv:explorer-file", { detail: { path: node.fullPath } }));
+    window.dispatchEvent(new CustomEvent(EVT_EXPLORER_FILE, { detail: { path: node.fullPath } }));
   }
 
   let _gitSeq = 0;
@@ -620,7 +628,7 @@
 
   function selectDiffFile(filePath: string) {
     // Notify explorer page to show diff
-    window.dispatchEvent(new CustomEvent("ocv:explorer-diff", { detail: { path: filePath } }));
+    window.dispatchEvent(new CustomEvent(EVT_EXPLORER_DIFF, { detail: { path: filePath } }));
   }
 
   // ── Memory sidebar state (shown when on /memory) ──
@@ -675,7 +683,7 @@
     // Don't set highlight immediately — page will confirm dirty state first.
     // If confirmed, page sends ocv:memory-file-selected to ack the switch.
     window.dispatchEvent(
-      new CustomEvent("ocv:memory-select", { detail: { path: file.path, exists: file.exists } }),
+      new CustomEvent(EVT_MEMORY_SELECT, { detail: { path: file.path, exists: file.exists } }),
     );
   }
 
@@ -863,10 +871,10 @@
       persistCachedProcessVisibility(normalizeProcessVisibility(settings.process_visibility));
       const normalizedWd = normalizeCwd(settings.working_directory);
       if (normalizedWd) {
-        localStorage.setItem("ocv:settings-cwd", normalizedWd);
+        localStorage.setItem(LS_SETTINGS_CWD, normalizedWd);
         if (!projectCwd) projectCwd = normalizedWd;
       } else {
-        localStorage.removeItem("ocv:settings-cwd");
+        localStorage.removeItem(LS_SETTINGS_CWD);
       }
       // Show setup wizard if onboarding not completed
       if (!settings.onboarding_completed) {
@@ -1038,12 +1046,12 @@
       });
 
     // Load saved CWD and pinned folders from localStorage
-    const saved = localStorage.getItem("ocv:project-cwd");
+    const saved = localStorage.getItem(LS_PROJECT_CWD);
     if (saved) projectCwd = normalizeCwd(saved) || "";
 
     // Load expanded projects from localStorage (defensive parse)
     try {
-      const rawExpanded = localStorage.getItem("ocv:expanded-projects");
+      const rawExpanded = localStorage.getItem(LS_EXPANDED_PROJECTS);
       if (rawExpanded) {
         const parsed = JSON.parse(rawExpanded);
         if (Array.isArray(parsed) && parsed.every((v: unknown) => typeof v === "string")) {
@@ -1054,7 +1062,7 @@
       /* ignore corrupted data, keep empty Set */
     }
     try {
-      const pinned = localStorage.getItem("ocv:pinned-cwds");
+      const pinned = localStorage.getItem(LS_PINNED_CWDS);
       if (pinned) pinnedCwds = JSON.parse(pinned);
     } catch {
       /* ignore parse errors */
@@ -1167,47 +1175,47 @@
         loadGitSummary();
       }
     }
-    window.addEventListener("ocv:runs-changed", onRunsChanged);
+    window.addEventListener(EVT_RUNS_CHANGED, onRunsChanged);
 
     // Refresh sidebar favorites when /runs page changes them
     function onFavoritesChanged() {
       loadSidebarFavorites();
     }
-    window.addEventListener("ocv:favorites-changed", onFavoritesChanged);
+    window.addEventListener(EVT_FAVORITES_CHANGED, onFavoritesChanged);
 
     // Listen for Settings page requesting wizard re-open
     function onShowWizard() {
       showSetupWizard = true;
     }
-    window.addEventListener("ocv:show-wizard", onShowWizard);
+    window.addEventListener(EVT_SHOW_WIZARD, onShowWizard);
 
     // Memory page signals which file it selected (for sidebar highlight sync)
     function onMemoryFileSelected(e: Event) {
       const path = (e as CustomEvent).detail?.path ?? "";
       if (path) memorySelectedFile = path;
     }
-    window.addEventListener("ocv:memory-file-selected", onMemoryFileSelected);
+    window.addEventListener(EVT_MEMORY_FILE_SELECTED, onMemoryFileSelected);
 
     // Memory page signals a file was saved (refresh candidates to update exists status)
     function onMemoryFileSaved() {
       if (currentPath?.startsWith("/memory")) loadMemoryCandidates({ soft: true });
     }
-    window.addEventListener("ocv:memory-file-saved", onMemoryFileSaved);
+    window.addEventListener(EVT_MEMORY_FILE_SAVED, onMemoryFileSaved);
 
     // Sync projectCwd when chat page picks a folder via dialog
     function handleCwdChanged() {
-      const newCwd = normalizeCwd(localStorage.getItem("ocv:project-cwd") ?? "") || "";
+      const newCwd = normalizeCwd(localStorage.getItem(LS_PROJECT_CWD) ?? "") || "";
       if (newCwd !== projectCwd) {
         projectCwd = newCwd;
       }
     }
-    window.addEventListener("ocv:cwd-changed", handleCwdChanged);
+    window.addEventListener(EVT_CWD_CHANGED, handleCwdChanged);
 
     // Open permissions modal from any entry point (Command Palette, PromptInput button)
     function onOpenPermissions() {
       permissionsModalOpen = true;
     }
-    window.addEventListener("ocv:open-permissions", onOpenPermissions);
+    window.addEventListener(EVT_OPEN_PERMISSIONS, onOpenPermissions);
 
     // ── External link interceptor ──
     // Prevent webview from navigating away to external URLs.
@@ -1253,7 +1261,7 @@
     function onExplorerFileSelected(e: Event) {
       explorerSelectedFile = (e as CustomEvent).detail?.path ?? "";
     }
-    window.addEventListener("ocv:explorer-file-selected", onExplorerFileSelected);
+    window.addEventListener(EVT_EXPLORER_FILE_SELECTED, onExplorerFileSelected);
 
     // Listen for run status changes (idle↔running) from backend
     let unlistenStatus: (() => void) | undefined;
@@ -1275,7 +1283,7 @@
       .listen("ocv:cli-auto-sync", (payload: unknown) => {
         dbg("layout", "cli-auto-sync", payload);
         loadRuns();
-        window.dispatchEvent(new Event("ocv:runs-changed"));
+        window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
       })
       .then((fn) => {
         if (destroyed) {
@@ -1317,15 +1325,15 @@
       keybindingStore.unregisterCallback("app:toggleSidebar");
       keybindingStore.unregisterCallback("app:commandPalette");
       keybindingStore.unregisterCallback("app:newChat");
-      window.removeEventListener("ocv:runs-changed", onRunsChanged);
-      window.removeEventListener("ocv:favorites-changed", onFavoritesChanged);
-      window.removeEventListener("ocv:show-wizard", onShowWizard);
-      window.removeEventListener("ocv:cwd-changed", handleCwdChanged);
-      window.removeEventListener("ocv:memory-file-selected", onMemoryFileSelected);
-      window.removeEventListener("ocv:memory-file-saved", onMemoryFileSaved);
-      window.removeEventListener("ocv:open-permissions", onOpenPermissions);
+      window.removeEventListener(EVT_RUNS_CHANGED, onRunsChanged);
+      window.removeEventListener(EVT_FAVORITES_CHANGED, onFavoritesChanged);
+      window.removeEventListener(EVT_SHOW_WIZARD, onShowWizard);
+      window.removeEventListener(EVT_CWD_CHANGED, handleCwdChanged);
+      window.removeEventListener(EVT_MEMORY_FILE_SELECTED, onMemoryFileSelected);
+      window.removeEventListener(EVT_MEMORY_FILE_SAVED, onMemoryFileSaved);
+      window.removeEventListener(EVT_OPEN_PERMISSIONS, onOpenPermissions);
       document.removeEventListener("click", handleExternalLink, true);
-      window.removeEventListener("ocv:explorer-file-selected", onExplorerFileSelected);
+      window.removeEventListener(EVT_EXPLORER_FILE_SELECTED, onExplorerFileSelected);
       window.removeEventListener("miwarp:visual-performance-changed", onPerfModeChanged);
       window.removeEventListener(USER_SETTINGS_CHANGED_EVENT, onUserSettingsChanged);
       cleanupOverscroll();
@@ -1337,17 +1345,17 @@
   $effect(() => {
     if (typeof window !== "undefined") {
       if (projectCwd) {
-        localStorage.setItem("ocv:project-cwd", projectCwd);
+        localStorage.setItem(LS_PROJECT_CWD, projectCwd);
         // Pin this cwd so it stays in the dropdown after switching away
         if (projectCwd !== "/" && !pinnedCwds.includes(projectCwd)) {
           pinnedCwds = [...pinnedCwds, projectCwd];
-          localStorage.setItem("ocv:pinned-cwds", JSON.stringify(pinnedCwds));
+          localStorage.setItem(LS_PINNED_CWDS, JSON.stringify(pinnedCwds));
         }
       } else {
-        localStorage.removeItem("ocv:project-cwd");
+        localStorage.removeItem(LS_PROJECT_CWD);
       }
       // Notify child pages (e.g. Memory) that project cwd changed
-      window.dispatchEvent(new CustomEvent("ocv:project-changed", { detail: { cwd: projectCwd } }));
+      window.dispatchEvent(new CustomEvent(EVT_PROJECT_CHANGED, { detail: { cwd: projectCwd } }));
     }
   });
 
@@ -1422,7 +1430,7 @@
       dbg("layout", "deleteConversation success", { ids });
       // v1.0.6 1.4: keep IDB in sync with deletion
       for (const id of ids) void removeRunFromCache(id);
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
       if (conv.runs.some((r) => r.id === selectedRunId)) {
         goto("/chat");
       }
@@ -1445,7 +1453,7 @@
       // v1.0.6 1.4: keep IDB in sync with deletion
       for (const id of ids) void removeRunFromCache(id);
       dbg("layout", "hardDeleteConversation success", { ids });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
       if (ids.some((id) => id === selectedRunId)) {
         goto("/chat");
       }
@@ -1549,7 +1557,7 @@
       await softDeleteRuns(ids);
       for (const id of ids) void removeRunFromCache(id);
       dbg("layout", "batchDelete success", { count: ids.length });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
       if (ids.includes(selectedRunId)) goto("/chat");
     } catch (e) {
       dbgWarn("layout", "batchDelete failed", e);
@@ -1567,7 +1575,7 @@
       runs = runs.filter((r) => !idSet.has(r.id));
       for (const id of ids) void removeRunFromCache(id);
       dbg("layout", "batchHardDelete success", { count: ids.length });
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
       if (ids.includes(selectedRunId)) goto("/chat");
     } catch (e) {
       dbgWarn("layout", "batchHardDelete failed", e);
@@ -1579,7 +1587,7 @@
   let removeProjectTarget = $state("");
 
   function persistRemovedCwds() {
-    localStorage.setItem("ocv:removed-cwds", JSON.stringify(removedCwds));
+    localStorage.setItem(LS_REMOVED_CWDS, JSON.stringify(removedCwds));
   }
 
   function requestRemoveProject(cwd: string) {
@@ -1603,7 +1611,7 @@
     const newPinned = pinnedCwds.filter((c) => normalizeCwd(c) !== normalized);
     if (newPinned.length !== pinnedCwds.length) {
       pinnedCwds = newPinned;
-      localStorage.setItem("ocv:pinned-cwds", JSON.stringify(pinnedCwds));
+      localStorage.setItem(LS_PINNED_CWDS, JSON.stringify(pinnedCwds));
     }
 
     // If currently viewing this project, switch to All Projects
@@ -1815,16 +1823,16 @@
     if (!normalized) return;
     projectCwd = normalized;
     try {
-      localStorage.setItem("ocv:project-cwd", normalized);
+      localStorage.setItem(LS_PROJECT_CWD, normalized);
     } catch {
       // ignore
     }
     if (!pinnedCwds.includes(normalized)) {
       pinnedCwds = [...pinnedCwds, normalized];
-      localStorage.setItem("ocv:pinned-cwds", JSON.stringify(pinnedCwds));
+      localStorage.setItem(LS_PINNED_CWDS, JSON.stringify(pinnedCwds));
     }
     window.dispatchEvent(
-      new CustomEvent("ocv:project-changed", { detail: { cwd: normalized } }),
+      new CustomEvent(EVT_PROJECT_CHANGED, { detail: { cwd: normalized } }),
     );
     chatViewCache.lastRunId = "";
     goto(`/chat?new=1&folder=${encodeURIComponent(normalized)}`);
@@ -1984,7 +1992,7 @@
     if (pruned.length !== expandedProjects.size) {
       expandedProjects = new Set(pruned);
     }
-    localStorage.setItem("ocv:expanded-projects", JSON.stringify(pruned));
+    localStorage.setItem(LS_EXPANDED_PROJECTS, JSON.stringify(pruned));
   });
 
   function handleKeydown(e: KeyboardEvent) {

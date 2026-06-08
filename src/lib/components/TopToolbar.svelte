@@ -11,6 +11,7 @@
    *                 left           ┃       core       ┃       right       toggle
    */
   import { goto } from "$app/navigation";
+  import { EVT_NEW_SESSION, EVT_TOGGLE_PROGRESS_PANEL } from "$lib/utils/bus-events";
   import {
     CORE_ICONS,
     TOOLBAR_GROUPS,
@@ -31,11 +32,11 @@
 
   function handleClick(id: ToolbarIconId, href: string | null) {
     if (id === "new-session") {
-      window.dispatchEvent(new CustomEvent("ocv:new-session"));
+      window.dispatchEvent(new CustomEvent(EVT_NEW_SESSION));
       return;
     }
     if (id === "progress") {
-      window.dispatchEvent(new CustomEvent("ocv:toggle-progress-panel"));
+      window.dispatchEvent(new CustomEvent(EVT_TOGGLE_PROGRESS_PANEL));
       return;
     }
     if (href) void goto(href);

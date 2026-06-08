@@ -2,6 +2,7 @@
   import { onDestroy } from "svelte";
   import type { TaskRun, McpServerInfo, CliModelInfo } from "$lib/types";
   import type { TurnUsage } from "$lib/stores/types";
+  import { EVT_STATUSBAR_TOGGLE } from "$lib/utils/bus-events";
   import { dbg } from "$lib/utils/debug";
   import ProcessVisibilityPicker from "$lib/components/ProcessVisibilityPicker.svelte";
   import StatusBarModelMenu from "$lib/components/StatusBarModelMenu.svelte";
@@ -386,7 +387,7 @@
   $effect(() => {
     if (typeof window !== "undefined") {
       window.dispatchEvent(
-        new CustomEvent("ocv:statusbar-toggle", { detail: { expanded: islandExpanded } }),
+        new CustomEvent(EVT_STATUSBAR_TOGGLE, { detail: { expanded: islandExpanded } }),
       );
     }
   });

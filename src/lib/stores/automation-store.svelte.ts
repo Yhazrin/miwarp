@@ -11,6 +11,7 @@ import type {
   ExecutionProgress,
   RecordingSession,
 } from "$lib/types/automation";
+import { LS_AUTOMATION_SCRIPTS } from "$lib/utils/storage-keys";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 
 export interface AutomationState {
@@ -328,7 +329,7 @@ function createAutomationStore() {
     try {
       // In production, load from backend
       // For now, use localStorage
-      const stored = localStorage.getItem("ocv:automation-scripts");
+      const stored = localStorage.getItem(LS_AUTOMATION_SCRIPTS);
       if (stored) {
         const scripts = JSON.parse(stored) as AutomationScript[];
         dispatch({ type: "LOAD_SCRIPTS", scripts });
@@ -340,7 +341,7 @@ function createAutomationStore() {
 
   async function saveScripts(): Promise<void> {
     try {
-      localStorage.setItem("ocv:automation-scripts", JSON.stringify(state.scripts));
+      localStorage.setItem(LS_AUTOMATION_SCRIPTS, JSON.stringify(state.scripts));
     } catch (error) {
       dbgWarn("automation-store", "Failed to save scripts:", error);
     }

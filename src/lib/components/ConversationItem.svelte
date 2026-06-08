@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ConversationGroup } from "$lib/utils/sidebar-groups";
   import { TERMINAL_PHASES } from "$lib/stores";
+  import { EVT_RUNS_CHANGED } from "$lib/utils/bus-events";
   import { relativeTime, truncate } from "$lib/utils/format";
   import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
   import { t } from "$lib/i18n/index.svelte";
@@ -92,7 +93,7 @@
         const { renameRun } = await import("$lib/api");
         await renameRun(conversation.latestRun.id, trimmed);
         dbg("conv-item", "renamed", { runId: conversation.latestRun.id, name: trimmed });
-        window.dispatchEvent(new Event("ocv:runs-changed"));
+        window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
       } catch (e) {
         dbgWarn("conv-item", "rename failed", e);
       }

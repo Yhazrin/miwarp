@@ -1,4 +1,5 @@
 import * as api from "$lib/api";
+import { EVT_RUNS_CHANGED } from "$lib/utils/bus-events";
 import { dbg } from "$lib/utils/debug";
 import type { SessionStore } from "$lib/stores/session-store.svelte";
 import type { Attachment, SessionMode, TaskRun } from "$lib/types";
@@ -102,7 +103,7 @@ export function createForkLifecycle(ctx: ForkLifecycleContext) {
         setLastContinuableRun(null);
         goto(`/chat?run=${targetRunId}`, { replaceState: true });
       }
-      window.dispatchEvent(new Event("ocv:runs-changed"));
+      window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
     } catch (e) {
       if (mode === "fork" && getForkOverlay()) {
         setForkOverlay({ ...getForkOverlay()!, error: String(e) });
@@ -121,7 +122,7 @@ export function createForkLifecycle(ctx: ForkLifecycleContext) {
     store.error = "";
     goto(`/chat?run=${sourceRunId}`, { replaceState: true });
     await loadRunProgressive(sourceRunId);
-    window.dispatchEvent(new Event("ocv:runs-changed"));
+    window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
   }
 
   async function handleForkRetry() {

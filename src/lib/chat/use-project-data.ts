@@ -6,6 +6,8 @@ import type {
   CliCommand,
   ProjectInitStatus,
 } from "$lib/types";
+import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
+import { EVT_CWD_CHANGED } from "$lib/utils/bus-events";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 
 export interface ProjectDataContext {
@@ -32,8 +34,8 @@ export function createProjectData(ctx: ProjectDataContext) {
 
   /** Clears stored project cwd on access failure to avoid repeated permission prompts. */
   function clearProjectCwd() {
-    localStorage.removeItem("ocv:project-cwd");
-    window.dispatchEvent(new Event("ocv:cwd-changed"));
+    localStorage.removeItem(LS_PROJECT_CWD);
+    window.dispatchEvent(new Event(EVT_CWD_CHANGED));
   }
 
   function reloadProjectData(cwd: string) {
@@ -85,7 +87,7 @@ export function createProjectData(ctx: ProjectDataContext) {
   }
 
   async function checkProjectInit() {
-    const cwd = localStorage.getItem("ocv:project-cwd") || "";
+    const cwd = localStorage.getItem(LS_PROJECT_CWD) || "";
     if (!cwd || cwd === "/") {
       setProjectInitStatus(null);
       dbg("chat", "checkProjectInit: skip (no cwd)");

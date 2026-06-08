@@ -3,6 +3,7 @@
   import type { UserSettings, PromptInputSnapshot } from "$lib/types";
   import type { InputVm, PermissionVm, SidePanelsVm, InputDockHandlers } from "./input-dock-types";
   import { canResumeNow, getResumeWarning, TERMINAL_PHASES, getCliCommands } from "$lib/stores";
+  import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
   import { mergeProjectCommands } from "$lib/utils/slash-commands";
   import { dbg } from "$lib/utils/debug";
   import { t as tFn } from "$lib/i18n/index.svelte";
@@ -188,7 +189,7 @@
           permissionMode={store.permissionMode}
           cwd={store.effectiveCwd ||
             folderCwdOverride ||
-            localStorage.getItem("ocv:project-cwd") ||
+            localStorage.getItem(LS_PROJECT_CWD) ||
             ""}
           authMode={store.authMode}
           platformId={store.platformId ?? "anthropic"}
