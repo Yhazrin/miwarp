@@ -555,33 +555,17 @@
         class="session-island-tier1 {showChromeActions ? 'session-island-tier1-with-chrome' : ''}"
       >
         <!--
-          10-position row, ordered to mirror the collapsed capsule (4 chrome
-          anchors + 6 reveal tabs interleaved 1:1):
-            1 layout · 2 home (workspace) · 3 settings ·
-            4 wrench (tools) · 5 file (files) ·
-            6 plug · 7 monitor (preview) · 8 plus ·
-            9 clock (scheduled-tasks) · 10 summarize
+          10-position row, 3 leading reveal + 4 chrome anchors (always centered
+          when collapsed) + 3 trailing reveal. The 6 reveal tabs collapse to 0
+          width in the collapsed state so the 4 chrome anchors remain
+          visually clustered in the center, both collapsed and expanded.
+            1 home (workspace) · 2 wrench (tools) · 3 file (files) ·
+            4 layout (chrome) · 5 settings (chrome) ·
+            6 plug (chrome) · 7 plus (chrome) ·
+            8 monitor (preview) · 9 clock (scheduled-tasks) · 10 summarize
         -->
 
-        <!-- 1: chrome anchor — layout (sidebar toggle) -->
-        {#if onToggleLayoutSidebar}
-          <button
-            type="button"
-            class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
-            tabindex={islandActive ? 0 : -1}
-            onclick={(e) => {
-              e.stopPropagation();
-              onToggleLayoutSidebar();
-            }}
-            title={t("keybind_toggleSidebar")}
-            aria-label={t("keybind_toggleSidebar")}
-            aria-expanded={layoutSidebarOpen}
-          >
-            <Icon name="layout" size="md" class="shrink-0 opacity-90" />
-          </button>
-        {/if}
-
-        <!-- 2: leading reveal — workspace (home) -->
+        <!-- 1: leading reveal — workspace (home) -->
         <button
           type="button"
           role="tab"
@@ -597,24 +581,7 @@
           <Icon name="home" size="md" class="shrink-0 opacity-90" />
         </button>
 
-        <!-- 3: chrome anchor — settings -->
-        {#if onOpenSettings}
-          <button
-            type="button"
-            class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
-            tabindex={islandActive ? 0 : -1}
-            onclick={(e) => {
-              e.stopPropagation();
-              onOpenSettings();
-            }}
-            title={t("nav_settings")}
-            aria-label={t("nav_settings")}
-          >
-            <Icon name="settings" size="md" class="shrink-0 opacity-90" />
-          </button>
-        {/if}
-
-        <!-- 4: leading reveal — tools (wrench) -->
+        <!-- 2: leading reveal — tools (wrench) -->
         <button
           type="button"
           role="tab"
@@ -630,7 +597,7 @@
           <Icon name="wrench" size="md" class="shrink-0 opacity-90" />
         </button>
 
-        <!-- 5: leading reveal — files (file) -->
+        <!-- 3: leading reveal — files (file) -->
         <button
           type="button"
           role="tab"
@@ -653,6 +620,41 @@
           </span>
         </button>
 
+        <!-- 4: chrome anchor — layout (sidebar toggle) -->
+        {#if onToggleLayoutSidebar}
+          <button
+            type="button"
+            class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+            tabindex={islandActive ? 0 : -1}
+            onclick={(e) => {
+              e.stopPropagation();
+              onToggleLayoutSidebar();
+            }}
+            title={t("keybind_toggleSidebar")}
+            aria-label={t("keybind_toggleSidebar")}
+            aria-expanded={layoutSidebarOpen}
+          >
+            <Icon name="layout" size="md" class="shrink-0 opacity-90" />
+          </button>
+        {/if}
+
+        <!-- 5: chrome anchor — settings -->
+        {#if onOpenSettings}
+          <button
+            type="button"
+            class="session-island-tab session-island-chrome-anchor text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground"
+            tabindex={islandActive ? 0 : -1}
+            onclick={(e) => {
+              e.stopPropagation();
+              onOpenSettings();
+            }}
+            title={t("nav_settings")}
+            aria-label={t("nav_settings")}
+          >
+            <Icon name="settings" size="md" class="shrink-0 opacity-90" />
+          </button>
+        {/if}
+
         <!-- 6: chrome anchor — plug (CLI import) -->
         {#if onOpenCliImport}
           <button
@@ -670,23 +672,7 @@
           </button>
         {/if}
 
-        <!-- 7: trailing reveal — preview (monitor) -->
-        <button
-          type="button"
-          role="tab"
-          aria-selected={toolPanelActiveTab === "preview"}
-          aria-label={tabLabel("preview")}
-          class="session-island-tab session-island-reveal session-island-reveal-right transition-colors {toolPanelActiveTab ===
-          'preview'
-            ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
-            : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
-          onclick={() => onToolPanelTabChange("preview")}
-          title={tabLabel("preview")}
-        >
-          <Icon name="monitor" size="md" class="shrink-0 opacity-90" />
-        </button>
-
-        <!-- 8: chrome anchor — plus (new chat) -->
+        <!-- 7: chrome anchor — plus (new chat) -->
         {#if onNewChat}
           <button
             type="button"
@@ -702,6 +688,22 @@
             <Icon name="plus" size="md" class="shrink-0 opacity-90" />
           </button>
         {/if}
+
+        <!-- 8: trailing reveal — preview (monitor) -->
+        <button
+          type="button"
+          role="tab"
+          aria-selected={toolPanelActiveTab === "preview"}
+          aria-label={tabLabel("preview")}
+          class="session-island-tab session-island-reveal session-island-reveal-right transition-colors {toolPanelActiveTab ===
+          'preview'
+            ? 'bg-muted/70 text-foreground shadow-sm ring-1 ring-inset ring-border/45'
+            : 'text-muted-foreground hover:bg-muted/45 hover:text-foreground'}"
+          onclick={() => onToolPanelTabChange("preview")}
+          title={tabLabel("preview")}
+        >
+          <Icon name="monitor" size="md" class="shrink-0 opacity-90" />
+        </button>
 
         <!-- 9: trailing reveal — scheduled-tasks (clock) -->
         <button
