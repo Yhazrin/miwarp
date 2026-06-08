@@ -157,7 +157,9 @@
     <!-- Header -->
     <div class="mb-3 flex items-center justify-between gap-3">
       <div class="flex items-center gap-2">
-        <div class="flex h-7 w-7 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-info)/0.12)] text-miwarp-status-info">
+        <div
+          class="flex h-7 w-7 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-info)/0.12)] text-miwarp-status-info"
+        >
           <svg
             class="h-4 w-4"
             viewBox="0 0 24 24"
@@ -178,9 +180,13 @@
         {#if submitting}
           <span class="text-[11px] text-miwarp-status-info">...</span>
         {:else if missingRequired.length > 0}
-          <span class="text-[11px] text-miwarp-status-info">{t("elicitation_waiting") ?? "waiting"}</span>
+          <span class="text-[11px] text-miwarp-status-info"
+            >{t("elicitation_waiting") ?? "waiting"}</span
+          >
         {:else}
-          <span class="text-[11px] text-miwarp-status-success">{t("elicitation_ready") ?? "ready"}</span>
+          <span class="text-[11px] text-miwarp-status-success"
+            >{t("elicitation_ready") ?? "ready"}</span
+          >
         {/if}
       </div>
     </div>
@@ -193,7 +199,8 @@
     <!-- URL button -->
     {#if current.url}
       <div class="mb-3.5">
-        <button type="button"
+        <button
+          type="button"
           class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-[hsl(var(--miwarp-status-info)/0.2)] bg-[hsl(var(--miwarp-status-info)/0.1)] px-3 py-1.5 text-xs text-miwarp-status-info transition-all duration-150 hover:border-[hsl(var(--miwarp-status-info)/0.35)] hover:bg-[hsl(var(--miwarp-status-info)/0.18)]"
           onclick={() => current?.url && openElicitationUrl(current.url)}
         >
@@ -206,8 +213,10 @@
     {#if isSimpleChoice && choices.length > 0}
       <div class="mb-4 flex flex-wrap gap-2">
         {#each choices as choice}
-          <button type="button"
-            class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[hsl(var(--border)/0.7)] bg-background px-3.5 py-1.5 text-[13px] font-medium text-[hsl(var(--foreground)/0.8)] transition-all duration-150 hover:border-[hsl(var(--primary)/0.3)] hover:bg-accent {selectedChoice === choice
+          <button
+            type="button"
+            class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[hsl(var(--border)/0.7)] bg-background px-3.5 py-1.5 text-[13px] font-medium text-[hsl(var(--foreground)/0.8)] transition-all duration-150 hover:border-[hsl(var(--primary)/0.3)] hover:bg-accent {selectedChoice ===
+            choice
               ? 'border-[hsl(var(--primary)/0.5)] bg-[hsl(var(--primary)/0.1)] text-primary'
               : ''}"
             onclick={() => selectChoice(choice)}
@@ -247,7 +256,9 @@
             {/if}
 
             {#if fieldType === "boolean"}
-              <label class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring flex cursor-pointer items-center gap-2 rounded-md border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--background)/0.5)] px-3 py-2">
+              <label
+                class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring flex cursor-pointer items-center gap-2 rounded-md border border-[hsl(var(--border)/0.5)] bg-[hsl(var(--background)/0.5)] px-3 py-2"
+              >
                 <input
                   id="elic-{key}"
                   type="checkbox"
@@ -293,15 +304,19 @@
     {/if}
 
     <!-- Footer actions -->
-    <div class="flex items-center justify-end gap-2 border-t border-[hsl(var(--border)/0.4)] pt-3.5">
-      <button type="button"
+    <div
+      class="flex items-center justify-end gap-2 border-t border-[hsl(var(--border)/0.4)] pt-3.5"
+    >
+      <button
+        type="button"
         class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center justify-center rounded-lg border border-[hsl(var(--border)/0.7)] bg-transparent px-[18px] py-2 text-[13px] font-medium text-muted-foreground transition-all duration-150 hover:border-border hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
         disabled={submitting}
         onclick={handleDecline}
       >
         {t("elicitation_decline")}
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex cursor-pointer items-center justify-center rounded-lg border border-primary bg-primary px-[18px] py-2 text-[13px] font-medium text-primary-foreground transition-all duration-150 hover:bg-[hsl(var(--primary)/0.9)] disabled:cursor-not-allowed disabled:opacity-50"
         disabled={submitting || missingRequired.length > 0}
         onclick={handleAccept}

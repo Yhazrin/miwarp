@@ -25,7 +25,8 @@
   );
 </script>
 
-<button type="button"
+<button
+  type="button"
   class="w-full rounded-lg border border-border/40 bg-muted/20 px-3 py-2 text-left transition-colors hover:bg-muted/40"
   aria-expanded={!collapsed}
   aria-label={ariaLabel}

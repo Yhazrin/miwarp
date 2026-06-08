@@ -27,13 +27,7 @@
   } = $props();
 </script>
 
-<SettingsFieldRow
-  {label}
-  {description}
-  {overrideBadge}
-  {savedIndicator}
-  align="between"
->
+<SettingsFieldRow {label} {description} {overrideBadge} {savedIndicator} align="between">
   {#snippet children()}
     <div
       role="radiogroup"
@@ -47,7 +41,7 @@
           type="button"
           role="radio"
           aria-checked={value === opt.value}
-          disabled={disabled}
+          {disabled}
           class="rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150
             select-none whitespace-nowrap text-center
             {value === opt.value

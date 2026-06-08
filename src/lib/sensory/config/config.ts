@@ -63,9 +63,7 @@ export const defaultConfig: SensoryUIConfig = {
   reducedMotion: "inherit",
 };
 
-export function mergeConfig(
-  user: Partial<SensoryUIConfig>
-): SensoryUIConfig {
+export function mergeConfig(user: Partial<SensoryUIConfig>): SensoryUIConfig {
   return {
     ...defaultConfig,
     ...user,
@@ -89,10 +87,7 @@ export function mergeConfig(
  *   3. packRegistry.aero[role]   - fallback to "aero" if theme name is unknown
  *   4. null                      - category disabled or role not found
  */
-export function resolveRole(
-  role: SoundRole,
-  config: SensoryUIConfig
-): SoundSource | null {
+export function resolveRole(role: SoundRole, config: SensoryUIConfig): SoundSource | null {
   const category = role.split(".")[0] as SoundCategory;
 
   if (config.categories[category] === false) return null;

@@ -114,7 +114,15 @@
         if (calloutMatch) {
           const type = calloutMatch[1].toUpperCase();
           const icon =
-            type === "NOTE" ? "📝" : type === "WARNING" ? "⚠️" : type === "TIP" ? "💡" : type === "IMPORTANT" ? "❗" : "🔴";
+            type === "NOTE"
+              ? "📝"
+              : type === "WARNING"
+                ? "⚠️"
+                : type === "TIP"
+                  ? "💡"
+                  : type === "IMPORTANT"
+                    ? "❗"
+                    : "🔴";
           bq.classList.add("callout", `callout-${type.toLowerCase()}`);
           const firstP = bq.querySelector("p");
           if (firstP) {
@@ -145,7 +153,10 @@
     </nav>
   {/if}
 
-  <div class="mi-markdown-body min-w-0 flex-1 prose prose-sm dark:prose-invert max-w-none" bind:this={container}>
+  <div
+    class="mi-markdown-body min-w-0 flex-1 prose prose-sm dark:prose-invert max-w-none"
+    bind:this={container}
+  >
     {#if html}
       {@html html}
     {:else}

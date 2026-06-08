@@ -42,13 +42,7 @@
   }
 </script>
 
-<MiDialog
-  bind:open
-  {title}
-  {description}
-  size="sm"
-  onClose={handleCancel}
->
+<MiDialog bind:open {title} {description} size="sm" onClose={handleCancel}>
   {#snippet actions()}
     <button
       type="button"
@@ -62,8 +56,8 @@
       type="button"
       class="rounded-md px-3 py-1.5 text-sm font-medium text-white transition-colors
         {destructive
-          ? 'bg-miwarp-status-error hover:bg-miwarp-status-error/85'
-          : 'bg-primary hover:bg-primary/85'}"
+        ? 'bg-miwarp-status-error hover:bg-miwarp-status-error/85'
+        : 'bg-primary hover:bg-primary/85'}"
       onclick={handleConfirm}
     >
       {confirmLabel || t("common_confirm")}

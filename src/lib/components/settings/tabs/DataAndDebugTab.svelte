@@ -32,11 +32,12 @@
     onExportHistory?: () => Promise<void>;
     onImportHistory?: () => Promise<void>;
   } = $props();
-  function lk(key: string): string { return t(key as MessageKey); }
+  function lk(key: string): string {
+    return t(key as MessageKey);
+  }
   function lkp(key: string, params: Record<string, string>): string {
     return t(key as MessageKey, params);
   }
-
 </script>
 
 <div class="space-y-6">
@@ -57,16 +58,16 @@
 
     {#if scanResult}
       <div class="text-sm text-muted-foreground">
-        {lk("settings_data_found")} {scanResult.length} {lk("settings_data_sessions")}
+        {lk("settings_data_found")}
+        {scanResult.length}
+        {lk("settings_data_sessions")}
       </div>
     {/if}
 
     {#if scanResult && scanResult.length > 0}
       <div class="max-h-64 overflow-y-auto border rounded-md">
         {#each scanResult as session (session.sessionId)}
-          <div
-            class="flex items-center justify-between px-3 py-2 border-b last:border-b-0"
-          >
+          <div class="flex items-center justify-between px-3 py-2 border-b last:border-b-0">
             <div class="flex-1 min-w-0">
               <div class="text-sm font-medium truncate">
                 {session.firstPrompt || session.sessionId}

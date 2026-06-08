@@ -154,7 +154,9 @@ export function createSendMessage(ctx: SendMessageContext) {
         // v1.0.6: explicit cached/stale_cached check MUST come before sessionAlive —
         // these are in SESSION_ALIVE_PHASES so sessionAlive===true, but
         // we still need to resume the CLI before sending.
-        (store.phase === "cached" || store.phase === "stale_cached" || (!store.sessionAlive && store.run.session_id))
+        (store.phase === "cached" ||
+          store.phase === "stale_cached" ||
+          (!store.sessionAlive && store.run.session_id))
       ) {
         dbg("chat", "auto-resume on send", {
           runId: store.run.id,

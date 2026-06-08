@@ -113,7 +113,9 @@
 {#if pendingTools.length > 0}
   <div class="fixed bottom-0 left-0 right-0 z-[99999] flex justify-center pb-5 pointer-events-auto">
     <div class="w-full chat-content-width pb-2 pt-1">
-      <div class="rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-background shadow-lg animate-fade-in">
+      <div
+        class="rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-background shadow-lg animate-fade-in"
+      >
         {#if isSingle}
           <!-- Single permission: compact card -->
           {@const item = pendingTools[0]}
@@ -138,7 +140,10 @@
                 >{t("inline_permissionRequired")}</span
               >
               <div class="h-3 w-3 shrink-0">
-                <Spinner size="xs" class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-status-warning)/0.3)] border-t-[hsl(var(--miwarp-status-warning))]" />
+                <Spinner
+                  size="xs"
+                  class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-status-warning)/0.3)] border-t-[hsl(var(--miwarp-status-warning))]"
+                />
               </div>
             </div>
             <p class="text-sm text-foreground mb-1">
@@ -154,18 +159,21 @@
               </p>
             {/if}
             <div class="flex gap-2">
-              <button type="button"
+              <button
+                type="button"
                 class="rounded-md bg-miwarp-status-success px-4 py-1.5 text-xs font-medium text-miwarp-accent-on-accent hover:opacity-80 transition-all disabled:opacity-50"
                 disabled={busy}
                 onclick={() => respondSingle(item.requestId, "allow", undefined, item.tool.input)}
                 >{t("common_allow")}</button
               >
-              <button type="button"
+              <button
+                type="button"
                 class="rounded-md border border-border px-4 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-all disabled:opacity-50"
                 disabled={busy}
                 onclick={() => respondSingle(item.requestId, "deny")}>{t("common_deny")}</button
               >
-              <button type="button"
+              <button
+                type="button"
                 class="rounded-md border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.1)] px-3 py-1.5 text-xs font-medium text-miwarp-status-error hover:bg-miwarp-status-error/20 transition-all disabled:opacity-50"
                 disabled={busy}
                 onclick={() =>
@@ -174,13 +182,16 @@
               >
             </div>
             {#if item.tool.suggestions && item.tool.suggestions.length > 0}
-              <div class="flex flex-wrap gap-2 mt-2 pt-2 border-t border-[hsl(var(--miwarp-status-warning)/0.2)]">
+              <div
+                class="flex flex-wrap gap-2 mt-2 pt-2 border-t border-[hsl(var(--miwarp-status-warning)/0.2)]"
+              >
                 {#each item.tool.suggestions as suggestion}
                   {@const label = formatSuggestionLabel(
                     suggestion,
                     t as (key: string, params?: Record<string, string>) => string,
                   )}
-                  <button type="button"
+                  <button
+                    type="button"
                     class="rounded-md border border-miwarp-status-info/30 bg-miwarp-status-info/10 px-3 py-1.5 text-xs font-medium text-miwarp-status-info hover:bg-miwarp-status-info/10 transition-all disabled:opacity-50"
                     disabled={busy}
                     onclick={() =>
@@ -196,7 +207,10 @@
           <div class="px-4 py-3">
             <div class="flex items-center justify-between mb-2">
               <div class="flex items-center gap-2">
-                <Spinner size="xs" class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-status-warning)/0.3)] border-t-[hsl(var(--miwarp-status-warning))]" />
+                <Spinner
+                  size="xs"
+                  class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-status-warning)/0.3)] border-t-[hsl(var(--miwarp-status-warning))]"
+                />
                 <span class="text-xs font-medium text-foreground">
                   {t("perm_nPermissions", { count: String(pendingTools.length) })}
                 </span>
@@ -239,14 +253,16 @@
                   </span>
                   <!-- Per-row buttons -->
                   <div class="flex items-center gap-1 shrink-0">
-                    <button type="button"
+                    <button
+                      type="button"
                       class="rounded px-2 py-0.5 text-[10px] font-medium bg-miwarp-status-success/80 text-miwarp-accent-on-accent hover:opacity-80 transition-all disabled:opacity-50"
                       disabled={busy}
                       onclick={() =>
                         respondSingle(item.requestId, "allow", undefined, item.tool.input)}
                       >{t("common_allow")}</button
                     >
-                    <button type="button"
+                    <button
+                      type="button"
                       class="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-miwarp-status-error hover:bg-[hsl(var(--miwarp-status-error)/0.1)] transition-all disabled:opacity-50"
                       disabled={busy}
                       onclick={() => respondSingle(item.requestId, "deny")}
@@ -262,7 +278,8 @@
                         suggestion,
                         t as (key: string, params?: Record<string, string>) => string,
                       )}
-                      <button type="button"
+                      <button
+                        type="button"
                         class="rounded border border-miwarp-status-info/30 bg-miwarp-status-info/10 px-2 py-0.5 text-[10px] font-medium text-miwarp-status-info hover:bg-miwarp-status-info/10 transition-all disabled:opacity-50"
                         disabled={busy}
                         onclick={() =>
@@ -277,13 +294,15 @@
 
             <!-- Batch buttons -->
             <div class="flex gap-2 pt-2 border-t border-[hsl(var(--miwarp-status-warning)/0.2)]">
-              <button type="button"
+              <button
+                type="button"
                 class="rounded-md bg-miwarp-status-success px-4 py-1.5 text-xs font-medium text-miwarp-accent-on-accent hover:opacity-80 transition-all disabled:opacity-50"
                 disabled={submittingAll || submittingIds.size > 0}
                 onclick={allowAll}
                 >{t("perm_allowAll", { count: String(pendingTools.length) })}</button
               >
-              <button type="button"
+              <button
+                type="button"
                 class="rounded-md border border-border px-4 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-all disabled:opacity-50"
                 disabled={submittingAll || submittingIds.size > 0}
                 onclick={denyAll}>{t("perm_denyAll")}</button

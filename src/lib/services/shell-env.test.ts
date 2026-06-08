@@ -2,11 +2,7 @@
  * Tests for the shell-env detection helpers.
  */
 import { describe, expect, it } from "vitest";
-import {
-  classifyShellError,
-  detectShellEnv,
-  validateCwdForRun,
-} from "./shell-env";
+import { classifyShellError, detectShellEnv, validateCwdForRun } from "./shell-env";
 
 describe("shell-env", () => {
   it("detectShellEnv returns the hint when given one", () => {

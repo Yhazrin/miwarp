@@ -236,7 +236,8 @@
     <!-- Scope tabs: App / Global -->
     <div class="flex items-center gap-4">
       <div class="flex gap-1 bg-muted/40 rounded-lg p-0.5">
-        <button type="button"
+        <button
+          type="button"
           class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors
           {scope === 'global'
             ? 'bg-background text-foreground shadow-sm'
@@ -245,7 +246,8 @@
         >
           {t("usage_scopeGlobal")}
         </button>
-        <button type="button"
+        <button
+          type="button"
           class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors
           {scope === 'app'
             ? 'bg-background text-foreground shadow-sm'
@@ -259,7 +261,8 @@
       <!-- Date range tabs -->
       <div class="flex gap-1">
         {#each DATE_RANGES as range}
-          <button type="button"
+          <button
+            type="button"
             class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors
             {selectedDays === range.days
               ? 'bg-primary text-primary-foreground'
@@ -272,7 +275,8 @@
       </div>
 
       <!-- Refresh button (global scope only, stays in DOM to avoid layout shift) -->
-      <button type="button"
+      <button
+        type="button"
         class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40 {scope !==
         'global'
           ? 'invisible'
@@ -282,7 +286,7 @@
         disabled={refreshing || scope !== "global"}
         onclick={refreshCache}
       >
-        <Icon name="refresh-cw" size="md" class={refreshing ? 'animate-spin' : ''} />
+        <Icon name="refresh-cw" size="md" class={refreshing ? "animate-spin" : ""} />
       </button>
     </div>
 
@@ -290,7 +294,9 @@
       <div class="space-y-4">
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {#each Array(4) as _}
-            <div class="rounded-lg border border-border/50 bg-card/50 p-4 flex flex-col items-center gap-2">
+            <div
+              class="rounded-lg border border-border/50 bg-card/50 p-4 flex flex-col items-center gap-2"
+            >
               <SkeletonLine width="4rem" height="2rem" rounded="rounded-md" />
               <SkeletonLine width="5rem" height="0.5rem" />
             </div>
@@ -315,7 +321,8 @@
         class="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-center justify-between gap-3"
       >
         <span>{error}</span>
-        <button type="button"
+        <button
+          type="button"
           class="shrink-0 rounded-md border border-destructive/30 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
           onclick={() => loadData()}
         >
@@ -397,7 +404,8 @@
             {t("usage_dailyTrend")}
           </h2>
           <div class="flex gap-1">
-            <button type="button"
+            <button
+              type="button"
               class="px-2 py-0.5 text-[10px] font-medium rounded transition-colors
               {chartMode === 'cost'
                 ? 'bg-primary/20 text-primary'
@@ -406,7 +414,8 @@
             >
               {t("usage_chartCost")}
             </button>
-            <button type="button"
+            <button
+              type="button"
               class="px-2 py-0.5 text-[10px] font-medium rounded transition-colors
               {chartMode === 'tokens'
                 ? 'bg-primary/20 text-primary'
@@ -416,7 +425,8 @@
               {t("usage_chartTokens")}
             </button>
             {#if scope === "global"}
-              <button type="button"
+              <button
+                type="button"
                 class="px-2 py-0.5 text-[10px] font-medium rounded transition-colors
                 {chartMode === 'messages'
                   ? 'bg-primary/20 text-primary'
@@ -425,7 +435,8 @@
               >
                 {t("usage_chartMessages")}
               </button>
-              <button type="button"
+              <button
+                type="button"
                 class="px-2 py-0.5 text-[10px] font-medium rounded transition-colors
                 {chartMode === 'sessions'
                   ? 'bg-primary/20 text-primary'

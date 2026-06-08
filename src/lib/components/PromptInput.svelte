@@ -2254,9 +2254,7 @@
   <div
     class="overflow-hidden border border-primary bg-background/72 backdrop-blur-2xl transition-[border-radius,border-color] duration-200 {useCapsuleStrip
       ? 'rounded-full'
-      : 'rounded-[1.75rem]'} {btwMode
-      ? 'border-miwarp-status-info/80'
-      : ''} {pendingPermission
+      : 'rounded-[1.75rem]'} {btwMode ? 'border-miwarp-status-info/80' : ''} {pendingPermission
       ? 'motion-attention-pulse'
       : ''}"
   >

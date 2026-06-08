@@ -96,7 +96,6 @@
   function closeDetail() {
     detailOpen = false;
   }
-
 </script>
 
 {#snippet contextTrigger(props: Record<string, unknown>)}
@@ -111,7 +110,10 @@
     <div class="flex items-center gap-2">
       <div class="session-context-bar min-w-[4rem] {pulseClass}">
         <div class="h-full w-full overflow-hidden rounded-full bg-muted/30">
-          <div class="h-full transition-all duration-500 {barColor}" style="width: {barWidth}%"></div>
+          <div
+            class="h-full transition-all duration-500 {barColor}"
+            style="width: {barWidth}%"
+          ></div>
         </div>
         <span class="ml-1.5 text-[10px] font-bold text-foreground/70">{pct}%</span>
         <span class="text-[10px] font-medium text-foreground/50">ctx</span>
@@ -202,7 +204,10 @@
         }}
       >
         <div class="h-full w-full overflow-hidden rounded-full bg-muted/30">
-          <div class="h-full transition-all duration-500 {barColor}" style="width: {barWidth}%"></div>
+          <div
+            class="h-full transition-all duration-500 {barColor}"
+            style="width: {barWidth}%"
+          ></div>
         </div>
         <span class="ml-1.5 text-[10px] font-bold text-foreground/70">{pct}%</span>
         <span class="text-[10px] font-medium text-foreground/50">ctx</span>

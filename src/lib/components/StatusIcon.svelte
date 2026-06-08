@@ -45,9 +45,15 @@
   >
 {:else if status === "running"}
   {#if size === "xs"}
-    <Spinner size="xxs" class="!h-2.5 !w-2.5 border-border border-t-miwarp-status-running shrink-0" />
+    <Spinner
+      size="xxs"
+      class="!h-2.5 !w-2.5 border-border border-t-miwarp-status-running shrink-0"
+    />
   {:else if size === "md"}
-    <Spinner size="xs" class="!h-3.5 !w-3.5 border-border border-t-miwarp-status-running shrink-0" />
+    <Spinner
+      size="xs"
+      class="!h-3.5 !w-3.5 border-border border-t-miwarp-status-running shrink-0"
+    />
   {:else}
     <Spinner size="xs" class="!h-3 !w-3 border-border border-t-miwarp-status-running shrink-0" />
   {/if}

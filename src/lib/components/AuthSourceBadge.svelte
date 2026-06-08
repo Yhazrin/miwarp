@@ -168,7 +168,12 @@
                 stroke="currentColor"
                 stroke-width="2"
               >
-                <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="4" fill="currentColor" />
+                <circle cx="12" cy="12" r="10" /><circle
+                  cx="12"
+                  cy="12"
+                  r="4"
+                  fill="currentColor"
+                />
               </svg>
             {:else}
               <svg

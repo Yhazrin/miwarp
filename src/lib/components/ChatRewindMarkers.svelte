@@ -15,7 +15,9 @@
     <div class="chat-content-width">
       <div class="flex items-center gap-3">
         <div class="h-px flex-1 bg-[hsl(var(--miwarp-status-info)/0.2)]"></div>
-        <div class="flex items-center gap-2 text-xs text-[hsl(var(--miwarp-status-info)/0.8)] font-medium">
+        <div
+          class="flex items-center gap-2 text-xs text-[hsl(var(--miwarp-status-info)/0.8)] font-medium"
+        >
           <Icon name="refresh-ccw" size="sm" />
           <span
             >{t("rewind_separatorLabel", {
@@ -30,7 +32,9 @@
       </div>
       {#if marker.filesReverted.length > 0}
         <details class="mt-1 ml-8">
-          <summary class="cursor-pointer text-[10px] text-[hsl(var(--miwarp-status-info)/0.5)] hover:text-[hsl(var(--miwarp-status-info)/0.8)]">
+          <summary
+            class="cursor-pointer text-[10px] text-[hsl(var(--miwarp-status-info)/0.5)] hover:text-[hsl(var(--miwarp-status-info)/0.8)]"
+          >
             {t("rewind_separatorFiles", {
               count: String(marker.filesReverted.length),
             })}

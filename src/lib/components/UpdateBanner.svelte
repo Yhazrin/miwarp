@@ -89,14 +89,16 @@
       {t("appUpdate_available", { version: offer.version })}
     </span>
     <div class="flex shrink-0 items-center gap-2">
-      <button type="button"
+      <button
+        type="button"
         class="rounded-md bg-primary px-3 py-0.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
         onclick={applyUpdate}
         disabled={busy}
       >
         {actionLabel}
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="rounded-md px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
         onclick={dismiss}
         disabled={busy}

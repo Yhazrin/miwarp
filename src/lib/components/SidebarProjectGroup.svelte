@@ -88,7 +88,8 @@
 
     <!-- Remove button -->
     {#if showRemove && onRemove}
-      <button type="button"
+      <button
+        type="button"
         class="shrink-0 flex h-4 w-4 items-center justify-center rounded opacity-0 text-muted-foreground hover:text-destructive hover:opacity-100 focus-visible:opacity-100 group-hover/folder:opacity-100 transition-opacity"
         aria-label={t("sidebar_removeProject")}
         onclick={(e) => {
@@ -127,7 +128,8 @@
   {#if expanded}
     <div class="pl-3" transition:slide={{ duration: 200 }}>
       {#if onNewChat}
-        <button type="button"
+        <button
+          type="button"
           class="flex w-full items-center gap-1.5 px-2.5 py-0.5 text-[11px] text-muted-foreground/60 hover:text-muted-foreground hover:bg-sidebar-accent/20 rounded-md transition-colors"
           onclick={(e) => {
             e.stopPropagation();

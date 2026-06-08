@@ -33,17 +33,41 @@ export type GeneratedSoundPack = Record<SoundRole, SoundSynthesizer>;
 // Note frequencies for hero sounds
 // ---------------------------------------------------------------------------
 const NOTES = {
-  C3: 130.81, D3: 146.83, E3: 164.81, F3: 174.61, G3: 196.0, A3: 220.0, B3: 246.94,
-  C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23, G4: 392.0, A4: 440.0, B4: 493.88,
-  C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.0, B5: 987.77,
-  C6: 1046.5, D6: 1174.66, E6: 1318.51, G6: 1567.98,
+  C3: 130.81,
+  D3: 146.83,
+  E3: 164.81,
+  F3: 174.61,
+  G3: 196.0,
+  A3: 220.0,
+  B3: 246.94,
+  C4: 261.63,
+  D4: 293.66,
+  E4: 329.63,
+  F4: 349.23,
+  G4: 392.0,
+  A4: 440.0,
+  B4: 493.88,
+  C5: 523.25,
+  D5: 587.33,
+  E5: 659.25,
+  F5: 698.46,
+  G5: 783.99,
+  A5: 880.0,
+  B5: 987.77,
+  C6: 1046.5,
+  D6: 1174.66,
+  E6: 1318.51,
+  G6: 1567.98,
 };
 
 // ---------------------------------------------------------------------------
 // Soft Pack - Warm, gentle hero sounds
 // ---------------------------------------------------------------------------
 
-const softHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const softHeroComplete: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.65;
   // Lullaby resolution: descend from E→C then rise to G→C5
@@ -76,17 +100,41 @@ const softHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOp
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
-        gains.forEach(g => { try { g.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
+        gains.forEach((g) => {
+          try {
+            g.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
-const softHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const softHeroMilestone: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.55;
   // Gentle descending major 3rd
@@ -116,13 +164,28 @@ const softHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundO
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
 export const softPack: GeneratedSoundPack = {
@@ -135,7 +198,10 @@ export const softPack: GeneratedSoundPack = {
 // Aero Pack - Ethereal, breathy hero sounds with shimmer
 // ---------------------------------------------------------------------------
 
-const aeroHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const aeroHeroComplete: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.7;
   // Open-sky ascending 4ths and 5ths
@@ -167,25 +233,47 @@ const aeroHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOp
     g2.gain.linearRampToValueAtTime(vol * 0.25, noteStart + 0.015);
     g2.gain.exponentialRampToValueAtTime(0.001, decay);
 
-    osc.connect(g); g.connect(ctx.destination);
-    osc2.connect(g2); g2.connect(ctx.destination);
+    osc.connect(g);
+    g.connect(ctx.destination);
+    osc2.connect(g2);
+    g2.connect(ctx.destination);
     oscs.push(osc, osc2);
 
-    osc.start(noteStart); osc.stop(decay + 0.05);
-    osc2.start(noteStart); osc2.stop(decay + 0.05);
+    osc.start(noteStart);
+    osc.stop(decay + 0.05);
+    osc2.start(noteStart);
+    osc2.stop(decay + 0.05);
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
-const aeroHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const aeroHeroMilestone: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.6;
   // Open ascending 5ths
@@ -215,22 +303,41 @@ const aeroHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundO
     g2.gain.linearRampToValueAtTime(vol * 0.2, noteStart + 0.012);
     g2.gain.exponentialRampToValueAtTime(0.001, decay);
 
-    osc.connect(g); g.connect(ctx.destination);
-    osc2.connect(g2); g2.connect(ctx.destination);
+    osc.connect(g);
+    g.connect(ctx.destination);
+    osc2.connect(g2);
+    g2.connect(ctx.destination);
     oscs.push(osc, osc2);
 
-    osc.start(noteStart); osc.stop(decay + 0.05);
-    osc2.start(noteStart); osc2.stop(decay + 0.05);
+    osc.start(noteStart);
+    osc.stop(decay + 0.05);
+    osc2.start(noteStart);
+    osc2.stop(decay + 0.05);
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
 export const aeroPack: GeneratedSoundPack = {
@@ -243,7 +350,10 @@ export const aeroPack: GeneratedSoundPack = {
 // Arcade Pack - 8-bit chiptune fanfares
 // ---------------------------------------------------------------------------
 
-const arcadeHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const arcadeHeroComplete: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.6;
   // G major ascending fanfare
@@ -272,16 +382,34 @@ const arcadeHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySound
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
-const arcadeHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const arcadeHeroMilestone: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.5;
   // G major ascending arpeggio
@@ -310,13 +438,28 @@ const arcadeHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoun
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
 // ---------------------------------------------------------------------------
@@ -332,7 +475,10 @@ export const arcadePack: GeneratedSoundPack = {
 // Organic Pack - Marimba-like wooden tones
 // ---------------------------------------------------------------------------
 
-const organicHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const organicHeroComplete: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.7;
   // Bouncing pattern: up-down-up for organic/xylophone feel
@@ -364,25 +510,47 @@ const organicHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoun
     g2.gain.linearRampToValueAtTime(vol * 0.15, noteStart + 0.005);
     g2.gain.exponentialRampToValueAtTime(0.001, noteStart + 0.08);
 
-    osc.connect(g); g.connect(ctx.destination);
-    osc2.connect(g2); g2.connect(ctx.destination);
+    osc.connect(g);
+    g.connect(ctx.destination);
+    osc2.connect(g2);
+    g2.connect(ctx.destination);
     oscs.push(osc, osc2);
 
-    osc.start(noteStart); osc.stop(decay + 0.05);
-    osc2.start(noteStart); osc2.stop(noteStart + 0.1);
+    osc.start(noteStart);
+    osc.stop(decay + 0.05);
+    osc2.start(noteStart);
+    osc2.stop(noteStart + 0.1);
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
-const organicHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const organicHeroMilestone: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.6;
   // Ascending 5ths bounce
@@ -412,13 +580,28 @@ const organicHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySou
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
 export const organicPack: GeneratedSoundPack = {
@@ -431,7 +614,10 @@ export const organicPack: GeneratedSoundPack = {
 // Glass Pack - Crystalline bell-like tones
 // ---------------------------------------------------------------------------
 
-const glassHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const glassHeroComplete: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.45;
   // Ascending run with major-7th shimmer
@@ -474,27 +660,51 @@ const glassHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundO
     g3.gain.linearRampToValueAtTime(vol * 0.12, noteStart + 0.008);
     g3.gain.exponentialRampToValueAtTime(0.001, noteStart + ringTime * 0.5);
 
-    osc1.connect(g1); g1.connect(ctx.destination);
-    osc2.connect(g2); g2.connect(ctx.destination);
-    osc3.connect(g3); g3.connect(ctx.destination);
+    osc1.connect(g1);
+    g1.connect(ctx.destination);
+    osc2.connect(g2);
+    g2.connect(ctx.destination);
+    osc3.connect(g3);
+    g3.connect(ctx.destination);
     oscs.push(osc1, osc2, osc3);
 
-    osc1.start(noteStart); osc1.stop(noteStart + ringTime + 0.1);
-    osc2.start(noteStart); osc2.stop(noteStart + ringTime + 0.1);
-    osc3.start(noteStart); osc3.stop(noteStart + ringTime + 0.1);
+    osc1.start(noteStart);
+    osc1.stop(noteStart + ringTime + 0.1);
+    osc2.start(noteStart);
+    osc2.stop(noteStart + ringTime + 0.1);
+    osc3.start(noteStart);
+    osc3.stop(noteStart + ringTime + 0.1);
 
     if (isLast) {
       osc1.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
-const glassHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const glassHeroMilestone: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.4;
   // Ascending with open voicing
@@ -526,22 +736,41 @@ const glassHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySound
     g2.gain.linearRampToValueAtTime(vol * 0.25, noteStart + 0.01);
     g2.gain.exponentialRampToValueAtTime(0.001, noteStart + ringTime * 0.7);
 
-    osc1.connect(g1); g1.connect(ctx.destination);
-    osc2.connect(g2); g2.connect(ctx.destination);
+    osc1.connect(g1);
+    g1.connect(ctx.destination);
+    osc2.connect(g2);
+    g2.connect(ctx.destination);
     oscs.push(osc1, osc2);
 
-    osc1.start(noteStart); osc1.stop(noteStart + ringTime + 0.1);
-    osc2.start(noteStart); osc2.stop(noteStart + ringTime + 0.1);
+    osc1.start(noteStart);
+    osc1.stop(noteStart + ringTime + 0.1);
+    osc2.start(noteStart);
+    osc2.stop(noteStart + ringTime + 0.1);
 
     if (isLast) {
       osc1.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
 export const glassPack: GeneratedSoundPack = {
@@ -554,7 +783,10 @@ export const glassPack: GeneratedSoundPack = {
 // Industrial Pack - Metallic, powerful stabs
 // ---------------------------------------------------------------------------
 
-const industrialHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const industrialHeroComplete: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.7;
   const oscs: OscillatorNode[] = [];
@@ -601,16 +833,34 @@ const industrialHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlayS
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
-const industrialHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const industrialHeroMilestone: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.6;
   const oscs: OscillatorNode[] = [];
@@ -650,11 +900,26 @@ const industrialHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: Play
   osc.stop(t + 0.6);
 
   osc.onended = () => {
-    oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+    oscs.forEach((o) => {
+      try {
+        o.disconnect();
+      } catch {
+        /* already disposed */
+      }
+    });
     opts.onEnd?.();
   };
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
 export const industrialPack: GeneratedSoundPack = {
@@ -667,7 +932,10 @@ export const industrialPack: GeneratedSoundPack = {
 // Minimal Pack - Clean, understated resolution
 // ---------------------------------------------------------------------------
 
-const minimalHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const minimalHeroComplete: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.4;
   const notes = [NOTES.C4, NOTES.G4, NOTES.C5];
@@ -696,16 +964,34 @@ const minimalHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoun
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
-const minimalHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const minimalHeroMilestone: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.35;
   const notes = [NOTES.G3, NOTES.C4];
@@ -734,13 +1020,28 @@ const minimalHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySou
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
 export const minimalPack: GeneratedSoundPack = {
@@ -753,7 +1054,10 @@ export const minimalPack: GeneratedSoundPack = {
 // Retro Pack - Synthwave chord stabs with arpeggios
 // ---------------------------------------------------------------------------
 
-const retroHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const retroHeroComplete: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.55;
   const oscs: OscillatorNode[] = [];
@@ -804,16 +1108,34 @@ const retroHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundO
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
-const retroHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const retroHeroMilestone: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.5;
   const oscs: OscillatorNode[] = [];
@@ -857,11 +1179,26 @@ const retroHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySound
   osc.stop(t + 0.6);
 
   osc.onended = () => {
-    oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+    oscs.forEach((o) => {
+      try {
+        o.disconnect();
+      } catch {
+        /* already disposed */
+      }
+    });
     opts.onEnd?.();
   };
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
 export const retroPack: GeneratedSoundPack = {
@@ -874,7 +1211,10 @@ export const retroPack: GeneratedSoundPack = {
 // Crisp Pack - Sharp, articulated rapid arpeggios
 // ---------------------------------------------------------------------------
 
-const crispHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const crispHeroComplete: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.6;
   // Pentatonic scale run with crisp attack
@@ -904,16 +1244,34 @@ const crispHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundO
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
-const crispHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
+const crispHeroMilestone: SoundSynthesizer = (
+  ctx: AudioContext,
+  opts: PlaySoundOptions,
+): SoundPlayback => {
   const t = ctx.currentTime;
   const vol = (opts.volume ?? 1) * 0.55;
   // Pentatonic skip pattern
@@ -943,13 +1301,28 @@ const crispHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySound
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        oscs.forEach((o) => {
+          try {
+            o.disconnect();
+          } catch {
+            /* already disposed */
+          }
+        });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
+  return {
+    stop: () =>
+      oscs.forEach((o) => {
+        try {
+          o.stop();
+        } catch {
+          /* already disposed */
+        }
+      }),
+  };
 };
 
 export const crispPack: GeneratedSoundPack = {

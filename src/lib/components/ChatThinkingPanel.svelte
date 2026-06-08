@@ -33,7 +33,8 @@
             <path d="M10 22h4" />
           </svg>
           <span class="font-medium">{t("chat_thinking")}</span>
-          <button type="button"
+          <button
+            type="button"
             class="ml-auto opacity-50 hover:opacity-100 transition-opacity"
             aria-label="Toggle thinking panel"
             onclick={onToggleExpand}
@@ -63,7 +64,8 @@
 {:else}
   <div class="w-full animate-fade-in">
     <div class="chat-content-width py-1">
-      <button type="button"
+      <button
+        type="button"
         class="inline-flex items-center gap-1.5 rounded-full px-2 py-px text-[10px] text-muted-foreground hover:bg-muted/50 transition-all"
         onclick={onToggleExpand}
       >

@@ -56,7 +56,8 @@
   {:else}
     <div class="flex items-center justify-between px-3 py-2 border-b border-border/30">
       <h3 class="text-xs font-semibold text-foreground">{t("scheduledTasks_title")}</h3>
-      <button type="button"
+      <button
+        type="button"
         class="rounded px-2 py-1 text-[10px] font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
         onclick={handleCreateNew}
       >
@@ -70,11 +71,7 @@
           {t("scheduledTasks_loading")}
         </div>
       {:else if filteredTasks.length === 0}
-        <EmptyState
-          iconName="clock"
-          title={t("scheduledTasks_empty")}
-          class="h-32"
-        />
+        <EmptyState iconName="clock" title={t("scheduledTasks_empty")} class="h-32" />
       {:else}
         <div class="p-2 space-y-2">
           {#if filteredActiveTasks.length > 0}
@@ -85,7 +82,11 @@
                 {t("scheduledTasks_active")}
               </p>
               {#each filteredActiveTasks as task (task.id)}
-                <button type="button" class="w-full text-left" onclick={() => handleCardClick(task)}>
+                <button
+                  type="button"
+                  class="w-full text-left"
+                  onclick={() => handleCardClick(task)}
+                >
                   <ScheduledTaskCard
                     {task}
                     selected={scheduledTasksStore.selectedTaskId === task.id}
@@ -103,7 +104,11 @@
                 {t("scheduledTasks_inactive")}
               </p>
               {#each filteredInactiveTasks as task (task.id)}
-                <button type="button" class="w-full text-left" onclick={() => handleCardClick(task)}>
+                <button
+                  type="button"
+                  class="w-full text-left"
+                  onclick={() => handleCardClick(task)}
+                >
                   <ScheduledTaskCard
                     {task}
                     selected={scheduledTasksStore.selectedTaskId === task.id}

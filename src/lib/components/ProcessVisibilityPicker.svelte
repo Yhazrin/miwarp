@@ -2,10 +2,7 @@
   import MiSelect from "$lib/ui/MiSelect.svelte";
   import { Select } from "$lib/ui/select-primitives";
   import Icon from "$lib/components/Icon.svelte";
-  import {
-    PROCESS_VISIBILITY_LEVELS,
-    type ProcessVisibility,
-  } from "$lib/utils/process-visibility";
+  import { PROCESS_VISIBILITY_LEVELS, type ProcessVisibility } from "$lib/utils/process-visibility";
   import { t } from "$lib/i18n/index.svelte";
   import { MIWARP_SELECT_ITEM_CLASS } from "$lib/ui/miwarp-surfaces";
 

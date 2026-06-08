@@ -43,13 +43,10 @@
     <!-- Server status -->
     <div class="flex items-center justify-between rounded-lg border border-border/30 p-3">
       <div class="flex items-center gap-2">
-        <span
-          class="h-2 w-2 rounded-full {serverRunning ? 'bg-miwarp-status-success' : 'bg-muted'}"
+        <span class="h-2 w-2 rounded-full {serverRunning ? 'bg-miwarp-status-success' : 'bg-muted'}"
         ></span>
         <span class="text-sm">
-          {serverRunning
-            ? t("settings_mobile_serverRunning")
-            : t("settings_mobile_serverStopped")}
+          {serverRunning ? t("settings_mobile_serverRunning") : t("settings_mobile_serverStopped")}
         </span>
       </div>
       {#if serverRunning}

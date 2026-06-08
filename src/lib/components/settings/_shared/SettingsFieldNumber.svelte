@@ -39,12 +39,7 @@
   }
 </script>
 
-<SettingsFieldRow
-  {label}
-  {description}
-  {overrideBadge}
-  align="between"
->
+<SettingsFieldRow {label} {description} {overrideBadge} align="between">
   {#snippet children()}
     <div class="flex items-center gap-1.5">
       <input

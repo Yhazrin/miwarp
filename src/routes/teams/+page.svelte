@@ -332,7 +332,8 @@
 <div class="h-full overflow-hidden flex flex-col">
   <!-- Tab bar -->
   <div class="shrink-0 flex items-center gap-1 border-b border-border px-4 h-10">
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-xs font-medium transition-colors border-b-2 {pageMode === 'chat'
         ? 'text-foreground border-primary'
         : 'text-muted-foreground hover:text-foreground border-transparent'}"
@@ -340,7 +341,8 @@
     >
       {t("teamRun_tabChat")}
     </button>
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-xs font-medium transition-colors border-b-2 {pageMode === 'runs'
         ? 'text-foreground border-primary'
         : 'text-muted-foreground hover:text-foreground border-transparent'}"
@@ -348,7 +350,8 @@
     >
       {t("teamRun_tabRuns")}
     </button>
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-xs font-medium transition-colors border-b-2 {pageMode === 'monitor'
         ? 'text-foreground border-primary'
         : 'text-muted-foreground hover:text-foreground border-transparent'}"
@@ -465,7 +468,8 @@
               bind:value={chatInput}
               onkeydown={handleChatKeydown}
             ></textarea>
-            <button type="button"
+            <button
+              type="button"
               class="shrink-0 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
               disabled={!chatInput.trim()}
               onclick={handleChatSend}
@@ -485,7 +489,8 @@
           <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
             >{t("teamRun_history")}</span
           >
-          <button type="button"
+          <button
+            type="button"
             class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
             title={t("teamRun_refresh")}
             aria-label={t("teamRun_refresh")}
@@ -503,19 +508,17 @@
           {:else if runsError}
             <div class="px-3 py-6 text-center">
               <p class="text-xs text-miwarp-status-error">{runsError}</p>
-              <button type="button"
+              <button
+                type="button"
                 class="mt-2 text-xs text-primary hover:text-primary/80 transition-colors"
                 onclick={loadTeamRuns}>{t("teamRun_retry")}</button
               >
             </div>
           {:else if teamRuns.length === 0}
-            <EmptyState
-              iconName="users"
-              description={t("teamRun_emptyDesc")}
-              class="px-4"
-            >
+            <EmptyState iconName="users" description={t("teamRun_emptyDesc")} class="px-4">
               {#snippet action()}
-                <button type="button"
+                <button
+                  type="button"
                   class="mt-2 rounded-md px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                   onclick={goToChat}
                 >
@@ -526,7 +529,8 @@
           {:else}
             <div class="py-1">
               {#each teamRuns as run (run.id)}
-                <button type="button"
+                <button
+                  type="button"
                   class="w-full text-left px-3 py-2.5 hover:bg-accent/30 transition-colors border-l-2 {selectedRunId ===
                   run.id
                     ? 'border-l-primary bg-accent/20'
@@ -610,7 +614,8 @@
                 {STATUS_TEXT[selectedRun.status]()}
               </span>
               {#if selectedRun.status === "running" || selectedRun.status === "planning"}
-                <button type="button"
+                <button
+                  type="button"
                   class="ml-auto rounded-md px-2.5 py-1 text-[11px] font-medium border border-[hsl(var(--miwarp-status-error)/0.3)] text-miwarp-status-error hover:bg-[hsl(var(--miwarp-status-error)/0.1)] transition-colors"
                   onclick={() => handleCancelRun(selectedRun!.id)}
                 >
@@ -657,12 +662,17 @@
                       <span class="text-xs font-medium text-foreground">{member.memberName}</span>
                       <span class="text-[10px] text-muted-foreground/60">{member.role}</span>
                       {#if member.status === "running"}
-                        <span class="ml-auto text-[10px] text-miwarp-status-info animate-pulse">...</span>
+                        <span class="ml-auto text-[10px] text-miwarp-status-info animate-pulse"
+                          >...</span
+                        >
                       {:else if member.status === "completed"}
-                        <span class="ml-auto text-[10px] text-miwarp-status-success">{t("teamRun_done")}</span
+                        <span class="ml-auto text-[10px] text-miwarp-status-success"
+                          >{t("teamRun_done")}</span
                         >
                       {:else if member.status === "failed"}
-                        <span class="ml-auto text-[10px] text-miwarp-status-error">{t("teamRun_failed")}</span>
+                        <span class="ml-auto text-[10px] text-miwarp-status-error"
+                          >{t("teamRun_failed")}</span
+                        >
                       {:else}
                         <span class="ml-auto text-[10px] text-muted-foreground/40"
                           >{t("teamRun_pending")}</span
@@ -763,19 +773,22 @@
                   {#if deleteConfirm === teamStore.selectedTeam}
                     <div class="flex items-center gap-1.5">
                       <span class="text-xs text-muted-foreground">{t("team_deleteConfirm")}</span>
-                      <button type="button"
+                      <button
+                        type="button"
                         class="rounded px-2 py-1 text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50"
                         disabled={deleting}
                         onclick={() => handleDeleteTeam(teamStore.selectedTeam)}
                         >{deleting ? "..." : t("team_deleteYes")}</button
                       >
-                      <button type="button"
+                      <button
+                        type="button"
                         class="rounded px-2 py-1 text-xs font-medium border border-border text-foreground hover:bg-accent transition-colors"
                         onclick={() => (deleteConfirm = null)}>{t("team_deleteNo")}</button
                       >
                     </div>
                   {:else}
-                    <button type="button"
+                    <button
+                      type="button"
                       class="rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                       title={t("team_deleteTeam")}
                       onclick={() => (deleteConfirm = teamStore.selectedTeam)}
@@ -789,7 +802,8 @@
               <div class="flex items-center gap-1.5 px-4 py-1.5 overflow-x-auto">
                 {#each teamStore.teamConfig.members as member (member.name)}
                   {@const isLead = member.agentId === teamStore.teamConfig.leadAgentId}
-                  <button type="button"
+                  <button
+                    type="button"
                     class="shrink-0 flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors {expandedMemberName ===
                     member.name
                       ? 'border-primary/40 bg-primary/5'
@@ -895,7 +909,8 @@
             <div class="flex flex-1 flex-col min-h-0">
               {#if teamStore.teamConfig.members.length > 0}
                 <div class="shrink-0 flex gap-0.5 border-b border-border px-4 overflow-x-auto">
-                  <button type="button"
+                  <button
+                    type="button"
                     class="shrink-0 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 {inboxTab ===
                     'all'
                       ? 'text-foreground border-primary'
@@ -903,7 +918,8 @@
                     onclick={handleAllInboxClick}>{t("team_inboxAll")}</button
                   >
                   {#each teamStore.teamConfig.members as member (member.name)}
-                    <button type="button"
+                    <button
+                      type="button"
                       class="shrink-0 px-3 py-1.5 text-xs font-medium transition-colors border-b-2 {inboxTab ===
                       member.name
                         ? 'text-foreground border-primary'
@@ -928,7 +944,8 @@
                     {#each displayedMessages as msg (msg.timestamp)}
                       {@const parsed = parseMessageType(msg.text)}
                       {@const isExpMsg = expandedMsgKey === msgKey(msg)}
-                      <button type="button"
+                      <button
+                        type="button"
                         class="w-full text-left flex gap-2 rounded-lg px-3 py-2 hover:bg-muted/30 transition-colors {!msg.read
                           ? 'border-l-2 border-l-primary/60'
                           : ''}"
@@ -993,7 +1010,9 @@
                                     >
                                   {/if}
                                   {#if parsed.data.failureReason}
-                                    <span class="text-miwarp-status-error">{parsed.data.failureReason}</span>
+                                    <span class="text-miwarp-status-error"
+                                      >{parsed.data.failureReason}</span
+                                    >
                                   {/if}
                                   {#if parsed.data.peerDmSummary}
                                     <span class="text-muted-foreground/60"
@@ -1148,7 +1167,8 @@
               : 'w-[280px]'}"
           >
             {#if sidebarCollapsed}
-              <button type="button"
+              <button
+                type="button"
                 class="flex flex-col items-center py-3 gap-2 h-full hover:bg-accent/30 transition-colors"
                 title={t("team_expandTaskBoard")}
                 onclick={() => (sidebarCollapsed = false)}
@@ -1177,7 +1197,8 @@
                 <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
                   >{t("team_tasksBoardCount", { count: String(teamStore.tasks.length) })}</span
                 >
-                <button type="button"
+                <button
+                  type="button"
                   class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
                   title={t("team_collapseTaskBoard")}
                   onclick={() => (sidebarCollapsed = true)}
@@ -1193,23 +1214,30 @@
 
                 {#if teamStore.inProgressTasks.length > 0}
                   <div>
-                    <button type="button"
+                    <button
+                      type="button"
                       class="flex w-full items-center gap-1.5 text-[11px] font-medium text-miwarp-status-info hover:text-miwarp-status-info transition-colors py-1"
                       onclick={() => (expandInProgress = !expandInProgress)}
                     >
-                      <Icon name="chevron-right" size="xs" class="transition-transform {expandInProgress ? 'rotate-90' : ''}" />
+                      <Icon
+                        name="chevron-right"
+                        size="xs"
+                        class="transition-transform {expandInProgress ? 'rotate-90' : ''}"
+                      />
                       {t("team_inProgress", { count: String(teamStore.inProgressTasks.length) })}
                     </button>
                     {#if expandInProgress}
                       <div class="space-y-1">
                         {#each teamStore.inProgressTasks as task (task.id)}
                           {@const isExpanded = teamStore.expandedTaskId === task.id}
-                          <button type="button"
+                          <button
+                            type="button"
                             class="w-full text-left rounded-lg border border-[hsl(var(--miwarp-status-info)/0.2)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-2.5 py-2 hover:bg-[hsl(var(--miwarp-status-info)/0.1)] transition-colors"
                             onclick={() => toggleTaskExpand(task)}
                           >
                             <div class="flex items-start gap-1.5">
-                              <span class="text-[11px] font-mono text-[hsl(var(--miwarp-status-info)/0.6)] shrink-0 mt-0.5"
+                              <span
+                                class="text-[11px] font-mono text-[hsl(var(--miwarp-status-info)/0.6)] shrink-0 mt-0.5"
                                 >#{task.id}</span
                               >
                               <div class="flex-1 min-w-0">
@@ -1255,10 +1283,18 @@
                                   </div>
                                 {/if}
                               </div>
-                              <Icon name="chevron-down" size="xs" class="shrink-0 text-muted-foreground/40 mt-1 transition-transform {isExpanded ? 'rotate-180' : ''}" />
+                              <Icon
+                                name="chevron-down"
+                                size="xs"
+                                class="shrink-0 text-muted-foreground/40 mt-1 transition-transform {isExpanded
+                                  ? 'rotate-180'
+                                  : ''}"
+                              />
                             </div>
                             {#if isExpanded}
-                              <div class="mt-2 pt-2 border-t border-[hsl(var(--miwarp-status-info)/0.1)]">
+                              <div
+                                class="mt-2 pt-2 border-t border-[hsl(var(--miwarp-status-info)/0.1)]"
+                              >
                                 {#if taskDescLoading[task.id]}
                                   <div
                                     class="flex items-center gap-1.5 text-[10px] text-muted-foreground"
@@ -1296,18 +1332,24 @@
 
                 {#if teamStore.pendingTasks.length > 0}
                   <div>
-                    <button type="button"
+                    <button
+                      type="button"
                       class="flex w-full items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors py-1"
                       onclick={() => (expandPending = !expandPending)}
                     >
-                      <Icon name="chevron-right" size="xs" class="transition-transform {expandPending ? 'rotate-90' : ''}" />
+                      <Icon
+                        name="chevron-right"
+                        size="xs"
+                        class="transition-transform {expandPending ? 'rotate-90' : ''}"
+                      />
                       {t("team_pending", { count: String(teamStore.pendingTasks.length) })}
                     </button>
                     {#if expandPending}
                       <div class="space-y-1">
                         {#each teamStore.pendingTasks as task (task.id)}
                           {@const isExpanded = teamStore.expandedTaskId === task.id}
-                          <button type="button"
+                          <button
+                            type="button"
                             class="w-full text-left rounded-lg border border-border/30 bg-muted/20 px-2.5 py-2 hover:bg-muted/40 transition-colors"
                             onclick={() => toggleTaskExpand(task)}
                           >
@@ -1357,7 +1399,13 @@
                                   </div>
                                 {/if}
                               </div>
-                              <Icon name="chevron-down" size="xs" class="shrink-0 text-muted-foreground/40 mt-1 transition-transform {isExpanded ? 'rotate-180' : ''}" />
+                              <Icon
+                                name="chevron-down"
+                                size="xs"
+                                class="shrink-0 text-muted-foreground/40 mt-1 transition-transform {isExpanded
+                                  ? 'rotate-180'
+                                  : ''}"
+                              />
                             </div>
                             {#if isExpanded}
                               <div class="mt-2 pt-2 border-t border-border/20">
@@ -1398,18 +1446,24 @@
 
                 {#if teamStore.completedTasks.length > 0}
                   <div>
-                    <button type="button"
+                    <button
+                      type="button"
                       class="flex w-full items-center gap-1.5 text-[11px] font-medium text-miwarp-status-success hover:text-miwarp-status-success transition-colors py-1"
                       onclick={() => (expandCompleted = !expandCompleted)}
                     >
-                      <Icon name="chevron-right" size="xs" class="transition-transform {expandCompleted ? 'rotate-90' : ''}" />
+                      <Icon
+                        name="chevron-right"
+                        size="xs"
+                        class="transition-transform {expandCompleted ? 'rotate-90' : ''}"
+                      />
                       {t("team_completed", { count: String(teamStore.completedTasks.length) })}
                     </button>
                     {#if expandCompleted}
                       <div class="space-y-1">
                         {#each teamStore.completedTasks as task (task.id)}
                           {@const isExpanded = teamStore.expandedTaskId === task.id}
-                          <button type="button"
+                          <button
+                            type="button"
                             class="w-full text-left rounded-lg border border-[hsl(var(--miwarp-status-success)/0.15)] bg-[hsl(var(--miwarp-status-success)/0.05)] px-2.5 py-2 hover:bg-[hsl(var(--miwarp-status-success)/0.1)] transition-colors"
                             onclick={() => toggleTaskExpand(task)}
                           >
@@ -1431,7 +1485,8 @@
                                     >
                                   {/if}
                                   {#if task.activeForm}
-                                    <span class="text-[10px] text-[hsl(var(--miwarp-status-success)/0.6)] italic"
+                                    <span
+                                      class="text-[10px] text-[hsl(var(--miwarp-status-success)/0.6)] italic"
                                       >{task.activeForm}</span
                                     >
                                   {/if}
@@ -1474,7 +1529,9 @@
                               >
                             </div>
                             {#if isExpanded}
-                              <div class="mt-2 pt-2 border-t border-[hsl(var(--miwarp-status-success)/0.1)]">
+                              <div
+                                class="mt-2 pt-2 border-t border-[hsl(var(--miwarp-status-success)/0.1)]"
+                              >
                                 {#if taskDescLoading[task.id]}
                                   <div
                                     class="flex items-center gap-1.5 text-[10px] text-muted-foreground"

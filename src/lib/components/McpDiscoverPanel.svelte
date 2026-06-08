@@ -282,7 +282,8 @@
       ></span>
       <span class="text-[10px] text-muted-foreground">{t("mcp_registry")}</span>
     </div>
-    <button type="button"
+    <button
+      type="button"
       class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-40"
       title={t("mcp_refreshTitle")}
       aria-label={t("mcp_refreshTitle")}
@@ -304,19 +305,31 @@
 
   <!-- Search input -->
   <div class="relative flex-1">
-    <Icon name="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+    <Icon
+      name="search"
+      class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
+    />
     <input
       type="text"
       placeholder={t("mcp_searchPlaceholder")}
       class="w-full rounded-md border border-border bg-background pl-8 pr-8 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
       bind:value={query}
       oninput={handleSearch}
-      onkeydown={(e) => { if (e.key === "Escape") { query = ""; handleSearch(); } }}
+      onkeydown={(e) => {
+        if (e.key === "Escape") {
+          query = "";
+          handleSearch();
+        }
+      }}
     />
     {#if query}
-      <button type="button"
+      <button
+        type="button"
         class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-        onclick={() => { query = ""; handleSearch(); }}
+        onclick={() => {
+          query = "";
+          handleSearch();
+        }}
         aria-label={t("common_clear")}
       >
         <Icon name="x" class="h-3 w-3" />
@@ -326,13 +339,15 @@
 
   <!-- Scope selector -->
   <div class="flex rounded-md border border-border p-0.5 shrink-0">
-    <button type="button"
+    <button
+      type="button"
       class="rounded px-2 py-1 text-xs font-medium transition-colors {installScope === 'user'
         ? 'bg-primary text-primary-foreground'
         : 'text-muted-foreground hover:text-foreground'}"
       onclick={() => (installScope = "user")}>{t("mcp_scopeUser")}</button
     >
-    <button type="button"
+    <button
+      type="button"
       class="rounded px-2 py-1 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed {installScope ===
       'project'
         ? 'bg-primary text-primary-foreground'
@@ -340,7 +355,8 @@
       disabled={!projectCwd}
       onclick={() => (installScope = "project")}>{t("mcp_scopeProject")}</button
     >
-    <button type="button"
+    <button
+      type="button"
       class="rounded px-2 py-1 text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed {installScope ===
       'local'
         ? 'bg-primary text-primary-foreground'
@@ -354,7 +370,8 @@
 <!-- Quick filters -->
 <div class="flex flex-wrap gap-1.5 mb-4">
   {#each ["filesystem", "database", "github", "api", "web", "docker"] as filter}
-    <button type="button"
+    <button
+      type="button"
       class="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors {query ===
       filter
         ? 'bg-primary/10 border-primary/30 text-foreground'
@@ -393,7 +410,8 @@
               : t("mcp_couldNotLoadPopular")}
         </p>
         {#if query.trim().length < 2 && !refreshing}
-          <button type="button"
+          <button
+            type="button"
             class="rounded-md border border-border px-3 py-1.5 text-xs text-foreground hover:bg-muted transition-colors"
             onclick={refreshRegistry}
           >
@@ -442,7 +460,8 @@
                     >{t("mcp_installed")}</span
                   >
                 {:else}
-                  <button type="button"
+                  <button
+                    type="button"
                     class="rounded-md px-2 py-1 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 shrink-0"
                     onclick={(e) => {
                       e.stopPropagation();
@@ -491,7 +510,8 @@
                     <p class="text-[11px] text-muted-foreground mt-1.5">{detail.description}</p>
                   {/if}
                 </div>
-                <button type="button"
+                <button
+                  type="button"
                   class="shrink-0 text-muted-foreground hover:text-foreground"
                   onclick={() => (detail = null)}
                   aria-label={t("common_close")}
@@ -615,7 +635,8 @@
                     {t("mcp_alreadyInstalled")}
                   </div>
                 {:else}
-                  <button type="button"
+                  <button
+                    type="button"
                     class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
                     onclick={() => handleInstall(detail!)}
                     disabled={operationLoading === detail.name}

@@ -329,13 +329,16 @@
       >
       <span class="text-sm font-medium text-foreground min-w-0 truncate">{displayName}</span>
       {#if fileDirty}
-        <span class="h-2 w-2 rounded-full bg-miwarp-status-warning shrink-0" title={t("explorer_modified")}
+        <span
+          class="h-2 w-2 rounded-full bg-miwarp-status-warning shrink-0"
+          title={t("explorer_modified")}
         ></span>
       {/if}
       <span class="text-[11px] text-muted-foreground truncate flex-1 min-w-0">{path}</span>
       {#if kind === "markdown"}
         <div class="flex rounded-md border bg-background p-0.5 shrink-0">
-          <button type="button"
+          <button
+            type="button"
             class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors
               {editorMode === 'edit'
               ? 'bg-muted text-foreground'
@@ -344,7 +347,8 @@
           >
             {t("common_edit")}
           </button>
-          <button type="button"
+          <button
+            type="button"
             class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors
               {editorMode === 'rendered'
               ? 'bg-muted text-foreground'
@@ -356,7 +360,8 @@
         </div>
       {/if}
       {#if editable && kind !== "image"}
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors shrink-0 disabled:opacity-40 {fileDirty
             ? 'bg-primary text-primary-foreground hover:bg-primary/90'
             : 'bg-muted text-muted-foreground cursor-default'}"
@@ -374,7 +379,8 @@
   {#if !isRemote && path && mode === "diff"}
     <div class="flex items-center gap-2 border-b px-3 py-1.5 shrink-0">
       {#if onCloseDiff}
-        <button type="button"
+        <button
+          type="button"
           class="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           onclick={() => onCloseDiff?.()}
           title={t("explorer_closeDiff")}

@@ -319,7 +319,9 @@
 </script>
 
 {#if scheduledTasksStore.showEditor}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay backdrop-blur-sm">
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-miwarp-overlay backdrop-blur-sm"
+  >
     <div
       class="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-background rounded-xl shadow-2xl border"
     >
@@ -330,7 +332,13 @@
             ? t("schedEditor_createTitle")
             : t("schedEditor_editTitle")}
         </h2>
-        <Button variant="ghost" size="icon" onclick={handleCancel} title={t("common_close")} aria-label={t("common_close")}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onclick={handleCancel}
+          title={t("common_close")}
+          aria-label={t("common_close")}
+        >
           <svg
             class="w-5 h-5"
             viewBox="0 0 24 24"

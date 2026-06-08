@@ -6,9 +6,7 @@
 import * as api from "$lib/api";
 import type { UserSettings } from "$lib/types";
 
-export type SettingsPatcher = (
-  patch: Partial<UserSettings>,
-) => Promise<UserSettings | null>;
+export type SettingsPatcher = (patch: Partial<UserSettings>) => Promise<UserSettings | null>;
 
 /**
  * Returns a function that:
@@ -33,9 +31,7 @@ export function useSettingsPatch(
     // Optimistic update.
     current.value = { ...prev, ...patch };
     try {
-      const next = (await api.updateUserSettings(
-        patch as Partial<UserSettings>,
-      )) as UserSettings;
+      const next = (await api.updateUserSettings(patch as Partial<UserSettings>)) as UserSettings;
       current.value = next;
       if (onSaved) onSaved(next);
       return next;

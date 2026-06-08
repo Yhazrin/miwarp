@@ -52,8 +52,20 @@ const CORE_GROUP: ToolbarIconDef[] = [
 
 // ── Right flanking group (extensions + system) ──
 const RIGHT_GROUP: ToolbarIconDef[] = [
-  { id: "progress", labelKey: "toolbar_progress", icon: "check-square", href: null, group: "right" },
-  { id: "scheduled", labelKey: "nav_scheduledTasks", icon: "clock", href: "/scheduled-tasks", group: "right" },
+  {
+    id: "progress",
+    labelKey: "toolbar_progress",
+    icon: "check-square",
+    href: null,
+    group: "right",
+  },
+  {
+    id: "scheduled",
+    labelKey: "nav_scheduledTasks",
+    icon: "clock",
+    href: "/scheduled-tasks",
+    group: "right",
+  },
   { id: "plugins", labelKey: "nav_extend", icon: "package", href: "/plugins", group: "right" },
   { id: "settings", labelKey: "nav_settings", icon: "settings", href: "/settings", group: "right" },
 ];

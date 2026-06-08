@@ -119,7 +119,8 @@ CLAUDE.md, files, tools output. */
       <span class="text-foreground/40 tabular-nums">/ {fmtNumber(totalMax)}</span>
 
       {#if compactCount > 0 || microcompactCount > 0}
-        <button type="button"
+        <button
+          type="button"
           class="text-[10px] text-miwarp-status-info hover:text-miwarp-status-info/80 transition-colors {onCompactDetails
             ? 'cursor-pointer'
             : 'cursor-default'}"

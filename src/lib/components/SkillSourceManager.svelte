@@ -249,7 +249,9 @@
   {/if}
 
   {#if store.lastUpdatesCheck?.updates?.length}
-    <div class="rounded-lg border border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-3 py-2 text-xs">
+    <div
+      class="rounded-lg border border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-3 py-2 text-xs"
+    >
       <p class="font-medium">{t("skillSources_updates_heading")}</p>
       <ul class="mt-1 space-y-0.5 font-mono text-[11px]">
         {#each store.lastUpdatesCheck.updates as u}

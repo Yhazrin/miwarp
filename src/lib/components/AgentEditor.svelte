@@ -195,7 +195,8 @@
       {mode === "create" ? t("agent_createAgent") : t("agent_editAgent")}
     </h3>
     <div class="flex gap-1 rounded-md bg-muted p-0.5">
-      <button type="button"
+      <button
+        type="button"
         class="px-2 py-0.5 text-[11px] rounded transition-colors
           {editorMode === 'form'
           ? 'bg-background text-foreground shadow-sm'
@@ -212,7 +213,8 @@
           <span class="text-[10px] opacity-60">(view)</span>
         {/if}
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="px-2 py-0.5 text-[11px] rounded transition-colors
           {editorMode === 'source'
           ? 'bg-background text-foreground shadow-sm'
@@ -236,7 +238,8 @@
         <p class="text-xs text-destructive">{error}</p>
       {/each}
       {#if mode === "edit" && editorMode === "source"}
-        <button type="button"
+        <button
+          type="button"
           class="text-xs text-muted-foreground underline hover:text-foreground mt-1"
           onclick={handleForceSave}
         >
@@ -289,7 +292,8 @@
             >{t("agentEditor_scope")}</span
           >
           <div class="flex gap-2">
-            <button type="button"
+            <button
+              type="button"
               class="px-3 py-1 text-xs rounded-md border transition-colors
                 {scope === 'user'
                 ? 'border-primary bg-primary/10 text-foreground'
@@ -298,7 +302,8 @@
             >
               {t("agent_scopeUser")}
             </button>
-            <button type="button"
+            <button
+              type="button"
               class="px-3 py-1 text-xs rounded-md border transition-colors
                 {scope === 'project'
                 ? 'border-primary bg-primary/10 text-foreground'
@@ -343,7 +348,8 @@
               >
                 {tool}
                 {#if mode === "create"}
-                  <button type="button"
+                  <button
+                    type="button"
                     class="text-muted-foreground hover:text-destructive"
                     onclick={() => removeTool(tool)}>×</button
                   >
@@ -361,12 +367,13 @@
               class="flex-1 rounded-md border border-border bg-background px-2 py-1 text-xs"
               bind:value={toolInput}
             >
-              <option value="">{t('agentEditor_addTool')}</option>
+              <option value="">{t("agentEditor_addTool")}</option>
               {#each AVAILABLE_TOOLS.filter((t) => !formData.tools.includes(t)) as tool}
                 <option value={tool}>{tool}</option>
               {/each}
             </select>
-            <button type="button"
+            <button
+              type="button"
               class="rounded-md bg-muted px-2 py-1 text-xs text-foreground hover:bg-muted/80"
               onclick={addTool}
               disabled={!toolInput}>+</button
@@ -494,7 +501,8 @@
             >{t("agentEditor_scope")}</span
           >
           <div class="flex gap-2">
-            <button type="button"
+            <button
+              type="button"
               class="px-3 py-1 text-xs rounded-md border transition-colors
                 {scope === 'user'
                 ? 'border-primary bg-primary/10 text-foreground'
@@ -503,7 +511,8 @@
             >
               {t("agent_scopeUser")}
             </button>
-            <button type="button"
+            <button
+              type="button"
               class="px-3 py-1 text-xs rounded-md border transition-colors
                 {scope === 'project'
                 ? 'border-primary bg-primary/10 text-foreground'
@@ -531,18 +540,24 @@
 
   <!-- Footer -->
   <div class="flex justify-end gap-2 pt-2 border-t border-border">
-    <button type="button"
+    <button
+      type="button"
       class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
       onclick={onCancel}
     >
       {t("common_cancel")}
     </button>
-    <button type="button"
+    <button
+      type="button"
       class="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       onclick={handleSave}
       disabled={saving}
     >
-      {saving ? t("agentEditor_saving") : mode === "create" ? t("agent_createAgent") : t("agentEditor_save")}
+      {saving
+        ? t("agentEditor_saving")
+        : mode === "create"
+          ? t("agent_createAgent")
+          : t("agentEditor_save")}
     </button>
   </div>
 </div>

@@ -98,8 +98,8 @@
         type="button"
         class="flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors
           {activeMode === tab.id
-            ? 'bg-sidebar-accent text-sidebar-foreground'
-            : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
+          ? 'bg-sidebar-accent text-sidebar-foreground'
+          : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
         onclick={() => setMode(tab.id)}
       >
         <Icon name={tab.icon} size="xs" />

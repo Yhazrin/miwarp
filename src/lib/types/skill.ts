@@ -122,11 +122,7 @@ export interface RemoteSkillCandidate {
   skipReason?: string;
 }
 
-type RemoteSkillInstallStatus =
-  | "not_installed"
-  | "installed"
-  | "update_available"
-  | "conflict";
+type RemoteSkillInstallStatus = "not_installed" | "installed" | "update_available" | "conflict";
 
 export interface SkillSourceSyncResult {
   sourceId: string;

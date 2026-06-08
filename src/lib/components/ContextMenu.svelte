@@ -102,10 +102,7 @@
     const nav = navigableIndices();
     if (nav.length === 0) return;
     const currentPos = nav.indexOf(focusedIndex);
-    const nextPos =
-      currentPos === -1
-        ? 0
-        : (currentPos + direction + nav.length) % nav.length;
+    const nextPos = currentPos === -1 ? 0 : (currentPos + direction + nav.length) % nav.length;
     focusItem(nav[nextPos]);
   }
 
@@ -255,7 +252,8 @@
     {#if item.separatorBefore && i > 0}
       <div class="my-1 h-px bg-border/40"></div>
     {/if}
-    <button type="button"
+    <button
+      type="button"
       class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs transition-colors
              focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none
              {item.disabled

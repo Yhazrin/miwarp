@@ -143,7 +143,7 @@
       <!-- Input -->
       <div class="flex items-center gap-1">
         <span class="w-2 h-2 rounded-full bg-miwarp-status-info"></span>
-        <span class="text-xs text-muted-foreground">{t('context_input')}</span>
+        <span class="text-xs text-muted-foreground">{t("context_input")}</span>
         <span class="text-xs tabular-nums text-foreground">
           {formatTokens(inputTokens)}
         </span>
@@ -152,7 +152,7 @@
       <!-- Output -->
       <div class="flex items-center gap-1">
         <span class="w-2 h-2 rounded-full bg-miwarp-accent-violet"></span>
-        <span class="text-xs text-muted-foreground">{t('context_output')}</span>
+        <span class="text-xs text-muted-foreground">{t("context_output")}</span>
         <span class="text-xs tabular-nums text-foreground">
           {formatTokens(outputTokens)}
         </span>
@@ -162,7 +162,7 @@
       {#if cacheReadTokens > 0}
         <div class="flex items-center gap-1">
           <span class="w-2 h-2 rounded-full bg-miwarp-status-success"></span>
-          <span class="text-xs text-muted-foreground">{t('context_cache')}</span>
+          <span class="text-xs text-muted-foreground">{t("context_cache")}</span>
           <span class="text-xs tabular-nums text-foreground">
             {formatTokens(cacheReadTokens)}
           </span>
@@ -173,7 +173,7 @@
       {#if cacheWriteTokens > 0}
         <div class="flex items-center gap-1">
           <span class="w-2 h-2 rounded-full bg-miwarp-status-warning"></span>
-          <span class="text-xs text-muted-foreground">{t('context_write')}</span>
+          <span class="text-xs text-muted-foreground">{t("context_write")}</span>
           <span class="text-xs tabular-nums text-foreground">
             {formatTokens(cacheWriteTokens)}
           </span>
@@ -182,7 +182,7 @@
 
       <!-- Total -->
       <div class="flex items-center gap-1 ml-auto">
-        <span class="text-xs text-muted-foreground">{t('context_totalTokens')}</span>
+        <span class="text-xs text-muted-foreground">{t("context_totalTokens")}</span>
         <span class="text-xs tabular-nums font-medium text-foreground">
           {formatTokens(totalTokens)}
         </span>
@@ -204,15 +204,15 @@
       >
         <div class="text-xs space-y-1">
           <div class="flex justify-between">
-            <span class="text-muted-foreground">{t('context_totalTokens')}</span>
+            <span class="text-muted-foreground">{t("context_totalTokens")}</span>
             <span class="tabular-nums text-foreground">{totalTokens.toLocaleString()}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-muted-foreground">{t('context_effective')} (in + out):</span>
+            <span class="text-muted-foreground">{t("context_effective")} (in + out):</span>
             <span class="tabular-nums text-foreground">{effectiveTokens.toLocaleString()}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-muted-foreground">{t('context_cacheEfficiency')}</span>
+            <span class="text-muted-foreground">{t("context_cacheEfficiency")}</span>
             <span class="tabular-nums text-foreground">
               {effectiveTokens > 0
                 ? ((cacheReadTokens / effectiveTokens) * 100).toFixed(1) + "%"
@@ -221,7 +221,7 @@
           </div>
           {#if cost > 0}
             <div class="flex justify-between">
-              <span class="text-muted-foreground">{t('context_cost')}</span>
+              <span class="text-muted-foreground">{t("context_cost")}</span>
               <span class="tabular-nums text-foreground">{formatCost(cost)}</span>
             </div>
           {/if}

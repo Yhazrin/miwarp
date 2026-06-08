@@ -87,7 +87,8 @@
   {#if entries.length > 0}
     <div class="max-h-[240px] overflow-y-auto">
       {#each entries as entry, i (entry.name)}
-        <button type="button"
+        <button
+          type="button"
           data-at-index={i}
           role="option"
           aria-selected={i === selectedIndex}

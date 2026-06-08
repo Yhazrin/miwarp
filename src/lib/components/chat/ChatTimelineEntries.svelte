@@ -256,7 +256,9 @@
             <div class="chat-content-width">
               <div class="flex items-center gap-3">
                 <div class="h-px flex-1 bg-[hsl(var(--miwarp-status-warning)/0.2)]"></div>
-                <span class="text-xs text-[hsl(var(--miwarp-status-warning)/0.7)] font-medium whitespace-nowrap">
+                <span
+                  class="text-xs text-[hsl(var(--miwarp-status-warning)/0.7)] font-medium whitespace-nowrap"
+                >
                   {t("chat_contextCleared")}
                 </span>
                 <div class="h-px flex-1 bg-[hsl(var(--miwarp-status-warning)/0.2)]"></div>

@@ -89,10 +89,7 @@
       const height = Math.ceil(dock.getBoundingClientRect().height);
       const scrollPad = height + 12;
       stage.style.setProperty("--chat-input-dock-offset", `${scrollPad}px`);
-      stage.style.setProperty(
-        "--chat-scroll-fade-height",
-        `${Math.min(scrollPad + 36, 200)}px`,
-      );
+      stage.style.setProperty("--chat-scroll-fade-height", `${Math.min(scrollPad + 36, 200)}px`);
     };
 
     sync();

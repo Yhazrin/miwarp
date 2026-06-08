@@ -98,7 +98,10 @@
 
   <!-- 执行中指示器 -->
   {#if isRunning}
-    <div class="mb-8 flex items-center gap-3 p-4 rounded-lg border border-border bg-muted/30" transition:fade={{ duration: 200 }}>
+    <div
+      class="mb-8 flex items-center gap-3 p-4 rounded-lg border border-border bg-muted/30"
+      transition:fade={{ duration: 200 }}
+    >
       <Spinner size="md" />
       <span class="text-sm text-muted-foreground">{t("multiAgent_running")}</span>
     </div>
@@ -123,7 +126,11 @@
               {:else if result.status === "failed"}
                 <Icon name="x" size="lg" class="text-miwarp-status-error shrink-0" />
               {:else}
-                <Icon name="loader-2" size="lg" class="text-miwarp-status-warning shrink-0 animate-spin" />
+                <Icon
+                  name="loader-2"
+                  size="lg"
+                  class="text-miwarp-status-warning shrink-0 animate-spin"
+                />
               {/if}
               <div>
                 <div class="font-medium">{result.agentId}</div>

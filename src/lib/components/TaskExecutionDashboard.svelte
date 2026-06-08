@@ -101,7 +101,9 @@
     </div>
     <div class="rounded-lg border border-border/40 bg-card p-3">
       <div class="text-xs text-muted-foreground">成功率</div>
-      <div class="text-xl font-bold text-miwarp-status-success">{Math.round(stats.avgSuccessRate)}%</div>
+      <div class="text-xl font-bold text-miwarp-status-success">
+        {Math.round(stats.avgSuccessRate)}%
+      </div>
     </div>
     <div class="rounded-lg border border-border/40 bg-card p-3">
       <div class="text-xs text-muted-foreground">平均时长</div>

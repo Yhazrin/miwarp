@@ -9,10 +9,7 @@ function normKey(p: string): string {
  * Resolve the display name for a session.
  * Tries: name, session_title, folder-annotated cwd, cwd basename.
  */
-export function sessionDisplayName(
-  cwd: string,
-  folders: SessionFolder[],
-): string {
+export function sessionDisplayName(cwd: string, folders: SessionFolder[]): string {
   const folder = folders.find((f) => normKey(f.workspaceId) === normKey(cwd));
   if (folder && folder.workspaceId !== cwd && cwd.length > folder.workspaceId.length) {
     // cwd is a sub-path of a known folder — extract the relative part

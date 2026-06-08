@@ -66,7 +66,6 @@
     open = false;
     onModelChange?.(val);
   }
-
 </script>
 
 <MiPopover
@@ -143,9 +142,7 @@
   {#if effortLevels.length > 0 && onEffortChange}
     <div class="shrink-0 border-t border-border/25">
       <div class="px-3 py-2.5">
-        <div
-          class="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70"
-        >
+        <div class="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
           {t("effort_label")}{#if effortDisabled}<span
               class="ml-1 font-normal normal-case opacity-50"
               >— {currentModelInfo?.displayName ?? model}</span

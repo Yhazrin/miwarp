@@ -273,7 +273,8 @@
             <p class="text-xs text-muted-foreground max-w-md text-center break-words">
               {store.error}
             </p>
-            <button type="button"
+            <button
+              type="button"
               class="rounded-lg border border-border bg-muted px-4 py-2 text-sm hover:bg-accent transition-colors"
               onclick={() => loadRunProgressive(runId, xtermRef)}
             >
@@ -409,7 +410,8 @@
         {/if}
       </div>
       {#if showChatScrollHint}
-        <button type="button"
+        <button
+          type="button"
           transition:fade={{ duration: 150 }}
           class="absolute bottom-[calc(var(--chat-input-dock-offset,13rem)+0.75rem)] left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-lg transition-all duration-200 hover:bg-primary/90"
           onclick={scrollChatToBottom}
@@ -426,7 +428,8 @@
         class="fixed z-50 flex items-center gap-1 rounded-lg border border-border bg-popover px-2 py-1.5 shadow-xl"
         style="left: {selectionX}px; top: {selectionY}px; transform: translate(-50%, -100%);"
       >
-        <button type="button"
+        <button
+          type="button"
           class="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors"
           onclick={copySelection}
         >
@@ -434,7 +437,8 @@
           {t("common_copy")}
         </button>
         <div class="h-4 w-px bg-border"></div>
-        <button type="button"
+        <button
+          type="button"
           class="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors"
           onclick={forwardSelection}
         >

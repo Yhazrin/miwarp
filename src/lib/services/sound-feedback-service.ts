@@ -4,11 +4,7 @@
  */
 import { getUserSettings } from "$lib/api";
 import type { BusEvent } from "$lib/types";
-import {
-  mergeConfig,
-  resolveRole,
-  type SensoryUIConfig,
-} from "$lib/sensory/config/config";
+import { mergeConfig, resolveRole, type SensoryUIConfig } from "$lib/sensory/config/config";
 import { getAudioContext, playSound } from "$lib/sensory/config/engine";
 import type { SoundRole } from "$lib/sensory/config/sound-roles";
 import type { SoundPackName } from "$lib/sensory/config/registry";
@@ -334,8 +330,7 @@ export async function playMiWarpSound(event: MiWarpSoundEvent, runId?: string): 
 export async function previewSoundFeedback(): Promise<void> {
   if (_level === "off") return;
   await unlockSoundEngine();
-  const role: SoundRole =
-    _level === "detailed" ? "hero.complete" : "notification.success";
+  const role: SoundRole = _level === "detailed" ? "hero.complete" : "notification.success";
   const source = resolveRole(role, _config);
   if (!source) return;
   try {

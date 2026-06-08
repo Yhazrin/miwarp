@@ -146,14 +146,16 @@
         </p>
       </div>
       <div class="flex items-center gap-2">
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
           onclick={handleImportScript}
         >
           <Icon name="download" size="sm" class="inline" />
           {t("automation_import")}
         </button>
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           onclick={() => (showNewScriptDialog = true)}
         >
@@ -168,7 +170,10 @@
     <!-- Search and filters -->
     <div class="mb-6 flex flex-wrap items-center gap-4">
       <div class="relative flex-1 min-w-[200px]">
-        <Icon name="search" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Icon
+          name="search"
+          class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+        />
         <input
           type="text"
           bind:value={searchQuery}
@@ -178,7 +183,8 @@
       </div>
 
       <div class="flex flex-wrap gap-2">
-        <button type="button"
+        <button
+          type="button"
           class="rounded-full px-3 py-1 text-xs font-medium transition-colors
             {selectedCategory === null
             ? 'bg-primary text-primary-foreground'
@@ -189,7 +195,8 @@
         </button>
         {#each AUTOMATION_CATEGORIES as cat}
           {@const count = groupedScripts[cat.value]?.length ?? 0}
-          <button type="button"
+          <button
+            type="button"
             class="rounded-full px-3 py-1 text-xs font-medium transition-colors
               {selectedCategory === cat.value
               ? 'bg-primary text-primary-foreground'
@@ -212,7 +219,8 @@
         variant="dashed"
       >
         {#snippet action()}
-          <button type="button"
+          <button
+            type="button"
             class="mt-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             onclick={() => (showNewScriptDialog = true)}
           >
@@ -252,12 +260,17 @@
     aria-modal="true"
     tabindex="-1"
   >
-    <div class="w-[400px] rounded-lg bg-background p-6 shadow-xl" transition:fly={{ y: 10, duration: 200 }}>
+    <div
+      class="w-[400px] rounded-lg bg-background p-6 shadow-xl"
+      transition:fly={{ y: 10, duration: 200 }}
+    >
       <h2 class="text-lg font-semibold mb-4">{t("automation_createDialogTitle")}</h2>
 
       <div class="space-y-4">
         <div>
-          <label for="new-script-name" class="text-sm font-medium">{t("automation_scriptName")}</label>
+          <label for="new-script-name" class="text-sm font-medium"
+            >{t("automation_scriptName")}</label
+          >
           <input
             id="new-script-name"
             type="text"
@@ -272,7 +285,8 @@
       </div>
 
       <div class="mt-6 flex justify-end gap-3">
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md border px-4 py-2 text-sm hover:bg-accent"
           onclick={() => {
             showNewScriptDialog = false;
@@ -281,7 +295,8 @@
         >
           {t("automation_cancel")}
         </button>
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           onclick={handleNewScript}
           disabled={!newScriptName.trim()}

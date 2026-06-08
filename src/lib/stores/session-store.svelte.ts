@@ -2814,7 +2814,12 @@ export class SessionStore {
       case "thinking_delta": {
         this._clearTimeoutError();
         if (ev.parent_tool_use_id) {
-          this._appendSubTimelineStreamingDelta(ev.parent_tool_use_id, "thinkingText", ev.text, ctx);
+          this._appendSubTimelineStreamingDelta(
+            ev.parent_tool_use_id,
+            "thinkingText",
+            ev.text,
+            ctx,
+          );
           return true;
         }
         if (!this.thinkingStartMs) this.thinkingStartMs = eventTsMs(ev);
@@ -2824,7 +2829,12 @@ export class SessionStore {
       }
       case "tool_input_delta": {
         if (ev.parent_tool_use_id) {
-          this._updateSubTimelineToolInput(ev.parent_tool_use_id, ev.tool_use_id, ev.partial_json, ctx);
+          this._updateSubTimelineToolInput(
+            ev.parent_tool_use_id,
+            ev.tool_use_id,
+            ev.partial_json,
+            ctx,
+          );
           return true;
         }
         const tl = getTl();
@@ -2835,9 +2845,16 @@ export class SessionStore {
             old.tool as Record<string, unknown>,
             ev.partial_json,
           );
-          const updated: TimelineEntry = { ...old, tool: { ...old.tool, ...accum } as typeof old.tool };
+          const updated: TimelineEntry = {
+            ...old,
+            tool: { ...old.tool, ...accum } as typeof old.tool,
+          };
           if (ctx) ctx.tl[tIdx] = updated;
-          else { const u = [...this.timeline]; u[tIdx] = updated; this.timeline = u; }
+          else {
+            const u = [...this.timeline];
+            u[tIdx] = updated;
+            this.timeline = u;
+          }
         }
         return true;
       }
@@ -2846,13 +2863,17 @@ export class SessionStore {
         const finalText = ev.text && ev.text.length > 0 ? ev.text : savedStreaming;
         if (getSeenMsg().has(ev.message_id)) {
           this._patchAssistantContentIfEmpty(ctx, ev.message_id, finalText);
-          if (ev.parent_tool_use_id) this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
+          if (ev.parent_tool_use_id)
+            this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
           return true;
         }
-        const existingAssistant = getTl().find((e) => e.kind === "assistant" && e.id === ev.message_id);
+        const existingAssistant = getTl().find(
+          (e) => e.kind === "assistant" && e.id === ev.message_id,
+        );
         if (existingAssistant) {
           this._patchAssistantContentIfEmpty(ctx, ev.message_id, finalText);
-          if (ev.parent_tool_use_id) this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
+          if (ev.parent_tool_use_id)
+            this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
           getSeenMsg().add(ev.message_id);
           return true;
         }
@@ -2863,24 +2884,38 @@ export class SessionStore {
           const subFinalText = finalText.trim() ? finalText : subStreaming;
           this._removeSubTimelineStreamingEntry(ev.parent_tool_use_id, ctx);
           const entry: TimelineEntry = {
-            kind: "assistant", id: ev.message_id, anchorId: ev.message_id,
-            content: subFinalText, ts: eventTs(ev),
+            kind: "assistant",
+            id: ev.message_id,
+            anchorId: ev.message_id,
+            content: subFinalText,
+            ts: eventTs(ev),
             ...(ev.model ? { model: ev.model } : {}),
             ...(subThinking ? { thinkingText: subThinking } : {}),
           };
           const parentIdx = this._findParentToolIdx(ctx, ev.parent_tool_use_id);
-          if (parentIdx >= 0) { this._appendToSubTimeline(getTl(), parentIdx, entry, ctx); return true; }
+          if (parentIdx >= 0) {
+            this._appendToSubTimeline(getTl(), parentIdx, entry, ctx);
+            return true;
+          }
           this._pushTimeline(ctx, entry);
           return true;
         }
         const savedThinking = ctx ? ctx.thinkingText : this.thinkingText;
-        if (ctx) { ctx.streamText = ""; ctx.thinkingText = ""; }
-        else { this.streamingText = ""; this.thinkingText = ""; }
+        if (ctx) {
+          ctx.streamText = "";
+          ctx.thinkingText = "";
+        } else {
+          this.streamingText = "";
+          this.thinkingText = "";
+        }
         this.thinkingStartMs = 0;
         this.thinkingEndMs = 0;
         const entry: TimelineEntry = {
-          kind: "assistant", id: ev.message_id, anchorId: ev.message_id,
-          content: finalText, ts: eventTs(ev),
+          kind: "assistant",
+          id: ev.message_id,
+          anchorId: ev.message_id,
+          content: finalText,
+          ts: eventTs(ev),
           ...(ev.model ? { model: ev.model } : {}),
           ...(savedThinking ? { thinkingText: savedThinking } : {}),
         };
@@ -2890,37 +2925,63 @@ export class SessionStore {
       case "user_message": {
         const tl = getTl();
         if (!replayOnly) {
-          const match = tl.findLast((e) => e.kind === "user" && e.content === ev.text && !e.cliUuid);
+          const match = tl.findLast(
+            (e) => e.kind === "user" && e.content === ev.text && !e.cliUuid,
+          );
           if (match && match.kind === "user") {
             if (ev.uuid) {
               const idx = tl.indexOf(match);
               const updated = { ...match, cliUuid: ev.uuid, anchorId: ev.uuid };
               if (ctx) ctx.tl[idx] = updated;
-              else { const u = [...this.timeline]; u[idx] = updated; this.timeline = u; }
+              else {
+                const u = [...this.timeline];
+                u[idx] = updated;
+                this.timeline = u;
+              }
             }
             return true;
           }
         }
         const newId = uuid();
         const entry: TimelineEntry = {
-          kind: "user", id: newId, anchorId: ev.uuid || newId,
-          content: ev.text, ts: eventTs(ev),
+          kind: "user",
+          id: newId,
+          anchorId: ev.uuid || newId,
+          content: ev.text,
+          ts: eventTs(ev),
           ...(ev.uuid ? { cliUuid: ev.uuid } : {}),
         };
         this._pushTimeline(ctx, entry);
-        const pendingIdx = tl.findIndex((e) => e.kind === "tool" && e.tool.status === "ask_pending");
+        const pendingIdx = tl.findIndex(
+          (e) => e.kind === "tool" && e.tool.status === "ask_pending",
+        );
         if (pendingIdx >= 0) {
           const old = tl[pendingIdx] as Extract<TimelineEntry, { kind: "tool" }>;
-          const resolved: TimelineEntry = { ...old, tool: { ...old.tool, status: "success", output: { answer: ev.text } } };
+          const resolved: TimelineEntry = {
+            ...old,
+            tool: { ...old.tool, status: "success", output: { answer: ev.text } },
+          };
           if (ctx) ctx.tl[pendingIdx] = resolved;
-          else { const u = [...this.timeline]; u[pendingIdx] = resolved; this.timeline = u; }
+          else {
+            const u = [...this.timeline];
+            u[pendingIdx] = resolved;
+            this.timeline = u;
+          }
           if (!this._isStreamMode(ctx)) {
             const he = getHe();
             const hIdx = this._findHeIdxByStatus(ctx, old.id, "running");
             if (hIdx >= 0) {
-              const updatedHe: HookEvent = { ...he[hIdx], status: "done", hook_type: "PostToolUse" };
+              const updatedHe: HookEvent = {
+                ...he[hIdx],
+                status: "done",
+                hook_type: "PostToolUse",
+              };
               if (ctx) ctx.he[hIdx] = updatedHe;
-              else { const u = [...this.tools]; u[hIdx] = updatedHe; this.tools = u; }
+              else {
+                const u = [...this.tools];
+                u[hIdx] = updatedHe;
+                this.tools = u;
+              }
             }
           }
         }
@@ -2949,8 +3010,15 @@ export class SessionStore {
           const parentIdx = this._findParentToolIdx(ctx, ev.parent_tool_use_id);
           if (parentIdx >= 0) {
             const subEntry: TimelineEntry = {
-              kind: "tool", id: ev.tool_use_id, anchorId: ev.tool_use_id,
-              tool: { tool_use_id: ev.tool_use_id, tool_name: ev.tool_name, input: (ev.input as Record<string, unknown>) ?? {}, status: "running" },
+              kind: "tool",
+              id: ev.tool_use_id,
+              anchorId: ev.tool_use_id,
+              tool: {
+                tool_use_id: ev.tool_use_id,
+                tool_name: ev.tool_name,
+                input: (ev.input as Record<string, unknown>) ?? {},
+                status: "running",
+              },
               ts: eventTs(ev),
             };
             this._appendToSubTimeline(getTl(), parentIdx, subEntry, ctx);
@@ -2959,15 +3027,26 @@ export class SessionStore {
         }
         if (this._findToolIdx(ctx, ev.tool_use_id) >= 0) return true;
         const tlEntry: TimelineEntry = {
-          kind: "tool", id: ev.tool_use_id, anchorId: ev.tool_use_id,
-          tool: { tool_use_id: ev.tool_use_id, tool_name: ev.tool_name, input: (ev.input as Record<string, unknown>) ?? {}, status: "running" },
+          kind: "tool",
+          id: ev.tool_use_id,
+          anchorId: ev.tool_use_id,
+          tool: {
+            tool_use_id: ev.tool_use_id,
+            tool_name: ev.tool_name,
+            input: (ev.input as Record<string, unknown>) ?? {},
+            status: "running",
+          },
           ts: eventTs(ev),
         };
         this._pushTimeline(ctx, tlEntry);
         if (!this._isStreamMode(ctx)) {
           const heEntry: HookEvent = {
-            run_id: ev.run_id, hook_type: "PreToolUse", tool_name: ev.tool_name,
-            tool_input: ev.input as Record<string, unknown>, status: "running", timestamp: new Date().toISOString(),
+            run_id: ev.run_id,
+            hook_type: "PreToolUse",
+            tool_name: ev.tool_name,
+            tool_input: ev.input as Record<string, unknown>,
+            status: "running",
+            timestamp: new Date().toISOString(),
           };
           (heEntry as Record<string, unknown>).tool_use_id = ev.tool_use_id;
           this._pushHookEntry(ctx, heEntry);
@@ -2977,26 +3056,51 @@ export class SessionStore {
       case "tool_end": {
         if (!replayOnly) dispatchLiveBusSound(ev);
         const isAskUser = ev.tool_name === "AskUserQuestion";
-        const resolvedStatus = isAskUser && ev.status === "error" ? "ask_pending" as const
-          : ev.status === "error" ? "error" as const : "success" as const;
+        const resolvedStatus =
+          isAskUser && ev.status === "error"
+            ? ("ask_pending" as const)
+            : ev.status === "error"
+              ? ("error" as const)
+              : ("success" as const);
         if (ev.parent_tool_use_id) {
-          if (this._updateSubTimelineTool(ev.parent_tool_use_id, ev.tool_use_id, (t) => ({
-            ...t, status: resolvedStatus, output: ev.output as Record<string, unknown>,
-            duration_ms: ev.duration_ms, tool_name: ev.tool_name || t.tool_name,
-            tool_use_result: ev.tool_use_result as Record<string, unknown> | undefined,
-          }), ctx)) return true;
+          if (
+            this._updateSubTimelineTool(
+              ev.parent_tool_use_id,
+              ev.tool_use_id,
+              (t) => ({
+                ...t,
+                status: resolvedStatus,
+                output: ev.output as Record<string, unknown>,
+                duration_ms: ev.duration_ms,
+                tool_name: ev.tool_name || t.tool_name,
+                tool_use_result: ev.tool_use_result as Record<string, unknown> | undefined,
+              }),
+              ctx,
+            )
+          )
+            return true;
         }
         const tl = getTl();
         const tIdx = this._findToolIdx(ctx, ev.tool_use_id);
         if (tIdx >= 0) {
           const old = tl[tIdx] as Extract<TimelineEntry, { kind: "tool" }>;
-          const updated: TimelineEntry = { ...old, tool: {
-            ...old.tool, status: resolvedStatus, output: ev.output as Record<string, unknown>,
-            duration_ms: ev.duration_ms, tool_name: ev.tool_name || old.tool.tool_name,
-            tool_use_result: ev.tool_use_result as Record<string, unknown> | undefined,
-          }};
+          const updated: TimelineEntry = {
+            ...old,
+            tool: {
+              ...old.tool,
+              status: resolvedStatus,
+              output: ev.output as Record<string, unknown>,
+              duration_ms: ev.duration_ms,
+              tool_name: ev.tool_name || old.tool.tool_name,
+              tool_use_result: ev.tool_use_result as Record<string, unknown> | undefined,
+            },
+          };
           if (ctx) ctx.tl[tIdx] = updated;
-          else { const u = [...this.timeline]; u[tIdx] = updated; this.timeline = u; }
+          else {
+            const u = [...this.timeline];
+            u[tIdx] = updated;
+            this.timeline = u;
+          }
         }
         if (!replayOnly && ev.status !== "error" && !ev.parent_tool_use_id) {
           if (ev.tool_name === "EnterPlanMode") {
@@ -3012,7 +3116,8 @@ export class SessionStore {
             this.previousPermissionMode = "";
             if (this.pendingClearContextPlan === "__pending__") {
               const toolResult = ev.tool_use_result as Record<string, unknown> | undefined;
-              const plan = (ev.output as Record<string, unknown> | undefined)?.plan || toolResult?.plan;
+              const plan =
+                (ev.output as Record<string, unknown> | undefined)?.plan || toolResult?.plan;
               if (plan && typeof plan === "string") this.pendingClearContextPlan = plan;
               else this.pendingClearContextPlan = null;
             }
@@ -3023,12 +3128,18 @@ export class SessionStore {
           const hIdx = this._findHeIdxByStatus(ctx, ev.tool_use_id, "running");
           if (hIdx >= 0) {
             const updatedHe: HookEvent = {
-              ...he[hIdx], status: "done", hook_type: "PostToolUse",
+              ...he[hIdx],
+              status: "done",
+              hook_type: "PostToolUse",
               tool_name: ev.tool_name || he[hIdx].tool_name,
               tool_output: ev.output as Record<string, unknown>,
             };
             if (ctx) ctx.he[hIdx] = updatedHe;
-            else { const u = [...this.tools]; u[hIdx] = updatedHe; this.tools = u; }
+            else {
+              const u = [...this.tools];
+              u[hIdx] = updatedHe;
+              this.tools = u;
+            }
           }
         }
         return true;

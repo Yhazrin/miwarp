@@ -25,13 +25,7 @@
   } = $props();
 </script>
 
-<SettingsFieldRow
-  {label}
-  {description}
-  {overrideBadge}
-  {savedIndicator}
-  align="between"
->
+<SettingsFieldRow {label} {description} {overrideBadge} {savedIndicator} align="between">
   {#snippet children()}
     <SettingsToggle {checked} {onchange} {disabled} />
   {/snippet}

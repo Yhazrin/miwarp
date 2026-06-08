@@ -377,11 +377,20 @@
 
         <!-- Proxy guidance for China network -->
         {#if showProxyGuidance}
-          <div class="rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] p-4" transition:slide={{ duration: 200 }}>
+          <div
+            class="rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] p-4"
+            transition:slide={{ duration: 200 }}
+          >
             <div class="flex items-start gap-2">
-              <Icon name="triangle-alert" size="lg" class="text-miwarp-status-warning shrink-0 mt-0.5" />
+              <Icon
+                name="triangle-alert"
+                size="lg"
+                class="text-miwarp-status-warning shrink-0 mt-0.5"
+              />
               <div>
-                <p class="text-sm font-medium text-miwarp-status-warning">{t("setup_networkFailTitle")}</p>
+                <p class="text-sm font-medium text-miwarp-status-warning">
+                  {t("setup_networkFailTitle")}
+                </p>
                 <p class="text-xs text-muted-foreground mt-1">{t("setup_networkFailDesc")}</p>
                 <ul class="text-xs text-muted-foreground mt-2 space-y-1 list-disc list-inside">
                   <li>{t("setup_networkTipProxy")}</li>
@@ -395,14 +404,16 @@
 
         <!-- Actions -->
         <div class="flex items-center justify-center gap-3">
-          <button type="button"
+          <button
+            type="button"
             class="rounded-md border border-border px-4 py-2 text-sm hover:bg-accent transition-colors disabled:opacity-50"
             disabled={networkProbing}
             onclick={runNetworkProbe}
           >
             {t("setup_networkRetry")}
           </button>
-          <button type="button"
+          <button
+            type="button"
             class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
             disabled={networkProbing}
             onclick={proceedToAuth}
@@ -434,7 +445,8 @@
                       >{t("setup_recommended")}</span
                     >
                   {/if}
-                  <button type="button"
+                  <button
+                    type="button"
                     class="rounded-md border border-border px-2.5 py-1 text-xs hover:bg-accent transition-colors whitespace-nowrap {copyStates[
                       method.id
                     ] === 'copied'
@@ -472,7 +484,8 @@
 
         <!-- Action buttons -->
         <div class="flex items-center justify-center gap-3">
-          <button type="button"
+          <button
+            type="button"
             class="rounded-md border border-border px-4 py-2 text-sm hover:bg-accent transition-colors disabled:opacity-50"
             disabled={rechecking}
             onclick={recheckCli}
@@ -488,7 +501,8 @@
               {t("setup_recheck")}
             {/if}
           </button>
-          <button type="button"
+          <button
+            type="button"
             class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             onclick={() => {
               step = "api_key_setup";
@@ -513,7 +527,8 @@
 
         <div class="grid grid-cols-2 gap-4">
           <!-- OAuth -->
-          <button type="button"
+          <button
+            type="button"
             class="flex flex-col items-center gap-3 rounded-lg border border-border p-6 text-center transition-colors hover:border-primary/50 hover:bg-accent/50"
             onclick={startOAuthLogin}
           >
@@ -540,7 +555,8 @@
           </button>
 
           <!-- API Key -->
-          <button type="button"
+          <button
+            type="button"
             class="flex flex-col items-center gap-3 rounded-lg border border-border p-6 text-center transition-colors hover:border-primary/50 hover:bg-accent/50"
             onclick={() => {
               step = "api_key_setup";
@@ -582,7 +598,8 @@
           </div>
         {/if}
 
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md border border-border px-4 py-2 text-xs hover:bg-accent transition-colors mt-4"
           onclick={() => {
             step = "auth_choice";
@@ -594,7 +611,8 @@
       <!-- API key setup with platform selection -->
       <div class="flex flex-col gap-5">
         <div class="flex items-center gap-2">
-          <button type="button"
+          <button
+            type="button"
             class="rounded-md p-1 hover:bg-accent transition-colors"
             aria-label="Back"
             onclick={() => {
@@ -622,7 +640,8 @@
                   </p>
                   <div class="grid grid-cols-3 gap-2">
                     {#each presets as preset}
-                      <button type="button"
+                      <button
+                        type="button"
                         class="flex flex-col gap-0.5 rounded-lg border border-border p-3 text-left transition-colors hover:border-primary/50 hover:bg-accent/50"
                         onclick={() => selectPlatform(preset)}
                       >
@@ -645,7 +664,8 @@
             >
               <span class="font-medium text-sm">{selectedPlatform.name}</span>
               <span class="text-xs text-muted-foreground">{selectedPlatform.description}</span>
-              <button type="button"
+              <button
+                type="button"
                 class="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
                 onclick={() => {
                   selectedPlatform = null;
@@ -682,7 +702,8 @@
                   placeholder={selectedPlatform.key_placeholder}
                   class="w-full rounded-md border border-border bg-background px-3 py-2 pr-16 text-sm font-mono focus:outline-none focus:border-ring"
                 />
-                <button type="button"
+                <button
+                  type="button"
                   class="absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                   onclick={() => {
                     showKey = !showKey;
@@ -709,14 +730,18 @@
               </div>
             {/if}
 
-            <button type="button"
+            <button
+              type="button"
               class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
               disabled={saving || (selectedPlatform.id !== "ollama" && !apiKey)}
               onclick={saveApiKey}
             >
               {#if saving}
                 <span class="flex items-center gap-2 justify-center">
-                  <Spinner size="xs" class="border-primary-foreground/30 border-t-primary-foreground" />
+                  <Spinner
+                    size="xs"
+                    class="border-primary-foreground/30 border-t-primary-foreground"
+                  />
                   {t("setup_saving")}
                 </span>
               {:else}
@@ -742,7 +767,8 @@
           <div class="w-full max-w-md mt-2">
             <div class="flex items-center justify-between mb-2">
               <p class="text-xs font-medium text-muted-foreground">{t("setup_doctorReport")}</p>
-              <button type="button"
+              <button
+                type="button"
                 class="rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 onclick={copyDoctorReport}
               >
@@ -754,7 +780,8 @@
           </div>
         {/if}
 
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors mt-2"
           onclick={finishNow}>{t("setup_start")}</button
         >

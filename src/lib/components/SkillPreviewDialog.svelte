@@ -76,13 +76,14 @@
         <div class="flex items-center gap-3">
           <span class="text-2xl">{skill?.icon || "📋"}</span>
           <div>
-            <h2 class="text-lg font-semibold">{t('skillPreview_title')}</h2>
+            <h2 class="text-lg font-semibold">{t("skillPreview_title")}</h2>
             <p class="text-sm text-muted-foreground">/{preview.skillName}</p>
           </div>
         </div>
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md p-1.5 hover:bg-accent transition-colors"
-          aria-label={t('common_close')}
+          aria-label={t("common_close")}
           onclick={handleCancel}
         >
           <Icon name="x" size="lg" />
@@ -96,7 +97,9 @@
 
         <!-- Warnings -->
         {#if preview.warnings.length > 0}
-          <div class="mb-4 rounded-md bg-[hsl(var(--miwarp-status-warning)/0.1)] border border-[hsl(var(--miwarp-status-warning)/0.2)] p-3">
+          <div
+            class="mb-4 rounded-md bg-[hsl(var(--miwarp-status-warning)/0.1)] border border-[hsl(var(--miwarp-status-warning)/0.2)] p-3"
+          >
             <div class="flex items-center gap-2 text-miwarp-status-warning mb-2">
               <svg
                 class="h-4 w-4"
@@ -111,7 +114,7 @@
                 <line x1="12" y1="9" x2="12" y2="13" />
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
-              <span class="text-sm font-medium">{t('skillPreview_warnings')}</span>
+              <span class="text-sm font-medium">{t("skillPreview_warnings")}</span>
             </div>
             <ul class="space-y-1 text-xs text-[hsl(var(--miwarp-status-warning)/0.8)]">
               {#each preview.warnings as warning}
@@ -126,7 +129,9 @@
 
         <!-- Prerequisites -->
         {#if preview.prerequisites.length > 0}
-          <div class="mb-4 rounded-md bg-[hsl(var(--miwarp-status-info)/0.1)] border border-[hsl(var(--miwarp-status-info)/0.2)] p-3">
+          <div
+            class="mb-4 rounded-md bg-[hsl(var(--miwarp-status-info)/0.1)] border border-[hsl(var(--miwarp-status-info)/0.2)] p-3"
+          >
             <div class="flex items-center gap-2 text-miwarp-status-info mb-2">
               <svg
                 class="h-4 w-4"
@@ -138,7 +143,7 @@
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 16v-4M12 8h.01" />
               </svg>
-              <span class="text-sm font-medium">{t('skillPreview_prerequisites')}</span>
+              <span class="text-sm font-medium">{t("skillPreview_prerequisites")}</span>
             </div>
             <ul class="space-y-1 text-xs text-[hsl(var(--miwarp-status-info)/0.8)]">
               {#each preview.prerequisites as prereq}
@@ -193,7 +198,8 @@
                   {/if}
                   {#if step.estimatedDuration}
                     <span class="mt-1 text-xs text-muted-foreground">
-                      {t("skillPreview_est")} {step.estimatedDuration}
+                      {t("skillPreview_est")}
+                      {step.estimatedDuration}
                     </span>
                   {/if}
                 </div>
@@ -209,15 +215,17 @@
         <div class="flex items-center gap-2 text-sm text-muted-foreground">
           <Icon name="clock" size="md" />
           <span
-            >{t("skillPreview_estimatedDuration")} <strong class="text-foreground">{preview.estimatedDuration}</strong
-            ></span
+            >{t("skillPreview_estimatedDuration")}
+            <strong class="text-foreground">{preview.estimatedDuration}</strong></span
           >
         </div>
 
         <!-- Side Effects -->
         {#if preview.potentialSideEffects.length > 0}
           <div class="mt-4 rounded-md border border-muted p-3">
-            <h4 class="text-xs font-medium text-muted-foreground mb-2">{t("skillPreview_sideEffects")}</h4>
+            <h4 class="text-xs font-medium text-muted-foreground mb-2">
+              {t("skillPreview_sideEffects")}
+            </h4>
             <div class="flex flex-wrap gap-2">
               {#each preview.potentialSideEffects as effect}
                 <span class="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs">
@@ -235,13 +243,15 @@
           {t("skillPreview_confirmHint")}
         </div>
         <div class="flex items-center gap-3">
-          <button type="button"
+          <button
+            type="button"
             class="rounded-md px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent transition-colors"
             onclick={handleCancel}
           >
             {t("skillPreview_cancel")}
           </button>
-          <button type="button"
+          <button
+            type="button"
             class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             onclick={handleConfirm}
           >

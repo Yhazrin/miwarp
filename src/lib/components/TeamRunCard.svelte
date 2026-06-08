@@ -48,9 +48,24 @@
       label: "待命",
       pulse: false,
     },
-    running: { dot: "bg-miwarp-status-info", ring: "ring-[hsl(var(--miwarp-status-info)/0.3)]", label: "运行中", pulse: true },
-    completed: { dot: "bg-miwarp-status-success", ring: "ring-[hsl(var(--miwarp-status-success)/0.3)]", label: "完成", pulse: false },
-    failed: { dot: "bg-miwarp-status-error", ring: "ring-[hsl(var(--miwarp-status-error)/0.3)]", label: "失败", pulse: false },
+    running: {
+      dot: "bg-miwarp-status-info",
+      ring: "ring-[hsl(var(--miwarp-status-info)/0.3)]",
+      label: "运行中",
+      pulse: true,
+    },
+    completed: {
+      dot: "bg-miwarp-status-success",
+      ring: "ring-[hsl(var(--miwarp-status-success)/0.3)]",
+      label: "完成",
+      pulse: false,
+    },
+    failed: {
+      dot: "bg-miwarp-status-error",
+      ring: "ring-[hsl(var(--miwarp-status-error)/0.3)]",
+      label: "失败",
+      pulse: false,
+    },
   };
 
   function toggleExpand(id: string) {
@@ -110,7 +125,10 @@
     <div class="px-3.5 pt-2 pb-1">
       <div class="h-1 w-full rounded-full bg-muted overflow-hidden">
         {#if teamRun.status === "planning"}
-          <div class="h-full rounded-full bg-miwarp-accent-violet animate-pulse" style="width: 30%"></div>
+          <div
+            class="h-full rounded-full bg-miwarp-accent-violet animate-pulse"
+            style="width: 30%"
+          ></div>
         {:else}
           <div
             class="h-full rounded-full bg-primary transition-all duration-500"
@@ -134,7 +152,8 @@
           class="rounded-lg border bg-background/60 overflow-hidden ring-1 {st.ring} transition-all duration-200"
         >
           <!-- Agent card header -->
-          <button type="button"
+          <button
+            type="button"
             class="w-full flex items-center gap-2 px-2.5 py-2 text-left hover:bg-accent/20 transition-colors"
             onclick={() => toggleExpand(member.id)}
           >
@@ -152,12 +171,21 @@
               <p class="text-[11px] font-semibold text-foreground truncate">{member.memberName}</p>
               <p class="text-[10px] text-muted-foreground/60 truncate">{member.role}</p>
             </div>
-            <Icon name="chevron-right" size="xs" class="shrink-0 text-muted-foreground/50 transition-transform duration-200 {isExpanded ? 'rotate-90' : ''}" />
+            <Icon
+              name="chevron-right"
+              size="xs"
+              class="shrink-0 text-muted-foreground/50 transition-transform duration-200 {isExpanded
+                ? 'rotate-90'
+                : ''}"
+            />
           </button>
 
           <!-- Expanded content -->
           {#if isExpanded}
-            <div class="border-t border-border/30 px-2.5 py-2 space-y-1.5" transition:slide={{ duration: 200 }}>
+            <div
+              class="border-t border-border/30 px-2.5 py-2 space-y-1.5"
+              transition:slide={{ duration: 200 }}
+            >
               <div class="flex items-center justify-between">
                 <span class="text-[10px] text-muted-foreground">状态</span>
                 <span class="text-[10px] font-medium {st.dot.replace('bg-', 'text-')}"
@@ -192,21 +220,25 @@
 
   <!-- Error -->
   {#if teamRun.error}
-    <div class="border-t border-[hsl(var(--miwarp-status-error)/0.2)] px-3.5 py-2 bg-[hsl(var(--miwarp-status-error)/0.05)]">
+    <div
+      class="border-t border-[hsl(var(--miwarp-status-error)/0.2)] px-3.5 py-2 bg-[hsl(var(--miwarp-status-error)/0.05)]"
+    >
       <p class="text-[11px] text-miwarp-status-error">{teamRun.error}</p>
     </div>
   {/if}
 
   <!-- Footer -->
   <div class="flex items-center gap-3 border-t border-border/40 px-3.5 py-2">
-    <button type="button"
+    <button
+      type="button"
       class="text-[11px] text-primary hover:text-primary/80 transition-colors font-medium"
       onclick={handleViewTeams}
     >
       {t("teamRun_viewDetails")}
     </button>
     {#if onViewDetails}
-      <button type="button"
+      <button
+        type="button"
         class="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
         onclick={onViewDetails}
       >

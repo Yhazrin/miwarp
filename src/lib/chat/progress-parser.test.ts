@@ -3,11 +3,7 @@
  * Pure functions, no DOM / IDB / IPC — safe in any environment.
  */
 import { describe, expect, it } from "vitest";
-import {
-  mergeTodos,
-  parseTodosFromEvents,
-  parseTodosFromText,
-} from "./progress-parser";
+import { mergeTodos, parseTodosFromEvents, parseTodosFromText } from "./progress-parser";
 
 describe("progress-parser", () => {
   describe("parseTodosFromText", () => {

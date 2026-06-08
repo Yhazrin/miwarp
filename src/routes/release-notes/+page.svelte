@@ -51,7 +51,8 @@
 <div class="flex h-full flex-col bg-background">
   <!-- Header -->
   <div class="flex h-14 shrink-0 items-center gap-3 border-b border-border px-6">
-    <button type="button"
+    <button
+      type="button"
       class="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
       onclick={() => history.back()}
       title={t("release_goBack")}
@@ -94,7 +95,11 @@
 
     <!-- Search -->
     <div class="relative">
-      <Icon name="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50" size="sm" />
+      <Icon
+        name="search"
+        class="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50"
+        size="sm"
+      />
       <input
         type="text"
         bind:value={searchQuery}
@@ -161,7 +166,8 @@
         >
         <p class="text-sm text-muted-foreground">{t("release_loadFailed")}</p>
         <p class="text-xs text-muted-foreground/60">{error}</p>
-        <button type="button"
+        <button
+          type="button"
           class="mt-2 rounded-md border border-border px-3 py-1.5 text-xs hover:bg-accent transition-colors"
           onclick={async () => {
             loading = true;
@@ -180,7 +186,8 @@
       <div class="flex flex-col items-center gap-2 py-20 text-center">
         <p class="text-sm text-muted-foreground">{t("release_noMatching")}</p>
         {#if searchQuery}
-          <button type="button"
+          <button
+            type="button"
             class="text-xs text-primary/70 hover:text-primary transition-colors"
             onclick={() => (searchQuery = "")}
           >

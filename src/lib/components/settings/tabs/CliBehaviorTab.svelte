@@ -92,9 +92,7 @@
 {#if cliConfigLoading && !cliConfigLoaded}
   <div class="flex items-center justify-center py-12">
     <Spinner size="md" class="border-primary border-t-transparent" />
-    <span class="ml-3 text-sm text-muted-foreground"
-      >{t("settings_cliConfig_loading")}</span
-    >
+    <span class="ml-3 text-sm text-muted-foreground">{t("settings_cliConfig_loading")}</span>
   </div>
 {:else if cliConfigError}
   <Card class="p-6">
@@ -118,9 +116,7 @@
         <SettingsFieldRow
           label={def.label}
           description={def.description}
-          overrideBadge={isProjectOverride(def.key)
-            ? t("settings_cliConfig_projectOverride")
-            : ""}
+          overrideBadge={isProjectOverride(def.key) ? t("settings_cliConfig_projectOverride") : ""}
         >
           {#snippet children()}
             {#if def.type === "boolean"}
@@ -149,9 +145,7 @@
         <SettingsFieldRow
           label={def.label}
           description={def.description}
-          overrideBadge={isProjectOverride(def.key)
-            ? t("settings_cliConfig_projectOverride")
-            : ""}
+          overrideBadge={isProjectOverride(def.key) ? t("settings_cliConfig_projectOverride") : ""}
         >
           {#snippet children()}
             {#if def.type === "boolean"}
@@ -170,8 +164,7 @@
                 class="w-40 shrink-0 rounded-md border bg-transparent px-3 py-1.5 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none"
                 value={String(getCliConfigValue(def.key, def) ?? "")}
                 placeholder={def.label}
-                onblur={(e) =>
-                  commitString(def.key, def, (e.target as HTMLInputElement).value)}
+                onblur={(e) => commitString(def.key, def, (e.target as HTMLInputElement).value)}
               />
             {/if}
           {/snippet}
@@ -188,9 +181,7 @@
         <SettingsFieldRow
           label={def.label}
           description={def.description}
-          overrideBadge={isProjectOverride(def.key)
-            ? t("settings_cliConfig_projectOverride")
-            : ""}
+          overrideBadge={isProjectOverride(def.key) ? t("settings_cliConfig_projectOverride") : ""}
         >
           {#snippet children()}
             {#if def.type === "boolean"}

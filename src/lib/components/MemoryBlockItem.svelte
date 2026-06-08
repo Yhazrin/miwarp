@@ -43,8 +43,7 @@
   </div>
 {:else if block.type === "code"}
   <pre
-    class="my-1 overflow-x-auto rounded bg-muted/50 px-2 py-1 text-[11px] font-mono text-foreground/70 {indentClass}"
-    >{block.content}</pre>
+    class="my-1 overflow-x-auto rounded bg-muted/50 px-2 py-1 text-[11px] font-mono text-foreground/70 {indentClass}">{block.content}</pre>
 {:else if block.type === "paragraph"}
   <p class="py-0.5 text-xs leading-relaxed text-foreground/70 {indentClass}">
     {block.content}

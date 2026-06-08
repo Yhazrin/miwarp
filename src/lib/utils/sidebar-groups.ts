@@ -728,9 +728,7 @@ export function buildFlatConversationList(
   }
 
   // Sort by latest activity desc
-  allConversations.sort((a, b) =>
-    sortKey(b.latestRun).localeCompare(sortKey(a.latestRun)),
-  );
+  allConversations.sort((a, b) => sortKey(b.latestRun).localeCompare(sortKey(a.latestRun)));
 
   // Partition: pinned / recent / archived
   const pinned: ConversationGroup[] = [];
@@ -744,8 +742,11 @@ export function buildFlatConversationList(
       continue;
     }
     const status = conv.latestRun.status;
-    const isTerminal = status === "completed" || status === "idle" || status === "error" || status === "stopped";
-    const lastActivity = new Date(conv.latestRun.last_activity_at ?? conv.latestRun.started_at).getTime();
+    const isTerminal =
+      status === "completed" || status === "idle" || status === "error" || status === "stopped";
+    const lastActivity = new Date(
+      conv.latestRun.last_activity_at ?? conv.latestRun.started_at,
+    ).getTime();
     const isStale = now - lastActivity > ARCHIVE_THRESHOLD_MS;
 
     if (isTerminal && isStale) {

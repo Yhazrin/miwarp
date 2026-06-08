@@ -18,9 +18,7 @@ export function buildDropZones(folders: SessionFolder[]): DropZone[] {
 }
 
 /** Find which drop zone a dragged item is hovering over. */
-export function findDropZone(
-  target: HTMLElement | null,
-): string | null {
+export function findDropZone(target: HTMLElement | null): string | null {
   let el = target;
   while (el) {
     const val = el.getAttribute(SESSION_DROP_FOLDER_ATTR);

@@ -58,7 +58,8 @@
       aria-modal="true"
       tabindex="-1"
     >
-      <button type="button"
+      <button
+        type="button"
         class="absolute top-4 right-4 text-[hsl(var(--miwarp-text-primary)/0.8)] hover:text-miwarp-text-primary"
         onclick={() => (showModal = false)}
         aria-label={t("imageArtifact_closePreview")}
@@ -73,7 +74,9 @@
         onclick={(e) => e.stopPropagation()}
         role="presentation"
       />
-      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-[hsl(var(--miwarp-text-primary)/0.6)] text-xs">
+      <div
+        class="absolute bottom-4 left-1/2 -translate-x-1/2 text-[hsl(var(--miwarp-text-primary)/0.6)] text-xs"
+      >
         {artifact.name} · {formatBytes(artifact.size)}
       </div>
     </div>

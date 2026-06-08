@@ -11,7 +11,12 @@
 </script>
 
 <!-- Team tool renderers -->
-<div class="mt-2 space-y-1.5" role="presentation" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
+<div
+  class="mt-2 space-y-1.5"
+  role="presentation"
+  onclick={(e) => e.stopPropagation()}
+  onkeydown={(e) => e.stopPropagation()}
+>
   {#if tool.tool_name === "TeamCreate"}
     <!-- TeamCreate: team name + description -->
     <div class="rounded bg-muted p-2">
@@ -316,7 +321,8 @@
               ? 'bg-[hsl(var(--miwarp-status-warning)/0.1)] text-miwarp-status-warning'
               : tool.input.type === 'shutdown_request'
                 ? 'bg-miwarp-status-error/10 text-miwarp-status-error'
-                : 'bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-miwarp-accent-violet'}">{tool.input.type}</span
+                : 'bg-[hsl(var(--miwarp-accent-violet)/0.1)] text-miwarp-accent-violet'}"
+            >{tool.input.type}</span
           >
         {/if}
         {#if tool.input?.recipient}
@@ -338,9 +344,7 @@
     </div>
     {#if tool.status === "success"}
       <div class="rounded bg-muted p-2">
-        <span
-          class="inline-flex items-center gap-1 text-[11px] text-miwarp-status-success"
-        >
+        <span class="inline-flex items-center gap-1 text-[11px] text-miwarp-status-success">
           <Icon name="check" size="xs" />
           {t("tool_messageSent")}
         </span>

@@ -72,14 +72,10 @@
   let currentStep = $derived(steps[currentStepIndex]);
   let totalSteps = $derived(steps.length);
   let currentPhase = $derived(
-    currentStep.phase
-      ? phases.find((p) => p.id === currentStep.phase)
-      : null,
+    currentStep.phase ? phases.find((p) => p.id === currentStep.phase) : null,
   );
   let currentPhaseIndex = $derived(
-    currentPhase
-      ? phases.findIndex((p) => p.id === currentPhase.id)
-      : -1,
+    currentPhase ? phases.findIndex((p) => p.id === currentPhase.id) : -1,
   );
 
   // Group steps by phase
@@ -103,9 +99,7 @@
       const phaseSteps = stepsByPhase[phase.id] || [];
       if (phaseSteps.length === 0) return { phase, progress: 0, completed: false };
 
-      const completedInPhase = phaseSteps.filter(
-        (s) => s.index < currentStepIndex,
-      ).length;
+      const completedInPhase = phaseSteps.filter((s) => s.index < currentStepIndex).length;
       const progress = (completedInPhase / phaseSteps.length) * 100;
 
       return {
@@ -204,7 +198,11 @@
               <span class="text-sm">{phaseItem.phase.icon}</span>
             {/if}
             <div class="flex flex-col">
-              <span class="text-xs font-medium {phaseItem.current ? 'text-foreground' : 'text-muted-foreground'}">
+              <span
+                class="text-xs font-medium {phaseItem.current
+                  ? 'text-foreground'
+                  : 'text-muted-foreground'}"
+              >
                 {phaseItem.phase.label}
               </span>
               {#if phaseItem.current}
@@ -230,7 +228,10 @@
     <div class="shrink-0 px-4 pt-4">
       <div class="flex items-center justify-between mb-2">
         <span class="text-xs text-muted-foreground">
-          {t("wizard_stepProgress", { current: String(currentStepIndex + 1), total: String(totalSteps) })}
+          {t("wizard_stepProgress", {
+            current: String(currentStepIndex + 1),
+            total: String(totalSteps),
+          })}
         </span>
         <span class="text-xs text-muted-foreground">
           {Math.round(((currentStepIndex + 1) / totalSteps) * 100)}%
@@ -271,7 +272,7 @@
     <div class="flex items-center justify-between">
       <!-- Left: Back button -->
       <div>
-        {#if currentStepIndex > 0 && (currentStep.canGoBack !== false)}
+        {#if currentStepIndex > 0 && currentStep.canGoBack !== false}
           <Button variant="ghost" size="sm" onclick={goBack}>
             ← {t("wizard_back")}
           </Button>
@@ -290,13 +291,13 @@
       <!-- Right: Next/Finish button -->
       <div>
         {#if currentStepIndex < totalSteps - 1}
-          <Button
-            onclick={goNext}
-            disabled={currentStep.isLoading}
-          >
+          <Button onclick={goNext} disabled={currentStep.isLoading}>
             {#if currentStep.isLoading}
               <span class="flex items-center gap-2">
-                <Spinner size="xs" class="border-primary-foreground/30 border-t-primary-foreground" />
+                <Spinner
+                  size="xs"
+                  class="border-primary-foreground/30 border-t-primary-foreground"
+                />
                 {t("wizard_processing")}
               </span>
             {:else}

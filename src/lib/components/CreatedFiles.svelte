@@ -70,7 +70,8 @@
     </div>
     <div class="flex flex-wrap gap-2">
       {#each files as file}
-        <button type="button"
+        <button
+          type="button"
           class="group flex items-center gap-1.5 rounded-md border border-[hsl(var(--border)/0.3)] bg-[hsl(var(--background))] px-2.5 py-1.5 text-xs transition-all hover:border-[hsl(var(--primary)/0.4)] hover:bg-[hsl(var(--primary)/0.08)]"
           onclick={() => onOpenFile?.(file.path)}
           title={file.path}

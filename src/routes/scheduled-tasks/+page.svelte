@@ -277,21 +277,24 @@
     <div class="flex flex-col w-[40%] border-r overflow-hidden">
       <!-- Tabs -->
       <div class="flex items-center gap-1 px-4 py-2 border-b bg-muted/20">
-        <button type="button"
+        <button
+          type="button"
           class="px-3 py-1.5 text-sm rounded-md transition-colors
             {activeTab === 'all' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}"
           onclick={() => (activeTab = "all")}
         >
           {t("sched_tabAll")} ({scheduledTasksStore.tasks.length})
         </button>
-        <button type="button"
+        <button
+          type="button"
           class="px-3 py-1.5 text-sm rounded-md transition-colors
             {activeTab === 'active' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}"
           onclick={() => (activeTab = "active")}
         >
           {t("sched_tabActive")} ({scheduledTasksStore.activeTasks.length})
         </button>
-        <button type="button"
+        <button
+          type="button"
           class="px-3 py-1.5 text-sm rounded-md transition-colors
             {activeTab === 'paused' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}"
           onclick={() => (activeTab = "paused")}
@@ -541,7 +544,8 @@
       <line x1="12" y1="16" x2="12.01" y2="16" />
     </svg>
     <span class="text-sm">{scheduledTasksStore.error}</span>
-    <button type="button"
+    <button
+      type="button"
       class="ml-2 p-1 hover:bg-[hsl(var(--miwarp-text-primary)/0.15)] rounded"
       aria-label={t("common_dismiss")}
       onclick={() => scheduledTasksStore.clearError()}

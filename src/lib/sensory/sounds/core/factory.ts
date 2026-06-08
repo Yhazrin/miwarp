@@ -20,10 +20,7 @@ import { createNoiseBuffer, applyDecayToBuffer } from "./instruments";
  * Create a click sound (short percussive transient)
  * Reference: playConcept("click") — noise with exponential decay, bandpass filter.
  */
-function createClickSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig
-): SoundSynthesizer {
+function createClickSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;
@@ -68,7 +65,13 @@ function createClickSound(
     src.start(t);
 
     return {
-      stop: () => { try { src.stop(); } catch { /* ok */ } }
+      stop: () => {
+        try {
+          src.stop();
+        } catch {
+          /* ok */
+        }
+      },
     };
   };
 }
@@ -76,16 +79,13 @@ function createClickSound(
 /**
  * Create a pop sound (brief tonal burst with pitch bend)
  */
-function createPopSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig
-): SoundSynthesizer {
+function createPopSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;
     const duration = tune.duration * instrument.decayMult;
     const freq = (tune.frequency ?? 800) * instrument.pitchMult;
-    const endFreq = (tune.endFrequency ?? freq * 1.2);
+    const endFreq = tune.endFrequency ?? freq * 1.2;
 
     const osc = ctx.createOscillator();
     osc.type = instrument.oscType;
@@ -110,7 +110,13 @@ function createPopSound(
     osc.stop(t + duration + 0.02);
 
     return {
-      stop: () => { try { osc.stop(); } catch { /* ok */ } }
+      stop: () => {
+        try {
+          osc.stop();
+        } catch {
+          /* ok */
+        }
+      },
     };
   };
 }
@@ -119,18 +125,19 @@ function createPopSound(
  * Create a toggle sound (state change - noise click + tonal tail)
  * Reference: playConcept("toggle") — 12ms noise bandpass 2500Hz + sine 800→400Hz
  */
-function createToggleSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig
-): SoundSynthesizer {
+function createToggleSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;
     const duration = tune.duration * instrument.decayMult;
-    const meta = tune.meta as {
-      noiseGain?: number; toneGain?: number;
-      noiseDuration?: number; decayConstant?: number;
-    } | undefined;
+    const meta = tune.meta as
+      | {
+          noiseGain?: number;
+          toneGain?: number;
+          noiseDuration?: number;
+          decayConstant?: number;
+        }
+      | undefined;
 
     const nodes: AudioNode[] = [];
     const sources: AudioScheduledSourceNode[] = [];
@@ -174,7 +181,7 @@ function createToggleSound(
       if (tune.endFrequency) {
         osc.frequency.exponentialRampToValueAtTime(
           tune.endFrequency * instrument.pitchMult,
-          t + 0.03 * instrument.decayMult
+          t + 0.03 * instrument.decayMult,
         );
       }
 
@@ -194,8 +201,20 @@ function createToggleSound(
     }
 
     const cleanup = () => {
-      sources.forEach(s => { try { s.disconnect(); } catch { /* ok */ } });
-      nodes.forEach(n => { try { n.disconnect(); } catch { /* ok */ } });
+      sources.forEach((s) => {
+        try {
+          s.disconnect();
+        } catch {
+          /* ok */
+        }
+      });
+      nodes.forEach((n) => {
+        try {
+          n.disconnect();
+        } catch {
+          /* ok */
+        }
+      });
       opts.onEnd?.();
     };
 
@@ -207,8 +226,14 @@ function createToggleSound(
 
     return {
       stop: () => {
-        sources.forEach(s => { try { s.stop(); } catch { /* ok */ } });
-      }
+        sources.forEach((s) => {
+          try {
+            s.stop();
+          } catch {
+            /* ok */
+          }
+        });
+      },
     };
   };
 }
@@ -218,10 +243,7 @@ function createToggleSound(
  * Reference: playConcept("tick") — 4ms noise with exp decay (-i/20),
  * highpass 3000Hz, gain 0.3.
  */
-function createTickSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig
-): SoundSynthesizer {
+function createTickSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;
@@ -261,7 +283,15 @@ function createTickSound(
     };
 
     src.start(t);
-    return { stop: () => { try { src.stop(); } catch { /* ok */ } } };
+    return {
+      stop: () => {
+        try {
+          src.stop();
+        } catch {
+          /* ok */
+        }
+      },
+    };
   };
 }
 
@@ -271,10 +301,7 @@ function createTickSound(
  * and an optional click transient layer when tune.meta.clickLayer is true
  * (used by overlay open/close/expand/collapse sounds for tactility).
  */
-function createSweepSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig
-): SoundSynthesizer {
+function createSweepSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;
@@ -301,10 +328,15 @@ function createSweepSound(
     gainNodes.push(gain);
 
     // Parse meta for overlay enhancements
-    const meta = tune.meta as {
-      clickLayer?: boolean; clickGain?: number;
-      thirdPartial?: boolean; thirdRatio?: number; thirdVolume?: number;
-    } | undefined;
+    const meta = tune.meta as
+      | {
+          clickLayer?: boolean;
+          clickGain?: number;
+          thirdPartial?: boolean;
+          thirdRatio?: number;
+          thirdVolume?: number;
+        }
+      | undefined;
 
     // Harmonic layer for richer overlay open/close/expand/collapse sounds
     if (tune.harmonics && tune.harmonicRatio) {
@@ -365,17 +397,46 @@ function createSweepSound(
     }
 
     const cleanup = () => {
-      oscs.forEach(o => { try { o.disconnect(); } catch { /* ok */ } });
-      gainNodes.forEach(g => { try { g.disconnect(); } catch { /* ok */ } });
-      extraNodes.forEach(n => { try { n.disconnect(); } catch { /* ok */ } });
+      oscs.forEach((o) => {
+        try {
+          o.disconnect();
+        } catch {
+          /* ok */
+        }
+      });
+      gainNodes.forEach((g) => {
+        try {
+          g.disconnect();
+        } catch {
+          /* ok */
+        }
+      });
+      extraNodes.forEach((n) => {
+        try {
+          n.disconnect();
+        } catch {
+          /* ok */
+        }
+      });
       opts.onEnd?.();
     };
     osc.onended = cleanup;
 
-    oscs.forEach(o => { o.start(t); o.stop(t + duration + 0.05); });
+    oscs.forEach((o) => {
+      o.start(t);
+      o.stop(t + duration + 0.05);
+    });
 
     return {
-      stop: () => { oscs.forEach(o => { try { o.stop(); } catch { /* ok */ } }); }
+      stop: () => {
+        oscs.forEach((o) => {
+          try {
+            o.stop();
+          } catch {
+            /* ok */
+          }
+        });
+      },
     };
   };
 }
@@ -383,30 +444,21 @@ function createSweepSound(
 /**
  * Create a rise sound (pitch ascends) - alias for sweep
  */
-function createRiseSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig
-): SoundSynthesizer {
+function createRiseSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return createSweepSound(tune, instrument);
 }
 
 /**
  * Create a drop sound (pitch descends) - alias for sweep
  */
-function createDropSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig
-): SoundSynthesizer {
+function createDropSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return createSweepSound(tune, instrument);
 }
 
 /**
  * Create a chime sound (resonant tonal with decay)
  */
-function createChimeSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig
-): SoundSynthesizer {
+function createChimeSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;
@@ -423,7 +475,7 @@ function createChimeSound(
     if (tune.endFrequency) {
       osc.frequency.exponentialRampToValueAtTime(
         tune.endFrequency * instrument.pitchMult,
-        t + duration * 0.5
+        t + duration * 0.5,
       );
     }
 
@@ -456,22 +508,40 @@ function createChimeSound(
     }
 
     const cleanup = () => {
-      oscillators.forEach(o => { try { o.disconnect(); } catch { /* ok */ } });
-      gains.forEach(g => { try { g.disconnect(); } catch { /* ok */ } });
+      oscillators.forEach((o) => {
+        try {
+          o.disconnect();
+        } catch {
+          /* ok */
+        }
+      });
+      gains.forEach((g) => {
+        try {
+          g.disconnect();
+        } catch {
+          /* ok */
+        }
+      });
       opts.onEnd?.();
     };
 
     osc.onended = cleanup;
 
-    oscillators.forEach(o => {
+    oscillators.forEach((o) => {
       o.start(t);
       o.stop(t + duration + 0.05);
     });
 
     return {
       stop: () => {
-        oscillators.forEach(o => { try { o.stop(); } catch { /* ok */ } });
-      }
+        oscillators.forEach((o) => {
+          try {
+            o.stop();
+          } catch {
+            /* ok */
+          }
+        });
+      },
     };
   };
 }
@@ -481,10 +551,7 @@ function createChimeSound(
  * Supports meta.shimmerCents: adds a slightly detuned oscillator on the
  * final note for a subtle chorus shimmer (used by hero sounds).
  */
-function createArpeggioSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig
-): SoundSynthesizer {
+function createArpeggioSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;
@@ -543,8 +610,20 @@ function createArpeggioSound(
 
       if (isLast) {
         osc.onended = () => {
-          oscillators.forEach(o => { try { o.disconnect(); } catch { /* ok */ } });
-          gains.forEach(g => { try { g.disconnect(); } catch { /* ok */ } });
+          oscillators.forEach((o) => {
+            try {
+              o.disconnect();
+            } catch {
+              /* ok */
+            }
+          });
+          gains.forEach((g) => {
+            try {
+              g.disconnect();
+            } catch {
+              /* ok */
+            }
+          });
           opts.onEnd?.();
         };
       }
@@ -552,8 +631,14 @@ function createArpeggioSound(
 
     return {
       stop: () => {
-        oscillators.forEach(o => { try { o.stop(); } catch { /* ok */ } });
-      }
+        oscillators.forEach((o) => {
+          try {
+            o.stop();
+          } catch {
+            /* ok */
+          }
+        });
+      },
     };
   };
 }
@@ -561,10 +646,7 @@ function createArpeggioSound(
 /**
  * Create a chord sound (multiple simultaneous notes)
  */
-function createChordSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig
-): SoundSynthesizer {
+function createChordSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;
@@ -594,22 +676,40 @@ function createChordSound(
     });
 
     const cleanup = () => {
-      oscillators.forEach(o => { try { o.disconnect(); } catch { /* ok */ } });
-      gains.forEach(g => { try { g.disconnect(); } catch { /* ok */ } });
+      oscillators.forEach((o) => {
+        try {
+          o.disconnect();
+        } catch {
+          /* ok */
+        }
+      });
+      gains.forEach((g) => {
+        try {
+          g.disconnect();
+        } catch {
+          /* ok */
+        }
+      });
       opts.onEnd?.();
     };
 
     oscillators[0].onended = cleanup;
 
-    oscillators.forEach(o => {
+    oscillators.forEach((o) => {
       o.start(t);
       o.stop(t + duration + 0.05);
     });
 
     return {
       stop: () => {
-        oscillators.forEach(o => { try { o.stop(); } catch { /* ok */ } });
-      }
+        oscillators.forEach((o) => {
+          try {
+            o.stop();
+          } catch {
+            /* ok */
+          }
+        });
+      },
     };
   };
 }
@@ -620,10 +720,7 @@ function createChordSound(
  * (used by navigation.tab).
  * Reference: playConcept("whoosh") — sine-envelope noise, bandpass sweep.
  */
-function createBurstSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig
-): SoundSynthesizer {
+function createBurstSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;
@@ -659,10 +756,11 @@ function createBurstSound(
     // Sweep filter frequency for whoosh effect
     if (meta?.endFilterFreq) {
       filter.frequency.exponentialRampToValueAtTime(
-        meta.endFilterFreq * instrument.pitchMult, t + duration
+        meta.endFilterFreq * instrument.pitchMult,
+        t + duration,
       );
     }
-    filter.Q.value = (tune.filterQ ?? instrument.q);
+    filter.Q.value = tune.filterQ ?? instrument.q;
 
     const gain = ctx.createGain();
     gain.gain.value = vol;
@@ -681,7 +779,13 @@ function createBurstSound(
     src.start(t);
 
     return {
-      stop: () => { try { src.stop(); } catch { /* ok */ } }
+      stop: () => {
+        try {
+          src.stop();
+        } catch {
+          /* ok */
+        }
+      },
     };
   };
 }
@@ -689,10 +793,7 @@ function createBurstSound(
 /**
  * Create a pulse sound (repeating pattern)
  */
-function createPulseSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig
-): SoundSynthesizer {
+function createPulseSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;
@@ -725,8 +826,20 @@ function createPulseSound(
     }
 
     const cleanup = () => {
-      oscillators.forEach(o => { try { o.disconnect(); } catch { /* ok */ } });
-      gains.forEach(g => { try { g.disconnect(); } catch { /* ok */ } });
+      oscillators.forEach((o) => {
+        try {
+          o.disconnect();
+        } catch {
+          /* ok */
+        }
+      });
+      gains.forEach((g) => {
+        try {
+          g.disconnect();
+        } catch {
+          /* ok */
+        }
+      });
       opts.onEnd?.();
     };
 
@@ -734,8 +847,14 @@ function createPulseSound(
 
     return {
       stop: () => {
-        oscillators.forEach(o => { try { o.stop(); } catch { /* ok */ } });
-      }
+        oscillators.forEach((o) => {
+          try {
+            o.stop();
+          } catch {
+            /* ok */
+          }
+        });
+      },
     };
   };
 }
@@ -743,10 +862,7 @@ function createPulseSound(
 /**
  * Create a wobble sound (LFO modulated)
  */
-function createWobbleSound(
-  tune: BaseTune,
-  instrument: InstrumentConfig
-): SoundSynthesizer {
+function createWobbleSound(tune: BaseTune, instrument: InstrumentConfig): SoundSynthesizer {
   return (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
     const t = ctx.currentTime;
     const vol = (opts.volume ?? 1) * (tune.volume ?? 1) * instrument.gainMult;
@@ -791,8 +907,13 @@ function createWobbleSound(
 
     return {
       stop: () => {
-        try { osc.stop(); lfo.stop(); } catch { /* ok */ }
-      }
+        try {
+          osc.stop();
+          lfo.stop();
+        } catch {
+          /* ok */
+        }
+      },
     };
   };
 }
@@ -806,7 +927,7 @@ function createWobbleSound(
  */
 export function createSoundFromTune(
   tune: BaseTune,
-  instrument: InstrumentConfig
+  instrument: InstrumentConfig,
 ): SoundSynthesizer {
   switch (tune.type) {
     case "click":

@@ -34,8 +34,9 @@
     onAuthModeChange?: (mode: string) => Promise<void>;
     onSaveApiAuth?: () => Promise<void>;
   } = $props();
-  function lk(key: string): string { return t(key as MessageKey); }
-
+  function lk(key: string): string {
+    return t(key as MessageKey);
+  }
 </script>
 
 <div class="space-y-6">

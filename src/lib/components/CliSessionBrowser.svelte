@@ -279,7 +279,10 @@
             </svg>
           </div>
           <div class="min-w-0">
-            <h2 id="cli-sync-title" class="text-[15px] font-semibold tracking-tight text-foreground">
+            <h2
+              id="cli-sync-title"
+              class="text-[15px] font-semibold tracking-tight text-foreground"
+            >
               {t("cliSync_title")}
             </h2>
             <p class="mt-0.5 text-xs leading-relaxed text-muted-foreground">{subtitleText}</p>
@@ -339,7 +342,9 @@
           {#each projects as proj (proj.path)}
             <button
               type="button"
-              class="{filterPillBase} {selectedProject === proj.path ? filterPillActive : filterPillIdle}"
+              class="{filterPillBase} {selectedProject === proj.path
+                ? filterPillActive
+                : filterPillIdle}"
               onclick={() => (selectedProject = proj.path)}
               title={proj.path}
             >
@@ -440,7 +445,9 @@
                     <p class="mt-1.5 line-clamp-2 text-sm font-medium leading-snug text-foreground">
                       {session.firstPrompt || "\u2014"}
                     </p>
-                    <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                    <div
+                      class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground"
+                    >
                       <span>{t("cliSync_messages", { count: String(session.messageCount) })}</span>
                       <span class="opacity-40" aria-hidden="true">·</span>
                       <span>{formatSize(session.fileSize)}</span>

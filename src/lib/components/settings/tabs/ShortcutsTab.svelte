@@ -23,9 +23,7 @@
   const fixedBindings = $derived(
     keybindingStore.resolved.filter((b) => b.source === "app" && !b.editable),
   );
-  const cliBindings = $derived(
-    keybindingStore.resolved.filter((b) => b.source === "cli"),
-  );
+  const cliBindings = $derived(keybindingStore.resolved.filter((b) => b.source === "cli"));
   const hasOverrides = $derived(keybindingStore.overrides.length > 0);
 
   let cliSectionOpen = $state(false);
@@ -96,9 +94,7 @@
     <div class="divide-y divide-border/50 -mx-3 px-3">
       {#each fixedBindings as binding (binding.command)}
         <div class="flex items-center gap-3 py-1.5 group">
-          <span class="text-sm text-foreground/70 flex-1 min-w-0 truncate"
-            >{binding.label}</span
-          >
+          <span class="text-sm text-foreground/70 flex-1 min-w-0 truncate">{binding.label}</span>
           <span
             class="shrink-0 inline-flex items-center rounded border bg-muted/40 px-2 py-0.5 text-xs font-mono text-muted-foreground"
           >
@@ -131,9 +127,7 @@
       <div class="divide-y divide-border/50 -mx-3 px-3">
         {#each cliBindings as binding (binding.command)}
           <div class="flex items-center gap-3 py-1.5">
-            <span class="text-sm text-foreground/60 flex-1 min-w-0 truncate"
-              >{binding.label}</span
-            >
+            <span class="text-sm text-foreground/60 flex-1 min-w-0 truncate">{binding.label}</span>
             <span
               class="shrink-0 inline-flex items-center rounded border bg-muted/40 px-2 py-0.5 text-xs font-mono text-muted-foreground"
             >
@@ -160,12 +154,7 @@
         class="inline-flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 hover:border-destructive/50 transition-colors"
         onclick={() => keybindingStore.resetAll()}
       >
-        <svg
-          class="h-3 w-3"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-        ></svg>
+        <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor"></svg>
         {lk("settings_shortcuts_resetAll")}
       </button>
     </div>

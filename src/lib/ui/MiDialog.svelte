@@ -63,7 +63,9 @@
         <Dialog.Title class="mb-4 pr-8 text-lg font-semibold text-foreground">{title}</Dialog.Title>
       {/if}
       {#if description}
-        <Dialog.Description class="mb-3 text-sm text-muted-foreground">{description}</Dialog.Description>
+        <Dialog.Description class="mb-3 text-sm text-muted-foreground"
+          >{description}</Dialog.Description
+        >
       {/if}
       {#if closeable}
         <Dialog.Close

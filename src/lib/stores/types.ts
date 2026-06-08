@@ -69,7 +69,16 @@ export const SESSION_ALIVE_PHASES: readonly string[] = [
  */
 const VALID_TRANSITIONS: Record<SessionPhase, Set<SessionPhase>> = {
   empty: new Set(["loading", "ready", "spawning"]),
-  loading: new Set(["ready", "running", "completed", "failed", "stopped", "empty", "cached", "stale_cached"]),
+  loading: new Set([
+    "ready",
+    "running",
+    "completed",
+    "failed",
+    "stopped",
+    "empty",
+    "cached",
+    "stale_cached",
+  ]),
   ready: new Set(["spawning", "running", "empty", "loading"]),
   spawning: new Set(["running", "failed", "stopped", "idle", "empty", "loading"]),
   running: new Set(["idle", "completed", "failed", "stopped", "empty", "loading"]),
@@ -77,9 +86,36 @@ const VALID_TRANSITIONS: Record<SessionPhase, Set<SessionPhase>> = {
   completed: new Set(["empty", "loading", "spawning", "ready", "cached", "stale_cached"]),
   failed: new Set(["empty", "loading", "spawning", "ready", "cached", "stale_cached"]),
   stopped: new Set(["empty", "loading", "spawning", "ready", "cached", "stale_cached"]),
-  cached: new Set(["empty", "loading", "ready", "spawning", "running", "idle", "syncing", "stale_cached"]),
-  stale_cached: new Set(["empty", "loading", "ready", "spawning", "running", "idle", "syncing", "cached"]),
-  syncing: new Set(["idle", "running", "completed", "failed", "cached", "stale_cached", "empty", "loading"]),
+  cached: new Set([
+    "empty",
+    "loading",
+    "ready",
+    "spawning",
+    "running",
+    "idle",
+    "syncing",
+    "stale_cached",
+  ]),
+  stale_cached: new Set([
+    "empty",
+    "loading",
+    "ready",
+    "spawning",
+    "running",
+    "idle",
+    "syncing",
+    "cached",
+  ]),
+  syncing: new Set([
+    "idle",
+    "running",
+    "completed",
+    "failed",
+    "cached",
+    "stale_cached",
+    "empty",
+    "loading",
+  ]),
 };
 
 /**

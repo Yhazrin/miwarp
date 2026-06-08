@@ -206,7 +206,7 @@ export const EMOJI_TO_LUCIDE: Record<string, LucideIconName> = {
   "🧩": "settings",
   "🔐": "lock",
   "🩺": "target",
-  "ℹ️": "target",
+  ℹ️: "target",
   "🚀": "rocket",
   "📄": "file",
   "🔮": "sparkles",

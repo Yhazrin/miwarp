@@ -11,7 +11,13 @@
    * state field is read from the bundle and passed as a named prop
    * to the tab component.
    */
-  import type { UserSettings, PlatformCredential, RemoteHost, CliSessionInfo, ImportReport } from "$lib/types";
+  import type {
+    UserSettings,
+    PlatformCredential,
+    RemoteHost,
+    CliSessionInfo,
+    ImportReport,
+  } from "$lib/types";
   import type { SettingsTabId } from "./tabs/registry";
   import { getTab } from "./tabs/registry";
   import AppearanceTab from "./tabs/AppearanceTab.svelte";

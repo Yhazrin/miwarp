@@ -559,7 +559,12 @@
   });
 </script>
 
-<div class="mt-2 space-y-1.5" role="presentation" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
+<div
+  class="mt-2 space-y-1.5"
+  role="presentation"
+  onclick={(e) => e.stopPropagation()}
+  onkeydown={(e) => e.stopPropagation()}
+>
   {#snippet truncateOverlay(isTruncated: boolean)}
     {#if isTruncated && !outputExpanded}
       <div
@@ -606,7 +611,8 @@
             class="inline-block w-1.5 h-3 ml-0.5 bg-[hsl(var(--miwarp-status-success)/0.5)] animate-pulse align-middle"
           ></span>
         {/if}
-        <button type="button"
+        <button
+          type="button"
           class="absolute top-1.5 right-1.5 text-xs text-muted-foreground hover:text-foreground opacity-0 group-hover/copy:opacity-100 transition-opacity"
           onclick={() => handleCopy(`$ ${tool.input?.command}\n${terminalPlainText}`)}
           >{copyFeedback ?? t("common_copy")}</button
@@ -614,7 +620,8 @@
         {@render truncateOverlay(needsExpand)}
       </div>
       {#if needsExpand}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -643,7 +650,8 @@
             <span class="text-[10px] text-muted-foreground/60">{readLineInfo}</span>
           {/if}
           {#if readContent}
-            <button type="button"
+            <button
+              type="button"
               class="text-xs text-muted-foreground hover:text-foreground transition-colors"
               onclick={() => handleCopy(readContent)}>{copyFeedback ?? t("common_copy")}</button
             >
@@ -671,7 +679,8 @@
           {@render truncateOverlay(fallbackNeedsExpand)}
         </div>
         {#if fallbackNeedsExpand || outputExpanded}
-          <button type="button"
+          <button
+            type="button"
             class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
             onclick={toggleOutputExpand}
           >
@@ -694,7 +703,8 @@
         {@render truncateOverlay(countLines(readContent) > 20)}
       </div>
       {#if countLines(readContent) > 20}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -742,7 +752,8 @@
       </div>
       {@const patchLineCount = adjustedEditHunks.reduce((n, h) => n + h.lines.length, 0)}
       {#if patchLineCount > 20}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -777,7 +788,8 @@
       </div>
       {@const fallbackLineCount = fallbackHunks.reduce((n, h) => n + h.lines.length, 0)}
       {#if fallbackLineCount > 20}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -824,7 +836,8 @@
         {@render truncateOverlay(countLines(planText) > 20)}
       </div>
       {#if countLines(planText) > 20}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -857,7 +870,8 @@
       </div>
       {@const writePatchLines = adjustedWriteHunks.reduce((n, h) => n + h.lines.length, 0)}
       {#if writePatchLines > 20}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -885,13 +899,15 @@
           </div>
         {/if}
         {@render truncateOverlay(truncated)}
-        <button type="button"
+        <button
+          type="button"
           class="absolute top-1.5 right-1.5 text-[10px] text-muted-foreground hover:text-foreground opacity-0 group-hover/copy:opacity-100 transition-opacity"
           onclick={() => handleCopy(content)}>{copyFeedback ?? t("common_copy")}</button
         >
       </div>
       {#if truncated}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={() => (outputExpanded = !outputExpanded)}
         >
@@ -915,7 +931,9 @@
     <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
       <div class="text-xs font-mono text-muted-foreground flex items-center gap-2">
         <span>
-          {#if tool.input?.pattern}<span class="text-miwarp-accent-violet">/{tool.input.pattern}/</span>{/if}
+          {#if tool.input?.pattern}<span class="text-miwarp-accent-violet"
+              >/{tool.input.pattern}/</span
+            >{/if}
           {#if tool.input?.path}<span class="text-muted-foreground/60 ml-2">{tool.input.path}</span
             >{/if}
           {#if tool.input?.glob}<span class="text-muted-foreground/60 ml-2"
@@ -942,14 +960,16 @@
       >
         <pre
           class="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">{outputText}</pre>
-        <button type="button"
+        <button
+          type="button"
           class="absolute top-1.5 right-1.5 text-[10px] text-muted-foreground hover:text-foreground opacity-0 group-hover/copy:opacity-100 transition-opacity"
           onclick={() => handleCopy(outputText)}>{copyFeedback ?? t("common_copy")}</button
         >
         {@render truncateOverlay(needsExpand)}
       </div>
       {#if needsExpand}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -964,7 +984,9 @@
     <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
       <div class="text-xs font-mono text-muted-foreground flex items-center gap-2">
         <span>
-          {#if tool.input?.pattern}<span class="text-miwarp-accent-violet">{tool.input.pattern}</span>{/if}
+          {#if tool.input?.pattern}<span class="text-miwarp-accent-violet"
+              >{tool.input.pattern}</span
+            >{/if}
           {#if tool.input?.path}<span class="text-muted-foreground/60 ml-2"
               >in {tool.input.path}</span
             >{/if}
@@ -988,7 +1010,8 @@
         {@render truncateOverlay(needsExpand)}
       </div>
       {#if needsExpand}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1032,7 +1055,8 @@
         {@render truncateOverlay(needsExpand)}
       </div>
       {#if needsExpand}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1082,7 +1106,8 @@
       </div>
     {/if}
     {#if needsExpand}
-      <button type="button"
+      <button
+        type="button"
         class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
         onclick={toggleOutputExpand}
       >
@@ -1096,9 +1121,7 @@
     <div class="rounded bg-muted p-2 max-h-20 overflow-y-auto">
       <div class="text-xs text-muted-foreground">
         {#if tool.input?.subagent_type}
-          <span class="text-miwarp-status-info font-medium"
-            >{tool.input.subagent_type}</span
-          >
+          <span class="text-miwarp-status-info font-medium">{tool.input.subagent_type}</span>
         {/if}
         {#if tool.input?.prompt}
           <span class="ml-1 truncate">{tool.input.prompt}</span>
@@ -1145,7 +1168,8 @@
         {@render truncateOverlay(needsExpand)}
       </div>
       {#if needsExpand}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1186,7 +1210,8 @@
         {@render truncateOverlay(todoResult.newTodos.length > 20)}
       </div>
       {#if todoResult.newTodos.length > 20}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1205,7 +1230,8 @@
         {@render truncateOverlay(fallbackNeedsExpand)}
       </div>
       {#if fallbackNeedsExpand || outputExpanded}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1251,7 +1277,8 @@
       </div>
     {/if}
     {#if needsExpand}
-      <button type="button"
+      <button
+        type="button"
         class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
         onclick={toggleOutputExpand}
       >
@@ -1281,7 +1308,8 @@
         {@render truncateOverlay(countLines(exitPlanResult.plan) > 20)}
       </div>
       {#if countLines(exitPlanResult.plan) > 20}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1326,7 +1354,8 @@
         {@render truncateOverlay(countLines(notebookResult.new_source) > 20)}
       </div>
       {#if countLines(notebookResult.new_source) > 20}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1345,7 +1374,8 @@
         {@render truncateOverlay(fallbackNeedsExpand)}
       </div>
       {#if fallbackNeedsExpand || outputExpanded}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >
@@ -1369,7 +1399,8 @@
             JSON.stringify(tool.input, null, 2),
             "json",
           )}</pre>
-        <button type="button"
+        <button
+          type="button"
           class="absolute top-1.5 right-1.5 text-[10px] text-muted-foreground hover:text-foreground opacity-0 group-hover/copy:opacity-100 transition-opacity"
           onclick={() => handleCopy(JSON.stringify(tool.input, null, 2))}
           >{copyFeedback ?? t("common_copy")}</button
@@ -1387,14 +1418,16 @@
         </div>
         <pre
           class="text-xs font-mono whitespace-pre-wrap break-all text-muted-foreground">{outputText}</pre>
-        <button type="button"
+        <button
+          type="button"
           class="absolute top-1.5 right-1.5 text-[10px] text-muted-foreground hover:text-foreground opacity-0 group-hover/copy:opacity-100 transition-opacity"
           onclick={() => handleCopy(outputText)}>{copyFeedback ?? t("common_copy")}</button
         >
         {@render truncateOverlay(needsExpand)}
       </div>
       {#if needsExpand}
-        <button type="button"
+        <button
+          type="button"
           class="w-full text-[10px] text-muted-foreground/60 hover:text-muted-foreground py-1 transition-colors"
           onclick={toggleOutputExpand}
         >

@@ -31,17 +31,9 @@
   });
 
   const sizeClass = $derived(
-    size === "xs"
-      ? "h-5 w-5"
-      : size === "sm"
-        ? "h-6 w-6"
-        : size === "md"
-          ? "h-8 w-8"
-          : "h-10 w-10",
+    size === "xs" ? "h-5 w-5" : size === "sm" ? "h-6 w-6" : size === "md" ? "h-8 w-8" : "h-10 w-10",
   );
-  const iconClass = $derived(
-    size === "xs" ? "h-3 w-3" : size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4",
-  );
+  const iconClass = $derived(size === "xs" ? "h-3 w-3" : size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4");
 
   function toAssetUrl(path: string | undefined): string | undefined {
     if (!path) return undefined;

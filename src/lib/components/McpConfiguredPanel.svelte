@@ -188,7 +188,8 @@
                 </span>
               </div>
             </div>
-            <button type="button"
+            <button
+              type="button"
               class="shrink-0 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
               onclick={(e) => {
                 e.stopPropagation();
@@ -235,7 +236,8 @@
                 </span>
               </div>
             </div>
-            <button type="button"
+            <button
+              type="button"
               class="shrink-0 text-muted-foreground hover:text-foreground"
               onclick={() => (selectedServer = null)}
               title={t("common_close")}
@@ -306,7 +308,8 @@
 
           <!-- Remove button -->
           <div class="border-t border-border pt-3">
-            <button type="button"
+            <button
+              type="button"
               class="rounded-md border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
               onclick={() => handleRemove(selectedServer!)}
               disabled={operationLoading === selectedServer.name}

@@ -19,8 +19,7 @@
   let loading = $state(false);
 
   async function loadDiff(staged: boolean) {
-    const cwd =
-      typeof window !== "undefined" ? localStorage.getItem(LS_PROJECT_CWD) || "/" : "/";
+    const cwd = typeof window !== "undefined" ? localStorage.getItem(LS_PROJECT_CWD) || "/" : "/";
     loading = true;
     try {
       diff = await api.getGitDiff(cwd, staged);
@@ -42,7 +41,8 @@
 <Modal bind:open {title}>
   <div class="space-y-3">
     <div class="flex gap-1 border-b">
-      <button type="button"
+      <button
+        type="button"
         class="px-3 py-1.5 text-sm transition-colors {tab === 'unstaged'
           ? 'border-b-2 border-primary font-medium'
           : 'text-muted-foreground hover:text-foreground'}"
@@ -50,7 +50,8 @@
       >
         {t("diff_unstaged")}
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="px-3 py-1.5 text-sm transition-colors {tab === 'staged'
           ? 'border-b-2 border-primary font-medium'
           : 'text-muted-foreground hover:text-foreground'}"
@@ -72,9 +73,7 @@
           {:else if line.startsWith("-") && !line.startsWith("---")}<span
               class="text-miwarp-status-error">{line}</span
             >
-          {:else if line.startsWith("@@")}<span class="text-miwarp-status-info"
-              >{line}</span
-            >
+          {:else if line.startsWith("@@")}<span class="text-miwarp-status-info">{line}</span>
           {:else if line.startsWith("diff ")}<span class="font-bold">{line}</span>
           {:else}{line}
           {/if}{/each}</pre>

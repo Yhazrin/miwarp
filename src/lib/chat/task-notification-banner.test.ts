@@ -5,11 +5,7 @@ import {
 } from "./task-notification-banner";
 import type { TaskNotificationItem } from "$lib/stores/session-store.svelte";
 
-function item(
-  task_id: string,
-  status: string,
-  startedAt: number,
-): TaskNotificationItem {
+function item(task_id: string, status: string, startedAt: number): TaskNotificationItem {
   return { task_id, status, message: "", startedAt, data: null };
 }
 

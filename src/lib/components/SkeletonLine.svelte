@@ -1,10 +1,5 @@
 <script lang="ts">
-  let {
-    width = "100%",
-    height = "0.75rem",
-    rounded = "rounded",
-    class: className = "",
-  } = $props();
+  let { width = "100%", height = "0.75rem", rounded = "rounded", class: className = "" } = $props();
 </script>
 
 <div

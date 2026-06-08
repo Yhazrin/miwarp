@@ -13,17 +13,22 @@
 </script>
 
 {#if visible}
-  <div class="mt-3 flex items-center gap-2 text-[11px] text-[hsl(var(--miwarp-status-warning)/0.8)]" transition:fade={{ duration: 200 }}>
+  <div
+    class="mt-3 flex items-center gap-2 text-[11px] text-[hsl(var(--miwarp-status-warning)/0.8)]"
+    transition:fade={{ duration: 200 }}
+  >
     <Icon name="triangle-alert" size="sm" class="shrink-0" />
     <span>
       Run
-      <button type="button"
+      <button
+        type="button"
         class="font-mono text-miwarp-status-warning hover:text-[hsl(var(--miwarp-status-warning)/0.8)] underline underline-offset-2 transition-colors"
         onclick={onRunInit}>{t("chat_initHintAction")}</button
       >
       to create CLAUDE.md
     </span>
-    <button type="button"
+    <button
+      type="button"
       class="ml-auto text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
       onclick={onDismiss}
       title={t("chat_initHintDismiss")}

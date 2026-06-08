@@ -51,19 +51,30 @@
   import TopWindowDrag from "$lib/components/TopWindowDrag.svelte";
   import { IS_MAC } from "$lib/utils/platform";
   import {
-    LS_PROJECT_CWD, LS_SETTINGS_CWD, LS_PINNED_CWDS, LS_EXPANDED_PROJECTS, LS_REMOVED_CWDS, LS_SIDEBAR_WIDTH,
+    LS_PROJECT_CWD,
+    LS_SETTINGS_CWD,
+    LS_PINNED_CWDS,
+    LS_EXPANDED_PROJECTS,
+    LS_REMOVED_CWDS,
+    LS_SIDEBAR_WIDTH,
   } from "$lib/utils/storage-keys";
   import {
-    EVT_RUNS_CHANGED, EVT_CWD_CHANGED, EVT_PROJECT_CHANGED, EVT_FAVORITES_CHANGED,
-    EVT_OPEN_PERMISSIONS, EVT_SHOW_WIZARD, EVT_MEMORY_FILE_SELECTED, EVT_MEMORY_FILE_SAVED,
-    EVT_MEMORY_SELECT, EVT_EXPLORER_FILE, EVT_EXPLORER_DIFF, EVT_EXPLORER_FILE_SELECTED,
+    EVT_RUNS_CHANGED,
+    EVT_CWD_CHANGED,
+    EVT_PROJECT_CHANGED,
+    EVT_FAVORITES_CHANGED,
+    EVT_OPEN_PERMISSIONS,
+    EVT_SHOW_WIZARD,
+    EVT_MEMORY_FILE_SELECTED,
+    EVT_MEMORY_FILE_SAVED,
+    EVT_MEMORY_SELECT,
+    EVT_EXPLORER_FILE,
+    EVT_EXPLORER_DIFF,
+    EVT_EXPLORER_FILE_SELECTED,
   } from "$lib/utils/bus-events";
   import { applyUiZoomCssVar, clampUiZoom, layoutPx } from "$lib/utils/ui-zoom";
   import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
-  import {
-    readActiveSessionId,
-    writeActiveSessionId,
-  } from "$lib/utils/chat-persistence";
+  import { readActiveSessionId, writeActiveSessionId } from "$lib/utils/chat-persistence";
   import type {
     TaskRun,
     UserSettings,
@@ -102,10 +113,7 @@
   } from "$lib/utils/remote-cwd";
   import { page } from "$app/stores";
   import { goto, afterNavigate, beforeNavigate } from "$app/navigation";
-  import {
-    beginRouteTransition,
-    endRouteTransition,
-  } from "$lib/utils/route-transition";
+  import { beginRouteTransition, endRouteTransition } from "$lib/utils/route-transition";
   import { armChatSettingsHop } from "$lib/utils/chat-settings-nav";
   import { onMount, setContext, untrack } from "svelte";
   import { fade } from "svelte/transition";
@@ -259,9 +267,7 @@
     try {
       if (dropTarget.type === "folder") {
         await moveRunToFolder(runId, dropTarget.folderId);
-        runs = runs.map((r) =>
-          r.id === runId ? { ...r, folder_id: dropTarget.folderId } : r,
-        );
+        runs = runs.map((r) => (r.id === runId ? { ...r, folder_id: dropTarget.folderId } : r));
         expandedSubFolders = new Set([...expandedSubFolders, `sf:${dropTarget.folderId}`]);
         dbg("layout", "session pointer-drop moveToFolder success", {
           runId,
@@ -1741,10 +1747,7 @@
   // `miwarp-main-surface` opaque background.
   $effect(() => {
     if (typeof document === "undefined") return;
-    document.documentElement.classList.toggle(
-      "native-glass-enabled",
-      nativeWindowGlassEnabled,
-    );
+    document.documentElement.classList.toggle("native-glass-enabled", nativeWindowGlassEnabled);
   });
 
   /** Left inset for TopWindowDrag — matches titlebar action buttons after traffic lights. */
@@ -1831,9 +1834,7 @@
       pinnedCwds = [...pinnedCwds, normalized];
       localStorage.setItem(LS_PINNED_CWDS, JSON.stringify(pinnedCwds));
     }
-    window.dispatchEvent(
-      new CustomEvent(EVT_PROJECT_CHANGED, { detail: { cwd: normalized } }),
-    );
+    window.dispatchEvent(new CustomEvent(EVT_PROJECT_CHANGED, { detail: { cwd: normalized } }));
     chatViewCache.lastRunId = "";
     goto(`/chat?new=1&folder=${encodeURIComponent(normalized)}`);
   }
@@ -1932,10 +1933,7 @@
     if (!from || !to) return;
     const a = from.url.pathname;
     const b = to.url.pathname;
-    if (
-      (pathIsChat(a) && pathIsSettings(b)) ||
-      (pathIsSettings(a) && pathIsChat(b))
-    ) {
+    if ((pathIsChat(a) && pathIsSettings(b)) || (pathIsSettings(a) && pathIsChat(b))) {
       beginRouteTransition();
       armChatSettingsHop();
     }
@@ -2006,7 +2004,8 @@
 
 {#snippet treeNodes(nodes: TreeNode[])}
   {#each nodes as node}
-    <button type="button"
+    <button
+      type="button"
       class="flex w-full items-center gap-1 py-0.5 text-[13px] transition-colors
         text-sidebar-foreground hover:bg-sidebar-accent/50
         {explorerSelectedFile === node.fullPath ? 'bg-sidebar-accent/70' : ''}"
@@ -2014,7 +2013,11 @@
       onclick={() => (node.is_dir ? toggleFolder(node) : selectFile(node))}
     >
       {#if node.is_dir}
-        <Icon name="chevron-right" size="xs" class="shrink-0 transition-transform duration-150 {node.expanded ? 'rotate-90' : ''}" />
+        <Icon
+          name="chevron-right"
+          size="xs"
+          class="shrink-0 transition-transform duration-150 {node.expanded ? 'rotate-90' : ''}"
+        />
         <svg
           class="h-3.5 w-3.5 shrink-0 text-[hsl(var(--miwarp-status-info)/0.7)]"
           viewBox="0 0 24 24"
@@ -2053,8 +2056,7 @@
 {#snippet windowChromeToolbar()}
   {@const chromeBtn =
     "flex shrink-0 items-center justify-center rounded-full text-sidebar-foreground/75 transition-colors duration-150 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground h-[var(--miwarp-titlebar-control)] w-[var(--miwarp-titlebar-control)]"}
-  {@const chromeIcon =
-    "h-[var(--miwarp-titlebar-control)] w-[var(--miwarp-titlebar-control)]"}
+  {@const chromeIcon = "h-[var(--miwarp-titlebar-control)] w-[var(--miwarp-titlebar-control)]"}
   <nav
     class="window-chrome-toolbar no-drag fixed left-0 z-[35] flex items-center gap-[var(--miwarp-titlebar-gap)] pl-[var(--miwarp-titlebar-actions-inset)]"
     style="top: var(--miwarp-titlebar-y); height: var(--miwarp-titlebar-control);"
@@ -2171,265 +2173,268 @@
     style="width: {sidebarEffectiveWidth}px; --sidebar-inner-width: {sidebarWidth}px"
   >
     {#if iconRailEnabled}
-    <!-- A. Icon Rail -->
-    <div class="sidebar-icon-rail flex w-[44px] flex-col items-center">
-      <!-- Rail logo (OC) -->
-      <div
-        class="relative w-full shrink-0 h-[var(--miwarp-titlebar-band)]"
-        aria-hidden="true"
-      >
-        <WindowDragArea class="absolute inset-0" />
-      </div>
+      <!-- A. Icon Rail -->
+      <div class="sidebar-icon-rail flex w-[44px] flex-col items-center">
+        <!-- Rail logo (OC) -->
+        <div class="relative w-full shrink-0 h-[var(--miwarp-titlebar-band)]" aria-hidden="true">
+          <WindowDragArea class="absolute inset-0" />
+        </div>
 
-      <!-- Rail nav icons -->
-      <nav class="flex flex-1 flex-col items-center gap-1 py-2 pt-2">
-        {#each navItems as item, idx}
-          {#if idx > 0 && item.group !== navItems[idx - 1].group}
-            <div class="my-1 h-px w-5 bg-border/40"></div>
-          {/if}
-          {@const isActive = currentPath.startsWith(item.path)}
-          <a
-            href={getNavItemHref(item)}
-            class="relative flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 no-underline active:scale-95
-                {isActive
-              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-              : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"
-            title={item.label()}
-          >
-            <!-- Active indicator bar -->
-            {#if isActive}
-              <span class="absolute left-0 top-1.5 h-5 w-[3px] rounded-r-full bg-primary"></span>
+        <!-- Rail nav icons -->
+        <nav class="flex flex-1 flex-col items-center gap-1 py-2 pt-2">
+          {#each navItems as item, idx}
+            {#if idx > 0 && item.group !== navItems[idx - 1].group}
+              <div class="my-1 h-px w-5 bg-border/40"></div>
             {/if}
-            {#if item.icon === "message"}
+            {@const isActive = currentPath.startsWith(item.path)}
+            <a
+              href={getNavItemHref(item)}
+              class="relative flex h-9 w-9 items-center justify-center rounded-md transition-all duration-150 no-underline active:scale-95
+                {isActive
+                ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                : 'hover:bg-sidebar-accent/50 text-sidebar-foreground'}"
+              title={item.label()}
+            >
+              <!-- Active indicator bar -->
+              {#if isActive}
+                <span class="absolute left-0 top-1.5 h-5 w-[3px] rounded-r-full bg-primary"></span>
+              {/if}
+              {#if item.icon === "message"}
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg
+                >
+              {:else if item.icon === "folder"}
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><path
+                    d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+                  /></svg
+                >
+              {:else if item.icon === "zap"}
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg
+                >
+              {:else if item.icon === "book"}
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg
+                >
+              {:else if item.icon === "chart"}
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg
+                >
+              {:else if item.icon === "clock"}
+                <Icon name="clock" class="h-[18px] w-[18px]" />
+              {:else if item.icon === "settings"}
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><path
+                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+                  /><circle cx="12" cy="12" r="3" /></svg
+                >
+              {:else if item.icon === "schedule"}
+                <Icon name="clock" class="h-[18px] w-[18px]" />
+              {:else if item.icon === "users"}
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle
+                    cx="9"
+                    cy="7"
+                    r="4"
+                  /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path
+                    d="M16 3.13a4 4 0 0 1 0 7.75"
+                  /></svg
+                >
+              {/if}
+              <!-- team count badge removed by user request -->
+              <span class="sr-only">{item.label()}</span>
+            </a>
+          {/each}
+        </nav>
+
+        <!-- Rail version + locale + dark mode toggle -->
+        <div class="py-2">
+          <div class="flex items-center justify-center pb-1">
+            <button
+              type="button"
+              class="flex h-7 w-7 items-center justify-center rounded-md transition-colors cursor-pointer
+              {sidebarUpdateAvailable
+                ? 'text-miwarp-status-warning hover:text-[hsl(var(--miwarp-status-warning)/0.8)] hover:bg-[hsl(var(--miwarp-status-warning)/0.1)]'
+                : 'text-muted-foreground/60 hover:text-muted-foreground hover:bg-sidebar-accent/50'}"
+              onclick={() => (showAbout = true)}
+              aria-label={t("settings_checkUpdate")}
+              title={sidebarUpdateAvailable
+                ? `有新版本可用 (当前 ${sidebarVersion})`
+                : `已是最新版本 ${sidebarVersion}`}
+            >
+              {#if !sidebarVersionChecked}
+                <!-- Loading spinner -->
+                <svg class="h-3.5 w-3.5 animate-spin opacity-50" viewBox="0 0 24 24" fill="none">
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-dasharray="31.4"
+                    stroke-dashoffset="10"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              {:else if sidebarUpdateAvailable}
+                <!-- Update available: arrow-up-circle -->
+                <svg
+                  class="h-3.5 w-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="16 12 12 8 8 12" />
+                  <line x1="12" y1="16" x2="12" y2="8" />
+                </svg>
+              {:else}
+                <!-- Up to date: check-circle -->
+                <svg
+                  class="h-3.5 w-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+              {/if}
+            </button>
+          </div>
+          <div class="mx-auto mb-0.5">
+            <button
+              type="button"
+              class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
+              onclick={toggleLocale}
+              aria-label={t("settings_changeLanguage")}
+              title={getEntry(currentLocale())?.nativeName ?? currentLocale()}
+            >
+              <span class="text-xs font-medium"
+                >{getEntry(currentLocale())?.shortLabel ?? currentLocale()}</span
+              >
+            </button>
+          </div>
+          <button
+            type="button"
+            class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
+            onclick={() => themeStore.cycleTheme()}
+            aria-label={t("settings_toggleTheme")}
+            title={themeStore.isDark ? t("layout_themeTitle_dark") : t("layout_themeTitle_light")}
+          >
+            {#if themeStore.isDark}
+              <!-- Moon icon (dark mode active) -->
+              <svg
+                class="h-[18px] w-[18px]"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg
+              >
+            {:else}
+              <!-- Sun icon (light mode active) -->
               <svg
                 class="h-[18px] w-[18px]"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg
-              >
-            {:else if item.icon === "folder"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><path
-                  d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+                ><circle cx="12" cy="12" r="4" /><path
+                  d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
                 /></svg
               >
-            {:else if item.icon === "zap"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg
-              >
-            {:else if item.icon === "book"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg
-              >
-            {:else if item.icon === "chart"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg
-              >
-            {:else if item.icon === "clock"}
-              <Icon name="clock" class="h-[18px] w-[18px]" />
-            {:else if item.icon === "settings"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><path
-                  d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-                /><circle cx="12" cy="12" r="3" /></svg
-              >
-            {:else if item.icon === "schedule"}
-              <Icon name="clock" class="h-[18px] w-[18px]" />
-            {:else if item.icon === "users"}
-              <svg
-                class="h-[18px] w-[18px]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                ><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle
-                  cx="9"
-                  cy="7"
-                  r="4"
-                /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg
-              >
-            {/if}
-            <!-- team count badge removed by user request -->
-            <span class="sr-only">{item.label()}</span>
-          </a>
-        {/each}
-      </nav>
-
-      <!-- Rail version + locale + dark mode toggle -->
-      <div class="py-2">
-        <div class="flex items-center justify-center pb-1">
-          <button type="button"
-            class="flex h-7 w-7 items-center justify-center rounded-md transition-colors cursor-pointer
-              {sidebarUpdateAvailable
-              ? 'text-miwarp-status-warning hover:text-[hsl(var(--miwarp-status-warning)/0.8)] hover:bg-[hsl(var(--miwarp-status-warning)/0.1)]'
-              : 'text-muted-foreground/60 hover:text-muted-foreground hover:bg-sidebar-accent/50'}"
-            onclick={() => (showAbout = true)}
-            aria-label={t("settings_checkUpdate")}
-            title={sidebarUpdateAvailable
-              ? `有新版本可用 (当前 ${sidebarVersion})`
-              : `已是最新版本 ${sidebarVersion}`}
-          >
-            {#if !sidebarVersionChecked}
-              <!-- Loading spinner -->
-              <svg class="h-3.5 w-3.5 animate-spin opacity-50" viewBox="0 0 24 24" fill="none">
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="3"
-                  stroke-dasharray="31.4"
-                  stroke-dashoffset="10"
-                  stroke-linecap="round"
-                />
-              </svg>
-            {:else if sidebarUpdateAvailable}
-              <!-- Update available: arrow-up-circle -->
-              <svg
-                class="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="16 12 12 8 8 12" />
-                <line x1="12" y1="16" x2="12" y2="8" />
-              </svg>
-            {:else}
-              <!-- Up to date: check-circle -->
-              <svg
-                class="h-3.5 w-3.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                <polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
             {/if}
           </button>
-        </div>
-        <div class="mx-auto mb-0.5">
-          <button type="button"
+          <button
+            type="button"
             class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-            onclick={toggleLocale}
-            aria-label={t("settings_changeLanguage")}
-            title={getEntry(currentLocale())?.nativeName ?? currentLocale()}
+            onclick={() =>
+              themeStore.setColorScheme(themeStore.colorScheme === "warm" ? "neutral" : "warm")}
+            aria-label={t("settings_toggleColorScheme")}
+            title={themeStore.colorScheme === "warm"
+              ? t("layout_schemeTitle_warm")
+              : t("layout_schemeTitle_neutral")}
           >
-            <span class="text-xs font-medium"
-              >{getEntry(currentLocale())?.shortLabel ?? currentLocale()}</span
-            >
-          </button>
-        </div>
-        <button type="button"
-          class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-          onclick={() => themeStore.cycleTheme()}
-          aria-label={t("settings_toggleTheme")}
-          title={themeStore.isDark ? t("layout_themeTitle_dark") : t("layout_themeTitle_light")}
-        >
-          {#if themeStore.isDark}
-            <!-- Moon icon (dark mode active) -->
-            <svg
-              class="h-[18px] w-[18px]"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg
-            >
-          {:else}
-            <!-- Sun icon (light mode active) -->
+            <!-- Palette icon -->
             <svg
               class="h-[18px] w-[18px]"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               stroke-width="2"
-              ><circle cx="12" cy="12" r="4" /><path
-                d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              ><circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /><circle
+                cx="17.5"
+                cy="10.5"
+                r=".5"
+                fill="currentColor"
+              /><circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /><circle
+                cx="6.5"
+                cy="12"
+                r=".5"
+                fill="currentColor"
+              /><path
+                d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"
               /></svg
             >
-          {/if}
-        </button>
-        <button type="button"
-          class="flex h-9 w-9 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors duration-150"
-          onclick={() =>
-            themeStore.setColorScheme(themeStore.colorScheme === "warm" ? "neutral" : "warm")}
-          aria-label={t("settings_toggleColorScheme")}
-          title={themeStore.colorScheme === "warm"
-            ? t("layout_schemeTitle_warm")
-            : t("layout_schemeTitle_neutral")}
-        >
-          <!-- Palette icon -->
-          <svg
-            class="h-[18px] w-[18px]"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            ><circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /><circle
-              cx="17.5"
-              cy="10.5"
-              r=".5"
-              fill="currentColor"
-            /><circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /><circle
-              cx="6.5"
-              cy="12"
-              r=".5"
-              fill="currentColor"
-            /><path
-              d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"
-            /></svg
-          >
-        </button>
+          </button>
+        </div>
       </div>
-    </div>
     {/if}
 
     <!-- B. Content Panel (only rendered for pages that use it) -->
@@ -2440,10 +2445,7 @@
           class:sidebar-inner-collapsed={!sidebarOpen}
         >
           <!-- Titlebar band spacer (window chrome toolbar overlays this row) -->
-          <div
-            class="relative shrink-0 h-[var(--miwarp-titlebar-band)]"
-            aria-hidden="true"
-          >
+          <div class="relative shrink-0 h-[var(--miwarp-titlebar-band)]" aria-hidden="true">
             <WindowDragArea class="absolute inset-0" />
           </div>
           {#if isChatPage}
@@ -2466,7 +2468,8 @@
                   <div class="mx-3 my-1 border-t border-sidebar-border"></div>
                 {/if}
                 {@const isActive = pluginActiveSection === section.id}
-                <button type="button"
+                <button
+                  type="button"
                   class="flex w-full items-center gap-2 py-2 px-3 text-xs font-medium transition-colors
                   {isActive
                     ? 'bg-sidebar-accent text-sidebar-foreground'
@@ -2597,14 +2600,16 @@
           {:else if isExplorerPage}
             <!-- Explorer tab bar: Files / Git -->
             <div class="flex shrink-0 border-b border-sidebar-border">
-              <button type="button"
+              <button
+                type="button"
                 class="flex-1 py-1.5 text-xs font-medium text-center transition-colors
               {explorerTab === 'files'
                   ? 'text-sidebar-foreground border-b-2 border-primary'
                   : 'text-muted-foreground hover:text-sidebar-foreground'}"
                 onclick={() => (explorerTab = "files")}>{t("sidebar_files")}</button
               >
-              <button type="button"
+              <button
+                type="button"
                 class="relative flex-1 py-1.5 text-xs font-medium text-center transition-colors
               {explorerTab === 'git'
                   ? 'text-sidebar-foreground border-b-2 border-primary'
@@ -2622,7 +2627,8 @@
 
             <!-- Compact project picker (below tabs) -->
             <div class="relative shrink-0 border-b border-sidebar-border">
-              <button type="button"
+              <button
+                type="button"
                 class="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-xs transition-colors hover:bg-sidebar-accent/50"
                 onclick={() => (explorerProjectOpen = !explorerProjectOpen)}
               >
@@ -2643,12 +2649,19 @@
                     ? cwdDisplayLabel(projectCwd)
                     : t("sidebar_selectProjectBrowse")}</span
                 >
-                <Icon name="chevron-down" size="xs" class="ml-auto shrink-0 text-muted-foreground/50 transition-transform {explorerProjectOpen ? 'rotate-180' : ''}" />
+                <Icon
+                  name="chevron-down"
+                  size="xs"
+                  class="ml-auto shrink-0 text-muted-foreground/50 transition-transform {explorerProjectOpen
+                    ? 'rotate-180'
+                    : ''}"
+                />
               </button>
               {#if explorerProjectOpen}
                 <div class="border-b border-sidebar-border bg-sidebar">
                   {#each selectableFolders as folder (folder.folderKey)}
-                    <button type="button"
+                    <button
+                      type="button"
                       class="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-xs transition-colors
                       {folder.cwd === projectCwd
                         ? 'bg-sidebar-accent text-sidebar-foreground'
@@ -2673,7 +2686,8 @@
                       <span class="min-w-0 truncate">{cwdDisplayLabel(folder.cwd)}</span>
                     </button>
                   {/each}
-                  <button type="button"
+                  <button
+                    type="button"
                     class="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
                     onclick={() => {
                       pickFolder();
@@ -2704,7 +2718,11 @@
                     <Spinner size="sm" />
                   </div>
                 {:else if fileTree.length === 0}
-                  <EmptyState iconName="folder-open" title={t("sidebar_emptyDirectory")} class="py-8" />
+                  <EmptyState
+                    iconName="folder-open"
+                    title={t("sidebar_emptyDirectory")}
+                    class="py-8"
+                  />
                 {:else}
                   {@render treeNodes(fileTree)}
                 {/if}
@@ -2713,7 +2731,11 @@
               <!-- Git tab -->
               {#if !projectCwd}
                 <div class="flex-1 flex items-center justify-center px-3">
-                  <EmptyState iconName="git-merge" title={t("sidebar_selectProjectGit")} class="py-8" />
+                  <EmptyState
+                    iconName="git-merge"
+                    title={t("sidebar_selectProjectGit")}
+                    class="py-8"
+                  />
                 </div>
               {:else if gitLoading}
                 <div class="flex-1 flex items-center justify-center">
@@ -2746,7 +2768,8 @@
                   <span class="text-[12px] font-medium text-sidebar-foreground min-w-0 truncate"
                     >{gitSummary.branch || t("sidebar_detached")}</span
                   >
-                  <button type="button"
+                  <button
+                    type="button"
                     class="ml-auto flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
                     onclick={loadGitSummary}
                     aria-label={t("sidebar_refresh")}
@@ -2766,17 +2789,21 @@
                         : t("sidebar_changedFile", { count: String(gitSummary.total_files) })}</span
                     >
                     {#if gitSummary.total_insertions > 0}
-                      <span class="text-miwarp-status-success tabular-nums">+{gitSummary.total_insertions}</span
+                      <span class="text-miwarp-status-success tabular-nums"
+                        >+{gitSummary.total_insertions}</span
                       >
                     {/if}
                     {#if gitSummary.total_deletions > 0}
-                      <span class="text-miwarp-status-error tabular-nums">-{gitSummary.total_deletions}</span>
+                      <span class="text-miwarp-status-error tabular-nums"
+                        >-{gitSummary.total_deletions}</span
+                      >
                     {/if}
                   </div>
                   <!-- Changed files list -->
                   <div class="flex-1 overflow-y-auto">
                     {#each gitSummary.files as file}
-                      <button type="button"
+                      <button
+                        type="button"
                         class="flex w-full items-center gap-1.5 px-3 py-1 text-[12px] hover:bg-sidebar-accent/50 transition-colors"
                         onclick={() => selectDiffFile(file.path)}
                       >
@@ -2789,10 +2816,13 @@
                           >{file.path}</span
                         >
                         {#if file.insertions > 0}
-                          <span class="text-[10px] text-miwarp-status-success">+{file.insertions}</span>
+                          <span class="text-[10px] text-miwarp-status-success"
+                            >+{file.insertions}</span
+                          >
                         {/if}
                         {#if file.deletions > 0}
-                          <span class="text-[10px] text-miwarp-status-error">-{file.deletions}</span>
+                          <span class="text-[10px] text-miwarp-status-error">-{file.deletions}</span
+                          >
                         {/if}
                       </button>
                     {/each}
@@ -2827,7 +2857,8 @@
                     </div>
                   {:else if memoryScopeFolder.length > 0}
                     {#each filterVisibleCandidates(memoryScopeFolder, true, memorySelectedFile) as file}
-                      <button type="button"
+                      <button
+                        type="button"
                         class="flex w-full items-center gap-1.5 py-1 pl-4 pr-3 text-xs transition-colors
                         {memorySelectedFile === file.path
                           ? 'bg-sidebar-accent text-sidebar-foreground'
@@ -2876,7 +2907,8 @@
               />
 
               <!-- Open folder button -->
-              <button type="button"
+              <button
+                type="button"
                 class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
                 onclick={pickFolder}
               >
@@ -2906,7 +2938,8 @@
                 </div>
               {:else}
                 {#each filteredTeams as team}
-                  <button type="button"
+                  <button
+                    type="button"
                     class="flex w-full flex-col gap-0.5 rounded-md px-2.5 py-2 text-left transition-colors mb-0.5
                       {teamStore.selectedTeam === team.name
                       ? 'bg-sidebar-accent text-sidebar-foreground'
@@ -2944,7 +2977,8 @@
                   </div>
                 {:else}
                   {#each visibleSearchResults as result}
-                    <button type="button"
+                    <button
+                      type="button"
                       class="w-full text-left flex flex-col gap-0.5 px-3 py-2 hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground"
                       onclick={() => {
                         runSearchQuery = "";
@@ -3051,14 +3085,16 @@
                     <span class="text-[11px] text-muted-foreground px-1">
                       {t("sidebar_batchSelected", { count: String(selectedGroupKeys.size) })}
                     </span>
-                    <button type="button"
+                    <button
+                      type="button"
                       class="ml-auto rounded px-1.5 py-0.5 text-[11px] text-destructive hover:bg-destructive/10 transition-colors"
                       onclick={() => (batchDeleteConfirmOpen = true)}
                       title={t("sidebar_batchDelete")}
                     >
                       {t("sidebar_batchDelete")}
                     </button>
-                    <button type="button"
+                    <button
+                      type="button"
                       class="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent transition-colors"
                       onclick={clearBatchSelection}
                       title={t("sidebar_batchClear")}
@@ -3073,7 +3109,6 @@
               {/if}
             {/if}
           {/if}
-
         </div>
         <!-- Resize handle -->
         <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -3174,34 +3209,37 @@
 
 {#if showCliBrowser}
   <div transition:fade={{ duration: 200 }}>
-  <CliSessionBrowser
-    cwd="/"
-    onclose={() => (showCliBrowser = false)}
-    onimported={(runId) => {
-      showCliBrowser = false;
-      loadRuns();
-      goto(`/chat?run=${runId}`);
-    }}
-  />
+    <CliSessionBrowser
+      cwd="/"
+      onclose={() => (showCliBrowser = false)}
+      onimported={(runId) => {
+        showCliBrowser = false;
+        loadRuns();
+        goto(`/chat?run=${runId}`);
+      }}
+    />
   </div>
 {/if}
 
 <Modal bind:open={deleteConfirmOpen} title={t("sidebar_deleteConfirm")}>
   <p class="text-sm text-muted-foreground mb-4">{t("sidebar_deleteDesc")}</p>
   <div class="flex justify-end gap-2">
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
       onclick={cancelDeleteConversation}
     >
       {t("sidebar_deleteCancel")}
     </button>
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-miwarp-status-warning text-miwarp-status-warning hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
       onclick={confirmDeleteConversation}
     >
       {t("sidebar_softDelete")}
     </button>
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
       onclick={confirmHardDeleteConversation}
     >
@@ -3215,19 +3253,22 @@
     {t("sidebar_batchDeleteConfirm", { count: String(selectedGroupKeys.size) })}
   </p>
   <div class="flex justify-end gap-2">
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
       onclick={() => (batchDeleteConfirmOpen = false)}
     >
       {t("sidebar_deleteCancel")}
     </button>
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-miwarp-status-warning text-miwarp-status-warning hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
       onclick={batchDelete}
     >
       {t("sidebar_softDelete")}
     </button>
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
       onclick={batchHardDelete}
     >
@@ -3239,13 +3280,15 @@
 <Modal bind:open={removeProjectConfirmOpen} title={t("sidebar_removeProjectConfirm")}>
   <p class="text-sm text-muted-foreground mb-4">{t("sidebar_removeProjectDesc")}</p>
   <div class="flex justify-end gap-2">
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
       onclick={cancelRemoveProject}
     >
       {t("sidebar_deleteCancel")}
     </button>
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
       onclick={confirmRemoveProject}
     >
@@ -3266,7 +3309,8 @@
     use:focusOnMount
   />
   <div class="flex justify-end gap-2">
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
       onclick={() => {
         folderCreateOpen = false;
@@ -3275,7 +3319,8 @@
     >
       {t("sidebar_deleteCancel")}
     </button>
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
       onclick={doCreateFolder}
     >
@@ -3308,7 +3353,8 @@
     use:focusOnMount
   />
   <div class="flex justify-end gap-2">
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
       onclick={() => {
         folderRenameOpen = false;
@@ -3317,7 +3363,8 @@
     >
       {t("sidebar_deleteCancel")}
     </button>
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
       onclick={doRenameFolder}
     >
@@ -3332,7 +3379,8 @@
     {t("sidebar_deleteFolderDesc", { name: folderDeleteTarget?.name ?? "" })}
   </p>
   <div class="flex justify-end gap-2">
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
       onclick={() => {
         folderDeleteOpen = false;
@@ -3341,13 +3389,15 @@
     >
       {t("sidebar_deleteCancel")}
     </button>
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-miwarp-status-warning text-miwarp-status-warning hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
       onclick={() => doDeleteFolder(false)}
     >
       {t("sidebar_deleteFolderKeep")}
     </button>
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
       onclick={() => doDeleteFolder(true)}
     >
@@ -3362,7 +3412,8 @@
     {t("sidebar_moveToFolderDesc", { count: String(moveToFolderRunIds.length) })}
   </p>
   <div class="flex flex-col gap-1.5 mb-4 max-h-48 overflow-y-auto">
-    <button type="button"
+    <button
+      type="button"
       class="text-left px-3 py-2 text-sm rounded-md transition-colors"
       class:bg-primary={moveToFolderSelectedId === null}
       class:text-primary-foreground={moveToFolderSelectedId === null}
@@ -3372,7 +3423,8 @@
       {t("sidebar_uncategorized")}
     </button>
     {#each foldersForMoveDialog as folder}
-      <button type="button"
+      <button
+        type="button"
         class="text-left px-3 py-2 text-sm rounded-md transition-colors"
         class:bg-primary={moveToFolderSelectedId === folder.id}
         class:text-primary-foreground={moveToFolderSelectedId === folder.id}
@@ -3384,7 +3436,8 @@
     {/each}
   </div>
   <div class="flex justify-end gap-2">
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
       onclick={() => {
         moveToFolderOpen = false;
@@ -3393,7 +3446,8 @@
     >
       {t("sidebar_deleteCancel")}
     </button>
-    <button type="button"
+    <button
+      type="button"
       class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
       onclick={doMoveToFolder}
     >

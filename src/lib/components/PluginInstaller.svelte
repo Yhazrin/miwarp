@@ -195,7 +195,8 @@
           {t("plugin_installationFailed")}
         {/if}
       </h2>
-      <button type="button"
+      <button
+        type="button"
         class="text-muted-foreground hover:text-foreground transition-colors"
         aria-label="Close"
         onclick={handleClose}
@@ -211,7 +212,10 @@
         <div class="space-y-4">
           <!-- Search input -->
           <div class="relative">
-            <Icon name="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Icon
+              name="search"
+              class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
+            />
             <input
               type="text"
               placeholder={t("plugin_searchPlugins")}
@@ -228,7 +232,8 @@
               </div>
             {:else}
               {#each filteredPlugins as plugin}
-                <button type="button"
+                <button
+                  type="button"
                   class="w-full text-left rounded-lg border border-border/50 bg-muted/30 px-3 py-2 transition-colors hover:bg-muted/50"
                   onclick={() => selectPlugin(plugin)}
                 >
@@ -273,7 +278,8 @@
                 {t("plugin_installScope")}
               </span>
               <div class="flex rounded-md border border-border p-0.5">
-                <button type="button"
+                <button
+                  type="button"
                   class="flex-1 rounded px-3 py-1.5 text-xs font-medium transition-colors {selectedScope ===
                   'user'
                     ? 'bg-primary text-primary-foreground'
@@ -282,7 +288,8 @@
                 >
                   {t("plugin_scopeUser")}
                 </button>
-                <button type="button"
+                <button
+                  type="button"
                   class="flex-1 rounded px-3 py-1.5 text-xs font-medium transition-colors {selectedScope ===
                   'project'
                     ? 'bg-primary text-primary-foreground'
@@ -294,7 +301,8 @@
                 >
                   {t("plugin_scopeProject")}
                 </button>
-                <button type="button"
+                <button
+                  type="button"
                   class="flex-1 rounded px-3 py-1.5 text-xs font-medium transition-colors {selectedScope ===
                   'local'
                     ? 'bg-primary text-primary-foreground'
@@ -358,7 +366,9 @@
       {:else if currentStep === "complete"}
         <!-- Success -->
         <div class="flex flex-col items-center justify-center py-8 text-center">
-          <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--miwarp-status-success)/0.1)]">
+          <div
+            class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--miwarp-status-success)/0.1)]"
+          >
             <Icon name="check" size="lg" class="text-miwarp-status-success" />
           </div>
           <h3 class="text-sm font-medium text-foreground mb-1">
@@ -389,27 +399,31 @@
     <!-- Footer -->
     <div class="flex items-center justify-end gap-2 border-t border-border px-4 py-3">
       {#if currentStep === "select"}
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           onclick={handleClose}
         >
           {t("common_cancel")}
         </button>
       {:else if currentStep === "configure"}
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           onclick={goBack}
         >
           {t("common_back")}
         </button>
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           onclick={startInstallation}
         >
           {t("plugin_install")}
         </button>
       {:else if currentStep === "complete" || currentStep === "error"}
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           onclick={handleClose}
         >

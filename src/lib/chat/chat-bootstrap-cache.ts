@@ -8,7 +8,10 @@ export interface ChatBootstrapSnapshot {
 let snapshot: ChatBootstrapSnapshot | null = null;
 
 /** Snapshot chat page settings before leaving for /settings. */
-export function snapshotChatBootstrap(settings: UserSettings, agentSettings: AgentSettings | null): void {
+export function snapshotChatBootstrap(
+  settings: UserSettings,
+  agentSettings: AgentSettings | null,
+): void {
   snapshot = { settings, agentSettings };
 }
 

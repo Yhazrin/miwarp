@@ -157,7 +157,7 @@ export type InstrumentName = keyof typeof INSTRUMENTS;
 export function createNoiseBuffer(
   ctx: AudioContext,
   duration: number,
-  type: "white" | "pink" | "brown" = "white"
+  type: "white" | "pink" | "brown" = "white",
 ): AudioBuffer {
   const length = Math.floor(ctx.sampleRate * duration);
   const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
@@ -168,15 +168,21 @@ export function createNoiseBuffer(
       data[i] = Math.random() * 2 - 1;
     }
   } else if (type === "pink") {
-    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    let b0 = 0,
+      b1 = 0,
+      b2 = 0,
+      b3 = 0,
+      b4 = 0,
+      b5 = 0,
+      b6 = 0;
     for (let i = 0; i < length; i++) {
       const white = Math.random() * 2 - 1;
       b0 = 0.99886 * b0 + white * 0.0555179;
       b1 = 0.99332 * b1 + white * 0.0750759;
-      b2 = 0.96900 * b2 + white * 0.1538520;
-      b3 = 0.86650 * b3 + white * 0.3104856;
-      b4 = 0.55000 * b4 + white * 0.5329522;
-      b5 = -0.7616 * b5 - white * 0.0168980;
+      b2 = 0.969 * b2 + white * 0.153852;
+      b3 = 0.8665 * b3 + white * 0.3104856;
+      b4 = 0.55 * b4 + white * 0.5329522;
+      b5 = -0.7616 * b5 - white * 0.016898;
       data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
       b6 = white * 0.115926;
     }
@@ -184,7 +190,7 @@ export function createNoiseBuffer(
     let lastOut = 0;
     for (let i = 0; i < length; i++) {
       const white = Math.random() * 2 - 1;
-      lastOut = (lastOut + (0.02 * white)) / 1.02;
+      lastOut = (lastOut + 0.02 * white) / 1.02;
       data[i] = lastOut * 3.5;
     }
   }
@@ -195,10 +201,7 @@ export function createNoiseBuffer(
 /**
  * Apply exponential decay to a noise buffer
  */
-export function applyDecayToBuffer(
-  buffer: AudioBuffer,
-  decayRate: number = 0.3
-): void {
+export function applyDecayToBuffer(buffer: AudioBuffer, decayRate: number = 0.3): void {
   const data = buffer.getChannelData(0);
   const length = data.length;
   for (let i = 0; i < length; i++) {
@@ -212,7 +215,7 @@ export function applyDecayToBuffer(
 export function createOscillator(
   ctx: AudioContext,
   freq: number,
-  instrument: InstrumentConfig
+  instrument: InstrumentConfig,
 ): OscillatorNode {
   const osc = ctx.createOscillator();
   osc.type = instrument.oscType;
@@ -228,7 +231,7 @@ export function createEnvelopedGain(
   time: number,
   volume: number,
   duration: number,
-  instrument: InstrumentConfig
+  instrument: InstrumentConfig,
 ): GainNode {
   const gain = ctx.createGain();
   const attackTime = 0.005;
@@ -248,7 +251,7 @@ export function createFilter(
   ctx: AudioContext,
   freq: number,
   q: number,
-  type: BiquadFilterType = "bandpass"
+  type: BiquadFilterType = "bandpass",
 ): BiquadFilterNode {
   const filter = ctx.createBiquadFilter();
   filter.type = type;

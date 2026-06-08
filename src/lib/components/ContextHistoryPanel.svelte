@@ -347,7 +347,8 @@
                 ? computeContextDelta(entry.prevSnap.data, entry.snap.data)
                 : null}
             {@const isExpanded = expandedEntries.has(entry.turnIndex)}
-            <button type="button"
+            <button
+              type="button"
               class="w-full text-left px-3 py-1.5 hover:bg-accent/50 transition-colors text-[11px] border-b border-border/20"
               onclick={() => toggleEntry(entry.turnIndex)}
             >
@@ -380,7 +381,10 @@
               {/if}
             </button>
             {#if isExpanded}
-              <div class="px-4 py-1.5 bg-muted/20 border-b border-border/20" transition:slide={{ duration: 200 }}>
+              <div
+                class="px-4 py-1.5 bg-muted/20 border-b border-border/20"
+                transition:slide={{ duration: 200 }}
+              >
                 {#if entry.snap}
                   {#each entry.snap.data.categories as cat}
                     <div class="flex items-center gap-1.5 text-[10px] py-0.5">

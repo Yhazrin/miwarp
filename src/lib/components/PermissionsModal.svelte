@@ -240,7 +240,8 @@
     <!-- Tab bar -->
     <div class="flex gap-1 mb-3 flex-wrap">
       {#each tabs as tab}
-        <button type="button"
+        <button
+          type="button"
           class="px-2.5 py-1 text-xs rounded-md transition-colors
             {activeTab === tab.id
             ? 'bg-accent text-accent-foreground font-medium'
@@ -268,10 +269,13 @@
         bind:value={search}
         class="w-full rounded-md border bg-transparent px-2.5 py-1.5 pr-7 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
         placeholder={t("permissions_search")}
-        onkeydown={(e) => { if (e.key === "Escape") search = ""; }}
+        onkeydown={(e) => {
+          if (e.key === "Escape") search = "";
+        }}
       />
       {#if search}
-        <button type="button"
+        <button
+          type="button"
           class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
           onclick={() => (search = "")}
           aria-label={t("common_clear")}
@@ -289,7 +293,8 @@
         placeholder={t("permissions_addPlaceholder")}
         disabled={saving}
       />
-      <button type="button"
+      <button
+        type="button"
         class="shrink-0 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         onclick={handleAdd}
         disabled={saving || !addInput.trim()}
@@ -312,7 +317,8 @@
             class="group flex items-center justify-between gap-2 border-b last:border-b-0 px-3 py-2"
           >
             <code class="flex-1 text-xs break-all font-mono">{rule}</code>
-            <button type="button"
+            <button
+              type="button"
               class="shrink-0 rounded-md p-1 text-muted-foreground opacity-0 transition-colors hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
               onclick={() => handleDelete(rule)}
               disabled={saving}

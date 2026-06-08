@@ -5,7 +5,10 @@
   import * as api from "$lib/api";
   import { LS_PROJECT_CWD } from "$lib/utils/storage-keys";
   import {
-    EVT_PROJECT_CHANGED, EVT_MEMORY_SELECT, EVT_MEMORY_FILE_SELECTED, EVT_FILE_DIRTY,
+    EVT_PROJECT_CHANGED,
+    EVT_MEMORY_SELECT,
+    EVT_MEMORY_FILE_SELECTED,
+    EVT_FILE_DIRTY,
   } from "$lib/utils/bus-events";
   import Button from "$lib/components/Button.svelte";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
@@ -171,9 +174,7 @@
     saveCwd = ""; // reset so next load uses current projectCwd
     selectedFile = newPath;
     // Ack sidebar: highlight now confirmed (layout waits for this before updating)
-    window.dispatchEvent(
-      new CustomEvent(EVT_MEMORY_FILE_SELECTED, { detail: { path: newPath } }),
-    );
+    window.dispatchEvent(new CustomEvent(EVT_MEMORY_FILE_SELECTED, { detail: { path: newPath } }));
     if (exists) {
       loadContentForPath(newPath);
     } else {
@@ -370,7 +371,8 @@
     <div class="flex items-center gap-2 shrink-0">
       {#if isMarkdown}
         <div class="flex rounded-md border bg-background p-0.5">
-          <button type="button"
+          <button
+            type="button"
             class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors
               {viewMode === 'edit'
               ? 'bg-muted text-foreground'
@@ -391,7 +393,8 @@
             >
             {t("common_edit")}
           </button>
-          <button type="button"
+          <button
+            type="button"
             class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors
               {viewMode === 'preview'
               ? 'bg-muted text-foreground'

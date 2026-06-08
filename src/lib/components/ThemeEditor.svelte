@@ -179,7 +179,8 @@
     <div class="grid grid-cols-3 gap-2">
       {#each themeStore.themes as theme}
         {@const hasOverrides = themeStore.hasThemeOverrides(theme.id)}
-        <button type="button"
+        <button
+          type="button"
           class="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs transition-all"
           class:border-primary={themeStore.currentTheme === theme.id}
           class:border-border={themeStore.currentTheme !== theme.id}
@@ -222,7 +223,8 @@
             />
             <span class="text-xs text-miwarp-text-tertiary">{colorVar.label}</span>
             {#if isOverridden}
-              <button type="button"
+              <button
+                type="button"
                 class="ml-auto text-miwarp-text-tertiary hover:text-miwarp-text-primary shrink-0"
                 onclick={() => handleResetVariable(colorVar.key)}
                 title={t("theme_resetVariable")}
@@ -240,13 +242,15 @@
   <!-- Theme action buttons -->
   {#if themeStore.hasThemeOverrides(themeStore.currentTheme)}
     <div class="flex gap-2">
-      <button type="button"
+      <button
+        type="button"
         class="rounded-md border border-border bg-miwarp-bg-surface px-3 py-1.5 text-xs text-miwarp-text-secondary hover:bg-miwarp-bg-hover"
         onclick={handleResetCurrentTheme}
       >
         {t("theme_resetToDefaults")}
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="rounded-md accent-gradient px-3 py-1.5 text-xs text-[hsl(var(--primary-foreground))]"
         onclick={handleSaveAsCustomTheme}
       >
@@ -264,7 +268,8 @@
           bind:value={customThemeName}
         />
         <div class="flex gap-2">
-          <button type="button"
+          <button
+            type="button"
             class="rounded-md border border-border bg-miwarp-bg-surface px-3 py-1.5 text-xs text-miwarp-text-secondary hover:bg-miwarp-bg-hover"
             onclick={() => {
               showSaveDialog = false;
@@ -273,7 +278,8 @@
           >
             {t("theme_cancel")}
           </button>
-          <button type="button"
+          <button
+            type="button"
             class="rounded-md accent-gradient px-3 py-1.5 text-xs text-[hsl(var(--primary-foreground))] disabled:opacity-40"
             onclick={handleCreateCustomTheme}
             disabled={!customThemeName.trim()}
@@ -287,7 +293,8 @@
 
   <!-- Import/Export -->
   <div class="border-t border-border pt-3 space-y-2">
-    <button type="button"
+    <button
+      type="button"
       class="text-xs text-miwarp-accent-primary hover:underline"
       onclick={() => (showImportExport = !showImportExport)}
     >
@@ -297,7 +304,8 @@
     {#if showImportExport}
       <div class="space-y-2" transition:slide={{ duration: 200 }}>
         <div class="flex gap-2">
-          <button type="button"
+          <button
+            type="button"
             class="rounded-md border border-border bg-miwarp-bg-surface px-3 py-1.5
                    text-xs text-miwarp-text-secondary hover:bg-miwarp-bg-hover"
             onclick={handleExport}
@@ -312,7 +320,8 @@
           placeholder={t("theme_importPlaceholder")}
           bind:value={importJson}
         ></textarea>
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md accent-gradient px-3 py-1.5 text-xs text-[hsl(var(--primary-foreground))]"
           onclick={handleImport}
         >

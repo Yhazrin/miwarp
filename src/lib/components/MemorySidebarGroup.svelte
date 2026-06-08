@@ -25,7 +25,9 @@
   } = $props();
 
   // Partition by scope
-  const projectFiles = $derived(candidates.filter((c) => c.scope === "project" || c.scope === "memory"));
+  const projectFiles = $derived(
+    candidates.filter((c) => c.scope === "project" || c.scope === "memory"),
+  );
   const globalFiles = $derived(candidates.filter((c) => c.scope === "global"));
 
   function toggleScope(scope: string) {
@@ -49,8 +51,8 @@
       type="button"
       class="flex w-full items-center gap-1.5 py-1 pl-4 pr-3 text-xs transition-colors
         {selectedFile === file.path
-          ? 'bg-sidebar-accent text-sidebar-foreground'
-          : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
+        ? 'bg-sidebar-accent text-sidebar-foreground'
+        : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
       onclick={() => onSelectFile?.(file)}
       title={file.path}
     >
@@ -86,7 +88,9 @@
       onclick={() => toggleScope("global")}
     >
       <svg
-        class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded['global']
+        class="h-3 w-3 shrink-0 text-muted-foreground/60 transition-transform duration-150 {expanded[
+          'global'
+        ]
           ? 'rotate-90'
           : ''}"
         viewBox="0 0 24 24"
@@ -117,13 +121,15 @@
             type="button"
             class="flex w-full items-center gap-1.5 py-1 pl-4 pr-3 text-xs transition-colors
               {selectedFile === file.path
-                ? 'bg-sidebar-accent text-sidebar-foreground'
-                : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
+              ? 'bg-sidebar-accent text-sidebar-foreground'
+              : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
             onclick={() => onSelectFile?.(file)}
             title={file.path}
           >
             <svg
-              class="h-3 w-3 shrink-0 {file.exists ? 'text-miwarp-status-info' : 'text-muted-foreground/40'}"
+              class="h-3 w-3 shrink-0 {file.exists
+                ? 'text-miwarp-status-info'
+                : 'text-muted-foreground/40'}"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -136,7 +142,9 @@
             >
             <span class="min-w-0 truncate">{file.label}</span>
             {#if !file.exists}
-              <span class="ml-auto shrink-0 text-[10px] text-muted-foreground">{t("memory_new")}</span>
+              <span class="ml-auto shrink-0 text-[10px] text-muted-foreground"
+                >{t("memory_new")}</span
+              >
             {/if}
           </button>
         {/each}

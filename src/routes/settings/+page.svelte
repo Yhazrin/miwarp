@@ -1505,8 +1505,7 @@
       );
       feishuTestResult = t("settings_notif_feishuTestOk");
     } catch (e: unknown) {
-      feishuTestResult =
-        (e as Error)?.message || t("settings_notif_feishuTestFailed");
+      feishuTestResult = (e as Error)?.message || t("settings_notif_feishuTestFailed");
     } finally {
       feishuTesting = false;
     }

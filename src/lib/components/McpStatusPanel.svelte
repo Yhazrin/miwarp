@@ -245,15 +245,17 @@ diagnostics and history * - Quick reconnect with health check */
       {/if}
     </div>
     <div class="flex items-center gap-1">
-      <button type="button"
+      <button
+        type="button"
         class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
         disabled={loading || !sessionAlive}
         onclick={refresh}
         title={t("mcp_refreshStatus")}
       >
-        <Icon name="refresh-cw" size="sm" class={loading ? 'animate-spin' : ''} />
+        <Icon name="refresh-cw" size="sm" class={loading ? "animate-spin" : ""} />
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         onclick={onClose}
         title={t("common_close")}
@@ -275,12 +277,17 @@ diagnostics and history * - Quick reconnect with health check */
           <!-- Main row -->
           <div class="flex items-center gap-2 px-3 py-2">
             <!-- Expand toggle -->
-            <button type="button"
+            <button
+              type="button"
               onclick={() => toggleExpand(server.name)}
               aria-label="Toggle server details"
               class="text-muted-foreground hover:text-foreground transition-colors"
             >
-              <Icon name="chevron-right" size="xs" class="transition-transform {expandedServer === server.name ? 'rotate-90' : ''}" />
+              <Icon
+                name="chevron-right"
+                size="xs"
+                class="transition-transform {expandedServer === server.name ? 'rotate-90' : ''}"
+              />
             </button>
 
             <!-- Status dot with quality indicator -->
@@ -311,7 +318,8 @@ diagnostics and history * - Quick reconnect with health check */
             <!-- Actions -->
             <div class="flex items-center gap-1 shrink-0">
               {#if sessionAlive && (server.status === "failed" || server.status === "needs-auth")}
-                <button type="button"
+                <button
+                  type="button"
                   class="rounded px-1.5 py-0.5 text-[10px] font-medium text-foreground/70 hover:text-foreground hover:bg-accent border border-border/50 transition-colors disabled:opacity-50"
                   disabled={loading}
                   onclick={() => reconnect(server.name)}
@@ -319,7 +327,8 @@ diagnostics and history * - Quick reconnect with health check */
                   {t("mcp_reconnect")}
                 </button>
               {/if}
-              <button type="button"
+              <button
+                type="button"
                 class="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-50 {server.status ===
                 'disabled'
                   ? 'text-miwarp-status-success hover:bg-[hsl(var(--miwarp-status-success)/0.1)] border border-[hsl(var(--miwarp-status-success)/0.3)]'
@@ -343,7 +352,7 @@ diagnostics and history * - Quick reconnect with health check */
             <div class="px-3 pb-3 pl-8 space-y-2 text-[10px]" transition:slide={{ duration: 200 }}>
               {#if server.error}
                 <div class="p-2 rounded bg-destructive/10 border border-destructive/20">
-                  <div class="font-medium text-destructive mb-0.5">{t('mcpStatus_error')}</div>
+                  <div class="font-medium text-destructive mb-0.5">{t("mcpStatus_error")}</div>
                   <div class="text-destructive/80 font-mono">{server.error}</div>
                 </div>
               {/if}
@@ -353,7 +362,7 @@ diagnostics and history * - Quick reconnect with health check */
                 {#if health.latencyHistory.length > 1}
                   <div class="space-y-1">
                     <div class="text-muted-foreground uppercase tracking-wider">
-                      {t('mcpStatus_latencyHistory')}
+                      {t("mcpStatus_latencyHistory")}
                     </div>
                     <div class="flex items-end gap-0.5 h-6">
                       {#each health.latencyHistory as latency, _i (_i)}

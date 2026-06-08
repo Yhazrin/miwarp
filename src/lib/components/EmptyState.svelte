@@ -25,18 +25,16 @@
     iconComponent?: Snippet;
   } = $props();
 
-  const resolvedIcon = $derived(
-    iconName ?? (icon ? resolveIconName(icon) : undefined),
-  );
+  const resolvedIcon = $derived(iconName ?? (icon ? resolveIconName(icon) : undefined));
 
   const wrapperClass = $derived(
-    variant === "dashed"
-      ? "rounded-lg border border-dashed p-8 text-center"
-      : "",
+    variant === "dashed" ? "rounded-lg border border-dashed p-8 text-center" : "",
   );
 </script>
 
-<div class="flex flex-col items-center justify-center gap-3 py-12 text-center {wrapperClass} {className}">
+<div
+  class="flex flex-col items-center justify-center gap-3 py-12 text-center {wrapperClass} {className}"
+>
   {#if iconComponent}
     {@render iconComponent()}
   {:else if resolvedIcon}

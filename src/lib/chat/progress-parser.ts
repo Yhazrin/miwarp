@@ -44,9 +44,7 @@ export function parseTodosFromText(text: string, entryId?: string): ProgressTodo
   const lines = text.split(/\r?\n/);
   const todos: ProgressTodo[] = [];
   let counter = 0;
-  const todoPattern = new RegExp(
-    String.raw`^\s*-\s*\[( |x|X|-|~|/)\]\s+(.+?)\s*$`,
-  );
+  const todoPattern = new RegExp(String.raw`^\s*-\s*\[( |x|X|-|~|/)\]\s+(.+?)\s*$`);
   for (const line of lines) {
     const m = line.match(todoPattern);
     if (!m) continue;

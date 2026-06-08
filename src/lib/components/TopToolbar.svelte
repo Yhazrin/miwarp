@@ -163,7 +163,9 @@
     height: 32px;
     border-radius: 9999px;
     color: hsl(var(--sidebar-foreground) / 0.85);
-    transition: background-color 150ms ease, color 150ms ease;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease;
   }
   :global(.mi-topbar-btn:hover) {
     background-color: hsl(var(--sidebar-accent) / 0.6);

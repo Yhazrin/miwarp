@@ -36,11 +36,13 @@
         <p class="text-xs text-muted-foreground">{error}</p>
       </div>
       <div class="flex items-center gap-2">
-        <button type="button"
+        <button
+          type="button"
           class="rounded-lg border border-border bg-muted px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
           onclick={onCancel}>{t("common_cancel")}</button
         >
-        <button type="button"
+        <button
+          type="button"
           class="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           disabled={resuming}
           onclick={onRetry}>{t("common_retry")}</button
@@ -49,7 +51,9 @@
     </div>
   {:else}
     <div class="flex flex-col items-center gap-4 max-w-sm text-center animate-slide-up">
-      <div class="flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--miwarp-status-info)/0.1)]">
+      <div
+        class="flex h-12 w-12 items-center justify-center rounded-full bg-[hsl(var(--miwarp-status-info)/0.1)]"
+      >
         <svg
           class="h-6 w-6 text-miwarp-status-info animate-spin"
           viewBox="0 0 24 24"
@@ -73,7 +77,8 @@
       {#if elapsed > 0}
         <span class="text-xs tabular-nums text-muted-foreground">{formatElapsed(elapsed)}</span>
       {/if}
-      <button type="button"
+      <button
+        type="button"
         class="rounded-lg border border-border bg-muted px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
         onclick={onCancel}>{t("common_cancel")}</button
       >

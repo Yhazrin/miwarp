@@ -21,8 +21,9 @@
     onStartEdit?: (host: RemoteHost | null) => void;
     onDeleteHost?: (name: string) => Promise<void>;
   } = $props();
-  function lk(key: string): string { return t(key as MessageKey); }
-
+  function lk(key: string): string {
+    return t(key as MessageKey);
+  }
 </script>
 
 <Card class="p-6 space-y-5">

@@ -66,23 +66,13 @@
   }
 </script>
 
-<Tabs.Root
-  bind:value
-  {orientation}
-  {loop}
-  {activationMode}
-  onValueChange={handleValueChange}
->
+<Tabs.Root bind:value {orientation} {loop} {activationMode} onValueChange={handleValueChange}>
   <Tabs.List class={defaultListClass}>
     {#if triggers}
       {@render triggers()}
     {:else if tabs}
       {#each tabs as tab (tab.value)}
-        <Tabs.Trigger
-          value={tab.value}
-          disabled={tab.disabled}
-          class={defaultTriggerClass}
-        >
+        <Tabs.Trigger value={tab.value} disabled={tab.disabled} class={defaultTriggerClass}>
           {tab.label}
         </Tabs.Trigger>
       {/each}

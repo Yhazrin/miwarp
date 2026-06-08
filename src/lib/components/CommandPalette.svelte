@@ -1,6 +1,11 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { EVT_OPEN_PERMISSIONS, EVT_OPEN_MULTI_AGENT, EVT_EXPORT_HTML, EVT_EXPORT_HTML_ACK } from "$lib/utils/bus-events";
+  import {
+    EVT_OPEN_PERMISSIONS,
+    EVT_OPEN_MULTI_AGENT,
+    EVT_EXPORT_HTML,
+    EVT_EXPORT_HTML_ACK,
+  } from "$lib/utils/bus-events";
   import {
     filterCommands,
     groupByCategory,
@@ -200,7 +205,10 @@
         preview = `${t("cmd_previewSendPrompt")}: ${cmd.payload?.slice(0, 60)}${cmd.payload && cmd.payload.length > 60 ? "..." : ""}`;
         break;
       case "toggle_state":
-        preview = cmd.payload === "plan_mode" ? t("cmd_previewTogglePlan") : `${t("cmd_previewToggleState")}: ${cmd.payload}`;
+        preview =
+          cmd.payload === "plan_mode"
+            ? t("cmd_previewTogglePlan")
+            : `${t("cmd_previewToggleState")}: ${cmd.payload}`;
         break;
       case "open_modal": {
         const modalNames: Record<string, string> = {
@@ -500,218 +508,223 @@
 </script>
 
 <MiDialog bind:open size="command" contentClass="overflow-hidden shadow-2xl">
-      <div class="overflow-hidden">
-        <!-- Search -->
-        <div class="flex items-center gap-3 border-b px-4 py-3">
-          <span class="text-muted-foreground shrink-0">{@html getIcon("search")}</span>
-          <input
-            bind:this={inputEl}
-            bind:value={query}
-            onkeydown={handleKeydown}
-            class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            placeholder={t("cmd_placeholder")}
-            aria-label={t("cmd_placeholder")}
-          />
-          <div class="flex items-center gap-2">
-            {#if previewContent}
-              <span
-                class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded animate-fade-in max-w-[200px] truncate"
-                title={previewContent}
-              >
-                {previewContent}
-              </span>
-            {/if}
-            <!-- Search mode indicator -->
-            <button type="button"
-              class="text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-0.5 hover:bg-accent transition-colors"
-              onclick={() => {
-                // Cycle through: basic -> fuzzy -> nl -> basic
-                const modes: Array<"basic" | "fuzzy" | "nl"> = ["basic", "fuzzy", "nl"];
-                const currentIdx = modes.indexOf(searchMode);
-                searchMode = modes[(currentIdx + 1) % modes.length];
-              }}
-              title={t("cmd_searchModeTooltip")}
-            >
-              {searchModeLabel}
-            </button>
-            <kbd class="text-xs text-muted-foreground bg-muted rounded px-1.5 py-0.5"
-              >{t("cmd_esc")}</kbd
-            >
-          </div>
-        </div>
+  <div class="overflow-hidden">
+    <!-- Search -->
+    <div class="flex items-center gap-3 border-b px-4 py-3">
+      <span class="text-muted-foreground shrink-0">{@html getIcon("search")}</span>
+      <input
+        bind:this={inputEl}
+        bind:value={query}
+        onkeydown={handleKeydown}
+        class="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        placeholder={t("cmd_placeholder")}
+        aria-label={t("cmd_placeholder")}
+      />
+      <div class="flex items-center gap-2">
+        {#if previewContent}
+          <span
+            class="text-xs text-muted-foreground bg-muted px-2 py-1 rounded animate-fade-in max-w-[200px] truncate"
+            title={previewContent}
+          >
+            {previewContent}
+          </span>
+        {/if}
+        <!-- Search mode indicator -->
+        <button
+          type="button"
+          class="text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-0.5 hover:bg-accent transition-colors"
+          onclick={() => {
+            // Cycle through: basic -> fuzzy -> nl -> basic
+            const modes: Array<"basic" | "fuzzy" | "nl"> = ["basic", "fuzzy", "nl"];
+            const currentIdx = modes.indexOf(searchMode);
+            searchMode = modes[(currentIdx + 1) % modes.length];
+          }}
+          title={t("cmd_searchModeTooltip")}
+        >
+          {searchModeLabel}
+        </button>
+        <kbd class="text-xs text-muted-foreground bg-muted rounded px-1.5 py-0.5"
+          >{t("cmd_esc")}</kbd
+        >
+      </div>
+    </div>
 
-        <!-- Results -->
-        <div class="max-h-[40vh] overflow-y-auto p-2">
-          {#if showRecent}
-            <div class="mb-1">
-              <p
-                class="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider"
-              >
-                {t("cmd_cat_recent")}
-              </p>
-              {#each recentCommands as cmd (cmd.id)}
-                {@const idx = indexMap.get(cmd.id) ?? 0}
-                {@const usage = getCommandUsageCount(cmd.id)}
-                <button type="button"
-                  data-cmd-idx={idx}
-                  class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors
+    <!-- Results -->
+    <div class="max-h-[40vh] overflow-y-auto p-2">
+      {#if showRecent}
+        <div class="mb-1">
+          <p
+            class="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider"
+          >
+            {t("cmd_cat_recent")}
+          </p>
+          {#each recentCommands as cmd (cmd.id)}
+            {@const idx = indexMap.get(cmd.id) ?? 0}
+            {@const usage = getCommandUsageCount(cmd.id)}
+            <button
+              type="button"
+              data-cmd-idx={idx}
+              class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors
                     {idx === selectedIndex
-                    ? 'bg-accent text-accent-foreground'
-                    : 'hover:bg-accent/50'}"
-                  onclick={() => executeCommand(cmd)}
-                  onmouseenter={() => handleMouseEnter(cmd)}
-                  onmouseleave={handleMouseLeave}
+                ? 'bg-accent text-accent-foreground'
+                : 'hover:bg-accent/50'}"
+              onclick={() => executeCommand(cmd)}
+              onmouseenter={() => handleMouseEnter(cmd)}
+              onmouseleave={handleMouseLeave}
+            >
+              <span class="flex-1 text-left">{cmd.name}</span>
+              <span class="text-xs text-muted-foreground">{cmd.description}</span>
+              {#if usage > 0}
+                <span class="text-[10px] text-muted-foreground bg-muted rounded px-1 py-0.5">
+                  {usage}×
+                </span>
+              {/if}
+              {#if cmd.shortcut}
+                <kbd class="text-[10px] text-muted-foreground bg-muted rounded px-1 py-0.5"
+                  >{cmd.shortcut}</kbd
                 >
-                  <span class="flex-1 text-left">{cmd.name}</span>
-                  <span class="text-xs text-muted-foreground">{cmd.description}</span>
-                  {#if usage > 0}
-                    <span class="text-[10px] text-muted-foreground bg-muted rounded px-1 py-0.5">
-                      {usage}×
-                    </span>
-                  {/if}
-                  {#if cmd.shortcut}
-                    <kbd class="text-[10px] text-muted-foreground bg-muted rounded px-1 py-0.5"
-                      >{cmd.shortcut}</kbd
-                    >
-                  {/if}
-                </button>
-              {/each}
-            </div>
-          {/if}
-          {#each ["chat", "tools", "navigation", "settings", "diagnostics"] as cat (cat)}
-            {#if grouped[cat as CommandCategory].length > 0}
-              <div class="mb-1">
-                <p
-                  class="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider"
-                >
-                  {categoryLabels[cat as CommandCategory]}
-                </p>
-                {#each grouped[cat as CommandCategory] as cmd (cmd.id)}
-                  {@const idx = indexMap.get(cmd.id) ?? 0}
-                  {@const usage = getCommandUsageCount(cmd.id)}
-                  <button type="button"
-                    data-cmd-idx={idx}
-                    class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors
-                      {idx === selectedIndex
-                      ? 'bg-accent text-accent-foreground'
-                      : 'hover:bg-accent/50'}"
-                    onclick={() => executeCommand(cmd)}
-                    onmouseenter={() => handleMouseEnter(cmd)}
-                    onmouseleave={handleMouseLeave}
-                  >
-                    <!-- Icon -->
-                    <span
-                      class="flex h-5 w-5 items-center justify-center shrink-0 text-muted-foreground [&_svg]:w-4 [&_svg]:h-4"
-                    >
-                      {@html getCommandIcon(cmd)}
-                    </span>
-
-                    <!-- Name -->
-                    <span class="flex-1 text-left font-medium">{cmd.name}</span>
-
-                    <!-- Description -->
-                    <span class="text-xs text-muted-foreground truncate max-w-[120px]">
-                      {cmd.description}
-                    </span>
-
-                    <!-- Usage count -->
-                    {#if usage > 0}
-                      <span
-                        class="text-[10px] text-muted-foreground bg-muted rounded px-1 py-0.5 shrink-0"
-                      >
-                        {usage}×
-                      </span>
-                    {/if}
-
-                    <!-- Shortcut -->
-                    {#if cmd.shortcut}
-                      <kbd
-                        class="text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-0.5 shrink-0"
-                      >
-                        {cmd.shortcut}
-                      </kbd>
-                    {/if}
-
-                    <!-- Permission indicator -->
-                    {#if requiresPermission(cmd) && idx === selectedIndex}
-                      <span
-                        class="text-[10px] text-miwarp-status-warning shrink-0"
-                        title={t("cmd_requiresConfirm")}
-                      >
-                        <Icon name="triangle-alert" size="xs" />
-                      </span>
-                    {/if}
-                  </button>
-                {/each}
-              </div>
-            {/if}
+              {/if}
+            </button>
           {/each}
-
-          {#if indexMap.size === 0}
-            <EmptyState
-              iconName="search"
-              title={query ? t("cmd_noCommandsFound") : t("cmd_noCommandsAvailable")}
-              class="py-6"
-            />
-          {/if}
         </div>
+      {/if}
+      {#each ["chat", "tools", "navigation", "settings", "diagnostics"] as cat (cat)}
+        {#if grouped[cat as CommandCategory].length > 0}
+          <div class="mb-1">
+            <p
+              class="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider"
+            >
+              {categoryLabels[cat as CommandCategory]}
+            </p>
+            {#each grouped[cat as CommandCategory] as cmd (cmd.id)}
+              {@const idx = indexMap.get(cmd.id) ?? 0}
+              {@const usage = getCommandUsageCount(cmd.id)}
+              <button
+                type="button"
+                data-cmd-idx={idx}
+                class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors
+                      {idx === selectedIndex
+                  ? 'bg-accent text-accent-foreground'
+                  : 'hover:bg-accent/50'}"
+                onclick={() => executeCommand(cmd)}
+                onmouseenter={() => handleMouseEnter(cmd)}
+                onmouseleave={handleMouseLeave}
+              >
+                <!-- Icon -->
+                <span
+                  class="flex h-5 w-5 items-center justify-center shrink-0 text-muted-foreground [&_svg]:w-4 [&_svg]:h-4"
+                >
+                  {@html getCommandIcon(cmd)}
+                </span>
 
-        <!-- Footer hint -->
-        <div
-          class="border-t px-4 py-2 flex items-center justify-between text-xs text-muted-foreground"
-        >
-          <span>{t("cmd_footerHints")}</span>
-          {#if indexMap.size > 0}
-            <span>{t("cmd_footerCount", { count: indexMap.size.toString() })}</span>
-          {/if}
-        </div>
-      </div>
+                <!-- Name -->
+                <span class="flex-1 text-left font-medium">{cmd.name}</span>
 
-      <!-- Quick Actions Bar (Claude Code style) -->
-      <div class="mt-2 flex items-center gap-2 px-1">
-        <button type="button"
-          class="flex items-center gap-1.5 rounded-md bg-accent/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors"
-          onclick={() => {
-            open = false;
-            window.dispatchEvent(new CustomEvent("miwarp:open-workflows"));
-          }}
-        >
-          <Icon name="zap" size="xs" />
-          <span>{t("cmd_quickWorkflows")}</span>
-        </button>
-        <button type="button"
-          class="flex items-center gap-1.5 rounded-md bg-accent/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors"
-          onclick={() => {
-            open = false;
-            window.dispatchEvent(new CustomEvent("miwarp:open-skills"));
-          }}
-        >
-          <Icon name="settings" size="xs" />
-          <span>{t("cmd_quickSkills")}</span>
-        </button>
-        <button type="button"
-          class="flex items-center gap-1.5 rounded-md bg-accent/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors"
-          onclick={() => {
-            open = false;
-            window.dispatchEvent(new CustomEvent("miwarp:open-history"));
-          }}
-        >
-          <Icon name="scroll-text" size="xs" />
-          <span>{t("cmd_quickHistory")}</span>
-        </button>
-        <!-- Natural language shortcut -->
-        <button type="button"
-          class="flex items-center gap-1.5 rounded-md bg-[hsl(var(--miwarp-accent-primary)/0.15)] px-3 py-1.5 text-xs text-miwarp-accent-primary hover:bg-[hsl(var(--miwarp-accent-primary)/0.25)] transition-colors"
-          onclick={() => {
-            searchMode = "nl";
-            inputEl?.focus();
-          }}
-          title={t("cmd_semanticTooltip")}
-        >
-          <Icon name="sparkles" size="xs" />
-          <span>{t("cmd_searchSemantic")}</span>
-        </button>
-      </div>
+                <!-- Description -->
+                <span class="text-xs text-muted-foreground truncate max-w-[120px]">
+                  {cmd.description}
+                </span>
+
+                <!-- Usage count -->
+                {#if usage > 0}
+                  <span
+                    class="text-[10px] text-muted-foreground bg-muted rounded px-1 py-0.5 shrink-0"
+                  >
+                    {usage}×
+                  </span>
+                {/if}
+
+                <!-- Shortcut -->
+                {#if cmd.shortcut}
+                  <kbd
+                    class="text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-0.5 shrink-0"
+                  >
+                    {cmd.shortcut}
+                  </kbd>
+                {/if}
+
+                <!-- Permission indicator -->
+                {#if requiresPermission(cmd) && idx === selectedIndex}
+                  <span
+                    class="text-[10px] text-miwarp-status-warning shrink-0"
+                    title={t("cmd_requiresConfirm")}
+                  >
+                    <Icon name="triangle-alert" size="xs" />
+                  </span>
+                {/if}
+              </button>
+            {/each}
+          </div>
+        {/if}
+      {/each}
+
+      {#if indexMap.size === 0}
+        <EmptyState
+          iconName="search"
+          title={query ? t("cmd_noCommandsFound") : t("cmd_noCommandsAvailable")}
+          class="py-6"
+        />
+      {/if}
+    </div>
+
+    <!-- Footer hint -->
+    <div class="border-t px-4 py-2 flex items-center justify-between text-xs text-muted-foreground">
+      <span>{t("cmd_footerHints")}</span>
+      {#if indexMap.size > 0}
+        <span>{t("cmd_footerCount", { count: indexMap.size.toString() })}</span>
+      {/if}
+    </div>
+  </div>
+
+  <!-- Quick Actions Bar (Claude Code style) -->
+  <div class="mt-2 flex items-center gap-2 px-1">
+    <button
+      type="button"
+      class="flex items-center gap-1.5 rounded-md bg-accent/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors"
+      onclick={() => {
+        open = false;
+        window.dispatchEvent(new CustomEvent("miwarp:open-workflows"));
+      }}
+    >
+      <Icon name="zap" size="xs" />
+      <span>{t("cmd_quickWorkflows")}</span>
+    </button>
+    <button
+      type="button"
+      class="flex items-center gap-1.5 rounded-md bg-accent/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors"
+      onclick={() => {
+        open = false;
+        window.dispatchEvent(new CustomEvent("miwarp:open-skills"));
+      }}
+    >
+      <Icon name="settings" size="xs" />
+      <span>{t("cmd_quickSkills")}</span>
+    </button>
+    <button
+      type="button"
+      class="flex items-center gap-1.5 rounded-md bg-accent/50 px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent transition-colors"
+      onclick={() => {
+        open = false;
+        window.dispatchEvent(new CustomEvent("miwarp:open-history"));
+      }}
+    >
+      <Icon name="scroll-text" size="xs" />
+      <span>{t("cmd_quickHistory")}</span>
+    </button>
+    <!-- Natural language shortcut -->
+    <button
+      type="button"
+      class="flex items-center gap-1.5 rounded-md bg-[hsl(var(--miwarp-accent-primary)/0.15)] px-3 py-1.5 text-xs text-miwarp-accent-primary hover:bg-[hsl(var(--miwarp-accent-primary)/0.25)] transition-colors"
+      onclick={() => {
+        searchMode = "nl";
+        inputEl?.focus();
+      }}
+      title={t("cmd_semanticTooltip")}
+    >
+      <Icon name="sparkles" size="xs" />
+      <span>{t("cmd_searchSemantic")}</span>
+    </button>
+  </div>
 </MiDialog>
 
 <MiDialog bind:open={resultModalOpen} size="default" contentClass="max-w-lg p-6">
@@ -719,7 +732,5 @@
     <h2 class="text-lg font-semibold">{resultModalTitle}</h2>
   </div>
   <pre
-    class="max-h-[50vh] overflow-auto rounded-lg bg-muted/50 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap"
-    >{resultModalContent}</pre
-  >
+    class="max-h-[50vh] overflow-auto rounded-lg bg-muted/50 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap">{resultModalContent}</pre>
 </MiDialog>

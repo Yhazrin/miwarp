@@ -2,7 +2,10 @@
   import MiSelect from "$lib/ui/MiSelect.svelte";
   import { Select } from "$lib/ui/select-primitives";
   import Icon from "$lib/components/Icon.svelte";
-  import { PERMISSION_MODE_OPTIONS, resolvePermissionMode } from "$lib/chat/permission-mode-options";
+  import {
+    PERMISSION_MODE_OPTIONS,
+    resolvePermissionMode,
+  } from "$lib/chat/permission-mode-options";
   import { t } from "$lib/i18n/index.svelte";
 
   let {
@@ -35,9 +38,7 @@
       : `no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-transparent transition-colors hover:border-border/40 hover:bg-accent/15 ${current.cls} data-[state=open]:border-border/50 data-[state=open]:bg-accent/20`,
   );
 
-  let triggerLabel = $derived(
-    t("prompt_permissionModeTitle", { mode: t(current.labelKey) }),
-  );
+  let triggerLabel = $derived(t("prompt_permissionModeTitle", { mode: t(current.labelKey) }));
 
   function handleValueChange(value: string | undefined) {
     if (value && value !== permissionMode) onchange?.(value);
@@ -71,8 +72,7 @@
           <Icon name={mode.icon} size="xs" class="shrink-0 opacity-55" />
         {/if}
         <span class="shrink-0 {mode.cls}">{t(mode.labelKey)}</span>
-        <span class="min-w-0 flex-1 truncate text-[10px] text-foreground/50"
-          >{t(mode.descKey)}</span
+        <span class="min-w-0 flex-1 truncate text-[10px] text-foreground/50">{t(mode.descKey)}</span
         >
       {/snippet}
     </Select.Item>

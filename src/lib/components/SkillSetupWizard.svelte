@@ -180,7 +180,10 @@ step by step, * with progress tracking and helpful hints. */
   <div class="shrink-0 px-4 pt-4">
     <div class="flex items-center justify-between mb-2">
       <span class="text-xs text-muted-foreground">
-        {t("skillWizard_stepProgress", { step: String(stepIndex + 1), total: String(WIZARD_STEPS.length) })}
+        {t("skillWizard_stepProgress", {
+          step: String(stepIndex + 1),
+          total: String(WIZARD_STEPS.length),
+        })}
       </span>
       <span class="text-xs text-muted-foreground">{Math.round(progress)}%</span>
     </div>
@@ -328,7 +331,9 @@ step by step, * with progress tracking and helpful hints. */
           </div>
         </div>
 
-        <Button onclick={nextStep} disabled={!isConfigureValid} class="w-full">{t("skillWizard_continue")}</Button>
+        <Button onclick={nextStep} disabled={!isConfigureValid} class="w-full"
+          >{t("skillWizard_continue")}</Button
+        >
       </div>
     {:else if step === "parameters"}
       <!-- Step 3: Skill prompt/content -->
@@ -405,10 +410,14 @@ step by step, * with progress tracking and helpful hints. */
             <div class="flex items-center gap-2 mb-2">
               {#if testResult.success}
                 <span class="text-xl">✅</span>
-                <span class="font-medium text-miwarp-status-success">{t("skillWizard_testPassed")}</span>
+                <span class="font-medium text-miwarp-status-success"
+                  >{t("skillWizard_testPassed")}</span
+                >
               {:else}
                 <span class="text-xl">❌</span>
-                <span class="font-medium text-miwarp-status-error">{t("skillWizard_testFailed")}</span>
+                <span class="font-medium text-miwarp-status-error"
+                  >{t("skillWizard_testFailed")}</span
+                >
               {/if}
             </div>
             {#if testResult.output}

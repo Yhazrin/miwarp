@@ -714,7 +714,10 @@
               <span class="text-xs font-semibold text-foreground">{t("planConfirm_title")}</span>
               <PhaseIndicator phase={currentPhase} elapsed={tool.elapsed_time_seconds} />
               <div class="h-3 w-3 shrink-0 ml-auto">
-                <Spinner size="xs" class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-accent-primary)/0.3)] border-t-[hsl(var(--miwarp-accent-primary))]" />
+                <Spinner
+                  size="xs"
+                  class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-accent-primary)/0.3)] border-t-[hsl(var(--miwarp-accent-primary))]"
+                />
               </div>
             </div>
 
@@ -797,7 +800,8 @@
             {#if onPermissionRespond}
               {#if skipPermissionMode}
                 <!-- Session already in skip-permission mode -->
-                <button type="button"
+                <button
+                  type="button"
                   class="w-full rounded-lg border border-[hsl(var(--miwarp-status-success)/0.4)] bg-[hsl(var(--miwarp-status-success)/0.12)] px-3 py-2 text-xs font-medium text-miwarp-status-success hover:bg-[hsl(var(--miwarp-status-success)/0.22)] transition-all disabled:opacity-50"
                   disabled={submitting}
                   onclick={() => {
@@ -818,7 +822,8 @@
                 <!-- 3 execution option cards -->
                 <div class="grid grid-cols-3 gap-2 mb-3">
                   <!-- Card 1: Auto-accept edits (recommended) -->
-                  <button type="button"
+                  <button
+                    type="button"
                     class="flex flex-col items-start rounded-xl border-2 border-[hsl(var(--miwarp-status-success)/0.5)] bg-[hsl(var(--miwarp-status-success)/0.08)] hover:bg-[hsl(var(--miwarp-status-success)/0.16)] hover:border-[hsl(var(--miwarp-status-success)/0.7)] transition-all disabled:opacity-50 p-2.5 text-left"
                     disabled={submitting}
                     onclick={() => {
@@ -849,7 +854,8 @@
                   </button>
 
                   <!-- Card 2: Bypass (fast) -->
-                  <button type="button"
+                  <button
+                    type="button"
                     class="flex flex-col items-start rounded-xl border-2 border-[hsl(var(--miwarp-status-warning)/0.45)] bg-[hsl(var(--miwarp-status-warning)/0.07)] hover:bg-[hsl(var(--miwarp-status-warning)/0.15)] hover:border-[hsl(var(--miwarp-status-warning)/0.65)] transition-all disabled:opacity-50 p-2.5 text-left"
                     disabled={submitting}
                     onclick={() => {
@@ -875,7 +881,8 @@
                   </button>
 
                   <!-- Card 3: Manual approve (safe) -->
-                  <button type="button"
+                  <button
+                    type="button"
                     class="flex flex-col items-start rounded-xl border-2 border-border bg-muted/20 hover:bg-muted/40 hover:border-foreground/30 transition-all disabled:opacity-50 p-2.5 text-left"
                     disabled={submitting}
                     onclick={() => {
@@ -932,7 +939,8 @@
                       }
                     }}
                   ></textarea>
-                  <button type="button"
+                  <button
+                    type="button"
                     class="shrink-0 rounded-lg border border-[hsl(var(--miwarp-accent-primary)/0.3)] bg-[hsl(var(--miwarp-accent-primary)/0.08)] hover:bg-[hsl(var(--miwarp-accent-primary)/0.16)] px-3 py-2 text-xs font-medium text-miwarp-accent-primary transition-all disabled:opacity-50"
                     disabled={submitting}
                     onclick={() => {
@@ -956,7 +964,10 @@
         {:else if showPermissionInPanel && tool.status === "permission_prompt" && tool.permission_request_id && tool.tool_name !== "AskUserQuestion" && tool.tool_name !== "ExitPlanMode"}
           <!-- Permission handled by floating panel 鈥?show lightweight placeholder -->
           <div class="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground/60">
-            <Spinner size="xxs" class="border-[hsl(var(--miwarp-status-warning)/0.4)] border-t-[hsl(var(--miwarp-status-warning))]" />
+            <Spinner
+              size="xxs"
+              class="border-[hsl(var(--miwarp-status-warning)/0.4)] border-t-[hsl(var(--miwarp-status-warning))]"
+            />
             <span>{t("inline_permissionPending")}</span>
           </div>
         {:else if tool.status === "permission_prompt" && tool.permission_request_id}
@@ -981,7 +992,10 @@
               >
               <PhaseIndicator phase={currentPhase} elapsed={tool.elapsed_time_seconds} />
               <div class="h-3 w-3 shrink-0 ml-auto">
-                <Spinner size="xs" class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-status-warning)/0.3)] border-t-[hsl(var(--miwarp-status-warning))]" />
+                <Spinner
+                  size="xs"
+                  class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-status-warning)/0.3)] border-t-[hsl(var(--miwarp-status-warning))]"
+                />
               </div>
             </div>
             <p class="text-sm text-foreground mb-1">
@@ -998,7 +1012,8 @@
             {/if}
             {#if onPermissionRespond}
               <div class="flex gap-2">
-                <button type="button"
+                <button
+                  type="button"
                   class="rounded-md bg-miwarp-status-success px-4 py-1.5 text-xs font-medium text-miwarp-accent-on-accent hover:bg-[hsl(var(--miwarp-status-success)/0.85)] transition-all disabled:opacity-50"
                   disabled={submitting}
                   onclick={() => {
@@ -1011,7 +1026,8 @@
                     );
                   }}>{t("common_allow")}</button
                 >
-                <button type="button"
+                <button
+                  type="button"
                   class="rounded-md border border-border px-4 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-all disabled:opacity-50"
                   disabled={submitting}
                   onclick={() => {
@@ -1019,7 +1035,8 @@
                     safePermissionRespond(tool.permission_request_id!, "deny");
                   }}>{t("common_deny")}</button
                 >
-                <button type="button"
+                <button
+                  type="button"
                   class="rounded-md border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.1)] px-3 py-1.5 text-xs font-medium text-miwarp-status-error hover:bg-[hsl(var(--miwarp-status-error)/0.2)] transition-all disabled:opacity-50"
                   disabled={submitting}
                   onclick={() => {
@@ -1041,7 +1058,8 @@
                 >
                   {#each tool.suggestions as suggestion}
                     {@const label = formatSuggestionLabel(suggestion)}
-                    <button type="button"
+                    <button
+                      type="button"
                       class="rounded-md border border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-3 py-1.5 text-xs font-medium text-miwarp-status-info hover:bg-[hsl(var(--miwarp-status-info)/0.1)] transition-all disabled:opacity-50"
                       disabled={submitting}
                       onclick={() => {
@@ -1183,7 +1201,15 @@
         />
 
         <!-- Expand chevron: absolute to not affect right-edge alignment of status icon -->
-        <Icon name="chevron-down" size="xs" class="absolute -right-5 top-1/2 -translate-y-1/2 transition-all {renderLevel === 1 ? 'opacity-0 group-hover:opacity-40' : 'text-muted-foreground/40'} {(hasSubTimeline ? showSubTimeline : expanded) ? 'rotate-180' : ''}" />
+        <Icon
+          name="chevron-down"
+          size="xs"
+          class="absolute -right-5 top-1/2 -translate-y-1/2 transition-all {renderLevel === 1
+            ? 'opacity-0 group-hover:opacity-40'
+            : 'text-muted-foreground/40'} {(hasSubTimeline ? showSubTimeline : expanded)
+            ? 'rotate-180'
+            : ''}"
+        />
       </div>
 
       <!-- Tool summary (from tool_use_summary) -->
@@ -1219,7 +1245,8 @@
             >
           {/if}
           {#if taskNotification.output_file}
-            <button type="button"
+            <button
+              type="button"
               class="font-mono text-muted-foreground/60 truncate max-w-[150px] hover:text-foreground transition-colors underline decoration-dotted"
               title={t("inlineTool_copyPath", { path: taskNotification.output_file })}
               onclick={(e) => {
@@ -1235,7 +1262,10 @@
 
       <!-- Expanded content area with accent left border -->
       {#if expanded}
-        <div class="ml-2.5 pl-2 border-l-2 {renderLevel === 2 ? style.border : 'border-border/20'}" transition:slide={{ duration: 200 }}>
+        <div
+          class="ml-2.5 pl-2 border-l-2 {renderLevel === 2 ? style.border : 'border-border/20'}"
+          transition:slide={{ duration: 200 }}
+        >
           {#if isTruncated && !lazyResult}
             {#if lazyLoading}
               <div class="px-4 py-3 text-center text-xs text-muted-foreground animate-pulse">
@@ -1244,13 +1274,16 @@
             {:else if lazyFailed}
               <div class="px-4 py-3 text-center text-xs text-muted-foreground">
                 Failed to load details
-                <button type="button" class="ml-2 underline hover:text-foreground" onclick={retryLazyLoad}
-                  >{t("inlineTool_retry")}</button
+                <button
+                  type="button"
+                  class="ml-2 underline hover:text-foreground"
+                  onclick={retryLazyLoad}>{t("inlineTool_retry")}</button
                 >
               </div>
             {:else}
               <!-- Auto-expanded but not yet fetched (truncated) -->
-              <button type="button"
+              <button
+                type="button"
                 class="w-full text-xs text-muted-foreground/60 hover:text-muted-foreground py-2 transition-colors"
                 onclick={() => {
                   userExpanded = true;
@@ -1290,7 +1323,10 @@
     {/if}
     <!-- Subagent subTimeline: nested entries from child agents -->
     {#if showSubTimeline}
-      <div class="mt-2 ml-4 pl-3 border-l-2 border-[hsl(var(--miwarp-status-info)/0.3)] space-y-1" transition:slide={{ duration: 200 }}>
+      <div
+        class="mt-2 ml-4 pl-3 border-l-2 border-[hsl(var(--miwarp-status-info)/0.3)] space-y-1"
+        transition:slide={{ duration: 200 }}
+      >
         {#each subTimeline as subEntry (subEntry.id)}
           {#if subEntry.kind === "assistant"}
             <div class="text-sm text-muted-foreground py-1">

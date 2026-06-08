@@ -62,7 +62,8 @@
     <!-- Quick actions -->
     <div class="w-full max-w-sm space-y-2">
       {#if lastContinuableRun}
-        <button type="button"
+        <button
+          type="button"
           class="w-full flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 px-3.5 py-2.5 text-sm text-foreground hover:bg-muted/50 hover:border-border transition-all duration-150 text-left"
           onclick={() => onContinueSession(lastContinuableRun!.id)}
         >
@@ -84,7 +85,8 @@
           >
         </button>
       {/if}
-      <button type="button"
+      <button
+        type="button"
         class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
         onclick={onQuickAnalyze}
       >
@@ -100,14 +102,20 @@
         >
         <span>{t("chat_quickAnalyze")}</span>
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
         onclick={onQuickFix}
       >
-        <Icon name="wrench" size="md" class="shrink-0 text-[hsl(var(--miwarp-status-warning)/0.7)]" />
+        <Icon
+          name="wrench"
+          size="md"
+          class="shrink-0 text-[hsl(var(--miwarp-status-warning)/0.7)]"
+        />
         <span>{t("chat_quickFix")}</span>
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
         onclick={onQuickDaily}
       >
@@ -125,7 +133,8 @@
         >
         <span>{t("chat_quickDaily")}</span>
       </button>
-      <button type="button"
+      <button
+        type="button"
         class="w-full flex items-center gap-3 rounded-lg border border-border/40 px-3.5 py-2.5 text-sm text-muted-foreground hover:bg-muted/30 hover:border-border/60 hover:text-foreground transition-all duration-150 text-left"
         onclick={onGotoSchedule}
       >

@@ -19,7 +19,9 @@
   const todos = $derived<ProgressTodo[]>(runId ? progressStore.todosFor(runId) : []);
 
   // Only show active tasks (in_progress + pending) in the compact stack
-  const activeTodos = $derived(todos.filter((t) => t.status === "in_progress" || t.status === "pending"));
+  const activeTodos = $derived(
+    todos.filter((t) => t.status === "in_progress" || t.status === "pending"),
+  );
 
   function statusIcon(status: ProgressTodo["status"]): string {
     switch (status) {
@@ -62,7 +64,11 @@
           onclick={() => todo.sourceEntryId && onJumpToEntry?.(todo.sourceEntryId)}
           disabled={!todo.sourceEntryId}
         >
-          <span class="shrink-0 {statusColor(todo.status)} {todo.status === 'in_progress' ? 'animate-pulse' : ''}">
+          <span
+            class="shrink-0 {statusColor(todo.status)} {todo.status === 'in_progress'
+              ? 'animate-pulse'
+              : ''}"
+          >
             {statusIcon(todo.status)}
           </span>
           <span class="truncate text-muted-foreground group-hover:text-foreground">

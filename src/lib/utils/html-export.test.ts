@@ -45,7 +45,16 @@ describe("html-export", () => {
       { kind: "user", id: "u1", anchorId: "u1", content: "hi", ts: "" } as TimelineEntry,
       { kind: "assistant", id: "a1", anchorId: "a1", content: "hello", ts: "" } as TimelineEntry,
     ];
-    const turns: TurnUsage[] = [{ turnIndex: 0, inputTokens: 10, outputTokens: 20, cacheReadTokens: 0, cacheWriteTokens: 0, cost: 0.001 }];
+    const turns: TurnUsage[] = [
+      {
+        turnIndex: 0,
+        inputTokens: 10,
+        outputTokens: 20,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        cost: 0.001,
+      },
+    ];
     const out = renderInsightReport({ run, timeline: tl, usage, turnUsages: turns });
     expect(out).toContain("&gt; hi");
     expect(out).toContain("hello");

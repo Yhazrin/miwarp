@@ -19,9 +19,7 @@
     onValueChange?: (value: string) => void;
   } = $props();
 
-  let selectItems = $derived(
-    servers.map((s) => ({ value: s.value, label: s.label })),
-  );
+  let selectItems = $derived(servers.map((s) => ({ value: s.value, label: s.label })));
 
   let currentLabel = $derived(
     servers.find((s) => s.value === value)?.label || t("settings_mobile_server"),

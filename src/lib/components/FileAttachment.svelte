@@ -133,7 +133,8 @@
     <span class={colorClasses.size}>{formatBytes(size)}</span>
   {/if}
   {#if onremove}
-    <button type="button"
+    <button
+      type="button"
       class="ml-auto text-muted-foreground hover:text-foreground"
       onclick={onremove}
       aria-label={t("common_removeAttachment")}

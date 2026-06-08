@@ -30,7 +30,8 @@
 </script>
 
 {#if cliVersionInfo?.installed}
-  <button type="button"
+  <button
+    type="button"
     class="tabular-nums hover:text-muted-foreground transition-colors"
     onclick={() => onNavigate("/release-notes")}
   >
@@ -38,7 +39,8 @@
   </button>
   {#if hasUpdate}
     <span class="text-primary/70">·</span>
-    <button type="button"
+    <button
+      type="button"
       class="text-primary/70 hover:text-primary transition-colors"
       onclick={() => onNavigate("/release-notes")}
       title={t("chat_cliUpdateAvailable").replace("{version}", channelLatest!)}
@@ -60,7 +62,8 @@
         onclick={() => (targetDropdownOpen = false)}
       ></div>
     {/if}
-    <button type="button"
+    <button
+      type="button"
       class="inline-flex items-center gap-1 cursor-pointer text-xs {currentRemoteHostName
         ? 'text-[hsl(var(--miwarp-status-info)/0.7)] hover:text-miwarp-status-info'
         : 'text-muted-foreground hover:text-foreground'} transition-colors"
@@ -89,7 +92,8 @@
       <div
         class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded-md border border-border bg-popover py-1 shadow-md z-50"
       >
-        <button type="button"
+        <button
+          type="button"
           class="flex w-full items-center gap-1.5 px-3 py-1.5 text-xs {!currentRemoteHostName
             ? 'text-foreground font-medium'
             : 'text-foreground/70 hover:bg-accent'} transition-colors"
@@ -102,7 +106,8 @@
           {t("chat_local")}
         </button>
         {#each remoteHosts as host (host.name)}
-          <button type="button"
+          <button
+            type="button"
             class="flex w-full items-center gap-1.5 px-3 py-1.5 text-xs {currentRemoteHostName ===
             host.name
               ? 'text-foreground font-medium'

@@ -118,11 +118,16 @@
       <div class="mt-3 flex flex-col gap-1">
         {#each parsed.subTables as table}
           <div>
-            <button type="button"
+            <button
+              type="button"
               class="flex items-center gap-1 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors"
               onclick={() => toggleSection(table.title)}
             >
-              <Icon name="chevron-right" size="xs" class="transition-transform {expandedSections.has(table.title) ? 'rotate-90' : ''}" />
+              <Icon
+                name="chevron-right"
+                size="xs"
+                class="transition-transform {expandedSections.has(table.title) ? 'rotate-90' : ''}"
+              />
               {table.title}
               <span class="text-muted-foreground/40">({table.rows.length})</span>
             </button>

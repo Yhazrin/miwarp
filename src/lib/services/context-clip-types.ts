@@ -7,12 +7,7 @@
  * attachment (which has its own transport).
  */
 
-export type ContextClipSource =
-  | "chat-bubble"
-  | "tool-output"
-  | "artifact"
-  | "file"
-  | "manual";
+export type ContextClipSource = "chat-bubble" | "tool-output" | "artifact" | "file" | "manual";
 
 export interface ContextClip {
   /** UUID v4 (or runId + counter for tests). */

@@ -63,7 +63,11 @@
       color: "text-miwarp-status-success",
       bgColor: "bg-[hsl(var(--miwarp-status-success)/0.1)]",
     },
-    failed: { label: t("taskExec_failed"), color: "text-miwarp-status-error", bgColor: "bg-[hsl(var(--miwarp-status-error)/0.1)]" },
+    failed: {
+      label: t("taskExec_failed"),
+      color: "text-miwarp-status-error",
+      bgColor: "bg-[hsl(var(--miwarp-status-error)/0.1)]",
+    },
   };
 
   let config = $derived(statusConfig[status] || statusConfig.queued);
@@ -155,7 +159,8 @@
       <span class="rounded-md px-2 py-1 text-xs font-medium {config.bgColor} {config.color}">
         {config.label}
       </span>
-      <button type="button"
+      <button
+        type="button"
         class="rounded-md p-1.5 hover:bg-accent transition-colors"
         aria-label="Close"
         onclick={() => onClose?.()}
@@ -169,7 +174,10 @@
   <div class="border-b px-4 py-3">
     <div class="flex items-center justify-between text-sm mb-2">
       <span class="text-muted-foreground">
-        {t("taskExec_stepProgress", { currentStep: String(currentStep), totalSteps: String(totalSteps) })}
+        {t("taskExec_stepProgress", {
+          currentStep: String(currentStep),
+          totalSteps: String(totalSteps),
+        })}
       </span>
       <span class="font-medium">{progress.toFixed(0)}%</span>
     </div>
@@ -189,10 +197,7 @@
   <!-- Logs -->
   <div bind:this={logContainer} class="flex-1 overflow-y-auto p-4 font-mono text-xs">
     {#if logs.length === 0}
-      <EmptyState
-        title={t("taskExecution_waiting")}
-        class="h-full text-muted-foreground"
-      >
+      <EmptyState title={t("taskExecution_waiting")} class="h-full text-muted-foreground">
         {#snippet iconComponent()}
           <Icon name="clock" size="lg" class="opacity-50 mb-2" />
         {/snippet}
@@ -233,7 +238,8 @@
     </div>
     <div class="flex items-center gap-2">
       {#if status === "running"}
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent transition-colors"
           onclick={() => onCancel?.()}
         >
@@ -241,7 +247,8 @@
         </button>
       {/if}
       {#if status === "failed"}
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           onclick={() => onRetry?.()}
         >

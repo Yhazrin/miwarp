@@ -25,7 +25,8 @@
       <path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9" /><path d="M12 12v3" />
     </svg>
     <span class="text-foreground/60">{t("chat_forkedBanner")}</span>
-    <button type="button"
+    <button
+      type="button"
       class="ml-auto shrink-0 text-miwarp-status-info hover:text-[hsl(var(--miwarp-status-info)/0.8)] underline underline-offset-2"
       onclick={onViewParent}>{t("chat_viewParent")}</button
     >

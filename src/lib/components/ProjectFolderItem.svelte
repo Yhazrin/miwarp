@@ -489,7 +489,8 @@
 
     <!-- Canvas mascot — shown when enabled, regardless of status -->
     {#if showMascot}
-      <button type="button"
+      <button
+        type="button"
         class="shrink-0 cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity rounded"
         onclick={onMascotClick}
         title={t("mascot_clickToOpen") ?? "查看运行状态"}
@@ -667,7 +668,11 @@
               >
             </div>
             {#if visibleConversations.length >= VIRTUAL_THRESHOLD}
-              <VirtualList items={visibleConversations} itemHeight={ITEM_HEIGHT} class="max-h-[60vh]">
+              <VirtualList
+                items={visibleConversations}
+                itemHeight={ITEM_HEIGHT}
+                class="max-h-[60vh]"
+              >
                 {#snippet item(conv)}
                   <ConversationItem
                     conversation={conv}
@@ -714,7 +719,8 @@
               </p>
             {/if}
             {#if hasMore}
-              <button type="button"
+              <button
+                type="button"
                 class="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md transition-colors"
                 onclick={showMore}
               >
@@ -764,7 +770,8 @@
           {/each}
         {/if}
         {#if subFolders.length === 0 && hasMore}
-          <button type="button"
+          <button
+            type="button"
             class="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 rounded-md transition-colors"
             onclick={showMore}
           >

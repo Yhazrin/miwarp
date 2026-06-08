@@ -52,7 +52,12 @@
 
 <MiPopover bind:open onOpenChange={handleOpenChange} contentClass="w-80 p-0" sideOffset={4}>
   {#snippet trigger({ props })}
-    <button {...props} type="button" class="{triggerClass} {props.class ?? ''}" aria-label={displayValue}>
+    <button
+      {...props}
+      type="button"
+      class="{triggerClass} {props.class ?? ''}"
+      aria-label={displayValue}
+    >
       <svg
         class="h-3.5 w-3.5 text-muted-foreground"
         viewBox="0 0 24 24"

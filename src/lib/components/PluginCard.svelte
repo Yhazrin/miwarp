@@ -143,7 +143,8 @@
     </div>
     <div class="flex items-center gap-2 shrink-0">
       <!-- Enable/Disable toggle -->
-      <button type="button"
+      <button
+        type="button"
         class="rounded-md border px-2 py-1 text-xs transition-colors disabled:opacity-50 {enabled
           ? 'text-miwarp-status-success border-[hsl(var(--miwarp-status-success)/0.3)] hover:bg-[hsl(var(--miwarp-status-success)/0.1)]'
           : 'text-muted-foreground hover:bg-muted'}"
@@ -153,7 +154,8 @@
         {enabled ? t("plugin_enabled") : t("plugin_disabled")}
       </button>
       <!-- Update button -->
-      <button type="button"
+      <button
+        type="button"
         class="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
         onclick={() => onUpdate?.(installedPlugin)}
         disabled={isLoading}
@@ -162,7 +164,8 @@
         {t("plugin_update")}
       </button>
       <!-- Uninstall button -->
-      <button type="button"
+      <button
+        type="button"
         class="rounded-md border border-destructive/30 px-2 py-1 text-xs text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
         onclick={() => onUninstall?.(installedPlugin)}
         disabled={isLoading}
@@ -192,7 +195,8 @@
       </div>
       <div class="flex items-center gap-2 shrink-0">
         <!-- Install button -->
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           onclick={() => onInstall?.(plugin.name)}
           disabled={isLoading}

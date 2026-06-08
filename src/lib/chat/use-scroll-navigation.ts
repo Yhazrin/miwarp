@@ -255,7 +255,11 @@ export function createScrollNavigation(ctx: ScrollNavigationContext) {
 
       setReadingHistory?.(true);
 
-      if (!getLoadingMore() && !getSuppressLoadMoreRearm() && chatArea.scrollTop > LOAD_MORE_REARM_SCROLL) {
+      if (
+        !getLoadingMore() &&
+        !getSuppressLoadMoreRearm() &&
+        chatArea.scrollTop > LOAD_MORE_REARM_SCROLL
+      ) {
         setLoadMoreArmed(true);
       }
 

@@ -38,12 +38,22 @@
   let intervalUnit = $state<"minutes" | "hours">("minutes");
 
   const WEEKDAY_ABBREV = $derived([
-    t("weekday_sun"), t("weekday_mon"), t("weekday_tue"), t("weekday_wed"),
-    t("weekday_thu"), t("weekday_fri"), t("weekday_sat"),
+    t("weekday_sun"),
+    t("weekday_mon"),
+    t("weekday_tue"),
+    t("weekday_wed"),
+    t("weekday_thu"),
+    t("weekday_fri"),
+    t("weekday_sat"),
   ]);
   const WEEKDAY_FULL = $derived([
-    t("weekday_sunday"), t("weekday_monday"), t("weekday_tuesday"), t("weekday_wednesday"),
-    t("weekday_thursday"), t("weekday_friday"), t("weekday_saturday"),
+    t("weekday_sunday"),
+    t("weekday_monday"),
+    t("weekday_tuesday"),
+    t("weekday_wednesday"),
+    t("weekday_thursday"),
+    t("weekday_friday"),
+    t("weekday_saturday"),
   ]);
 
   // Common presets
@@ -267,12 +277,12 @@ editing cron expressions * with real-time preview and natural language descripti
         {disabled}
         class="w-full px-2 py-1.5 rounded-lg border border-input bg-background text-xs"
       >
-        <option value="minute">{t('cron_everyMinute')}</option>
-        <option value="hourly">{t('cron_hourly')}</option>
-        <option value="daily">{t('cron_daily')}</option>
-        <option value="weekly">{t('cron_weekly')}</option>
-        <option value="monthly">{t('cron_monthly')}</option>
-        <option value="custom">{t('cron_custom')}</option>
+        <option value="minute">{t("cron_everyMinute")}</option>
+        <option value="hourly">{t("cron_hourly")}</option>
+        <option value="daily">{t("cron_daily")}</option>
+        <option value="weekly">{t("cron_weekly")}</option>
+        <option value="monthly">{t("cron_monthly")}</option>
+        <option value="custom">{t("cron_custom")}</option>
       </select>
     </div>
 
@@ -483,7 +493,9 @@ editing cron expressions * with real-time preview and natural language descripti
 
   <!-- Preview -->
   <div class="p-2 rounded-lg bg-primary/10 border border-primary/20">
-    <div class="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{t("cronEditor_preview")}</div>
+    <div class="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">
+      {t("cronEditor_preview")}
+    </div>
     <div class="text-xs font-medium text-primary">{description}</div>
     <div class="text-[10px] font-mono text-muted-foreground mt-1">{value}</div>
   </div>

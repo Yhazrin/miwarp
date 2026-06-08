@@ -67,26 +67,30 @@
           {t(`error_guidance_${classified.category}`)}
         </p>
       </div>
-      <button type="button"
+      <button
+        type="button"
         class="shrink-0 text-destructive/50 hover:text-destructive text-xs"
         onclick={onDismiss}>{t("common_dismiss")}</button
       >
     </div>
     <div class="flex items-center gap-2 mt-2 pl-6">
       {#if onRetry && classified.canRetry && phase === "failed" && sessionId}
-        <button type="button"
+        <button
+          type="button"
           class="rounded px-2.5 py-1 text-xs bg-destructive/20 hover:bg-destructive/30 text-destructive transition-colors"
           onclick={onRetry}>{t("common_retry")}</button
         >
       {/if}
       {#if onFork && classified.canFork && sessionId}
-        <button type="button"
+        <button
+          type="button"
           class="rounded px-2.5 py-1 text-xs bg-[hsl(var(--miwarp-status-info)/0.2)] hover:bg-[hsl(var(--miwarp-status-info)/0.3)] text-miwarp-status-info transition-colors"
           onclick={onFork}>{t("statusbar_fork")}</button
         >
       {/if}
       {#if classified.settingsLink}
-        <button type="button"
+        <button
+          type="button"
           class="rounded px-2.5 py-1 text-xs bg-accent hover:bg-accent/80 text-foreground transition-colors"
           onclick={() => onGotoSettings(classified.settingsLink!)}>{t("error_openSettings")}</button
         >

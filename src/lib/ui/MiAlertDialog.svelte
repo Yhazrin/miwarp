@@ -55,10 +55,7 @@
 <AlertDialog.Root bind:open>
   <AlertDialog.Portal>
     <AlertDialog.Overlay class={MIWARP_DIALOG_OVERLAY_CLASS} />
-    <AlertDialog.Content
-      class={MIWARP_DIALOG_CONTENT_MD_CLASS}
-      style={MIWARP_DIALOG_CONTENT_STYLE}
-    >
+    <AlertDialog.Content class={MIWARP_DIALOG_CONTENT_MD_CLASS} style={MIWARP_DIALOG_CONTENT_STYLE}>
       {#if title}
         <AlertDialog.Title class="mb-1 text-base font-semibold text-foreground">
           {title}

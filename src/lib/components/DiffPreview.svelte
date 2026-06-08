@@ -92,9 +92,12 @@
 
   // 处理行高亮
   function getLineClass(line: string): string {
-    if (line.startsWith("+")) return "bg-[hsl(var(--miwarp-status-success)/0.15)] text-miwarp-status-success";
-    if (line.startsWith("-")) return "bg-[hsl(var(--miwarp-status-error)/0.15)] text-miwarp-status-error";
-    if (line.startsWith("@@")) return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info font-medium";
+    if (line.startsWith("+"))
+      return "bg-[hsl(var(--miwarp-status-success)/0.15)] text-miwarp-status-success";
+    if (line.startsWith("-"))
+      return "bg-[hsl(var(--miwarp-status-error)/0.15)] text-miwarp-status-error";
+    if (line.startsWith("@@"))
+      return "bg-[hsl(var(--miwarp-status-info)/0.1)] text-miwarp-status-info font-medium";
     if (
       line.startsWith("diff") ||
       line.startsWith("index") ||
@@ -161,7 +164,8 @@
     <div class="flex items-center gap-2">
       <!-- 模式切换 -->
       <div class="flex rounded-lg border border-border/40 p-0.5">
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors {mode ===
           'unified'
             ? 'bg-primary text-primary-foreground'
@@ -170,7 +174,8 @@
         >
           Unified
         </button>
-        <button type="button"
+        <button
+          type="button"
           class="rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors {mode === 'split'
             ? 'bg-primary text-primary-foreground'
             : 'text-muted-foreground hover:text-foreground'}"
@@ -182,7 +187,8 @@
 
       <!-- 操作按钮 -->
       {#if onApply}
-        <button type="button"
+        <button
+          type="button"
           class="rounded-lg bg-miwarp-status-success px-2.5 py-1 text-[11px] font-medium text-miwarp-accent-on-accent hover:bg-[hsl(var(--miwarp-status-success)/0.9)] transition-colors"
           onclick={onApply}
         >
@@ -191,17 +197,23 @@
       {/if}
 
       {#if collapsible}
-        <button type="button"
+        <button
+          type="button"
           class="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           onclick={() => (expanded = !expanded)}
           aria-label={expanded ? "Collapse" : "Expand"}
         >
-          <Icon name="chevron-down" size="md" class="transition-transform {expanded ? 'rotate-180' : ''}" />
+          <Icon
+            name="chevron-down"
+            size="md"
+            class="transition-transform {expanded ? 'rotate-180' : ''}"
+          />
         </button>
       {/if}
 
       {#if onClose}
-        <button type="button"
+        <button
+          type="button"
           class="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           onclick={onClose}
           aria-label={t("common_close")}
@@ -256,9 +268,7 @@
                   >
                 </div>
                 <div class="flex-1 flex border-l border-border/40">
-                  <span
-                    class="w-8 shrink-0 select-none text-right pr-2 text-muted-foreground/40"
-                  >
+                  <span class="w-8 shrink-0 select-none text-right pr-2 text-muted-foreground/40">
                     {lineNum.newLine ?? ""}
                   </span>
                   <span
@@ -276,7 +286,10 @@
 
   <!-- Footer hint -->
   {#if expanded && diff.trim()}
-    <div class="border-t border-border/40 px-4 py-2 bg-muted/20" transition:slide={{ duration: 200 }}>
+    <div
+      class="border-t border-border/40 px-4 py-2 bg-muted/20"
+      transition:slide={{ duration: 200 }}
+    >
       <p class="text-[10px] text-muted-foreground/70 text-center">
         {t("diff_inlineHint")}
       </p>

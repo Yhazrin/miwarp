@@ -55,4 +55,3 @@ export const DEFAULT_PACK: SoundPackName = "aero";
  * Backwards-compat alias: the default pack's role → source mapping.
  */
 export const roleRegistry: SoundPack = aeroPack;
-

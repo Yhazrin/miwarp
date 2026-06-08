@@ -50,10 +50,18 @@
       <span id="tooltip-content">{text}</span>
       <div
         class="absolute w-1.5 h-1.5 bg-popover border-border rotate-45
-          {placement === 'top' ? 'top-full left-1/2 -translate-x-1/2 -mt-0.5 border-r border-b' : ''}
-          {placement === 'bottom' ? 'bottom-full left-1/2 -translate-x-1/2 -mb-0.5 border-l border-t' : ''}
-          {placement === 'left' ? 'left-full top-1/2 -translate-y-1/2 -ml-0.5 border-t border-r' : ''}
-          {placement === 'right' ? 'right-full top-1/2 -translate-y-1/2 -mr-0.5 border-b border-l' : ''}
+          {placement === 'top'
+          ? 'top-full left-1/2 -translate-x-1/2 -mt-0.5 border-r border-b'
+          : ''}
+          {placement === 'bottom'
+          ? 'bottom-full left-1/2 -translate-x-1/2 -mb-0.5 border-l border-t'
+          : ''}
+          {placement === 'left'
+          ? 'left-full top-1/2 -translate-y-1/2 -ml-0.5 border-t border-r'
+          : ''}
+          {placement === 'right'
+          ? 'right-full top-1/2 -translate-y-1/2 -mr-0.5 border-b border-l'
+          : ''}
         "
       ></div>
     </div>

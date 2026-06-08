@@ -27,7 +27,9 @@
     {#if allDone}
       <Icon name="check" size="xs" class="text-miwarp-status-success shrink-0" />
     {:else if stats.running > 0}
-      <span class="inline-block h-1.5 w-1.5 rounded-full bg-miwarp-status-info animate-pulse shrink-0"></span>
+      <span
+        class="inline-block h-1.5 w-1.5 rounded-full bg-miwarp-status-info animate-pulse shrink-0"
+      ></span>
     {/if}
     <span>
       {t("batch_status", {

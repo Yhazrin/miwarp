@@ -98,7 +98,7 @@ export function captureEnvSnapshot(): ShellEnvSnapshot {
   }
   return {
     shell: detectShellEnv(),
-    cwd: typeof process !== "undefined" ? process.cwd?.() ?? "" : "",
+    cwd: typeof process !== "undefined" ? (process.cwd?.() ?? "") : "",
     envKeys: keys,
     capturedAt: Date.now(),
     schemaVersion: SCHEMA_VERSION,

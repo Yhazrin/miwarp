@@ -1,7 +1,6 @@
 /** Shared surface classes for Bits UI wrappers (MiWarp design tokens). */
 
-export const MIWARP_DIALOG_OVERLAY_CLASS =
-  "fixed inset-0 z-50 bg-miwarp-overlay backdrop-blur-md";
+export const MIWARP_DIALOG_OVERLAY_CLASS = "fixed inset-0 z-50 bg-miwarp-overlay backdrop-blur-md";
 
 export const MIWARP_DIALOG_CONTENT_CLASS =
   "elevation-3 outline-hidden fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] p-6 backdrop-blur-2xl";

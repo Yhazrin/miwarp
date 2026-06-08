@@ -13,9 +13,8 @@
     statusCode?: number;
   }
 
-  const mcp__workspace__web_fetch = (
-    globalThis as Record<string, unknown>
-  ).mcp__workspace__web_fetch as
+  const mcp__workspace__web_fetch = (globalThis as Record<string, unknown>)
+    .mcp__workspace__web_fetch as
     | ((args: Record<string, unknown>) => Promise<WebFetchResult>)
     | undefined;
 
@@ -132,7 +131,12 @@
         onkeydown={handleKeyDown}
         class="flex-1 p-3 bg-miwarp-bg-deepest border border-miwarp-border rounded text-miwarp-text-primary text-sm focus:outline-none focus:border-miwarp-accent-primary"
       />
-      <button type="button" class="rounded-lg px-6 py-3 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={fetchUrl} disabled={isLoading || !url}>
+      <button
+        type="button"
+        class="rounded-lg px-6 py-3 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors"
+        onclick={fetchUrl}
+        disabled={isLoading || !url}
+      >
         {isLoading ? t("webfetch_fetching") : t("webfetch_fetch")}
       </button>
     </div>
@@ -143,13 +147,21 @@
     <div class="p-3 bg-miwarp-bg-deepest rounded-md">
       <div class="flex justify-between items-center mb-2">
         <span class="text-sm text-miwarp-text-secondary">{t("webfetch_recentUrls")}</span>
-        <button type="button" class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors" onclick={() => (fetchHistory = [])}>
+        <button
+          type="button"
+          class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors"
+          onclick={() => (fetchHistory = [])}
+        >
           {t("webfetch_clear")}
         </button>
       </div>
       <div class="flex flex-wrap gap-2">
         {#each fetchHistory as historyUrl}
-          <button type="button" class="px-2 py-1 bg-miwarp-bg-surface border border-miwarp-border rounded text-miwarp-text-primary text-xs cursor-pointer max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap transition-all duration-150 hover:bg-miwarp-bg-elevated hover:border-miwarp-accent-primary" onclick={() => selectFromHistory(historyUrl)}>
+          <button
+            type="button"
+            class="px-2 py-1 bg-miwarp-bg-surface border border-miwarp-border rounded text-miwarp-text-primary text-xs cursor-pointer max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap transition-all duration-150 hover:bg-miwarp-bg-elevated hover:border-miwarp-accent-primary"
+            onclick={() => selectFromHistory(historyUrl)}
+          >
             {historyUrl}
           </button>
         {/each}
@@ -164,7 +176,9 @@
         <h4 class="m-0 text-sm text-miwarp-text-secondary">{t("webfetch_response")}</h4>
         <div class="flex gap-2 items-center">
           <span
-            class="px-2 py-1 rounded text-xs font-semibold {statusCode < 400 ? 'bg-miwarp-status-success text-miwarp-accent-on-accent' : 'bg-miwarp-status-error text-miwarp-accent-on-accent'}"
+            class="px-2 py-1 rounded text-xs font-semibold {statusCode < 400
+              ? 'bg-miwarp-status-success text-miwarp-accent-on-accent'
+              : 'bg-miwarp-status-error text-miwarp-accent-on-accent'}"
           >
             {statusCode}
           </span>
@@ -175,7 +189,11 @@
       </div>
 
       <!-- Toggle Headers -->
-      <button type="button" class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer border-none transition-colors mb-3" onclick={() => (showHeaders = !showHeaders)}>
+      <button
+        type="button"
+        class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer border-none transition-colors mb-3"
+        onclick={() => (showHeaders = !showHeaders)}
+      >
         {showHeaders ? t("webfetch_hideHeaders") : t("webfetch_showHeaders")}
       </button>
 
@@ -199,22 +217,45 @@
       <div class="flex justify-between items-center mb-2">
         <h4 class="m-0 text-sm text-miwarp-text-secondary">{t("webfetch_content")}</h4>
         <div class="flex gap-2">
-          <button type="button" class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors" onclick={copyContent}> {t("webfetch_copy")} </button>
-          <button type="button" class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors" onclick={clearContent}> {t("webfetch_clear")} </button>
+          <button
+            type="button"
+            class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors"
+            onclick={copyContent}
+          >
+            {t("webfetch_copy")}
+          </button>
+          <button
+            type="button"
+            class="text-muted-foreground hover:text-foreground text-sm px-2 py-1 bg-transparent border-none cursor-pointer transition-colors"
+            onclick={clearContent}
+          >
+            {t("webfetch_clear")}
+          </button>
         </div>
       </div>
       <div class="flex-1 bg-miwarp-bg-deepest rounded-md overflow-auto max-h-[300px]">
-        <pre class="m-0 p-3 text-xs font-[Courier_New,monospace] whitespace-pre-wrap break-words text-miwarp-text-primary">{displayedContent}</pre>
+        <pre
+          class="m-0 p-3 text-xs font-[Courier_New,monospace] whitespace-pre-wrap break-words text-miwarp-text-primary">{displayedContent}</pre>
       </div>
     </div>
   {/if}
 
   <!-- Error Display -->
   {#if error}
-    <div class="flex items-center gap-2 p-3 bg-miwarp-status-error/10 border border-miwarp-status-error rounded-md">
+    <div
+      class="flex items-center gap-2 p-3 bg-miwarp-status-error/10 border border-miwarp-status-error rounded-md"
+    >
       <Icon name="triangle-alert" size="lg" class="text-miwarp-status-error shrink-0" />
       <span class="flex-1 text-sm text-miwarp-status-error">{error}</span>
-      <button type="button" class="px-2 py-1 bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer transition-colors" onclick={() => (error = null)} title={t("common_close")} aria-label={t("common_close")}> × </button>
+      <button
+        type="button"
+        class="px-2 py-1 bg-transparent border-none text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+        onclick={() => (error = null)}
+        title={t("common_close")}
+        aria-label={t("common_close")}
+      >
+        ×
+      </button>
     </div>
   {/if}
 

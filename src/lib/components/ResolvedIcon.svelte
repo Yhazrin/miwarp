@@ -17,4 +17,4 @@
   const name = $derived(resolveIconName(icon, fallback));
 </script>
 
-<Icon name={name} {size} class={className} />
+<Icon {name} {size} class={className} />

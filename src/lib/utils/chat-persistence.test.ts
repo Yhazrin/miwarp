@@ -12,9 +12,8 @@ describe("chat-persistence", () => {
   });
 
   it("write + clear are no-ops when localStorage is unavailable", async () => {
-    const { writeActiveSessionId, clearActiveSessionId, readActiveSessionId } = await import(
-      "./chat-persistence"
-    );
+    const { writeActiveSessionId, clearActiveSessionId, readActiveSessionId } =
+      await import("./chat-persistence");
     expect(() => writeActiveSessionId("run-1")).not.toThrow();
     expect(() => clearActiveSessionId()).not.toThrow();
     expect(readActiveSessionId()).toBe("");

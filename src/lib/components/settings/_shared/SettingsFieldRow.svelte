@@ -29,7 +29,9 @@
     <SettingsSavedIndicator />
   {/if}
   <div
-    class="flex {align === 'between' ? 'items-center justify-between' : 'items-start gap-3'} gap-4 py-1.5"
+    class="flex {align === 'between'
+      ? 'items-center justify-between'
+      : 'items-start gap-3'} gap-4 py-1.5"
   >
     {#if label || description || overrideBadge}
       <div class="flex items-start gap-2 min-w-0 flex-1">

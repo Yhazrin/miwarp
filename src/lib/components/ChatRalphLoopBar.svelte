@@ -19,7 +19,10 @@
       <span class="animate-pulse">🔄</span>
       <span class="font-medium">{t("chat_ralphLoop")}</span>
       <span class="text-[hsl(var(--miwarp-status-info)/0.7)]">
-        {t("ralphLoop_iteration", { iteration: String(iteration), maxIterations: String(maxIterations || "∞") })}
+        {t("ralphLoop_iteration", {
+          iteration: String(iteration),
+          maxIterations: String(maxIterations || "∞"),
+        })}
       </span>
       {#if completionPromise}
         <span class="text-[hsl(var(--miwarp-status-info)/0.5)]">
@@ -27,7 +30,8 @@
         </span>
       {/if}
     </div>
-    <button type="button"
+    <button
+      type="button"
       class="rounded px-2 py-0.5 text-xs text-miwarp-status-error hover:bg-[hsl(var(--miwarp-status-error)/0.2)] transition-colors"
       onclick={onCancel}
     >

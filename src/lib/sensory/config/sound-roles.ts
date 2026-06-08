@@ -13,12 +13,7 @@
  *   hero.*         → Hero sounds          (celebration, disabled by default)
  */
 
-export type SoundCategory =
-  | "interaction"
-  | "overlay"
-  | "navigation"
-  | "notification"
-  | "hero";
+export type SoundCategory = "interaction" | "overlay" | "navigation" | "notification" | "hero";
 
 export type InteractionRole =
   | "interaction.tap"
@@ -26,16 +21,9 @@ export type InteractionRole =
   | "interaction.toggle"
   | "interaction.confirm";
 
-export type OverlayRole =
-  | "overlay.open"
-  | "overlay.close"
-  | "overlay.expand"
-  | "overlay.collapse";
+export type OverlayRole = "overlay.open" | "overlay.close" | "overlay.expand" | "overlay.collapse";
 
-export type NavigationRole =
-  | "navigation.forward"
-  | "navigation.backward"
-  | "navigation.tab";
+export type NavigationRole = "navigation.forward" | "navigation.backward" | "navigation.tab";
 
 export type NotificationRole =
   | "notification.info"

@@ -41,10 +41,7 @@ export function getAudioContext(): AudioContext {
  * Synthesizers are the preferred approach for built-in sound packs - no
  * decoding step, no base64 bloat, zero network requests.
  */
-export type SoundSynthesizer = (
-  ctx: AudioContext,
-  options: PlaySoundOptions
-) => SoundPlayback;
+export type SoundSynthesizer = (ctx: AudioContext, options: PlaySoundOptions) => SoundPlayback;
 
 /**
  * A sound source is either:
@@ -94,7 +91,9 @@ export async function decodeAudioData(source: string): Promise<AudioBuffer> {
   const ctx = getAudioContext();
   const response = await fetch(source);
   if (!response.ok) {
-    throw new Error(`[sensory-ui] Failed to fetch audio: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `[sensory-ui] Failed to fetch audio: ${response.status} ${response.statusText}`,
+    );
   }
   const arrayBuffer = await response.arrayBuffer();
   const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
@@ -118,7 +117,7 @@ export interface SoundPlayback {
 
 export async function playSound(
   source: SoundSource,
-  options: PlaySoundOptions = {}
+  options: PlaySoundOptions = {},
 ): Promise<SoundPlayback> {
   const { volume = 1, playbackRate = 1, onEnd } = options;
 
@@ -134,7 +133,11 @@ export async function playSound(
   // Cancel the previously playing sound to prevent overlapping audio
   // when users spam-click or rapidly trigger interactions.
   if (activePlayback) {
-    try { activePlayback.stop(); } catch { /* ok */ }
+    try {
+      activePlayback.stop();
+    } catch {
+      /* ok */
+    }
     activePlayback = null;
   }
 

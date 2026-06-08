@@ -68,19 +68,13 @@ describe("settings tab registry", () => {
     it("returns the 4 expected groups, each with the right tabs", () => {
       const grouped = tabsByGroup();
       expect(grouped.display.map((t) => t.id)).toEqual(["appearance"]);
-      expect(grouped.integration.map((t) => t.id)).toEqual([
-        "providers",
-        "devices",
-      ]);
+      expect(grouped.integration.map((t) => t.id)).toEqual(["providers", "devices"]);
       expect(grouped.automation.map((t) => t.id)).toEqual([
         "shortcuts",
         "remote-hosts",
         "cli-behavior",
       ]);
-      expect(grouped.system.map((t) => t.id)).toEqual([
-        "notifications",
-        "data-debug",
-      ]);
+      expect(grouped.system.map((t) => t.id)).toEqual(["notifications", "data-debug"]);
     });
 
     it("every SETTINGS_TABS entry appears in exactly one group", () => {

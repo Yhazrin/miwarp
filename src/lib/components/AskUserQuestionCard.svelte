@@ -79,12 +79,14 @@
       });
     }
     if (typeof tool.input.question === "string") {
-      return [{
-        question: tool.input.question,
-        header: "",
-        options: extractOptions(tool.input.options as unknown),
-        multiSelect: tool.input.multiSelect === true,
-      }];
+      return [
+        {
+          question: tool.input.question,
+          header: "",
+          options: extractOptions(tool.input.options as unknown),
+          multiSelect: tool.input.multiSelect === true,
+        },
+      ];
     }
     return [];
   });
@@ -143,7 +145,12 @@
   let askAnswer = $derived(askQuestion ? (askAnswersMap[askQuestion] ?? "") : "");
   let askAnswerSet = $derived.by(() => {
     if (!askAnswer) return new Set<string>();
-    return new Set(askAnswer.split(", ").map((s) => s.trim()).filter(Boolean));
+    return new Set(
+      askAnswer
+        .split(", ")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    );
   });
 
   function multiCount(): number {
@@ -167,7 +174,9 @@
     }
   }
 
-  async function safePermissionRespond(...args: Parameters<NonNullable<typeof onPermissionRespond>>) {
+  async function safePermissionRespond(
+    ...args: Parameters<NonNullable<typeof onPermissionRespond>>
+  ) {
     try {
       await onPermissionRespond?.(...args);
     } catch {
@@ -221,74 +230,136 @@
 
 {#if tool.status === "running" || tool.status === "ask_pending"}
   <!-- Pending: question + options -->
-  <div class="glass-card gradient-border-left rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] px-4 py-3">
+  <div
+    class="glass-card gradient-border-left rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] px-4 py-3"
+  >
     <div class="flex items-center gap-2 mb-2">
       <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded {style.bg}">
-        <svg class="h-3 w-3 {style.text}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          class="h-3 w-3 {style.text}"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d={style.icon} />
         </svg>
       </div>
       <span class="text-xs font-medium text-foreground">{t("inline_question")}</span>
       <PhaseIndicator phase={currentPhase} elapsed={tool.elapsed_time_seconds} />
       <div class="h-3 w-3 shrink-0 ml-auto">
-        <Spinner size="xs" class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-status-warning)/0.3)] border-t-[hsl(var(--miwarp-status-warning))]" />
+        <Spinner
+          size="xs"
+          class="!h-2.5 !w-2.5 border-[hsl(var(--miwarp-status-warning)/0.3)] border-t-[hsl(var(--miwarp-status-warning))]"
+        />
       </div>
     </div>
-    <MarkdownContent text={askQuestion} class="text-sm text-foreground mb-3 [&>*:last-child]:mb-0" />
+    <MarkdownContent
+      text={askQuestion}
+      class="text-sm text-foreground mb-3 [&>*:last-child]:mb-0"
+    />
     {#if askOptions.length > 0 && onAnswer}
       {#if isMultiSelect}
         <div class="flex flex-wrap items-center gap-2">
           {#each askOptions as option}
-            <button type="button"
-              class="rounded-md border px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed {multiChecked[option] ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-foreground hover:bg-accent hover:border-ring/30'}"
-              disabled={submitting} onclick={() => toggleMulti(option)}>
-              {#if multiChecked[option]}<Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />{/if}
+            <button
+              type="button"
+              class="rounded-md border px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed {multiChecked[
+                option
+              ]
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border bg-background text-foreground hover:bg-accent hover:border-ring/30'}"
+              disabled={submitting}
+              onclick={() => toggleMulti(option)}
+            >
+              {#if multiChecked[option]}<Icon
+                  name="check"
+                  size="xs"
+                  class="inline mr-1 -mt-0.5"
+                />{/if}
               {option}
             </button>
           {/each}
-          <button type="button"
-            class="rounded-md border border-dashed px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed {otherActive[askQuestion] ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground hover:bg-accent hover:border-ring/30'}"
-            disabled={submitting} onclick={() => { otherActive = { ...otherActive, [askQuestion]: !otherActive[askQuestion] }; }}>
+          <button
+            type="button"
+            class="rounded-md border border-dashed px-3 py-1.5 text-xs font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed {otherActive[
+              askQuestion
+            ]
+              ? 'border-primary bg-primary/10 text-primary'
+              : 'border-border bg-background text-muted-foreground hover:bg-accent hover:border-ring/30'}"
+            disabled={submitting}
+            onclick={() => {
+              otherActive = { ...otherActive, [askQuestion]: !otherActive[askQuestion] };
+            }}
+          >
             {t("inline_other")}
           </button>
           {#if otherActive[askQuestion]}
-            <input type="text" bind:value={otherText[askQuestion]} placeholder={t("inline_otherPlaceholder")}
-              class="w-full rounded-md border border-border bg-transparent px-2 py-1 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring" />
+            <input
+              type="text"
+              bind:value={otherText[askQuestion]}
+              placeholder={t("inline_otherPlaceholder")}
+              class="w-full rounded-md border border-border bg-transparent px-2 py-1 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+            />
           {/if}
-          <button type="button"
+          <button
+            type="button"
             class="rounded-md bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={submitting || (multiCount() === 0 && !(otherActive[askQuestion] && otherText[askQuestion]?.trim()))}
+            disabled={submitting ||
+              (multiCount() === 0 && !(otherActive[askQuestion] && otherText[askQuestion]?.trim()))}
             onclick={() => {
               const selected = Object.keys(multiChecked).filter((k) => multiChecked[k]);
               const otherVal = otherActive[askQuestion] && otherText[askQuestion]?.trim();
               if (otherVal) selected.push(otherVal);
               if (selected.length > 0) handleAnswer(selected.join(", "));
-            }}>
-            {multiCount() > 0 ? t("inline_submitCount", { count: String(multiCount()) }) : t("inline_submit")}
+            }}
+          >
+            {multiCount() > 0
+              ? t("inline_submitCount", { count: String(multiCount()) })
+              : t("inline_submit")}
           </button>
         </div>
       {:else}
         <div class="flex flex-wrap gap-2">
           {#each askOptions as option}
-            <button type="button"
+            <button
+              type="button"
               class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent hover:border-ring/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={submitting} onclick={() => handleAnswer(option)}>
+              disabled={submitting}
+              onclick={() => handleAnswer(option)}
+            >
               {option}
             </button>
           {/each}
-          <button type="button"
+          <button
+            type="button"
             class="rounded-md border border-dashed border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:border-ring/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={submitting} onclick={() => { otherActive = { ...otherActive, [askQuestion]: true }; }}>
+            disabled={submitting}
+            onclick={() => {
+              otherActive = { ...otherActive, [askQuestion]: true };
+            }}
+          >
             {t("inline_other")}
           </button>
           {#if otherActive[askQuestion]}
             <div class="flex gap-1.5 w-full mt-0.5">
-              <input type="text" bind:value={otherText[askQuestion]} placeholder={t("inline_otherPlaceholder")}
-                class="flex-1 rounded-md border border-border bg-transparent px-2 py-1 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring" />
-              <button type="button"
+              <input
+                type="text"
+                bind:value={otherText[askQuestion]}
+                placeholder={t("inline_otherPlaceholder")}
+                class="flex-1 rounded-md border border-border bg-transparent px-2 py-1 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+              <button
+                type="button"
                 class="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={submitting || !otherText[askQuestion]?.trim()}
-                onclick={() => { const text = otherText[askQuestion]?.trim(); if (text) handleAnswer(text); }}>
+                onclick={() => {
+                  const text = otherText[askQuestion]?.trim();
+                  if (text) handleAnswer(text);
+                }}
+              >
                 {t("inline_submitOther")}
               </button>
             </div>
@@ -297,13 +368,20 @@
       {/if}
     {/if}
   </div>
-
 {:else if tool.status !== "permission_prompt"}
   <!-- Done: show answer(s) -->
   <div class="glass-card rounded-lg border border-border/30 bg-background/50 px-4 py-3">
     <div class="flex items-center gap-2 mb-2">
       <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded {style.bg}">
-        <svg class="h-3 w-3 {style.text}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          class="h-3 w-3 {style.text}"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d={style.icon} />
         </svg>
       </div>
@@ -314,123 +392,187 @@
       <div class="space-y-2">
         {#each parsedQuestions as pq}
           <div class="rounded-md border border-border/20 bg-muted/10 px-3 py-2">
-            {#if pq.header}<div class="text-[10px] font-medium text-muted-foreground mb-1">{pq.header}</div>{/if}
-            <MarkdownContent text={pq.question} class="text-xs text-foreground mb-1.5 [&>*:last-child]:mb-0" />
+            {#if pq.header}<div class="text-[10px] font-medium text-muted-foreground mb-1">
+                {pq.header}
+              </div>{/if}
+            <MarkdownContent
+              text={pq.question}
+              class="text-xs text-foreground mb-1.5 [&>*:last-child]:mb-0"
+            />
             {#if pq.options.length > 0}
               <div class="flex flex-wrap gap-1">
                 {#each pq.options as option}
-                  {@const isSelected = askAnswersMap[pq.question] === option.label || askAnswersMap[pq.question]?.includes(option.label)}
-                  <span class="rounded-md border px-2 py-0.5 text-[10px] {isSelected ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border/30 text-muted-foreground'}">
-                    {#if isSelected}<Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />{/if}
+                  {@const isSelected =
+                    askAnswersMap[pq.question] === option.label ||
+                    askAnswersMap[pq.question]?.includes(option.label)}
+                  <span
+                    class="rounded-md border px-2 py-0.5 text-[10px] {isSelected
+                      ? 'border-primary bg-primary/10 text-primary font-medium'
+                      : 'border-border/30 text-muted-foreground'}"
+                  >
+                    {#if isSelected}<Icon
+                        name="check"
+                        size="xs"
+                        class="inline mr-0.5 -mt-0.5"
+                      />{/if}
                     {option.label}
                   </span>
                 {/each}
                 {#if askAnnotationsMap[pq.question]}
-                  <span class="rounded-md border border-dashed border-border/30 px-2 py-0.5 text-[10px] text-muted-foreground italic">
+                  <span
+                    class="rounded-md border border-dashed border-border/30 px-2 py-0.5 text-[10px] text-muted-foreground italic"
+                  >
                     {askAnnotationsMap[pq.question]}
                   </span>
                 {/if}
               </div>
             {:else if askAnnotationsMap[pq.question]}
-              <span class="text-[10px] text-muted-foreground italic">{askAnnotationsMap[pq.question]}</span>
+              <span class="text-[10px] text-muted-foreground italic"
+                >{askAnnotationsMap[pq.question]}</span
+              >
             {:else if askAnswersMap[pq.question]}
               <span class="text-xs text-foreground">{askAnswersMap[pq.question]}</span>
             {/if}
           </div>
         {/each}
       </div>
-    {:else}
-      {#if askOptions.length > 0}
-        <div class="flex flex-wrap gap-1">
-          {#each askOptions as option}
-            {@const isSelected = askAnswerSet.has(option)}
-            <span class="rounded-md border px-2 py-0.5 text-[10px] {isSelected ? 'border-primary bg-primary/10 text-primary font-medium' : 'border-border/30 text-muted-foreground'}">
-              {#if isSelected}<Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />{/if}
-              {option}
-            </span>
-          {/each}
-          {#if askAnnotationsMap[askQuestion]}
-            <span class="rounded-md border border-dashed border-border/30 px-2 py-0.5 text-[10px] text-muted-foreground italic">
-              {askAnnotationsMap[askQuestion]}
-            </span>
-          {/if}
-        </div>
-      {:else if askAnnotationsMap[askQuestion]}
-        <span class="text-[10px] text-muted-foreground italic">{askAnnotationsMap[askQuestion]}</span>
-      {:else if askAnswer}
-        <span class="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary">
-          <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
-          {askAnswer}
-        </span>
-      {/if}
+    {:else if askOptions.length > 0}
+      <div class="flex flex-wrap gap-1">
+        {#each askOptions as option}
+          {@const isSelected = askAnswerSet.has(option)}
+          <span
+            class="rounded-md border px-2 py-0.5 text-[10px] {isSelected
+              ? 'border-primary bg-primary/10 text-primary font-medium'
+              : 'border-border/30 text-muted-foreground'}"
+          >
+            {#if isSelected}<Icon name="check" size="xs" class="inline mr-0.5 -mt-0.5" />{/if}
+            {option}
+          </span>
+        {/each}
+        {#if askAnnotationsMap[askQuestion]}
+          <span
+            class="rounded-md border border-dashed border-border/30 px-2 py-0.5 text-[10px] text-muted-foreground italic"
+          >
+            {askAnnotationsMap[askQuestion]}
+          </span>
+        {/if}
+      </div>
+    {:else if askAnnotationsMap[askQuestion]}
+      <span class="text-[10px] text-muted-foreground italic">{askAnnotationsMap[askQuestion]}</span>
+    {:else if askAnswer}
+      <span
+        class="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs text-primary"
+      >
+        <Icon name="check" size="xs" class="inline mr-1 -mt-0.5" />
+        {askAnswer}
+      </span>
     {/if}
   </div>
-
 {:else if tool.status === "permission_prompt" && tool.permission_request_id}
   <!-- Permission prompt: Allow/Deny -->
-  <div class="glass-card rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] px-4 py-3">
+  <div
+    class="glass-card rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.05)] px-4 py-3"
+  >
     <div class="flex items-center gap-2 mb-2">
       <div class="flex h-5 w-5 shrink-0 items-center justify-center rounded {style.bg}">
-        <svg class="h-3 w-3 {style.text}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          class="h-3 w-3 {style.text}"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d={style.icon} />
         </svg>
       </div>
       <span class="text-xs font-medium text-foreground">{t("inline_question")}</span>
       <PhaseIndicator phase={currentPhase} elapsed={tool.elapsed_time_seconds} />
     </div>
-    <MarkdownContent text={askQuestion} class="text-sm text-foreground mb-3 [&>*:last-child]:mb-0" />
+    <MarkdownContent
+      text={askQuestion}
+      class="text-sm text-foreground mb-3 [&>*:last-child]:mb-0"
+    />
     {#if hasMultipleQuestions}
       <div class="space-y-3 mb-3">
         {#each parsedQuestions as pq, qi}
           <div class="rounded-md border border-border/20 bg-muted/10 px-3 py-2">
-            {#if pq.header}<div class="text-[10px] font-medium text-muted-foreground mb-1">{pq.header}</div>{/if}
-            <MarkdownContent text={pq.question} class="text-xs text-foreground mb-1.5 [&>*:last-child]:mb-0" />
+            {#if pq.header}<div class="text-[10px] font-medium text-muted-foreground mb-1">
+                {pq.header}
+              </div>{/if}
+            <MarkdownContent
+              text={pq.question}
+              class="text-xs text-foreground mb-1.5 [&>*:last-child]:mb-0"
+            />
             {#if pq.options.length > 0}
               <div class="flex flex-wrap gap-1.5">
                 {#each pq.options as option}
-                  <button type="button"
-                    class="rounded-md border px-2.5 py-1 text-[11px] font-medium transition-all disabled:opacity-50 {questionAnswers[pq.question] === option.label ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-foreground hover:bg-accent'}"
+                  <button
+                    type="button"
+                    class="rounded-md border px-2.5 py-1 text-[11px] font-medium transition-all disabled:opacity-50 {questionAnswers[
+                      pq.question
+                    ] === option.label
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-background text-foreground hover:bg-accent'}"
                     disabled={submitting}
-                    onclick={() => { questionAnswers = { ...questionAnswers, [pq.question]: option.label }; }}>
+                    onclick={() => {
+                      questionAnswers = { ...questionAnswers, [pq.question]: option.label };
+                    }}
+                  >
                     {option.label}
                   </button>
                 {/each}
               </div>
             {:else}
-              <input type="text" bind:value={questionAnswers[pq.question]} placeholder={t("inline_otherPlaceholder")}
-                class="w-full rounded-md border border-border bg-transparent px-2 py-1 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring" />
+              <input
+                type="text"
+                bind:value={questionAnswers[pq.question]}
+                placeholder={t("inline_otherPlaceholder")}
+                class="w-full rounded-md border border-border bg-transparent px-2 py-1 text-xs placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+              />
             {/if}
           </div>
         {/each}
       </div>
+    {:else if askOptions.length > 0}
+      <div class="flex flex-wrap gap-2 mb-3">
+        {#each askOptions as option}
+          <button
+            type="button"
+            class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent hover:border-ring/30 transition-all disabled:opacity-50"
+            disabled={submitting}
+            onclick={() => handlePermissionOption(option)}
+          >
+            {option}
+          </button>
+        {/each}
+      </div>
     {:else}
-      {#if askOptions.length > 0}
-        <div class="flex flex-wrap gap-2 mb-3">
-          {#each askOptions as option}
-            <button type="button"
-              class="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent hover:border-ring/30 transition-all disabled:opacity-50"
-              disabled={submitting}
-              onclick={() => handlePermissionOption(option)}>
-              {option}
-            </button>
-          {/each}
-        </div>
-      {:else}
-        <input type="text" bind:value={questionAnswers[askQuestion]} placeholder={t("inline_otherPlaceholder")}
-          class="w-full rounded-md border border-border bg-transparent px-2 py-1 text-xs mb-3 placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring" />
-      {/if}
+      <input
+        type="text"
+        bind:value={questionAnswers[askQuestion]}
+        placeholder={t("inline_otherPlaceholder")}
+        class="w-full rounded-md border border-border bg-transparent px-2 py-1 text-xs mb-3 placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-ring"
+      />
     {/if}
     {#if !submitting}
       <div class="flex gap-2">
-        <button type="button"
+        <button
+          type="button"
           class="flex-1 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50"
-          disabled={hasMultipleQuestions ? !allQuestionsAnswered : !questionAnswers[askQuestion]?.trim()}
-          onclick={submitAllPermissionAnswers}>
+          disabled={hasMultipleQuestions
+            ? !allQuestionsAnswered
+            : !questionAnswers[askQuestion]?.trim()}
+          onclick={submitAllPermissionAnswers}
+        >
           {t("common_confirm")}
         </button>
-        <button type="button"
+        <button
+          type="button"
           class="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-all"
-          onclick={handlePermissionDeny}>
+          onclick={handlePermissionDeny}
+        >
           {t("common_deny")}
         </button>
       </div>

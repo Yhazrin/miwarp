@@ -193,7 +193,8 @@
       executionProgress = 100;
       editedScript.usageCount++;
     } catch (error) {
-      executionError = error instanceof Error ? error.message : t("automationEditor_executionError");
+      executionError =
+        error instanceof Error ? error.message : t("automationEditor_executionError");
     } finally {
       isExecuting = false;
     }
@@ -253,16 +254,22 @@
     <div class="flex items-center gap-2">
       {#if !validationResult.valid}
         <span class="text-xs text-destructive">
-          {validationResult.errors.length} {t("automationEditor_validationErrors")}
+          {validationResult.errors.length}
+          {t("automationEditor_validationErrors")}
         </span>
       {/if}
-      <button type="button"
+      <button
+        type="button"
         class="rounded-md border px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50"
         onclick={handleSave}
       >
         {t("automationEditor_save")}
       </button>
-      <button type="button" class="rounded-md border px-3 py-1.5 text-sm hover:bg-accent" onclick={onClose}>
+      <button
+        type="button"
+        class="rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
+        onclick={onClose}
+      >
         {t("automationEditor_close")}
       </button>
     </div>
@@ -275,7 +282,9 @@
       <!-- Metadata -->
       <div class="border-b p-4 space-y-3">
         <div>
-          <span class="text-xs font-medium text-muted-foreground">{t("automationEditor_description")}</span>
+          <span class="text-xs font-medium text-muted-foreground"
+            >{t("automationEditor_description")}</span
+          >
           <textarea
             value={editedScript.description}
             oninput={handleDescriptionChange}
@@ -287,7 +296,9 @@
 
         <div class="flex gap-3">
           <div class="flex-1">
-            <span class="text-xs font-medium text-muted-foreground">{t("automationEditor_category")}</span>
+            <span class="text-xs font-medium text-muted-foreground"
+              >{t("automationEditor_category")}</span
+            >
             <select
               value={editedScript.category}
               onchange={handleCategoryChange}
@@ -301,12 +312,18 @@
         </div>
 
         <div>
-          <span class="text-xs font-medium text-muted-foreground">{t("automationEditor_tags")}</span>
+          <span class="text-xs font-medium text-muted-foreground">{t("automationEditor_tags")}</span
+          >
           <div class="mt-1 flex flex-wrap gap-1.5">
             {#each editedScript.tags as tag}
               <span class="inline-flex items-center gap-1 rounded bg-accent px-2 py-0.5 text-xs">
                 {tag}
-                <button type="button" class="hover:text-destructive" onclick={() => handleRemoveTag(tag)} aria-label={t("common_remove")}>
+                <button
+                  type="button"
+                  class="hover:text-destructive"
+                  onclick={() => handleRemoveTag(tag)}
+                  aria-label={t("common_remove")}
+                >
                   ×
                 </button>
               </span>
@@ -324,8 +341,11 @@
       <!-- Steps -->
       <div class="p-4">
         <div class="mb-3 flex items-center justify-between">
-          <span class="text-sm font-medium">{t("automationEditor_steps")} ({editedScript.steps.length})</span>
-          <button type="button"
+          <span class="text-sm font-medium"
+            >{t("automationEditor_steps")} ({editedScript.steps.length})</span
+          >
+          <button
+            type="button"
             class="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90"
             onclick={handleAddStep}
           >
@@ -353,7 +373,12 @@
                 role="button"
                 tabindex="0"
                 onclick={() => handleStepSelect(index)}
-                onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleStepSelect(index); } }}
+                onkeydown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleStepSelect(index);
+                  }
+                }}
                 ondragstart={(e) => handleDragStart(e, index)}
                 ondragover={(e) => handleDragOver(e, index)}
                 ondrop={(e) => handleDrop(e, index)}
@@ -407,7 +432,8 @@
 
                   <!-- Actions -->
                   <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                    <button type="button"
+                    <button
+                      type="button"
                       class="rounded p-1 hover:bg-accent"
                       title={t("automationEditor_duplicate")}
                       aria-label={t("automationEditor_duplicate")}
@@ -418,7 +444,8 @@
                     >
                       <Icon name="external-link" size="sm" />
                     </button>
-                    <button type="button"
+                    <button
+                      type="button"
                       class="rounded p-1 hover:bg-destructive/10 hover:text-destructive"
                       title={t("automationEditor_delete")}
                       aria-label={t("automationEditor_delete")}
@@ -484,7 +511,8 @@
                 </div>
               {/each}
             </div>
-            <button type="button"
+            <button
+              type="button"
               class="w-full rounded-md border border-destructive px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
               onclick={handleCancelExecution}
             >
@@ -492,7 +520,8 @@
             </button>
           </div>
         {:else}
-          <button type="button"
+          <button
+            type="button"
             class="w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             onclick={handleExecute}
             disabled={!canExecute}

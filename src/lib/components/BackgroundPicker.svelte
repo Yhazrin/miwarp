@@ -99,7 +99,8 @@
         value={config.imageUrl}
         oninput={(e) => update({ imageUrl: (e.target as HTMLInputElement).value })}
       />
-      <button type="button"
+      <button
+        type="button"
         class="rounded-md border border-border bg-miwarp-bg-surface px-3 py-1.5
                text-xs text-miwarp-text-secondary transition-colors hover:bg-miwarp-bg-hover"
         onclick={handleImagePick}
@@ -233,7 +234,8 @@
     <span class="text-xs text-miwarp-text-tertiary">
       {sessionId ? t("bgPicker_sessionOverride") : t("bgPicker_globalDefault")}
     </span>
-    <button type="button"
+    <button
+      type="button"
       class="rounded-md px-3 py-1 text-xs text-miwarp-status-error
              transition-colors hover:bg-miwarp-status-error/10"
       onclick={handleReset}

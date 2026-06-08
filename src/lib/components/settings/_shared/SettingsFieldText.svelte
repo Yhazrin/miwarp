@@ -36,12 +36,7 @@
   }
 </script>
 
-<SettingsFieldRow
-  {label}
-  {description}
-  {overrideBadge}
-  align="between"
->
+<SettingsFieldRow {label} {description} {overrideBadge} align="between">
   {#snippet children()}
     <input
       {type}

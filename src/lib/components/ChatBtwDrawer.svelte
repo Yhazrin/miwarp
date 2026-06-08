@@ -20,7 +20,8 @@
 >
   <div class="flex items-center justify-between px-4 py-2 border-b border-border/50">
     <span class="text-xs font-medium text-miwarp-status-info">{t("chat_btw")}</span>
-    <button type="button"
+    <button
+      type="button"
       onclick={onClose}
       title={t("chat_closeSideQuestion")}
       aria-label={t("chat_closeSideQuestion")}

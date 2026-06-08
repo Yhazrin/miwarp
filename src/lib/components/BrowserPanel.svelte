@@ -121,7 +121,11 @@
   <div class="flex justify-between items-center pb-2 border-b border-miwarp-border">
     <h3 class="m-0 text-xl font-semibold">{t("browser_automation")}</h3>
     <div class="flex items-center gap-2 text-sm">
-      <span class="w-2 h-2 rounded-full {connected ? 'bg-miwarp-status-success' : 'bg-miwarp-status-error'}"></span>
+      <span
+        class="w-2 h-2 rounded-full {connected
+          ? 'bg-miwarp-status-success'
+          : 'bg-miwarp-status-error'}"
+      ></span>
       {connected ? t("browser_connected") : t("browser_disconnected")}
     </div>
   </div>
@@ -130,21 +134,32 @@
   {#if !connected}
     <div class="p-3 bg-miwarp-bg-deepest rounded-md">
       <h4 class="mb-3 text-sm text-miwarp-text-secondary">{t("browser_connect")}</h4>
-      <button type="button" class="rounded-lg px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={handleConnectBrowser}>
+      <button
+        type="button"
+        class="rounded-lg px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors"
+        onclick={handleConnectBrowser}
+      >
         {t("browser_listBrowsers")}
       </button>
 
       {#if browsers.length > 0}
         <div class="flex flex-col gap-2 mt-3">
           {#each browsers as browser}
-            <button type="button" class="flex items-center gap-3 p-3 bg-miwarp-bg-deepest border border-miwarp-border rounded-md cursor-pointer transition-all duration-150 hover:bg-miwarp-bg-surface hover:border-miwarp-accent-primary" onclick={() => browserStore.connect(browser)}>
+            <button
+              type="button"
+              class="flex items-center gap-3 p-3 bg-miwarp-bg-deepest border border-miwarp-border rounded-md cursor-pointer transition-all duration-150 hover:bg-miwarp-bg-surface hover:border-miwarp-accent-primary"
+              onclick={() => browserStore.connect(browser)}
+            >
               <Icon name="globe" size="lg" class="text-muted-foreground shrink-0" />
               <div class="flex-1 flex flex-col">
                 <span class="font-medium">{browser.displayName}</span>
                 <span class="text-xs text-miwarp-text-secondary">{browser.platform}</span>
               </div>
               {#if browser.isThisComputer}
-                <span class="px-2 py-1 bg-miwarp-status-success text-miwarp-accent-on-accent text-xs rounded">{t("browser_thisDevice")}</span>
+                <span
+                  class="px-2 py-1 bg-miwarp-status-success text-miwarp-accent-on-accent text-xs rounded"
+                  >{t("browser_thisDevice")}</span
+                >
               {/if}
             </button>
           {/each}
@@ -156,13 +171,31 @@
     <div class="p-3 bg-miwarp-bg-deepest rounded-md">
       <!-- Back/Forward/Refresh -->
       <div class="flex gap-1">
-        <button type="button" class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface" onclick={handleGoBack} title={t("browser_goBack")} aria-label={t("browser_goBack")}>
+        <button
+          type="button"
+          class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface"
+          onclick={handleGoBack}
+          title={t("browser_goBack")}
+          aria-label={t("browser_goBack")}
+        >
           <Icon name="chevron-left" size="sm" />
         </button>
-        <button type="button" class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface" onclick={handleGoForward} title={t("browser_goForward")} aria-label={t("browser_goForward")}>
+        <button
+          type="button"
+          class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface"
+          onclick={handleGoForward}
+          title={t("browser_goForward")}
+          aria-label={t("browser_goForward")}
+        >
           <Icon name="chevron-right" size="sm" />
         </button>
-        <button type="button" class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface" onclick={handleRefresh} title={t("browser_refresh")} aria-label={t("browser_refresh")}>
+        <button
+          type="button"
+          class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface"
+          onclick={handleRefresh}
+          title={t("browser_refresh")}
+          aria-label={t("browser_refresh")}
+        >
           <Icon name="refresh-cw" size="sm" />
         </button>
       </div>
@@ -176,7 +209,12 @@
           onkeydown={handleKeyDown}
           class="flex-1 p-2 bg-miwarp-bg-deepest border border-miwarp-border rounded text-miwarp-text-primary text-sm focus:outline-none focus:border-miwarp-accent-primary"
         />
-        <button type="button" class="rounded-lg px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={handleNavigate} disabled={isNavigating}>
+        <button
+          type="button"
+          class="rounded-lg px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors"
+          onclick={handleNavigate}
+          disabled={isNavigating}
+        >
           {isNavigating ? "..." : t("browser_go")}
         </button>
       </div>
@@ -186,8 +224,12 @@
     <div class="p-2 bg-miwarp-bg-deepest rounded-md">
       <div class="flex gap-1 overflow-x-auto p-1">
         {#each tabs as tab}
-          <button type="button"
-            class="flex items-center gap-2 py-2 px-3 bg-transparent border border-transparent rounded text-miwarp-text-secondary cursor-pointer whitespace-nowrap max-w-[150px] transition-all duration-150 hover:bg-miwarp-bg-surface {tab.id === activeTabId ? 'bg-miwarp-accent-primary text-miwarp-accent-on-accent' : ''}"
+          <button
+            type="button"
+            class="flex items-center gap-2 py-2 px-3 bg-transparent border border-transparent rounded text-miwarp-text-secondary cursor-pointer whitespace-nowrap max-w-[150px] transition-all duration-150 hover:bg-miwarp-bg-surface {tab.id ===
+            activeTabId
+              ? 'bg-miwarp-accent-primary text-miwarp-accent-on-accent'
+              : ''}"
             onclick={() => handleSelectTab(tab.id)}
           >
             <span class="overflow-hidden text-ellipsis">{tab.title || t("browser_newTab")}</span>
@@ -205,7 +247,13 @@
             </span>
           </button>
         {/each}
-        <button type="button" class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface shrink-0 text-xl" onclick={handleCreateTab} title={t("browser_newTab")} aria-label={t("browser_newTab")}>
+        <button
+          type="button"
+          class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface shrink-0 text-xl"
+          onclick={handleCreateTab}
+          title={t("browser_newTab")}
+          aria-label={t("browser_newTab")}
+        >
           +
         </button>
       </div>
@@ -214,7 +262,11 @@
     <!-- Quick Actions -->
     <div class="p-3 bg-miwarp-bg-deepest rounded-md flex gap-2 flex-wrap">
       {#each quickActions as action}
-        <button type="button" class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer border-none transition-colors" onclick={() => handleQuickAction(action.action)}>
+        <button
+          type="button"
+          class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 cursor-pointer border-none transition-colors"
+          onclick={() => handleQuickAction(action.action)}
+        >
           <Icon name={action.iconName} size="sm" class="mr-1 inline" />
           {action.label}
         </button>
@@ -230,18 +282,27 @@
         placeholder={t("browser_findElements")}
         class="flex-1 p-2 bg-miwarp-bg-deepest border border-miwarp-border rounded text-miwarp-text-primary text-sm focus:outline-none focus:border-miwarp-accent-primary"
       />
-      <button type="button" class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors" onclick={handleFind} disabled={isFinding}>
+      <button
+        type="button"
+        class="rounded-lg px-4 py-2 text-sm bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer border-none transition-colors"
+        onclick={handleFind}
+        disabled={isFinding}
+      >
         {isFinding ? "..." : t("browser_find")}
       </button>
 
       {#if foundElements.length > 0}
         <div class="mt-3 p-3 bg-miwarp-bg-deepest rounded">
-          <h5 class="mb-2 text-sm text-miwarp-text-secondary">{t("browser_foundElements", { count: String(foundElements.length) })}</h5>
+          <h5 class="mb-2 text-sm text-miwarp-text-secondary">
+            {t("browser_foundElements", { count: String(foundElements.length) })}
+          </h5>
           {#each foundElements as element}
             <div class="flex gap-2 py-1 text-xs border-b border-miwarp-border">
               <span class="text-miwarp-accent-primary font-mono">{element.ref}</span>
               {#if element.text}
-                <span class="text-miwarp-text-secondary overflow-hidden text-ellipsis">{element.text}</span>
+                <span class="text-miwarp-text-secondary overflow-hidden text-ellipsis"
+                  >{element.text}</span
+                >
               {/if}
             </div>
           {/each}
@@ -254,9 +315,10 @@
       <div class="p-3 bg-miwarp-bg-deepest rounded-md max-h-[200px] overflow-hidden">
         <h4 class="mb-3 text-sm text-miwarp-text-secondary">{t("browser_pageContent")}</h4>
         <div class="max-h-[150px] overflow-auto bg-miwarp-bg-deepest rounded p-2">
-          <pre class="m-0 text-xs whitespace-pre-wrap break-words">{pageContent.text.slice(0, 500)}{pageContent.text.length > 500
-              ? "..."
-              : ""}</pre>
+          <pre class="m-0 text-xs whitespace-pre-wrap break-words">{pageContent.text.slice(
+              0,
+              500,
+            )}{pageContent.text.length > 500 ? "..." : ""}</pre>
         </div>
         <div class="mt-2 text-xs text-miwarp-text-secondary">
           {t("browser_elementsDetected", { count: String(pageContent.elements.length) })}
@@ -281,10 +343,13 @@
 
   <!-- Error Display -->
   {#if error}
-    <div class="p-3 rounded-md flex items-center gap-2 bg-miwarp-status-error/10 border border-miwarp-status-error">
+    <div
+      class="p-3 rounded-md flex items-center gap-2 bg-miwarp-status-error/10 border border-miwarp-status-error"
+    >
       <Icon name="triangle-alert" size="lg" class="text-miwarp-status-error shrink-0" />
       <span class="flex-1 text-sm text-miwarp-status-error">{error}</span>
-      <button type="button"
+      <button
+        type="button"
         class="p-2 bg-transparent border border-miwarp-border cursor-pointer rounded transition-all duration-150 hover:not-disabled:bg-miwarp-bg-surface"
         onclick={() => browserStore.dispatch({ type: "SET_ERROR", error: null })}
       >

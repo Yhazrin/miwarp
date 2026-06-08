@@ -25,7 +25,7 @@ import { createSoundFromTune } from "./factory";
  * @returns A record mapping every SoundRole to its synthesizer
  */
 export function generateSoundPack(
-  instrument: InstrumentConfig
+  instrument: InstrumentConfig,
 ): Record<SoundRole, SoundSynthesizer> {
   return {
     // Interaction sounds
@@ -68,7 +68,7 @@ export function generateSoundPack(
  */
 export function generateCustomSoundPack(
   baseInstrument: InstrumentConfig,
-  overrides?: Partial<Record<SoundRole, Partial<InstrumentConfig>>>
+  overrides?: Partial<Record<SoundRole, Partial<InstrumentConfig>>>,
 ): Record<SoundRole, SoundSynthesizer> {
   const basePack = generateSoundPack(baseInstrument);
 
