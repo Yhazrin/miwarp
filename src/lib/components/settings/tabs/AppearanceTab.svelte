@@ -113,6 +113,30 @@
       description={t("settings_appearance_nativeWindowGlassDesc")}
       onchange={(value) => onSaveGeneralPatch({ native_window_glass_enabled: value })}
     />
+    {#if settings?.native_window_glass_enabled !== false}
+      <div class="flex items-center justify-between gap-4 pt-2">
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium">{t("settings_appearance_nativeWindowMaterial")}</p>
+          <p class="text-xs text-muted-foreground mt-0.5">
+            {t("settings_appearance_nativeWindowMaterialDesc")}
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-1">
+          {#each [{ value: "header_view", labelKey: "settings_appearance_materialHeaderView" }, { value: "sidebar", labelKey: "settings_appearance_materialSidebar" }] as opt (opt.value)}
+            <button
+              type="button"
+              class="rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150
+                {(settings?.native_window_glass_material ?? 'header_view') === opt.value
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'}"
+              onclick={() => onSaveGeneralPatch({ native_window_glass_material: opt.value })}
+            >
+              {t(opt.labelKey as MessageKey)}
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
   </Card>
 
   <!-- Theme editor + background picker (moved from old "theme" tab) -->

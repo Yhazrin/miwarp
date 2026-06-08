@@ -214,35 +214,30 @@ html.theme-transitioning .theme-fade {
     opacity: 1;
   }
 
-  .glass-sidebar {
-    background: transparent;
-    backdrop-filter: blur(28px) saturate(180%);
-    -webkit-backdrop-filter: blur(28px) saturate(180%);
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
-    box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.08);
-  }
+  /* ════════════════════════════════════════════════════════════
+     Sidebar glass — two clean, non-overlapping modes.
+     v1.0.6: native window glass and CSS blur fallback are now
+     independent paths; the native mode does NOT stack a CSS blur on
+     top of the OS material (the cause of the "mushy" feel), and the
+     fallback uses a single 18px blur — no 28px legacy path.
+     ════════════════════════════════════════════════════════════ */
 
-  /* ── Native window glass sidebar (v1.0.6 follow-up) ──
-   *
-   * The whole <aside.sidebar-container> becomes a transparent layer that
-   * shows the OS-blurred desktop behind it (macOS vibrancy, Windows mica
-   * or acrylic). The icon rail and the content panel (search, project
-   * tree, session list) are all kept transparent — only hover/selected
-   * items get a translucent tint so text stays readable.
-   */
+  /* ── Mode A: native window glass ACTIVE (Tauri desktop)
+     * macOS: HeaderView (default) or Sidebar, applied by Rust.
+     * Windows: mica / acrylic / blur, applied by Rust.
+     * CSS does NOT blur. The OS already provides the vibrancy.
+     * Readability comes entirely from the ::before wash alpha
+     * (0.32-0.44 range) plus a strong text color. */
   .native-glass-sidebar {
     position: relative;
     background: transparent !important;
-    border-right: 1px solid hsl(var(--miwarp-glass-border) / 0.35);
-    box-shadow:
-      inset 1px 0 0 hsl(0 0% 100% / 0.05),
-      inset -1px 0 0 hsl(0 0% 0% / 0.08);
+    /* No backdrop-filter on purpose: the OS provides the blur. */
+    box-shadow: inset 1px 0 0 hsl(0 0% 100% / 0.04);
     isolation: isolate;
     overflow: hidden;
   }
-  /* Tint layer: theme-aware. Light theme → translucent white wash that
-     mimics macOS "light" sidebar material; dark theme → translucent
-     black wash that mimics macOS "dark" sidebar material. */
+  /* Tint layer (readability control). 0.32-0.44 alpha — explicitly
+     NOT 0.55+ so the wallpaper still reads through. */
   .native-glass-sidebar::before {
     content: "";
     position: absolute;
@@ -250,24 +245,26 @@ html.theme-transitioning .theme-fade {
     pointer-events: none;
     z-index: 0;
   }
-  /* Light theme: white-ish wash so the OS-blurred desktop shows through
-     but dark text on the sidebar still reads. */
-  html:not(.dark) .native-glass-sidebar::before {
+  /* Light theme: white wash, 0.72-0.88 — bright "white sidebar" feel
+     with just a hint of the wallpaper bleeding through the bottom. */
+  :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar::before {
     background: linear-gradient(
       180deg,
-      hsl(0 0% 100% / 0.22) 0%,
-      hsl(0 0% 100% / 0.30) 100%
+      hsl(250 8% 100% / 0.72) 0%,
+      hsl(250 8% 100% / 0.88) 100%
     );
   }
-  /* Dark theme: black-ish wash for the same readability reason. */
-  html.dark .native-glass-sidebar::before {
+  /* Dark theme: dark wash within 0.36-0.48 range (slightly higher
+     to keep text readable on top of dark desktop backgrounds). */
+  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar::before {
     background: linear-gradient(
       180deg,
-      hsl(var(--miwarp-bg-deep) / 0.18) 0%,
-      hsl(var(--miwarp-bg-deepest) / 0.28) 100%
+      hsl(var(--miwarp-bg-deepest) / 0.36) 0%,
+      hsl(var(--miwarp-bg-deepest) / 0.48) 100%
     );
   }
-  /* Edge highlight on top to mimic native material */
+  /* Top edge highlight — the only thing mimicking the native
+     material chrome. Kept theme-aware. */
   .native-glass-sidebar::after {
     content: "";
     position: absolute;
@@ -278,7 +275,7 @@ html.theme-transitioning .theme-fade {
     pointer-events: none;
     z-index: 1;
   }
-  html:not(.dark) .native-glass-sidebar::after {
+  :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar::after {
     background: linear-gradient(
       90deg,
       hsl(0 0% 100% / 0) 0%,
@@ -286,7 +283,7 @@ html.theme-transitioning .theme-fade {
       hsl(0 0% 100% / 0) 100%
     );
   }
-  html.dark .native-glass-sidebar::after {
+  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar::after {
     background: linear-gradient(
       90deg,
       hsl(0 0% 100% / 0) 0%,
@@ -298,12 +295,9 @@ html.theme-transitioning .theme-fade {
     position: relative;
     z-index: 1;
   }
-  /* Icon rail: fully transparent — no solid panel behind the icons. */
-  .native-glass-sidebar .sidebar-icon-rail {
-    background: transparent !important;
-  }
-  /* Content panel + nested scrollers: fully transparent so the whole
-     sidebar behaves as one continuous glass surface. */
+  /* Icon rail + content panel + nested scrollers: fully transparent
+     so the whole sidebar behaves as one continuous glass surface. */
+  .native-glass-sidebar .sidebar-icon-rail,
   .native-glass-sidebar .sidebar-content-panel,
   .native-glass-sidebar .sidebar-inner,
   .native-glass-sidebar .sidebar-scroll {
@@ -314,24 +308,26 @@ html.theme-transitioning .theme-fade {
   .native-glass-sidebar .sidebar-content-panel input[type="text"] {
     border-color: hsl(var(--miwarp-glass-border) / 0.35) !important;
   }
-  html:not(.dark) .native-glass-sidebar .sidebar-content-panel input[type="text"] {
+  :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar .sidebar-content-panel input[type="text"] {
     background: hsl(0 0% 100% / 0.45) !important;
   }
-  html.dark .native-glass-sidebar .sidebar-content-panel input[type="text"] {
+  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar .sidebar-content-panel input[type="text"] {
     background: hsl(var(--miwarp-bg-surface) / 0.28) !important;
   }
-  /* Selected / hover items inside the sidebar: theme-aware tints. */
+  /* Selected / hover items inside the sidebar: theme-aware tints.
+     These MUST stay visually distinct from the wash so users can
+     tell what they clicked. */
   .native-glass-sidebar .sidebar-content-panel a[data-active="true"],
   .native-glass-sidebar .sidebar-content-panel button[data-active="true"],
   .native-glass-sidebar .sidebar-content-panel [data-selected="true"] {
     background: hsl(var(--primary) / 0.10) !important;
   }
-  html:not(.dark) .native-glass-sidebar .sidebar-content-panel a:hover,
-  html:not(.dark) .native-glass-sidebar .sidebar-content-panel button:hover {
+  :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar .sidebar-content-panel a:hover,
+  :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar .sidebar-content-panel button:hover {
     background: hsl(0 0% 0% / 0.06) !important;
   }
-  html.dark .native-glass-sidebar .sidebar-content-panel a:hover,
-  html.dark .native-glass-sidebar .sidebar-content-panel button:hover {
+  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar .sidebar-content-panel a:hover,
+  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar .sidebar-content-panel button:hover {
     background: hsl(var(--miwarp-bg-hover) / 0.30) !important;
   }
   /* Icon rail buttons: same translucent tints, also theme-aware. */
@@ -339,20 +335,27 @@ html.theme-transitioning .theme-fade {
   .native-glass-sidebar .sidebar-icon-rail a[aria-current="page"] {
     background: hsl(var(--primary) / 0.14) !important;
   }
-  html:not(.dark) .native-glass-sidebar .sidebar-icon-rail a:hover,
-  html:not(.dark) .native-glass-sidebar .sidebar-icon-rail button:hover {
+  :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar .sidebar-icon-rail a:hover,
+  :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar .sidebar-icon-rail button:hover {
     background: hsl(0 0% 0% / 0.06) !important;
   }
-  html.dark .native-glass-sidebar .sidebar-icon-rail a:hover,
-  html.dark .native-glass-sidebar .sidebar-icon-rail button:hover {
+  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar .sidebar-icon-rail a:hover,
+  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar .sidebar-icon-rail button:hover {
     background: hsl(var(--miwarp-bg-hover) / 0.30) !important;
   }
 
-  /* Disabled variant — when the user has turned the native effect off we
-     fall back to the legacy opaque `glass-sidebar` look. This class is
-     kept for symmetry so we can override individual children if needed. */
-  .native-glass-sidebar-disabled {
-    background: hsl(var(--miwarp-bg-base));
+  /* ── Mode B: native window glass INACTIVE / browser fallback
+     * One path only: 18px blur + 140% saturate. The 28px legacy
+     * blur is gone — single source of truth. The disabled variant
+     * and the legacy `.glass-sidebar` class are merged here so we
+     * never run two glass systems side by side. */
+  .native-glass-sidebar-disabled,
+  .glass-sidebar {
+    background: hsl(var(--miwarp-bg-base) / 0.55);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border-right: 1px solid hsl(var(--miwarp-glass-border) / 0.30);
+    box-shadow: inset -1px 0 0 hsl(0 0% 0% / 0.06);
   }
 
   /* Right-side main content surface — always opaque, regardless of
@@ -1515,8 +1518,13 @@ textarea,
   min-height: 36px;
   border-radius: 18px;
   background-color: hsl(var(--background) / 0.6);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  /* v1.0.6: blur 24px → 10px, saturate 180% → 125%. The 24px value
+     was the "mushy" culprit on macOS — paired with saturate(180%)
+     the desktop wallpaper bleeds into vivid color that overwhelms
+     the foreground text. 10px + 125% keeps a clear glass feel
+     without the chromatic overload. */
+  backdrop-filter: blur(10px) saturate(125%);
+  -webkit-backdrop-filter: blur(10px) saturate(125%);
   box-shadow:
     0 4px 24px rgba(0, 0, 0, 0.12),
     0 0 0 1px rgba(255, 255, 255, 0.1),
@@ -2062,44 +2070,69 @@ pre,
 /* ═══════════════════════════════════════════════════
    Visual Performance Tiers
    Applied via documentElement class by layout.
-   .perf-quality = defaults (no overrides)
-   .perf-balanced = reduced blur on glass classes
-   .perf-performance = no blur/shadow, reduced animations
+   .perf-quality = native material + CSS tint, max blur(4px)
+   .perf-balanced = native material + CSS tint, no CSS blur
+   .perf-performance = solid 0.88 background, no blur / no shadows
    ═══════════════════════════════════════════════════ */
 
-/* ── Performance: disable expensive effects on glass/elevation only ── */
+/* ── Native glass sidebar (Mode A) per tier ── */
 
-.perf-performance .glass-panel,
-.perf-performance .glass-card,
-.perf-performance .glass-sidebar,
-.perf-performance .native-glass-sidebar,
-.perf-performance .glass-panel-component {
+/* perf-quality: keep the OS native blur, optionally add a very light
+   CSS layer (max 4px) to subtly enhance the desktop look. */
+.perf-quality .native-glass-sidebar {
+  backdrop-filter: blur(4px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(4px) saturate(120%) !important;
+}
+
+/* perf-balanced: native blur only, no CSS layer on top. */
+.perf-balanced .native-glass-sidebar {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* perf-performance: solid 0.88 themed background, no blur. The OS
+   material is still applied by Rust (cheap GPU composite) but the
+   CSS overrides the visual to be a clean solid tint. */
+.perf-performance .native-glass-sidebar {
+  background: hsl(var(--background) / 0.88) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
 }
-/* Performance fallback for native glass: rely on a solid tinted
-   background (still themed) instead of live blur compositing. */
-.perf-performance .native-glass-sidebar::before {
-  background: hsl(var(--miwarp-bg-deep) / 0.92);
-}
-html:not(.dark) .perf-performance .native-glass-sidebar::before {
-  background: hsl(0 0% 100% / 0.78);
+.perf-performance .native-glass-sidebar::before,
+.perf-performance .native-glass-sidebar::after {
+  display: none !important;
 }
 
-.perf-performance .elevation-1,
-.perf-performance .elevation-2,
-.perf-performance .elevation-3 {
+/* ── Fallback sidebar (Mode B) per tier ── */
+.perf-quality .native-glass-sidebar-disabled,
+.perf-quality .glass-sidebar {
+  backdrop-filter: blur(14px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(130%) !important;
+}
+.perf-balanced .native-glass-sidebar-disabled,
+.perf-balanced .glass-sidebar {
+  backdrop-filter: blur(10px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(120%) !important;
+}
+.perf-performance .native-glass-sidebar-disabled,
+.perf-performance .glass-sidebar {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: hsl(var(--background)) !important;
   box-shadow: none !important;
 }
 
-/* Kill high-frequency decorative animations only */
-.perf-performance .spinner-shimmer,
-.perf-performance .thinking-dot {
-  animation: none !important;
+/* ── Session island per tier ── */
+.perf-quality .session-island-shell,
+.perf-quality .session-island-expanded {
+  /* Already at 10px/125% by default; no override. */
 }
-
-/* Session island: reduce blur/shadow in performance tier (Windows WebView2) */
+.perf-balanced .session-island-shell,
+.perf-balanced .session-island-expanded {
+  backdrop-filter: blur(6px) saturate(115%) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(115%) !important;
+}
 .perf-performance .session-island-shell,
 .perf-performance .session-island-expanded {
   backdrop-filter: none !important;
@@ -2108,10 +2141,15 @@ html:not(.dark) .perf-performance .native-glass-sidebar::before {
   transition-duration: 0.12s !important;
 }
 
-.perf-balanced .session-island-shell,
-.perf-balanced .session-island-expanded {
-  backdrop-filter: blur(12px) saturate(140%) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(140%) !important;
+/* ── Generic elevation / animation reductions for performance tier ── */
+.perf-performance .elevation-1,
+.perf-performance .elevation-2,
+.perf-performance .elevation-3 {
+  box-shadow: none !important;
+}
+.perf-performance .spinner-shimmer,
+.perf-performance .thinking-dot {
+  animation: none !important;
 }
 
 /* Windows WebView2: strip will-change on glass elements */
@@ -2119,18 +2157,4 @@ html:not(.dark) .perf-performance .native-glass-sidebar::before {
 .platform-windows.perf-performance .glass-card,
 .platform-windows.perf-performance .glass-sidebar {
   will-change: auto !important;
-}
-
-/* ── Balanced: reduce blur on glass classes only ── */
-
-.perf-balanced .glass-panel,
-.perf-balanced .glass-card,
-.perf-balanced .glass-panel-component {
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
-}
-
-.perf-balanced .glass-sidebar {
-  backdrop-filter: blur(12px) saturate(130%) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(130%) !important;
 }

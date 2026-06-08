@@ -643,6 +643,14 @@ pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, St
     if let Some(v) = patch.get("native_window_glass_enabled") {
         all.user.native_window_glass_enabled = v.as_bool().unwrap_or(true);
     }
+    if let Some(v) = patch
+        .get("native_window_glass_material")
+        .and_then(|v| v.as_str())
+    {
+        if matches!(v, "header_view" | "sidebar") {
+            all.user.native_window_glass_material = v.to_string();
+        }
+    }
     if let Some(v) = patch.get("process_visibility").and_then(|v| v.as_str()) {
         if matches!(v, "output" | "guided" | "developer" | "expert") {
             all.user.process_visibility = v.to_string();

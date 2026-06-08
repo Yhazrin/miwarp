@@ -348,6 +348,14 @@ pub struct UserSettings {
     /// sidebar falls back to the existing opaque background.
     #[serde(default = "default_true")]
     pub native_window_glass_enabled: bool,
+    /// v1.0.6: which macOS NSVisualEffectMaterial to apply when the
+    /// native glass is enabled. `header_view` (default) is a much
+    /// lighter blur than `sidebar` and combines cleanly with the CSS
+    /// wash layer. `sidebar` is the heavy traditional macOS sidebar
+    /// material (~30-40px native blur) for users who want a
+    /// stronger effect.
+    #[serde(default = "default_native_window_glass_material")]
+    pub native_window_glass_material: String,
     /// Minutes between automatic CLI sync passes.
     #[serde(default = "default_cli_auto_sync_interval_minutes")]
     pub cli_auto_sync_interval_minutes: u32,
@@ -401,6 +409,14 @@ fn default_process_visibility() -> String {
 
 fn default_visual_performance_mode() -> String {
     "auto".to_string()
+}
+
+fn default_native_window_glass_material() -> String {
+    // Default to the lighter HeaderView (macOS 10.14+). It's a much
+    // softer native blur than Sidebar and combines cleanly with the
+    // CSS wash layer (no double-stacking of blur). The user can opt
+    // into the heavier Sidebar material from Settings → Appearance.
+    "header_view".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -522,6 +538,7 @@ impl Default for UserSettings {
             cli_auto_sync_enabled: true,
             cli_auto_sync_interval_minutes: 5,
             native_window_glass_enabled: true,
+            native_window_glass_material: "header_view".to_string(),
             cli_auto_sync_import_new: false,
             process_visibility: "developer".to_string(),
             visual_performance_mode: "auto".to_string(),

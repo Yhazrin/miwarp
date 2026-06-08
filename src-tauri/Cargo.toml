@@ -16,7 +16,7 @@ name = "MiWarp"
 path = "src/main.rs"
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon", "image-png", "unstable"] }
+tauri = { version = "2", features = ["macos-private-api", "tray-icon", "image-png", "unstable"] }
 tauri-plugin-notification = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"

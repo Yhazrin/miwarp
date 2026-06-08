@@ -367,6 +367,12 @@ class ThemeStore {
     root.classList.add(isDark ? "dark" : "light");
     root.style.colorScheme = isDark ? "dark" : "light";
 
+    // Step 2b: Mirror color scheme into a dedicated attribute so CSS
+    // selectors that need to branch on light/dark (e.g. native window
+    // glass sidebar wash) have a single, authoritative signal that
+    // doesn't depend on the legacy `.dark`/`.light` class.
+    root.setAttribute("data-color-scheme", isDark ? "dark" : "light");
+
     // Step 3: Apply user overrides on top of the new theme's CSS vars
     const overrides = this.themeOverrides[themeId];
     if (overrides) {

@@ -1,10 +1,14 @@
 //! Apply native window-level blur/vibrancy effects for the main window.
 //!
-//! - macOS: NSVisualEffectMaterial (sidebar) on the whole window so the
-//!   left sidebar can show desktop content through the chrome.
+//! - macOS: NSVisualEffectMaterial on the whole window so the left
+//!   sidebar can show desktop content through the chrome. Material is
+//!   user-selectable: `header_view` (default, lighter) or `sidebar`
+//!   (heavier, traditional macOS sidebar look). The CSS wash layer is
+//!   the dominant visual layer; the OS blur is only a subtle complement
+//!   so the two never stack into a mushy result.
 //! - Windows: mica (preferred), acrylic (fallback), blur (last resort).
 //! - Linux / unsupported: no-op; CSS `backdrop-filter` still gives a
-//!   pleasant glass look.
+//!   pleasant glass look in the fallback layer.
 //!
 //! The effect can be toggled at runtime via the
 //! `native_window_glass_enabled` user setting. Re-apply on toggle by
@@ -13,39 +17,53 @@
 use tauri::{Manager, WebviewWindow};
 
 /// Apply (or clear) the native blur effect for the main window based on
-/// the saved `native_window_glass_enabled` setting. Safe to call from
-/// setup or after settings change; never panics, only logs.
+/// the saved `native_window_glass_enabled` and
+/// `native_window_glass_material` settings. Safe to call from setup or
+/// after settings change; never panics, only logs.
 pub fn apply_for_setting<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
-    let enabled = crate::storage::settings::get_user_settings().native_window_glass_enabled;
+    let s = crate::storage::settings::get_user_settings();
     if let Some(window) = app.get_webview_window("main") {
-        apply_to_window(&window, enabled);
+        apply_to_window(
+            &window,
+            s.native_window_glass_enabled,
+            &s.native_window_glass_material,
+        );
     }
 }
 
 /// Apply or clear the effect on a specific window. When `enabled` is
-/// false the effect is reset to the OS default (solid background).
-pub fn apply_to_window<R: tauri::Runtime>(window: &WebviewWindow<R>, enabled: bool) {
+/// false the effect is reset to the OS default (solid background). The
+/// `material` arg is one of `header_view` (default) or `sidebar` and is
+/// only consulted on macOS.
+pub fn apply_to_window<R: tauri::Runtime>(
+    window: &WebviewWindow<R>,
+    enabled: bool,
+    material: &str,
+) {
     if !enabled {
         clear(window);
         return;
     }
-    match apply(window) {
-        Ok(()) => log::info!("[window_effect] native blur applied"),
+    match apply(window, material) {
+        Ok(()) => log::info!("[window_effect] native blur applied (material={material})"),
         Err(e) => log::warn!("[window_effect] failed to apply blur: {e}"),
     }
 }
 
-fn apply<R: tauri::Runtime>(window: &WebviewWindow<R>) -> Result<(), String> {
+fn apply<R: tauri::Runtime>(window: &WebviewWindow<R>, material: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
         use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
-        apply_vibrancy(
-            window,
-            NSVisualEffectMaterial::Sidebar,
-            Some(NSVisualEffectState::Active),
-            None,
-        )
-        .map_err(|e| e.to_string())
+        // `header_view` is the default — lighter blur (~15-20px), pairs
+        // cleanly with the CSS wash layer. `sidebar` is the heavier
+        // traditional material (~30-40px blur) for users who want a
+        // stronger effect and don't mind the slightly "糊" feel.
+        let mat = match material {
+            "sidebar" => NSVisualEffectMaterial::Sidebar,
+            _ => NSVisualEffectMaterial::HeaderView,
+        };
+        apply_vibrancy(window, mat, Some(NSVisualEffectState::Active), None)
+            .map_err(|e| e.to_string())
     }
 
     #[cfg(target_os = "windows")]
@@ -67,6 +85,7 @@ fn apply<R: tauri::Runtime>(window: &WebviewWindow<R>) -> Result<(), String> {
     #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
     {
         let _ = window;
+        let _ = material;
         Ok(())
     }
 }
