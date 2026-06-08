@@ -240,17 +240,31 @@ html.theme-transitioning .theme-fade {
     isolation: isolate;
     overflow: hidden;
   }
+  /* Tint layer: theme-aware. Light theme → translucent white wash that
+     mimics macOS "light" sidebar material; dark theme → translucent
+     black wash that mimics macOS "dark" sidebar material. */
   .native-glass-sidebar::before {
     content: "";
     position: absolute;
     inset: 0;
     pointer-events: none;
     z-index: 0;
-    /* Faint dark tint to keep sidebar text readable over busy wallpapers. */
+  }
+  /* Light theme: white-ish wash so the OS-blurred desktop shows through
+     but dark text on the sidebar still reads. */
+  html:not(.dark) .native-glass-sidebar::before {
     background: linear-gradient(
       180deg,
-      hsl(var(--miwarp-bg-deep) / 0.32) 0%,
-      hsl(var(--miwarp-bg-deepest) / 0.42) 100%
+      hsl(0 0% 100% / 0.22) 0%,
+      hsl(0 0% 100% / 0.30) 100%
+    );
+  }
+  /* Dark theme: black-ish wash for the same readability reason. */
+  html.dark .native-glass-sidebar::before {
+    background: linear-gradient(
+      180deg,
+      hsl(var(--miwarp-bg-deep) / 0.18) 0%,
+      hsl(var(--miwarp-bg-deepest) / 0.28) 100%
     );
   }
   /* Edge highlight on top to mimic native material */
@@ -263,6 +277,16 @@ html.theme-transitioning .theme-fade {
     height: 1px;
     pointer-events: none;
     z-index: 1;
+  }
+  html:not(.dark) .native-glass-sidebar::after {
+    background: linear-gradient(
+      90deg,
+      hsl(0 0% 100% / 0) 0%,
+      hsl(0 0% 100% / 0.55) 50%,
+      hsl(0 0% 100% / 0) 100%
+    );
+  }
+  html.dark .native-glass-sidebar::after {
     background: linear-gradient(
       90deg,
       hsl(0 0% 100% / 0) 0%,
@@ -286,31 +310,42 @@ html.theme-transitioning .theme-fade {
     background: transparent !important;
   }
   /* Search input: subtle translucent pill so it still reads on busy
-     wallpapers. */
+     wallpapers. Tint flips with theme. */
   .native-glass-sidebar .sidebar-content-panel input[type="text"] {
-    background: hsl(var(--miwarp-bg-surface) / 0.55) !important;
-    border-color: hsl(var(--miwarp-glass-border) / 0.45) !important;
+    border-color: hsl(var(--miwarp-glass-border) / 0.35) !important;
   }
-  /* Selected / hover items inside the sidebar: use translucent tints
-     instead of solid backgrounds so the glass shows through. */
+  html:not(.dark) .native-glass-sidebar .sidebar-content-panel input[type="text"] {
+    background: hsl(0 0% 100% / 0.45) !important;
+  }
+  html.dark .native-glass-sidebar .sidebar-content-panel input[type="text"] {
+    background: hsl(var(--miwarp-bg-surface) / 0.28) !important;
+  }
+  /* Selected / hover items inside the sidebar: theme-aware tints. */
   .native-glass-sidebar .sidebar-content-panel a[data-active="true"],
   .native-glass-sidebar .sidebar-content-panel button[data-active="true"],
   .native-glass-sidebar .sidebar-content-panel [data-selected="true"] {
-    background: hsl(var(--primary) / 0.18) !important;
+    background: hsl(var(--primary) / 0.10) !important;
   }
-  .native-glass-sidebar .sidebar-content-panel a:hover,
-  .native-glass-sidebar .sidebar-content-panel button:hover {
-    background: hsl(var(--miwarp-bg-hover) / 0.55) !important;
+  html:not(.dark) .native-glass-sidebar .sidebar-content-panel a:hover,
+  html:not(.dark) .native-glass-sidebar .sidebar-content-panel button:hover {
+    background: hsl(0 0% 0% / 0.06) !important;
   }
-  /* Icon rail buttons: same translucent tints. The rail contains the
-     primary nav, the locale/theme toggles, and the update badge. */
+  html.dark .native-glass-sidebar .sidebar-content-panel a:hover,
+  html.dark .native-glass-sidebar .sidebar-content-panel button:hover {
+    background: hsl(var(--miwarp-bg-hover) / 0.30) !important;
+  }
+  /* Icon rail buttons: same translucent tints, also theme-aware. */
   .native-glass-sidebar .sidebar-icon-rail a[data-active="true"],
   .native-glass-sidebar .sidebar-icon-rail a[aria-current="page"] {
-    background: hsl(var(--primary) / 0.22) !important;
+    background: hsl(var(--primary) / 0.14) !important;
   }
-  .native-glass-sidebar .sidebar-icon-rail a:hover,
-  .native-glass-sidebar .sidebar-icon-rail button:hover {
-    background: hsl(var(--miwarp-bg-hover) / 0.55) !important;
+  html:not(.dark) .native-glass-sidebar .sidebar-icon-rail a:hover,
+  html:not(.dark) .native-glass-sidebar .sidebar-icon-rail button:hover {
+    background: hsl(0 0% 0% / 0.06) !important;
+  }
+  html.dark .native-glass-sidebar .sidebar-icon-rail a:hover,
+  html.dark .native-glass-sidebar .sidebar-icon-rail button:hover {
+    background: hsl(var(--miwarp-bg-hover) / 0.30) !important;
   }
 
   /* Disabled variant — when the user has turned the native effect off we
@@ -2047,6 +2082,9 @@ pre,
    background (still themed) instead of live blur compositing. */
 .perf-performance .native-glass-sidebar::before {
   background: hsl(var(--miwarp-bg-deep) / 0.92);
+}
+html:not(.dark) .perf-performance .native-glass-sidebar::before {
+  background: hsl(0 0% 100% / 0.78);
 }
 
 .perf-performance .elevation-1,
