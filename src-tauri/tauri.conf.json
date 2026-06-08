@@ -40,7 +40,8 @@
     ],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.anthropic.com https://*.anthropic.com https://github.com https://*.githubusercontent.com; font-src 'self' data:"
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,
