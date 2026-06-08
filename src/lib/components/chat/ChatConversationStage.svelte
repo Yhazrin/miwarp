@@ -26,6 +26,7 @@
   import ChatThinkingIndicator from "$lib/components/ChatThinkingIndicator.svelte";
   import ChatForkOverlay from "$lib/components/ChatForkOverlay.svelte";
   import ChatErrorCard from "$lib/components/ChatErrorCard.svelte";
+  import RecoveringBanner from "$lib/components/RecoveringBanner.svelte";
   import ElicitationDialog from "$lib/components/ElicitationDialog.svelte";
   import ChatInitHint from "$lib/components/ChatInitHint.svelte";
   import ChatHeroMeta from "$lib/components/ChatHeroMeta.svelte";
@@ -479,12 +480,7 @@
     {/if}
 
     {#if store.recoveryNotice}
-      <div
-        class="mx-4 mb-2 rounded-lg border border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-3 py-2 text-xs text-miwarp-status-warning"
-        role="status"
-      >
-        {store.recoveryNotice}
-      </div>
+      <RecoveringBanner message={store.recoveryNotice} />
     {/if}
 
     {#if store.error && !forkOverlay}

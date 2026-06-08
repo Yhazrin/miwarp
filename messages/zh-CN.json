@@ -2167,6 +2167,8 @@
   "slash_desc_securityReview": "审查代码安全问题",
   "slash_desc_showCommands": "显示可用命令",
   "slash_desc_sideQuestion": "在不中断当前任务的情况下提问",
+  "slash_desc_simplify": "仅清理的代码审查",
+  "slash_desc_reloadSkills": "从磁盘重新加载技能",
   "slash_desc_skills": "列出可用技能",
   "slash_desc_stats": "查看用量统计、热力图和模型分布",
   "slash_desc_status": "显示 Claude Code 状态和版本信息",

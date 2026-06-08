@@ -1425,6 +1425,7 @@ export type HookEventType =
   | "PermissionRequest"
   | "Setup"
   | "ConfigChange"
+  | "MessageDisplay"
   | "TeammateIdle"
   | "TaskCompleted"
   | "WorktreeCreate"

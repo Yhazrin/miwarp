@@ -4,6 +4,7 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { onDestroy } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import StreamingSkeleton from "./StreamingSkeleton.svelte";
 
   let {
     text = "",
@@ -277,11 +278,24 @@
 </script>
 
 {#if !renderMarkdownNow}
-  <pre
-    bind:this={lazyEl}
-    class="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed m-0 {lazyPreToneClass} {className}"
-    >{displayText}</pre
-  >
+  <!-- v1.0.6 / 5.8: show shimmer skeleton when streaming with very little content -->
+  {#if streaming && displayText.length < 100}
+    <div class="min-h-[3em] {className}">
+      {#if displayText}
+        <pre
+          class="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed m-0 {lazyPreToneClass}"
+          >{displayText}</pre
+        >
+      {/if}
+      <StreamingSkeleton class="mt-2" />
+    </div>
+  {:else}
+    <pre
+      bind:this={lazyEl}
+      class="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed m-0 min-h-[3em] {lazyPreToneClass} {className}"
+      >{displayText}</pre
+    >
+  {/if}
 {:else}
   <div bind:this={container} class="{proseClasses} {className}">
     {@html html}

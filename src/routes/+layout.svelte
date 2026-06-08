@@ -52,7 +52,10 @@
   import { IS_MAC } from "$lib/utils/platform";
   import { applyUiZoomCssVar, clampUiZoom, layoutPx } from "$lib/utils/ui-zoom";
   import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
-  import { readActiveSessionId } from "$lib/utils/chat-persistence";
+  import {
+    readActiveSessionId,
+    writeActiveSessionId,
+  } from "$lib/utils/chat-persistence";
   import type {
     TaskRun,
     UserSettings,
@@ -975,6 +978,21 @@
       loadRuns();
     })();
     loadSettings();
+
+    // v1.0.6 / 5.16: restore last active session on cold start.
+    // Only redirect if the URL has no explicit `run` param and we're on /chat.
+    {
+      const url = new URL(window.location.href);
+      const hasRunParam = url.searchParams.has("run");
+      const isChatRoute = url.pathname === "/chat" || url.pathname === "/";
+      if (!hasRunParam && isChatRoute) {
+        const lastSession = readActiveSessionId();
+        if (lastSession) {
+          dbg("layout", "auto-restore last session", { lastSession });
+          goto(`/chat?run=${lastSession}`, { replaceState: true });
+        }
+      }
+    }
     void import("$lib/services/sound-feedback-listener")
       .then((m) => m.startSoundFeedbackListener())
       .catch(() => {});
@@ -1375,6 +1393,12 @@
   let selectedRunId = $derived.by(() => {
     const url = $page.url;
     return url.searchParams.get("run") ?? "";
+  });
+
+  // v1.0.6 / 5.16: persist active session for auto-restore on next launch
+  $effect(() => {
+    const id = selectedRunId;
+    untrack(() => writeActiveSessionId(id));
   });
 
   // ── Delete conversation confirm flow ──

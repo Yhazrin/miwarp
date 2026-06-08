@@ -2093,6 +2093,8 @@
   "slash_desc_securityReview": "Review code for security issues",
   "slash_desc_showCommands": "Show available commands",
   "slash_desc_sideQuestion": "Ask a side question without interrupting the current task",
+  "slash_desc_simplify": "Cleanup-only code review",
+  "slash_desc_reloadSkills": "Reload skills from disk",
   "slash_desc_skills": "List available skills",
   "slash_desc_stats": "View usage stats, heatmap, and model breakdown",
   "slash_desc_status": "Show Claude Code status and version info",
