@@ -483,8 +483,8 @@ export class SessionStore {
   }
 
   get canSend(): boolean {
-    // v1.0.6: cached sessions can accept input — send triggers lazy resume
-    return ["empty", "ready", "idle", "cached"].includes(this.phase);
+    // v1.0.6: cached/stale_cached sessions can accept input — send triggers lazy resume
+    return ["empty", "ready", "idle", "cached", "stale_cached"].includes(this.phase);
   }
 
   get activeToolName(): string {

@@ -12,7 +12,9 @@ export type SessionPhase =
   | "completed" // Session ended normally
   | "failed" // Session ended with error
   | "stopped" // User stopped session
-  | "cached"; // Loaded from IDB snapshot; CLI not yet spawned (lazy resume)
+  | "cached" // Loaded from IDB snapshot; CLI not yet spawned (lazy resume)
+  | "stale_cached" // Snapshot hit but seq may be behind; background catchup pending
+  | "syncing"; // Background getBusEvents(lastSeq) in progress
 
 export interface UsageState {
   inputTokens: number;
@@ -47,8 +49,16 @@ export const TERMINAL_PHASES: readonly string[] = [
   "stopped",
   "error",
   "cached",
+  "stale_cached",
 ];
-export const SESSION_ALIVE_PHASES: readonly string[] = ["spawning", "running", "idle", "cached"];
+export const SESSION_ALIVE_PHASES: readonly string[] = [
+  "spawning",
+  "running",
+  "idle",
+  "cached",
+  "stale_cached",
+  "syncing",
+];
 
 /**
  * Valid phase transitions. Used by assertTransition() in dev mode
@@ -59,15 +69,17 @@ export const SESSION_ALIVE_PHASES: readonly string[] = ["spawning", "running", "
  */
 const VALID_TRANSITIONS: Record<SessionPhase, Set<SessionPhase>> = {
   empty: new Set(["loading", "ready", "spawning"]),
-  loading: new Set(["ready", "running", "completed", "failed", "stopped", "empty", "cached"]),
+  loading: new Set(["ready", "running", "completed", "failed", "stopped", "empty", "cached", "stale_cached"]),
   ready: new Set(["spawning", "running", "empty", "loading"]),
   spawning: new Set(["running", "failed", "stopped", "idle", "empty", "loading"]),
   running: new Set(["idle", "completed", "failed", "stopped", "empty", "loading"]),
   idle: new Set(["running", "spawning", "completed", "failed", "stopped", "empty", "loading"]),
-  completed: new Set(["empty", "loading", "spawning", "ready", "cached"]),
-  failed: new Set(["empty", "loading", "spawning", "ready", "cached"]),
-  stopped: new Set(["empty", "loading", "spawning", "ready", "cached"]),
-  cached: new Set(["empty", "loading", "ready", "spawning", "running", "idle"]),
+  completed: new Set(["empty", "loading", "spawning", "ready", "cached", "stale_cached"]),
+  failed: new Set(["empty", "loading", "spawning", "ready", "cached", "stale_cached"]),
+  stopped: new Set(["empty", "loading", "spawning", "ready", "cached", "stale_cached"]),
+  cached: new Set(["empty", "loading", "ready", "spawning", "running", "idle", "syncing", "stale_cached"]),
+  stale_cached: new Set(["empty", "loading", "ready", "spawning", "running", "idle", "syncing", "cached"]),
+  syncing: new Set(["idle", "running", "completed", "failed", "cached", "stale_cached", "empty", "loading"]),
 };
 
 /**
