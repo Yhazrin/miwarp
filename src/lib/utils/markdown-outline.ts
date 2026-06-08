@@ -33,7 +33,7 @@ export function extractToc(markdown: string): TocEntry[] {
     const match = line.match(/^(#{1,6})\s+(.+)$/);
     if (match) {
       const level = match[1].length;
-      const text = match[2].replace(/[*_`~\[\]]/g, "").trim();
+      const text = match[2].replace(/[*_`~[\]]/g, "").trim();
       const id = text
         .toLowerCase()
         .replace(/[^\w\s-]/g, "")

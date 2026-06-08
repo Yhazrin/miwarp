@@ -11,7 +11,6 @@
 </script>
 
 <!-- Team tool renderers -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="mt-2 space-y-1.5" role="presentation" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
   {#if tool.tool_name === "TeamCreate"}
     <!-- TeamCreate: team name + description -->

@@ -76,14 +76,14 @@ const softHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOp
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
-        gains.forEach(g => { try { g.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
+        gains.forEach(g => { try { g.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 const softHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
@@ -116,13 +116,13 @@ const softHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundO
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 export const softPack: GeneratedSoundPack = {
@@ -176,13 +176,13 @@ const aeroHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOp
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 const aeroHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
@@ -224,13 +224,13 @@ const aeroHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundO
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 export const aeroPack: GeneratedSoundPack = {
@@ -272,13 +272,13 @@ const arcadeHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySound
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 const arcadeHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
@@ -310,13 +310,13 @@ const arcadeHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoun
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 // ---------------------------------------------------------------------------
@@ -373,13 +373,13 @@ const organicHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoun
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 const organicHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
@@ -412,13 +412,13 @@ const organicHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySou
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 export const organicPack: GeneratedSoundPack = {
@@ -485,13 +485,13 @@ const glassHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundO
 
     if (isLast) {
       osc1.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 const glassHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
@@ -535,13 +535,13 @@ const glassHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySound
 
     if (isLast) {
       osc1.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 export const glassPack: GeneratedSoundPack = {
@@ -601,13 +601,13 @@ const industrialHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlayS
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 const industrialHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
@@ -650,11 +650,11 @@ const industrialHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: Play
   osc.stop(t + 0.6);
 
   osc.onended = () => {
-    oscs.forEach(o => { try { o.disconnect(); } catch {} });
+    oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
     opts.onEnd?.();
   };
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 export const industrialPack: GeneratedSoundPack = {
@@ -696,13 +696,13 @@ const minimalHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoun
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 const minimalHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
@@ -734,13 +734,13 @@ const minimalHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySou
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 export const minimalPack: GeneratedSoundPack = {
@@ -804,13 +804,13 @@ const retroHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundO
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 const retroHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
@@ -857,11 +857,11 @@ const retroHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySound
   osc.stop(t + 0.6);
 
   osc.onended = () => {
-    oscs.forEach(o => { try { o.disconnect(); } catch {} });
+    oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
     opts.onEnd?.();
   };
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 export const retroPack: GeneratedSoundPack = {
@@ -904,13 +904,13 @@ const crispHeroComplete: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundO
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 const crispHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySoundOptions): SoundPlayback => {
@@ -943,13 +943,13 @@ const crispHeroMilestone: SoundSynthesizer = (ctx: AudioContext, opts: PlaySound
 
     if (isLast) {
       osc.onended = () => {
-        oscs.forEach(o => { try { o.disconnect(); } catch {} });
+        oscs.forEach(o => { try { o.disconnect(); } catch { /* already disposed */ } });
         opts.onEnd?.();
       };
     }
   });
 
-  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch {} }) };
+  return { stop: () => oscs.forEach(o => { try { o.stop(); } catch { /* already disposed */ } }) };
 };
 
 export const crispPack: GeneratedSoundPack = {

@@ -109,7 +109,6 @@
     onclick={(e: MouseEvent) => e.stopPropagation()}
   >
     <div class="flex items-center gap-2">
-      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <div class="session-context-bar min-w-[4rem] {pulseClass}">
         <div class="h-full w-full overflow-hidden rounded-full bg-muted/30">
           <div class="h-full transition-all duration-500 {barColor}" style="width: {barWidth}%"></div>

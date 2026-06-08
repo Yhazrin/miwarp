@@ -1,6 +1,6 @@
 <script lang="ts">
   import * as api from "$lib/api";
-  import { listen } from "@tauri-apps/api/event";
+  import { getTransport } from "$lib/transport";
 
   interface Props {
     size?: "xs" | "sm" | "md" | "lg";
@@ -23,7 +23,8 @@
 
   $effect(() => {
     load();
-    const unlisten = listen("user-settings-changed", () => load());
+    const transport = getTransport();
+    const unlisten = transport.listen("user-settings-changed", () => load());
     return () => {
       unlisten.then((fn) => fn());
     };
