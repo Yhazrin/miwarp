@@ -1463,40 +1463,41 @@ textarea,
   flex-shrink: 0;
 }
 
-/* Tier 1: 10-position row ordered to mirror the collapsed capsule.
-   chrome 1:1 paired with reveal tabs: layout · home · settings · wrench ·
-   file · plug · monitor · plus · clock · summarize. The middle 6
-   reveal columns collapse to 0 width in the collapsed state so only
-   the 4 chrome anchors remain visible. */
+/* Tier 1: 10-position row — 3 leading reveal + 4 chrome anchors (always
+   centered in both collapsed and expanded states) + 3 trailing reveal.
+   In the collapsed state the 6 reveal columns collapse to 0 width so only
+   the 4 chrome anchors remain visible, sitting compact in the center.
+   Order: home · wrench · file · layout · settings · plug · plus · monitor
+   · clock · summarize.
+   column-gap is always 0 so the 4 chrome anchors never spread apart on
+   hover; reveal-to-reveal spacing is carried by .session-island-reveal's
+   own margin-right so it fades in with the reveal itself. */
 .session-island-tier1 {
   display: grid;
   align-items: center;
   justify-content: center;
-  column-gap: var(--session-island-rail-gap);
+  column-gap: 0;
   width: max-content;
   max-width: 100%;
   padding: 0;
   grid-template-columns:
-    auto /* 1 layout */
-    auto /* 2 home */
-    auto /* 3 settings */
-    auto /* 4 wrench */
-    auto /* 5 file */
+    auto /* 1 home */
+    auto /* 2 wrench */
+    auto /* 3 file */
+    auto /* 4 layout */
+    auto /* 5 settings */
     auto /* 6 plug */
-    auto /* 7 monitor */
-    auto /* 8 plus */
+    auto /* 7 plus */
+    auto /* 8 monitor */
     auto /* 9 clock */
     auto; /* 10 summarize */
 }
 
 /* Collapsed capsule: only the 4 chrome anchors (layout / settings / plug /
    plus) are visible. The 6 reveal tabs collapse to 0 width, and
-   column-gap drops to 0, so the 4 anchors sit close to center. Active
-   state grows them back with width + scale + opacity transitions. */
-.session-island-shell:not(.session-island-active) .session-island-tier1 {
-  column-gap: 0;
-}
-
+   margin/padding/border are zeroed out so they don't push the 4 anchors
+   apart. Active state grows them back with width + scale + opacity
+   transitions, and margin-right fades in alongside the reveal. */
 .session-island-shell:not(.session-island-active) .session-island-reveal {
   width: 0;
   height: 0;
@@ -1529,6 +1530,7 @@ textarea,
 .session-island-tier2 .session-context-pill {
   width: var(--context-pill-slot-width);
   max-width: var(--context-pill-slot-width);
+  border-radius: 9999px;
 }
 
 .session-context-ctx-label {
@@ -1770,13 +1772,17 @@ textarea,
   width: 0;
   height: 28px;
   min-width: 0;
-  margin: 0;
+  margin: 0 var(--session-island-rail-gap) 0 0;
   overflow: hidden;
   pointer-events: none;
   transition:
     opacity var(--session-island-duration) var(--session-island-ease),
     transform var(--session-island-duration) var(--session-island-ease),
     width var(--session-island-duration) var(--session-island-ease);
+}
+
+.session-island-reveal:last-child {
+  margin-right: 0;
 }
 
 .session-island-shell.session-island-active .session-island-reveal {
