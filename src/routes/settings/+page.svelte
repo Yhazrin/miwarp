@@ -21,9 +21,6 @@
   import Card from "$lib/components/Card.svelte";
   import Button from "$lib/components/Button.svelte";
   import Input from "$lib/components/Input.svelte";
-  import KeybindingEditor from "$lib/components/KeybindingEditor.svelte";
-  import BackgroundPicker from "$lib/components/BackgroundPicker.svelte";
-  import ThemeEditor from "$lib/components/ThemeEditor.svelte";
   import SettingsToggle from "$lib/components/settings/SettingsToggle.svelte";
   import SettingsDoctorPanel from "$lib/components/settings/SettingsDoctorPanel.svelte";
   import { formatKeyDisplay } from "$lib/stores/keybindings.svelte";
@@ -1774,7 +1771,7 @@
     </aside>
 
     <!-- ═══ Content Area ═══ -->
-    <main class="flex-1 overflow-y-auto">
+    <main class="scrollbar-hide flex-1 overflow-y-auto">
       <div class="max-w-3xl mx-auto p-6">
         <div>
           <SettingsPanels

@@ -218,6 +218,74 @@ html.light:not([data-theme]) {
   --popover-foreground: 210 40% 95%;
 }
 
+/* ── Midnight Light Theme ── */
+[data-theme="midnight-light"] {
+  --miwarp-bg-deepest: 220 32% 98%;
+  --miwarp-bg-deep: 220 28% 96%;
+  --miwarp-bg-base: 0 0% 100%;
+  --miwarp-bg-elevated: 0 0% 100%;
+  --miwarp-bg-surface: 220 22% 97%;
+  --miwarp-bg-hover: 220 18% 93%;
+
+  --miwarp-glass-bg: 0 0% 100%;
+  --miwarp-glass-opacity: 0.85;
+  --miwarp-glass-border: 217 60% 70%;
+  --miwarp-glass-border-opacity: 0.28;
+  --miwarp-glass-blur: 18px;
+
+  --miwarp-overlay: 220 30% 8% / 0.3;
+
+  --miwarp-accent-primary: 217 91% 48%;
+  --miwarp-accent-violet: 239 84% 56%;
+  --miwarp-accent-blue: 199 89% 40%;
+  --miwarp-accent-yellow: 38 92% 45%;
+  --miwarp-accent-pink: 330 70% 50%;
+  --miwarp-accent-teal: 174 60% 34%;
+  --miwarp-accent-on-accent: 0 0% 100%;
+
+  --miwarp-text-primary: 220 30% 12%;
+  --miwarp-text-secondary: 220 15% 38%;
+  --miwarp-text-tertiary: 220 10% 52%;
+
+  --miwarp-status-success: 152 60% 32%;
+  --miwarp-status-warning: 38 80% 42%;
+  --miwarp-status-error: 0 70% 46%;
+  --miwarp-status-info: 199 80% 40%;
+  --miwarp-status-running: 217 91% 48%;
+  --miwarp-status-done: 152 60% 32%;
+  --miwarp-status-failed: 0 70% 46%;
+  --miwarp-status-pending: 38 80% 42%;
+  --miwarp-status-paused: 220 12% 50%;
+  --miwarp-status-blocked: 27 85% 46%;
+  --miwarp-status-idle: 220 10% 52%;
+
+  --background: 0 0% 100%;
+  --foreground: 220 30% 12%;
+  --primary: 217 91% 48%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 22% 96%;
+  --secondary-foreground: 220 30% 12%;
+  --muted: 220 18% 94%;
+  --muted-foreground: 220 12% 42%;
+  --accent: 239 84% 94%;
+  --accent-foreground: 239 84% 36%;
+  --destructive: 0 70% 46%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 18% 86%;
+  --input: 220 18% 90%;
+  --ring: 217 91% 48%;
+  --sidebar-background: 220 28% 97%;
+  --sidebar-foreground: 220 30% 14%;
+  --sidebar-primary: 217 91% 48%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 18% 93%;
+  --sidebar-accent-foreground: 220 30% 14%;
+  --sidebar-border: 220 18% 88%;
+  --sidebar-ring: 217 91% 48%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 30% 12%;
+}
+
 /* ── Ocean Theme ── */
 [data-theme="ocean"] {
   --miwarp-bg-deepest: 200 30% 6%;
@@ -285,6 +353,74 @@ html.light:not([data-theme]) {
   --sidebar-ring: 187 70% 50%;
   --popover: 200 28% 9%;
   --popover-foreground: 190 30% 95%;
+}
+
+/* ── Ocean Light Theme ── */
+[data-theme="ocean-light"] {
+  --miwarp-bg-deepest: 200 32% 98%;
+  --miwarp-bg-deep: 200 26% 96%;
+  --miwarp-bg-base: 0 0% 100%;
+  --miwarp-bg-elevated: 0 0% 100%;
+  --miwarp-bg-surface: 200 22% 97%;
+  --miwarp-bg-hover: 200 18% 92%;
+
+  --miwarp-glass-bg: 0 0% 100%;
+  --miwarp-glass-opacity: 0.85;
+  --miwarp-glass-border: 187 60% 60%;
+  --miwarp-glass-border-opacity: 0.3;
+  --miwarp-glass-blur: 16px;
+
+  --miwarp-overlay: 200 30% 8% / 0.3;
+
+  --miwarp-accent-primary: 187 80% 38%;
+  --miwarp-accent-violet: 199 80% 38%;
+  --miwarp-accent-blue: 200 75% 42%;
+  --miwarp-accent-yellow: 38 90% 45%;
+  --miwarp-accent-pink: 330 70% 50%;
+  --miwarp-accent-teal: 174 60% 34%;
+  --miwarp-accent-on-accent: 0 0% 100%;
+
+  --miwarp-text-primary: 200 30% 12%;
+  --miwarp-text-secondary: 200 16% 38%;
+  --miwarp-text-tertiary: 200 12% 50%;
+
+  --miwarp-status-success: 160 60% 32%;
+  --miwarp-status-warning: 38 80% 42%;
+  --miwarp-status-error: 0 70% 46%;
+  --miwarp-status-info: 199 75% 40%;
+  --miwarp-status-running: 187 80% 38%;
+  --miwarp-status-done: 160 60% 32%;
+  --miwarp-status-failed: 0 70% 46%;
+  --miwarp-status-pending: 38 80% 42%;
+  --miwarp-status-paused: 200 12% 50%;
+  --miwarp-status-blocked: 27 85% 46%;
+  --miwarp-status-idle: 200 10% 52%;
+
+  --background: 0 0% 100%;
+  --foreground: 200 30% 12%;
+  --primary: 187 80% 38%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 200 22% 95%;
+  --secondary-foreground: 200 30% 12%;
+  --muted: 200 18% 93%;
+  --muted-foreground: 200 12% 42%;
+  --accent: 199 80% 94%;
+  --accent-foreground: 199 80% 32%;
+  --destructive: 0 70% 46%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 200 18% 86%;
+  --input: 200 18% 90%;
+  --ring: 187 80% 38%;
+  --sidebar-background: 200 26% 97%;
+  --sidebar-foreground: 200 30% 14%;
+  --sidebar-primary: 187 80% 38%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 200 18% 92%;
+  --sidebar-accent-foreground: 200 30% 14%;
+  --sidebar-border: 200 18% 88%;
+  --sidebar-ring: 187 80% 38%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 200 30% 12%;
 }
 
 /* ── Dracula Theme ── */
@@ -356,6 +492,74 @@ html.light:not([data-theme]) {
   --popover-foreground: 60 30% 90%;
 }
 
+/* ── Dracula Light Theme ── */
+[data-theme="dracula-light"] {
+  --miwarp-bg-deepest: 230 20% 98%;
+  --miwarp-bg-deep: 230 18% 96%;
+  --miwarp-bg-base: 0 0% 100%;
+  --miwarp-bg-elevated: 0 0% 100%;
+  --miwarp-bg-surface: 230 16% 97%;
+  --miwarp-bg-hover: 230 12% 92%;
+
+  --miwarp-glass-bg: 0 0% 100%;
+  --miwarp-glass-opacity: 0.85;
+  --miwarp-glass-border: 265 50% 70%;
+  --miwarp-glass-border-opacity: 0.3;
+  --miwarp-glass-blur: 14px;
+
+  --miwarp-overlay: 230 30% 10% / 0.3;
+
+  --miwarp-accent-primary: 265 70% 50%;
+  --miwarp-accent-violet: 315 60% 50%;
+  --miwarp-accent-blue: 197 70% 45%;
+  --miwarp-accent-yellow: 38 90% 45%;
+  --miwarp-accent-pink: 330 70% 50%;
+  --miwarp-accent-teal: 174 60% 34%;
+  --miwarp-accent-on-accent: 0 0% 100%;
+
+  --miwarp-text-primary: 231 25% 14%;
+  --miwarp-text-secondary: 231 14% 36%;
+  --miwarp-text-tertiary: 231 10% 50%;
+
+  --miwarp-status-success: 135 50% 36%;
+  --miwarp-status-warning: 38 70% 42%;
+  --miwarp-status-error: 325 60% 45%;
+  --miwarp-status-info: 197 70% 40%;
+  --miwarp-status-running: 265 70% 50%;
+  --miwarp-status-done: 135 50% 36%;
+  --miwarp-status-failed: 325 60% 45%;
+  --miwarp-status-pending: 38 80% 42%;
+  --miwarp-status-paused: 231 10% 50%;
+  --miwarp-status-blocked: 27 80% 46%;
+  --miwarp-status-idle: 231 8% 52%;
+
+  --background: 0 0% 100%;
+  --foreground: 231 25% 14%;
+  --primary: 265 70% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 230 16% 95%;
+  --secondary-foreground: 231 25% 14%;
+  --muted: 230 12% 93%;
+  --muted-foreground: 231 12% 42%;
+  --accent: 315 60% 94%;
+  --accent-foreground: 315 60% 34%;
+  --destructive: 325 60% 45%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 230 14% 86%;
+  --input: 230 14% 90%;
+  --ring: 265 70% 50%;
+  --sidebar-background: 230 18% 97%;
+  --sidebar-foreground: 231 25% 16%;
+  --sidebar-primary: 265 70% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 230 12% 92%;
+  --sidebar-accent-foreground: 231 25% 14%;
+  --sidebar-border: 230 14% 88%;
+  --sidebar-ring: 265 70% 50%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 231 25% 14%;
+}
+
 /* ── Nord Theme ── */
 [data-theme="nord"] {
   --miwarp-bg-deepest: 220 16% 13%;
@@ -423,6 +627,74 @@ html.light:not([data-theme]) {
   --sidebar-ring: 213 80% 62%;
   --popover: 220 16% 15%;
   --popover-foreground: 218 28% 88%;
+}
+
+/* ── Nord Light Theme ── */
+[data-theme="nord-light"] {
+  --miwarp-bg-deepest: 220 20% 98%;
+  --miwarp-bg-deep: 220 16% 96%;
+  --miwarp-bg-base: 0 0% 100%;
+  --miwarp-bg-elevated: 0 0% 100%;
+  --miwarp-bg-surface: 220 14% 97%;
+  --miwarp-bg-hover: 220 10% 92%;
+
+  --miwarp-glass-bg: 0 0% 100%;
+  --miwarp-glass-opacity: 0.85;
+  --miwarp-glass-border: 213 30% 70%;
+  --miwarp-glass-border-opacity: 0.3;
+  --miwarp-glass-blur: 14px;
+
+  --miwarp-overlay: 220 25% 8% / 0.3;
+
+  --miwarp-accent-primary: 213 70% 45%;
+  --miwarp-accent-violet: 213 35% 40%;
+  --miwarp-accent-blue: 197 40% 42%;
+  --miwarp-accent-yellow: 38 85% 42%;
+  --miwarp-accent-pink: 330 65% 48%;
+  --miwarp-accent-teal: 174 55% 32%;
+  --miwarp-accent-on-accent: 0 0% 100%;
+
+  --miwarp-text-primary: 220 25% 14%;
+  --miwarp-text-secondary: 220 12% 36%;
+  --miwarp-text-tertiary: 220 8% 50%;
+
+  --miwarp-status-success: 92 35% 36%;
+  --miwarp-status-warning: 40 65% 42%;
+  --miwarp-status-error: 354 50% 45%;
+  --miwarp-status-info: 197 40% 40%;
+  --miwarp-status-running: 213 70% 45%;
+  --miwarp-status-done: 92 35% 36%;
+  --miwarp-status-failed: 354 50% 45%;
+  --miwarp-status-pending: 38 80% 42%;
+  --miwarp-status-paused: 220 10% 50%;
+  --miwarp-status-blocked: 27 80% 46%;
+  --miwarp-status-idle: 220 8% 52%;
+
+  --background: 0 0% 100%;
+  --foreground: 220 25% 14%;
+  --primary: 213 70% 45%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14% 95%;
+  --secondary-foreground: 220 25% 14%;
+  --muted: 220 10% 93%;
+  --muted-foreground: 220 8% 42%;
+  --accent: 197 40% 92%;
+  --accent-foreground: 197 40% 30%;
+  --destructive: 354 50% 45%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 10% 86%;
+  --input: 220 10% 90%;
+  --ring: 213 70% 45%;
+  --sidebar-background: 220 16% 97%;
+  --sidebar-foreground: 220 25% 16%;
+  --sidebar-primary: 213 70% 45%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 10% 92%;
+  --sidebar-accent-foreground: 220 25% 14%;
+  --sidebar-border: 220 10% 88%;
+  --sidebar-ring: 213 70% 45%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 25% 14%;
 }
 
 /* ── Morandi Theme �?莫兰迪色系，低饱和度柔和 ── */
@@ -803,6 +1075,74 @@ html.light:not([data-theme]) {
   --popover-foreground: 330 28% 96%;
 }
 
+/* ── Carbon Pink Light Theme ── */
+[data-theme="carbonPink-light"] {
+  --miwarp-bg-deepest: 330 24% 98%;
+  --miwarp-bg-deep: 330 20% 96%;
+  --miwarp-bg-base: 0 0% 100%;
+  --miwarp-bg-elevated: 0 0% 100%;
+  --miwarp-bg-surface: 330 16% 97%;
+  --miwarp-bg-hover: 330 14% 92%;
+
+  --miwarp-glass-bg: 0 0% 100%;
+  --miwarp-glass-opacity: 0.85;
+  --miwarp-glass-border: 333 50% 70%;
+  --miwarp-glass-border-opacity: 0.32;
+  --miwarp-glass-blur: 16px;
+
+  --miwarp-overlay: 330 30% 10% / 0.3;
+
+  --miwarp-accent-primary: 333 80% 50%;
+  --miwarp-accent-violet: 292 70% 50%;
+  --miwarp-accent-blue: 199 70% 45%;
+  --miwarp-accent-yellow: 38 90% 45%;
+  --miwarp-accent-pink: 330 70% 50%;
+  --miwarp-accent-teal: 174 60% 34%;
+  --miwarp-accent-on-accent: 0 0% 100%;
+
+  --miwarp-text-primary: 330 25% 14%;
+  --miwarp-text-secondary: 330 12% 36%;
+  --miwarp-text-tertiary: 330 8% 50%;
+
+  --miwarp-status-success: 158 55% 34%;
+  --miwarp-status-warning: 38 80% 42%;
+  --miwarp-status-error: 350 75% 48%;
+  --miwarp-status-info: 199 70% 42%;
+  --miwarp-status-running: 333 80% 50%;
+  --miwarp-status-done: 158 55% 34%;
+  --miwarp-status-failed: 350 75% 48%;
+  --miwarp-status-pending: 38 80% 42%;
+  --miwarp-status-paused: 330 10% 50%;
+  --miwarp-status-blocked: 18 80% 48%;
+  --miwarp-status-idle: 330 8% 52%;
+
+  --background: 0 0% 100%;
+  --foreground: 330 25% 14%;
+  --primary: 333 80% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 330 16% 95%;
+  --secondary-foreground: 330 25% 14%;
+  --muted: 330 14% 93%;
+  --muted-foreground: 330 10% 42%;
+  --accent: 292 70% 94%;
+  --accent-foreground: 292 70% 34%;
+  --destructive: 350 75% 48%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 330 14% 86%;
+  --input: 330 14% 90%;
+  --ring: 333 80% 50%;
+  --sidebar-background: 330 20% 97%;
+  --sidebar-foreground: 330 25% 16%;
+  --sidebar-primary: 333 80% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 330 14% 92%;
+  --sidebar-accent-foreground: 330 25% 14%;
+  --sidebar-border: 330 14% 88%;
+  --sidebar-ring: 333 80% 50%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 330 25% 14%;
+}
+
 [data-theme="deepSeaMilk"] {
   --miwarp-bg-deepest: 202 42% 8%;
   --miwarp-bg-deep: 201 38% 11%;
@@ -871,7 +1211,76 @@ html.light:not([data-theme]) {
   --popover-foreground: 44 70% 94%;
 }
 
-[data-theme="auroraPomelo"] {
+/* ── Deep Sea Milk Light Theme ── */
+[data-theme="deepSeaMilk-light"] {
+  --miwarp-bg-deepest: 200 30% 98%;
+  --miwarp-bg-deep: 200 26% 96%;
+  --miwarp-bg-base: 0 0% 100%;
+  --miwarp-bg-elevated: 0 0% 100%;
+  --miwarp-bg-surface: 200 20% 97%;
+  --miwarp-bg-hover: 200 16% 92%;
+
+  --miwarp-glass-bg: 0 0% 100%;
+  --miwarp-glass-opacity: 0.85;
+  --miwarp-glass-border: 194 50% 70%;
+  --miwarp-glass-border-opacity: 0.3;
+  --miwarp-glass-blur: 16px;
+
+  --miwarp-overlay: 200 30% 8% / 0.3;
+
+  --miwarp-accent-primary: 194 75% 36%;
+  --miwarp-accent-violet: 43 60% 45%;
+  --miwarp-accent-blue: 185 60% 38%;
+  --miwarp-accent-yellow: 38 80% 42%;
+  --miwarp-accent-pink: 330 70% 50%;
+  --miwarp-accent-teal: 174 60% 34%;
+  --miwarp-accent-on-accent: 0 0% 100%;
+
+  --miwarp-text-primary: 200 30% 12%;
+  --miwarp-text-secondary: 200 15% 36%;
+  --miwarp-text-tertiary: 200 10% 50%;
+
+  --miwarp-status-success: 160 55% 32%;
+  --miwarp-status-warning: 38 75% 42%;
+  --miwarp-status-error: 0 70% 46%;
+  --miwarp-status-info: 194 75% 36%;
+  --miwarp-status-running: 194 75% 36%;
+  --miwarp-status-done: 160 55% 32%;
+  --miwarp-status-failed: 0 70% 46%;
+  --miwarp-status-pending: 38 75% 42%;
+  --miwarp-status-paused: 200 10% 50%;
+  --miwarp-status-blocked: 24 75% 46%;
+  --miwarp-status-idle: 200 8% 52%;
+
+  --background: 0 0% 100%;
+  --foreground: 200 30% 12%;
+  --primary: 194 75% 36%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 200 20% 95%;
+  --secondary-foreground: 200 30% 12%;
+  --muted: 200 16% 93%;
+  --muted-foreground: 200 10% 42%;
+  --accent: 43 60% 92%;
+  --accent-foreground: 43 60% 28%;
+  --destructive: 0 70% 46%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 200 16% 86%;
+  --input: 200 16% 90%;
+  --ring: 194 75% 36%;
+  --sidebar-background: 200 26% 97%;
+  --sidebar-foreground: 200 30% 14%;
+  --sidebar-primary: 194 75% 36%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 200 16% 92%;
+  --sidebar-accent-foreground: 200 30% 14%;
+  --sidebar-border: 200 16% 88%;
+  --sidebar-ring: 194 75% 36%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 200 30% 12%;
+}
+
+/* ── Aurora Pomelo Light Theme ── */
+[data-theme="auroraPomelo-light"] {
   --miwarp-bg-deepest: 42 88% 96%;
   --miwarp-bg-deep: 38 78% 94%;
   --miwarp-bg-base: 36 80% 97%;
@@ -939,7 +1348,76 @@ html.light:not([data-theme]) {
   --popover-foreground: 24 38% 16%;
 }
 
-[data-theme="pomegranateMist"] {
+/* ── Aurora Pomelo Dark Theme ── */
+[data-theme="auroraPomelo"] {
+  --miwarp-bg-deepest: 18 28% 8%;
+  --miwarp-bg-deep: 18 24% 11%;
+  --miwarp-bg-base: 18 22% 14%;
+  --miwarp-bg-elevated: 18 20% 17%;
+  --miwarp-bg-surface: 18 18% 20%;
+  --miwarp-bg-hover: 18 16% 24%;
+
+  --miwarp-glass-bg: 18 24% 11%;
+  --miwarp-glass-opacity: 0.78;
+  --miwarp-glass-border: 18 80% 60%;
+  --miwarp-glass-border-opacity: 0.18;
+  --miwarp-glass-blur: 16px;
+
+  --miwarp-overlay: 18 30% 5% / 0.6;
+
+  --miwarp-accent-primary: 18 92% 58%;
+  --miwarp-accent-violet: 288 80% 68%;
+  --miwarp-accent-blue: 177 64% 56%;
+  --miwarp-accent-yellow: 48 96% 56%;
+  --miwarp-accent-pink: 330 81% 65%;
+  --miwarp-accent-teal: 174 68% 48%;
+  --miwarp-accent-on-accent: 18 30% 10%;
+
+  --miwarp-text-primary: 32 50% 94%;
+  --miwarp-text-secondary: 32 18% 70%;
+  --miwarp-text-tertiary: 32 10% 52%;
+
+  --miwarp-status-success: 150 55% 52%;
+  --miwarp-status-warning: 32 88% 58%;
+  --miwarp-status-error: 0 75% 60%;
+  --miwarp-status-info: 177 64% 56%;
+  --miwarp-status-running: 18 92% 58%;
+  --miwarp-status-done: 150 55% 52%;
+  --miwarp-status-failed: 0 75% 60%;
+  --miwarp-status-pending: 32 88% 58%;
+  --miwarp-status-paused: 24 12% 56%;
+  --miwarp-status-blocked: 288 72% 58%;
+  --miwarp-status-idle: 24 10% 58%;
+
+  --background: 18 28% 8%;
+  --foreground: 32 50% 94%;
+  --primary: 18 92% 58%;
+  --primary-foreground: 18 30% 10%;
+  --secondary: 18 20% 17%;
+  --secondary-foreground: 32 50% 90%;
+  --muted: 18 18% 20%;
+  --muted-foreground: 32 14% 60%;
+  --accent: 288 80% 28%;
+  --accent-foreground: 288 80% 88%;
+  --destructive: 0 75% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 18 16% 24%;
+  --input: 18 20% 17%;
+  --ring: 18 92% 58%;
+  --sidebar-background: 18 28% 7%;
+  --sidebar-foreground: 32 50% 90%;
+  --sidebar-primary: 18 92% 58%;
+  --sidebar-primary-foreground: 18 30% 10%;
+  --sidebar-accent: 18 16% 24%;
+  --sidebar-accent-foreground: 32 50% 94%;
+  --sidebar-border: 18 16% 18%;
+  --sidebar-ring: 18 92% 58%;
+  --popover: 18 24% 11%;
+  --popover-foreground: 32 50% 94%;
+}
+
+/* ── Pomegranate Mist Light Theme ── */
+[data-theme="pomegranateMist-light"] {
   --miwarp-bg-deepest: 350 72% 97%;
   --miwarp-bg-deep: 348 64% 95%;
   --miwarp-bg-base: 346 60% 98%;
@@ -1005,6 +1483,74 @@ html.light:not([data-theme]) {
   --sidebar-ring: 345 78% 48%;
   --popover: 0 0% 100%;
   --popover-foreground: 346 42% 16%;
+}
+
+/* ── Pomegranate Mist Dark Theme ── */
+[data-theme="pomegranateMist"] {
+  --miwarp-bg-deepest: 345 30% 7%;
+  --miwarp-bg-deep: 345 26% 10%;
+  --miwarp-bg-base: 345 22% 13%;
+  --miwarp-bg-elevated: 345 20% 16%;
+  --miwarp-bg-surface: 345 18% 19%;
+  --miwarp-bg-hover: 345 16% 23%;
+
+  --miwarp-glass-bg: 345 26% 10%;
+  --miwarp-glass-opacity: 0.78;
+  --miwarp-glass-border: 345 70% 60%;
+  --miwarp-glass-border-opacity: 0.18;
+  --miwarp-glass-blur: 16px;
+
+  --miwarp-overlay: 345 30% 4% / 0.6;
+
+  --miwarp-accent-primary: 345 78% 58%;
+  --miwarp-accent-violet: 267 72% 68%;
+  --miwarp-accent-blue: 198 62% 58%;
+  --miwarp-accent-yellow: 48 96% 56%;
+  --miwarp-accent-pink: 330 81% 65%;
+  --miwarp-accent-teal: 174 68% 48%;
+  --miwarp-accent-on-accent: 345 30% 10%;
+
+  --miwarp-text-primary: 346 50% 94%;
+  --miwarp-text-secondary: 346 18% 70%;
+  --miwarp-text-tertiary: 346 10% 52%;
+
+  --miwarp-status-success: 152 50% 52%;
+  --miwarp-status-warning: 36 80% 58%;
+  --miwarp-status-error: 345 78% 62%;
+  --miwarp-status-info: 198 62% 58%;
+  --miwarp-status-running: 345 78% 58%;
+  --miwarp-status-done: 152 50% 52%;
+  --miwarp-status-failed: 345 78% 62%;
+  --miwarp-status-pending: 36 80% 58%;
+  --miwarp-status-paused: 346 10% 56%;
+  --miwarp-status-blocked: 267 72% 60%;
+  --miwarp-status-idle: 346 8% 58%;
+
+  --background: 345 30% 7%;
+  --foreground: 346 50% 94%;
+  --primary: 345 78% 58%;
+  --primary-foreground: 345 30% 10%;
+  --secondary: 345 20% 16%;
+  --secondary-foreground: 346 50% 90%;
+  --muted: 345 18% 19%;
+  --muted-foreground: 346 14% 60%;
+  --accent: 267 72% 30%;
+  --accent-foreground: 267 72% 88%;
+  --destructive: 345 78% 62%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 345 16% 24%;
+  --input: 345 20% 16%;
+  --ring: 345 78% 58%;
+  --sidebar-background: 345 30% 6%;
+  --sidebar-foreground: 346 50% 90%;
+  --sidebar-primary: 345 78% 58%;
+  --sidebar-primary-foreground: 345 30% 10%;
+  --sidebar-accent: 345 16% 24%;
+  --sidebar-accent-foreground: 346 50% 94%;
+  --sidebar-border: 345 16% 18%;
+  --sidebar-ring: 345 78% 58%;
+  --popover: 345 26% 10%;
+  --popover-foreground: 346 50% 94%;
 }
 
 [data-theme="auroraLime"] {
@@ -1073,4 +1619,72 @@ html.light:not([data-theme]) {
   --sidebar-ring: 80 88% 62%;
   --popover: 214 32% 10%;
   --popover-foreground: 86 38% 94%;
+}
+
+/* ── Aurora Lime Light Theme ── */
+[data-theme="auroraLime-light"] {
+  --miwarp-bg-deepest: 86 30% 98%;
+  --miwarp-bg-deep: 86 22% 96%;
+  --miwarp-bg-base: 0 0% 100%;
+  --miwarp-bg-elevated: 0 0% 100%;
+  --miwarp-bg-surface: 86 18% 97%;
+  --miwarp-bg-hover: 86 14% 92%;
+
+  --miwarp-glass-bg: 0 0% 100%;
+  --miwarp-glass-opacity: 0.85;
+  --miwarp-glass-border: 80 50% 70%;
+  --miwarp-glass-border-opacity: 0.3;
+  --miwarp-glass-blur: 16px;
+
+  --miwarp-overlay: 86 30% 10% / 0.3;
+
+  --miwarp-accent-primary: 80 75% 42%;
+  --miwarp-accent-violet: 170 60% 36%;
+  --miwarp-accent-blue: 204 75% 45%;
+  --miwarp-accent-yellow: 38 85% 42%;
+  --miwarp-accent-pink: 330 65% 48%;
+  --miwarp-accent-teal: 174 55% 32%;
+  --miwarp-accent-on-accent: 0 0% 100%;
+
+  --miwarp-text-primary: 86 25% 14%;
+  --miwarp-text-secondary: 86 12% 36%;
+  --miwarp-text-tertiary: 86 8% 50%;
+
+  --miwarp-status-success: 80 75% 36%;
+  --miwarp-status-warning: 38 80% 42%;
+  --miwarp-status-error: 350 70% 46%;
+  --miwarp-status-info: 204 75% 40%;
+  --miwarp-status-running: 80 75% 42%;
+  --miwarp-status-done: 80 75% 36%;
+  --miwarp-status-failed: 350 70% 46%;
+  --miwarp-status-pending: 38 80% 42%;
+  --miwarp-status-paused: 86 8% 50%;
+  --miwarp-status-blocked: 170 60% 42%;
+  --miwarp-status-idle: 86 6% 52%;
+
+  --background: 0 0% 100%;
+  --foreground: 86 25% 14%;
+  --primary: 80 75% 42%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 86 18% 95%;
+  --secondary-foreground: 86 25% 14%;
+  --muted: 86 14% 93%;
+  --muted-foreground: 86 10% 42%;
+  --accent: 170 60% 92%;
+  --accent-foreground: 170 60% 28%;
+  --destructive: 350 70% 46%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 86 14% 86%;
+  --input: 86 14% 90%;
+  --ring: 80 75% 42%;
+  --sidebar-background: 86 22% 97%;
+  --sidebar-foreground: 86 25% 16%;
+  --sidebar-primary: 80 75% 42%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 86 14% 92%;
+  --sidebar-accent-foreground: 86 25% 14%;
+  --sidebar-border: 86 14% 88%;
+  --sidebar-ring: 80 75% 42%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 86 25% 14%;
 }

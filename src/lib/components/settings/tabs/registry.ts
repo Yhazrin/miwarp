@@ -9,6 +9,7 @@ import type { Component } from "svelte";
 
 export type SettingsTabId =
   | "appearance"
+  | "theme"
   | "providers"
   | "devices"
   | "shortcuts"
@@ -47,6 +48,8 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
 // Icon component once tabs are extracted; for now the registry drives
 // the navigation rendering shape and can be filled in alongside each tab.
 const ICON_EYE = "M2 8s2.5-5 6-5 6 5 6 5-2.5 5-6 5-6-5-6-5Zm6 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z";
+const ICON_PALETTE =
+  "M12 3a9 9 0 0 0 0 18 2 2 0 0 0 1.4-3.9 1 1 0 0 0-.7-1.3l-1-.7a1 1 0 0 1 .5-1.7 4 4 0 0 0 4-4 9 9 0 0 0-4.2-7.4ZM6.5 7a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm5 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Zm5 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z";
 const ICON_KEY =
   "M14 7a4 4 0 1 0-3.5 6.6L8 16.1V19h2.9l2.5-2.5V19h2.9v-2.9h2.4L21 13.5l-3.6-3.6A4 4 0 0 0 14 7Zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4Z";
 const ICON_MOBILE =
@@ -64,7 +67,8 @@ const ICON_BELL =
 const ICON_DATABASE =
   "M5 5c0-1.7 3.6-3 7-3s7 1.3 7 3v2c0 1.7-3.6 3-7 3s-7-1.3-7-3V5Zm0 5c0 1.7 3.6 3 7 3s7-1.3 7-3v-1.5c-1.4 1.3-4 2.1-7 2.1s-5.6-.8-7-2.1V10Zm0 5c0 1.7 3.6 3 7 3s7-1.3 7-3v-1.5c-1.4 1.3-4 2.1-7 2.1s-5.6-.8-7-2.1V15Z";
 
-import ThemeCard from "./ThemeCard.svelte";
+import AppearanceTab from "./AppearanceTab.svelte";
+import ThemeTab from "./ThemeTab.svelte";
 import ProvidersTab from "./ProvidersTab.svelte";
 import DevicesTab from "./DevicesTab.svelte";
 import ShortcutsTab from "./ShortcutsTab.svelte";
@@ -80,10 +84,18 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     labelKey: "settings_tab_appearance",
     fallbackLabel: "Appearance",
     iconPath: ICON_EYE,
-    // Phase 1: appearance = ThemeCard (editor + picker). Phase 2 will
-    // expand to a full AppearanceTab that also includes language + zoom
-    // + doctor (currently still inline in +page.svelte's general tab).
-    component: ThemeCard,
+    // Appearance = language + UI zoom + sidebar/display toggles + CLI auto-sync.
+    // Theme controls live in their own "theme" first-level tab.
+    component: AppearanceTab,
+    groupId: "display",
+  },
+  {
+    id: "theme",
+    labelKey: "settings_tab_theme",
+    fallbackLabel: "Theme",
+    iconPath: ICON_PALETTE,
+    // Theme = 主题色 picker + 亮/暗/系统 mode + 高级 token editor (collapsed).
+    component: ThemeTab,
     groupId: "display",
   },
   {
@@ -162,7 +174,6 @@ export const LEGACY_TAB_MAP: Record<string, SettingsTabId> = {
   remote: "remote-hosts",
   notifications: "notifications",
   debug: "data-debug",
-  theme: "appearance",
   data: "data-debug",
 };
 

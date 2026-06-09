@@ -29,7 +29,7 @@
   import WorktreeTab from "./tabs/WorktreeTab.svelte";
   import NotificationsTab from "./tabs/NotificationsTab.svelte";
   import DataAndDebugTab from "./tabs/DataAndDebugTab.svelte";
-  import ThemeCard from "./tabs/ThemeCard.svelte";
+  import ThemeTab from "./tabs/ThemeTab.svelte";
 
   // Bundled state type — flattened for prop wiring convenience.
   // Keep fields as `any` only where the tab has its own narrower type
@@ -143,7 +143,7 @@
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DataAndDebugTabC = DataAndDebugTab as any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ThemeCardC = ThemeCard as any;
+  const ThemeTabC = ThemeTab as any;
 </script>
 
 {#if tab === "appearance"}
@@ -240,11 +240,10 @@
   />
 {/if}
 
-<!-- ThemeCard is a thin shell — accessible from appearance via the
-     embedded ThemeCard in AppearanceTab. It is also a legacy top-level
-     target for the old `?tab=theme` URL (LEGACY_TAB_MAP maps theme → appearance). -->
-{#if tab === "appearance" && false}
-  <ThemeCardC settings={state.settings} />
+<!-- Theme — standalone first-level tab. Color + mode are the two main
+     sections; the advanced editor lives in a collapsed details element. -->
+{#if tab === "theme"}
+  <ThemeTabC />
 {/if}
 
 <!-- Defensive: if registry has no component for the requested tab,

@@ -9,30 +9,45 @@
 import { t } from "$lib/i18n/index.svelte";
 import { LS_LEGACY_THEME, LS_LEGACY_COLOR_SCHEME } from "$lib/utils/storage-keys";
 import { dbgWarn } from "$lib/utils/debug";
+import { untrack } from "svelte";
 
 export interface ThemeDefinition {
+  /** Base theme id without any -light/-dark suffix (e.g. "morandi", "codex"). */
   id: string;
+  /** Display name in the picker (e.g. "Morandi", "Codex Dark"). */
   name: string;
-  type: "dark" | "light";
-  accent: string; // primary accent color for preview swatches
+  /** Brand accent color, used for the picker swatch. */
+  accent: string;
+  /**
+   * Which CSS data-theme blocks exist for this theme:
+   *   - "both"   → `[data-theme="X"]` (dark) + `[data-theme="X-light"]` (light) — picker shows ONE entry, mode picks variant
+   *   - "light"  → only `[data-theme="X"]` (with light palette baked in)
+   *   - "dark"   → only `[data-theme="X"]` (with dark palette baked in)
+   * Most themes should be "both" — the same brand reads cleanly in both modes.
+   */
+  variants: "both" | "light" | "dark";
 }
 
+/** Old single-variant type. Kept as a type alias for legacy call sites. */
+export type ThemeVariant = "light" | "dark";
+
 const BUILTIN_THEMES: ThemeDefinition[] = [
-  { id: "codex", name: t("theme_codexDark"), type: "dark", accent: "#33A6FF" },
-  { id: "codex-light", name: t("theme_codexLight"), type: "light", accent: "#33A6FF" },
-  { id: "midnight", name: t("theme_midnight"), type: "dark", accent: "#3B82F6" },
-  { id: "ocean", name: t("theme_ocean"), type: "dark", accent: "#0EA5E9" },
-  { id: "dracula", name: t("theme_dracula"), type: "dark", accent: "#BD93F9" },
-  { id: "nord", name: t("theme_nord"), type: "dark", accent: "#5E81AC" },
-  { id: "morandi", name: t("theme_morandi"), type: "dark", accent: "#A67FA3" },
-  { id: "morandi-light", name: t("theme_morandiLight"), type: "light", accent: "#A67FA3" },
-  { id: "dev-preview", name: t("theme_devPreview"), type: "dark", accent: "#26C2A3" },
-  { id: "dev-preview-light", name: t("theme_devPreviewLight"), type: "light", accent: "#26C2A3" },
-  { id: "carbonPink", name: t("theme_carbonPink"), type: "dark", accent: "#F43F8A" },
-  { id: "deepSeaMilk", name: t("theme_deepSeaMilk"), type: "dark", accent: "#7DD3FC" },
-  { id: "auroraPomelo", name: t("theme_auroraPomelo"), type: "light", accent: "#F97316" },
-  { id: "pomegranateMist", name: t("theme_pomegranateMist"), type: "light", accent: "#E11D48" },
-  { id: "auroraLime", name: t("theme_auroraLime"), type: "dark", accent: "#A3E635" },
+  // ── Each theme = one design. The same brand reads cleanly in both light and
+  //    dark mode. CSS has matching `[data-theme="X"]` (dark) and
+  //    `[data-theme="X-light"]` (light) blocks. The picker shows ONE entry
+  //    per theme; the mode picker decides which variant is applied.
+  { id: "codex", name: t("theme_codex"), accent: "#33A6FF", variants: "both" },
+  { id: "midnight", name: t("theme_midnight"), accent: "#3B82F6", variants: "both" },
+  { id: "ocean", name: t("theme_ocean"), accent: "#0EA5E9", variants: "both" },
+  { id: "dracula", name: t("theme_dracula"), accent: "#BD93F9", variants: "both" },
+  { id: "nord", name: t("theme_nord"), accent: "#5E81AC", variants: "both" },
+  { id: "morandi", name: t("theme_morandi"), accent: "#A67FA3", variants: "both" },
+  { id: "dev-preview", name: t("theme_devPreview"), accent: "#26C2A3", variants: "both" },
+  { id: "carbonPink", name: t("theme_carbonPink"), accent: "#F43F8A", variants: "both" },
+  { id: "deepSeaMilk", name: t("theme_deepSeaMilk"), accent: "#7DD3FC", variants: "both" },
+  { id: "auroraPomelo", name: t("theme_auroraPomelo"), accent: "#F97316", variants: "both" },
+  { id: "pomegranateMist", name: t("theme_pomegranateMist"), accent: "#E11D48", variants: "both" },
+  { id: "auroraLime", name: t("theme_auroraLime"), accent: "#A3E635", variants: "both" },
 ];
 
 export type ThemeId = string;
@@ -61,8 +76,11 @@ const _TOKEN_VARS = [
 ];
 
 class ThemeStore {
-  /** Currently active global theme ID */
-  currentTheme = $state<ThemeId>("codex-light");
+  /** Currently active global theme ID (base id, no -light suffix). */
+  currentTheme = $state<ThemeId>("codex");
+
+  /** Light / dark / follow-system. Drives which `[data-theme]` variant is applied. */
+  mode = $state<"light" | "dark" | "system">("light");
 
   /** Color scheme variant (warm/neutral) */
   colorScheme = $state<ColorScheme>("warm");
@@ -82,10 +100,49 @@ class ThemeStore {
   /** Whether init() has been called */
   initialized = false;
 
-  /** Light or dark mode derived from current theme */
+  /**
+   * System-mode OS listener. The store owns it (not a component) so OS theme
+   * changes keep applying even when the ThemeTab isn't mounted.
+   * `$effect.root` keeps this effect alive for the lifetime of the store
+   * singleton — the cleanup is intentionally discarded.
+   */
+  private _systemEffectActive = false;
+
+  constructor() {
+    if (typeof window === "undefined") return;
+    $effect.root(() => {
+      $effect(() => {
+        if (this.mode !== "system") {
+          this._systemEffectActive = false;
+          return;
+        }
+        const mql = window.matchMedia("(prefers-color-scheme: dark)");
+        this._systemEffectActive = true;
+        // Re-apply once when entering system mode (in case OS theme
+        // differs from the last applied theme).
+        untrack(() => this._applyTheme());
+        const onChange = () => this._applyTheme();
+        mql.addEventListener("change", onChange);
+        return () => mql.removeEventListener("change", onChange);
+      });
+    });
+  }
+
+  /** Resolve the effective light/dark mode:
+   *   - "system" → query prefers-color-scheme
+   *   - explicit → return as-is
+   */
+  get effectiveMode(): "light" | "dark" {
+    if (this.mode === "system") {
+      if (typeof window === "undefined") return "light";
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    return this.mode;
+  }
+
+  /** Whether the current effective rendering is dark. */
   get isDark(): boolean {
-    const theme = this.themes.find((t) => t.id === this.currentTheme);
-    return theme?.type === "dark";
+    return this.effectiveMode === "dark";
   }
 
   /** Get the effective theme for a given session */
@@ -93,16 +150,22 @@ class ThemeStore {
     return this.sessionThemes.get(sessionId) ?? this.currentTheme;
   }
 
-  /** Set the global theme */
+  /** Compute the actual `data-theme` value to apply (combines base id + mode). */
+  get resolvedDataTheme(): string {
+    const base = this.themes.find((t) => t.id === this.currentTheme)?.id ?? "codex";
+    return this.effectiveMode === "light" ? `${base}-light` : base;
+  }
+
+  /** Set the global theme (base id, no -light suffix). */
   setTheme(themeId: ThemeId) {
     const theme = this.themes.find((t) => t.id === themeId);
     if (!theme) {
-      // Fallback to codex-light if theme doesn't exist
-      this.currentTheme = "codex-light";
-      this._applyTheme("codex-light");
+      // Fallback to codex if theme doesn't exist
+      this.currentTheme = "codex";
+      this._applyTheme();
     } else {
       this.currentTheme = themeId;
-      this._applyTheme(themeId);
+      this._applyTheme();
     }
     this._persistSettings();
   }
@@ -114,19 +177,24 @@ class ThemeStore {
     this._persistSettings();
   }
 
-  /** Cycle through themes (dark → light → dark...) */
-  cycleTheme() {
-    const darkThemes = this.themes.filter((t) => t.type === "dark").map((t) => t.id);
-    const lightThemes = this.themes.filter((t) => t.type === "light").map((t) => t.id);
+  /** Set light/dark/system mode. Re-applies the current theme with the new variant. */
+  setMode(next: "light" | "dark" | "system") {
+    this.mode = next;
+    this._applyTheme();
+    this._persistSettings();
+  }
 
-    if (darkThemes.includes(this.currentTheme)) {
-      // Switch to a light theme, preferring codex-light
-      const next = lightThemes.includes("codex-light") ? "codex-light" : lightThemes[0];
-      if (next) this.setTheme(next);
+  /**
+   * Toggle the visible light/dark state of the *current* theme.
+   *  - If user is following system, snap out to the opposite of the current effective.
+   *  - Otherwise, just flip light ↔ dark.
+   * Same theme, different mode. This is the sidebar quick-toggle.
+   */
+  cycleTheme() {
+    if (this.mode === "system") {
+      this.setMode(this.effectiveMode === "dark" ? "light" : "dark");
     } else {
-      // Switch to a dark theme, preferring codex
-      const next = darkThemes.includes("codex") ? "codex" : darkThemes[0];
-      if (next) this.setTheme(next);
+      this.setMode(this.mode === "dark" ? "light" : "dark");
     }
   }
 
@@ -165,7 +233,7 @@ class ThemeStore {
     this.themeOverrides[themeId]![varName] = hslValue;
     // Trigger reactivity
     this.themeOverrides = { ...this.themeOverrides };
-    this._applyTheme(themeId);
+    this._applyTheme();
     this._persistSettings();
   }
 
@@ -175,7 +243,7 @@ class ThemeStore {
     this.themeOverrides = { ...this.themeOverrides };
     this._persistSettings();
     if (this.currentTheme === themeId) {
-      this._applyTheme(themeId);
+      this._applyTheme();
     }
   }
 
@@ -199,8 +267,8 @@ class ThemeStore {
     const newTheme: ThemeDefinition = {
       id: newId,
       name: newThemeName,
-      type: sourceTheme.type,
       accent: this.themeOverrides[sourceThemeId]?.["--miwarp-accent-primary"] ?? sourceTheme.accent,
+      variants: sourceTheme.variants,
     };
 
     this.themes = [...this.themes, newTheme];
@@ -225,7 +293,7 @@ class ThemeStore {
     if (BUILTIN_THEMES.some((t) => t.id === themeId)) return;
     this.themes = this.themes.filter((t) => t.id !== themeId);
     if (this.currentTheme === themeId) {
-      this.setTheme("codex-light");
+      this.setTheme("codex");
     }
     this._persistSettings();
   }
@@ -250,7 +318,15 @@ class ThemeStore {
     try {
       const config = JSON.parse(json);
       if (config.currentTheme) {
-        this.currentTheme = config.currentTheme;
+        const migrated = this._migrateThemeId(config.currentTheme);
+        this.currentTheme = migrated.base;
+        // Only override mode if not explicitly set in the imported config.
+        if (!config.mode) {
+          this.mode = migrated.mode;
+        }
+      }
+      if (config.mode) {
+        this.mode = config.mode;
       }
       if (config.colorScheme) {
         this.colorScheme = config.colorScheme;
@@ -265,7 +341,7 @@ class ThemeStore {
       if (config.themeOverrides) {
         this.themeOverrides = config.themeOverrides;
       }
-      this._applyTheme(this.currentTheme);
+      this._applyTheme();
       this._applyColorScheme(this.colorScheme);
       // Persist after import so settings aren't lost on refresh
       this._persistSettings();
@@ -281,7 +357,14 @@ class ThemeStore {
       const stored = localStorage.getItem("miwarp-theme");
       if (stored) {
         const config = JSON.parse(stored);
-        if (config.currentTheme) this.currentTheme = config.currentTheme;
+        // Migrate: old theme ids had a "-light" suffix; strip it and store
+        // the variant intent in `mode` instead.
+        if (config.currentTheme) {
+          const migrated = this._migrateThemeId(config.currentTheme);
+          this.currentTheme = migrated.base;
+          this.mode = migrated.mode;
+        }
+        if (config.mode) this.mode = config.mode;
         if (config.colorScheme) this.colorScheme = config.colorScheme;
         if (config.sessionThemes) {
           this.sessionThemes = new Map(Object.entries(config.sessionThemes));
@@ -292,7 +375,7 @@ class ThemeStore {
         if (config.themeOverrides) {
           this.themeOverrides = config.themeOverrides;
         }
-        this._applyTheme(this.currentTheme);
+        this._applyTheme();
         this._applyColorScheme(this.colorScheme);
         this.initialized = true;
         return;
@@ -306,23 +389,11 @@ class ThemeStore {
       const oldTheme = localStorage.getItem(LS_LEGACY_THEME);
       const oldScheme = localStorage.getItem(LS_LEGACY_COLOR_SCHEME);
 
-      if (oldTheme === "light") {
-        this.currentTheme = "codex-light";
-      } else if (oldTheme === "dark") {
-        this.currentTheme = "codex";
-      } else if (oldTheme === "system") {
-        // Map system to codex (dark) since that's what was likely shown
-        // Could map to codex-light for light preference, but codex is the safe default
-        if (
-          typeof window !== "undefined" &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches
-        ) {
-          this.currentTheme = "codex";
-        } else {
-          this.currentTheme = "codex-light";
-        }
+      // Map the old "light"/"dark"/"system" string directly to mode
+      if (oldTheme === "light" || oldTheme === "dark" || oldTheme === "system") {
+        this.mode = oldTheme;
       }
-      // If no oldTheme or unrecognized value, keep default "codex-light"
+      // Keep currentTheme at default "codex"
 
       if (oldScheme === "neutral") {
         this.colorScheme = "neutral";
@@ -336,7 +407,7 @@ class ThemeStore {
       dbgWarn("theme", "migration failed, using defaults", e);
     }
 
-    this._applyTheme(this.currentTheme);
+    this._applyTheme();
     this._applyColorScheme(this.colorScheme);
     this.initialized = true;
   }
@@ -348,33 +419,32 @@ class ThemeStore {
     root.classList.toggle("scheme-warm", scheme === "warm");
   }
 
-  private _applyTheme(themeId: ThemeId) {
+  private _applyTheme() {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
-    const theme = this.themes.find((t) => t.id === themeId);
-
-    const resolvedId = theme?.id ?? "codex-light";
-    const isDark = theme?.type === "dark";
+    const base = this.currentTheme;
+    const effective = this.effectiveMode;
+    const dataThemeValue = effective === "light" ? `${base}-light` : base;
 
     // Enable smooth transition during theme switch
     root.classList.add("theme-transitioning");
 
     // Step 1: Set data-theme attribute — CSS applies built-in theme variables
-    root.setAttribute("data-theme", resolvedId);
+    root.setAttribute("data-theme", dataThemeValue);
 
     // Step 2: Apply class and colorScheme
     root.classList.remove("dark", "light");
-    root.classList.add(isDark ? "dark" : "light");
-    root.style.colorScheme = isDark ? "dark" : "light";
+    root.classList.add(effective === "dark" ? "dark" : "light");
+    root.style.colorScheme = effective === "dark" ? "dark" : "light";
 
     // Step 2b: Mirror color scheme into a dedicated attribute so CSS
     // selectors that need to branch on light/dark (e.g. native window
     // glass sidebar wash) have a single, authoritative signal that
     // doesn't depend on the legacy `.dark`/`.light` class.
-    root.setAttribute("data-color-scheme", isDark ? "dark" : "light");
+    root.setAttribute("data-color-scheme", effective);
 
     // Step 3: Apply user overrides on top of the new theme's CSS vars
-    const overrides = this.themeOverrides[themeId];
+    const overrides = this.themeOverrides[base];
     if (overrides) {
       for (const [varName, hslValue] of Object.entries(overrides)) {
         root.style.setProperty(varName, hslValue);
@@ -391,6 +461,7 @@ class ThemeStore {
         "miwarp-theme",
         JSON.stringify({
           currentTheme: this.currentTheme,
+          mode: this.mode,
           colorScheme: this.colorScheme,
           sessionThemes: Object.fromEntries(this.sessionThemes),
           customThemes: this.themes.filter((t) => !BUILTIN_THEMES.some((b) => b.id === t.id)),
@@ -400,6 +471,18 @@ class ThemeStore {
     } catch {
       // localStorage may be unavailable
     }
+  }
+
+  /**
+   * Translate a legacy theme id (which carried a `-light` suffix to mean light
+   * variant) into the new (base id, mode) pair. Unknown ids pass through as
+   * dark + base id.
+   */
+  private _migrateThemeId(id: string): { base: ThemeId; mode: "light" | "dark" | "system" } {
+    if (id.endsWith("-light")) {
+      return { base: id.slice(0, -"-light".length), mode: "light" };
+    }
+    return { base: id, mode: "dark" };
   }
 }
 

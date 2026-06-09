@@ -18,7 +18,6 @@
   import type { UserSettings } from "$lib/types";
   import Card from "$lib/components/Card.svelte";
   import SettingsToggle from "../SettingsToggle.svelte";
-  import ThemeCard from "./ThemeCard.svelte";
 
   let {
     settings,
@@ -298,7 +297,4 @@
       />
     {/if}
   </Card>
-
-  <!-- Theme editor + background picker (moved from old "theme" tab) -->
-  <ThemeCard />
 </div>

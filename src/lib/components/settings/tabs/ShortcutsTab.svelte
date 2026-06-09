@@ -139,8 +139,8 @@
       <p class="text-[10px] text-muted-foreground/50 mt-3 font-mono">
         {cliSource === "file"
           ? IS_WINDOWS
-            ? "%USERPROFILE%\\.claude\\keybindings.json"
-            : "~/.claude/keybindings.json"
+            ? t("settings_shortcuts_cliKeybindingsFileWin")
+            : t("settings_shortcuts_cliKeybindingsFile")
           : t("settings_shortcuts_cliDefaults")}
       </p>
     {/if}
