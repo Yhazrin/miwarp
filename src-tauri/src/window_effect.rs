@@ -70,16 +70,18 @@ fn apply<R: tauri::Runtime>(window: &WebviewWindow<R>, material: &str) -> Result
     {
         // Prefer mica (Win11). Fall back to acrylic (Win10 1903+) and
         // then plain blur if neither is available.
+        // Color is RGBA (u8, u8, u8, u8) — (0,0,0,0) is fully transparent
+        // so the CSS sidebar surface shows through with the OS blur on top.
         use window_vibrancy::apply_mica;
         if apply_mica(window, Some(false)).is_ok() {
             return Ok(());
         }
         use window_vibrancy::apply_acrylic;
-        if apply_acrylic(window, Some("#00000000")).is_ok() {
+        if apply_acrylic(window, Some((0, 0, 0, 0))).is_ok() {
             return Ok(());
         }
         use window_vibrancy::apply_blur;
-        apply_blur(window, Some("#00000000")).map_err(|e| e.to_string())
+        apply_blur(window, Some((0, 0, 0, 0))).map_err(|e| e.to_string())
     }
 
     #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
