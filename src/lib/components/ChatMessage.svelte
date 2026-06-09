@@ -112,9 +112,9 @@
   onmouseenter={() => (hovered = true)}
   onmouseleave={() => (hovered = false)}
 >
-  <div class="mx-auto w-full max-w-4xl px-4 py-4">
+  <div class="w-full px-[clamp(1rem,3vw,2rem)] py-4">
     <div class={`flex ${isUser ? "justify-end" : ""}`}>
-      <div class={`min-w-0 flex-1 ${isUser ? "max-w-3xl" : ""}`}>
+      <div class={`min-w-0 max-w-3xl ${isUser ? "" : "flex-1"}`}>
         <!-- Header -->
         <div class={`mb-1.5 flex items-center gap-2 ${isUser ? "justify-end" : ""}`}>
           {#if isUser}
