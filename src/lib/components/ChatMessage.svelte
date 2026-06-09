@@ -114,7 +114,7 @@
 >
   <div class="w-full pl-[3.75rem] pr-8 py-4">
     <div class={`flex ${isUser ? "justify-end" : ""}`}>
-      <div class={`min-w-0 max-w-3xl ${isUser ? "" : "flex-1"}`}>
+      <div class={`min-w-0 ${isUser ? "max-w-3xl" : "max-w-64rem flex-1"}`}>
         <!-- Header: identity (agent) or empty (user) + rewind action.
              Copy + timestamp moved to the content footer so they no longer
              crowd the agent identity row. -->
