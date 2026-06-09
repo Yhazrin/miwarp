@@ -568,6 +568,51 @@ pub fn reveal_file_in_finder(path: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Open a directory in the system file browser (Finder on macOS, Explorer on Windows,
+/// xdg-open on Linux). Unlike `reveal_file_in_finder`, this does NOT select a file —
+/// it shows the directory's contents (so it works for any folder, including empty ones).
+#[tauri::command]
+pub fn open_directory_in_finder(path: String) -> Result<(), String> {
+    if path.trim().is_empty() {
+        return Err("Path is empty".to_string());
+    }
+    let requested = PathBuf::from(&path);
+    if !requested.exists() {
+        return Err(format!("Directory does not exist: {}", path));
+    }
+    if !requested.is_dir() {
+        return Err(format!("Path is not a directory: {}", path));
+    }
+    let path_str = requested.display().to_string();
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path_str)
+            .spawn()
+            .map_err(|e| format!("failed to open Finder: {}", e))?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&path_str)
+            .spawn()
+            .map_err(|e| format!("failed to open Explorer: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path_str)
+            .spawn()
+            .map_err(|e| format!("failed to open file browser: {}", e))?;
+    }
+
+    log::debug!("[files] opened directory in file browser: {}", path_str);
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

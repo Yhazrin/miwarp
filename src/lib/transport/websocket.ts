@@ -255,25 +255,23 @@ export class WsTransport implements Transport {
     dbg("transport", "ws.invoke", { cmd, id, timeoutMs });
 
     return new Promise<T>((resolve, reject) => {
-      let timer: ReturnType<typeof setTimeout> | undefined;
-
-      this.pending.set(id, {
-        resolve: (v: unknown) => {
-          if (timer) clearTimeout(timer);
-          resolve(v as T);
-        },
-        reject: (e: Error) => {
-          if (timer) clearTimeout(timer);
-          reject(e);
-        },
-      });
-
       // Always set a timeout — prevents pending-entry leaks if server never responds
       const effectiveTimeout = timeoutMs > 0 ? timeoutMs : 5 * 60 * 1000; // 5 min default
-      timer = setTimeout(() => {
+      const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error(`IPC_TIMEOUT: ${cmd} did not respond in ${effectiveTimeout}ms`));
       }, effectiveTimeout);
+
+      this.pending.set(id, {
+        resolve: (v: unknown) => {
+          clearTimeout(timer);
+          resolve(v as T);
+        },
+        reject: (e: Error) => {
+          clearTimeout(timer);
+          reject(e);
+        },
+      });
 
       const message = JSON.stringify({
         id,

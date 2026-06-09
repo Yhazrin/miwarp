@@ -126,8 +126,18 @@
     const all: Array<{ id: string; text: string; source: string }> = [];
     for (const file of memoryFileContents) {
       const items = parseMemoryItems(file.content);
-      for (const item of items) {
-        all.push({ ...item, source: file.label });
+      // Use file path hash to namespace IDs — parseMemoryItems resets its
+      // internal counter per call, so concatenating items from multiple files
+      // would otherwise produce duplicate `mem-0` keys and trigger
+      // `each_key_duplicate` in {#each memoryItems ... (item.id)}.
+      const fileTag = file.path
+        .split("/")
+        .filter(Boolean)
+        .join("-")
+        .replace(/[^a-zA-Z0-9-]/g, "")
+        .slice(-40);
+      for (let i = 0; i < items.length; i++) {
+        all.push({ id: `${fileTag || "mem"}:${i}`, text: items[i].text, source: file.label });
       }
     }
     return all;

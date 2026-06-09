@@ -14,12 +14,13 @@
   import { t } from "$lib/i18n/index.svelte";
   import type { MessageKey } from "$lib/i18n/types";
   import { CLI_CONFIG_SETTINGS } from "$lib/utils/cli-config-settings";
-  import type { CliConfigSettingDef } from "$lib/types";
+  import type { CliConfigSettingDef, UserSettings } from "$lib/types";
   import Spinner from "$lib/components/Spinner.svelte";
   import Card from "$lib/components/Card.svelte";
   import SettingsFieldRow from "../_shared/SettingsFieldRow.svelte";
   import SettingsFieldEnum from "../_shared/SettingsFieldEnum.svelte";
   import SettingsFieldToggle from "../_shared/SettingsFieldToggle.svelte";
+  import SettingsDoctorPanel from "../SettingsDoctorPanel.svelte";
 
   let {
     cliConfig = $bindable({} as Record<string, unknown>),
@@ -27,6 +28,7 @@
     cliConfigLoaded = false,
     cliConfigLoading = false,
     cliConfigError = "",
+    settings = null,
     onLoad = async () => {},
     onSavePatch = async (_key: string, _value: unknown) => {},
   }: {
@@ -35,6 +37,7 @@
     cliConfigLoaded?: boolean;
     cliConfigLoading?: boolean;
     cliConfigError?: string;
+    settings?: UserSettings | null;
     onLoad?: () => Promise<void>;
     onSavePatch?: (key: string, value: unknown) => Promise<void>;
   } = $props();
@@ -107,6 +110,11 @@
   </Card>
 {:else}
   <div class="space-y-6">
+    <!-- Diagnostics + CLI version (reused by run_diagnostics which already
+         fetches dist tags). Lives at the top so a one-click update is the
+         first thing a user sees when troubleshooting. -->
+    <SettingsDoctorPanel {settings} />
+
     <!-- Behavior -->
     <Card class="p-6 space-y-4">
       <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">

@@ -35,6 +35,10 @@ export interface SendMessageContext {
   t: (key: string, params?: Record<string, string>) => string;
   /** Workspace cwd from ?folder= or sidebar new-chat-in-folder (before localStorage sync). */
   getFolderCwdOverride?: () => string;
+  /** Logical-folder id from ?sf= (sidebar "new session in folder"). Returns
+   *  the id and clears it so the next session in the same chat tab defaults
+   *  to the workspace root. */
+  consumePendingSubFolderId?: () => string;
 }
 
 export function createSendMessage(ctx: SendMessageContext) {
@@ -54,9 +58,15 @@ export function createSendMessage(ctx: SendMessageContext) {
     setTeamDispatchOpen,
     t,
     getFolderCwdOverride,
+    consumePendingSubFolderId,
   } = ctx;
 
-  return async function sendMessage(text: string, attachments: Attachment[]) {
+  return async function sendMessage(
+    text: string,
+    attachments: Attachment[],
+    creationMode?: "single" | "worktree",
+    folderId?: string,
+  ) {
     if (!text.trim()) return;
 
     store.error = "";
@@ -148,7 +158,19 @@ export function createSendMessage(ctx: SendMessageContext) {
         // Re-check after folder picker — user may have navigated or sent another message
         if (!store.canSend) return;
 
-        const runId = await store.startSession(text, cwd, attachments);
+        // If the caller didn't pass an explicit folderId, fall back to the
+        // pending logical-folder id from ?sf= (sidebar "new session in folder").
+        const resolvedFolderId =
+          folderId ?? (consumePendingSubFolderId ? consumePendingSubFolderId() : "");
+
+        const runId = await store.startSession(
+          text,
+          cwd,
+          attachments,
+          undefined,
+          creationMode,
+          resolvedFolderId || undefined,
+        );
         goto(`/chat?run=${runId}`, { replaceState: true });
         window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
         loadCliVersionInfo();

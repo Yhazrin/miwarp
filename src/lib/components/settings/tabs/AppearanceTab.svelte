@@ -4,6 +4,12 @@
    * `activeTab === "general"` branch. Renders language + UI zoom +
    * theme editor (the latter delegates to ThemeCard).
    *
+   * v1.0.6 follow-up #2: re-added the lost Sidebar & Display toggles
+   * (icon rail, mascot, token report, visual perf mode, CLI auto-sync)
+   * that disappeared in the v1.0.6 refactor. The session mode toggle
+   * stays OUT of settings — it moved to the new-session card on the
+   * chat welcome screen.
+   *
    * State is lifted to the orchestrator (+page.svelte).
    */
   import { t } from "$lib/i18n/index.svelte";
@@ -12,7 +18,6 @@
   import type { UserSettings } from "$lib/types";
   import Card from "$lib/components/Card.svelte";
   import SettingsToggle from "../SettingsToggle.svelte";
-  import SettingsDoctorPanel from "../SettingsDoctorPanel.svelte";
   import ThemeCard from "./ThemeCard.svelte";
 
   let {
@@ -25,6 +30,13 @@
     onZoom?: (factor: number) => void;
   } = $props();
 
+  // UI zoom slider: while the user is dragging, only update the local preview
+  // (the percentage label and the slider's own thumb). The actual webview
+  // reflow + settings save are deferred to `change` / pointer release so the
+  // page doesn't stutter on every input event.
+  let zoomDraft = $state<number | null>(null);
+  const zoomValue = $derived(zoomDraft ?? settings?.ui_zoom ?? 1);
+
   function lk(key: string): string {
     return t(key as MessageKey);
   }
@@ -32,6 +44,38 @@
   function pickLocale(code: string) {
     switchLocale(code);
     void onSaveGeneralPatch({ ui_locale: code });
+  }
+
+  // v1.0.6 follow-up: visual performance mode has 4 options. Lifted out
+  // so the template stays readable.
+  const VISUAL_PERF_MODES = [
+    {
+      value: "auto",
+      labelKey: "settings_visualPerfMode_auto",
+      descKey: "settings_visualPerfMode_autoDesc",
+    },
+    {
+      value: "quality",
+      labelKey: "settings_visualPerfMode_quality",
+      descKey: "settings_visualPerfMode_qualityDesc",
+    },
+    {
+      value: "balanced",
+      labelKey: "settings_visualPerfMode_balanced",
+      descKey: "settings_visualPerfMode_balancedDesc",
+    },
+    {
+      value: "performance",
+      labelKey: "settings_visualPerfMode_performance",
+      descKey: "settings_visualPerfMode_performanceDesc",
+    },
+  ] as const;
+
+  async function pickVisualPerfMode(mode: string) {
+    await onSaveGeneralPatch({ visual_performance_mode: mode });
+    window.dispatchEvent(
+      new CustomEvent("miwarp:visual-performance-changed", { detail: { mode } }),
+    );
   }
 </script>
 
@@ -81,26 +125,37 @@
           min="0.7"
           max="1.6"
           step="0.05"
-          value={settings?.ui_zoom ?? 1}
+          value={zoomValue}
           oninput={(e) => {
             const v = parseFloat((e.target as HTMLInputElement).value);
-            onZoom(v);
+            // Only update the local draft — the real reflow + save happens
+            // on `change` (mouse-up / blur / keyboard commit).
+            zoomDraft = v;
           }}
           onchange={(e) => {
             const v = parseFloat((e.target as HTMLInputElement).value);
+            zoomDraft = null;
+            onZoom(v);
             void onSaveGeneralPatch({ ui_zoom: v });
+          }}
+          onpointerup={() => {
+            // Defensive: some platforms don't fire `change` on programmatic
+            // pointer release. Re-apply + save so the final value sticks.
+            if (zoomDraft !== null) {
+              const v = zoomDraft;
+              zoomDraft = null;
+              onZoom(v);
+              void onSaveGeneralPatch({ ui_zoom: v });
+            }
           }}
           class="w-40 accent-primary"
         />
         <span class="w-12 text-right text-xs text-muted-foreground tabular-nums">
-          {Math.round((settings?.ui_zoom ?? 1) * 100)}%
+          {Math.round(zoomValue * 100)}%
         </span>
       </div>
     </div>
   </Card>
-
-  <!-- Doctor Panel (status at a glance) -->
-  <SettingsDoctorPanel {settings} />
 
   <!-- Window material: native OS blur for the entire left sidebar. -->
   <Card class="p-6 space-y-4">
@@ -136,6 +191,111 @@
           {/each}
         </div>
       </div>
+    {/if}
+  </Card>
+
+  <!--
+    v1.0.6 follow-up: re-added Sidebar & Display toggles that were lost
+    in the v1.0.6 refactor. All four are independent UI preferences and
+    share the same save helper. The session mode selector used to live
+    in this area too — it has been removed per the v1.0.6 follow-up
+    (the picker is now on the chat welcome screen, default "single").
+  -->
+  <Card class="p-6 space-y-4">
+    <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+      {t("settings_general_display")}
+    </h2>
+
+    <SettingsToggle
+      checked={settings?.icon_rail_enabled !== false}
+      label={t("settings_iconRailEnabled")}
+      description={t("settings_iconRailEnabledDesc")}
+      onchange={(value) => onSaveGeneralPatch({ icon_rail_enabled: value })}
+    />
+
+    <SettingsToggle
+      checked={settings?.mascot_enabled !== false}
+      label={t("settings_mascotEnabled")}
+      description={t("settings_mascotEnabledDesc")}
+      onchange={(value) => onSaveGeneralPatch({ mascot_enabled: value })}
+    />
+
+    <SettingsToggle
+      checked={settings?.show_token_usage_report !== false}
+      label={t("settings_showTokenReport")}
+      description={t("settings_showTokenReportDesc")}
+      onchange={(value) => onSaveGeneralPatch({ show_token_usage_report: value })}
+    />
+
+    <div class="space-y-2 pt-2">
+      <div>
+        <p class="text-sm font-medium">{t("settings_visualPerfMode")}</p>
+        <p class="text-xs text-muted-foreground mt-0.5">
+          {t("settings_visualPerfModeDesc")}
+        </p>
+      </div>
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {#each VISUAL_PERF_MODES as mode (mode.value)}
+          {@const active = (settings?.visual_performance_mode ?? "auto") === mode.value}
+          <button
+            type="button"
+            class="rounded-lg border p-3 text-left transition-colors {active
+              ? 'border-border bg-muted/55 shadow-sm'
+              : 'border-border/40 bg-background/40 hover:bg-muted/30'}"
+            onclick={() => pickVisualPerfMode(mode.value)}
+          >
+            <div class="text-sm font-medium text-foreground">{t(mode.labelKey as MessageKey)}</div>
+            <p class="mt-1 text-[11px] leading-snug text-muted-foreground">
+              {t(mode.descKey as MessageKey)}
+            </p>
+          </button>
+        {/each}
+      </div>
+    </div>
+  </Card>
+
+  <!--
+    v1.0.6 follow-up: re-added CLI auto-sync controls that were lost
+    in the v1.0.6 refactor. Periodically pulls new messages from Claude
+    Code transcript files into imported MiWarp sessions.
+  -->
+  <Card class="p-6 space-y-4">
+    <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+      {t("settings_cliAutoSyncEnabled")}
+    </h2>
+    <SettingsToggle
+      checked={settings?.cli_auto_sync_enabled !== false}
+      label={t("settings_cliAutoSyncEnabled")}
+      description={t("settings_cliAutoSyncEnabledDesc")}
+      onchange={(value) => onSaveGeneralPatch({ cli_auto_sync_enabled: value })}
+    />
+    {#if settings?.cli_auto_sync_enabled !== false}
+      <div class="flex flex-col gap-1.5 pl-1">
+        <label class="text-sm font-medium" for="cli-auto-sync-interval">
+          {t("settings_cliAutoSyncInterval")}
+        </label>
+        <input
+          id="cli-auto-sync-interval"
+          type="number"
+          min="1"
+          max="120"
+          step="1"
+          value={settings?.cli_auto_sync_interval_minutes ?? 5}
+          onchange={(e) => {
+            const raw = parseInt((e.target as HTMLInputElement).value, 10);
+            const v = isNaN(raw) ? 5 : Math.max(1, Math.min(120, raw));
+            void onSaveGeneralPatch({ cli_auto_sync_interval_minutes: v });
+          }}
+          class="w-24 rounded-md border bg-transparent px-2 py-1 text-sm"
+        />
+        <p class="text-xs text-muted-foreground">{t("settings_cliAutoSyncIntervalDesc")}</p>
+      </div>
+      <SettingsToggle
+        checked={settings?.cli_auto_sync_import_new !== false}
+        label={t("settings_cliAutoSyncImportNew")}
+        description={t("settings_cliAutoSyncImportNewDesc")}
+        onchange={(value) => onSaveGeneralPatch({ cli_auto_sync_import_new: value })}
+      />
     {/if}
   </Card>
 

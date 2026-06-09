@@ -49,6 +49,8 @@ export interface SessionVm {
   cliVersionInfo: import("$lib/stores").CliVersionInfo | null;
   channelLatest: string | undefined;
   remoteHosts: import("$lib/types").RemoteHost[];
+  availableWorkspaces: import("$lib/stores/workspaces-store.svelte").WorkspaceOption[];
+  selectedCwd: string;
 }
 
 // ── Loading / route state ──
@@ -91,7 +93,11 @@ export interface ForkVm {
 
 export interface StageHandlers {
   goto: (path: string, opts?: { replaceState?: boolean }) => void;
-  sendMessage: (text: string, attachments: import("$lib/types").Attachment[]) => Promise<void>;
+  sendMessage: (
+    text: string,
+    attachments: import("$lib/types").Attachment[],
+    creationMode?: "single" | "worktree",
+  ) => Promise<void>;
   fillPrompt: (text: string) => void;
   handleAuthModeChange: (mode: string) => void;
   handlePlatformChange: (id: string) => void;
@@ -111,6 +117,8 @@ export interface StageHandlers {
   getPlanContentForExitPlan: (entryId: string) => { content: string; fileName: string } | null;
   openPreviewForPath: (path: string) => void;
   handleHookCallbackRespond: (requestId: string, decision: "allow" | "deny") => Promise<void>;
+  onCwdChange: (cwd: string) => void;
+  onAddWorkspace: () => void;
   handleElicitationRespond: (
     requestId: string,
     action: "accept" | "decline" | "cancel",

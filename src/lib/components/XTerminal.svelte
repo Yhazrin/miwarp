@@ -9,8 +9,8 @@
     onData: onDataProp,
     class: className = "",
   }: {
-    onResize: (cols: number, rows: number) => void;
-    onReady: (cols: number, rows: number) => void;
+    onResize?: (cols: number, rows: number) => void;
+    onReady?: (cols: number, rows: number) => void;
     onData?: (data: string) => void;
     class?: string;
   } = $props();
@@ -84,7 +84,7 @@
       fit.fit();
 
       // Forward keystrokes to PTY when input is enabled
-      if (onDataProp) {
+      if (typeof onDataProp === "function") {
         term.onData((data) => {
           onDataProp(data);
         });
@@ -100,7 +100,9 @@
           if (fitAddon && terminal) {
             fitAddon.fit();
             dbg("xterm", "resize", { cols: terminal.cols, rows: terminal.rows });
-            onResize(terminal.cols, terminal.rows);
+            if (typeof onResize === "function") {
+              onResize(terminal.cols, terminal.rows);
+            }
           }
         }, 100);
       });
@@ -108,7 +110,9 @@
 
       // Signal ready
       dbg("xterm", "ready", { cols: term.cols, rows: term.rows });
-      onReady(term.cols, term.rows);
+      if (typeof onReady === "function") {
+        onReady(term.cols, term.rows);
+      }
     })();
 
     return () => {

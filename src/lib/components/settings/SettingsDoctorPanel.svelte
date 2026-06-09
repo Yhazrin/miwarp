@@ -5,6 +5,7 @@
   import { buildDoctorReport } from "$lib/utils/doctor";
   import { t } from "$lib/i18n/index.svelte";
   import Button from "$lib/components/Button.svelte";
+  import { showToast as _showToast } from "$lib/stores/toast-store.svelte";
 
   interface Props {
     settings: UserSettings | null;
@@ -18,6 +19,10 @@
   let dataDir = $state("");
   let markdownReport = $state("");
   let copied = $state(false);
+  // One-click update state. Lives in the doctor panel because the version
+  // check and the update button share the same render path.
+  let updating = $state(false);
+  let updateError = $state<string | null>(null);
 
   const resolvedPerfMode = $derived.by(() => {
     const mode = settings?.visual_performance_mode ?? "auto";
@@ -32,6 +37,30 @@
 
   const activePlatform = $derived(
     settings?.active_platform_id?.trim() || t("settings_doctor_platformNone"),
+  );
+
+  /** Semver-aware `installed < latest` comparison. Falls back to string
+   *  compare when either side is missing or unparseable. */
+  function isUpdateAvailable(
+    installed: string | null | undefined,
+    latest: string | null | undefined,
+  ): boolean {
+    if (!installed || !latest) return false;
+    const parse = (v: string): number[] | null => {
+      const m = v.match(/(\d+)\.(\d+)\.(\d+)/);
+      return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+    };
+    const a = parse(installed);
+    const b = parse(latest);
+    if (!a || !b) return false;
+    for (let i = 0; i < 3; i++) {
+      if (a[i] !== b[i]) return a[i] < b[i];
+    }
+    return false;
+  }
+
+  const updateAvailable = $derived(
+    isUpdateAvailable(report?.cli.version ?? null, report?.cli.latest ?? null),
   );
 
   async function refresh() {
@@ -58,6 +87,29 @@
       setTimeout(() => (copied = false), 2000);
     } catch {
       /* ignore */
+    }
+  }
+
+  async function runCliUpdate() {
+    if (updating) return;
+    updating = true;
+    updateError = null;
+    try {
+      const result = await api.updateClaudeCli();
+      if (result.success) {
+        _showToast(t("settings_doctor_updateSuccess"));
+      } else {
+        const detail = (result.stderr || result.stdout || "").trim().slice(0, 200);
+        updateError = detail || t("settings_doctor_updateFailed");
+        _showToast(updateError, "error");
+      }
+      // Re-run diagnostics so the version display + button state refresh.
+      await refresh();
+    } catch (e) {
+      updateError = e instanceof Error ? e.message : String(e);
+      _showToast(updateError, "error");
+    } finally {
+      updating = false;
     }
   }
 
@@ -101,25 +153,63 @@
     <p class="text-sm text-muted-foreground">{t("settings_doctor_loading")}</p>
   {:else if report}
     <dl class="grid gap-3 sm:grid-cols-2">
-      <div class="rounded-md bg-background/60 px-3 py-2">
-        <dt class="text-[10px] uppercase tracking-wide text-muted-foreground">
-          {t("settings_doctor_cli")}
-        </dt>
-        <dd class="mt-1 text-sm font-medium">
+      <div class="rounded-md bg-background/60 px-3 py-2 sm:col-span-2">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <dt class="text-[10px] uppercase tracking-wide text-muted-foreground">
+              {t("settings_doctor_cli")}
+            </dt>
+            <dd class="mt-1 text-sm font-medium">
+              {#if report.cli.found}
+                {#if report.cli.version}
+                  {t("doctor_cliFound", { version: report.cli.version })}
+                {:else}
+                  {t("doctor_cliNotFound")}
+                {/if}
+              {:else}
+                <span class="text-destructive">{t("doctor_cliNotFound")}</span>
+              {/if}
+            </dd>
+            {#if report.cli.path}
+              <dd
+                class="mt-0.5 truncate font-mono text-[11px] text-muted-foreground"
+                title={report.cli.path}
+              >
+                {t("doctor_cliPath", { path: report.cli.path })}
+              </dd>
+            {/if}
+            {#if report.cli.latest}
+              <dd class="mt-1 text-[11px]">
+                {#if updateAvailable}
+                  <span class="text-miwarp-status-warning font-medium">
+                    {t("doctor_cliUpdateAvailable", { latest: report.cli.latest })}
+                  </span>
+                {:else if report.cli.found}
+                  <span class="text-muted-foreground">{t("doctor_cliUpToDate")}</span>
+                {/if}
+              </dd>
+            {/if}
+            {#if report.cli.auto_update_channel}
+              <dd class="mt-0.5 text-[10px] text-muted-foreground/70">
+                {t("doctor_cliAutoUpdate", { channel: report.cli.auto_update_channel })}
+              </dd>
+            {/if}
+            {#if updateError}
+              <dd class="mt-1 text-[11px] text-destructive">{updateError}</dd>
+            {/if}
+          </div>
           {#if report.cli.found}
-            {report.cli.version ?? "—"}
-          {:else}
-            <span class="text-destructive">{t("doctor_cliNotFound")}</span>
+            <Button
+              variant={updateAvailable ? "default" : "outline"}
+              size="sm"
+              onclick={runCliUpdate}
+              loading={updating}
+              disabled={updating}
+            >
+              {updating ? t("settings_doctor_updating") : t("settings_doctor_update")}
+            </Button>
           {/if}
-        </dd>
-        {#if report.cli.path}
-          <dd
-            class="mt-0.5 truncate font-mono text-[11px] text-muted-foreground"
-            title={report.cli.path}
-          >
-            {report.cli.path}
-          </dd>
-        {/if}
+        </div>
       </div>
 
       <div class="rounded-md bg-background/60 px-3 py-2">

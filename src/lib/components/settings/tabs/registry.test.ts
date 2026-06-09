@@ -16,8 +16,8 @@ import {
 
 describe("settings tab registry", () => {
   describe("SETTINGS_TABS", () => {
-    it("contains exactly 8 tabs", () => {
-      expect(SETTINGS_TABS).toHaveLength(8);
+    it("contains exactly 9 tabs", () => {
+      expect(SETTINGS_TABS).toHaveLength(9);
     });
 
     it("has unique tab ids", () => {
@@ -73,6 +73,7 @@ describe("settings tab registry", () => {
         "shortcuts",
         "remote-hosts",
         "cli-behavior",
+        "worktree",
       ]);
       expect(grouped.system.map((t) => t.id)).toEqual(["notifications", "data-debug"]);
     });

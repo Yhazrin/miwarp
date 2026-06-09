@@ -76,7 +76,13 @@ pub fn get_run(id: String) -> Result<TaskRun, String> {
     Ok(meta.to_task_run(last_ts, Some(msg_count), last_preview))
 }
 
+/// Per-session override for creation mode. Accepts "single" (default) or
+/// "worktree". When omitted, the legacy `default_session_mode` setting
+/// is honored for backward compatibility — the v1.0.6 settings refactor
+/// moved the choice to the new-session card on the chat welcome screen,
+/// so new callers should pass an explicit value.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub fn start_run(
     prompt: String,
     cwd: String,
@@ -85,6 +91,8 @@ pub fn start_run(
     remote_host_name: Option<String>,
     platform_id: Option<String>,
     execution_path: Option<String>,
+    creation_mode: Option<String>,
+    folder_id: Option<String>,
 ) -> Result<TaskRun, String> {
     log::debug!(
         "[runs] start_run: agent={}, model={:?}, remote={:?}, platform={:?}, path={:?}, prompt_len={}, cwd={}",
@@ -161,8 +169,18 @@ pub fn start_run(
     meta.execution_path = Some(path);
 
     // ── Worktree mode: auto-create isolated branch + worktree ──
+    // v1.0.6 follow-up: prefer the explicit `creation_mode` parameter
+    // (set by the new-session card on the chat welcome screen). Fall back
+    // to the legacy `default_session_mode` setting only when the caller
+    // didn't pass one — older clients (and persisted bookmarks) still rely
+    // on it. Remote sessions never get a worktree (per-session branches
+    // only make sense locally).
     let settings = storage::settings::get_user_settings();
-    let use_worktree = remote_host_name.is_none() && settings.default_session_mode == "worktree";
+    let resolved_mode: &str = match creation_mode.as_deref() {
+        Some(m) if m == "single" || m == "worktree" => m,
+        _ => settings.default_session_mode.as_str(),
+    };
+    let use_worktree = remote_host_name.is_none() && resolved_mode == "worktree";
 
     if use_worktree {
         let is_repo = super::worktree::is_git_repo_internal(&cwd).unwrap_or(false);
@@ -195,6 +213,16 @@ pub fn start_run(
 
     storage::runs::save_meta(&meta)?;
     log::debug!("[runs] start_run: created id={}", id);
+
+    // Apply logical-folder assignment (sidebar sub-folder) if requested. The
+    // session is otherwise indistinguishable from a workspace-level run — the
+    // folder_id is what causes the sidebar to nest it under a logical group.
+    if let Some(ref fid) = folder_id {
+        if let Err(e) = storage::runs::update_run_folder(&id, Some(fid.clone())) {
+            log::warn!("[runs] start_run: failed to apply folder_id={}: {}", fid, e);
+        }
+    }
+
     Ok(meta.to_task_run(None, None, None))
 }
 

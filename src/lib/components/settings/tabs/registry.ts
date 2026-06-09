@@ -14,6 +14,7 @@ export type SettingsTabId =
   | "shortcuts"
   | "remote-hosts"
   | "cli-behavior"
+  | "worktree"
   | "notifications"
   | "data-debug";
 
@@ -56,6 +57,8 @@ const ICON_SERVER =
   "M3 4h18a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm0 10h18a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1Zm2 2h2v-2H5v2Zm4 0h2v-2H9v2Z";
 const ICON_TERMINAL =
   "M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm2 3 3 3-3 3 1.5 1.5L11 11l-3.5-3.5L6 9Zm5 4h4v-1.5h-4V12Z";
+const ICON_GIT_BRANCH =
+  "M6 3a3 3 0 0 1 1 5.83V15a3 3 0 1 1-2 0V8.83A3 3 0 0 1 6 3Zm12 4a3 3 0 0 1-1 5.83V14a3 3 0 0 1-3 3h-3v2.17a3 3 0 1 1-2 0V15h3a1 1 0 0 0 1-1v-1.17A3 3 0 0 1 18 7Z";
 const ICON_BELL =
   "M12 2a6 6 0 0 0-6 6v3.5L4 14v1h16v-1l-2-2.5V8a6 6 0 0 0-6-6Zm-2 14a2 2 0 0 0 4 0h-4Z";
 const ICON_DATABASE =
@@ -67,6 +70,7 @@ import DevicesTab from "./DevicesTab.svelte";
 import ShortcutsTab from "./ShortcutsTab.svelte";
 import RemoteHostsTab from "./RemoteHostsTab.svelte";
 import CliBehaviorTab from "./CliBehaviorTab.svelte";
+import WorktreeTab from "./WorktreeTab.svelte";
 import NotificationsTab from "./NotificationsTab.svelte";
 import DataAndDebugTab from "./DataAndDebugTab.svelte";
 
@@ -120,6 +124,14 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     fallbackLabel: "CLI Behavior",
     iconPath: ICON_TERMINAL,
     component: CliBehaviorTab,
+    groupId: "automation",
+  },
+  {
+    id: "worktree",
+    labelKey: "settings_tab_worktree",
+    fallbackLabel: "Worktree",
+    iconPath: ICON_GIT_BRANCH,
+    component: WorktreeTab,
     groupId: "automation",
   },
   {

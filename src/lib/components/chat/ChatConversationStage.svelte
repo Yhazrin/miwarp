@@ -116,6 +116,8 @@
     cliVersionInfo,
     channelLatest,
     remoteHosts,
+    availableWorkspaces,
+    selectedCwd,
   } = $derived(sessionVm);
 
   const {
@@ -231,9 +233,9 @@
           <ChatWelcomeScreen
             {lastContinuableRun}
             onContinueSession={(id) => goto(`/chat?run=${id}&resume=continue`)}
-            onQuickAnalyze={() => sendMessage(t("chat_quickAnalyzePrompt"), [])}
+            onQuickAnalyze={(mode) => sendMessage(t("chat_quickAnalyzePrompt"), [], mode)}
             onQuickFix={() => fillPrompt(t("chat_quickFixPrompt"))}
-            onQuickDaily={() => sendMessage(t("chat_quickDailyPrompt"), [])}
+            onQuickDaily={(mode) => sendMessage(t("chat_quickDailyPrompt"), [], mode)}
             onGotoSchedule={() => goto("/scheduled-tasks")}
             {authOverview}
             authSourceLabel={store.authSourceLabel}
@@ -245,6 +247,10 @@
             onAuthModeChange={handleAuthModeChange}
             onPlatformChange={handlePlatformChange}
             {localProxyStatuses}
+            {availableWorkspaces}
+            {selectedCwd}
+            onCwdChange={handlers.onCwdChange}
+            onAddWorkspace={handlers.onAddWorkspace}
           >
             {#snippet initHint()}
               <ChatInitHint

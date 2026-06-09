@@ -1849,6 +1849,12 @@ textarea,
   padding-top: calc(var(--session-statusbar-offset-rest) + 8px);
   padding-bottom: var(--chat-input-dock-offset);
   scroll-padding-bottom: calc(var(--chat-input-dock-offset) + 1rem);
+  /* Hide native scrollbar — chat scrolls via wheel/touch/keys but no thumb is shown. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.chat-messages-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .chat-scroll-fade {

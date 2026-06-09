@@ -26,6 +26,7 @@
   import ShortcutsTab from "./tabs/ShortcutsTab.svelte";
   import RemoteHostsTab from "./tabs/RemoteHostsTab.svelte";
   import CliBehaviorTab from "./tabs/CliBehaviorTab.svelte";
+  import WorktreeTab from "./tabs/WorktreeTab.svelte";
   import NotificationsTab from "./tabs/NotificationsTab.svelte";
   import DataAndDebugTab from "./tabs/DataAndDebugTab.svelte";
   import ThemeCard from "./tabs/ThemeCard.svelte";
@@ -136,6 +137,8 @@
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const CliBehaviorTabC = CliBehaviorTab as any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const WorktreeTabC = WorktreeTab as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const NotificationsTabC = NotificationsTab as any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const DataAndDebugTabC = DataAndDebugTab as any;
@@ -198,9 +201,12 @@
     cliConfigLoaded={state.cliConfigLoaded}
     cliConfigLoading={state.cliConfigLoading}
     cliConfigError={state.cliConfigError}
+    settings={state.settings}
     onLoad={state.loadCliConfig}
     onSavePatch={state.saveCliConfigPatch}
   />
+{:else if tab === "worktree"}
+  <WorktreeTabC settings={state.settings} onSaveGeneralPatch={state.saveGeneralPatch} />
 {:else if tab === "notifications"}
   <NotificationsTabC
     settings={state.settings}

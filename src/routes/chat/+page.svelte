@@ -34,6 +34,8 @@
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
   import { t } from "$lib/i18n/index.svelte";
   import { showToast as _showToast } from "$lib/stores/toast-store.svelte";
+  import { workspacesStore } from "$lib/stores/workspaces-store.svelte";
+  import { getTransport } from "$lib/transport";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { setLastTarget, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
   import { shouldAutoName } from "$lib/utils/auto-name";
@@ -99,7 +101,7 @@
   let settings = $state<UserSettings | null>(null);
   let xtermRef: XTerminal | undefined = $state();
   let promptRef: PromptInput | undefined = $state();
-  let sidebarCollapsed = $state(false);
+  let sidebarCollapsed = $state(chatViewCache.sidebarCollapsed);
 
   /** Use server settings when loaded; until then last-known cache avoids a dev-mode flash for Output users. */
   const processVisibility = $derived(
@@ -156,6 +158,39 @@
     return new Promise((resolve) => {
       folderPickerResolve = resolve;
     });
+  }
+  /** Open the system folder picker (Tauri native on desktop, FolderPicker modal
+   *  on web) and register the chosen path as a new sidebar workspace. Reuses
+   *  the same pipeline as `newChatInFolder` in the layout: writing
+   *  ocv:project-cwd + dispatching ocv:cwd-changed triggers the layout's
+   *  $effect that pins the cwd into pinnedCwds, refreshes enrichedProjectFolders,
+   *  and — via the workspacesStore mirror we just added — also makes the new
+   *  workspace appear in the welcome picker and select it as the active cwd. */
+  async function addWorkspaceFromPicker() {
+    let cwd: string | null = null;
+    if (getTransport().isDesktop()) {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const result = await open({
+        directory: true,
+        multiple: false,
+        title: t("chat_addWorkspaceTitle"),
+      });
+      cwd = typeof result === "string" ? result : null;
+    } else {
+      const picked = await openFolderPicker({ initialHost: null });
+      cwd = picked?.path ?? null;
+    }
+    if (!cwd) return;
+    const normalized = normalizeCwd(cwd);
+    if (!normalized) return;
+    try {
+      localStorage.setItem("ocv:project-cwd", normalized);
+    } catch {
+      // localStorage may fail in restricted contexts
+    }
+    window.dispatchEvent(new Event("ocv:cwd-changed"));
+    folderCwdOverride = normalized;
+    store.sessionCwd = normalized;
   }
   /** Preloaded skill details from filesystem (has descriptions). */
   let preloadedSkills = $state<import("$lib/types").StandaloneSkill[]>([]);
@@ -257,9 +292,9 @@
   let statusBarRef: SessionStatusBar | undefined = $state();
   let stashedInput: PromptInputSnapshot | null = $state(null);
   let sidebarRequestedTab = $state<ToolActivityPanelTab | null>(null);
-  let toolPanelActiveTab = $state<ToolActivityPanelTab>("workspace");
+  let toolPanelActiveTab = $state<ToolActivityPanelTab>(chatViewCache.toolPanelActiveTab);
   let toolPanelIndicators = $state({ context: false, files: false, tasks: false });
-  let requestedPreviewPath = $state<string | null>(null);
+  let requestedPreviewPath = $state<string | null>(chatViewCache.requestedPreviewPath);
   let requestedPreviewUrl = $state<string | null>(null);
 
   function openPreviewForPath(path: string) {
@@ -427,6 +462,14 @@
   let hasResumeParam = $derived($page.url.searchParams.has("resume"));
   let folderParam = $derived($page.url.searchParams.get("folder"));
   let hostParam = $derived($page.url.searchParams.get("host"));
+  // Pending logical-folder target from `?sf=<folderId>` (sidebar "new session in
+  // folder" entry point). Cleared once consumed so subsequent sessions in the
+  // same chat tab default to the workspace root.
+  let pendingSubFolderId = $state<string>("");
+  $effect(() => {
+    const sf = $page.url.searchParams.get("sf");
+    if (sf) pendingSubFolderId = sf;
+  });
 
   let routeRunPending = $derived(
     !!runId && tl.loadingRunId === runId && store.run?.id !== runId && !store.error,
@@ -489,6 +532,7 @@
       const clean = new URL($page.url);
       clean.searchParams.delete("folder");
       clean.searchParams.delete("host");
+      clean.searchParams.delete("sf");
       replaceState(clean, {});
       requestAnimationFrame(() => promptRef?.focus());
     });
@@ -1025,6 +1069,13 @@
     },
     t: t as unknown as (key: string, params?: Record<string, string>) => string,
     getFolderCwdOverride: () => folderCwdOverride,
+    /** Consume the pending logical-folder id (?sf=) once, then clear so the
+     *  next session in the same chat tab falls back to the workspace root. */
+    consumePendingSubFolderId: () => {
+      const v = pendingSubFolderId;
+      pendingSubFolderId = "";
+      return v;
+    },
   });
 
   // Chat keybinding callbacks — registered/unregistered via keybindingStore in onMount below
@@ -1317,6 +1368,8 @@
         cliVersionInfo: sd.cliVersionInfo,
         channelLatest: sd.channelLatest,
         remoteHosts,
+        availableWorkspaces: workspacesStore.list,
+        selectedCwd: folderCwdOverride,
       }}
       loadingVm={{
         routeRunLoadFailed,
@@ -1356,6 +1409,21 @@
         openPreviewForPath,
         handleHookCallbackRespond,
         handleElicitationRespond,
+        onCwdChange: (cwd: string) => {
+          const normalized = normalizeCwd(cwd);
+          if (!normalized) return;
+          folderCwdOverride = normalized;
+          store.sessionCwd = normalized;
+          try {
+            localStorage.setItem("ocv:project-cwd", normalized);
+          } catch {
+            // localStorage may fail in restricted contexts
+          }
+          window.dispatchEvent(new Event("ocv:cwd-changed"));
+        },
+        onAddWorkspace: () => {
+          void addWorkspaceFromPicker();
+        },
         handleChatScroll,
         handleChatWheel,
         scrollChatToBottom,

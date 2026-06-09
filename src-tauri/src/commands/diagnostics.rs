@@ -4,10 +4,69 @@ use crate::models::{
     ApiTestResult, AuthDiagnostics, ClaudeMdInfo, CliCheckResult, CliDiagnostics, CliDistTags,
     ConfigDiagnostics, ConfigIssue, DiagnosticsReport, LocalProxyStatus, ProjectDiagnostics,
     ProjectInitStatus, RemoteTestResult, ServicesDiagnostics, SshKeyInfo, SystemDiagnostics,
+    UpdateCliResult,
 };
 use crate::process_ext::HideConsole;
 use std::path::Path;
 use std::process::Command;
+
+/// One-click update for Claude Code. Runs `npm install -g @anthropic-ai/claude-code`
+/// synchronously, captures stdout/stderr, and returns whether the install succeeded.
+/// Caller should re-run `check_agent_cli` afterwards to refresh the version cache.
+#[tauri::command]
+pub async fn update_claude_cli() -> Result<UpdateCliResult, String> {
+    let aug_path = crate::agent::claude_stream::augmented_path();
+
+    // Locate npm cross-platform: prefer .cmd/.exe on Windows (bare "npm" is
+    // a Unix shell script wrapper and would error 193 when invoked directly).
+    let npm = cfg!(windows)
+        .then(|| crate::agent::claude_stream::which_binary("npm.cmd"))
+        .flatten()
+        .or_else(|| crate::agent::claude_stream::which_binary("npm"))
+        .unwrap_or_else(|| "npm".to_string());
+
+    log::info!(
+        "[diagnostics] update_claude_cli: invoking {} install -g @anthropic-ai/claude-code",
+        npm
+    );
+
+    let output = tokio::task::spawn_blocking(move || {
+        Command::new(&npm)
+            .args(["install", "-g", "@anthropic-ai/claude-code"])
+            .env("PATH", &aug_path)
+            .hide_console()
+            .output()
+    })
+    .await
+    .map_err(|e| format!("update task failed: {}", e))?;
+
+    match output {
+        Ok(out) => {
+            let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+            let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+            let success = out.status.success();
+            log::info!(
+                "[diagnostics] update_claude_cli: success={}, exit={:?}, stdout_len={}, stderr_len={}",
+                success,
+                out.status.code(),
+                stdout.len(),
+                stderr.len()
+            );
+            if !success {
+                log::warn!("[diagnostics] update_claude_cli stderr: {}", stderr);
+            }
+            Ok(UpdateCliResult {
+                success,
+                stdout,
+                stderr,
+            })
+        }
+        Err(e) => {
+            log::warn!("[diagnostics] update_claude_cli spawn failed: {}", e);
+            Err(format!("Failed to spawn npm: {}", e))
+        }
+    }
+}
 
 #[tauri::command]
 pub async fn check_agent_cli(agent: String) -> Result<CliCheckResult, String> {

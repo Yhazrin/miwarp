@@ -47,6 +47,8 @@
     onCreateSubFolder?: () => void;
     onRenameSubFolder?: (sf: SessionFolderGroup) => void;
     onDeleteSubFolder?: (sf: SessionFolderGroup) => void;
+    /** Create a new session directly inside a logical sub-folder. */
+    onNewChatInSubFolder?: (sf: SessionFolderGroup) => void;
     /** Drag-over state for a specific sub-folder (folderKey). */
     dragOverSubFolderKey?: string | null;
     /** Highlight workspace unfoldered drop zone (move out of logical folder). */
@@ -134,6 +136,7 @@
     onCreateSubFolder,
     onRenameSubFolder,
     onDeleteSubFolder,
+    onNewChatInSubFolder,
     dragOverSubFolderKey = null,
     dragOverUnfoldered = false,
     dragRunId = null,
@@ -276,7 +279,9 @@
 
   function handleSfContextMenuSelect(id: string) {
     if (!sfContextMenuTarget) return;
-    if (id === "rename") {
+    if (id === "new-chat") {
+      onNewChatInSubFolder?.(sfContextMenuTarget);
+    } else if (id === "rename") {
       onRenameSubFolder?.(sfContextMenuTarget);
     } else if (id === "delete") {
       onDeleteSubFolder?.(sfContextMenuTarget);
@@ -284,15 +289,25 @@
     closeSfContextMenu();
   }
 
-  const sfContextMenuItems = [
+  const sfContextMenuItems = $derived([
+    ...(onNewChatInSubFolder
+      ? [
+          {
+            id: "new-chat",
+            label: t("sidebar_newChatInFolder") ?? "新对话",
+            icon: "play" as const,
+          },
+        ]
+      : []),
     { id: "rename", label: t("sidebar_renameFolder") ?? "重命名", icon: "rename" as const },
     {
       id: "delete",
       label: t("sidebar_removeFolder") ?? "删除文件夹",
       icon: "trash" as const,
       danger: true,
+      separatorBefore: true,
     },
-  ];
+  ]);
 
   function closeAllMenus() {
     addMenuOpen = false;
@@ -661,12 +676,6 @@
               {dragOverUnfoldered ? 'bg-primary/15 ring-1 ring-primary/40' : ''}"
             {...{ [SESSION_DROP_UNFOLDERED_ATTR]: folder.folderKey }}
           >
-            <div class="flex items-center px-2 py-0.5 mt-0.5 mb-0.5">
-              <span
-                class="text-[10px] text-muted-foreground/50 uppercase tracking-wider select-none"
-                >{t("sidebar_uncategorized") || "未归类"}</span
-              >
-            </div>
             {#if visibleConversations.length >= VIRTUAL_THRESHOLD}
               <VirtualList
                 items={visibleConversations}

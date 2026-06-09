@@ -2037,12 +2037,16 @@ export class SessionStore {
   /** Create a new run and start the session. Returns the run ID.
    *  permissionModeOverride: session-scoped permission mode (CLI name, e.g. "acceptEdits").
    *  When set, takes priority over persisted user settings for this spawn only —
-   *  used by ExitPlanMode "clear context + auto-accept" flow. */
+   *  used by ExitPlanMode "clear context + auto-accept" flow.
+   *  folderId: optional logical-folder id (sidebar sub-folder). When set, the
+   *  new run is created inside that folder instead of at the workspace root. */
   async startSession(
     prompt: string,
     cwd: string,
     attachments: Attachment[],
     permissionModeOverride?: string,
+    creationMode?: "single" | "worktree",
+    folderId?: string,
   ): Promise<string> {
     this.error = "";
     this._setPhase("spawning");
@@ -2105,6 +2109,8 @@ export class SessionStore {
         this.remoteHostName || undefined,
         this.platformId || undefined,
         executionPath,
+        creationMode,
+        folderId,
       );
       this.run = run;
 

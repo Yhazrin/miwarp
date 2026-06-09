@@ -105,6 +105,8 @@ export async function startRun(
   remoteHostName?: string,
   platformId?: string,
   executionPath?: string,
+  creationMode?: "single" | "worktree",
+  folderId?: string,
 ): Promise<TaskRun> {
   dbg("api", "startRun", {
     prompt: prompt.slice(0, 80),
@@ -113,6 +115,8 @@ export async function startRun(
     remoteHostName,
     platformId,
     executionPath,
+    creationMode,
+    folderId,
   });
   const result = await invoke<TaskRun>("start_run", {
     prompt,
@@ -122,6 +126,8 @@ export async function startRun(
     remoteHostName: remoteHostName ?? null,
     platformId: platformId ?? null,
     executionPath: executionPath ?? null,
+    creationMode: creationMode ?? null,
+    folderId: folderId ?? null,
   });
   dbg("api", "startRun →", result.id);
   return result;
@@ -473,6 +479,14 @@ export async function revealFileInFinder(path: string): Promise<void> {
   return invoke<void>("reveal_file_in_finder", { path });
 }
 
+// Open a directory in the system file browser (Finder/Explorer) — shows the
+// directory's contents (no selection). Used by the workspace card "open folder"
+// action, where tauri-plugin-shell's `open` was unreliable.
+export async function openDirectoryInFinder(path: string): Promise<void> {
+  dbg("api", "openDirectoryInFinder", path);
+  return invoke<void>("open_directory_in_finder", { path });
+}
+
 // Files
 export async function readTextFile(path: string, cwd?: string): Promise<string> {
   dbg("api", "readTextFile", path, { cwd });
@@ -544,6 +558,20 @@ export async function checkProjectInit(cwd: string): Promise<ProjectInitStatus> 
 export async function getCliDistTags(): Promise<CliDistTags> {
   dbg("api", "getCliDistTags");
   return invoke<CliDistTags>("get_cli_dist_tags");
+}
+
+export interface UpdateCliResult {
+  success: boolean;
+  stdout: string;
+  stderr: string;
+}
+
+/** One-click update for Claude Code (runs `npm install -g @anthropic-ai/claude-code`).
+ *  Caller should re-run `checkAgentCli("claude")` afterwards to refresh the
+ *  version cache displayed in the diagnostics panel. */
+export async function updateClaudeCli(): Promise<UpdateCliResult> {
+  dbg("api", "updateClaudeCli");
+  return invoke<UpdateCliResult>("update_claude_cli");
 }
 
 export async function checkSshKey(): Promise<SshKeyInfo> {

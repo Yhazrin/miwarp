@@ -59,7 +59,12 @@ export interface SidePanelsVm {
 // ── Handlers (callbacks) ──
 
 export interface InputDockHandlers {
-  sendMessage: (text: string, attachments: import("$lib/types").Attachment[]) => Promise<void>;
+  sendMessage: (
+    text: string,
+    attachments: import("$lib/types").Attachment[],
+    creationMode?: "single" | "worktree",
+    folderId?: string,
+  ) => Promise<void>;
   handleModelChange: (model: string) => void;
   handlePermissionModeChange: ((mode: string) => void) | undefined;
   handleVirtualCommand: (action: string, args: string) => Promise<void>;

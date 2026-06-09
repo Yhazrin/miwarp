@@ -21,6 +21,7 @@
     deleteSessionFolder,
     moveRunToFolder,
     batchMoveToFolder,
+    openDirectoryInFinder,
   } from "$lib/api";
   import {
     readRunsListCache,
@@ -129,6 +130,7 @@
   import { getTransport } from "$lib/transport";
   import { LAYOUT_CHROME_CONTEXT_KEY, type LayoutChromeContext } from "$lib/layout-chrome-context";
   import { themeStore } from "$lib/stores/theme-store.svelte";
+  import { workspacesStore } from "$lib/stores/workspaces-store.svelte";
   import ToastHost from "$lib/components/ToastHost.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
@@ -1008,7 +1010,10 @@
     }
     void import("$lib/services/sound-feedback-listener")
       .then((m) => m.startSoundFeedbackListener())
-      .catch((e) => { if (typeof console !== "undefined") console.debug("[layout] sound listener init failed:", e); });
+      .catch((e) => {
+        if (typeof console !== "undefined")
+          console.debug("[layout] sound listener init failed:", e);
+      });
     const unlockSoundOnce = () => {
       void import("$lib/services/sound-feedback-service").then((m) => m.unlockSoundEngine());
     };
@@ -1674,6 +1679,17 @@
   // Selectable folders: real project folders (exclude Uncategorized)
   const selectableFolders = $derived(enrichedProjectFolders.filter((f) => !f.isUncategorized));
 
+  // Project workspaces exposed to the welcome screen picker (and other
+  // consumers that need to render a cwd list). Mirrors enrichedProjectFolders
+  // in a lightweight shape so chat +page.svelte doesn't have to recompute it.
+  $effect(() => {
+    workspacesStore.list = enrichedProjectFolders.map((f) => ({
+      cwd: f.cwd,
+      label: f.isUncategorized ? t("sidebar_uncategorized") : cwdDisplayLabel(f.cwd),
+      isUncategorized: f.isUncategorized,
+    }));
+  });
+
   // Removed cwd set for O(1) lookup in search filtering
   let removedCwdSet = $derived(new Set(removedCwds.map(normalizeCwd)));
 
@@ -1807,8 +1823,9 @@
   });
 
   function newChat() {
-    // Prefer last chat, otherwise start explicit new chat
-    goto(chatViewCache.lastChatHref || "/chat?new=1");
+    // Always land on the welcome screen so the user picks a workspace
+    // (and creation mode) before a session starts — never resume the last run.
+    goto("/chat?new=1");
   }
 
   function getNavItemHref(item: { path: string; icon: string }): string {
@@ -1835,6 +1852,29 @@
     window.dispatchEvent(new CustomEvent(EVT_PROJECT_CHANGED, { detail: { cwd: normalized } }));
     chatViewCache.lastRunId = "";
     goto(`/chat?new=1&folder=${encodeURIComponent(normalized)}`);
+  }
+
+  /** Sidebar "New Session in folder" — sets the workspace cwd (same as
+   *  newChatInFolder) and pins a `sf` (sub-folder) target that the chat
+   *  page consumes on the next startSession call. */
+  function newChatInSubFolder(parentCwd: string, subFolderId: string) {
+    const normalized = normalizeCwd(parentCwd);
+    if (!normalized || !subFolderId) return;
+    projectCwd = normalized;
+    try {
+      localStorage.setItem(LS_PROJECT_CWD, normalized);
+    } catch {
+      // ignore
+    }
+    if (!pinnedCwds.includes(normalized)) {
+      pinnedCwds = [...pinnedCwds, normalized];
+      localStorage.setItem(LS_PINNED_CWDS, JSON.stringify(pinnedCwds));
+    }
+    window.dispatchEvent(new CustomEvent(EVT_PROJECT_CHANGED, { detail: { cwd: normalized } }));
+    chatViewCache.lastRunId = "";
+    goto(
+      `/chat?new=1&folder=${encodeURIComponent(normalized)}&sf=${encodeURIComponent(subFolderId)}`,
+    );
   }
 
   function toggleProject(folderKey: string) {
@@ -2051,111 +2091,7 @@
   {/each}
 {/snippet}
 
-{#snippet windowChromeToolbar()}
-  {@const chromeBtn =
-    "flex shrink-0 items-center justify-center rounded-full text-sidebar-foreground/75 transition-colors duration-150 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground h-[var(--miwarp-titlebar-control)] w-[var(--miwarp-titlebar-control)]"}
-  {@const chromeIcon = "h-[var(--miwarp-titlebar-control)] w-[var(--miwarp-titlebar-control)]"}
-  <nav
-    class="window-chrome-toolbar no-drag fixed left-0 z-[35] flex items-center gap-[var(--miwarp-titlebar-gap)] pl-[var(--miwarp-titlebar-actions-inset)]"
-    style="top: var(--miwarp-titlebar-y); height: var(--miwarp-titlebar-control);"
-    aria-label={t("layout_windowChrome")}
-  >
-    <button
-      type="button"
-      class={chromeBtn}
-      onclick={toggleSidebar}
-      title={t("keybind_toggleSidebar")}
-      aria-label={t("keybind_toggleSidebar")}
-      aria-expanded={sidebarOpen && needsLayoutContentPanel}
-    >
-      <svg
-        class={chromeIcon}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.75"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-        <path d="M9 3v18" />
-        {#if sidebarOpen && needsLayoutContentPanel}
-          <path d="m14 10-2 2 2 2" />
-        {:else}
-          <path d="m10 10 2 2-2 2" />
-        {/if}
-      </svg>
-    </button>
-
-    {#if !isSettingsPage}
-      <button
-        type="button"
-        class={chromeBtn}
-        onclick={() => goto("/settings")}
-        title={t("nav_settings")}
-        aria-label={t("nav_settings")}
-      >
-        <svg
-          class={chromeIcon}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.75"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <path
-            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-          />
-          <circle cx="12" cy="12" r="3" />
-        </svg>
-      </button>
-    {/if}
-
-    {#if needsLayoutContentPanel}
-      <button
-        type="button"
-        class={chromeBtn}
-        onclick={() => (showCliBrowser = true)}
-        title={t("cliSync_title")}
-        aria-label={t("sidebar_cliBrowser")}
-      >
-        <svg
-          class={chromeIcon}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.75"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
-          <path
-            d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"
-          />
-        </svg>
-      </button>
-      <button
-        type="button"
-        class={chromeBtn}
-        onclick={newChat}
-        title={t("layout_newConversation")}
-        aria-label={t("sidebar_newChat")}
-      >
-        <Icon name="plus" size="xs" class={chromeIcon} />
-      </button>
-    {/if}
-  </nav>
-{/snippet}
-
 <svelte:window onkeydown={handleKeydown} />
-
-{#if !isChatPage && !isSettingsPage}
-  {@render windowChromeToolbar()}
-{/if}
 
 <!-- eslint-disable-next-line svelte/no-dupe-style-properties — 100vh is a fallback for browsers without dvh support -->
 <div class="flex w-screen overflow-hidden" style="height: 100vh; height: 100dvh; {statusColorVars}">
@@ -3031,6 +2967,9 @@
                     onNewChat={folder.isUncategorized
                       ? undefined
                       : () => newChatInFolder(folder.cwd)}
+                    onNewChatInSubFolder={folder.isUncategorized
+                      ? undefined
+                      : (sf) => newChatInSubFolder(folder.cwd, sf.folderId)}
                     subFolders={folder.subFolders ?? []}
                     scheduledTaskHubs={folder.scheduledTaskHubs ?? []}
                     {selectedScheduledTaskId}
@@ -3057,13 +2996,10 @@
                     {dragRunId}
                     onOpenDirectory={folder.isUncategorized
                       ? undefined
-                      : async () => {
-                          try {
-                            const { open } = await import("@tauri-apps/plugin-shell");
-                            await open(folder.cwd);
-                          } catch (e) {
-                            dbgWarn("layout", "openDirectory failed", e);
-                          }
+                      : () => {
+                          openDirectoryInFinder(folder.cwd).catch((e) =>
+                            dbgWarn("layout", "openDirectory failed", e),
+                          );
                         }}
                     showMascot={mascotEnabled && !folder.isUncategorized}
                     mascotStatus={getWorkspaceMascotStatus(folder)}
@@ -3162,11 +3098,11 @@
          `miwarp-main-surface` keeps the right pane opaque so the native window
          glass on the left doesn't bleed through to the chat. -->
     <main class="miwarp-main-surface flex-1 min-h-0 overflow-hidden flex flex-col">
-      {#key $page.url.pathname}
-        <div class="flex-1 min-h-0 flex flex-col" transition:fade={{ duration: 150 }}>
-          {@render children()}
-        </div>
-      {/key}
+      <!-- SvelteKit remounts +page.svelte on route change; a {#key} + fade here
+           just stacked a 150ms delay on every /settings → /chat return. -->
+      <div class="flex-1 min-h-0 flex flex-col">
+        {@render children()}
+      </div>
     </main>
   </div>
 </div>

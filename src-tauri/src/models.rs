@@ -863,6 +863,15 @@ pub struct CliDistTags {
     pub stable: Option<String>,
 }
 
+/// Result of `update_claude_cli` — `success` is the npm exit code, `stdout`/`stderr`
+/// are captured for diagnostic reporting. Returned by the doctor-panel button.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateCliResult {
+    pub success: bool,
+    pub stdout: String,
+    pub stderr: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProjectInitStatus {
     pub cwd: String,

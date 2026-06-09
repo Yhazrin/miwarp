@@ -19,7 +19,6 @@
     SshKeyInfo,
   } from "$lib/types";
   import Card from "$lib/components/Card.svelte";
-  import SessionModeToggle from "$lib/components/SessionModeToggle.svelte";
   import Button from "$lib/components/Button.svelte";
   import Input from "$lib/components/Input.svelte";
   import KeybindingEditor from "$lib/components/KeybindingEditor.svelte";
