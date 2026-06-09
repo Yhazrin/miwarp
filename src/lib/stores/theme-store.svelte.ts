@@ -9,7 +9,6 @@
 import { t } from "$lib/i18n/index.svelte";
 import { LS_LEGACY_THEME, LS_LEGACY_COLOR_SCHEME } from "$lib/utils/storage-keys";
 import { dbgWarn } from "$lib/utils/debug";
-import { untrack } from "svelte";
 
 export interface ThemeDefinition {
   /** Base theme id without any -light/-dark suffix (e.g. "morandi", "codex"). */
@@ -101,31 +100,29 @@ class ThemeStore {
   initialized = false;
 
   /**
-   * System-mode OS listener. The store owns it (not a component) so OS theme
-   * changes keep applying even when the ThemeTab isn't mounted.
-   * `$effect.root` keeps this effect alive for the lifetime of the store
-   * singleton — the cleanup is intentionally discarded.
+   * System-mode OS listener (imperative, no `$effect.root`).
+   *
+   * Earlier used `$effect.root` + a nested `$effect` that read `this.mode`
+   * to gate an mql subscription, but that setup runs at module-load time
+   * (class constructor) when the Svelte runtime isn't fully primed yet.
+   * `init()` would later flip `this.mode = "system"` from localStorage, but
+   * the effect re-run was unreliable and the mql listener was never
+   * registered — so the app theme froze on whatever was last applied while
+   * Tauri/window-vibrancy (which has its own OS listener) kept updating the
+   * native glass sidebar. Replacing with imperative `addEventListener` in
+   * `setMode` makes the subscription happen exactly when the user picks
+   * system mode, with no dependency on effect timing.
    */
-  private _systemEffectActive = false;
+  private _systemMql: MediaQueryList | null = null;
+  private _systemListener: ((e: MediaQueryListEvent) => void) | null = null;
 
   constructor() {
     if (typeof window === "undefined") return;
-    $effect.root(() => {
-      $effect(() => {
-        if (this.mode !== "system") {
-          this._systemEffectActive = false;
-          return;
-        }
-        const mql = window.matchMedia("(prefers-color-scheme: dark)");
-        this._systemEffectActive = true;
-        // Re-apply once when entering system mode (in case OS theme
-        // differs from the last applied theme).
-        untrack(() => this._applyTheme());
-        const onChange = () => this._applyTheme();
-        mql.addEventListener("change", onChange);
-        return () => mql.removeEventListener("change", onChange);
-      });
-    });
+    // Cache the mql reference + listener at construction. They're reused
+    // every time the user toggles in/out of system mode, so we never
+    // attach more than one listener even if setMode is called many times.
+    this._systemMql = window.matchMedia("(prefers-color-scheme: dark)");
+    this._systemListener = () => this._applyTheme();
   }
 
   /** Resolve the effective light/dark mode:
@@ -179,7 +176,21 @@ class ThemeStore {
 
   /** Set light/dark/system mode. Re-applies the current theme with the new variant. */
   setMode(next: "light" | "dark" | "system") {
+    const wasSystem = this.mode === "system";
     this.mode = next;
+    const isSystem = next === "system";
+
+    // Keep the OS subscription in sync with the user's intent. Add on the
+    // system→system / non-system→system transitions, remove on the
+    // system→non-system transition. No-op on non-system→non-system.
+    if (this._systemMql && this._systemListener) {
+      if (!wasSystem && isSystem) {
+        this._systemMql.addEventListener("change", this._systemListener);
+      } else if (wasSystem && !isSystem) {
+        this._systemMql.removeEventListener("change", this._systemListener);
+      }
+    }
+
     this._applyTheme();
     this._persistSettings();
   }
