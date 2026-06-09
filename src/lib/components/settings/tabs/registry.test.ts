@@ -16,8 +16,8 @@ import {
 
 describe("settings tab registry", () => {
   describe("SETTINGS_TABS", () => {
-    it("contains exactly 9 tabs", () => {
-      expect(SETTINGS_TABS).toHaveLength(9);
+    it("contains exactly 10 tabs", () => {
+      expect(SETTINGS_TABS).toHaveLength(10);
     });
 
     it("has unique tab ids", () => {
@@ -67,7 +67,7 @@ describe("settings tab registry", () => {
   describe("tabsByGroup", () => {
     it("returns the 4 expected groups, each with the right tabs", () => {
       const grouped = tabsByGroup();
-      expect(grouped.display.map((t) => t.id)).toEqual(["appearance"]);
+      expect(grouped.display.map((t) => t.id)).toEqual(["appearance", "theme"]);
       expect(grouped.integration.map((t) => t.id)).toEqual(["providers", "devices"]);
       expect(grouped.automation.map((t) => t.id)).toEqual([
         "shortcuts",
@@ -92,7 +92,7 @@ describe("settings tab registry", () => {
   });
 
   describe("LEGACY_TAB_MAP", () => {
-    it("covers all 10 legacy tab ids", () => {
+    it("covers all 9 legacy tab ids (theme became its own first-level tab)", () => {
       const expected = [
         "general",
         "connection",
@@ -102,7 +102,6 @@ describe("settings tab registry", () => {
         "remote",
         "notifications",
         "debug",
-        "theme",
         "data",
       ];
       for (const id of expected) {
@@ -135,7 +134,10 @@ describe("settings tab registry", () => {
       expect(resolveTabId("connection")).toBe("providers");
       expect(resolveTabId("mobile")).toBe("devices");
       expect(resolveTabId("debug")).toBe("data-debug");
-      expect(resolveTabId("theme")).toBe("appearance");
+      // 'theme' used to be an alias for 'appearance'; after the refactor
+      // it became its own first-level tab, so old URLs that happened to
+      // land on a valid 'theme' id now resolve to that tab directly.
+      expect(resolveTabId("theme")).toBe("theme");
     });
 
     it("falls back to appearance for garbage input", () => {
