@@ -50,6 +50,10 @@ pub fn apply_to_window<R: tauri::Runtime>(
     }
 }
 
+// `material` is only consulted on macOS (sidebar vs header-view vibrancy).
+// Other platforms ignore it; silence the unused-variable warning rather
+// than invent a fake use-site.
+#[allow(unused_variables)]
 fn apply<R: tauri::Runtime>(window: &WebviewWindow<R>, material: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
