@@ -112,7 +112,7 @@
   onmouseenter={() => (hovered = true)}
   onmouseleave={() => (hovered = false)}
 >
-  <div class="w-full px-[clamp(4rem,8vw,7rem)] py-4">
+  <div class="w-full pl-[3.75rem] pr-8 py-4">
     <div class={`flex ${isUser ? "justify-end" : ""}`}>
       <div class={`min-w-0 max-w-3xl ${isUser ? "" : "flex-1"}`}>
         <!-- Header: identity (agent) or empty (user) + rewind action.
