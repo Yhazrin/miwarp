@@ -28,6 +28,10 @@
   import ChatErrorCard from "$lib/components/ChatErrorCard.svelte";
   import RecoveringBanner from "$lib/components/RecoveringBanner.svelte";
   import ElicitationDialog from "$lib/components/ElicitationDialog.svelte";
+  import ForwardToSessionDialog from "./ForwardToSessionDialog.svelte";
+  import { showToast as _showToast } from "$lib/stores/toast-store.svelte";
+  import { dbgWarn } from "$lib/utils/debug";
+  import * as api from "$lib/api";
   import ChatInitHint from "$lib/components/ChatInitHint.svelte";
   import ChatHeroMeta from "$lib/components/ChatHeroMeta.svelte";
   import XTerminalComponent from "$lib/components/XTerminal.svelte";
@@ -172,6 +176,8 @@
   let selectionX = $state(0);
   let selectionY = $state(0);
   let showSelectionToolbar = $state(false);
+  let showForwardDialog = $state(false);
+  let pendingForwardText = $state("");
 
   $effect(() => {
     function handleSelectionChange() {
@@ -211,10 +217,30 @@
   }
 
   function forwardSelection() {
-    navigator.clipboard.writeText(selectionText);
-    fillPrompt(selectionText);
+    // Stash the text + close the floating toolbar; the actual pick happens
+    // inside ForwardToSessionDialog. Don't fill the input — forwarding goes
+    // to a different run, not the current one.
+    pendingForwardText = selectionText;
     showSelectionToolbar = false;
     window.getSelection()?.removeAllRanges();
+    showForwardDialog = true;
+  }
+
+  async function forwardToRun(targetRunId: string) {
+    const text = pendingForwardText;
+    pendingForwardText = "";
+    if (!text) return;
+    try {
+      // Reuse send_chat_message — it appends the text as a user prompt to
+      // the target run (pipe_exec path) and spawns the agent. Run id is
+      // decoupled from the current session, so cross-run forwarding works.
+      await api.sendChatMessage(targetRunId, text);
+      _showToast(t("chat_forwardSent"));
+      handlers.goto(`/chat?run=${targetRunId}`, { replaceState: true });
+    } catch (e) {
+      dbgWarn("forward", "send failed", e);
+      _showToast(t("chat_forwardFailed"), "error");
+    }
   }
 </script>
 
@@ -504,6 +530,8 @@
       />
     {/if}
   </div>
+
+  <ForwardToSessionDialog bind:open={showForwardDialog} onSelect={forwardToRun} />
 
   <div class="chat-scroll-fade" aria-hidden="true"></div>
 

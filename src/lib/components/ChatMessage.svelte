@@ -107,15 +107,17 @@
 </script>
 
 <div
-  class="w-full {animated ? 'motion-slide-up' : ''}"
+  class="group/msg w-full {animated ? 'motion-slide-up' : ''}"
   role="group"
   onmouseenter={() => (hovered = true)}
   onmouseleave={() => (hovered = false)}
 >
-  <div class="w-full px-[clamp(2.5rem,5vw,4rem)] py-4">
+  <div class="w-full px-[clamp(4rem,8vw,7rem)] py-4">
     <div class={`flex ${isUser ? "justify-end" : ""}`}>
       <div class={`min-w-0 max-w-3xl ${isUser ? "" : "flex-1"}`}>
-        <!-- Header -->
+        <!-- Header: identity (agent) or empty (user) + rewind action.
+             Copy + timestamp moved to the content footer so they no longer
+             crowd the agent identity row. -->
         <div class={`mb-1.5 flex items-center gap-2 ${isUser ? "justify-end" : ""}`}>
           {#if isUser}
             {#if onRewind}
@@ -132,12 +134,6 @@
                 <Icon name="refresh-ccw" size="sm" />
               </button>
             {/if}
-            <span
-              class="text-[10px] text-muted-foreground"
-              title={formatFullTime(message.timestamp)}
-            >
-              {formatTime(message.timestamp)}
-            </span>
           {:else}
             <AgentIdentity
               {agent}
@@ -162,31 +158,6 @@
                 <Icon name="refresh-ccw" size="sm" />
               </button>
             {/if}
-            <button
-              type="button"
-              class="{onRewind
-                ? ''
-                : 'ml-auto'} rounded-md p-1 text-miwarp-text-tertiary transition-all duration-150 hover:bg-miwarp-bg-hover hover:text-miwarp-text-primary {hovered ||
-              copied
-                ? 'opacity-100'
-                : 'opacity-0'}"
-              onclick={copyContent}
-              title={t("chat_copyMessage")}
-              aria-label={t("chat_copyMessage")}
-              data-export-exclude
-            >
-              {#if copied}
-                <Icon name="check" size="sm" class="text-miwarp-status-success" />
-              {:else}
-                <Icon name="copy" size="sm" />
-              {/if}
-            </button>
-            <span
-              class="text-[10px] text-muted-foreground"
-              title={formatFullTime(message.timestamp)}
-            >
-              {formatTime(message.timestamp)}
-            </span>
           {/if}
         </div>
         <!-- Content -->
@@ -331,6 +302,33 @@
                 {#if debugSessionId}<div>session_id {debugSessionId}</div>{/if}
               </div>
             {/if}
+          {/if}
+        </div>
+        <!-- Message-level footer: timestamp + copy action. Sits below the
+             content for both user and agent so the row is no longer crowded
+             with metadata next to the agent identity. Hover-revealed. -->
+        <div
+          class={`mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground/70 transition-opacity duration-150
+            ${hovered ? "opacity-100" : "opacity-0"}
+            ${isUser ? "justify-end" : "justify-start"}`}
+        >
+          <span title={formatFullTime(message.timestamp)}>{formatTime(message.timestamp)}</span>
+          {#if !isUser}
+            <button
+              type="button"
+              class="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted/45 hover:text-foreground
+                {copied ? 'text-miwarp-status-success' : ''}"
+              onclick={copyContent}
+              title={t("chat_copyMessage")}
+              aria-label={t("chat_copyMessage")}
+              data-export-exclude
+            >
+              {#if copied}
+                <Icon name="check" size="sm" />
+              {:else}
+                <Icon name="copy" size="sm" />
+              {/if}
+            </button>
           {/if}
         </div>
       </div>
