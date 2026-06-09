@@ -69,6 +69,24 @@ export async function listRuns(): Promise<TaskRun[]> {
   }
 }
 
+/**
+ * Lightweight run list — only reads meta.json per run (no events.jsonl
+ * summary scan). Use this for pickers (forward-to-session, link-to-run)
+ * that don't need message_count or last_message_preview. With hundreds of
+ * runs it's ~50x faster than listRuns().
+ */
+export async function listRunsLite(): Promise<TaskRun[]> {
+  dbg("api", "listRunsLite");
+  try {
+    const runs = await invoke<TaskRun[]>("list_runs_lite");
+    dbg("api", "listRunsLite →", runs.length);
+    return runs;
+  } catch (e) {
+    dbgWarn("api", "listRunsLite error, falling back to listRuns", e);
+    return listRuns();
+  }
+}
+
 export async function listRunsSince(since: string): Promise<TaskRun[]> {
   const { supportsCommand, warnListRunsSinceUnsupportedOnce } =
     await import("$lib/backend-capabilities.svelte");

@@ -4,11 +4,16 @@
    * workspace (cwd) with a name / preview / cwd search box. Confirms by
    * returning the target runId; the parent (chat stage) then calls
    * `send_chat_message` and navigates to the target run.
+   *
+   * Uses `listRunsLite` — skips the events.jsonl summary scan so the
+   * picker opens instantly even with hundreds of runs.
    */
   import { onMount } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import Modal from "$lib/components/Modal.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import Input from "$lib/components/Input.svelte";
+  import Button from "$lib/components/Button.svelte";
   import * as api from "$lib/api";
   import type { TaskRun } from "$lib/types";
   import { cwdDisplayLabel, relativeTime } from "$lib/utils/format";
@@ -39,9 +44,9 @@
   async function load() {
     loading = true;
     try {
-      runs = await api.listRuns();
+      runs = await api.listRunsLite();
     } catch (e) {
-      dbgWarn("forward-dialog", "listRuns failed", e);
+      dbgWarn("forward-dialog", "listRunsLite failed", e);
       runs = [];
     } finally {
       loading = false;
@@ -88,6 +93,13 @@
   /** Flat list of runIds in render order — used for keyboard nav. */
   const flatIds = $derived(filtered.flatMap((g) => g.runs.map((r) => r.id)));
 
+  /** The run currently targeted for forwarding. Driven by activeIndex. */
+  const pickedRun = $derived.by<TaskRun | null>(() => {
+    const id = flatIds[activeIndex];
+    if (!id) return null;
+    return runs.find((r) => r.id === id) ?? null;
+  });
+
   function handleKey(e: KeyboardEvent) {
     if (!open) return;
     if (e.key === "ArrowDown") {
@@ -104,17 +116,54 @@
   }
 
   function pick(id: string) {
-    open = false;
     onSelect(id);
+    open = false;
   }
 
-  function relativeTimeLabel(iso?: string) {
+  function pickFromFooter() {
+    if (pickedRun) pick(pickedRun.id);
+  }
+
+  function cancel() {
+    open = false;
+  }
+
+  /** Session title: user-set name > first line of prompt > short id.
+   *  Never falls back to the full UUID — the UUID is only used as last
+   *  resort, truncated. */
+  function runTitle(run: TaskRun): string {
+    if (run.name?.trim()) return run.name.trim();
+    const firstLine = (run.prompt || "").split("\n", 1)[0]?.trim() ?? "";
+    if (firstLine) return firstLine.length > 60 ? `${firstLine.slice(0, 60)}…` : firstLine;
+    return run.id.slice(0, 8);
+  }
+
+  /** Last message preview — separate from title, layered below it. */
+  function runPreview(run: TaskRun): string {
+    return run.last_message_preview?.trim() ?? "";
+  }
+
+  /** Status dot class — maps the runtime status to a token color. */
+  function statusDotClass(status: TaskRun["status"]): string {
+    switch (status) {
+      case "running":
+        return "bg-miwarp-status-success animate-pulse";
+      case "waiting_input":
+      case "waiting_approval":
+        return "bg-miwarp-status-warning";
+      case "failed":
+        return "bg-miwarp-status-error";
+      default:
+        return "bg-muted-foreground/50";
+    }
+  }
+
+  function relativeTimeLabel(iso?: string): string {
     if (!iso) return "";
     return relativeTime(iso);
   }
 
   onMount(() => {
-    // scroll active item into view when navigating
     $effect(() => {
       const id = flatIds[activeIndex];
       if (!id) return;
@@ -129,22 +178,26 @@
 <svelte:window onkeydown={handleKey} />
 
 <Modal bind:open title={t("chat_forwardToSession")} size="lg">
-  <div class="flex h-[28rem] flex-col gap-3">
+  <div class="flex max-h-[70vh] flex-col gap-3 px-6 py-4">
+    <!-- Search -->
     <div class="relative">
       <Icon
         name="search"
         size="sm"
-        class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60"
+        class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 z-10"
       />
-      <input
-        type="text"
+      <Input
         bind:value={query}
         placeholder={t("chat_forwardSearchPlaceholder")}
-        class="w-full rounded-md border border-border/60 bg-background/60 pl-8 pr-3 py-1.5 text-sm outline-none transition-colors focus:border-primary/50"
+        class="pl-8"
+        aria-label={t("chat_forwardSearchPlaceholder")}
       />
     </div>
 
-    <div class="min-h-0 flex-1 overflow-y-auto rounded-md border border-border/40 bg-background/40">
+    <!-- Run list — grouped by workspace (cwd) -->
+    <div
+      class="scrollbar-hide min-h-0 flex-1 overflow-y-auto rounded-lg border border-border/40 bg-background/30"
+    >
       {#if loading && runs.length === 0}
         <div class="flex h-full items-center justify-center text-sm text-muted-foreground">
           {t("common_loading")}
@@ -155,42 +208,93 @@
         </div>
       {:else}
         {#each filtered as group (group.cwd || "__uncategorized__")}
-          <div class="border-b border-border/30 last:border-b-0">
+          <div>
+            <!-- Group header: short project name (primary) + full path
+                 (auxiliary). The path appears ONCE here, not in every item. -->
             <div
-              class="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-muted-foreground/80 bg-muted/30"
+              class="sticky top-0 z-10 flex items-baseline gap-2 border-b border-border/40 bg-background/85 px-4 py-2 text-xs backdrop-blur"
             >
-              <Icon name={group.cwd ? "folder" : "folder-open"} size="xs" />
-              <span class="truncate">{group.label}</span>
-              <span class="text-muted-foreground/50">· {group.runs.length}</span>
+              <Icon
+                name={group.cwd ? "folder" : "folder-open"}
+                size="xs"
+                class="shrink-0 self-center text-muted-foreground/70"
+              />
+              <span class="truncate text-sm font-semibold text-foreground">
+                {group.label}
+              </span>
+              <span class="truncate text-xs text-muted-foreground/60">
+                {group.cwd}
+              </span>
+              <span class="ml-auto shrink-0 text-xs tabular-nums text-muted-foreground/60">
+                {group.runs.length}
+              </span>
             </div>
+
             {#each group.runs as run (run.id)}
               {@const isActive = flatIds[activeIndex] === run.id}
+              {@const title = runTitle(run)}
+              {@const preview = runPreview(run)}
+              {@const updatedAt = run.last_activity_at || run.started_at}
               <button
                 type="button"
                 data-forward-run={run.id}
-                onclick={() => pick(run.id)}
-                class={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors
-                  ${isActive ? "bg-primary/12 text-foreground" : "hover:bg-muted/40 text-foreground/85"}`}
+                onclick={() => (activeIndex = flatIds.indexOf(run.id))}
+                class={`flex w-full items-start gap-3 border-b border-border/20 px-4 py-2.5 text-left text-sm transition-colors last:border-b-0
+                  ${isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"}`}
               >
+                <!-- Selection indicator (radio-style) -->
                 <span
-                  class={`mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full
+                  class={`mt-1 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border
                     ${
-                      run.status === "running"
-                        ? "bg-miwarp-status-success animate-pulse"
-                        : run.status === "waiting_input" || run.status === "waiting_approval"
-                          ? "bg-miwarp-status-warning"
-                          : "bg-muted-foreground/30"
+                      isActive
+                        ? "border-primary bg-primary"
+                        : "border-muted-foreground/40 bg-transparent"
                     }`}
+                  aria-hidden="true"
+                >
+                  {#if isActive}
+                    <span class="h-1.5 w-1.5 rounded-full bg-primary-foreground"></span>
+                  {/if}
+                </span>
+
+                <!-- Status dot (overlaid separately to preserve the radio look) -->
+                <span
+                  class={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${statusDotClass(run.status)}`}
+                  aria-hidden="true"
                 ></span>
-                <span class="flex-1 min-w-0 truncate">
-                  {run.name ||
-                    run.last_message_preview ||
-                    run.prompt.slice(0, 80) ||
-                    run.id.slice(0, 8)}
-                </span>
-                <span class="shrink-0 text-[10px] text-muted-foreground/60 tabular-nums">
-                  {relativeTimeLabel(run.last_activity_at || run.started_at)}
-                </span>
+
+                <!-- Title + preview + meta — three layered lines, no truncation
+                     hiding information. The title is the primary visual
+                     anchor; preview and meta are clearly secondary. -->
+                <div class="flex min-w-0 flex-1 flex-col gap-1">
+                  <span class="truncate text-sm font-medium leading-tight">
+                    {title}
+                  </span>
+                  {#if preview}
+                    <span
+                      class={`truncate text-xs leading-snug ${isActive ? "text-accent-foreground/80" : "text-muted-foreground"}`}
+                    >
+                      {preview}
+                    </span>
+                  {/if}
+                  <span
+                    class={`flex items-center gap-1.5 text-xs tabular-nums ${isActive ? "text-accent-foreground/70" : "text-muted-foreground/70"}`}
+                  >
+                    {#if updatedAt}
+                      <span>{relativeTimeLabel(updatedAt)}</span>
+                    {/if}
+                    {#if run.message_count && run.message_count > 0}
+                      <span aria-hidden="true">·</span>
+                      <span>
+                        {t("chat_forwardMessagesMeta", { count: String(run.message_count) })}
+                      </span>
+                    {/if}
+                    {#if run.model}
+                      <span aria-hidden="true">·</span>
+                      <span class="truncate">{run.model}</span>
+                    {/if}
+                  </span>
+                </div>
               </button>
             {/each}
           </div>
@@ -198,8 +302,32 @@
       {/if}
     </div>
 
-    <p class="text-[10px] text-muted-foreground/60 text-center">
-      {t("chat_forwardHint")}
-    </p>
+    <!-- Footer: single-line action bar. Left: subtle "Forwarding to: Title"
+         hint. Right: Cancel + Forward. Enter still works as a shortcut. -->
+    <div class="flex shrink-0 items-center gap-3 border-t border-border/40 bg-muted/20 px-4 py-3">
+      <Icon name="arrow-right" size="sm" class="shrink-0 text-muted-foreground" />
+      <span class="shrink-0 text-sm text-muted-foreground">
+        {t("chat_forwardSelectedLabel")}
+      </span>
+      <span
+        class={`min-w-0 flex-1 truncate text-sm font-medium ${pickedRun ? "text-foreground" : "italic text-muted-foreground/70"}`}
+      >
+        {pickedRun ? runTitle(pickedRun) : t("chat_forwardNoSelection")}
+      </span>
+      <div class="flex shrink-0 items-center gap-2">
+        <Button variant="ghost" size="sm" onclick={cancel}>
+          {t("chat_forwardCancel")}
+        </Button>
+        <Button
+          variant="default"
+          size="sm"
+          disabled={!pickedRun}
+          onclick={pickFromFooter}
+          title={t("chat_forwardHint")}
+        >
+          {t("chat_forwardConfirm")}
+        </Button>
+      </div>
+    </div>
   </div>
 </Modal>

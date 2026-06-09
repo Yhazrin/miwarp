@@ -36,6 +36,15 @@ pub async fn list_runs() -> Result<Vec<TaskRun>, String> {
 }
 
 #[tauri::command]
+pub async fn list_runs_lite() -> Result<Vec<TaskRun>, String> {
+    let runs = tokio::task::spawn_blocking(storage::runs::list_runs_lite)
+        .await
+        .map_err(|e| format!("list_runs_lite task failed: {}", e))?;
+    log::debug!("[runs] list_runs_lite: count={}", runs.len());
+    Ok(runs)
+}
+
+#[tauri::command]
 pub async fn list_runs_since(since: String) -> Result<Vec<TaskRun>, String> {
     log::debug!("[runs] list_runs_since: since={}", since);
     let runs = tokio::task::spawn_blocking(move || storage::runs::list_runs_since(&since))

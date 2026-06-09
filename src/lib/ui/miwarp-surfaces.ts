@@ -1,9 +1,9 @@
 /** Shared surface classes for Bits UI wrappers (MiWarp design tokens). */
 
-export const MIWARP_DIALOG_OVERLAY_CLASS = "fixed inset-0 z-50 bg-miwarp-overlay backdrop-blur-md";
+export const MIWARP_DIALOG_OVERLAY_CLASS = "fixed inset-0 z-50 bg-miwarp-overlay backdrop-blur-3xl";
 
 export const MIWARP_DIALOG_CONTENT_CLASS =
-  "elevation-3 outline-hidden fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] p-6 backdrop-blur-2xl";
+  "outline-hidden fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] p-6 backdrop-blur-3xl";
 
 export const MIWARP_DIALOG_CONTENT_STYLE = "background: hsl(var(--miwarp-bg-deep) / 0.94);";
 
@@ -22,20 +22,20 @@ export const MIWARP_SELECT_ITEM_STATUSBAR_CLASS =
 
 /** Compact menus (auth badge, settings pickers). */
 export const MIWARP_MENU_PANEL_CLASS =
-  "z-[9999] max-h-80 w-72 overflow-y-auto rounded-md border border-border/35 bg-background/95 p-0 shadow-lg outline-hidden animate-fade-in backdrop-blur-xl";
+  "z-[9999] max-h-80 w-72 overflow-y-auto rounded-md border border-border/35 bg-background/95 p-0 outline-hidden animate-fade-in backdrop-blur-xl";
 
 /** Anchored detail panels (context %, tool hints). */
 export const MIWARP_DETAIL_POPOVER_CLASS =
-  "z-50 w-64 rounded-xl border border-border/60 bg-background/95 p-3 shadow-lg outline-hidden backdrop-blur-sm animate-fade-in";
+  "z-50 w-64 rounded-xl border border-border/60 bg-background/95 p-3 outline-hidden backdrop-blur-sm animate-fade-in";
 
 export const MIWARP_DIALOG_CONTENT_LG_CLASS =
-  "elevation-3 outline-hidden fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-full max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] p-0 backdrop-blur-2xl";
+  "outline-hidden fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-full max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] p-0 backdrop-blur-3xl";
 
 export const MIWARP_DIALOG_CONTENT_COMMAND_CLASS =
-  "outline-hidden fixed left-1/2 top-[15vh] z-50 w-full max-w-xl -translate-x-1/2 rounded-lg border border-[hsl(var(--miwarp-glass-border)/0.25)] bg-background p-0 shadow-2xl";
+  "outline-hidden fixed left-1/2 top-[15vh] z-50 w-full max-w-xl -translate-x-1/2 rounded-lg border border-[hsl(var(--miwarp-glass-border)/0.25)] bg-background p-0";
 
 export const MIWARP_DIALOG_CONTENT_MD_CLASS =
-  "elevation-3 outline-hidden fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] p-0 backdrop-blur-2xl";
+  "outline-hidden fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] p-0 backdrop-blur-3xl";
 
 export const MIWARP_DIALOG_CONTENT_SM_CLASS =
-  "elevation-3 outline-hidden fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] p-5 backdrop-blur-2xl";
+  "outline-hidden fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl border border-[hsl(var(--miwarp-glass-border)/0.25)] p-5 backdrop-blur-3xl";

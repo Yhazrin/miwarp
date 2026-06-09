@@ -331,6 +331,44 @@ pub fn list_runs() -> Vec<TaskRun> {
     runs
 }
 
+/// Lightweight run list — only reads `meta.json` per run, skips the
+/// `events.jsonl` summary scan. Use this for pickers (forward-to-session,
+/// link-to-run dialogs) that don't need `message_count` or
+/// `last_message_preview`. With hundreds of runs this is ~50x faster than
+/// `list_runs()` because the events summary was O(events.jsonl size) per run.
+pub fn list_runs_lite() -> Vec<TaskRun> {
+    let runs_dir = super::runs_dir();
+    if !runs_dir.exists() {
+        return vec![];
+    }
+
+    let mut runs: Vec<TaskRun> = vec![];
+    if let Ok(entries) = fs::read_dir(&runs_dir) {
+        for entry in entries.flatten() {
+            if !entry.path().is_dir() {
+                continue;
+            }
+            let meta_path = entry.path().join("meta.json");
+            if !meta_path.exists() {
+                continue;
+            }
+            if let Ok(content) = fs::read_to_string(&meta_path) {
+                if let Ok(meta) = serde_json::from_str::<RunMeta>(&content) {
+                    if meta.deleted_at.is_some() {
+                        continue;
+                    }
+                    // No summarize_events call — last_activity/preview/msg_count
+                    // remain None / None / None. The picker doesn't need them.
+                    runs.push(meta.to_task_run(None, None::<u32>, None));
+                }
+            }
+        }
+    }
+
+    runs.sort_by(|a, b| b.started_at.cmp(&a.started_at));
+    runs
+}
+
 /// Incremental list: only returns runs whose `meta.json` was modified after `since`.
 /// Includes soft-deleted runs so the frontend can remove them from its local cache.
 /// Falls back to full `list_runs()` if `since` cannot be parsed.

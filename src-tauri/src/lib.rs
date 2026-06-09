@@ -150,6 +150,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::capabilities::get_backend_capabilities,
             commands::runs::list_runs,
+            commands::runs::list_runs_lite,
             commands::runs::list_runs_since,
             commands::runs::get_run,
             commands::runs::start_run,

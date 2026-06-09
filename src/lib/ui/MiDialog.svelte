@@ -60,7 +60,10 @@
       interactOutsideBehavior={closeable ? "close" : "ignore"}
     >
       {#if title}
-        <Dialog.Title class="mb-4 pr-8 text-lg font-semibold text-foreground">{title}</Dialog.Title>
+        <Dialog.Title
+          class="shrink-0 border-b border-border/40 px-6 py-4 pr-12 text-base font-semibold text-foreground"
+          >{title}</Dialog.Title
+        >
       {/if}
       {#if description}
         <Dialog.Description class="mb-3 text-sm text-muted-foreground"

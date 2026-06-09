@@ -383,6 +383,16 @@ html.theme-transitioning .theme-fade {
     box-shadow: inset -1px 0 0 hsl(0 0% 0% / 0.06);
   }
 
+  /* Dark-mode override: bump opacity so the wallpaper doesn't dilute the deep base.
+     Without this, the 55% transparent base lets the brighter wallpaper bleed
+     through and the sidebar looks "washed out" rather than properly black. */
+  .dark .glass-sidebar,
+  .dark .native-glass-sidebar-disabled {
+    background: hsl(var(--miwarp-bg-base) / 0.92);
+    border-right-color: hsl(var(--miwarp-glass-border) / 0.5);
+    box-shadow: inset -1px 0 0 hsl(0 0% 0% / 0.4);
+  }
+
   /* Right-side main content surface — always opaque, regardless of
      whether the native glass is on. Keeps chat / settings / etc. on a
      solid surface so the wallpaper doesn't bleed through. */
