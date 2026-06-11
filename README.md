@@ -3,117 +3,139 @@
 </p>
 
 <p align="center">
-  <strong>Local-first desktop app for AI-assisted vibe coding</strong>
+  <strong>Local-first desktop GUI for AI coding CLIs</strong>
+  <br>
+  <sub>Claude Code · Codex · 15+ providers · sessions · mobile pairing · scheduling</sub>
 </p>
 
 <p align="center">
-  <a href="#why-miwarp">Why</a> &middot;
-  <a href="#key-capabilities">Capabilities</a> &middot;
-  <a href="#quick-start">Quick Start</a> &middot;
-  <a href="#supported-providers">Providers</a> &middot;
-  <a href="#architecture">Architecture</a> &middot;
+  <a href="#what-is-miwarp">What is it</a> ·
+  <a href="#what-changed-in-v107">v1.0.7</a> ·
+  <a href="#capabilities">Capabilities</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#supported-providers">Providers</a> ·
+  <a href="#architecture">Architecture</a> ·
   <a href="#license">License</a>
 </p>
 
 <p align="center">
-  <b>English</b> | <a href="README.zh-CN.md">简体中文</a>
+  <b>English</b> · <a href="README.zh-CN.md">简体中文</a>
 </p>
 
 ---
 
-<p align="center">
-  <img src="appshot.png" width="800" alt="MiWarp Screenshot">
-</p>
-
 ## What is MiWarp?
 
-MiWarp is a fork and substantial extension of [OpenCoVibe](https://github.com/shaozi/OpenCoVibe), a desktop wrapper for Claude Code CLI. While OpenCoVibe provides the foundational architecture for CLI wrapping and session management, MiWarp has evolved into a feature-rich IDE-like environment that significantly expands the capabilities of the original project.
+**MiWarp** wraps AI coding CLIs (Claude Code, Codex, …) in a native desktop app, so you get the power of the terminal agent plus a proper visual interface — chat history with diffs, multi-session management, cross-session forwarding, and remote access from your phone.
 
-## Why MiWarp?
+Everything stays on your machine under `~/.miwarp/`. The app itself has no cloud backend; only the LLM API calls go over the network.
 
-AI coding CLIs like Claude Code are powerful, but they run inside a terminal. That means no persistent dashboard, no visual diff review, no cross-session history, and no multi-provider switching. MiWarp wraps these CLIs with a native desktop UI that adds the layers the terminal can't provide — while keeping all your data **stored locally**. (Remote model APIs require network access; the app itself has no cloud backend.)
+It's **not** an Electron app — built on Tauri v2 (Rust + system WebView), so the install is ~50 MB and RAM usage stays under 200 MB for a normal session.
 
-| Agent                                                    | Status      |
-| -------------------------------------------------------- | ----------- |
-| [Claude Code](https://github.com/anthropics/claude-code) | Supported   |
-| [Codex](https://github.com/openai/codex)                 | In progress |
+## Who is it for?
 
-**Platform status**: Currently developed and tested primarily on **macOS**. Windows and Linux builds are functional but have not been thoroughly tested for compatibility — contributions and bug reports are welcome.
+Developers who already use Claude Code / Codex from the terminal and want:
 
-**Core principle**: Wrap the CLI, surface the work, keep it local.
+- a **visual chat interface** with proper markdown, tool cards, and diffs (instead of scrolling terminal output)
+- **persistent history** — every prompt, every response, every file change, searchable
+- **multi-provider switching** — Anthropic, DeepSeek, Kimi, Zhipu, OpenRouter, local Ollama, … without restarting
+- **session management** — fork, resume, rename, forward messages between sessions
+- **remote access** — pair your phone, run from the browser, schedule tasks to run while you're away
 
-## Key Capabilities
+If you just want a chatGPT-style web UI, this isn't it. If you spend hours a day in `claude code` and want it to feel less like 1995, this is.
 
-### What the CLI doesn't give you
+## What changed in v1.0.7?
 
-| Capability                   | What MiWarp adds                                                                                                                                               |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Visual Tool Cards**        | Every tool call (Read, Edit, Bash, Grep, Write, WebFetch, …) rendered as an inline card with syntax-highlighted diffs, structured output, and one-click copy   |
-| **Run History & Replay**     | Browse all past sessions, full event replay, resume / fork from any point, soft-delete with recovery                                                           |
-| **Multi-Provider Switching** | Use Claude Code with 15+ API providers (DeepSeek, Kimi, Zhipu, Bailian, DouBao, MiniMax, OpenRouter, Ollama, …) — hot-switch without restarting                |
-| **Remote Browser Access**    | Embedded web server for browser-based access over LAN or HTTP tunnels (ngrok / cloudflared)                                                                    |
-| **File Explorer**            | Browse and edit project files with syntax highlighting, markdown preview, image preview, and git diff view                                                     |
-| **Memory Editor**            | Create and edit CLAUDE.md, project-scoped and user-scoped memory files with live preview                                                                       |
-| **Agent Management**         | Visual editor to create, edit, and manage custom agent definitions (.md files) with form and source modes                                                      |
-| **Permission Rules**         | Manage CLI permission allow/deny rules at user and project level with a visual rule editor                                                                     |
-| **Usage Analytics**          | Per-model token breakdown, cost tracking, daily heatmap, stacked model chart, session-level stats                                                              |
-| **Team Dashboard**           | Read-only view into Claude Code multi-agent teams — task lists, teammate status, message flow                                                                  |
-| **Activity Monitor**         | Real-time hook event stream, tool activity timeline, file tracking panel, subagent tracking with nested tool cards                                             |
-| **Plugin Marketplace**       | Browse, install, and manage Claude Code plugins and skills from a visual marketplace                                                                           |
-| **MCP Management**           | Discover MCP servers, view per-server status, reconnect / toggle from a panel                                                                                  |
-| **Inline Permissions**       | Rich permission review UI with batch Allow/Deny panel, CLI-suggested "Always Allow" rules, and AskUserQuestion rendering                                       |
-| **CLI Session Import**       | Discover and import existing Claude Code CLI sessions into MiWarp                                                                                              |
-| **Rewind**                   | Checkpoint and selectively revert file changes with dry-run preview                                                                                            |
-| **Remote Hosts**             | Configure SSH hosts for remote CLI execution with key generation wizard and connectivity testing                                                               |
-| **Preview & Element Picker** | Open a localhost preview in a companion window, interactively pick page elements, and insert structured context (DOM path, styles, HTML snippet) into the chat |
-| **Ralph Loop**               | Auto-iterate the same prompt until a completion condition is met — hands-free coding with configurable max iterations                                          |
-| **Doctor Diagnostics**       | System health checks for CLI, platform, SSH, and proxy configuration                                                                                           |
-| **Scheduled Tasks**          | Schedule prompts to run automatically at specified times with cron-like expressions                                                                            |
-| **Workflow Automation**      | Build and execute multi-step AI workflows with branching logic and tool integration                                                                            |
-| **Skill Marketplace**        | Discover and install community-contributed skills and workflows                                                                                                |
+The most recent release focuses on **polish and the theme/forward workflows that ship in every session**:
 
-### Features
+- **Unified theme system** — 12 themes, each with proper light *and* dark variants. Pick a theme and an "appearance mode" (light / dark / follow system) independently. Follows macOS / Windows system theme live, even when the Settings tab is closed.
+- **Forward to session** rewritten as a proper "session target selector" — three layered lines per row (title / last message preview / meta), one short project name per group, and an explicit Cancel / Forward button pair.
+- **`listRunsLite` backend** — the forward dialog used to take several seconds with hundreds of past runs; now it's instant. (Reads only `meta.json`, skips the events scan.)
+- **Dialog chrome cleanup** — removed all `elevation-3` / `shadow-lg` from dialogs, backdrop blur bumped from `2xl` to `3xl`, dialog titles get a proper `border-b` header bar (no more zero-padding top-left corner).
 
-- **Rich Chat UI** — Markdown, syntax highlighting, thinking blocks, image attachments, file diffs, collapsible tool burst groups
-- **Session Control** — Create, resume, fork, rename sessions; plan mode toggle; model hot-switch; context history tracking
-- **Drag & Drop** — Native file drag-drop for images, PDFs, directories, and path references
-- **Project Folders** — Sidebar project selector with per-project scoping for memory, permissions, and sessions
-- **Inline Slash Commands** — `/model`, `/diff`, `/todos`, `/tasks`, `/doctor`, `/copy`, `/stats`, `/preview`, `/ralph`, and more — rendered natively in-app
-- **Keyboard Shortcuts** — Fully customizable keybindings with chord support and conflict detection
-- **Hook Manager** — Configure upstream CLI hooks for event-driven automation
-- **i18n** — English and Chinese (Simplified) with lightweight reactive runtime
-- **System Tray** — Hide to tray; background sessions keep running with native notifications
-- **Dark / Light Theme** — CSS variable-based theming with UI zoom control and custom color editing
-- **Auto Update** — In-app update checker with download links
-- **Setup Wizard** — Guided CLI detection, authentication, and provider configuration on first launch
+See [CHANGELOG.md](CHANGELOG.md) for the full list (1.0.5 → 1.0.7 included).
 
-## Quick Start
+## Capabilities
 
-### Option A: Download Pre-built Binary (macOS)
+### Chat
 
-Download the latest `.dmg` from [Releases](https://github.com/Yhazrin/MiWarp/releases) — universal binary, supports both Apple Silicon and Intel Macs.
+- Visual tool cards — every Claude Code tool call (Read, Edit, Bash, Grep, Write, WebFetch, …) rendered inline with syntax-highlighted diffs, structured output, one-click copy
+- Rich content — markdown with syntax highlighting, thinking blocks, image attachments, file diffs, collapsible tool-burst groups
+- Inline slash commands — `/model`, `/diff`, `/todos`, `/tasks`, `/doctor`, `/stats`, `/preview`, `/ralph`, … rendered natively
+- Drag & drop — images, PDFs, directories, path references
 
-> **Note**: The app is not code-signed. On first launch, right-click and select "Open" to bypass macOS Gatekeeper.
+### Sessions
 
-### Option B: Automated Setup (macOS)
+- Run history & replay — browse every past session, full event replay, resume or fork from any point, soft-delete with recovery
+- Workspace grouping — sessions grouped by project (cwd); full path shown once per group, not in every row
+- Cross-session forward — pick a target session, send a message into it without leaving the current one
+- Rewind — checkpoint and selectively revert file changes with dry-run preview
+- CLI session import — discover and import existing Claude Code CLI sessions
+
+### Multi-provider
+
+- 15+ LLM providers (Anthropic official, DeepSeek, Kimi, Zhipu, Bailian, DouBao, MiniMax, Xiaomi MiMo, Tencent Hunyuan, SiliconFlow, …)
+- 3 API gateways (Vercel AI Gateway, OpenRouter, AiHubMix, ZenMux)
+- Local inference (Ollama, CC Switch, Claude Code Router) + any Anthropic-compatible endpoint
+- Hot-swap between providers without restarting a session
+
+### Remote & automation
+
+- Mobile pairing — QR-code pair a phone or tablet as a remote terminal
+- Web server access — embedded HTTP server with token auth, LAN or cloudflared/ngrok tunnel
+- Scheduled tasks — cron-style recurring prompts
+- Ralph loop — auto-iterate a prompt until a completion condition is met
+- Hook manager — upstream CLI hooks for event-driven automation
+
+### Workspace tooling
+
+- File explorer — syntax highlighting, markdown preview, image preview, git diff
+- Memory editor — CLAUDE.md (user + project scope) with live preview
+- Agent editor — visual editor for custom agent definitions (.md) with form / source modes
+- Permission rules — user + project level, with batch Allow/Deny
+- MCP management — discover servers, view status, reconnect / toggle
+- Usage analytics — per-model token breakdown, cost tracking, daily heatmap
+- Team dashboard — read-only view of Claude Code multi-agent teams (task lists, status, message flow)
+- Doctor diagnostics — system health for CLI, platform, SSH, proxy
+
+### App shell
+
+- 12 themes (Codex, Midnight, Ocean, Dracula, Nord, Morandi, Carbon Pink, Deep Sea Milk, Aurora Pomelo, Pomegranate Mist, Aurora Lime, Dev Preview) with full light / dark variants
+- Light / dark / system mode with live OS follow
+- Custom keybindings with chord support and conflict detection
+- English / 简体中文 i18n
+- System tray with native notifications
+- In-app update checker
+
+## Quick start
+
+### Option A — Download (macOS)
+
+Grab the latest `.dmg` from [Releases](https://github.com/Yhazrin/MiWarp/releases).
+
+Universal binary (Apple Silicon + Intel). **Not code-signed** — first launch: right-click the app → Open → "Open" to bypass Gatekeeper.
+
+> Linux and Windows builds are produced by CI but have not been tested on real machines. The recommended path for those is Option B / C below.
+
+### Option B — Automated setup (macOS)
 
 ```bash
 git clone https://github.com/Yhazrin/MiWarp.git
 cd MiWarp
-./scripts/setup.sh          # add --yes to skip confirmation prompts
+./scripts/setup.sh          # add --yes to skip prompts
 npm run tauri dev
 ```
 
-The setup script detects missing dependencies (Xcode CLI Tools, Homebrew, Node.js, Rust) and installs them automatically.
+The setup script auto-detects missing deps (Xcode CLI Tools, Homebrew, Node.js, Rust) and installs them.
 
-### Option C: Manual Setup
+### Option C — Manual setup
 
-**Prerequisites:**
+**Prerequisites**
 
-- [Node.js](https://nodejs.org/) >= 20
-- [Rust](https://rustup.rs/) >= 1.75
+- [Node.js](https://nodejs.org/) ≥ 20
+- [Rust](https://rustup.rs/) ≥ 1.75
 
-**macOS:**
+**macOS**
 
 ```bash
 xcode-select --install
@@ -121,7 +143,7 @@ brew install node
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-**Linux (Debian/Ubuntu):**
+**Linux (Debian / Ubuntu)**
 
 ```bash
 sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
@@ -129,14 +151,11 @@ sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-**Windows:**
+**Windows**
 
-```powershell
-# Install Rust from https://rustup.rs
-# Install Node.js from https://nodejs.org
-```
+Install Rust from <https://rustup.rs> and Node.js from <https://nodejs.org>.
 
-**Build & Run:**
+**Then**
 
 ```bash
 git clone https://github.com/Yhazrin/MiWarp.git
@@ -145,19 +164,19 @@ npm install
 npm run tauri dev
 ```
 
-### Setup Wizard
+### First launch
 
-On first launch, MiWarp guides you through:
+The setup wizard walks you through:
 
-1. **CLI Detection** — Auto-detects Claude Code CLI, offers installation if missing
-2. **Authentication** — OAuth login or API key for 15+ providers
-3. **Ready** — Start coding
+1. CLI detection — auto-detects Claude Code / Codex, offers install if missing
+2. Authentication — OAuth or API key for your provider
+3. Ready to chat
 
-You can re-run the wizard anytime from **Settings > General > Setup Wizard**.
+Re-run anytime from **Settings → Setup Wizard**.
 
-## Supported Providers
+## Supported providers
 
-### LLM Providers
+### LLM providers
 
 | Provider                 | Endpoint                                       | Auth    |
 | ------------------------ | ---------------------------------------------- | ------- |
@@ -177,7 +196,7 @@ You can re-run the wizard anytime from **Settings > General > Setup Wizard**.
 | Tencent Hunyuan (混元)   | `api.hunyuan.cloud.tencent.com/anthropic`      | Bearer  |
 | SiliconFlow (硅基流动)   | `api.siliconflow.com/`                         | Bearer  |
 
-### API Gateway
+### API gateways
 
 | Platform          | Endpoint                  | Auth   |
 | ----------------- | ------------------------- | ------ |
@@ -197,61 +216,76 @@ You can re-run the wizard anytime from **Settings > General > Setup Wizard**.
 
 ## Architecture
 
-<p align="center">
-  <img src="static/architecture.svg" width="700" alt="Architecture">
-</p>
+```
+┌─────────────────────────────────────────────────────────┐
+│  MiWarp Desktop (Tauri v2)                              │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │  Frontend (Svelte 5 + SvelteKit static)         │   │
+│  │  • chat UI · tool cards · settings · themes    │   │
+│  └─────────────────────────────────────────────────┘   │
+│                          │  IPC                          │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │  Backend (Rust)                                  │   │
+│  │  • session_actor (per-run process lifecycle)    │   │
+│  │  • turn_engine (phase / timeout)                 │   │
+│  │  • storage (runs, events, settings, …)          │   │
+│  │  • web server (mobile pairing)                   │   │
+│  │  • scheduler · hook manager                      │   │
+│  └─────────────────────────────────────────────────┘   │
+│                          │  stream-JSON / PTY / pipe    │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │  Claude Code CLI  /  Codex CLI                  │   │
+│  │  (long-lived child processes)                    │   │
+│  └─────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────┘
+```
 
-**Tech Stack:**
+**Tech stack**
 
-| Layer     | Technology                                                                                                                     |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Framework | [Tauri v2](https://v2.tauri.app/) (Rust backend + WebView)                                                                     |
-| Frontend  | [Svelte 5](https://svelte.dev/) + [SvelteKit](https://svelte.dev/docs/kit/) (adapter-static)                                   |
-| Styling   | [Tailwind CSS](https://tailwindcss.com/) v3 + CSS variables                                                                    |
-| Terminal  | [xterm.js](https://xtermjs.org/)                                                                                               |
-| Markdown  | [marked](https://marked.js.org/) + [highlight.js](https://highlightjs.org/) + [DOMPurify](https://github.com/cure53/DOMPurify) |
-| i18n      | Custom lightweight runtime (en + zh-CN)                                                                                        |
-| Testing   | [Vitest](https://vitest.dev/)                                                                                                  |
+| Layer     | Tech                                                                            |
+| --------- | ------------------------------------------------------------------------------- |
+| Framework | [Tauri v2](https://v2.tauri.app/) (Rust + WebView)                              |
+| Frontend  | [Svelte 5](https://svelte.dev/) + SvelteKit (adapter-static)                    |
+| Styling   | [Tailwind CSS v3](https://tailwindcss.com/) + CSS variables                      |
+| Terminal  | [xterm.js](https://xtermjs.com/)                                                |
+| Markdown  | [marked](https://marked.js.org/) + [highlight.js](https://highlightjs.org/)     |
+| Sanitize  | [DOMPurify](https://github.com/cure53/DOMPurify)                                |
+| i18n      | Custom lightweight runtime (en + zh-CN)                                         |
+| Testing   | [Vitest](https://vitest.dev/) + Rust unit tests                                 |
 
-**Agent Communication:**
-
-The app communicates with Claude Code CLI via bidirectional stream-JSON protocol (stdin/stdout). Each session is a long-lived, multi-turn process managed by a per-run session actor. Three communication modes are supported: stream-JSON (primary), PTY (interactive terminal), and pipe (Codex).
-
-**Data Storage:**
-
-All data is stored locally at `~/.miwarp/` — no cloud, no database.
+**Data storage** — everything at `~/.miwarp/`, no cloud:
 
 ```
 ~/.miwarp/
-├── settings.json          # User settings
-├── runs/                  # Session history
+├── settings.json          # user settings
+├── keybindings.json       # custom shortcuts
+├── runs/                  # session history
 │   └── {run-id}/
-│       ├── meta.json      # Run metadata
-│       ├── events.jsonl   # Event log
-│       └── artifacts.json # Summary
-└── keybindings.json       # Custom shortcuts
+│       ├── meta.json      # run metadata
+│       ├── events.jsonl   # event log
+│       └── artifacts.json # summary
+└── …
 ```
+
+**Platform support** — actively developed and tested on **macOS**. Windows and Linux compile and run, but are not on the "thoroughly tested" list. Bug reports and platform-specific fixes are welcome.
 
 ## Development
 
 ```bash
-npm install              # Install dependencies
-npm run tauri dev        # Dev mode with hot-reload
-npm test                 # Run tests
-npm run lint:fix         # Lint
-npm run format           # Format
+npm install              # install dependencies
+npm run tauri dev        # dev mode with hot reload
+npm test                 # run vitest
+npm run lint             # eslint
+npm run format           # prettier
+npm run check            # svelte-check (type)
+npm run i18n:check       # i18n key alignment
+npm run verify           # full CI gate (lint + format + check + i18n + test + build + rust)
 ```
 
-## Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding conventions, and PR guidelines.
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Yhazrin/MiWarp&type=Date)](https://star-history.com/#Yhazrin/MiWarp&Date)
+See [CONTRIBUTING.md](CONTRIBUTING.md) for code conventions, commit style, and PR guidelines.
 
 ## License
 
-Licensed under the [Apache License 2.0](LICENSE).
+[Apache License 2.0](LICENSE)
 
 Copyright 2025-2026 MiWarp Contributors.
