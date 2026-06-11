@@ -237,6 +237,11 @@ impl ProtocolState {
         }
     }
 
+    /// Get the runtime kind for this protocol state.
+    pub fn runtime_kind(&self) -> &AgentRuntimeKind {
+        &self.runtime_kind
+    }
+
     #[allow(clippy::too_many_arguments)]
     fn emit_message_complete(
         &mut self,
@@ -1524,6 +1529,27 @@ impl ProtocolState {
         if self.mimo_session_id.is_none() {
             if let Some(sid) = raw.get("sessionID").and_then(|v| v.as_str()) {
                 self.mimo_session_id = Some(sid.to_string());
+                // Emit synthetic SessionInit on first session_id detection
+                // MiMo doesn't emit a system/init event like Claude,
+                // so we synthesize one to populate session store fields.
+                events.push(BusEvent::SessionInit {
+                    run_id: run_id.to_string(),
+                    session_id: Some(sid.to_string()),
+                    model: Some("mimo".to_string()),
+                    tools: vec![],
+                    cwd: String::new(),
+                    slash_commands: vec![],
+                    mcp_servers: vec![],
+                    permission_mode: None,
+                    api_key_source: None,
+                    claude_code_version: None,
+                    output_style: None,
+                    agents: vec![],
+                    skills: vec![],
+                    plugins: vec![],
+                    plugin_errors: vec![],
+                    fast_mode_state: None,
+                });
             }
         }
 

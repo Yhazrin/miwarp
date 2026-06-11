@@ -1736,10 +1736,15 @@ impl SessionActor {
                     log::debug!("[actor] captured session_id={}", sid);
                     // Single with_meta write: session_id + conversation_ref (avoid double write + intermediate state)
                     let sid_clone = sid.clone();
+                    let runtime = self.protocol.runtime_kind().clone();
                     if let Err(e) = storage::runs::with_meta(&self.run_id, |meta| {
                         meta.session_id = Some(sid_clone.clone());
-                        meta.conversation_ref =
-                            Some(crate::models::ConversationRef::ClaudeSession(sid_clone));
+                        meta.conversation_ref = Some(match runtime {
+                            crate::models::AgentRuntimeKind::MiMoCode => {
+                                crate::models::ConversationRef::MimoSession(sid_clone)
+                            }
+                            _ => crate::models::ConversationRef::ClaudeSession(sid_clone),
+                        });
                         Ok(())
                     }) {
                         log::warn!(
