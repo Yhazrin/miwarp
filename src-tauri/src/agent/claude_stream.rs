@@ -153,34 +153,43 @@ fn extra_path_dirs() -> Vec<PathBuf> {
     }
 }
 
+/// Cached augmented PATH — computed once on first call, reused for all
+/// subsequent spawns. The extra directories and process PATH don't change
+/// during the app's lifetime.
+static AUGMENTED_PATH_CACHE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
 /// Build a PATH that includes common binary locations (cross-platform).
 pub fn augmented_path() -> String {
-    let extra = extra_path_dirs();
-    let current_path = std::env::var("PATH").unwrap_or_default();
-    let existing: Vec<PathBuf> = std::env::split_paths(&current_path).collect();
+    AUGMENTED_PATH_CACHE
+        .get_or_init(|| {
+            let extra = extra_path_dirs();
+            let current_path = std::env::var("PATH").unwrap_or_default();
+            let existing: Vec<PathBuf> = std::env::split_paths(&current_path).collect();
 
-    #[cfg(windows)]
-    let eq = |a: &PathBuf, b: &PathBuf| {
-        a.to_string_lossy()
-            .eq_ignore_ascii_case(&b.to_string_lossy())
-    };
-    #[cfg(not(windows))]
-    let eq = |a: &PathBuf, b: &PathBuf| a == b;
+            #[cfg(windows)]
+            let eq = |a: &PathBuf, b: &PathBuf| {
+                a.to_string_lossy()
+                    .eq_ignore_ascii_case(&b.to_string_lossy())
+            };
+            #[cfg(not(windows))]
+            let eq = |a: &PathBuf, b: &PathBuf| a == b;
 
-    let mut parts: Vec<PathBuf> = Vec::new();
-    for dir in extra {
-        if dir.is_dir()
-            && !parts.iter().any(|p| eq(p, &dir))
-            && !existing.iter().any(|e| eq(e, &dir))
-        {
-            parts.push(dir);
-        }
-    }
-    parts.extend(existing);
+            let mut parts: Vec<PathBuf> = Vec::new();
+            for dir in extra {
+                if dir.is_dir()
+                    && !parts.iter().any(|p| eq(p, &dir))
+                    && !existing.iter().any(|e| eq(e, &dir))
+                {
+                    parts.push(dir);
+                }
+            }
+            parts.extend(existing);
 
-    std::env::join_paths(&parts)
-        .map(|p| p.to_string_lossy().into_owned())
-        .unwrap_or(current_path)
+            std::env::join_paths(&parts)
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or(current_path)
+        })
+        .clone()
 }
 
 /// Cross-platform binary lookup.
