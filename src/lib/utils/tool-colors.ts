@@ -192,6 +192,73 @@ const toolColors: Record<string, ToolColor> = {
     icon: "M12 20v-6M6 20V10M18 20V4",
     border: "border-cyan-500/30",
   },
+  // MiMo-Code tool names (lowercase)
+  read: {
+    bg: "bg-blue-500",
+    text: "text-white",
+    icon: "M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z",
+    border: "border-blue-500/30",
+  },
+  write: {
+    bg: "bg-amber-500",
+    text: "text-white",
+    icon: "M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z",
+    border: "border-amber-500/30",
+  },
+  edit: {
+    bg: "bg-amber-500",
+    text: "text-white",
+    icon: "M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z",
+    border: "border-amber-500/30",
+  },
+  glob: {
+    bg: "bg-purple-500",
+    text: "text-white",
+    icon: "M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM21 21l-4.35-4.35",
+    border: "border-purple-500/30",
+  },
+  grep: {
+    bg: "bg-purple-500",
+    text: "text-white",
+    icon: "M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM21 21l-4.35-4.35",
+    border: "border-purple-500/30",
+  },
+  webfetch: {
+    bg: "bg-sky-500",
+    text: "text-white",
+    icon: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z",
+    border: "border-sky-500/30",
+  },
+  websearch: {
+    bg: "bg-sky-500",
+    text: "text-white",
+    icon: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z",
+    border: "border-sky-500/30",
+  },
+  codesearch: {
+    bg: "bg-sky-500",
+    text: "text-white",
+    icon: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z",
+    border: "border-sky-500/30",
+  },
+  actor: {
+    bg: "bg-cyan-500",
+    text: "text-white",
+    icon: "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2",
+    border: "border-cyan-500/30",
+  },
+  skill: {
+    bg: "bg-rose-500",
+    text: "text-white",
+    icon: "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
+    border: "border-rose-500/30",
+  },
+  task: {
+    bg: "bg-cyan-500",
+    text: "text-white",
+    icon: "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2",
+    border: "border-cyan-500/30",
+  },
 };
 
 const defaultToolColor: ToolColor = {
