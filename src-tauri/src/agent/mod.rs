@@ -5,6 +5,8 @@ pub mod codex_parser;
 pub mod control;
 pub mod notify;
 pub mod pipe_parser;
+pub mod protocol;
+pub mod runtime;
 pub mod session_actor;
 pub mod spawn;
 pub mod spawn_locks;

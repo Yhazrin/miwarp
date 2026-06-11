@@ -2,7 +2,9 @@ use crate::agent::adapter::{self, ActorSessionMap};
 use crate::agent::claude_stream;
 use crate::agent::session_actor::{self, ActorCommand, AttachmentData, RalphCancelResult};
 use crate::agent::spawn_locks::SpawnLocks;
-use crate::models::{BusEvent, RemoteHost, RunMeta, RunStatus, SessionMode, UserSettings};
+use crate::models::{
+    AgentRuntimeKind, BusEvent, RemoteHost, RunMeta, RunStatus, SessionMode, UserSettings,
+};
 use crate::process_ext::HideConsole;
 use crate::storage;
 use crate::storage::shared;
@@ -649,24 +651,43 @@ pub(crate) async fn start_session_impl(
 
     // 6. Spawn CLI process (no initial stdin write — actor handles it)
     let effective_cwd = meta.remote_cwd.as_deref().unwrap_or(&meta.cwd);
-    let (child, stdin, stdout, stderr) = spawn_cli_process(
-        effective_cwd,
-        &meta.prompt,
-        &adapter_settings,
-        &session_mode,
-        resume_session_id.as_deref(),
-        is_new,
-        &att_list,
-        remote.as_ref(),
-        meta.remote_cwd.as_deref(),
-        resolved.api_key.as_deref(),
-        resolved.auth_token.as_deref(),
-        resolved.base_url.as_deref(),
-        &run_id,
-        resolved.models.as_deref(),
-        resolved.extra_env.as_ref(),
-    )
-    .await?;
+    let runtime_kind = meta.resolved_runtime_kind();
+
+    let (child, stdin, stdout, stderr) = match &runtime_kind {
+        AgentRuntimeKind::MiMoCode => {
+            // MiMoCode: spawn via mimo run --format json
+            spawn_mimo_process(
+                effective_cwd,
+                &meta.prompt,
+                &adapter_settings,
+                &session_mode,
+                resume_session_id.as_deref(),
+                is_new,
+            )
+            .await?
+        }
+        _ => {
+            // ClaudeCode (default): existing spawn logic
+            spawn_cli_process(
+                effective_cwd,
+                &meta.prompt,
+                &adapter_settings,
+                &session_mode,
+                resume_session_id.as_deref(),
+                is_new,
+                &att_list,
+                remote.as_ref(),
+                meta.remote_cwd.as_deref(),
+                resolved.api_key.as_deref(),
+                resolved.auth_token.as_deref(),
+                resolved.base_url.as_deref(),
+                &run_id,
+                resolved.models.as_deref(),
+                resolved.extra_env.as_ref(),
+            )
+            .await?
+        }
+    };
 
     // 7. Compute turn baselines — 1-based: next_turn_index = N means next message gets turnIndex=N.
     // New session: first message gets turnIndex=1. Resume: first new message gets total+1.
@@ -683,7 +704,7 @@ pub(crate) async fn start_session_impl(
     );
 
     // 8. Spawn actor
-    let actor_handle = session_actor::spawn_actor(
+    let actor_handle = session_actor::spawn_actor_with_runtime(
         Arc::clone(emitter),
         sessions.clone(),
         run_id.clone(),
@@ -695,6 +716,7 @@ pub(crate) async fn start_session_impl(
         cancel_token.clone(),
         initial_turn_index,
         initial_auto_ctx_id,
+        runtime_kind,
     );
     let cmd_tx = actor_handle.cmd_tx.clone();
     sessions.lock().await.insert(run_id.clone(), actor_handle);
@@ -1682,6 +1704,98 @@ fn augment_with_shell_auth(
 /// Spawn a Claude CLI process and return (Child, ChildStdin, ChildStdout, ChildStderr).
 /// Sends the initial prompt via stdin for new sessions.
 /// For remote sessions, wraps the CLI command in SSH.
+#[allow(clippy::too_many_arguments)]
+/// Spawn a MiMo-Code process via `mimo run --format json`.
+async fn spawn_mimo_process(
+    cwd: &str,
+    _prompt: &str,
+    settings: &adapter::AdapterSettings,
+    session_mode: &SessionMode,
+    resume_session_id: Option<&str>,
+    _is_new: bool,
+) -> Result<
+    (
+        tokio::process::Child,
+        tokio::process::ChildStdin,
+        tokio::process::ChildStdout,
+        tokio::process::ChildStderr,
+    ),
+    String,
+> {
+    use crate::agent::runtime::RuntimeConfig;
+
+    let binary = RuntimeConfig::resolve_binary(&AgentRuntimeKind::MiMoCode);
+    let mut args: Vec<String> = vec!["run".into(), "--format".into(), "json".into()];
+
+    // Session mode args
+    match session_mode {
+        SessionMode::Resume | SessionMode::Continue => {
+            let sid = resume_session_id.ok_or("session_id required for resume/continue")?;
+            args.push("--session".into());
+            args.push(sid.into());
+        }
+        SessionMode::Fork => {
+            args.push("--fork".into());
+            if let Some(sid) = resume_session_id {
+                args.push("--session".into());
+                args.push(sid.into());
+            }
+        }
+        SessionMode::New => {}
+    }
+
+    // Model
+    if let Some(ref m) = settings.model {
+        if !m.is_empty() {
+            args.push("--model".into());
+            args.push(m.clone());
+        }
+    }
+
+    // Permission mode → MiMo equivalent
+    if let Some(ref perm) = settings.permission_mode {
+        match perm.as_str() {
+            "bypassPermissions" | "auto" => {
+                args.push("--dangerously-skip-permissions".into());
+            }
+            _ => {}
+        }
+    }
+
+    // Working directory
+    args.push("--dir".into());
+    args.push(cwd.to_string());
+
+    log::debug!(
+        "[session] spawning MiMo: {} {}, cwd={}",
+        binary,
+        args.join(" "),
+        cwd
+    );
+
+    let mut cmd = tokio::process::Command::new(&binary);
+    for arg in &args {
+        cmd.arg(arg);
+    }
+
+    cmd.current_dir(cwd)
+        .env_remove("CLAUDECODE")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+
+    let child = cmd
+        .spawn()
+        .map_err(|e| format!("Failed to spawn mimo: {e}"))?;
+
+    let mut child = child;
+    let stdin = child.stdin.take().ok_or("mimo: no stdin")?;
+    let stdout = child.stdout.take().ok_or("mimo: no stdout")?;
+    let stderr = child.stderr.take().ok_or("mimo: no stderr")?;
+
+    Ok((child, stdin, stdout, stderr))
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn spawn_cli_process(
     cwd: &str,

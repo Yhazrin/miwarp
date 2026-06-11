@@ -707,6 +707,8 @@ fn run_import_pipeline(
         parent_cwd: None,
         scheduled_task_id: None,
         scheduled_task_run_id: None,
+        runtime_kind: Some(crate::models::AgentRuntimeKind::ClaudeCode),
+        protocol_kind: None,
     };
 
     let run_dir = run_dir(&run_id);

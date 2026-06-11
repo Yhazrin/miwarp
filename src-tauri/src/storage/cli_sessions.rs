@@ -1236,6 +1236,8 @@ pub fn import_session(
         parent_cwd: None,
         scheduled_task_id: None,
         scheduled_task_run_id: None,
+        runtime_kind: Some(crate::models::AgentRuntimeKind::ClaudeCode),
+        protocol_kind: None,
     };
 
     let run_dir = super::run_dir(&run_id);

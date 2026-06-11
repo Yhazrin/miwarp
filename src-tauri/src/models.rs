@@ -117,6 +117,56 @@ pub enum ExecutionPath {
     PipeExec,
 }
 
+/// Which agent runtime backend powers this run.
+/// Determines binary, protocol, settings, and session management.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentRuntimeKind {
+    /// Anthropic Claude Code CLI (`claude`)
+    #[default]
+    ClaudeCode,
+    /// Xiaomi MiMo-Code CLI (`mimo`)
+    MiMoCode,
+    /// OpenAI Codex CLI (`codex`)
+    Codex,
+}
+
+impl std::fmt::Display for AgentRuntimeKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ClaudeCode => write!(f, "claude"),
+            Self::MiMoCode => write!(f, "mimo"),
+            Self::Codex => write!(f, "codex"),
+        }
+    }
+}
+
+impl AgentRuntimeKind {
+    /// Parse from the agent string stored in RunMeta.
+    pub fn from_agent(agent: &str) -> Self {
+        match agent {
+            "mimo" | "mimocode" => Self::MiMoCode,
+            "codex" => Self::Codex,
+            _ => Self::ClaudeCode,
+        }
+    }
+}
+
+/// Communication protocol between MiWarp and the agent runtime.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum RuntimeProtocolKind {
+    /// NDJSON line-delimited JSON events (Claude stream-json, MiMo --format json)
+    StreamJson,
+    /// PTY embedded mode (TUI rendering in xterm.js)
+    Pty,
+    /// Single-shot pipe (stdout text, no streaming)
+    Pipe,
+    /// Protocol not yet determined
+    #[default]
+    Unknown,
+}
+
 /// Unified resume/fork identity across agents.
 /// Claude = session_id from system/init; Codex = thread_id from thread.started.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -128,6 +178,9 @@ pub enum ConversationRef {
     /// Codex thread ID (from thread.started event)
     #[serde(rename = "codex_thread")]
     CodexThread(String),
+    /// MiMo-Code session ID (from sessionID in JSON events)
+    #[serde(rename = "mimo_session")]
+    MimoSession(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -738,18 +791,44 @@ pub struct RunMeta {
     /// Scheduler execution record id (`scheduler/runs/<id>.json`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scheduled_task_run_id: Option<String>,
+    /// Runtime backend kind. None for old runs → resolved via AgentRuntimeKind::from_agent(agent).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime_kind: Option<AgentRuntimeKind>,
+    /// Communication protocol used by this runtime. None → resolved via runtime_kind default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protocol_kind: Option<RuntimeProtocolKind>,
 }
 
 impl RunMeta {
     /// Resolve execution_path for old runs that don't have it on disk.
     /// Migration assumption: historically, Claude runs used session_actor,
-    /// Codex runs used pipe_exec. Based on shipped product paths, not a protocol guarantee.
+    /// Codex runs used pipe_exec. MiMoCode uses session_actor (StreamJson protocol).
     pub fn resolved_execution_path(&self) -> ExecutionPath {
         self.execution_path.clone().unwrap_or_else(|| {
-            if self.agent == "claude" {
-                ExecutionPath::SessionActor
-            } else {
-                ExecutionPath::PipeExec
+            let rk = self.resolved_runtime_kind();
+            match rk {
+                AgentRuntimeKind::ClaudeCode => ExecutionPath::SessionActor,
+                AgentRuntimeKind::MiMoCode => ExecutionPath::SessionActor,
+                AgentRuntimeKind::Codex => ExecutionPath::PipeExec,
+            }
+        })
+    }
+
+    /// Resolve runtime_kind for old runs that don't have it on disk.
+    pub fn resolved_runtime_kind(&self) -> AgentRuntimeKind {
+        self.runtime_kind
+            .clone()
+            .unwrap_or_else(|| AgentRuntimeKind::from_agent(&self.agent))
+    }
+
+    /// Resolve protocol_kind for old runs that don't have it on disk.
+    pub fn resolved_protocol_kind(&self) -> RuntimeProtocolKind {
+        self.protocol_kind.clone().unwrap_or_else(|| {
+            let rk = self.resolved_runtime_kind();
+            match rk {
+                AgentRuntimeKind::ClaudeCode => RuntimeProtocolKind::StreamJson,
+                AgentRuntimeKind::MiMoCode => RuntimeProtocolKind::StreamJson,
+                AgentRuntimeKind::Codex => RuntimeProtocolKind::Pipe,
             }
         })
     }

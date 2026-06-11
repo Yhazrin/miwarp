@@ -119,6 +119,8 @@ pub fn create_run(
         conversation_ref: None, // Written by runtime events (session_init / thread.started)
         scheduled_task_id: None,
         scheduled_task_run_id: None,
+        runtime_kind: Some(crate::models::AgentRuntimeKind::from_agent(agent)),
+        protocol_kind: None, // Resolved via runtime_kind default
     };
 
     save_meta(&meta)?;
