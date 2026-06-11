@@ -15,13 +15,14 @@
   import type { WorkspaceOption } from "$lib/stores/workspaces-store.svelte";
 
   type CreationMode = "single" | "worktree";
+  type AgentKind = "claude" | "mimo";
 
   interface Props {
     lastContinuableRun?: { id: string; last_activity_at?: string; started_at: string } | null;
     onContinueSession: (runId: string) => void;
-    onQuickAnalyze: (creationMode: CreationMode) => void;
+    onQuickAnalyze: (creationMode: CreationMode, agent: AgentKind) => void;
     onQuickFix: () => void;
-    onQuickDaily: (creationMode: CreationMode) => void;
+    onQuickDaily: (creationMode: CreationMode, agent: AgentKind) => void;
     onGotoSchedule: () => void;
     initHint: Snippet;
     heroMeta: Snippet;
@@ -39,6 +40,9 @@
     selectedCwd?: string;
     onCwdChange?: (cwd: string) => void;
     onAddWorkspace?: () => void;
+    selectedAgent?: AgentKind;
+    onAgentChange?: (agent: AgentKind) => void;
+    mimoAvailable?: boolean;
   }
 
   let {
@@ -64,6 +68,9 @@
     selectedCwd = "",
     onCwdChange = (_cwd: string) => {},
     onAddWorkspace = () => {},
+    selectedAgent = "claude",
+    onAgentChange = (_a: AgentKind) => {},
+    mimoAvailable = false,
   }: Props = $props();
 
   // v1.0.6 follow-up: per-new-session worktree mode picker. Lives in
@@ -213,6 +220,36 @@
         </div>
       {/if}
 
+      <!-- Runtime selector — choose between Claude Code and MiMo Code -->
+      {#if mimoAvailable}
+        <div
+          class="flex items-center rounded-lg border border-border/40 bg-background/50 p-0.5 gap-0.5"
+        >
+          <button
+            type="button"
+            class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150
+              {selectedAgent === 'claude'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'}"
+            onclick={() => onAgentChange("claude")}
+          >
+            <span class="i-lucide-brain w-3.5 h-3.5"></span>
+            Claude
+          </button>
+          <button
+            type="button"
+            class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150
+              {selectedAgent === 'mimo'
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'}"
+            onclick={() => onAgentChange("mimo")}
+          >
+            <span class="i-lucide-cpu w-3.5 h-3.5"></span>
+            MiMo
+          </button>
+        </div>
+      {/if}
+
       <!-- Continue last session (featured, only when a prior run exists) -->
       {#if lastContinuableRun}
         <button
@@ -248,7 +285,7 @@
       <button
         type="button"
         class="group/primary w-full flex items-center gap-3.5 rounded-xl border border-primary/25 bg-gradient-to-br from-primary/12 to-primary/4 px-4 py-3.5 text-left shadow-sm hover:from-primary/18 hover:to-primary/8 hover:border-primary/45 hover:shadow-md transition-all duration-200"
-        onclick={() => onQuickAnalyze(creationMode)}
+        onclick={() => onQuickAnalyze(creationMode, selectedAgent)}
       >
         <div
           class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm"
@@ -300,7 +337,7 @@
         <button
           type="button"
           class="group/qa flex items-center gap-2.5 rounded-lg border border-border/40 bg-background/40 px-3 py-2.5 text-sm font-medium text-foreground/90 hover:bg-muted/40 hover:border-border/70 transition-all duration-150 text-left"
-          onclick={() => onQuickDaily(creationMode)}
+          onclick={() => onQuickDaily(creationMode, selectedAgent)}
         >
           <div
             class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-success)/0.12)] text-[hsl(var(--miwarp-status-success))]"
