@@ -84,6 +84,19 @@ impl RuntimeConfig {
             AgentRuntimeKind::Codex => "codex".to_string(),
         }
     }
+
+    /// Resolve binary with optional custom path override.
+    pub fn resolve_binary_with_override(
+        kind: &AgentRuntimeKind,
+        custom_path: Option<&str>,
+    ) -> String {
+        if let Some(path) = custom_path {
+            if !path.is_empty() {
+                return path.to_string();
+            }
+        }
+        Self::resolve_binary(kind)
+    }
 }
 
 /// Detect the mimo binary path.
@@ -91,7 +104,7 @@ impl RuntimeConfig {
 /// 1. `mimo` on PATH
 /// 2. `~/.mimocode/bin/mimo`
 /// 3. `/opt/homebrew/bin/mimo`
-fn resolve_mimo_binary() -> String {
+pub fn resolve_mimo_binary() -> String {
     // Check PATH first
     if let Ok(output) = std::process::Command::new("which").arg("mimo").output() {
         if output.status.success() {

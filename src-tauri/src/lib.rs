@@ -183,6 +183,7 @@ pub fn run() {
             commands::settings::reset_user_settings,
             commands::settings::get_agent_settings,
             commands::settings::update_agent_settings,
+            commands::settings::detect_mimo_runtime,
             commands::fs::list_directory,
             commands::fs::check_is_directory,
             commands::fs::read_file_base64,

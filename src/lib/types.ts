@@ -391,6 +391,10 @@ export interface AgentSettings {
   effort?: string;
   betas?: string[];
   agents_json?: string;
+  /** MiMo-Code: custom binary path (auto-detected if undefined). */
+  mimo_binary_path?: string;
+  /** MiMo-Code: protocol mode (Auto/StreamJson/PTY/Pipe). */
+  mimo_protocol_mode?: string;
   updated_at: string;
 }
 

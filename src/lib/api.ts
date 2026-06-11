@@ -361,6 +361,18 @@ export async function updateAgentSettings(
   return result;
 }
 
+/// Detect MiMo-Code availability, binary path, and version.
+export async function detectMimoRuntime(): Promise<{
+  available: boolean;
+  binary: string;
+  version: string | null;
+}> {
+  dbg("api", "detectMimoRuntime");
+  const [available, binary, version] =
+    await invoke<[boolean, string, string | null]>("detect_mimo_runtime");
+  return { available, binary, version };
+}
+
 // Feishu webhook notification
 export async function sendFeishuNotification(
   title: string,

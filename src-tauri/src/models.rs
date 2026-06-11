@@ -604,7 +604,7 @@ pub struct AgentSettings {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     pub allowed_tools: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub working_directory: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub plan_mode: Option<bool>,
@@ -639,6 +639,12 @@ pub struct AgentSettings {
     /// Custom agent definitions JSON string (passed to --agents flag).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agents_json: Option<String>,
+    /// MiMo-Code: custom binary path (auto-detected if None).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mimo_binary_path: Option<String>,
+    /// MiMo-Code: protocol mode (Auto/StreamJson/PTY/Pipe).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mimo_protocol_mode: Option<String>,
     pub updated_at: String,
 }
 
@@ -665,6 +671,8 @@ impl AgentSettings {
             effort: None,
             betas: None,
             agents_json: None,
+            mimo_binary_path: None,
+            mimo_protocol_mode: None,
             updated_at: now_iso(),
         }
     }
@@ -681,6 +689,7 @@ impl Default for AllSettings {
         let mut agents = std::collections::HashMap::new();
         agents.insert("claude".to_string(), AgentSettings::default_for("claude"));
         agents.insert("codex".to_string(), AgentSettings::default_for("codex"));
+        agents.insert("mimo".to_string(), AgentSettings::default_for("mimo"));
         Self {
             user: UserSettings::default(),
             agents,

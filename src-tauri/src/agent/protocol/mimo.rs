@@ -370,3 +370,240 @@ impl ProtocolParser for MimoProtocolParser {
         self.stats.clone()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    const RUN: &str = "run-test";
+
+    #[test]
+    fn test_step_start_is_skipped() {
+        let mut parser = MimoProtocolParser::new();
+        let raw = json!({
+            "type": "step_start",
+            "timestamp": 1,
+            "sessionID": "ses_test123",
+            "part": {"id": "prt_1", "type": "step-start"}
+        });
+        let result = parser.parse_line(RUN, &raw.to_string());
+        assert!(matches!(result, ParseResult::Skip));
+        assert_eq!(parser.conversation_id(), Some("ses_test123".into()));
+    }
+
+    #[test]
+    fn test_tool_use_completed() {
+        let mut parser = MimoProtocolParser::new();
+        let raw = json!({
+            "type": "tool_use",
+            "timestamp": 2,
+            "sessionID": "ses_test123",
+            "part": {
+                "type": "tool",
+                "tool": "read",
+                "callID": "call_abc123",
+                "state": {
+                    "status": "completed",
+                    "input": {"filePath": "/tmp/test.md"},
+                    "output": "file content here",
+                    "time": {"start": 100, "end": 110}
+                }
+            }
+        });
+        let result = parser.parse_line(RUN, &raw.to_string());
+        match result {
+            ParseResult::Events(events) => {
+                assert_eq!(events.len(), 1);
+                if let BusEvent::ToolEnd {
+                    tool_use_id,
+                    tool_name,
+                    status,
+                    duration_ms,
+                    ..
+                } = &events[0]
+                {
+                    assert_eq!(tool_use_id, "call_abc123");
+                    assert_eq!(tool_name, "read");
+                    assert_eq!(status, "completed");
+                    assert_eq!(duration_ms, &Some(110 - 100));
+                } else {
+                    panic!("Expected ToolEnd event");
+                }
+            }
+            _ => panic!("Expected Events, got {:?}", result),
+        }
+    }
+
+    #[test]
+    fn test_text_event() {
+        let mut parser = MimoProtocolParser::new();
+        let raw = json!({
+            "type": "text",
+            "timestamp": 5,
+            "sessionID": "ses_test123",
+            "part": {
+                "id": "prt_1",
+                "messageID": "msg_1",
+                "type": "text",
+                "text": "Hello world"
+            }
+        });
+        let result = parser.parse_line(RUN, &raw.to_string());
+        match result {
+            ParseResult::Events(events) => {
+                assert_eq!(events.len(), 1);
+                if let BusEvent::MessageComplete {
+                    text, message_id, ..
+                } = &events[0]
+                {
+                    assert_eq!(text, "Hello world");
+                    assert_eq!(message_id, "msg_1");
+                } else {
+                    panic!("Expected MessageComplete event");
+                }
+            }
+            _ => panic!("Expected Events, got {:?}", result),
+        }
+    }
+
+    #[test]
+    fn test_step_finish_stop() {
+        let mut parser = MimoProtocolParser::new();
+        let raw = json!({
+            "type": "step_finish",
+            "timestamp": 6,
+            "sessionID": "ses_test123",
+            "part": {
+                "reason": "stop",
+                "tokens": {"total": 34515, "input": 219, "output": 25, "cache": {"read": 34240}},
+                "cost": 0.0
+            }
+        });
+        let result = parser.parse_line(RUN, &raw.to_string());
+        match result {
+            ParseResult::Events(events) => {
+                // Should have RunState + UsageUpdate
+                assert!(events.len() >= 1);
+                let has_run_state = events
+                    .iter()
+                    .any(|e| matches!(e, BusEvent::RunState { state, .. } if state == "completed"));
+                assert!(has_run_state, "Expected RunState(completed)");
+            }
+            _ => panic!("Expected Events, got {:?}", result),
+        }
+    }
+
+    #[test]
+    fn test_error_event() {
+        let mut parser = MimoProtocolParser::new();
+        let raw = json!({
+            "type": "error",
+            "sessionID": "ses_test123",
+            "error": "Something went wrong"
+        });
+        let result = parser.parse_line(RUN, &raw.to_string());
+        match result {
+            ParseResult::Events(events) => {
+                assert_eq!(events.len(), 1);
+                if let BusEvent::RunState { state, error, .. } = &events[0] {
+                    assert_eq!(state, "failed");
+                    assert_eq!(error.as_deref(), Some("Something went wrong"));
+                } else {
+                    panic!("Expected RunState event");
+                }
+            }
+            _ => panic!("Expected Events, got {:?}", result),
+        }
+    }
+
+    #[test]
+    fn test_unknown_event_becomes_raw() {
+        let mut parser = MimoProtocolParser::new();
+        let raw = json!({
+            "type": "some_future_event",
+            "sessionID": "ses_test123",
+            "data": "test"
+        });
+        let result = parser.parse_line(RUN, &raw.to_string());
+        assert!(matches!(result, ParseResult::Raw(_)));
+    }
+
+    #[test]
+    fn test_server_heartbeat_skipped() {
+        let mut parser = MimoProtocolParser::new();
+        let raw = json!({"type": "server.heartbeat", "properties": {}});
+        let result = parser.parse_line(RUN, &raw.to_string());
+        assert!(matches!(result, ParseResult::Skip));
+    }
+
+    #[test]
+    fn test_conversation_id_extracted() {
+        let mut parser = MimoProtocolParser::new();
+        let raw = json!({
+            "type": "step_start",
+            "sessionID": "ses_abc123",
+            "part": {"id": "prt_1", "type": "step-start"}
+        });
+        parser.parse_line(RUN, &raw.to_string());
+        assert_eq!(parser.conversation_id(), Some("ses_abc123".into()));
+    }
+
+    #[test]
+    fn test_full_session_from_real_output() {
+        // Real mimo output captured from actual run — simplified for test
+        let lines = vec![
+            json!({"type":"step_start","timestamp":1,"sessionID":"ses_test","part":{"id":"prt_1","messageID":"msg_1","sessionID":"ses_test","snapshot":"abc","type":"step-start"}}),
+            json!({"type":"tool_use","timestamp":2,"sessionID":"ses_test","part":{"type":"tool","tool":"read","callID":"call_1","state":{"status":"completed","input":{"filePath":"/tmp/test.md"},"output":"content","metadata":{"preview":"test","truncated":false},"title":"test.md","time":{"start":100,"end":110}},"id":"prt_2","sessionID":"ses_test","messageID":"msg_1"}}),
+            json!({"type":"step_finish","timestamp":3,"sessionID":"ses_test","part":{"id":"prt_3","reason":"tool-calls","snapshot":"abc","messageID":"msg_1","sessionID":"ses_test","type":"step-finish","tokens":{"total":34402,"input":32223,"output":33,"reasoning":98,"cache":{"write":0,"read":2048}},"cost":0}}),
+            json!({"type":"step_start","timestamp":4,"sessionID":"ses_test","part":{"id":"prt_4","messageID":"msg_2","sessionID":"ses_test","snapshot":"abc","type":"step-start"}}),
+            json!({"type":"text","timestamp":5,"sessionID":"ses_test","part":{"id":"prt_5","messageID":"msg_2","sessionID":"ses_test","type":"text","text":"Hello from MiMo","time":{"start":200,"end":210}}}),
+            json!({"type":"step_finish","timestamp":6,"sessionID":"ses_test","part":{"id":"prt_6","reason":"stop","snapshot":"abc","messageID":"msg_2","sessionID":"ses_test","type":"step-finish","tokens":{"total":34515,"input":219,"output":25,"reasoning":31,"cache":{"write":0,"read":34240}},"cost":0}}),
+        ];
+
+        let mut parser = MimoProtocolParser::new();
+        let mut all_events = Vec::new();
+
+        for line in &lines {
+            let result = parser.parse_line(RUN, &line.to_string());
+            match result {
+                ParseResult::Events(mut events) => all_events.append(&mut events),
+                ParseResult::Skip => {}
+                ParseResult::Raw(_) => {}
+                ParseResult::Error(e) => panic!("Parse error: {}", e),
+            }
+        }
+
+        // Verify conversation ID extracted
+        assert_eq!(parser.conversation_id(), Some("ses_test".into()));
+
+        // Verify events
+        let tool_ends: Vec<_> = all_events
+            .iter()
+            .filter(|e| matches!(e, BusEvent::ToolEnd { .. }))
+            .collect();
+        assert_eq!(tool_ends.len(), 1, "Expected 1 ToolEnd");
+
+        let message_completes: Vec<_> = all_events
+            .iter()
+            .filter(|e| matches!(e, BusEvent::MessageComplete { .. }))
+            .collect();
+        assert_eq!(message_completes.len(), 1, "Expected 1 MessageComplete");
+
+        let run_states: Vec<_> = all_events
+            .iter()
+            .filter(|e| matches!(e, BusEvent::RunState { .. }))
+            .collect();
+        assert_eq!(
+            run_states.len(),
+            2,
+            "Expected 2 RunStates (tool-calls + stop)"
+        );
+
+        let usage_updates: Vec<_> = all_events
+            .iter()
+            .filter(|e| matches!(e, BusEvent::UsageUpdate { .. }))
+            .collect();
+        assert_eq!(usage_updates.len(), 2, "Expected 2 UsageUpdates");
+    }
+}
