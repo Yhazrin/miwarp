@@ -6,9 +6,15 @@
   snippet — chat page is the only place that knows how to build the full
   ChatConversationStage props. This keeps SplitChatPane free of session
   knowledge and lets us reuse the existing chat surface 1:1.
+
+  Activation flow: clicking the pane header calls `onActivate(paneId)`. By
+  default that just calls `splitWorkspaceStore.setActive(paneId)` (metadata
+  only — no IO). Chat page can override it to also call
+  `splitPaneSessionAdapter.switchActive` which captures the leaving pane's
+  snapshot and loads the entering pane into sessionStore.
 -->
 <script lang="ts">
-  import type { PaneState } from "$lib/split";
+  import type { PaneId, PaneState } from "$lib/split";
   import { splitWorkspaceStore } from "$lib/split";
   import SplitPaneHeader from "./SplitPaneHeader.svelte";
   import SplitPaneSnapshotView from "./SplitPaneSnapshotView.svelte";
@@ -23,6 +29,7 @@
     onClose,
     activeContent,
     activeInput,
+    onActivate,
   }: {
     pane: PaneState;
     onClose: () => void;
@@ -30,10 +37,18 @@
     activeContent?: Snippet;
     /** Snippet that renders the active pane's ChatInputDock. */
     activeInput?: Snippet;
+    /**
+     * Called when the user clicks the pane header / body to make this
+     * pane the active one. Defaults to `splitWorkspaceStore.setActive`.
+     * Override from chat page to also load the run into sessionStore.
+     */
+    onActivate?: (paneId: PaneId) => void;
   } = $props();
 
-  function handleHeaderClick() {
-    if (pane.runtimeState !== "active") splitWorkspaceStore.setActive(pane.paneId);
+  function activate() {
+    if (pane.runtimeState === "active") return;
+    if (onActivate) onActivate(pane.paneId);
+    else splitWorkspaceStore.setActive(pane.paneId);
   }
 
   const snapshot = $derived(pane.cachedSnapshot as PaneSnapshotWithRaw | null);
@@ -47,13 +62,22 @@
   role="region"
   aria-label={`Pane ${pane.runId}`}
 >
-  <SplitPaneHeader {pane} {onClose} />
+  <!-- Header is a button so click + keyboard activation both work. -->
+  <button
+    type="button"
+    class="w-full text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+    aria-label={pane.runtimeState === "active"
+      ? t("split_mode_activeBadge")
+      : `${t("split_mode_activate")} ${pane.runId}`}
+    onclick={activate}
+  >
+    <SplitPaneHeader {pane} {onClose} />
+  </button>
   <div class="flex-1 min-h-0 overflow-hidden">
     {#if pane.runtimeState === "active"}
       {#if activeContent}
         {@render activeContent()}
       {:else}
-        <!-- Defensive: chat page should always supply activeContent. -->
         <div class="flex h-full items-center justify-center text-xs text-muted-foreground">
           {t("split_mode_loadingPane")}
         </div>
@@ -74,7 +98,6 @@
     {:else if snapshot}
       <SplitPaneSnapshotView {snapshot} />
     {:else}
-      <!-- Idle pane with no snapshot yet. -->
       <div class="flex h-full items-center justify-center text-xs text-muted-foreground">
         {t("split_mode_loadingPane")}
       </div>
