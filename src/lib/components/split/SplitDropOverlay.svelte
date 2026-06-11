@@ -32,11 +32,16 @@
 
   $effect(() => {
     function onDragEnter(e: DragEvent) {
+      // Direct console.log bypasses dbg's debug-only gate so we can see the
+      // event in devtools even if dbg is disabled. Also visible in the
+      // Rust terminal via Tauri's webview logger.
+      console.log("[split-dnd] dragenter", { types: Array.from(e.dataTransfer?.types ?? []) });
       if (!isSplitDrag(e)) return;
       e.preventDefault();
       dragDepth++;
     }
     function onDragLeave(e: DragEvent) {
+      console.log("[split-dnd] dragleave");
       if (!isSplitDrag(e)) return;
       dragDepth = Math.max(0, dragDepth - 1);
     }
@@ -48,6 +53,10 @@
       if (e.dataTransfer) e.dataTransfer.dropEffect = canDrop ? "copy" : "none";
     }
     function onDrop(e: DragEvent) {
+      console.log("[split-dnd] drop", {
+        isSplit: isSplitDrag(e),
+        types: Array.from(e.dataTransfer?.types ?? []),
+      });
       if (!isSplitDrag(e)) return;
       e.preventDefault();
       dragDepth = 0;
@@ -69,6 +78,7 @@
     window.addEventListener("dragleave", onDragLeave);
     window.addEventListener("dragover", onDragOver);
     window.addEventListener("drop", onDrop);
+    console.log("[split-dnd] listeners attached");
     return () => {
       window.removeEventListener("dragenter", onDragEnter);
       window.removeEventListener("dragleave", onDragLeave);

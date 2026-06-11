@@ -194,6 +194,7 @@
     // Surface a generic text fallback for OS-level / devtools inspection.
     e.dataTransfer.setData("text/plain", runId);
     e.dataTransfer.effectAllowed = "copyMove";
+    console.log("[split-dnd] dragstart", { runId, mime: SPLIT_DRAG_MIME });
     _ondragstart?.(e, runId);
   }
 </script>
