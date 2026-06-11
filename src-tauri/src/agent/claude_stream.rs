@@ -199,32 +199,28 @@ pub fn which_binary(name: &str) -> Option<String> {
 fn which_binary_inner(name: &str) -> Option<String> {
     #[cfg(windows)]
     {
-        let output = std::process::Command::new("where")
-            .arg(name)
-            .env("PATH", augmented_path())
-            .hide_console()
-            .output()
-            .ok()?;
-        if output.status.success() {
-            let out = String::from_utf8_lossy(&output.stdout);
-            let lines: Vec<&str> = out
-                .lines()
-                .map(|l| l.trim())
-                .filter(|l| !l.is_empty())
-                .collect();
-            // Prefer .cmd/.exe/.bat over bare name (which may be a Unix shell script → error 193)
-            let lo = |s: &str| s.to_ascii_lowercase();
-            lines
-                .iter()
-                .find(|l| {
-                    let l = lo(l);
-                    l.ends_with(".cmd") || l.ends_with(".exe") || l.ends_with(".bat")
-                })
-                .or_else(|| lines.first())
-                .map(|l| l.to_string())
-        } else {
-            None
+        // Pure Rust PATH traversal — avoids spawning `where.exe` (50-200ms on Windows).
+        // Prefer .cmd/.exe/.bat over bare name (bare name may be a Unix shell script → error 193).
+        let path_str = augmented_path();
+        log::debug!("[path] searching PATH for '{name}': {path_str}");
+        let path_os = std::ffi::OsString::from(&path_str);
+        let extensions = [".cmd", ".exe", ".bat"];
+        let mut fallback: Option<String> = None;
+        for dir in std::env::split_paths(&path_os) {
+            // Try with each preferred extension first
+            for ext in &extensions {
+                let candidate = dir.join(format!("{}{}", name, ext));
+                if candidate.is_file() {
+                    return Some(candidate.to_string_lossy().into_owned());
+                }
+            }
+            // Bare name as fallback
+            let candidate = dir.join(name);
+            if candidate.is_file() && fallback.is_none() {
+                fallback = Some(candidate.to_string_lossy().into_owned());
+            }
         }
+        fallback
     }
     #[cfg(not(windows))]
     {

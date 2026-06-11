@@ -19,13 +19,12 @@ pub struct GitSummary {
     pub total_deletions: u32,
 }
 
-#[tauri::command]
-pub async fn get_git_summary(cwd: String) -> Result<GitSummary, String> {
+/// Synchronous implementation — wrapped in `spawn_blocking` by the async command.
+fn get_git_summary_sync(cwd: &str) -> Result<GitSummary, String> {
     log::debug!("[git] get_git_summary: cwd={}", cwd);
 
-    // Branch name
     let branch = Command::new("git")
-        .current_dir(&cwd)
+        .current_dir(cwd)
         .args(["branch", "--show-current"])
         .hide_console()
         .output()
@@ -39,23 +38,20 @@ pub async fn get_git_summary(cwd: String) -> Result<GitSummary, String> {
         })
         .unwrap_or_default();
 
-    // Per-file numstat (staged + unstaged vs HEAD)
     let numstat_output = Command::new("git")
-        .current_dir(&cwd)
+        .current_dir(cwd)
         .args(["diff", "--numstat", "HEAD"])
         .hide_console()
         .output()
         .map_err(|e| format!("Failed to run git diff --numstat: {}", e))?;
 
-    // Status for file status codes (M/A/D/R/?)
     let status_output = Command::new("git")
-        .current_dir(&cwd)
+        .current_dir(cwd)
         .args(["status", "--short"])
         .hide_console()
         .output()
         .map_err(|e| format!("Failed to run git status: {}", e))?;
 
-    // Parse status codes into a map: path → status char
     let status_str = String::from_utf8_lossy(&status_output.stdout);
     let mut status_map = std::collections::HashMap::new();
     for line in status_str.lines() {
@@ -64,7 +60,6 @@ pub async fn get_git_summary(cwd: String) -> Result<GitSummary, String> {
         }
         let xy = &line[..2];
         let path = line[3..].trim();
-        // Pick the most relevant status: index (X) or worktree (Y)
         let code = if xy.starts_with('?') {
             "?"
         } else if xy.starts_with('A') || xy.ends_with('A') {
@@ -76,7 +71,6 @@ pub async fn get_git_summary(cwd: String) -> Result<GitSummary, String> {
         } else {
             "M"
         };
-        // Handle renames: "R  old -> new"
         let actual_path = if let Some(arrow) = path.find(" -> ") {
             &path[arrow + 4..]
         } else {
@@ -85,7 +79,6 @@ pub async fn get_git_summary(cwd: String) -> Result<GitSummary, String> {
         status_map.insert(actual_path.to_string(), code.to_string());
     }
 
-    // Parse numstat: "insertions\tdeletions\tpath"
     let numstat_str = String::from_utf8_lossy(&numstat_output.stdout);
     let mut files = Vec::new();
     let mut total_ins: u32 = 0;
@@ -96,7 +89,6 @@ pub async fn get_git_summary(cwd: String) -> Result<GitSummary, String> {
         if parts.len() < 3 {
             continue;
         }
-        // Binary files show "-" for insertions/deletions
         let ins = parts[0].parse::<u32>().unwrap_or(0);
         let del = parts[1].parse::<u32>().unwrap_or(0);
         let path = parts[2].to_string();
@@ -114,7 +106,6 @@ pub async fn get_git_summary(cwd: String) -> Result<GitSummary, String> {
         });
     }
 
-    // Also add untracked files from status (not in numstat)
     for (path, code) in &status_map {
         if code == "?" && !files.iter().any(|f| &f.path == path) {
             files.push(GitFileStat {
@@ -138,19 +129,24 @@ pub async fn get_git_summary(cwd: String) -> Result<GitSummary, String> {
 }
 
 #[tauri::command]
-pub async fn get_git_branch(cwd: String) -> Result<String, String> {
+pub async fn get_git_summary(cwd: String) -> Result<GitSummary, String> {
+    tokio::task::spawn_blocking(move || get_git_summary_sync(&cwd))
+        .await
+        .map_err(|e| format!("task join error: {}", e))?
+}
+
+/// Synchronous implementation — wrapped in `spawn_blocking` by the async command.
+fn get_git_branch_sync(cwd: &str) -> Result<String, String> {
     log::debug!("[git] get_git_branch: cwd={}", cwd);
 
-    // Step 1: structured probe (rev-parse plumbing, exit code semantics are well-defined)
     let check = match Command::new("git")
-        .current_dir(&cwd)
+        .current_dir(cwd)
         .args(["rev-parse", "--is-inside-work-tree"])
         .hide_console()
         .output()
     {
         Err(e) => {
             if e.kind() == std::io::ErrorKind::NotFound {
-                // git executable not installed → normal state, no branch badge
                 log::debug!("[git] get_git_branch: git not installed, cwd={}", cwd);
                 return Ok(String::new());
             }
@@ -163,7 +159,6 @@ pub async fn get_git_branch(cwd: String) -> Result<String, String> {
     if check.status.success() {
         let stdout = String::from_utf8_lossy(&check.stdout).trim().to_string();
         if stdout != "true" {
-            // "false" → bare repo / inside .git dir → no branch badge
             log::debug!("[git] get_git_branch: not a work tree, cwd={}", cwd);
             return Ok(String::new());
         }
@@ -172,11 +167,9 @@ pub async fn get_git_branch(cwd: String) -> Result<String, String> {
         let stderr = String::from_utf8_lossy(&check.stderr);
         let stderr_trimmed = stderr.trim();
         if code == 128 && stderr_trimmed.contains("not a git repository") {
-            // Genuinely not a git directory → Ok("") (normal state, not an error)
             log::debug!("[git] get_git_branch: not a git repo, cwd={}", cwd);
             return Ok(String::new());
         }
-        // Other failures (safe.directory, corruption, permissions, etc) → Err
         log::warn!(
             "[git] get_git_branch: rev-parse error, cwd={}, code={}",
             cwd,
@@ -188,9 +181,8 @@ pub async fn get_git_branch(cwd: String) -> Result<String, String> {
         ));
     }
 
-    // Step 2: get branch name
     let output = Command::new("git")
-        .current_dir(&cwd)
+        .current_dir(cwd)
         .args(["branch", "--show-current"])
         .hide_console()
         .output()
@@ -209,10 +201,9 @@ pub async fn get_git_branch(cwd: String) -> Result<String, String> {
 
     let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
 
-    // Step 3: detached HEAD → fallback to short SHA
     if branch.is_empty() {
         let sha = Command::new("git")
-            .current_dir(&cwd)
+            .current_dir(cwd)
             .args(["rev-parse", "--short", "HEAD"])
             .hide_console()
             .output()
@@ -232,11 +223,14 @@ pub async fn get_git_branch(cwd: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn get_git_diff(
-    cwd: String,
-    staged: bool,
-    file: Option<String>,
-) -> Result<String, String> {
+pub async fn get_git_branch(cwd: String) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || get_git_branch_sync(&cwd))
+        .await
+        .map_err(|e| format!("task join error: {}", e))?
+}
+
+/// Synchronous implementation — wrapped in `spawn_blocking` by the async command.
+fn get_git_diff_sync(cwd: &str, staged: bool, file: Option<String>) -> Result<String, String> {
     log::debug!(
         "[git] get_git_diff: cwd={}, staged={}, file={:?}",
         cwd,
@@ -244,12 +238,11 @@ pub async fn get_git_diff(
         file
     );
     let mut cmd = Command::new("git");
-    cmd.current_dir(&cwd);
+    cmd.current_dir(cwd);
     cmd.arg("diff");
     if staged {
         cmd.arg("--cached");
     } else if file.is_some() {
-        // Per-file diff: compare working tree against HEAD (staged + unstaged)
         cmd.arg("HEAD");
     }
     if let Some(ref f) = file {
@@ -267,10 +260,21 @@ pub async fn get_git_diff(
 }
 
 #[tauri::command]
-pub async fn get_git_status(cwd: String) -> Result<String, String> {
+pub async fn get_git_diff(
+    cwd: String,
+    staged: bool,
+    file: Option<String>,
+) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || get_git_diff_sync(&cwd, staged, file))
+        .await
+        .map_err(|e| format!("task join error: {}", e))?
+}
+
+/// Synchronous implementation — wrapped in `spawn_blocking` by the async command.
+fn get_git_status_sync(cwd: &str) -> Result<String, String> {
     log::debug!("[git] get_git_status: cwd={}", cwd);
     let output = Command::new("git")
-        .current_dir(&cwd)
+        .current_dir(cwd)
         .args(["status", "--short"])
         .hide_console()
         .output()
@@ -280,6 +284,13 @@ pub async fn get_git_status(cwd: String) -> Result<String, String> {
         return Err(format!("git status failed: {}", stderr));
     }
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
+#[tauri::command]
+pub async fn get_git_status(cwd: String) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || get_git_status_sync(&cwd))
+        .await
+        .map_err(|e| format!("task join error: {}", e))?
 }
 
 #[derive(Serialize)]
@@ -350,15 +361,12 @@ fn git_output_ok(cwd: &str, args: &[&str]) -> Option<String> {
     }
 }
 
-#[tauri::command]
-pub async fn get_git_timeline(
-    cwd: String,
-    limit: Option<u32>,
-) -> Result<GitTimelineResponse, String> {
+/// Synchronous implementation — wrapped in `spawn_blocking` by the async command.
+fn get_git_timeline_sync(cwd: &str, limit: Option<u32>) -> Result<GitTimelineResponse, String> {
     log::debug!("[git] get_git_timeline: cwd={}, limit={:?}", cwd, limit);
     let limit = limit.unwrap_or(12).clamp(1, 30) as usize;
 
-    if !is_git_repo(&cwd) {
+    if !is_git_repo(cwd) {
         return Ok(GitTimelineResponse {
             is_repo: false,
             branch: String::new(),
@@ -369,16 +377,16 @@ pub async fn get_git_timeline(
         });
     }
 
-    let branch_raw = git_output_ok(&cwd, &["branch", "--show-current"]).unwrap_or_default();
+    let branch_raw = git_output_ok(cwd, &["branch", "--show-current"]).unwrap_or_default();
     let is_detached = branch_raw.is_empty();
     let branch = if is_detached {
-        git_output_ok(&cwd, &["rev-parse", "--short", "HEAD"]).unwrap_or_default()
+        git_output_ok(cwd, &["rev-parse", "--short", "HEAD"]).unwrap_or_default()
     } else {
         branch_raw.clone()
     };
 
     let status_output = Command::new("git")
-        .current_dir(&cwd)
+        .current_dir(cwd)
         .args(["status", "--short"])
         .hide_console()
         .output()
@@ -409,7 +417,7 @@ pub async fn get_git_timeline(
     });
 
     let log_output = Command::new("git")
-        .current_dir(&cwd)
+        .current_dir(cwd)
         .args([
             "log",
             &format!("-n{}", limit),
@@ -454,7 +462,7 @@ pub async fn get_git_timeline(
 
     if !is_detached {
         if let Some(upstream) = git_output_ok(
-            &cwd,
+            cwd,
             &["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
         ) {
             entries.push(GitTimelineEntry {
@@ -474,13 +482,14 @@ pub async fn get_git_timeline(
             });
         }
 
-        let base_branch = if git_output_ok(&cwd, &["rev-parse", "--verify", "main"]).is_some() {
-            "main"
-        } else if git_output_ok(&cwd, &["rev-parse", "--verify", "master"]).is_some() {
-            "master"
-        } else {
-            ""
-        };
+        let base_branch =
+            if git_output_ok(cwd, &["rev-parse", "--verify", "main"]).is_some() {
+                "main"
+            } else if git_output_ok(cwd, &["rev-parse", "--verify", "master"]).is_some() {
+                "master"
+            } else {
+                ""
+            };
         if !base_branch.is_empty() && base_branch != branch {
             entries.push(GitTimelineEntry {
                 id: format!("base-{}", base_branch),
@@ -508,4 +517,14 @@ pub async fn get_git_timeline(
         changed_files,
         entries,
     })
+}
+
+#[tauri::command]
+pub async fn get_git_timeline(
+    cwd: String,
+    limit: Option<u32>,
+) -> Result<GitTimelineResponse, String> {
+    tokio::task::spawn_blocking(move || get_git_timeline_sync(&cwd, limit))
+        .await
+        .map_err(|e| format!("task join error: {}", e))?
 }
