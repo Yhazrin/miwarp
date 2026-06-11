@@ -634,28 +634,29 @@ pub fn list_bus_events(run_id: &str, since_seq: Option<u64>) -> Vec<serde_json::
 
     let min_seq = since_seq.unwrap_or(0);
 
+    // Pre-filter: skip lines that clearly aren't bus events before parsing JSON.
+    // Bus events have `"_bus":true` — do a cheap substring check first.
     content
         .lines()
-        .filter(|l| !l.trim().is_empty())
+        .filter(|l| {
+            let l = l.trim();
+            !l.is_empty() && l.contains("\"_bus\"")
+        })
         .filter_map(|l| {
             let v: serde_json::Value = serde_json::from_str(l).ok()?;
-            // Only process bus events
             if v.get("_bus")?.as_bool()? {
                 let seq = v.get("seq")?.as_u64()?;
                 if seq > min_seq {
                     let event = v.get("event")?;
-                    // Skip event types the frontend doesn't use (raw, stream_event, etc.)
                     let etype = event.get("type")?.as_str()?;
                     if !REPLAY_TYPES.contains(&etype) {
                         return None;
                     }
                     let mut event = event.clone();
                     if let Some(obj) = event.as_object_mut() {
-                        // Inject envelope timestamp into event so frontend can display it
                         if let Some(ts) = v.get("ts") {
                             obj.insert("ts".to_string(), ts.clone());
                         }
-                        // Inject _seq so frontend can track checkpoint for WS subscribe
                         obj.insert("_seq".to_string(), serde_json::Value::Number(seq.into()));
                     }
                     return Some(event);
