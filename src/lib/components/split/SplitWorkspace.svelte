@@ -20,7 +20,7 @@
 -->
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import { splitWorkspaceStore } from "$lib/split";
+  import { splitWorkspaceStore, type PaneId } from "$lib/split";
   import SplitChatPane from "./SplitChatPane.svelte";
   import SplitDropOverlay from "./SplitDropOverlay.svelte";
   import { fly } from "svelte/transition";
@@ -28,11 +28,19 @@
   let {
     activePaneBody,
     activePaneInput,
+    onActivate,
   }: {
     /** Snippet invoked for the single active pane's body (ChatConversationStage). */
     activePaneBody?: Snippet;
     /** Snippet invoked for the single active pane's input dock (ChatInputDock). */
     activePaneInput?: Snippet;
+    /**
+     * Called when the user clicks an inactive pane's header. Defaults to
+     * splitWorkspaceStore.setActive (metadata only). Chat page overrides
+     * to also call splitPaneSessionAdapter.switchActive so the underlying
+     * sessionStore.loadRun runs.
+     */
+    onActivate?: (paneId: PaneId) => void;
   } = $props();
 
   const split = splitWorkspaceStore;
@@ -56,6 +64,7 @@
             onClose={() => split.removePane(pane.paneId)}
             activeContent={pane.runtimeState === "active" ? activePaneBody : undefined}
             activeInput={pane.runtimeState === "active" ? activePaneInput : undefined}
+            {onActivate}
           />
         </div>
       {/each}

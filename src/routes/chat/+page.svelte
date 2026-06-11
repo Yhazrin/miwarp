@@ -1392,7 +1392,7 @@
          SplitWorkspace active-pane snippet so the active pane uses the
          exact same chat surface as the non-split path. -->
     {#if splitWorkspaceStore.enabled}
-      <SplitWorkspace>
+      <SplitWorkspace onActivate={(id) => void handlePaneActivate(id)}>
         {#snippet activePaneBody()}
           <ChatConversationStage
             {store}
