@@ -59,6 +59,14 @@
     requestedPreviewUrl = $bindable(null as string | null),
     /** When SessionStatusBar hosts panel tabs, hide the duplicated icon row here. */
     underUnifiedCapsule = false,
+    /**
+     * When true, the panel skips all cwd-driven fetches (CLAUDE.md, memory,
+     * git summary, file tree) and forwards the flag to child panels so they
+     * short-circuit too. Chat page swaps ToolActivity out for
+     * SplitSidebarPlaceholder while split mode is active, but the flag
+     * exists as defense-in-depth for any other mount surface.
+     */
+    suspended = false,
   }: {
     timeline: TimelineEntry[];
     tools: HookEvent[];
@@ -82,6 +90,7 @@
     requestedPreviewPath?: string | null;
     requestedPreviewUrl?: string | null;
     underUnifiedCapsule?: boolean;
+    suspended?: boolean;
   } = $props();
 
   // ── Tab state (activeTab is $bindable — parent can host SessionPanelTabs in the status bar) ──
@@ -1027,6 +1036,7 @@
             {toolStats}
             onSwitchToActivity={() => (activeTab = "tools")}
             onSwitchToFiles={() => (activeTab = "files")}
+            {suspended}
           />
           <!-- v1.0.6 / 4.8: Agent task stack (compact progress view) -->
           {#if runId}

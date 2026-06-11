@@ -16,8 +16,8 @@ use crate::agent::turn_engine::{
     USER_HARD_TIMEOUT, USER_SOFT_TIMEOUT,
 };
 use crate::models::{
-    max_attachment_size, now_iso, BusEvent, RalphCompleteReason, RunStatus, ALLOWED_DOC_TYPES,
-    ALLOWED_IMAGE_TYPES,
+    max_attachment_size, now_iso, AgentRuntimeKind, BusEvent, RalphCompleteReason, RunStatus,
+    ALLOWED_DOC_TYPES, ALLOWED_IMAGE_TYPES,
 };
 use crate::storage;
 use crate::storage::runs;
@@ -266,6 +266,38 @@ pub fn spawn_actor(
     initial_turn_index: u32,
     initial_auto_ctx_id: u32,
 ) -> SessionActorHandle {
+    spawn_actor_with_runtime(
+        emitter,
+        sessions,
+        run_id,
+        child,
+        stdin,
+        stdout,
+        stderr,
+        is_resume,
+        cancel,
+        initial_turn_index,
+        initial_auto_ctx_id,
+        AgentRuntimeKind::ClaudeCode,
+    )
+}
+
+/// Spawn a new session actor with explicit runtime kind.
+#[allow(clippy::too_many_arguments)]
+pub fn spawn_actor_with_runtime(
+    emitter: Arc<BroadcastEmitter>,
+    sessions: ActorSessionMap,
+    run_id: String,
+    child: Child,
+    stdin: ChildStdin,
+    stdout: ChildStdout,
+    stderr: ChildStderr,
+    is_resume: bool,
+    cancel: CancellationToken,
+    initial_turn_index: u32,
+    initial_auto_ctx_id: u32,
+    runtime_kind: AgentRuntimeKind,
+) -> SessionActorHandle {
     let tag = Arc::new(());
     let (cmd_tx, cmd_rx) = mpsc::channel::<ActorCommand>(64);
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
@@ -285,7 +317,7 @@ pub fn spawn_actor(
         sessions,
         run_id: run_id.clone(),
         tag: tag.clone(),
-        protocol: ProtocolState::new(is_resume),
+        protocol: ProtocolState::with_runtime(is_resume, runtime_kind),
         state: String::new(),
         stdin: Some(stdin),
         child: Some(child),
@@ -1704,10 +1736,15 @@ impl SessionActor {
                     log::debug!("[actor] captured session_id={}", sid);
                     // Single with_meta write: session_id + conversation_ref (avoid double write + intermediate state)
                     let sid_clone = sid.clone();
+                    let runtime = self.protocol.runtime_kind().clone();
                     if let Err(e) = storage::runs::with_meta(&self.run_id, |meta| {
                         meta.session_id = Some(sid_clone.clone());
-                        meta.conversation_ref =
-                            Some(crate::models::ConversationRef::ClaudeSession(sid_clone));
+                        meta.conversation_ref = Some(match runtime {
+                            crate::models::AgentRuntimeKind::MiMoCode => {
+                                crate::models::ConversationRef::MimoSession(sid_clone)
+                            }
+                            _ => crate::models::ConversationRef::ClaudeSession(sid_clone),
+                        });
                         Ok(())
                     }) {
                         log::warn!(

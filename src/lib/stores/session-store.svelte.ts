@@ -653,7 +653,8 @@ export class SessionStore {
     // Run-level: check execution_path if run exists (resolved, non-undefined)
     if (this.run) return this.run.execution_path === "session_actor";
     // Pre-run: predict from agent (startSession decides which IPC to call)
-    return this.agent === "claude";
+    // MiMo also uses session_actor (StreamJson protocol)
+    return this.agent === "claude" || this.agent === "mimo";
   }
 
   /** Per-agent UI feature flags. */

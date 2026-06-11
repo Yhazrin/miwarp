@@ -138,6 +138,7 @@ export function extractStructuredOutput(output: unknown): unknown {
 }
 
 const FRIENDLY_TOOL_NAMES: Record<string, string> = {
+  // Claude Code tool names (PascalCase)
   Bash: "Run commands",
   Read: "Read files",
   Write: "Write files",
@@ -150,6 +151,22 @@ const FRIENDLY_TOOL_NAMES: Record<string, string> = {
   NotebookEdit: "Edit notebook",
   PowerShell: "Run PowerShell",
   Monitor: "Monitor events",
+  // MiMo-Code tool names (lowercase)
+  bash: "Run commands",
+  read: "Read files",
+  write: "Write files",
+  edit: "Edit files",
+  glob: "Find files",
+  grep: "Search content",
+  webfetch: "Fetch URLs",
+  websearch: "Search web",
+  codesearch: "Search code",
+  actor: "Run sub-agent",
+  skill: "Load skill",
+  apply_patch: "Apply patch",
+  multiedit: "Edit files",
+  task: "Run task",
+  memory: "Memory",
 };
 
 /** Map a tool name to a human-readable description. Falls back to the original name. */

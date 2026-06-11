@@ -8,6 +8,7 @@
   import { hasAttention } from "$lib/stores/attention-store.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
+  import { SPLIT_DRAG_MIME } from "$lib/split";
   import ContextMenu from "./ContextMenu.svelte";
   import Icon from "./Icon.svelte";
 
@@ -181,6 +182,21 @@
       onclick?.();
     }
   }
+
+  function handleDragStart(e: DragEvent) {
+    if (!e.dataTransfer) return;
+    const runId = run.id;
+    // Legacy folder-drag protocol (kept for any existing folder-drop targets).
+    e.dataTransfer.setData("application/x-miwarp-run", runId);
+    // Split-pane drop target (SplitDropOverlay). Both MIMEs are written so
+    // either target can respond; the overlay only reacts to SPLIT_DRAG_MIME.
+    e.dataTransfer.setData(SPLIT_DRAG_MIME, runId);
+    // Surface a generic text fallback for OS-level / devtools inspection.
+    e.dataTransfer.setData("text/plain", runId);
+    e.dataTransfer.effectAllowed = "copyMove";
+    console.log("[split-dnd] dragstart", { runId, mime: SPLIT_DRAG_MIME });
+    _ondragstart?.(e, runId);
+  }
 </script>
 
 <div
@@ -192,9 +208,11 @@
   role="button"
   tabindex="0"
   aria-label={label}
+  draggable="true"
   onclick={() => onclick?.()}
   onkeydown={handleKeydown}
   oncontextmenu={openContextMenu}
+  ondragstart={handleDragStart}
 >
   <div class="flex items-center justify-between gap-1.5 h-full">
     <div class="flex items-center gap-1.5 min-w-0 flex-1">

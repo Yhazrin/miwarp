@@ -84,3 +84,15 @@ pub fn update_agent_settings(
     log::debug!("[settings] update_agent_settings: agent={}", agent);
     storage::settings::update_agent_settings(&agent, patch)
 }
+
+/// Detect MiMo-Code availability and version.
+/// Returns (available, binary_path, version).
+#[tauri::command]
+pub fn detect_mimo_runtime() -> Result<(bool, String, Option<String>), String> {
+    use crate::agent::runtime::{detect_mimo_version, resolve_mimo_binary};
+
+    let binary = resolve_mimo_binary();
+    let version = detect_mimo_version(&binary);
+    let available = version.is_some();
+    Ok((available, binary, version))
+}

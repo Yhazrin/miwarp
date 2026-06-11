@@ -20,6 +20,7 @@
     worktreeBranch = null,
     creationMode = null,
     processVisibility = "developer" as ProcessVisibility,
+    suspended = false,
   }: {
     cwd?: string;
     runId?: string;
@@ -38,6 +39,8 @@
     worktreeBranch?: string | null;
     creationMode?: "single" | "worktree" | string | null;
     processVisibility?: ProcessVisibility;
+    /** When true, skip the cwd-change effect entirely (defense-in-depth). */
+    suspended?: boolean;
   } = $props();
 
   // ── CLAUDE.md state ──
@@ -54,6 +57,12 @@
   // ── Load CLAUDE.md and memory when cwd changes ──
   let _lastCwd = "";
   $effect(() => {
+    // When the split workspace suspends the right sidebar, skip the entire
+    // cwd-driven fetch pipeline. This is defense-in-depth — chat page
+    // already swaps ToolActivity out for SplitSidebarPlaceholder, but if
+    // anyone later mounts WorkspaceContextPanel from another surface the
+    // guard still keeps it quiet.
+    if (suspended) return;
     const c = cwd;
     if (c && c !== _lastCwd) {
       _lastCwd = c;

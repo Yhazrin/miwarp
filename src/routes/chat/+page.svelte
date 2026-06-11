@@ -72,6 +72,11 @@
   import ChatConversationStage from "$lib/components/chat/ChatConversationStage.svelte";
   import ChatInputDock from "$lib/components/chat/ChatInputDock.svelte";
   import ChatHeroMeta from "$lib/components/ChatHeroMeta.svelte";
+  import SplitWorkspace from "$lib/components/split/SplitWorkspace.svelte";
+  import SplitSidebarPlaceholder from "$lib/components/split/SplitSidebarPlaceholder.svelte";
+  import SplitDropOverlay from "$lib/components/split/SplitDropOverlay.svelte";
+  import { splitWorkspaceStore, splitPaneSessionAdapter } from "$lib/split";
+  import type { PaneId } from "$lib/split";
   import RewindModal from "$lib/components/RewindModal.svelte";
   import FolderPicker from "$lib/components/FolderPicker.svelte";
   import HtmlReportPreview from "$lib/components/insight/HtmlReportPreview.svelte";
@@ -229,7 +234,52 @@
     getPresets()
       .then((p) => team.setTeamPresets(p))
       .catch((e) => dbgWarn("chat", "getPresets failed:", e));
+
+    // Wire split workspace toast sink — chat page is the only place that
+    // owns the i18n + showToast pipeline, so the store just gets the key.
+    splitWorkspaceStore.onToast = (key, kind) => {
+      _showToast(t(key as never), kind ?? "info");
+    };
   });
+
+  // ── Split workspace integration ──────────────────────────────────────────
+  // Reactive: detect `?split=1` URL flag and enter split mode. The first
+  // pane is seeded with the current run (loaded by the existing runId
+  // effect above) so the active pane is whatever was already loaded.
+  $effect(() => {
+    const wantSplit = $page.url.searchParams.get("split") === "1";
+    if (wantSplit && !splitWorkspaceStore.enabled) {
+      // Enter after a tick so the runId effect has fired and store.run is
+      // populated; we want to capture the current run as the first pane.
+      tick().then(() => {
+        const cwd = store.effectiveCwd || folderCwdOverride || null;
+        const activeRunId = store.run?.id ?? (runId || null);
+        splitWorkspaceStore.enter({ cwd, activeRunId });
+      });
+    } else if (!wantSplit && splitWorkspaceStore.enabled) {
+      // User navigated away from split mode (e.g. clicked a single chat
+      // link); restore normal layout.
+      splitWorkspaceStore.exit();
+    }
+  });
+
+  /**
+   * Pane activation callback — wired into SplitChatPane via SplitWorkspace's
+   * `onActivate` plumbing. Calls the adapter to capture the leaving pane's
+   * snapshot AND load the entering pane into sessionStore atomically. If
+   * the user is already on the active pane, this is a no-op.
+   */
+  async function handlePaneActivate(paneId: PaneId): Promise<void> {
+    const entering = splitWorkspaceStore.panes.find((p) => p.paneId === paneId);
+    if (!entering) return;
+    if (entering.runtimeState === "active") return;
+    const leaving =
+      splitWorkspaceStore.panes.find((p) => p.paneId === splitWorkspaceStore.activePaneId) ?? null;
+    // Mark metadata first so the UI flips to active immediately; the
+    // snapshot capture + loadRun happen in the background.
+    splitWorkspaceStore.setActive(paneId);
+    await splitPaneSessionAdapter.switchActive(store, leaving, entering, xtermRef);
+  }
 
   // Auto-name one-shot latch: reset only on actual run ID change
   let prevAutoNameRunId = "";
@@ -1035,6 +1085,12 @@
     if (to?.url.pathname.startsWith("/settings") && settings) {
       snapshotChatBootstrap(settings, agentSettings);
     }
+    // Leaving chat entirely: exit split mode so the next entry sees a clean
+    // store. When staying inside chat (e.g. switching run within the same
+    // route), the split workspace's own $effect handles the toggle.
+    if (!to || !to.url.pathname.startsWith("/chat")) {
+      splitWorkspaceStore.exit();
+    }
   });
 
   const insight = useConversationInsight({
@@ -1235,6 +1291,11 @@
   <!-- Page-level drag overlay (drag-hover or processing spinner) -->
   <ChatDragOverlay {pageDragActive} {dragProcessing} />
 
+  <!-- Split-pane drop target — always mounted so a first-time card drop
+       can enter split mode on the fly. The component is fixed-position
+       and only renders a visual hint while a split drag is in flight. -->
+  <SplitDropOverlay />
+
   <!-- Main content area -->
   <div class="flex flex-1 flex-col min-w-0 relative">
     <!-- Status bar -->
@@ -1332,174 +1393,351 @@
       </div>
     {/if}
 
-    <!-- Conversation: messages extend under a soft-fade input dock -->
-    <ChatConversationStage
-      {store}
-      {settings}
-      {processVisibility}
-      timelineVm={{
-        visibleTimeline: tl.visibleTimeline,
-        filteredTimeline: tl.filteredTimeline,
-        toolNamesInTimeline: tl.toolNamesInTimeline,
-        toolFilter: tl.toolFilter,
-        setToolFilter: tl.setToolFilter,
-        renderLimit: tl.renderLimit,
-        timelineIdIndex: tl.timelineIdIndex,
-        lastClearSepId: tl.lastClearSepId,
-        latestPlanToolId: tl.latestPlanToolId,
-        batchGroups: tl.batchGroups,
-        toolBursts: tl.toolBursts,
-        burstCollapse,
-        lastAssistantIdx: sd.lastAssistantIdx,
-        usageAnnotations: ta.usageAnnotations,
-        lastTurnUsage: ta.lastTurnUsage,
-        claudeTurnStarts: ta.claudeTurnStarts,
-        showPermissionPanel: false,
-        fetchToolResult: toolResultCache.fetchToolResult,
-        topSentinelRef: tl.topSentinel,
-        setTopSentinel: tl.setTopSentinel,
-      }}
-      sessionVm={{
-        welcomeVisible,
-        lastContinuableRun,
-        authOverview,
-        localProxyStatuses,
-        showInitHint,
-        cliVersionInfo: sd.cliVersionInfo,
-        channelLatest: sd.channelLatest,
-        remoteHosts,
-        availableWorkspaces: workspacesStore.list,
-        selectedCwd: folderCwdOverride,
-      }}
-      loadingVm={{
-        routeRunLoadFailed,
-        routeRunPending,
-        runId,
-        notificationVisible,
-        latestNotification,
-        rewindMarkers,
-        activeTeamRuns: team.activeTeamRuns,
-      }}
-      thinkingVm={{
-        thinkingElapsed: thinking.thinkingElapsed,
-        thinkingVisible: thinking.thinkingVisible,
-        spinnerVerb: thinking.spinnerVerb,
-        processingSlashCmd: thinking.processingSlashCmd,
-        approving,
-        sending,
-      }}
-      forkVm={{
-        forkOverlay: fork.forkOverlay,
-        forkElapsed: fork.forkElapsed,
-        resuming,
-      }}
-      handlers={{
-        goto,
-        sendMessage,
-        fillPrompt,
-        handleAuthModeChange,
-        handlePlatformChange,
-        handleRewindToMessage,
-        handleToolAnswer,
-        handleToolApprove,
-        handlePermissionRespond,
-        handleExitPlanClearContext,
-        handleExitPlanBypass,
-        getPlanContentForExitPlan,
-        openPreviewForPath,
-        handleHookCallbackRespond,
-        handleElicitationRespond,
-        onCwdChange: (cwd: string) => {
-          const normalized = normalizeCwd(cwd);
-          if (!normalized) return;
-          folderCwdOverride = normalized;
-          store.sessionCwd = normalized;
-          try {
-            localStorage.setItem("ocv:project-cwd", normalized);
-          } catch {
-            // localStorage may fail in restricted contexts
-          }
-          window.dispatchEvent(new Event("ocv:cwd-changed"));
-        },
-        onAddWorkspace: () => {
-          void addWorkspaceFromPicker();
-        },
-        handleChatScroll,
-        handleChatWheel,
-        scrollChatToBottom,
-        handleTermResize,
-        handleTermReady,
-        handleForkCancel,
-        handleForkRetry,
-        dismissInitHint,
-        dismissTaskNotificationBanner: () => {
-          notificationVisible = false;
-        },
-        loadRunProgressive,
-        setLastTarget,
-      }}
-      bind:thinkingExpanded={thinking.thinkingExpanded}
-      {showChatScrollHint}
-      {isChatAutoScroll}
-      {readingHistory}
-      bind:xtermRef
-      bind:chatAreaRef
-    >
-      {#snippet heroMetaFooter()}
-        {@render heroMetaFooterContent()}
-      {/snippet}
-      {#snippet inputDock()}
-        <ChatInputDock
-          {store}
-          {settings}
-          inputVm={{
-            processVisibility,
-            agentSettings,
-            effectiveModels: sd.effectiveModels,
-            folderCwdOverride,
-            welcomeVisible,
-            skillItems: sd.skillItems,
-            preloadedAgents,
-            teamHintVisible: team.teamHintVisible,
-            userHistory: sd.userHistory,
-            projectCommands,
-            authOverview,
-            localProxyStatuses,
-          }}
-          permissionVm={{
-            pendingToolPermissions: sd.pendingToolPermissions,
-            inputBlockedByPermission: sd.inputBlockedByPermission,
-          }}
-          sidePanelsVm={{
-            btwState,
-            insight,
-            hasCreatedFiles: tl.hasCreatedFiles,
-            createdFiles: tl.createdFiles,
-            setBtwState: (v) => {
-              btwState = v;
-            },
-          }}
-          handlers={{
-            sendMessage,
-            handleModelChange,
-            handlePermissionModeChange,
-            handleVirtualCommand,
-            handleFastModeSwitch,
-            handlePlatformChange,
-            handleAuthModeChange,
-            handleInputValueChange: team.handleInputValueChange,
-            handlePermissionRespond,
-            handleElicitationRespond,
-            handleBtwSend,
-            handleRalphCancel,
-            showChatToast: _showToast,
-          }}
-          bind:stashedInput
-          bind:shortcutHelpOpen
-          bind:promptRef
-        />
-      {/snippet}
-    </ChatConversationStage>
+    <!-- Conversation: messages extend under a soft-fade input dock.
+         When split mode is enabled, this whole block lives inside a
+         SplitWorkspace active-pane snippet so the active pane uses the
+         exact same chat surface as the non-split path. -->
+    {#if splitWorkspaceStore.enabled}
+      <SplitWorkspace onActivate={(id) => void handlePaneActivate(id)}>
+        {#snippet activePaneBody()}
+          <ChatConversationStage
+            {store}
+            {settings}
+            {processVisibility}
+            timelineVm={{
+              visibleTimeline: tl.visibleTimeline,
+              filteredTimeline: tl.filteredTimeline,
+              toolNamesInTimeline: tl.toolNamesInTimeline,
+              toolFilter: tl.toolFilter,
+              setToolFilter: tl.setToolFilter,
+              renderLimit: tl.renderLimit,
+              timelineIdIndex: tl.timelineIdIndex,
+              lastClearSepId: tl.lastClearSepId,
+              latestPlanToolId: tl.latestPlanToolId,
+              batchGroups: tl.batchGroups,
+              toolBursts: tl.toolBursts,
+              burstCollapse,
+              lastAssistantIdx: sd.lastAssistantIdx,
+              usageAnnotations: ta.usageAnnotations,
+              lastTurnUsage: ta.lastTurnUsage,
+              claudeTurnStarts: ta.claudeTurnStarts,
+              showPermissionPanel: false,
+              fetchToolResult: toolResultCache.fetchToolResult,
+              topSentinelRef: tl.topSentinel,
+              setTopSentinel: tl.setTopSentinel,
+            }}
+            sessionVm={{
+              welcomeVisible,
+              lastContinuableRun,
+              authOverview,
+              localProxyStatuses,
+              showInitHint,
+              cliVersionInfo: sd.cliVersionInfo,
+              channelLatest: sd.channelLatest,
+              remoteHosts,
+              availableWorkspaces: workspacesStore.list,
+              selectedCwd: folderCwdOverride,
+            }}
+            loadingVm={{
+              routeRunLoadFailed,
+              routeRunPending,
+              runId,
+              notificationVisible,
+              latestNotification,
+              rewindMarkers,
+              activeTeamRuns: team.activeTeamRuns,
+            }}
+            thinkingVm={{
+              thinkingElapsed: thinking.thinkingElapsed,
+              thinkingVisible: thinking.thinkingVisible,
+              spinnerVerb: thinking.spinnerVerb,
+              processingSlashCmd: thinking.processingSlashCmd,
+              approving,
+              sending,
+            }}
+            forkVm={{
+              forkOverlay: fork.forkOverlay,
+              forkElapsed: fork.forkElapsed,
+              resuming,
+            }}
+            handlers={{
+              goto,
+              sendMessage,
+              fillPrompt,
+              handleAuthModeChange,
+              handlePlatformChange,
+              handleRewindToMessage,
+              handleToolAnswer,
+              handleToolApprove,
+              handlePermissionRespond,
+              handleExitPlanClearContext,
+              handleExitPlanBypass,
+              getPlanContentForExitPlan,
+              openPreviewForPath,
+              handleHookCallbackRespond,
+              handleElicitationRespond,
+              onCwdChange: (cwd: string) => {
+                const normalized = normalizeCwd(cwd);
+                if (!normalized) return;
+                folderCwdOverride = normalized;
+                store.sessionCwd = normalized;
+                try {
+                  localStorage.setItem("ocv:project-cwd", normalized);
+                } catch {
+                  // localStorage may fail in restricted contexts
+                }
+                window.dispatchEvent(new Event("ocv:cwd-changed"));
+              },
+              onAddWorkspace: () => {
+                void addWorkspaceFromPicker();
+              },
+              handleChatScroll,
+              handleChatWheel,
+              scrollChatToBottom,
+              handleTermResize,
+              handleTermReady,
+              handleForkCancel,
+              handleForkRetry,
+              dismissInitHint,
+              dismissTaskNotificationBanner: () => {
+                notificationVisible = false;
+              },
+              loadRunProgressive,
+              setLastTarget,
+            }}
+            bind:thinkingExpanded={thinking.thinkingExpanded}
+            {showChatScrollHint}
+            {isChatAutoScroll}
+            {readingHistory}
+            bind:xtermRef
+            bind:chatAreaRef
+          >
+            {#snippet heroMetaFooter()}
+              {@render heroMetaFooterContent()}
+            {/snippet}
+            {#snippet inputDock()}
+              <ChatInputDock
+                {store}
+                {settings}
+                inputVm={{
+                  processVisibility,
+                  agentSettings,
+                  effectiveModels: sd.effectiveModels,
+                  folderCwdOverride,
+                  welcomeVisible,
+                  skillItems: sd.skillItems,
+                  preloadedAgents,
+                  teamHintVisible: team.teamHintVisible,
+                  userHistory: sd.userHistory,
+                  projectCommands,
+                  authOverview,
+                  localProxyStatuses,
+                }}
+                permissionVm={{
+                  pendingToolPermissions: sd.pendingToolPermissions,
+                  inputBlockedByPermission: sd.inputBlockedByPermission,
+                }}
+                sidePanelsVm={{
+                  btwState,
+                  insight,
+                  hasCreatedFiles: tl.hasCreatedFiles,
+                  createdFiles: tl.createdFiles,
+                  setBtwState: (v) => {
+                    btwState = v;
+                  },
+                }}
+                handlers={{
+                  sendMessage,
+                  handleModelChange,
+                  handlePermissionModeChange,
+                  handleVirtualCommand,
+                  handleFastModeSwitch,
+                  handlePlatformChange,
+                  handleAuthModeChange,
+                  handleInputValueChange: team.handleInputValueChange,
+                  handlePermissionRespond,
+                  handleElicitationRespond,
+                  handleBtwSend,
+                  handleRalphCancel,
+                  showChatToast: _showToast,
+                }}
+                bind:stashedInput
+                bind:shortcutHelpOpen
+                bind:promptRef
+              />
+            {/snippet}
+          </ChatConversationStage>
+        {/snippet}
+      </SplitWorkspace>
+    {:else}
+      <ChatConversationStage
+        {store}
+        {settings}
+        {processVisibility}
+        timelineVm={{
+          visibleTimeline: tl.visibleTimeline,
+          filteredTimeline: tl.filteredTimeline,
+          toolNamesInTimeline: tl.toolNamesInTimeline,
+          toolFilter: tl.toolFilter,
+          setToolFilter: tl.setToolFilter,
+          renderLimit: tl.renderLimit,
+          timelineIdIndex: tl.timelineIdIndex,
+          lastClearSepId: tl.lastClearSepId,
+          latestPlanToolId: tl.latestPlanToolId,
+          batchGroups: tl.batchGroups,
+          toolBursts: tl.toolBursts,
+          burstCollapse,
+          lastAssistantIdx: sd.lastAssistantIdx,
+          usageAnnotations: ta.usageAnnotations,
+          lastTurnUsage: ta.lastTurnUsage,
+          claudeTurnStarts: ta.claudeTurnStarts,
+          showPermissionPanel: false,
+          fetchToolResult: toolResultCache.fetchToolResult,
+          topSentinelRef: tl.topSentinel,
+          setTopSentinel: tl.setTopSentinel,
+        }}
+        sessionVm={{
+          welcomeVisible,
+          lastContinuableRun,
+          authOverview,
+          localProxyStatuses,
+          showInitHint,
+          cliVersionInfo: sd.cliVersionInfo,
+          channelLatest: sd.channelLatest,
+          remoteHosts,
+          availableWorkspaces: workspacesStore.list,
+          selectedCwd: folderCwdOverride,
+        }}
+        loadingVm={{
+          routeRunLoadFailed,
+          routeRunPending,
+          runId,
+          notificationVisible,
+          latestNotification,
+          rewindMarkers,
+          activeTeamRuns: team.activeTeamRuns,
+        }}
+        thinkingVm={{
+          thinkingElapsed: thinking.thinkingElapsed,
+          thinkingVisible: thinking.thinkingVisible,
+          spinnerVerb: thinking.spinnerVerb,
+          processingSlashCmd: thinking.processingSlashCmd,
+          approving,
+          sending,
+        }}
+        forkVm={{
+          forkOverlay: fork.forkOverlay,
+          forkElapsed: fork.forkElapsed,
+          resuming,
+        }}
+        handlers={{
+          goto,
+          sendMessage,
+          fillPrompt,
+          handleAuthModeChange,
+          handlePlatformChange,
+          handleRewindToMessage,
+          handleToolAnswer,
+          handleToolApprove,
+          handlePermissionRespond,
+          handleExitPlanClearContext,
+          handleExitPlanBypass,
+          getPlanContentForExitPlan,
+          openPreviewForPath,
+          handleHookCallbackRespond,
+          handleElicitationRespond,
+          onCwdChange: (cwd: string) => {
+            const normalized = normalizeCwd(cwd);
+            if (!normalized) return;
+            folderCwdOverride = normalized;
+            store.sessionCwd = normalized;
+            try {
+              localStorage.setItem("ocv:project-cwd", normalized);
+            } catch {
+              // localStorage may fail in restricted contexts
+            }
+            window.dispatchEvent(new Event("ocv:cwd-changed"));
+          },
+          onAddWorkspace: () => {
+            void addWorkspaceFromPicker();
+          },
+          handleChatScroll,
+          handleChatWheel,
+          scrollChatToBottom,
+          handleTermResize,
+          handleTermReady,
+          handleForkCancel,
+          handleForkRetry,
+          dismissInitHint,
+          dismissTaskNotificationBanner: () => {
+            notificationVisible = false;
+          },
+          loadRunProgressive,
+          setLastTarget,
+        }}
+        bind:thinkingExpanded={thinking.thinkingExpanded}
+        {showChatScrollHint}
+        {isChatAutoScroll}
+        {readingHistory}
+        bind:xtermRef
+        bind:chatAreaRef
+      >
+        {#snippet heroMetaFooter()}
+          {@render heroMetaFooterContent()}
+        {/snippet}
+        {#snippet inputDock()}
+          <ChatInputDock
+            {store}
+            {settings}
+            inputVm={{
+              processVisibility,
+              agentSettings,
+              effectiveModels: sd.effectiveModels,
+              folderCwdOverride,
+              welcomeVisible,
+              skillItems: sd.skillItems,
+              preloadedAgents,
+              teamHintVisible: team.teamHintVisible,
+              userHistory: sd.userHistory,
+              projectCommands,
+              authOverview,
+              localProxyStatuses,
+            }}
+            permissionVm={{
+              pendingToolPermissions: sd.pendingToolPermissions,
+              inputBlockedByPermission: sd.inputBlockedByPermission,
+            }}
+            sidePanelsVm={{
+              btwState,
+              insight,
+              hasCreatedFiles: tl.hasCreatedFiles,
+              createdFiles: tl.createdFiles,
+              setBtwState: (v) => {
+                btwState = v;
+              },
+            }}
+            handlers={{
+              sendMessage,
+              handleModelChange,
+              handlePermissionModeChange,
+              handleVirtualCommand,
+              handleFastModeSwitch,
+              handlePlatformChange,
+              handleAuthModeChange,
+              handleInputValueChange: team.handleInputValueChange,
+              handlePermissionRespond,
+              handleElicitationRespond,
+              handleBtwSend,
+              handleRalphCancel,
+              showChatToast: _showToast,
+            }}
+            bind:stashedInput
+            bind:shortcutHelpOpen
+            bind:promptRef
+          />
+        {/snippet}
+      </ChatConversationStage>
+    {/if}
 
     {#if showScrollButton}
       <button
@@ -1514,31 +1752,38 @@
     {/if}
   </div>
 
-  <!-- Tool Activity sidebar -->
-  <ToolActivity
-    timeline={store.timeline}
-    tools={store.tools}
-    turnUsages={store.turnUsages}
-    usageByTurn={sd.usageByTurn}
-    contextHistory={sd.contextHistory}
-    persistedFiles={store.persistedFiles}
-    sessionInfo={sd.currentSessionInfo}
-    collapsed={sidebarCollapsed}
-    bind:activeTab={toolPanelActiveTab}
-    bind:panelIndicators={toolPanelIndicators}
-    underUnifiedCapsule={true}
-    onToggle={toggleSidebar}
-    onScrollToTool={scrollToTool}
-    onScrollToTurn={(anchorId) => scrollToMessage(anchorId)}
-    bind:requestedTab={sidebarRequestedTab}
-    backgroundTasks={store.taskNotifications}
-    activeBackgroundTasks={store.activeBackgroundTasks}
-    cwd={store.effectiveCwd}
-    runId={store.run?.id ?? ""}
-    isRemote={store.isRemote}
-    bind:requestedPreviewPath
-    bind:requestedPreviewUrl
-  />
+  <!-- Tool Activity sidebar — suspended while split mode is active. PR-5
+       adds the deeper fetch-side guards in WorkspaceContextPanel /
+       GitWorktreePanel / memoryStore; this mount swap stops rendering
+       the heavy panels entirely so the side effects never run. -->
+  {#if splitWorkspaceStore.rightSidebarSuspended}
+    <SplitSidebarPlaceholder />
+  {:else}
+    <ToolActivity
+      timeline={store.timeline}
+      tools={store.tools}
+      turnUsages={store.turnUsages}
+      usageByTurn={sd.usageByTurn}
+      contextHistory={sd.contextHistory}
+      persistedFiles={store.persistedFiles}
+      sessionInfo={sd.currentSessionInfo}
+      collapsed={sidebarCollapsed}
+      bind:activeTab={toolPanelActiveTab}
+      bind:panelIndicators={toolPanelIndicators}
+      underUnifiedCapsule={true}
+      onToggle={toggleSidebar}
+      onScrollToTool={scrollToTool}
+      onScrollToTurn={(anchorId) => scrollToMessage(anchorId)}
+      bind:requestedTab={sidebarRequestedTab}
+      backgroundTasks={store.taskNotifications}
+      activeBackgroundTasks={store.activeBackgroundTasks}
+      cwd={store.effectiveCwd}
+      runId={store.run?.id ?? ""}
+      isRemote={store.isRemote}
+      bind:requestedPreviewPath
+      bind:requestedPreviewUrl
+    />
+  {/if}
 
   <RewindModal
     bind:open={rewindModalOpen}

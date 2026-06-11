@@ -171,6 +171,9 @@ class MemoryStore {
 
   /**
    * Load memory file candidates for the given project directory.
+   *
+   * Note: callers (WorkspaceContextPanel) gate this with their own
+   * `suspended` prop before invoking, so this function itself is pure.
    */
   async loadCandidates(cwd: string): Promise<void> {
     this._loadingCandidates = true;

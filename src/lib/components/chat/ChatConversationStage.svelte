@@ -171,6 +171,27 @@
     return { destroy: () => setTopSentinel(null) };
   }
 
+  // ── Runtime agent selector ──
+  type AgentKind = "claude" | "mimo";
+  let selectedAgent = $state<AgentKind>("claude");
+  let mimoAvailable = $state(false);
+
+  $effect(() => {
+    api
+      .detectMimoRuntime()
+      .then((r) => {
+        mimoAvailable = r.available;
+      })
+      .catch(() => {
+        mimoAvailable = false;
+      });
+  });
+
+  function handleAgentChange(agent: AgentKind) {
+    selectedAgent = agent;
+    store.agent = agent;
+  }
+
   // ── Text selection toolbar ──
   let selectionText = $state("");
   let selectionX = $state(0);
@@ -259,9 +280,15 @@
           <ChatWelcomeScreen
             {lastContinuableRun}
             onContinueSession={(id) => goto(`/chat?run=${id}&resume=continue`)}
-            onQuickAnalyze={(mode) => sendMessage(t("chat_quickAnalyzePrompt"), [], mode)}
+            onQuickAnalyze={(mode, agent) => {
+              handleAgentChange(agent);
+              sendMessage(t("chat_quickAnalyzePrompt"), [], mode);
+            }}
             onQuickFix={() => fillPrompt(t("chat_quickFixPrompt"))}
-            onQuickDaily={(mode) => sendMessage(t("chat_quickDailyPrompt"), [], mode)}
+            onQuickDaily={(mode, agent) => {
+              handleAgentChange(agent);
+              sendMessage(t("chat_quickDailyPrompt"), [], mode);
+            }}
             onGotoSchedule={() => goto("/scheduled-tasks")}
             {authOverview}
             authSourceLabel={store.authSourceLabel}
@@ -277,6 +304,9 @@
             {selectedCwd}
             onCwdChange={handlers.onCwdChange}
             onAddWorkspace={handlers.onAddWorkspace}
+            {selectedAgent}
+            onAgentChange={handleAgentChange}
+            {mimoAvailable}
           >
             {#snippet initHint()}
               <ChatInitHint

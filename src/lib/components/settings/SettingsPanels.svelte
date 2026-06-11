@@ -30,6 +30,7 @@
   import NotificationsTab from "./tabs/NotificationsTab.svelte";
   import DataAndDebugTab from "./tabs/DataAndDebugTab.svelte";
   import ThemeTab from "./tabs/ThemeTab.svelte";
+  import RuntimesTab from "./tabs/RuntimesTab.svelte";
 
   // Bundled state type — flattened for prop wiring convenience.
   // Keep fields as `any` only where the tab has its own narrower type
@@ -144,6 +145,8 @@
   const DataAndDebugTabC = DataAndDebugTab as any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ThemeTabC = ThemeTab as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const RuntimesTabC = RuntimesTab as any;
 </script>
 
 {#if tab === "appearance"}
@@ -207,6 +210,8 @@
   />
 {:else if tab === "worktree"}
   <WorktreeTabC settings={state.settings} onSaveGeneralPatch={state.saveGeneralPatch} />
+{:else if tab === "runtimes"}
+  <RuntimesTabC />
 {:else if tab === "notifications"}
   <NotificationsTabC
     settings={state.settings}
