@@ -431,22 +431,18 @@ fn summarize_events(events_path: &std::path::Path) -> (Option<String>, u32, Opti
         Err(_) => return (None, 0, None),
     };
 
-    // Count non-empty lines for msg_count (cheap string scan — no JSON parsing)
-    let total_lines = content.lines().filter(|l| !l.trim().is_empty()).count() as u32;
-
-    // For last_activity + last_preview: only parse last few lines (most recent events)
-    let mut last_ts: Option<String> = None;
+    // Single pass: count messages + keep last 5 non-empty lines via circular buffer.
     let mut msg_count: u32 = 0;
-    let mut last_preview: Option<String> = None;
+    let mut tail: [&str; 5] = [""; 5];
+    let mut tail_idx: usize = 0;
+    let mut tail_count: usize = 0;
 
-    // Collect last N non-empty lines and count messages only in those
-    // For full msg_count, count user_message/message_complete across entire file cheaply
     for line in content.lines() {
         let line = line.trim();
         if line.is_empty() {
             continue;
         }
-        // Cheap substring check before full JSON parse for msg_count
+        // Cheap substring check for msg_count (no JSON parse)
         if line.contains("\"user_message\"")
             || line.contains("\"message_complete\"")
             || line.contains("\"type\":\"user\"")
@@ -454,16 +450,20 @@ fn summarize_events(events_path: &std::path::Path) -> (Option<String>, u32, Opti
         {
             msg_count += 1;
         }
+        // Circular buffer for last 5 lines
+        tail[tail_idx % 5] = line;
+        tail_idx += 1;
+        if tail_count < 5 {
+            tail_count += 1;
+        }
     }
 
-    // Parse only last 5 lines for timestamp + preview
-    let last_lines: Vec<&str> = content.lines().filter(|l| !l.trim().is_empty()).collect();
-    let tail_start = if last_lines.len() > 5 {
-        last_lines.len() - 5
-    } else {
-        0
-    };
-    for line in &last_lines[tail_start..] {
+    // Parse only the last few lines for timestamp + preview
+    let mut last_ts: Option<String> = None;
+    let mut last_preview: Option<String> = None;
+    let start = if tail_count < 5 { 0 } else { tail_idx % 5 };
+    for i in 0..tail_count {
+        let line = tail[(start + i) % 5];
         if let Ok(event) = serde_json::from_str::<serde_json::Value>(line) {
             if event.get("_bus").and_then(|v| v.as_bool()).unwrap_or(false) {
                 if let Some(ts) = event.get("ts").and_then(|v| v.as_str()) {
@@ -495,7 +495,6 @@ fn summarize_events(events_path: &std::path::Path) -> (Option<String>, u32, Opti
         }
     }
 
-    let _ = total_lines; // available for future use
     (last_ts, msg_count, last_preview)
 }
 
