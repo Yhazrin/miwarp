@@ -22,7 +22,6 @@
   import type { Snippet } from "svelte";
   import { splitWorkspaceStore, type PaneId } from "$lib/split";
   import SplitChatPane from "./SplitChatPane.svelte";
-  import SplitDropOverlay from "./SplitDropOverlay.svelte";
   import { fly } from "svelte/transition";
 
   let {
@@ -70,7 +69,6 @@
       {/each}
     </div>
   {/if}
-  <SplitDropOverlay />
 </div>
 
 <style>

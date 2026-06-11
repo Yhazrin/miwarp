@@ -74,6 +74,7 @@
   import ChatHeroMeta from "$lib/components/ChatHeroMeta.svelte";
   import SplitWorkspace from "$lib/components/split/SplitWorkspace.svelte";
   import SplitSidebarPlaceholder from "$lib/components/split/SplitSidebarPlaceholder.svelte";
+  import SplitDropOverlay from "$lib/components/split/SplitDropOverlay.svelte";
   import { splitWorkspaceStore, splitPaneSessionAdapter } from "$lib/split";
   import type { PaneId } from "$lib/split";
   import RewindModal from "$lib/components/RewindModal.svelte";
@@ -1289,6 +1290,11 @@
 <div class="relative flex h-full overflow-hidden bg-background">
   <!-- Page-level drag overlay (drag-hover or processing spinner) -->
   <ChatDragOverlay {pageDragActive} {dragProcessing} />
+
+  <!-- Split-pane drop target — always mounted so a first-time card drop
+       can enter split mode on the fly. The component is fixed-position
+       and only renders a visual hint while a split drag is in flight. -->
+  <SplitDropOverlay />
 
   <!-- Main content area -->
   <div class="flex flex-1 flex-col min-w-0 relative">

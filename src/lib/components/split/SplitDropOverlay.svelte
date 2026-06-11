@@ -10,6 +10,12 @@
   Why window-level: a chat area can contain nested scroll containers, so
   bounding the listener to a single element breaks the drop UX when the
   user hovers over a message or input. Window is the only reliable target.
+
+  Important: the overlay stays mounted regardless of `split.enabled` —
+  the drop itself is the entry point into split mode. If the user drops
+  a card while not in split mode, we `enter({activeRunId: runId})`
+  first, then `addPane`. The visual hint also shows on the first drop
+  so users see what's about to happen.
 -->
 <script lang="ts">
   import { splitWorkspaceStore, isSplitDrag, readSplitDragRunId } from "$lib/split";
@@ -17,8 +23,12 @@
   import Icon from "$lib/components/Icon.svelte";
 
   let dragDepth = $state(0);
-  const isDragging = $derived(dragDepth > 0 && splitWorkspaceStore.enabled);
-  const canDrop = $derived(splitWorkspaceStore.panes.length < 4);
+  // Show the hint whenever a split drag is in flight, regardless of whether
+  // split mode is already enabled. This is what lets a first-time drop
+  // enter split mode on the fly.
+  const isDragging = $derived(dragDepth > 0);
+  // The cap applies once we're in split mode (or about to be).
+  const canDrop = $derived(!splitWorkspaceStore.enabled || splitWorkspaceStore.panes.length < 4);
 
   $effect(() => {
     function onDragEnter(e: DragEvent) {
@@ -41,12 +51,19 @@
       if (!isSplitDrag(e)) return;
       e.preventDefault();
       dragDepth = 0;
-      if (!canDrop) {
+      const runId = readSplitDragRunId(e);
+      if (!runId) return;
+      // Cap check only matters once we're already in split mode.
+      if (splitWorkspaceStore.enabled && splitWorkspaceStore.panes.length >= 4) {
         splitWorkspaceStore.onToast?.("split_mode_paneLimitReached", "error");
         return;
       }
-      const runId = readSplitDragRunId(e);
-      if (runId) splitWorkspaceStore.addPane(runId);
+      // First-time drop enters split mode with this run as the active pane.
+      if (!splitWorkspaceStore.enabled) {
+        splitWorkspaceStore.enter({ activeRunId: runId, cwd: null });
+      } else {
+        splitWorkspaceStore.addPane(runId);
+      }
     }
     window.addEventListener("dragenter", onDragEnter);
     window.addEventListener("dragleave", onDragLeave);
@@ -63,11 +80,9 @@
 
 {#if isDragging}
   <div
-    class="pointer-events-none absolute inset-0 z-40 flex items-center justify-center border-2 border-dashed backdrop-blur-[1px]"
+    class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center border-2 border-dashed backdrop-blur-[1px]"
     class:border-primary={canDrop}
     class:border-destructive={!canDrop}
-    class:bg-primary={canDrop}
-    class:bg-destructive={!canDrop}
     style:background-color={canDrop
       ? "hsl(var(--primary) / 0.05)"
       : "hsl(var(--destructive) / 0.08)"}
