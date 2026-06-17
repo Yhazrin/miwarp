@@ -156,15 +156,5 @@ export interface SessionStoreReducers {
   _recoveryTimer: ReturnType<typeof setTimeout> | null;
   unknownEventCount: number;
   strictMode: boolean;
-  hookEvents: Array<{
-    type: string;
-    hook_id: string;
-    data: unknown;
-    hook_name?: string;
-    stdout?: string;
-    stderr?: string;
-    exit_code?: number;
-    request_id?: string;
-    status?: string;
-  }>;
+  hookEvents: HookEvent[];
 }
