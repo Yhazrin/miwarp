@@ -153,6 +153,22 @@
 "chat.allClear" = "All Clear";
 "chat.errorTitle" = "Chat error";
 
+/* Chat Inspector */
+"chatInspector.workspace" = "Workspace";
+"chatInspector.tools" = "Tools";
+"chatInspector.expand" = "Expand tools";
+"chatInspector.collapse" = "Collapse tools";
+"chatInspector.needsApproval" = "Needs approval";
+"chatInspector.agent" = "Agent";
+"chatInspector.model" = "Model";
+"chatInspector.pending" = "Pending";
+"chatInspector.messages" = "Messages";
+"chatInspector.inputTokens" = "Input";
+"chatInspector.outputTokens" = "Output";
+"chatInspector.noTools" = "No tool calls in this session yet.";
+"chatInspector.openArtifacts" = "Review changed files, commands, and diff summaries.";
+"chatInspector.rawEventCount" = "%d events captured";
+
 /* Component States */
 "component.small" = "Small";
 "component.medium" = "Medium";
