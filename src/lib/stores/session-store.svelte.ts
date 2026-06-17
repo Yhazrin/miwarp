@@ -3589,46 +3589,6 @@ export class SessionStore {
         break;
       }
 
-      case "hook_started":
-        this.hookEvents = _appendCapped(this.hookEvents, {
-          type: ev.type,
-          hook_id: ev.hook_id,
-          data: ev,
-          hook_name: ev.hook_name,
-        });
-        break;
-
-      case "hook_progress":
-        this.hookEvents = _appendCapped(this.hookEvents, {
-          type: ev.type,
-          hook_id: ev.hook_id,
-          data: ev,
-        });
-        break;
-
-      case "hook_response":
-        this.hookEvents = _appendCapped(this.hookEvents, {
-          type: ev.type,
-          hook_id: ev.hook_id,
-          data: ev,
-          hook_name: ev.hook_name,
-          stdout: ev.stdout,
-          stderr: ev.stderr,
-          exit_code: ev.exit_code,
-        });
-        break;
-
-      case "hook_callback":
-        // Hook callback from CLI — PreToolUse hooks are actionable (allow/deny)
-        this.hookEvents = _appendCapped(this.hookEvents, {
-          type: ev.type,
-          hook_id: ev.hook_id,
-          data: ev,
-          request_id: ev.request_id,
-          status: ev.hook_event === "PreToolUse" ? "hook_pending" : "allowed",
-        });
-        break;
-
       case "task_notification": {
         const existing = this.taskNotifications.get(ev.task_id);
         const rawData = ev.data as Record<string, unknown> | undefined;
@@ -3656,65 +3616,6 @@ export class SessionStore {
             existing?.tool_use_id,
         });
         this.taskNotifications = updated;
-        break;
-      }
-
-      case "tool_progress": {
-        if (ev.parent_tool_use_id) {
-          this._updateSubTimelineTool(
-            ev.parent_tool_use_id,
-            ev.tool_use_id,
-            (t) => ({
-              ...t,
-              elapsed_time_seconds: ev.elapsed_time_seconds,
-            }),
-            ctx,
-          );
-          break;
-        }
-        const tl = getTl();
-        const idx = this._findToolIdx(ctx, ev.tool_use_id);
-        if (idx >= 0) {
-          const old = tl[idx] as Extract<TimelineEntry, { kind: "tool" }>;
-          const updated: TimelineEntry = {
-            ...old,
-            tool: { ...old.tool, elapsed_time_seconds: ev.elapsed_time_seconds },
-          };
-          if (ctx) ctx.tl[idx] = updated;
-          else {
-            const u = [...this.timeline];
-            u[idx] = updated;
-            this.timeline = u;
-          }
-        }
-        break;
-      }
-
-      case "tool_use_summary": {
-        if (ev.parent_tool_use_id) {
-          this._updateSubTimelineTool(
-            ev.parent_tool_use_id,
-            ev.tool_use_id,
-            (t) => ({
-              ...t,
-              summary: ev.summary,
-            }),
-            ctx,
-          );
-          break;
-        }
-        const tl2 = getTl();
-        const idx2 = this._findToolIdx(ctx, ev.tool_use_id);
-        if (idx2 >= 0) {
-          const old = tl2[idx2] as Extract<TimelineEntry, { kind: "tool" }>;
-          const updated: TimelineEntry = { ...old, tool: { ...old.tool, summary: ev.summary } };
-          if (ctx) ctx.tl[idx2] = updated;
-          else {
-            const u = [...this.timeline];
-            u[idx2] = updated;
-            this.timeline = u;
-          }
-        }
         break;
       }
 
