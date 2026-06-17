@@ -106,6 +106,7 @@ export interface SessionStoreReducers {
   run: { id: string; model?: string; session_id?: string; status?: string } | null;
   ralphLoop: { active: boolean; iteration?: number; reason?: string } | null;
   pendingElicitations: Map<string, unknown>;
+  persistedFiles: string[];
   // …extended as reducers are extracted; we keep the list focused on what
   // extracted reducers actually need so the contract grows incrementally.
 
