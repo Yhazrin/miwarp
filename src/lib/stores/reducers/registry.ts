@@ -29,6 +29,8 @@ import {
   reduceHookResponse,
   reduceHookCallback,
 } from "./hook-events";
+import { reduceTaskNotification } from "./task-notification";
+import { reduceElicitationPrompt } from "./elicitation-prompt";
 
 export const REDUCERS: Record<string, Reducer> = {
   rate_limit_event: reduceRateLimit,
@@ -46,4 +48,6 @@ export const REDUCERS: Record<string, Reducer> = {
   hook_progress: reduceHookProgress,
   hook_response: reduceHookResponse,
   hook_callback: reduceHookCallback,
+  task_notification: reduceTaskNotification,
+  elicitation_prompt: reduceElicitationPrompt,
 };

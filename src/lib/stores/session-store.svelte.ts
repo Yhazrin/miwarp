@@ -3547,26 +3547,6 @@ export class SessionStore {
         break;
       }
 
-      case "elicitation_prompt": {
-        dbg("store", "elicitation_prompt received", {
-          request_id: ev.request_id,
-          server: ev.mcp_server_name,
-          mode: ev.mode,
-        });
-        const updated = new Map(this.pendingElicitations);
-        updated.set(ev.request_id, {
-          requestId: ev.request_id,
-          mcpServerName: ev.mcp_server_name,
-          message: ev.message,
-          elicitationId: ev.elicitation_id,
-          mode: ev.mode,
-          url: ev.url,
-          requestedSchema: ev.requested_schema,
-        });
-        this.pendingElicitations = updated;
-        break;
-      }
-
       case "raw": {
         const rawText = typeof ev.data === "string" ? ev.data : JSON.stringify(ev.data);
         if (rawText && (ev.source === "claude_stdout_text" || ev.source === "claude_stderr")) {
@@ -3586,36 +3566,6 @@ export class SessionStore {
             throw new Error(`[STRICT] raw fallback event: source=${ev.source}`);
           }
         }
-        break;
-      }
-
-      case "task_notification": {
-        const existing = this.taskNotifications.get(ev.task_id);
-        const rawData = ev.data as Record<string, unknown> | undefined;
-        const message =
-          (rawData?.summary as string) ??
-          (rawData?.message as string) ??
-          (rawData?.task_description as string) ??
-          ev.task_id;
-        const updated = new Map(this.taskNotifications);
-        updated.set(ev.task_id, {
-          task_id: ev.task_id,
-          status: ev.status,
-          message,
-          startedAt: existing?.startedAt ?? Date.now(),
-          data: ev,
-          output_file:
-            ((rawData?.output_file ?? rawData?.outputFile) as string | undefined) ??
-            existing?.output_file,
-          task_type:
-            ((rawData?.task_type ?? rawData?.taskType) as string | undefined) ??
-            existing?.task_type,
-          summary: (rawData?.summary as string | undefined) ?? existing?.summary,
-          tool_use_id:
-            ((rawData?.tool_use_id ?? rawData?.toolUseId) as string | undefined) ??
-            existing?.tool_use_id,
-        });
-        this.taskNotifications = updated;
         break;
       }
 
