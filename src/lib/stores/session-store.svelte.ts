@@ -33,6 +33,7 @@ import {
   assertTransition,
 } from "./types";
 import { getEventMiddleware } from "./event-middleware";
+import { REDUCERS } from "./reducers";
 import type { ReduceCtx } from "./reducers/types";
 import { updateInstalledVersion, getCliCommands } from "./cli-info.svelte";
 import * as snapshotCache from "$lib/utils/snapshot-cache";
@@ -3114,6 +3115,18 @@ export class SessionStore {
     }
   }
 
+  /** Dispatch to domain-specific reducers registered in REDUCERS table.
+   *  Returns true if the event was handled by a registered reducer. */
+  private _reduceFromRegistry(ev: BusEvent, ctx: ReduceCtx | null, replayOnly: boolean): boolean {
+    const fn = REDUCERS[ev.type as keyof typeof REDUCERS];
+    if (!fn) return false;
+    // SessionStore is a structural superset of SessionStoreReducers (it owns
+    // additional private fields and methods). The cast documents the
+    // reducer contract: reducers see only the "reducer surface" of the store.
+    fn(ev, ctx, this as unknown as Parameters<typeof fn>[2], replayOnly);
+    return true;
+  }
+
   /** Core reducer: apply a single bus event. When ctx is null, mutates $state directly.
    *  replayOnly=true skips phase and error assignments (used during resume replay). */
   private _reduce(ev: BusEvent, ctx: ReduceCtx | null, replayOnly = false): void {
@@ -3127,7 +3140,7 @@ export class SessionStore {
     // Delegate to domain-specific reducers
     if (this._reduceMessage(ev, ctx, getTl, getSeenMsg, getHe, replayOnly)) return;
     if (this._reduceTool(ev, ctx, replayOnly, getTl, getHe, getSeenTool)) return;
-
+    if (this._reduceFromRegistry(ev, ctx, replayOnly)) return;
     switch (ev.type) {
       case "session_init":
         if (ev.model) {
@@ -3216,18 +3229,6 @@ export class SessionStore {
           sessionCwd: this.sessionCwd,
           sessionTools: this.sessionTools.length,
           outputStyle: this.outputStyle,
-        });
-        break;
-
-      case "rate_limit_event":
-        this.rateLimitStatus = ev.status;
-        this.rateLimitType = ev.rate_limit_type ?? "";
-        this.rateLimitUtilization = ev.utilization ?? null;
-        this.rateLimitResetsAt = ev.resets_at ?? null;
-        dbg("store", "rate_limit_event", {
-          status: ev.status,
-          type: ev.rate_limit_type,
-          utilization: ev.utilization,
         });
         break;
 
