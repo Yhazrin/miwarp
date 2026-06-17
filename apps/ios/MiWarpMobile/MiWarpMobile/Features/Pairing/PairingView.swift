@@ -292,6 +292,7 @@ struct ManualConnectionSheet: View {
 
 struct QRScannerSheet: View {
     @EnvironmentObject private var store: MiWarpConnectionStore
+    @EnvironmentObject private var theme: MWTheme
     @Environment(\.dismiss) private var dismiss
     @State private var error: String?
     @State private var isAuthenticating = false

@@ -163,6 +163,7 @@ extension BusEvent {
         case .ralphStarted: return "ralph_started"
         case .ralphIteration: return "ralph_iteration"
         case .ralphComplete: return "ralph_complete"
+        case .fullReload: return "full_reload"
         case .raw: return "raw"
         }
     }

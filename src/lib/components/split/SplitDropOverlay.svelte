@@ -23,74 +23,95 @@
   import Icon from "$lib/components/Icon.svelte";
 
   let dragDepth = $state(0);
-  // Show the hint whenever a split drag is in flight, regardless of whether
-  // split mode is already enabled. This is what lets a first-time drop
-  // enter split mode on the fly.
+  let overlayEl = $state<HTMLElement | null>(null);
   const isDragging = $derived(dragDepth > 0);
-  // The cap applies once we're in split mode (or about to be).
   const canDrop = $derived(!splitWorkspaceStore.enabled || splitWorkspaceStore.panes.length < 4);
 
-  $effect(() => {
-    function onDragEnter(e: DragEvent) {
-      // Direct console.log bypasses dbg's debug-only gate so we can see the
-      // event in devtools even if dbg is disabled. Also visible in the
-      // Rust terminal via Tauri's webview logger.
-      console.log("[split-dnd] dragenter", { types: Array.from(e.dataTransfer?.types ?? []) });
-      if (!isSplitDrag(e)) return;
+  function onDragEnter(e: DragEvent) {
+    if (!isSplitDrag(e)) return;
+    e.preventDefault();
+    dragDepth++;
+  }
+  function onDragLeave(e: DragEvent) {
+    if (!isSplitDrag(e)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+  }
+  function onDragOver(e: DragEvent) {
+    if (!isSplitDrag(e)) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = canDrop ? "copy" : "none";
+  }
+  function onDrop(e: DragEvent) {
+    if (!isSplitDrag(e)) return;
+    e.preventDefault();
+    dragDepth = 0;
+    const runId = readSplitDragRunId(e);
+    if (!runId) return;
+    if (splitWorkspaceStore.enabled && splitWorkspaceStore.panes.length >= 4) {
+      splitWorkspaceStore.onToast?.("split_mode_paneLimitReached", "error");
+      return;
+    }
+    if (!splitWorkspaceStore.enabled) {
+      splitWorkspaceStore.enter({ activeRunId: runId, cwd: null });
+    } else {
+      splitWorkspaceStore.addPane(runId);
+    }
+  }
+  // Also handle window-level events as fallback (covers Tauri WebView edge cases)
+  function onWindowDragEnter(e: DragEvent) {
+    if (isSplitDrag(e)) {
       e.preventDefault();
       dragDepth++;
     }
-    function onDragLeave(e: DragEvent) {
-      console.log("[split-dnd] dragleave");
-      if (!isSplitDrag(e)) return;
-      dragDepth = Math.max(0, dragDepth - 1);
-    }
-    function onDragOver(e: DragEvent) {
-      if (!isSplitDrag(e)) return;
-      // Always preventDefault while our MIME is present so the browser
-      // shows the correct drop indicator and lets us control dropEffect.
+  }
+  function onWindowDragLeave(e: DragEvent) {
+    if (isSplitDrag(e)) dragDepth = Math.max(0, dragDepth - 1);
+  }
+  function onWindowDragOver(e: DragEvent) {
+    if (isSplitDrag(e)) {
       e.preventDefault();
       if (e.dataTransfer) e.dataTransfer.dropEffect = canDrop ? "copy" : "none";
     }
-    function onDrop(e: DragEvent) {
-      console.log("[split-dnd] drop", {
-        isSplit: isSplitDrag(e),
-        types: Array.from(e.dataTransfer?.types ?? []),
-      });
-      if (!isSplitDrag(e)) return;
-      e.preventDefault();
-      dragDepth = 0;
-      const runId = readSplitDragRunId(e);
-      if (!runId) return;
-      // Cap check only matters once we're already in split mode.
-      if (splitWorkspaceStore.enabled && splitWorkspaceStore.panes.length >= 4) {
-        splitWorkspaceStore.onToast?.("split_mode_paneLimitReached", "error");
-        return;
-      }
-      // First-time drop enters split mode with this run as the active pane.
-      if (!splitWorkspaceStore.enabled) {
-        splitWorkspaceStore.enter({ activeRunId: runId, cwd: null });
-      } else {
-        splitWorkspaceStore.addPane(runId);
-      }
+  }
+  function onWindowDrop(e: DragEvent) {
+    if (!isSplitDrag(e)) return;
+    e.preventDefault();
+    dragDepth = 0;
+    const runId = readSplitDragRunId(e);
+    if (!runId) return;
+    if (splitWorkspaceStore.enabled && splitWorkspaceStore.panes.length >= 4) {
+      splitWorkspaceStore.onToast?.("split_mode_paneLimitReached", "error");
+      return;
     }
-    window.addEventListener("dragenter", onDragEnter);
-    window.addEventListener("dragleave", onDragLeave);
-    window.addEventListener("dragover", onDragOver);
-    window.addEventListener("drop", onDrop);
-    console.log("[split-dnd] listeners attached");
+    if (!splitWorkspaceStore.enabled) {
+      splitWorkspaceStore.enter({ activeRunId: runId, cwd: null });
+    } else {
+      splitWorkspaceStore.addPane(runId);
+    }
+  }
+
+  $effect(() => {
+    window.addEventListener("dragenter", onWindowDragEnter);
+    window.addEventListener("dragleave", onWindowDragLeave);
+    window.addEventListener("dragover", onWindowDragOver);
+    window.addEventListener("drop", onWindowDrop);
     return () => {
-      window.removeEventListener("dragenter", onDragEnter);
-      window.removeEventListener("dragleave", onDragLeave);
-      window.removeEventListener("dragover", onDragOver);
-      window.removeEventListener("drop", onDrop);
+      window.removeEventListener("dragenter", onWindowDragEnter);
+      window.removeEventListener("dragleave", onWindowDragLeave);
+      window.removeEventListener("dragover", onWindowDragOver);
+      window.removeEventListener("drop", onWindowDrop);
     };
   });
 </script>
 
 {#if isDragging}
   <div
-    class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center border-2 border-dashed backdrop-blur-[1px]"
+    bind:this={overlayEl}
+    ondragenter={onDragEnter}
+    ondragleave={onDragLeave}
+    ondragover={onDragOver}
+    ondrop={onDrop}
+    class="fixed inset-0 z-50 flex items-center justify-center border-2 border-dashed backdrop-blur-[1px]"
     class:border-primary={canDrop}
     class:border-destructive={!canDrop}
     style:background-color={canDrop
