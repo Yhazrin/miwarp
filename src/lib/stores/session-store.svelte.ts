@@ -3569,30 +3569,6 @@ export class SessionStore {
         break;
       }
 
-      case "control_cancelled": {
-        // Resolve any permission_prompt or optimistic-running tool with matching request_id to "error"
-        // Covers both main timeline and subTimelines.
-        this._resolveStaleTools(
-          (t) =>
-            (t.status === "permission_prompt" || t.status === "running") &&
-            t.permission_request_id === ev.request_id,
-          ctx,
-        );
-        // Also resolve pending hook callbacks
-        this.hookEvents = this.hookEvents.map((h) =>
-          h.request_id === ev.request_id && h.status === "hook_pending"
-            ? { ...h, status: "cancelled" as const }
-            : h,
-        );
-        // Remove cancelled elicitation
-        if (this.pendingElicitations.has(ev.request_id)) {
-          const elicUpdated = new Map(this.pendingElicitations);
-          elicUpdated.delete(ev.request_id);
-          this.pendingElicitations = elicUpdated;
-        }
-        break;
-      }
-
       default:
         this.unknownEventCount++;
         dbgWarn("store", "unknown bus event type:", (ev as Record<string, unknown>).type);
