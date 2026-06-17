@@ -11,12 +11,26 @@ struct AppRouter: View {
     // v1.0.6 / 2.2 (C6): let the user fold / unfold the middle column
     // on iPad. The chosen visibility is persisted to UserDefaults so it
     // survives an app relaunch.
-    @AppStorage("miwarp.columnVisibility") private var columnVisibilityRaw: String =
-        NavigationSplitViewVisibility.allOnly.rawValue
+    @AppStorage("miwarp.columnVisibility") private var columnVisibilityRaw = "all"
     private var columnVisibility: Binding<NavigationSplitViewVisibility> {
         Binding(
-            get: { NavigationSplitViewVisibility(rawValue: columnVisibilityRaw) ?? .allOnly },
-            set: { columnVisibilityRaw = $0.rawValue }
+            get: {
+                switch columnVisibilityRaw {
+                case "detailOnly": return .detailOnly
+                case "doubleColumn": return .doubleColumn
+                default: return .all
+                }
+            },
+            set: { newValue in
+                switch newValue {
+                case .detailOnly:
+                    columnVisibilityRaw = "detailOnly"
+                case .doubleColumn:
+                    columnVisibilityRaw = "doubleColumn"
+                default:
+                    columnVisibilityRaw = "all"
+                }
+            }
         )
     }
 

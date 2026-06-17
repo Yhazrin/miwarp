@@ -12,6 +12,8 @@ struct MWAdaptiveLayout {
     let sizeClass: SizeClass
     let shouldUseSplitView: Bool
     let contentMaxWidth: CGFloat?
+    let settingsContentMaxWidth: CGFloat?
+    let connectContentMaxWidth: CGFloat?
     let listColumnWidth: CGFloat
     let detailMaxWidth: CGFloat?
     let chatContentMaxWidth: CGFloat?
@@ -22,7 +24,7 @@ struct MWAdaptiveLayout {
     var isCompact: Bool { sizeClass == .compact }
 
     static func `default`(isCompact: Bool) -> MWAdaptiveLayout {
-        default(sizeClass: isCompact ? .compact : .expanded)
+        Self.default(sizeClass: isCompact ? .compact : .expanded)
     }
 
     static func `default`(sizeClass: SizeClass) -> MWAdaptiveLayout {
@@ -32,6 +34,8 @@ struct MWAdaptiveLayout {
                 sizeClass: .compact,
                 shouldUseSplitView: false,
                 contentMaxWidth: nil,
+                settingsContentMaxWidth: nil,
+                connectContentMaxWidth: nil,
                 listColumnWidth: 320,
                 detailMaxWidth: nil,
                 chatContentMaxWidth: nil,
@@ -43,6 +47,8 @@ struct MWAdaptiveLayout {
                 sizeClass: .medium,
                 shouldUseSplitView: true,
                 contentMaxWidth: 720,
+                settingsContentMaxWidth: 720,
+                connectContentMaxWidth: 720,
                 listColumnWidth: 340,
                 detailMaxWidth: 820,
                 chatContentMaxWidth: 720,
@@ -54,6 +60,8 @@ struct MWAdaptiveLayout {
                 sizeClass: .expanded,
                 shouldUseSplitView: true,
                 contentMaxWidth: 880,
+                settingsContentMaxWidth: 760,
+                connectContentMaxWidth: 760,
                 listColumnWidth: 380,
                 detailMaxWidth: 1100, // v1.0.6: 11"/13" iPad Pro
                 chatContentMaxWidth: 880,

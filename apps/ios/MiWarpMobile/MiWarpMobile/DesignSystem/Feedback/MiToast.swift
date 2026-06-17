@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - Toast Kind
 
+@MainActor
 enum MiToastKind {
     case info
     case success
