@@ -22,6 +22,7 @@ import { reduceSystemStatus } from "./system-status";
 import { reduceAuthStatus } from "./auth-status";
 import { reduceToolProgress } from "./tool-progress";
 import { reduceToolUseSummary } from "./tool-use-summary";
+import { reduceRalphStarted, reduceRalphIteration, reduceRalphComplete } from "./ralph-loop";
 
 export const REDUCERS: Record<string, Reducer> = {
   rate_limit_event: reduceRateLimit,
@@ -32,4 +33,7 @@ export const REDUCERS: Record<string, Reducer> = {
   auth_status: reduceAuthStatus,
   tool_progress: reduceToolProgress,
   tool_use_summary: reduceToolUseSummary,
+  ralph_started: reduceRalphStarted,
+  ralph_iteration: reduceRalphIteration,
+  ralph_complete: reduceRalphComplete,
 };
