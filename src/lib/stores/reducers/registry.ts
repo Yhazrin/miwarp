@@ -18,10 +18,18 @@ import { reduceRateLimit } from "./rate-limit";
 import { reduceCompactBoundary } from "./compact-boundary";
 import { reduceCommandOutput } from "./command-output";
 import { reduceFilesPersisted } from "./files-persisted";
+import { reduceSystemStatus } from "./system-status";
+import { reduceAuthStatus } from "./auth-status";
+import { reduceToolProgress } from "./tool-progress";
+import { reduceToolUseSummary } from "./tool-use-summary";
 
 export const REDUCERS: Record<string, Reducer> = {
   rate_limit_event: reduceRateLimit,
   compact_boundary: reduceCompactBoundary,
   command_output: reduceCommandOutput,
   files_persisted: reduceFilesPersisted,
+  system_status: reduceSystemStatus,
+  auth_status: reduceAuthStatus,
+  tool_progress: reduceToolProgress,
+  tool_use_summary: reduceToolUseSummary,
 };
