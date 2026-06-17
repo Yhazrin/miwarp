@@ -3589,14 +3589,6 @@ export class SessionStore {
         break;
       }
 
-      case "system_status":
-        this.systemStatus = { status: ev.status };
-        break;
-
-      case "auth_status":
-        this.authStatus = { is_authenticating: ev.is_authenticating, output: ev.output };
-        break;
-
       case "hook_started":
         this.hookEvents = _appendCapped(this.hookEvents, {
           type: ev.type,

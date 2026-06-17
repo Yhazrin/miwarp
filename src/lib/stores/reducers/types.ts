@@ -63,8 +63,11 @@ export interface SessionStoreReducers {
   // these represent the "current snapshot" — reducers write to ctx (which is
   // then committed back via _commitReduceCtx), not to the live store. The
   // store itself owns mutable versions of the same names.
-  readonly timeline: TimelineEntry[];
-  readonly tools: HookEvent[];
+  // Writable: when ctx is null, reducers patch store.timeline / store.tools
+  // directly via `[...arr, entry]` patterns. When ctx is non-null, reducers
+  // write to ctx.tl / ctx.he and _commitReduceCtx publishes to store.
+  timeline: TimelineEntry[];
+  tools: HookEvent[];
   readonly streamingText: string;
   readonly thinkingText: string;
   readonly model: string;
@@ -107,6 +110,8 @@ export interface SessionStoreReducers {
   ralphLoop: { active: boolean; iteration?: number; reason?: string } | null;
   pendingElicitations: Map<string, unknown>;
   persistedFiles: string[];
+  systemStatus: { status: string } | null;
+  authStatus: { is_authenticating: boolean; output: string[] } | null;
   // …extended as reducers are extracted; we keep the list focused on what
   // extracted reducers actually need so the contract grows incrementally.
 
@@ -118,6 +123,12 @@ export interface SessionStoreReducers {
   _findHeIdx(ctx: ReduceCtx | null, toolUseId: string): number;
   _findHeIdxByStatus(ctx: ReduceCtx | null, toolUseId: string, status: string): number;
   _findParentToolIdx(ctx: ReduceCtx | null, parentToolUseId: string): number;
+  _updateSubTimelineTool(
+    parentToolUseId: string,
+    childToolUseId: string,
+    updater: (t: Record<string, unknown>) => Record<string, unknown>,
+    ctx: ReduceCtx | null,
+  ): void;
   _resolveStaleTools(
     predicate: (t: { status: string; permission_request_id?: string }) => boolean,
     ctx: ReduceCtx | null,
@@ -137,4 +148,15 @@ export interface SessionStoreReducers {
   _recoveryTimer: ReturnType<typeof setTimeout> | null;
   unknownEventCount: number;
   strictMode: boolean;
+  hookEvents: Array<{
+    type: string;
+    hook_id: string;
+    data: unknown;
+    hook_name?: string;
+    stdout?: string;
+    stderr?: string;
+    exit_code?: number;
+    request_id?: string;
+    status?: string;
+  }>;
 }
