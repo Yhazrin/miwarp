@@ -641,6 +641,8 @@ export interface CliAccount {
 }
 
 export interface CliInfo {
+  agent: string;
+  runtime_kind: "claude_code" | "mi_mo_code" | "codex";
   models: CliModelInfo[];
   commands: CliCommand[];
   available_output_styles: string[];

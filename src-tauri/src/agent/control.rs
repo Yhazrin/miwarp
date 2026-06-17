@@ -1,7 +1,10 @@
 use crate::agent::claude_stream::{augmented_path, resolve_claude_path};
-use crate::models::{now_iso, CliAccount, CliCommand, CliInfo, CliInfoError, CliModelInfo};
+use crate::models::{
+    now_iso, AgentRuntimeKind, CliAccount, CliCommand, CliInfo, CliInfoError, CliModelInfo,
+};
 use crate::process_ext::HideConsole;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
@@ -10,7 +13,7 @@ use tokio::time::{timeout, Duration};
 /// Cached CLI info with TTL
 #[derive(Clone)]
 pub struct CliInfoCache {
-    inner: Arc<RwLock<Option<(CliInfo, std::time::Instant)>>>,
+    inner: Arc<RwLock<HashMap<AgentRuntimeKind, (CliInfo, std::time::Instant)>>>,
 }
 
 impl Default for CliInfoCache {
@@ -22,7 +25,7 @@ impl Default for CliInfoCache {
 impl CliInfoCache {
     pub fn new() -> Self {
         Self {
-            inner: Arc::new(RwLock::new(None)),
+            inner: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 }
@@ -31,14 +34,23 @@ const CACHE_TTL: Duration = Duration::from_secs(300); // 5 minutes
 const PROCESS_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Get CLI info, using cache if available and not expired.
-pub async fn get_cli_info(cache: &CliInfoCache, force: bool) -> Result<CliInfo, CliInfoError> {
+pub async fn get_cli_info(
+    cache: &CliInfoCache,
+    agent: Option<&str>,
+    force: bool,
+) -> Result<CliInfo, CliInfoError> {
+    let runtime_kind = agent
+        .map(AgentRuntimeKind::from_agent)
+        .unwrap_or(AgentRuntimeKind::ClaudeCode);
+
     // Check cache
     if !force {
         let guard = cache.inner.read().await;
-        if let Some((ref info, ref instant)) = *guard {
+        if let Some((info, instant)) = guard.get(&runtime_kind) {
             if instant.elapsed() < CACHE_TTL {
                 log::debug!(
-                    "[control] returning cached CLI info ({} models)",
+                    "[control] returning cached CLI info for {} ({} models)",
+                    runtime_kind,
                     info.models.len()
                 );
                 return Ok(info.clone());
@@ -46,6 +58,21 @@ pub async fn get_cli_info(cache: &CliInfoCache, force: bool) -> Result<CliInfo, 
         }
     }
 
+    let cli_info = match runtime_kind {
+        AgentRuntimeKind::ClaudeCode => get_claude_cli_info().await?,
+        AgentRuntimeKind::MiMoCode | AgentRuntimeKind::Codex => {
+            fallback_cli_info_for(&runtime_kind)
+        }
+    };
+
+    // Update cache
+    let mut guard = cache.inner.write().await;
+    guard.insert(runtime_kind, (cli_info.clone(), std::time::Instant::now()));
+
+    Ok(cli_info)
+}
+
+async fn get_claude_cli_info() -> Result<CliInfo, CliInfoError> {
     // Resolve binary
     let claude_bin = resolve_claude_path();
     log::debug!("[control] resolved claude binary: {}", claude_bin);
@@ -145,6 +172,8 @@ pub async fn get_cli_info(cache: &CliInfoCache, force: bool) -> Result<CliInfo, 
     // Read current model from ~/.claude/settings.json
     let current_model = read_claude_settings_model();
     let cli_info = CliInfo {
+        agent: "claude".to_string(),
+        runtime_kind: AgentRuntimeKind::ClaudeCode,
         current_model,
         ..cli_info
     };
@@ -155,10 +184,6 @@ pub async fn get_cli_info(cache: &CliInfoCache, force: bool) -> Result<CliInfo, 
         cli_info.commands.len(),
         &cli_info.current_model
     );
-
-    // Update cache
-    let mut guard = cache.inner.write().await;
-    *guard = Some((cli_info.clone(), std::time::Instant::now()));
 
     Ok(cli_info)
 }
@@ -237,6 +262,8 @@ async fn read_control_response(
                 .and_then(|v| serde_json::from_value(v.clone()).ok());
 
             return Ok(CliInfo {
+                agent: "claude".to_string(),
+                runtime_kind: AgentRuntimeKind::ClaudeCode,
                 models,
                 commands,
                 available_output_styles,
@@ -279,7 +306,29 @@ fn read_claude_settings_model() -> Option<String> {
 
 /// Fallback model list when CLI is unavailable.
 pub fn fallback_cli_info() -> CliInfo {
+    fallback_cli_info_for(&AgentRuntimeKind::ClaudeCode)
+}
+
+pub fn fallback_cli_info_for(runtime_kind: &AgentRuntimeKind) -> CliInfo {
+    match runtime_kind {
+        AgentRuntimeKind::ClaudeCode => fallback_claude_cli_info(),
+        AgentRuntimeKind::MiMoCode => fallback_minimal_cli_info(
+            "mimo",
+            AgentRuntimeKind::MiMoCode,
+            Some("default"),
+            "Default",
+            "MiMo Code runtime default",
+        ),
+        AgentRuntimeKind::Codex => {
+            fallback_minimal_cli_info("codex", AgentRuntimeKind::Codex, None, "", "")
+        }
+    }
+}
+
+fn fallback_claude_cli_info() -> CliInfo {
     CliInfo {
+        agent: "claude".to_string(),
+        runtime_kind: AgentRuntimeKind::ClaudeCode,
         models: vec![
             CliModelInfo {
                 value: "default".to_string(),
@@ -321,6 +370,38 @@ pub fn fallback_cli_info() -> CliInfo {
         available_output_styles: vec!["default".to_string()],
         account: None,
         current_model: read_claude_settings_model(),
+        fetched_at: now_iso(),
+    }
+}
+
+fn fallback_minimal_cli_info(
+    agent: &str,
+    runtime_kind: AgentRuntimeKind,
+    model_value: Option<&str>,
+    model_display_name: &str,
+    model_description: &str,
+) -> CliInfo {
+    let models = model_value
+        .map(|value| {
+            vec![CliModelInfo {
+                value: value.to_string(),
+                display_name: model_display_name.to_string(),
+                description: model_description.to_string(),
+                supports_effort: Some(false),
+                supported_effort_levels: None,
+                supports_adaptive_thinking: Some(false),
+            }]
+        })
+        .unwrap_or_default();
+
+    CliInfo {
+        agent: agent.to_string(),
+        runtime_kind,
+        models,
+        commands: vec![],
+        available_output_styles: vec![],
+        account: None,
+        current_model: None,
         fetched_at: now_iso(),
     }
 }

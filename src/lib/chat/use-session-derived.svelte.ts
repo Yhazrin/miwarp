@@ -175,7 +175,9 @@ export function createSessionDerived(ctx: SessionDerivedContext): SessionDerived
     }));
   });
 
-  const effectiveModels = $derived(platformModels.length > 0 ? platformModels : getCliModels());
+  const effectiveModels = $derived(
+    platformModels.length > 0 ? platformModels : getCliModels(store.agent),
+  );
 
   // ── Derived: permission and skill state ──
 

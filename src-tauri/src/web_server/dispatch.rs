@@ -1238,7 +1238,11 @@ pub async fn dispatch_command(
                 .get("force_refresh")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);
-            match crate::agent::control::get_cli_info(&state.cli_info_cache, force).await {
+            let agent = params.get("agent").and_then(|v| v.as_str());
+            let runtime_kind = agent
+                .map(crate::models::AgentRuntimeKind::from_agent)
+                .unwrap_or_default();
+            match crate::agent::control::get_cli_info(&state.cli_info_cache, agent, force).await {
                 Ok(info) => serde_json::to_value(info).map_err(|e| e.to_string()),
                 Err(e) => {
                     log::warn!(
@@ -1246,8 +1250,10 @@ pub async fn dispatch_command(
                         e.code,
                         e.message
                     );
-                    serde_json::to_value(crate::agent::control::fallback_cli_info())
-                        .map_err(|e| e.to_string())
+                    serde_json::to_value(crate::agent::control::fallback_cli_info_for(
+                        &runtime_kind,
+                    ))
+                    .map_err(|e| e.to_string())
                 }
             }
         }

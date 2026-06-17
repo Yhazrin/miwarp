@@ -29,6 +29,7 @@ export class WsTransport implements Transport {
   private reconnectDelay = 1000;
   private shouldReconnect = true;
   private connectPromise: Promise<void> | null = null;
+  private chunkBuffers = new Map<string, { total: number; parts: Map<number, string> }>();
 
   private buildWsUrl(): string {
     const loc = window.location;
@@ -182,6 +183,8 @@ export class WsTransport implements Transport {
       return;
     }
 
+    if (this.handleChunkMessage(msg)) return;
+
     // Response to a request (has `id` field)
     if (typeof msg.id === "string" && this.pending.has(msg.id)) {
       const req = this.pending.get(msg.id)!;
@@ -241,6 +244,45 @@ export class WsTransport implements Transport {
         }
       }
     }
+  }
+
+  private handleChunkMessage(msg: Record<string, unknown>): boolean {
+    const type = msg.type;
+    if (type === "chunk_begin") {
+      const msgId = typeof msg.msg_id === "string" ? msg.msg_id : "";
+      const total = typeof msg.total === "number" ? msg.total : 0;
+      if (msgId && total > 0) {
+        this.chunkBuffers.set(msgId, { total, parts: new Map() });
+      }
+      return true;
+    }
+
+    if (type === "chunk") {
+      const msgId = typeof msg.msg_id === "string" ? msg.msg_id : "";
+      const idx = typeof msg.idx === "number" ? msg.idx : -1;
+      const data = typeof msg.data === "string" ? msg.data : "";
+      const buffer = this.chunkBuffers.get(msgId);
+      if (!buffer || idx < 0) return true;
+
+      buffer.parts.set(idx, data);
+      if (buffer.parts.size === buffer.total) {
+        const combined = Array.from(buffer.parts.entries())
+          .sort(([a], [b]) => a - b)
+          .map(([, part]) => part)
+          .join("");
+        this.chunkBuffers.delete(msgId);
+        this.handleMessage(combined);
+      }
+      return true;
+    }
+
+    if (type === "chunk_end") {
+      const msgId = typeof msg.msg_id === "string" ? msg.msg_id : "";
+      if (msgId) this.chunkBuffers.delete(msgId);
+      return true;
+    }
+
+    return false;
   }
 
   async invoke<T>(

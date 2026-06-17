@@ -149,6 +149,7 @@
 "chat.toolOutput" = "输出";
 "chat.reconnecting" = "重新连接中";
 "chat.attempt" = "第 %d 次尝试";
+"chat.queuedMessages" = "已排队 %d 条";
 "chat.typeMessage" = "输入消息...";
 "chat.allClear" = "全部正常";
 "chat.errorTitle" = "对话错误";

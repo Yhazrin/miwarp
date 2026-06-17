@@ -20,6 +20,15 @@ describe("getAgentFeatures", () => {
     expect(f.addDirAction).toBe(false);
   });
 
+  it("returns stream-session controls for mimo", () => {
+    const f = getAgentFeatures("mimo");
+    expect(f.effortSelector).toBe(false);
+    expect(f.planModeToggle).toBe(false);
+    expect(f.permissionModeSwitch).toBe(true);
+    expect(f.slashCommandMenu).toBe(false);
+    expect(f.addDirAction).toBe(false);
+  });
+
   it("returns minimal features for unknown agent", () => {
     const f = getAgentFeatures("unknown-agent");
     expect(f.effortSelector).toBe(false);
@@ -28,9 +37,11 @@ describe("getAgentFeatures", () => {
 });
 
 describe("isKnownAgent", () => {
-  it("recognizes claude and codex", () => {
+  it("recognizes claude, codex, and mimo aliases", () => {
     expect(isKnownAgent("claude")).toBe(true);
     expect(isKnownAgent("codex")).toBe(true);
+    expect(isKnownAgent("mimo")).toBe(true);
+    expect(isKnownAgent("mimocode")).toBe(true);
   });
 
   it("returns false for unknown agents", () => {

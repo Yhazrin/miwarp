@@ -149,6 +149,7 @@
 "chat.toolOutput" = "Output";
 "chat.reconnecting" = "Reconnecting";
 "chat.attempt" = "Attempt %d";
+"chat.queuedMessages" = "%d queued";
 "chat.typeMessage" = "Type a message...";
 "chat.allClear" = "All Clear";
 "chat.errorTitle" = "Chat error";

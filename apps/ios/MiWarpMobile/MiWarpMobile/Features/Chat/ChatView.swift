@@ -204,7 +204,8 @@ struct ChatView: View {
             ComposerBar(
                 text: $viewModel.inputText,
                 isRunning: viewModel.reducer.currentStatus == .running,
-                canSend: store.isConnected,
+                canSend: true,
+                queuedCount: viewModel.queuedMessageCount,
                 provider: viewModel.reducer.sessionAgent ?? "MiWarp",
                 model: viewModel.reducer.sessionModel ?? "Model pending",
                 runtimeStatus: store.connectionState,

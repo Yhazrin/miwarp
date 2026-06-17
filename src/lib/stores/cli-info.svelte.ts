@@ -2,42 +2,48 @@ import * as api from "$lib/api";
 import type { CliInfo, CliModelInfo, CliCommand } from "$lib/types";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 
-let _info: CliInfo | null = $state(null);
-let _loading = false;
-let _loaded = false;
+let _infos: Record<string, CliInfo | null> = $state({});
+const _loadingAgents = new Set<string>();
+const _loadedAgents = new Set<string>();
 
-export function getCliModels(): CliModelInfo[] {
-  return _info?.models ?? [];
+function normalizeAgent(agent?: string): string {
+  return agent?.trim() || "claude";
 }
 
-export function getCliCommands(): CliCommand[] {
-  return _info?.commands ?? [];
+export function getCliModels(agent?: string): CliModelInfo[] {
+  return _infos[normalizeAgent(agent)]?.models ?? [];
+}
+
+export function getCliCommands(agent?: string): CliCommand[] {
+  return _infos[normalizeAgent(agent)]?.commands ?? [];
 }
 
 /** The model currently active in Claude Code (from ~/.claude/settings.json). */
-export function getCliCurrentModel(): string | undefined {
-  return _info?.current_model ?? undefined;
+export function getCliCurrentModel(agent?: string): string | undefined {
+  return _infos[normalizeAgent(agent)]?.current_model ?? undefined;
 }
 
-export function getCliInfo_cached(): CliInfo | null {
-  return _info;
+export function getCliInfo_cached(agent?: string): CliInfo | null {
+  return _infos[normalizeAgent(agent)] ?? null;
 }
 
-export async function loadCliInfo(force = false): Promise<CliInfo | null> {
-  if (_loaded && !force) return _info;
-  if (_loading) return _info; // dedupe concurrent calls
-  _loading = true;
+export async function loadCliInfo(force = false, agent?: string): Promise<CliInfo | null> {
+  const key = normalizeAgent(agent);
+  if (_loadedAgents.has(key) && !force) return _infos[key] ?? null;
+  if (_loadingAgents.has(key)) return _infos[key] ?? null; // dedupe concurrent calls
+  _loadingAgents.add(key);
   try {
-    dbg("cli-info", "loading", { force });
-    _info = await api.getCliInfo(force);
-    _loaded = true;
-    dbg("cli-info", "loaded", { models: _info?.models.length });
+    dbg("cli-info", "loading", { agent: key, force });
+    const info = await api.getCliInfo(force, key);
+    _infos = { ..._infos, [key]: info };
+    _loadedAgents.add(key);
+    dbg("cli-info", "loaded", { agent: key, models: info.models.length });
   } catch (e) {
-    dbgWarn("cli-info", "failed to load", e);
+    dbgWarn("cli-info", "failed to load", { agent: key, error: e });
   } finally {
-    _loading = false;
+    _loadingAgents.delete(key);
   }
-  return _info;
+  return _infos[key] ?? null;
 }
 
 // ── CLI Version Info ──
