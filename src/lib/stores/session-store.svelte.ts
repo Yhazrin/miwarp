@@ -3547,23 +3547,6 @@ export class SessionStore {
         break;
       }
 
-      case "command_output": {
-        dbg("store", "command_output received", {
-          contentLen: ev.content.length,
-          hasBatchCtx: !!ctx,
-        });
-        const cmdId = uuid();
-        const cmdEntry: TimelineEntry = {
-          kind: "command_output",
-          id: cmdId,
-          anchorId: cmdId,
-          content: ev.content,
-          ts: eventTs(ev),
-        };
-        this._pushTimeline(ctx, cmdEntry);
-        break;
-      }
-
       case "elicitation_prompt": {
         dbg("store", "elicitation_prompt received", {
           request_id: ev.request_id,
@@ -3681,13 +3664,6 @@ export class SessionStore {
             existing?.tool_use_id,
         });
         this.taskNotifications = updated;
-        break;
-      }
-
-      case "files_persisted": {
-        const newFiles = Array.isArray(ev.files) ? ev.files : [];
-        const merged = [...this.persistedFiles, ...newFiles];
-        this.persistedFiles = merged.length > 500 ? merged.slice(-500) : merged;
         break;
       }
 

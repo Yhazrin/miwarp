@@ -16,8 +16,12 @@
 import type { Reducer } from "./types";
 import { reduceRateLimit } from "./rate-limit";
 import { reduceCompactBoundary } from "./compact-boundary";
+import { reduceCommandOutput } from "./command-output";
+import { reduceFilesPersisted } from "./files-persisted";
 
 export const REDUCERS: Record<string, Reducer> = {
   rate_limit_event: reduceRateLimit,
   compact_boundary: reduceCompactBoundary,
+  command_output: reduceCommandOutput,
+  files_persisted: reduceFilesPersisted,
 };
