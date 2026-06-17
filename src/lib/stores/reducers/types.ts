@@ -4,7 +4,7 @@
  * ReduceCtx is the batch context — fields are written in-place by reducers
  * and then committed to live store state by `_commitReduceCtx`.
  */
-import type { TimelineEntry, HookEvent } from "$lib/types";
+import type { TimelineEntry, HookEvent, BusEvent } from "$lib/types";
 import type { SessionPhase, UsageState, TurnUsage } from "$lib/stores/types";
 
 export interface ReduceCtx {
@@ -30,4 +30,102 @@ export interface ReduceCtx {
   toolTlIndex: Map<string, number>;
   /** tool_use_id → he[] index (only HookEvent entries with tool_use_id). */
   toolHeIndex: Map<string, number>;
+}
+
+/**
+ * Reducer signature. Each event family exposes one or more functions of this shape.
+ *
+ * - `ev`: the bus event to apply (narrowed to the family's event type)
+ * - `ctx`: when non-null, reducers write to ctx (batch replay mode). When null,
+ *   reducers must mutate the store directly (live event mode).
+ * - `store`: the SessionStore instance — exposes both store-only fields and
+ *   helper methods (e.g. `_pushTimeline`) that the reducers need to call.
+ * - `replayOnly`: true during batch replay (`loadRun` / resume / fork).
+ *   Reducers use this to skip live-only side effects (sounds, snapshots,
+ *   permission resync, localStorage writes).
+ */
+export type Reducer = (
+  ev: BusEvent,
+  ctx: ReduceCtx | null,
+  store: SessionStoreReducers,
+  replayOnly: boolean,
+) => void;
+
+/**
+ * Minimal structural type for the store surface that reducers touch.
+ * Defined here (not imported from session-store) to keep this file free of
+ * any runtime circular imports — the SessionStore class satisfies this
+ * structurally as long as the method signatures match.
+ */
+export interface SessionStoreReducers {
+  // ── ctx-managed fields (write to ctx, never directly to store) ──
+  readonly timeline: TimelineEntry[];
+  readonly tools: HookEvent[];
+  readonly streamingText: string;
+  readonly thinkingText: string;
+  readonly model: string;
+  readonly phase: SessionPhase;
+  readonly usage: UsageState;
+  readonly turnUsages: TurnUsage[];
+  readonly error: string;
+  readonly _seenMessageIds: Set<string>;
+  readonly _seenToolIds: Set<string>;
+  readonly _toolTlIndex: Map<string, number>;
+  readonly _toolHeIndex: Map<string, number>;
+
+  // ── store-only fields (always write directly) ──
+  rateLimitStatus: string;
+  rateLimitType: string;
+  rateLimitUtilization: number | null;
+  rateLimitResetsAt: number | null;
+  sessionCommands: Array<{ name: string; description: string; aliases: string[] }>;
+  mcpServers: unknown[];
+  cliVersion: string;
+  fastModeState: unknown;
+  apiKeySource: string;
+  availableAgents: unknown[];
+  availableSkills: unknown[];
+  availablePlugins: unknown[];
+  sessionCwd: string;
+  sessionTools: unknown[];
+  outputStyle: string;
+  sessionInitReceived: boolean;
+  permissionMode: string;
+  permissionModeSetByUser: boolean;
+  microcompactCount: number;
+  compactCount: number;
+  lastCompactedAt: number;
+  run: { id: string; model?: string; session_id?: string; status?: string } | null;
+  ralphLoop: { active: boolean; iteration?: number; reason?: string } | null;
+  pendingElicitations: Map<string, unknown>;
+  // …extended as reducers are extracted; we keep the list focused on what
+  // extracted reducers actually need so the contract grows incrementally.
+
+  // ── helper methods (write to ctx if non-null, else to store) ──
+  _pushTimeline(ctx: ReduceCtx | null, entry: TimelineEntry): void;
+  _pushHookEntry(ctx: ReduceCtx | null, entry: HookEvent): void;
+  _pushOptimisticUser(content: string, attachments?: unknown[]): void;
+  _findToolIdx(ctx: ReduceCtx | null, toolUseId: string): number;
+  _findHeIdx(ctx: ReduceCtx | null, toolUseId: string): number;
+  _findHeIdxByStatus(ctx: ReduceCtx | null, toolUseId: string, status: string): number;
+  _findParentToolIdx(ctx: ReduceCtx | null, parentToolUseId: string): number;
+  _resolveStaleTools(
+    predicate: (t: { status: string; permission_request_id?: string }) => boolean,
+    ctx: ReduceCtx | null,
+  ): void;
+  _materializeOrphanStreamingOnIdle(
+    ctx: ReduceCtx | null,
+    ev: BusEvent,
+    replayOnly: boolean,
+    getTl: () => TimelineEntry[],
+  ): void;
+  _setPhase(to: SessionPhase): void;
+  _saveSnapshotToIdb(runId: string): void;
+  _needsIdleHealthCheck: boolean;
+  _stopping: boolean;
+  _lastProcessedSeq: number;
+  _lastSnapshotSeq: number;
+  _recoveryTimer: ReturnType<typeof setTimeout> | null;
+  unknownEventCount: number;
+  strictMode: boolean;
 }
