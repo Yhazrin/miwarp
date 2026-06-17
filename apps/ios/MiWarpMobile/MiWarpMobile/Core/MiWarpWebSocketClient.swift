@@ -21,6 +21,8 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
 
     private var seqTracker: [String: Int] = [:] // runId -> last seen seq
     private let seqLock = NSLock()
+    private var activeSubscriptions: Set<String> = []
+    private let subscriptionLock = NSLock()
 
     private var reconnectAttempt = 0
     private var maxReconnectAttempt = 20
@@ -87,6 +89,7 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         isIntentionalClose = true
         cancelActiveTransport()
         cancelAllPendingRequests()
+        clearSubscriptionState()
 
         currentURL = url
         currentToken = token
@@ -186,6 +189,7 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         connectionContinuation?.finish()
         connectionContinuation = nil
         cancelAllPendingRequests()
+        clearSubscriptionState()
     }
 
     // MARK: - Send Request
@@ -433,8 +437,13 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         guard !isIntentionalClose else { return }
         guard let url = currentURL, let token = currentToken else { return }
         logger.wsInfo("reconnectImmediate: network available, forcing reconnect")
+        connectionGeneration &+= 1
+        let generation = connectionGeneration
+        isIntentionalClose = true
+        cancelActiveTransport()
+        isIntentionalClose = false
         reconnectAttempt = 0
-        connect(host: url.host ?? "", port: url.port ?? 9476, token: token)
+        performPreflightThenConnect(url: url, token: token, generation: generation)
     }
 
     // MARK: - Reconnect
@@ -542,6 +551,64 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         seqTracker.removeValue(forKey: runId)
     }
 
+    func rememberSubscription(runId: String, lastSeq: Int?) {
+        subscriptionLock.lock()
+        activeSubscriptions.insert(runId)
+        subscriptionLock.unlock()
+
+        if let lastSeq {
+            seqLock.lock()
+            seqTracker[runId] = max(seqTracker[runId] ?? 0, lastSeq)
+            seqLock.unlock()
+        }
+    }
+
+    func forgetSubscription(runId: String) {
+        subscriptionLock.lock()
+        activeSubscriptions.remove(runId)
+        subscriptionLock.unlock()
+        resetSeq(for: runId)
+    }
+
+    private func clearSubscriptionState() {
+        subscriptionLock.lock()
+        activeSubscriptions.removeAll()
+        subscriptionLock.unlock()
+
+        seqLock.lock()
+        seqTracker.removeAll()
+        seqLock.unlock()
+    }
+
+    private func restoreSubscriptions(generation: UInt64) {
+        subscriptionLock.lock()
+        let runIds = Array(activeSubscriptions)
+        subscriptionLock.unlock()
+
+        guard !runIds.isEmpty else { return }
+
+        Task { [weak self] in
+            guard let self else { return }
+            for runId in runIds {
+                guard generation == self.connectionGeneration,
+                      !self.isIntentionalClose,
+                      self.connectionState == .connected
+                else { return }
+
+                let lastSeq = self.lastSeq(for: runId)
+                do {
+                    _ = try await self.sendRequest(
+                        method: "_subscribe",
+                        params: ["run_id": runId, "last_seq": lastSeq]
+                    )
+                    self.logger.rpcInfo("Restored subscription \(runId) from seq \(lastSeq)")
+                } catch {
+                    self.logger.wsError("Restore subscription failed for \(runId): \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
     // MARK: - Cleanup
 
     private func cancelAllPendingRequests() {
@@ -586,6 +653,7 @@ extension MiWarpWebSocketClient: URLSessionWebSocketDelegate {
         logger.wsInfo("WebSocket connected")
         reconnectAttempt = 0
         connectionState = .connected
+        restoreSubscriptions(generation: connectionGeneration)
     }
 
     func urlSession(_ session: URLSession,

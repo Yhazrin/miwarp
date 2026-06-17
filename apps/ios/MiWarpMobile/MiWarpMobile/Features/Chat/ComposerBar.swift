@@ -4,6 +4,7 @@ struct ComposerBar: View {
     @Binding var text: String
     var isRunning: Bool = false
     var canSend: Bool = true
+    var queuedCount: Int = 0
     var provider: String = "MiWarp"
     var model: String = "Model pending"
     var runtimeStatus: ConnectionState = .disconnected
@@ -67,6 +68,21 @@ struct ComposerBar: View {
             .padding(.horizontal, MWSpacing.lg)
             .padding(.vertical, MWSpacing.sm)
             .background(.ultraThinMaterial)
+
+            if queuedCount > 0 {
+                HStack(spacing: MWSpacing.xs) {
+                    Image(systemName: "tray.and.arrow.up.fill")
+                        .font(MWTypography.caption())
+                    Text(String(format: String(localized: "chat.queuedMessages"), queuedCount))
+                        .font(MWTypography.caption())
+                    Spacer()
+                }
+                .foregroundColor(MWColors.statusWarning)
+                .padding(.horizontal, MWSpacing.lg)
+                .padding(.bottom, MWSpacing.xs)
+                .background(.ultraThinMaterial)
+                .transition(.opacity)
+            }
         }
     }
 
@@ -76,10 +92,14 @@ struct ComposerBar: View {
         } label: {
             Image(systemName: "arrow.up.circle.fill")
                 .font(.system(size: 24))
-                .foregroundColor(canSubmit ? MWColors.accentPrimary : theme.textTertiary)
+                .foregroundColor(canSubmit ? sendColor : theme.textTertiary)
         }
         .disabled(!canSubmit)
         .accessibilityLabel(String(localized: "action.send"))
+    }
+
+    private var sendColor: Color {
+        runtimeStatus == .connected ? MWColors.accentPrimary : MWColors.statusWarning
     }
 
     private var stopButton: some View {

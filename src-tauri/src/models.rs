@@ -119,7 +119,7 @@ pub enum ExecutionPath {
 
 /// Which agent runtime backend powers this run.
 /// Determines binary, protocol, settings, and session management.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum AgentRuntimeKind {
     /// Anthropic Claude Code CLI (`claude`)
@@ -1210,6 +1210,9 @@ pub struct CliAccount {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CliInfo {
+    #[serde(default)]
+    pub agent: String,
+    pub runtime_kind: AgentRuntimeKind,
     pub models: Vec<CliModelInfo>,
     pub commands: Vec<CliCommand>,
     #[serde(default)]

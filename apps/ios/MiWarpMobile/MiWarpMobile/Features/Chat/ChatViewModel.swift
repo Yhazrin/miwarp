@@ -13,8 +13,11 @@ final class ChatViewModel: ObservableObject {
     @Published var showRawEvents = false
     @Published var showArtifacts = false
     @Published var rawEvents: [BusEvent] = []
+    @Published private(set) var queuedMessageCount = 0
 
     private let maxRawEvents = 1000
+    private var queuedMessages: [String] = []
+    private var isFlushingQueue = false
 
     private weak var store: MiWarpConnectionStore?
 
@@ -56,6 +59,7 @@ final class ChatViewModel: ObservableObject {
 
         do {
             try await rpc.subscribe(runId: runId, lastSeq: reducer.lastSeq)
+            await flushQueuedMessages()
         } catch {
             MiWarpLogger.shared.error("Subscribe failed: \(error.localizedDescription)")
         }
@@ -79,6 +83,7 @@ final class ChatViewModel: ObservableObject {
             guard !Task.isCancelled, store?.isConnected == true, let rpc = store?.rpc else { continue }
             do {
                 try await rpc.subscribe(runId: runId, lastSeq: reducer.lastSeq)
+                await flushQueuedMessages()
             } catch {
                 MiWarpLogger.shared.error("Re-subscribe failed: \(error.localizedDescription)")
             }
@@ -95,11 +100,48 @@ final class ChatViewModel: ObservableObject {
         let message = inputText
         inputText = ""
 
+        guard store?.isConnected == true else {
+            enqueueMessage(message)
+            return
+        }
+
         do {
             try await rpc.sendMessage(runId: runId, message: message)
         } catch {
-            inputText = message
-            self.error = String(format: String(localized: "error.failedToSend"), error.localizedDescription)
+            if store?.isConnected == true {
+                inputText = message
+                self.error = String(format: String(localized: "error.failedToSend"), error.localizedDescription)
+            } else {
+                enqueueMessage(message)
+            }
+        }
+    }
+
+    private func enqueueMessage(_ message: String) {
+        queuedMessages.append(message)
+        queuedMessageCount = queuedMessages.count
+        error = nil
+        MiWarpLogger.shared.info("Queued mobile message for run \(runId)")
+    }
+
+    private func flushQueuedMessages() async {
+        guard !isFlushingQueue, store?.isConnected == true, let rpc = store?.rpc else { return }
+        isFlushingQueue = true
+        defer { isFlushingQueue = false }
+
+        while !queuedMessages.isEmpty {
+            let message = queuedMessages[0]
+            do {
+                try await rpc.sendMessage(runId: runId, message: message)
+                queuedMessages.removeFirst()
+                queuedMessageCount = queuedMessages.count
+            } catch {
+                if store?.isConnected != true {
+                    return
+                }
+                self.error = String(format: String(localized: "error.failedToSend"), error.localizedDescription)
+                return
+            }
         }
     }
 

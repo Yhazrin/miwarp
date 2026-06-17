@@ -50,11 +50,13 @@ final class MiWarpRPC: @unchecked Sendable {
             params["last_seq"] = lastSeq
         }
         _ = try await client.sendRequest(method: "_subscribe", params: params)
+        client.rememberSubscription(runId: runId, lastSeq: lastSeq)
         logger.rpcInfo("Subscribed to run \(runId)")
     }
 
     func unsubscribe(runId: String) async throws {
         _ = try await client.sendRequest(method: "_unsubscribe", params: ["run_id": runId])
+        client.forgetSubscription(runId: runId)
         logger.rpcInfo("Unsubscribed from run \(runId)")
     }
 

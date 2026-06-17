@@ -680,11 +680,11 @@ export async function testRemoteHost(
 }
 
 // CLI Control Protocol
-export async function getCliInfo(forceRefresh?: boolean): Promise<CliInfo> {
-  dbg("api", "getCliInfo", { forceRefresh });
+export async function getCliInfo(forceRefresh?: boolean, agent?: string): Promise<CliInfo> {
+  dbg("api", "getCliInfo", { forceRefresh, agent });
   try {
-    const info = await invoke<CliInfo>("get_cli_info", { forceRefresh });
-    dbg("api", "getCliInfo →", { models: info.models.length });
+    const info = await invoke<CliInfo>("get_cli_info", { forceRefresh, agent });
+    dbg("api", "getCliInfo →", { agent: info.agent, models: info.models.length });
     return info;
   } catch (e) {
     dbgWarn("api", "getCliInfo error", e);

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getCliModels } from "$lib/stores/cli-info.svelte";
+  import { getCliModels, loadCliInfo } from "$lib/stores/cli-info.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import MiPopover from "$lib/ui/MiPopover.svelte";
@@ -18,10 +18,14 @@
   let showCustom = $state(false);
   let customModel = $state("");
 
-  let models = $derived(getCliModels());
+  let models = $derived(getCliModels(_agent));
+
+  $effect(() => {
+    void loadCliInfo(false, _agent);
+  });
 
   let displayValue = $derived.by(() => {
-    const found = getCliModels().find((mdl) => mdl.value === value);
+    const found = getCliModels(_agent).find((mdl) => mdl.value === value);
     return found?.displayName ?? (value || t("modelSelector_default"));
   });
 

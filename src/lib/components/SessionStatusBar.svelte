@@ -6,7 +6,7 @@
   import { dbg } from "$lib/utils/debug";
   import ProcessVisibilityPicker from "$lib/components/ProcessVisibilityPicker.svelte";
   import StatusBarModelMenu from "$lib/components/StatusBarModelMenu.svelte";
-  import { getCliModels } from "$lib/stores/cli-info.svelte";
+  import { getCliModels, loadCliInfo } from "$lib/stores/cli-info.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { fmtNumber } from "$lib/i18n/format";
   import { formatCostDisplay } from "$lib/utils/format";
@@ -333,7 +333,7 @@
   const _formatCost = formatCostDisplay;
 
   // ── Model / process visibility menus (Bits UI) ──
-  let models = $derived(platformModels.length > 0 ? platformModels : getCliModels());
+  let models = $derived(platformModels.length > 0 ? platformModels : getCliModels(agent));
   let modelMenuOpen = $state(false);
   let pvMenuOpen = $state(false);
 
@@ -396,6 +396,12 @@
     modelMenuOpen = next;
     if (next) pvMenuOpen = false;
   }
+
+  $effect(() => {
+    if (platformModels.length === 0) {
+      void loadCliInfo(false, agent);
+    }
+  });
 
   function handlePvMenuOpenChange(next: boolean) {
     pvMenuOpen = next;
@@ -498,7 +504,7 @@
 
   let modelLabel = $derived.by(() => {
     // Check platform models first, then CLI models
-    const all = [...(platformModels ?? []), ...getCliModels()];
+    const all = [...(platformModels ?? []), ...getCliModels(agent)];
     const found = all.find((m) => m.value === model);
     if (found) return found.displayName;
     const fuzzy = all.find((m) => model.includes(m.value) && m.value !== "default");

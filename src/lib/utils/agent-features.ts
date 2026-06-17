@@ -23,11 +23,21 @@ const CODEX_FEATURES: AgentFeatures = {
   addDirAction: false,
 };
 
+const MIMO_FEATURES: AgentFeatures = {
+  effortSelector: false,
+  planModeToggle: false,
+  permissionModeSwitch: true,
+  slashCommandMenu: false,
+  addDirAction: false,
+};
+
 const MINIMAL_FEATURES: AgentFeatures = { ...CODEX_FEATURES };
 
 const FEATURES_MAP: Record<string, AgentFeatures> = {
   claude: CLAUDE_FEATURES,
   codex: CODEX_FEATURES,
+  mimo: MIMO_FEATURES,
+  mimocode: MIMO_FEATURES,
 };
 
 /** Get UI feature flags for a given agent. Unknown agents get minimal features. */

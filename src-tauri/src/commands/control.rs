@@ -6,12 +6,18 @@ use tauri::State;
 pub async fn get_cli_info(
     cache: State<'_, CliInfoCache>,
     force_refresh: Option<bool>,
+    agent: Option<String>,
 ) -> Result<CliInfo, String> {
     log::debug!(
-        "[control] get_cli_info IPC, force={}",
-        force_refresh.unwrap_or(false)
+        "[control] get_cli_info IPC, agent={:?}, force={}",
+        agent,
+        force_refresh.unwrap_or(false),
     );
-    match control::get_cli_info(&cache, force_refresh.unwrap_or(false)).await {
+    let runtime_kind = agent
+        .as_deref()
+        .map(crate::models::AgentRuntimeKind::from_agent)
+        .unwrap_or_default();
+    match control::get_cli_info(&cache, agent.as_deref(), force_refresh.unwrap_or(false)).await {
         Ok(info) => Ok(info),
         Err(e) => {
             log::warn!(
@@ -19,7 +25,7 @@ pub async fn get_cli_info(
                 e.code,
                 e.message
             );
-            Ok(control::fallback_cli_info())
+            Ok(control::fallback_cli_info_for(&runtime_kind))
         }
     }
 }

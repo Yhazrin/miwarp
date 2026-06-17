@@ -37,6 +37,11 @@ import type { ReduceCtx } from "./reducers/types";
 import { updateInstalledVersion, getCliCommands } from "./cli-info.svelte";
 import * as snapshotCache from "$lib/utils/snapshot-cache";
 import { getTransport } from "$lib/transport";
+import {
+  subscribeRunFresh,
+  subscribeRunFromReplay,
+  subscribeRunFromSeq,
+} from "$lib/chat/session-subscription";
 import { LS_CLI_VERSION } from "$lib/utils/storage-keys";
 import { getAgentFeatures, type AgentFeatures } from "$lib/utils/agent-features";
 import { dedupeMcpServersByName } from "$lib/utils/mcp";
@@ -427,7 +432,8 @@ export class SessionStore {
     // Check available skills (preloaded from filesystem, available before session_init)
     if (this.availableSkills.some((s) => s.toLowerCase() === name)) return true;
     // Check session commands (available after session_init) or static CLI info
-    const cmds = this.sessionCommands.length > 0 ? this.sessionCommands : getCliCommands();
+    const cmds =
+      this.sessionCommands.length > 0 ? this.sessionCommands : getCliCommands(this.agent);
     if (cmds.length > 0) {
       return cmds.some(
         (c) =>
@@ -1938,11 +1944,11 @@ export class SessionStore {
                   if (this.phase === "cached") this._setPhase("idle");
                 }
               } else if (isIdleSnap) {
-                this._wsSubscribeWithSeq(id, this._lastProcessedSeq);
+                subscribeRunFromSeq(id, this._lastProcessedSeq);
               }
               // Terminal: no catchup needed, just subscribe for WS if applicable
               if (!isIdleSnap) {
-                this._wsSubscribeWithSeq(id, this._lastProcessedSeq);
+                subscribeRunFromSeq(id, this._lastProcessedSeq);
               }
             } else {
               snapshotBody = null; // shape validation failed
@@ -1964,7 +1970,7 @@ export class SessionStore {
           // Stale: a newer load owns the store; do not touch _isLoadingReplay.
           if (ms === null) return;
           reducerMs = ms;
-          this._wsSubscribeAfterLoad(id, busEvents);
+          subscribeRunFromReplay(id, busEvents);
           // Write guard: distinguish "legit empty session" from "reducer anomaly"
           if (snapshotEligible && (this.timeline.length > 0 || busEvents.length === 0)) {
             this._saveSnapshotToIdb(id);
@@ -2125,7 +2131,7 @@ export class SessionStore {
         // The $effect in chat page will call subscribeCurrent again (idempotent).
         const mw = getEventMiddleware();
         mw.subscribeCurrent(run.id, this);
-        this._wsSubscribeNewSession(run.id);
+        subscribeRunFresh(run.id);
         dbg("store", "stream session start, run=", run.id);
         const backendAtt = mapAttachments(attachments) ?? undefined;
         await api.startSession(
@@ -2371,7 +2377,7 @@ export class SessionStore {
       if (isStream) {
         if (snapshotBody && this._tryApplySnapshot(snapshotBody)) {
           snapshotHit = true;
-          this._wsSubscribeWithSeq(runId, this._lastProcessedSeq);
+          subscribeRunFromSeq(runId, this._lastProcessedSeq);
         } else {
           // Fallback: snapshot corrupted → re-fetch events if needed
           if (!busEvents.length && snapshotBody) {
@@ -2387,7 +2393,7 @@ export class SessionStore {
             reducerMs = ms;
           }
           // Always subscribe — even empty history needs real-time events
-          this._wsSubscribeAfterLoad(runId, busEvents);
+          subscribeRunFromReplay(runId, busEvents);
         }
 
         // Resume makes session go live → old snapshot is always stale
@@ -2515,7 +2521,7 @@ export class SessionStore {
     // Subscribe to NEW run — live events from stream-json will route here.
     getEventMiddleware().subscribeCurrent(newRunId, this);
     dbg("store", "fork: middleware subscribed to new run", newRunId);
-    this._wsSubscribeAfterLoad(newRunId, allForkEvents);
+    subscribeRunFromReplay(newRunId, allForkEvents);
 
     // Step 2 (stream-json resume) is NOT started here.
     // handleResume will dismiss the overlay first, then call connectSession()
@@ -2536,7 +2542,7 @@ export class SessionStore {
     const sid = sessionId ?? this.run?.session_id;
     if (!sid) throw new Error("No session_id available for connectSession");
     dbg("store", "connectSession: establishing stream-json connection", { runId, sessionId: sid });
-    this._wsSubscribeNewSession(runId);
+    subscribeRunFresh(runId);
     this._setPhase("spawning");
     await api.startSession(
       runId,
@@ -2547,28 +2553,6 @@ export class SessionStore {
       this.platformId || undefined,
     );
     this._startSpawnTimeout(runId);
-  }
-
-  // ── WS subscribe helpers (browser-only, no-op on desktop) ──
-
-  /** Browser: notify WS server to start pushing real-time events after history load */
-  private _wsSubscribeAfterLoad(runId: string, events: BusEvent[]): void {
-    if (getTransport().isDesktop()) return;
-    const maxSeq =
-      events.length > 0
-        ? (((events[events.length - 1] as Record<string, unknown>)._seq as number) ?? 0)
-        : 0;
-    getTransport().subscribeRun(runId, maxSeq);
-  }
-
-  private _wsSubscribeNewSession(runId: string): void {
-    if (getTransport().isDesktop()) return;
-    getTransport().subscribeRun(runId, 0);
-  }
-
-  private _wsSubscribeWithSeq(runId: string, lastSeq: number): void {
-    if (getTransport().isDesktop()) return;
-    getTransport().subscribeRun(runId, lastSeq);
   }
 
   /** Call from page cleanup to prevent stale async writes after unmount. */

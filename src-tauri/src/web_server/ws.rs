@@ -149,21 +149,13 @@ pub async fn send_envelope(ws_tx: &WsSink, envelope: &Value) -> Result<(), Strin
 /// Send an RPC result response over WebSocket
 async fn send_result(ws_tx: &WsSink, id: &Option<String>, result: Value) {
     let resp = json!({"id": id, "result": result});
-    let _ = ws_tx
-        .lock()
-        .await
-        .send(Message::Text(resp.to_string()))
-        .await;
+    let _ = send_envelope(ws_tx, &resp).await;
 }
 
 /// Send an RPC error response over WebSocket
 async fn send_error(ws_tx: &WsSink, id: &Option<String>, error: &str) {
     let resp = json!({"id": id, "error": error});
-    let _ = ws_tx
-        .lock()
-        .await
-        .send(Message::Text(resp.to_string()))
-        .await;
+    let _ = send_envelope(ws_tx, &resp).await;
 }
 
 /// Handle a single WebSocket connection
@@ -242,14 +234,7 @@ async fn handle_ws(socket: WebSocket, state: AppState, auth_subject: auth::WsAut
                         "payload": msg.payload,
                     });
 
-                    let text = envelope.to_string();
-                    if ws_tx_a
-                        .lock()
-                        .await
-                        .send(Message::Text(text))
-                        .await
-                        .is_err()
-                    {
+                    if send_envelope(&ws_tx_a, &envelope).await.is_err() {
                         break; // Client disconnected
                     }
 
@@ -325,14 +310,7 @@ async fn handle_ws(socket: WebSocket, state: AppState, auth_subject: auth::WsAut
                         "payload": msg.payload,
                     });
 
-                    let text = envelope.to_string();
-                    if ws_tx_b
-                        .lock()
-                        .await
-                        .send(Message::Text(text))
-                        .await
-                        .is_err()
-                    {
+                    if send_envelope(&ws_tx_b, &envelope).await.is_err() {
                         break;
                     }
                 }
@@ -638,8 +616,7 @@ async fn flush_replay_buffer(
             if event.seq <= effective_checkpoint {
                 continue;
             }
-            let text = event.envelope.to_string();
-            if ws_tx.lock().await.send(Message::Text(text)).await.is_err() {
+            if send_envelope(ws_tx, &event.envelope).await.is_err() {
                 let mut sess = session.lock().await;
                 sess.replaying.remove(run_id);
                 return Err(false);
@@ -692,11 +669,7 @@ async fn send_full_reload(ws_tx: &WsSink, session: &Arc<Mutex<WsSession>>, run_i
         "run_id": run_id,
     });
     log::debug!("[ws] sending _full_reload for run={}", run_id);
-    let _ = ws_tx
-        .lock()
-        .await
-        .send(Message::Text(envelope.to_string()))
-        .await;
+    let _ = send_envelope(ws_tx, &envelope).await;
 }
 
 /// Replay A-class events from events.jsonl since `last_seq` for a given run.
@@ -721,8 +694,7 @@ async fn replay_events(
             "payload": event,
         });
 
-        let text = envelope.to_string();
-        if ws_tx.lock().await.send(Message::Text(text)).await.is_err() {
+        if send_envelope(ws_tx, &envelope).await.is_err() {
             return Err("WS send failed during replay".to_string());
         }
 

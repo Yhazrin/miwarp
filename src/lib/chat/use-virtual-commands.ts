@@ -111,7 +111,7 @@ async function _handleVirtualCommand(
     const allCmds = mergeWithVirtual(
       store.sessionInitReceived && store.sessionCommands.length > 0
         ? store.sessionCommands
-        : mergeProjectCommands(getCliCommands(), projectCommands),
+        : mergeProjectCommands(getCliCommands(store.agent), projectCommands),
     );
     const skillSet = new Set<string>(store.availableSkills);
     appendCommandOutput(buildHelpText(allCmds, skillSet));

@@ -180,7 +180,7 @@
           isRemote={store.isRemote}
           cliCommands={store.sessionInitReceived && store.sessionCommands.length > 0
             ? store.sessionCommands
-            : mergeProjectCommands(getCliCommands(), projectCommands)}
+            : mergeProjectCommands(getCliCommands(store.agent), projectCommands)}
           models={effectiveModels}
           currentModel={store.model}
           permissionMode={store.permissionMode}
