@@ -22,6 +22,7 @@ import { dbg, dbgWarn } from "$lib/utils/debug";
 import { t } from "$lib/i18n/index.svelte";
 import { yieldToMain } from "$lib/utils/yield";
 import { IMAGE_TYPES } from "$lib/utils/file-types";
+import { eventTs, eventTsMs } from "$lib/utils/event-ts";
 import { uuid } from "$lib/utils/uuid";
 import {
   type SessionPhase,
@@ -89,14 +90,9 @@ class OpGuard {
   }
 }
 
-// ── Helpers ──
+// eventTs / eventTsMs moved to $lib/utils/event-ts so reducers can use them.
 
-function eventTs(ev: BusEvent): string {
-  const r = ev as Record<string, unknown>;
-  return (r.ts as string) ?? (r.timestamp as string) ?? new Date().toISOString();
-}
-
-/** Backfill anchorId for old snapshots/entries that predate the anchor system. Recursive for subTimelines. */
+// Backfill anchorId for old snapshots/entries that predate the anchor system. Recursive for subTimelines.
 function backfillAnchorId(entry: TimelineEntry): TimelineEntry {
   const e = entry as Record<string, unknown>;
   if (e.anchorId) return entry; // already has anchorId
@@ -107,13 +103,6 @@ function backfillAnchorId(entry: TimelineEntry): TimelineEntry {
       patched.subTimeline.map(backfillAnchorId);
   }
   return patched;
-}
-
-/** Parse event timestamp to epoch milliseconds (falls back to Date.now()). */
-function eventTsMs(ev: BusEvent): number {
-  const iso = eventTs(ev);
-  const ms = new Date(iso).getTime();
-  return Number.isFinite(ms) ? ms : Date.now();
 }
 
 // ── Internal batch state (plain objects, no reactivity) ──
@@ -3554,49 +3543,6 @@ export class SessionStore {
               request_id: ev.request_id,
             });
           }
-        }
-        break;
-      }
-
-      case "compact_boundary": {
-        const isMicro = (ev.trigger ?? "").startsWith("micro");
-        if (isMicro) {
-          this.microcompactCount++;
-        } else {
-          this.compactCount++;
-          // Full compaction: insert timeline separator
-          const tokensInfo = ev.pre_tokens ? ` (${Math.round(ev.pre_tokens / 1000)}k tokens)` : "";
-          const sepId = uuid();
-          const entry: TimelineEntry = {
-            kind: "separator",
-            id: sepId,
-            anchorId: sepId,
-            content: `Context compacted${tokensInfo}`,
-            ts: eventTs(ev),
-          };
-          this._pushTimeline(ctx, entry);
-          // Reset per-turn token counts so contextUtilization reflects the
-          // compacted state instead of showing stale pre-compact values.
-          // The next usage_update event will supply accurate post-compact numbers.
-          // Only reset on full compaction — micro-compaction keeps the existing
-          // usage so the progress bar does not flash 90%→0%→85%.
-          dbg("store", "compact: reset context usage", { preTokens: ev.pre_tokens });
-          const prev = ctx ? ctx.usage : this.usage;
-          const reset = {
-            ...prev,
-            inputTokens: 0,
-            cacheReadTokens: 0,
-            cacheWriteTokens: 0,
-            contextWindowUsedPercentage: undefined,
-            contextWindowRemainingPercentage: undefined,
-          };
-          if (ctx) ctx.usage = reset;
-          else this.usage = reset;
-        }
-        // Only set lastCompactedAt during live mode — during replay
-        // the timestamp would be meaningless (Date.now() ≠ original event time).
-        if (!replayOnly) {
-          this.lastCompactedAt = Date.now();
         }
         break;
       }

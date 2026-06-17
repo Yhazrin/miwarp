@@ -8,3 +8,4 @@
 export type { ReduceCtx, Reducer, SessionStoreReducers } from "./types";
 export { REDUCERS } from "./registry";
 export { reduceRateLimit } from "./rate-limit";
+export { reduceCompactBoundary } from "./compact-boundary";
