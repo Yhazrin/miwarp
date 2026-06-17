@@ -116,7 +116,32 @@ export interface SessionStoreReducers {
     startedAt?: string;
     reason: string | null;
   } | null;
-  pendingElicitations: Map<string, unknown>;
+  taskNotifications: Map<
+    string,
+    {
+      task_id: string;
+      status: string;
+      message: string;
+      startedAt: number;
+      data: unknown;
+      output_file?: string;
+      task_type?: string;
+      summary?: string;
+      tool_use_id?: string;
+    }
+  >;
+  pendingElicitations: Map<
+    string,
+    {
+      requestId: string;
+      mcpServerName: string;
+      message: string;
+      elicitationId: string;
+      mode?: string;
+      url?: string;
+      requestedSchema: unknown;
+    }
+  >;
   persistedFiles: string[];
   systemStatus: { status: string } | null;
   authStatus: { is_authenticating: boolean; output: string[] } | null;
