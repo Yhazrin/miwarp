@@ -15,7 +15,9 @@
  */
 import type { Reducer } from "./types";
 import { reduceRateLimit } from "./rate-limit";
+import { reduceCompactBoundary } from "./compact-boundary";
 
 export const REDUCERS: Record<string, Reducer> = {
   rate_limit_event: reduceRateLimit,
+  compact_boundary: reduceCompactBoundary,
 };

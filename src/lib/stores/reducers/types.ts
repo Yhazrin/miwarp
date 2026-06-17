@@ -59,19 +59,27 @@ export type Reducer = (
  */
 export interface SessionStoreReducers {
   // ── ctx-managed fields (write to ctx, never directly to store) ──
+  // Marked readonly on the surface because, from a reducer's point of view,
+  // these represent the "current snapshot" — reducers write to ctx (which is
+  // then committed back via _commitReduceCtx), not to the live store. The
+  // store itself owns mutable versions of the same names.
   readonly timeline: TimelineEntry[];
   readonly tools: HookEvent[];
   readonly streamingText: string;
   readonly thinkingText: string;
   readonly model: string;
   readonly phase: SessionPhase;
-  readonly usage: UsageState;
+  usage: UsageState; // writable in store-direct mode (else write to ctx)
   readonly turnUsages: TurnUsage[];
   readonly error: string;
   readonly _seenMessageIds: Set<string>;
   readonly _seenToolIds: Set<string>;
   readonly _toolTlIndex: Map<string, number>;
   readonly _toolHeIndex: Map<string, number>;
+
+  // When ctx is null, reducers write directly to the store. These overrides
+  // declare the writable versions for the "store-direct" code path.
+  _setModel(v: string): void;
 
   // ── store-only fields (always write directly) ──
   rateLimitStatus: string;
