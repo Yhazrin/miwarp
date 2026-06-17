@@ -107,7 +107,15 @@ export interface SessionStoreReducers {
   compactCount: number;
   lastCompactedAt: number;
   run: { id: string; model?: string; session_id?: string; status?: string } | null;
-  ralphLoop: { active: boolean; iteration?: number; reason?: string } | null;
+  ralphLoop: {
+    active: boolean;
+    prompt?: string;
+    iteration: number;
+    maxIterations?: number;
+    completionPromise?: string | null;
+    startedAt?: string;
+    reason: string | null;
+  } | null;
   pendingElicitations: Map<string, unknown>;
   persistedFiles: string[];
   systemStatus: { status: string } | null;
