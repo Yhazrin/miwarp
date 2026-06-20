@@ -73,7 +73,7 @@ export interface SessionStoreReducers {
   readonly model: string;
   readonly phase: SessionPhase;
   usage: UsageState; // writable in store-direct mode (else write to ctx)
-  readonly turnUsages: TurnUsage[];
+  turnUsages: TurnUsage[];
   readonly error: string;
   readonly _seenMessageIds: Set<string>;
   readonly _seenToolIds: Set<string>;
@@ -103,6 +103,8 @@ export interface SessionStoreReducers {
   sessionInitReceived: boolean;
   permissionMode: string;
   permissionModeSetByUser: boolean;
+  durationMs: number;
+  numTurns: number;
   microcompactCount: number;
   compactCount: number;
   lastCompactedAt: number;
@@ -155,6 +157,7 @@ export interface SessionStoreReducers {
   _findToolIdx(ctx: ReduceCtx | null, toolUseId: string): number;
   _findHeIdx(ctx: ReduceCtx | null, toolUseId: string): number;
   _findHeIdxByStatus(ctx: ReduceCtx | null, toolUseId: string, status: string): number;
+  _isStreamMode(ctx: ReduceCtx | null): boolean;
   _findParentToolIdx(ctx: ReduceCtx | null, parentToolUseId: string): number;
   _updateSubTimelineTool(
     parentToolUseId: string,
@@ -162,6 +165,11 @@ export interface SessionStoreReducers {
     updater: (t: Record<string, unknown>) => Record<string, unknown>,
     ctx: ReduceCtx | null,
   ): void;
+  _updateToolInAnySubTimeline(
+    toolUseId: string,
+    updater: (old: Record<string, unknown>) => Record<string, unknown>,
+    ctx: ReduceCtx | null,
+  ): boolean;
   _resolveStaleTools(
     predicate: (t: { status: string; permission_request_id?: string }) => boolean,
     ctx: ReduceCtx | null,

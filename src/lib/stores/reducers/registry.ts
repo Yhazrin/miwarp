@@ -32,6 +32,9 @@ import {
 import { reduceTaskNotification } from "./task-notification";
 import { reduceElicitationPrompt } from "./elicitation-prompt";
 import { reduceControlCancelled } from "./control-cancelled";
+import { reduceUserMessage } from "./user-message";
+import { reduceUsageUpdate } from "./usage-update";
+import { reducePermissionDenied } from "./permission-denied";
 import { reduceRaw } from "./raw";
 
 export const REDUCERS: Record<string, Reducer> = {
@@ -53,5 +56,8 @@ export const REDUCERS: Record<string, Reducer> = {
   task_notification: reduceTaskNotification,
   elicitation_prompt: reduceElicitationPrompt,
   control_cancelled: reduceControlCancelled,
+  user_message: reduceUserMessage,
+  usage_update: reduceUsageUpdate,
+  permission_denied: reducePermissionDenied,
   raw: reduceRaw,
 };
