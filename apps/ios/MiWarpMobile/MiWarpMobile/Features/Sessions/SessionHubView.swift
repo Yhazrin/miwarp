@@ -668,7 +668,9 @@ struct SessionHubView: View {
                 isLoading = false
             }
             MiHaptics.success()
+            #if canImport(CoreSpotlight)
             SpotlightIndexer.indexSessions(loaded)
+            #endif
 
             // Resolve any pending Spotlight session after load
             if let pendingId = pendingSpotlightSessionId,

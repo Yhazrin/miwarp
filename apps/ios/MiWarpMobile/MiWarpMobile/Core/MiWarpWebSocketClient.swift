@@ -391,20 +391,14 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
             seqTracker[runId] = seq
             seqLock.unlock()
 
-            // Parse payload
-            if let payloadData = response.payload {
-                do {
-                    let payloadJSON = try JSONEncoder().encode(payloadData)
-                    let payload = try JSONDecoder().decode(BusEventPayload.self, from: payloadJSON)
-                    let event = BusEvent(seq: seq, runId: runId, payload: payload)
-                    eventContinuation?.yield(event)
-                } catch {
-                    logger.eventDebug("Failed to parse bus event payload: \(error.localizedDescription)")
-                    // Yield as raw event
-                    let rawPayload = BusEventPayload.raw(RawPayload(type: "unparseable", data: [:]))
-                    let event = BusEvent(seq: seq, runId: runId, payload: rawPayload)
-                    eventContinuation?.yield(event)
-                }
+            if let payload = response.busEventPayload {
+                let event = BusEvent(seq: seq, runId: runId, payload: payload)
+                eventContinuation?.yield(event)
+            } else if response.payload != nil {
+                logger.eventDebug("Failed to parse bus event payload")
+                let rawPayload = BusEventPayload.raw(RawPayload(type: "unparseable", data: [:]))
+                let event = BusEvent(seq: seq, runId: runId, payload: rawPayload)
+                eventContinuation?.yield(event)
             }
         }
     }

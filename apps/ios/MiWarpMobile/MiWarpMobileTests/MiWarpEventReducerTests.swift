@@ -135,6 +135,44 @@ final class MiWarpEventReducerTests: XCTestCase {
         XCTAssertEqual(reducer.messages[0].toolCalls.count, 1)
     }
 
+    func testToolDeltaAndEndUpdateTheIndexedToolAcrossMultipleMessages() {
+        reducer.processEvent(BusEvent(
+            seq: 1,
+            runId: "r1",
+            payload: .messageDelta(MessageDeltaPayload(role: "assistant", content: nil, delta: "first", messageId: "msg-1"))
+        ))
+        reducer.processEvent(BusEvent(
+            seq: 2,
+            runId: "r1",
+            payload: .toolStart(ToolStartPayload(toolName: "bash", toolUseId: "tool-1", input: nil))
+        ))
+        reducer.processEvent(BusEvent(
+            seq: 3,
+            runId: "r1",
+            payload: .messageDelta(MessageDeltaPayload(role: "assistant", content: nil, delta: "second", messageId: "msg-2"))
+        ))
+        reducer.processEvent(BusEvent(
+            seq: 4,
+            runId: "r1",
+            payload: .toolStart(ToolStartPayload(toolName: "read", toolUseId: "tool-2", input: nil))
+        ))
+        reducer.processEvent(BusEvent(
+            seq: 5,
+            runId: "r1",
+            payload: .toolInputDelta(ToolInputDeltaPayload(toolUseId: "tool-1", partialJson: "{\"command\":"))
+        ))
+        reducer.processEvent(BusEvent(
+            seq: 6,
+            runId: "r1",
+            payload: .toolEnd(ToolEndPayload(toolName: "bash", toolUseId: "tool-1", output: AnyCodable("done"), status: "success"))
+        ))
+
+        XCTAssertEqual(reducer.messages[0].toolCalls[0].inputPreview, "{\"command\":")
+        XCTAssertEqual(reducer.messages[0].toolCalls[0].output, "done")
+        XCTAssertTrue(reducer.messages[0].toolCalls[0].isComplete)
+        XCTAssertFalse(reducer.messages[1].toolCalls[0].isComplete)
+    }
+
     // MARK: - Usage Accumulation
 
     func testUsageTokensAccumulate() {
@@ -284,6 +322,31 @@ final class MiWarpEventReducerTests: XCTestCase {
 
         reducer.removePermission(requestId: "req-1")
         XCTAssertEqual(reducer.pendingPermissions.count, 0)
+    }
+
+    // MARK: - WebSocket decoding
+
+    func testWSResponseDecodesBusEventPayloadDirectly() throws {
+        let json = """
+        {
+          "event": "bus-event",
+          "seq": 12,
+          "run_id": "run-1",
+          "payload": {
+            "type": "user_message",
+            "text": "hello",
+            "role": "user"
+          }
+        }
+        """.data(using: .utf8)!
+
+        let response = try JSONDecoder().decode(WSResponse.self, from: json)
+
+        XCTAssertNil(response.payload)
+        guard case .userMessage(let payload) = response.busEventPayload else {
+            return XCTFail("Expected directly decoded user_message payload")
+        }
+        XCTAssertEqual(payload.content, "hello")
     }
 }
 

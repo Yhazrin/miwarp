@@ -159,7 +159,7 @@
 		B85BC39AF301E61AA2D7BDDF /* MiWarpEventReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiWarpEventReducer.swift; sourceTree = "<group>"; };
 		B9EBC6E7E1C3A6687A1AC5BD /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
 		BBC11E713D887C54BA4BE895 /* MiWarpLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MiWarpLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		BDFAFD6DD96630C2562FBFDE /* MiWarpMobileTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = file; name = MiWarpMobileTests.xctest; path = MiWarp.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BDFAFD6DD96630C2562FBFDE /* MiWarpMobileTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = file; name = MiWarpMobileTests.xctest; path = MiWarpMobileTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0E65980CBFDCE0641A89EB6 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		C1355A6A96238DD857E69FC3 /* LiveActivityDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityDemoView.swift; sourceTree = "<group>"; };
 		C531F74CCAF09BF7733D0EAA /* MWAdaptiveLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MWAdaptiveLayout.swift; sourceTree = "<group>"; };
@@ -663,9 +663,11 @@
 					"@loader_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.miwarp.mobile.tests;
+				PRODUCT_MODULE_NAME = MiWarpMobileTests;
+				PRODUCT_NAME = MiWarpMobileTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MiWarpMobile.app/MiWarpMobile";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MiWarp.app/MiWarp";
 			};
 			name = Debug;
 		};
@@ -682,6 +684,8 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.miwarp.mobile;
+				PRODUCT_MODULE_NAME = MiWarpMobile;
+				PRODUCT_NAME = MiWarp;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -698,9 +702,11 @@
 					"@loader_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.miwarp.mobile.tests;
+				PRODUCT_MODULE_NAME = MiWarpMobileTests;
+				PRODUCT_NAME = MiWarpMobileTests;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MiWarpMobile.app/MiWarpMobile";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MiWarp.app/MiWarp";
 			};
 			name = Release;
 		};
@@ -757,6 +763,8 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.miwarp.mobile;
+				PRODUCT_MODULE_NAME = MiWarpMobile;
+				PRODUCT_NAME = MiWarp;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -824,7 +832,6 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_NAME = MiWarp;
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -888,7 +895,6 @@
 				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				PRODUCT_NAME = MiWarp;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
