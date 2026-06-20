@@ -2749,8 +2749,6 @@ export class SessionStore {
     ctx: ReduceCtx | null,
     getTl: () => TimelineEntry[],
     getSeenMsg: () => Set<string>,
-    getHe: () => HookEvent[],
-    replayOnly: boolean,
   ): boolean {
     switch (ev.type) {
       case "message_delta": {
@@ -2875,71 +2873,6 @@ export class SessionStore {
           ...(savedThinking ? { thinkingText: savedThinking } : {}),
         };
         this._pushTimeline(ctx, entry);
-        return true;
-      }
-      case "user_message": {
-        const tl = getTl();
-        if (!replayOnly) {
-          const match = tl.findLast(
-            (e) => e.kind === "user" && e.content === ev.text && !e.cliUuid,
-          );
-          if (match && match.kind === "user") {
-            if (ev.uuid) {
-              const idx = tl.indexOf(match);
-              const updated = { ...match, cliUuid: ev.uuid, anchorId: ev.uuid };
-              if (ctx) ctx.tl[idx] = updated;
-              else {
-                const u = [...this.timeline];
-                u[idx] = updated;
-                this.timeline = u;
-              }
-            }
-            return true;
-          }
-        }
-        const newId = uuid();
-        const entry: TimelineEntry = {
-          kind: "user",
-          id: newId,
-          anchorId: ev.uuid || newId,
-          content: ev.text,
-          ts: eventTs(ev),
-          ...(ev.uuid ? { cliUuid: ev.uuid } : {}),
-        };
-        this._pushTimeline(ctx, entry);
-        const pendingIdx = tl.findIndex(
-          (e) => e.kind === "tool" && e.tool.status === "ask_pending",
-        );
-        if (pendingIdx >= 0) {
-          const old = tl[pendingIdx] as Extract<TimelineEntry, { kind: "tool" }>;
-          const resolved: TimelineEntry = {
-            ...old,
-            tool: { ...old.tool, status: "success", output: { answer: ev.text } },
-          };
-          if (ctx) ctx.tl[pendingIdx] = resolved;
-          else {
-            const u = [...this.timeline];
-            u[pendingIdx] = resolved;
-            this.timeline = u;
-          }
-          if (!this._isStreamMode(ctx)) {
-            const he = getHe();
-            const hIdx = this._findHeIdxByStatus(ctx, old.id, "running");
-            if (hIdx >= 0) {
-              const updatedHe: HookEvent = {
-                ...he[hIdx],
-                status: "done",
-                hook_type: "PostToolUse",
-              };
-              if (ctx) ctx.he[hIdx] = updatedHe;
-              else {
-                const u = [...this.tools];
-                u[hIdx] = updatedHe;
-                this.tools = u;
-              }
-            }
-          }
-        }
         return true;
       }
       default:
@@ -3127,7 +3060,7 @@ export class SessionStore {
     this._lastReduceEventType = ev.type;
 
     // Delegate to domain-specific reducers
-    if (this._reduceMessage(ev, ctx, getTl, getSeenMsg, getHe, replayOnly)) return;
+    if (this._reduceMessage(ev, ctx, getTl, getSeenMsg)) return;
     if (this._reduceTool(ev, ctx, replayOnly, getTl, getHe, getSeenTool)) return;
     if (this._reduceFromRegistry(ev, ctx, replayOnly)) return;
     switch (ev.type) {
@@ -3331,108 +3264,6 @@ export class SessionStore {
           }
         }
         break;
-
-      case "usage_update": {
-        const u: UsageState = {
-          inputTokens: ev.input_tokens,
-          outputTokens: ev.output_tokens,
-          cacheReadTokens: ev.cache_read_tokens ?? 0,
-          cacheWriteTokens: ev.cache_write_tokens ?? 0,
-          cost: ev.total_cost_usd,
-          modelUsage: ev.model_usage,
-          contextWindowUsedPercentage: ev.context_window_used_percentage,
-          contextWindowRemainingPercentage: ev.context_window_remaining_percentage,
-          durationApiMs: ev.duration_api_ms,
-        };
-        // Don't let an all-zero-token usage (from error results) overwrite real data.
-        // CLI sometimes sends cost-only usage on error — preserve previous token counts.
-        const prev = ctx ? ctx.usage : this.usage;
-        const hasTokens =
-          u.inputTokens > 0 ||
-          u.outputTokens > 0 ||
-          u.cacheReadTokens > 0 ||
-          u.cacheWriteTokens > 0;
-        const merged = hasTokens ? u : { ...prev, cost: Math.max(prev.cost, u.cost) };
-        // Preserve modelUsage/durationApiMs even on zero-token update (error results may still have them)
-        if (!hasTokens && u.modelUsage) merged.modelUsage = u.modelUsage;
-        if (!hasTokens && u.durationApiMs) merged.durationApiMs = u.durationApiMs;
-        if (!hasTokens && u.contextWindowUsedPercentage != null) {
-          merged.contextWindowUsedPercentage = u.contextWindowUsedPercentage;
-        }
-        if (!hasTokens && u.contextWindowRemainingPercentage != null) {
-          merged.contextWindowRemainingPercentage = u.contextWindowRemainingPercentage;
-        }
-        if (ctx) ctx.usage = merged;
-        else this.usage = merged;
-        // Store duration_ms and num_turns from result events
-        if (ev.duration_ms != null) this.durationMs = ev.duration_ms;
-        if (ev.num_turns != null) this.numTurns = ev.num_turns;
-
-        const shouldRecordTurnUsage =
-          hasTokens ||
-          u.cost > 0 ||
-          u.durationApiMs != null ||
-          ev.duration_ms != null ||
-          ev.num_turns != null ||
-          ev.model_usage != null;
-        if (!shouldRecordTurnUsage) break;
-
-        // Append per-turn usage snapshot (raw event data, not merged)
-        // Use backend-authoritative turn_index when available; fall back to counting
-        // user entries in the timeline (for backwards compat with older events).
-        const tl = getTl();
-        const fallbackIdx = tl.filter((e) => e.kind === "user").length;
-        const turnIdx = ev.turn_index ?? fallbackIdx;
-        dbg("store", "usage_update turn_index", {
-          backend: ev.turn_index,
-          fallback: fallbackIdx,
-          used: turnIdx,
-        });
-        const turnSnap: TurnUsage = {
-          turnIndex: turnIdx,
-          inputTokens: u.inputTokens,
-          outputTokens: u.outputTokens,
-          cacheReadTokens: u.cacheReadTokens,
-          cacheWriteTokens: u.cacheWriteTokens,
-          cost: u.cost,
-          durationApiMs: u.durationApiMs,
-          durationMs: ev.duration_ms,
-        };
-        if (ctx) {
-          ctx.turnUsages.push(turnSnap);
-        } else {
-          this.turnUsages = [...this.turnUsages, turnSnap];
-        }
-        break;
-      }
-
-      case "permission_denied": {
-        // Retroactively update: find matching tool, change to "permission_denied"
-        const tl = getTl();
-        const tIdx = this._findToolIdx(ctx, ev.tool_use_id);
-        if (tIdx >= 0) {
-          const old = tl[tIdx] as Extract<TimelineEntry, { kind: "tool" }>;
-          const updated: TimelineEntry = {
-            ...old,
-            tool: { ...old.tool, status: "permission_denied" },
-          };
-          if (ctx) {
-            ctx.tl[tIdx] = updated;
-          } else {
-            const u = [...this.timeline];
-            u[tIdx] = updated;
-            this.timeline = u;
-          }
-        } else {
-          // Not in main timeline — search subTimelines (CLI may omit parent_tool_use_id)
-          this._updateToolInAnySubTimeline(
-            ev.tool_use_id,
-            (t) => ({ ...t, status: "permission_denied" as const }),
-            ctx,
-          );
-        }
-        break;
-      }
 
       case "permission_prompt": {
         if (!replayOnly) dispatchLiveBusSound(ev);
