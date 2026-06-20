@@ -6,7 +6,7 @@
 //! for auto-context dedup.
 
 use crate::models::BusEvent;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::oneshot;
 
@@ -139,29 +139,14 @@ pub fn should_trigger_auto_context(auto_ctx_id: u32, last: Option<u32>) -> bool 
 }
 
 // ── Default timeouts ──
+// Re-exported from `super::constants` for backward compatibility.
+// New code should import from `crate::agent::constants` directly.
 
-/// User turns get generous timeouts (CLI can take a long time)
-pub const USER_SOFT_TIMEOUT: Duration = Duration::from_secs(300);
-pub const USER_HARD_TIMEOUT: Duration = Duration::from_secs(1800);
-
-/// Internal turns (auto-context) timeouts
-pub const INTERNAL_SOFT_TIMEOUT: Duration = Duration::from_secs(15);
-pub const INTERNAL_HARD_TIMEOUT: Duration = Duration::from_secs(60);
-
-/// Quarantine secondary timeout (after interrupt sent, wait for CLI response)
-/// v1.0.6 / hardening A1: tightened from 10s → 5s. Empirically, a CLI that
-/// fails to ack a control within 5s is effectively dead — UI shouldn't sit
-/// silent for the full original 10s.
-pub const QUARANTINE_DEADLINE: Duration = Duration::from_secs(5);
-
-/// Threshold (per 60s window) for json_parse_fail_count before we declare
-/// the CLI stream desynced and force-fail the run. See session_actor.rs.
-pub const PROTOCOL_DESYNC_THRESHOLD: u32 = 5;
-/// Sliding window (seconds) for the desync detector.
-pub const PROTOCOL_DESYNC_WINDOW_SECS: u64 = 60;
-
-/// Tick interval for the independent timeout clock
-pub const TICK_INTERVAL: Duration = Duration::from_millis(250);
+pub use super::constants::{
+    INTERNAL_HARD_TIMEOUT, INTERNAL_SOFT_TIMEOUT, PROTOCOL_DESYNC_THRESHOLD,
+    PROTOCOL_DESYNC_WINDOW_SECS, QUARANTINE_DEADLINE, TICK_INTERVAL, USER_HARD_TIMEOUT,
+    USER_SOFT_TIMEOUT,
+};
 
 // ── Activity-based deadline reset ──
 
@@ -192,6 +177,7 @@ pub fn apply_activity_reset(quarantine: bool, active_turn: &mut Option<ActiveTur
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     #[test]
     fn auto_ctx_skip_duplicate() {

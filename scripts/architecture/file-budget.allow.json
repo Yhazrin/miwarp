@@ -1,0 +1,27 @@
+{
+  "_doc": "Tracked exceptions to the file-size budget. Each entry must have a justification. New files that exceed the fail threshold MUST be split, not added here. See scripts/architecture/file-budget.mjs and docs/architecture/quality-foundation.md.",
+  "exempt": [
+    {"path": "src/lib/stores/session-store.svelte.ts", "reason": "Primary chat state. Reducers being extracted incrementally — see commits abb27593..32927506."},
+    {"path": "src/lib/stores/session-store.test.ts", "reason": "Black-box tests for the primary chat state. Tests scale with state."},
+    {"path": "src/lib/types.ts", "reason": "Frontend type barrel. Largest types/* file; per-domain split is the long-term plan but is itself a behavior-changing refactor."},
+    {"path": "src/lib/components/PromptInput.svelte", "reason": "Chat prompt composer (2.4k lines). Hosts slash/at-mention/file UI; sub-components exist but parent owns state."},
+    {"path": "src/lib/components/ToolActivity.svelte", "reason": "Tool call timeline view (1.5k lines). Sub-panels embedded inline; refactor to children is planned."},
+    {"path": "src/lib/sensory/sounds/packs.ts", "reason": "Sound pack definitions. Data-only, no logic density."},
+    {"path": "src/routes/+layout.svelte", "reason": "Root layout shell with sidebar/tabs. God-store constraint tracked in memory."},
+    {"path": "src/lib/api.ts", "reason": "Frontend API barrel (1.6k). 14 typed invoke wrappers; per-domain split is the long-term plan."},
+    {"path": "src/routes/chat/+page.svelte", "reason": "Chat page (1.8k). Was 4.6k+ before refactor; further split is feature work, not hygiene."},
+    {"path": "src/routes/plugins/+page.svelte", "reason": "Plugins marketplace (2.6k). Multiple sub-tabs in one file by design."},
+    {"path": "src/routes/settings/+page.svelte", "reason": "Settings page (1.9k). Tabbed content lives inline to preserve scroll state."},
+    {"path": "src/routes/teams/+page.svelte", "reason": "Teams page (1.6k). Tabbed content + team detail."},
+    {"path": "src-tauri/src/agent/session_actor.rs", "reason": "CLI session lifecycle owner (2.8k lines). Single actor is the design — splitting would break the mailbox invariants."},
+    {"path": "src-tauri/src/agent/claude_protocol.rs", "reason": "Protocol parsing (3.4k lines). Pure data mapping; split is a behavior-preserving refactor tracked in quality-foundation ADR."},
+    {"path": "src-tauri/src/commands/session.rs", "reason": "Tauri command surface for sessions (2.8k). Largest Tauri command file; per-command split is the plan."},
+    {"path": "src-tauri/src/commands/diagnostics.rs", "reason": "Diagnostics commands (1.8k). Includes ad-hoc inspection helpers accumulated over time."},
+    {"path": "src-tauri/src/models.rs", "reason": "All BusEvent variants + DTOs (2.5k). BusEvent is the largest enum; per-domain model modules are the long-term plan."},
+    {"path": "src-tauri/src/storage/runs.rs", "reason": "Run history persistence (710 lines)."},
+    {"path": "src-tauri/src/storage/events.rs", "reason": "EventWriter (replayable A-class events). 667 lines; splitting would scatter IO + serde logic."},
+    {"path": "src-tauri/src/storage/cli_sessions.rs", "reason": "CLI session discovery + import (2k+). Pre-existing coupling to agent/* (see direction-check KNOWN_VIOLATIONS)."},
+    {"path": "src-tauri/src/web_server/mod.rs", "reason": "Web server module entry (699 lines). Mostly re-exports + state wiring."},
+    {"path": "src-tauri/src/web_server/dispatch.rs", "reason": "Web server request dispatch (1.5k+). One large router; per-feature split planned."}
+  ]
+}
