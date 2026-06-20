@@ -268,6 +268,21 @@ enum MWColors {
         }
     }
 
+    /// "Filled pill" color for a run status. waitingApproval intentionally
+    /// resolves to the brighter `statusApproval` token so approval pills remain
+    /// visually distinct from generic `statusWarning` in compact UI surfaces.
+    static func pillColor(for status: RunStatus) -> Color {
+        switch status {
+        case .pending: return statusPending
+        case .running: return statusRunning
+        case .idle: return statusIdle
+        case .waitingApproval: return statusApproval
+        case .completed: return statusSuccess
+        case .failed: return statusError
+        case .stopped: return statusStopped
+        }
+    }
+
     // MARK: Theme Definitions
 
     // Default: pure black + white, Xiaomi orange accent
