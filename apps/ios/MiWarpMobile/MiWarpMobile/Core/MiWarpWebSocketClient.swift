@@ -9,12 +9,12 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
     private var urlSession: URLSession?
     private let logger = MiWarpLogger.shared
 
-    private struct PendingRequest {
-        let continuation: CheckedContinuation<AnyCodable, Error>
-        let timeoutTask: Task<Void, Never>?
-    }
-    private var pendingRequests: [String: PendingRequest] = [:]
-    private let requestLock = NSLock()
+    /// Owns the in-flight request/continuation map. Replaces the ad-hoc
+    /// `requestLock + [String: PendingRequest]` pair so callers can `await` safe
+    /// accessors instead of touching `NSLock` from async contexts.
+    private let requestRegistry = WSRequestRegistry()
+
+    private let chunkReassembler = WSChunkReassembler()
 
     private var eventContinuation: AsyncStream<BusEvent>.Continuation?
     private var connectionContinuation: AsyncStream<ConnectionState>.Continuation?
@@ -35,10 +35,6 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
     private var currentURL: URL?
     private var currentToken: String?
     private var connectionGeneration: UInt64 = 0
-
-    // v1.0.6 / 3.5: chunk reassembly buffers (msg_id → (total, parts))
-    private var chunkBuffers: [String: (total: Int, parts: [Int: String])] = [:]
-    private let chunkLock = NSLock()
 
     private(set) var connectionState: ConnectionState = .disconnected {
         didSet {
@@ -73,10 +69,10 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
 
     func connect(host: String, port: Int, token: String) {
         var components = URLComponents()
-        components.scheme = "ws"
+        components.scheme = WSEndpoint.wsScheme
         components.host = host
         components.port = port
-        components.path = "/ws"
+        components.path = WSEndpoint.wsPath
 
         guard let url = components.url else {
             connectionState = .serverUnavailable(reason: "Invalid URL")
@@ -163,8 +159,8 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
 
         var request = URLRequest(url: url)
         // Use header auth for security — token not in URL query logs
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue(token, forHTTPHeaderField: "X-MiWarp-Token")
+        request.setValue(WSHeader.bearerPrefix + token, forHTTPHeaderField: WSHeader.authorization)
+        request.setValue(token, forHTTPHeaderField: WSHeader.token)
 
         let task = urlSession?.webSocketTask(with: request)
         webSocketTask = task
@@ -211,26 +207,31 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
             // Timeout after 30 seconds
             let timeoutTask = Task { [weak self] in
                 try? await Task.sleep(for: .seconds(30))
-                self?.requestLock.lock()
-                let req = self?.pendingRequests.removeValue(forKey: id)
-                self?.requestLock.unlock()
-                req?.continuation.resume(throwing: WSError.timeout)
+                guard let req = await self?.requestRegistry.take(id: id) else { return }
+                req.continuation.resume(throwing: WSError.timeout)
             }
 
-            requestLock.lock()
-            pendingRequests[id] = PendingRequest(continuation: continuation, timeoutTask: timeoutTask)
-            requestLock.unlock()
+            let pending = WSPendingRequest(continuation: continuation, timeoutTask: timeoutTask)
+            Task { [weak self] in
+                await self?.requestRegistry.register(id: id, request: pending)
+            }
 
             webSocketTask?.send(.string(jsonString)) { [weak self] error in
-                if let error {
-                    self?.logger.wsError("Send failed: \(error.localizedDescription)")
-                    self?.requestLock.lock()
-                    let req = self?.pendingRequests.removeValue(forKey: id)
-                    self?.requestLock.unlock()
-                    req?.timeoutTask?.cancel()
-                    req?.continuation.resume(throwing: error)
-                }
+                guard let error else { return }
+                self?.logger.wsError("Send failed: \(error.localizedDescription)")
+                self?.resumePendingRequest(id: id, error: error)
             }
+        }
+    }
+
+    /// Fail the in-flight request `id` (if any) with the supplied error and
+    /// cancel its timeout. Safe to call from non-async contexts — bridges to
+    /// the actor via a Task.
+    private func resumePendingRequest(id: String, error: Error) {
+        Task { [weak self] in
+            guard let req = await self?.requestRegistry.take(id: id) else { return }
+            req.timeoutTask.cancel()
+            req.continuation.resume(throwing: error)
         }
     }
 
@@ -271,31 +272,38 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
 
     private func handleMessage(_ data: Data) {
         // v1.0.6 / 3.5: check for chunk protocol messages before normal parsing
-        if handleChunkMessage(data) { return }
+        if let chunk = chunkReassembler.accept(data) {
+            switch chunk {
+            case .chunkHandled:
+                return
+            case .reassembled(let combinedData):
+                logger.wsInfo("Chunk reassembly complete (\(combinedData.count) bytes)")
+                handleMessage(combinedData)
+                return
+            }
+        }
 
         do {
             let response = try JSONDecoder().decode(WSResponse.self, from: data)
 
             // Handle broadcast events (no id)
-            if response.id == nil, let event = response.event {
+            if response.id == nil, response.event != nil {
                 handleBroadcast(response: response)
                 return
             }
 
             // Handle RPC response
             if let id = response.id {
-                requestLock.lock()
-                let req = pendingRequests.removeValue(forKey: id)
-                requestLock.unlock()
-
-                req?.timeoutTask?.cancel()
-
-                if let error = response.error {
-                    req?.continuation.resume(throwing: WSError.serverError(error))
-                } else if let result = response.result {
-                    req?.continuation.resume(returning: result)
-                } else {
-                    req?.continuation.resume(returning: AnyCodable([:]))
+                Task { [weak self] in
+                    guard let req = await self?.requestRegistry.take(id: id) else { return }
+                    req.timeoutTask.cancel()
+                    if let error = response.error {
+                        req.continuation.resume(throwing: WSError.serverError(error))
+                    } else if let result = response.result {
+                        req.continuation.resume(returning: result)
+                    } else {
+                        req.continuation.resume(returning: AnyCodable([:]))
+                    }
                 }
             }
         } catch {
@@ -303,69 +311,10 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         }
     }
 
-    /// v1.0.6 / 3.5: Handle chunk protocol messages (chunk_begin, chunk, chunk_end).
-    /// Returns true if the message was a chunk message (consumed), false otherwise.
-    private func handleChunkMessage(_ data: Data) -> Bool {
-        // Quick peek at the "type" field without full decode
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let type = json["type"] as? String
-        else {
-            return false
-        }
-
-        switch type {
-        case "chunk_begin":
-            guard let msgId = json["msg_id"] as? String,
-                  let total = json["total"] as? Int else { return true }
-            chunkLock.lock()
-            chunkBuffers[msgId] = (total: total, parts: [:])
-            chunkLock.unlock()
-            return true
-
-        case "chunk":
-            guard let msgId = json["msg_id"] as? String,
-                  let idx = json["idx"] as? Int,
-                  let chunkData = json["data"] as? String else { return true }
-            chunkLock.lock()
-            chunkBuffers[msgId]?.parts[idx] = chunkData
-            let buffer = chunkBuffers[msgId]
-            chunkLock.unlock()
-
-            // Check if all parts received
-            if let buffer, buffer.parts.count == buffer.total {
-                // Reassemble
-                let sorted = buffer.parts.sorted { $0.key < $1.key }
-                let combined = sorted.map(\.value).joined()
-                chunkLock.lock()
-                chunkBuffers.removeValue(forKey: msgId)
-                chunkLock.unlock()
-
-                logger.wsInfo("Chunk reassembly complete: \(msgId) (\(combined.count) bytes)")
-                // Process the reassembled message
-                if let combinedData = combined.data(using: .utf8) {
-                    handleMessage(combinedData)
-                }
-            }
-            return true
-
-        case "chunk_end":
-            // Cleanup any leftover buffer (should already be consumed)
-            if let msgId = json["msg_id"] as? String {
-                chunkLock.lock()
-                chunkBuffers.removeValue(forKey: msgId)
-                chunkLock.unlock()
-            }
-            return true
-
-        default:
-            return false
-        }
-    }
-
     private func handleBroadcast(response: WSResponse) {
         guard let eventName = response.event else { return }
 
-        if eventName == "_full_reload" {
+        if eventName == WSEventName.fullReload {
             if let runId = response.runId {
                 seqLock.lock()
                 seqTracker.removeValue(forKey: runId)
@@ -378,7 +327,7 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
             return
         }
 
-        if eventName == "bus-event", let runId = response.runId {
+        if eventName == WSEventName.busEvent, let runId = response.runId {
             let seq = response.seq ?? 0
 
             // Dedup
@@ -504,8 +453,8 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
             return url.absoluteString
         }
-        if components.queryItems?.contains(where: { $0.name == "token" }) == true {
-            components.queryItems = [URLQueryItem(name: "token", value: "••••")]
+        if components.queryItems?.contains(where: { $0.name == WSEndpoint.tokenQueryItem }) == true {
+            components.queryItems = [URLQueryItem(name: WSEndpoint.tokenQueryItem, value: WSEndpoint.maskedToken)]
         }
         return components.string ?? url.absoluteString
     }
@@ -514,8 +463,8 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
         guard var components = URLComponents(url: wsURL, resolvingAgainstBaseURL: false) else {
             return nil
         }
-        components.scheme = "http"
-        components.path = "/login"
+        components.scheme = WSEndpoint.httpScheme
+        components.path = WSEndpoint.loginPath
         components.queryItems = nil
         return components.url
     }
@@ -592,8 +541,8 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
                 let lastSeq = self.lastSeq(for: runId)
                 do {
                     _ = try await self.sendRequest(
-                        method: "_subscribe",
-                        params: ["run_id": runId, "last_seq": lastSeq]
+                        method: WSMethod.subscribe,
+                        params: [WSField.runId: runId, WSField.lastSeq: lastSeq]
                     )
                     self.logger.rpcInfo("Restored subscription \(runId) from seq \(lastSeq)")
                 } catch {
@@ -606,31 +555,8 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
     // MARK: - Cleanup
 
     private func cancelAllPendingRequests() {
-        requestLock.lock()
-        let requests = pendingRequests
-        pendingRequests.removeAll()
-        requestLock.unlock()
-        for (_, req) in requests {
-            req.timeoutTask?.cancel()
-            req.continuation.resume(throwing: WSError.notConnected)
-        }
-    }
-
-    // MARK: - Errors
-
-    enum WSError: LocalizedError {
-        case notConnected
-        case encodingFailed
-        case timeout
-        case serverError(String)
-
-        var errorDescription: String? {
-            switch self {
-            case .notConnected: return String(localized: "wsError.notConnected")
-            case .encodingFailed: return String(localized: "wsError.encodingFailed")
-            case .timeout: return String(localized: "wsError.timeout")
-            case .serverError(let msg): return msg
-            }
+        Task { [weak self] in
+            await self?.requestRegistry.failAll(with: .notConnected)
         }
     }
 }
@@ -661,7 +587,7 @@ extension MiWarpWebSocketClient: URLSessionWebSocketDelegate {
 
         // 4401 = token rotated / session expired / token version mismatch
         // Reconnecting won't help — surface auth error immediately
-        if closeCode.rawValue == 4401 {
+        if closeCode.rawValue == WSCloseCode.tokenExpired {
             connectionState = .authFailed(reason: String(localized: "wsError.tokenExpired"))
             return
         }
@@ -689,12 +615,5 @@ extension MiWarpWebSocketClient: URLSessionWebSocketDelegate {
             connectionState = .serverUnavailable(reason: connectionTroubleshootingReason(for: error))
         }
         // If already disconnected/intentional, do nothing
-    }
-}
-
-private extension ConnectionState {
-    var isReconnecting: Bool {
-        if case .reconnecting = self { return true }
-        return false
     }
 }
