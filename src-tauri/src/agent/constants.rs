@@ -57,9 +57,12 @@ mod tests {
 
     #[test]
     fn protocol_desync_threshold_and_window_are_consistent() {
-        // 5 failures within 60s → fail-fast.
-        assert!(PROTOCOL_DESYNC_THRESHOLD >= 1);
-        assert!(PROTOCOL_DESYNC_WINDOW_SECS >= 10);
+        // 5 failures within 60s → fail-fast. Compiled-out constant asserts
+        // (silence clippy::assertions_on_constants while keeping the contract).
+        const {
+            assert!(PROTOCOL_DESYNC_THRESHOLD >= 1);
+            assert!(PROTOCOL_DESYNC_WINDOW_SECS >= 10);
+        }
     }
 
     #[test]
