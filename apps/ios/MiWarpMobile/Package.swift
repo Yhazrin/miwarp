@@ -14,7 +14,7 @@ let package = Package(
         ),
     ],
     targets: [
-        // SwiftPM is a lightweight, cross-platform harness for the reducer/model
+        // SwiftPM is a lightweight, cross-platform harness for the protocol/reducer
         // unit tests. The full iOS application is built by the Xcode project.
         .target(
             name: "MiWarpMobile",
@@ -28,7 +28,14 @@ let package = Package(
                 "SpotlightIndexer.swift",
             ],
             sources: [
-                "MiWarpModels.swift",
+                "AnyCodable.swift",
+                "ArtifactsTypes.swift",
+                "BusEvent.swift",
+                "BusEventPayload.swift",
+                "ConnectionTypes.swift",
+                "RunTypes.swift",
+                "WebSocketMessages.swift",
+                "WSDecoder.swift",
                 "MiWarpEventReducer.swift",
             ]
         ),
