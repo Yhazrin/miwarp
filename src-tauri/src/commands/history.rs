@@ -648,7 +648,7 @@ mod tests {
         sort_entries(&mut sorted, &filters);
 
         // Page 1: offset=0, limit=3
-        let page1: Vec<_> = sorted.iter().skip(0).take(3).collect();
+        let page1: Vec<_> = sorted.iter().take(3).collect();
         assert_eq!(page1.len(), 3);
         assert_eq!(page1[0].run_id, "r0");
         assert_eq!(page1[2].run_id, "r2");

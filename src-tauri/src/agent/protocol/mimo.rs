@@ -484,7 +484,7 @@ mod tests {
         match result {
             ParseResult::Events(events) => {
                 // Should have RunState + UsageUpdate
-                assert!(events.len() >= 1);
+                assert!(!events.is_empty());
                 let has_run_state = events
                     .iter()
                     .any(|e| matches!(e, BusEvent::RunState { state, .. } if state == "completed"));
