@@ -768,16 +768,6 @@ export async function stopSession(runId: string): Promise<void> {
   return invoke("stop_session", { runId });
 }
 
-export interface LoadRunDataResult {
-  run: TaskRun;
-  busEvents: BusEvent[];
-}
-
-export async function loadRunData(id: string, syncCli = false): Promise<LoadRunDataResult> {
-  dbg("api", "loadRunData", { id, syncCli });
-  return invoke<LoadRunDataResult>(CMD.load_run_data, { id, syncCli });
-}
-
 export async function getBusEvents(id: string, sinceSeq?: number): Promise<BusEvent[]> {
   dbg("api", "getBusEvents", { id, sinceSeq });
   return invoke<BusEvent[]>(CMD.get_bus_events, { id, sinceSeq });

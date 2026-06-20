@@ -1291,9 +1291,6 @@ pub async fn dispatch_command(
         | "check_for_updates"
         | "send_chat_message" => Err("desktop only".to_string()),
 
-        // ── Explicitly blocked ──
-        "load_run_data" => Err("unknown method".to_string()),
-
         // ── IPC-only (not exposed over WS) ──
         "get_web_server_token" => Err("desktop only".to_string()),
 

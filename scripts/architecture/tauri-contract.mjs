@@ -49,49 +49,20 @@ if (handlerFns.size === 0) {
 
 const { unregistered, backendOnly } = classifyTauriDrift(cmdValues, handlerFns);
 
-/**
- * Pre-existing drift that needs follow-up refactoring. Each entry pairs a
- * wire command string with a tracking note explaining why the drift exists
- * and where to fix it. New drift MUST NOT be added here — add it to
- * `docs/architecture/cross-platform-capability-matrix.md` and ship a fix
- * in the same PR.
- */
-const KNOWN_VIOLATIONS = new Map([
-  [
-    "load_run_data",
-    {
-      note: "Pre-existing dead code: CMD.load_run_data is declared in tauri-commands.ts and referenced by the never-called loadRunData() helper in src/lib/api.ts:776, but the backend never registered it in generate_handler!. The WS dispatcher explicitly blocks the method as 'unknown method'. Refactor target: delete the unused CMD entry + loadRunData() export.",
-    },
-  ],
-]);
-
-const realUnregistered = unregistered.filter((v) => !KNOWN_VIOLATIONS.has(v));
 console.log(
   `  frontend CMD values: ${cmdValues.size}  |  backend handlers: ${handlerFns.size}`,
 );
 console.log(
   `  span: ${rel(REPO_ROOT, libRsFile)}:${span.start}:${span.end}`,
 );
-if (KNOWN_VIOLATIONS.size > 0) {
-  console.log(
-    `  known-violations allowlist: ${KNOWN_VIOLATIONS.size} (see docs/architecture/cross-platform-capability-matrix.md)`,
-  );
-}
 
 const violations = [];
-for (const value of realUnregistered) {
+for (const value of unregistered) {
   // Find the frontend key that produced this value (for a useful message).
   const key = cmdEntries.find((e) => e.value === value)?.key ?? "<unknown>";
   violations.push(
     `CMD.${key} → "${value}" is invoked from the frontend but is NOT registered in tauri::generate_handler! in ${rel(REPO_ROOT, libRsFile)}`,
   );
-}
-
-// Surface known violations as audit hints so they're not invisible.
-for (const [value, { note }] of KNOWN_VIOLATIONS) {
-  if (cmdValues.has(value)) {
-    console.log(`    [known] CMD.${value} → ${note}`);
-  }
 }
 
 const hint =

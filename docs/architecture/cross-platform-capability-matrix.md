@@ -33,7 +33,7 @@ client compatibility there is tracked separately.
 
 | Metric                                          | Count |
 |-------------------------------------------------|------:|
-| Frontend `CMD` registry entries                 | **156** |
+| Frontend `CMD` registry entries                 | **155** |
 | Backend handlers in `generate_handler!`         | **194** |
 | Backend-only handlers (allowed)                 | **38** |
 | Frontend references unregistered (must be 0)    | **0** |
@@ -42,12 +42,6 @@ client compatibility there is tracked separately.
 never invokes them via `CMD`. Examples: scheduled-task handlers
 (`scheduler::*`), IPC-only commands like `get_web_server_token`, and
 worktree helpers. These are intentionally retained for plugin / CLI access.
-
-**Known pre-existing drift** (allowlisted; tracked for refactor):
-
-| Drift                              | Source                                                         | Status           |
-|------------------------------------|----------------------------------------------------------------|------------------|
-| `CMD.load_run_data` not registered | `src/lib/api.ts:776` defines `loadRunData()` but it's never called from any consumer; the WS dispatch explicitly blocks it as `"unknown method"` | Dead code — delete the CMD entry + `loadRunData()` export |
 
 ---
 
@@ -64,7 +58,7 @@ intentionally non-WS. Methods fall into one of four categories:
 | Supported                         | **130** | Returns JSON-RPC `result` (or `error` for app-level failures)       |
 | Desktop-only                      | **5**   | Returns `Err("desktop only")` — these depend on tray, hotkeys, login |
 | IPC-only (not exposed over WS)    | **1**   | `get_web_server_token` — secret rotation, never sent over the wire   |
-| Explicitly blocked                | **1**   | `load_run_data` — deprecated; falls back to `"unknown method"`       |
+| Explicitly blocked                | **0**   | —                                                               |
 | Internal WS (handled in `ws.rs`)  | **3**   | `_subscribe`, `_unsubscribe`, `_full_reload` — protocol-internal    |
 
 **Desktop-only methods** (5):
@@ -192,18 +186,13 @@ why. Each is enforced (or surfaced) by the contract scripts.
    `get_user_settings` results when served over WS. Browser/iOS clients see
    the token only via the WebSocket handshake URL or HTTP login cookie.
 
-3. **`load_run_data` is dead-code**. Frontend declares it in `CMD`,
-   `src/lib/api.ts` exports `loadRunData()`, but no consumer calls it. The
-   backend never registered it in `generate_handler!`. Tracked for removal
-   (see §1 known-drift table).
-
-4. **`web_server::dispatch_command` is the single closed-world match**.
+3. **`web_server::dispatch_command` is the single closed-world match**.
    Any method NOT in the match arms falls through to
    `_ => Err(format!("unknown method: {}", method))`. The contract gate
    enforces that every iOS-sent method lands in a known arm or the
    `ws.rs` pre-match handler.
 
-5. **BusEvent asymmetry is intentional**. The Rust side produces more
+4. **BusEvent asymmetry is intentional**. The Rust side produces more
    variants than the iOS side decodes — adding a new Rust variant does NOT
    require an iOS change (the iOS client gracefully degrades to `.raw`).
    The reverse is NOT true: adding a new iOS `BusEventPayload` case

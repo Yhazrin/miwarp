@@ -110,7 +110,6 @@ export const CMD = {
   list_team_tasks: "list_team_tasks",
   list_teams: "list_teams",
   list_worktrees: "list_worktrees",
-  load_run_data: "load_run_data",
   move_run_to_folder: "move_run_to_folder",
   open_directory_in_finder: "open_directory_in_finder",
   read_agent_file: "read_agent_file",
