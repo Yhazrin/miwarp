@@ -1,11 +1,22 @@
-import {
-  isPermissionGranted,
-  requestPermission,
-  sendNotification,
-} from "@tauri-apps/plugin-notification";
 import { appVisibility } from "$lib/stores/app-visibility.svelte";
 import type { TaskRun } from "$lib/types";
 import { dbgWarn } from "$lib/utils/debug";
+
+type NotificationPlugin = {
+  isPermissionGranted: () => Promise<boolean>;
+  requestPermission: () => Promise<"granted" | "denied" | "default">;
+  sendNotification: (options: { title: string; body?: string }) => void;
+};
+
+let pluginPromise: Promise<NotificationPlugin | null> | null = null;
+
+function loadNotificationPlugin(): Promise<NotificationPlugin | null> {
+  if (pluginPromise) return pluginPromise;
+  pluginPromise = import("@tauri-apps/plugin-notification")
+    .then((m) => m as unknown as NotificationPlugin)
+    .catch(() => null);
+  return pluginPromise;
+}
 
 export type NotifyKind =
   | "run_completed"
@@ -29,10 +40,17 @@ let permissionGranted = false;
 export async function ensureNotificationPermission(): Promise<boolean> {
   if (permissionChecked) return permissionGranted;
 
+  const plugin = await loadNotificationPlugin();
+  if (!plugin) {
+    permissionChecked = true;
+    permissionGranted = false;
+    return permissionGranted;
+  }
+
   try {
-    permissionGranted = await isPermissionGranted();
+    permissionGranted = await plugin.isPermissionGranted();
     if (!permissionGranted) {
-      const permission = await requestPermission();
+      const permission = await plugin.requestPermission();
       permissionGranted = permission === "granted";
     }
   } catch {
@@ -50,7 +68,10 @@ export async function notifyUser(options: NotifyOptions): Promise<void> {
     const ok = await ensureNotificationPermission();
     if (!ok) return;
 
-    sendNotification({
+    const plugin = await loadNotificationPlugin();
+    if (!plugin) return;
+
+    plugin.sendNotification({
       title: options.title,
       body: options.body ?? "",
     });

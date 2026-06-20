@@ -7,8 +7,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen as tauriListen } from "@tauri-apps/api/event";
 import { dbg } from "$lib/utils/debug";
-import type { Transport } from "./index";
-import { getInvokeTimeoutMs } from "./index";
+import { getInvokeTimeoutMs, type Transport } from "./contract";
 
 export class TauriTransport implements Transport {
   async invoke<T>(

@@ -9,8 +9,7 @@
  * - Auto _subscribe/_unsubscribe for run-scoped events
  */
 import { dbg, dbgWarn } from "$lib/utils/debug";
-import type { Transport } from "./index";
-import { getInvokeTimeoutMs } from "./index";
+import { getInvokeTimeoutMs, type Transport } from "./contract";
 
 interface PendingRequest {
   resolve: (value: unknown) => void;
