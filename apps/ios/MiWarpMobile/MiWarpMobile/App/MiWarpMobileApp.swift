@@ -1,5 +1,7 @@
 import SwiftUI
+#if canImport(CoreSpotlight)
 import CoreSpotlight
+#endif
 
 @main
 struct MiWarpMobileApp: App {
@@ -15,9 +17,11 @@ struct MiWarpMobileApp: App {
                 .onOpenURL { url in
                     handleDeepLink(url)
                 }
+                #if canImport(CoreSpotlight)
                 .onContinueUserActivity(CSSearchableItemActionType) { userActivity in
                     SpotlightIndexer.handleUserActivity(userActivity)
                 }
+                #endif
                 .onAppear {
                     Task {
                         try? await Task.sleep(nanoseconds: 300_000_000)

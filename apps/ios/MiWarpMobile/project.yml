@@ -16,7 +16,6 @@ settings:
     ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: ""
-    PRODUCT_NAME: MiWarp
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
 
@@ -35,6 +34,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.miwarp.mobile
+        PRODUCT_NAME: MiWarp
+        PRODUCT_MODULE_NAME: MiWarpMobile
         INFOPLIST_FILE: MiWarpMobile/Resources/Info.plist
     entitlements:
       path: MiWarpMobile/Resources/MiWarpMobile.entitlements
@@ -53,6 +54,10 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.miwarp.mobile.tests
+        PRODUCT_NAME: MiWarpMobileTests
+        PRODUCT_MODULE_NAME: MiWarpMobileTests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/MiWarp.app/MiWarp"
+        BUNDLE_LOADER: "$(TEST_HOST)"
         INFOPLIST_FILE: MiWarpMobileTests/Info.plist
 
   MiWarpLiveActivityExtension:

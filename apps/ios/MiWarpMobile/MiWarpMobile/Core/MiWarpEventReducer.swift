@@ -53,19 +53,27 @@ struct UsageSummary {
 
 // MARK: - Event Reducer
 
+@Observable
 @MainActor
-final class MiWarpEventReducer: ObservableObject {
-    @Published private(set) var messages: [DisplayMessage] = []
-    @Published private(set) var pendingPermissions: [PendingPermission] = []
-    @Published private(set) var usage: UsageSummary = UsageSummary()
-    @Published private(set) var currentStatus: RunStatus = .idle
-    @Published private(set) var sessionAgent: String?
-    @Published private(set) var sessionModel: String?
-    @Published private(set) var lastSeq: Int = 0
-    @Published private(set) var streamingMessageId: String?
+final class MiWarpEventReducer {
+    private(set) var messages: [DisplayMessage] = []
+    private(set) var pendingPermissions: [PendingPermission] = []
+    private(set) var usage: UsageSummary = UsageSummary()
+    private(set) var currentStatus: RunStatus = .idle
+    private(set) var sessionAgent: String?
+    private(set) var sessionModel: String?
+    private(set) var lastSeq: Int = 0
+    private(set) var streamingMessageId: String?
     /// Tracks all in-flight streaming message IDs so handleMessageComplete can find them.
     private var pendingStreamingIds: Set<String> = []
 
+    private struct ToolLocation {
+        let messageIndex: Int
+        let toolIndex: Int
+    }
+
+    /// Steady-state O(1) lookup for tool delta/end events in long conversations.
+    private var toolLocations: [String: ToolLocation] = [:]
     private var seenSeqs: Set<Int> = []
 
     // MARK: - Process Event
@@ -153,6 +161,7 @@ final class MiWarpEventReducer: ObservableObject {
         seenSeqs.removeAll()
         streamingMessageId = nil
         pendingStreamingIds.removeAll()
+        toolLocations.removeAll()
     }
 
     // MARK: - Handlers
@@ -227,10 +236,7 @@ final class MiWarpEventReducer: ObservableObject {
         let toolId = payload.toolUseId ?? UUID().uuidString
 
         // Skip if this toolUseId is already present (prevents duplicate IDs from retried events).
-        let alreadyExists = messages.contains { msg in
-            msg.toolCalls.contains { $0.id == toolId }
-        }
-        if alreadyExists { return }
+        if findToolLocation(toolId) != nil { return }
 
         var inputPreview: String?
         if let input = payload.input {
@@ -257,6 +263,10 @@ final class MiWarpEventReducer: ObservableObject {
         // Attach to last assistant message or create new one
         if let lastIndex = messages.indices.last, messages[lastIndex].role == .assistant {
             messages[lastIndex].toolCalls.append(toolCall)
+            toolLocations[toolId] = ToolLocation(
+                messageIndex: lastIndex,
+                toolIndex: messages[lastIndex].toolCalls.count - 1
+            )
         } else {
             let msg = DisplayMessage(
                 id: "tool-\(toolId)",
@@ -267,6 +277,10 @@ final class MiWarpEventReducer: ObservableObject {
                 toolCalls: [toolCall]
             )
             messages.append(msg)
+            toolLocations[toolId] = ToolLocation(
+                messageIndex: messages.count - 1,
+                toolIndex: 0
+            )
         }
     }
 
@@ -288,14 +302,10 @@ final class MiWarpEventReducer: ObservableObject {
             return nil
         }()
 
-        for msgIndex in messages.indices {
-            if let toolIndex = messages[msgIndex].toolCalls.firstIndex(where: { $0.id == toolId }) {
-                messages[msgIndex].toolCalls[toolIndex].output = outputString
-                messages[msgIndex].toolCalls[toolIndex].isComplete = true
-                messages[msgIndex].toolCalls[toolIndex].isError = payload.status != "success"
-                break
-            }
-        }
+        guard let location = findToolLocation(toolId) else { return }
+        messages[location.messageIndex].toolCalls[location.toolIndex].output = outputString
+        messages[location.messageIndex].toolCalls[location.toolIndex].isComplete = true
+        messages[location.messageIndex].toolCalls[location.toolIndex].isError = payload.status != "success"
     }
 
     private func handleRunState(_ payload: RunStatePayload) {
@@ -358,14 +368,34 @@ final class MiWarpEventReducer: ObservableObject {
     }
 
     private func handleToolInputDelta(_ payload: ToolInputDeltaPayload) {
-        guard let toolId = payload.toolUseId, let delta = payload.partialJson else { return }
-        for msgIndex in messages.indices {
-            if let toolIndex = messages[msgIndex].toolCalls.firstIndex(where: { $0.id == toolId }) {
-                messages[msgIndex].toolCalls[toolIndex].inputPreview =
-                    (messages[msgIndex].toolCalls[toolIndex].inputPreview ?? "") + delta
-                break
+        guard
+            let toolId = payload.toolUseId,
+            let delta = payload.partialJson,
+            let location = findToolLocation(toolId)
+        else { return }
+
+        messages[location.messageIndex].toolCalls[location.toolIndex].inputPreview =
+            (messages[location.messageIndex].toolCalls[location.toolIndex].inputPreview ?? "") + delta
+    }
+
+    private func findToolLocation(_ toolId: String) -> ToolLocation? {
+        if let cached = toolLocations[toolId],
+           messages.indices.contains(cached.messageIndex),
+           messages[cached.messageIndex].toolCalls.indices.contains(cached.toolIndex),
+           messages[cached.messageIndex].toolCalls[cached.toolIndex].id == toolId {
+            return cached
+        }
+
+        // Defensive fallback keeps behavior correct if future code mutates message ordering.
+        for messageIndex in messages.indices {
+            if let toolIndex = messages[messageIndex].toolCalls.firstIndex(where: { $0.id == toolId }) {
+                let location = ToolLocation(messageIndex: messageIndex, toolIndex: toolIndex)
+                toolLocations[toolId] = location
+                return location
             }
         }
+        toolLocations.removeValue(forKey: toolId)
+        return nil
     }
 
     private func handleCommandOutput(_ payload: CommandOutputPayload) {

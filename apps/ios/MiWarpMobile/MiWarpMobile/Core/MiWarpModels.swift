@@ -978,7 +978,7 @@ struct WSRequest: Codable {
     }
 }
 
-struct WSResponse: Codable {
+struct WSResponse: Decodable {
     let id: String?
     let result: AnyCodable?
     let error: String?
@@ -986,6 +986,9 @@ struct WSResponse: Codable {
     let seq: Int?
     let runId: String?
     let payload: AnyCodable?
+    /// Bus events are decoded directly from the original JSON payload, avoiding
+    /// an AnyCodable → JSONEncoder → JSONDecoder round trip for every event.
+    let busEventPayload: BusEventPayload?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -995,5 +998,25 @@ struct WSResponse: Codable {
         case seq
         case runId = "run_id"
         case payload
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(String.self, forKey: .id)
+        result = try container.decodeIfPresent(AnyCodable.self, forKey: .result)
+        error = try container.decodeIfPresent(String.self, forKey: .error)
+        event = try container.decodeIfPresent(String.self, forKey: .event)
+        seq = try container.decodeIfPresent(Int.self, forKey: .seq)
+        runId = try container.decodeIfPresent(String.self, forKey: .runId)
+
+        if event == "bus-event" {
+            busEventPayload = try? container.decode(BusEventPayload.self, forKey: .payload)
+            payload = busEventPayload == nil
+                ? try container.decodeIfPresent(AnyCodable.self, forKey: .payload)
+                : nil
+        } else {
+            payload = try container.decodeIfPresent(AnyCodable.self, forKey: .payload)
+            busEventPayload = nil
+        }
     }
 }

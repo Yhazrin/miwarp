@@ -1,6 +1,8 @@
 import Foundation
+#if canImport(CoreSpotlight)
 import CoreSpotlight
-import MobileCoreServices
+import UniformTypeIdentifiers
+#endif
 
 // MARK: - Spotlight Notification
 
@@ -11,6 +13,7 @@ extension Notification.Name {
 
 // MARK: - Spotlight Indexer
 
+#if canImport(CoreSpotlight)
 /// Indexes recent MiWarp sessions into CoreSpotlight so users can find them from iOS Spotlight search.
 enum SpotlightIndexer {
     private static let domainIdentifier = "com.yhazrin.miwarp.sessions"
@@ -86,7 +89,7 @@ enum SpotlightIndexer {
     }
 
     private static func makeSearchableItem(for run: MiWarpRun) -> CSSearchableItem? {
-        let attributeSet = CSSearchableItemAttributeSet(itemContentType: kUTTypeText as String)
+        let attributeSet = CSSearchableItemAttributeSet(itemContentType: UTType.text.identifier)
 
         // Title: session name or truncated prompt
         attributeSet.title = run.displayTitle
@@ -143,3 +146,4 @@ enum SpotlightIndexer {
         return item
     }
 }
+#endif

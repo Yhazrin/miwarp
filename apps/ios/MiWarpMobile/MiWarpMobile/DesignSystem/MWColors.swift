@@ -1,5 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
 import UIKit
+#endif
 
 // MARK: - Color Helpers
 
@@ -25,7 +27,11 @@ extension Color {
     /// Perceived luminance in [0, 1] using ITU-R BT.709 coefficients.
     var perceivedLuminance: Double {
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        #if canImport(UIKit)
         UIColor(self).getRed(&r, green: &g, blue: &b, alpha: &a)
+        #elseif canImport(AppKit)
+        NSColor(self).getRed(&r, green: &g, blue: &b, alpha: &a)
+        #endif
         return 0.2126 * Double(r) + 0.7152 * Double(g) + 0.0722 * Double(b)
     }
 
