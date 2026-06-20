@@ -181,7 +181,6 @@
   let sidebarFavorites = $state<PromptFavorite[]>([]);
   let favoriteRunIds = $derived(new Set(sidebarFavorites.map((f) => f.runId)));
   let settings = $state<UserSettings | null>(null);
-  let statusColorVars = $derived("");
   let sidebarOpen = $state(true);
   let projectCwd = $state("");
   let pinnedCwds = $state<string[]>([]);
@@ -1695,6 +1694,7 @@
 
   // Filter search results to exclude removed project cwds
   let visibleSearchResults = $derived.by(() => {
+    if (searchResults.length === 0) return searchResults;
     if (removedCwdSet.size === 0) return searchResults;
     // Build runId→cwd mapping from runs
     const runCwdMap = new Map<string, string>();
@@ -2094,7 +2094,7 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <!-- eslint-disable-next-line svelte/no-dupe-style-properties — 100vh is a fallback for browsers without dvh support -->
-<div class="flex w-screen overflow-hidden" style="height: 100vh; height: 100dvh; {statusColorVars}">
+<div class="flex w-screen overflow-hidden" style="height: 100vh; height: 100dvh;">
   <!-- Sidebar: Icon Rail + Content Panel -->
   <aside
     class="sidebar-container shrink-0 text-sidebar-foreground"
@@ -3118,11 +3118,13 @@
 -->
 <TopWindowDrag height={titlebarBandHeight} leftInset={windowChromeLeftInset} />
 
-<CommandPalette
-  bind:open={commandPaletteOpen}
-  cwd={projectCwd || "/"}
-  onOpenFolderBrowser={pickFolder}
-/>
+{#if commandPaletteOpen}
+  <CommandPalette
+    bind:open={commandPaletteOpen}
+    cwd={projectCwd || "/"}
+    onOpenFolderBrowser={pickFolder}
+  />
+{/if}
 
 {#if showSetupWizard}
   <div transition:fade={{ duration: 200 }}>
@@ -3130,16 +3132,22 @@
   </div>
 {/if}
 
-<AboutModal bind:open={showAbout} />
+{#if showAbout}
+  <AboutModal bind:open={showAbout} />
+{/if}
 
-<PermissionsModal bind:open={permissionsModalOpen} cwd={projectCwd} />
+{#if permissionsModalOpen}
+  <PermissionsModal bind:open={permissionsModalOpen} cwd={projectCwd} />
+{/if}
 
-<FolderPicker
-  bind:open={folderPickerOpen}
-  initialHost={folderPickerInitialHost}
-  initialPath={folderPickerInitialPath}
-  onConfirm={onFolderPicked}
-/>
+{#if folderPickerOpen}
+  <FolderPicker
+    bind:open={folderPickerOpen}
+    initialHost={folderPickerInitialHost}
+    initialPath={folderPickerInitialPath}
+    onConfirm={onFolderPicked}
+  />
+{/if}
 
 {#if showCliBrowser}
   <div transition:fade={{ duration: 200 }}>
@@ -3264,18 +3272,20 @@
 </Modal>
 
 <!-- Workspace settings modal -->
-<WorkspaceSettingsModal
-  bind:open={workspaceSettingsOpen}
-  cwd={workspaceSettingsCwd}
-  currentAlias={workspaceSettingsAlias}
-  onClose={() => {
-    workspaceSettingsOpen = false;
-    workspaceSettingsCwd = "";
-    workspaceSettingsAlias = "";
-  }}
-  onSave={(alias) => saveWorkspaceAlias(workspaceSettingsCwd, alias)}
-  onRemove={workspaceSettingsCwd ? () => requestRemoveProject(workspaceSettingsCwd) : undefined}
-/>
+{#if workspaceSettingsOpen}
+  <WorkspaceSettingsModal
+    bind:open={workspaceSettingsOpen}
+    cwd={workspaceSettingsCwd}
+    currentAlias={workspaceSettingsAlias}
+    onClose={() => {
+      workspaceSettingsOpen = false;
+      workspaceSettingsCwd = "";
+      workspaceSettingsAlias = "";
+    }}
+    onSave={(alias) => saveWorkspaceAlias(workspaceSettingsCwd, alias)}
+    onRemove={workspaceSettingsCwd ? () => requestRemoveProject(workspaceSettingsCwd) : undefined}
+  />
+{/if}
 
 <!-- Rename folder dialog -->
 <Modal bind:open={folderRenameOpen} title={t("sidebar_renameFolder")}>
