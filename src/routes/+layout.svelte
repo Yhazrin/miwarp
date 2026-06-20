@@ -34,20 +34,15 @@
     persistCachedProcessVisibility,
   } from "$lib/utils/process-visibility";
   import ProjectFolderItem from "$lib/components/ProjectFolderItem.svelte";
-  import CommandPalette from "$lib/components/CommandPalette.svelte";
-  import SetupWizard from "$lib/components/SetupWizard.svelte";
   import AboutModal from "$lib/components/AboutModal.svelte";
   import PermissionsModal from "$lib/components/PermissionsModal.svelte";
   import WorkspaceSettingsModal from "$lib/components/WorkspaceSettingsModal.svelte";
-  import Modal from "$lib/components/Modal.svelte";
-  import CliSessionBrowser from "$lib/components/CliSessionBrowser.svelte";
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
   import VersionMismatchBanner from "$lib/components/VersionMismatchBanner.svelte";
   import {
     initBackendCapabilities,
     useIncrementalRunsSync,
   } from "$lib/backend-capabilities.svelte";
-  import FolderPicker from "$lib/components/FolderPicker.svelte";
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
   import TopWindowDrag from "$lib/components/TopWindowDrag.svelte";
   import { IS_MAC } from "$lib/utils/platform";
@@ -59,6 +54,15 @@
     LS_REMOVED_CWDS,
     LS_SIDEBAR_WIDTH,
   } from "$lib/utils/storage-keys";
+  import {
+    SPLASH_REMOVE_DELAY_MS,
+    RUNS_POLL_INTERVAL_MS,
+    TEAMS_POLL_INTERVAL_MS,
+    TEAM_RESYNC_DEBOUNCE_MS,
+    DEEP_SEARCH_DEBOUNCE_MS,
+    LISTEN_RETRY_BASE_DELAY_MS,
+    LISTEN_RETRY_MAX_ATTEMPTS,
+  } from "$lib/utils/layout-timings";
   import {
     EVT_RUNS_CHANGED,
     EVT_CWD_CHANGED,
@@ -73,7 +77,10 @@
     EVT_EXPLORER_DIFF,
     EVT_EXPLORER_FILE_SELECTED,
   } from "$lib/utils/bus-events";
-  import { applyUiZoomCssVar, clampUiZoom, layoutPx } from "$lib/utils/ui-zoom";
+  import { clampUiZoom, layoutPx } from "$lib/utils/ui-zoom";
+  import { applyZoom, applyVisualPerformance } from "$lib/services/window-display";
+  import { checkAppUpdate } from "$lib/services/app-version.svelte";
+  import { useKeybindingShortcuts } from "$lib/layout/use-keybinding-shortcuts.svelte";
   import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
   import { readActiveSessionId, writeActiveSessionId } from "$lib/utils/chat-persistence";
   import type {
@@ -117,7 +124,6 @@
   import { beginRouteTransition, endRouteTransition } from "$lib/utils/route-transition";
   import { armChatSettingsHop } from "$lib/utils/chat-settings-nav";
   import { onMount, setContext, untrack } from "svelte";
-  import { fade } from "svelte/transition";
   import { installPreventRootOverscroll } from "$lib/utils/prevent-root-overscroll";
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { fpsCounter } from "$lib/utils/perf";
@@ -136,6 +142,9 @@
   import EmptyState from "$lib/components/EmptyState.svelte";
   import MemorySidebarGroup from "$lib/components/MemorySidebarGroup.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import SidebarModals from "$lib/components/sidebar/SidebarModals.svelte";
+  import OverlayStack from "$lib/components/layout/OverlayStack.svelte";
+  import type { PluginSection } from "$lib/utils/plugin-sections";
   import {
     t,
     LOCALE_REGISTRY,
@@ -151,11 +160,6 @@
   function toggleLocale() {
     const next = LOCALE_REGISTRY.find((e) => e.code !== currentLocale());
     if (next) switchLocale(next.code);
-  }
-
-  function focusOnMount(node: HTMLElement) {
-    node.focus();
-    return {};
   }
 
   let commandPaletteOpen = $state(false);
@@ -838,7 +842,7 @@
 
   function onDeepQueryInput() {
     if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => doDeepSearch(), 300);
+    debounceTimer = setTimeout(() => doDeepSearch(), DEEP_SEARCH_DEBOUNCE_MS);
   }
 
   async function doDeepSearch() {
@@ -897,50 +901,6 @@
     }
   }
 
-  function applyZoom(zoom?: number) {
-    const factor = clampUiZoom(zoom);
-    applyUiZoomCssVar(factor);
-    import("@tauri-apps/api/webviewWindow")
-      .then(({ getCurrentWebviewWindow }) => {
-        getCurrentWebviewWindow()
-          .setZoom(factor)
-          .then(() => dbg("layout", "applyZoom success", { factor }))
-          .catch((e) => dbgWarn("layout", "setZoom failed", e));
-      })
-      .catch((e) => dbgWarn("layout", "import webviewWindow failed", e));
-  }
-
-  /** Apply platform class and visual performance mode class to <html>. */
-  function applyVisualPerformance(mode?: string) {
-    if (typeof document === "undefined") return;
-    const root = document.documentElement;
-
-    // Platform class
-    const platform =
-      navigator.platform.startsWith("Win") || navigator.userAgent.includes("Windows")
-        ? "platform-windows"
-        : navigator.platform.startsWith("Mac")
-          ? "platform-macos"
-          : "platform-linux";
-    for (const cls of ["platform-windows", "platform-macos", "platform-linux"]) {
-      root.classList.toggle(cls, cls === platform);
-    }
-
-    // Resolved performance mode
-    let resolved = mode ?? "auto";
-    if (resolved === "auto") {
-      resolved =
-        platform === "platform-windows"
-          ? "performance"
-          : platform === "platform-linux"
-            ? "balanced"
-            : "quality";
-    }
-    for (const cls of ["perf-quality", "perf-balanced", "perf-performance"]) {
-      root.classList.toggle(cls, cls === `perf-${resolved}`);
-    }
-  }
-
   /** Migrate existing api_key into platform_credentials (one-time). */
   async function migrateCredentialsIfNeeded(s: UserSettings) {
     if (s.platform_credentials && s.platform_credentials.length > 0) return;
@@ -986,7 +946,7 @@
     const splash = document.getElementById("app-splash");
     if (splash) {
       splash.style.opacity = "0";
-      setTimeout(() => splash.remove(), 300);
+      setTimeout(() => splash.remove(), SPLASH_REMOVE_DELAY_MS);
     }
 
     // Fire all three concurrently — they are independent.
@@ -1029,29 +989,11 @@
     themeStore.init();
 
     // Fetch app version and check for updates
-    import("@tauri-apps/api/app")
-      .then(({ getVersion }) => getVersion())
-      .then(async (v) => {
-        sidebarVersion = `v${v}`;
-        sidebarVersionChecked = false;
-        try {
-          const res = await fetch("https://api.github.com/repos/Yhazrin/miwarp/releases/latest", {
-            signal: AbortSignal.timeout(5000),
-          });
-          if (res.ok) {
-            const data = await res.json();
-            const latest = ((data.tag_name as string) || "").replace(/^v/, "");
-            const current = v.replace(/^v/, "");
-            sidebarUpdateAvailable = latest !== "" && latest !== current;
-          }
-        } catch {
-          // ignore network errors, just show "up to date"
-        }
-        sidebarVersionChecked = true;
-      })
-      .catch(() => {
-        sidebarVersionChecked = true;
-      });
+    void checkAppUpdate().then((state) => {
+      sidebarVersion = state.version;
+      sidebarUpdateAvailable = state.updateAvailable;
+      sidebarVersionChecked = state.checked;
+    });
 
     // Load saved CWD and pinned folders from localStorage
     const saved = localStorage.getItem(LS_PROJECT_CWD);
@@ -1077,16 +1019,16 @@
     }
     removedCwds = loadRemovedCwds();
 
-    // Poll for runs every 60s (fallback only — primary updates via ocv:runs-changed event)
+    // Poll for runs (fallback only — primary updates via ocv:runs-changed event)
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") loadRuns();
-    }, 60000);
+    }, RUNS_POLL_INTERVAL_MS);
 
-    // Team store: initial load + poll fallback (60s)
+    // Team store: initial load + poll fallback
     teamStore.loadTeams();
     const teamPollInterval = setInterval(() => {
       if (document.visibilityState === "visible") teamStore.loadTeams();
-    }, 60000);
+    }, TEAMS_POLL_INTERVAL_MS);
 
     // Team/task event listeners — app-level lifecycle, independent of chat page
     type TeamUpdatePayload = { team_name: string; change: string };
@@ -1097,13 +1039,13 @@
     let unlistenTask: (() => void) | undefined;
     const retryTimers: ReturnType<typeof setTimeout>[] = [];
 
-    // 首次+重试成功后都补偿同步（debounce 300ms）
+    // 首次+重试成功后都补偿同步（debounce TEAM_RESYNC_DEBOUNCE_MS）
     let resyncTimer: ReturnType<typeof setTimeout> | undefined;
     function scheduleResync() {
       if (resyncTimer) clearTimeout(resyncTimer);
       resyncTimer = setTimeout(() => {
         if (!destroyed) teamStore.forceRefresh();
-      }, 300);
+      }, TEAM_RESYNC_DEBOUNCE_MS);
     }
 
     const transport = getTransport();
@@ -1126,17 +1068,21 @@
           })
           .catch((e) => {
             if (destroyed) return;
-            if (attempt < 2) {
-              const delay = (attempt + 1) * 2000; // 2s, 4s
+            if (attempt < LISTEN_RETRY_MAX_ATTEMPTS - 1) {
+              const delay = (attempt + 1) * LISTEN_RETRY_BASE_DELAY_MS; // 2s, 4s
               dbgWarn(
                 "layout",
-                `${name} listen failed (attempt ${attempt + 1}/3), retry in ${delay}ms`,
+                `${name} listen failed (attempt ${attempt + 1}/${LISTEN_RETRY_MAX_ATTEMPTS}), retry in ${delay}ms`,
                 e,
               );
               const t = setTimeout(() => tryListen(attempt + 1), delay);
               retryTimers.push(t);
             } else {
-              dbgWarn("layout", `${name} listen failed after 3 attempts, falling back to poll`, e);
+              dbgWarn(
+                "layout",
+                `${name} listen failed after ${LISTEN_RETRY_MAX_ATTEMPTS} attempts, falling back to poll`,
+                e,
+              );
             }
           });
       }
@@ -1164,11 +1110,13 @@
     // Keybinding store: load overrides + CLI bindings, register app-level callbacks
     keybindingStore.loadOverrides();
     keybindingStore.loadCliBindings();
-    keybindingStore.registerCallback("app:toggleSidebar", toggleSidebar);
-    keybindingStore.registerCallback("app:commandPalette", () => {
-      commandPaletteOpen = !commandPaletteOpen;
+    const unregisterKeybindings = useKeybindingShortcuts(keybindingStore, {
+      toggleSidebar,
+      toggleCommandPalette: () => {
+        commandPaletteOpen = !commandPaletteOpen;
+      },
+      newChat,
     });
-    keybindingStore.registerCallback("app:newChat", newChat);
 
     // Immediate refresh when chat page signals a status change
     function onRunsChanged() {
@@ -1330,9 +1278,7 @@
       unlistenTask?.();
       retryTimers.forEach(clearTimeout);
       if (resyncTimer) clearTimeout(resyncTimer);
-      keybindingStore.unregisterCallback("app:toggleSidebar");
-      keybindingStore.unregisterCallback("app:commandPalette");
-      keybindingStore.unregisterCallback("app:newChat");
+      unregisterKeybindings();
       window.removeEventListener(EVT_RUNS_CHANGED, onRunsChanged);
       window.removeEventListener(EVT_FAVORITES_CHANGED, onFavoritesChanged);
       window.removeEventListener(EVT_SHOW_WIZARD, onShowWizard);
@@ -1794,7 +1740,7 @@
   const sidebarLogicallyCollapsed = $derived(!sidebarOpen || !needsLayoutContentPanel);
 
   // Plugin sidebar navigation (shown when on /plugins route)
-  const pluginSections = [
+  const pluginSections: PluginSection[] = [
     { id: "overview", label: () => t("sidebar_overview"), icon: "overview" },
     { id: "skills", label: () => t("sidebar_skills"), icon: "sparkles" },
     { id: "sources", label: () => t("sidebar_skillSources"), icon: "sources" },
@@ -2241,8 +2187,8 @@
               onclick={() => (showAbout = true)}
               aria-label={t("settings_checkUpdate")}
               title={sidebarUpdateAvailable
-                ? `有新版本可用 (当前 ${sidebarVersion})`
-                : `已是最新版本 ${sidebarVersion}`}
+                ? t("sidebar_updateAvailableTitle", { version: sidebarVersion })
+                : t("sidebar_updateCurrentTitle", { version: sidebarVersion })}
             >
               {#if !sidebarVersionChecked}
                 <!-- Loading spinner -->
@@ -3118,19 +3064,24 @@
 -->
 <TopWindowDrag height={titlebarBandHeight} leftInset={windowChromeLeftInset} />
 
-{#if commandPaletteOpen}
-  <CommandPalette
-    bind:open={commandPaletteOpen}
-    cwd={projectCwd || "/"}
-    onOpenFolderBrowser={pickFolder}
-  />
-{/if}
-
-{#if showSetupWizard}
-  <div transition:fade={{ duration: 200 }}>
-    <SetupWizard onComplete={handleSetupComplete} />
-  </div>
-{/if}
+<OverlayStack
+  bind:commandPaletteOpen
+  commandPaletteCwd={projectCwd || "/"}
+  onOpenFolderBrowser={pickFolder}
+  {showSetupWizard}
+  onSetupComplete={handleSetupComplete}
+  bind:folderPickerOpen
+  {folderPickerInitialHost}
+  {folderPickerInitialPath}
+  {onFolderPicked}
+  {showCliBrowser}
+  onCliBrowserClose={() => (showCliBrowser = false)}
+  onCliBrowserImported={(runId) => {
+    showCliBrowser = false;
+    loadRuns();
+    goto(`/chat?run=${runId}`);
+  }}
+/>
 
 {#if showAbout}
   <AboutModal bind:open={showAbout} />
@@ -3140,138 +3091,6 @@
   <PermissionsModal bind:open={permissionsModalOpen} cwd={projectCwd} />
 {/if}
 
-{#if folderPickerOpen}
-  <FolderPicker
-    bind:open={folderPickerOpen}
-    initialHost={folderPickerInitialHost}
-    initialPath={folderPickerInitialPath}
-    onConfirm={onFolderPicked}
-  />
-{/if}
-
-{#if showCliBrowser}
-  <div transition:fade={{ duration: 200 }}>
-    <CliSessionBrowser
-      cwd="/"
-      onclose={() => (showCliBrowser = false)}
-      onimported={(runId) => {
-        showCliBrowser = false;
-        loadRuns();
-        goto(`/chat?run=${runId}`);
-      }}
-    />
-  </div>
-{/if}
-
-<Modal bind:open={deleteConfirmOpen} title={t("sidebar_deleteConfirm")}>
-  <p class="text-sm text-muted-foreground mb-4">{t("sidebar_deleteDesc")}</p>
-  <div class="flex justify-end gap-2">
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
-      onclick={cancelDeleteConversation}
-    >
-      {t("sidebar_deleteCancel")}
-    </button>
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md border border-miwarp-status-warning text-miwarp-status-warning hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
-      onclick={confirmDeleteConversation}
-    >
-      {t("sidebar_softDelete")}
-    </button>
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
-      onclick={confirmHardDeleteConversation}
-    >
-      {t("sidebar_hardDelete")}
-    </button>
-  </div>
-</Modal>
-
-<Modal bind:open={batchDeleteConfirmOpen} title={t("sidebar_batchDelete")}>
-  <p class="text-sm text-muted-foreground mb-4">
-    {t("sidebar_batchDeleteConfirm", { count: String(selectedGroupKeys.size) })}
-  </p>
-  <div class="flex justify-end gap-2">
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
-      onclick={() => (batchDeleteConfirmOpen = false)}
-    >
-      {t("sidebar_deleteCancel")}
-    </button>
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md border border-miwarp-status-warning text-miwarp-status-warning hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
-      onclick={batchDelete}
-    >
-      {t("sidebar_softDelete")}
-    </button>
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
-      onclick={batchHardDelete}
-    >
-      {t("sidebar_hardDelete")}
-    </button>
-  </div>
-</Modal>
-
-<Modal bind:open={removeProjectConfirmOpen} title={t("sidebar_removeProjectConfirm")}>
-  <p class="text-sm text-muted-foreground mb-4">{t("sidebar_removeProjectDesc")}</p>
-  <div class="flex justify-end gap-2">
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
-      onclick={cancelRemoveProject}
-    >
-      {t("sidebar_deleteCancel")}
-    </button>
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
-      onclick={confirmRemoveProject}
-    >
-      {t("sidebar_deleteOk")}
-    </button>
-  </div>
-</Modal>
-
-<!-- Create folder dialog -->
-<Modal bind:open={folderCreateOpen} title={t("sidebar_createFolder")}>
-  <p class="text-sm text-muted-foreground mb-3">{t("sidebar_createFolderDesc")}</p>
-  <input
-    type="text"
-    class="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring mb-4"
-    placeholder={t("sidebar_folderNamePlaceholder")}
-    bind:value={folderCreateName}
-    onkeydown={(e) => e.key === "Enter" && doCreateFolder()}
-    use:focusOnMount
-  />
-  <div class="flex justify-end gap-2">
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
-      onclick={() => {
-        folderCreateOpen = false;
-        folderCreateName = "";
-      }}
-    >
-      {t("sidebar_deleteCancel")}
-    </button>
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-      onclick={doCreateFolder}
-    >
-      {t("sidebar_createFolderOk")}
-    </button>
-  </div>
-</Modal>
-
-<!-- Workspace settings modal -->
 {#if workspaceSettingsOpen}
   <WorkspaceSettingsModal
     bind:open={workspaceSettingsOpen}
@@ -3287,117 +3106,34 @@
   />
 {/if}
 
-<!-- Rename folder dialog -->
-<Modal bind:open={folderRenameOpen} title={t("sidebar_renameFolder")}>
-  <input
-    type="text"
-    class="w-full px-3 py-2 text-sm rounded-md border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring mb-4"
-    bind:value={folderRenameName}
-    onkeydown={(e) => e.key === "Enter" && doRenameFolder()}
-    use:focusOnMount
-  />
-  <div class="flex justify-end gap-2">
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
-      onclick={() => {
-        folderRenameOpen = false;
-        folderRenameTarget = null;
-      }}
-    >
-      {t("sidebar_deleteCancel")}
-    </button>
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-      onclick={doRenameFolder}
-    >
-      {t("sidebar_renameFolderOk")}
-    </button>
-  </div>
-</Modal>
-
-<!-- Delete folder dialog -->
-<Modal bind:open={folderDeleteOpen} title={t("sidebar_deleteFolder")}>
-  <p class="text-sm text-muted-foreground mb-4">
-    {t("sidebar_deleteFolderDesc", { name: folderDeleteTarget?.name ?? "" })}
-  </p>
-  <div class="flex justify-end gap-2">
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
-      onclick={() => {
-        folderDeleteOpen = false;
-        folderDeleteTarget = null;
-      }}
-    >
-      {t("sidebar_deleteCancel")}
-    </button>
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md border border-miwarp-status-warning text-miwarp-status-warning hover:bg-[hsl(var(--miwarp-status-warning)/0.1)] transition-colors"
-      onclick={() => doDeleteFolder(false)}
-    >
-      {t("sidebar_deleteFolderKeep")}
-    </button>
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
-      onclick={() => doDeleteFolder(true)}
-    >
-      {t("sidebar_deleteFolderCascade")}
-    </button>
-  </div>
-</Modal>
-
-<!-- Move to folder dialog -->
-<Modal bind:open={moveToFolderOpen} title={t("sidebar_moveToFolder")}>
-  <p class="text-sm text-muted-foreground mb-3">
-    {t("sidebar_moveToFolderDesc", { count: String(moveToFolderRunIds.length) })}
-  </p>
-  <div class="flex flex-col gap-1.5 mb-4 max-h-48 overflow-y-auto">
-    <button
-      type="button"
-      class="text-left px-3 py-2 text-sm rounded-md transition-colors"
-      class:bg-primary={moveToFolderSelectedId === null}
-      class:text-primary-foreground={moveToFolderSelectedId === null}
-      class:hover:bg-accent={moveToFolderSelectedId !== null}
-      onclick={() => (moveToFolderSelectedId = null)}
-    >
-      {t("sidebar_uncategorized")}
-    </button>
-    {#each foldersForMoveDialog as folder}
-      <button
-        type="button"
-        class="text-left px-3 py-2 text-sm rounded-md transition-colors"
-        class:bg-primary={moveToFolderSelectedId === folder.id}
-        class:text-primary-foreground={moveToFolderSelectedId === folder.id}
-        class:hover:bg-accent={moveToFolderSelectedId !== folder.id}
-        onclick={() => (moveToFolderSelectedId = folder.id)}
-      >
-        {folder.name}
-      </button>
-    {/each}
-  </div>
-  <div class="flex justify-end gap-2">
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent transition-colors"
-      onclick={() => {
-        moveToFolderOpen = false;
-        moveToFolderRunIds = [];
-      }}
-    >
-      {t("sidebar_deleteCancel")}
-    </button>
-    <button
-      type="button"
-      class="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-      onclick={doMoveToFolder}
-    >
-      {t("sidebar_moveToFolderOk")}
-    </button>
-  </div>
-</Modal>
+<SidebarModals
+  bind:deleteConfirmOpen
+  onDeleteSoft={confirmDeleteConversation}
+  onDeleteHard={confirmHardDeleteConversation}
+  onDeleteCancel={cancelDeleteConversation}
+  bind:batchDeleteConfirmOpen
+  batchDeleteCount={selectedGroupKeys.size}
+  onBatchSoftDelete={batchDelete}
+  onBatchHardDelete={batchHardDelete}
+  onBatchDeleteCancel={() => (batchDeleteConfirmOpen = false)}
+  bind:removeProjectConfirmOpen
+  onRemoveProject={confirmRemoveProject}
+  onRemoveProjectCancel={cancelRemoveProject}
+  bind:folderCreateOpen
+  bind:folderCreateName
+  onCreateFolder={doCreateFolder}
+  bind:folderRenameOpen
+  bind:folderRenameName
+  onRenameFolder={doRenameFolder}
+  bind:folderDeleteOpen
+  folderDeleteTargetName={folderDeleteTarget?.name ?? ""}
+  onDeleteFolderKeep={() => doDeleteFolder(false)}
+  onDeleteFolderCascade={() => doDeleteFolder(true)}
+  bind:moveToFolderOpen
+  moveToFolderCount={moveToFolderRunIds.length}
+  bind:moveToFolderSelectedId
+  moveToFolderOptions={foldersForMoveDialog}
+  onMoveToFolder={doMoveToFolder}
+/>
 
 <ToastHost />

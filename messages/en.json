@@ -2705,6 +2705,8 @@
   "settings_toggleTheme": "Toggle theme",
   "settings_toggleColorScheme": "Toggle color scheme",
   "settings_checkUpdate": "Check for updates",
+  "sidebar_updateAvailableTitle": "Update available (current {version})",
+  "sidebar_updateCurrentTitle": "Up to date {version}",
   "sidebar_cliBrowser": "CLI Browser",
   "taskExec_queued": "Queued",
   "taskExec_running": "Running",

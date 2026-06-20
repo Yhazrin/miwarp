@@ -2,8 +2,9 @@ import { getTransport } from "./transport";
 import { EVT_FAVORITES_CHANGED } from "./utils/bus-events";
 import { dbg, dbgWarn, redactSensitive } from "./utils/debug";
 import { perfMarkAsync } from "./utils/perf";
+import { CMD, type CmdName } from "./tauri-commands";
 
-function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+function invoke<T>(cmd: CmdName | string, args?: Record<string, unknown>): Promise<T> {
   return getTransport().invoke<T>(cmd, args);
 }
 import type {
@@ -53,14 +54,14 @@ import type {
 
 // Backend capabilities (version / IPC probe)
 export async function getBackendCapabilities(): Promise<BackendCapabilities> {
-  return invoke<BackendCapabilities>("get_backend_capabilities");
+  return invoke<BackendCapabilities>(CMD.get_backend_capabilities);
 }
 
 // Runs
 export async function listRuns(): Promise<TaskRun[]> {
   dbg("api", "listRuns");
   try {
-    const runs = await invoke<TaskRun[]>("list_runs");
+    const runs = await invoke<TaskRun[]>(CMD.list_runs);
     dbg("api", "listRuns →", runs.length);
     return runs;
   } catch (e) {
@@ -78,7 +79,7 @@ export async function listRuns(): Promise<TaskRun[]> {
 export async function listRunsLite(): Promise<TaskRun[]> {
   dbg("api", "listRunsLite");
   try {
-    const runs = await invoke<TaskRun[]>("list_runs_lite");
+    const runs = await invoke<TaskRun[]>(CMD.list_runs_lite);
     dbg("api", "listRunsLite →", runs.length);
     return runs;
   } catch (e) {
@@ -96,7 +97,7 @@ export async function listRunsSince(since: string): Promise<TaskRun[]> {
 
   dbg("api", "listRunsSince", since);
   try {
-    const runs = await invoke<TaskRun[]>("list_runs_since", { since });
+    const runs = await invoke<TaskRun[]>(CMD.list_runs_since, { since });
     dbg("api", "listRunsSince →", runs.length);
     return runs;
   } catch (e) {
@@ -112,7 +113,7 @@ export async function listRunsSince(since: string): Promise<TaskRun[]> {
 
 export async function getRun(id: string): Promise<TaskRun> {
   dbg("api", "getRun", id);
-  return invoke<TaskRun>("get_run", { id });
+  return invoke<TaskRun>(CMD.get_run, { id });
 }
 
 export async function startRun(
@@ -136,7 +137,7 @@ export async function startRun(
     creationMode,
     folderId,
   });
-  const result = await invoke<TaskRun>("start_run", {
+  const result = await invoke<TaskRun>(CMD.start_run, {
     prompt,
     cwd,
     agent,
@@ -153,39 +154,39 @@ export async function startRun(
 
 export async function stopRun(id: string): Promise<boolean> {
   dbg("api", "stopRun", id);
-  return invoke<boolean>("stop_run", { id });
+  return invoke<boolean>(CMD.stop_run, { id });
 }
 
 export async function renameRun(id: string, name: string): Promise<void> {
   dbg("api", "renameRun", { id, name });
-  return invoke<void>("rename_run", { id, name });
+  return invoke<void>(CMD.rename_run, { id, name });
 }
 
 export async function updateRunModel(id: string, model: string): Promise<void> {
   dbg("api", "updateRunModel", { id, model });
-  return invoke<void>("update_run_model", { id, model });
+  return invoke<void>(CMD.update_run_model, { id, model });
 }
 
 export async function softDeleteRuns(ids: string[]): Promise<number> {
   dbg("api", "softDeleteRuns", { ids });
-  return invoke<number>("soft_delete_runs", { ids });
+  return invoke<number>(CMD.soft_delete_runs, { ids });
 }
 
 export async function hardDeleteRuns(ids: string[]): Promise<number> {
   dbg("api", "hardDeleteRuns", { ids });
-  return invoke<number>("hard_delete_runs", { ids });
+  return invoke<number>(CMD.hard_delete_runs, { ids });
 }
 
 // Session Folders
 
 export async function listSessionFolders(workspaceId: string): Promise<SessionFolder[]> {
   dbg("api", "listSessionFolders", { workspaceId });
-  return invoke<SessionFolder[]>("list_session_folders", { workspaceId });
+  return invoke<SessionFolder[]>(CMD.list_session_folders, { workspaceId });
 }
 
 export async function listAllSessionFolders(): Promise<SessionFolder[]> {
   dbg("api", "listAllSessionFolders");
-  return invoke<SessionFolder[]>("list_all_session_folders");
+  return invoke<SessionFolder[]>(CMD.list_all_session_folders);
 }
 
 export async function createSessionFolder(
@@ -193,22 +194,22 @@ export async function createSessionFolder(
   workspaceId: string,
 ): Promise<SessionFolder> {
   dbg("api", "createSessionFolder", { name, workspaceId });
-  return invoke<SessionFolder>("create_session_folder", { name, workspaceId });
+  return invoke<SessionFolder>(CMD.create_session_folder, { name, workspaceId });
 }
 
 export async function renameSessionFolder(folderId: string, newName: string): Promise<void> {
   dbg("api", "renameSessionFolder", { folderId, newName });
-  return invoke<void>("rename_session_folder", { folderId, newName });
+  return invoke<void>(CMD.rename_session_folder, { folderId, newName });
 }
 
 export async function deleteSessionFolder(folderId: string, cascade: boolean): Promise<number> {
   dbg("api", "deleteSessionFolder", { folderId, cascade });
-  return invoke<number>("delete_session_folder", { folderId, cascade });
+  return invoke<number>(CMD.delete_session_folder, { folderId, cascade });
 }
 
 export async function moveRunToFolder(runId: string, folderId: string | null): Promise<void> {
   dbg("api", "moveRunToFolder", { runId, folderId });
-  return invoke<void>("move_run_to_folder", { runId, folderId });
+  return invoke<void>(CMD.move_run_to_folder, { runId, folderId });
 }
 
 export async function batchMoveToFolder(
@@ -216,14 +217,14 @@ export async function batchMoveToFolder(
   folderId: string | null,
 ): Promise<number> {
   dbg("api", "batchMoveToFolder", { runIds, folderId });
-  return invoke<number>("batch_move_to_folder", { runIds, folderId });
+  return invoke<number>(CMD.batch_move_to_folder, { runIds, folderId });
 }
 
 // Prompt search & favorites
 
 export async function searchPrompts(query: string, limit?: number): Promise<PromptSearchResult[]> {
   dbg("api", "searchPrompts", { query, limit });
-  return invoke<PromptSearchResult[]>("search_prompts", { query, limit });
+  return invoke<PromptSearchResult[]>(CMD.search_prompts, { query, limit });
 }
 
 export async function addPromptFavorite(
@@ -232,14 +233,14 @@ export async function addPromptFavorite(
   text: string,
 ): Promise<PromptFavorite> {
   dbg("api", "addPromptFavorite", { runId, seq });
-  const result = await invoke<PromptFavorite>("add_prompt_favorite", { runId, seq, text });
+  const result = await invoke<PromptFavorite>(CMD.add_prompt_favorite, { runId, seq, text });
   window.dispatchEvent(new Event(EVT_FAVORITES_CHANGED));
   return result;
 }
 
 export async function removePromptFavorite(runId: string, seq: number): Promise<void> {
   dbg("api", "removePromptFavorite", { runId, seq });
-  await invoke<void>("remove_prompt_favorite", { runId, seq });
+  await invoke<void>(CMD.remove_prompt_favorite, { runId, seq });
   window.dispatchEvent(new Event(EVT_FAVORITES_CHANGED));
 }
 
@@ -249,7 +250,7 @@ export async function updatePromptFavoriteTags(
   tags: string[],
 ): Promise<void> {
   dbg("api", "updatePromptFavoriteTags", { runId, seq, tags });
-  await invoke<void>("update_prompt_favorite_tags", { runId, seq, tags });
+  await invoke<void>(CMD.update_prompt_favorite_tags, { runId, seq, tags });
   window.dispatchEvent(new Event(EVT_FAVORITES_CHANGED));
 }
 
@@ -259,30 +260,30 @@ export async function updatePromptFavoriteNote(
   note: string,
 ): Promise<void> {
   dbg("api", "updatePromptFavoriteNote", { runId, seq, note });
-  await invoke<void>("update_prompt_favorite_note", { runId, seq, note });
+  await invoke<void>(CMD.update_prompt_favorite_note, { runId, seq, note });
   window.dispatchEvent(new Event(EVT_FAVORITES_CHANGED));
 }
 
 export async function listPromptFavorites(): Promise<PromptFavorite[]> {
   dbg("api", "listPromptFavorites");
-  return invoke<PromptFavorite[]>("list_prompt_favorites");
+  return invoke<PromptFavorite[]>(CMD.list_prompt_favorites);
 }
 
 export async function listPromptTags(): Promise<string[]> {
   dbg("api", "listPromptTags");
-  return invoke<string[]>("list_prompt_tags");
+  return invoke<string[]>(CMD.list_prompt_tags);
 }
 
 // Run search (History)
 
 export async function searchRuns(filters: RunSearchFilters): Promise<RunSearchResponse> {
   dbg("api", "searchRuns", filters);
-  return invoke<RunSearchResponse>("search_runs", { filters });
+  return invoke<RunSearchResponse>(CMD.search_runs, { filters });
 }
 
 export async function getRunFiles(runId: string): Promise<string[]> {
   dbg("api", "getRunFiles", { runId });
-  return invoke<string[]>("get_run_files", { runId });
+  return invoke<string[]>(CMD.get_run_files, { runId });
 }
 
 // Chat
@@ -303,25 +304,25 @@ export async function sendChatMessage(
 // CLI sync
 export async function syncCliSession(runId: string): Promise<SyncResult> {
   dbg("api", "syncCliSession", { runId });
-  return invoke<SyncResult>("sync_cli_session", { runId });
+  return invoke<SyncResult>(CMD.sync_cli_session, { runId });
 }
 
 // Events
 export async function getRunEvents(id: string, sinceSeq?: number): Promise<RunEvent[]> {
   dbg("api", "getRunEvents", { id, sinceSeq });
-  return invoke<RunEvent[]>("get_run_events", { id, sinceSeq });
+  return invoke<RunEvent[]>(CMD.get_run_events, { id, sinceSeq });
 }
 
 // Artifacts
 export async function getRunArtifacts(id: string): Promise<RunArtifact> {
   dbg("api", "getRunArtifacts", id);
-  return invoke<RunArtifact>("get_run_artifacts", { id });
+  return invoke<RunArtifact>(CMD.get_run_artifacts, { id });
 }
 
 // Settings
 export async function getUserSettings(): Promise<UserSettings> {
   dbg("api", "getUserSettings");
-  return invoke<UserSettings>("get_user_settings");
+  return invoke<UserSettings>(CMD.get_user_settings);
 }
 
 export const USER_SETTINGS_CHANGED_EVENT = "miwarp:user-settings-changed";
@@ -333,21 +334,21 @@ export function notifyUserSettingsChanged(settings: UserSettings): void {
 
 export async function updateUserSettings(patch: Partial<UserSettings>): Promise<UserSettings> {
   dbg("api", "updateUserSettings");
-  const settings = await invoke<UserSettings>("update_user_settings", { patch });
+  const settings = await invoke<UserSettings>(CMD.update_user_settings, { patch });
   notifyUserSettingsChanged(settings);
   return settings;
 }
 
 export async function resetUserSettings(): Promise<UserSettings> {
   dbg("api", "resetUserSettings");
-  const settings = await invoke<UserSettings>("reset_user_settings");
+  const settings = await invoke<UserSettings>(CMD.reset_user_settings);
   notifyUserSettingsChanged(settings);
   return settings;
 }
 
 export async function getAgentSettings(agent: string): Promise<AgentSettings> {
   dbg("api", "getAgentSettings", agent);
-  return invoke<AgentSettings>("get_agent_settings", { agent });
+  return invoke<AgentSettings>(CMD.get_agent_settings, { agent });
 }
 
 export async function updateAgentSettings(
@@ -355,7 +356,7 @@ export async function updateAgentSettings(
   patch: Partial<AgentSettings>,
 ): Promise<AgentSettings> {
   dbg("api", "updateAgentSettings", agent);
-  const result = await invoke<AgentSettings>("update_agent_settings", { agent, patch });
+  const result = await invoke<AgentSettings>(CMD.update_agent_settings, { agent, patch });
   // Sync sidebar resume-gate cache with updated settings
   import("$lib/stores/agent-settings-cache.svelte").then((m) => m.refreshAgentSettingsCache(agent));
   return result;
@@ -368,8 +369,9 @@ export async function detectMimoRuntime(): Promise<{
   version: string | null;
 }> {
   dbg("api", "detectMimoRuntime");
-  const [available, binary, version] =
-    await invoke<[boolean, string, string | null]>("detect_mimo_runtime");
+  const [available, binary, version] = await invoke<[boolean, string, string | null]>(
+    CMD.detect_mimo_runtime,
+  );
   return { available, binary, version };
 }
 
@@ -381,17 +383,17 @@ export async function sendFeishuNotification(
   link?: string,
 ): Promise<void> {
   dbg("api", "sendFeishuNotification", { title, status });
-  return invoke<void>("send_feishu_notification", { title, body, status, link });
+  return invoke<void>(CMD.send_feishu_notification, { title, body, status, link });
 }
 
 // Filesystem
 export async function listDirectory(path: string, showHidden?: boolean): Promise<DirListing> {
   dbg("api", "listDirectory", path, { showHidden });
-  return invoke<DirListing>("list_directory", { path, showHidden });
+  return invoke<DirListing>(CMD.list_directory, { path, showHidden });
 }
 
 export async function checkIsDirectory(path: string): Promise<boolean> {
-  return invoke<boolean>("check_is_directory", { path });
+  return invoke<boolean>(CMD.check_is_directory, { path });
 }
 
 // Remote filesystem (over SSH)
@@ -401,7 +403,7 @@ export async function listRemoteDirectory(
   showHidden?: boolean,
 ): Promise<DirListing> {
   dbg("api", "listRemoteDirectory", { hostName, path, showHidden });
-  return invoke<DirListing>("list_remote_directory", {
+  return invoke<DirListing>(CMD.list_remote_directory, {
     hostName,
     path,
     showHidden: showHidden ?? null,
@@ -410,7 +412,7 @@ export async function listRemoteDirectory(
 
 export async function resolveRemoteHome(hostName: string): Promise<string> {
   dbg("api", "resolveRemoteHome", { hostName });
-  return invoke<string>("resolve_remote_home", { hostName });
+  return invoke<string>(CMD.resolve_remote_home, { hostName });
 }
 
 export async function readFileBase64(path: string, cwd?: string): Promise<[string, string]> {
@@ -435,7 +437,7 @@ export async function validateMediaFile(
   cwd?: string,
 ): Promise<MediaArtifactMetadata> {
   dbg("api", "validateMediaFile", { path, cwd });
-  return invoke<MediaArtifactMetadata>("validate_media_file", {
+  return invoke<MediaArtifactMetadata>(CMD.validate_media_file, {
     path,
     cwd: cwd ?? null,
   });
@@ -444,26 +446,26 @@ export async function validateMediaFile(
 // Git
 export async function getGitSummary(cwd: string): Promise<GitSummary> {
   dbg("api", "getGitSummary", cwd);
-  return invoke<GitSummary>("get_git_summary", { cwd });
+  return invoke<GitSummary>(CMD.get_git_summary, { cwd });
 }
 
 export async function getGitBranch(cwd: string): Promise<string> {
   dbg("api", "getGitBranch", cwd);
-  return invoke<string>("get_git_branch", { cwd });
+  return invoke<string>(CMD.get_git_branch, { cwd });
 }
 
 export async function getGitDiff(cwd: string, staged: boolean, file?: string): Promise<string> {
   dbg("api", "getGitDiff", { cwd, staged, file });
   return perfMarkAsync(
     "ipc-getGitDiff",
-    () => invoke<string>("get_git_diff", { cwd, staged, file: file ?? null }),
+    () => invoke<string>(CMD.get_git_diff, { cwd, staged, file: file ?? null }),
     { cwd, staged, file },
   );
 }
 
 export async function getGitStatus(cwd: string): Promise<string> {
   dbg("api", "getGitStatus", cwd);
-  return invoke<string>("get_git_status", { cwd });
+  return invoke<string>(CMD.get_git_status, { cwd });
 }
 
 export async function getGitTimeline(
@@ -471,18 +473,18 @@ export async function getGitTimeline(
   limit = 12,
 ): Promise<import("./types").GitTimelineResponse> {
   dbg("api", "getGitTimeline", { cwd, limit });
-  return invoke<import("./types").GitTimelineResponse>("get_git_timeline", { cwd, limit });
+  return invoke<import("./types").GitTimelineResponse>(CMD.get_git_timeline, { cwd, limit });
 }
 
 // Export
 export async function exportConversation(runId: string): Promise<string> {
   dbg("api", "exportConversation", runId);
-  return invoke<string>("export_conversation", { runId });
+  return invoke<string>(CMD.export_conversation, { runId });
 }
 
 export async function writeHtmlExport(path: string, content: string): Promise<void> {
   dbg("api", "writeHtmlExport", { path, contentLen: content.length });
-  return invoke<void>("write_html_export", { path, content });
+  return invoke<void>(CMD.write_html_export, { path, content });
 }
 
 export interface SummarizeResult {
@@ -492,7 +494,7 @@ export interface SummarizeResult {
 
 export async function summarizeConversation(runId: string): Promise<SummarizeResult> {
   dbg("api", "summarizeConversation", runId);
-  return invoke<SummarizeResult>("summarize_conversation", { runId });
+  return invoke<SummarizeResult>(CMD.summarize_conversation, { runId });
 }
 
 // Memory file candidates
@@ -500,13 +502,15 @@ export async function listMemoryFiles(
   cwd?: string,
 ): Promise<import("./types").MemoryFileCandidate[]> {
   dbg("api", "listMemoryFiles", { cwd });
-  return invoke<import("./types").MemoryFileCandidate[]>("list_memory_files", { cwd: cwd ?? null });
+  return invoke<import("./types").MemoryFileCandidate[]>(CMD.list_memory_files, {
+    cwd: cwd ?? null,
+  });
 }
 
 // Reveal a file in the system file browser (Finder/Explorer)
 export async function revealFileInFinder(path: string): Promise<void> {
   dbg("api", "revealFileInFinder", path);
-  return invoke<void>("reveal_file_in_finder", { path });
+  return invoke<void>(CMD.reveal_file_in_finder, { path });
 }
 
 // Open a directory in the system file browser (Finder/Explorer) — shows the
@@ -514,7 +518,7 @@ export async function revealFileInFinder(path: string): Promise<void> {
 // action, where tauri-plugin-shell's `open` was unreliable.
 export async function openDirectoryInFinder(path: string): Promise<void> {
   dbg("api", "openDirectoryInFinder", path);
-  return invoke<void>("open_directory_in_finder", { path });
+  return invoke<void>(CMD.open_directory_in_finder, { path });
 }
 
 // Files
@@ -523,7 +527,7 @@ export async function readTextFile(path: string, cwd?: string): Promise<string> 
   return perfMarkAsync(
     "ipc-readTextFile",
     async () => {
-      const content = await invoke<string>("read_text_file", { path, cwd: cwd ?? null });
+      const content = await invoke<string>(CMD.read_text_file, { path, cwd: cwd ?? null });
       return content;
     },
     { path, chars: 0 }, // chars not known until after; left for shape consistency
@@ -535,7 +539,7 @@ export async function statTextFile(path: string, cwd?: string): Promise<number> 
   dbg("api", "statTextFile", path, { cwd });
   return perfMarkAsync(
     "ipc-statTextFile",
-    () => invoke<number>("stat_text_file", { path, cwd: cwd ?? null }),
+    () => invoke<number>(CMD.stat_text_file, { path, cwd: cwd ?? null }),
     { path },
   );
 }
@@ -548,46 +552,46 @@ export async function writeTextFile(path: string, content: string, cwd?: string)
 // Task output
 export async function readTaskOutput(path: string): Promise<string> {
   dbg("api", "readTaskOutput", path);
-  return invoke<string>("read_task_output", { path });
+  return invoke<string>(CMD.read_task_output, { path });
 }
 
 // Stats
 export async function getUsageOverview(days?: number): Promise<UsageOverview> {
   dbg("api", "getUsageOverview", { days });
-  return invoke<UsageOverview>("get_usage_overview", { days: days ?? null });
+  return invoke<UsageOverview>(CMD.get_usage_overview, { days: days ?? null });
 }
 
 export async function getGlobalUsageOverview(days?: number): Promise<UsageOverview> {
   dbg("api", "getGlobalUsageOverview", { days });
-  return invoke<UsageOverview>("get_global_usage_overview", { days: days ?? null });
+  return invoke<UsageOverview>(CMD.get_global_usage_overview, { days: days ?? null });
 }
 
 export async function clearUsageCache(): Promise<void> {
   dbg("api", "clearUsageCache");
-  return invoke<void>("clear_usage_cache");
+  return invoke<void>(CMD.clear_usage_cache);
 }
 
 export async function getHeatmapDaily(
   scope: "app" | "global",
 ): Promise<import("./types").DailyAggregate[]> {
   dbg("api", "getHeatmapDaily", { scope });
-  return invoke<import("./types").DailyAggregate[]>("get_heatmap_daily", { scope });
+  return invoke<import("./types").DailyAggregate[]>(CMD.get_heatmap_daily, { scope });
 }
 
 // Diagnostics
 export async function checkAgentCli(agent: string): Promise<CliCheckResult> {
   dbg("api", "checkAgentCli", agent);
-  return invoke<CliCheckResult>("check_agent_cli", { agent });
+  return invoke<CliCheckResult>(CMD.check_agent_cli, { agent });
 }
 
 export async function checkProjectInit(cwd: string): Promise<ProjectInitStatus> {
   dbg("api", "checkProjectInit", cwd);
-  return invoke<ProjectInitStatus>("check_project_init", { cwd });
+  return invoke<ProjectInitStatus>(CMD.check_project_init, { cwd });
 }
 
 export async function getCliDistTags(): Promise<CliDistTags> {
   dbg("api", "getCliDistTags");
-  return invoke<CliDistTags>("get_cli_dist_tags");
+  return invoke<CliDistTags>(CMD.get_cli_dist_tags);
 }
 
 export interface UpdateCliResult {
@@ -601,17 +605,17 @@ export interface UpdateCliResult {
  *  version cache displayed in the diagnostics panel. */
 export async function updateClaudeCli(): Promise<UpdateCliResult> {
   dbg("api", "updateClaudeCli");
-  return invoke<UpdateCliResult>("update_claude_cli");
+  return invoke<UpdateCliResult>(CMD.update_claude_cli);
 }
 
 export async function checkSshKey(): Promise<SshKeyInfo> {
   dbg("api", "checkSshKey");
-  return invoke<SshKeyInfo>("check_ssh_key");
+  return invoke<SshKeyInfo>(CMD.check_ssh_key);
 }
 
 export async function generateSshKey(): Promise<SshKeyInfo> {
   dbg("api", "generateSshKey");
-  return invoke<SshKeyInfo>("generate_ssh_key");
+  return invoke<SshKeyInfo>(CMD.generate_ssh_key);
 }
 
 export async function detectLocalProxy(
@@ -619,7 +623,7 @@ export async function detectLocalProxy(
   baseUrl: string,
 ): Promise<import("./types").LocalProxyStatus> {
   dbg("api", "detectLocalProxy", { proxyId, baseUrl });
-  return invoke<import("./types").LocalProxyStatus>("detect_local_proxy", { proxyId, baseUrl });
+  return invoke<import("./types").LocalProxyStatus>(CMD.detect_local_proxy, { proxyId, baseUrl });
 }
 
 export async function testApiConnectivity(
@@ -629,7 +633,7 @@ export async function testApiConnectivity(
   model: string,
 ): Promise<import("./types").ApiTestResult> {
   dbg("api", "testApiConnectivity", { baseUrl, authEnvVar, model });
-  return invoke<import("./types").ApiTestResult>("test_api_connectivity", {
+  return invoke<import("./types").ApiTestResult>(CMD.test_api_connectivity, {
     apiKey,
     baseUrl,
     authEnvVar,
@@ -639,27 +643,27 @@ export async function testApiConnectivity(
 
 export async function runDiagnostics(cwd: string): Promise<DiagnosticsReport> {
   dbg("api", "runDiagnostics", { cwd });
-  return invoke<DiagnosticsReport>("run_diagnostics", { cwd });
+  return invoke<DiagnosticsReport>(CMD.run_diagnostics, { cwd });
 }
 
 export async function getDataDirectory(): Promise<string> {
-  return invoke<string>("get_data_directory", {});
+  return invoke<string>(CMD.get_data_directory, {});
 }
 
 // Claude Code History Migration
 export async function exportClaudeCodeHistoryArchive(outputPath: string): Promise<ExportReport> {
   dbg("api", "exportClaudeCodeHistoryArchive", { outputPath });
-  return invoke<ExportReport>("export_claude_code_history_archive", { outputPath });
+  return invoke<ExportReport>(CMD.export_claude_code_history_archive, { outputPath });
 }
 
 export async function importClaudeCodeHistoryArchive(archivePath: string): Promise<ImportReport> {
   dbg("api", "importClaudeCodeHistoryArchive", { archivePath });
-  return invoke<ImportReport>("import_claude_code_history_archive", { archivePath });
+  return invoke<ImportReport>(CMD.import_claude_code_history_archive, { archivePath });
 }
 
 export async function scanClaudeCodeHistory(): Promise<CliSessionInfo[]> {
   dbg("api", "scanClaudeCodeHistory");
-  return invoke<CliSessionInfo[]>("scan_claude_code_history", {});
+  return invoke<CliSessionInfo[]>(CMD.scan_claude_code_history, {});
 }
 
 export async function testRemoteHost(
@@ -670,7 +674,7 @@ export async function testRemoteHost(
   remoteClaudePath?: string,
 ): Promise<RemoteTestResult> {
   dbg("api", "testRemoteHost", { host, user, port });
-  return invoke<RemoteTestResult>("test_remote_host", {
+  return invoke<RemoteTestResult>(CMD.test_remote_host, {
     host,
     user,
     port: port ?? null,
@@ -683,7 +687,7 @@ export async function testRemoteHost(
 export async function getCliInfo(forceRefresh?: boolean, agent?: string): Promise<CliInfo> {
   dbg("api", "getCliInfo", { forceRefresh, agent });
   try {
-    const info = await invoke<CliInfo>("get_cli_info", { forceRefresh, agent });
+    const info = await invoke<CliInfo>(CMD.get_cli_info, { forceRefresh, agent });
     dbg("api", "getCliInfo →", { agent: info.agent, models: info.models.length });
     return info;
   } catch (e) {
@@ -771,12 +775,12 @@ export interface LoadRunDataResult {
 
 export async function loadRunData(id: string, syncCli = false): Promise<LoadRunDataResult> {
   dbg("api", "loadRunData", { id, syncCli });
-  return invoke<LoadRunDataResult>("load_run_data", { id, syncCli });
+  return invoke<LoadRunDataResult>(CMD.load_run_data, { id, syncCli });
 }
 
 export async function getBusEvents(id: string, sinceSeq?: number): Promise<BusEvent[]> {
   dbg("api", "getBusEvents", { id, sinceSeq });
-  return invoke<BusEvent[]>("get_bus_events", { id, sinceSeq });
+  return invoke<BusEvent[]>(CMD.get_bus_events, { id, sinceSeq });
 }
 
 export async function getToolResult(
@@ -789,12 +793,12 @@ export async function getToolResult(
 
 export async function forkSession(runId: string): Promise<string> {
   dbg("api", "forkSession", { runId });
-  return invoke<string>("fork_session", { runId });
+  return invoke<string>(CMD.fork_session, { runId });
 }
 
 export async function sideQuestion(runId: string, question: string): Promise<string> {
   dbg("api", "sideQuestion", { runId, question: question.slice(0, 50) });
-  return invoke<string>("side_question", { runId, question });
+  return invoke<string>(CMD.side_question, { runId, question });
 }
 
 export async function approveSessionTool(runId: string, toolName: string): Promise<void> {
@@ -888,11 +892,11 @@ export async function toggleMcpServer(runId: string, serverName: string, enabled
 }
 
 export async function broadcastMcpToggle(serverName: string, enabled: boolean): Promise<number> {
-  return invoke<number>("broadcast_mcp_toggle", { serverName, enabled });
+  return invoke<number>(CMD.broadcast_mcp_toggle, { serverName, enabled });
 }
 
 export async function getDisabledMcpServers(): Promise<string[]> {
-  return invoke<string[]>("get_disabled_mcp_servers");
+  return invoke<string[]>(CMD.get_disabled_mcp_servers);
 }
 
 export async function toggleMcpServerConfig(
@@ -952,22 +956,22 @@ export async function getSessionRuntimeStatus(
 
 export async function listTeams(): Promise<TeamSummary[]> {
   dbg("api", "listTeams");
-  return invoke<TeamSummary[]>("list_teams");
+  return invoke<TeamSummary[]>(CMD.list_teams);
 }
 
 export async function getTeamConfig(name: string): Promise<TeamConfig> {
   dbg("api", "getTeamConfig", name);
-  return invoke<TeamConfig>("get_team_config", { name });
+  return invoke<TeamConfig>(CMD.get_team_config, { name });
 }
 
 export async function listTeamTasks(teamName: string): Promise<TeamTask[]> {
   dbg("api", "listTeamTasks", teamName);
-  return invoke<TeamTask[]>("list_team_tasks", { teamName });
+  return invoke<TeamTask[]>(CMD.list_team_tasks, { teamName });
 }
 
 export async function getTeamTask(teamName: string, taskId: string): Promise<TeamTask> {
   dbg("api", "getTeamTask", { teamName, taskId });
-  return invoke<TeamTask>("get_team_task", { teamName, taskId });
+  return invoke<TeamTask>(CMD.get_team_task, { teamName, taskId });
 }
 
 export async function getTeamInbox(
@@ -975,24 +979,24 @@ export async function getTeamInbox(
   agentName: string,
 ): Promise<TeamInboxMessage[]> {
   dbg("api", "getTeamInbox", { teamName, agentName });
-  return invoke<TeamInboxMessage[]>("get_team_inbox", { teamName, agentName });
+  return invoke<TeamInboxMessage[]>(CMD.get_team_inbox, { teamName, agentName });
 }
 
 export async function getAllTeamInboxes(name: string): Promise<TeamInboxMessage[]> {
   dbg("api", "getAllTeamInboxes", name);
-  return invoke<TeamInboxMessage[]>("get_all_team_inboxes", { name });
+  return invoke<TeamInboxMessage[]>(CMD.get_all_team_inboxes, { name });
 }
 
 export async function deleteTeam(name: string): Promise<void> {
   dbg("api", "deleteTeam", name);
-  return invoke<void>("delete_team", { name });
+  return invoke<void>(CMD.delete_team, { name });
 }
 
 // ── Team Runs (MiWarp orchestration) ──
 
 export async function listTeamPresets(): Promise<import("./types").TeamPreset[]> {
   dbg("api", "listTeamPresets");
-  return invoke<import("./types").TeamPreset[]>("list_team_presets");
+  return invoke<import("./types").TeamPreset[]>(CMD.list_team_presets);
 }
 
 export async function createTeamRun(
@@ -1003,7 +1007,7 @@ export async function createTeamRun(
   mode?: string,
 ): Promise<import("./types").TeamRun> {
   dbg("api", "createTeamRun", { presetId, prompt: prompt.slice(0, 60), cwd, mode });
-  return invoke<import("./types").TeamRun>("create_team_run", {
+  return invoke<import("./types").TeamRun>(CMD.create_team_run, {
     presetId,
     prompt,
     cwd,
@@ -1014,17 +1018,17 @@ export async function createTeamRun(
 
 export async function listTeamRuns(): Promise<import("./types").TeamRun[]> {
   dbg("api", "listTeamRuns");
-  return invoke<import("./types").TeamRun[]>("list_team_runs");
+  return invoke<import("./types").TeamRun[]>(CMD.list_team_runs);
 }
 
 export async function getTeamRun(id: string): Promise<import("./types").TeamRun> {
   dbg("api", "getTeamRun", id);
-  return invoke<import("./types").TeamRun>("get_team_run", { id });
+  return invoke<import("./types").TeamRun>(CMD.get_team_run, { id });
 }
 
 export async function cancelTeamRun(id: string): Promise<import("./types").TeamRun> {
   dbg("api", "cancelTeamRun", id);
-  return invoke<import("./types").TeamRun>("cancel_team_run", { id });
+  return invoke<import("./types").TeamRun>(CMD.cancel_team_run, { id });
 }
 
 export async function updateTeamRunStatus(
@@ -1034,7 +1038,7 @@ export async function updateTeamRunStatus(
   error?: string,
 ): Promise<import("./types").TeamRun> {
   dbg("api", "updateTeamRunStatus", { id, status });
-  return invoke<import("./types").TeamRun>("update_team_run_status", {
+  return invoke<import("./types").TeamRun>(CMD.update_team_run_status, {
     id,
     status,
     summary: summary ?? null,
@@ -1051,7 +1055,7 @@ export async function updateTeamMemberRun(
   error?: string,
 ): Promise<import("./types").TeamRun> {
   dbg("api", "updateTeamMemberRun", { teamRunId, memberId, status });
-  return invoke<import("./types").TeamRun>("update_team_member_run", {
+  return invoke<import("./types").TeamRun>(CMD.update_team_member_run, {
     teamRunId,
     memberId,
     status,
@@ -1067,7 +1071,7 @@ export async function setTeamRunLead(
   leadPlan?: string,
 ): Promise<import("./types").TeamRun> {
   dbg("api", "setTeamRunLead", { id, leadRunId });
-  return invoke<import("./types").TeamRun>("set_team_run_lead", {
+  return invoke<import("./types").TeamRun>(CMD.set_team_run_lead, {
     id,
     leadRunId,
     leadPlan: leadPlan ?? null,
@@ -1080,7 +1084,7 @@ export async function setTeamMemberTask(
   task: string,
 ): Promise<import("./types").TeamRun> {
   dbg("api", "setTeamMemberTask", { teamRunId, memberId });
-  return invoke<import("./types").TeamRun>("set_team_member_task", {
+  return invoke<import("./types").TeamRun>(CMD.set_team_member_task, {
     teamRunId,
     memberId,
     task,
@@ -1103,7 +1107,7 @@ export interface ClipboardFileContent {
 
 export async function getClipboardFiles(): Promise<ClipboardFileInfo[]> {
   dbg("api", "getClipboardFiles");
-  return invoke<ClipboardFileInfo[]>("get_clipboard_files");
+  return invoke<ClipboardFileInfo[]>(CMD.get_clipboard_files);
 }
 
 export async function readClipboardFile(
@@ -1111,40 +1115,40 @@ export async function readClipboardFile(
   asText: boolean,
 ): Promise<ClipboardFileContent> {
   dbg("api", "readClipboardFile", { path, asText });
-  return invoke<ClipboardFileContent>("read_clipboard_file", { path, asText });
+  return invoke<ClipboardFileContent>(CMD.read_clipboard_file, { path, asText });
 }
 
 /** Save file to temp directory, return filesystem path. For >20MB PDFs from drag-drop/file picker. */
 export async function saveTempAttachment(name: string, contentBase64: string): Promise<string> {
   dbg("api", "saveTempAttachment", { name, len: contentBase64.length });
-  return invoke<string>("save_temp_attachment", { name, contentBase64 });
+  return invoke<string>(CMD.save_temp_attachment, { name, contentBase64 });
 }
 
 // ── Plugins ──
 
 export async function listMarketplaces(): Promise<MarketplaceInfo[]> {
   dbg("api", "listMarketplaces");
-  return invoke<MarketplaceInfo[]>("list_marketplaces");
+  return invoke<MarketplaceInfo[]>(CMD.list_marketplaces);
 }
 
 export async function listMarketplacePlugins(): Promise<MarketplacePlugin[]> {
   dbg("api", "listMarketplacePlugins");
-  return invoke<MarketplacePlugin[]>("list_marketplace_plugins");
+  return invoke<MarketplacePlugin[]>(CMD.list_marketplace_plugins);
 }
 
 export async function listProjectCommands(cwd?: string): Promise<import("./types").CliCommand[]> {
   dbg("api", "listProjectCommands", { cwd });
-  return invoke<import("./types").CliCommand[]>("list_project_commands", { cwd: cwd ?? null });
+  return invoke<import("./types").CliCommand[]>(CMD.list_project_commands, { cwd: cwd ?? null });
 }
 
 export async function listStandaloneSkills(cwd?: string): Promise<StandaloneSkill[]> {
   dbg("api", "listStandaloneSkills", { cwd });
-  return invoke<StandaloneSkill[]>("list_standalone_skills", { cwd: cwd ?? null });
+  return invoke<StandaloneSkill[]>(CMD.list_standalone_skills, { cwd: cwd ?? null });
 }
 
 export async function getSkillContent(path: string, cwd?: string): Promise<string> {
   dbg("api", "getSkillContent", path);
-  return invoke<string>("get_skill_content", { path, cwd: cwd ?? "" });
+  return invoke<string>(CMD.get_skill_content, { path, cwd: cwd ?? "" });
 }
 
 export async function createSkill(
@@ -1155,7 +1159,7 @@ export async function createSkill(
   cwd?: string,
 ): Promise<StandaloneSkill> {
   dbg("api", "createSkill", { name, scope, cwd });
-  return invoke<StandaloneSkill>("create_skill", {
+  return invoke<StandaloneSkill>(CMD.create_skill, {
     name,
     description,
     content,
@@ -1166,17 +1170,17 @@ export async function createSkill(
 
 export async function updateSkill(path: string, content: string, cwd?: string): Promise<void> {
   dbg("api", "updateSkill", { path, cwd });
-  return invoke<void>("update_skill", { path, content, cwd: cwd ?? null });
+  return invoke<void>(CMD.update_skill, { path, content, cwd: cwd ?? null });
 }
 
 export async function deleteSkill(path: string, cwd?: string): Promise<void> {
   dbg("api", "deleteSkill", { path, cwd });
-  return invoke<void>("delete_skill", { path, cwd: cwd ?? null });
+  return invoke<void>(CMD.delete_skill, { path, cwd: cwd ?? null });
 }
 
 export async function listInstalledPlugins(): Promise<InstalledPlugin[]> {
   dbg("api", "listInstalledPlugins");
-  return invoke<InstalledPlugin[]>("list_installed_plugins");
+  return invoke<InstalledPlugin[]>(CMD.list_installed_plugins);
 }
 
 export async function installPlugin(
@@ -1185,7 +1189,7 @@ export async function installPlugin(
   cwd?: string,
 ): Promise<PluginOperationResult> {
   dbg("api", "installPlugin", { name, scope, cwd });
-  return invoke<PluginOperationResult>("install_plugin", { name, scope, cwd });
+  return invoke<PluginOperationResult>(CMD.install_plugin, { name, scope, cwd });
 }
 
 export async function uninstallPlugin(
@@ -1194,7 +1198,7 @@ export async function uninstallPlugin(
   cwd?: string,
 ): Promise<PluginOperationResult> {
   dbg("api", "uninstallPlugin", { name, scope, cwd });
-  return invoke<PluginOperationResult>("uninstall_plugin", { name, scope, cwd });
+  return invoke<PluginOperationResult>(CMD.uninstall_plugin, { name, scope, cwd });
 }
 
 export async function enablePlugin(
@@ -1203,7 +1207,7 @@ export async function enablePlugin(
   cwd?: string,
 ): Promise<PluginOperationResult> {
   dbg("api", "enablePlugin", { name, scope, cwd });
-  return invoke<PluginOperationResult>("enable_plugin", { name, scope, cwd });
+  return invoke<PluginOperationResult>(CMD.enable_plugin, { name, scope, cwd });
 }
 
 export async function disablePlugin(
@@ -1212,7 +1216,7 @@ export async function disablePlugin(
   cwd?: string,
 ): Promise<PluginOperationResult> {
   dbg("api", "disablePlugin", { name, scope, cwd });
-  return invoke<PluginOperationResult>("disable_plugin", { name, scope, cwd });
+  return invoke<PluginOperationResult>(CMD.disable_plugin, { name, scope, cwd });
 }
 
 export async function updatePlugin(
@@ -1221,29 +1225,29 @@ export async function updatePlugin(
   cwd?: string,
 ): Promise<PluginOperationResult> {
   dbg("api", "updatePlugin", { name, scope, cwd });
-  return invoke<PluginOperationResult>("update_plugin", { name, scope, cwd });
+  return invoke<PluginOperationResult>(CMD.update_plugin, { name, scope, cwd });
 }
 
 export async function addMarketplace(source: string): Promise<PluginOperationResult> {
   dbg("api", "addMarketplace", { source });
-  return invoke<PluginOperationResult>("add_marketplace", { source });
+  return invoke<PluginOperationResult>(CMD.add_marketplace, { source });
 }
 
 export async function removeMarketplace(name: string): Promise<PluginOperationResult> {
   dbg("api", "removeMarketplace", { name });
-  return invoke<PluginOperationResult>("remove_marketplace", { name });
+  return invoke<PluginOperationResult>(CMD.remove_marketplace, { name });
 }
 
 export async function updateMarketplace(name?: string): Promise<PluginOperationResult> {
   dbg("api", "updateMarketplace", { name });
-  return invoke<PluginOperationResult>("update_marketplace", { name: name ?? null });
+  return invoke<PluginOperationResult>(CMD.update_marketplace, { name: name ?? null });
 }
 
 // ── Community Skills ──
 
 export async function checkCommunityHealth(): Promise<import("./types").ProviderHealth> {
   dbg("api", "checkCommunityHealth");
-  return invoke<import("./types").ProviderHealth>("check_community_health");
+  return invoke<import("./types").ProviderHealth>(CMD.check_community_health);
 }
 
 export async function searchCommunitySkills(
@@ -1251,7 +1255,7 @@ export async function searchCommunitySkills(
   limit?: number,
 ): Promise<import("./types").CommunitySkillResult[]> {
   dbg("api", "searchCommunitySkills", { query, limit });
-  return invoke<import("./types").CommunitySkillResult[]>("search_community_skills", {
+  return invoke<import("./types").CommunitySkillResult[]>(CMD.search_community_skills, {
     query,
     limit: limit ?? null,
   });
@@ -1262,7 +1266,7 @@ export async function getCommunitySkillDetail(
   skillId: string,
 ): Promise<import("./types").CommunitySkillDetail> {
   dbg("api", "getCommunitySkillDetail", { source, skillId });
-  return invoke<import("./types").CommunitySkillDetail>("get_community_skill_detail", {
+  return invoke<import("./types").CommunitySkillDetail>(CMD.get_community_skill_detail, {
     source,
     skillId,
   });
@@ -1275,7 +1279,7 @@ export async function installCommunitySkill(
   cwd?: string,
 ): Promise<PluginOperationResult> {
   dbg("api", "installCommunitySkill", { source, skillId, scope });
-  return invoke<PluginOperationResult>("install_community_skill", {
+  return invoke<PluginOperationResult>(CMD.install_community_skill, {
     source,
     skillId,
     scope,
@@ -1287,7 +1291,7 @@ export async function installCommunitySkill(
 
 export async function listConfiguredMcpServers(cwd?: string): Promise<ConfiguredMcpServer[]> {
   dbg("api", "listConfiguredMcpServers", { cwd });
-  return invoke<ConfiguredMcpServer[]>("list_configured_mcp_servers", { cwd: cwd ?? null });
+  return invoke<ConfiguredMcpServer[]>(CMD.list_configured_mcp_servers, { cwd: cwd ?? null });
 }
 
 export async function addMcpServer(
@@ -1301,7 +1305,7 @@ export async function addMcpServer(
   headers?: Record<string, string>,
 ): Promise<PluginOperationResult> {
   dbg("api", "addMcpServer", { name, transport, scope });
-  return invoke<PluginOperationResult>("add_mcp_server", {
+  return invoke<PluginOperationResult>(CMD.add_mcp_server, {
     name,
     transport,
     scope,
@@ -1319,7 +1323,7 @@ export async function removeMcpServer(
   cwd?: string,
 ): Promise<PluginOperationResult> {
   dbg("api", "removeMcpServer", { name, scope, cwd });
-  return invoke<PluginOperationResult>("remove_mcp_server", {
+  return invoke<PluginOperationResult>(CMD.remove_mcp_server, {
     name,
     scope,
     cwd: cwd ?? null,
@@ -1328,7 +1332,7 @@ export async function removeMcpServer(
 
 export async function checkMcpRegistryHealth(): Promise<ProviderHealth> {
   dbg("api", "checkMcpRegistryHealth");
-  return invoke<ProviderHealth>("check_mcp_registry_health");
+  return invoke<ProviderHealth>(CMD.check_mcp_registry_health);
 }
 
 export async function searchMcpRegistry(
@@ -1337,7 +1341,7 @@ export async function searchMcpRegistry(
   cursor?: string,
 ): Promise<McpRegistrySearchResult> {
   dbg("api", "searchMcpRegistry", { query, limit, cursor });
-  return invoke<McpRegistrySearchResult>("search_mcp_registry", {
+  return invoke<McpRegistrySearchResult>(CMD.search_mcp_registry, {
     query,
     limit: limit ?? null,
     cursor: cursor ?? null,
@@ -1354,7 +1358,7 @@ export interface CliPermissions {
 
 export async function getCliPermissions(cwd?: string): Promise<CliPermissions> {
   dbg("api", "getCliPermissions", { cwd });
-  return invoke<CliPermissions>("get_cli_permissions", { cwd: cwd ?? null });
+  return invoke<CliPermissions>(CMD.get_cli_permissions, { cwd: cwd ?? null });
 }
 
 export async function updateCliPermissions(
@@ -1364,7 +1368,7 @@ export async function updateCliPermissions(
   cwd?: string,
 ): Promise<void> {
   dbg("api", "updateCliPermissions", { scope, category, count: rules.length });
-  return invoke<void>("update_cli_permissions", {
+  return invoke<void>(CMD.update_cli_permissions, {
     scope,
     category,
     rules,
@@ -1395,65 +1399,65 @@ export async function updateCliConfig(
 
 export async function checkForUpdates(): Promise<import("./types").UpdateInfo> {
   dbg("api", "checkForUpdates");
-  return invoke<import("./types").UpdateInfo>("check_for_updates");
+  return invoke<import("./types").UpdateInfo>(CMD.check_for_updates);
 }
 
 // ── Changelog ──
 
 export async function getChangelog(): Promise<ChangelogEntry[]> {
   dbg("api", "getChangelog");
-  return invoke<ChangelogEntry[]>("get_changelog");
+  return invoke<ChangelogEntry[]>(CMD.get_changelog);
 }
 
 // ── Onboarding ──
 
 export async function checkAuthStatus(): Promise<import("./types").AuthCheckResult> {
   dbg("api", "checkAuthStatus");
-  return invoke<import("./types").AuthCheckResult>("check_auth_status");
+  return invoke<import("./types").AuthCheckResult>(CMD.check_auth_status);
 }
 
 export async function detectInstallMethods(): Promise<import("./types").InstallMethod[]> {
   dbg("api", "detectInstallMethods");
-  return invoke<import("./types").InstallMethod[]>("detect_install_methods");
+  return invoke<import("./types").InstallMethod[]>(CMD.detect_install_methods);
 }
 
 export async function runClaudeLogin(): Promise<boolean> {
   dbg("api", "runClaudeLogin");
-  return invoke<boolean>("run_claude_login");
+  return invoke<boolean>(CMD.run_claude_login);
 }
 
 export async function getAuthOverview(): Promise<import("./types").AuthOverview> {
   dbg("api", "getAuthOverview");
-  return invoke<import("./types").AuthOverview>("get_auth_overview");
+  return invoke<import("./types").AuthOverview>(CMD.get_auth_overview);
 }
 
 export async function setCliApiKey(key: string): Promise<void> {
   dbg("api", "setCliApiKey");
-  return invoke<void>("set_cli_api_key", { key });
+  return invoke<void>(CMD.set_cli_api_key, { key });
 }
 
 export async function removeCliApiKey(): Promise<void> {
   dbg("api", "removeCliApiKey");
-  return invoke<void>("remove_cli_api_key");
+  return invoke<void>(CMD.remove_cli_api_key);
 }
 
 // ── Screenshot ──
 
 export async function captureScreenshot(): Promise<void> {
   dbg("api", "captureScreenshot");
-  return invoke<void>("capture_screenshot");
+  return invoke<void>(CMD.capture_screenshot);
 }
 
 export async function updateScreenshotHotkey(hotkey: string | null): Promise<void> {
   dbg("api", "updateScreenshotHotkey", { hotkey });
-  return invoke<void>("update_screenshot_hotkey", { hotkey });
+  return invoke<void>(CMD.update_screenshot_hotkey, { hotkey });
 }
 
 // ── Web Server ──
 
 export async function getWebServerToken(): Promise<string | null> {
   dbg("api", "getWebServerToken");
-  return invoke<string | null>("get_web_server_token");
+  return invoke<string | null>(CMD.get_web_server_token);
 }
 
 export async function getWebServerStatus(): Promise<{
@@ -1470,12 +1474,12 @@ export async function getWebServerStatus(): Promise<{
     port: number;
     bind: string;
     warning?: string;
-  }>("get_web_server_status");
+  }>(CMD.get_web_server_status);
 }
 
 export async function regenerateWebServerToken(): Promise<string> {
   dbg("api", "regenerateWebServerToken");
-  return invoke<string>("regenerate_web_server_token");
+  return invoke<string>(CMD.regenerate_web_server_token);
 }
 
 export interface WebServerConfig {
@@ -1493,19 +1497,19 @@ export interface RestartResult {
 
 export async function restartWebServer(config: WebServerConfig): Promise<RestartResult> {
   dbg("api", "restartWebServer", { enabled: config.enabled, port: config.port });
-  return invoke<RestartResult>("restart_web_server", { config });
+  return invoke<RestartResult>(CMD.restart_web_server, { config });
 }
 
 export async function getLocalIp(preferV6: boolean): Promise<string | null> {
   dbg("api", "getLocalIp", { preferV6 });
-  return invoke<string | null>("get_local_ip", { preferV6 });
+  return invoke<string | null>(CMD.get_local_ip, { preferV6 });
 }
 
 // ── Agents ──
 
 export async function listAgents(cwd?: string): Promise<AgentDefinitionSummary[]> {
   dbg("api", "listAgents", { cwd });
-  return invoke<AgentDefinitionSummary[]>("list_agents", { cwd: cwd ?? null });
+  return invoke<AgentDefinitionSummary[]>(CMD.list_agents, { cwd: cwd ?? null });
 }
 
 export async function readAgentFile(
@@ -1514,7 +1518,7 @@ export async function readAgentFile(
   cwd?: string,
 ): Promise<string> {
   dbg("api", "readAgentFile", { scope, fileName });
-  return invoke<string>("read_agent_file", {
+  return invoke<string>(CMD.read_agent_file, {
     scope,
     fileName,
     cwd: cwd ?? null,
@@ -1528,7 +1532,7 @@ export async function createAgentFile(
   cwd?: string,
 ): Promise<void> {
   dbg("api", "createAgentFile", { scope, fileName });
-  return invoke<void>("create_agent_file", {
+  return invoke<void>(CMD.create_agent_file, {
     scope,
     fileName,
     content,
@@ -1543,7 +1547,7 @@ export async function updateAgentFile(
   cwd?: string,
 ): Promise<void> {
   dbg("api", "updateAgentFile", { scope, fileName });
-  return invoke<void>("update_agent_file", {
+  return invoke<void>(CMD.update_agent_file, {
     scope,
     fileName,
     content,
@@ -1557,7 +1561,7 @@ export async function deleteAgentFile(
   cwd?: string,
 ): Promise<void> {
   dbg("api", "deleteAgentFile", { scope, fileName });
-  return invoke<void>("delete_agent_file", {
+  return invoke<void>(CMD.delete_agent_file, {
     scope,
     fileName,
     cwd: cwd ?? null,
@@ -1573,7 +1577,7 @@ export async function startRalphLoop(
   completionPromise: string | null,
 ): Promise<void> {
   dbg("api", "startRalphLoop", { runId, maxIterations, completionPromise });
-  return invoke<void>("start_ralph_loop", {
+  return invoke<void>(CMD.start_ralph_loop, {
     runId,
     prompt,
     maxIterations,
@@ -1585,7 +1589,7 @@ export async function cancelRalphLoop(
   runId: string,
 ): Promise<{ iteration: number; immediate: boolean }> {
   dbg("api", "cancelRalphLoop", { runId });
-  return invoke<{ iteration: number; immediate: boolean }>("cancel_ralph_loop", { runId });
+  return invoke<{ iteration: number; immediate: boolean }>(CMD.cancel_ralph_loop, { runId });
 }
 
 // ── Worktree ──
@@ -1613,12 +1617,12 @@ export async function createWorktree(
   branchName: string,
 ): Promise<WorktreeInfo> {
   dbg("api", "createWorktree", { parentCwd, sessionIdShort, branchName });
-  return invoke<WorktreeInfo>("create_worktree", { parentCwd, sessionIdShort, branchName });
+  return invoke<WorktreeInfo>(CMD.create_worktree, { parentCwd, sessionIdShort, branchName });
 }
 
 export async function autoCommit(cwd: string, message: string): Promise<AutoCommitResult> {
   dbg("api", "autoCommit", { cwd, message });
-  return invoke<AutoCommitResult>("auto_commit", { cwd, message });
+  return invoke<AutoCommitResult>(CMD.auto_commit, { cwd, message });
 }
 
 export async function createPullRequest(
@@ -1627,7 +1631,7 @@ export async function createPullRequest(
   baseBranch: string,
 ): Promise<string> {
   dbg("api", "createPullRequest", { cwd, branch, baseBranch });
-  return invoke<string>("create_pull_request", { cwd, branch, baseBranch });
+  return invoke<string>(CMD.create_pull_request, { cwd, branch, baseBranch });
 }
 
 export async function removeWorktree(
@@ -1636,7 +1640,7 @@ export async function removeWorktree(
   branchName?: string,
 ): Promise<void> {
   dbg("api", "removeWorktree", { worktreePath, parentCwd, branchName });
-  return invoke<void>("remove_worktree", {
+  return invoke<void>(CMD.remove_worktree, {
     worktreePath,
     parentCwd,
     branchName: branchName ?? null,
@@ -1645,5 +1649,5 @@ export async function removeWorktree(
 
 export async function listWorktrees(parentCwd: string): Promise<WorktreeEntry[]> {
   dbg("api", "listWorktrees", { parentCwd });
-  return invoke<WorktreeEntry[]>("list_worktrees", { parentCwd });
+  return invoke<WorktreeEntry[]>(CMD.list_worktrees, { parentCwd });
 }

@@ -2588,6 +2588,8 @@
   "settings_toggleTheme": "切换主题",
   "settings_toggleColorScheme": "切换配色方案",
   "settings_checkUpdate": "检查更新",
+  "sidebar_updateAvailableTitle": "有新版本可用（当前 {version}）",
+  "sidebar_updateCurrentTitle": "已是最新版本 {version}",
   "sidebar_cliBrowser": "CLI 浏览器",
   "settings_custom": "自定义",
   "settings_feishuTestMessage": "来自 MiWarp 的飞书 Webhook 测试",

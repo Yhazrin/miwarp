@@ -3,6 +3,11 @@
  *
  * All functions use currentLocale() for locale-sensitive output.
  * Every function includes Invalid Date / NaN / Infinity guards.
+ *
+ * Formatters are memoized per `(kind, locale, optionsHash)` because the
+ * sidebar / chat list call these helpers hundreds of times during a render
+ * pass — `new Intl.DateTimeFormat(...)` is roughly 100× more expensive than
+ * a single `.format()` call, so we cache the constructed instance.
  */
 import { currentLocale } from "./index.svelte";
 
@@ -16,12 +21,66 @@ function isValidDate(d: Date): boolean {
   return !isNaN(d.getTime());
 }
 
+// ── Formatter cache ────────────────────────────────────────────
+//
+// Intl.*Format constructors are expensive. `currentLocale()` is reactive, so
+// invalidation happens implicitly: when locale flips we just miss the cache
+// briefly until callers re-warm it. The Map key includes a stable JSON of
+// options so different shapes never collide.
+
+type FormatterKind = "date" | "time" | "datetime" | "full" | "number" | "relative";
+
+const formatterCache = new Map<
+  string,
+  Intl.DateTimeFormat | Intl.NumberFormat | Intl.RelativeTimeFormat
+>();
+
+function getFormatter<T extends Intl.DateTimeFormat | Intl.NumberFormat | Intl.RelativeTimeFormat>(
+  kind: FormatterKind,
+  options?: Intl.DateTimeFormatOptions | Intl.NumberFormatOptions | Intl.RelativeTimeFormatOptions,
+): T {
+  const locale = currentLocale();
+  const key = `${kind}|${locale}|${JSON.stringify(options ?? {})}`;
+  let cached = formatterCache.get(key) as T | undefined;
+  if (!cached) {
+    if (kind === "date")
+      cached = new Intl.DateTimeFormat(
+        locale,
+        options as Intl.DateTimeFormatOptions,
+      ) as unknown as T;
+    else if (kind === "time")
+      cached = new Intl.DateTimeFormat(
+        locale,
+        options as Intl.DateTimeFormatOptions,
+      ) as unknown as T;
+    else if (kind === "datetime")
+      cached = new Intl.DateTimeFormat(
+        locale,
+        options as Intl.DateTimeFormatOptions,
+      ) as unknown as T;
+    else if (kind === "full")
+      cached = new Intl.DateTimeFormat(
+        locale,
+        options as Intl.DateTimeFormatOptions,
+      ) as unknown as T;
+    else if (kind === "number")
+      cached = new Intl.NumberFormat(locale, options as Intl.NumberFormatOptions) as unknown as T;
+    else
+      cached = new Intl.RelativeTimeFormat(
+        locale,
+        options as Intl.RelativeTimeFormatOptions,
+      ) as unknown as T;
+    formatterCache.set(key, cached);
+  }
+  return cached;
+}
+
 // ── Number formatting ───────────────────────────────────────────
 
 /** Format a number with locale-aware thousand separators. NaN/Infinity → "0". */
 export function fmtNumber(n: number): string {
   if (isNaN(n) || !isFinite(n)) return "0";
-  return new Intl.NumberFormat(currentLocale()).format(n);
+  return getFormatter<Intl.NumberFormat>("number").format(n);
 }
 
 // ── Date/time formatting ────────────────────────────────────────
@@ -30,7 +89,7 @@ export function fmtNumber(n: number): string {
 export function fmtTime(d: Date | string): string {
   const date = toDate(d);
   if (!isValidDate(date)) return "—";
-  return new Intl.DateTimeFormat(currentLocale(), {
+  return getFormatter<Intl.DateTimeFormat>("time", {
     hour: "2-digit",
     minute: "2-digit",
   }).format(date);
@@ -40,7 +99,7 @@ export function fmtTime(d: Date | string): string {
 export function fmtDate(d: Date | string): string {
   const date = toDate(d);
   if (!isValidDate(date)) return "—";
-  return new Intl.DateTimeFormat(currentLocale(), {
+  return getFormatter<Intl.DateTimeFormat>("date", {
     month: "short",
     day: "numeric",
   }).format(date);
@@ -50,7 +109,7 @@ export function fmtDate(d: Date | string): string {
 export function fmtDateTime(d: Date | string): string {
   const date = toDate(d);
   if (!isValidDate(date)) return "—";
-  return new Intl.DateTimeFormat(currentLocale(), {
+  return getFormatter<Intl.DateTimeFormat>("datetime", {
     month: "numeric",
     day: "numeric",
     hour: "2-digit",
@@ -62,7 +121,7 @@ export function fmtDateTime(d: Date | string): string {
 export function fmtFull(d: Date | string): string {
   const date = toDate(d);
   if (!isValidDate(date)) return "—";
-  return new Intl.DateTimeFormat(currentLocale(), {
+  return getFormatter<Intl.DateTimeFormat>("full", {
     year: "numeric",
     month: "numeric",
     day: "numeric",
@@ -86,7 +145,7 @@ export function fmtRelative(d: Date | string): string {
   const diffHr = Math.floor(diffMin / 60);
   const diffDay = Math.floor(diffHr / 24);
 
-  const rtf = new Intl.RelativeTimeFormat(currentLocale(), { numeric: "auto" });
+  const rtf = getFormatter<Intl.RelativeTimeFormat>("relative", { numeric: "auto" });
 
   if (diffSec < 10) return rtf.format(0, "second"); // "now" / "现在"
   if (diffSec < 60) return rtf.format(-diffSec, "second");
