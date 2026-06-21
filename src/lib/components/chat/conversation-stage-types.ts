@@ -36,6 +36,12 @@ export interface TimelineVm {
   fetchToolResult: (runId: string, toolUseId: string) => Promise<Record<string, unknown> | null>;
   topSentinelRef: HTMLDivElement | null;
   setTopSentinel: (el: HTMLDivElement | null) => void;
+  /**
+   * Permission coordinator used by InlineToolCard and PermissionPanel
+   * to project per-request state. When omitted, components fall back
+   * to local busy flags.
+   */
+  permissionCoordinator?: import("$lib/chat/permission-coordinator").PermissionCoordinator;
 }
 
 // ── Welcome / session info ──

@@ -601,6 +601,18 @@
     untrack(() => {
       middleware.subscribeCurrent(id, store);
 
+      // ── Permission coordinator reconcile ──
+      // The active run is the source of truth for permission request
+      // identity. When the user switches runs we cancel any in-flight
+      // permission responses whose captured runId no longer matches.
+      // Bump generation so late responses can be detected as stale.
+      const previousRunId = permissionCoordinator.lastActiveRunId;
+      if (previousRunId !== id) {
+        permissionCoordinator.reconcileActiveRun(id);
+        permissionCoordinator.bumpGeneration();
+        permissionCoordinator.lastActiveRunId = id;
+      }
+
       // Strongest guard: resume operation in progress — don't interfere.
       // Check both store guard (set inside resumeSession) and local flag
       // (set at handleResume entry, before store guard is acquired).
@@ -871,6 +883,7 @@
     handleExitPlanClearContext,
     handleExitPlanBypass,
     handleHookCallbackRespond,
+    permissionCoordinator,
   } = createPermissionHandlers({
     store,
     get timelineIdIndex() {
@@ -1621,6 +1634,7 @@
           lastTurnUsage: ta.lastTurnUsage,
           claudeTurnStarts: ta.claudeTurnStarts,
           showPermissionPanel: false,
+          permissionCoordinator,
           fetchToolResult: toolResultCache.fetchToolResult,
           topSentinelRef: tl.topSentinel,
           setTopSentinel: tl.setTopSentinel,

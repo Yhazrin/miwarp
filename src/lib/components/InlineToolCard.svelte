@@ -60,6 +60,7 @@
     isLastTool,
     processVisibility = "developer" as ProcessVisibility,
     permissionMode = "default",
+    permissionCoordinator,
   }: {
     tool: BusToolItem;
     subTimeline?: TimelineEntry[];
@@ -90,6 +91,13 @@
     latestPlanTool?: boolean;
     /** Whether generic tool permissions are handled by the floating PermissionPanel. */
     showPermissionInPanel?: boolean;
+    /**
+     * Coordinator instance used to project per-request state for the
+     * inline card. When absent, the card falls back to the local
+     * `submitting` flag (legacy behavior) — callers should provide it
+     * so the card can show typed failure / stale / cancelled states.
+     */
+    permissionCoordinator?: import("$lib/chat/permission-coordinator").PermissionCoordinator;
     /** Click on Edit/Write/Read tool card's file path ->open preview in right panel. */
     onPreviewFile?: (path: string) => void;
     /** Whether this is the last tool in the timeline (for reviewing phase detection). */
@@ -162,6 +170,71 @@
     void tool.status;
     submitting = false;
   });
+
+  // Coordinator projection: when provided, mirror the coordinator's
+  // state for this requestId so the inline card can render a typed
+  // failure / stale / cancelled state. Without the coordinator the
+  // card falls back to the legacy `submitting` flag behavior.
+  let permissionState = $state<
+    | "pending"
+    | "submitting"
+    | "allowed"
+    | "denied"
+    | "failed"
+    | "stale"
+    | "cancelled"
+    | "expired"
+    | null
+  >(null);
+  let permissionFailure = $state<{ code: string; message: string; retryable: boolean } | null>(
+    null,
+  );
+  let coordinatorUnsub: (() => void) | null = null;
+  $effect(() => {
+    if (!permissionCoordinator) {
+      permissionState = null;
+      permissionFailure = null;
+      return;
+    }
+    const requestId = tool.permission_request_id;
+    if (!requestId) {
+      permissionState = null;
+      permissionFailure = null;
+      return;
+    }
+    // Seed with current snapshot, then subscribe to events.
+    const initial = permissionCoordinator.inspect(runId ?? "", requestId);
+    if (initial) {
+      permissionState = initial.state;
+      permissionFailure = initial.failure ?? null;
+    } else {
+      permissionCoordinator.register({
+        runId: runId ?? "",
+        requestId,
+        toolName: tool.tool_name,
+        receivedAt: Date.now(),
+      });
+      permissionState = "pending";
+      permissionFailure = null;
+    }
+    coordinatorUnsub = permissionCoordinator.subscribe((event) => {
+      if (event.requestId !== requestId) return;
+      permissionState = event.state;
+      permissionFailure = event.failure ?? null;
+    });
+    return () => {
+      coordinatorUnsub?.();
+      coordinatorUnsub = null;
+    };
+  });
+
+  let isPermissionStuck = $derived(
+    permissionState === "stale" || permissionState === "cancelled" || permissionState === "expired",
+  );
+  let isPermissionFailed = $derived(permissionState === "failed");
+  let isPermissionBusy = $derived(
+    permissionState === "submitting" || (permissionState == null && submitting),
+  );
 
   let isAgentLike = $derived(tool.tool_name === "Agent" || tool.tool_name === "Task");
   let isAsk = $derived(tool.tool_name === "AskUserQuestion");
@@ -842,14 +915,25 @@
                 {#if isPathLikeDetail}<bdi>{detail}</bdi>{:else}{detail}{/if}
               </p>
             {/if}
-            {#if onPermissionRespond}
+            {#if isPermissionStuck}
+              <p class="text-[11px] text-muted-foreground/80 mb-1">
+                {t("perm_stale", { tool: tool.tool_name })}
+              </p>
+            {:else if isPermissionFailed && permissionFailure}
+              <p class="text-[11px] text-miwarp-status-error mb-1">
+                {t("perm_failed", {
+                  code: permissionFailure.code,
+                  message: permissionFailure.message,
+                })}
+              </p>
+            {/if}
+            {#if onPermissionRespond && !isPermissionStuck}
               <div class="flex gap-2">
                 <button
                   type="button"
                   class="rounded-md bg-miwarp-status-success px-4 py-1.5 text-xs font-medium text-miwarp-accent-on-accent hover:bg-[hsl(var(--miwarp-status-success)/0.85)] transition-all disabled:opacity-50"
-                  disabled={submitting}
+                  disabled={isPermissionBusy}
                   onclick={() => {
-                    submitting = true;
                     safePermissionRespond(
                       tool.permission_request_id!,
                       "allow",
@@ -861,18 +945,16 @@
                 <button
                   type="button"
                   class="rounded-md border border-border px-4 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-all disabled:opacity-50"
-                  disabled={submitting}
+                  disabled={isPermissionBusy}
                   onclick={() => {
-                    submitting = true;
                     safePermissionRespond(tool.permission_request_id!, "deny");
                   }}>{t("common_deny")}</button
                 >
                 <button
                   type="button"
                   class="rounded-md border border-[hsl(var(--miwarp-status-error)/0.3)] bg-[hsl(var(--miwarp-status-error)/0.1)] px-3 py-1.5 text-xs font-medium text-miwarp-status-error hover:bg-[hsl(var(--miwarp-status-error)/0.2)] transition-all disabled:opacity-50"
-                  disabled={submitting}
+                  disabled={isPermissionBusy}
                   onclick={() => {
-                    submitting = true;
                     safePermissionRespond(
                       tool.permission_request_id!,
                       "deny",
@@ -893,9 +975,8 @@
                     <button
                       type="button"
                       class="rounded-md border border-[hsl(var(--miwarp-status-info)/0.3)] bg-[hsl(var(--miwarp-status-info)/0.05)] px-3 py-1.5 text-xs font-medium text-miwarp-status-info hover:bg-[hsl(var(--miwarp-status-info)/0.1)] transition-all disabled:opacity-50"
-                      disabled={submitting}
+                      disabled={isPermissionBusy}
                       onclick={() => {
-                        submitting = true;
                         safePermissionRespond(
                           tool.permission_request_id!,
                           "allow",

@@ -1382,6 +1382,7 @@ pub async fn respond_permission(
     updated_input: Option<serde_json::Value>,
     deny_message: Option<String>,
     interrupt: Option<bool>,
+    tool_name: Option<String>,
 ) -> Result<(), String> {
     log::debug!(
         "[session] respond_permission: run_id={}, req_id={}, behavior={}, updated_perms={}, has_updated_input={}, has_deny_message={}, interrupt={:?}",
@@ -1393,6 +1394,40 @@ pub async fn respond_permission(
         deny_message.is_some(),
         interrupt,
     );
+
+    // ── Behavior validation ──
+    if behavior != "allow" && behavior != "deny" {
+        return Err(format!(
+            r#"{{"code":"unknown","message":"invalid behavior: {behavior}","retryable":false}}"#
+        ));
+    }
+
+    // ── Permanent allow policy ──
+    // Frontend mirrors NEVER_ALLOW_TOOLS but backend is the authority:
+    // refuse any permanent allow for plan-mode tools regardless of how
+    // it arrives (updated_permissions type=addRules with destination,
+    // or implicit rules). Session-scoped `setMode` suggestions are
+    // still allowed; only `addRules` and persistent equivalents are
+    // blocked here.
+    if let (Some(perms), Some(tool)) = (updated_permissions.as_ref(), tool_name.as_ref()) {
+        let attempts_permanent = perms.iter().any(|p| {
+            p.get("type").and_then(|v| v.as_str()) == Some("addRules")
+                || p.get("destination").and_then(|v| v.as_str()) == Some("userSettings")
+        });
+        if attempts_permanent && crate::agent::permission_error::is_permanent_allow_blocked(tool) {
+            log::warn!(
+                "[session] respond_permission: permanent allow blocked for tool={}, run_id={}",
+                tool,
+                run_id
+            );
+            return Err(crate::agent::permission_error::PermissionError::new(
+                crate::agent::permission_error::PermissionErrorCode::DangerToolBlocked,
+                format!("Permanent allow refused for {tool}"),
+                false,
+            )
+            .to_string());
+        }
+    }
 
     let cmd_tx = get_cmd_tx(&sessions, &run_id).await?;
 
@@ -1429,6 +1464,7 @@ pub async fn respond_permission(
         .send(ActorCommand::RespondPermission {
             request_id: request_id.clone(),
             response,
+            tool_name: tool_name.clone(),
             reply: reply_tx,
         })
         .await

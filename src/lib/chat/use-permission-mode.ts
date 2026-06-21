@@ -1,6 +1,6 @@
 import * as api from "$lib/api";
 import { dbg, dbgWarn } from "$lib/utils/debug";
-import { CLI_TO_APP_MODE } from "$lib/chat/utils/permission-modes";
+import { mapCliToApp } from "$lib/chat/utils/permission-mode-contract";
 import type { SessionStore } from "$lib/stores/session-store.svelte";
 
 export interface PermissionModeContext {
@@ -10,6 +10,19 @@ export interface PermissionModeContext {
   getPermModeLabel: (mode: string) => string;
 }
 
+/**
+ * Sequence-tracked permission mode switcher.
+ *
+ * Race-safety invariant: every mode change increments `seq`. A persist
+ * that resolves AFTER a newer mode change has already been observed
+ * cannot roll the UI back to the older mode — the seq check on each
+ * async continuation aborts the stale work.
+ *
+ * The two awaits (control protocol + settings persist) are independent
+ * chains that both honor the seq. The control protocol chain is
+ * strictly ordered; the persist chain runs in the background so a
+ * flaky disk write doesn't block the user's perceived switch.
+ */
 export function createPermissionModeHandler(ctx: PermissionModeContext) {
   let permissionModeChangeSeq = 0;
   let pendingPersist: Promise<void> = Promise.resolve();
@@ -26,7 +39,9 @@ export function createPermissionModeHandler(ctx: PermissionModeContext) {
     const hadActiveSession = store.sessionAlive;
     dbg("chat", "permission mode change", { from: oldMode, to: newMode, seq, hadActiveSession });
 
-    // Optimistic UI + protect from session_init during awaits
+    // Optimistic UI + protect from session_init during awaits. Only
+    // commit if this is still the latest change.
+    if (seq !== permissionModeChangeSeq) return false;
     store.permissionMode = newMode;
     store.permissionModeSetByUser = true;
     store.permissionModePersistFailed = false;
@@ -56,7 +71,12 @@ export function createPermissionModeHandler(ctx: PermissionModeContext) {
     }
 
     let persistFailed = false;
-    const appName = CLI_TO_APP_MODE[newMode] ?? newMode;
+    // Canonical mapping: app mode (UI/CLI) is stored in settings under
+    // the APP name; control protocol uses the CLI name. We re-derive
+    // the app name from the CLI value so the persisted shape is
+    // consistent regardless of which side of the mapping the user
+    // touched first.
+    const appName = mapCliToApp(newMode);
 
     pendingPersist = pendingPersist
       .then(async () => {

@@ -1082,12 +1082,43 @@ pub async fn dispatch_command(
                 .and_then(|v| v.as_str())
                 .map(String::from);
             let interrupt = params.get("interrupt").and_then(|v| v.as_bool());
+            let tool_name = params
+                .get("tool_name")
+                .and_then(|v| v.as_str())
+                .map(String::from);
             log::debug!(
                 "[dispatch] respond_permission: run_id={}, req_id={}, behavior={}",
                 run_id,
                 request_id,
                 behavior
             );
+            // ── Behavior parity with Tauri command ──
+            if behavior != "allow" && behavior != "deny" {
+                return Err(format!(
+                    r#"{{"code":"unknown","message":"invalid behavior: {behavior}","retryable":false}}"#
+                ));
+            }
+            // ── Permanent allow parity with Tauri command ──
+            if let (Some(perms), Some(tool)) = (updated_permissions.as_ref(), tool_name.as_ref()) {
+                let attempts_permanent = perms.iter().any(|p| {
+                    p.get("type").and_then(|v| v.as_str()) == Some("addRules")
+                        || p.get("destination").and_then(|v| v.as_str()) == Some("userSettings")
+                });
+                if attempts_permanent
+                    && crate::agent::permission_error::is_permanent_allow_blocked(tool)
+                {
+                    log::warn!(
+                        "[dispatch] respond_permission: permanent allow blocked for tool={}",
+                        tool
+                    );
+                    return Err(crate::agent::permission_error::PermissionError::new(
+                        crate::agent::permission_error::PermissionErrorCode::DangerToolBlocked,
+                        format!("Permanent allow refused for {tool}"),
+                        false,
+                    )
+                    .to_string());
+                }
+            }
             let cmd_tx = {
                 let map = state.sessions.lock().await;
                 map.get(&run_id)
@@ -1121,13 +1152,15 @@ pub async fn dispatch_command(
                 .send(ActorCommand::RespondPermission {
                     request_id,
                     response,
+                    tool_name: tool_name.clone(),
                     reply: reply_tx,
                 })
                 .await
                 .map_err(|_| "Actor dead".to_string())?;
-            reply_rx
+            let outcome = reply_rx
                 .await
-                .map_err(|_| "Actor dropped reply".to_string())??;
+                .map_err(|_| "Actor dropped reply".to_string())?;
+            outcome?;
             Ok(json!(true))
         }
         "respond_hook_callback" => {

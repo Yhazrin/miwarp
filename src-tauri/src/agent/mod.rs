@@ -5,6 +5,7 @@ pub mod codex_parser;
 pub mod constants;
 pub mod control;
 pub mod notify;
+pub mod permission_error;
 pub mod pipe_parser;
 pub mod protocol;
 pub mod runtime;

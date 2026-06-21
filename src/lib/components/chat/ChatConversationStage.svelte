@@ -109,6 +109,7 @@
     fetchToolResult,
     topSentinelRef: _topSentinelRef,
     setTopSentinel,
+    permissionCoordinator,
   } = $derived(timelineVm);
 
   const {
@@ -381,6 +382,7 @@
               {claudeTurnStarts}
               {latestPlanToolId}
               {showPermissionPanel}
+              {permissionCoordinator}
               {fetchToolResult}
               {handleRewindToMessage}
               {handleToolAnswer}

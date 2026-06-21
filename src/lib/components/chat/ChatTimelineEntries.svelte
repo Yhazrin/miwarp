@@ -45,6 +45,7 @@
     claudeTurnStarts,
     latestPlanToolId,
     showPermissionPanel,
+    permissionCoordinator,
     fetchToolResult,
     handleRewindToMessage,
     handleToolAnswer,
@@ -70,6 +71,7 @@
     claudeTurnStarts: Set<number>;
     latestPlanToolId: string | null;
     showPermissionPanel: boolean;
+    permissionCoordinator?: import("$lib/chat/permission-coordinator").PermissionCoordinator;
     fetchToolResult: (runId: string, toolUseId: string) => Promise<Record<string, unknown> | null>;
     handleRewindToMessage: (entry: { cliUuid: string; content: string; ts: string }) => void;
     handleToolAnswer: (toolUseId: string, answer: string) => void;
@@ -239,6 +241,7 @@
                   latestPlanTool={entry.kind === "tool" &&
                     entry.tool.tool_use_id === latestPlanToolId}
                   showPermissionInPanel={showPermissionPanel}
+                  {permissionCoordinator}
                   permissionMode={store.permissionMode}
                   onPreviewFile={openPreviewForPath}
                 />

@@ -818,15 +818,22 @@ export async function respondPermission(
   updatedInput?: Record<string, unknown>,
   denyMessage?: string,
   interrupt?: boolean,
+  toolName?: string,
 ): Promise<void> {
+  // Privacy-safe breadcrumb: do NOT log tool input, deny message text,
+  // path/command arguments, or raw suggestion payloads. Only the
+  // decision shape (allow/deny + interrupt + how-many suggestions) is
+  // safe to surface.
   dbg("api", "respondPermission", {
     runId,
     requestId,
     behavior,
-    updatedPermissions,
-    updatedInput,
-    denyMessage,
+    hasUpdatedPermissions: !!updatedPermissions && updatedPermissions.length > 0,
+    suggestionCount: updatedPermissions?.length ?? 0,
+    hasUpdatedInput: updatedInput != null,
+    hasDenyMessage: denyMessage != null && denyMessage.length > 0,
     interrupt,
+    toolName,
   });
   return invoke("respond_permission", {
     runId,
@@ -836,6 +843,7 @@ export async function respondPermission(
     updatedInput: updatedInput ?? null,
     denyMessage: denyMessage ?? null,
     interrupt: interrupt ?? null,
+    toolName: toolName ?? null,
   });
 }
 

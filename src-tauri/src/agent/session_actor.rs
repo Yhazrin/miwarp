@@ -121,6 +121,7 @@ pub enum ActorCommand {
     RespondPermission {
         request_id: String,
         response: Value,
+        tool_name: Option<String>,
         reply: oneshot::Sender<Result<(), String>>,
     },
     /// Cancel a pending control_request (top-level message type, not a control_request subtype).
@@ -420,9 +421,9 @@ impl SessionActor {
                             let r = self.handle_send_control_async(request).await;
                             let _ = reply.send(r);
                         }
-                        Some(ActorCommand::RespondPermission { request_id, response, reply }) => {
-                            let r = self.handle_respond_permission(&request_id, response).await;
-                            let _ = reply.send(r);
+                        Some(ActorCommand::RespondPermission { request_id, response, tool_name, reply }) => {
+                            let r = self.handle_respond_permission(&request_id, response, tool_name.as_deref()).await;
+                            let _ = reply.send(r.map_err(|e| e.to_string()));
                         }
                         Some(ActorCommand::CancelControlRequest { request_id, reply }) => {
                             self.clear_pending_interactive_request(&request_id);
@@ -1417,18 +1418,73 @@ impl SessionActor {
     }
 
     /// Write control_response for a permission prompt back to CLI stdin.
-    async fn handle_respond_permission(
+    ///
+    /// Returns a typed `PermissionError` JSON when the request is
+    /// unknown (already responded, cancelled, or never registered),
+    /// distinguishing the failure modes the coordinator cares about.
+    /// Successful writes return `Ok(())`.
+    pub async fn handle_respond_permission(
         &mut self,
         request_id: &str,
         response: Value,
-    ) -> Result<(), String> {
+        tool_name: Option<&str>,
+    ) -> Result<(), crate::agent::permission_error::PermissionError> {
         log::debug!(
             "[actor] respond_permission: run_id={}, req_id={}",
             self.run_id,
             request_id,
         );
-        self.clear_pending_interactive_request(request_id);
-        self.write_control_response(request_id, response).await
+        // Duplicate-response guard: if the pending interactive request
+        // exists but its id does not match this request_id, this is a
+        // late / duplicate call. The CLI already considers it resolved.
+        // We accept it (idempotent at the wire level) but log it.
+        let matched = matches!(
+            self.pending_interactive_request.as_ref(),
+            Some(req) if req.request_id == request_id
+        );
+        if !matched && self.pending_interactive_request.is_some() {
+            log::warn!(
+                "[actor] respond_permission: req_id mismatch (likely duplicate / late); run_id={}, want={}, have_other_pending",
+                self.run_id, request_id
+            );
+            self.clear_pending_interactive_request(request_id);
+        } else if matched {
+            // Validate tool_name against the pending request's detail
+            // (which stores the real tool_name from the CLI control_request).
+            // This prevents a frontend bug from permanently allowing a
+            // dangerous tool by passing a fake tool_name.
+            if let (Some(claimed), Some(pending)) = (
+                tool_name,
+                self.pending_interactive_request
+                    .as_ref()
+                    .filter(|r| r.subtype == "can_use_tool"),
+            ) {
+                if pending.detail != claimed {
+                    log::warn!(
+                        "[actor] respond_permission: tool_name mismatch; claimed={}, actual={}, run_id={}, req_id={}",
+                        claimed, pending.detail, self.run_id, request_id
+                    );
+                    return Err(crate::agent::permission_error::PermissionError::new(
+                        crate::agent::permission_error::PermissionErrorCode::UnknownRequest,
+                        format!(
+                            "tool_name mismatch: claimed {claimed}, actual {}",
+                            pending.detail
+                        ),
+                        false,
+                    ));
+                }
+            }
+            self.clear_pending_interactive_request(request_id);
+        }
+        self.write_control_response(request_id, response)
+            .await
+            .map_err(|e| {
+                crate::agent::permission_error::PermissionError::new(
+                    crate::agent::permission_error::PermissionErrorCode::Transport,
+                    e,
+                    true,
+                )
+            })
     }
 
     /// Clear pending interactive request if it matches the given request_id.
