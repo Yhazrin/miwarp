@@ -31,6 +31,7 @@ import com.miwarp.mobile.design.MWTheme
 import com.miwarp.mobile.design.MWTypography
 import com.miwarp.mobile.model.RunArtifacts
 import com.miwarp.mobile.rpc.MiWarpRpcClient
+import java.util.Locale
 
 @Composable
 fun ArtifactsScreen(
@@ -156,7 +157,7 @@ fun ArtifactsScreen(
                         if (cost != null && cost > 0) {
                             item {
                                 Text(
-                                    text = "Estimated cost: $${String.format("%.4f", cost)}",
+                                    text = "Estimated cost: $${String.format(Locale.ROOT, "%.4f", cost)}",
                                     style = MWTypography.caption,
                                     color = colors.textTertiary,
                                     modifier = Modifier.padding(top = spacing.md),

@@ -32,6 +32,9 @@ jobs:
       - name: Version alignment
         run: npm run version:check
 
+      - name: Architecture gates
+        run: npm run arch:check
+
       - name: Root pollution check
         run: npm run check:root
 
@@ -109,6 +112,43 @@ jobs:
 
       - name: Clippy
         run: cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+
+      - name: Unit tests
+        if: runner.os == 'Linux'
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib
+
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android/MiWarpMobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;34.0.0"
+
+      - name: Unit tests, lint, and debug build
+        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
+
+  ios:
+    name: iOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift package tests
+        run: swift test --package-path apps/ios/MiWarpMobile
+
+      - name: Simulator build
+        run: xcodebuild -project apps/ios/MiWarpMobile/MiWarpMobile.xcodeproj -scheme MiWarpMobile -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 
   build-windows:
     name: Build Windows

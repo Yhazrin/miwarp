@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 import com.miwarp.mobile.design.MWApprovalCard
 import com.miwarp.mobile.design.MWErrorState
@@ -40,6 +41,7 @@ import com.miwarp.mobile.model.UsageSummary
 import com.miwarp.mobile.reducer.MiWarpEventReducer
 import com.miwarp.mobile.reducer.ReductionResult
 import com.miwarp.mobile.rpc.MiWarpRpcClient
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 @Composable
@@ -65,7 +67,7 @@ fun ChatScreen(
     var lastSeq by remember { mutableLongStateOf(0L) }
     val reducer = remember { MiWarpEventReducer() }
 
-    val connectionState by rpcClient.connectionState
+    val connectionState by rpcClient.connectionState.collectAsStateWithLifecycle()
 
     // Load initial data and subscribe
     LaunchedEffect(runId) {
@@ -285,7 +287,7 @@ private fun ChatHeader(
                 )
                 if (usage.costUsd > 0) {
                     Text(
-                        text = "$${String.format("%.2f", usage.costUsd)}",
+                        text = "$${String.format(Locale.ROOT, "%.2f", usage.costUsd)}",
                         style = MWTypography.caption,
                         color = colors.textSecondary,
                     )

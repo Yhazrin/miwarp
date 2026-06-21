@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Release script — bump version in package.json, sync to other files, commit, and tag.
+ * Release script — bump package.json, sync every platform, verify, commit, tag, and push.
  *
  * Usage:
  *   npm run release 0.2.0        # set explicit version
@@ -13,6 +13,13 @@ import { readFileSync, writeFileSync } from "fs";
 import { execSync } from "child_process";
 
 // ── Read current version ─────────────────────────────────────────────
+const dirty = execSync("git status --porcelain", { encoding: "utf-8" }).trim();
+if (dirty) {
+  console.error("Working tree must be clean before creating a release.");
+  console.error(dirty);
+  process.exit(1);
+}
+
 const pkg = JSON.parse(readFileSync("package.json", "utf-8"));
 const current = pkg.version;
 
@@ -62,14 +69,28 @@ pkg.version = next;
 writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
 console.log(`  ✓ package.json`);
 
-// ── Sync to tauri.conf.json + Cargo.toml ─────────────────────────────
+// ── Sync and verify every platform ──────────────────────────────────
 execSync("node scripts/sync-version.mjs", { stdio: "inherit" });
+execSync("node scripts/check-versions.mjs", { stdio: "inherit" });
 
 // ── Git commit & tag ─────────────────────────────────────────────────
 const tag = `v${next}`;
 
 execSync(
-  "git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock",
+  [
+    "git add",
+    "package.json",
+    "package-lock.json",
+    "src-tauri/tauri.conf.json",
+    "src-tauri/Cargo.toml",
+    "src-tauri/Cargo.lock",
+    "apps/ios/MiWarpMobile/project.yml",
+    "apps/ios/MiWarpMobile/MiWarpMobile.xcodeproj/project.pbxproj",
+    "apps/ios/MiWarpMobile/MiWarpMobile/Resources/Info.plist",
+    "apps/ios/MiWarpMobile/MiWarpLiveActivityExtension/Info.plist",
+    "apps/ios/MiWarpMobile/MiWarpMobileTests/Info.plist",
+    "apps/android/MiWarpMobile/app/build.gradle.kts",
+  ].join(" "),
   { stdio: "inherit" },
 );
 execSync(`git commit -m "chore: release ${tag}"`, { stdio: "inherit" });

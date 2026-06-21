@@ -21,7 +21,8 @@ class MainActivity : ComponentActivity() {
         val deepLinkUri = intent?.data?.toString()
 
         setContent {
-            var isDarkMode by remember { mutableStateOf(isSystemInDarkTheme()) }
+            val systemDarkTheme = isSystemInDarkTheme()
+            var isDarkMode by remember { mutableStateOf(systemDarkTheme) }
 
             MWTheme(darkTheme = isDarkMode) {
                 AppNavGraph(

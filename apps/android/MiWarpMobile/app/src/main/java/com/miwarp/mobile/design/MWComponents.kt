@@ -364,14 +364,14 @@ fun MWToolCallCard(
             exit = shrinkVertically(animationSpec = tween(180)),
         ) {
             Column(modifier = Modifier.padding(top = spacing.xs)) {
-                if (tool.input.isNotBlank()) {
+                if (tool.inputPreview.isNotBlank()) {
                     Text(
                         text = "Input",
                         style = MWTypography.label,
                         color = colors.textSecondary,
                     )
                     Text(
-                        text = tool.input,
+                        text = tool.inputPreview,
                         style = MWTypography.monoSmall,
                         color = colors.textTertiary,
                         modifier = Modifier
@@ -828,7 +828,7 @@ fun MWReconnectBanner(
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-private fun formatTokens(tokens: Long): String = when {
+fun formatTokens(tokens: Long): String = when {
     tokens >= 1_000_000 -> "${"%.1f".format(tokens / 1_000_000.0)}M tokens"
     tokens >= 1_000 -> "${"%.1f".format(tokens / 1_000.0)}K tokens"
     else -> "$tokens tokens"

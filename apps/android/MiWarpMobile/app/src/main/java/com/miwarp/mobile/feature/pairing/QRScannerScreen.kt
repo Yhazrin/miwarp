@@ -6,6 +6,7 @@ import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -42,6 +43,7 @@ import com.miwarp.mobile.model.MiWarpConnection
 import java.util.UUID
 import java.util.concurrent.Executors
 
+@androidx.annotation.OptIn(markerClass = [ExperimentalGetImage::class])
 @Composable
 fun QRScannerScreen(
     onConnectionScanned: (MiWarpConnection) -> Unit,

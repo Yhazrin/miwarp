@@ -9,6 +9,11 @@ node_modules/
 build/
 .svelte-kit/
 
+# Mobile build state
+apps/android/MiWarpMobile/.gradle/
+apps/android/MiWarpMobile/local.properties
+apps/ios/MiWarpMobile/.build/
+
 # Rust / Tauri
 src-tauri/target/
 src-tauri/gen/

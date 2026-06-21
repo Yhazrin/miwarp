@@ -262,12 +262,9 @@
 		21B9443E7ADA0E66BC51EC45 = {
 			isa = PBXGroup;
 			children = (
-				FFA972AFDAFA81B5AFF86F13 /* Attributes */,
-				E0CF79B9130171F7A14B3593 /* DeepLink */,
 				30878D2DB939D8658DD6345C /* MiWarpLiveActivityExtension */,
 				22BD8ACE83181FFD864F28B1 /* MiWarpMobile */,
 				38A09A1F5946842668AF1240 /* MiWarpMobileTests */,
-				330EAB1C893C847B1B2FF720 /* Models */,
 				DEECF2C198EF49DF81D17E61 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -323,7 +320,7 @@
 				656F809295E8CC07CB44BF0F /* MascotState.swift */,
 			);
 			name = Models;
-			path = MiWarpMobile/LiveActivities/Models;
+			path = Models;
 			sourceTree = "<group>";
 		};
 		33AB1082DACA30D4AA8D73F3 /* Feedback */ = {
@@ -482,7 +479,7 @@
 				289D60E42DA65D8A062D44C8 /* LiveActivityDeepLink.swift */,
 			);
 			name = DeepLink;
-			path = MiWarpMobile/LiveActivities/DeepLink;
+			path = DeepLink;
 			sourceTree = "<group>";
 		};
 		FB248D8E99454EDA9E978468 /* Dashboard */ = {
@@ -508,7 +505,7 @@
 				6924FB55309725BC61D2EFC6 /* SessionSyncAttributes.swift */,
 			);
 			name = Attributes;
-			path = MiWarpMobile/LiveActivities/Attributes;
+			path = Attributes;
 			sourceTree = "<group>";
 		};
 		FFF295E37EFF54B540E122AE /* Resources */ = {
@@ -936,7 +933,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 1000007;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -957,7 +954,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_FILE = MiWarpMobile/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.7;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -1007,7 +1004,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 1000007;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -1022,7 +1019,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				INFOPLIST_FILE = MiWarpMobile/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.7;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

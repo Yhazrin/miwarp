@@ -9,6 +9,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Test
 
 class ExampleUnitTest {
@@ -51,7 +52,9 @@ class ExampleUnitTest {
     fun `reducer handles message complete`() {
         val reducer = MiWarpEventReducer()
         reducer.reduce(BusEvent.MessageDelta(seq = 1, runId = "r1", text = "Hello", role = "assistant"))
-        val result = reducer.reduce(BusEvent.MessageComplete(seq = 2, runId = "r1", payload = null))
+        val result = reducer.reduce(
+            BusEvent.MessageComplete(seq = 2, runId = "r1", messageId = null, text = null),
+        )
 
         assertTrue(result.changed)
         assertFalse(result.messages[0].isStreaming)
@@ -64,7 +67,7 @@ class ExampleUnitTest {
         reducer.reduce(BusEvent.ToolStart(seq = 2, runId = "r1", toolName = "read_file", toolId = "t1", input = null))
         val result = reducer.reduce(BusEvent.ToolEnd(
             seq = 3, runId = "r1", toolName = "read_file", toolId = "t1",
-            output = "file contents", isError = false,
+            output = JsonPrimitive("file contents"), status = "success",
         ))
 
         assertTrue(result.changed)

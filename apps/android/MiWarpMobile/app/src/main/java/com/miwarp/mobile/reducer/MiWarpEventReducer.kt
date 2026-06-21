@@ -241,7 +241,9 @@ class MiWarpEventReducer {
     }
 
     private fun handleToolEnd(event: BusEvent.ToolEnd): Boolean {
-        val outputStr = event.output?.toString()?.take(2000) ?: ""
+        val outputStr = event.output?.let { output ->
+            runCatching { output.jsonPrimitive.contentOrNull }.getOrNull() ?: output.toString()
+        }?.take(2000) ?: ""
         for (i in messages.indices.reversed()) {
             val msg = messages[i]
             if (msg.role == MessageRole.Assistant) {

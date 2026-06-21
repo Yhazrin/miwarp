@@ -114,14 +114,19 @@ Rejected because time suppression trades reduced traffic for possible permanent 
 
 ## Verification
 
-Verified so far:
+Verified on 2026-06-21:
 
-- Rust UTF-8 chunk tests: 5 passed.
-- Rust full library suite: 457 passed.
-- Rust Clippy `--lib --tests -- -D warnings`: passed after cleaning two pre-existing test warnings.
-- Rust formatting: passed.
-
-Mobile verification evidence will be added after Android and iOS test/build commands complete.
+- Browser/desktop Vitest suite: 84 files, 1,627 tests passed.
+- Svelte type check, production build, formatting, i18n, and architecture gates: passed with 0 blocking errors.
+- Rust UTF-8 chunk tests: 5 passed as part of the full library suite.
+- Rust full library suite: 462 tests passed.
+- Rust Clippy with `-D warnings` and Rust formatting: passed.
+- iOS SwiftPM suite: 84 tests passed, including 33 bounded-chunk tests.
+- iOS Xcode simulator suite: 84 tests passed and the application plus Live Activity extension built successfully.
+- Android JVM suite: 48 tests passed, including 33 bounded-chunk tests.
+- Android `lintDebug`: passed with 0 errors.
+- Android `assembleDebug`: passed and produced a debug APK.
+- XcodeGen regeneration check: generated project opens without duplicate-group or malformed-project warnings.
 
 ## Fitness Functions
 
