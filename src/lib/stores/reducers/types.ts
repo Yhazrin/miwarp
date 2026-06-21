@@ -186,7 +186,6 @@ export interface SessionStoreReducers {
   _stopping: boolean;
   _lastProcessedSeq: number;
   _lastSnapshotSeq: number;
-  _recoveryTimer: ReturnType<typeof setTimeout> | null;
   rawFallbackCount: number;
   unknownEventCount: number;
   strictMode: boolean;

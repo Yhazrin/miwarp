@@ -36,6 +36,7 @@ let package = Package(
                 "RunTypes.swift",
                 "WebSocketMessages.swift",
                 "WSDecoder.swift",
+                "MiWarpChunkAssembler.swift",
                 "MiWarpEventReducer.swift",
             ]
         ),

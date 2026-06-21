@@ -59,9 +59,8 @@ class MiWarpWebSocketClient(
     private var shouldReconnect = false
     private var reconnectJob: kotlinx.coroutines.Job? = null
 
-    // v1.0.6 / 3.5: chunk reassembly buffers (msg_id → ChunkBuffer)
-    private data class ChunkBuffer(val total: Int, val parts: ConcurrentHashMap<Int, String> = ConcurrentHashMap())
-    private val chunkBuffers = ConcurrentHashMap<String, ChunkBuffer>()
+    // v1.0.6 / 3.5: chunk reassembly via bounded assembler
+    private val chunkAssembler = BoundedChunkAssembler()
 
     private val baseDelayMs = 1000L
     private val maxDelayMs = 30_000L
@@ -88,6 +87,7 @@ class MiWarpWebSocketClient(
         reconnectJob = null
         webSocket?.close(1000, "Client disconnect")
         webSocket = null
+        chunkAssembler.reset()
         _connectionState.value = ConnectionState.Disconnected
         pendingRequests.values.forEach { it.completeExceptionally(DisconnectedException()) }
         pendingRequests.clear()
@@ -143,6 +143,7 @@ class MiWarpWebSocketClient(
             override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
                 if (ws !== webSocket) return
                 Logger.wsError("WebSocket failure", t)
+                chunkAssembler.reset()
                 _connectionState.value = ConnectionState.Error
                 // Fail all pending requests immediately instead of waiting for timeout
                 val error = RpcResponse(id = null, error = "Connection lost: ${t.message}")
@@ -156,8 +157,19 @@ class MiWarpWebSocketClient(
     private fun handleMessage(text: String) {
         val trimmed = text.trim()
 
-        // v1.0.6 / 3.5: check for chunk protocol messages
-        if (handleChunkMessage(trimmed)) return
+        // v1.0.6 / 3.5: chunk assembly via bounded assembler
+        when (val result = chunkAssembler.handleMessage(trimmed)) {
+            is BoundedChunkAssembler.Result.NotChunk -> { /* fall through */ }
+            is BoundedChunkAssembler.Result.Consumed -> return
+            is BoundedChunkAssembler.Result.Completed -> {
+                handleMessage(result.payload)
+                return
+            }
+            is BoundedChunkAssembler.Result.Discarded -> {
+                Logger.wsInfo("Chunk discarded: ${result.reason}")
+                return
+            }
+        }
 
         // Try parsing as RPC response first (has "id")
         if (trimmed.contains("\"id\"")) {
@@ -191,46 +203,6 @@ class MiWarpWebSocketClient(
         }
     }
 
-    /**
-     * v1.0.6 / 3.5: Handle chunk protocol messages.
-     * Returns true if the message was consumed as a chunk message.
-     */
-    private fun handleChunkMessage(text: String): Boolean {
-        // Quick type extraction
-        val typeMatch = Regex(""""type"\s*:\s*"([^"]+)"""").find(text) ?: return false
-        val type = typeMatch.groupValues[1]
-
-        return when (type) {
-            "chunk_begin" -> {
-                val msgId = Regex(""""msg_id"\s*:\s*"([^"]+)"""").find(text)?.groupValues?.get(1) ?: return true
-                val total = Regex(""""total"\s*:\s*(\d+)""").find(text)?.groupValues?.get(1)?.toIntOrNull() ?: return true
-                chunkBuffers[msgId] = ChunkBuffer(total)
-                true
-            }
-            "chunk" -> {
-                val msgId = Regex(""""msg_id"\s*:\s*"([^"]+)"""").find(text)?.groupValues?.get(1) ?: return true
-                val idx = Regex(""""idx"\s*:\s*(\d+)""").find(text)?.groupValues?.get(1)?.toIntOrNull() ?: return true
-                val data = Regex(""""data"\s*:\s*"((?:[^"\\]|\\.)*)"""").find(text)?.groupValues?.get(1) ?: return true
-                val buffer = chunkBuffers[msgId] ?: return true
-                buffer.parts[idx] = data
-
-                // Check if all parts received
-                if (buffer.parts.size == buffer.total) {
-                    val combined = (0 until buffer.total).map { buffer.parts[it] ?: "" }.joinToString("")
-                    chunkBuffers.remove(msgId)
-                    Logger.wsInfo("Chunk reassembly complete: $msgId (${combined.length} chars)")
-                    handleMessage(combined)
-                }
-                true
-            }
-            "chunk_end" -> {
-                val msgId = Regex(""""msg_id"\s*:\s*"([^"]+)"""").find(text)?.groupValues?.get(1) ?: return true
-                chunkBuffers.remove(msgId)
-                true
-            }
-            else -> false
-        }
-    }
 
     private fun scheduleReconnect() {
         if (!shouldReconnect) return

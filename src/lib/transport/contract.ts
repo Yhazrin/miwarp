@@ -1,11 +1,12 @@
 /**
  * Transport contract — shared types and helpers for the transport layer.
  *
- * This module is a true leaf: it imports nothing from project sources. Both
- * `tauri.ts` and `websocket.ts` depend on it, and `index.ts` re-exports
- * from it. Keeping the contract in its own file breaks the historical
- * barrel cycle (transport/index.ts ↔ tauri.ts ↔ websocket.ts).
+ * Both `tauri.ts` and `websocket.ts` depend on this contract, while `index.ts`
+ * only re-exports it. The contract imports connection-state types directly so
+ * implementations never need to depend on the transport barrel.
  */
+import type { ConnectionStateListener, ConnectionStateValue } from "./connection-state";
+
 export interface Transport {
   invoke<T>(
     cmd: string,
@@ -14,10 +15,16 @@ export interface Transport {
   ): Promise<T>;
   listen<T>(event: string, handler: (payload: T) => void): Promise<() => void>;
   isDesktop(): boolean;
-  /** Subscribe to a run's real-time events (WS only, no-op on desktop) */
-  subscribeRun(runId: string, lastSeq?: number): void;
-  /** Unsubscribe from a run's events (WS only, no-op on desktop) */
-  unsubscribeRun(runId: string): void;
+  /** Subscribe to a run's real-time events (WS only, no-op on desktop). */
+  subscribeRun(runId: string, lastSeq?: number, ownerId?: string): void;
+  /** Unsubscribe one logical owner from a run (WS only, no-op on desktop). */
+  unsubscribeRun(runId: string, ownerId?: string): void;
+  /** Current connection state without leaking adapter implementation details. */
+  getConnectionState(): ConnectionStateValue;
+  /** Subscribe to future connection-state transitions. */
+  onConnectionStateChange(listener: ConnectionStateListener): () => void;
+  /** Release transport-owned timers, sockets, requests, and subscriptions. */
+  dispose?(): void;
 }
 
 /** Default timeout per command category */

@@ -14,7 +14,7 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
     /// accessors instead of touching `NSLock` from async contexts.
     private let requestRegistry = WSRequestRegistry()
 
-    private let chunkReassembler = WSChunkReassembler()
+    private let chunkAssembler = MiWarpChunkAssembler()
 
     private var eventContinuation: AsyncStream<BusEvent>.Continuation?
     private var connectionContinuation: AsyncStream<ConnectionState>.Continuation?
@@ -271,16 +271,22 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
     }
 
     private func handleMessage(_ data: Data) {
-        // v1.0.6 / 3.5: check for chunk protocol messages before normal parsing
-        if let chunk = chunkReassembler.accept(data) {
-            switch chunk {
-            case .chunkHandled:
-                return
-            case .reassembled(let combinedData):
-                logger.wsInfo("Chunk reassembly complete (\(combinedData.count) bytes)")
-                handleMessage(combinedData)
+        switch chunkAssembler.handleMessage(data) {
+        case .notChunk:
+            break
+        case .consumed:
+            return
+        case .completed(let assembled):
+            guard let assembledData = assembled.data(using: .utf8) else {
+                logger.wsError("Chunk reassembly produced invalid UTF-8")
                 return
             }
+            logger.wsInfo("Chunk reassembly complete (\(assembledData.count) bytes)")
+            handleMessage(assembledData)
+            return
+        case .discarded(let reason):
+            logger.wsInfo("Chunk discarded: \(reason)")
+            return
         }
 
         do {
@@ -431,6 +437,7 @@ final class MiWarpWebSocketClient: NSObject, @unchecked Sendable {
     }
 
     private func cancelActiveTransport() {
+        chunkAssembler.reset()
         preflightTask?.cancel()
         preflightTask = nil
         preflightSession?.invalidateAndCancel()

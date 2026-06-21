@@ -77,3 +77,13 @@ targets:
         PRODUCT_NAME: "MiWarpLiveActivityExtension"
     entitlements:
       path: MiWarpLiveActivityExtension/MiWarpLiveActivityExtension.entitlements
+
+schemes:
+  MiWarpMobile:
+    build:
+      targets:
+        MiWarpMobile: all
+        MiWarpLiveActivityExtension: all
+    test:
+      targets:
+        - MiWarpMobileTests

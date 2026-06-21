@@ -64,10 +64,8 @@ export class EventMiddleware {
   // Idempotent start guard
   private _started = false;
 
-  // Debounce guard for _full_reload
+  // Single-flight guard for server-requested full reloads.
   private _reloadingRuns = new Set<string>();
-  private _recoveringRuns = new Map<string, number>();
-  private _RECOVER_DEBOUNCE_MS = 2000;
 
   // ── Lifecycle ──
 
@@ -152,6 +150,7 @@ export class EventMiddleware {
           const store = this._subscriptions.get(runId);
           if (store) {
             this._reloadingRuns.add(runId);
+            store.markConnectionReloading(runId);
             void store.loadRun(runId).finally(() => {
               this._reloadingRuns.delete(runId);
             });
@@ -168,10 +167,10 @@ export class EventMiddleware {
 
   destroy(): void {
     dbg("middleware", "destroying, unregistering", this._unlisteners.length, "listeners");
-    // Unsubscribe all runs from transport before cleanup
-    const transport = getTransport();
-    for (const runId of this._subscriptions.keys()) {
-      transport.unsubscribeRun(runId);
+    // Release transport subscriptions via each store's connection controller.
+    // EventMiddleware does NOT own transport subscriptions — the controller does.
+    for (const [, store] of this._subscriptions) {
+      store.releaseConnection();
     }
     for (const fn of this._unlisteners) fn();
     this._unlisteners = [];
@@ -201,9 +200,9 @@ export class EventMiddleware {
       return;
     }
 
-    // Clear old subscription (different run or different store)
+    // Clear old routing (different run or different store).
+    // Transport subscription is released by the connection controller, not here.
     if (this._currentRunId) {
-      getTransport().unsubscribeRun(this._currentRunId);
       this._subscriptions.delete(this._currentRunId);
       this._batchBuffer.delete(this._currentRunId);
       this._hookBatchBuffer.delete(this._currentRunId);
@@ -228,7 +227,7 @@ export class EventMiddleware {
   }
 
   unsubscribe(runId: string): void {
-    getTransport().unsubscribeRun(runId);
+    // Transport subscription is released by the connection controller, not here.
     this._subscriptions.delete(runId);
     this._batchBuffer.delete(runId);
     this._hookBatchBuffer.delete(runId);
@@ -412,10 +411,6 @@ export class EventMiddleware {
   }
 
   private async recoverRunFromDisk(runId: string, reason: string): Promise<void> {
-    const now = Date.now();
-    const last = this._recoveringRuns.get(runId) ?? 0;
-    if (now - last < this._RECOVER_DEBOUNCE_MS) return;
-    this._recoveringRuns.set(runId, now);
     const store = this._subscriptions.get(runId);
     if (!store) return;
     dbgWarn("middleware", "recoverRunFromDisk", { runId, reason });

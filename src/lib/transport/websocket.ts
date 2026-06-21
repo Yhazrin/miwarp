@@ -1,34 +1,72 @@
 /**
  * WsTransport: WebSocket JSON-RPC transport for browser access.
  *
- * - Auto-reconnect with exponential backoff (1s -> 2s -> 4s -> ... -> 30s max)
- * - Close code 4401 -> stop reconnecting (auth failure)
- * - Request/response correlation via `id` field
- * - Server push events dispatched to registered handlers
- * - Cookie-based auth (no token in URL)
- * - Auto _subscribe/_unsubscribe for run-scoped events
+ * Refactored Phase 1: delegates to focused modules:
+ * - ConnectionStateMachine: state transitions, generation tracking
+ * - RequestRegistry: pending request correlation, timeout, cleanup
+ * - RunSubscriptions: reference-counted run subscriptions with monotonic seq
+ * - ChunkAssembler: bounded chunk assembly with size/time limits
+ *
+ * This file owns: WebSocket lifecycle, message routing, reconnect scheduling.
  */
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { getInvokeTimeoutMs, type Transport } from "./contract";
+import {
+  ConnectionState,
+  ConnectionStateMachine,
+  AuthFailureError,
+  ConnectionClosedError,
+  ConnectionFailedError,
+  ConnectionTimeoutError,
+  DisposedError,
+  NotConnectedError,
+  type ConnectionStateListener,
+  type ConnectionStateValue,
+} from "./connection-state";
+import { RequestRegistry, type RpcError } from "./request-registry";
+import { RunSubscriptions } from "./run-subscriptions";
+import { ChunkAssembler } from "./chunk-assembler";
+import { systemTimers, type TimerApi } from "./timer-api";
 
-interface PendingRequest {
-  resolve: (value: unknown) => void;
-  reject: (error: Error) => void;
+/** Delay schedule for reconnect: 1s → 2s → 4s → ... → 30s cap */
+const RECONNECT_BASE_MS = 1000;
+const RECONNECT_MAX_MS = 30_000;
+const CONNECT_TIMEOUT_MS = 10_000;
+
+export interface WsTransportOptions {
+  /** Custom WebSocket factory for testing */
+  wsFactory?: (url: string) => WebSocket;
+  /** Custom timer functions for testing */
+  timers?: TimerApi;
 }
 
 export class WsTransport implements Transport {
   private ws: WebSocket | null = null;
-  private reqId = 0;
-  private pending = new Map<string, PendingRequest>();
+  private stateMachine = new ConnectionStateMachine();
+  private requests: RequestRegistry;
+  private subscriptions = new RunSubscriptions();
+  private chunks: ChunkAssembler;
+
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private connectTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnectDelay = RECONNECT_BASE_MS;
+
   private listeners = new Map<string, Set<(payload: unknown) => void>>();
-  /** Per-run seq checkpoint for reconnect replay */
-  private lastSeq = new Map<string, number>();
-  /** Runs we've subscribed to on the server */
-  private subscribedRuns = new Set<string>();
-  private reconnectDelay = 1000;
-  private shouldReconnect = true;
-  private connectPromise: Promise<void> | null = null;
-  private chunkBuffers = new Map<string, { total: number; parts: Map<number, string> }>();
+
+  private readonly wsFactory: (url: string) => WebSocket;
+  private readonly timers: TimerApi;
+
+  constructor(options: WsTransportOptions = {}) {
+    this.wsFactory = options.wsFactory ?? ((url) => new WebSocket(url));
+    this.timers = options.timers ?? systemTimers;
+    this.requests = new RequestRegistry(this.timers);
+
+    this.chunks = new ChunkAssembler({
+      cleanupIntervalMs: 15_000,
+      timers: this.timers,
+    });
+    this.chunks.onComplete = (assembled) => this.routeMessage(assembled);
+  }
 
   private buildWsUrl(): string {
     const loc = window.location;
@@ -38,134 +76,250 @@ export class WsTransport implements Transport {
     return url;
   }
 
+  /** Backward-compatible property for existing diagnostics/tests. */
+  get connectionState(): ConnectionStateValue {
+    return this.stateMachine.state;
+  }
+
+  getConnectionState(): ConnectionStateValue {
+    return this.stateMachine.state;
+  }
+
+  onConnectionStateChange(listener: ConnectionStateListener): () => void {
+    return this.stateMachine.subscribe(listener);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Connection lifecycle
+  // ---------------------------------------------------------------------------
+
   private connect(): Promise<void> {
-    if (this.connectPromise) return this.connectPromise;
+    if (!this.stateMachine.canConnect) {
+      if (this.stateMachine.state === ConnectionState.Connecting) {
+        // Already connecting — return a promise that waits for state change
+        return new Promise<void>((resolve, reject) => {
+          const unsub = this.stateMachine.subscribe((state) => {
+            if (state === ConnectionState.Open) {
+              unsub();
+              resolve();
+            } else if (
+              state === ConnectionState.Closed ||
+              state === ConnectionState.AuthFailed ||
+              state === ConnectionState.Disposed
+            ) {
+              unsub();
+              reject(new NotConnectedError());
+            }
+          });
+        });
+      }
+      if (this.stateMachine.state === ConnectionState.Disposed) {
+        return Promise.reject(new DisposedError());
+      }
+      if (this.stateMachine.state === ConnectionState.AuthFailed) {
+        return Promise.reject(new AuthFailureError(4401, "auth failed"));
+      }
+      // Open was handled by ensureConnected; no new connection is needed.
+      return Promise.resolve();
+    }
 
-    this.connectPromise = new Promise<void>((resolve, reject) => {
+    this.stateMachine.transition(ConnectionState.Connecting);
+    const generation = this.stateMachine.generation;
+
+    return new Promise<void>((resolve, reject) => {
       const url = this.buildWsUrl();
-      dbg("transport", "ws.connecting", { url });
+      dbg("transport", "ws.connecting", { url, generation });
 
-      const ws = new WebSocket(url);
+      let ws: WebSocket;
+      try {
+        ws = this.wsFactory(url);
+      } catch (cause) {
+        const error = new ConnectionFailedError("Failed to create WebSocket", { cause });
+        this.stateMachine.transition(ConnectionState.Closed);
+        reject(error);
+        this.scheduleReconnect();
+        return;
+      }
+
+      // Guard: if the generation changed while we were creating the socket, abort
+      if (this.stateMachine.generation !== generation) {
+        try {
+          ws.close();
+        } catch {
+          /* ignore */
+        }
+        reject(new NotConnectedError());
+        return;
+      }
+
       this.ws = ws;
+      let settled = false;
+
+      const settle = (action: "resolve" | "reject", err?: Error) => {
+        if (settled) return;
+        settled = true;
+        if (action === "resolve") resolve();
+        else reject(err);
+      };
 
       ws.onopen = () => {
-        dbg("transport", "ws.connected");
-        this.reconnectDelay = 1000;
-        this.connectPromise = null;
-        // Re-subscribe to all previously subscribed runs
+        if (this.stateMachine.generation !== generation) return;
+        dbg("transport", "ws.connected", { generation });
+        this.clearConnectTimer();
+        this.reconnectDelay = RECONNECT_BASE_MS;
+        this.stateMachine.transition(ConnectionState.Open);
         this.resubscribeAll();
-        resolve();
+        settle("resolve");
       };
 
       ws.onmessage = (ev) => {
-        this.handleMessage(ev.data);
+        if (this.stateMachine.generation !== generation) return;
+        this.handleRawMessage(ev.data);
       };
 
-      ws.onerror = (ev) => {
-        dbgWarn("transport", "ws.error", ev);
+      ws.onerror = () => {
+        if (this.stateMachine.generation !== generation) return;
+        const error = new ConnectionFailedError("WebSocket connection error", { generation });
+        dbgWarn("transport", "ws.error", { generation });
+        this.clearConnectTimer();
+        this.requests.rejectAll(error, generation);
+        this.stateMachine.transition(ConnectionState.Closed);
+        settle("reject", error);
+        try {
+          ws.close();
+        } catch {
+          /* ignore */
+        }
+        this.ws = null;
+        this.scheduleReconnect();
       };
 
       ws.onclose = (ev) => {
-        dbg("transport", "ws.closed", { code: ev.code, reason: ev.reason });
-        this.connectPromise = null;
-        this.ws = null;
-
-        // Reject all pending requests
-        for (const [id, req] of this.pending) {
-          req.reject(new Error(`WebSocket closed (code ${ev.code})`));
-          this.pending.delete(id);
+        if (this.stateMachine.generation !== generation) {
+          dbg("transport", "ws.close.stale", { generation, code: ev.code });
+          return;
         }
+        dbg("transport", "ws.closed", { code: ev.code, reason: ev.reason, generation });
+        this.ws = null;
+        this.clearConnectTimer();
+
+        const closedError = new ConnectionClosedError(ev.code, ev.reason);
+        // Reject all pending requests from this connection generation.
+        this.requests.rejectAll(closedError, generation);
 
         if (ev.code === 4401) {
-          // Auth failure — stop reconnecting, redirect to login
+          this.clearReconnectTimer();
+          this.stateMachine.transition(ConnectionState.AuthFailed);
+          settle("reject", new AuthFailureError(4401, ev.reason));
           dbgWarn("transport", "ws.authFailure, redirecting to /login");
-          this.shouldReconnect = false;
-          window.location.href = "/login";
+          this.timers.setTimeout(() => {
+            window.location.href = "/login";
+          }, 0);
           return;
         }
 
-        if (this.shouldReconnect) {
-          const delay = Math.min(this.reconnectDelay, 30000);
-          dbg("transport", "ws.reconnecting", { delay });
-          setTimeout(() => {
-            this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30000);
-            this.ensureConnected();
-          }, delay);
-        }
+        // Transition to closed
+        this.stateMachine.transition(ConnectionState.Closed);
+        settle("reject", closedError);
+
+        // Schedule reconnect
+        this.scheduleReconnect();
       };
 
-      // Timeout for initial connection — flag prevents onclose from triggering
-      // a duplicate reconnect attempt when the timeout fires first.
-      let timedOut = false;
-      setTimeout(() => {
+      // Connection timeout
+      this.connectTimer = this.timers.setTimeout(() => {
+        if (this.stateMachine.generation !== generation) return;
         if (ws.readyState === WebSocket.CONNECTING) {
-          timedOut = true;
-          ws.close();
-          this.connectPromise = null;
-          reject(new Error("WebSocket connection timeout"));
+          dbg("transport", "ws.connectTimeout", { generation });
+          this.clearConnectTimer();
+          try {
+            ws.close();
+          } catch {
+            /* ignore */
+          }
+          this.stateMachine.transition(ConnectionState.Closed);
+          settle("reject", new ConnectionTimeoutError(CONNECT_TIMEOUT_MS));
+          this.scheduleReconnect();
         }
-      }, 10000);
-
-      // Patch onclose to skip reconnect when timeout already handled it
-      const origOnClose = ws.onclose;
-      ws.onclose = function (ev) {
-        if (timedOut) return; // timeout already rejected + cleaned up
-        origOnClose?.call(ws, ev);
-      };
+      }, CONNECT_TIMEOUT_MS);
     });
+  }
 
-    return this.connectPromise;
+  private scheduleReconnect(): void {
+    if (!this.stateMachine.canReconnect) {
+      dbg("transport", "ws.reconnect.skip", { state: this.stateMachine.state });
+      return;
+    }
+
+    // Cancel any existing reconnect timer (dedup)
+    this.clearReconnectTimer();
+
+    const delay = Math.min(this.reconnectDelay, RECONNECT_MAX_MS);
+    dbg("transport", "ws.reconnect.scheduled", { delay, state: this.stateMachine.state });
+    this.stateMachine.transition(ConnectionState.Reconnecting);
+
+    this.reconnectTimer = this.timers.setTimeout(() => {
+      this.reconnectTimer = null;
+      this.reconnectDelay = Math.min(this.reconnectDelay * 2, RECONNECT_MAX_MS);
+      // Reject stale requests before reconnect
+      this.requests.rejectStale(this.stateMachine.generation + 1, "Reconnecting");
+      this.connect().catch(() => {
+        // connect() internally handles scheduling next reconnect
+      });
+    }, delay);
   }
 
   private async ensureConnected(): Promise<void> {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
+    if (this.stateMachine.state === ConnectionState.Open) return;
     await this.connect();
   }
 
-  /** Re-subscribe all tracked runs after reconnect */
+  // ---------------------------------------------------------------------------
+  // Run subscriptions (delegate to RunSubscriptions)
+  // ---------------------------------------------------------------------------
+
   private resubscribeAll(): void {
-    for (const runId of this.subscribedRuns) {
-      const lastSeq = this.lastSeq.get(runId) ?? 0;
-      dbg("transport", "ws.resubscribe", { runId, lastSeq });
+    const runs = this.subscriptions.getAll();
+    if (runs.length === 0) return;
+    dbg("transport", "ws.resubscribeAll", { count: runs.length });
+    for (const { runId, lastSeq } of runs) {
       this.sendRaw({
-        id: `req_${++this.reqId}`,
+        id: this.requests.allocateId(),
         method: "_subscribe",
         params: { run_id: runId, last_seq: lastSeq },
       });
     }
   }
 
-  /** Subscribe to a run's real-time events on the server */
-  subscribeRun(runId: string, lastSeq = 0): void {
-    this.subscribedRuns.add(runId);
-    // Monotonic: prevent checkpoint regression (e.g. accidental lastSeq=0 overwrites)
-    const prev = this.lastSeq.get(runId) ?? 0;
-    const effectiveSeq = Math.max(prev, lastSeq);
-    this.lastSeq.set(runId, effectiveSeq);
-    dbg("transport", "ws.subscribeRun", { runId, lastSeq, effectiveSeq });
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+  subscribeRun(runId: string, lastSeq = 0, ownerId?: string): void {
+    const result = this.subscriptions.subscribe(runId, lastSeq, ownerId);
+    dbg("transport", "ws.subscribeRun", { runId, ownerId, ...result });
+    if (result.shouldSendSubscribe && this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.sendRaw({
-        id: `req_${++this.reqId}`,
+        id: this.requests.allocateId(),
         method: "_subscribe",
-        params: { run_id: runId, last_seq: effectiveSeq },
+        params: { run_id: runId, last_seq: result.lastSeq },
       });
     }
   }
 
-  /** Unsubscribe from a run's events */
-  unsubscribeRun(runId: string): void {
-    if (!this.subscribedRuns.has(runId)) return;
-    this.subscribedRuns.delete(runId);
-    this.lastSeq.delete(runId);
+  unsubscribeRun(runId: string, ownerId?: string): void {
+    const wasLast = this.subscriptions.unsubscribe(runId, ownerId);
+    if (!wasLast) return;
     dbg("transport", "ws.unsubscribeRun", { runId });
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.sendRaw({
-        id: `req_${++this.reqId}`,
+        id: this.requests.allocateId(),
         method: "_unsubscribe",
         params: { run_id: runId },
       });
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Message sending
+  // ---------------------------------------------------------------------------
 
   private sendRaw(obj: Record<string, unknown>): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -173,167 +327,135 @@ export class WsTransport implements Transport {
     }
   }
 
-  private handleMessage(raw: string): void {
-    let msg: Record<string, unknown>;
+  // ---------------------------------------------------------------------------
+  // Message routing
+  // ---------------------------------------------------------------------------
+
+  private handleRawMessage(raw: string): void {
+    // Try chunk assembly first
     try {
-      msg = JSON.parse(raw);
-    } catch {
-      dbgWarn("transport", "ws.invalidJson", { raw: raw.slice(0, 200) });
-      return;
-    }
-
-    if (this.handleChunkMessage(msg)) return;
-
-    // Response to a request (has `id` field)
-    if (typeof msg.id === "string" && this.pending.has(msg.id)) {
-      const req = this.pending.get(msg.id)!;
-      this.pending.delete(msg.id);
-
-      if (msg.error) {
-        req.reject(new Error(String(msg.error)));
-      } else {
-        req.resolve(msg.result);
-      }
-      return;
-    }
-
-    // Server push event (has `event` field, no `id`)
-    if (typeof msg.event === "string") {
-      const event = msg.event as string;
-      const payload = msg.payload;
-      const seq = typeof msg.seq === "number" ? msg.seq : undefined;
-      const runId = typeof msg.run_id === "string" ? (msg.run_id as string) : undefined;
-
-      // Handle _full_reload (server signals client should reload a run)
-      if (event === "_full_reload") {
-        const reloadRunId = typeof msg.run_id === "string" ? msg.run_id : undefined;
-        if (reloadRunId) {
-          dbgWarn("transport", "ws._full_reload", { reloadRunId });
-          this.lastSeq.delete(reloadRunId);
-          this.subscribedRuns.delete(reloadRunId);
-          const handlers = this.listeners.get("_full_reload");
-          if (handlers) {
-            for (const handler of handlers) handler({ run_id: reloadRunId });
-          }
-        }
+      let msg: Record<string, unknown>;
+      try {
+        msg = JSON.parse(raw);
+      } catch {
+        dbgWarn("transport", "ws.invalidJson", { raw: raw.slice(0, 200) });
         return;
       }
+      if (this.chunks.handleMessage(msg)) return;
+      this.routeParsedMessage(msg);
+    } catch (e) {
+      // Never let a parse/handler error kill the connection
+      dbgWarn("transport", "ws.handleMessageError", { error: e });
+    }
+  }
 
-      // Track sequence checkpoint for reconnect replay
-      if (seq !== undefined && runId) {
-        const prev = this.lastSeq.get(runId) ?? 0;
-        if (seq > prev) {
-          this.lastSeq.set(runId, seq);
+  private routeMessage(raw: string): void {
+    try {
+      const msg = JSON.parse(raw);
+      this.routeParsedMessage(msg);
+    } catch (e) {
+      dbgWarn("transport", "ws.routeMessageError", { error: e });
+    }
+  }
+
+  private routeParsedMessage(msg: Record<string, unknown>): void {
+    // Response to a pending request
+    if (typeof msg.id === "string") {
+      if (msg.error) {
+        const rpcError: RpcError =
+          typeof msg.error === "object" && msg.error !== null
+            ? {
+                message: String((msg.error as Record<string, unknown>).message ?? msg.error),
+                code: (msg.error as Record<string, unknown>).code as number | undefined,
+                data: (msg.error as Record<string, unknown>).data,
+              }
+            : { message: String(msg.error) };
+        this.requests.rejectWithError(msg.id, rpcError);
+      } else {
+        this.requests.resolve(msg.id, msg.result);
+      }
+      return;
+    }
+
+    // Server push event
+    if (typeof msg.event === "string") {
+      this.handlePushEvent(msg);
+    }
+  }
+
+  private handlePushEvent(msg: Record<string, unknown>): void {
+    const event = msg.event as string;
+    const payload = msg.payload;
+    const seq = typeof msg.seq === "number" ? msg.seq : undefined;
+    const runId = typeof msg.run_id === "string" ? (msg.run_id as string) : undefined;
+
+    // Handle _full_reload
+    if (event === "_full_reload") {
+      const reloadRunId = typeof msg.run_id === "string" ? msg.run_id : undefined;
+      if (reloadRunId) {
+        dbgWarn("transport", "ws._full_reload", { reloadRunId });
+        this.subscriptions.resetSeq(reloadRunId);
+        const handlers = this.listeners.get("_full_reload");
+        if (handlers) {
+          for (const handler of handlers) handler({ run_id: reloadRunId });
         }
       }
+      return;
+    }
 
-      // Inject _seq into bus-event payloads for session-store tracking
-      if (event === "bus-event" && seq !== undefined && payload && typeof payload === "object") {
-        (payload as Record<string, unknown>)._seq = seq;
-      }
+    // Track sequence checkpoint
+    if (seq !== undefined && runId) {
+      this.subscriptions.updateSeq(runId, seq);
+    }
 
-      const handlers = this.listeners.get(event);
-      if (handlers) {
-        for (const handler of handlers) {
-          try {
-            handler(payload);
-          } catch (e) {
-            dbgWarn("transport", "ws.handlerError", { event, error: e });
-          }
+    // Inject _seq into bus-event payloads
+    if (event === "bus-event" && seq !== undefined && payload && typeof payload === "object") {
+      (payload as Record<string, unknown>)._seq = seq;
+    }
+
+    const handlers = this.listeners.get(event);
+    if (handlers) {
+      for (const handler of handlers) {
+        try {
+          handler(payload);
+        } catch (e) {
+          dbgWarn("transport", "ws.handlerError", { event, error: e });
         }
       }
     }
   }
 
-  private handleChunkMessage(msg: Record<string, unknown>): boolean {
-    const type = msg.type;
-    if (type === "chunk_begin") {
-      const msgId = typeof msg.msg_id === "string" ? msg.msg_id : "";
-      const total = typeof msg.total === "number" ? msg.total : 0;
-      if (msgId && total > 0) {
-        this.chunkBuffers.set(msgId, { total, parts: new Map() });
-      }
-      return true;
-    }
-
-    if (type === "chunk") {
-      const msgId = typeof msg.msg_id === "string" ? msg.msg_id : "";
-      const idx = typeof msg.idx === "number" ? msg.idx : -1;
-      const data = typeof msg.data === "string" ? msg.data : "";
-      const buffer = this.chunkBuffers.get(msgId);
-      if (!buffer || idx < 0) return true;
-
-      buffer.parts.set(idx, data);
-      if (buffer.parts.size === buffer.total) {
-        const combined = Array.from(buffer.parts.entries())
-          .sort(([a], [b]) => a - b)
-          .map(([, part]) => part)
-          .join("");
-        this.chunkBuffers.delete(msgId);
-        this.handleMessage(combined);
-      }
-      return true;
-    }
-
-    if (type === "chunk_end") {
-      const msgId = typeof msg.msg_id === "string" ? msg.msg_id : "";
-      if (msgId) this.chunkBuffers.delete(msgId);
-      return true;
-    }
-
-    return false;
-  }
+  // ---------------------------------------------------------------------------
+  // Transport interface
+  // ---------------------------------------------------------------------------
 
   async invoke<T>(
     cmd: string,
     args?: Record<string, unknown>,
     options?: { timeoutMs?: number },
   ): Promise<T> {
+    if (this.stateMachine.state === ConnectionState.Disposed) {
+      throw new DisposedError();
+    }
+
     await this.ensureConnected();
 
-    const id = `req_${++this.reqId}`;
+    if (this.stateMachine.state !== ConnectionState.Open) {
+      throw new NotConnectedError();
+    }
+
+    const id = this.requests.allocateId();
+    const generation = this.stateMachine.generation;
     const timeoutMs = options?.timeoutMs ?? getInvokeTimeoutMs(cmd);
-    dbg("transport", "ws.invoke", { cmd, id, timeoutMs });
+    const effectiveTimeout = timeoutMs > 0 ? timeoutMs : 5 * 60 * 1000;
 
-    return new Promise<T>((resolve, reject) => {
-      // Always set a timeout — prevents pending-entry leaks if server never responds
-      const effectiveTimeout = timeoutMs > 0 ? timeoutMs : 5 * 60 * 1000; // 5 min default
-      const timer = setTimeout(() => {
-        this.pending.delete(id);
-        reject(new Error(`IPC_TIMEOUT: ${cmd} did not respond in ${effectiveTimeout}ms`));
-      }, effectiveTimeout);
+    dbg("transport", "ws.invoke", { cmd, id, timeoutMs: effectiveTimeout, generation });
 
-      this.pending.set(id, {
-        resolve: (v: unknown) => {
-          clearTimeout(timer);
-          resolve(v as T);
-        },
-        reject: (e: Error) => {
-          clearTimeout(timer);
-          reject(e);
-        },
-      });
+    const { promise } = this.requests.register<T>(id, generation, effectiveTimeout);
 
-      const message = JSON.stringify({
-        id,
-        method: cmd,
-        params: args ?? {},
-      });
+    this.sendRaw({ id, method: cmd, params: args ?? {} });
 
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        try {
-          this.ws.send(message);
-        } catch (e) {
-          if (timer) clearTimeout(timer);
-          this.pending.delete(id);
-          reject(new Error(`WebSocket send failed: ${e}`));
-        }
-      } else {
-        if (timer) clearTimeout(timer);
-        this.pending.delete(id);
-        reject(new Error("WebSocket not connected"));
-      }
-    });
+    return promise;
   }
 
   async listen<T>(event: string, handler: (payload: T) => void): Promise<() => void> {
@@ -348,7 +470,6 @@ export class WsTransport implements Transport {
     const typedHandler = handler as (payload: unknown) => void;
     handlers.add(typedHandler);
 
-    // Ensure connection is established for receiving events
     this.ensureConnected().catch((e) => {
       dbgWarn("transport", "ws.listen.connectFailed", { event, error: e });
     });
@@ -364,5 +485,62 @@ export class WsTransport implements Transport {
 
   isDesktop(): boolean {
     return false;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Disposal
+  // ---------------------------------------------------------------------------
+
+  dispose(): void {
+    dbg("transport", "ws.dispose", { state: this.stateMachine.state });
+    this.stateMachine.transition(ConnectionState.Disposed);
+
+    this.clearConnectTimer();
+    this.clearReconnectTimer();
+
+    // Close socket
+    if (this.ws) {
+      // Remove handlers to prevent reconnect logic
+      this.ws.onopen = null;
+      this.ws.onmessage = null;
+      this.ws.onerror = null;
+      this.ws.onclose = null;
+      try {
+        this.ws.close();
+      } catch {
+        /* ignore */
+      }
+      this.ws = null;
+    }
+
+    // Reject all pending with a typed lifecycle error.
+    this.requests.dispose(new DisposedError());
+
+    // Clear subscriptions
+    this.subscriptions.dispose();
+
+    // Clear chunks
+    this.chunks.dispose();
+
+    // Clear event listeners
+    this.listeners.clear();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Internal helpers
+  // ---------------------------------------------------------------------------
+
+  private clearConnectTimer(): void {
+    if (this.connectTimer !== null) {
+      this.timers.clearTimeout(this.connectTimer);
+      this.connectTimer = null;
+    }
+  }
+
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer !== null) {
+      this.timers.clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
   }
 }

@@ -8,20 +8,132 @@ vi.mock("$lib/utils/debug", () => ({
   dbgWarn: vi.fn(),
 }));
 
+const mockUnsubscribeRun = vi.fn();
+const mockListen = vi.fn().mockResolvedValue(() => {});
+const mockIsDesktop = vi.fn(() => true);
+
 vi.mock("$lib/transport", () => ({
   getTransport: () => ({
-    isDesktop: () => true,
-    listen: vi.fn().mockResolvedValue(() => {}),
-    unsubscribeRun: vi.fn(),
+    isDesktop: mockIsDesktop,
+    listen: mockListen,
+    unsubscribeRun: mockUnsubscribeRun,
   }),
 }));
 
-describe("EventMiddleware batch recovery", () => {
+function makeMockStore(): SessionStore {
+  return {
+    applyEventBatch: vi.fn(),
+    applyEvent: vi.fn(),
+    applyHookEventBatch: vi.fn(),
+    applyHookUsageBatch: vi.fn(),
+    recoverFromEventLog: vi.fn().mockResolvedValue(undefined),
+    loadRun: vi.fn().mockResolvedValue(undefined),
+    markConnectionReloading: vi.fn(),
+    releaseConnection: vi.fn(),
+  } as unknown as SessionStore;
+}
+
+describe("EventMiddleware", () => {
   let middleware: EventMiddleware;
 
   beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsDesktop.mockReturnValue(true);
+    mockListen.mockResolvedValue(() => {});
     middleware = new EventMiddleware();
   });
+
+  // ── subscribeCurrent: does NOT call transport.unsubscribeRun ──
+
+  it("subscribeCurrent clears old routing but does NOT call transport.unsubscribeRun", () => {
+    const store1 = makeMockStore();
+    const store2 = makeMockStore();
+
+    middleware.subscribeCurrent("run-1", store1);
+    middleware.subscribeCurrent("run-2", store2);
+
+    // transport.unsubscribeRun should NEVER be called by EventMiddleware
+    expect(mockUnsubscribeRun).not.toHaveBeenCalled();
+    // Old run routing is cleared (no store for run-1)
+    expect((middleware as any)._subscriptions.has("run-1")).toBe(false);
+    expect((middleware as any)._subscriptions.has("run-2")).toBe(true);
+  });
+
+  it("subscribeCurrent with empty runId clears routing without calling transport", () => {
+    const store = makeMockStore();
+    middleware.subscribeCurrent("run-1", store);
+    middleware.subscribeCurrent("", store);
+
+    expect(mockUnsubscribeRun).not.toHaveBeenCalled();
+    expect((middleware as any)._subscriptions.size).toBe(0);
+  });
+
+  // ── destroy: calls store.releaseConnection, NOT transport.unsubscribeRun ──
+
+  it("destroy calls store.releaseConnection for each subscribed store", async () => {
+    const store1 = makeMockStore();
+    const store2 = makeMockStore();
+
+    middleware.subscribeCurrent("run-1", store1);
+    middleware.subscribe("run-2", store2);
+    middleware.destroy();
+
+    expect(store1.releaseConnection).toHaveBeenCalledOnce();
+    expect(store2.releaseConnection).toHaveBeenCalledOnce();
+    expect(mockUnsubscribeRun).not.toHaveBeenCalled();
+  });
+
+  it("destroy clears all routing and buffers", async () => {
+    const store = makeMockStore();
+    middleware.subscribeCurrent("run-1", store);
+    middleware.destroy();
+
+    expect((middleware as any)._subscriptions.size).toBe(0);
+    expect((middleware as any)._batchBuffer.size).toBe(0);
+    expect((middleware as any)._hookBatchBuffer.size).toBe(0);
+    expect((middleware as any)._usageBatchBuffer.size).toBe(0);
+    expect((middleware as any)._currentRunId).toBeNull();
+    expect((middleware as any)._currentStore).toBeNull();
+  });
+
+  // ── unsubscribe: does NOT call transport.unsubscribeRun ──
+
+  it("unsubscribe clears routing without calling transport.unsubscribeRun", () => {
+    const store = makeMockStore();
+    middleware.subscribeCurrent("run-1", store);
+    middleware.unsubscribe("run-1");
+
+    expect(mockUnsubscribeRun).not.toHaveBeenCalled();
+    expect((middleware as any)._subscriptions.has("run-1")).toBe(false);
+    expect((middleware as any)._currentRunId).toBeNull();
+  });
+
+  it("marks the store reloading before invoking loadRun for _full_reload", async () => {
+    mockIsDesktop.mockReturnValue(false);
+    let fullReloadHandler: ((payload: { run_id: string }) => void) | undefined;
+    mockListen.mockImplementation(async (event: string, handler: unknown) => {
+      if (event === "_full_reload") {
+        fullReloadHandler = handler as (payload: { run_id: string }) => void;
+      }
+      return () => {};
+    });
+
+    const store = makeMockStore();
+    middleware.subscribe("run-1", store);
+    await middleware.start();
+
+    expect(fullReloadHandler).toBeDefined();
+    fullReloadHandler?.({ run_id: "run-1" });
+    await Promise.resolve();
+
+    expect(store.markConnectionReloading).toHaveBeenCalledWith("run-1");
+    expect(store.loadRun).toHaveBeenCalledWith("run-1");
+    expect(vi.mocked(store.markConnectionReloading).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(store.loadRun).mock.invocationCallOrder[0],
+    );
+  });
+
+  // ── Existing batch recovery tests ──
 
   it("falls back to per-event apply when applyEventBatch throws", async () => {
     const applyEventBatch = vi.fn(() => {
@@ -33,6 +145,7 @@ describe("EventMiddleware batch recovery", () => {
       applyEventBatch,
       applyEvent,
       recoverFromEventLog,
+      releaseConnection: vi.fn(),
     } as unknown as SessionStore;
 
     middleware.subscribe("run-1", store);
@@ -70,6 +183,7 @@ describe("EventMiddleware batch recovery", () => {
       applyEventBatch,
       applyEvent,
       recoverFromEventLog,
+      releaseConnection: vi.fn(),
     } as unknown as SessionStore;
 
     middleware.subscribe("run-1", store);

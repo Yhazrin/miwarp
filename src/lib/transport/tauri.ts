@@ -8,6 +8,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen as tauriListen } from "@tauri-apps/api/event";
 import { dbg } from "$lib/utils/debug";
 import { getInvokeTimeoutMs, type Transport } from "./contract";
+import {
+  ConnectionState,
+  type ConnectionStateListener,
+  type ConnectionStateValue,
+} from "./connection-state";
 
 export class TauriTransport implements Transport {
   async invoke<T>(
@@ -38,11 +43,23 @@ export class TauriTransport implements Transport {
     return true;
   }
 
-  subscribeRun(_runId: string, _lastSeq?: number): void {
+  subscribeRun(_runId: string, _lastSeq?: number, _ownerId?: string): void {
     // No-op: Tauri receives all events via app.emit(), no explicit subscription needed
   }
 
-  unsubscribeRun(_runId: string): void {
+  unsubscribeRun(_runId: string, _ownerId?: string): void {
     // No-op
+  }
+
+  getConnectionState(): ConnectionStateValue {
+    return ConnectionState.Open;
+  }
+
+  onConnectionStateChange(_listener: ConnectionStateListener): () => void {
+    return () => {};
+  }
+
+  dispose(): void {
+    // No-op: Tauri transport doesn't own persistent resources
   }
 }

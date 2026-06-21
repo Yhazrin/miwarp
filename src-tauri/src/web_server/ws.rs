@@ -16,17 +16,17 @@ use crate::web_server::state::AppState;
 
 /// Max events to buffer during replay before triggering _full_reload
 const REPLAY_BUFFER_CAPACITY: usize = 4096;
-/// Minimum interval between _full_reload signals per run (seconds)
-const FULL_RELOAD_COOLDOWN_SECS: u64 = 30;
-
 /// v1.0.6 / 3.5: WS envelope chunking.
 /// `> WS_CHUNK_THRESHOLD` bytes triggers a chunk_begin / chunk{N} / chunk_end
 /// triple correlated by a `msg_id`. The frontend reassembles before handing
 /// the payload off to the reducer.
 pub const WS_CHUNK_THRESHOLD: usize = 256 * 1024;
-/// Per-chunk payload size (192KB leaves 4-frame + envelope headroom under
-/// the 1MB WebSocket single-frame limit).
+/// Maximum logical JSON envelope accepted by both backend and frontend.
+pub const WS_MAX_MESSAGE_BYTES: usize = 10 * 1024 * 1024;
+/// Per-chunk payload size (192KB leaves envelope headroom below the frame limit).
 pub const WS_CHUNK_PAYLOAD: usize = 192 * 1024;
+/// Maximum incoming WebSocket frame size. Logical messages may span frames.
+pub const WS_MAX_FRAME_BYTES: usize = 1024 * 1024;
 
 type WsSink = Arc<Mutex<futures_util::stream::SplitSink<WebSocket, Message>>>;
 
@@ -49,7 +49,9 @@ pub async fn ws_handler(
         return (StatusCode::FORBIDDEN, "Forbidden").into_response();
     };
     log::debug!("[ws] upgrade accepted");
-    ws.on_upgrade(move |socket| handle_ws(socket, state, auth_subject))
+    ws.max_message_size(WS_MAX_MESSAGE_BYTES)
+        .max_frame_size(WS_MAX_FRAME_BYTES)
+        .on_upgrade(move |socket| handle_ws(socket, state, auth_subject))
 }
 
 /// Buffered event during replay — stored until replay completes so we can merge
@@ -67,8 +69,6 @@ struct WsSession {
     replay_buffer: HashMap<String, Vec<BufferedEvent>>,
     /// run_id set currently being replayed (reentry guard)
     replaying: std::collections::HashSet<String>,
-    /// Timestamp of last _full_reload signal per run_id (cooldown)
-    full_reload_cooldown: HashMap<String, std::time::Instant>,
 }
 
 impl WsSession {
@@ -77,16 +77,44 @@ impl WsSession {
             subscriptions: HashMap::new(),
             replay_buffer: HashMap::new(),
             replaying: std::collections::HashSet::new(),
-            full_reload_cooldown: HashMap::new(),
         }
     }
 }
 
-/// v1.0.6 / 3.5: Send a JSON envelope over the WS sink, transparently
-/// chunking if it exceeds `WS_CHUNK_THRESHOLD`. Smaller envelopes are
-/// sent verbatim (no chunk metadata).
+fn split_utf8_chunks(text: &str, max_bytes: usize) -> Result<Vec<&str>, String> {
+    if max_bytes == 0 {
+        return Err("chunk payload size must be greater than zero".to_string());
+    }
+
+    let mut chunks = Vec::new();
+    let mut start = 0;
+    while start < text.len() {
+        let mut end = (start + max_bytes).min(text.len());
+        while end > start && !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        if end == start {
+            return Err(format!(
+                "chunk payload size {max_bytes} cannot contain the next UTF-8 scalar"
+            ));
+        }
+        chunks.push(&text[start..end]);
+        start = end;
+    }
+    Ok(chunks)
+}
+
+/// Send a JSON envelope over the WS sink, transparently chunking large payloads.
+/// Chunk boundaries are always valid UTF-8 boundaries.
 pub async fn send_envelope(ws_tx: &WsSink, envelope: &Value) -> Result<(), String> {
     let text = envelope.to_string();
+    if text.len() > WS_MAX_MESSAGE_BYTES {
+        return Err(format!(
+            "ws envelope exceeds maximum size: {} > {} bytes",
+            text.len(),
+            WS_MAX_MESSAGE_BYTES
+        ));
+    }
     if text.len() <= WS_CHUNK_THRESHOLD {
         let mut guard = ws_tx.lock().await;
         guard
@@ -96,10 +124,11 @@ pub async fn send_envelope(ws_tx: &WsSink, envelope: &Value) -> Result<(), Strin
         return Ok(());
     }
 
-    // Large envelope — chunk it. The frontend reassembles by msg_id.
+    // Large envelope — split on valid UTF-8 boundaries. The frontend
+    // reassembles by msg_id and verifies the declared byte size.
     let msg_id = uuid::Uuid::new_v4().to_string();
-    let total = text.len().div_ceil(WS_CHUNK_PAYLOAD);
-    let bytes = text.as_bytes();
+    let chunks = split_utf8_chunks(&text, WS_CHUNK_PAYLOAD)?;
+    let total = chunks.len();
 
     // chunk_begin: empty body, but echo msg_id + total
     let begin = json!({
@@ -115,11 +144,7 @@ pub async fn send_envelope(ws_tx: &WsSink, envelope: &Value) -> Result<(), Strin
             .await
             .map_err(|e| format!("ws send error: {e}"))?;
     }
-    for idx in 0..total {
-        let start = idx * WS_CHUNK_PAYLOAD;
-        let end = (start + WS_CHUNK_PAYLOAD).min(text.len());
-        let chunk_text = std::str::from_utf8(&bytes[start..end])
-            .map_err(|e| format!("chunk utf8 error: {e}"))?;
+    for (idx, chunk_text) in chunks.iter().enumerate() {
         let chunk = json!({
             "type": "chunk",
             "msg_id": msg_id,
@@ -146,16 +171,26 @@ pub async fn send_envelope(ws_tx: &WsSink, envelope: &Value) -> Result<(), Strin
     Ok(())
 }
 
-/// Send an RPC result response over WebSocket
+/// Send an RPC result response over WebSocket.
+/// Oversized results are converted into a small string error so callers do not
+/// wait until their request timeout with no explanation.
 async fn send_result(ws_tx: &WsSink, id: &Option<String>, result: Value) {
     let resp = json!({"id": id, "result": result});
-    let _ = send_envelope(ws_tx, &resp).await;
+    if let Err(error) = send_envelope(ws_tx, &resp).await {
+        log::warn!("[ws] failed to send RPC result id={id:?}: {error}");
+        if error.contains("exceeds maximum size") {
+            send_error(ws_tx, id, "response exceeds maximum websocket message size").await;
+        }
+    }
 }
 
-/// Send an RPC error response over WebSocket
+/// Send an RPC error response over WebSocket while preserving the existing
+/// string error contract used by web, iOS and Android clients.
 async fn send_error(ws_tx: &WsSink, id: &Option<String>, error: &str) {
     let resp = json!({"id": id, "error": error});
-    let _ = send_envelope(ws_tx, &resp).await;
+    if let Err(send_error) = send_envelope(ws_tx, &resp).await {
+        log::warn!("[ws] failed to send RPC error id={id:?}: {send_error}");
+    }
 }
 
 /// Handle a single WebSocket connection
@@ -443,7 +478,6 @@ async fn handle_ws(socket: WebSocket, state: AppState, auth_subject: auth::WsAut
                             sess.subscriptions.remove(run_id);
                             sess.replay_buffer.remove(run_id);
                             sess.replaying.remove(run_id);
-                            sess.full_reload_cooldown.remove(run_id);
 
                             send_result(&ws_tx_cmd, &id, json!({"ok": true})).await;
                         }
@@ -646,24 +680,10 @@ async fn flush_replay_buffer(
     Ok(())
 }
 
-/// Send a _full_reload event to the client, respecting cooldown.
-async fn send_full_reload(ws_tx: &WsSink, session: &Arc<Mutex<WsSession>>, run_id: &str) {
-    let mut sess = session.lock().await;
-
-    // Check cooldown
-    if let Some(last) = sess.full_reload_cooldown.get(run_id) {
-        if last.elapsed().as_secs() < FULL_RELOAD_COOLDOWN_SECS {
-            log::debug!(
-                "[ws] _full_reload cooldown active for run={}, skipping",
-                run_id
-            );
-            return;
-        }
-    }
-    sess.full_reload_cooldown
-        .insert(run_id.to_string(), std::time::Instant::now());
-    drop(sess);
-
+/// Send a _full_reload event to the client.
+/// The client owns single-flight reload coalescing; the server must not suppress
+/// a later overflow with a time-based cooldown because that would hide data loss.
+async fn send_full_reload(ws_tx: &WsSink, _session: &Arc<Mutex<WsSession>>, run_id: &str) {
     let envelope = json!({
         "event": "_full_reload",
         "run_id": run_id,
@@ -715,4 +735,51 @@ async fn replay_events(
     );
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{split_utf8_chunks, WS_CHUNK_PAYLOAD};
+
+    #[test]
+    fn utf8_chunks_round_trip_ascii() {
+        let text = "abcdefghijklmnopqrstuvwxyz";
+        let chunks = split_utf8_chunks(text, 7).expect("split should succeed");
+
+        assert_eq!(chunks.concat(), text);
+        assert!(chunks.iter().all(|chunk| chunk.len() <= 7));
+    }
+
+    #[test]
+    fn utf8_chunks_never_split_multibyte_scalars() {
+        let text = "ab你🙂cd界ef";
+        let chunks = split_utf8_chunks(text, 5).expect("split should succeed");
+
+        assert_eq!(chunks.concat(), text);
+        assert!(chunks.iter().all(|chunk| chunk.len() <= 5));
+        assert!(chunks
+            .iter()
+            .all(|chunk| chunk.is_char_boundary(chunk.len())));
+    }
+
+    #[test]
+    fn utf8_chunks_handle_payload_boundary_next_to_emoji() {
+        let prefix = "a".repeat(WS_CHUNK_PAYLOAD - 1);
+        let text = format!("{prefix}🙂tail");
+        let chunks = split_utf8_chunks(&text, WS_CHUNK_PAYLOAD).expect("split should succeed");
+
+        assert_eq!(chunks.concat(), text);
+        assert_eq!(chunks[0].len(), WS_CHUNK_PAYLOAD - 1);
+        assert!(chunks.iter().all(|chunk| chunk.len() <= WS_CHUNK_PAYLOAD));
+    }
+
+    #[test]
+    fn utf8_chunks_reject_zero_payload_size() {
+        assert!(split_utf8_chunks("abc", 0).is_err());
+    }
+
+    #[test]
+    fn utf8_chunks_reject_payload_smaller_than_next_scalar() {
+        assert!(split_utf8_chunks("🙂", 3).is_err());
+    }
 }

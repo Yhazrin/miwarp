@@ -36,6 +36,8 @@ A pre-commit hook (`.githooks/pre-commit`) runs: Rust fmt, Prettier, ESLint, and
 
 ## Architecture
 
+For architecture-affecting work, communication/state refactors, reliability fixes, large audits, acceptance, and optimization, read and apply `.codex/skills/architecture-lifecycle/SKILL.md`. Scale the process to the task, but always preserve explicit ownership, measurable quality attributes, failure-path tests, synchronized architecture documentation, and incremental migration rather than flag-day rewrites.
+
 ### Tech Stack
 
 | Layer | Technology |

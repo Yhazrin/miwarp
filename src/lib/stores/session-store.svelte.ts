@@ -39,11 +39,8 @@ import type { ReduceCtx } from "./reducers/types";
 import { updateInstalledVersion, getCliCommands } from "./cli-info.svelte";
 import * as snapshotCache from "$lib/utils/snapshot-cache";
 import { getTransport } from "$lib/transport";
-import {
-  subscribeRunFresh,
-  subscribeRunFromReplay,
-  subscribeRunFromSeq,
-} from "$lib/chat/session-subscription";
+import { SessionRunConnection } from "$lib/chat/session-run-connection";
+import { SessionRecoveryController } from "$lib/chat/session-recovery-controller";
 import { LS_CLI_VERSION } from "$lib/utils/storage-keys";
 import { getAgentFeatures, type AgentFeatures } from "$lib/utils/agent-features";
 import { dedupeMcpServersByName } from "$lib/utils/mcp";
@@ -305,9 +302,14 @@ export class SessionStore {
   /** Last bus event type applied by _reduce (for render error diagnostics). */
   private _lastReduceEventType = "";
   private _needsIdleHealthCheck = false;
-  private _lastRecoverAt = 0;
-  private _recoveryTimer: ReturnType<typeof setTimeout> | null = null;
-  private static _RECOVER_DEBOUNCE_MS = 2000;
+  private _recovery = new SessionRecoveryController({
+    setNotice: (notice) => {
+      this.recoveryNotice = notice;
+    },
+  });
+
+  /** Phase 2: owns transport subscription lifecycle for this store instance. */
+  private _connection = new SessionRunConnection();
 
   // ── Reducer tool indexes (runtime-only, not serialized) ──
   /** tool_use_id → timeline[] index for tool entries (first-match, reducer fast-path). */
@@ -1081,27 +1083,26 @@ export class SessionStore {
     }
   }
 
-  /** Reload timeline from persisted events.jsonl (debounced live recovery). */
-  async recoverFromEventLog(notice?: string): Promise<void> {
+  /** Reload timeline from persisted events.jsonl with per-run single-flight recovery. */
+  recoverFromEventLog(notice?: string): Promise<void> {
     const runId = this.run?.id;
-    if (!runId) return;
-    const now = Date.now();
-    if (now - this._lastRecoverAt < SessionStore._RECOVER_DEBOUNCE_MS) return;
-    this._lastRecoverAt = now;
-    dbgWarn("store", "recoverFromEventLog", { runId, notice });
-    this.recoveryNotice = notice ?? "Recovered from persisted event log";
-    try {
-      const { deleteSnapshot } = await import("$lib/utils/snapshot-cache");
-      await deleteSnapshot(runId);
-    } catch (e) {
-      dbgWarn("snapshot", "delete failed before recover", e);
-    }
-    await this.loadRun(runId);
-    if (this._recoveryTimer) clearTimeout(this._recoveryTimer);
-    this._recoveryTimer = setTimeout(() => {
-      this.recoveryNotice = null;
-      this._recoveryTimer = null;
-    }, 5000);
+    if (!runId) return Promise.resolve();
+
+    return this._recovery.request(
+      runId,
+      notice ?? "Recovered from persisted event log",
+      async () => {
+        dbgWarn("store", "recoverFromEventLog", { runId, notice });
+        try {
+          await snapshotCache.deleteSnapshot(runId);
+        } catch (e) {
+          dbgWarn("snapshot", "delete failed before recover", e);
+        }
+        // A user-driven run switch supersedes recovery for the old run.
+        if (this.run?.id !== runId) return;
+        await this.loadRun(runId);
+      },
+    );
   }
 
   /** Accumulate partial JSON and try to parse. Returns merged tool fields. */
@@ -1559,10 +1560,24 @@ export class SessionStore {
 
   /** Reset all state to empty. */
   reset(): void {
+    this._loadGen += 1;
+    this._connection.release();
+    this._recovery.resetNotice();
     this._setPhase("empty");
     this.run = null;
     this._isLoadingReplay = false;
     this._clearContentState();
+  }
+
+  /** Mark a server-requested full reload without releasing this store's owner. */
+  markConnectionReloading(runId: string): void {
+    this._connection.markReloading(runId);
+  }
+
+  /** Release Store-owned communication lifecycles during page destruction. */
+  releaseConnection(): void {
+    this._connection.release();
+    this._recovery.dispose();
   }
 
   // ── Snapshot cache helpers ──
@@ -1779,6 +1794,10 @@ export class SessionStore {
       return;
     }
 
+    // Select the logical run before any asynchronous load. This releases the
+    // previous run owner immediately and establishes an explicit replay phase.
+    this._connection.beginReplay(id);
+
     // Reset state for new load
     this._setPhase("loading");
     this._clearContentState();
@@ -1934,11 +1953,11 @@ export class SessionStore {
                   if (this.phase === "cached") this._setPhase("idle");
                 }
               } else if (isIdleSnap) {
-                subscribeRunFromSeq(id, this._lastProcessedSeq);
+                this._connection.subscribeFromSeq(id, this._lastProcessedSeq);
               }
               // Terminal: no catchup needed, just subscribe for WS if applicable
               if (!isIdleSnap) {
-                subscribeRunFromSeq(id, this._lastProcessedSeq);
+                this._connection.subscribeFromSeq(id, this._lastProcessedSeq);
               }
             } else {
               snapshotBody = null; // shape validation failed
@@ -1960,7 +1979,7 @@ export class SessionStore {
           // Stale: a newer load owns the store; do not touch _isLoadingReplay.
           if (ms === null) return;
           reducerMs = ms;
-          subscribeRunFromReplay(id, busEvents);
+          this._connection.subscribeFromReplay(id, busEvents);
           // Write guard: distinguish "legit empty session" from "reducer anomaly"
           if (snapshotEligible && (this.timeline.length > 0 || busEvents.length === 0)) {
             this._saveSnapshotToIdb(id);
@@ -2121,7 +2140,7 @@ export class SessionStore {
         // The $effect in chat page will call subscribeCurrent again (idempotent).
         const mw = getEventMiddleware();
         mw.subscribeCurrent(run.id, this);
-        subscribeRunFresh(run.id);
+        this._connection.subscribeFresh(run.id);
         dbg("store", "stream session start, run=", run.id);
         const backendAtt = mapAttachments(attachments) ?? undefined;
         await api.startSession(
@@ -2355,7 +2374,9 @@ export class SessionStore {
         }
       }
 
-      // ★ Phase 2: clear + set run metadata (sync frame, no await)
+      // ★ Phase 2: switch logical ownership before mutating visible state so
+      // events from a previously viewed run cannot enter this replay window.
+      this._connection.beginReplay(runId);
       this.run = run;
       this.agent = run.agent;
       this.platformId = run.platform_id ?? null;
@@ -2367,7 +2388,7 @@ export class SessionStore {
       if (isStream) {
         if (snapshotBody && this._tryApplySnapshot(snapshotBody)) {
           snapshotHit = true;
-          subscribeRunFromSeq(runId, this._lastProcessedSeq);
+          this._connection.subscribeFromSeq(runId, this._lastProcessedSeq);
         } else {
           // Fallback: snapshot corrupted → re-fetch events if needed
           if (!busEvents.length && snapshotBody) {
@@ -2383,7 +2404,7 @@ export class SessionStore {
             reducerMs = ms;
           }
           // Always subscribe — even empty history needs real-time events
-          subscribeRunFromReplay(runId, busEvents);
+          this._connection.subscribeFromReplay(runId, busEvents);
         }
 
         // Resume makes session go live → old snapshot is always stale
@@ -2474,8 +2495,10 @@ export class SessionStore {
     dbg("store", "resumeSession: two-step fork", { runId });
     const loadGen = this._loadGen;
 
-    // Clear any subscription to prevent source RunState(stopped) interference
+    // Clear both routing and this store's physical owner to prevent source
+    // RunState(stopped) events from interfering with the fork replay.
     getEventMiddleware().subscribeCurrent("", this);
+    this._connection.release();
 
     // Step 1: One-shot fork (backend does fork_oneshot, returns new run_id with new session_id)
     const newRunId = await api.forkSession(runId);
@@ -2484,6 +2507,7 @@ export class SessionStore {
     const newRun = await api.getRun(newRunId);
     if (!this._resumeGuard.isMounted) throw new Error("Unmounted during fork");
 
+    this._connection.beginReplay(newRunId);
     this.run = newRun;
 
     // Reset display state — start fresh for the fork run.
@@ -2511,7 +2535,7 @@ export class SessionStore {
     // Subscribe to NEW run — live events from stream-json will route here.
     getEventMiddleware().subscribeCurrent(newRunId, this);
     dbg("store", "fork: middleware subscribed to new run", newRunId);
-    subscribeRunFromReplay(newRunId, allForkEvents);
+    this._connection.subscribeFromReplay(newRunId, allForkEvents);
 
     // Step 2 (stream-json resume) is NOT started here.
     // handleResume will dismiss the overlay first, then call connectSession()
@@ -2532,7 +2556,7 @@ export class SessionStore {
     const sid = sessionId ?? this.run?.session_id;
     if (!sid) throw new Error("No session_id available for connectSession");
     dbg("store", "connectSession: establishing stream-json connection", { runId, sessionId: sid });
-    subscribeRunFresh(runId);
+    this._connection.subscribeFresh(runId);
     this._setPhase("spawning");
     await api.startSession(
       runId,
