@@ -13,7 +13,9 @@
   import ChatBtwDrawer from "$lib/components/ChatBtwDrawer.svelte";
   import ChatRalphLoopBar from "$lib/components/ChatRalphLoopBar.svelte";
   import PromptInput from "$lib/components/PromptInput.svelte";
+  import SendStatusBanner from "$lib/components/chat/SendStatusBanner.svelte";
   import Icon from "$lib/components/Icon.svelte";
+  import type { SendCoordinator, SendStatusEvent } from "$lib/chat/send-coordinator";
 
   const t = tFn;
 
@@ -29,6 +31,10 @@
     stashedInput = $bindable(null),
     shortcutHelpOpen = $bindable(false),
     promptRef = $bindable<PromptInput | undefined>(),
+    // v1.0.9 send reliability
+    sendCoordinator = null as SendCoordinator | null,
+    sendBusy = false,
+    onSendRetry = null as ((event: SendStatusEvent) => void) | null,
   }: {
     store: SessionStore;
     settings: UserSettings | null;
@@ -39,6 +45,9 @@
     stashedInput?: PromptInputSnapshot | null;
     shortcutHelpOpen?: boolean;
     promptRef?: PromptInput;
+    sendCoordinator?: SendCoordinator | null;
+    sendBusy?: boolean;
+    onSendRetry?: ((event: SendStatusEvent) => void) | null;
   } = $props();
 
   // Destructure VMs so template references stay flat (no behavior change).
@@ -111,6 +120,10 @@
     </div>
   {/if}
 
+  {#if sendCoordinator}
+    <SendStatusBanner coordinator={sendCoordinator} onRetry={onSendRetry ?? undefined} />
+  {/if}
+
   {#if store.hasElicitation && store.sessionAlive}
     <div class="pointer-events-auto px-2 pb-2">
       <ElicitationDialog
@@ -171,6 +184,7 @@
           agent={store.agent}
           running={store.isActivelyRunning}
           disabled={inputBlockedByPermission}
+          busy={sendBusy}
           pendingPermission={store.hasInlinePermission}
           hasRun={!!store.run}
           sessionAlive={store.sessionAlive}

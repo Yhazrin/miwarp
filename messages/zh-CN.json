@@ -2886,5 +2886,14 @@
   "split_mode_paneRetry": "重试",
   "split_mode_emptyPane": "暂无消息。",
   "split_mode_readOnlyHint": "点击该面板即可激活并回复。",
-  "split_mode_activate": "激活"
+  "split_mode_activate": "激活",
+  "send_status_submitting": "发送中…",
+  "send_status_accepted": "已发送",
+  "send_status_queued": "等待连接中——消息已暂存",
+  "send_status_failed_transport": "无法连接到代理，点击重试。",
+  "send_status_failed_rejected": "代理拒绝了消息，点击重试。",
+  "send_status_failed_stale": "会话已切换，请打开正确的会话重新发送。",
+  "send_status_failed_timeout": "代理未及时确认，点击重试。",
+  "send_status_failed_unknown": "发送失败，点击重试。",
+  "send_retry": "重试"
 }

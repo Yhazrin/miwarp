@@ -55,6 +55,9 @@ pub struct UserTurnTicket {
     pub kind: UserTurnKind,
     pub turn_index: u32,
     pub reply: oneshot::Sender<Result<(), String>>,
+    /// v1.0.9: optional client-side idempotency token. Used for dedup and
+    /// diagnostic breadcrumbs only — never emitted in user-visible content.
+    pub client_message_id: Option<String>,
 }
 
 pub struct InternalJob {

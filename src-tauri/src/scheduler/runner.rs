@@ -138,6 +138,7 @@ pub async fn execute_task(
         None,                      // attachments
         None,                      // platform_id
         permission_mode,
+        None, // client_message_id: scheduler has no client token
     )
     .await;
 

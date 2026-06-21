@@ -169,6 +169,8 @@
     models = [],
     currentModel = "",
     permissionMode = "",
+    // v1.0.9: when true, a send is in flight; the prompt must not accept another send.
+    busy = false,
     onSend,
     onAgentChange,
     onInterrupt,
@@ -217,7 +219,14 @@
     models?: CliModelInfo[];
     currentModel?: string;
     permissionMode?: string;
-    onSend: (text: string, attachments: Attachment[]) => void;
+    /**
+     * v1.0.9: returning a Promise lets the parent (use-send-message) signal
+     * accepted vs. failed. The PromptInput retains the draft until the
+     * Promise resolves; on rejection the draft is restored.
+     */
+    onSend: (text: string, attachments: Attachment[]) => Promise<void> | void;
+    /** v1.0.9: when true, the input rejects another send (double-submit guard). */
+    busy?: boolean;
     onAgentChange?: (agent: string) => void;
     onInterrupt?: () => void;
     onModelSwitch?: (model: string) => void;
@@ -1243,6 +1252,15 @@
     const text = parts.join("\n\n");
     if (!text || disabled) return;
 
+    // Double-submit protection: the SendCoordinator owns the single-flight
+    // slot. If a submit is already in flight for this run, swallow the
+    // duplicate click. The button is also disabled via `busy`, but
+    // keyboard Enter can race the disabled state.
+    if (busy) {
+      dbg("prompt", "send.suppressed.busy");
+      return;
+    }
+
     dbg("prompt", "send", {
       len: text.length,
       pasteBlocks: store.pastedBlocks.length,
@@ -1263,15 +1281,36 @@
       contentBase64: a.contentBase64!,
     }));
 
+    // v1.0.9: clear visually for instant feedback, but capture a draft
+    // snapshot so the SendCoordinator can restore it on failure. The
+    // parent MUST await onSend; if it resolves the draft is discarded,
+    // if it rejects the draft is restored.
+    const draftSnapshot: PromptInputSnapshot = {
+      text,
+      attachments: [...store.pendingAttachments],
+      pastedBlocks: [...store.pastedBlocks],
+      pathRefs: [...store.pendingPathRefs],
+    };
+
     store.inputText = "";
     store.pendingAttachments = [];
     store.pastedBlocks = [];
     store.pendingPathRefs = [];
     resetHistory(histState);
-    onSend(text, attachments);
-
-    // Reset textarea height
     if (store.textareaEl) store.textareaEl.style.height = "auto";
+
+    Promise.resolve()
+      .then(() => onSend(text, attachments))
+      .then(
+        () => {
+          // accepted: keep the cleared state
+        },
+        (e) => {
+          // failed: restore the draft so the user can retry
+          dbgWarn("prompt", "send.failed.restore", { error: e });
+          store.restoreSnapshot(draftSnapshot);
+        },
+      );
   }
 
   function handleBtwSend() {
@@ -1800,6 +1839,7 @@
 
   let canSend = $derived(
     !disabled &&
+      !busy &&
       (!!store.inputText.trim() ||
         store.pastedBlocks.length > 0 ||
         store.pendingAttachments.some((a) => a.filePath) ||
@@ -1889,6 +1929,18 @@
 
   export function restoreSnapshot(snapshot: PromptInputSnapshot): void {
     store.restoreSnapshot(snapshot);
+    resetHistory(histState);
+    requestAnimationFrame(() => {
+      autoResize();
+      store.textareaEl?.focus();
+    });
+  }
+
+  /** v1.0.9: clear the input + attachment state. Used by the
+   *  SendCoordinator onAccepted hook to drop the draft only after the
+   *  transport has accepted the submit. */
+  export function clearInput(): void {
+    store.clearAll();
     resetHistory(histState);
     requestAnimationFrame(() => {
       autoResize();
@@ -2105,6 +2157,7 @@
       class="flex shrink-0 items-center justify-center rounded-full transition-[opacity,background-color] duration-200 {sendSizeClass} {sendLookClass}"
       onclick={btw ? handleBtwSend : handleSend}
       disabled={!canSend}
+      data-busy={busy ? "true" : "false"}
       title={btw ? t("promptInput_sendSideQuestion") : t("prompt_send")}
       aria-label={btw ? t("promptInput_sendSideQuestion") : t("prompt_send")}
     >

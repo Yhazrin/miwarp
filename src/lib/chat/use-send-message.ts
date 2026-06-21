@@ -8,6 +8,12 @@ import { EVT_CWD_CHANGED, EVT_RUNS_CHANGED } from "$lib/utils/bus-events";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { setLastTarget, getStoredRemoteCwd, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
 import { normalizeCwd } from "$lib/utils/sidebar-groups";
+import {
+  SendCoordinator,
+  SendCoordinatorError,
+  type SendDraft,
+  type SendStatusEvent,
+} from "$lib/chat/send-coordinator";
 
 export interface SendMessageContext {
   store: SessionStore;
@@ -35,13 +41,38 @@ export interface SendMessageContext {
   t: (key: string, params?: Record<string, string>) => string;
   /** Workspace cwd from ?folder= or sidebar new-chat-in-folder (before localStorage sync). */
   getFolderCwdOverride?: () => string;
-  /** Logical-folder id from ?sf= (sidebar "new session in folder"). Returns
-   *  the id and clears it so the next session in the same chat tab defaults
-   *  to the workspace root. */
+  /** Logical-folder id from ?sf= (sidebar "new session in folder"). */
   consumePendingSubFolderId?: () => string;
+  /**
+   * v1.0.9: source-of-truth for the prompt input component. The
+   * coordinator uses this to clear the draft only after transport
+   * acceptance, and to restore the draft on failure. Optional for
+   * callers that wire draft retention through `PromptInput` directly.
+   */
+  promptInputRef?: () =>
+    | {
+        getInputSnapshot?: () => import("$lib/types").PromptInputSnapshot | unknown;
+        restoreSnapshot?: (snap: import("$lib/types").PromptInputSnapshot) => void;
+        clearInput?: () => void;
+      }
+    | undefined;
 }
 
-export function createSendMessage(ctx: SendMessageContext) {
+export interface SendMessageHandle {
+  sendMessage: (
+    text: string,
+    attachments: Attachment[],
+    creationMode?: "single" | "worktree",
+    folderId?: string,
+  ) => Promise<void>;
+  coordinator: SendCoordinator;
+  /** Most recent event; UI can read for the banner. */
+  latest: SendStatusEvent | null;
+  /** True when a submit is in flight. */
+  inFlight: boolean;
+}
+
+export function createSendMessage(ctx: SendMessageContext): SendMessageHandle {
   const {
     store,
     thinking,
@@ -59,14 +90,56 @@ export function createSendMessage(ctx: SendMessageContext) {
     t,
     getFolderCwdOverride,
     consumePendingSubFolderId,
+    promptInputRef,
   } = ctx;
 
-  return async function sendMessage(
+  function clearDraftIfOwnedBy(runId: string) {
+    const ref = promptInputRef?.();
+    if (!ref?.clearInput) return;
+    if (store.run?.id !== runId) return;
+    ref.clearInput();
+  }
+
+  function restoreDraft(snapshot: SendDraft) {
+    const ref = promptInputRef?.();
+    if (!ref?.restoreSnapshot) return;
+    const snap: import("$lib/types").PromptInputSnapshot = {
+      text: snapshot.text,
+      attachments:
+        (snapshot.attachments as import("$lib/types").PromptInputSnapshot["attachments"]) ?? [],
+      pastedBlocks: [],
+      pathRefs: [],
+    };
+    ref.restoreSnapshot(snap);
+  }
+
+  const coordinator = new SendCoordinator({
+    onAccepted: (event) => {
+      dbg("send", "onAccepted", { runId: event.runId, clientMessageId: event.clientMessageId });
+      clearDraftIfOwnedBy(event.runId);
+    },
+    onFailure: (event) => {
+      dbgWarn("send", "onFailure", {
+        runId: event.runId,
+        code: event.error?.code,
+        retryable: event.error?.retryable,
+      });
+      // For retryable failures, the SendStatusBanner will surface a Retry
+      // CTA that re-uses the captured draft snapshot.
+    },
+  });
+
+  let latest: SendStatusEvent | null = null;
+  coordinator.subscribe((event) => {
+    latest = event;
+  });
+
+  async function sendMessage(
     text: string,
     attachments: Attachment[],
     creationMode?: "single" | "worktree",
     folderId?: string,
-  ) {
+  ): Promise<void> {
     if (!text.trim()) return;
 
     store.error = "";
@@ -84,6 +157,8 @@ export function createSendMessage(ctx: SendMessageContext) {
         return;
       }
     }
+
+    const draft: SendDraft = { text, attachments };
 
     try {
       if (!store.run) {
@@ -158,27 +233,37 @@ export function createSendMessage(ctx: SendMessageContext) {
         // Re-check after folder picker — user may have navigated or sent another message
         if (!store.canSend) return;
 
-        // If the caller didn't pass an explicit folderId, fall back to the
-        // pending logical-folder id from ?sf= (sidebar "new session in folder").
         const resolvedFolderId =
           folderId ?? (consumePendingSubFolderId ? consumePendingSubFolderId() : "");
 
-        const runId = await store.startSession(
-          text,
-          cwd,
-          attachments,
-          undefined,
-          creationMode,
-          resolvedFolderId || undefined,
-        );
-        goto(`/chat?run=${runId}`, { replaceState: true });
-        window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
-        loadCliVersionInfo();
+        // For new sessions, the runId is created by startSession. We must
+        // not enter the coordinator with a placeholder — instead, register
+        // the startSession call directly. The promise resolves when the
+        // IPC returns; that's our "accepted" signal.
+        try {
+          const runId = await store.startSession(
+            text,
+            cwd,
+            attachments,
+            undefined,
+            creationMode,
+            resolvedFolderId || undefined,
+          );
+          // Run created — clear the draft (this is a new session so the
+          // banner logic would also clear on accept if coordinator.acknowledge is called).
+          clearDraftIfOwnedBy(runId);
+          goto(`/chat?run=${runId}`, { replaceState: true });
+          window.dispatchEvent(new Event(EVT_RUNS_CHANGED));
+          loadCliVersionInfo();
+        } catch (startError) {
+          // Restore the draft so the user can retry without retyping.
+          restoreDraft(draft);
+          store.error = String(startError);
+          showToast(t("send_status_failed_unknown"));
+          throw startError;
+        }
       } else if (
         store.useStreamSession &&
-        // v1.0.6: explicit cached/stale_cached check MUST come before sessionAlive —
-        // these are in SESSION_ALIVE_PHASES so sessionAlive===true, but
-        // we still need to resume the CLI before sending.
         (store.phase === "cached" ||
           store.phase === "stale_cached" ||
           (!store.sessionAlive && store.run.session_id))
@@ -193,17 +278,43 @@ export function createSendMessage(ctx: SendMessageContext) {
           thinking.setSlashCmdSeenRunning(false);
         }
         await handleResume("resume", undefined, text, attachments);
+        // Resumes resolve on IPC accept; clear the draft.
+        clearDraftIfOwnedBy(store.run.id);
       } else {
         if (slashCmd) {
           thinking.setProcessingSlashCmd(slashCmd);
           thinking.setSlashCmdSeenRunning(false);
         }
-        await store.sendMessage(text, attachments);
+        await coordinator.submit({
+          runId: store.run.id,
+          sessionId: store.run.session_id ?? null,
+          draft,
+          cause: "continue",
+          transport: async (clientMessageId) => {
+            await store.sendMessage(text, attachments, clientMessageId);
+          },
+        });
         requestAnimationFrame(() => getPromptRef()?.focus());
       }
     } catch (e) {
-      store.error = String(e);
       thinking.setProcessingSlashCmd(null);
+      // The send-coordinator already surfaced a failed event with the draft.
+      // Restore from the captured draft snapshot in case the prompt input
+      // store lost it (e.g. legacy callers).
+      if (e instanceof SendCoordinatorError) {
+        restoreDraft(draft);
+      }
     }
-  };
+  }
+
+  return {
+    sendMessage,
+    coordinator,
+    get latest() {
+      return latest;
+    },
+    get inFlight() {
+      return coordinator.busy;
+    },
+  } as SendMessageHandle;
 }

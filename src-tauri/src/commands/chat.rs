@@ -64,12 +64,14 @@ pub async fn send_chat_message(
     message: String,
     attachments: Option<Vec<Attachment>>,
     model: Option<String>,
+    client_message_id: Option<String>,
 ) -> Result<(), String> {
     log::debug!(
-        "[chat] send_chat_message: run_id={}, msg_len={}, attachments={}",
+        "[chat] send_chat_message: run_id={}, msg_len={}, attachments={}, client_message_id={:?}",
         run_id,
         message.len(),
-        attachments.as_ref().map_or(0, |a| a.len())
+        attachments.as_ref().map_or(0, |a| a.len()),
+        client_message_id,
     );
     let run = storage::runs::get_run(&run_id).ok_or_else(|| format!("Run {} not found", run_id))?;
 

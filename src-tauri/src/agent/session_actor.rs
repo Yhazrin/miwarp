@@ -103,6 +103,8 @@ pub enum ActorCommand {
         text: String,
         attachments: Vec<AttachmentData>,
         reply: oneshot::Sender<Result<(), String>>,
+        /// v1.0.9: optional client-side idempotency token.
+        client_message_id: Option<String>,
     },
     /// Two-phase control: actor writes stdin + registers waiter → returns (request_id, response_rx).
     /// Caller awaits response_rx outside the actor to avoid deadlocking the select! loop.
@@ -397,8 +399,8 @@ impl SessionActor {
                 // 1. Commands from IPC layer
                 cmd = cmd_rx.recv() => {
                     match cmd {
-                        Some(ActorCommand::SendMessage { text, attachments, reply }) => {
-                            self.handle_send_message(text, attachments, reply).await;
+                        Some(ActorCommand::SendMessage { text, attachments, reply, client_message_id }) => {
+                            self.handle_send_message(text, attachments, client_message_id, reply).await;
                         }
                         Some(ActorCommand::Stop { reply }) => {
                             let r = self.handle_stop().await;
@@ -575,6 +577,7 @@ impl SessionActor {
         &mut self,
         text: String,
         attachments: Vec<AttachmentData>,
+        client_message_id: Option<String>,
         reply: oneshot::Sender<Result<(), String>>,
     ) {
         if self.terminated {
@@ -587,6 +590,25 @@ impl SessionActor {
             log::debug!(
                 "[turn] barrier active, user message queued (will dispatch after internal turn)"
             );
+        }
+
+        // v1.0.9: dedupe by client_message_id within the queued_user set so a
+        // retried submit that races with a still-pending send cannot queue a
+        // second turn for the same user content. Idempotency is opt-in; if
+        // the client omits the id we fall back to the historical behaviour.
+        if let Some(ref cid) = client_message_id {
+            if self
+                .queued_user
+                .iter()
+                .any(|t| t.client_message_id.as_deref() == Some(cid.as_str()))
+            {
+                log::debug!(
+                    "[turn] dedupe: client_message_id={} already queued; resolving as accepted",
+                    cid
+                );
+                let _ = reply.send(Ok(()));
+                return;
+            }
         }
 
         // Allocate turn_index and determine kind
@@ -608,10 +630,11 @@ impl SessionActor {
         self.next_turn_seq += 1;
 
         log::debug!(
-            "[turn] enqueue user: turn_index={}, kind={:?}, seq={}",
+            "[turn] enqueue user: turn_index={}, kind={:?}, seq={}, client_message_id={:?}",
             turn_index,
             kind,
-            seq
+            seq,
+            client_message_id,
         );
 
         self.queued_user.push_back(UserTurnTicket {
@@ -621,6 +644,7 @@ impl SessionActor {
             kind,
             turn_index,
             reply,
+            client_message_id,
         });
 
         self.try_dispatch().await;

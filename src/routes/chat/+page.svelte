@@ -1101,7 +1101,7 @@
     showToast: _showToast,
   });
 
-  const sendMessage = createSendMessage({
+  const send = createSendMessage({
     store,
     thinking,
     getRemoteHosts: () => remoteHosts,
@@ -1109,6 +1109,7 @@
     openFolderPicker,
     handleResume,
     loadCliVersionInfo,
+    promptInputRef: () => promptRef,
     getPromptRef: () => promptRef,
     goto,
     setIsChatAutoScroll: (v) => {
@@ -1133,6 +1134,31 @@
       return v;
     },
   });
+
+  // Backward-compatible alias — many internal call sites still reference
+  // `sendMessage` directly. The new handle returns a richer object; we
+  // expose `.sendMessage` so legacy code keeps compiling.
+  const sendMessage = send.sendMessage;
+
+  /**
+   * v1.0.9: re-submit a failed send with a fresh client message id. The
+   * captured draft snapshot is passed in via the status event; we resolve
+   * the current prompt text and let the regular send path take over.
+   */
+  function handleSendRetry(event: { runId: string; clientMessageId: string }): void {
+    const prompt = promptRef;
+    if (!prompt?.getInputSnapshot) return;
+    const draft = prompt.getInputSnapshot() as { text: string; attachments?: unknown[] };
+    const text = (draft.text ?? "").trim();
+    if (!text) return;
+    const attachments = (draft.attachments ?? []).filter(
+      (a): a is import("$lib/types").Attachment =>
+        typeof a === "object" && a !== null && "contentBase64" in a,
+    );
+    void sendMessage(text, attachments).catch((e) => {
+      dbgWarn("chat", "send.retry.failed", { error: String(e) });
+    });
+  }
 
   // Chat keybinding callbacks — registered/unregistered via keybindingStore in onMount below
 
@@ -1561,6 +1587,9 @@
                   handleRalphCancel,
                   showChatToast: _showToast,
                 }}
+                sendCoordinator={send.coordinator}
+                sendBusy={send.inFlight}
+                onSendRetry={(event) => handleSendRetry(event)}
                 bind:stashedInput
                 bind:shortcutHelpOpen
                 bind:promptRef
@@ -1731,6 +1760,9 @@
               handleRalphCancel,
               showChatToast: _showToast,
             }}
+            sendCoordinator={send.coordinator}
+            sendBusy={send.inFlight}
+            onSendRetry={(event) => handleSendRetry(event)}
             bind:stashedInput
             bind:shortcutHelpOpen
             bind:promptRef

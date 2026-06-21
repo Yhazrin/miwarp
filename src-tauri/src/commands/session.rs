@@ -506,17 +506,19 @@ pub(crate) async fn start_session_impl(
     attachments: Option<Vec<AttachmentData>>,
     platform_id: Option<String>,
     permission_mode_override: Option<String>,
+    client_message_id: Option<String>,
 ) -> Result<(), String> {
     let _guard = spawn_locks.acquire(&run_id).await;
     let session_mode = mode.unwrap_or_default();
     let att_list = attachments.unwrap_or_default();
     log::debug!(
-        "[session] start_session called, run_id={}, mode={:?}, session_id={:?}, has_message={}, attachments={}",
+        "[session] start_session called, run_id={}, mode={:?}, session_id={:?}, has_message={}, attachments={}, client_message_id={:?}",
         run_id,
         session_mode,
         session_id,
         initial_message.is_some(),
-        att_list.len()
+        att_list.len(),
+        client_message_id,
     );
 
     // 1. Read run metadata + validate execution path
@@ -734,6 +736,7 @@ pub(crate) async fn start_session_impl(
                 text,
                 attachments: att_list,
                 reply: reply_tx,
+                client_message_id: client_message_id.clone(),
             })
             .await
             .map_err(|_| "Actor dead before initial message".to_string())?;
@@ -790,6 +793,7 @@ pub async fn start_session(
     attachments: Option<Vec<AttachmentData>>,
     platform_id: Option<String>,
     permission_mode_override: Option<String>,
+    client_message_id: Option<String>,
 ) -> Result<(), String> {
     start_session_impl(
         emitter.inner(),
@@ -803,6 +807,7 @@ pub async fn start_session(
         attachments,
         platform_id,
         permission_mode_override,
+        client_message_id,
     )
     .await
 }
@@ -813,14 +818,16 @@ pub async fn send_session_message(
     run_id: String,
     message: String,
     attachments: Option<Vec<AttachmentData>>,
+    client_message_id: Option<String>,
 ) -> Result<(), String> {
     // No SpawnLock — data operation, routed through actor channel
     let att_count = attachments.as_ref().map_or(0, |v| v.len());
     log::debug!(
-        "[session] send_session_message: run_id={}, msg_len={}, attachments={}",
+        "[session] send_session_message: run_id={}, msg_len={}, attachments={}, client_message_id={:?}",
         run_id,
         message.len(),
-        att_count
+        att_count,
+        client_message_id,
     );
 
     // Get channel sender
@@ -832,6 +839,7 @@ pub async fn send_session_message(
         .send(ActorCommand::SendMessage {
             text: message.clone(),
             attachments: attachments.unwrap_or_default(),
+            client_message_id: client_message_id.clone(),
             reply: reply_tx,
         })
         .await
@@ -842,8 +850,9 @@ pub async fn send_session_message(
     // UserMessage + RunState(running) emission. No post-emit needed here.
 
     log::debug!(
-        "[session] send_session_message: delivered to actor, run_id={}",
-        run_id
+        "[session] send_session_message: delivered to actor, run_id={}, client_message_id={:?}",
+        run_id,
+        client_message_id,
     );
     Ok(())
 }
@@ -1327,6 +1336,7 @@ pub(crate) async fn approve_session_tool_impl(
             text: retry_msg,
             attachments: Vec::new(),
             reply: reply_tx,
+            client_message_id: None,
         })
         .await
         .map_err(|_| "Actor dead after approve restart".to_string())?;

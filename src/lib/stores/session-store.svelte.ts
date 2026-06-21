@@ -2175,7 +2175,11 @@ export class SessionStore {
   }
 
   /** Send a subsequent message in an active session. */
-  async sendMessage(text: string, attachments: Attachment[]): Promise<void> {
+  async sendMessage(
+    text: string,
+    attachments: Attachment[],
+    clientMessageId?: string | null,
+  ): Promise<void> {
     if (!this.run) return;
     this.error = "";
     // Invalidate idle snapshot — user is sending a new message
@@ -2187,7 +2191,12 @@ export class SessionStore {
         // Content-based dedup in _reduce(user_message) prevents double display
         // when the backend's UserMessage bus event arrives.
         this._pushOptimisticUser(text, attachments);
-        await api.sendSessionMessage(this.run.id, text, mapAttachments(attachments) ?? undefined);
+        await api.sendSessionMessage(
+          this.run.id,
+          text,
+          mapAttachments(attachments) ?? undefined,
+          clientMessageId,
+        );
         if (this.isKnownSlashCommand(text)) {
           dbg("store", "skip response timeout for slash command", { cmd: text.split(" ")[0] });
         } else {
@@ -2199,6 +2208,8 @@ export class SessionStore {
           this.run.id,
           text,
           attachments.length > 0 ? attachments : undefined,
+          undefined,
+          clientMessageId,
         );
       }
     } catch (e) {

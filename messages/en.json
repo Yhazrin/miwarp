@@ -2989,5 +2989,14 @@
   "split_mode_paneRetry": "Retry",
   "split_mode_emptyPane": "No messages yet.",
   "split_mode_readOnlyHint": "Click to make this pane active and reply.",
-  "split_mode_activate": "Activate"
+  "split_mode_activate": "Activate",
+  "send_status_submitting": "Sending…",
+  "send_status_accepted": "Sent",
+  "send_status_queued": "Waiting for connection — message queued",
+  "send_status_failed_transport": "Couldn't reach the agent. Click to retry.",
+  "send_status_failed_rejected": "Agent rejected the message. Click to retry.",
+  "send_status_failed_stale": "Session changed. Open the correct session to resend.",
+  "send_status_failed_timeout": "Agent didn't acknowledge in time. Click to retry.",
+  "send_status_failed_unknown": "Send failed. Click to retry.",
+  "send_retry": "Retry"
 }

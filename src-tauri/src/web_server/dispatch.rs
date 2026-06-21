@@ -929,6 +929,9 @@ pub async fn dispatch_command(
                 .get("permission_mode_override")
                 .and_then(|v| v.as_str())
                 .map(String::from);
+            let client_message_id: Option<String> = params
+                .get("client_message_id")
+                .and_then(|v| v.as_str().map(|s| s.to_string()));
             crate::commands::session::start_session_impl(
                 &state.emitter,
                 &state.sessions,
@@ -941,6 +944,7 @@ pub async fn dispatch_command(
                 attachments,
                 platform_id,
                 permission_mode_override,
+                client_message_id,
             )
             .await?;
             Ok(json!(true))
@@ -952,11 +956,15 @@ pub async fn dispatch_command(
                 .get("attachments")
                 .and_then(|v| serde_json::from_value(v.clone()).ok())
                 .unwrap_or_default();
+            let client_message_id: Option<String> = params
+                .get("client_message_id")
+                .and_then(|v| v.as_str().map(|s| s.to_string()));
             log::debug!(
-                "[dispatch] send_session_message: run_id={}, msg_len={}, attachments={}",
+                "[dispatch] send_session_message: run_id={}, msg_len={}, attachments={}, client_message_id={:?}",
                 run_id,
                 message.len(),
-                attachments.len()
+                attachments.len(),
+                client_message_id,
             );
             let cmd_tx = {
                 let map = state.sessions.lock().await;
@@ -970,6 +978,7 @@ pub async fn dispatch_command(
                     text: message,
                     attachments,
                     reply: reply_tx,
+                    client_message_id: None,
                 })
                 .await
                 .map_err(|_| "Actor dead".to_string())?;
