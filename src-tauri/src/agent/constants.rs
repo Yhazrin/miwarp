@@ -33,6 +33,15 @@ pub const PROTOCOL_DESYNC_WINDOW_SECS: u64 = 60;
 /// Tick interval for the independent timeout clock.
 pub const TICK_INTERVAL: Duration = Duration::from_millis(250);
 
+/// v1.0.9 Phase 2: bounded FIFO ledger of recently-accepted client_message_ids.
+/// A retried submit whose id is in the ledger is treated as a duplicate and
+/// resolves as `Ok(())` without enqueuing a second turn. Eviction is FIFO:
+/// when the ledger is at capacity, the oldest id is dropped on insert.
+/// Cap chosen to comfortably outlast any reconnect-retry window in the
+/// SendCoordinator's bounded reconnect queue (default 32) while remaining
+/// bounded in memory under abuse.
+pub const ACCEPTED_CLIENT_MESSAGE_IDS_CAP: usize = 1024;
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -11,9 +11,10 @@ use crate::agent::claude_protocol::{validate_bus_event, ProtocolState};
 use crate::agent::notify::notify_if_background;
 use crate::agent::turn_engine::{
     apply_activity_reset, ActiveTurn, ContextExtractor, InternalExtractor, InternalJob, TurnOrigin,
-    TurnPhase, UserTurnKind, UserTurnTicket, INTERNAL_HARD_TIMEOUT, INTERNAL_SOFT_TIMEOUT,
-    PROTOCOL_DESYNC_THRESHOLD, PROTOCOL_DESYNC_WINDOW_SECS, QUARANTINE_DEADLINE, TICK_INTERVAL,
-    USER_HARD_TIMEOUT, USER_SOFT_TIMEOUT,
+    TurnPhase, UserTurnKind, UserTurnTicket, ACCEPTED_CLIENT_MESSAGE_IDS_CAP,
+    INTERNAL_HARD_TIMEOUT, INTERNAL_SOFT_TIMEOUT, PROTOCOL_DESYNC_THRESHOLD,
+    PROTOCOL_DESYNC_WINDOW_SECS, QUARANTINE_DEADLINE, TICK_INTERVAL, USER_HARD_TIMEOUT,
+    USER_SOFT_TIMEOUT,
 };
 use crate::models::{
     max_attachment_size, now_iso, AgentRuntimeKind, BusEvent, RalphCompleteReason, RunStatus,
@@ -195,6 +196,13 @@ struct SessionActor {
     active_extractor: Option<Box<dyn InternalExtractor>>,
     /// Queue of pending user messages.
     queued_user: VecDeque<UserTurnTicket>,
+    /// v1.0.9 Phase 2: bounded FIFO ledger of client_message_ids the actor
+    /// has already accepted (i.e. reply.send(Ok(())) was reached). Used to
+    /// dedupe retries across queue + ledger so a reconnect-retry that
+    /// re-dispatches a previously-accepted submit resolves idempotently
+    /// without creating a second turn. Bounded by
+    /// `ACCEPTED_CLIENT_MESSAGE_IDS_CAP`; eviction is FIFO.
+    accepted_client_message_ids: VecDeque<String>,
     /// Queue of pending internal jobs (auto-context).
     queued_internal: VecDeque<InternalJob>,
     /// Next turn index (all user messages including slash). Starts from resume baseline.
@@ -332,6 +340,7 @@ pub fn spawn_actor_with_runtime(
         active_extractor: None,
         queued_user: VecDeque::new(),
         queued_internal: VecDeque::new(),
+        accepted_client_message_ids: VecDeque::new(),
         next_turn_index: initial_turn_index,
         next_auto_ctx_id: initial_auto_ctx_id,
         next_turn_seq: 0,
@@ -592,6 +601,22 @@ impl SessionActor {
             );
         }
 
+        // v1.0.9 Phase 2: dedupe against the bounded accepted ledger FIRST.
+        // This catches retries that re-dispatch after the original turn has
+        // already moved out of queued_user (the Phase 1 dedupe only checked
+        // the still-pending queue). The ledger is FIFO-bounded by
+        // ACCEPTED_CLIENT_MESSAGE_IDS_CAP; evictions are logged.
+        if let Some(ref cid) = client_message_id {
+            if is_accepted(&self.accepted_client_message_ids, cid) {
+                log::debug!(
+                    "[turn] dedupe: client_message_id={} already accepted; resolving as accepted",
+                    cid
+                );
+                let _ = reply.send(Ok(()));
+                return;
+            }
+        }
+
         // v1.0.9: dedupe by client_message_id within the queued_user set so a
         // retried submit that races with a still-pending send cannot queue a
         // second turn for the same user content. Idempotency is opt-in; if
@@ -768,6 +793,14 @@ impl SessionActor {
         });
         self.emit_state("running", None, None, false);
         self.persist_idle_running(RunStatus::Running);
+
+        // v1.0.9 Phase 2: record this turn as accepted so a retry that
+        // re-dispatches after we leave the queue can be deduped. Insert
+        // happens AFTER persist+emit so a panicking predecessor cannot
+        // leak a half-accepted id into the ledger.
+        if let Some(cid) = ticket.client_message_id.clone() {
+            self.record_accepted_client_message_id(cid);
+        }
 
         // Reply success to caller
         let _ = ticket.reply.send(Ok(()));
@@ -1221,6 +1254,19 @@ impl SessionActor {
                 from_internal: false,
             });
         }
+    }
+
+    /// v1.0.9 Phase 2: insert a client_message_id into the accepted ledger.
+    /// FIFO-evicts the oldest entry when at capacity. Used by
+    /// `start_user_turn` after a turn has been successfully started.
+    /// Idempotent: re-recording the same id is a no-op so a double-insert
+    /// from a recovered retry cannot leak duplicates.
+    fn record_accepted_client_message_id(&mut self, cid: String) {
+        record_accepted_client_message_id(
+            &mut self.accepted_client_message_ids,
+            cid,
+            ACCEPTED_CLIENT_MESSAGE_IDS_CAP,
+        );
     }
 
     /// Write a user-format message to CLI stdin. Returns the UUID embedded in the payload.
@@ -2571,6 +2617,37 @@ impl SessionActor {
     }
 }
 
+/// v1.0.9 Phase 2: insert a client_message_id into the accepted ledger.
+/// FIFO-evicts the oldest entry when at capacity. Pure function so it can
+/// be unit-tested without spinning up a full `SessionActor`. Idempotent:
+/// re-inserting an id that already exists is a no-op so a recovered retry
+/// cannot leak duplicates.
+pub(crate) fn record_accepted_client_message_id(
+    ledger: &mut VecDeque<String>,
+    cid: String,
+    cap: usize,
+) {
+    if ledger.iter().any(|s| s == &cid) {
+        return;
+    }
+    if ledger.len() >= cap {
+        if let Some(evicted) = ledger.pop_front() {
+            log::debug!(
+                "[turn] accepted ledger at cap={}, evicting oldest id (prefix={})",
+                cap,
+                evicted.chars().take(8).collect::<String>()
+            );
+        }
+    }
+    ledger.push_back(cid);
+}
+
+/// v1.0.9 Phase 2: predicate used by `handle_send_message` to dedupe a
+/// retry whose id has already been recorded as accepted.
+pub(crate) fn is_accepted(ledger: &VecDeque<String>, cid: &str) -> bool {
+    ledger.iter().any(|s| s == cid)
+}
+
 fn map_state_to_run_status(state: &str) -> Option<RunStatus> {
     match state {
         "spawning" | "running" => Some(RunStatus::Running),
@@ -2844,5 +2921,98 @@ mod tests {
         assert_eq!(payload["type"], "user");
         assert_eq!(payload["uuid"], uuid);
         assert!(uuid::Uuid::parse_str(&uuid).is_ok());
+    }
+
+    // ── v1.0.9 Phase 2: accepted-client_message_id ledger ──
+
+    #[test]
+    fn accepted_ledger_inserts_and_reports_membership() {
+        let mut ledger: std::collections::VecDeque<String> = std::collections::VecDeque::new();
+        super::record_accepted_client_message_id(
+            &mut ledger,
+            "cmsg-1".to_string(),
+            super::ACCEPTED_CLIENT_MESSAGE_IDS_CAP,
+        );
+        super::record_accepted_client_message_id(
+            &mut ledger,
+            "cmsg-2".to_string(),
+            super::ACCEPTED_CLIENT_MESSAGE_IDS_CAP,
+        );
+        assert!(super::is_accepted(&ledger, "cmsg-1"));
+        assert!(super::is_accepted(&ledger, "cmsg-2"));
+        assert!(!super::is_accepted(&ledger, "cmsg-3"));
+        assert_eq!(ledger.len(), 2);
+    }
+
+    #[test]
+    fn accepted_ledger_idempotent_on_duplicate_insert() {
+        let mut ledger: std::collections::VecDeque<String> = std::collections::VecDeque::new();
+        super::record_accepted_client_message_id(
+            &mut ledger,
+            "cmsg-x".to_string(),
+            super::ACCEPTED_CLIENT_MESSAGE_IDS_CAP,
+        );
+        // Second insert is a no-op; the ledger must not contain duplicates
+        // and must not evict on a duplicate attempt.
+        super::record_accepted_client_message_id(
+            &mut ledger,
+            "cmsg-x".to_string(),
+            super::ACCEPTED_CLIENT_MESSAGE_IDS_CAP,
+        );
+        assert_eq!(ledger.len(), 1);
+        assert!(super::is_accepted(&ledger, "cmsg-x"));
+    }
+
+    #[test]
+    fn accepted_ledger_fifo_evicts_oldest_at_cap() {
+        // Use a tiny cap so we can drive eviction deterministically.
+        let mut ledger: std::collections::VecDeque<String> = std::collections::VecDeque::new();
+        for i in 0..3 {
+            super::record_accepted_client_message_id(&mut ledger, format!("id-{i}"), 3);
+        }
+        assert_eq!(ledger.len(), 3);
+
+        // Cap reached; inserting id-3 must evict id-0.
+        super::record_accepted_client_message_id(&mut ledger, "id-3".to_string(), 3);
+        assert_eq!(ledger.len(), 3);
+        assert!(!super::is_accepted(&ledger, "id-0"));
+        assert!(super::is_accepted(&ledger, "id-1"));
+        assert!(super::is_accepted(&ledger, "id-2"));
+        assert!(super::is_accepted(&ledger, "id-3"));
+    }
+
+    #[test]
+    fn accepted_ledger_cap_matches_constant() {
+        // Cap is wired to ACCEPTED_CLIENT_MESSAGE_IDS_CAP. Sanity-check that
+        // the constant is well above the SendCoordinator's default queue
+        // size (32) so a reconnect-retry that the coordinator drained at
+        // generation N is still idempotent on generation N+1 reconnects.
+        const {
+            assert!(super::ACCEPTED_CLIENT_MESSAGE_IDS_CAP >= 32);
+            assert!(super::ACCEPTED_CLIENT_MESSAGE_IDS_CAP <= 8192);
+        }
+    }
+
+    #[test]
+    fn accepted_ledger_full_cap_cycles_without_growth() {
+        // Drive 5 * cap inserts; ledger size must stay at exactly cap and
+        // every insert must evict the oldest.
+        let cap = 4usize;
+        let mut ledger: std::collections::VecDeque<String> = std::collections::VecDeque::new();
+        for i in 0..(cap * 5) {
+            super::record_accepted_client_message_id(&mut ledger, format!("id-{i}"), cap);
+            assert!(ledger.len() <= cap);
+        }
+        assert_eq!(ledger.len(), cap);
+        // The most recent cap inserts are present.
+        for i in (cap * 5 - cap)..(cap * 5) {
+            assert!(super::is_accepted(&ledger, &format!("id-{i}")));
+        }
+        // Earlier inserts were evicted.
+        assert!(!super::is_accepted(&ledger, "id-0"));
+        assert!(!super::is_accepted(
+            &ledger,
+            &format!("id-{}", cap * 5 - cap - 1)
+        ));
     }
 }

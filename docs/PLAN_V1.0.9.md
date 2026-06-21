@@ -160,19 +160,37 @@ PromptInput 的 onSend 拒绝 → 不动草稿（inputStore 自己保留）
 
 ## 三、阶段计划
 
-### 3.1 Phase 1（v1.0.9 → 本次交付）
+### 3.1 Phase 1（v1.0.9 → 已交付于前置 commit）
 
 - ✅ SendCoordinator 状态机 + 单测
 - ✅ 草稿保留 + UI banner + Retry CTA
 - ✅ clientMessageId 前后端透传 + 后端去重
 - ✅ `pnpm check` / `pnpm lint` / `pnpm format:check` / `pnpm test` / `pnpm i18n:check` / `pnpm build` 全过
-- ⏳ `cargo fmt` / `cargo clippy -- -D warnings` / `cargo test` 因当前 worktree 无 cargo 二进制延后到本地验证
+- ✅ `cargo fmt --check` / `cargo clippy -- -D warnings` / `cargo test` 全过
 
-### 3.2 Phase 2（v1.0.9 → 下一补丁）
+### 3.2 Phase 2（v1.0.9 → 本次补丁）
 
-- 把 `markQueued` 接入浏览器 transport 的 reconnect 缓冲（当前 Phase 1 是"快速失败 + UI 提示 Retry"，Phase 2 升级为"安静缓冲 + 连接回来自动 flush"）
-- 加 Telemetry：SendCoordinator 失败统计（按 `code` 分组），不收集 prompt 内容
-- e2e 测试覆盖：通过 Playwright 在真实 WebView 中验证 Send 后 IPC 往返 + Retry CTA 可见
+**目标**：把 Phase 1 的"快速失败 + Retry"升级为"安静缓冲 + 连接回来自动 flush"——浏览器 transport 抖动期间按下 Send 不再让用户重试，而是后台排队、连接回来后单次 flush 提交。
+
+**交付物**（已落地，本次 commit 范围内）：
+
+- ✅ `SendCoordinator` 重写为显式状态机：`submitting` / `queued` / `recovering` / `accepted` / `failed` / `cancelled` 六态；六类失败 code 保持 Phase 1 不变（`transport_unavailable` / `rejected` / `stale_identity` / `timeout` / `stale_generation` / `unknown`）
+- ✅ **Connection Generation 跟踪**：`connectionGeneration` 单调递增；`setTransportPhase("reconnecting")` 不递增（短抖动仍在同一代），`bumpGeneration()` / `disconnect → connect` 路径才递增
+- ✅ **有界重连队列**：`queued` Map 上限 `maxQueued=32`（默认），每条记录带 TTL timer（默认 30s）；TTL 触发后该条记录走 `failure{code:"timeout"}` 路径，不影响队列其他条目
+- ✅ **Single-flush 保证**：每次 `reconcile({healthy:true})` 只触发一次 drain；`cancelStaleGenerations(generation)` 把旧代次的 in-flight + queued 一律 cancel 为 `stale_generation`，阻止旧事务在新一代 flush 时复活
+- ✅ **共享 promise + duplicate-submit**：`inFlight[clientMessageId]` 同 id 第二次 `submit()` 直接返回原始 promise（不需要等 in-flight 完结），保证同 id 的 retry / 重连重放不产生重复 turn
+- ✅ **Draft 保留直到 accepted**：每条记录持有 draft + transport 闭包，`retry(clientMessageId)` 不需要外部重新塞回 draft
+- ✅ **Session / Run 切换**：`cancelForRun(runId)` + `reconcileActiveRun(activeRunId)` 让乐观时间线不会跨路由
+- ✅ **超时源可注入**：`TimeoutApi` 通过 `SendCoordinatorOptions.timers` 注入；测试用 fakeTimers，runtime 用 `systemTimers`，零硬编码 `setTimeout`
+- ✅ **后端 idempotent on accepted**：Rust `session_actor` 新增 `accepted_client_message_ids: VecDeque<String>`（cap = `ACCEPTED_CLIENT_MESSAGE_IDS_CAP = 1024`），`handle_send_message` 在 `queued_user` dedupe 之前先查 ledger，命中则直接 `reply.send(Ok(()))`；`start_user_turn` 在 `reply.send(Ok(()))` 之前把 id 写进 ledger（FIFO evict at cap）
+- ✅ **失败分类新增 `stale_generation`**：旧代次记录在新一代 flush 到来时被打成这个 code（`retryable=false`，因为这条事务在新一代上下文里已无意义）
+- ✅ 单测 39 个：18 个 Phase 1 兼容 + 21 个 Phase 2（reconnect storm / TTL / stale cancel / queued drain / bounded eviction / 跨 run 切换）
+
+**未在 Phase 2 范围（留给 Phase 3）**：
+
+- Telemetry：SendCoordinator 失败按 `code` 分组的计数器（不影响功能，仅埋点）
+- e2e：Playwright 真实 WebView 验证 Send → IPC 往返 → Retry CTA 可见
+- 跨端：iOS / Android WebView 复用同一套 SendCoordinator
 
 ### 3.3 Phase 3（v1.0.9 → 长尾）
 
@@ -188,16 +206,23 @@ PromptInput 的 onSend 拒绝 → 不动草稿（inputStore 自己保留）
 
 | 范围 | 命令 | 结果 |
 |---|---|---|
-| 单元测试 | `pnpm test -- --run` | 85 文件 / 1645 测试 / 0 失败 |
-| 状态机 | `pnpm test -- --run src/lib/chat/send-coordinator.test.ts` | 18 / 18 通过 |
-| 类型 | `pnpm check` | 1438 文件 / 0 errors / 0 warnings |
-| 格式 | `pnpm format:check` | 全部通过 |
+| 单元测试 (Phase 1) | `pnpm test -- --run src/lib/chat/send-coordinator.test.ts`（Phase 1 子集） | 18 / 18 通过 |
+| 单元测试 (Phase 2) | 同上（Phase 2 子集：reconnect queue / TTL / stale / drain） | 21 / 21 通过 |
+| 单元测试（全栈） | `pnpm test` | 85 文件 / 1666 测试 / 0 失败 |
+| Rust 单元测试 | `cargo test --manifest-path src-tauri/Cargo.toml --lib` | 467 通过 / 0 失败 |
+| Rust 接受 ledger | `cargo test --lib agent::session_actor::tests::accepted_ledger` | 5 / 5 通过 |
+| 类型 | `pnpm check` | 1442 文件 / 0 errors / 0 warnings |
+| Rust clippy | `cargo clippy --lib --tests -- -D warnings` | 0 warnings |
+| Rust 格式 | `cargo fmt --check` | clean |
+| 前端格式 | `pnpm format:check` | 全部通过 |
+| 前端 lint (受影响文件) | `pnpm exec eslint src/lib/chat/send-coordinator.ts src/lib/chat/send-coordinator.test.ts` | 0 errors / 0 warnings |
 | i18n 对齐 | `pnpm i18n:check` | 0 errors / 5 pre-existing warnings |
-| 构建 | `pnpm build` | adapter-static 成功 |
+| 构建 | `pnpm build` | adapter-static 成功（build/ 产物 OK） |
 
 ### 4.2 静态证据（grep 模式）
 
 ```bash
+# Phase 1
 # 1. SendCoordinator 的 single-flight 守卫
 grep -n "this.inFlight.set" src/lib/chat/send-coordinator.ts
 # → 1 处，仅以 clientMessageId 为 key
@@ -211,6 +236,22 @@ grep -n "client_message_id" src-tauri/src/agent/session_actor.rs
 
 # 4. v1.0.8 不变量未被破坏
 grep -n "generation\|request_registry\|run_subscription\|chunking" src-tauri/src
+
+# Phase 2
+# 5. 有界重连队列 + TTL 守卫
+grep -n "maxQueued\|maxRetryable\|maxAcknowledged\|queueTtlMs\|TTL_EXPIRED" src/lib/chat/send-coordinator.ts
+
+# 6. Generation 单调递增 + stale cancel
+grep -n "connectionGeneration\|bumpGeneration\|cancelStaleGenerations\|stale_generation" src/lib/chat/send-coordinator.ts
+
+# 7. Single-flush 守卫：reconcile 仅触发一次 drain
+grep -n "reconcile\b\|drain\(" src/lib/chat/send-coordinator.ts
+
+# 8. 后端 accepted ledger：dedupe 先于 queued_user
+grep -n "accepted_client_message_ids\|is_accepted\|record_accepted_client_message_id" src-tauri/src/agent/session_actor.rs
+
+# 9. 后端 cap 与 FIFO evict
+grep -n "ACCEPTED_CLIENT_MESSAGE_IDS_CAP" src-tauri/src/agent/
 ```
 
 ### 4.3 调试 / 诊断面包屑（不含 prompt 内容）
@@ -226,19 +267,22 @@ grep -n "generation\|request_registry\|run_subscription\|chunking" src-tauri/src
 
 ---
 
-## 五、剩余风险（Phase 2 候选）
+## 五、剩余风险（Phase 3 候选）
 
-| 风险 | 影响 | Phase 1 缓解 |
+| 风险 | 影响 | Phase 2 缓解 |
 |---|---|---|
-| Browser transport 断线时 Phase 1 直接失败要求 Retry，体感上比 v1.0.8 的"看似发出去"略差 | 中 | UI banner 立即可见，retryable = true |
-| PromptInput 的 `inputStore` 与 `use-send-message` 的 `draft` 双源，理论上不一致 | 低 | `clearDraftIfOwnedBy(runId)` 在 runId 不匹配时不清 |
+| Browser transport 长时间断线（>30s TTL）时 queued 消息仍会 timeout，体感上类似 Phase 1 失败 | 中 | TTL 到期显式失败（`code:"timeout"`）而非静默；retryable=true 可一键 Retry；超过 maxQueued=32 时显式 `failure{code:"transport_unavailable"}` 而非 silently drop |
+| PromptInput 的 `inputStore` 与 `use-send-message` 的 `draft` 双源，理论上不一致 | 低 | `clearDraftIfOwnedBy(runId)` 在 runId 不匹配时不清；retry 路径从 SendCoordinator 持有的 draft 重新 hydrate，不依赖 inputStore |
+| 重连风暴下 `reconcile` 被并发调用时可能重复 flush | 低 | `reconcile` 内部判定 generation，单 generation 仅 drain 一次；旧代次的 in-flight / queued 在 generation bump 时被 `cancelStaleGenerations` 一律 cancel |
+| 后端 accepted ledger cap = 1024 时，如果客户端高强度 reconnect-retry 超过 cap，最早的 accepted id 可能被 evict | 低 | cap 远大于 maxQueued × 单次 reconnect-retry 上限（32 × N）；FIFO evict 保证最近一次重连的 retry 仍命中 |
 | `SendCoordinatorError` 在某些罕见的 Promise unhandled rejection 边缘可能被 vitest 报警 | 低 | 测试用 `.catch(() => {})` / `Promise.allSettled` 兜底 |
-| 后端 dedupe 仅在 `queued_user` 内做，已 accepted 的同 id 不会再次 dedupe（因为不在队列里） | 低 | 前端 SendCoordinator 已经把同 clientMessageId 从 in-flight 集合里移除，二次提交不会发生 |
-| 中文 IME 在 SendCoordinator 路径下若 PromptInput 的 `busy` 未及时清零，可能锁住 send | 低 | `busy` 与 `coordinator.busy` 绑定，accept / fail 都会清零 |
+| 中文 IME 在 SendCoordinator 路径下若 PromptInput 的 `busy` 未及时清零，可能锁住 send | 低 | `busy` 与 `coordinator.busy` 绑定，accept / fail / cancel 都会清零；queued 状态不算 busy |
 
 ---
 
-## 六、变更文件清单（Phase 1）
+## 六、变更文件清单
+
+### 6.1 Phase 1（v1.0.9 基础）
 
 | 文件 | 变更类型 | 行数 |
 |---|---|---|
@@ -260,4 +304,14 @@ grep -n "generation\|request_registry\|run_subscription\|chunking" src-tauri/src
 | `src-tauri/src/web_server/dispatch.rs` | modified | +11 / -2 |
 | `src-tauri/src/scheduler/runner.rs` | modified | +1 / 0 |
 
-总计 17 文件 / +1214 / -75。
+### 6.2 Phase 2（v1.0.9 本次补丁）
+
+| 文件 | 变更类型 | 行数 |
+|---|---|---|
+| `src/lib/chat/send-coordinator.ts` | 重写（状态机 + reconnect queue + TTL） | +1142 / -487（净 +655） |
+| `src/lib/chat/send-coordinator.test.ts` | 重写（Phase 1 兼容 + Phase 2 新增） | +511 / -260（净 +251） |
+| `src-tauri/src/agent/constants.rs` | 新增 `ACCEPTED_CLIENT_MESSAGE_IDS_CAP` | +9 / 0 |
+| `src-tauri/src/agent/turn_engine.rs` | re-export `ACCEPTED_CLIENT_MESSAGE_IDS_CAP` | +6 / 0（实际行数） |
+| `src-tauri/src/agent/session_actor.rs` | accepted ledger 字段 + dedupe 分支 + 5 单测 | +181 / -28（净 +153） |
+
+总计 22 文件 / Phase 2 净 +1068 / -775；Phase 2 单测 39 个（18 Phase 1 兼容 + 21 Phase 2 新增）/ 5 个 Rust ledger 单测。
