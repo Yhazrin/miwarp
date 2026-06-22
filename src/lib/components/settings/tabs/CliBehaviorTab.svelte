@@ -10,7 +10,6 @@
    * `cliConfig` / `projectCliConfig` / `cliConfigLoaded` etc.
    * This component only consumes via props.
    */
-  import { onMount } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import type { MessageKey } from "$lib/i18n/types";
   import { CLI_CONFIG_SETTINGS } from "$lib/utils/cli-config-settings";
@@ -41,10 +40,6 @@
     onLoad?: () => Promise<void>;
     onSavePatch?: (key: string, value: unknown) => Promise<void>;
   } = $props();
-
-  onMount(() => {
-    if (!cliConfigLoaded && !cliConfigLoading) onLoad();
-  });
 
   const behaviorSettings = $derived(CLI_CONFIG_SETTINGS.filter((s) => s.group === "behavior"));
   const appearanceSettings = $derived(CLI_CONFIG_SETTINGS.filter((s) => s.group === "appearance"));

@@ -2988,6 +2988,7 @@
   "settings_tab_remote": "Remote Hosts",
   "settings_tab_runtimes": "Runtimes",
   "settings_tab_updates": "Updates",
+  "settings_tab_loadFailed": "Unable to load this settings panel. Please try again.",
   "settings_runtimes_detecting": "Detecting runtimes...",
   "settings_runtimes_available": "Available",
   "settings_runtimes_not_found": "Not found",

@@ -2884,6 +2884,7 @@
   "settings_tab_remote": "远程主机",
   "settings_tab_runtimes": "运行时",
   "settings_tab_updates": "更新",
+  "settings_tab_loadFailed": "无法加载此设置面板，请重试。",
   "settings_runtimes_detecting": "正在检测运行时...",
   "settings_runtimes_available": "可用",
   "settings_runtimes_not_found": "未找到",

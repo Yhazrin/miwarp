@@ -1,11 +1,9 @@
 /**
  * v1.0.6 follow-up: settings tab registry.
  *
- * New tabs register here with a label, icon, group, and component.
- * `+page.svelte` iterates `SETTINGS_TABS` to render the sidebar and the
- * active tab. Adding a new tab does not require touching `+page.svelte`.
+ * New tabs register here with a label, icon, and group.
+ * Tab components are lazy-loaded in SettingsPanels.svelte.
  */
-import type { Component } from "svelte";
 
 export type SettingsTabId =
   | "appearance"
@@ -35,7 +33,6 @@ export interface SettingsTabDef {
   fallbackLabel: string;
   /** SVG path data; rendered inside a 16x16 viewBox. */
   iconPath: string;
-  component: Component<any>;
   groupId: SettingsNavGroupId;
 }
 
@@ -73,28 +70,12 @@ const ICON_CPU =
 const ICON_REFRESH_CW =
   "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M3 21v-5h5";
 
-import AppearanceTab from "./AppearanceTab.svelte";
-import ThemeTab from "./ThemeTab.svelte";
-import ProvidersTab from "./ProvidersTab.svelte";
-import DevicesTab from "./DevicesTab.svelte";
-import ShortcutsTab from "./ShortcutsTab.svelte";
-import RemoteHostsTab from "./RemoteHostsTab.svelte";
-import CliBehaviorTab from "./CliBehaviorTab.svelte";
-import WorktreeTab from "./WorktreeTab.svelte";
-import RuntimesTab from "./RuntimesTab.svelte";
-import NotificationsTab from "./NotificationsTab.svelte";
-import DataAndDebugTab from "./DataAndDebugTab.svelte";
-import UpdatesTab from "./UpdatesTab.svelte";
-
 export const SETTINGS_TABS: SettingsTabDef[] = [
   {
     id: "appearance",
     labelKey: "settings_tab_appearance",
     fallbackLabel: "Appearance",
     iconPath: ICON_EYE,
-    // Appearance = language + UI zoom + sidebar/display toggles + CLI auto-sync.
-    // Theme controls live in their own "theme" first-level tab.
-    component: AppearanceTab,
     groupId: "display",
   },
   {
@@ -102,8 +83,6 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     labelKey: "settings_tab_theme",
     fallbackLabel: "Theme",
     iconPath: ICON_PALETTE,
-    // Theme = 主题色 picker + 亮/暗/系统 mode + 高级 token editor (collapsed).
-    component: ThemeTab,
     groupId: "display",
   },
   {
@@ -111,7 +90,6 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     labelKey: "settings_tab_providers",
     fallbackLabel: "Providers",
     iconPath: ICON_KEY,
-    component: ProvidersTab,
     groupId: "integration",
   },
   {
@@ -119,7 +97,6 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     labelKey: "settings_tab_devices",
     fallbackLabel: "Devices",
     iconPath: ICON_MOBILE,
-    component: DevicesTab,
     groupId: "integration",
   },
   {
@@ -127,7 +104,6 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     labelKey: "settings_tab_shortcuts",
     fallbackLabel: "Shortcuts",
     iconPath: ICON_KEYBOARD,
-    component: ShortcutsTab,
     groupId: "automation",
   },
   {
@@ -135,7 +111,6 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     labelKey: "settings_tab_remote",
     fallbackLabel: "Remote Hosts",
     iconPath: ICON_SERVER,
-    component: RemoteHostsTab,
     groupId: "automation",
   },
   {
@@ -143,7 +118,6 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     labelKey: "settings_tab_cliConfig",
     fallbackLabel: "CLI Behavior",
     iconPath: ICON_TERMINAL,
-    component: CliBehaviorTab,
     groupId: "automation",
   },
   {
@@ -151,7 +125,6 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     labelKey: "settings_tab_worktree",
     fallbackLabel: "Worktree",
     iconPath: ICON_GIT_BRANCH,
-    component: WorktreeTab,
     groupId: "automation",
   },
   {
@@ -159,7 +132,6 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     labelKey: "settings_tab_runtimes",
     fallbackLabel: "Runtimes",
     iconPath: ICON_CPU,
-    component: RuntimesTab,
     groupId: "automation",
   },
   {
@@ -167,7 +139,6 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     labelKey: "settings_tab_notifications",
     fallbackLabel: "Notifications",
     iconPath: ICON_BELL,
-    component: NotificationsTab,
     groupId: "system",
   },
   {
@@ -175,7 +146,6 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     labelKey: "settings_tab_data",
     fallbackLabel: "Data & Debug",
     iconPath: ICON_DATABASE,
-    component: DataAndDebugTab,
     groupId: "system",
   },
   {
@@ -183,7 +153,6 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     labelKey: "settings_tab_updates",
     fallbackLabel: "Updates",
     iconPath: ICON_REFRESH_CW,
-    component: UpdatesTab,
     groupId: "system",
   },
 ];
