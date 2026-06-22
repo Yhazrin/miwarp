@@ -964,6 +964,10 @@
       setTimeout(() => splash.remove(), SPLASH_REMOVE_DELAY_MS);
     }
 
+    // Apply performance mode immediately (before settings load) to avoid
+    // brief flash of heavy CSS effects on Windows/Linux.
+    applyVisualPerformance();
+
     // Start silent update check on startup
     appUpdateCoordinator.startAutoCheck();
 

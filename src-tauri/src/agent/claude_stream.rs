@@ -153,34 +153,43 @@ fn extra_path_dirs() -> Vec<PathBuf> {
     }
 }
 
+/// Cached augmented PATH — computed once on first call, reused for all
+/// subsequent spawns. The extra directories and process PATH don't change
+/// during the app's lifetime.
+static AUGMENTED_PATH_CACHE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
 /// Build a PATH that includes common binary locations (cross-platform).
 pub fn augmented_path() -> String {
-    let extra = extra_path_dirs();
-    let current_path = std::env::var("PATH").unwrap_or_default();
-    let existing: Vec<PathBuf> = std::env::split_paths(&current_path).collect();
+    AUGMENTED_PATH_CACHE
+        .get_or_init(|| {
+            let extra = extra_path_dirs();
+            let current_path = std::env::var("PATH").unwrap_or_default();
+            let existing: Vec<PathBuf> = std::env::split_paths(&current_path).collect();
 
-    #[cfg(windows)]
-    let eq = |a: &PathBuf, b: &PathBuf| {
-        a.to_string_lossy()
-            .eq_ignore_ascii_case(&b.to_string_lossy())
-    };
-    #[cfg(not(windows))]
-    let eq = |a: &PathBuf, b: &PathBuf| a == b;
+            #[cfg(windows)]
+            let eq = |a: &PathBuf, b: &PathBuf| {
+                a.to_string_lossy()
+                    .eq_ignore_ascii_case(&b.to_string_lossy())
+            };
+            #[cfg(not(windows))]
+            let eq = |a: &PathBuf, b: &PathBuf| a == b;
 
-    let mut parts: Vec<PathBuf> = Vec::new();
-    for dir in extra {
-        if dir.is_dir()
-            && !parts.iter().any(|p| eq(p, &dir))
-            && !existing.iter().any(|e| eq(e, &dir))
-        {
-            parts.push(dir);
-        }
-    }
-    parts.extend(existing);
+            let mut parts: Vec<PathBuf> = Vec::new();
+            for dir in extra {
+                if dir.is_dir()
+                    && !parts.iter().any(|p| eq(p, &dir))
+                    && !existing.iter().any(|e| eq(e, &dir))
+                {
+                    parts.push(dir);
+                }
+            }
+            parts.extend(existing);
 
-    std::env::join_paths(&parts)
-        .map(|p| p.to_string_lossy().into_owned())
-        .unwrap_or(current_path)
+            std::env::join_paths(&parts)
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or(current_path)
+        })
+        .clone()
 }
 
 /// Cross-platform binary lookup.
@@ -199,32 +208,28 @@ pub fn which_binary(name: &str) -> Option<String> {
 fn which_binary_inner(name: &str) -> Option<String> {
     #[cfg(windows)]
     {
-        let output = std::process::Command::new("where")
-            .arg(name)
-            .env("PATH", augmented_path())
-            .hide_console()
-            .output()
-            .ok()?;
-        if output.status.success() {
-            let out = String::from_utf8_lossy(&output.stdout);
-            let lines: Vec<&str> = out
-                .lines()
-                .map(|l| l.trim())
-                .filter(|l| !l.is_empty())
-                .collect();
-            // Prefer .cmd/.exe/.bat over bare name (which may be a Unix shell script → error 193)
-            let lo = |s: &str| s.to_ascii_lowercase();
-            lines
-                .iter()
-                .find(|l| {
-                    let l = lo(l);
-                    l.ends_with(".cmd") || l.ends_with(".exe") || l.ends_with(".bat")
-                })
-                .or_else(|| lines.first())
-                .map(|l| l.to_string())
-        } else {
-            None
+        // Pure Rust PATH traversal — avoids spawning `where.exe` (50-200ms on Windows).
+        // Prefer .cmd/.exe/.bat over bare name (bare name may be a Unix shell script → error 193).
+        let path_str = augmented_path();
+        log::debug!("[path] searching PATH for '{name}': {path_str}");
+        let path_os = std::ffi::OsString::from(&path_str);
+        let extensions = [".cmd", ".exe", ".bat"];
+        let mut fallback: Option<String> = None;
+        for dir in std::env::split_paths(&path_os) {
+            // Try with each preferred extension first
+            for ext in &extensions {
+                let candidate = dir.join(format!("{}{}", name, ext));
+                if candidate.is_file() {
+                    return Some(candidate.to_string_lossy().into_owned());
+                }
+            }
+            // Bare name as fallback
+            let candidate = dir.join(name);
+            if candidate.is_file() && fallback.is_none() {
+                fallback = Some(candidate.to_string_lossy().into_owned());
+            }
         }
+        fallback
     }
     #[cfg(not(windows))]
     {
