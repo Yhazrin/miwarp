@@ -789,6 +789,7 @@
       group: "core",
     },
     // Workspace
+    { path: "/workspace", label: () => t("nav_workspace"), icon: "layout", group: "workspace" },
     { path: "/explorer", label: () => t("nav_explorer"), icon: "folder", group: "workspace" },
     { path: "/memory", label: () => t("nav_memory"), icon: "book", group: "workspace" },
     { path: "/history", label: () => t("nav_history"), icon: "clock", group: "workspace" },
