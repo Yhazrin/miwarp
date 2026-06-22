@@ -33,8 +33,8 @@ describe("runtime registry descriptors", () => {
     expect(isStartableRuntime("codex")).toBe(true);
     expect(isStartableRuntime("mimo")).toBe(true);
     expect(isStartableRuntime("opencode")).toBe(true);
-    expect(isStartableRuntime("cursor")).toBe(false);
-    expect(getRuntimeLaunchSupport("cursor")).toBe("desktop");
+    expect(isStartableRuntime("cursor")).toBe(true);
+    expect(getRuntimeLaunchSupport("cursor")).toBe("startable");
     expect(getRuntimeLaunchSupport("gemini")).toBe("coming-soon");
     expect(getRuntimeLaunchSupport("custom")).toBe("coming-soon");
   });
@@ -71,13 +71,13 @@ describe("mergeRuntimeAvailability", () => {
     expect(mimo?.status).toBe("unavailable");
   });
 
-  it("marks a detected desktop runtime as available but not chat-selectable", () => {
+  it("marks a detected cursor runtime as available and chat-selectable", () => {
     const cursor = mergeRuntimeAvailability({
-      cursor: { available: true, binary: "/usr/local/bin/cursor", version: "1.0" },
+      cursor: { available: true, binary: "/usr/local/bin/agent", version: "1.0" },
     }).find((runtime) => runtime.id === "cursor");
     expect(cursor?.available).toBe(true);
-    expect(cursor?.selectable).toBe(false);
-    expect(cursor?.status).toBe("desktop");
+    expect(cursor?.selectable).toBe(true);
+    expect(cursor?.status).toBe("available");
   });
 
   it("does not claim a startable runtime is available without detection", () => {

@@ -14,6 +14,7 @@
   import ChatRalphLoopBar from "$lib/components/ChatRalphLoopBar.svelte";
   import PromptInput from "$lib/components/PromptInput.svelte";
   import SendStatusBanner from "$lib/components/chat/SendStatusBanner.svelte";
+  import RuntimeChips from "$lib/components/runtime/RuntimeChips.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import type { SendCoordinator, SendStatusEvent } from "$lib/chat/send-coordinator";
 
@@ -179,6 +180,11 @@
       class="pointer-events-auto relative z-10 px-2 pt-0 pb-[calc(var(--chat-input-dock-bottom-gap,1rem)+env(safe-area-inset-bottom,0px))]"
     >
       <div class="pointer-events-auto">
+        <RuntimeChips
+          {store}
+          disabled={inputBlockedByPermission || sendBusy}
+          onModelChange={handlers.handleModelChange}
+        />
         <PromptInput
           bind:this={promptRef}
           agent={store.agent}

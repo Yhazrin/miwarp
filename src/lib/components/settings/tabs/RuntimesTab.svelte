@@ -5,6 +5,7 @@
   import Spinner from "$lib/components/Spinner.svelte";
   import SettingsFieldRow from "../_shared/SettingsFieldRow.svelte";
   import SettingsFieldEnum from "../_shared/SettingsFieldEnum.svelte";
+  import RuntimeControlCenter from "$lib/components/runtime/RuntimeControlCenter.svelte";
   import { runtimeHubStore } from "$lib/stores/runtime-hub-store.svelte";
   import { isStartableRuntime } from "$lib/runtime/registry";
   import type { ResolvedRuntime } from "$lib/runtime/types";
@@ -59,6 +60,8 @@
 </script>
 
 <div class="space-y-5 pb-8">
+  <RuntimeControlCenter defaultAgent={settings?.default_agent ?? "claude"} />
+
   <section
     class="overflow-hidden rounded-2xl border bg-gradient-to-br from-card via-card to-accent/20"
   >

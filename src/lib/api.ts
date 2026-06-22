@@ -51,6 +51,12 @@ import type {
   CliSessionInfo,
   BackendCapabilities,
 } from "./types";
+import type {
+  ConfigTransactionPreview,
+  ConfigTransactionResult,
+  RuntimeControlPlaneList,
+  RuntimeHubHealthResponse,
+} from "./runtime-control-plane/types";
 
 // Backend capabilities (version / IPC probe)
 export async function getBackendCapabilities(): Promise<BackendCapabilities> {
@@ -1662,4 +1668,56 @@ export async function removeWorktree(
 export async function listWorktrees(parentCwd: string): Promise<WorktreeEntry[]> {
   dbg("api", "listWorktrees", { parentCwd });
   return invoke<WorktreeEntry[]>(CMD.list_worktrees, { parentCwd });
+}
+
+// ── Runtime Control Plane ──
+
+export type {
+  ConfigTransactionPreview,
+  ConfigTransactionResult,
+  RuntimeControlPlaneList,
+  RuntimeHubHealthResponse,
+  RuntimeSnapshot,
+  SessionRuntimeOverride,
+} from "./runtime-control-plane/types";
+
+export async function runtimeHubList(force = false): Promise<RuntimeControlPlaneList> {
+  return invoke<RuntimeControlPlaneList>(CMD.runtime_hub_list, { force });
+}
+
+export async function runtimeHubHealth(
+  runtimeId: string,
+  force = false,
+): Promise<RuntimeHubHealthResponse> {
+  return invoke<RuntimeHubHealthResponse>(CMD.runtime_hub_health, { runtimeId, force });
+}
+
+export async function runtimeHubDiagnose(runtimeId: string): Promise<unknown> {
+  return invoke(CMD.runtime_hub_diagnose, { runtimeId });
+}
+
+export async function runtimeHubSetDefault(runtimeId: string): Promise<string> {
+  return invoke<string>(CMD.runtime_hub_set_default, { runtimeId });
+}
+
+export async function runtimeHubPreviewConfig(
+  runtimeId: string,
+  patch: Record<string, unknown>,
+): Promise<ConfigTransactionPreview> {
+  return invoke<ConfigTransactionPreview>(CMD.runtime_hub_preview_config, { runtimeId, patch });
+}
+
+export async function runtimeHubApplyConfig(
+  runtimeId: string,
+  patch: Record<string, unknown>,
+): Promise<ConfigTransactionResult> {
+  return invoke<ConfigTransactionResult>(CMD.runtime_hub_apply_config, { runtimeId, patch });
+}
+
+export async function runtimeHubStartConfigWatch(runtimeId: string): Promise<number> {
+  return invoke<number>(CMD.runtime_hub_start_config_watch, { runtimeId });
+}
+
+export async function runtimeHubStopConfigWatch(runtimeId: string): Promise<boolean> {
+  return invoke<boolean>(CMD.runtime_hub_stop_config_watch, { runtimeId });
 }
