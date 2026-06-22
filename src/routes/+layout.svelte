@@ -80,6 +80,8 @@
     EVT_EXPLORER_FILE_SELECTED,
   } from "$lib/utils/bus-events";
   import { clampUiZoom, layoutPx } from "$lib/utils/ui-zoom";
+  import { isPerfEnabled } from "$lib/utils/perf";
+  import { installWindowHarness } from "$lib/perf/harness";
   import { applyZoom, applyVisualPerformance } from "$lib/services/window-display";
   import { readBundledAppVersion } from "$lib/services/app-version.svelte";
   import { useKeybindingShortcuts } from "$lib/layout/use-keybinding-shortcuts.svelte";
@@ -955,6 +957,15 @@
 
   // Use onMount for initialization (not $effect - avoids accidental reactive tracking)
   onMount(() => {
+    // v1.0.9 perf: install the manual benchmark harness under window.__mwPerf
+    // only when perf mode is enabled (gated by isPerfEnabled to keep the
+    // production bundle at zero cost). The harness is independent of the
+    // route — it lives on the layout so all 6 scenarios can be invoked
+    // from the devtools console at any point.
+    if (isPerfEnabled()) {
+      installWindowHarness(bundledAppVersion || "dev");
+    }
+
     // Prevent root overscroll / rubber-band on macOS
     const cleanupOverscroll = installPreventRootOverscroll();
 
