@@ -18,7 +18,8 @@ export type SettingsTabId =
   | "worktree"
   | "runtimes"
   | "notifications"
-  | "data-debug";
+  | "data-debug"
+  | "updates";
 
 export type SettingsNavGroupId = "display" | "integration" | "automation" | "system";
 
@@ -69,6 +70,8 @@ const ICON_DATABASE =
   "M5 5c0-1.7 3.6-3 7-3s7 1.3 7 3v2c0 1.7-3.6 3-7 3s-7-1.3-7-3V5Zm0 5c0 1.7 3.6 3 7 3s7-1.3-7-3v-1.5c-1.4 1.3-4 2.1-7 2.1s-5.6-.8-7-2.1V10Zm0 5c0 1.7 3.6 3 7 3s7-1.3-7-3v-1.5c-1.4 1.3-4 2.1-7 2.1s-5.6-.8-7-2.1V15Z";
 const ICON_CPU =
   "M4 4h8v8H4V4Zm2 2v4h4V6H6Zm8-2h4v4h-4V4Zm2 2v2h2V6h-2Zm-8 8H4v4h4v-4Zm2 2v2h2v-2H8Zm8 0h2v2h-2v-2Zm-2 2h-2v2h2v-2Zm4-8h-2v2h2V6Z";
+const ICON_REFRESH_CW =
+  "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M3 21v-5h5";
 
 import AppearanceTab from "./AppearanceTab.svelte";
 import ThemeTab from "./ThemeTab.svelte";
@@ -81,6 +84,7 @@ import WorktreeTab from "./WorktreeTab.svelte";
 import RuntimesTab from "./RuntimesTab.svelte";
 import NotificationsTab from "./NotificationsTab.svelte";
 import DataAndDebugTab from "./DataAndDebugTab.svelte";
+import UpdatesTab from "./UpdatesTab.svelte";
 
 export const SETTINGS_TABS: SettingsTabDef[] = [
   {
@@ -174,6 +178,14 @@ export const SETTINGS_TABS: SettingsTabDef[] = [
     component: DataAndDebugTab,
     groupId: "system",
   },
+  {
+    id: "updates",
+    labelKey: "settings_tab_updates",
+    fallbackLabel: "Updates",
+    iconPath: ICON_REFRESH_CW,
+    component: UpdatesTab,
+    groupId: "system",
+  },
 ];
 
 /** Legacy tab id → new tab id. Used by +page.svelte to keep old URLs working. */
@@ -187,6 +199,7 @@ export const LEGACY_TAB_MAP: Record<string, SettingsTabId> = {
   notifications: "notifications",
   debug: "data-debug",
   data: "data-debug",
+  updates: "updates",
 };
 
 export function getTab(id: SettingsTabId): SettingsTabDef | undefined {

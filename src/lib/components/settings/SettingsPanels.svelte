@@ -31,6 +31,7 @@
   import DataAndDebugTab from "./tabs/DataAndDebugTab.svelte";
   import ThemeTab from "./tabs/ThemeTab.svelte";
   import RuntimesTab from "./tabs/RuntimesTab.svelte";
+  import UpdatesTab from "./tabs/UpdatesTab.svelte";
 
   // Bundled state type — flattened for prop wiring convenience.
   // Keep fields as `any` only where the tab has its own narrower type
@@ -147,6 +148,8 @@
   const ThemeTabC = ThemeTab as any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const RuntimesTabC = RuntimesTab as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const UpdatesTabC = UpdatesTab as any;
 </script>
 
 {#if tab === "appearance"}
@@ -249,6 +252,11 @@
      sections; the advanced editor lives in a collapsed details element. -->
 {#if tab === "theme"}
   <ThemeTabC />
+{/if}
+
+<!-- Updates — standalone first-level tab. MiWarp + CLI tool updates. -->
+{#if tab === "updates"}
+  <UpdatesTabC />
 {/if}
 
 <!-- Defensive: if registry has no component for the requested tab,

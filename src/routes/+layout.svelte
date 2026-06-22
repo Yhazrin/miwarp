@@ -38,7 +38,9 @@
   import PermissionsModal from "$lib/components/PermissionsModal.svelte";
   import WorkspaceSettingsModal from "$lib/components/WorkspaceSettingsModal.svelte";
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
+  import UpdateCenter from "$lib/components/UpdateCenter.svelte";
   import VersionMismatchBanner from "$lib/components/VersionMismatchBanner.svelte";
+  import { appUpdateCoordinator } from "$lib/stores/app-update-coordinator.svelte";
   import {
     initBackendCapabilities,
     useIncrementalRunsSync,
@@ -170,6 +172,7 @@
   let sidebarUpdateAvailable = $state(false);
   let sidebarVersionChecked = $state(false);
   let permissionsModalOpen = $state(false);
+  let updateCenterOpen = $state(false);
 
   // Team store (shared via context with /teams page)
   const teamStore = new TeamStore();
@@ -949,6 +952,9 @@
       setTimeout(() => splash.remove(), SPLASH_REMOVE_DELAY_MS);
     }
 
+    // Start silent update check on startup
+    appUpdateCoordinator.startAutoCheck();
+
     // Fire all three concurrently — they are independent.
     void initBackendCapabilities().then(() => loadRuns());
     void loadSettings();
@@ -1291,6 +1297,7 @@
       window.removeEventListener("miwarp:visual-performance-changed", onPerfModeChanged);
       window.removeEventListener(USER_SETTINGS_CHANGED_EVENT, onUserSettingsChanged);
       cleanupOverscroll();
+      appUpdateCoordinator.destroy();
     };
   });
 
@@ -3039,7 +3046,9 @@
       style="-webkit-app-region: drag; z-index: 0;"
     ></div>
     <VersionMismatchBanner />
-    <UpdateBanner />
+    <div class="pointer-events-none absolute right-3 top-2 z-20">
+      <UpdateBanner onOpenCenter={() => (updateCenterOpen = true)} />
+    </div>
     <!-- Page content: overflow-hidden so route pages own scrolling (chat keeps input in normal flow).
          `miwarp-main-surface` keeps the right pane opaque so the native window
          glass on the left doesn't bleed through to the chat. -->
@@ -3084,7 +3093,11 @@
 />
 
 {#if showAbout}
-  <AboutModal bind:open={showAbout} />
+  <AboutModal bind:open={showAbout} onOpenUpdateCenter={() => (updateCenterOpen = true)} />
+{/if}
+
+{#if updateCenterOpen}
+  <UpdateCenter bind:open={updateCenterOpen} />
 {/if}
 
 {#if permissionsModalOpen}

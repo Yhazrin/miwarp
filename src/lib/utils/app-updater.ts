@@ -2,7 +2,12 @@ import { checkForUpdates } from "$lib/api";
 import type { UpdateInfo } from "$lib/types";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 
-export type AppUpdatePhase = "idle" | "checking" | "downloading" | "installing" | "relaunching";
+export type AppUpdatePhase =
+  | "idle"
+  | "checking"
+  | "downloading"
+  | "installing"
+  | "ready_to_restart";
 
 export type AppUpdateProgress = {
   phase: AppUpdatePhase;
@@ -131,7 +136,6 @@ export async function installInAppUpdate(
   onProgress?: (progress: AppUpdateProgress) => void,
 ): Promise<void> {
   const { check } = await import("@tauri-apps/plugin-updater");
-  const { relaunch } = await import("@tauri-apps/plugin-process");
 
   const update = await check();
   if (!update) {
@@ -164,7 +168,11 @@ export async function installInAppUpdate(
     }
   });
 
-  onProgress?.({ phase: "relaunching", percent: null });
+  onProgress?.({ phase: "ready_to_restart", percent: null });
+}
+
+export async function relaunchApplication(): Promise<void> {
+  const { relaunch } = await import("@tauri-apps/plugin-process");
   await relaunch();
 }
 

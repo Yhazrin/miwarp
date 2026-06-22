@@ -17,3 +17,11 @@ export {
 export type { CliVersionInfo } from "./cli-info.svelte";
 export { PromptInputStore } from "./prompt-input-store.svelte";
 export type { PathRef } from "./prompt-input-store.svelte";
+export { appUpdateCoordinator } from "./app-update-coordinator.svelte";
+export type { AppUpdatePhase, AppUpdateState } from "./app-update-coordinator.svelte";
+export { cliUpdateRegistry } from "./cli-update-registry.svelte";
+export type {
+  CliToolEntry,
+  CliUpdateStatus,
+  CliUpdateStrategy,
+} from "./cli-update-registry.svelte";

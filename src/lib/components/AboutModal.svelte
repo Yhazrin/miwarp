@@ -1,37 +1,24 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import {
-    checkAppUpdateStatus,
-    installInAppUpdate,
-    openExternalUpdateUrl,
-    type AppUpdateProgress,
-  } from "$lib/utils/app-updater";
+  import { appUpdateCoordinator } from "$lib/stores/app-update-coordinator.svelte";
   import { renderMarkdown } from "$lib/utils/markdown";
   import { currentLocale, t } from "$lib/i18n/index.svelte";
   import MiDialog from "$lib/ui/MiDialog.svelte";
   import readmeEn from "../../../README.md?raw";
   import readmeZhCN from "../../../README.zh-CN.md?raw";
 
-  let { open = $bindable(false) }: { open: boolean } = $props();
+  let {
+    open = $bindable(false),
+    onOpenUpdateCenter,
+  }: { open: boolean; onOpenUpdateCenter?: () => void } = $props();
 
   let appVersion = $state("");
-  let checkingUpdate = $state(false);
-  let updateProgress = $state<AppUpdateProgress>({ phase: "idle", percent: null });
 
   const updateButtonLabel = $derived.by(() => {
-    if (!checkingUpdate) return t("appUpdate_manual");
-    switch (updateProgress.phase) {
-      case "downloading":
-        return updateProgress.percent != null
-          ? t("appUpdate_downloading", { percent: String(updateProgress.percent) })
-          : t("appUpdate_checking");
-      case "installing":
-        return t("appUpdate_installing");
-      case "relaunching":
-        return t("appUpdate_relaunching");
-      default:
-        return t("appUpdate_checking");
+    if (appUpdateCoordinator.isBusy) {
+      return t("appUpdate_checking");
     }
+    return t("appUpdate_manual");
   });
 
   onMount(async () => {
@@ -61,33 +48,9 @@
   let readmeHtml = $derived(readmeHtmlMap[currentLocale()] ?? readmeHtmlMap.en);
 
   async function updateToLatest() {
-    if (checkingUpdate) return;
-    checkingUpdate = true;
-    updateProgress = { phase: "checking", percent: null };
-    try {
-      const { offer, error, upToDateVersion } = await checkAppUpdateStatus();
-      if (error) {
-        window.alert(`${t("appUpdate_checkFailed")}\n\n${error}`);
-        return;
-      }
-      if (!offer) {
-        window.alert(t("appUpdate_upToDate", { version: upToDateVersion || appVersion || "-" }));
-        return;
-      }
-      if (offer.kind === "in_app") {
-        await installInAppUpdate((p) => {
-          updateProgress = p;
-        });
-        return;
-      }
-      await openExternalUpdateUrl(offer.downloadUrl);
-      window.alert(t("appUpdate_externalOpened"));
-    } catch {
-      window.alert(t("appUpdate_checkFailed"));
-    } finally {
-      checkingUpdate = false;
-      updateProgress = { phase: "idle", percent: null };
-    }
+    if (appUpdateCoordinator.isBusy) return;
+    await appUpdateCoordinator.checkForUpdate();
+    onOpenUpdateCenter?.();
   }
 </script>
 
@@ -99,7 +62,7 @@
         type="button"
         class="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
         onclick={updateToLatest}
-        disabled={checkingUpdate}
+        disabled={appUpdateCoordinator.isBusy}
       >
         {updateButtonLabel}
       </button>
