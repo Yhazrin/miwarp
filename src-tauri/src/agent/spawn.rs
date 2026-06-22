@@ -7,6 +7,7 @@ pub fn build_agent_command(
     prompt: &str,
     settings: &AdapterSettings,
     print: bool,
+    conversation_id: Option<&str>,
 ) -> Result<(String, Vec<String>), String> {
     log::debug!(
         "[spawn] build_agent_command: agent={}, print={}, model={:?}, perm={:?}, allowed={}, disallowed={}",
@@ -19,7 +20,6 @@ pub fn build_agent_command(
                 args.push("--print".to_string());
             }
 
-            // Use shared helper for all settings flags
             args.extend(adapter::build_settings_args(settings, print));
 
             if !prompt.is_empty() {
@@ -35,7 +35,6 @@ pub fn build_agent_command(
                 "json".to_string(),
             ];
 
-            // Model
             if let Some(ref m) = settings.model {
                 if !m.is_empty() {
                     args.push("--model".into());
@@ -43,7 +42,6 @@ pub fn build_agent_command(
                 }
             }
 
-            // Permission mode → MiMo equivalent
             if let Some(ref perm) = settings.permission_mode {
                 match perm.as_str() {
                     "bypassPermissions" | "auto" => {
@@ -80,8 +78,36 @@ pub fn build_agent_command(
             log::debug!("[spawn] codex command: codex {}", args.join(" "));
             Ok(("codex".to_string(), args))
         }
+        "opencode" => {
+            let mut args: Vec<String> = vec![
+                "run".to_string(),
+                "--format".to_string(),
+                "json".to_string(),
+            ];
+            if let Some(ref m) = settings.model {
+                if !m.is_empty() {
+                    args.push("--model".to_string());
+                    args.push(m.clone());
+                }
+            }
+            if matches!(
+                settings.permission_mode.as_deref(),
+                Some("bypassPermissions" | "auto")
+            ) {
+                args.push("--dangerously-skip-permissions".to_string());
+            }
+            if let Some(session_id) = conversation_id.filter(|id| !id.is_empty()) {
+                args.push("--session".to_string());
+                args.push(session_id.to_string());
+            }
+            if !prompt.is_empty() {
+                args.push(prompt.to_string());
+            }
+            log::debug!("[spawn] opencode command: opencode {}", args.join(" "));
+            Ok(("opencode".to_string(), args))
+        }
         _ => Err(format!(
-            "Unsupported agent: {}. Supported: claude, mimo, codex",
+            "Unsupported agent: {}. Supported: claude, mimo, codex, opencode",
             agent
         )),
     }
@@ -107,7 +133,6 @@ pub fn build_session_args(
                 "stdio".into(),
             ];
 
-            // Resume session
             if !is_new {
                 if let Some(sid) = session_id {
                     args.push("--resume".into());
@@ -115,7 +140,6 @@ pub fn build_session_args(
                 }
             }
 
-            // Settings flags
             args.extend(adapter::build_settings_args(settings, false));
             if settings.include_partial_messages {
                 args.push("--include-partial-messages".into());
@@ -126,7 +150,6 @@ pub fn build_session_args(
         AgentRuntimeKind::MiMoCode => {
             let mut args: Vec<String> = vec!["run".into(), "--format".into(), "json".into()];
 
-            // Resume session
             if !is_new {
                 if let Some(sid) = session_id {
                     args.push("--session".into());
@@ -134,7 +157,6 @@ pub fn build_session_args(
                 }
             }
 
-            // Model
             if let Some(ref m) = settings.model {
                 if !m.is_empty() {
                     args.push("--model".into());
@@ -142,7 +164,6 @@ pub fn build_session_args(
                 }
             }
 
-            // Permission mode
             if let Some(ref perm) = settings.permission_mode {
                 match perm.as_str() {
                     "bypassPermissions" | "auto" => {
@@ -154,9 +175,71 @@ pub fn build_session_args(
 
             Ok(args)
         }
-        AgentRuntimeKind::Codex => {
-            // Codex doesn't use session_actor; this path shouldn't be reached.
-            Err("Codex does not support session_actor mode".into())
-        }
+        AgentRuntimeKind::Codex | AgentRuntimeKind::OpenCode => Err(format!(
+            "{} does not support session_actor mode",
+            runtime_kind
+        )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn opencode_new_turn_builds_json_command() {
+        let settings = AdapterSettings {
+            model: Some("anthropic/claude-sonnet-4".to_string()),
+            permission_mode: Some("auto".to_string()),
+            ..Default::default()
+        };
+
+        let (command, args) =
+            build_agent_command("opencode", "hello", &settings, true, None).unwrap();
+
+        assert_eq!(command, "opencode");
+        assert_eq!(
+            args,
+            vec![
+                "run",
+                "--format",
+                "json",
+                "--model",
+                "anthropic/claude-sonnet-4",
+                "--dangerously-skip-permissions",
+                "hello",
+            ]
+        );
+    }
+
+    #[test]
+    fn opencode_resume_uses_persisted_session() {
+        let settings = AdapterSettings::default();
+        let (_, args) =
+            build_agent_command("opencode", "continue", &settings, true, Some("ses_123")).unwrap();
+
+        assert_eq!(
+            args,
+            vec![
+                "run",
+                "--format",
+                "json",
+                "--session",
+                "ses_123",
+                "continue"
+            ]
+        );
+    }
+
+    #[test]
+    fn opencode_is_rejected_from_session_actor_path() {
+        let error = build_session_args(
+            &AgentRuntimeKind::OpenCode,
+            &AdapterSettings::default(),
+            None,
+            true,
+        )
+        .unwrap_err();
+        assert!(error.contains("does not support session_actor"));
     }
 }

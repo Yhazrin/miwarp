@@ -1,11 +1,11 @@
-use crate::agent::pipe_parser::{CodexStdoutParser, PipeStdoutParser};
+use crate::agent::pipe_parser::{CodexStdoutParser, OpenCodeStdoutParser, PipeStdoutParser};
 use crate::models::{ChatDelta, ChatDone, RunEventType};
 use crate::process_ext::HideConsole;
 use crate::storage;
 use std::collections::HashMap;
 use std::process::Stdio;
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
 use tokio::process::{Child, Command};
 use tokio::sync::Mutex;
@@ -44,7 +44,6 @@ pub async fn run_agent(
         }
     };
 
-    // Log start
     emit_run_event(
         RunEventType::System,
         serde_json::json!({
@@ -61,7 +60,7 @@ pub async fn run_agent(
         .stderr(Stdio::piped())
         .env("MIWARP_TASK_ID", &run_id)
         .env("MIWARP_RUN_ID", &run_id)
-        .env_remove("CLAUDECODE") // Allow running inside a Claude Code session
+        .env_remove("CLAUDECODE")
         .hide_console()
         .kill_on_drop(true)
         .spawn()
@@ -84,7 +83,6 @@ pub async fn run_agent(
     let stdout = child.stdout.take().ok_or("stdout not piped")?;
     let stderr = child.stderr.take().ok_or("stderr not piped")?;
 
-    // Store child for stop_run
     {
         let mut map = process_map.lock().await;
         map.insert(run_id.clone(), child);
@@ -93,17 +91,26 @@ pub async fn run_agent(
     let run_id_out = run_id.clone();
     let run_id_err = run_id.clone();
     let app_out = app.clone();
+    let bus_emitter = app
+        .state::<Arc<crate::web_server::broadcaster::BroadcastEmitter>>()
+        .inner()
+        .clone();
     let agent_clone = agent.clone();
 
-    // Stdout reader
     let stdout_handle = tokio::spawn(async move {
         let mut assistant_text = String::new();
-        let is_codex = agent_clone == "codex";
+        let is_structured = matches!(agent_clone.as_str(), "codex" | "opencode");
 
-        if is_codex {
-            let mut parser = CodexStdoutParser;
+        if is_structured {
+            let mut parser: Box<dyn PipeStdoutParser> = if agent_clone == "opencode" {
+                Box::new(OpenCodeStdoutParser::default())
+            } else {
+                Box::new(CodexStdoutParser)
+            };
+            let mut captured_session_id: Option<String> = None;
             let reader = BufReader::new(stdout);
             let mut lines = reader.lines();
+
             while let Ok(Some(line)) = lines.next_line().await {
                 if let Err(e) = storage::events::append_event(
                     &run_id_out,
@@ -125,39 +132,64 @@ pub async fn run_agent(
                 if trimmed.is_empty() {
                     continue;
                 }
-                if let Ok(payload) = serde_json::from_str::<serde_json::Value>(trimmed) {
-                    // Capture thread_id as ConversationRef for Codex resume
-                    let type_str = payload.get("type").and_then(|v| v.as_str()).unwrap_or("");
-                    if type_str == "thread.started" {
-                        if let Some(tid) = payload.get("thread_id").and_then(|v| v.as_str()) {
-                            log::debug!("[codex] captured thread_id={} as conversation_ref", tid);
-                            let tid_str = tid.to_string();
+                let Ok(payload) = serde_json::from_str::<serde_json::Value>(trimmed) else {
+                    continue;
+                };
+                let type_str = payload.get("type").and_then(|v| v.as_str()).unwrap_or("");
+
+                if agent_clone == "codex" && type_str == "thread.started" {
+                    if let Some(tid) = payload.get("thread_id").and_then(|v| v.as_str()) {
+                        let tid = tid.to_string();
+                        captured_session_id = Some(tid.clone());
+                        let rid = run_id_out.clone();
+                        if let Err(e) = crate::storage::runs::with_meta(&rid, |meta| {
+                            meta.conversation_ref =
+                                Some(crate::models::ConversationRef::CodexThread(tid.clone()));
+                            Ok(())
+                        }) {
+                            log::warn!("[codex] failed to persist conversation_ref: {}", e);
+                        }
+                    }
+                } else if agent_clone == "opencode" {
+                    if let Some(sid) = OpenCodeStdoutParser::session_id(&payload) {
+                        if captured_session_id.as_deref() != Some(sid) {
+                            let sid = sid.to_string();
+                            captured_session_id = Some(sid.clone());
                             let rid = run_id_out.clone();
                             if let Err(e) = crate::storage::runs::with_meta(&rid, |meta| {
-                                meta.conversation_ref =
-                                    Some(crate::models::ConversationRef::CodexThread(tid_str));
+                                meta.session_id = Some(sid.clone());
+                                meta.conversation_ref = Some(
+                                    crate::models::ConversationRef::OpenCodeSession(sid.clone()),
+                                );
                                 Ok(())
                             }) {
-                                log::warn!("[codex] failed to persist conversation_ref: {}", e);
+                                log::warn!("[opencode] failed to persist session identity: {}", e);
                             }
                         }
                     }
+                }
 
-                    // Use PipeStdoutParser trait for structured event → BusEvent
-                    let events = parser.parse_line(&run_id_out, &payload);
-                    for ev in &events {
-                        if let crate::models::BusEvent::MessageDelta { text, .. } = ev {
+                let events = parser.parse_line(&run_id_out, &payload);
+                for event in &events {
+                    match event {
+                        crate::models::BusEvent::MessageDelta { text, .. } => {
                             assistant_text.push_str(text);
                             let _ = app_out.emit("chat-delta", ChatDelta { text: text.clone() });
                         }
+                        crate::models::BusEvent::ThinkingDelta { .. }
+                        | crate::models::BusEvent::ToolStart { .. }
+                        | crate::models::BusEvent::ToolEnd { .. }
+                        | crate::models::BusEvent::RunState { .. } => {
+                            bus_emitter.persist_and_emit(&run_id_out, event);
+                        }
+                        _ => {}
                     }
-                    if events.is_empty() && !type_str.is_empty() {
-                        log::debug!("[codex] unhandled event: type={}", type_str);
-                    }
+                }
+                if events.is_empty() && !type_str.is_empty() {
+                    log::debug!("[{}] unhandled event: type={}", agent_clone, type_str);
                 }
             }
         } else {
-            // Claude: stdout is the response text
             let mut reader = BufReader::new(stdout);
             let mut buf = vec![0u8; 8192];
             loop {
@@ -191,7 +223,6 @@ pub async fn run_agent(
         assistant_text
     });
 
-    // Stderr reader
     let app_err = app.clone();
     let stderr_handle = tokio::spawn(async move {
         let mut stderr_text = String::new();
@@ -219,13 +250,9 @@ pub async fn run_agent(
         stderr_text
     });
 
-    // Wait for stdout/stderr to close (= process exited or pipes broken).
-    // This completes without holding the ProcessMap lock.
     let assistant_text = stdout_handle.await.unwrap_or_default();
     let _stderr_text = stderr_handle.await.unwrap_or_default();
 
-    // Short lock: remove child from map, then wait() outside the lock.
-    // If stop_process already removed+killed the child, we get None → exit_code -1.
     let removed_child = {
         let mut map = process_map.lock().await;
         map.remove(&run_id)
@@ -236,11 +263,9 @@ pub async fn run_agent(
             Err(_) => 1,
         }
     } else {
-        // Was killed by stop_run
         -1
     };
 
-    // Save assistant event
     if !assistant_text.trim().is_empty() {
         emit_run_event(
             RunEventType::Assistant,
@@ -255,7 +280,6 @@ pub async fn run_agent(
         assistant_text.len()
     );
 
-    // Update run status
     if exit_code == 0 {
         if let Err(e) = storage::runs::update_status(
             &run_id,
@@ -302,7 +326,6 @@ pub async fn run_agent(
 
 pub async fn stop_process(process_map: &ProcessMap, run_id: &str) -> bool {
     log::debug!("[stream] stop_process: run_id={}", run_id);
-    // Short lock: remove child, then kill+wait outside the lock.
     let removed = {
         let mut map = process_map.lock().await;
         map.remove(run_id)

@@ -14,6 +14,7 @@ pub fn new_actor_session_map() -> ActorSessionMap {
 
 // ── Adapter settings ──
 
+#[derive(Default)]
 pub struct AdapterSettings {
     pub model: Option<String>,
     pub allowed_tools: Vec<String>,

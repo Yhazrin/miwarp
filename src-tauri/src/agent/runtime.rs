@@ -76,12 +76,29 @@ impl RuntimeConfig {
         }
     }
 
+    /// Build a RuntimeConfig for OpenCode's single-turn NDJSON execution path.
+    pub fn open_code(
+        cwd: PathBuf,
+        args: Vec<String>,
+        env: std::collections::HashMap<String, String>,
+    ) -> Self {
+        Self {
+            kind: AgentRuntimeKind::OpenCode,
+            protocol: RuntimeProtocolKind::StreamJson,
+            binary: "opencode".to_string(),
+            cwd,
+            args,
+            env,
+        }
+    }
+
     /// Resolve the binary path for a given runtime kind.
     pub fn resolve_binary(kind: &AgentRuntimeKind) -> String {
         match kind {
             AgentRuntimeKind::ClaudeCode => "claude".to_string(),
             AgentRuntimeKind::MiMoCode => resolve_mimo_binary(),
             AgentRuntimeKind::Codex => "codex".to_string(),
+            AgentRuntimeKind::OpenCode => "opencode".to_string(),
         }
     }
 

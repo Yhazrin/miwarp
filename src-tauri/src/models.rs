@@ -129,6 +129,8 @@ pub enum AgentRuntimeKind {
     MiMoCode,
     /// OpenAI Codex CLI (`codex`)
     Codex,
+    /// OpenCode CLI (`opencode`)
+    OpenCode,
 }
 
 impl std::fmt::Display for AgentRuntimeKind {
@@ -137,6 +139,7 @@ impl std::fmt::Display for AgentRuntimeKind {
             Self::ClaudeCode => write!(f, "claude"),
             Self::MiMoCode => write!(f, "mimo"),
             Self::Codex => write!(f, "codex"),
+            Self::OpenCode => write!(f, "opencode"),
         }
     }
 }
@@ -147,6 +150,7 @@ impl AgentRuntimeKind {
         match agent {
             "mimo" | "mimocode" => Self::MiMoCode,
             "codex" => Self::Codex,
+            "opencode" => Self::OpenCode,
             _ => Self::ClaudeCode,
         }
     }
@@ -181,6 +185,9 @@ pub enum ConversationRef {
     /// MiMo-Code session ID (from sessionID in JSON events)
     #[serde(rename = "mimo_session")]
     MimoSession(String),
+    /// OpenCode session ID (from sessionID in NDJSON events)
+    #[serde(rename = "opencode_session")]
+    OpenCodeSession(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -818,7 +825,7 @@ impl RunMeta {
             match rk {
                 AgentRuntimeKind::ClaudeCode => ExecutionPath::SessionActor,
                 AgentRuntimeKind::MiMoCode => ExecutionPath::SessionActor,
-                AgentRuntimeKind::Codex => ExecutionPath::PipeExec,
+                AgentRuntimeKind::Codex | AgentRuntimeKind::OpenCode => ExecutionPath::PipeExec,
             }
         })
     }
@@ -836,7 +843,9 @@ impl RunMeta {
             let rk = self.resolved_runtime_kind();
             match rk {
                 AgentRuntimeKind::ClaudeCode => RuntimeProtocolKind::StreamJson,
-                AgentRuntimeKind::MiMoCode => RuntimeProtocolKind::StreamJson,
+                AgentRuntimeKind::MiMoCode | AgentRuntimeKind::OpenCode => {
+                    RuntimeProtocolKind::StreamJson
+                }
                 AgentRuntimeKind::Codex => RuntimeProtocolKind::Pipe,
             }
         })

@@ -193,12 +193,19 @@ pub async fn send_chat_message(
     let adapter_settings =
         crate::agent::adapter::build_adapter_settings(&agent_settings, &user_settings, model);
 
+    // OpenCode resumes by starting a new turn process with the persisted session ID.
+    let conversation_id = match run.resolved_conversation_ref() {
+        Some(crate::models::ConversationRef::OpenCodeSession(id)) => Some(id),
+        _ => None,
+    };
+
     // Build command
     let (command, args) = build_agent_command(
         &run.agent,
         &full_prompt,
         &adapter_settings,
         true, // print mode
+        conversation_id.as_deref(),
     )?;
 
     // Spawn agent in background

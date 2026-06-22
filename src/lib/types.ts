@@ -32,7 +32,9 @@ export type ExecutionPath = "session_actor" | "pipe_exec";
 /** Unified resume/fork identity across agents. */
 export type ConversationRef =
   | { kind: "claude_session"; id: string }
-  | { kind: "codex_thread"; id: string };
+  | { kind: "codex_thread"; id: string }
+  | { kind: "mimo_session"; id: string }
+  | { kind: "opencode_session"; id: string };
 
 export interface TaskRun {
   id: string;

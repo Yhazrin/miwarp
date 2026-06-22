@@ -60,7 +60,7 @@ pub async fn get_cli_info(
 
     let cli_info = match runtime_kind {
         AgentRuntimeKind::ClaudeCode => get_claude_cli_info().await?,
-        AgentRuntimeKind::MiMoCode | AgentRuntimeKind::Codex => {
+        AgentRuntimeKind::MiMoCode | AgentRuntimeKind::Codex | AgentRuntimeKind::OpenCode => {
             fallback_cli_info_for(&runtime_kind)
         }
     };
@@ -321,6 +321,9 @@ pub fn fallback_cli_info_for(runtime_kind: &AgentRuntimeKind) -> CliInfo {
         ),
         AgentRuntimeKind::Codex => {
             fallback_minimal_cli_info("codex", AgentRuntimeKind::Codex, None, "", "")
+        }
+        AgentRuntimeKind::OpenCode => {
+            fallback_minimal_cli_info("opencode", AgentRuntimeKind::OpenCode, None, "", "")
         }
     }
 }
