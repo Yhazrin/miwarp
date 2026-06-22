@@ -32,14 +32,14 @@ jobs:
       - name: Version alignment
         run: npm run version:check
 
+      - name: Sync SvelteKit
+        run: npx svelte-kit sync
+
       - name: Architecture gates
         run: npm run arch:check
 
       - name: Root pollution check
         run: npm run check:root
-
-      - name: Sync SvelteKit
-        run: npx svelte-kit sync
 
       - name: Lint
         run: |
