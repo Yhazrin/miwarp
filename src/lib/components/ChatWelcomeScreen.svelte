@@ -13,16 +13,17 @@
   import Icon from "$lib/components/Icon.svelte";
   import type { AuthOverview, PlatformCredential } from "$lib/types";
   import type { WorkspaceOption } from "$lib/stores/workspaces-store.svelte";
+  import RuntimePicker from "$lib/components/runtime/RuntimePicker.svelte";
+  import type { ResolvedRuntime, SupportedRuntimeId } from "$lib/runtime";
 
   type CreationMode = "single" | "worktree";
-  type AgentKind = "claude" | "mimo";
 
   interface Props {
     lastContinuableRun?: { id: string; last_activity_at?: string; started_at: string } | null;
     onContinueSession: (runId: string) => void;
-    onQuickAnalyze: (creationMode: CreationMode, agent: AgentKind) => void;
+    onQuickAnalyze: (creationMode: CreationMode, runtimeId: SupportedRuntimeId) => void;
     onQuickFix: () => void;
-    onQuickDaily: (creationMode: CreationMode, agent: AgentKind) => void;
+    onQuickDaily: (creationMode: CreationMode, runtimeId: SupportedRuntimeId) => void;
     onGotoSchedule: () => void;
     initHint: Snippet;
     heroMeta: Snippet;
@@ -40,9 +41,11 @@
     selectedCwd?: string;
     onCwdChange?: (cwd: string) => void;
     onAddWorkspace?: () => void;
-    selectedAgent?: AgentKind;
-    onAgentChange?: (agent: AgentKind) => void;
-    mimoAvailable?: boolean;
+    runtimes?: ResolvedRuntime[];
+    runtimesLoading?: boolean;
+    selectedRuntime?: SupportedRuntimeId;
+    onRuntimeChange?: (runtimeId: SupportedRuntimeId) => void;
+    onManageRuntimes?: () => void;
   }
 
   let {
@@ -68,9 +71,11 @@
     selectedCwd = "",
     onCwdChange = (_cwd: string) => {},
     onAddWorkspace = () => {},
-    selectedAgent = "claude",
-    onAgentChange = (_a: AgentKind) => {},
-    mimoAvailable = false,
+    runtimes = [],
+    runtimesLoading = false,
+    selectedRuntime = "claude",
+    onRuntimeChange = (_id: SupportedRuntimeId) => {},
+    onManageRuntimes,
   }: Props = $props();
 
   // v1.0.6 follow-up: per-new-session worktree mode picker. Lives in
@@ -90,6 +95,8 @@
   let pickerOpen = $state(false);
   const currentWorkspace = $derived(availableWorkspaces.find((w) => w.cwd === selectedCwd) ?? null);
   const showPicker = $derived(availableWorkspaces.length > 0);
+  const selectedRuntimeEntry = $derived(runtimes.find((runtime) => runtime.id === selectedRuntime));
+  const runtimeReady = $derived(selectedRuntimeEntry?.selectable === true && !runtimesLoading);
 
   function pickWorkspace(cwd: string) {
     pickerOpen = false;
@@ -220,35 +227,13 @@
         </div>
       {/if}
 
-      <!-- Runtime selector — choose between Claude Code and MiMo Code -->
-      {#if mimoAvailable}
-        <div
-          class="flex items-center rounded-lg border border-border/40 bg-background/50 p-0.5 gap-0.5"
-        >
-          <button
-            type="button"
-            class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150
-              {selectedAgent === 'claude'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'}"
-            onclick={() => onAgentChange("claude")}
-          >
-            <span class="i-lucide-brain w-3.5 h-3.5"></span>
-            Claude
-          </button>
-          <button
-            type="button"
-            class="flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150
-              {selectedAgent === 'mimo'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'}"
-            onclick={() => onAgentChange("mimo")}
-          >
-            <span class="i-lucide-cpu w-3.5 h-3.5"></span>
-            MiMo
-          </button>
-        </div>
-      {/if}
+      <RuntimePicker
+        {runtimes}
+        selected={selectedRuntime}
+        loading={runtimesLoading}
+        onchange={onRuntimeChange}
+        {onManageRuntimes}
+      />
 
       <!-- Continue last session (featured, only when a prior run exists) -->
       {#if lastContinuableRun}
@@ -284,8 +269,9 @@
       <!-- Primary CTA: Quick Analyze (full width, prominent) -->
       <button
         type="button"
-        class="group/primary w-full flex items-center gap-3.5 rounded-xl border border-primary/25 bg-gradient-to-br from-primary/12 to-primary/4 px-4 py-3.5 text-left shadow-sm hover:from-primary/18 hover:to-primary/8 hover:border-primary/45 hover:shadow-md transition-all duration-200"
-        onclick={() => onQuickAnalyze(creationMode, selectedAgent)}
+        class="group/primary w-full flex items-center gap-3.5 rounded-xl border border-primary/25 bg-gradient-to-br from-primary/12 to-primary/4 px-4 py-3.5 text-left shadow-sm transition-all duration-200 enabled:hover:from-primary/18 enabled:hover:to-primary/8 enabled:hover:border-primary/45 enabled:hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+        onclick={() => onQuickAnalyze(creationMode, selectedRuntime)}
+        disabled={!runtimeReady}
       >
         <div
           class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm"
@@ -336,8 +322,9 @@
         </button>
         <button
           type="button"
-          class="group/qa flex items-center gap-2.5 rounded-lg border border-border/40 bg-background/40 px-3 py-2.5 text-sm font-medium text-foreground/90 hover:bg-muted/40 hover:border-border/70 transition-all duration-150 text-left"
-          onclick={() => onQuickDaily(creationMode, selectedAgent)}
+          class="group/qa flex items-center gap-2.5 rounded-lg border border-border/40 bg-background/40 px-3 py-2.5 text-sm font-medium text-foreground/90 transition-all duration-150 text-left enabled:hover:bg-muted/40 enabled:hover:border-border/70 disabled:cursor-not-allowed disabled:opacity-50"
+          onclick={() => onQuickDaily(creationMode, selectedRuntime)}
+          disabled={!runtimeReady}
         >
           <div
             class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[hsl(var(--miwarp-status-success)/0.12)] text-[hsl(var(--miwarp-status-success))]"

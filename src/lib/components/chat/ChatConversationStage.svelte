@@ -40,6 +40,15 @@
   import { fade, scale } from "svelte/transition";
   import { t as tFn } from "$lib/i18n/index.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
+  import {
+    agentToRuntimeId,
+    mergeRuntimeAvailability,
+    probeRuntimeAvailability,
+    resolveSelectionFallback,
+    runtimeIdToAgent,
+    type ResolvedRuntime,
+    type SupportedRuntimeId,
+  } from "$lib/runtime";
 
   const t = tFn;
 
@@ -172,25 +181,41 @@
     return { destroy: () => setTopSentinel(null) };
   }
 
-  // ── Runtime agent selector ──
-  type AgentKind = "claude" | "mimo";
-  let selectedAgent = $state<AgentKind>("claude");
-  let mimoAvailable = $state(false);
+  // ── Runtime picker (v1.0.9 registry) ──
+  let selectedRuntime = $state<SupportedRuntimeId>("claude");
+  let runtimes = $state<ResolvedRuntime[]>(mergeRuntimeAvailability({}));
+  let runtimesLoading = $state(false);
+
+  async function loadRuntimeAvailability() {
+    runtimesLoading = true;
+    try {
+      const detection = await probeRuntimeAvailability();
+      const merged = mergeRuntimeAvailability(detection);
+      runtimes = merged;
+      const preferred = agentToRuntimeId(store.agent) ?? selectedRuntime;
+      const next = resolveSelectionFallback(preferred, merged);
+      selectedRuntime = next;
+      store.agent = runtimeIdToAgent(next);
+    } catch {
+      runtimes = mergeRuntimeAvailability({});
+    } finally {
+      runtimesLoading = false;
+    }
+  }
 
   $effect(() => {
-    api
-      .detectMimoRuntime()
-      .then((r) => {
-        mimoAvailable = r.available;
-      })
-      .catch(() => {
-        mimoAvailable = false;
-      });
+    if (!welcomeVisible) return;
+    void loadRuntimeAvailability();
   });
 
-  function handleAgentChange(agent: AgentKind) {
-    selectedAgent = agent;
-    store.agent = agent;
+  function handleRuntimeChange(runtimeId: SupportedRuntimeId) {
+    selectedRuntime = runtimeId;
+    store.agent = runtimeIdToAgent(runtimeId);
+  }
+
+  function applyRuntimeBeforeSend(runtimeId: SupportedRuntimeId) {
+    selectedRuntime = runtimeId;
+    store.agent = runtimeIdToAgent(runtimeId);
   }
 
   // ── Text selection toolbar ──
@@ -268,7 +293,7 @@
 
 <div class="chat-conversation-stage relative flex flex-1 min-h-0 overflow-hidden">
   <div class="absolute inset-0 min-h-0">
-    {#if store.useStreamSession}
+    {#if !store.run || store.useStreamSession}
       <!-- API mode: chat messages -->
       <div
         class="chat-messages-scroll h-full overflow-y-auto relative z-0"
@@ -281,13 +306,13 @@
           <ChatWelcomeScreen
             {lastContinuableRun}
             onContinueSession={(id) => goto(`/chat?run=${id}&resume=continue`)}
-            onQuickAnalyze={(mode, agent) => {
-              handleAgentChange(agent);
+            onQuickAnalyze={(mode, runtimeId) => {
+              applyRuntimeBeforeSend(runtimeId);
               sendMessage(t("chat_quickAnalyzePrompt"), [], mode);
             }}
             onQuickFix={() => fillPrompt(t("chat_quickFixPrompt"))}
-            onQuickDaily={(mode, agent) => {
-              handleAgentChange(agent);
+            onQuickDaily={(mode, runtimeId) => {
+              applyRuntimeBeforeSend(runtimeId);
               sendMessage(t("chat_quickDailyPrompt"), [], mode);
             }}
             onGotoSchedule={() => goto("/scheduled-tasks")}
@@ -305,9 +330,11 @@
             {selectedCwd}
             onCwdChange={handlers.onCwdChange}
             onAddWorkspace={handlers.onAddWorkspace}
-            {selectedAgent}
-            onAgentChange={handleAgentChange}
-            {mimoAvailable}
+            {runtimes}
+            {runtimesLoading}
+            {selectedRuntime}
+            onRuntimeChange={handleRuntimeChange}
+            onManageRuntimes={() => goto("/settings?tab=runtimes")}
           >
             {#snippet initHint()}
               <ChatInitHint

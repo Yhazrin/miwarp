@@ -18,6 +18,7 @@ import type {
   ElicitationSchema,
   SessionMode,
 } from "$lib/types";
+import { usesStreamSession } from "$lib/runtime";
 import { dbg, dbgWarn } from "$lib/utils/debug";
 import { t } from "$lib/i18n/index.svelte";
 import { yieldToMain } from "$lib/utils/yield";
@@ -651,8 +652,7 @@ export class SessionStore {
     // Run-level: check execution_path if run exists (resolved, non-undefined)
     if (this.run) return this.run.execution_path === "session_actor";
     // Pre-run: predict from agent (startSession decides which IPC to call)
-    // MiMo also uses session_actor (StreamJson protocol)
-    return this.agent === "claude" || this.agent === "mimo";
+    return usesStreamSession(this.agent);
   }
 
   /** Per-agent UI feature flags. */
