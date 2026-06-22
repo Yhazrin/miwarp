@@ -1160,6 +1160,25 @@ export type BusEvent =
   | { type: "user_message"; run_id: string; text: string; uuid?: string }
   | { type: "run_state"; run_id: string; state: string; exit_code?: number; error?: string }
   | {
+      /** v1.0.9: emitted by the recovery state machine on every
+       * state transition. Mirrors src-tauri/src/agent/recovery.rs. */
+      type: "session_lifecycle";
+      run_id: string;
+      session_id?: string;
+      /** Actor lifecycle phase: starting | ready | crashed |
+       * respawning | stopped | disposed. */
+      phase: string;
+      /** Recovery state machine value: healthy | degraded |
+       * reconnecting | recovering | recovered | unrecoverable. */
+      recovery_state: string;
+      crash_reason?: string;
+      crash_code?: number;
+      crash_signal?: number;
+      connection_generation?: number;
+      consecutive_failures?: number;
+      timestamp_ms: number;
+    }
+  | {
       type: "usage_update";
       run_id: string;
       input_tokens: number;

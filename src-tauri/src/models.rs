@@ -1410,6 +1410,41 @@ pub enum BusEvent {
         exit_code: Option<i32>,
         error: Option<String>,
     },
+    /// v1.0.9: emitted by the recovery state machine on every state
+    /// transition. The frontend projects this into the per-card
+    /// session lifecycle UI; the diagnostic ring buffer subscribes
+    /// to it. Mirrors the `ActorLifecycle` and `RecoveryState`
+    /// enums in `src-tauri/src/agent/recovery.rs`. Fields are
+    /// intentionally flat (no nested enums) so the bus contract
+    /// stays text-only sync-able.
+    SessionLifecycle {
+        run_id: String,
+        session_id: Option<String>,
+        /// Actor lifecycle phase: starting | ready | crashed |
+        /// respawning | stopped | disposed.
+        phase: String,
+        /// Recovery state machine value: healthy | degraded |
+        /// reconnecting | recovering | recovered | unrecoverable.
+        recovery_state: String,
+        /// When `phase == "crashed"`, the typed `CrashReason` wire
+        /// tag (e.g. `stdin_write_failed`).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        crash_reason: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        crash_code: Option<i32>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        crash_signal: Option<i32>,
+        /// Current connection generation. Bumped on every recovery
+        /// and every actor respawn.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        connection_generation: Option<u64>,
+        /// Number of consecutive `Reconnecting` transitions since
+        /// the last `Healthy` or `Recovered`.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        consecutive_failures: Option<u32>,
+        /// Wall-clock millis since the Unix epoch.
+        timestamp_ms: u64,
+    },
     UsageUpdate {
         run_id: String,
         input_tokens: u64,
