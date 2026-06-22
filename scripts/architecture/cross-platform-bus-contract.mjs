@@ -25,10 +25,7 @@
  *            src/lib/bus/__tests__/bus-contract.test.ts
  */
 import { join } from "node:path";
-import {
-  parseDispatchMethods,
-  parseTauriGenerateHandler,
-} from "./contract-lib.mjs";
+import { parseDispatchMethods, parseTauriGenerateHandler } from "./contract-lib.mjs";
 import { REPO_ROOT, readText, report } from "./lib.mjs";
 
 const LIB_RS = join(REPO_ROOT, "src-tauri", "src", "lib.rs");
@@ -56,6 +53,10 @@ const RUNTIME_HUB = new Set([
   "runtime_hub_health",
   "runtime_hub_diagnose",
   "runtime_hub_set_default",
+  "runtime_hub_preview_config",
+  "runtime_hub_apply_config",
+  "runtime_hub_start_config_watch",
+  "runtime_hub_stop_config_watch",
 ]);
 
 const tauriRuntimeHub = new Set();
@@ -68,7 +69,7 @@ for (const fn of handlers) {
 const violations = [];
 const dormant = [];
 
-// 1a. The spec §8 requires EXACTLY 4 runtime_hub_* commands. If the
+// 1a. The spec §8 requires EXACTLY 8 runtime_hub_* commands. If the
 // integration has landed the hub, enforce the count.
 if (tauriRuntimeHub.size > 0) {
   if (tauriRuntimeHub.size !== RUNTIME_HUB.size) {
@@ -89,7 +90,9 @@ if (tauriRuntimeHub.size > 0) {
     }
   }
 } else {
-  dormant.push(`runtime_hub_* (${RUNTIME_HUB.size} expected, 0 registered — dormant until Agent B lands)`);
+  dormant.push(
+    `runtime_hub_* (${RUNTIME_HUB.size} expected, 0 registered — dormant until Agent B lands)`,
+  );
 }
 
 // 1b. diagnostics_* must be cross-platform (Tauri + WS). If integration

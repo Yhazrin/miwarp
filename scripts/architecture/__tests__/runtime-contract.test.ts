@@ -5,12 +5,12 @@
  * consistent and that the eventual code implementation will match it.
  *
  * What this test asserts:
- *   1. Spec doc lists exactly 4 `runtime_hub_*` Tauri commands in §8.
+ *   1. Spec doc lists exactly 8 `runtime_hub_*` Tauri commands in §8.
  *   2. Spec doc lists exactly 12 capability flags in §3.
  *   3. Spec doc lists exactly 9 capability-to-UI degradation entries in §9
  *      (today the table contains 12, but 3 are grouped: streaming/resume/
  *      permission — the contract test only enforces the §9 table shape).
- *   4. (When code lands) `src-tauri/src/lib.rs` registers exactly those 4
+ *   4. (When code lands) `src-tauri/src/lib.rs` registers exactly those 8
  *      `runtime_hub_*` commands and any `diagnostics_*` commands are also
  *      present in the iOS WS allowlist.
  *   5. (When code lands) The frontend composable `useRuntimeCapabilities`
@@ -48,6 +48,10 @@ const RUNTIME_HUB_COMMANDS = [
   "runtime_hub_health",
   "runtime_hub_diagnose",
   "runtime_hub_set_default",
+  "runtime_hub_preview_config",
+  "runtime_hub_apply_config",
+  "runtime_hub_start_config_watch",
+  "runtime_hub_stop_config_watch",
 ] as const;
 
 const CAPABILITY_FLAGS = [
@@ -78,7 +82,7 @@ describe("v1.0.9 Runtime Contract spec (frozen)", () => {
     expect(specSrc.length).toBeGreaterThan(1000);
   });
 
-  it("spec declares exactly 4 runtime_hub_* Tauri commands in §8", () => {
+  it("spec declares exactly 8 runtime_hub_* Tauri commands in §8", () => {
     // Anchor on the §8 table; count rows that begin with `runtime_hub_`.
     const matches = specSrc.match(/^\|\s*`runtime_hub_[a-z_]+`/gm) ?? [];
     expect(matches).toHaveLength(RUNTIME_HUB_COMMANDS.length);
@@ -118,8 +122,7 @@ describe("v1.0.9 Runtime Contract spec (frozen)", () => {
     const block = extractSection3RustBlock(specSrc);
     expect(block, "spec missing §3 Rust struct block").toBeTruthy();
     for (const flag of CAPABILITY_FLAGS) {
-      const occurrences = (block!.match(new RegExp(`pub ${flag}: bool`, "g")) ?? [])
-        .length;
+      const occurrences = (block!.match(new RegExp(`pub ${flag}: bool`, "g")) ?? []).length;
       expect(occurrences, `§3 has ${occurrences} of pub ${flag}: bool`).toBe(1);
     }
   });
@@ -164,7 +167,7 @@ describe("v1.0.9 Runtime Contract code compliance (deferred)", () => {
     return [...found];
   }
 
-  it("when runtime_hub_* code is present, exactly 4 are registered (matches spec §8)", () => {
+  it("when runtime_hub_* code is present, exactly 8 are registered (matches spec §8)", () => {
     const found = findRuntimeHubHandlers();
     if (found.length === 0) {
       // Pre-implementation: spec is the source of truth. Skip.
@@ -207,7 +210,10 @@ describe("v1.0.9 Runtime Contract code compliance (deferred)", () => {
         missing.push(cmd);
       }
     }
-    expect(missing, `diagnostics_* commands present in lib.rs but missing from iOS dispatch: ${missing.join(", ")}`).toEqual([]);
+    expect(
+      missing,
+      `diagnostics_* commands present in lib.rs but missing from iOS dispatch: ${missing.join(", ")}`,
+    ).toEqual([]);
   });
 });
 
@@ -256,7 +262,9 @@ describe("v1.0.9 Runtime Contract — frontend useRuntimeCapabilities (deferred)
     for (const flag of CAPS) {
       if (!src.includes(flag)) missing.push(flag);
     }
-    expect(missing, `useRuntimeCapabilities missing references to: ${missing.join(", ")}`).toEqual([]);
+    expect(missing, `useRuntimeCapabilities missing references to: ${missing.join(", ")}`).toEqual(
+      [],
+    );
   });
 });
 
