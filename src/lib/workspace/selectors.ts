@@ -9,7 +9,6 @@ import {
   type ProjectFolder,
 } from "$lib/utils/sidebar-groups";
 import type {
-  ExecutionTarget,
   ExecutionTargetLocal,
   WorkspaceAggregateOptions,
   WorkspaceCapsuleView,
