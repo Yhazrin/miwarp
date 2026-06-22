@@ -1,4 +1,5 @@
 import type { SessionPhase } from "./stores/types";
+import { multiFieldFuzzyMatch } from "./utils/fuzzy";
 
 export type CommandCategory =
   | "chat"
@@ -376,8 +377,7 @@ export function filterCommands(query: string, agent?: string): CommandDef[] {
 /**
  * Advanced fuzzy filter - uses Levenshtein distance for better matching (async).
  */
-export async function filterCommandsFuzzy(query: string, agent?: string): Promise<CommandDef[]> {
-  const { multiFieldFuzzyMatch } = await import("./utils/fuzzy");
+export function filterCommandsFuzzy(query: string, agent?: string): CommandDef[] {
   const usageStats = getCommandUsageStats();
 
   const filtered = commands.filter((cmd) => {
@@ -421,18 +421,15 @@ export async function filterCommandsFuzzy(query: string, agent?: string): Promis
   });
 
   // Sort by: usage count (desc), then by fuzzy score, then by name
-  const scored = await Promise.all(
-    filtered.map(async (cmd) => {
-      const usageCount = usageStats[cmd.id] || cmd.usageCount || 0;
-      const { multiFieldFuzzyMatch: fuzzy } = await import("./utils/fuzzy");
-      const fields = {
-        name: cmd.name,
-        description: cmd.description,
-      };
-      const result = fuzzy(query, fields);
-      return { cmd, usageCount, fuzzyScore: result.score };
-    }),
-  );
+  const scored = filtered.map((cmd) => {
+    const usageCount = usageStats[cmd.id] || cmd.usageCount || 0;
+    const fields = {
+      name: cmd.name,
+      description: cmd.description,
+    };
+    const result = multiFieldFuzzyMatch(query, fields);
+    return { cmd, usageCount, fuzzyScore: result.score };
+  });
 
   return scored
     .sort((a, b) => {

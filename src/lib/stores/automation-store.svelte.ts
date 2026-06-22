@@ -401,10 +401,18 @@ function createAutomationStore() {
       return state;
     },
     // Getters
-    activeScript,
-    scriptsByCategory,
-    recentScripts,
-    totalUsageCount,
+    get activeScript() {
+      return activeScript;
+    },
+    get scriptsByCategory() {
+      return scriptsByCategory;
+    },
+    get recentScripts() {
+      return recentScripts;
+    },
+    get totalUsageCount() {
+      return totalUsageCount;
+    },
     // Actions
     addScript,
     updateScript,

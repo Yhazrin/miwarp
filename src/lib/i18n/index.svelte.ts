@@ -37,9 +37,7 @@ const messageCache: Record<string, Record<string, string>> = {
 // Explicit loader map — one line per locale, deterministic bundling.
 // Pre-cached locales still have loaders (loadMessages checks cache first).
 // To add a language: add a loader here + registry.ts entry + messages/<code>.json
-const loaders: Record<string, () => Promise<{ default: Record<string, string> }>> = {
-  "zh-CN": () => import("$messages/zh-CN.json"),
-};
+const loaders: Record<string, () => Promise<{ default: Record<string, string> }>> = {};
 
 async function loadMessages(code: string): Promise<Record<string, string>> {
   if (messageCache[code]) return messageCache[code];
