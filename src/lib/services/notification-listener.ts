@@ -15,6 +15,7 @@ import {
 } from "./notification-service";
 import type { BusEvent, TaskRun, UserSettings } from "$lib/types";
 import { dbg, dbgWarn } from "$lib/utils/debug";
+import { t } from "$lib/i18n/index.svelte";
 
 let _started = false;
 const _unlisteners: Array<() => void> = [];
@@ -176,22 +177,15 @@ export async function startNotificationListener(): Promise<void> {
       } else if (ev.type === "permission_prompt") {
         handlePermissionPrompt(ev);
       } else if (ev.type === "protocol_desync") {
-        // v1.0.6 / hardening A2: surface a "会话状态已重置" toast so the
-        // user knows the backend gave up parsing this CLI stream.
-        showToast("会话状态已重置：协议解析失败过多。", "error");
+        showToast(t("protocol_desync_toast"), "error");
       } else if (ev.type === "session_recovering") {
-        // v1.0.6 / hardening A1: toast informs the user that the session
-        // entered quarantine. A separate RecoveringBanner component can
-        // also subscribe to display the countdown UI.
         const secs = Math.round((ev.deadline_ms ?? 0) / 1000);
-        showToast(`会话恢复中…(最多 ${secs} 秒)`, "warning");
+        showToast(t("protocol_session_recovering", { seconds: String(secs) }), "warning");
       } else if (ev.type === "session_recovered") {
-        // Recovery finished — toast the outcome. (Successful or not, the
-        // user gets an explicit confirmation that the limbo is over.)
         if (ev.ok) {
-          showToast("会话已恢复", "success");
+          showToast(t("protocol_recovered_ok_toast"), "success");
         } else {
-          showToast("会话恢复失败,已自动停止", "error");
+          showToast(t("protocol_recovered_fail_toast"), "error");
         }
       } else if (ev.type === "task_notification") {
         // v1.0.6 / hardening A4: scheduled tasks (not just run_state) can

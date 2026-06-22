@@ -11,6 +11,12 @@ import type { BusEvent, HookEvent } from "$lib/types";
 import type { SessionStore } from "./session-store.svelte";
 import { markAttention, clearAttention } from "./attention-store.svelte";
 import { getTransport } from "$lib/transport";
+import { t } from "$lib/i18n/index.svelte";
+import {
+  ProtocolQuarantineCoordinator,
+  type ProtocolInspectResult,
+  type ProtocolQuarantineAction,
+} from "./protocol-quarantine";
 
 // ── Handler interfaces (page-level DOM callbacks) ──
 
@@ -66,6 +72,9 @@ export class EventMiddleware {
 
   // Single-flight guard for server-requested full reloads.
   private _reloadingRuns = new Set<string>();
+
+  /** v1.0.9 Phase 1: protocol error quarantine before SessionStore apply. */
+  private _protocolQuarantine = new ProtocolQuarantineCoordinator();
 
   // ── Lifecycle ──
 
@@ -186,6 +195,7 @@ export class EventMiddleware {
       this._flushTimer = null;
     }
     this._reloadingRuns.clear();
+    this._protocolQuarantine.resetAll();
     this._started = false;
   }
 
@@ -232,6 +242,7 @@ export class EventMiddleware {
     this._batchBuffer.delete(runId);
     this._hookBatchBuffer.delete(runId);
     this._usageBatchBuffer.delete(runId);
+    this._protocolQuarantine.reset(runId);
     if (this._currentRunId === runId) {
       this._currentRunId = null;
       this._currentStore = null;
@@ -260,6 +271,25 @@ export class EventMiddleware {
 
     const store = this._subscriptions.get(ev.run_id);
     if (!store) return;
+
+    const inspection = this._protocolQuarantine.inspect({
+      runId: ev.run_id,
+      subscribedRunId: store.run?.id ?? ev.run_id,
+      payload: ev,
+      lastSeq: store.getLastProcessedSeq(),
+    });
+
+    if (!this._handleProtocolInspection(ev, store, inspection)) {
+      return;
+    }
+
+    if (ev.type === "session_recovering") {
+      const secs = Math.round((ev.deadline_ms ?? 5000) / 1000);
+      store.setProtocolNotice(t("protocol_session_recovering", { seconds: String(secs) }));
+    } else if (ev.type === "session_recovered" && ev.ok) {
+      store.setProtocolNotice(null);
+      this._protocolQuarantine.reset(ev.run_id);
+    }
 
     // Push to batch buffer
     let buf = this._batchBuffer.get(ev.run_id);
@@ -410,6 +440,64 @@ export class EventMiddleware {
     }
   }
 
+  private _noticeForProtocolAction(action: ProtocolQuarantineAction): string | null {
+    switch (action) {
+      case "recover":
+        return t("protocol_quarantine_recovering");
+      case "full_reload":
+        return t("protocol_quarantine_full_reload");
+      case "terminate":
+        return t("protocol_quarantine_terminated");
+      default:
+        return null;
+    }
+  }
+
+  private _handleProtocolInspection(
+    ev: BusEvent,
+    store: SessionStore,
+    inspection: ProtocolInspectResult,
+  ): boolean {
+    const runId = ev.run_id;
+    if (inspection.evidence) {
+      dbgWarn("protocol-quarantine", "inspection", {
+        runId,
+        action: inspection.action,
+        category: inspection.category,
+        kind: inspection.evidence.kind,
+        eventType: inspection.evidence.eventType,
+        detail: inspection.evidence.detail,
+      });
+    }
+
+    switch (inspection.action) {
+      case "drop":
+        return false;
+      case "terminate": {
+        store.setProtocolNotice(this._noticeForProtocolAction("terminate"));
+        return false;
+      }
+      case "recover": {
+        store.setProtocolNotice(this._noticeForProtocolAction("recover"));
+        void this.recoverRunFromDisk(runId, "protocol quarantine recover");
+        return false;
+      }
+      case "full_reload": {
+        store.setProtocolNotice(this._noticeForProtocolAction("full_reload"));
+        if (!this._reloadingRuns.has(runId)) {
+          this._reloadingRuns.add(runId);
+          store.markConnectionReloading(runId);
+          void store.loadRun(runId).finally(() => {
+            this._reloadingRuns.delete(runId);
+          });
+        }
+        return false;
+      }
+      case "pass":
+        return true;
+    }
+  }
+
   private async recoverRunFromDisk(runId: string, reason: string): Promise<void> {
     const store = this._subscriptions.get(runId);
     if (!store) return;
@@ -420,11 +508,24 @@ export class EventMiddleware {
   private _applyBufferedEvents(runId: string, store: SessionStore, events: BusEvent[]): void {
     if (events.length === 0) return;
     if (events.length === 1) {
-      store.applyEvent(events[0]);
+      try {
+        store.applyEvent(events[0]);
+        this._protocolQuarantine.recordApplySuccess(runId);
+      } catch (evErr) {
+        const decision = this._protocolQuarantine.recordApplyFailure(runId, events[0].type);
+        dbgWarn("middleware", "apply failure (single)", {
+          runId,
+          type: events[0].type,
+          evErr,
+          action: decision.action,
+        });
+        this._handleProtocolInspection(events[0], store, decision);
+      }
       return;
     }
     try {
       store.applyEventBatch(events);
+      this._protocolQuarantine.recordApplySuccess(runId);
     } catch (batchErr) {
       dbgWarn("middleware", "batch apply failed, falling back to per-event", { runId, batchErr });
       for (let i = 0; i < events.length; i++) {
@@ -437,10 +538,12 @@ export class EventMiddleware {
             type: events[i].type,
             evErr,
           });
-          void this.recoverRunFromDisk(runId, "poison event");
+          const decision = this._protocolQuarantine.recordApplyFailure(runId, events[i].type);
+          this._handleProtocolInspection(events[i], store, decision);
           return;
         }
       }
+      this._protocolQuarantine.recordApplySuccess(runId);
     }
   }
 
@@ -460,7 +563,10 @@ export class EventMiddleware {
         this._applyBufferedEvents(runId, store, events);
       } catch (e) {
         dbgWarn("middleware", `flush error for run ${runId}:`, e);
-        void this.recoverRunFromDisk(runId, "flush error");
+        const decision = this._protocolQuarantine.recordApplyFailure(runId, "flush");
+        if (events.length > 0) {
+          this._handleProtocolInspection(events[0], store, decision);
+        }
       }
     }
     this._batchBuffer.clear();

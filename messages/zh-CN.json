@@ -2973,5 +2973,12 @@
   "runtime_hub_mimo_advanced": "MiMo 高级设置",
   "runtime_hub_mimo_description": "仅在自动检测不足时覆盖可执行文件发现和协议协商。",
   "runtime_hub_binary_description": "留空时自动发现可执行文件。",
-  "runtime_hub_protocol_description": "选择 MiWarp 与 MiMo 运行时的通信方式。"
+  "runtime_hub_protocol_description": "选择 MiWarp 与 MiMo 运行时的通信方式。",
+  "protocol_quarantine_recovering": "因协议错误，正在恢复会话时间线…",
+  "protocol_quarantine_full_reload": "因协议不同步，正在重新加载会话…",
+  "protocol_quarantine_terminated": "会话协议已失步，请重新启动会话。",
+  "protocol_session_recovering": "会话恢复中…（最多 {seconds} 秒）",
+  "protocol_desync_toast": "会话状态已重置：协议解析失败过多。",
+  "protocol_recovered_ok_toast": "会话已恢复",
+  "protocol_recovered_fail_toast": "会话恢复失败，已自动停止"
 }

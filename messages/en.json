@@ -3076,5 +3076,12 @@
   "runtime_hub_mimo_advanced": "MiMo advanced settings",
   "runtime_hub_mimo_description": "Override discovery and protocol negotiation only when automatic detection is insufficient.",
   "runtime_hub_binary_description": "Leave empty to use automatic executable discovery.",
-  "runtime_hub_protocol_description": "Choose how MiWarp communicates with the MiMo runtime."
+  "runtime_hub_protocol_description": "Choose how MiWarp communicates with the MiMo runtime.",
+  "protocol_quarantine_recovering": "Recovering session timeline due to protocol errors…",
+  "protocol_quarantine_full_reload": "Reloading session due to protocol desync…",
+  "protocol_quarantine_terminated": "Session protocol desynced. Please restart the session.",
+  "protocol_session_recovering": "Session recovering… (up to {seconds}s)",
+  "protocol_desync_toast": "Session state reset: too many protocol parse failures.",
+  "protocol_recovered_ok_toast": "Session recovered",
+  "protocol_recovered_fail_toast": "Session recovery failed; stopped automatically"
 }

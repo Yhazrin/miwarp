@@ -3934,6 +3934,26 @@ describe("SessionStore reducer", () => {
         expect(() => s.applyEventBatch(malformedEvents as BusEvent[])).toThrow("[STRICT]");
       });
 
+      it("does not advance the sequence checkpoint when a batch reducer throws", () => {
+        const s = new SessionStore();
+        s.strictMode = true;
+        s.run = makeRun("run-seq");
+        s.phase = "running";
+        const events = [
+          { type: "user_message", run_id: "run-seq", text: "hello", _seq: 1 },
+          { type: "brand_new_event_type", run_id: "run-seq", _seq: 2 },
+        ] as unknown as BusEvent[];
+
+        expect(() => s.applyEventBatch(events)).toThrow("[STRICT]");
+        expect(s.getLastProcessedSeq()).toBe(0);
+        expect(s.timeline).toHaveLength(0);
+
+        s.strictMode = false;
+        s.applyEvent(events[0]);
+        expect(s.getLastProcessedSeq()).toBe(1);
+        expect(s.timeline.filter((entry) => entry.kind === "user")).toHaveLength(1);
+      });
+
       it("still builds valid timeline for known events", () => {
         const s = new SessionStore();
         s.run = makeRun("run-m1");
