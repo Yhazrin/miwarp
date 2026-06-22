@@ -5,19 +5,22 @@
  */
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
-import { dbg, dbgWarn } from "$lib/utils/debug";
 import { skillExecutor } from "$lib/services/skill-executor";
-import type { Skill } from "$lib/types/skill";
+import { createBuiltInSkills } from "$lib/skills/builtin-catalog";
+import { dbg, dbgWarn } from "$lib/utils/debug";
 
-// Import skill storage from main API (in production would use a database)
-const skills: Skill[] = [];
+const skills = createBuiltInSkills();
 
 export const POST: RequestHandler = async ({ request }) => {
   try {
     const body = await request.json();
     const { skillId, skillName, args = "" } = body;
 
-    dbg("api-skills-execute", "POST", { skillId, skillName, args });
+    dbg("api-skills-execute", "POST", {
+      skillId,
+      skillName,
+      hasArgs: typeof args === "string" && args.length > 0,
+    });
 
     // Find the skill
     const skill = skills.find(
@@ -25,10 +28,12 @@ export const POST: RequestHandler = async ({ request }) => {
     );
 
     if (!skill) {
-      // Return help output for unknown skills
+      const available = skills
+        .map((candidate) => `- /${candidate.name} - ${candidate.description}`)
+        .join("\n");
       return json({
         success: true,
-        result: `Skill "${skillName}" not found. Available built-in skills:\n- /schedule - Create scheduled tasks\n- /consolidate-memory - Organize memory files\n- /setup-cowork - Guided setup`,
+        result: `Skill "${skillName}" not found. Available built-in skills:\n${available}`,
       });
     }
 
