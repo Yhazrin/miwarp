@@ -1,6 +1,7 @@
 pub mod agent;
 pub mod cli_auto_sync;
 pub mod commands;
+pub mod diagnostics;
 pub mod hooks;
 pub mod http_client;
 pub mod models;
