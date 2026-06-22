@@ -34,11 +34,7 @@
     persistCachedProcessVisibility,
   } from "$lib/utils/process-visibility";
   import ProjectFolderItem from "$lib/components/ProjectFolderItem.svelte";
-  import AboutModal from "$lib/components/AboutModal.svelte";
-  import PermissionsModal from "$lib/components/PermissionsModal.svelte";
-  import WorkspaceSettingsModal from "$lib/components/WorkspaceSettingsModal.svelte";
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
-  import UpdateCenter from "$lib/components/UpdateCenter.svelte";
   import VersionMismatchBanner from "$lib/components/VersionMismatchBanner.svelte";
   import { appUpdateCoordinator } from "$lib/stores/app-update-coordinator.svelte";
   import {
@@ -59,11 +55,7 @@
   import {
     SPLASH_REMOVE_DELAY_MS,
     RUNS_POLL_INTERVAL_MS,
-    TEAMS_POLL_INTERVAL_MS,
-    TEAM_RESYNC_DEBOUNCE_MS,
     DEEP_SEARCH_DEBOUNCE_MS,
-    LISTEN_RETRY_BASE_DELAY_MS,
-    LISTEN_RETRY_MAX_ATTEMPTS,
   } from "$lib/utils/layout-timings";
   import {
     EVT_RUNS_CHANGED,
@@ -85,6 +77,10 @@
   import { applyZoom, applyVisualPerformance } from "$lib/services/window-display";
   import { readBundledAppVersion } from "$lib/services/app-version.svelte";
   import { useKeybindingShortcuts } from "$lib/layout/use-keybinding-shortcuts.svelte";
+  import {
+    createTeamSubscription,
+    type TeamSubscription,
+  } from "$lib/layout/team-subscription.svelte";
   import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
   import { readActiveSessionId, writeActiveSessionId } from "$lib/utils/chat-persistence";
   import type {
@@ -144,10 +140,9 @@
   import ToastHost from "$lib/components/ToastHost.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
-  import MemorySidebarGroup from "$lib/components/MemorySidebarGroup.svelte";
   import Icon from "$lib/components/Icon.svelte";
-  import SidebarModals from "$lib/components/sidebar/SidebarModals.svelte";
   import OverlayStack from "$lib/components/layout/OverlayStack.svelte";
+  import type { Component } from "svelte";
   import type { PluginSection } from "$lib/utils/plugin-sections";
   import {
     t,
@@ -187,6 +182,98 @@
   let sidebarVersionChecked = $derived(appUpdateCoordinator.state.lastCheckedAt !== null);
   let permissionsModalOpen = $state(false);
   let updateCenterOpen = $state(false);
+
+  // v1.0.9 perf: defer modals / sidebars that are not first-screen. Each slot
+  // holds a Svelte Component constructor, populated by `await import()` on
+  // first open. Re-opening does not re-import (single-flight) and does not
+  // stack any listeners/timers inside the child. See SettingsPanels for the
+  // same pattern.
+  type DeferredModal = Component<any>;
+  type ModalSlot = {
+    Component: DeferredModal | null;
+    loading: boolean;
+    error: string | null;
+    ensure: () => Promise<void>;
+  };
+  function makeModalSlot(
+    loader: () => Promise<{ default: DeferredModal }>,
+    label: string,
+  ): ModalSlot {
+    let Component = $state<DeferredModal | null>(null);
+    let loading = $state(false);
+    let error = $state<string | null>(null);
+    let inFlight: Promise<void> | null = null;
+    async function ensure(): Promise<void> {
+      if (Component || inFlight) return inFlight ?? Promise.resolve();
+      loading = true;
+      error = null;
+      const p = (async () => {
+        try {
+          const mod = await loader();
+          Component = mod.default;
+        } catch (e) {
+          dbgWarn("layout", `deferred modal import failed: ${label}`, e);
+          error = e instanceof Error ? e.message : String(e);
+          Component = null;
+        } finally {
+          loading = false;
+          inFlight = null;
+        }
+      })();
+      inFlight = p;
+      return p;
+    }
+    return {
+      get Component() {
+        return Component;
+      },
+      get loading() {
+        return loading;
+      },
+      get error() {
+        return error;
+      },
+      ensure,
+    };
+  }
+
+  const aboutModal = makeModalSlot(() => import("$lib/components/AboutModal.svelte"), "AboutModal");
+  const updateCenter = makeModalSlot(
+    () => import("$lib/components/UpdateCenter.svelte"),
+    "UpdateCenter",
+  );
+  const permissionsModal = makeModalSlot(
+    () => import("$lib/components/PermissionsModal.svelte"),
+    "PermissionsModal",
+  );
+  const workspaceSettingsModal = makeModalSlot(
+    () => import("$lib/components/WorkspaceSettingsModal.svelte"),
+    "WorkspaceSettingsModal",
+  );
+  const sidebarModals = makeModalSlot(
+    () => import("$lib/components/sidebar/SidebarModals.svelte"),
+    "SidebarModals",
+  );
+  const memorySidebarGroup = makeModalSlot(
+    () => import("$lib/components/MemorySidebarGroup.svelte"),
+    "MemorySidebarGroup",
+  );
+
+  $effect(() => {
+    if (showAbout) void aboutModal.ensure();
+  });
+  $effect(() => {
+    if (updateCenterOpen) void updateCenter.ensure();
+  });
+  $effect(() => {
+    if (permissionsModalOpen) void permissionsModal.ensure();
+  });
+  $effect(() => {
+    if (workspaceSettingsOpen) void workspaceSettingsModal.ensure();
+  });
+  // SidebarModals + MemorySidebarGroup are kicked off where their state is
+  // declared (see lower in this file). The deferred imports themselves are
+  // hoisted here so the rest of the file can refer to them by stable name.
 
   // Team store (shared via context with /teams page)
   const teamStore = new TeamStore();
@@ -1056,88 +1143,13 @@
       if (document.visibilityState === "visible") loadRuns();
     }, RUNS_POLL_INTERVAL_MS);
 
-    // Team store: initial load + poll fallback
-    teamStore.loadTeams();
-    const teamPollInterval = setInterval(() => {
-      if (document.visibilityState === "visible") teamStore.loadTeams();
-    }, TEAMS_POLL_INTERVAL_MS);
-
-    // Team/task event listeners — app-level lifecycle, independent of chat page
-    type TeamUpdatePayload = { team_name: string; change: string };
-    type TaskUpdatePayload = { team_name: string; task_id: string; change: string };
-
-    let destroyed = false;
-    let unlistenTeam: (() => void) | undefined;
-    let unlistenTask: (() => void) | undefined;
-    const retryTimers: ReturnType<typeof setTimeout>[] = [];
-
-    // 首次+重试成功后都补偿同步（debounce TEAM_RESYNC_DEBOUNCE_MS）
-    let resyncTimer: ReturnType<typeof setTimeout> | undefined;
-    function scheduleResync() {
-      if (resyncTimer) clearTimeout(resyncTimer);
-      resyncTimer = setTimeout(() => {
-        if (!destroyed) teamStore.forceRefresh();
-      }, TEAM_RESYNC_DEBOUNCE_MS);
-    }
-
-    const transport = getTransport();
-
-    function registerTeamListener<T>(
-      name: string,
-      handler: (payload: T) => void,
-      assign: (fn: () => void) => void,
-    ) {
-      function tryListen(attempt: number) {
-        transport
-          .listen<T>(name, handler)
-          .then((fn) => {
-            if (destroyed) {
-              fn();
-              return;
-            }
-            assign(fn);
-            scheduleResync();
-          })
-          .catch((e) => {
-            if (destroyed) return;
-            if (attempt < LISTEN_RETRY_MAX_ATTEMPTS - 1) {
-              const delay = (attempt + 1) * LISTEN_RETRY_BASE_DELAY_MS; // 2s, 4s
-              dbgWarn(
-                "layout",
-                `${name} listen failed (attempt ${attempt + 1}/${LISTEN_RETRY_MAX_ATTEMPTS}), retry in ${delay}ms`,
-                e,
-              );
-              const t = setTimeout(() => tryListen(attempt + 1), delay);
-              retryTimers.push(t);
-            } else {
-              dbgWarn(
-                "layout",
-                `${name} listen failed after ${LISTEN_RETRY_MAX_ATTEMPTS} attempts, falling back to poll`,
-                e,
-              );
-            }
-          });
-      }
-      tryListen(0);
-    }
-
-    registerTeamListener<TeamUpdatePayload>(
-      "team-update",
-      (payload) => {
-        dbg("layout", "team-update", payload);
-        teamStore.handleTeamUpdate(payload);
-      },
-      (fn) => (unlistenTeam = fn),
-    );
-
-    registerTeamListener<TaskUpdatePayload>(
-      "task-update",
-      (payload) => {
-        dbg("layout", "task-update", payload);
-        teamStore.handleTaskUpdate(payload);
-      },
-      (fn) => (unlistenTask = fn),
-    );
+    // Team store: initial load + poll fallback + transport listeners.
+    // Hoisted to a single-flight factory so the layout owns one subscription
+    // for its full lifetime; dispose() reverses everything (listeners + poll).
+    // (Replaces the 80-line inline block that used to live here — see
+    // `team-subscription.svelte.ts` for the equivalent behavior, including
+    // listen retries with backoff and the post-event resync debounce.)
+    teamSubscription = createTeamSubscription(teamStore, () => true);
 
     // Keybinding store: load overrides + CLI bindings, register app-level callbacks
     keybindingStore.loadOverrides();
@@ -1252,6 +1264,8 @@
     window.addEventListener(EVT_EXPLORER_FILE_SELECTED, onExplorerFileSelected);
 
     // Listen for run status changes (idle↔running) from backend
+    const transport = getTransport();
+    let destroyed = false;
     let unlistenStatus: (() => void) | undefined;
     transport
       .listen("ocv:status-changed", (payload: unknown) => {
@@ -1303,13 +1317,10 @@
       unlistenStatus?.();
       unlistenCliAutoSync?.();
       clearInterval(interval);
-      clearInterval(teamPollInterval);
+      teamSubscription?.dispose();
+      teamSubscription = null;
       if (debounceTimer) clearTimeout(debounceTimer);
       destroyed = true;
-      unlistenTeam?.();
-      unlistenTask?.();
-      retryTimers.forEach(clearTimeout);
-      if (resyncTimer) clearTimeout(resyncTimer);
       unregisterKeybindings();
       window.removeEventListener(EVT_RUNS_CHANGED, onRunsChanged);
       window.removeEventListener(EVT_FAVORITES_CHANGED, onFavoritesChanged);
@@ -1623,6 +1634,25 @@
     workspaceSettingsOpen = true;
   }
 
+  // v1.0.9 perf: SidebarModals hosts 7 confirm dialogs. Any of the 7 open
+  // flags may open it, so aggregate into one boolean that the loader's
+  // $effect can track. MemorySidebarGroup only matters on the memory route.
+  let anySidebarModalOpen = $derived(
+    deleteConfirmOpen ||
+      batchDeleteConfirmOpen ||
+      removeProjectConfirmOpen ||
+      folderCreateOpen ||
+      folderRenameOpen ||
+      folderDeleteOpen ||
+      moveToFolderOpen,
+  );
+  $effect(() => {
+    if (anySidebarModalOpen) void sidebarModals.ensure();
+  });
+  $effect(() => {
+    if (isMemoryPage) void memorySidebarGroup.ensure();
+  });
+
   async function saveWorkspaceAlias(cwd: string, alias: string) {
     const normalized = normalizeCwd(cwd);
     const current = settings?.workspace_aliases ?? {};
@@ -1719,6 +1749,14 @@
   let isExplorerPage = $derived(currentPath.startsWith("/explorer"));
   let isMemoryPage = $derived(currentPath.startsWith("/memory"));
   let isTeamsPage = $derived(currentPath.startsWith("/teams"));
+
+  // Tracks the active team subscription so onMount can dispose it on unmount.
+  // v1.0.9 perf: extracted from a 90-line inline block in onMount into a
+  // single-flight factory (see `team-subscription.svelte.ts`). One subscription
+  // lives for the lifetime of the layout component; on dispose both
+  // transport listeners and the fallback poll are torn down.
+  let teamSubscription: TeamSubscription | null = null;
+
   let isSettingsPage = $derived(currentPath.startsWith("/settings"));
   // Whether the current page uses the layout's content panel (vs managing its own layout)
   let needsLayoutContentPanel = $derived(
@@ -2810,14 +2848,18 @@
                   {/if}
                 </ProjectFolderItem>
               {/each}
-              <!-- Global scope (MemorySidebarGroup) -->
-              <MemorySidebarGroup
-                candidates={memoryScopeGlobal}
-                selectedFile={memorySelectedFile}
-                loading={memoryLoading}
-                bind:expanded={memoryScopeExpanded}
-                onSelectFile={selectMemoryFile}
-              />
+              <!-- Global scope (MemorySidebarGroup) — deferred chunk, only
+                   loaded after the first visit to the memory route. -->
+              {#if memorySidebarGroup.Component}
+                {@const C = memorySidebarGroup.Component}
+                <C
+                  candidates={memoryScopeGlobal}
+                  selectedFile={memorySelectedFile}
+                  loading={memoryLoading}
+                  bind:expanded={memoryScopeExpanded}
+                  onSelectFile={selectMemoryFile}
+                />
+              {/if}
 
               <!-- Open folder button -->
               <button
@@ -3119,60 +3161,77 @@
 />
 
 {#if showAbout}
-  <AboutModal bind:open={showAbout} onOpenUpdateCenter={() => (updateCenterOpen = true)} />
+  {#if aboutModal.Component}
+    {@const C = aboutModal.Component}
+    <C bind:open={showAbout} onOpenUpdateCenter={() => (updateCenterOpen = true)} />
+  {/if}
 {/if}
 
 {#if updateCenterOpen}
-  <UpdateCenter bind:open={updateCenterOpen} />
+  {#if updateCenter.Component}
+    {@const C = updateCenter.Component}
+    <C bind:open={updateCenterOpen} />
+  {/if}
 {/if}
 
 {#if permissionsModalOpen}
-  <PermissionsModal bind:open={permissionsModalOpen} cwd={projectCwd} />
+  {#if permissionsModal.Component}
+    {@const C = permissionsModal.Component}
+    <C bind:open={permissionsModalOpen} cwd={projectCwd} />
+  {/if}
 {/if}
 
 {#if workspaceSettingsOpen}
-  <WorkspaceSettingsModal
-    bind:open={workspaceSettingsOpen}
-    cwd={workspaceSettingsCwd}
-    currentAlias={workspaceSettingsAlias}
-    onClose={() => {
-      workspaceSettingsOpen = false;
-      workspaceSettingsCwd = "";
-      workspaceSettingsAlias = "";
-    }}
-    onSave={(alias) => saveWorkspaceAlias(workspaceSettingsCwd, alias)}
-    onRemove={workspaceSettingsCwd ? () => requestRemoveProject(workspaceSettingsCwd) : undefined}
-  />
+  {#if workspaceSettingsModal.Component}
+    {@const C = workspaceSettingsModal.Component}
+    <C
+      bind:open={workspaceSettingsOpen}
+      cwd={workspaceSettingsCwd}
+      currentAlias={workspaceSettingsAlias}
+      onClose={() => {
+        workspaceSettingsOpen = false;
+        workspaceSettingsCwd = "";
+        workspaceSettingsAlias = "";
+      }}
+      onSave={(alias: string) => saveWorkspaceAlias(workspaceSettingsCwd, alias)}
+      onRemove={workspaceSettingsCwd ? () => requestRemoveProject(workspaceSettingsCwd) : undefined}
+    />
+  {/if}
 {/if}
 
-<SidebarModals
-  bind:deleteConfirmOpen
-  onDeleteSoft={confirmDeleteConversation}
-  onDeleteHard={confirmHardDeleteConversation}
-  onDeleteCancel={cancelDeleteConversation}
-  bind:batchDeleteConfirmOpen
-  batchDeleteCount={selectedGroupKeys.size}
-  onBatchSoftDelete={batchDelete}
-  onBatchHardDelete={batchHardDelete}
-  onBatchDeleteCancel={() => (batchDeleteConfirmOpen = false)}
-  bind:removeProjectConfirmOpen
-  onRemoveProject={confirmRemoveProject}
-  onRemoveProjectCancel={cancelRemoveProject}
-  bind:folderCreateOpen
-  bind:folderCreateName
-  onCreateFolder={doCreateFolder}
-  bind:folderRenameOpen
-  bind:folderRenameName
-  onRenameFolder={doRenameFolder}
-  bind:folderDeleteOpen
-  folderDeleteTargetName={folderDeleteTarget?.name ?? ""}
-  onDeleteFolderKeep={() => doDeleteFolder(false)}
-  onDeleteFolderCascade={() => doDeleteFolder(true)}
-  bind:moveToFolderOpen
-  moveToFolderCount={moveToFolderRunIds.length}
-  bind:moveToFolderSelectedId
-  moveToFolderOptions={foldersForMoveDialog}
-  onMoveToFolder={doMoveToFolder}
-/>
+{#if anySidebarModalOpen}
+  {#if sidebarModals.Component}
+    {@const C = sidebarModals.Component}
+    <C
+      bind:deleteConfirmOpen
+      onDeleteSoft={confirmDeleteConversation}
+      onDeleteHard={confirmHardDeleteConversation}
+      onDeleteCancel={cancelDeleteConversation}
+      bind:batchDeleteConfirmOpen
+      batchDeleteCount={selectedGroupKeys.size}
+      onBatchSoftDelete={batchDelete}
+      onBatchHardDelete={batchHardDelete}
+      onBatchDeleteCancel={() => (batchDeleteConfirmOpen = false)}
+      bind:removeProjectConfirmOpen
+      onRemoveProject={confirmRemoveProject}
+      onRemoveProjectCancel={cancelRemoveProject}
+      bind:folderCreateOpen
+      bind:folderCreateName
+      onCreateFolder={doCreateFolder}
+      bind:folderRenameOpen
+      bind:folderRenameName
+      onRenameFolder={doRenameFolder}
+      bind:folderDeleteOpen
+      folderDeleteTargetName={folderDeleteTarget?.name ?? ""}
+      onDeleteFolderKeep={() => doDeleteFolder(false)}
+      onDeleteFolderCascade={() => doDeleteFolder(true)}
+      bind:moveToFolderOpen
+      moveToFolderCount={moveToFolderRunIds.length}
+      bind:moveToFolderSelectedId
+      moveToFolderOptions={foldersForMoveDialog}
+      onMoveToFolder={doMoveToFolder}
+    />
+  {/if}
+{/if}
 
 <ToastHost />
