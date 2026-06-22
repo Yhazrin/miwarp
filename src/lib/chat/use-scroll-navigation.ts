@@ -1,14 +1,16 @@
 import * as api from "$lib/api";
 import { dbg } from "$lib/utils/debug";
 import { yieldToMain } from "$lib/utils/yield";
-import { getInitialRenderLimit } from "$lib/chat/selectors/timeline-presentation";
+import {
+  getInitialRenderLimit,
+  RENDER_GROWTH_STEP,
+} from "$lib/chat/selectors/timeline-presentation";
 import type { ProcessVisibility } from "$lib/utils/process-visibility";
 import type { SessionStore } from "$lib/stores/session-store.svelte";
 import type { TimelineEntry } from "$lib/types";
 import type { ToolBurst } from "$lib/utils/tool-rendering";
 import type { BurstCollapseHandle } from "$lib/chat/use-tool-burst-collapse.svelte";
 
-const RENDER_GROWTH_STEP = 100;
 const SCROLL_BOTTOM_THRESHOLD = 40;
 /** Only load older messages when the user has scrolled to the top edge (not 200px early). */
 const LOAD_MORE_TOP_THRESHOLD = 96;

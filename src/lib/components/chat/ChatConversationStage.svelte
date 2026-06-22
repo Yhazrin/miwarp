@@ -397,7 +397,7 @@
               <div use:onTopSentinelMount aria-hidden="true" class="h-px w-full"></div>
             {/if}
             <ChatTimelineEntries
-              contentVisibilityEnabled={true}
+              contentVisibilityEnabled={!readingHistory}
               {visibleTimeline}
               {store}
               {burstCollapse}
