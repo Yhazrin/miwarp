@@ -31,3 +31,6 @@ export {
   probeRuntimeAvailabilityWithStatus,
 } from "./availability";
 export type { RuntimeProbeOutcome } from "./availability";
+
+export type { CapabilityFlag, RuntimeCapabilities } from "./capabilities";
+export { CAPABILITY_FLAG_NAMES } from "./capabilities";
