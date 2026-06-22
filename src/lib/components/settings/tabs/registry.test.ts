@@ -16,8 +16,8 @@ import {
 
 describe("settings tab registry", () => {
   describe("SETTINGS_TABS", () => {
-    it("contains exactly 11 tabs", () => {
-      expect(SETTINGS_TABS).toHaveLength(11);
+    it("contains exactly 12 tabs", () => {
+      expect(SETTINGS_TABS).toHaveLength(12);
     });
 
     it("has unique tab ids", () => {
@@ -76,7 +76,7 @@ describe("settings tab registry", () => {
         "worktree",
         "runtimes",
       ]);
-      expect(grouped.system.map((t) => t.id)).toEqual(["notifications", "data-debug"]);
+      expect(grouped.system.map((t) => t.id)).toEqual(["notifications", "data-debug", "updates"]);
     });
 
     it("every SETTINGS_TABS entry appears in exactly one group", () => {
