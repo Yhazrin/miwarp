@@ -949,6 +949,10 @@
       setTimeout(() => splash.remove(), SPLASH_REMOVE_DELAY_MS);
     }
 
+    // Apply performance mode immediately (before settings load) to avoid
+    // brief flash of heavy CSS effects on Windows/Linux.
+    applyVisualPerformance();
+
     // Fire all three concurrently — they are independent.
     void initBackendCapabilities().then(() => loadRuns());
     void loadSettings();
