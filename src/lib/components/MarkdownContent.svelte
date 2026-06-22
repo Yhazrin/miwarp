@@ -2,6 +2,7 @@
   import { renderMarkdown } from "$lib/utils/markdown";
   import { readFileBase64 } from "$lib/api";
   import { dbg, dbgWarn } from "$lib/utils/debug";
+  import { mountVisualBlocks } from "$lib/visual-blocks";
   import { onDestroy } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import StreamingSkeleton from "./StreamingSkeleton.svelte";
@@ -166,6 +167,17 @@
   // Markdown rendering gate: skip when streaming OR not yet visible (lazy).
   let renderMarkdownNow = $derived(!streaming && visibleOnce);
   let html = $derived(renderMarkdownNow && displayText ? cachedRenderMarkdown(displayText) : "");
+
+  $effect(() => {
+    if (!container || !html || !renderMarkdownNow) return;
+    let unmountVisual: (() => void) | undefined;
+    try {
+      unmountVisual = mountVisualBlocks(container, { tone });
+    } catch {
+      // Keep fallback code blocks visible; never break chat markdown rendering.
+    }
+    return () => unmountVisual?.();
+  });
 
   $effect(() => {
     if (!container || !html) return;

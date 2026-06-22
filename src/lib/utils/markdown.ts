@@ -1,7 +1,11 @@
 import { Marked, type Token } from "marked";
 import { escapeHtml } from "$lib/utils/ansi";
 import { perfMark } from "$lib/utils/perf";
-import { hljs } from "$lib/utils/hljs-init";
+import {
+  buildVisualBlockPlaceholder,
+  renderCodeBlockHtml,
+} from "$lib/visual-blocks/render-placeholder";
+import { resolveVisualBlockLang } from "$lib/visual-blocks/registry";
 import DOMPurify from "dompurify";
 import "highlight.js/styles/github-dark.min.css";
 
@@ -42,29 +46,15 @@ marked.use({
     },
     code({ text, lang }: { text: string; lang?: string }) {
       const language = lang || "";
-      let highlighted: string;
-
-      if (language && hljs.getLanguage(language)) {
-        try {
-          highlighted = hljs.highlight(text, { language }).value;
-        } catch {
-          highlighted = escapeHtml(text);
-        }
-      } else {
-        // Skip highlightAuto() — it tries all ~190 languages synchronously
-        // and can freeze the UI for seconds on large code blocks
-        highlighted = escapeHtml(text);
+      const visualKind = resolveVisualBlockLang(language);
+      if (visualKind) {
+        return buildVisualBlockPlaceholder({
+          kind: visualKind,
+          source: text,
+          lang: language,
+        });
       }
-
-      const displayLang = language || "text";
-      const lineCount = text.split("\n").length;
-      const collapsible = lineCount > 15;
-      const lineBadge = collapsible
-        ? `<span class="code-block-lines">${lineCount} lines</span>`
-        : "";
-      const collapsibleAttr = collapsible ? ' data-collapsible="true"' : "";
-
-      return `<div class="code-block"${collapsibleAttr}><div class="code-block-header"><span class="code-block-lang">${escapeHtml(displayLang)}</span>${lineBadge}<button class="code-block-copy" data-code-copy>Copy</button></div><pre><code class="hljs language-${escapeHtml(language)}">${highlighted}</code></pre></div>`;
+      return renderCodeBlockHtml(text, language);
     },
     // v1.0.6 / 5.4: inject id on headings so TOC anchor links work
     heading({ text: rawText, depth }: { text: string; depth: number }) {
@@ -86,7 +76,22 @@ export function renderMarkdown(text: string): string {
       const raw = marked.parse(text);
       if (typeof raw !== "string") return "";
       return DOMPurify.sanitize(raw, {
-        ADD_ATTR: ["class", "target", "data-code-copy", "data-collapsible", "id"],
+        ADD_ATTR: [
+          "class",
+          "target",
+          "data-code-copy",
+          "data-collapsible",
+          "id",
+          "data-visual-block",
+          "data-visual-kind",
+          "data-visual-summary-key",
+          "data-visual-mounted",
+          "data-visual-render-state",
+          "hidden",
+          "aria-hidden",
+          "aria-label",
+          "role",
+        ],
       });
     },
     { chars: text.length, codeFenceCount: text.match(/```/g)?.length ?? 0 },
