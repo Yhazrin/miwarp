@@ -4,6 +4,8 @@ pub mod claude_stream;
 pub mod codex_parser;
 pub mod constants;
 pub mod control;
+pub mod control_plane;
+pub mod hub;
 pub mod notify;
 pub mod permission_error;
 pub mod pipe_parser;
