@@ -258,6 +258,11 @@ struct SessionActor {
     user_stopped: bool,
     recoverable_exit: bool,
     exit_code: Option<i32>,
+    /// Stash of messages captured before stdin write in `start_user_turn`.
+    /// If the write succeeds, the message is harmlessly filtered during
+    /// replay (it's already in the accepted ledger). If stdin fails, this
+    /// ensures the message survives into `build_recovery_snapshot`.
+    pending_unaccepted_for_recovery: VecDeque<PendingRecoveryMessage>,
 
     // ── Readiness signal ──
     /// Sends `true` on first CLI output (stdout line). WaitReady commands clone a receiver.
@@ -410,6 +415,7 @@ pub fn spawn_actor_with_runtime(
         user_stopped: false,
         recoverable_exit: false,
         exit_code: None,
+        pending_unaccepted_for_recovery: VecDeque::new(),
     };
 
     let join_handle = tokio::spawn(async move {
@@ -868,6 +874,19 @@ impl SessionActor {
             }
         }
 
+        // v1.0.9 hardening: stash the message in pending_unaccepted BEFORE
+        // the stdin write. If write_user_to_stdin fails, the message has
+        // already been popped from queued_user — without this stash it would
+        // be absent from build_recovery_snapshot and permanently lost.
+        // On success, the idempotent insert into accepted_ledger means the
+        // duplicate in pending_unaccepted is harmlessly filtered during replay.
+        self.pending_unaccepted_for_recovery
+            .push_back(PendingRecoveryMessage {
+                text: ticket.text.clone(),
+                attachments: ticket.attachments.clone(),
+                client_message_id: ticket.client_message_id.clone(),
+            });
+
         // Write to stdin
         let user_uuid = match self
             .write_user_to_stdin(&ticket.text, &ticket.attachments)
@@ -903,6 +922,12 @@ impl SessionActor {
         // leak a half-accepted id into the ledger.
         if let Some(cid) = ticket.client_message_id.clone() {
             self.record_accepted_client_message_id(cid);
+        }
+
+        // Write succeeded — drop the pre-write stash entry. Recovery only
+        // needs it when write_user_to_stdin fails above.
+        if self.pending_unaccepted_for_recovery.pop_back().is_none() {
+            log::warn!("[turn] pending_unaccepted_for_recovery empty after successful stdin write");
         }
 
         // Reply success to caller
@@ -2714,7 +2739,8 @@ impl SessionActor {
     // ── Cleanup ──
 
     fn build_recovery_snapshot(&self) -> ActorRecoverySnapshot {
-        let pending_unaccepted: VecDeque<PendingRecoveryMessage> = self
+        // Collect unaccepted messages from queued_user (not yet dispatched).
+        let mut pending_unaccepted: VecDeque<PendingRecoveryMessage> = self
             .queued_user
             .iter()
             .filter(|ticket| {
@@ -2729,6 +2755,27 @@ impl SessionActor {
                 client_message_id: ticket.client_message_id.clone(),
             })
             .collect();
+
+        // Merge messages stashed before stdin write in start_user_turn.
+        // These cover the case where a message was popped from queued_user
+        // but the stdin write failed — without this merge the message is lost.
+        for msg in &self.pending_unaccepted_for_recovery {
+            let dominated = msg
+                .client_message_id
+                .as_ref()
+                .is_some_and(|cid| is_accepted(&self.accepted_client_message_ids, cid));
+            if dominated {
+                continue;
+            }
+            let duplicate = msg.client_message_id.as_ref().is_some_and(|cid| {
+                pending_unaccepted
+                    .iter()
+                    .any(|p| p.client_message_id.as_deref() == Some(cid.as_str()))
+            });
+            if !duplicate {
+                pending_unaccepted.push_back(msg.clone());
+            }
+        }
 
         ActorRecoverySnapshot {
             crash_reason: self.crash_reason,

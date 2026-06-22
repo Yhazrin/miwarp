@@ -175,3 +175,86 @@ fn transition_to_recovered_resets_failure_count() {
     ));
     assert_eq!(state.recovery_sm.consecutive_failures(), 0);
 }
+
+/// When stdin write fails in start_user_turn, the message was already popped
+/// from queued_user. The actor stashes it in pending_unaccepted_for_recovery
+/// before the write; the snapshot must include it. This test verifies that
+/// the registry correctly replays a message that arrived via snapshot
+/// (not via the normal recovery_queue path).
+#[test]
+fn stdin_failure_message_survives_in_snapshot_and_replays() {
+    let registry = new_recovery_registry();
+    let rt = tokio::runtime::Runtime::new().unwrap();
+
+    // Simulate: actor accepted cid-ok, then tried to send cid-lost but stdin
+    // broke. The snapshot reflects this state.
+    let mut accepted = VecDeque::new();
+    accepted.push_back("cid-ok".to_string());
+
+    let mut pending = VecDeque::new();
+    pending.push_back(PendingRecoveryMessage {
+        text: "the lost message".into(),
+        attachments: vec![],
+        client_message_id: Some("cid-lost".into()),
+    });
+
+    let snap = ActorRecoverySnapshot {
+        crash_reason: Some(CrashReason::StdinWriteFailed),
+        accepted_ledger: accepted,
+        pending_unaccepted: pending,
+        next_turn_index: 2,
+        next_auto_ctx_id: 2,
+        next_turn_seq: 1,
+        session_id: Some("sess-1".into()),
+        user_stopped: false,
+    };
+
+    let should = rt.block_on(on_actor_exit(&registry, "run-1", snap));
+    assert!(should, "stdin failure should be recoverable");
+
+    let mut map = rt.block_on(registry.lock());
+    let entry = map.get_mut("run-1").unwrap();
+
+    // The lost message must be in the replay batch.
+    let batch = entry.drain_replay_batch();
+    assert_eq!(batch.len(), 1);
+    assert_eq!(batch[0].client_message_id.as_deref(), Some("cid-lost"));
+    assert_eq!(batch[0].text, "the lost message");
+}
+
+/// Messages that were already accepted must NOT appear in the replay batch,
+/// even if they are also present in pending_unaccepted (e.g. due to the
+/// start_user_turn stash-before-write pattern where the write succeeded).
+#[test]
+fn accepted_messages_filtered_from_pending_unaccepted() {
+    let mut state = RunRecoveryState::new("run-1", None);
+    state.note_accepted("cid-accepted".into());
+    state.pending_unaccepted.push_back(PendingRecoveryMessage {
+        text: "already processed".into(),
+        attachments: vec![],
+        client_message_id: Some("cid-accepted".into()),
+    });
+    state.pending_unaccepted.push_back(PendingRecoveryMessage {
+        text: "fresh message".into(),
+        attachments: vec![],
+        client_message_id: Some("cid-fresh".into()),
+    });
+    let batch = state.drain_replay_batch();
+    assert_eq!(batch.len(), 1);
+    assert_eq!(batch[0].client_message_id.as_deref(), Some("cid-fresh"));
+}
+
+/// When a message has no client_message_id it cannot be deduped.
+/// It should still be replayed (no crash, just cannot idempotency-check).
+#[test]
+fn message_without_client_id_always_replayed() {
+    let mut state = RunRecoveryState::new("run-1", None);
+    state.pending_unaccepted.push_back(PendingRecoveryMessage {
+        text: "no-id msg".into(),
+        attachments: vec![],
+        client_message_id: None,
+    });
+    let batch = state.drain_replay_batch();
+    assert_eq!(batch.len(), 1);
+    assert_eq!(batch[0].text, "no-id msg");
+}
