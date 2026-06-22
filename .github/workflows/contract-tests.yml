@@ -1,0 +1,193 @@
+name: v1.0.9 Contract Tests
+
+# v1.0.9 release-quality contract gates. Runs alongside the main
+# CI pipeline (`ci.yml`) but is a separate lane so the v1.0.9
+# contract surface can be validated independently.
+#
+# What this workflow adds beyond ci.yml:
+#   1. The v1.0.9-specific architecture gates (cross-platform bus,
+#      runtime contract spec, per-commit file-budget diff).
+#   2. The new fault-injection harness (send, permission, runtime
+#      contract types).
+#   3. The per-platform bus contract verification (Tauri + iOS WS
+#      parity for runtime_hub_* and diagnostics_*).
+#
+# Triggers:
+#   - On every PR that touches a v1.0.9 contract surface file
+#     (paths filter below).
+#   - On pushes to the v1.0.9 integration branch.
+#   - On `workflow_dispatch` for ad-hoc runs.
+#
+# The job is the same as ci.yml's frontend lane plus the
+# v1.0.9-specific steps. It does NOT replace ci.yml; both
+# run on a PR.
+
+on:
+  pull_request:
+    branches: [master, "integration/**"]
+    paths:
+      - "docs/architecture/v1.0.9-*.md"
+      - "scripts/architecture/**"
+      - "src-tauri/tests/**"
+      - "src/lib/runtime/**"
+      - "src-tauri/src/agent/**"
+      - "src-tauri/src/agent/permission_error.rs"
+      - "src-tauri/src/agent/constants.rs"
+      - "src-tauri/src/models.rs"
+      - "src/lib/types.ts"
+      - "src/lib/tauri-commands.ts"
+      - "src-tauri/src/lib.rs"
+      - "src-tauri/src/web_server/dispatch.rs"
+      - "src-tauri/src/web_server/ws.rs"
+      - "package.json"
+      - "e2e/**"
+  push:
+    branches:
+      - "integration/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract-tests:
+    name: v1.0.9 contract gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # needed for arch:budget:diff
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Version alignment
+        run: npm run version:check
+
+      # ── v1.0.9-specific architecture gates ──
+      - name: v1.0.9 architecture gate (strict)
+        # The strict mode adds arch:budget:diff — the per-commit
+        # file-budget check. We run it against the integration
+        # branch base so the diff range is the v1.0.9 wave.
+        run: |
+          # Resolve the merge base with the integration branch
+          # (master on PR; integration/v1.0.9-* on push).
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.base_ref }}"
+          else
+            BASE="master"
+          fi
+          echo "Diff base: $BASE"
+          npm run arch:check
+
+      - name: v1.0.9 cross-platform bus contract
+        # Dormant on integration HEAD (no runtime_hub_* code yet),
+        # but will activate once Agent B/D land their work.
+        run: npm run arch:cross-platform-bus
+
+      - name: v1.0.9 runtime contract spec
+        # The spec doc is frozen; this test pins it.
+        run: npm run arch:runtime-contract
+
+      - name: Per-commit file budget (strict, integration diff)
+        # Compare against the integration base branch so we see
+        # the v1.0.9 wave's diff.
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="origin/${{ github.base_ref }}"
+          else
+            BASE="origin/master"
+          fi
+          node scripts/architecture/file-budget-diff.mjs "$BASE"
+
+      # ── Standard frontend gates (subset of ci.yml) ──
+      - name: Sync SvelteKit
+        run: npx svelte-kit sync
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: i18n check
+        run: npm run i18n:check
+
+      - name: Vitest
+        run: npm test
+
+      - name: Build (smoke)
+        # We don't need a full prod build for the contract gate,
+        # but the svelte-kit sync + vite build is required so
+        # that downstream cargo clippy can find the build dir.
+        run: npm run build
+
+  # ── Rust fault-injection harness ──
+  rust-fault-injection:
+    name: Rust fault injection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Create frontend build stub
+        run: mkdir -p build
+
+      - name: Run send fault injection harness
+        run: |
+          cargo test --test send_fault_injection \
+            --manifest-path src-tauri/Cargo.toml -- --nocapture
+
+      - name: Run permission fault injection harness
+        run: |
+          cargo test --test permission_fault_injection \
+            --manifest-path src-tauri/Cargo.toml -- --nocapture
+
+      - name: Run runtime contract types test
+        run: |
+          cargo test --test runtime_contract_types \
+            --manifest-path src-tauri/Cargo.toml -- --nocapture
+
+  # ── v1.0.9 release-quality doc lint ──
+  doc-lint:
+    name: v1.0.9 doc lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Markdown link check
+        # Lightweight: just confirm the new v1.0.9 doc files
+        # are present and not empty. A full link checker would
+        # need a more complex setup; the doc-check script
+        # (`scripts/doc-check.mjs`) handles the rest.
+        run: |
+          for f in \
+            docs/architecture/v1.0.9-release-checklist.md \
+            docs/architecture/v1.0.9-rollback-checklist.md \
+            docs/architecture/v1.0.9-runtime-contract.md \
+            docs/architecture/v1.0.9-transaction-contracts.md \
+            docs/architecture/v1.0.9-shared-file-ownership.md \
+            docs/architecture/v1.0.9-wave0-baseline.md \
+            docs/architecture/cross-platform-capability-matrix.md
+          do
+            if [ ! -s "$f" ]; then
+              echo "::error::Missing or empty: $f"
+              exit 1
+            fi
+          done
+          echo "All v1.0.9 architecture docs present."
+
+      - name: Doc check
+        run: npm run doc:check
