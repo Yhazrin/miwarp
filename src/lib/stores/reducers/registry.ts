@@ -36,6 +36,7 @@ import { reduceUserMessage } from "./user-message";
 import { reduceUsageUpdate } from "./usage-update";
 import { reducePermissionDenied } from "./permission-denied";
 import { reduceRaw } from "./raw";
+import { reduceSessionLifecycle } from "./session-lifecycle";
 
 export const REDUCERS: Record<string, Reducer> = {
   rate_limit_event: reduceRateLimit,
@@ -60,4 +61,5 @@ export const REDUCERS: Record<string, Reducer> = {
   usage_update: reduceUsageUpdate,
   permission_denied: reducePermissionDenied,
   raw: reduceRaw,
+  session_lifecycle: reduceSessionLifecycle,
 };

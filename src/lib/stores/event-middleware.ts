@@ -42,6 +42,7 @@ const ATTENTION_EVENT_TYPES = new Set([
   "run_state",
   "session_recovering",
   "session_recovered",
+  "session_lifecycle",
   "protocol_desync",
 ]);
 
@@ -372,6 +373,9 @@ export class EventMiddleware {
         break;
       case "session_recovered":
         // Same: RecoveringBanner listens for the matching run_id.
+        break;
+      case "session_lifecycle":
+        // Projected by reduceSessionLifecycle in SessionStore.
         break;
       case "protocol_desync":
         // Same: notification-listener surfaces a "会话状态已重置" toast.

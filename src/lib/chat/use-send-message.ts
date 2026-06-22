@@ -134,6 +134,16 @@ export function createSendMessage(ctx: SendMessageContext): SendMessageHandle {
     latest = event;
   });
 
+  store.recoveryLifecycleListener = (recoveryState, generation) => {
+    if (recoveryState === "reconnecting" || recoveryState === "recovering") {
+      coordinator.setTransportPhase("recovering", { generation });
+    } else if (recoveryState === "recovered") {
+      coordinator.setTransportPhase("connected", { generation, reconcile: true });
+    } else if (recoveryState === "unrecoverable") {
+      coordinator.setTransportPhase("reconnecting", { generation });
+    }
+  };
+
   async function sendMessage(
     text: string,
     attachments: Attachment[],

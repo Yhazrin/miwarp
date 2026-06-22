@@ -3054,5 +3054,10 @@
   "protocol_session_recovering": "会话恢复中…（最多 {seconds} 秒）",
   "protocol_desync_toast": "会话状态已重置：协议解析失败过多。",
   "protocol_recovered_ok_toast": "会话已恢复",
-  "protocol_recovered_fail_toast": "会话恢复失败，已自动停止"
+  "protocol_recovered_fail_toast": "会话恢复失败，已自动停止",
+  "recovery_in_progress": "正在重新连接 Agent…",
+  "recovery_stdin_broken": "Agent 连接中断（stdin），正在恢复…",
+  "recovery_stdout_eof": "Agent 意外退出，正在恢复…",
+  "recovery_protocol_desync": "检测到协议错误，正在恢复…",
+  "recovery_unrecoverable": "会话无法自动恢复，请重试或打开诊断。"
 }

@@ -3157,5 +3157,10 @@
   "protocol_session_recovering": "Session recovering… (up to {seconds}s)",
   "protocol_desync_toast": "Session state reset: too many protocol parse failures.",
   "protocol_recovered_ok_toast": "Session recovered",
-  "protocol_recovered_fail_toast": "Session recovery failed; stopped automatically"
+  "protocol_recovered_fail_toast": "Session recovery failed; stopped automatically",
+  "recovery_in_progress": "Reconnecting to the agent…",
+  "recovery_stdin_broken": "Agent connection lost (stdin). Recovering…",
+  "recovery_stdout_eof": "Agent exited unexpectedly. Recovering…",
+  "recovery_protocol_desync": "Protocol error detected. Recovering…",
+  "recovery_unrecoverable": "Session could not be recovered. Retry or open diagnostics."
 }

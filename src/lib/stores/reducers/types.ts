@@ -190,4 +190,11 @@ export interface SessionStoreReducers {
   unknownEventCount: number;
   strictMode: boolean;
   hookEvents: HookEvent[];
+  recoveryNotice: string | null;
+  recoveryConnectionGeneration: number;
+  recoveryPhase: string;
+  recoveryState: string;
+  recoveryCrashReason: string | null;
+  recoveryUnrecoverable: boolean;
+  recoveryLifecycleListener: ((recoveryState: string, generation: number) => void) | null;
 }
