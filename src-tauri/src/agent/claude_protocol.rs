@@ -179,6 +179,8 @@ pub struct ProtocolState {
     mimo_tool_starts: HashMap<String, MimoToolStartInfo>,
     /// MiMo: extracted session ID from events.
     mimo_session_id: Option<String>,
+    /// Cursor Agent CLI stream-json parser.
+    cursor_parser: crate::agent::protocol::cursor::CursorProtocolParser,
 }
 
 /// Extract text content between simple XML tags: `<tag>content</tag>`.
@@ -234,6 +236,7 @@ impl ProtocolState {
             runtime_kind,
             mimo_tool_starts: HashMap::new(),
             mimo_session_id: None,
+            cursor_parser: crate::agent::protocol::cursor::CursorProtocolParser::new(),
         }
     }
 
@@ -316,6 +319,9 @@ impl ProtocolState {
         // Dispatch to MiMo protocol if runtime_kind is MiMoCode
         if self.runtime_kind == AgentRuntimeKind::MiMoCode {
             return self.map_event_mimo(run_id, raw);
+        }
+        if self.runtime_kind == AgentRuntimeKind::Cursor {
+            return self.map_event_cursor(run_id, raw);
         }
 
         let mut events = Vec::new();
@@ -1810,6 +1816,26 @@ impl ProtocolState {
         }
 
         events
+    }
+
+    fn map_event_cursor(&mut self, run_id: &str, raw: &Value) -> Vec<BusEvent> {
+        use crate::agent::protocol::{ParseResult, ProtocolParser};
+        let line = raw.to_string();
+        match self.cursor_parser.parse_line(run_id, &line) {
+            ParseResult::Events(events) => events,
+            ParseResult::Skip => vec![],
+            ParseResult::Raw(_) => vec![BusEvent::Raw {
+                run_id: run_id.to_string(),
+                source: "cursor_stdout".to_string(),
+                data: raw.clone(),
+            }],
+            ParseResult::Error(message) => vec![BusEvent::RunState {
+                run_id: run_id.to_string(),
+                state: "failed".to_string(),
+                exit_code: None,
+                error: Some(message),
+            }],
+        }
     }
 }
 

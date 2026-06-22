@@ -179,6 +179,12 @@ pub fn build_session_args(
             "{} does not support session_actor mode",
             runtime_kind
         )),
+        AgentRuntimeKind::Cursor => Ok(
+            crate::agent::control_plane::adapters::cursor::build_cursor_session_args(
+                settings,
+                if is_new { None } else { session_id },
+            ),
+        ),
     }
 }
 

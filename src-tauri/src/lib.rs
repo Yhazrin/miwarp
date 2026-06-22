@@ -132,6 +132,7 @@ pub fn run() {
         .manage(new_process_map())
         .manage(new_actor_session_map())
         .manage(CliInfoCache::new())
+        .manage(commands::runtime_hub::RuntimeControlPlaneState::default())
         .manage(Arc::new(EventWriter::new()))
         .manage(SpawnLocks::new())
         .manage(ShutdownGate::new())
@@ -239,6 +240,14 @@ pub fn run() {
             commands::session::respond_elicitation,
             commands::session::get_session_runtime_status,
             commands::control::get_cli_info,
+            commands::runtime_hub::runtime_hub_list,
+            commands::runtime_hub::runtime_hub_health,
+            commands::runtime_hub::runtime_hub_diagnose,
+            commands::runtime_hub::runtime_hub_set_default,
+            commands::runtime_hub::runtime_hub_preview_config,
+            commands::runtime_hub::runtime_hub_apply_config,
+            commands::runtime_hub::runtime_hub_start_config_watch,
+            commands::runtime_hub::runtime_hub_stop_config_watch,
             commands::teams::list_teams,
             commands::teams::get_team_config,
             commands::teams::list_team_tasks,

@@ -131,6 +131,8 @@ pub enum AgentRuntimeKind {
     Codex,
     /// OpenCode CLI (`opencode`)
     OpenCode,
+    /// Cursor Agent CLI (`agent`)
+    Cursor,
 }
 
 impl std::fmt::Display for AgentRuntimeKind {
@@ -140,6 +142,7 @@ impl std::fmt::Display for AgentRuntimeKind {
             Self::MiMoCode => write!(f, "mimo"),
             Self::Codex => write!(f, "codex"),
             Self::OpenCode => write!(f, "opencode"),
+            Self::Cursor => write!(f, "cursor"),
         }
     }
 }
@@ -151,6 +154,7 @@ impl AgentRuntimeKind {
             "mimo" | "mimocode" => Self::MiMoCode,
             "codex" => Self::Codex,
             "opencode" => Self::OpenCode,
+            "cursor" => Self::Cursor,
             _ => Self::ClaudeCode,
         }
     }
@@ -823,7 +827,9 @@ impl RunMeta {
         self.execution_path.clone().unwrap_or_else(|| {
             let rk = self.resolved_runtime_kind();
             match rk {
-                AgentRuntimeKind::ClaudeCode => ExecutionPath::SessionActor,
+                AgentRuntimeKind::ClaudeCode | AgentRuntimeKind::Cursor => {
+                    ExecutionPath::SessionActor
+                }
                 AgentRuntimeKind::MiMoCode => ExecutionPath::SessionActor,
                 AgentRuntimeKind::Codex | AgentRuntimeKind::OpenCode => ExecutionPath::PipeExec,
             }
@@ -842,7 +848,9 @@ impl RunMeta {
         self.protocol_kind.clone().unwrap_or_else(|| {
             let rk = self.resolved_runtime_kind();
             match rk {
-                AgentRuntimeKind::ClaudeCode => RuntimeProtocolKind::StreamJson,
+                AgentRuntimeKind::ClaudeCode | AgentRuntimeKind::Cursor => {
+                    RuntimeProtocolKind::StreamJson
+                }
                 AgentRuntimeKind::MiMoCode | AgentRuntimeKind::OpenCode => {
                     RuntimeProtocolKind::StreamJson
                 }

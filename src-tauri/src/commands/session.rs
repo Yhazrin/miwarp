@@ -668,6 +668,16 @@ pub(crate) async fn start_session_impl(
             )
             .await?
         }
+        AgentRuntimeKind::Cursor => {
+            spawn_cursor_process(
+                effective_cwd,
+                &adapter_settings,
+                &session_mode,
+                resume_session_id.as_deref(),
+                is_new,
+            )
+            .await?
+        }
         _ => {
             // ClaudeCode (default): existing spawn logic
             spawn_cli_process(
@@ -1838,6 +1848,69 @@ async fn spawn_mimo_process(
     let stdin = child.stdin.take().ok_or("mimo: no stdin")?;
     let stdout = child.stdout.take().ok_or("mimo: no stdout")?;
     let stderr = child.stderr.take().ok_or("mimo: no stderr")?;
+
+    Ok((child, stdin, stdout, stderr))
+}
+
+async fn spawn_cursor_process(
+    cwd: &str,
+    settings: &adapter::AdapterSettings,
+    session_mode: &SessionMode,
+    resume_session_id: Option<&str>,
+    is_new: bool,
+) -> Result<
+    (
+        tokio::process::Child,
+        tokio::process::ChildStdin,
+        tokio::process::ChildStdout,
+        tokio::process::ChildStderr,
+    ),
+    String,
+> {
+    use crate::agent::control_plane::adapters::cursor::{
+        build_cursor_session_args, resolve_cursor_agent_binary,
+    };
+
+    let binary = resolve_cursor_agent_binary().ok_or("Cursor Agent CLI (agent) not found")?;
+    let resume_id = if is_new { None } else { resume_session_id };
+    let mut args = build_cursor_session_args(settings, resume_id);
+
+    match session_mode {
+        SessionMode::Continue => {
+            args.push("--continue".into());
+        }
+        SessionMode::Fork => {
+            return Err("Fork mode not supported for Cursor Agent CLI".into());
+        }
+        SessionMode::New | SessionMode::Resume => {}
+    }
+
+    log::debug!(
+        "[session] spawning Cursor Agent: {} {}, cwd={}",
+        binary,
+        args.join(" "),
+        cwd
+    );
+
+    let mut cmd = tokio::process::Command::new(&binary);
+    for arg in &args {
+        cmd.arg(arg);
+    }
+
+    cmd.current_dir(cwd)
+        .env("PATH", crate::agent::claude_stream::augmented_path())
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+
+    let child = cmd
+        .spawn()
+        .map_err(|e| format!("Failed to spawn cursor agent: {e}"))?;
+
+    let mut child = child;
+    let stdin = child.stdin.take().ok_or("cursor: no stdin")?;
+    let stdout = child.stdout.take().ok_or("cursor: no stdout")?;
+    let stderr = child.stderr.take().ok_or("cursor: no stderr")?;
 
     Ok((child, stdin, stdout, stderr))
 }
