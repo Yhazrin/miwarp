@@ -134,7 +134,13 @@
   import { TeamStore } from "$lib/stores/team-store.svelte";
   import { KeybindingStore } from "$lib/stores/keybindings.svelte";
   import { getTransport } from "$lib/transport";
-  import { LAYOUT_CHROME_CONTEXT_KEY, type LayoutChromeContext } from "$lib/layout-chrome-context";
+  import {
+    LAYOUT_CHROME_CONTEXT_KEY,
+    type LayoutChromeContext,
+    SETTINGS_CACHE_CONTEXT_KEY,
+    type SettingsCacheContext,
+    routeNeedsLayoutContentPanel,
+  } from "$lib/layout-chrome-context";
   import { themeStore } from "$lib/stores/theme-store.svelte";
   import { workspacesStore } from "$lib/stores/workspaces-store.svelte";
   import ToastHost from "$lib/components/ToastHost.svelte";
@@ -289,6 +295,24 @@
   let sidebarFavorites = $state<PromptFavorite[]>([]);
   let favoriteRunIds = $derived(new Set(sidebarFavorites.map((f) => f.runId)));
   let settings = $state<UserSettings | null>(null);
+  let settingsLoadPromise: Promise<void> | null = null;
+  function startSettingsLoad(): Promise<void> {
+    if (!settingsLoadPromise) {
+      settingsLoadPromise = loadSettings();
+    }
+    return settingsLoadPromise;
+  }
+  // v1.0.9 perf: expose layout-loaded settings to child pages (e.g. /settings)
+  // so they can skip a redundant getUserSettings() IPC call on mount.
+  setContext<SettingsCacheContext>(SETTINGS_CACHE_CONTEXT_KEY, {
+    get settings() {
+      return settings;
+    },
+    whenReady: async () => {
+      await startSettingsLoad();
+      return settings;
+    },
+  });
   let sidebarOpen = $state(true);
   let projectCwd = $state("");
   let pinnedCwds = $state<string[]>([]);
@@ -1072,7 +1096,7 @@
 
     // Fire all three concurrently — they are independent.
     void initBackendCapabilities().then(() => loadRuns());
-    void loadSettings();
+    void startSettingsLoad();
 
     // v1.0.6 / 5.16: restore last active session on cold start.
     // Only redirect if the URL has no explicit `run` param and we're on /chat.
@@ -1100,13 +1124,13 @@
     window.addEventListener("pointerdown", unlockSoundOnce, { once: true, capture: true });
     window.addEventListener("keydown", unlockSoundOnce, { once: true, capture: true });
     loadSidebarFavorites();
-    loadSessionFolders();
+    // v1.0.9 perf: session folders + scheduled tasks load via $effect below
+    // when needsLayoutContentPanel becomes true (cold /chat) or on first nav
+    // from a non-sidebar route (e.g. /settings → /chat).
     loadAgentSettingsCache();
     // v1.0.6 / 3.10 (A3): pre-warm the CLI command cache so the slash menu
     // has a populated list before any session has been started.
     void loadCliInfo();
-    void scheduledTasksStore.loadTasks();
-    void scheduledTasksStore.loadAllRuns();
     themeStore.init();
 
     // Read the local version only. Update discovery is owned by AppUpdateCoordinator.
@@ -1671,9 +1695,13 @@
     }
   }
 
-  // Build enriched project folder tree (project paths with nested logical sub-folders)
-  let enrichedProjectFolders = $derived.by(() =>
-    buildEnrichedProjectFolders(
+  // v1.0.9 perf: skip expensive folder tree computation on pages that don't
+  // render the sidebar content panel (settings, usage, release-notes, etc.).
+  // On those routes the sidebar only shows the icon rail; building the enriched
+  // tree from runs + sessionFolders + favorites + scheduledTasks is wasted work.
+  let enrichedProjectFolders = $derived.by(() => {
+    if (!needsLayoutContentPanel) return [] as ReturnType<typeof buildEnrichedProjectFolders>;
+    return buildEnrichedProjectFolders(
       runs,
       sessionFolders,
       favoriteRunIds,
@@ -1681,8 +1709,8 @@
       removedCwds,
       scheduledTasksStore.tasks,
       scheduledTasksStore.runs,
-    ),
-  );
+    );
+  });
 
   // Selectable folders: real project folders (exclude Uncategorized)
   const selectableFolders = $derived(enrichedProjectFolders.filter((f) => !f.isUncategorized));
@@ -1691,6 +1719,7 @@
   // consumers that need to render a cwd list). Mirrors enrichedProjectFolders
   // in a lightweight shape so chat +page.svelte doesn't have to recompute it.
   $effect(() => {
+    if (!needsLayoutContentPanel) return;
     workspacesStore.list = enrichedProjectFolders.map((f) => ({
       cwd: f.cwd,
       label: f.isUncategorized ? t("sidebar_uncategorized") : cwdDisplayLabel(f.cwd),
@@ -1725,6 +1754,7 @@
 
   // Defensive fallback: reset projectCwd only when it's not pinned and not in the tree
   $effect(() => {
+    if (!needsLayoutContentPanel) return;
     if (!projectCwd) return;
     const key = normalizeCwd(projectCwd);
     const validCwds = new Set([
@@ -1759,9 +1789,20 @@
 
   let isSettingsPage = $derived(currentPath.startsWith("/settings"));
   // Whether the current page uses the layout's content panel (vs managing its own layout)
-  let needsLayoutContentPanel = $derived(
-    isChatPage || isPluginsPage || isExplorerPage || isMemoryPage || isTeamsPage,
-  );
+  let needsLayoutContentPanel = $derived(routeNeedsLayoutContentPanel(currentPath));
+
+  // v1.0.9 perf: deferred sidebar data — load session folders and scheduled
+  // tasks when the user first navigates to a sidebar-dependent page. On cold
+  // start at /settings this avoids 3 IPC calls that would otherwise run in
+  // onMount for data the settings page never renders.
+  let _sidebarDataLoaded = false;
+  $effect(() => {
+    if (!needsLayoutContentPanel || _sidebarDataLoaded) return;
+    _sidebarDataLoaded = true;
+    loadSessionFolders();
+    void scheduledTasksStore.loadTasks();
+    void scheduledTasksStore.loadAllRuns();
+  });
 
   // Icon rail visibility (driven by user setting, default true)
   const iconRailEnabled = $derived(settings?.icon_rail_enabled !== false);
@@ -2039,6 +2080,7 @@
 
   // Persist expandedProjects + prune stale keys (only after first successful load)
   $effect(() => {
+    if (!needsLayoutContentPanel) return;
     if (!runsLoadSucceededOnce) return;
     const validKeys = new Set(enrichedProjectFolders.map((f) => f.folderKey));
     const pruned = [...expandedProjects].filter((k) => validKeys.has(k));

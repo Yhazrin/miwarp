@@ -3,7 +3,7 @@
    * Settings orchestrator (v1.0.9 perf): tab-scoped loading, no mount-time
    * deferHeavy IPC. Heavy work runs only when a tab is first activated.
    */
-  import { onMount } from "svelte";
+  import { getContext, onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
   import { beginRouteTransition, endRouteTransition } from "$lib/utils/route-transition";
@@ -17,6 +17,11 @@
   import { t } from "$lib/i18n/index.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { getTransport } from "$lib/transport";
+  import {
+    SETTINGS_CACHE_CONTEXT_KEY,
+    type SettingsCacheContext,
+    resolveLayoutCachedSettings,
+  } from "$lib/layout-chrome-context";
   import { applyUiZoomCssVar, clampUiZoom } from "$lib/utils/ui-zoom";
   import {
     applySoundFeedbackLevel,
@@ -332,6 +337,19 @@
 
     void (async () => {
       try {
+        // v1.0.9 perf: use layout-cached settings to skip the mount-time
+        // getUserSettings() IPC round-trip. The layout already loaded settings
+        // during its own onMount; reading from context avoids a ~10-30ms
+        // duplicate call that blocks the settings page first paint.
+        const cache = getContext<SettingsCacheContext>(SETTINGS_CACHE_CONTEXT_KEY);
+        const cached = await resolveLayoutCachedSettings(cache);
+        if (cached && isAlive(gen)) {
+          perfMark("settings.firstOpen.hydrate", () => hydrateFromSettings(cached), {
+            tab: "general",
+            source: "context-cache",
+          });
+          return;
+        }
         const guard = createMountedGuard(() => isAlive(gen));
         const loaded = await perfMarkAsync(
           "settings.firstOpen",
