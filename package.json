@@ -47,6 +47,7 @@
     "version:check": "node scripts/check-versions.mjs",
     "release:notes": "node scripts/generate-release-notes.mjs",
     "release": "node scripts/release.mjs",
+    "perf:compare": "node scripts/perf-compare.mjs",
     "prebuild:dmg": "node scripts/clean-dmg.mjs",
     "build:dmg": "TAURI_TARGET=aarch64-apple-darwin npm run prebuild:dmg && npm run tauri build -- --target aarch64-apple-darwin",
     "build:dmg:universal": "TAURI_TARGET=universal-apple-darwin npm run prebuild:dmg && npm run tauri build -- --target universal-apple-darwin",
