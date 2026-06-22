@@ -89,6 +89,16 @@
     getCachedRenderLimit,
   } from "$lib/chat/chat-view-cache.svelte";
   import { snapshotChatBootstrap } from "$lib/chat/chat-bootstrap-cache";
+  import {
+    ContinuityCapsuleController,
+    type ContinuitySaveInput,
+    type PendingRestore,
+  } from "$lib/chat/continuity-capsule-controller";
+  import {
+    sanitizeDraft as sanitizeDraftForCapsule,
+    type ContinuityAnchor,
+    type ContinuityDraft,
+  } from "$lib/chat/continuity-capsule";
 
   // ── Helpers ──
 
@@ -591,6 +601,210 @@
   // ── Computed (thin wrappers for template convenience) ──
   let sending = $derived(store.phase === "spawning");
 
+  // ── Continuity Capsule (v1.0.9 "Trustworthy Reload & Session Continuity") ──
+  // Local-first, versioned, capacity-bounded supplement to chat-view-cache
+  // that captures per-run state the existing cache does not: unsent drafts,
+  // the cwd at save time, the first visible timeline anchor + offset (for
+  // stable scroll restoration across reloads), the tool filter, the
+  // process visibility, and a per-run Inspector (ToolActivity sidebar)
+  // snapshot. Hard rules: never persist tokens / API keys / env values;
+  // never persist raw attachment bytes; LRU + 14-day TTL on read; schema
+  // versioned; corruption-safe degrade.
+
+  /** Anchor: the first visible timeline row at the time of the last save.
+   *  Updated via a rAF-coalesced effect so the DOM read happens off the
+   *  hot reactive path. */
+  let currentAnchor: ContinuityAnchor | null = $state(null);
+
+  /** Track which run the controller has already applied a restore for.
+   *  Latched so repeated effect runs (e.g. during streaming) don't
+   *  re-apply the same restore. */
+  let _restoreAppliedFor = "";
+
+  function buildDraftFromPrompt(): ContinuityDraft | null {
+    const prompt = promptRef;
+    if (!prompt || typeof prompt.getInputSnapshot !== "function") return null;
+    let snap: PromptInputSnapshot | null = null;
+    try {
+      snap = prompt.getInputSnapshot() as PromptInputSnapshot;
+    } catch (e) {
+      dbgWarn("chat", "continuity.snapshot.failed", { error: String(e) });
+      return null;
+    }
+    return sanitizeDraftForCapsule(snap);
+  }
+
+  function captureContinuityInput(): ContinuitySaveInput | null {
+    const runId = store.run?.id;
+    if (!runId) return null;
+    return {
+      runId,
+      cwd: store.effectiveCwd ?? "",
+      draft: buildDraftFromPrompt(),
+      toolFilter: tl.toolFilter,
+      processVisibility,
+      anchor: currentAnchor,
+      inspector: {
+        toolPanelActiveTab,
+        requestedPreviewPath: requestedPreviewPath ?? null,
+        sidebarCollapsed,
+      },
+    };
+  }
+
+  const continuityController = new ContinuityCapsuleController({
+    capture: captureContinuityInput,
+    debounceMs: 500,
+    onLog: (event, detail) => dbg("continuity", event, detail),
+  });
+
+  // Attach on mount; dispose on unmount. The cleanup function is the
+  // Svelte 5 idiom for tying resource teardown to the component lifetime.
+  $effect(() => {
+    continuityController.attach();
+    return () => {
+      continuityController.flush("dispose");
+      continuityController.dispose();
+    };
+  });
+
+  /** Track the first visible row in the chat area so the controller can
+   *  persist a stable anchor (entryId + offset) for scroll restoration.
+   *  Coalesced via rAF to avoid DOM thrash on every render. */
+  $effect(() => {
+    // Touch the dependencies that should trigger a re-read.
+    const _timeline = store.timeline;
+    const _area = chatAreaRef;
+    if (!_area) return;
+    let cancelled = false;
+    const id = requestAnimationFrame(() => {
+      if (cancelled) return;
+      const area = chatAreaRef;
+      if (!area) return;
+      const rootTop = area.getBoundingClientRect().top + 1;
+      const el = area.querySelector<HTMLElement>("[data-entry-id]");
+      if (!el) {
+        currentAnchor = null;
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      if (rect.bottom <= rootTop) {
+        currentAnchor = null;
+        return;
+      }
+      const entryId = el.getAttribute("data-entry-id") ?? "";
+      if (!entryId) {
+        currentAnchor = null;
+        return;
+      }
+      currentAnchor = { entryId, offsetPx: Math.max(0, Math.round(rect.top - rootTop)) };
+    });
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(id);
+    };
+  });
+
+  /** Watch high-level save-relevant state and trigger a debounced save.
+   *  The prompt text itself is captured at flush time via the controller
+   *  (it reads the latest `promptRef.getInputSnapshot()`); we don't
+   *  subscribe to the input's per-keystroke $state here. The pagehide
+   *  / beforeNavigate / dispose paths guarantee a final flush. */
+  $effect(() => {
+    const id = store.run?.id;
+    if (!id) return;
+    // Touch the rest of the state to create $effect dependencies.
+    void store.effectiveCwd;
+    void tl.toolFilter;
+    void tl.renderLimit;
+    void toolPanelActiveTab;
+    void sidebarCollapsed;
+    void requestedPreviewPath;
+    void processVisibility;
+    void currentAnchor;
+    continuityController.scheduleSave(id);
+  });
+
+  /** Wrap the team dispatcher's value-change handler so user keystrokes
+   *  also trigger a debounced continuity save. The team handler itself
+   *  stays untouched; the wrapper keeps the two side-effects orthogonal. */
+  function handleInputValueChangeWithContinuity(value: string): void {
+    try {
+      team.handleInputValueChange(value);
+    } finally {
+      const id = store.run?.id;
+      if (id) continuityController.scheduleSave(id);
+    }
+  }
+
+  function applyContinuityRestore(runId: string, restore: PendingRestore): void {
+    dbg("continuity", "restore.apply", { runId, savedAt: restore.savedAt });
+    // Draft first — restores both the visible input and the attachment
+    // queue. Empty / null draft is fine (no input state change).
+    if (restore.draft) {
+      const prompt = promptRef;
+      if (prompt?.restoreSnapshot) {
+        const snap: PromptInputSnapshot = {
+          text: restore.draft.text,
+          attachments: restore.draft.attachments,
+          pastedBlocks: restore.draft.pastedBlocks,
+          pathRefs: restore.draft.pathRefs,
+        };
+        try {
+          prompt.restoreSnapshot(snap);
+        } catch (e) {
+          dbgWarn("chat", "continuity.restore.draft.failed", { error: String(e) });
+        }
+      }
+    }
+    // Tool filter — set after draft so it wins ties.
+    if (restore.toolFilter) {
+      tl.setToolFilter(restore.toolFilter);
+    } else {
+      tl.setToolFilter(null);
+    }
+    // Inspector (right-side panel) — direct assignments; the cache
+    // single-source-of-truth pattern still works because these are
+    // local $state.
+    toolPanelActiveTab = restore.inspector.toolPanelActiveTab;
+    requestedPreviewPath = restore.inspector.requestedPreviewPath;
+    sidebarCollapsed = restore.inspector.sidebarCollapsed;
+    // Anchor: wait for the timeline to populate, then expand renderLimit
+    // and scroll. `scrollToMessage` already calls `expandRenderLimitTo`
+    // internally; we just need to wait for store.timeline to contain the
+    // anchor entry.
+    if (restore.anchor) {
+      const anchor = restore.anchor;
+      // Find the matching entry id in the loaded timeline. If not found
+      // after a short grace window, fall back to bottom (no dead loop).
+      let attempts = 0;
+      const tryRestoreAnchor = () => {
+        attempts++;
+        const match = store.timeline.find((e) => e.id === anchor.entryId);
+        if (match) {
+          isChatAutoScroll = false;
+          readingHistory = true;
+          scrollToMessage(anchor.entryId).catch((e) => {
+            dbgWarn("chat", "continuity.anchor.scroll.failed", { error: String(e) });
+          });
+        } else if (attempts < 6) {
+          // Timeline may still be replaying events. Try a few more times
+          // before giving up.
+          setTimeout(tryRestoreAnchor, 80);
+        } else {
+          dbg("continuity", "restore.anchor.missing", { entryId: anchor.entryId });
+          // Anchor not found — fall back to bottom.
+          requestAnimationFrame(() => {
+            if (chatAreaRef) chatAreaRef.scrollTop = chatAreaRef.scrollHeight;
+            isChatAutoScroll = true;
+            readingHistory = false;
+          });
+        }
+      };
+      tryRestoreAnchor();
+    }
+  }
+
   // Watch runId changes → load run + subscribe middleware
   // Gated on middlewareReady to ensure listeners are registered before subscribing
   $effect(() => {
@@ -626,6 +840,13 @@
       if (!id) {
         // Case 1: explicit new chat (?new=1) → start empty
         if (isNewChat) {
+          // Flush + drop the previous run's pending debounce; the previous
+          // run's capsule entry is intentionally preserved so a reload of
+          // the old run still restores its draft.
+          const prev = store.run?.id;
+          if (prev) continuityController.flush("manual", prev);
+          continuityController.switchRun("");
+          _restoreAppliedFor = "";
           chatViewCache.lastRunId = "";
           store.loadRun("", xtermRef);
           cancelProgressive();
@@ -669,10 +890,16 @@
               restoringScroll = false;
             });
           });
+          // Re-attach the controller to the in-memory run (navigation
+          // return path) so subsequent typing saves land in its capsule
+          // entry.
+          continuityController.switchRun(store.run.id);
           return;
         }
 
         // Case 4: truly empty → new empty run
+        continuityController.switchRun("");
+        _restoreAppliedFor = "";
         store.loadRun("", xtermRef);
         cancelProgressive();
         return;
@@ -680,6 +907,27 @@
 
       // Update lastChatHref when navigating to a run URL
       updateLastChatHref(id, $page.url.href);
+
+      // Flush the previous run before switching so its latest state is
+      // captured in the capsule (the conservative "save on leave" path
+      // complements the pagehide/beforeNavigate flush).
+      const prev = continuityController.__getCurrentRunId();
+      if (prev && prev !== id) {
+        continuityController.flush("manual", prev);
+        continuityController.switchRun(id);
+      } else if (!prev) {
+        continuityController.switchRun(id);
+      }
+      // Seed the pending restore for the new run id (one-shot). If the
+      // user navigates to a different run before consume, the latch
+      // clears it via switchRun → noApplyPendingRestore path.
+      void continuityController.seedAsync(id).then((ready) => {
+        if (!ready) {
+          // No capsule entry → no restore, just clear the latch so a
+          // later reload of the same run can re-seed.
+          _restoreAppliedFor = id;
+        }
+      });
 
       // If store already holds an active session for this run, skip redundant loadRun
       if (store.run?.id === id && store.sessionAlive) {
@@ -696,6 +944,24 @@
 
       loadRunProgressive(id, xtermRef);
     });
+  });
+
+  /** Apply a pending continuity restore once the run is loaded and the
+   *  timeline contains the anchor entry. The effect re-runs whenever
+   *  store.run.id or the timeline length changes; the `_restoreAppliedFor`
+   *  latch ensures we apply the restore exactly once per run id. */
+  $effect(() => {
+    const id = store.run?.id;
+    if (!id) return;
+    if (_restoreAppliedFor === id) return;
+    if (tl.loadingRunId) return; // still loading
+    if (store.phase === "loading") return;
+    if (store.timeline.length === 0) return;
+    const restore = continuityController.consumePendingRestore();
+    _restoreAppliedFor = id;
+    if (restore && restore.runId === id) {
+      applyContinuityRestore(id, restore);
+    }
   });
 
   // Handle scrollTo for already-loaded runs (e.g., clicking a second search result
@@ -1095,6 +1361,10 @@
       requestedPreviewPath,
       renderLimit: tl.renderLimit,
     });
+    // Flush the continuity capsule so the next reload sees the latest
+    // draft / anchor / inspector state. Synchronous localStorage write
+    // is fine here — the page is about to be torn down.
+    continuityController.flush("beforeNavigate");
     if (to?.url.pathname.startsWith("/settings") && settings) {
       snapshotChatBootstrap(settings, agentSettings);
     }
@@ -1593,7 +1863,7 @@
                   handleFastModeSwitch,
                   handlePlatformChange,
                   handleAuthModeChange,
-                  handleInputValueChange: team.handleInputValueChange,
+                  handleInputValueChange: handleInputValueChangeWithContinuity,
                   handlePermissionRespond,
                   handleElicitationRespond,
                   handleBtwSend,
@@ -1767,7 +2037,7 @@
               handleFastModeSwitch,
               handlePlatformChange,
               handleAuthModeChange,
-              handleInputValueChange: team.handleInputValueChange,
+              handleInputValueChange: handleInputValueChangeWithContinuity,
               handlePermissionRespond,
               handleElicitationRespond,
               handleBtwSend,
