@@ -224,3 +224,96 @@ part of `npm test`.
 To regenerate this document, run the two contract scripts and pipe their
 output into a draft; the tables above were captured from the script
 output on 2026-06-21.
+
+---
+
+## 7. v1.0.9 Migration Compatibility Matrix
+
+> **Date**: 2026-06-22
+> **Branch**: integration/v1.0.9-runtime-hub
+> **Source contract**: v1.0.9-runtime-contract.md, v1.0.9-transaction-contracts.md
+
+The table below shows the platform-by-platform state of the v1.0.9
+features. The "Status" column uses the following vocabulary:
+
+- **Supported**: the feature is wired through the platform's full
+  stack (Tauri IPC, WS, or native API) and tested in the e2e
+  golden-path spec.
+- **Dormant**: the platform's wire surface accepts the feature but
+  the UI / native code is not yet implemented. The contract is
+  in place; the implementation is the next agent's work.
+- **Desktop-only**: the feature is intentionally limited to the
+  desktop (e.g. it depends on a tray icon, global hotkey, or
+  native plugin).
+- **N/A**: the feature is not applicable to this platform (e.g.
+  Tauri IPC does not apply to iOS).
+
+The matrix is enforced by:
+
+- `arch:cross-platform-bus` — runtime_hub_* and diagnostics_* must
+  be cross-platform (Tauri + iOS WS).
+- `arch:runtime-contract` — 4 runtime_hub commands, 12 capability
+  flags, full §3/§9/§4 spec coverage.
+- `arch:tauri-contract` and `arch:ios-ws-contract` — the baseline
+  cross-platform wire-surface parity.
+
+| Feature / Capability | Desktop (Tauri) | Browser WS | iOS | Android |
+|---|---|---|---|---|
+| **Runtime Hub — list** (`runtime_hub_list`) | Dormant (Agent B) | Dormant (Agent B) | Dormant (Agent B) | Dormant (Agent B) |
+| **Runtime Hub — health** (`runtime_hub_health`) | Dormant (Agent B) | Dormant (Agent B) | Dormant (Agent B) | Dormant (Agent B) |
+| **Runtime Hub — diagnose** (`runtime_hub_diagnose`) | Dormant (Agent B) | Dormant (Agent B) | Dormant (Agent B) | Dormant (Agent B) |
+| **Runtime Hub — set default** (`runtime_hub_set_default`) | Dormant (Agent B) | Dormant (Agent B) | Dormant (Agent B) | Dormant (Agent B) |
+| **RuntimeCapabilities** (12 flags in §3) | Dormant (Agent C) | N/A | Dormant (Agent C) | Dormant (Agent C) |
+| **Capability → UI degradation** (§9 map) | Dormant (Agent C/E) | N/A | Dormant (Agent C/E) | Dormant (Agent C/E) |
+| **SendTransaction** (typed, 6 states) | Supported (Agent A landed Phase 1/2) | Dormant (browser SPA uses HTTP polling) | Dormant (iOS uses send_session_message) | Dormant |
+| **PermissionTransaction** (typed errors, NEVER_ALLOW_TOOLS) | Supported (Agent A) | Dormant | Dormant (iOS uses respond_permission) | Dormant |
+| **RecoveryState machine** (5 states, 30s window) | Supported (Agent A) | Dormant | Dormant | Dormant |
+| **ActorLifecycle** (6 states incl. CrashReason) | Supported (Agent A) | N/A (no actor model in browser) | Dormant (iOS consumes as BusEvent) | Dormant |
+| **accepted_client_message_ids** (FIFO ledger) | Supported (Agent A) | N/A | N/A | N/A |
+| **DiagnosticEvent** (BusEvent::Diagnostic*) | Dormant (Agent D) | Dormant (Agent D) | Dormant (Agent D) | Dormant (Agent D) |
+| **RuntimeReady** (BusEvent::Runtime*) | Dormant (Agent B) | Dormant (Agent B) | Dormant (Agent B) | Dormant (Agent B) |
+| **RuntimeHealthChanged** (BusEvent::Runtime*) | Dormant (Agent B) | Dormant (Agent B) | Dormant (Agent B) | Dormant (Agent B) |
+| **Diagnostics page** (UI route `/diagnostics`) | Supported (Agent D, src/routes/diagnostics) | N/A (browser SPA does not have a /diagnostics page) | N/A | N/A |
+| **Diagnostics export** (zip with redacted manifest) | Dormant (Agent D) | N/A | N/A | N/A |
+| **iOS reconnect storm handling** (10 in 5s) | N/A | N/A | Dormant (Agent G) | N/A |
+| **Android reconnect storm handling** | N/A | N/A | N/A | Dormant (Agent G) |
+
+### 7.1. Known cross-platform gaps for v1.0.9
+
+These gaps are documented for the release notes — they are NOT
+contract violations. Each row points to the agent that owns the
+follow-up.
+
+| Gap | Affected platforms | Owner | Workaround |
+|---|---|---|---|
+| Runtime Hub is not yet wired through the UI | All | Agent C (composable) | UI falls back to the v1.0.8 single-runtime model |
+| Diagnostics page is a stub on the SPA | Browser WS | Agent D | SPA shows "diagnostics not available in browser mode" |
+| iOS app consumes `RuntimeReady` / `RuntimeHealthChanged` as `.raw` | iOS | Agent G | iOS UI ignores; falls back to v1.0.8 polling |
+| Android parity is forward-looking; not all v1.0.9 contracts apply | Android | Agent G | Android continues on v1.0.8 surface; tracked for v1.0.10 |
+
+### 7.2. Cross-platform parity verification (CI gate)
+
+The matrix is enforced at PR time by:
+
+```bash
+npm run arch:check
+```
+
+This runs in order:
+
+1. `arch:direction` — dependency direction matrix
+2. `arch:layers` — Tauri/transport cross-layer leakage
+3. `arch:cycle` — circular import detection
+4. `arch:budget` — file size budget
+5. `arch:tauri-contract` — Desktop IPC CMD ↔ handler parity
+6. `arch:ios-ws-contract` — iOS WS method ↔ dispatch parity
+7. `arch:cross-platform-bus` — runtime_hub + diagnostics cross-platform
+8. `arch:runtime-contract` — v1.0.9 spec shape (4 commands, 12 capabilities)
+
+For release tags, run `npm run arch:check:strict` which adds the
+per-commit file-budget diff gate.
+
+A red cell in the matrix above is NOT a release blocker per se — it
+is a documented gap. A red gate (e.g. a Rust variant that the
+frontend does not know about) IS a release blocker; the contract
+test will fail and the integrator will reject the commit.
