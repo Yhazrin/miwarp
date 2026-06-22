@@ -7,6 +7,7 @@
 //! that previously caused race conditions.
 
 use crate::agent::adapter::ActorSessionMap;
+use crate::agent::attachment::AttachmentData;
 use crate::agent::claude_protocol::{validate_bus_event, ProtocolState};
 use crate::agent::notify::notify_if_background;
 use crate::agent::recovery::{CrashReason, RecoveryState};
@@ -95,13 +96,9 @@ struct PendingInteractiveRequest {
 
 // ── Public types ──
 
-/// Attachment data for multimodal messages (images, documents).
-#[derive(Debug, Clone, serde::Deserialize)]
-pub struct AttachmentData {
-    pub content_base64: String,
-    pub media_type: String,
-    pub filename: String,
-}
+// `AttachmentData` lives in `crate::agent::attachment` (leaf module) so
+// `session_actor` and `runtime_recovery` can both depend on it without
+// creating an import cycle.
 
 /// Commands sent to the actor via its mailbox.
 pub enum ActorCommand {
@@ -2870,36 +2867,12 @@ impl SessionActor {
     }
 }
 
-/// v1.0.9 Phase 2: insert a client_message_id into the accepted ledger.
-/// FIFO-evicts the oldest entry when at capacity. Pure function so it can
-/// be unit-tested without spinning up a full `SessionActor`. Idempotent:
-/// re-inserting an id that already exists is a no-op so a recovered retry
-/// cannot leak duplicates.
-pub(crate) fn record_accepted_client_message_id(
-    ledger: &mut VecDeque<String>,
-    cid: String,
-    cap: usize,
-) {
-    if ledger.iter().any(|s| s == &cid) {
-        return;
-    }
-    if ledger.len() >= cap {
-        if let Some(evicted) = ledger.pop_front() {
-            log::debug!(
-                "[turn] accepted ledger at cap={}, evicting oldest id (prefix={})",
-                cap,
-                evicted.chars().take(8).collect::<String>()
-            );
-        }
-    }
-    ledger.push_back(cid);
-}
-
-/// v1.0.9 Phase 2: predicate used by `handle_send_message` to dedupe a
-/// retry whose id has already been recorded as accepted.
-pub(crate) fn is_accepted(ledger: &VecDeque<String>, cid: &str) -> bool {
-    ledger.iter().any(|s| s == cid)
-}
+pub(crate) use crate::agent::turn_engine::is_accepted;
+/// v1.0.9 Phase 2: insert a client_message_id into the accepted ledger
+/// (FIFO-evicting when at capacity). Pure function re-exported from
+/// `crate::agent::turn_engine` so both `session_actor` and
+/// `runtime_recovery` can use it without creating a dependency cycle.
+pub(crate) use crate::agent::turn_engine::record_accepted_client_message_id;
 
 fn map_state_to_run_status(state: &str) -> Option<RunStatus> {
     match state {

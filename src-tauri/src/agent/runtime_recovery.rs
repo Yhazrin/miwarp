@@ -4,12 +4,14 @@
 //! does not: bounded pending queues, connection generation, accepted-ledger
 //! inheritance across respawns, and SessionLifecycle emission.
 
+use crate::agent::attachment::AttachmentData;
 use crate::agent::recovery::{
     CrashReason, RecoveryState, RecoveryStateMachine, RuntimeError, CRASH_QUARANTINE_THRESHOLD,
     RECOVERY_BUDGET,
 };
-use crate::agent::session_actor::{is_accepted, record_accepted_client_message_id, AttachmentData};
-use crate::agent::turn_engine::ACCEPTED_CLIENT_MESSAGE_IDS_CAP;
+use crate::agent::turn_engine::{
+    is_accepted, record_accepted_client_message_id, ACCEPTED_CLIENT_MESSAGE_IDS_CAP,
+};
 use crate::models::BusEvent;
 use crate::web_server::broadcaster::BroadcastEmitter;
 use std::collections::{HashMap, VecDeque};

@@ -1,11 +1,12 @@
 use crate::agent::adapter::{self, ActorSessionMap};
+use crate::agent::attachment::AttachmentData;
 use crate::agent::claude_stream;
 use crate::agent::recovery::{RecoveryState, RuntimeError};
 use crate::agent::runtime_recovery::{
     compute_respawn_backoff, emit_session_lifecycle, ensure_run_registered, mark_unrecoverable,
     transition_recovery, RecoveryRegistry,
 };
-use crate::agent::session_actor::{self, ActorCommand, AttachmentData, RalphCancelResult};
+use crate::agent::session_actor::{self, ActorCommand, RalphCancelResult};
 use crate::agent::spawn_locks::SpawnLocks;
 use crate::models::{
     AgentRuntimeKind, BusEvent, RemoteHost, RunMeta, RunStatus, SessionMode, UserSettings,

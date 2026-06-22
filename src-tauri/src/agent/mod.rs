@@ -1,4 +1,5 @@
 pub mod adapter;
+pub mod attachment;
 pub mod claude_protocol;
 pub mod claude_stream;
 pub mod codex_parser;

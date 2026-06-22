@@ -6,11 +6,12 @@
 //! for auto-context dedup.
 
 use crate::models::BusEvent;
+use std::collections::VecDeque;
 use std::time::Instant;
 use tauri::{AppHandle, Emitter};
 use tokio::sync::oneshot;
 
-use super::session_actor::AttachmentData;
+use super::attachment::AttachmentData;
 
 // ── Turn types ──
 
@@ -150,6 +151,37 @@ pub use super::constants::{
     PROTOCOL_DESYNC_THRESHOLD, PROTOCOL_DESYNC_WINDOW_SECS, QUARANTINE_DEADLINE, TICK_INTERVAL,
     USER_HARD_TIMEOUT, USER_SOFT_TIMEOUT,
 };
+
+// ── Accepted client_message_id ledger helpers ──
+// Pure functions shared between the session actor and the runtime recovery
+// registry. Kept here (next to the cap constant) so the actor and recovery
+// module can both depend on this leaf-level helper without forming an
+// import cycle.
+
+/// Insert a `client_message_id` into the accepted ledger with FIFO eviction
+/// at `cap`. Idempotent: re-inserting an id that already exists is a no-op
+/// so a recovered retry cannot leak duplicates.
+pub fn record_accepted_client_message_id(ledger: &mut VecDeque<String>, cid: String, cap: usize) {
+    if ledger.iter().any(|s| s == &cid) {
+        return;
+    }
+    if ledger.len() >= cap {
+        if let Some(evicted) = ledger.pop_front() {
+            log::debug!(
+                "[turn] accepted ledger at cap={}, evicting oldest id (prefix={})",
+                cap,
+                evicted.chars().take(8).collect::<String>()
+            );
+        }
+    }
+    ledger.push_back(cid);
+}
+
+/// Predicate used by `handle_send_message` to dedupe a retry whose id has
+/// already been recorded as accepted.
+pub fn is_accepted(ledger: &VecDeque<String>, cid: &str) -> bool {
+    ledger.iter().any(|s| s == cid)
+}
 
 // ── Activity-based deadline reset ──
 
