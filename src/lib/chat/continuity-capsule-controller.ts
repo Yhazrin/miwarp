@@ -19,6 +19,8 @@
 
 import {
   CAPSULE_TTL_MS,
+  readRunState,
+  isRunStateFresh,
   removeRunState,
   touchRunState,
   type ContinuityAnchor,
@@ -117,26 +119,22 @@ export class ContinuityCapsuleController {
     if (this.disposed || !runId) return false;
     if (this.pendingRestore && this.pendingRestore.runId === runId) return true;
     this.onLog("seed", { runId });
-    // Lazy import: keeps the controller module's footprint small and lets
-    // test code stub `readRunState` via the capsule module without cycles.
-    return import("./continuity-capsule").then((mod) => {
-      if (this.disposed) return false;
-      const entry = mod.readRunState(runId, now);
-      if (!entry || !mod.isRunStateFresh(entry, now)) return false;
-      this.pendingRestore = {
-        runId: entry.runId,
-        draft: entry.draft,
-        toolFilter: entry.toolFilter,
-        processVisibility: entry.processVisibility,
-        anchor: entry.anchor,
-        inspector: entry.inspector,
-        cwd: entry.cwd,
-        savedAt: entry.savedAt,
-      };
-      this.currentRunId = runId;
-      this.onLog("seed.ready", { runId, savedAt: entry.savedAt });
-      return true;
-    }) as unknown as boolean;
+    if (this.disposed) return false;
+    const entry = readRunState(runId, now);
+    if (!entry || !isRunStateFresh(entry, now)) return false;
+    this.pendingRestore = {
+      runId: entry.runId,
+      draft: entry.draft,
+      toolFilter: entry.toolFilter,
+      processVisibility: entry.processVisibility,
+      anchor: entry.anchor,
+      inspector: entry.inspector,
+      cwd: entry.cwd,
+      savedAt: entry.savedAt,
+    };
+    this.currentRunId = runId;
+    this.onLog("seed.ready", { runId, savedAt: entry.savedAt });
+    return true;
   }
 
   /**
@@ -147,10 +145,9 @@ export class ContinuityCapsuleController {
   async seedAsync(runId: string, now: number = Date.now()): Promise<boolean> {
     if (this.disposed || !runId) return false;
     if (this.pendingRestore && this.pendingRestore.runId === runId) return true;
-    const mod = await import("./continuity-capsule");
     if (this.disposed) return false;
-    const entry = mod.readRunState(runId, now);
-    if (!entry || !mod.isRunStateFresh(entry, now)) return false;
+    const entry = readRunState(runId, now);
+    if (!entry || !isRunStateFresh(entry, now)) return false;
     this.pendingRestore = {
       runId: entry.runId,
       draft: entry.draft,

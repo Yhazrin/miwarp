@@ -446,3 +446,146 @@ export function classifyIosWsDrift(iosValues, dispatch, wsInternal) {
   serverOnly.sort();
   return { unsupported, categorised, serverOnly };
 }
+
+/** Convert Rust VariantName → snake_case wire type literal. */
+export function rustBusVariantToType(variant) {
+  return variant.replace(/([A-Z])/g, (_, c, idx) =>
+    idx === 0 ? c.toLowerCase() : `_${c.toLowerCase()}`,
+  );
+}
+
+/**
+ * Parse Rust `pub enum BusEvent { ... }` variant names from models.rs.
+ *
+ * @param {string} source
+ * @returns {string[]} PascalCase variant names
+ */
+export function parseRustBusEventVariants(source) {
+  const enumStart = source.indexOf("pub enum BusEvent");
+  if (enumStart < 0) return [];
+  const afterEnum = source.indexOf("{", enumStart);
+  if (afterEnum < 0) return [];
+  let depth = 1;
+  let i = afterEnum + 1;
+  while (i < source.length && depth > 0) {
+    const ch = source[i];
+    if (ch === "{") depth++;
+    else if (ch === "}") depth--;
+    i++;
+  }
+  const body = source.slice(afterEnum, i);
+  const re = /^\s*([A-Z][A-Za-z0-9]*)\s*(?:\{|\(|$)/gm;
+  const out = [];
+  let m;
+  while ((m = re.exec(body))) out.push(m[1]);
+  return out;
+}
+
+/**
+ * Parse iOS `EventType` wire literals from BusEventPayload.swift.
+ *
+ * @param {string} source
+ * @returns {Set<string>}
+ */
+export function parseIosBusEventTypes(source) {
+  const declIdx = source.indexOf("private enum EventType");
+  if (declIdx < 0) return new Set();
+  const openIdx = source.indexOf("{", declIdx);
+  if (openIdx < 0) return new Set();
+  let depth = 0;
+  let closeIdx = -1;
+  for (let i = openIdx; i < source.length; i++) {
+    const c = source[i];
+    if (c === "{") depth++;
+    else if (c === "}") {
+      depth--;
+      if (depth === 0) {
+        closeIdx = i;
+        break;
+      }
+    }
+  }
+  if (closeIdx < 0) return new Set();
+  const block = source.slice(openIdx, closeIdx + 1);
+  const values = new Set();
+  const re = /case\s+([a-z][a-z0-9_]*)/g;
+  let m;
+  while ((m = re.exec(block))) values.add(m[1]);
+  return values;
+}
+
+/**
+ * Parse Android `parseBusEventFromEnvelope` when-branch wire literals.
+ *
+ * @param {string} source
+ * @returns {Set<string>}
+ */
+export function parseAndroidBusEventTypes(source) {
+  const fnIdx = source.indexOf("parseBusEventFromEnvelope");
+  if (fnIdx < 0) return new Set();
+  const whenIdx = source.indexOf("when (event)", fnIdx);
+  if (whenIdx < 0) return new Set();
+  const openIdx = source.indexOf("{", whenIdx);
+  if (openIdx < 0) return new Set();
+  let depth = 0;
+  let closeIdx = -1;
+  for (let i = openIdx; i < source.length; i++) {
+    const c = source[i];
+    if (c === "{") depth++;
+    else if (c === "}") {
+      depth--;
+      if (depth === 0) {
+        closeIdx = i;
+        break;
+      }
+    }
+  }
+  if (closeIdx < 0) return new Set();
+  const block = source.slice(openIdx, closeIdx + 1);
+  const values = new Set();
+  const re = /"([a-z][a-z0-9_]*)"\s*->/g;
+  let m;
+  while ((m = re.exec(block))) values.add(m[1]);
+  return values;
+}
+
+/**
+ * Compare Rust BusEvent variants against mobile decoders.
+ *
+ * @param {string[]} rustVariants
+ * @param {Set<string>} iosTypes
+ * @param {Set<string>} androidTypes
+ * @param {{ iosAllowMissing?: Set<string>, androidAllowMissing?: Set<string> }} opts
+ */
+export function classifyMobileBusDrift(rustVariants, iosTypes, androidTypes, opts = {}) {
+  const iosAllow = opts.iosAllowMissing ?? new Set(["raw"]);
+  const androidAllow = opts.androidAllowMissing ?? new Set(["raw"]);
+  const iosMissing = [];
+  const androidMissing = [];
+  for (const variant of rustVariants) {
+    const wire = rustBusVariantToType(variant);
+    if (!iosTypes.has(wire) && !iosAllow.has(wire)) {
+      iosMissing.push(`${variant} → "${wire}"`);
+    }
+    if (!androidTypes.has(wire) && !androidAllow.has(wire)) {
+      androidMissing.push(`${variant} → "${wire}"`);
+    }
+  }
+  iosMissing.sort();
+  androidMissing.sort();
+  return { iosMissing, androidMissing };
+}
+
+/** Recovery events that must stay payload-aligned across platforms. */
+export const RECOVERY_BUS_EVENT_TYPES = [
+  "session_recovering",
+  "session_recovered",
+  "protocol_desync",
+];
+
+/** Required payload keys per recovery event (snake_case). */
+export const RECOVERY_PAYLOAD_FIELDS = {
+  session_recovering: ["reason", "deadline_ms", "from_internal"],
+  session_recovered: ["ok"],
+  protocol_desync: ["fail_count", "sample"],
+};

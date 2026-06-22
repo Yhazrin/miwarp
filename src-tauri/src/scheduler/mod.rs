@@ -71,6 +71,7 @@ async fn tick(app: &AppHandle) {
         let sessions = app.state::<crate::agent::adapter::ActorSessionMap>();
         let spawn_locks = app.state::<crate::agent::spawn_locks::SpawnLocks>();
         let cancel_token = app.state::<CancellationToken>();
+        let recovery_registry = app.state::<crate::agent::runtime_recovery::RecoveryRegistry>();
 
         let task_run = runner::execute_task(
             task,
@@ -78,6 +79,7 @@ async fn tick(app: &AppHandle) {
             sessions.inner(),
             spawn_locks.inner(),
             cancel_token.inner(),
+            recovery_registry.inner(),
         )
         .await;
 
@@ -319,6 +321,7 @@ pub async fn run_scheduled_task_now(
     let sessions = app.state::<crate::agent::adapter::ActorSessionMap>();
     let spawn_locks = app.state::<crate::agent::spawn_locks::SpawnLocks>();
     let cancel_token = app.state::<CancellationToken>();
+    let recovery_registry = app.state::<crate::agent::runtime_recovery::RecoveryRegistry>();
 
     let task_run = runner::execute_task(
         &task,
@@ -326,6 +329,7 @@ pub async fn run_scheduled_task_now(
         sessions.inner(),
         spawn_locks.inner(),
         cancel_token.inner(),
+        recovery_registry.inner(),
     )
     .await;
 

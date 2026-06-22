@@ -185,7 +185,9 @@ export function useConversationInsight(
     get insightCardOpen() {
       return insightCardOpen;
     },
-    insightPreviewOpen,
+    get insightPreviewOpen() {
+      return insightPreviewOpen;
+    },
     get insightHtml() {
       return insightHtml;
     },

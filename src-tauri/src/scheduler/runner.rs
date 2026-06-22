@@ -1,6 +1,7 @@
 use super::model::{RunStatus, ScheduledTask, ScheduledTaskRun};
 use super::store;
 use crate::agent::adapter::ActorSessionMap;
+use crate::agent::runtime_recovery::RecoveryRegistry;
 use crate::agent::spawn_locks::SpawnLocks;
 use crate::commands::session::start_session_impl;
 use crate::models::{ExecutionPath, RunStatus as AppRunStatus};
@@ -17,6 +18,7 @@ pub async fn execute_task(
     sessions: &ActorSessionMap,
     spawn_locks: &SpawnLocks,
     cancel_token: &CancellationToken,
+    recovery_registry: &RecoveryRegistry,
 ) -> ScheduledTaskRun {
     let run_uuid = uuid::Uuid::new_v4().to_string();
     let now = Utc::now().to_rfc3339();
@@ -131,6 +133,7 @@ pub async fn execute_task(
         sessions,
         spawn_locks,
         cancel_token,
+        recovery_registry,
         run_uuid.clone(),
         None,                      // mode: default New
         None,                      // session_id: new session

@@ -5,6 +5,14 @@ vi.mock("$lib/api", () => ({
   detectMimoRuntime: vi.fn(),
 }));
 
+// v1.0.9 integration: Cursor Agent landed as `startable` in 6470f405 so the
+// registry no longer classifies it as a desktop-only runtime. The "refuse
+// desktop" test below still exercises the `!isStartableRuntime` branch in
+// `setDefault` by spying on the registry's `isStartableRuntime` for the
+// cursor id only — production behavior is unchanged for every other id.
+import * as registry from "$lib/runtime/registry";
+const isStartableRuntimeSpy = vi.spyOn(registry, "isStartableRuntime");
+
 function makeLocalStorageMock(): Storage {
   const store = new Map<string, string>();
   return {
@@ -185,16 +193,30 @@ describe("RuntimeHubStore.setDefault", () => {
       if (agent === "cursor") {
         return { agent, found: true, path: "/usr/bin/cursor", version: "1.0" };
       }
+      if (agent === "claude") {
+        return { agent, found: true, path: "/usr/bin/claude", version: "1.0" };
+      }
       return { agent, found: false };
     });
     mockDetectMimoRuntime.mockResolvedValue(mimoMissing());
 
-    const store = new RuntimeHubStore();
-    store.init();
-    await store.refresh();
+    // Force cursor into the "desktop" branch of the registry check; this
+    // mirrors the pre-6470f405 classification so the `!isStartableRuntime`
+    // guard in setDefault is exercised. Mock claude as available too so
+    // the resolution fallback picks a startable runtime as the default
+    // (cursor is the only desktop runtime in this scenario).
+    isStartableRuntimeSpy.mockImplementation((id) => id !== "cursor");
 
-    expect(store.setDefault("cursor")).toBe(false);
-    expect(store.defaultRuntime).not.toBe("cursor");
+    try {
+      const store = new RuntimeHubStore();
+      store.init();
+      await store.refresh();
+
+      expect(store.setDefault("cursor")).toBe(false);
+      expect(store.defaultRuntime).not.toBe("cursor");
+    } finally {
+      isStartableRuntimeSpy.mockRestore();
+    }
   });
 
   it("persists accepted defaults to localStorage", async () => {

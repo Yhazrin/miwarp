@@ -17,13 +17,18 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyIosWsDrift,
+  classifyMobileBusDrift,
   classifyTauriDrift,
+  parseAndroidBusEventTypes,
   parseDispatchMethods,
+  parseIosBusEventTypes,
   parseIosSentMethods,
   parseIosWsMethods,
+  parseRustBusEventVariants,
   parseTauriCommandRegistry,
   parseTauriGenerateHandler,
   parseWsInternalMethods,
+  rustBusVariantToType,
 } from "../contract-lib.mjs";
 
 describe("parseTauriCommandRegistry", () => {
@@ -338,5 +343,49 @@ describe("classifyIosWsDrift", () => {
       "load_run_data",
       "stop_run",
     ]);
+  });
+});
+
+describe("mobile BusEvent parsers", () => {
+  it("maps Rust variants to snake_case wire types", () => {
+    expect(rustBusVariantToType("SessionRecovering")).toBe("session_recovering");
+    expect(rustBusVariantToType("ProtocolDesync")).toBe("protocol_desync");
+  });
+
+  it("parses iOS EventType literals", () => {
+    const src = `
+    private enum EventType: String, Codable {
+        case session_init
+        case session_recovering
+        case protocol_desync
+        case raw
+    }`;
+    const types = parseIosBusEventTypes(src);
+    expect(types.has("session_recovering")).toBe(true);
+    expect(types.has("protocol_desync")).toBe(true);
+  });
+
+  it("parses Android when-branch literals", () => {
+    const src = `
+    private fun parseBusEventFromEnvelope(event: String, seq: Long, runId: String, payload: JsonElement?): BusEvent? {
+        return when (event) {
+            "session_recovered" -> BusEvent.SessionRecovered(seq, runId, ok = false)
+            "protocol_desync" -> BusEvent.ProtocolDesync(seq, runId, 0, "")
+            else -> BusEvent.Unknown(seq, runId, event, payload)
+        }
+    }`;
+    const types = parseAndroidBusEventTypes(src);
+    expect(types.has("session_recovered")).toBe(true);
+    expect(types.has("protocol_desync")).toBe(true);
+  });
+
+  it("flags missing mobile decoders for Rust variants", () => {
+    const { iosMissing, androidMissing } = classifyMobileBusDrift(
+      ["SessionRecovering", "ProtocolDesync"],
+      new Set(["session_recovering"]),
+      new Set(["protocol_desync"]),
+    );
+    expect(iosMissing).toEqual(['ProtocolDesync → "protocol_desync"']);
+    expect(androidMissing).toEqual(['SessionRecovering → "session_recovering"']);
   });
 });

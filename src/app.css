@@ -2,14 +2,6 @@
 @import "./lib/styles/design-tokens.css";
 @import "./lib/styles/motion.css";
 
-/* Custom font for running/done states */
-@font-face {
-  font-family: "FonWorker";
-  src: url("/fonts/fon-W-o-s-k-e-r(1).iso") format("iso");
-  font-weight: normal;
-  font-style: normal;
-}
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

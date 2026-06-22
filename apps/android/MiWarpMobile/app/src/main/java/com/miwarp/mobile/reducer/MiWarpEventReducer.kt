@@ -12,6 +12,12 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 
+data class ProtocolRecoveryState(
+    val notice: String? = null,
+    val isRecovering: Boolean = false,
+    val showReloadAction: Boolean = false,
+)
+
 /**
  * Reduces a stream of BusEvents into ChatMessage list + derived state.
  * Mirrors the iOS event reducer logic.
@@ -25,6 +31,7 @@ class MiWarpEventReducer {
     private var currentStatus: RunStatus = RunStatus.Idle
     private var lastSeq: Long = 0L
     private var streamingMessageId: String? = null
+    private var protocolRecovery = ProtocolRecoveryState()
 
     fun getMessages(): List<ChatMessage> = messages.toList()
 
@@ -35,6 +42,12 @@ class MiWarpEventReducer {
     fun getCurrentStatus(): RunStatus = currentStatus
 
     fun getLastSeq(): Long = lastSeq
+
+    fun getProtocolRecovery(): ProtocolRecoveryState = protocolRecovery
+
+    fun clearProtocolRecoveryNotice() {
+        protocolRecovery = protocolRecovery.copy(notice = null, showReloadAction = false)
+    }
 
     fun reduce(event: BusEvent): ReductionResult {
         if (event.seq > 0 && !seenSeqs.add(event.seq)) {
@@ -133,6 +146,37 @@ class MiWarpEventReducer {
                 clear()
                 changed = true
             }
+            is BusEvent.SessionRecovering -> {
+                val seconds = maxOf(1, (event.deadlineMs / 1000).toInt())
+                protocolRecovery = ProtocolRecoveryState(
+                    notice = "Session recovering… (up to ${seconds}s)",
+                    isRecovering = true,
+                    showReloadAction = false,
+                )
+                changed = true
+            }
+            is BusEvent.SessionRecovered -> {
+                if (event.ok) {
+                    protocolRecovery = ProtocolRecoveryState()
+                } else {
+                    protocolRecovery = ProtocolRecoveryState(
+                        notice = "Session recovery failed. Reload to sync state.",
+                        isRecovering = false,
+                        showReloadAction = true,
+                    )
+                    currentStatus = RunStatus.Failed
+                }
+                changed = true
+            }
+            is BusEvent.ProtocolDesync -> {
+                protocolRecovery = ProtocolRecoveryState(
+                    notice = "Session state reset: too many protocol parse failures.",
+                    isRecovering = false,
+                    showReloadAction = true,
+                )
+                currentStatus = RunStatus.Failed
+                changed = true
+            }
             is BusEvent.CompactBoundary -> {
                 // Mark the boundary; content continues after
             }
@@ -168,6 +212,7 @@ class MiWarpEventReducer {
         currentStatus = RunStatus.Idle
         lastSeq = 0
         streamingMessageId = null
+        protocolRecovery = ProtocolRecoveryState()
     }
 
     fun removePermission(requestId: String) {

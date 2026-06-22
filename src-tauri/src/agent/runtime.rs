@@ -99,6 +99,10 @@ impl RuntimeConfig {
             AgentRuntimeKind::MiMoCode => resolve_mimo_binary(),
             AgentRuntimeKind::Codex => "codex".to_string(),
             AgentRuntimeKind::OpenCode => "opencode".to_string(),
+            AgentRuntimeKind::Cursor => {
+                crate::agent::control_plane::adapters::cursor::resolve_cursor_agent_binary()
+                    .unwrap_or_else(|| "agent".to_string())
+            }
         }
     }
 

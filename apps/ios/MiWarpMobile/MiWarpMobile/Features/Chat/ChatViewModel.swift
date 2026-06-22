@@ -45,6 +45,7 @@ final class ChatViewModel: ObservableObject {
             let events = try await rpc.getBusEvents(runId: runId)
             rawEvents = events
             reducer.loadHistory(events)
+            reducer.clearProtocolRecoveryNotice()
         } catch {
             self.error = error.localizedDescription
         }

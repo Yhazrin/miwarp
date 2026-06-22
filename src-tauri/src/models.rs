@@ -131,6 +131,8 @@ pub enum AgentRuntimeKind {
     Codex,
     /// OpenCode CLI (`opencode`)
     OpenCode,
+    /// Cursor Agent CLI (`agent`)
+    Cursor,
 }
 
 impl std::fmt::Display for AgentRuntimeKind {
@@ -140,6 +142,7 @@ impl std::fmt::Display for AgentRuntimeKind {
             Self::MiMoCode => write!(f, "mimo"),
             Self::Codex => write!(f, "codex"),
             Self::OpenCode => write!(f, "opencode"),
+            Self::Cursor => write!(f, "cursor"),
         }
     }
 }
@@ -151,6 +154,7 @@ impl AgentRuntimeKind {
             "mimo" | "mimocode" => Self::MiMoCode,
             "codex" => Self::Codex,
             "opencode" => Self::OpenCode,
+            "cursor" => Self::Cursor,
             _ => Self::ClaudeCode,
         }
     }
@@ -823,7 +827,9 @@ impl RunMeta {
         self.execution_path.clone().unwrap_or_else(|| {
             let rk = self.resolved_runtime_kind();
             match rk {
-                AgentRuntimeKind::ClaudeCode => ExecutionPath::SessionActor,
+                AgentRuntimeKind::ClaudeCode | AgentRuntimeKind::Cursor => {
+                    ExecutionPath::SessionActor
+                }
                 AgentRuntimeKind::MiMoCode => ExecutionPath::SessionActor,
                 AgentRuntimeKind::Codex | AgentRuntimeKind::OpenCode => ExecutionPath::PipeExec,
             }
@@ -842,7 +848,9 @@ impl RunMeta {
         self.protocol_kind.clone().unwrap_or_else(|| {
             let rk = self.resolved_runtime_kind();
             match rk {
-                AgentRuntimeKind::ClaudeCode => RuntimeProtocolKind::StreamJson,
+                AgentRuntimeKind::ClaudeCode | AgentRuntimeKind::Cursor => {
+                    RuntimeProtocolKind::StreamJson
+                }
                 AgentRuntimeKind::MiMoCode | AgentRuntimeKind::OpenCode => {
                     RuntimeProtocolKind::StreamJson
                 }
@@ -1243,6 +1251,10 @@ pub fn now_iso() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
+pub fn now_epoch_ms() -> u64 {
+    chrono::Utc::now().timestamp_millis() as u64
+}
+
 // ── Attachment limits ──
 // Images: no app-side limit — CLI compresses via sharp (→ ≤3.75MB + ≤2000px).
 pub const MAX_TEXT_SIZE: u64 = 10 * 1024 * 1024; // 10MB — text files
@@ -1401,6 +1413,41 @@ pub enum BusEvent {
         state: String,
         exit_code: Option<i32>,
         error: Option<String>,
+    },
+    /// v1.0.9: emitted by the recovery state machine on every state
+    /// transition. The frontend projects this into the per-card
+    /// session lifecycle UI; the diagnostic ring buffer subscribes
+    /// to it. Mirrors the `ActorLifecycle` and `RecoveryState`
+    /// enums in `src-tauri/src/agent/recovery.rs`. Fields are
+    /// intentionally flat (no nested enums) so the bus contract
+    /// stays text-only sync-able.
+    SessionLifecycle {
+        run_id: String,
+        session_id: Option<String>,
+        /// Actor lifecycle phase: starting | ready | crashed |
+        /// respawning | stopped | disposed.
+        phase: String,
+        /// Recovery state machine value: healthy | degraded |
+        /// reconnecting | recovering | recovered | unrecoverable.
+        recovery_state: String,
+        /// When `phase == "crashed"`, the typed `CrashReason` wire
+        /// tag (e.g. `stdin_write_failed`).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        crash_reason: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        crash_code: Option<i32>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        crash_signal: Option<i32>,
+        /// Current connection generation. Bumped on every recovery
+        /// and every actor respawn.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        connection_generation: Option<u64>,
+        /// Number of consecutive `Reconnecting` transitions since
+        /// the last `Healthy` or `Recovered`.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        consecutive_failures: Option<u32>,
+        /// Wall-clock millis since the Unix epoch.
+        timestamp_ms: u64,
     },
     UsageUpdate {
         run_id: String,

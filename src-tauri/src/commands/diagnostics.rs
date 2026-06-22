@@ -75,7 +75,7 @@ pub async fn check_agent_cli(agent: String) -> Result<CliCheckResult, String> {
         "codex" => "codex",
         "mimo" | "mimocode" => "mimo",
         "opencode" => "opencode",
-        "cursor" => "cursor",
+        "cursor" => "agent",
         _ => return Err(format!("Unknown agent: {}", agent)),
     };
 

@@ -10,6 +10,18 @@
 
 set -e
 
+# Make sure the user-level cargo bin (rustup default install) is on PATH
+# even when the hook is invoked from a context that has not sourced the
+# developer's shell profile (GUI git client, CI, fresh sub-shell).
+case ":$PATH:" in
+  *":$HOME/.cargo/bin:"*) ;;
+  *)
+    if [ -x "$HOME/.cargo/bin/cargo" ]; then
+      export PATH="$HOME/.cargo/bin:$PATH"
+    fi
+    ;;
+esac
+
 # ── 0. Root pollution check (always — quick) ──
 echo "▶ Checking root for session-pollution files..."
 if ! node scripts/check-root-pollution.mjs 2>/dev/null; then

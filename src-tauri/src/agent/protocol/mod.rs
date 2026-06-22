@@ -4,6 +4,7 @@
 //! The trait is object-safe so session_actor can use dynamic dispatch.
 
 pub mod claude;
+pub mod cursor;
 pub mod mimo;
 
 use crate::models::BusEvent;

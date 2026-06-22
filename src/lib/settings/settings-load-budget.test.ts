@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { UserSettings } from "$lib/types";
+import { resolveLayoutCachedSettings, type SettingsCacheContext } from "$lib/layout-chrome-context";
 import {
   SettingsTabLoadController,
   fetchCliBehaviorTabData,
@@ -245,5 +247,35 @@ describe("loadSettingsPageCore", () => {
 
     const result = await loadSettingsPageCore(guard, deps);
     expect(result).toBeNull();
+  });
+});
+
+describe("settings cold-start IPC budget", () => {
+  const sampleSettings = { auth_mode: "cli" } as UserSettings;
+
+  it("resolveLayoutCachedSettings skips getUserSettings when layout cache is warm", async () => {
+    const getUserSettings = vi.fn();
+    const cache: SettingsCacheContext = {
+      settings: sampleSettings,
+      whenReady: vi.fn().mockResolvedValue(sampleSettings),
+    };
+
+    const resolved = await resolveLayoutCachedSettings(cache);
+    expect(resolved).toEqual(sampleSettings);
+    expect(getUserSettings).not.toHaveBeenCalled();
+    expect(cache.whenReady).not.toHaveBeenCalled();
+  });
+
+  it("resolveLayoutCachedSettings dedupes via whenReady instead of a second IPC", async () => {
+    const hydrated = { auth_mode: "api_key" } as UserSettings;
+    const whenReady = vi.fn().mockResolvedValue(hydrated);
+    const cache: SettingsCacheContext = {
+      settings: null,
+      whenReady,
+    };
+
+    const resolved = await resolveLayoutCachedSettings(cache);
+    expect(resolved).toEqual(hydrated);
+    expect(whenReady).toHaveBeenCalledTimes(1);
   });
 });

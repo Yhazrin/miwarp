@@ -15,6 +15,7 @@ export default defineConfig({
       "src/**/*.test.ts",
       "scripts/architecture/__tests__/**/*.test.ts",
       "scripts/__tests__/**/*.test.ts",
+      "e2e/__tests__/**/*.test.ts",
     ],
     environment: "node",
   },

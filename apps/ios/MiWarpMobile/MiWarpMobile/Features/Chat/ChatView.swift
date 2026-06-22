@@ -146,6 +146,14 @@ struct ChatView: View {
                 reconnectBanner(attempt: attempt)
             }
 
+            if let notice = viewModel.reducer.protocolRecovery.notice {
+                protocolRecoveryBanner(
+                    notice: notice,
+                    isRecovering: viewModel.reducer.protocolRecovery.isRecovering,
+                    showReloadAction: viewModel.reducer.protocolRecovery.showReloadAction
+                )
+            }
+
             // Status bar
             runStatusBar
 
@@ -204,7 +212,7 @@ struct ChatView: View {
             ComposerBar(
                 text: $viewModel.inputText,
                 isRunning: viewModel.reducer.currentStatus == .running,
-                canSend: true,
+                canSend: !viewModel.reducer.protocolRecovery.isRecovering,
                 queuedCount: viewModel.queuedMessageCount,
                 provider: viewModel.reducer.sessionAgent ?? "MiWarp",
                 model: viewModel.reducer.sessionModel ?? "Model pending",
@@ -297,6 +305,40 @@ struct ChatView: View {
         .background(MWColors.statusWarning.opacity(0.08))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(String(localized: "chat.reconnecting"))
+    }
+
+    private func protocolRecoveryBanner(
+        notice: String,
+        isRecovering: Bool,
+        showReloadAction: Bool
+    ) -> some View {
+        HStack(spacing: MWSpacing.sm) {
+            if isRecovering {
+                ProgressView()
+                    .scaleEffect(0.75)
+            } else {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(MWColors.statusWarning)
+            }
+
+            Text(notice)
+                .font(MWTypography.subheadline())
+                .foregroundStyle(theme.cardTextPrimary)
+                .multilineTextAlignment(.leading)
+
+            Spacer()
+
+            if showReloadAction {
+                Button(String(localized: "protocol.reloadSession")) {
+                    Task { await viewModel.loadHistory() }
+                }
+                .font(MWTypography.subheadlineMedium())
+            }
+        }
+        .padding(.horizontal, MWSpacing.lg)
+        .padding(.vertical, MWSpacing.sm)
+        .background(MWColors.statusWarning.opacity(0.08))
+        .accessibilityElement(children: .combine)
     }
 }
 

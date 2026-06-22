@@ -1,7 +1,8 @@
 use serde_json::{json, Value};
 use std::time::Instant;
 
-use crate::agent::session_actor::{ActorCommand, AttachmentData};
+use crate::agent::attachment::AttachmentData;
+use crate::agent::session_actor::ActorCommand;
 use crate::models::SessionMode;
 use crate::web_server::state::AppState;
 
@@ -937,6 +938,7 @@ pub async fn dispatch_command(
                 &state.sessions,
                 &state.spawn_locks,
                 &state.cancel_token,
+                &state.recovery_registry,
                 run_id,
                 mode,
                 session_id,
@@ -1326,6 +1328,21 @@ pub async fn dispatch_command(
         }
 
         // ── Desktop-only commands ──
+        // Runtime configuration operates on the desktop host's local CLI files.
+        "runtime_hub_list" => Err("desktop only".to_string()),
+        "runtime_hub_health" => Err("desktop only".to_string()),
+        "runtime_hub_diagnose" => Err("desktop only".to_string()),
+        "runtime_hub_set_default" => Err("desktop only".to_string()),
+        "runtime_hub_preview_config" => Err("desktop only".to_string()),
+        "runtime_hub_apply_config" => Err("desktop only".to_string()),
+        "runtime_hub_start_config_watch" => Err("desktop only".to_string()),
+        "runtime_hub_stop_config_watch" => Err("desktop only".to_string()),
+        // Diagnostics export and retention are intentionally local to the desktop host.
+        "diagnostics_snapshot" => Err("desktop only".to_string()),
+        "diagnostics_summary" => Err("desktop only".to_string()),
+        "diagnostics_preview" => Err("desktop only".to_string()),
+        "diagnostics_export" => Err("desktop only".to_string()),
+        "diagnostics_clear" => Err("desktop only".to_string()),
         "capture_screenshot"
         | "update_screenshot_hotkey"
         | "get_clipboard_files"

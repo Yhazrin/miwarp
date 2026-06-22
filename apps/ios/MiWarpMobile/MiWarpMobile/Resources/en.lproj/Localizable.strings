@@ -154,6 +154,12 @@
 "chat.allClear" = "All Clear";
 "chat.errorTitle" = "Chat error";
 
+/* Protocol recovery */
+"protocol.sessionRecovering" = "Session recovering… (up to %d s)";
+"protocol.sessionRecoveryFailed" = "Session recovery failed. Reload to sync state.";
+"protocol.desyncToast" = "Session state reset: too many protocol parse failures.";
+"protocol.reloadSession" = "Reload";
+
 /* Chat Inspector */
 "chatInspector.workspace" = "Workspace";
 "chatInspector.tools" = "Tools";

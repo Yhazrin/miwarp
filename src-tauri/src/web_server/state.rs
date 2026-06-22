@@ -4,6 +4,7 @@ use tokio::sync::Mutex;
 
 use crate::agent::adapter::ActorSessionMap;
 use crate::agent::control::CliInfoCache;
+use crate::agent::runtime_recovery::RecoveryRegistry;
 use crate::agent::spawn_locks::SpawnLocks;
 use crate::agent::stream::ProcessMap;
 use crate::storage::events::EventWriter;
@@ -27,6 +28,7 @@ pub struct AppState {
     pub sessions: ActorSessionMap,
     pub writer: Arc<EventWriter>,
     pub spawn_locks: SpawnLocks,
+    pub recovery_registry: RecoveryRegistry,
     pub cancel_token: CancellationToken,
     pub cli_info_cache: CliInfoCache,
     pub emitter: Arc<BroadcastEmitter>,

@@ -154,6 +154,12 @@
 "chat.allClear" = "全部正常";
 "chat.errorTitle" = "对话错误";
 
+/* Protocol recovery */
+"protocol.sessionRecovering" = "会话恢复中…（最多 %d 秒）";
+"protocol.sessionRecoveryFailed" = "会话恢复失败，请重新加载以同步状态。";
+"protocol.desyncToast" = "会话状态已重置：协议解析失败过多。";
+"protocol.reloadSession" = "重新加载";
+
 /* Chat Inspector */
 "chatInspector.workspace" = "工作区";
 "chatInspector.tools" = "工具";

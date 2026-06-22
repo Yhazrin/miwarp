@@ -161,6 +161,14 @@ export class SessionStore {
   error: string = $state("");
   /** Shown briefly after live recovery from persisted events.jsonl. */
   recoveryNotice: string | null = $state(null);
+  /** v1.0.9: last projected SessionLifecycle connection generation. */
+  recoveryConnectionGeneration = $state(0);
+  recoveryPhase = $state("");
+  recoveryState = $state("healthy");
+  recoveryCrashReason = $state<string | null>(null);
+  recoveryUnrecoverable = $state(false);
+  /** Optional hook for SendCoordinator transport phase sync (v1.0.9). */
+  recoveryLifecycleListener: ((recoveryState: string, generation: number) => void) | null = null;
   agent: string = $state("claude");
   authMode: string = $state("cli");
 

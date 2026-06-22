@@ -23,6 +23,7 @@ export const STARTABLE_RUNTIME_IDS = [
   "codex",
   "mimo",
   "opencode",
+  "cursor",
 ] as const satisfies readonly SupportedRuntimeId[];
 
 const RUNTIME_DESCRIPTORS: Record<SupportedRuntimeId, RuntimeDescriptor> = {
@@ -79,7 +80,7 @@ const RUNTIME_DESCRIPTORS: Record<SupportedRuntimeId, RuntimeDescriptor> = {
     agent: "cursor",
     nameKey: "runtime_cursor_name",
     capabilitiesKey: "runtime_cursor_capabilities",
-    launchSupport: "desktop",
+    launchSupport: "startable",
     sortOrder: 50,
   },
   "qwen-code": {
@@ -138,11 +139,11 @@ export function agentToRuntimeId(agent: string): SupportedRuntimeId | null {
   return null;
 }
 
-/** Stream-json session_actor path (Claude + MiMo). Codex uses pipe_exec. */
+/** Stream-json session_actor path (Claude + MiMo + Cursor). Codex uses pipe_exec. */
 export function usesStreamSession(agent: string): boolean {
   const id = agentToRuntimeId(agent);
-  if (!id) return agent === "claude" || agent === "mimo";
-  return id === "claude" || id === "mimo";
+  if (!id) return agent === "claude" || agent === "mimo" || agent === "cursor";
+  return id === "claude" || id === "mimo" || id === "cursor";
 }
 
 function resolveStatus(

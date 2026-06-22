@@ -163,6 +163,10 @@ extension BusEvent {
         case .ralphStarted: return "ralph_started"
         case .ralphIteration: return "ralph_iteration"
         case .ralphComplete: return "ralph_complete"
+        case .sessionRecovering: return "session_recovering"
+        case .sessionRecovered: return "session_recovered"
+        case .sessionLifecycle: return "session_lifecycle"
+        case .protocolDesync: return "protocol_desync"
         case .fullReload: return "full_reload"
         case .raw: return "raw"
         }

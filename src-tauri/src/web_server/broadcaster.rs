@@ -234,5 +234,6 @@ fn event_type_name(event: &BusEvent) -> &'static str {
         BusEvent::SessionRecovering { .. } => "session_recovering",
         BusEvent::SessionRecovered { .. } => "session_recovered",
         BusEvent::ProtocolDesync { .. } => "protocol_desync",
+        BusEvent::SessionLifecycle { .. } => "session_lifecycle",
     }
 }
