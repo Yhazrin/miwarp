@@ -81,7 +81,7 @@
   } from "$lib/utils/bus-events";
   import { clampUiZoom, layoutPx } from "$lib/utils/ui-zoom";
   import { applyZoom, applyVisualPerformance } from "$lib/services/window-display";
-  import { checkAppUpdate } from "$lib/services/app-version.svelte";
+  import { readBundledAppVersion } from "$lib/services/app-version.svelte";
   import { useKeybindingShortcuts } from "$lib/layout/use-keybinding-shortcuts.svelte";
   import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
   import { readActiveSessionId, writeActiveSessionId } from "$lib/utils/chat-persistence";
@@ -164,13 +164,25 @@
     if (next) switchLocale(next.code);
   }
 
+  function formatAppVersion(version: string | null): string {
+    const normalized = version?.trim().replace(/^v/, "");
+    return normalized ? `v${normalized}` : "v...";
+  }
+
   let commandPaletteOpen = $state(false);
   let showSetupWizard = $state(false);
   let showAbout = $state(false);
   let showCliBrowser = $state(false);
-  let sidebarVersion = $state("v...");
-  let sidebarUpdateAvailable = $state(false);
-  let sidebarVersionChecked = $state(false);
+  let bundledAppVersion = $state<string | null>(null);
+  let sidebarVersion = $derived(
+    formatAppVersion(
+      appUpdateCoordinator.state.offer?.currentVersion ??
+        appUpdateCoordinator.state.upToDateVersion ??
+        bundledAppVersion,
+    ),
+  );
+  let sidebarUpdateAvailable = $derived(appUpdateCoordinator.hasUpdate);
+  let sidebarVersionChecked = $derived(appUpdateCoordinator.state.lastCheckedAt !== null);
   let permissionsModalOpen = $state(false);
   let updateCenterOpen = $state(false);
 
@@ -994,11 +1006,9 @@
     void scheduledTasksStore.loadAllRuns();
     themeStore.init();
 
-    // Fetch app version and check for updates
-    void checkAppUpdate().then((state) => {
-      sidebarVersion = state.version;
-      sidebarUpdateAvailable = state.updateAvailable;
-      sidebarVersionChecked = state.checked;
+    // Read the local version only. Update discovery is owned by AppUpdateCoordinator.
+    void readBundledAppVersion().then((version) => {
+      bundledAppVersion = version;
     });
 
     // Load saved CWD and pinned folders from localStorage

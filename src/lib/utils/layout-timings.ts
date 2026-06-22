@@ -16,9 +16,6 @@ export const RUNS_POLL_INTERVAL_MS = 60_000;
 /** Fallback poll for the team store. Primary updates flow through team/task events. */
 export const TEAMS_POLL_INTERVAL_MS = 60_000;
 
-/** Hard cap on the GitHub release metadata fetch used by the sidebar update indicator. */
-export const APP_UPDATE_RELEASE_TIMEOUT_MS = 5_000;
-
 /** Debounce window for the "team/task event burst → forceRefresh" reconciliation. */
 export const TEAM_RESYNC_DEBOUNCE_MS = 300;
 
