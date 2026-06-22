@@ -6,6 +6,7 @@ version = 4
 name = "MiWarp"
 version = "1.0.8"
 dependencies = [
+ "async-trait",
  "axum",
  "base64 0.22.1",
  "chrono",

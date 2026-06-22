@@ -343,8 +343,16 @@ pub fn run() {
             commands::worktree::create_pull_request,
             commands::worktree::remove_worktree,
             commands::worktree::list_worktrees,
+            commands::runtime_diagnostics::diagnostics_snapshot,
+            commands::runtime_diagnostics::diagnostics_summary,
+            commands::runtime_diagnostics::diagnostics_preview,
+            commands::runtime_diagnostics::diagnostics_export,
+            commands::runtime_diagnostics::diagnostics_clear,
         ])
         .setup(move |app| {
+            // Initialize runtime diagnostics observer (bounded ring buffer)
+            commands::runtime_diagnostics::init_global_observer(diagnostics::DEFAULT_RING_CAP);
+
             // Set up broadcast emitter (requires AppHandle, so must be in setup)
             let broadcaster = web_server::broadcaster::EventBroadcaster::new();
             let writer = app.state::<Arc<EventWriter>>().inner().clone();

@@ -23,6 +23,7 @@ pub mod onboarding;
 pub mod plugins;
 pub mod remote_fs;
 pub mod runs;
+pub mod runtime_diagnostics;
 pub mod screenshot;
 pub mod session;
 pub mod settings;
