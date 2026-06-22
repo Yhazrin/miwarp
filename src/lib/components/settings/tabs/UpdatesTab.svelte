@@ -1,13 +1,8 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { appUpdateCoordinator } from "$lib/stores/app-update-coordinator.svelte";
   import { cliUpdateRegistry, type CliToolEntry } from "$lib/stores/cli-update-registry.svelte";
   import { openExternalUpdateUrl } from "$lib/utils/app-updater";
-
-  onMount(() => {
-    cliUpdateRegistry.loadCache();
-  });
 
   const phaseLabel = $derived.by(() => {
     const phase = appUpdateCoordinator.phase;

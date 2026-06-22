@@ -32,7 +32,7 @@ afterEach(() => {
 });
 
 import * as api from "$lib/api";
-import { RuntimeHubStore } from "$lib/stores/runtime-hub-store.svelte";
+import { RuntimeHubStore, RUNTIME_PROBE_TTL_MS } from "$lib/stores/runtime-hub-store.svelte";
 import type { RuntimeDetectionMap } from "../types";
 
 const mockCheckAgentCli = vi.mocked(api.checkAgentCli);
@@ -61,6 +61,30 @@ beforeEach(() => {
 
 afterEach(() => {
   // vi.unstubAllGlobals() runs in the outer afterEach (after stub install).
+});
+
+describe("RuntimeHubStore.refresh TTL", () => {
+  it("skips probe when last refresh is within TTL unless forced", async () => {
+    mockCheckAgentCli.mockImplementation(async (agent) => ({
+      agent,
+      found: true,
+      path: `/usr/bin/${agent}`,
+      version: "1.0",
+    }));
+    mockDetectMimoRuntime.mockResolvedValue(mimoMissing());
+
+    const store = new RuntimeHubStore();
+    await store.refresh(true);
+    expect(mockCheckAgentCli.mock.calls.length).toBe(4);
+
+    mockCheckAgentCli.mockClear();
+    await store.refresh(false);
+    expect(mockCheckAgentCli).not.toHaveBeenCalled();
+
+    await store.refresh(true);
+    expect(mockCheckAgentCli.mock.calls.length).toBe(4);
+    expect(RUNTIME_PROBE_TTL_MS).toBeGreaterThan(0);
+  });
 });
 
 describe("RuntimeHubStore.refresh single-flight", () => {
@@ -249,7 +273,7 @@ describe("RuntimeHubStore error recovery", () => {
     });
     mockDetectMimoRuntime.mockResolvedValue(mimoMissing());
 
-    await store.refresh();
+    await store.refresh(true);
     expect(store.error).toBeNull();
     expect(store.runtimes.find((r) => r.id === "opencode")?.available).toBe(true);
   });

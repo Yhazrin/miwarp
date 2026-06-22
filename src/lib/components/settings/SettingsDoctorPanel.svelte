@@ -19,6 +19,7 @@
   let dataDir = $state("");
   let markdownReport = $state("");
   let copied = $state(false);
+  let refreshGeneration = 0;
   // One-click update state. Lives in the doctor panel because the version
   // check and the update button share the same render path.
   let updating = $state(false);
@@ -64,18 +65,22 @@
   );
 
   async function refresh() {
+    const gen = ++refreshGeneration;
     loading = true;
     error = null;
     try {
       const [diag, dir] = await Promise.all([api.runDiagnostics(""), api.getDataDirectory()]);
+      if (gen !== refreshGeneration) return;
       report = diag;
       dataDir = dir;
       markdownReport = await buildDoctorReport("");
+      if (gen !== refreshGeneration) return;
     } catch (e) {
+      if (gen !== refreshGeneration) return;
       error = e instanceof Error ? e.message : String(e);
       report = null;
     } finally {
-      loading = false;
+      if (gen === refreshGeneration) loading = false;
     }
   }
 
@@ -115,6 +120,9 @@
 
   onMount(() => {
     void refresh();
+    return () => {
+      refreshGeneration += 1;
+    };
   });
 
   function mcpSummary(r: DiagnosticsReport): string {

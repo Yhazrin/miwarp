@@ -7,6 +7,8 @@ import {
 import type { ResolvedRuntime, RuntimeDetectionMap, SupportedRuntimeId } from "$lib/runtime/types";
 
 const DEFAULT_RUNTIME_KEY = "ocv:default-runtime";
+/** Skip re-probing when a recent refresh is still fresh (settings fast-path). */
+export const RUNTIME_PROBE_TTL_MS = 30_000;
 
 function readStoredDefault(): SupportedRuntimeId {
   try {
@@ -34,7 +36,15 @@ export class RuntimeHubStore {
     void this.refresh();
   }
 
-  refresh(): Promise<void> {
+  refresh(force = false): Promise<void> {
+    if (
+      !force &&
+      !this.inFlight &&
+      this.lastCheckedAt != null &&
+      Date.now() - this.lastCheckedAt < RUNTIME_PROBE_TTL_MS
+    ) {
+      return Promise.resolve();
+    }
     if (this.inFlight) return this.inFlight;
     this.inFlight = this.performRefresh();
     return this.inFlight.finally(() => {

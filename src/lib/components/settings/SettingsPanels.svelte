@@ -1,49 +1,25 @@
 <script lang="ts">
   /**
-   * v1.0.6 follow-up: unified dispatcher for the settings body.
-   * Replaces the 10 inline `{:else if activeTab === "..."}` branches in
-   * +page.svelte. Takes the entire settings state as a single `state`
-   * object and dispatches to the right tab component based on the
-   * registry.
-   *
-   * The orchestrator (+page.svelte) maps `activeTab` (legacy id) →
-   * new id, then renders `<SettingsPanels {tab} {state} />`. Each
-   * state field is read from the bundle and passed as a named prop
-   * to the tab component.
+   * v1.0.9 perf: lazy-load tab components; only the active tab chunk is fetched.
    */
+  import type { Component } from "svelte";
   import type {
-    UserSettings,
-    PlatformCredential,
-    RemoteHost,
+    AgentSettings,
     CliSessionInfo,
     ImportReport,
+    PlatformCredential,
+    RemoteHost,
+    UserSettings,
   } from "$lib/types";
   import type { SettingsTabId } from "./tabs/registry";
-  import { getTab } from "./tabs/registry";
-  import AppearanceTab from "./tabs/AppearanceTab.svelte";
-  import ProvidersTab from "./tabs/ProvidersTab.svelte";
-  import DevicesTab from "./tabs/DevicesTab.svelte";
-  import ShortcutsTab from "./tabs/ShortcutsTab.svelte";
-  import RemoteHostsTab from "./tabs/RemoteHostsTab.svelte";
-  import CliBehaviorTab from "./tabs/CliBehaviorTab.svelte";
-  import WorktreeTab from "./tabs/WorktreeTab.svelte";
-  import NotificationsTab from "./tabs/NotificationsTab.svelte";
-  import DataAndDebugTab from "./tabs/DataAndDebugTab.svelte";
-  import ThemeTab from "./tabs/ThemeTab.svelte";
-  import RuntimesTab from "./tabs/RuntimesTab.svelte";
-  import UpdatesTab from "./tabs/UpdatesTab.svelte";
+  import Spinner from "$lib/components/Spinner.svelte";
+  import { t } from "$lib/i18n/index.svelte";
+  import { dbgWarn } from "$lib/utils/debug";
 
-  // Bundled state type — flattened for prop wiring convenience.
-  // Keep fields as `any` only where the tab has its own narrower type
-  // (e.g. webStatus is `{enabled, bind, port, tunnel_url}` but the
-  // panel declares its own structural type).
   type TabState = {
-    // settings
     settings: UserSettings | null;
     saveGeneralPatch: (patch: Record<string, unknown>) => Promise<void>;
     applyZoomQueued: (factor: number) => void;
-
-    // providers
     platformCredentials: PlatformCredential[];
     selectedPlatformId: string | null;
     authMode: string;
@@ -53,9 +29,14 @@
     onSelectPlatform: (id: string) => Promise<void>;
     onAuthModeChange: (mode: string) => Promise<void>;
     saveApiAuth: () => Promise<void>;
-
-    // devices
-    webStatus: { enabled: boolean; bind: string; port: number; tunnel_url?: string | null } | null;
+    webStatus: {
+      enabled: boolean;
+      running: boolean;
+      port: number;
+      bind: string;
+      tunnel_url?: string | null;
+      warning?: string;
+    } | null;
     webToken: string | null;
     webTunnelUrl: string;
     webLinkCopied: boolean;
@@ -71,8 +52,6 @@
     applyWebServerSettings: () => Promise<void>;
     copyAccessLink: () => Promise<void>;
     copyPairingLink: () => Promise<void>;
-
-    // cli behavior
     cliConfig: Record<string, unknown>;
     projectCliConfig: Record<string, unknown>;
     cliConfigLoaded: boolean;
@@ -80,14 +59,10 @@
     cliConfigError: string;
     loadCliConfig: () => Promise<void>;
     saveCliConfigPatch: (key: string, value: unknown) => Promise<void>;
-
-    // remote
     remoteHosts: RemoteHost[];
     editingRemote: RemoteHost | null;
     onStartEdit: (host: RemoteHost | null) => void;
     deleteRemoteHost: (name: string) => Promise<void>;
-
-    // notifications
     notifEnabled: boolean;
     notifRunCompleted: boolean;
     notifRunFailed: boolean;
@@ -103,8 +78,6 @@
     saveNotificationSettings: () => Promise<void>;
     saveFeishuSettings: () => Promise<void>;
     testFeishuWebhook: () => Promise<void>;
-
-    // data + debug
     scanningHistory: boolean;
     exportingHistory: boolean;
     importingHistory: boolean;
@@ -114,155 +87,165 @@
     onScanHistory: () => Promise<void>;
     onExportHistory: () => Promise<void>;
     onImportHistory: () => Promise<void>;
+    mimoAgentSettings: AgentSettings | null;
   };
 
   let {
     tab,
-    state,
+    panelState,
   }: {
     tab: SettingsTabId;
-    state: TabState;
+    panelState: TabState;
   } = $props();
 
-  // svelte 5 dynamic component: cast to Component<any> to bypass strict type
-  // checks across the 8 different prop shapes.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const AppearanceTabC = AppearanceTab as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ProvidersTabC = ProvidersTab as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const DevicesTabC = DevicesTab as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ShortcutsTabC = ShortcutsTab as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const RemoteHostsTabC = RemoteHostsTab as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const CliBehaviorTabC = CliBehaviorTab as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const WorktreeTabC = WorktreeTab as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const NotificationsTabC = NotificationsTab as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const DataAndDebugTabC = DataAndDebugTab as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ThemeTabC = ThemeTab as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const RuntimesTabC = RuntimesTab as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const UpdatesTabC = UpdatesTab as any;
+  type SettingsTabComponent = Component<any>;
+
+  const TAB_LOADERS: Record<SettingsTabId, () => Promise<{ default: SettingsTabComponent }>> = {
+    appearance: () => import("./tabs/AppearanceTab.svelte"),
+    theme: () => import("./tabs/ThemeTab.svelte"),
+    providers: () => import("./tabs/ProvidersTab.svelte"),
+    devices: () => import("./tabs/DevicesTab.svelte"),
+    shortcuts: () => import("./tabs/ShortcutsTab.svelte"),
+    "remote-hosts": () => import("./tabs/RemoteHostsTab.svelte"),
+    "cli-behavior": () => import("./tabs/CliBehaviorTab.svelte"),
+    worktree: () => import("./tabs/WorktreeTab.svelte"),
+    runtimes: () => import("./tabs/RuntimesTab.svelte"),
+    notifications: () => import("./tabs/NotificationsTab.svelte"),
+    "data-debug": () => import("./tabs/DataAndDebugTab.svelte"),
+    updates: () => import("./tabs/UpdatesTab.svelte"),
+  };
+
+  let TabComponent = $state<SettingsTabComponent | null>(null);
+  let loadError = $state<string | null>(null);
+
+  $effect(() => {
+    const activeTab = tab;
+    let cancelled = false;
+    TabComponent = null;
+    loadError = null;
+
+    void TAB_LOADERS[activeTab]()
+      .then((mod) => {
+        if (cancelled) return;
+        TabComponent = mod.default;
+      })
+      .catch((loadFailure: unknown) => {
+        if (cancelled) return;
+        dbgWarn("settings", "settings panel import failed", loadFailure);
+        loadError = t("settings_tab_loadFailed");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  });
 </script>
 
-{#if tab === "appearance"}
-  <AppearanceTabC
-    settings={state.settings}
-    onSaveGeneralPatch={state.saveGeneralPatch}
-    onZoom={state.applyZoomQueued}
-  />
-{:else if tab === "providers"}
-  <ProvidersTabC
-    settings={state.settings}
-    platformCredentials={state.platformCredentials}
-    selectedPlatformId={state.selectedPlatformId}
-    bind:authMode={state.authMode}
-    bind:anthropicApiKey={state.anthropicApiKey}
-    bind:anthropicBaseUrl={state.anthropicBaseUrl}
-    bind:showApiKey={state.showApiKey}
-    onSelectPlatform={state.onSelectPlatform}
-    onAuthModeChange={state.onAuthModeChange}
-    onSaveApiAuth={state.saveApiAuth}
-  />
-{:else if tab === "devices"}
-  <DevicesTabC
-    settings={state.settings}
-    webStatus={state.webStatus}
-    webToken={state.webToken}
-    webTunnelUrl={state.webTunnelUrl}
-    webLinkCopied={state.webLinkCopied}
-    webRestarting={state.webRestarting}
-    webRestartWarning={state.webRestartWarning}
-    webLanIp={state.webLanIp}
-    webAdvancedOpen={state.webAdvancedOpen}
-    webOrigins={state.webOrigins}
-    webRestartError={state.webRestartError}
-    mobileQrDataUrl={state.mobileQrDataUrl}
-    mobilePairingLinkCopied={state.mobilePairingLinkCopied}
-    onToggleWebServer={state.toggleWebServer}
-    onApplyWebServerSettings={state.applyWebServerSettings}
-    onCopyAccessLink={state.copyAccessLink}
-    onCopyPairingLink={state.copyPairingLink}
-  />
-{:else if tab === "shortcuts"}
-  <ShortcutsTabC />
-{:else if tab === "remote-hosts"}
-  <RemoteHostsTabC
-    remoteHosts={state.remoteHosts}
-    bind:editingRemote={state.editingRemote}
-    onStartEdit={state.onStartEdit}
-    onDeleteHost={state.deleteRemoteHost}
-  />
-{:else if tab === "cli-behavior"}
-  <CliBehaviorTabC
-    bind:cliConfig={state.cliConfig}
-    projectCliConfig={state.projectCliConfig}
-    cliConfigLoaded={state.cliConfigLoaded}
-    cliConfigLoading={state.cliConfigLoading}
-    cliConfigError={state.cliConfigError}
-    settings={state.settings}
-    onLoad={state.loadCliConfig}
-    onSavePatch={state.saveCliConfigPatch}
-  />
-{:else if tab === "worktree"}
-  <WorktreeTabC settings={state.settings} onSaveGeneralPatch={state.saveGeneralPatch} />
-{:else if tab === "runtimes"}
-  <RuntimesTabC />
-{:else if tab === "notifications"}
-  <NotificationsTabC
-    settings={state.settings}
-    bind:notifEnabled={state.notifEnabled}
-    bind:notifRunCompleted={state.notifRunCompleted}
-    bind:notifRunFailed={state.notifRunFailed}
-    bind:notifApprovalRequired={state.notifApprovalRequired}
-    bind:notifScheduleCompleted={state.notifScheduleCompleted}
-    bind:notifTeamCompleted={state.notifTeamCompleted}
-    bind:notifMinDuration={state.notifMinDuration}
-    bind:soundFeedbackLevel={state.soundFeedbackLevel}
-    bind:feishuWebhookUrl={state.feishuWebhookUrl}
-    bind:feishuWebhookEnabled={state.feishuWebhookEnabled}
-    bind:feishuWebhookTriggers={state.feishuWebhookTriggers}
-    feishuTestResult={state.feishuTestResult}
-    onSaveNotificationSettings={state.saveNotificationSettings}
-    onSaveFeishuSettings={state.saveFeishuSettings}
-    onTestFeishuWebhook={state.testFeishuWebhook}
-  />
-{:else if tab === "data-debug"}
-  <DataAndDebugTabC
-    bind:scanningHistory={state.scanningHistory}
-    bind:exportingHistory={state.exportingHistory}
-    bind:importingHistory={state.importingHistory}
-    bind:scanResult={state.scanResult}
-    bind:importReport={state.importReport}
-    bind:historyError={state.historyError}
-    onScanHistory={state.onScanHistory}
-    onExportHistory={state.onExportHistory}
-    onImportHistory={state.onImportHistory}
-  />
-{/if}
-
-<!-- Theme — standalone first-level tab. Color + mode are the two main
-     sections; the advanced editor lives in a collapsed details element. -->
-{#if tab === "theme"}
-  <ThemeTabC />
-{/if}
-
-<!-- Updates — standalone first-level tab. MiWarp + CLI tool updates. -->
-{#if tab === "updates"}
-  <UpdatesTabC />
-{/if}
-
-<!-- Defensive: if registry has no component for the requested tab,
-     fall back to the appearance tab so the user always sees something. -->
-{#if !getTab(tab)}
-  <p class="text-sm text-muted-foreground">
-    Unknown tab: {tab}
-  </p>
+{#if loadError}
+  <p class="text-sm text-destructive">{loadError}</p>
+{:else if !TabComponent}
+  <div class="flex items-center justify-center py-16">
+    <Spinner size="md" class="border-primary border-t-transparent" />
+  </div>
+{:else}
+  {@const C = TabComponent}
+  {#if tab === "appearance"}
+    <C
+      settings={panelState.settings}
+      onSaveGeneralPatch={panelState.saveGeneralPatch}
+      onZoom={panelState.applyZoomQueued}
+    />
+  {:else if tab === "theme"}
+    <C />
+  {:else if tab === "providers"}
+    <C
+      settings={panelState.settings}
+      platformCredentials={panelState.platformCredentials}
+      selectedPlatformId={panelState.selectedPlatformId}
+      bind:authMode={panelState.authMode}
+      bind:anthropicApiKey={panelState.anthropicApiKey}
+      bind:anthropicBaseUrl={panelState.anthropicBaseUrl}
+      bind:showApiKey={panelState.showApiKey}
+      onSelectPlatform={panelState.onSelectPlatform}
+      onAuthModeChange={panelState.onAuthModeChange}
+      onSaveApiAuth={panelState.saveApiAuth}
+    />
+  {:else if tab === "devices"}
+    <C
+      settings={panelState.settings}
+      webStatus={panelState.webStatus}
+      webToken={panelState.webToken}
+      webTunnelUrl={panelState.webTunnelUrl}
+      webLinkCopied={panelState.webLinkCopied}
+      webRestarting={panelState.webRestarting}
+      webRestartWarning={panelState.webRestartWarning}
+      webLanIp={panelState.webLanIp}
+      webAdvancedOpen={panelState.webAdvancedOpen}
+      webOrigins={panelState.webOrigins}
+      webRestartError={panelState.webRestartError}
+      mobileQrDataUrl={panelState.mobileQrDataUrl}
+      mobilePairingLinkCopied={panelState.mobilePairingLinkCopied}
+      onToggleWebServer={panelState.toggleWebServer}
+      onApplyWebServerSettings={panelState.applyWebServerSettings}
+      onCopyAccessLink={panelState.copyAccessLink}
+      onCopyPairingLink={panelState.copyPairingLink}
+    />
+  {:else if tab === "shortcuts"}
+    <C />
+  {:else if tab === "remote-hosts"}
+    <C
+      remoteHosts={panelState.remoteHosts}
+      bind:editingRemote={panelState.editingRemote}
+      onStartEdit={panelState.onStartEdit}
+      onDeleteHost={panelState.deleteRemoteHost}
+    />
+  {:else if tab === "cli-behavior"}
+    <C
+      bind:cliConfig={panelState.cliConfig}
+      projectCliConfig={panelState.projectCliConfig}
+      cliConfigLoaded={panelState.cliConfigLoaded}
+      cliConfigLoading={panelState.cliConfigLoading}
+      cliConfigError={panelState.cliConfigError}
+      settings={panelState.settings}
+      onLoad={panelState.loadCliConfig}
+      onSavePatch={panelState.saveCliConfigPatch}
+    />
+  {:else if tab === "worktree"}
+    <C settings={panelState.settings} onSaveGeneralPatch={panelState.saveGeneralPatch} />
+  {:else if tab === "runtimes"}
+    <C settings={panelState.settings} mimoAgentSettings={panelState.mimoAgentSettings} />
+  {:else if tab === "notifications"}
+    <C
+      settings={panelState.settings}
+      bind:notifEnabled={panelState.notifEnabled}
+      bind:notifRunCompleted={panelState.notifRunCompleted}
+      bind:notifRunFailed={panelState.notifRunFailed}
+      bind:notifApprovalRequired={panelState.notifApprovalRequired}
+      bind:notifScheduleCompleted={panelState.notifScheduleCompleted}
+      bind:notifTeamCompleted={panelState.notifTeamCompleted}
+      bind:notifMinDuration={panelState.notifMinDuration}
+      bind:soundFeedbackLevel={panelState.soundFeedbackLevel}
+      bind:feishuWebhookUrl={panelState.feishuWebhookUrl}
+      bind:feishuWebhookEnabled={panelState.feishuWebhookEnabled}
+      bind:feishuWebhookTriggers={panelState.feishuWebhookTriggers}
+      feishuTestResult={panelState.feishuTestResult}
+      onSaveNotificationSettings={panelState.saveNotificationSettings}
+      onSaveFeishuSettings={panelState.saveFeishuSettings}
+      onTestFeishuWebhook={panelState.testFeishuWebhook}
+    />
+  {:else if tab === "data-debug"}
+    <C
+      bind:scanningHistory={panelState.scanningHistory}
+      bind:exportingHistory={panelState.exportingHistory}
+      bind:importingHistory={panelState.importingHistory}
+      bind:scanResult={panelState.scanResult}
+      bind:importReport={panelState.importReport}
+      bind:historyError={panelState.historyError}
+      onScanHistory={panelState.onScanHistory}
+      onExportHistory={panelState.onExportHistory}
+      onImportHistory={panelState.onImportHistory}
+    />
+  {:else if tab === "updates"}
+    <C />
+  {/if}
 {/if}

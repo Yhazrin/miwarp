@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
   import type { MessageKey } from "$lib/i18n/types";
   import Card from "$lib/components/Card.svelte";
@@ -7,17 +6,31 @@
   import SettingsFieldRow from "../_shared/SettingsFieldRow.svelte";
   import SettingsFieldEnum from "../_shared/SettingsFieldEnum.svelte";
   import { runtimeHubStore } from "$lib/stores/runtime-hub-store.svelte";
-  import { agentToRuntimeId, isStartableRuntime } from "$lib/runtime/registry";
+  import { isStartableRuntime } from "$lib/runtime/registry";
   import type { ResolvedRuntime } from "$lib/runtime/types";
+  import type { AgentSettings, UserSettings } from "$lib/types";
   import * as api from "$lib/api";
+
+  let {
+    settings = null as UserSettings | null,
+    mimoAgentSettings = null as AgentSettings | null,
+  }: {
+    settings?: UserSettings | null;
+    mimoAgentSettings?: AgentSettings | null;
+  } = $props();
 
   let mimoBinaryPath = $state("");
   let mimoProtocolMode = $state("auto");
-  let advancedLoading = $state(false);
 
   const installedCount = $derived(runtimeHubStore.installedCount);
   const startableCount = $derived(runtimeHubStore.startableCount);
   const defaultRuntime = $derived(runtimeHubStore.runtime(runtimeHubStore.defaultRuntime));
+
+  $effect(() => {
+    if (!mimoAgentSettings) return;
+    mimoBinaryPath = mimoAgentSettings.mimo_binary_path ?? "";
+    mimoProtocolMode = mimoAgentSettings.mimo_protocol_mode ?? "auto";
+  });
 
   function lk(key: string): string {
     return t(key as MessageKey);
@@ -36,30 +49,6 @@
       return "border-violet-500/20 bg-violet-500/8 text-violet-600 dark:text-violet-400";
     return "border-border bg-muted/60 text-muted-foreground";
   }
-
-  async function loadAdvancedSettings() {
-    advancedLoading = true;
-    try {
-      const [, agentSettings, userSettings] = await Promise.all([
-        runtimeHubStore.refresh(),
-        api.getAgentSettings("mimo").catch(() => null),
-        api.getUserSettings().catch(() => null),
-      ]);
-      if (agentSettings) {
-        mimoBinaryPath = agentSettings.mimo_binary_path ?? "";
-        mimoProtocolMode = agentSettings.mimo_protocol_mode ?? "auto";
-      }
-      const configuredRuntime = agentToRuntimeId(userSettings?.default_agent ?? "");
-      if (configuredRuntime) runtimeHubStore.setDefault(configuredRuntime);
-    } finally {
-      advancedLoading = false;
-    }
-  }
-
-  onMount(() => {
-    runtimeHubStore.init();
-    void loadAdvancedSettings();
-  });
 
   const protocolOptions = [
     { value: "auto", label: "Auto (StreamJson)" },
@@ -91,7 +80,7 @@
       <button
         type="button"
         class="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-background/70 px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
-        onclick={() => runtimeHubStore.refresh()}
+        onclick={() => runtimeHubStore.refresh(true)}
         disabled={runtimeHubStore.loading}
       >
         {#if runtimeHubStore.loading}
@@ -213,7 +202,7 @@
       <p class="mt-1 text-xs text-muted-foreground">{lk("runtime_hub_mimo_description")}</p>
     </div>
 
-    {#if advancedLoading}
+    {#if !mimoAgentSettings && runtimeHubStore.loading}
       <div class="flex items-center gap-2 py-4 text-sm text-muted-foreground">
         <Spinner size="sm" />
         {lk("settings_runtimes_detecting")}
