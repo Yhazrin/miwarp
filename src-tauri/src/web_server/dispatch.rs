@@ -937,6 +937,7 @@ pub async fn dispatch_command(
                 &state.sessions,
                 &state.spawn_locks,
                 &state.cancel_token,
+                &state.recovery_registry,
                 run_id,
                 mode,
                 session_id,

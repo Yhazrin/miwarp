@@ -332,6 +332,10 @@ async fn spawn_server(
             .state::<crate::agent::spawn_locks::SpawnLocks>()
             .inner()
             .clone(),
+        recovery_registry: app
+            .state::<crate::agent::runtime_recovery::RecoveryRegistry>()
+            .inner()
+            .clone(),
         writer,
         cancel_token: app.state::<CancellationToken>().inner().clone(),
         cli_info_cache: app

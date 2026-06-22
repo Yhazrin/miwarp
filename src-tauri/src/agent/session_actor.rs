@@ -9,6 +9,11 @@
 use crate::agent::adapter::ActorSessionMap;
 use crate::agent::claude_protocol::{validate_bus_event, ProtocolState};
 use crate::agent::notify::notify_if_background;
+use crate::agent::recovery::{CrashReason, RecoveryState};
+use crate::agent::runtime_recovery::{
+    classify_active_turn_eof, emit_session_lifecycle, on_actor_exit, ActorRecoveryBootstrap,
+    ActorRecoverySnapshot, PendingRecoveryMessage, RecoveryRegistry,
+};
 use crate::agent::turn_engine::{
     apply_activity_reset, ActiveTurn, ContextExtractor, InternalExtractor, InternalJob, TurnOrigin,
     TurnPhase, UserTurnKind, UserTurnTicket, ACCEPTED_CLIENT_MESSAGE_IDS_CAP,
@@ -248,6 +253,15 @@ struct SessionActor {
     /// Cleared when the response is received. Retained during quarantine for diagnostics.
     pending_interactive_request: Option<PendingInteractiveRequest>,
 
+    // ── v1.0.9 runtime recovery ──
+    recovery_registry: Option<RecoveryRegistry>,
+    connection_generation: u64,
+    session_id: Option<String>,
+    crash_reason: Option<CrashReason>,
+    user_stopped: bool,
+    recoverable_exit: bool,
+    exit_code: Option<i32>,
+
     // ── Readiness signal ──
     /// Sends `true` on first CLI output (stdout line). WaitReady commands clone a receiver.
     ready_tx: watch::Sender<bool>,
@@ -276,6 +290,8 @@ pub fn spawn_actor(
     cancel: CancellationToken,
     initial_turn_index: u32,
     initial_auto_ctx_id: u32,
+    recovery_registry: Option<RecoveryRegistry>,
+    recovery_bootstrap: Option<ActorRecoveryBootstrap>,
 ) -> SessionActorHandle {
     spawn_actor_with_runtime(
         emitter,
@@ -290,6 +306,8 @@ pub fn spawn_actor(
         initial_turn_index,
         initial_auto_ctx_id,
         AgentRuntimeKind::ClaudeCode,
+        recovery_registry,
+        recovery_bootstrap,
     )
 }
 
@@ -308,12 +326,41 @@ pub fn spawn_actor_with_runtime(
     initial_turn_index: u32,
     initial_auto_ctx_id: u32,
     runtime_kind: AgentRuntimeKind,
+    recovery_registry: Option<RecoveryRegistry>,
+    recovery_bootstrap: Option<ActorRecoveryBootstrap>,
 ) -> SessionActorHandle {
     let tag = Arc::new(());
     let (cmd_tx, cmd_rx) = mpsc::channel::<ActorCommand>(64);
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
     let (ready_tx, _ready_rx) = tokio::sync::watch::channel(false);
     drop(_ready_rx); // WaitReady commands create their own receivers from ready_tx
+
+    let (
+        accepted_client_message_ids,
+        next_turn_index,
+        next_auto_ctx_id,
+        next_turn_seq,
+        connection_generation,
+        session_id,
+    ) = if let Some(bootstrap) = recovery_bootstrap {
+        (
+            bootstrap.accepted_ledger,
+            bootstrap.next_turn_index,
+            bootstrap.next_auto_ctx_id,
+            bootstrap.next_turn_seq,
+            bootstrap.connection_generation,
+            bootstrap.session_id,
+        )
+    } else {
+        (
+            VecDeque::new(),
+            initial_turn_index,
+            initial_auto_ctx_id,
+            0,
+            0,
+            None,
+        )
+    };
 
     log::debug!(
         "[actor] spawn: run_id={}, is_resume={}, initial_turn_index={}, initial_auto_ctx_id={}",
@@ -341,10 +388,10 @@ pub fn spawn_actor_with_runtime(
         active_extractor: None,
         queued_user: VecDeque::new(),
         queued_internal: VecDeque::new(),
-        accepted_client_message_ids: VecDeque::new(),
-        next_turn_index: initial_turn_index,
-        next_auto_ctx_id: initial_auto_ctx_id,
-        next_turn_seq: 0,
+        accepted_client_message_ids,
+        next_turn_index,
+        next_auto_ctx_id,
+        next_turn_seq,
         last_auto_context_for: None,
         must_run_internal_for_turn: None,
         quarantine_until_result: false,
@@ -359,6 +406,13 @@ pub fn spawn_actor_with_runtime(
         ralph_needs_dispatch: false,
         pending_interactive_request: None,
         ready_tx,
+        recovery_registry,
+        connection_generation,
+        session_id,
+        crash_reason: None,
+        user_stopped: false,
+        recoverable_exit: false,
+        exit_code: None,
     };
 
     let join_handle = tokio::spawn(async move {
@@ -388,11 +442,22 @@ impl SessionActor {
         let mut stderr_lines = BufReader::new(stderr).lines();
         let mut line_count: u64 = 0;
         let mut tick = tokio::time::interval(TICK_INTERVAL);
+        let mut ready_emitted = false;
 
         log::debug!(
             "[actor] started for run_id={}, is_resume={}",
             self.run_id,
             self.protocol.is_resume()
+        );
+        emit_session_lifecycle(
+            &self.emitter,
+            &self.run_id,
+            self.session_id.as_deref(),
+            "starting",
+            RecoveryState::Healthy,
+            None,
+            self.connection_generation,
+            0,
         );
 
         loop {
@@ -533,7 +598,20 @@ impl SessionActor {
                         Ok(Some(text)) => {
                             line_count += 1;
                             // Signal readiness on first CLI output (replaces fixed sleeps).
-                            let _ = self.ready_tx.send(true);
+                            if !ready_emitted {
+                                ready_emitted = true;
+                                let _ = self.ready_tx.send(true);
+                                emit_session_lifecycle(
+                                    &self.emitter,
+                                    &self.run_id,
+                                    self.session_id.as_deref(),
+                                    "ready",
+                                    RecoveryState::Healthy,
+                                    None,
+                                    self.connection_generation,
+                                    0,
+                                );
+                            }
                             self.handle_stdout_line(&text, line_count).await;
                         }
                         Ok(None) => {
@@ -594,8 +672,29 @@ impl SessionActor {
             let _ = reply.send(Err("Session terminated".to_string()));
             return;
         }
-        // Barrier: user messages are still enqueued (not rejected).
-        // try_dispatch ensures internal queue runs first when barrier is set.
+
+        if let Some(ref registry) = self.recovery_registry {
+            let recovering = {
+                let map = registry.lock().await;
+                map.get(&self.run_id)
+                    .map(|e| e.is_recovering())
+                    .unwrap_or(false)
+            };
+            if recovering {
+                let mut map = registry.lock().await;
+                if let Some(entry) = map.get_mut(&self.run_id) {
+                    if let Err(e) =
+                        entry.enqueue_recovery_send(text, attachments, client_message_id)
+                    {
+                        let _ = reply.send(Err(e.to_string()));
+                        return;
+                    }
+                    let _ = reply.send(Ok(()));
+                    return;
+                }
+            }
+        }
+
         if self.must_run_internal_for_turn.is_some() {
             log::debug!(
                 "[turn] barrier active, user message queued (will dispatch after internal turn)"
@@ -780,7 +879,13 @@ impl SessionActor {
             Ok(uuid) => uuid,
             Err(e) => {
                 log::warn!("[turn] start_user: stdin write failed: {}", e);
-                let _ = ticket.reply.send(Err(e));
+                let _ = ticket.reply.send(Err(e.clone()));
+                self.crash_reason = Some(CrashReason::StdinWriteFailed);
+                self.recoverable_exit = true;
+                if let Some(ref mut child) = self.child {
+                    let _ = child.kill().await;
+                }
+                self.stdin.take();
                 return;
             }
         };
@@ -1404,6 +1509,7 @@ impl SessionActor {
 
     async fn handle_stop(&mut self) -> Result<(), String> {
         log::debug!("[actor] handle_stop: run_id={}", self.run_id);
+        self.user_stopped = true;
 
         // Drop stdin to signal EOF to CLI
         self.stdin.take();
@@ -1624,7 +1730,12 @@ impl SessionActor {
                         true,
                     );
                     self.fail_all_pending_replies("protocol_desync");
-                    self.terminated = true;
+                    self.crash_reason = Some(CrashReason::ProtocolDesynced);
+                    self.recoverable_exit = true;
+                    if let Some(ref mut child) = self.child {
+                        let _ = child.kill().await;
+                    }
+                    self.stdin.take();
                     return;
                 }
                 // HC #16: parse failure during quarantine → swallow
@@ -2329,6 +2440,25 @@ impl SessionActor {
         } else {
             None
         };
+        self.exit_code = exit_code;
+
+        let active_turn = self.active_turn.is_some();
+        if self.crash_reason.is_none() {
+            self.crash_reason = classify_active_turn_eof(self.cancel.is_cancelled(), active_turn);
+        }
+        if self.crash_reason.is_some() && !self.user_stopped && !self.cancel.is_cancelled() {
+            self.recoverable_exit = true;
+            log::warn!(
+                "[recovery] recoverable EOF: run_id={}, reason={:?}, exit_code={:?}",
+                self.run_id,
+                self.crash_reason,
+                exit_code
+            );
+            self.active_turn = None;
+            self.active_extractor = None;
+            self.quarantine_until_result = false;
+            return;
+        }
 
         log::debug!(
             "[actor] EOF cleanup: run_id={}, got_result={}, exit_code={:?}",
@@ -2586,14 +2716,81 @@ impl SessionActor {
 
     // ── Cleanup ──
 
+    fn build_recovery_snapshot(&self) -> ActorRecoverySnapshot {
+        let pending_unaccepted: VecDeque<PendingRecoveryMessage> = self
+            .queued_user
+            .iter()
+            .filter(|ticket| {
+                ticket
+                    .client_message_id
+                    .as_ref()
+                    .is_none_or(|cid| !is_accepted(&self.accepted_client_message_ids, cid))
+            })
+            .map(|ticket| PendingRecoveryMessage {
+                text: ticket.text.clone(),
+                attachments: ticket.attachments.clone(),
+                client_message_id: ticket.client_message_id.clone(),
+            })
+            .collect();
+
+        ActorRecoverySnapshot {
+            crash_reason: self.crash_reason,
+            accepted_ledger: self.accepted_client_message_ids.clone(),
+            pending_unaccepted,
+            next_turn_index: self.next_turn_index,
+            next_auto_ctx_id: self.next_auto_ctx_id,
+            next_turn_seq: self.next_turn_seq,
+            session_id: self.session_id.clone(),
+            user_stopped: self.user_stopped,
+        }
+    }
+
     async fn cleanup(mut self) {
         log::debug!("[actor] cleanup starting: run_id={}", self.run_id);
+
+        let snapshot = self.build_recovery_snapshot();
+        let should_recover =
+            self.recoverable_exit && !self.user_stopped && snapshot.crash_reason.is_some();
+
+        if let Some(ref registry) = self.recovery_registry {
+            if should_recover {
+                let recover = on_actor_exit(registry, &self.run_id, snapshot.clone()).await;
+                if recover {
+                    emit_session_lifecycle(
+                        &self.emitter,
+                        &self.run_id,
+                        self.session_id.as_deref(),
+                        "crashed",
+                        RecoveryState::Reconnecting,
+                        snapshot.crash_reason.map(|r| (r, self.exit_code, None)),
+                        self.connection_generation,
+                        0,
+                    );
+                }
+            } else if let Some(reason) = snapshot.crash_reason {
+                emit_session_lifecycle(
+                    &self.emitter,
+                    &self.run_id,
+                    self.session_id.as_deref(),
+                    if self.user_stopped {
+                        "stopped"
+                    } else {
+                        "crashed"
+                    },
+                    RecoveryState::Healthy,
+                    Some((reason, self.exit_code, None)),
+                    self.connection_generation,
+                    0,
+                );
+            }
+        }
 
         // Drop stdin
         self.stdin.take();
 
-        // Fail all pending user replies (HC #12)
-        self.fail_all_pending_replies("Session cleanup");
+        if !should_recover {
+            self.fail_all_pending_replies("Session cleanup");
+        }
 
         // Drain control waiters
         if !self.control_waiters.is_empty() {

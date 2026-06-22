@@ -135,6 +135,7 @@ pub fn run() {
         .manage(commands::runtime_hub::RuntimeControlPlaneState::default())
         .manage(Arc::new(EventWriter::new()))
         .manage(SpawnLocks::new())
+        .manage(crate::agent::runtime_recovery::new_recovery_registry())
         .manage(ShutdownGate::new())
         .manage(cancel_token)
         .manage(ws_shutdown_sender)
@@ -225,6 +226,7 @@ pub fn run() {
             commands::diagnostics::test_api_connectivity,
             commands::session::start_session,
             commands::session::send_session_message,
+            commands::session::retry_session_recovery,
             commands::session::stop_session,
             commands::session::send_session_control,
             commands::session::broadcast_mcp_toggle,

@@ -1251,6 +1251,10 @@ pub fn now_iso() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
+pub fn now_epoch_ms() -> u64 {
+    chrono::Utc::now().timestamp_millis() as u64
+}
+
 // ── Attachment limits ──
 // Images: no app-side limit — CLI compresses via sharp (→ ≤3.75MB + ≤2000px).
 pub const MAX_TEXT_SIZE: u64 = 10 * 1024 * 1024; // 10MB — text files
