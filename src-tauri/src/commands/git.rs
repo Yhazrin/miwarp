@@ -482,14 +482,13 @@ fn get_git_timeline_sync(cwd: &str, limit: Option<u32>) -> Result<GitTimelineRes
             });
         }
 
-        let base_branch =
-            if git_output_ok(cwd, &["rev-parse", "--verify", "main"]).is_some() {
-                "main"
-            } else if git_output_ok(cwd, &["rev-parse", "--verify", "master"]).is_some() {
-                "master"
-            } else {
-                ""
-            };
+        let base_branch = if git_output_ok(cwd, &["rev-parse", "--verify", "main"]).is_some() {
+            "main"
+        } else if git_output_ok(cwd, &["rev-parse", "--verify", "master"]).is_some() {
+            "master"
+        } else {
+            ""
+        };
         if !base_branch.is_empty() && base_branch != branch {
             entries.push(GitTimelineEntry {
                 id: format!("base-{}", base_branch),
