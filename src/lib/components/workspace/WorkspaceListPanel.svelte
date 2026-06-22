@@ -1,6 +1,5 @@
 <script lang="ts">
   import { t } from "$lib/i18n/index.svelte";
-  import Icon from "$lib/components/Icon.svelte";
   import type { WorkspaceListEntry } from "$lib/types/workspace";
   import { relativeTime } from "$lib/utils/format";
 
