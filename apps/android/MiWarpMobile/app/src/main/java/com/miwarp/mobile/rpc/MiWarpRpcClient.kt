@@ -399,7 +399,7 @@ class MiWarpRpcClient(
                 crashSignal = payload?.jsonObject?.get("crash_signal")?.jsonPrimitive?.intOrNull,
                 connectionGeneration = payload?.jsonObject?.get("connection_generation")?.jsonPrimitive?.longOrNull,
                 consecutiveFailures = payload?.jsonObject?.get("consecutive_failures")?.jsonPrimitive?.intOrNull,
-                timestampMs = payload?.jsonObject?.get("timestamp_ms")?.jsonPrimitive?.long ?: 0L,
+                timestampMs = payload?.jsonObject?.get("timestamp_ms")?.jsonPrimitive?.longOrNull ?: 0L,
             )
             "protocol_desync" -> BusEvent.ProtocolDesync(
                 seq = seq,
