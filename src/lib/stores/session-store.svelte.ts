@@ -1058,6 +1058,16 @@ export class SessionStore {
     }
   }
 
+  /** Highest WS `_seq` processed — exposed for protocol quarantine seq invariants. */
+  getLastProcessedSeq(): number {
+    return this._lastProcessedSeq;
+  }
+
+  /** Brief protocol/recovery notice for RecoveringBanner (minimal UI hook). */
+  setProtocolNotice(notice: string | null): void {
+    this.recoveryNotice = notice;
+  }
+
   /** Reload timeline from persisted events.jsonl with per-run single-flight recovery. */
   recoverFromEventLog(notice?: string): Promise<void> {
     const runId = this.run?.id;
@@ -1254,17 +1264,23 @@ export class SessionStore {
     const t0 = performance.now();
     const replayOnly = opts?.replayOnly ?? false;
     const ctx = this._createReduceCtx();
+    // Keep the sequence checkpoint local until every reducer succeeds. If one
+    // event throws, control exits before _commitReduceCtx / _lastProcessedSeq
+    // are touched, so EventMiddleware can safely retry the batch per-event
+    // without those events being misclassified as already processed.
+    let localSeq = this._lastProcessedSeq;
     for (const ev of events) {
       const evSeq = ((ev as Record<string, unknown>)._seq as number) ?? 0;
-      if (evSeq > 0) this._lastProcessedSeq = Math.max(this._lastProcessedSeq, evSeq);
+      if (evSeq > 0) localSeq = Math.max(localSeq, evSeq);
       this._reduce(ev, ctx, replayOnly);
     }
+    this._commitReduceCtx(ctx, replayOnly);
+    this._lastProcessedSeq = localSeq;
     const cpuMs = performance.now() - t0;
     dbg(
       "store",
       `applyEventBatch:sync: ${events.length} events in ${cpuMs.toFixed(1)}ms cpu, timeline=${ctx.tl.length}`,
     );
-    this._commitReduceCtx(ctx, replayOnly);
     this._runIdleHealthCheckIfNeeded();
     return cpuMs;
   }
@@ -3413,6 +3429,12 @@ export class SessionStore {
         }
         break;
       }
+
+      case "session_recovering":
+      case "session_recovered":
+      case "protocol_desync":
+        // Lifecycle signals — UI handled via middleware notice + notification listener.
+        break;
 
       default:
         this.unknownEventCount++;

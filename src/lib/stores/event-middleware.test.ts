@@ -12,16 +12,23 @@ const mockUnsubscribeRun = vi.fn();
 const mockListen = vi.fn().mockResolvedValue(() => {});
 const mockIsDesktop = vi.fn(() => true);
 
-vi.mock("$lib/transport", () => ({
-  getTransport: () => ({
-    isDesktop: mockIsDesktop,
-    listen: mockListen,
-    unsubscribeRun: mockUnsubscribeRun,
-  }),
-}));
-
-function makeMockStore(): SessionStore {
+vi.mock("$lib/transport", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("$lib/transport")>();
   return {
+    ...actual,
+    getTransport: () => ({
+      isDesktop: mockIsDesktop,
+      listen: mockListen,
+      unsubscribeRun: mockUnsubscribeRun,
+    }),
+  };
+});
+
+function makeMockStore(runId = "run-1"): SessionStore {
+  return {
+    run: { id: runId },
+    getLastProcessedSeq: vi.fn(() => 0),
+    setProtocolNotice: vi.fn(),
     applyEventBatch: vi.fn(),
     applyEvent: vi.fn(),
     applyHookEventBatch: vi.fn(),
@@ -142,6 +149,9 @@ describe("EventMiddleware", () => {
     const applyEvent = vi.fn();
     const recoverFromEventLog = vi.fn().mockResolvedValue(undefined);
     const store = {
+      run: { id: "run-1" },
+      getLastProcessedSeq: vi.fn(() => 0),
+      setProtocolNotice: vi.fn(),
       applyEventBatch,
       applyEvent,
       recoverFromEventLog,
@@ -168,6 +178,164 @@ describe("EventMiddleware", () => {
     expect(recoverFromEventLog).not.toHaveBeenCalled();
   });
 
+  it("calls recoverFromEventLog when protocol quarantine escalates to recover", async () => {
+    const applyEvent = vi.fn();
+    const recoverFromEventLog = vi.fn().mockResolvedValue(undefined);
+    const setProtocolNotice = vi.fn();
+    const store = {
+      run: { id: "expected-run" },
+      getLastProcessedSeq: vi.fn(() => 0),
+      setProtocolNotice,
+      applyEventBatch: vi.fn(),
+      applyEvent,
+      recoverFromEventLog,
+      releaseConnection: vi.fn(),
+    } as unknown as SessionStore;
+
+    middleware.subscribe("run-1", store);
+
+    for (let i = 0; i < 5; i++) {
+      (middleware as unknown as { _handleBusEvent: (ev: BusEvent) => void })._handleBusEvent({
+        type: "message_delta",
+        run_id: "run-1",
+        text: "x",
+      });
+    }
+
+    expect(setProtocolNotice).toHaveBeenCalled();
+    expect(recoverFromEventLog).toHaveBeenCalled();
+    expect(applyEvent).not.toHaveBeenCalled();
+  });
+
+  it("drops ignorable unknown events without calling applyEvent", () => {
+    const applyEvent = vi.fn();
+    const store = {
+      run: { id: "run-1" },
+      getLastProcessedSeq: vi.fn(() => 0),
+      setProtocolNotice: vi.fn(),
+      applyEventBatch: vi.fn(),
+      applyEvent,
+      releaseConnection: vi.fn(),
+    } as unknown as SessionStore;
+
+    middleware.subscribe("run-1", store);
+    (middleware as unknown as { _handleBusEvent: (ev: BusEvent) => void })._handleBusEvent({
+      type: "brand_new_event_type",
+      run_id: "run-1",
+    } as unknown as BusEvent);
+
+    expect(applyEvent).not.toHaveBeenCalled();
+    expect(
+      (middleware as unknown as { _batchBuffer: Map<string, BusEvent[]> })._batchBuffer.size,
+    ).toBe(0);
+  });
+
+  it("does not buffer or apply backend protocol_desync", () => {
+    const applyEvent = vi.fn();
+    const applyEventBatch = vi.fn();
+    const setProtocolNotice = vi.fn();
+    const store = {
+      run: { id: "run-1" },
+      getLastProcessedSeq: vi.fn(() => 0),
+      setProtocolNotice,
+      applyEventBatch,
+      applyEvent,
+      releaseConnection: vi.fn(),
+    } as unknown as SessionStore;
+
+    middleware.subscribe("run-1", store);
+    (middleware as unknown as { _handleBusEvent: (ev: BusEvent) => void })._handleBusEvent({
+      type: "protocol_desync",
+      run_id: "run-1",
+      fail_count: 5,
+      sample: "must-not-reach-store",
+    });
+
+    expect(setProtocolNotice).toHaveBeenCalled();
+    expect(applyEvent).not.toHaveBeenCalled();
+    expect(applyEventBatch).not.toHaveBeenCalled();
+    expect(
+      (middleware as unknown as { _batchBuffer: Map<string, BusEvent[]> })._batchBuffer.size,
+    ).toBe(0);
+  });
+
+  it("drops seq regression before buffering via production _handleBusEvent path", () => {
+    const applyEvent = vi.fn();
+    const store = {
+      run: { id: "run-1" },
+      getLastProcessedSeq: vi.fn(() => 10),
+      setProtocolNotice: vi.fn(),
+      applyEventBatch: vi.fn(),
+      applyEvent,
+      releaseConnection: vi.fn(),
+    } as unknown as SessionStore;
+
+    middleware.subscribe("run-1", store);
+    (middleware as unknown as { _handleBusEvent: (ev: BusEvent) => void })._handleBusEvent({
+      type: "message_delta",
+      run_id: "run-1",
+      text: "late",
+      _seq: 3,
+    } as BusEvent);
+
+    expect(applyEvent).not.toHaveBeenCalled();
+    expect(
+      (middleware as unknown as { _batchBuffer: Map<string, BusEvent[]> })._batchBuffer.size,
+    ).toBe(0);
+  });
+
+  it("drops malformed envelope before buffering via _handleBusEvent", () => {
+    const applyEvent = vi.fn();
+    const store = {
+      run: { id: "run-1" },
+      getLastProcessedSeq: vi.fn(() => 0),
+      setProtocolNotice: vi.fn(),
+      applyEventBatch: vi.fn(),
+      applyEvent,
+      releaseConnection: vi.fn(),
+    } as unknown as SessionStore;
+
+    middleware.subscribe("run-1", store);
+    (middleware as unknown as { _handleBusEvent: (ev: BusEvent) => void })._handleBusEvent({
+      type: "",
+      run_id: "run-1",
+    } as unknown as BusEvent);
+
+    expect(applyEvent).not.toHaveBeenCalled();
+    expect(
+      (middleware as unknown as { _batchBuffer: Map<string, BusEvent[]> })._batchBuffer.size,
+    ).toBe(0);
+  });
+
+  it("escalates consecutive single-event reducer failures without pre-apply resets", async () => {
+    const applyEvent = vi.fn(() => {
+      throw new Error("reducer failure");
+    });
+    const recoverFromEventLog = vi.fn().mockResolvedValue(undefined);
+    const store = {
+      run: { id: "run-1" },
+      getLastProcessedSeq: vi.fn(() => 0),
+      setProtocolNotice: vi.fn(),
+      applyEvent,
+      recoverFromEventLog,
+      releaseConnection: vi.fn(),
+    } as unknown as SessionStore;
+    middleware.subscribe("run-1", store);
+
+    const event = { type: "message_delta", run_id: "run-1", text: "x" } as BusEvent;
+    for (let i = 0; i < 5; i++) {
+      (
+        middleware as unknown as {
+          _applyBufferedEvents: (runId: string, store: SessionStore, events: BusEvent[]) => void;
+        }
+      )._applyBufferedEvents("run-1", store, [event]);
+    }
+    await Promise.resolve();
+
+    expect(applyEvent).toHaveBeenCalledTimes(5);
+    expect(recoverFromEventLog).toHaveBeenCalledOnce();
+  });
+
   it("calls recoverFromEventLog when a poison event fails during per-event fallback", async () => {
     const applyEventBatch = vi.fn(() => {
       throw new Error("batch poison");
@@ -179,7 +347,11 @@ describe("EventMiddleware", () => {
         throw new Error("poison event");
       });
     const recoverFromEventLog = vi.fn().mockResolvedValue(undefined);
+    const setProtocolNotice = vi.fn();
     const store = {
+      run: { id: "run-1" },
+      getLastProcessedSeq: vi.fn(() => 0),
+      setProtocolNotice,
       applyEventBatch,
       applyEvent,
       recoverFromEventLog,
@@ -205,6 +377,7 @@ describe("EventMiddleware", () => {
 
     expect(applyEventBatch).toHaveBeenCalledOnce();
     expect(applyEvent).toHaveBeenCalledTimes(2);
-    expect(recoverFromEventLog).toHaveBeenCalledOnce();
+    // First apply failure is below recover threshold — no recover yet
+    expect(recoverFromEventLog).not.toHaveBeenCalled();
   });
 });
