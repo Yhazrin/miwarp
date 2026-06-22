@@ -166,6 +166,19 @@ sealed class BusEvent {
         val fromInternal: Boolean,
     ) : BusEvent()
     data class SessionRecovered(override val seq: Long, override val runId: String, val ok: Boolean) : BusEvent()
+    data class SessionLifecycle(
+        override val seq: Long,
+        override val runId: String,
+        val sessionId: String?,
+        val phase: String,
+        val recoveryState: String,
+        val crashReason: String?,
+        val crashCode: Int?,
+        val crashSignal: Int?,
+        val connectionGeneration: Long?,
+        val consecutiveFailures: Int?,
+        val timestampMs: Long,
+    ) : BusEvent()
     data class ProtocolDesync(
         override val seq: Long,
         override val runId: String,

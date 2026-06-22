@@ -35,6 +35,7 @@ enum BusEventPayload: Codable {
     case ralphComplete(RalphCompletePayload)
     case sessionRecovering(SessionRecoveringPayload)
     case sessionRecovered(SessionRecoveredPayload)
+    case sessionLifecycle(SessionLifecyclePayload)
     case protocolDesync(ProtocolDesyncPayload)
     case fullReload  // Server requests client to clear state and re-fetch
     case raw(RawPayload)
@@ -76,6 +77,7 @@ enum BusEventPayload: Codable {
         case ralph_complete
         case session_recovering
         case session_recovered
+        case session_lifecycle
         case protocol_desync
         case full_reload
         case raw
@@ -159,6 +161,8 @@ enum BusEventPayload: Codable {
             self = .sessionRecovering(try SessionRecoveringPayload(from: decoder))
         case .session_recovered:
             self = .sessionRecovered(try SessionRecoveredPayload(from: decoder))
+        case .session_lifecycle:
+            self = .sessionLifecycle(try SessionLifecyclePayload(from: decoder))
         case .protocol_desync:
             self = .protocolDesync(try ProtocolDesyncPayload(from: decoder))
         case .full_reload:
@@ -204,6 +208,7 @@ enum BusEventPayload: Codable {
         case .ralphComplete(let p): try p.encode(to: encoder)
         case .sessionRecovering(let p): try p.encode(to: encoder)
         case .sessionRecovered(let p): try p.encode(to: encoder)
+        case .sessionLifecycle(let p): try p.encode(to: encoder)
         case .protocolDesync(let p): try p.encode(to: encoder)
         case .fullReload: break  // No payload to encode
         case .raw(let p): try p.encode(to: encoder)
@@ -563,6 +568,32 @@ struct SessionRecoveringPayload: Codable {
 
 struct SessionRecoveredPayload: Codable {
     let ok: Bool?
+}
+
+struct SessionLifecyclePayload: Codable {
+    let runId: String
+    let sessionId: String?
+    let phase: String
+    let recoveryState: String
+    let crashReason: String?
+    let crashCode: Int?
+    let crashSignal: Int?
+    let connectionGeneration: UInt64?
+    let consecutiveFailures: UInt32?
+    let timestampMs: UInt64
+
+    enum CodingKeys: String, CodingKey {
+        case runId = "run_id"
+        case sessionId = "session_id"
+        case phase
+        case recoveryState = "recovery_state"
+        case crashReason = "crash_reason"
+        case crashCode = "crash_code"
+        case crashSignal = "crash_signal"
+        case connectionGeneration = "connection_generation"
+        case consecutiveFailures = "consecutive_failures"
+        case timestampMs = "timestamp_ms"
+    }
 }
 
 struct ProtocolDesyncPayload: Codable {
