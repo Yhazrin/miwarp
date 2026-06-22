@@ -42,6 +42,7 @@ import * as snapshotCache from "$lib/utils/snapshot-cache";
 import { getTransport } from "$lib/transport";
 import { SessionRunConnection } from "$lib/chat/session-run-connection";
 import { SessionRecoveryController } from "$lib/chat/session-recovery-controller";
+import { SessionAsyncLifecycleCoordinator } from "$lib/chat/session-async-lifecycle";
 import { LS_CLI_VERSION } from "$lib/utils/storage-keys";
 import { getAgentFeatures, type AgentFeatures } from "$lib/utils/agent-features";
 import { dedupeMcpServersByName } from "$lib/utils/mcp";
@@ -60,32 +61,6 @@ const CLI_PERM_MODE_ALIASES: Record<string, string> = {
 
 function normalizePermissionMode(mode: string): string {
   return CLI_PERM_MODE_ALIASES[mode] ?? mode;
-}
-
-// ── OpGuard: async operation guard with mounted check ──
-
-class OpGuard {
-  private _active = false;
-  private _mounted = true;
-
-  get busy(): boolean {
-    return this._active;
-  }
-  get isMounted(): boolean {
-    return this._mounted;
-  }
-
-  acquire(): boolean {
-    if (this._active) return false;
-    this._active = true;
-    return true;
-  }
-  release(): void {
-    this._active = false;
-  }
-  unmount(): void {
-    this._mounted = false;
-  }
 }
 
 // eventTs / eventTsMs moved to $lib/utils/event-ts so reducers can use them.
@@ -320,8 +295,8 @@ export class SessionStore {
   /** _lastProcessedSeq at last snapshot write — throttles idle snapshot rewrites. */
   private _lastSnapshotSeq = 0;
 
-  // Generation counter: prevents stale async loadRun from overwriting state
-  private _loadGen = 0;
+  /** Async load / resume / fork / reload generation and mount lifetime. */
+  private _asyncLifecycle = new SessionAsyncLifecycleCoordinator();
   /** True while loadRun is replaying events — suppresses isThinking flash on session switch. */
   private _isLoadingReplay = false;
 
@@ -1560,7 +1535,7 @@ export class SessionStore {
 
   /** Reset all state to empty. */
   reset(): void {
-    this._loadGen += 1;
+    this._asyncLifecycle.invalidate();
     this._connection.release();
     this._recovery.resetNotice();
     this._setPhase("empty");
@@ -1753,10 +1728,10 @@ export class SessionStore {
   private _saveSnapshotToIdb(runId: string): void {
     if (!this.run) return;
     const runStatus = this.run.status;
-    const gen = this._loadGen;
+    const gen = this._asyncLifecycle.currentGeneration;
     const doSave = () => {
       // Guard: still viewing the same run (user may have navigated away)
-      if (this._loadGen !== gen || this.run?.id !== runId) return;
+      if (this._asyncLifecycle.isStale(gen) || this.run?.id !== runId) return;
       // Guard: status must still match (prevents stale write after idle→running transition)
       if (this.run.status !== runStatus) {
         dbg("snapshot", "save:skipped (status changed)", {
@@ -1785,7 +1760,8 @@ export class SessionStore {
     id: string,
     xtermRef?: { clear(): void; writeText(s: string): void },
   ): Promise<void> {
-    const gen = ++this._loadGen;
+    const gen = this._asyncLifecycle.beginLoad();
+    if (gen === null) return;
     const loadStart = performance.now();
     dbg("store", "loadRun id=", id, "gen=", gen);
 
@@ -1808,14 +1784,15 @@ export class SessionStore {
     }
 
     try {
-      this.run = await api.getRun(id);
-      if (gen !== this._loadGen) {
+      const fetchedRun = await api.getRun(id);
+      if (this._asyncLifecycle.isStale(gen)) {
         dbg("store", "stale after getRun, gen=", gen);
         return;
       }
+      this.run = fetchedRun;
       // Cache for notification title lookup
       import("$lib/services/notification-listener")
-        .then((m) => m.cacheRun(this.run!))
+        .then((m) => m.cacheRun(fetchedRun))
         .catch((e) => dbgWarn("store", "cacheRun failed:", e));
 
       // Auto-sync CLI imports to pick up events written after the initial import
@@ -1827,14 +1804,19 @@ export class SessionStore {
               newEvents: syncResult.newEvents,
             });
             // Refresh run meta after sync (watermark/status may have updated)
-            this.run = await api.getRun(id);
+            const refreshed = await api.getRun(id);
+            if (this._asyncLifecycle.isStale(gen)) {
+              dbg("store", "stale after auto-sync refresh, gen=", gen);
+              return;
+            }
+            this.run = refreshed;
             // Sync appended events → IDB snapshot is stale
             snapshotCache.deleteSnapshot(id).catch((e) => dbgWarn("snapshot", "delete failed", e));
           }
         } catch (e) {
           dbg("store", "loadRun: auto-sync failed (non-fatal)", String(e));
         }
-        if (gen !== this._loadGen) {
+        if (this._asyncLifecycle.isStale(gen)) {
           dbg("store", "stale after auto-sync, gen=", gen);
           return;
         }
@@ -1854,7 +1836,7 @@ export class SessionStore {
         // but the run metadata still says "running".
         try {
           const status = await api.getSessionRuntimeStatus(id);
-          if (gen !== this._loadGen) return;
+          if (this._asyncLifecycle.isStale(gen)) return;
           if (!status.actor_alive) {
             dbg("store", "loadRun: actor dead for running run, downgrading to ready", { id });
             this._setPhase("ready");
@@ -1863,7 +1845,7 @@ export class SessionStore {
           }
         } catch {
           // Health check failed — assume actor is alive (optimistic)
-          if (gen !== this._loadGen) return;
+          if (this._asyncLifecycle.isStale(gen)) return;
           this._setPhase("running");
         }
       } else if (st === "completed" || st === "failed" || st === "stopped") {
@@ -1889,7 +1871,7 @@ export class SessionStore {
           } catch {
             /* IDB unavailable → miss */
           }
-          if (gen !== this._loadGen) return;
+          if (this._asyncLifecycle.isStale(gen)) return;
         }
 
         if (snapshotBody) {
@@ -1930,12 +1912,12 @@ export class SessionStore {
               // Desktop idle: incremental catchup (no WS available)
               if (isIdleSnap && getTransport().isDesktop()) {
                 const catchupEvents = await api.getBusEvents(id, this._lastProcessedSeq);
-                if (gen !== this._loadGen) return;
+                if (this._asyncLifecycle.isStale(gen)) return;
                 if (catchupEvents.length > 0) {
                   dbg("store", "idle snapshot catchup", { count: catchupEvents.length });
                   const catchupMs = await this.applyEventBatchAsync(catchupEvents, {
                     replayOnly: false,
-                    isStale: () => gen !== this._loadGen,
+                    isStale: this._asyncLifecycle.stalePredicate(gen),
                   });
                   // Stale (catchupMs === null) means a newer load owns the store —
                   // do NOT touch _isLoadingReplay; the new owner manages it.
@@ -1968,13 +1950,13 @@ export class SessionStore {
         if (!snapshotHit) {
           // Miss or snapshot corrupted → normal path
           const busEvents = await api.getBusEvents(id);
-          if (gen !== this._loadGen) {
+          if (this._asyncLifecycle.isStale(gen)) {
             dbg("store", "stale after getBusEvents, gen=", gen);
             return;
           }
           const ms = await this.applyEventBatchAsync(busEvents, {
             replayOnly: isTerminal,
-            isStale: () => gen !== this._loadGen,
+            isStale: this._asyncLifecycle.stalePredicate(gen),
           });
           // Stale: a newer load owns the store; do not touch _isLoadingReplay.
           if (ms === null) return;
@@ -1997,7 +1979,7 @@ export class SessionStore {
         this._isLoadingReplay = false;
         // CLI mode: replay history in terminal
         const events = await api.getRunEvents(id);
-        if (gen !== this._loadGen) {
+        if (this._asyncLifecycle.isStale(gen)) {
           dbg("store", "stale after getRunEvents, gen=", gen);
           return;
         }
@@ -2040,11 +2022,11 @@ export class SessionStore {
         this.model = this.run.model;
       }
     } catch (e) {
-      if (gen !== this._loadGen) return;
+      if (this._asyncLifecycle.isStale(gen)) return;
       this.error = String(e);
       this._setPhase("failed");
     } finally {
-      if (gen === this._loadGen) {
+      if (!this._asyncLifecycle.isStale(gen)) {
         this._isLoadingReplay = false;
       }
     }
@@ -2310,11 +2292,9 @@ export class SessionStore {
 
   // ── Resume ──
 
-  private _resumeGuard = new OpGuard();
-
   /** Whether a resume/continue/fork operation is currently in progress. */
   get resumeInFlight(): boolean {
-    return this._resumeGuard.busy;
+    return this._asyncLifecycle.resumeInFlight;
   }
 
   /** Resume/continue/fork a finished session. Returns the target run ID.
@@ -2328,11 +2308,12 @@ export class SessionStore {
     initialMessage?: string,
     attachments?: Attachment[],
   ): Promise<string | null> {
-    if (!this._resumeGuard.acquire()) return null;
+    const loadGen = this._asyncLifecycle.beginResume();
+    if (loadGen === null) return null;
 
     try {
       let run = await api.getRun(runId);
-      if (!this._resumeGuard.isMounted) return runId;
+      if (this._asyncLifecycle.isStale(loadGen)) return runId;
 
       let metaActive = ACTIVE_PHASES.includes(run.status as SessionPhase);
       if (metaActive && mode !== "fork") {
@@ -2361,9 +2342,7 @@ export class SessionStore {
         throw new Error(t("session_noId"));
       }
 
-      // Invalidate any concurrent loadRun, then snapshot the gen for our own
-      // stale-check (a later loadRun would bump _loadGen and we'd see the change).
-      const loadGen = ++this._loadGen;
+      // Invalidate any concurrent loadRun; loadGen captured at beginResume().
       const resumeT0 = performance.now();
 
       // ★ Phase 1: async data fetch BEFORE clearing state (avoids flash)
@@ -2377,10 +2356,10 @@ export class SessionStore {
         } catch {
           /* IDB unavailable */
         }
-        if (!this._resumeGuard.isMounted) return runId;
+        if (this._asyncLifecycle.isStale(loadGen)) return runId;
         if (!snapshotBody) {
           busEvents = await api.getBusEvents(runId);
-          if (!this._resumeGuard.isMounted) return runId;
+          if (this._asyncLifecycle.isStale(loadGen)) return runId;
           dbg("store", "resumeSession: fetched", busEvents.length, "bus events for replay");
         }
       }
@@ -2404,12 +2383,12 @@ export class SessionStore {
           // Fallback: snapshot corrupted → re-fetch events if needed
           if (!busEvents.length && snapshotBody) {
             busEvents = await api.getBusEvents(runId);
-            if (!this._resumeGuard.isMounted) return runId;
+            if (this._asyncLifecycle.isStale(loadGen)) return runId;
           }
           if (busEvents.length > 0) {
             const ms = await this.applyEventBatchAsync(busEvents, {
               replayOnly: true,
-              isStale: () => !this._resumeGuard.isMounted || loadGen !== this._loadGen,
+              isStale: this._asyncLifecycle.stalePredicate(loadGen),
             });
             if (ms === null) return runId;
             reducerMs = ms;
@@ -2489,13 +2468,13 @@ export class SessionStore {
 
       return targetRunId;
     } catch (e) {
-      if (!this._resumeGuard.isMounted) return null;
+      if (this._asyncLifecycle.isStale(loadGen)) return null;
       this.error = String(e);
       this._setPhase("failed");
       dbgWarn("store", "resumeSession failed:", e);
       return null;
     } finally {
-      this._resumeGuard.release();
+      this._asyncLifecycle.endResume();
     }
   }
 
@@ -2504,7 +2483,7 @@ export class SessionStore {
    *  Step 2 (connectSession) is called by the frontend after dismissing the fork overlay. */
   private async _handleFork(runId: string): Promise<string> {
     dbg("store", "resumeSession: two-step fork", { runId });
-    const loadGen = this._loadGen;
+    const loadGen = this._asyncLifecycle.currentGeneration;
 
     // Clear both routing and this store's physical owner to prevent source
     // RunState(stopped) events from interfering with the fork replay.
@@ -2513,10 +2492,10 @@ export class SessionStore {
 
     // Step 1: One-shot fork (backend does fork_oneshot, returns new run_id with new session_id)
     const newRunId = await api.forkSession(runId);
-    if (!this._resumeGuard.isMounted) throw new Error("Unmounted during fork");
+    if (this._asyncLifecycle.isStale(loadGen)) throw new Error("Unmounted during fork");
 
     const newRun = await api.getRun(newRunId);
-    if (!this._resumeGuard.isMounted) throw new Error("Unmounted during fork");
+    if (this._asyncLifecycle.isStale(loadGen)) throw new Error("Unmounted during fork");
 
     this._connection.beginReplay(newRunId);
     this.run = newRun;
@@ -2531,13 +2510,13 @@ export class SessionStore {
     // replay can't slip in and be overwritten by `_commitReduceCtx` snapshotting
     // a now-stale `this.timeline`.
     const allForkEvents = await api.getBusEvents(newRunId);
-    if (!this._resumeGuard.isMounted) throw new Error("Unmounted during fork");
+    if (this._asyncLifecycle.isStale(loadGen)) throw new Error("Unmounted during fork");
     const newEvents = allForkEvents.filter((ev) => ev.run_id === newRunId);
     if (newEvents.length > 0) {
       dbg("store", "fork: replaying", newEvents.length, "parent events");
       const ms = await this.applyEventBatchAsync(newEvents, {
         replayOnly: true,
-        isStale: () => !this._resumeGuard.isMounted || loadGen !== this._loadGen,
+        isStale: this._asyncLifecycle.stalePredicate(loadGen),
       });
       // Match the existing fork pattern (line ~2157): treat a stale/unmount
       // mid-replay as a fatal interruption so the caller's catch path runs.
@@ -2582,7 +2561,7 @@ export class SessionStore {
 
   /** Call from page cleanup to prevent stale async writes after unmount. */
   unmountGuards(): void {
-    this._resumeGuard.unmount();
+    this._asyncLifecycle.unmount();
     this._clearSpawnTimeout();
     this._clearResponseTimeout();
   }
