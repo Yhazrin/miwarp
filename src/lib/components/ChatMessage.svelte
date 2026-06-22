@@ -25,6 +25,7 @@
     platformId,
     model,
     animated = false,
+    frozen = false,
     processVisibility = "developer" as ProcessVisibility,
     debugRunId = "",
     debugSessionId = "",
@@ -37,6 +38,8 @@
     platformId?: string;
     model?: string;
     animated?: boolean;
+    /** When true, defer expensive markdown rendering until the row nears the viewport. */
+    frozen?: boolean;
     processVisibility?: ProcessVisibility;
     debugRunId?: string;
     debugSessionId?: string;
@@ -67,7 +70,14 @@
   let artifacts = $state<MediaArtifact[]>([]);
 
   $effect(() => {
-    if (!isUser && message.content && message.content.length < 50000) {
+    // Historical rows still need their complete content when the user scrolls
+    // to them. Windowing already bounds how many rows mount, so do not trade
+    // correctness for speed by permanently skipping artifact resolution.
+    if (isUser) {
+      artifacts = [];
+      return;
+    }
+    if (message.content && message.content.length < 50000) {
       resolveArtifactsFromText(message.content)
         .then((results) => {
           artifacts = Array.from(results.values()).filter(Boolean) as MediaArtifact[];
@@ -205,7 +215,7 @@
                   ? "mask-image: linear-gradient(to bottom, black 70%, transparent);"
                   : ""}
               >
-                <MarkdownContent text={message.content} tone="on-primary" />
+                <MarkdownContent text={message.content} tone="on-primary" lazy={frozen} />
               </div>
               {#if isLong}
                 <button
@@ -277,7 +287,7 @@
               {/if}
             {/if}
             <div class="prose-chat">
-              <MarkdownContent text={message.content} />
+              <MarkdownContent text={message.content} lazy={frozen} />
             </div>
             {#if artifacts.length > 0}
               <div class="mt-3 flex flex-wrap gap-3">

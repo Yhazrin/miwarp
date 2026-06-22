@@ -6,6 +6,34 @@
   import { t } from "$lib/i18n/index.svelte";
   import StreamingSkeleton from "./StreamingSkeleton.svelte";
 
+  const MARKDOWN_HTML_CACHE_MAX = 256;
+  const MARKDOWN_HTML_CACHE_MAX_SOURCE_CHARS = 32_000;
+  const markdownHtmlCache = new Map<string, string>();
+
+  function cachedRenderMarkdown(text: string): string {
+    // Avoid retaining very large source + HTML pairs for the lifetime of the
+    // app. They still render correctly; they simply bypass the shared cache.
+    if (text.length > MARKDOWN_HTML_CACHE_MAX_SOURCE_CHARS) {
+      return renderMarkdown(text);
+    }
+
+    const hit = markdownHtmlCache.get(text);
+    if (hit !== undefined) {
+      // Refresh insertion order so frequently viewed messages stay cached.
+      markdownHtmlCache.delete(text);
+      markdownHtmlCache.set(text, hit);
+      return hit;
+    }
+
+    const html = renderMarkdown(text);
+    if (markdownHtmlCache.size >= MARKDOWN_HTML_CACHE_MAX) {
+      const oldest = markdownHtmlCache.keys().next().value;
+      if (oldest !== undefined) markdownHtmlCache.delete(oldest);
+    }
+    markdownHtmlCache.set(text, html);
+    return html;
+  }
+
   let {
     text = "",
     streaming = false,
@@ -137,7 +165,7 @@
 
   // Markdown rendering gate: skip when streaming OR not yet visible (lazy).
   let renderMarkdownNow = $derived(!streaming && visibleOnce);
-  let html = $derived(renderMarkdownNow && displayText ? renderMarkdown(displayText) : "");
+  let html = $derived(renderMarkdownNow && displayText ? cachedRenderMarkdown(displayText) : "");
 
   $effect(() => {
     if (!container || !html) return;

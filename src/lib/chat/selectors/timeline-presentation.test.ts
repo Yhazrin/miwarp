@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { computeTimelinePresentation, getInitialRenderLimit } from "./timeline-presentation";
+import {
+  computeTimelinePresentation,
+  computeTimelineMetadata,
+  getInitialRenderLimit,
+  INITIAL_RENDER_LIMIT_BY_MODE,
+  sliceVisibleTimeline,
+} from "./timeline-presentation";
 import type { TimelineEntry, BusToolItem } from "$lib/types";
 import { CONTEXT_CLEARED_MARKER } from "$lib/utils/slash-commands";
 
@@ -40,18 +46,42 @@ function separatorEntry(id: string, content: string): TimelineEntry {
 // ── Tests ──
 
 describe("getInitialRenderLimit", () => {
-  it("returns 100 for output mode", () => {
-    expect(getInitialRenderLimit("output", [])).toBe(100);
-    expect(getInitialRenderLimit("output", [userEntry("1")])).toBe(100);
+  it("returns mode-specific cap for output mode", () => {
+    expect(getInitialRenderLimit("output", [])).toBe(INITIAL_RENDER_LIMIT_BY_MODE.output);
+    expect(getInitialRenderLimit("output", [userEntry("1")])).toBe(1);
   });
 
-  it("returns timeline length for non-output mode when timeline is non-empty", () => {
+  it("caps initial mount for guided/developer even when timeline is long", () => {
+    const tl = Array.from({ length: 1200 }, (_, i) => userEntry(`u${i}`));
+    expect(getInitialRenderLimit("guided", tl)).toBe(INITIAL_RENDER_LIMIT_BY_MODE.guided);
+    expect(getInitialRenderLimit("developer", tl)).toBe(INITIAL_RENDER_LIMIT_BY_MODE.developer);
+  });
+
+  it("returns timeline length when shorter than the mode cap", () => {
     const tl = [userEntry("1"), assistantEntry("2")];
     expect(getInitialRenderLimit("guided", tl)).toBe(2);
   });
 
-  it("returns 100 for non-output mode when timeline is empty", () => {
-    expect(getInitialRenderLimit("guided", [])).toBe(100);
+  it("returns guided cap for non-output mode when timeline is empty", () => {
+    expect(getInitialRenderLimit("guided", [])).toBe(INITIAL_RENDER_LIMIT_BY_MODE.guided);
+  });
+});
+
+describe("computeTimelineMetadata", () => {
+  it("records scan units equal to timeline length", () => {
+    const timeline = Array.from({ length: 50 }, (_, i) => userEntry(`u${i}`));
+    const meta = computeTimelineMetadata(timeline);
+    expect(meta.scanUnits).toBe(50);
+  });
+});
+
+describe("sliceVisibleTimeline", () => {
+  it("returns tail slice when renderLimit is smaller", () => {
+    const timeline = Array.from({ length: 10 }, (_, i) => userEntry(`u${i}`));
+    const visible = sliceVisibleTimeline(timeline, 3);
+    expect(visible).toHaveLength(3);
+    expect(visible[0].id).toBe("u7");
+    expect(visible[2].id).toBe("u9");
   });
 });
 

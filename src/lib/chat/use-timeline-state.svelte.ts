@@ -9,6 +9,7 @@ import { untrack } from "svelte";
 import type { SessionStore } from "$lib/stores/session-store.svelte";
 import { type BurstCollapseHandle } from "$lib/chat/use-tool-burst-collapse.svelte";
 import {
+  computeTimelineMetadata,
   computeTimelinePresentation,
   getInitialRenderLimit,
 } from "$lib/chat/selectors/timeline-presentation";
@@ -81,10 +82,14 @@ export function useTimelineState(ctx: TimelineStateContext): TimelineStateHandle
   // DOM ref for IntersectionObserver — bindable via bind:this from the template.
   let topSentinel = $state<HTMLDivElement | null>(null);
 
-  // ── Derived: timeline presentation ──
+  // ── Derived: timeline metadata (full scan — only when timeline changes) ──
+
+  const timelineMetadata = $derived(computeTimelineMetadata(store.timeline));
+
+  // ── Derived: visible presentation (recomputes on renderLimit / filter only) ──
 
   const timelinePresentation = $derived.by(() =>
-    computeTimelinePresentation(store.timeline, toolFilter, renderLimit),
+    computeTimelinePresentation(store.timeline, toolFilter, renderLimit, timelineMetadata),
   );
 
   const filteredTimeline = $derived(timelinePresentation.filteredTimeline);

@@ -16,6 +16,7 @@
   import ReleaseNotesCard from "$lib/components/ReleaseNotesCard.svelte";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
   import ChatRenderBoundary from "$lib/components/chat/ChatRenderBoundary.svelte";
+  import { TAIL_LIVE_ENTRIES } from "$lib/chat/selectors/timeline-presentation";
   import { ansiToHtml, hasAnsiCodes } from "$lib/utils/ansi";
   import {
     isTimelineSeparatorContent,
@@ -99,6 +100,11 @@
   function reloadFromEventLog() {
     return store.recoverFromEventLog();
   }
+
+  /** Historical rows are static — skip live tail effects and eager markdown. */
+  function isFrozenEntry(index: number): boolean {
+    return index < visibleTimeline.length - TAIL_LIVE_ENTRIES;
+  }
 </script>
 
 {#each visibleTimeline as entry, i (entry.id)}
@@ -106,6 +112,7 @@
     <div
       id="msg-{entry.anchorId}"
       data-entry-id={entry.id}
+      class:timeline-entry-frozen={isFrozenEntry(i)}
       class:cv-auto={useCvAuto}
       class="group/msg"
       style={useCvAuto ? "contain-intrinsic-block-size: 80px" : undefined}
@@ -158,6 +165,7 @@
                 timestamp: entry.ts,
               }}
               attachments={entry.attachments}
+              frozen={isFrozenEntry(i)}
               onRewind={entry.cliUuid && store.sessionAlive && !store.isRunning
                 ? () =>
                     handleRewindToMessage({
@@ -188,7 +196,8 @@
               agent={store.agent}
               platformId={store.platformId ?? undefined}
               model={store.run?.model ?? store.model}
-              animated={i === lastAssistantIdx && store.isRunning}
+              animated={!isFrozenEntry(i) && i === lastAssistantIdx && store.isRunning}
+              frozen={isFrozenEntry(i)}
               {processVisibility}
               debugRunId={store.run?.id}
               debugSessionId={store.run?.session_id ?? undefined}
@@ -290,7 +299,7 @@
                     componentName="MarkdownContent"
                     onReload={reloadFromEventLog}
                   >
-                    <MarkdownContent text={entry.content} />
+                    <MarkdownContent text={entry.content} lazy={isFrozenEntry(i)} />
                   </ChatRenderBoundary>
                 {/if}
               </div>

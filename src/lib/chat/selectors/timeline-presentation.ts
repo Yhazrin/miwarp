@@ -16,72 +16,73 @@ import { CONTEXT_CLEARED_MARKER } from "$lib/utils/slash-commands";
 
 // ── Constants ──
 
-const INITIAL_RENDER_LIMIT = 100;
+/** Initial visible window per process-visibility mode (progressive mount). */
+export const INITIAL_RENDER_LIMIT_BY_MODE: Record<ProcessVisibility, number> = {
+  output: 100,
+  guided: 150,
+  developer: 200,
+  expert: 200,
+};
+
+const DEFAULT_INITIAL_RENDER_LIMIT = 150;
+/** Number of older rows mounted per progressive scroll-up step. */
+export const RENDER_GROWTH_STEP = 100;
+/** Tail rows that remain live for streaming animation and eager markdown. */
+export const TAIL_LIVE_ENTRIES = 3;
 
 // ── Initial render limit ──
 
 /**
  * Compute the initial `renderLimit` for progressive timeline rendering.
- * Returns a smaller window for "output" mode (fewer visible items), and
- * `Infinity` (show everything) for higher-fidelity modes.
+ * All modes cap the first paint to a bounded window; older rows load on
+ * scroll-up via loadMoreEarlier (RENDER_GROWTH_STEP).
  */
 export function getInitialRenderLimit(mode: ProcessVisibility, timeline: TimelineEntry[]): number {
-  if (mode === "output") return INITIAL_RENDER_LIMIT;
-  return timeline.length > 0 ? timeline.length : INITIAL_RENDER_LIMIT;
+  const cap = INITIAL_RENDER_LIMIT_BY_MODE[mode] ?? DEFAULT_INITIAL_RENDER_LIMIT;
+  if (timeline.length === 0) return cap;
+  return Math.min(timeline.length, cap);
 }
 
-// ── Timeline presentation ──
+/** Slice the filtered timeline to the progressive visible window. */
+export function sliceVisibleTimeline(
+  filteredTimeline: TimelineEntry[],
+  renderLimit: number,
+): TimelineEntry[] {
+  if (renderLimit >= filteredTimeline.length) return filteredTimeline;
+  return filteredTimeline.slice(filteredTimeline.length - renderLimit);
+}
 
-export interface TimelinePresentation {
-  filteredTimeline: TimelineEntry[];
-  visibleTimeline: TimelineEntry[];
+// ── Timeline metadata (full-timeline scans, cacheable separately) ──
+
+export interface TimelineMetadata {
   toolNames: string[];
   timelineIdIndex: Map<string, number>;
   lastClearSepId: string | null;
   latestPlanToolId: string | null;
   createdFiles: Array<{ path: string; name: string; tool: string; timestamp: number }>;
-  batchGroups: Map<number, BusToolItem[]>;
-  toolBursts: Map<number, ToolBurst>;
-  userCountPrefix: Int32Array;
+  /** Units scanned while building metadata — for deterministic perf budgets. */
+  scanUnits: number;
 }
 
 /**
- * Compute all derived timeline data in a single pass.
- *
- * This replaces what was previously a constellation of `$derived` blocks in
- * +page.svelte.  Keeping it as a plain function makes the logic testable
- * and avoids reactive-scope footguns.
+ * Full-timeline metadata pass. Expensive but independent of renderLimit;
+ * keep in its own $derived so scroll load-more does not re-scan.
  */
-export function computeTimelinePresentation(
-  timeline: TimelineEntry[],
-  toolFilter: string | null,
-  renderLimit: number,
-): TimelinePresentation {
-  // ── Filtered timeline ──
-  const filteredTimeline = toolFilter
-    ? timeline.filter((e) => e.kind !== "tool" || e.tool.tool_name === toolFilter)
-    : timeline;
+export function computeTimelineMetadata(timeline: TimelineEntry[]): TimelineMetadata {
+  let scanUnits = 0;
 
-  // ── Visible timeline (progressive slice — last N entries) ──
-  const visibleTimeline =
-    renderLimit >= filteredTimeline.length
-      ? filteredTimeline
-      : filteredTimeline.slice(filteredTimeline.length - renderLimit);
-
-  // ── Tool names in full timeline ──
   const nameSet = new Set<string>();
   for (const entry of timeline) {
+    scanUnits++;
     if (entry.kind === "tool") nameSet.add(entry.tool.tool_name);
   }
   const toolNames = [...nameSet].sort();
 
-  // ── ID → index map ──
   const timelineIdIndex = new Map<string, number>();
   for (let i = 0; i < timeline.length; i++) {
     timelineIdIndex.set(timeline[i].id, i);
   }
 
-  // ── Last context-cleared separator ──
   let lastClearSepId: string | null = null;
   for (let i = timeline.length - 1; i >= 0; i--) {
     const e = timeline[i];
@@ -91,7 +92,6 @@ export function computeTimelinePresentation(
     }
   }
 
-  // ── Latest plan tool (for auto-expand) ──
   let latestPlanToolId: string | null = null;
   for (let i = timeline.length - 1; i >= 0; i--) {
     const e = timeline[i];
@@ -103,8 +103,7 @@ export function computeTimelinePresentation(
     }
   }
 
-  // ── Created files ──
-  const createdFiles: TimelinePresentation["createdFiles"] = [];
+  const createdFiles: TimelineMetadata["createdFiles"] = [];
   const seenPaths = new Set<string>();
   for (const entry of timeline) {
     if (entry.kind !== "tool") continue;
@@ -126,17 +125,58 @@ export function computeTimelinePresentation(
   }
   createdFiles.sort((a, b) => a.timestamp - b.timestamp);
 
-  // ── Batch groups (consecutive ≥3 Task tools) ──
+  return {
+    toolNames,
+    timelineIdIndex,
+    lastClearSepId,
+    latestPlanToolId,
+    createdFiles,
+    scanUnits,
+  };
+}
+
+// ── Timeline presentation ──
+
+export interface TimelinePresentation {
+  filteredTimeline: TimelineEntry[];
+  visibleTimeline: TimelineEntry[];
+  toolNames: string[];
+  timelineIdIndex: Map<string, number>;
+  lastClearSepId: string | null;
+  latestPlanToolId: string | null;
+  createdFiles: Array<{ path: string; name: string; tool: string; timestamp: number }>;
+  batchGroups: Map<number, BusToolItem[]>;
+  toolBursts: Map<number, ToolBurst>;
+  userCountPrefix: Int32Array;
+  metadata: TimelineMetadata;
+}
+
+/**
+ * Compute visible-slice presentation. Pass precomputed metadata when the
+ * timeline has not changed — avoids re-scanning 1000+ entries on load-more.
+ */
+export function computeTimelinePresentation(
+  timeline: TimelineEntry[],
+  toolFilter: string | null,
+  renderLimit: number,
+  metadataInput?: TimelineMetadata,
+): TimelinePresentation {
+  const metadata = metadataInput ?? computeTimelineMetadata(timeline);
+
+  const filteredTimeline = toolFilter
+    ? timeline.filter((e) => e.kind !== "tool" || e.tool.tool_name === toolFilter)
+    : timeline;
+
+  const visibleTimeline = sliceVisibleTimeline(filteredTimeline, renderLimit);
+
   const batchGroups = toolFilter
     ? new Map<number, BusToolItem[]>()
     : detectBatchGroups(visibleTimeline);
 
-  // ── Tool bursts ──
   const toolBursts = toolFilter
     ? (new Map<number, ToolBurst>() as Map<number, ToolBurst>)
     : detectToolBursts(visibleTimeline);
 
-  // ── User-count prefix sum ──
   const userCountPrefix = new Int32Array(filteredTimeline.length + 1);
   for (let i = 0; i < filteredTimeline.length; i++) {
     userCountPrefix[i + 1] = userCountPrefix[i] + (filteredTimeline[i].kind === "user" ? 1 : 0);
@@ -145,13 +185,14 @@ export function computeTimelinePresentation(
   return {
     filteredTimeline,
     visibleTimeline,
-    toolNames,
-    timelineIdIndex,
-    lastClearSepId,
-    latestPlanToolId,
-    createdFiles,
+    toolNames: metadata.toolNames,
+    timelineIdIndex: metadata.timelineIdIndex,
+    lastClearSepId: metadata.lastClearSepId,
+    latestPlanToolId: metadata.latestPlanToolId,
+    createdFiles: metadata.createdFiles,
     batchGroups,
     toolBursts,
     userCountPrefix,
+    metadata,
   };
 }
