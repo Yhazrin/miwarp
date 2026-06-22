@@ -158,6 +158,20 @@ sealed class BusEvent {
     data class RalphStarted(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class RalphIteration(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class RalphComplete(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
+    data class SessionRecovering(
+        override val seq: Long,
+        override val runId: String,
+        val reason: String,
+        val deadlineMs: Long,
+        val fromInternal: Boolean,
+    ) : BusEvent()
+    data class SessionRecovered(override val seq: Long, override val runId: String, val ok: Boolean) : BusEvent()
+    data class ProtocolDesync(
+        override val seq: Long,
+        override val runId: String,
+        val failCount: Int,
+        val sample: String,
+    ) : BusEvent()
     data class Raw(override val seq: Long, override val runId: String, val payload: JsonElement?) : BusEvent()
     data class FullReload(override val seq: Long, override val runId: String) : BusEvent()
     data class Unknown(override val seq: Long, override val runId: String, val event: String, val payload: JsonElement?) : BusEvent()

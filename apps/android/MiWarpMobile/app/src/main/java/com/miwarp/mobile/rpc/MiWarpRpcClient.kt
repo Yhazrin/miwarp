@@ -252,7 +252,9 @@ class MiWarpRpcClient(
         if (obj.containsKey("event") && obj.containsKey("payload")) {
             return try {
                 val envelope = json.decodeFromJsonElement(BusEventEnvelope.serializer(), element)
-                parseBusEventFromEnvelope(envelope.event, envelope.seq, envelope.runId, envelope.payload)
+                val eventType = envelope.payload?.jsonObject?.get("type")?.jsonPrimitive?.content
+                    ?: envelope.event
+                parseBusEventFromEnvelope(eventType, envelope.seq, envelope.runId, envelope.payload)
             } catch (_: Exception) { null }
         }
         // Flat RPC format: event fields spread at top level, _seq with underscore
@@ -371,6 +373,27 @@ class MiWarpRpcClient(
             "ralph_started" -> BusEvent.RalphStarted(seq, runId, payload)
             "ralph_iteration" -> BusEvent.RalphIteration(seq, runId, payload)
             "ralph_complete" -> BusEvent.RalphComplete(seq, runId, payload)
+            "session_recovering" -> {
+                val obj = payload?.jsonObject
+                BusEvent.SessionRecovering(
+                    seq = seq,
+                    runId = runId,
+                    reason = obj?.get("reason")?.jsonPrimitive?.contentOrNull ?: "",
+                    deadlineMs = obj?.get("deadline_ms")?.jsonPrimitive?.longOrNull ?: 5000L,
+                    fromInternal = obj?.get("from_internal")?.jsonPrimitive?.booleanOrNull ?: false,
+                )
+            }
+            "session_recovered" -> BusEvent.SessionRecovered(
+                seq = seq,
+                runId = runId,
+                ok = payload?.jsonObject?.get("ok")?.jsonPrimitive?.booleanOrNull ?: false,
+            )
+            "protocol_desync" -> BusEvent.ProtocolDesync(
+                seq = seq,
+                runId = runId,
+                failCount = payload?.jsonObject?.get("fail_count")?.jsonPrimitive?.intOrNull ?: 0,
+                sample = payload?.jsonObject?.get("sample")?.jsonPrimitive?.contentOrNull ?: "",
+            )
             "raw" -> BusEvent.Raw(seq, runId, payload)
             else -> BusEvent.Unknown(seq, runId, event, payload)
         }

@@ -826,6 +826,60 @@ fun MWReconnectBanner(
     }
 }
 
+@Composable
+fun MWProtocolRecoveryBanner(
+    notice: String,
+    isRecovering: Boolean,
+    showReloadAction: Boolean,
+    onReload: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MWTheme.colors
+    val spacing = MWTheme.spacing
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = colors.statusWarning.copy(alpha = 0.1f),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = spacing.md, vertical = spacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+        ) {
+            if (isRecovering) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(14.dp),
+                    strokeWidth = 2.dp,
+                    color = colors.statusWarning,
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = "Protocol warning",
+                    tint = colors.statusWarning,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+            Text(
+                text = notice,
+                style = MWTypography.bodySmall,
+                color = colors.textPrimary,
+                modifier = Modifier.weight(1f),
+            )
+            if (showReloadAction) {
+                Text(
+                    text = "Reload",
+                    style = MWTypography.label,
+                    color = colors.accentPrimary,
+                    modifier = Modifier.clickable(onClick = onReload),
+                )
+            }
+        }
+    }
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 fun formatTokens(tokens: Long): String = when {

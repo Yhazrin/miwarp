@@ -33,6 +33,9 @@ enum BusEventPayload: Codable {
     case ralphStarted(RalphStartedPayload)
     case ralphIteration(RalphIterationPayload)
     case ralphComplete(RalphCompletePayload)
+    case sessionRecovering(SessionRecoveringPayload)
+    case sessionRecovered(SessionRecoveredPayload)
+    case protocolDesync(ProtocolDesyncPayload)
     case fullReload  // Server requests client to clear state and re-fetch
     case raw(RawPayload)
 
@@ -71,6 +74,9 @@ enum BusEventPayload: Codable {
         case ralph_started
         case ralph_iteration
         case ralph_complete
+        case session_recovering
+        case session_recovered
+        case protocol_desync
         case full_reload
         case raw
     }
@@ -149,6 +155,12 @@ enum BusEventPayload: Codable {
             self = .ralphIteration(try RalphIterationPayload(from: decoder))
         case .ralph_complete:
             self = .ralphComplete(try RalphCompletePayload(from: decoder))
+        case .session_recovering:
+            self = .sessionRecovering(try SessionRecoveringPayload(from: decoder))
+        case .session_recovered:
+            self = .sessionRecovered(try SessionRecoveredPayload(from: decoder))
+        case .protocol_desync:
+            self = .protocolDesync(try ProtocolDesyncPayload(from: decoder))
         case .full_reload:
             self = .fullReload
         case .raw:
@@ -190,6 +202,9 @@ enum BusEventPayload: Codable {
         case .ralphStarted(let p): try p.encode(to: encoder)
         case .ralphIteration(let p): try p.encode(to: encoder)
         case .ralphComplete(let p): try p.encode(to: encoder)
+        case .sessionRecovering(let p): try p.encode(to: encoder)
+        case .sessionRecovered(let p): try p.encode(to: encoder)
+        case .protocolDesync(let p): try p.encode(to: encoder)
         case .fullReload: break  // No payload to encode
         case .raw(let p): try p.encode(to: encoder)
         }
@@ -531,6 +546,32 @@ struct RalphCompletePayload: Codable {
     enum CodingKeys: String, CodingKey {
         case taskId = "task_id"
         case result
+    }
+}
+
+struct SessionRecoveringPayload: Codable {
+    let reason: String?
+    let deadlineMs: UInt64?
+    let fromInternal: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case reason
+        case deadlineMs = "deadline_ms"
+        case fromInternal = "from_internal"
+    }
+}
+
+struct SessionRecoveredPayload: Codable {
+    let ok: Bool?
+}
+
+struct ProtocolDesyncPayload: Codable {
+    let failCount: UInt32?
+    let sample: String?
+
+    enum CodingKeys: String, CodingKey {
+        case failCount = "fail_count"
+        case sample
     }
 }
 

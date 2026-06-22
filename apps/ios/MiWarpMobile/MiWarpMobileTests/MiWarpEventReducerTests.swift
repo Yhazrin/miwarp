@@ -324,6 +324,79 @@ final class MiWarpEventReducerTests: XCTestCase {
         XCTAssertEqual(reducer.pendingPermissions.count, 0)
     }
 
+    // MARK: - Protocol Recovery
+
+    func testSessionRecoveringSetsBanner() {
+        let event = BusEvent(
+            seq: 1,
+            runId: "r1",
+            payload: .sessionRecovering(SessionRecoveringPayload(reason: "internal_hard_timeout", deadlineMs: 5000, fromInternal: true))
+        )
+        reducer.processEvent(event)
+
+        XCTAssertTrue(reducer.protocolRecovery.isRecovering)
+        XCTAssertFalse(reducer.protocolRecovery.showReloadAction)
+        XCTAssertNotNil(reducer.protocolRecovery.notice)
+    }
+
+    func testSessionRecoveredOkClearsBanner() {
+        reducer.processEvent(BusEvent(
+            seq: 1,
+            runId: "r1",
+            payload: .sessionRecovering(SessionRecoveringPayload(reason: "user_hard_timeout", deadlineMs: 5000, fromInternal: false))
+        ))
+        reducer.processEvent(BusEvent(
+            seq: 2,
+            runId: "r1",
+            payload: .sessionRecovered(SessionRecoveredPayload(ok: true))
+        ))
+
+        XCTAssertFalse(reducer.protocolRecovery.isRecovering)
+        XCTAssertNil(reducer.protocolRecovery.notice)
+    }
+
+    func testSessionRecoveredFailureOffersReload() {
+        reducer.processEvent(BusEvent(
+            seq: 1,
+            runId: "r1",
+            payload: .sessionRecovered(SessionRecoveredPayload(ok: false))
+        ))
+
+        XCTAssertTrue(reducer.protocolRecovery.showReloadAction)
+        XCTAssertEqual(reducer.currentStatus, .failed)
+    }
+
+    func testProtocolDesyncOffersReloadAndFailsRun() {
+        reducer.processEvent(BusEvent(
+            seq: 1,
+            runId: "r1",
+            payload: .protocolDesync(ProtocolDesyncPayload(failCount: 5, sample: "{bad json"))
+        ))
+
+        XCTAssertTrue(reducer.protocolRecovery.showReloadAction)
+        XCTAssertEqual(reducer.currentStatus, .failed)
+    }
+
+    func testBusEventPayloadDecodesSessionRecoveringFromJSON() throws {
+        let json = """
+        {
+          "type": "session_recovering",
+          "run_id": "run-1",
+          "reason": "internal_hard_timeout",
+          "deadline_ms": 5000,
+          "from_internal": true
+        }
+        """.data(using: .utf8)!
+
+        let payload = try JSONDecoder().decode(BusEventPayload.self, from: json)
+        guard case .sessionRecovering(let decoded) = payload else {
+            return XCTFail("Expected sessionRecovering payload")
+        }
+        XCTAssertEqual(decoded.reason, "internal_hard_timeout")
+        XCTAssertEqual(decoded.deadlineMs, 5000)
+        XCTAssertEqual(decoded.fromInternal, true)
+    }
+
     // MARK: - WebSocket decoding
 
     func testWSResponseDecodesBusEventPayloadDirectly() throws {

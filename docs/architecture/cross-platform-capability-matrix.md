@@ -148,20 +148,19 @@ allowlist above with a tracking note.
 | Metric                                            | Count |
 |---------------------------------------------------|------:|
 | Rust `BusEvent` variants                          | **34** |
-| iOS `BusEventPayload` cases                       | **32** |
-| Variants both sides support                       | **30** |
-| Rust-only (broadcast but iOS doesn't decode)      | **4** |
+| iOS `BusEventPayload` cases                       | **35** |
+| Variants both sides support                       | **33** |
+| Rust-only (broadcast but iOS doesn't decode)      | **1** |
 
-**Rust-only variants** (4) — broadcast by the session_actor but the iOS
-client falls back to `.raw(RawPayload)` for them. They appear in
-`WSResponse.event` as opaque JSON and the iOS UI ignores them:
+**Rust-only variants** (1) — broadcast by the session_actor but the iOS
+client falls back to `.raw(RawPayload)` only for truly unknown wire types:
 
 | Rust variant        | Used by                       | iOS coverage           |
 |---------------------|-------------------------------|------------------------|
-| `SessionRecovering` | Recovery flow                 | Raw (decoded as `.raw`) |
-| `SessionRecovered`  | Recovery flow                 | Raw                     |
-| `ProtocolDesync`    | Diagnostic / crash detector   | Raw                     |
-| `Raw`               | Forwarded stdio for tools     | N/A — iOS never sees    |
+| `SessionRecovering` | Recovery flow                 | Typed (`sessionRecovering`) |
+| `SessionRecovered`  | Recovery flow                 | Typed (`sessionRecovered`)  |
+| `ProtocolDesync`    | Diagnostic / crash detector   | Typed (`protocolDesync`)    |
+| `Raw`               | Forwarded stdio for tools     | N/A — iOS never sees        |
 
 **Known mismatches on the Rust-only side**: iOS's `BusEventPayload` includes
 `.fullReload` (a control event sent by the WS layer when the replay buffer
@@ -216,6 +215,7 @@ This runs in order:
 4. `arch:budget` — file size budget
 5. `arch:tauri-contract` — **this document's §1**
 6. `arch:ios-ws-contract` — **this document's §3**
+7. `arch:mobile-bus-contract` — **this document's §4** (Rust ↔ iOS/Android BusEvent)
 
 Parser unit tests live in
 `scripts/architecture/__tests__/contract-lib.test.ts` (23 tests) and run as

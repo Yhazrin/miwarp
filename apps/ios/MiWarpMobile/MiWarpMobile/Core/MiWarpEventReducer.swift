@@ -51,6 +51,14 @@ struct UsageSummary {
     var costUsd: Double = 0
 }
 
+// MARK: - Protocol Recovery State
+
+struct ProtocolRecoveryState: Equatable {
+    var notice: String?
+    var isRecovering: Bool = false
+    var showReloadAction: Bool = false
+}
+
 // MARK: - Event Reducer
 
 @Observable
@@ -64,6 +72,7 @@ final class MiWarpEventReducer {
     private(set) var sessionModel: String?
     private(set) var lastSeq: Int = 0
     private(set) var streamingMessageId: String?
+    private(set) var protocolRecovery = ProtocolRecoveryState()
     /// Tracks all in-flight streaming message IDs so handleMessageComplete can find them.
     private var pendingStreamingIds: Set<String> = []
 
@@ -132,6 +141,15 @@ final class MiWarpEventReducer {
         case .sessionInit(let payload):
             handleSessionInit(payload)
 
+        case .sessionRecovering(let payload):
+            handleSessionRecovering(payload)
+
+        case .sessionRecovered(let payload):
+            handleSessionRecovered(payload)
+
+        case .protocolDesync(let payload):
+            handleProtocolDesync(payload)
+
         case .fullReload:
             // Server requests full state reset — clear and re-fetch
             reset()
@@ -162,6 +180,7 @@ final class MiWarpEventReducer {
         streamingMessageId = nil
         pendingStreamingIds.removeAll()
         toolLocations.removeAll()
+        protocolRecovery = ProtocolRecoveryState()
     }
 
     // MARK: - Handlers
@@ -169,6 +188,44 @@ final class MiWarpEventReducer {
     private func handleSessionInit(_ payload: SessionInitPayload) {
         sessionAgent = payload.agent
         sessionModel = payload.model
+    }
+
+    private func handleSessionRecovering(_ payload: SessionRecoveringPayload) {
+        let seconds = max(1, Int((payload.deadlineMs ?? 5000) / 1000))
+        protocolRecovery = ProtocolRecoveryState(
+            notice: String(format: String(localized: "protocol.sessionRecovering"), seconds),
+            isRecovering: true,
+            showReloadAction: false
+        )
+    }
+
+    private func handleSessionRecovered(_ payload: SessionRecoveredPayload) {
+        if payload.ok == true {
+            protocolRecovery = ProtocolRecoveryState()
+            return
+        }
+
+        protocolRecovery = ProtocolRecoveryState(
+            notice: String(localized: "protocol.sessionRecoveryFailed"),
+            isRecovering: false,
+            showReloadAction: true
+        )
+        currentStatus = .failed
+    }
+
+    private func handleProtocolDesync(_ payload: ProtocolDesyncPayload) {
+        _ = payload
+        protocolRecovery = ProtocolRecoveryState(
+            notice: String(localized: "protocol.desyncToast"),
+            isRecovering: false,
+            showReloadAction: true
+        )
+        currentStatus = .failed
+    }
+
+    func clearProtocolRecoveryNotice() {
+        protocolRecovery.notice = nil
+        protocolRecovery.showReloadAction = false
     }
 
     private func handleUserMessage(_ payload: UserMessagePayload) {

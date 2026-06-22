@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.miwarp.mobile.design.MWApprovalCard
 import com.miwarp.mobile.design.MWErrorState
 import com.miwarp.mobile.design.MWLoadingState
+import com.miwarp.mobile.design.MWProtocolRecoveryBanner
 import com.miwarp.mobile.design.MWReconnectBanner
 import com.miwarp.mobile.design.MWStatusPill
 import com.miwarp.mobile.design.MWTheme
@@ -39,6 +40,7 @@ import com.miwarp.mobile.model.PermissionRequest
 import com.miwarp.mobile.model.RunStatus
 import com.miwarp.mobile.model.UsageSummary
 import com.miwarp.mobile.reducer.MiWarpEventReducer
+import com.miwarp.mobile.reducer.ProtocolRecoveryState
 import com.miwarp.mobile.reducer.ReductionResult
 import com.miwarp.mobile.rpc.MiWarpRpcClient
 import java.util.Locale
@@ -65,6 +67,7 @@ fun ChatScreen(
     var isSending by remember { mutableStateOf(false) }
     var inputText by remember { mutableStateOf("") }
     var lastSeq by remember { mutableLongStateOf(0L) }
+    var protocolRecovery by remember { mutableStateOf(ProtocolRecoveryState()) }
     val reducer = remember { MiWarpEventReducer() }
 
     val connectionState by rpcClient.connectionState.collectAsStateWithLifecycle()
@@ -84,6 +87,7 @@ fun ChatScreen(
             pendingPermissions = reducer.getPendingPermissions()
             usage = reducer.getUsage()
             lastSeq = reducer.getLastSeq()
+            protocolRecovery = reducer.getProtocolRecovery()
 
             rpcClient.subscribe(runId, lastSeq)
         } catch (e: Exception) {
@@ -105,6 +109,7 @@ fun ChatScreen(
                 pendingPermissions = result.pendingPermissions
                 usage = result.usage
             }
+            protocolRecovery = reducer.getProtocolRecovery()
 
             // Update run state from event
             if (event is BusEvent.RunState) {
@@ -168,6 +173,31 @@ fun ChatScreen(
         }
     }
 
+    val reloadSession: () -> Unit = {
+        scope.launch {
+            try {
+                isLoading = true
+                val history = rpcClient.getBusEvents(runId)
+                reducer.clear()
+                for (event in history) {
+                    reducer.reduce(event)
+                }
+                messages = reducer.getMessages()
+                pendingPermissions = reducer.getPendingPermissions()
+                usage = reducer.getUsage()
+                lastSeq = reducer.getLastSeq()
+                protocolRecovery = reducer.getProtocolRecovery()
+                reducer.clearProtocolRecoveryNotice()
+                protocolRecovery = reducer.getProtocolRecovery()
+                rpcClient.subscribe(runId, lastSeq)
+            } catch (e: Exception) {
+                error = e.message ?: "Failed to reload session"
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
     val stopSession: () -> Unit = {
         scope.launch {
             try {
@@ -186,6 +216,15 @@ fun ChatScreen(
             MWReconnectBanner(
                 isReconnecting = isReconnecting,
                 onRetry = { /* reconnect handled by wsClient auto-reconnect */ },
+            )
+        }
+
+        protocolRecovery.notice?.let { notice ->
+            MWProtocolRecoveryBanner(
+                notice = notice,
+                isRecovering = protocolRecovery.isRecovering,
+                showReloadAction = protocolRecovery.showReloadAction,
+                onReload = reloadSession,
             )
         }
 
@@ -250,7 +289,8 @@ fun ChatScreen(
                     onValueChange = { inputText = it },
                     onSend = sendMessage,
                     isLoading = isSending,
-                    enabled = run?.status == RunStatus.Running || run?.status == RunStatus.Idle || run?.status == null,
+                    enabled = !protocolRecovery.isRecovering &&
+                        (run?.status == RunStatus.Running || run?.status == RunStatus.Idle || run?.status == null),
                     onStop = if (run?.status == RunStatus.Running) stopSession else null,
                     modifier = Modifier.padding(horizontal = spacing.md, vertical = spacing.sm),
                 )

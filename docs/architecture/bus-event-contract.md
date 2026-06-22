@@ -26,6 +26,8 @@ Add a **bidirectional contract test** at `src/lib/bus/__tests__/bus-contract.tes
 
 A mismatch fails `npm test`. The test is text-only (no Rust or TS compilation), so it runs in milliseconds.
 
+A companion gate `scripts/architecture/mobile-bus-contract.mjs` (also in `npm run arch:check`) keeps iOS `BusEventPayload.EventType` and Android `MiWarpRpcClient` when-branches aligned with the same Rust enum, with explicit payload-field checks for `session_recovering`, `session_recovered`, and `protocol_desync`.
+
 ## Consequences
 
 - Adding a `BusEvent::X` in Rust without updating `src/lib/types.ts` is a CI failure.
