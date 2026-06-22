@@ -43,12 +43,11 @@
   import {
     agentToRuntimeId,
     mergeRuntimeAvailability,
-    probeRuntimeAvailability,
-    resolveSelectionFallback,
     runtimeIdToAgent,
     type ResolvedRuntime,
     type SupportedRuntimeId,
   } from "$lib/runtime";
+  import { runtimeHubStore } from "$lib/stores/runtime-hub-store.svelte";
 
   const t = tFn;
 
@@ -189,11 +188,15 @@
   async function loadRuntimeAvailability() {
     runtimesLoading = true;
     try {
-      const detection = await probeRuntimeAvailability();
-      const merged = mergeRuntimeAvailability(detection);
-      runtimes = merged;
-      const preferred = agentToRuntimeId(store.agent) ?? selectedRuntime;
-      const next = resolveSelectionFallback(preferred, merged);
+      runtimeHubStore.init();
+      await runtimeHubStore.refresh();
+      runtimes = runtimeHubStore.runtimes;
+      const configured = agentToRuntimeId(settings?.default_agent ?? "");
+      const active = agentToRuntimeId(store.agent);
+      const preferred = configured ?? runtimeHubStore.defaultRuntime ?? active ?? "claude";
+      const next =
+        runtimes.find((runtime) => runtime.id === preferred && runtime.selectable)?.id ??
+        runtimeHubStore.defaultRuntime;
       selectedRuntime = next;
       store.agent = runtimeIdToAgent(next);
     } catch {

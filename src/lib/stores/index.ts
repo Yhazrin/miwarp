@@ -19,6 +19,7 @@ export { PromptInputStore } from "./prompt-input-store.svelte";
 export type { PathRef } from "./prompt-input-store.svelte";
 export { appUpdateCoordinator } from "./app-update-coordinator.svelte";
 export type { AppUpdatePhase, AppUpdateState } from "./app-update-coordinator.svelte";
+export { runtimeHubStore } from "./runtime-hub-store.svelte";
 export { cliUpdateRegistry } from "./cli-update-registry.svelte";
 export type {
   CliToolEntry,

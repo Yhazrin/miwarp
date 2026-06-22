@@ -25,4 +25,9 @@ export {
   usesStreamSession,
 } from "./registry";
 
-export { probeRuntimeAvailability, probeRuntimeAvailabilityFor } from "./availability";
+export {
+  probeRuntimeAvailability,
+  probeRuntimeAvailabilityFor,
+  probeRuntimeAvailabilityWithStatus,
+} from "./availability";
+export type { RuntimeProbeOutcome } from "./availability";

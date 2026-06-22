@@ -37,6 +37,8 @@
     switch (status) {
       case "available":
         return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+      case "desktop":
+        return "bg-sky-500/10 text-sky-700 dark:text-sky-400";
       case "coming-soon":
         return "bg-[hsl(var(--miwarp-accent-violet)/0.12)] text-[hsl(var(--miwarp-accent-violet))]";
       default:

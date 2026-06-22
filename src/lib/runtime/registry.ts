@@ -13,6 +13,7 @@ export const SUPPORTED_RUNTIME_IDS = [
   "gemini",
   "aider",
   "opencode",
+  "cursor",
   "qwen-code",
   "custom",
 ] as const satisfies readonly SupportedRuntimeId[];
@@ -21,6 +22,7 @@ export const STARTABLE_RUNTIME_IDS = [
   "claude",
   "codex",
   "mimo",
+  "opencode",
 ] as const satisfies readonly SupportedRuntimeId[];
 
 const RUNTIME_DESCRIPTORS: Record<SupportedRuntimeId, RuntimeDescriptor> = {
@@ -54,7 +56,7 @@ const RUNTIME_DESCRIPTORS: Record<SupportedRuntimeId, RuntimeDescriptor> = {
     nameKey: "runtime_gemini_name",
     capabilitiesKey: "runtime_gemini_capabilities",
     launchSupport: "coming-soon",
-    sortOrder: 40,
+    sortOrder: 60,
   },
   aider: {
     id: "aider",
@@ -62,15 +64,23 @@ const RUNTIME_DESCRIPTORS: Record<SupportedRuntimeId, RuntimeDescriptor> = {
     nameKey: "runtime_aider_name",
     capabilitiesKey: "runtime_aider_capabilities",
     launchSupport: "coming-soon",
-    sortOrder: 50,
+    sortOrder: 70,
   },
   opencode: {
     id: "opencode",
     agent: "opencode",
     nameKey: "runtime_opencode_name",
     capabilitiesKey: "runtime_opencode_capabilities",
-    launchSupport: "coming-soon",
-    sortOrder: 60,
+    launchSupport: "startable",
+    sortOrder: 40,
+  },
+  cursor: {
+    id: "cursor",
+    agent: "cursor",
+    nameKey: "runtime_cursor_name",
+    capabilitiesKey: "runtime_cursor_capabilities",
+    launchSupport: "desktop",
+    sortOrder: 50,
   },
   "qwen-code": {
     id: "qwen-code",
@@ -78,7 +88,7 @@ const RUNTIME_DESCRIPTORS: Record<SupportedRuntimeId, RuntimeDescriptor> = {
     nameKey: "runtime_qwen_name",
     capabilitiesKey: "runtime_qwen_capabilities",
     launchSupport: "coming-soon",
-    sortOrder: 70,
+    sortOrder: 80,
   },
   custom: {
     id: "custom",
@@ -86,7 +96,7 @@ const RUNTIME_DESCRIPTORS: Record<SupportedRuntimeId, RuntimeDescriptor> = {
     nameKey: "runtime_custom_name",
     capabilitiesKey: "runtime_custom_capabilities",
     launchSupport: "coming-soon",
-    sortOrder: 80,
+    sortOrder: 90,
   },
 };
 
@@ -149,6 +159,15 @@ function resolveStatus(
   }
 
   const available = detection?.available ?? false;
+  if (descriptor.launchSupport === "desktop") {
+    return {
+      available,
+      selectable: false,
+      status: available ? "desktop" : "unavailable",
+      statusKey: available ? "runtime_status_desktop" : "runtime_status_unavailable",
+    };
+  }
+
   return {
     available,
     selectable: available,

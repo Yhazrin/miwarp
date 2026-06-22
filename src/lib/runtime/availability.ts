@@ -1,43 +1,97 @@
 import * as api from "$lib/api";
-import type { RuntimeDetectionMap } from "./types";
-import type { SupportedRuntimeId } from "./types";
+import type { RuntimeDetection, RuntimeDetectionMap, SupportedRuntimeId } from "./types";
 
-/** Controlled API detection only — no shell/curl from UI. */
+type CliProbe = {
+  agent: string;
+  found: boolean;
+  path?: string;
+  version?: string;
+};
+
+function missing(agent: string): CliProbe {
+  return { agent, found: false };
+}
+
+export interface RuntimeProbeOutcome {
+  detections: RuntimeDetectionMap;
+  /** True when every underlying probe rejected — a transport/IO failure
+   *  rather than a user whose CLIs are simply not installed. */
+  probeFailed: boolean;
+}
+
+/** Controlled API detection only — no shell execution from UI. */
 export async function probeRuntimeAvailability(): Promise<RuntimeDetectionMap> {
-  const [claudeResult, codexResult, mimoResult] = await Promise.all([
-    api
-      .checkAgentCli("claude")
-      .catch(() => ({ agent: "claude", found: false, path: undefined, version: undefined })),
-    api
-      .checkAgentCli("codex")
-      .catch(() => ({ agent: "codex", found: false, path: undefined, version: undefined })),
-    api.detectMimoRuntime().catch(() => ({ available: false, binary: "mimo", version: null })),
+  return (await probeRuntimeAvailabilityWithStatus()).detections;
+}
+
+/** Same as `probeRuntimeAvailability` but also reports whether the underlying
+ *  probes themselves failed (distinguishing "no CLIs installed" from
+ *  "the probe transport is broken"). */
+export async function probeRuntimeAvailabilityWithStatus(): Promise<RuntimeProbeOutcome> {
+  const settled = await Promise.allSettled([
+    api.checkAgentCli("claude"),
+    api.checkAgentCli("codex"),
+    api.detectMimoRuntime(),
+    api.checkAgentCli("opencode"),
+    api.checkAgentCli("cursor"),
   ]);
 
-  const detection: RuntimeDetectionMap = {
+  function unwrap<T>(idx: number, fallback: T): T {
+    const r = settled[idx];
+    return r.status === "fulfilled" ? (r.value as T) : fallback;
+  }
+
+  const claude = unwrap<CliProbe>(0, missing("claude"));
+  const codex = unwrap<CliProbe>(1, missing("codex"));
+  const mimo = unwrap<{ available: boolean; binary: string; version: string | null }>(2, {
+    available: false,
+    binary: "mimo",
+    version: null,
+  });
+  const openCode = unwrap<CliProbe>(3, missing("opencode"));
+  const cursor = unwrap<CliProbe>(4, missing("cursor"));
+
+  const detections: RuntimeDetectionMap = {
     claude: {
-      available: claudeResult.found ?? false,
-      binary: claudeResult.path ?? "claude",
-      version: claudeResult.version ?? null,
-    },
+      available: claude.found,
+      binary: claude.path ?? "claude",
+      version: claude.version ?? null,
+    } satisfies RuntimeDetection,
     codex: {
-      available: codexResult.found ?? false,
-      binary: codexResult.path ?? "codex",
-      version: codexResult.version ?? null,
-    },
+      available: codex.found,
+      binary: codex.path ?? "codex",
+      version: codex.version ?? null,
+    } satisfies RuntimeDetection,
     mimo: {
-      available: mimoResult.available,
-      binary: mimoResult.binary,
-      version: mimoResult.version,
-    },
+      available: mimo.available,
+      binary: mimo.binary,
+      version: mimo.version,
+    } satisfies RuntimeDetection,
+    opencode: {
+      available: openCode.found,
+      binary: openCode.path ?? "opencode",
+      version: openCode.version ?? null,
+    } satisfies RuntimeDetection,
+    cursor: {
+      available: cursor.found,
+      binary: cursor.path ?? "cursor",
+      version: cursor.version ?? null,
+    } satisfies RuntimeDetection,
   };
 
-  return detection;
+  // Only report a transport-level failure when every probe rejected.
+  // Partial failures still provide useful availability data and should not
+  // be presented as a total Runtime Hub detection outage.
+  const probeFailed = settled.every((result) => result.status === "rejected");
+
+  return {
+    detections,
+    probeFailed,
+  };
 }
 
 export async function probeRuntimeAvailabilityFor(
   id: SupportedRuntimeId,
 ): Promise<RuntimeDetectionMap[SupportedRuntimeId] | undefined> {
-  const all = await probeRuntimeAvailability();
-  return all[id];
+  return (await probeRuntimeAvailability())[id];
 }

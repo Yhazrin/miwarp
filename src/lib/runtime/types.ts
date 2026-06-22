@@ -8,11 +8,12 @@ export type SupportedRuntimeId =
   | "gemini"
   | "aider"
   | "opencode"
+  | "cursor"
   | "qwen-code"
   | "custom";
 
 /** Backend can spawn this runtime when CLI/binary is present. */
-export type RuntimeLaunchSupport = "startable" | "coming-soon";
+export type RuntimeLaunchSupport = "startable" | "desktop" | "coming-soon";
 
 export interface RuntimeDescriptor {
   id: SupportedRuntimeId;
@@ -33,7 +34,7 @@ export interface RuntimeDetection {
 
 export type RuntimeDetectionMap = Partial<Record<SupportedRuntimeId, RuntimeDetection>>;
 
-export type RuntimeStatus = "available" | "unavailable" | "coming-soon";
+export type RuntimeStatus = "available" | "unavailable" | "desktop" | "coming-soon";
 
 export interface ResolvedRuntime extends RuntimeDescriptor {
   available: boolean;

@@ -6,202 +6,249 @@
   import Spinner from "$lib/components/Spinner.svelte";
   import SettingsFieldRow from "../_shared/SettingsFieldRow.svelte";
   import SettingsFieldEnum from "../_shared/SettingsFieldEnum.svelte";
+  import { runtimeHubStore } from "$lib/stores/runtime-hub-store.svelte";
+  import { agentToRuntimeId, isStartableRuntime } from "$lib/runtime/registry";
+  import type { ResolvedRuntime } from "$lib/runtime/types";
   import * as api from "$lib/api";
 
-  interface RuntimeInfo {
-    name: string;
-    agent: string;
-    binary: string;
-    version: string | null;
-    available: boolean;
-    icon: string;
-  }
-
-  let runtimes = $state<RuntimeInfo[]>([]);
-  let loading = $state(true);
   let mimoBinaryPath = $state("");
   let mimoProtocolMode = $state("auto");
+  let advancedLoading = $state(false);
 
-  onMount(async () => {
-    try {
-      const [mimoDetect, mimoAgentSettings] = await Promise.all([
-        api.detectMimoRuntime().catch(() => ({ available: false, binary: "mimo", version: null })),
-        api.getAgentSettings("mimo").catch(() => null),
-      ]);
-
-      runtimes = [
-        {
-          name: "Claude Code",
-          agent: "claude",
-          binary: "claude",
-          version: null,
-          available: true,
-          icon: "anthropic",
-        },
-        {
-          name: "MiMo Code",
-          agent: "mimo",
-          binary: mimoDetect.binary,
-          version: mimoDetect.version,
-          available: mimoDetect.available,
-          icon: "mimo",
-        },
-        {
-          name: "Codex",
-          agent: "codex",
-          binary: "codex",
-          version: null,
-          available: false,
-          icon: "openai",
-        },
-      ];
-
-      if (mimoAgentSettings) {
-        mimoBinaryPath = mimoAgentSettings.mimo_binary_path ?? "";
-        mimoProtocolMode = mimoAgentSettings.mimo_protocol_mode ?? "auto";
-      }
-    } finally {
-      loading = false;
-    }
-  });
-
-  async function detectMimo() {
-    loading = true;
-    try {
-      const result = await api.detectMimoRuntime();
-      runtimes = runtimes.map((r) =>
-        r.agent === "mimo"
-          ? { ...r, available: result.available, binary: result.binary, version: result.version }
-          : r,
-      );
-      if (result.binary) mimoBinaryPath = result.binary;
-    } finally {
-      loading = false;
-    }
-  }
+  const installedCount = $derived(runtimeHubStore.installedCount);
+  const startableCount = $derived(runtimeHubStore.startableCount);
+  const defaultRuntime = $derived(runtimeHubStore.runtime(runtimeHubStore.defaultRuntime));
 
   function lk(key: string): string {
     return t(key as MessageKey);
   }
 
+  function runtimeInitial(runtime: ResolvedRuntime): string {
+    return runtime.id === "qwen-code" ? "Q" : runtime.id.slice(0, 1).toUpperCase();
+  }
+
+  function statusClass(runtime: ResolvedRuntime): string {
+    if (runtime.status === "available")
+      return "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
+    if (runtime.status === "desktop")
+      return "border-sky-500/25 bg-sky-500/10 text-sky-600 dark:text-sky-400";
+    if (runtime.status === "coming-soon")
+      return "border-violet-500/20 bg-violet-500/8 text-violet-600 dark:text-violet-400";
+    return "border-border bg-muted/60 text-muted-foreground";
+  }
+
+  async function loadAdvancedSettings() {
+    advancedLoading = true;
+    try {
+      const [, agentSettings, userSettings] = await Promise.all([
+        runtimeHubStore.refresh(),
+        api.getAgentSettings("mimo").catch(() => null),
+        api.getUserSettings().catch(() => null),
+      ]);
+      if (agentSettings) {
+        mimoBinaryPath = agentSettings.mimo_binary_path ?? "";
+        mimoProtocolMode = agentSettings.mimo_protocol_mode ?? "auto";
+      }
+      const configuredRuntime = agentToRuntimeId(userSettings?.default_agent ?? "");
+      if (configuredRuntime) runtimeHubStore.setDefault(configuredRuntime);
+    } finally {
+      advancedLoading = false;
+    }
+  }
+
+  onMount(() => {
+    runtimeHubStore.init();
+    void loadAdvancedSettings();
+  });
+
   const protocolOptions = [
     { value: "auto", label: "Auto (StreamJson)" },
     { value: "stream-json", label: "StreamJson (NDJSON)" },
-    { value: "pty", label: "PTY (TUI embedded)" },
-    { value: "pipe", label: "Pipe (single-shot)" },
+    { value: "pty", label: "PTY" },
+    { value: "pipe", label: "Pipe" },
   ];
-
-  const agentIcons: Record<string, string> = {
-    anthropic:
-      "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z",
-    mimo: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",
-    openai:
-      "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z",
-  };
 </script>
 
-{#if loading && runtimes.length === 0}
-  <div class="flex items-center justify-center py-12">
-    <Spinner size="md" class="border-primary border-t-transparent" />
-    <span class="ml-3 text-sm text-muted-foreground">{lk("settings_runtimes_detecting")}</span>
-  </div>
-{:else}
-  <div class="space-y-6">
-    <!-- Runtime Overview -->
-    <Card class="p-6">
-      <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-        {lk("settings_runtimes_overview")}
-      </h2>
+<div class="space-y-5 pb-8">
+  <section
+    class="overflow-hidden rounded-2xl border bg-gradient-to-br from-card via-card to-accent/20"
+  >
+    <div class="flex flex-col gap-5 p-6 lg:flex-row lg:items-end lg:justify-between">
+      <div class="max-w-2xl">
+        <div
+          class="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary"
+        >
+          <span class="h-1.5 w-1.5 rounded-full bg-primary"></span>
+          {lk("runtime_hub_eyebrow")}
+        </div>
+        <h2 class="text-xl font-semibold tracking-tight text-foreground">
+          {lk("runtime_hub_title")}
+        </h2>
+        <p class="mt-2 text-sm leading-6 text-muted-foreground">
+          {lk("runtime_hub_description")}
+        </p>
+      </div>
+      <button
+        type="button"
+        class="inline-flex h-9 items-center justify-center gap-2 rounded-lg border bg-background/70 px-3 text-sm font-medium transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+        onclick={() => runtimeHubStore.refresh()}
+        disabled={runtimeHubStore.loading}
+      >
+        {#if runtimeHubStore.loading}
+          <Spinner size="sm" />
+        {/if}
+        {lk("runtime_hub_refresh")}
+      </button>
+    </div>
 
-      <div class="space-y-3">
-        {#each runtimes as runtime (runtime.agent)}
+    <div class="grid border-t bg-background/45 sm:grid-cols-3">
+      <div class="border-b p-4 sm:border-b-0 sm:border-r">
+        <div class="text-2xl font-semibold tabular-nums">{installedCount}</div>
+        <div class="mt-1 text-xs text-muted-foreground">{lk("runtime_hub_installed")}</div>
+      </div>
+      <div class="border-b p-4 sm:border-b-0 sm:border-r">
+        <div class="text-2xl font-semibold tabular-nums">{startableCount}</div>
+        <div class="mt-1 text-xs text-muted-foreground">{lk("runtime_hub_startable")}</div>
+      </div>
+      <div class="p-4">
+        <div class="truncate text-sm font-semibold">
+          {defaultRuntime ? lk(defaultRuntime.nameKey) : "—"}
+        </div>
+        <div class="mt-1 text-xs text-muted-foreground">{lk("runtime_hub_default")}</div>
+      </div>
+    </div>
+  </section>
+
+  {#if runtimeHubStore.error}
+    <div
+      class="rounded-xl border border-destructive/25 bg-destructive/8 px-4 py-3 text-sm text-destructive"
+    >
+      {runtimeHubStore.error}
+    </div>
+  {/if}
+
+  <section class="grid gap-3 xl:grid-cols-2">
+    {#each runtimeHubStore.runtimes as runtime (runtime.id)}
+      <Card
+        class="group overflow-hidden border bg-card/75 p-0 transition-colors hover:border-primary/25"
+      >
+        <div class="flex gap-4 p-5">
           <div
-            class="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-accent/40 transition-colors"
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-background text-sm font-bold text-foreground shadow-sm"
           >
-            <div class="flex items-center gap-3 min-w-0">
-              <!-- Status dot -->
-              <div
-                class="w-2 h-2 rounded-full shrink-0 {runtime.available
-                  ? 'bg-emerald-500'
-                  : 'bg-muted-foreground/40'}"
-              ></div>
+            {runtimeInitial(runtime)}
+          </div>
 
-              <!-- Name + binary -->
-              <div class="min-w-0">
-                <span class="text-sm font-medium text-foreground">{runtime.name}</span>
-                {#if runtime.binary !== runtime.agent}
-                  <span class="text-xs text-muted-foreground ml-2 font-mono">{runtime.binary}</span>
-                {/if}
-              </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <h3 class="text-sm font-semibold text-foreground">{lk(runtime.nameKey)}</h3>
+              <span
+                class="rounded-full border px-2 py-0.5 text-[11px] font-medium {statusClass(
+                  runtime,
+                )}"
+              >
+                {lk(runtime.statusKey)}
+              </span>
+              {#if runtime.id === runtimeHubStore.defaultRuntime}
+                <span
+                  class="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary"
+                >
+                  {lk("runtime_hub_default_badge")}
+                </span>
+              {/if}
             </div>
 
-            <div class="flex items-center gap-3 shrink-0">
-              {#if runtime.version}
-                <span class="text-xs text-muted-foreground font-mono">{runtime.version}</span>
+            <p class="mt-1.5 text-xs leading-5 text-muted-foreground">
+              {lk(runtime.capabilitiesKey)}
+            </p>
+
+            <dl class="mt-4 grid gap-2 text-xs sm:grid-cols-2">
+              <div class="min-w-0 rounded-lg border bg-background/60 px-3 py-2">
+                <dt class="text-muted-foreground">{lk("runtime_hub_version")}</dt>
+                <dd class="mt-1 truncate font-mono text-foreground">{runtime.version ?? "—"}</dd>
+              </div>
+              <div class="min-w-0 rounded-lg border bg-background/60 px-3 py-2">
+                <dt class="text-muted-foreground">{lk("runtime_hub_binary")}</dt>
+                <dd class="mt-1 truncate font-mono text-foreground" title={runtime.binary ?? ""}>
+                  {runtime.binary ?? runtime.agent}
+                </dd>
+              </div>
+            </dl>
+
+            <div class="mt-4 flex flex-wrap items-center gap-2">
+              {#if runtime.available && isStartableRuntime(runtime.id)}
+                <button
+                  type="button"
+                  class="rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-50"
+                  disabled={runtime.id === runtimeHubStore.defaultRuntime}
+                  onclick={() => {
+                    if (runtimeHubStore.setDefault(runtime.id)) {
+                      void api.updateUserSettings({ default_agent: runtime.agent });
+                    }
+                  }}
+                >
+                  {runtime.id === runtimeHubStore.defaultRuntime
+                    ? lk("runtime_hub_current_default")
+                    : lk("runtime_hub_make_default")}
+                </button>
+              {:else if runtime.launchSupport === "desktop"}
+                <span class="text-xs text-muted-foreground">{lk("runtime_hub_desktop_note")}</span>
+              {:else if runtime.launchSupport === "coming-soon"}
+                <span class="text-xs text-muted-foreground"
+                  >{lk("runtime_hub_adapter_pending")}</span
+                >
+              {:else}
+                <span class="text-xs text-muted-foreground">{lk("runtime_hub_install_hint")}</span>
               {/if}
-              <span
-                class="text-xs px-2 py-0.5 rounded-full {runtime.available
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-muted text-muted-foreground'}"
-              >
-                {runtime.available
-                  ? lk("settings_runtimes_available")
-                  : lk("settings_runtimes_not_found")}
-              </span>
             </div>
           </div>
-        {/each}
+        </div>
+      </Card>
+    {/each}
+  </section>
+
+  <Card class="space-y-4 p-5">
+    <div>
+      <h3 class="text-sm font-semibold text-foreground">{lk("runtime_hub_mimo_advanced")}</h3>
+      <p class="mt-1 text-xs text-muted-foreground">{lk("runtime_hub_mimo_description")}</p>
+    </div>
+
+    {#if advancedLoading}
+      <div class="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+        <Spinner size="sm" />
+        {lk("settings_runtimes_detecting")}
       </div>
-    </Card>
-
-    <!-- MiMo Code Configuration -->
-    <Card class="p-6 space-y-4">
-      <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-        MiMo Code
-      </h2>
-
+    {:else}
       <SettingsFieldRow
         label={lk("settings_runtimes_mimo_binary_path")}
-        description="Leave empty for auto-detection"
+        description={lk("runtime_hub_binary_description")}
       >
         {#snippet children()}
-          <div class="flex items-center gap-2">
-            <input
-              type="text"
-              class="w-48 shrink-0 rounded-md border bg-transparent px-3 py-1.5 text-sm font-mono placeholder:text-muted-foreground focus:border-ring focus:outline-none"
-              placeholder="auto-detect"
-              value={mimoBinaryPath}
-              onblur={(e) => {
-                mimoBinaryPath = (e.target as HTMLInputElement).value;
-                api.updateAgentSettings("mimo", {
-                  mimo_binary_path: (mimoBinaryPath || undefined) as string | undefined,
-                });
-              }}
-            />
-            <button
-              type="button"
-              class="rounded-md border px-3 py-1.5 text-xs hover:bg-accent transition-colors"
-              onclick={detectMimo}
-              disabled={loading}
-            >
-              {lk("settings_runtimes_detect")}
-            </button>
-          </div>
+          <input
+            type="text"
+            class="w-64 max-w-full rounded-lg border bg-background px-3 py-1.5 text-sm font-mono outline-none transition-colors focus:border-ring"
+            placeholder="auto-detect"
+            bind:value={mimoBinaryPath}
+            onblur={() =>
+              api.updateAgentSettings("mimo", {
+                mimo_binary_path: (mimoBinaryPath || undefined) as string | undefined,
+              })}
+          />
         {/snippet}
       </SettingsFieldRow>
 
       <SettingsFieldEnum
         label={lk("settings_runtimes_mimo_protocol")}
-        description="Communication protocol with MiMo-Code runtime"
+        description={lk("runtime_hub_protocol_description")}
         value={mimoProtocolMode}
         options={protocolOptions}
-        onchange={(v) => {
-          mimoProtocolMode = v;
-          api.updateAgentSettings("mimo", {
-            mimo_protocol_mode: (v || undefined) as string | undefined,
+        onchange={(value) => {
+          mimoProtocolMode = value;
+          void api.updateAgentSettings("mimo", {
+            mimo_protocol_mode: (value || undefined) as string | undefined,
           });
         }}
       />
-    </Card>
-  </div>
-{/if}
+    {/if}
+  </Card>
+</div>
