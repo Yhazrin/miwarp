@@ -37,6 +37,7 @@
   import { workspacesStore } from "$lib/stores/workspaces-store.svelte";
   import { getTransport } from "$lib/transport";
   import { dbg, dbgWarn } from "$lib/utils/debug";
+  import { perfMarkAsync } from "$lib/utils/perf";
   import { setLastTarget, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
   import { shouldAutoName } from "$lib/utils/auto-name";
   import { normalizeCwd } from "$lib/utils/sidebar-groups";
@@ -694,7 +695,9 @@
         return;
       }
 
-      loadRunProgressive(id, xtermRef);
+      void perfMarkAsync("session.switchToInteractive", () => loadRunProgressive(id, xtermRef), {
+        runKind: id ? "switch" : "new",
+      });
     });
   });
 

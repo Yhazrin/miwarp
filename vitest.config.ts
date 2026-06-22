@@ -11,7 +11,11 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["src/**/*.test.ts", "scripts/architecture/__tests__/**/*.test.ts"],
+    include: [
+      "src/**/*.test.ts",
+      "scripts/architecture/__tests__/**/*.test.ts",
+      "scripts/__tests__/**/*.test.ts",
+    ],
     environment: "node",
   },
 });

@@ -13,6 +13,7 @@
   import type { AgentSettings, RemoteHost, UserSettings } from "$lib/types";
   import { findCredential } from "$lib/utils/platform-presets";
   import { dbg, dbgWarn, redactSensitive } from "$lib/utils/debug";
+  import { perfMark, perfMarkAsync } from "$lib/utils/perf";
   import { t } from "$lib/i18n/index.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { getTransport } from "$lib/transport";
@@ -248,7 +249,9 @@
 
     switch (tab) {
       case "devices": {
-        const data = await fetchDevicesTabData(guard);
+        const data = await perfMarkAsync("settings.tab.devices", () => fetchDevicesTabData(guard), {
+          tab: "devices",
+        });
         if (!isAlive(gen) || !data) return;
         webStatus = data.webStatus;
         webToken = data.webToken;
@@ -259,7 +262,11 @@
         cliConfigLoading = true;
         cliConfigError = "";
         try {
-          const data = await fetchCliBehaviorTabData(guard);
+          const data = await perfMarkAsync(
+            "settings.tab.cli-behavior",
+            () => fetchCliBehaviorTabData(guard),
+            { tab: "cli-behavior" },
+          );
           if (!isAlive(gen) || !data) return;
           cliConfig = data.cliConfig;
           projectCliConfig = data.projectCliConfig;
@@ -274,7 +281,11 @@
       }
       case "runtimes": {
         runtimeHubStore.init();
-        const data = await fetchRuntimesTabData(guard);
+        const data = await perfMarkAsync(
+          "settings.tab.runtimes",
+          () => fetchRuntimesTabData(guard),
+          { tab: "runtimes" },
+        );
         if (!isAlive(gen) || !data) return;
         mimoAgentSettings = data.mimoAgentSettings;
         const configuredRuntime = agentToRuntimeId(settings?.default_agent ?? "");
@@ -282,7 +293,7 @@
         break;
       }
       case "updates": {
-        fetchUpdatesTabData(guard);
+        perfMark("settings.tab.updates", () => fetchUpdatesTabData(guard), { tab: "updates" });
         break;
       }
       default:
@@ -322,9 +333,15 @@
     void (async () => {
       try {
         const guard = createMountedGuard(() => isAlive(gen));
-        const loaded = await loadSettingsPageCore(guard);
+        const loaded = await perfMarkAsync(
+          "settings.firstOpen",
+          () => loadSettingsPageCore(guard),
+          { tab: "general", cold: true },
+        );
         if (!isAlive(gen) || !loaded) return;
-        hydrateFromSettings(loaded);
+        perfMark("settings.firstOpen.hydrate", () => hydrateFromSettings(loaded), {
+          tab: "general",
+        });
       } catch (e) {
         dbgWarn("settings", "error", e);
       }
