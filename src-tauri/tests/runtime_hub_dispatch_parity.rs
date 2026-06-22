@@ -1,22 +1,18 @@
 //! Runtime hub wire format contract test.
 //!
-//! Companion to `v1.0.9-runtime-contract.md` §8 (the four
+//! Companion to `v1.0.9-runtime-contract.md` §8 (the eight
 //! `runtime_hub_*` Tauri commands) and `scripts/architecture/
 //! cross-platform-bus-contract.mjs` (which checks the cross-
 //! platform reachability).
 //!
-//! This test pins the wire format the runtime hub will use:
-//!   - The 4 commands are `runtime_hub_list`,
+//! This test pins the wire format the runtime hub uses:
+//!   - The 8 commands are `runtime_hub_list`,
 //!     `runtime_hub_health`, `runtime_hub_diagnose`,
-//!     `runtime_hub_set_default`.
+//!     `runtime_hub_set_default`, `runtime_hub_preview_config`,
+//!     `runtime_hub_apply_config`, `runtime_hub_start_config_watch`,
+//!     `runtime_hub_stop_config_watch`.
 //!   - The return types are stable (no `Value` escapes).
-//!   - The argument shapes are minimal (single id argument).
-//!
-//! Today (ca41bf45) the commands do not exist in
-//! `src-tauri/src/lib.rs`. This test is dormant — it scans
-//! the file and asserts the SHAPE, not the EXISTENCE, of the
-//! expected handlers. Once Agent B lands the hub, the same
-//! assertions become pass/fail gates.
+//!   - The argument shapes are minimal.
 //!
 //! Run with:
 //!   cargo test --test runtime_hub_dispatch_parity --manifest-path src-tauri/Cargo.toml
@@ -30,6 +26,10 @@ const RUNTIME_HUB_COMMANDS: &[&str] = &[
     "runtime_hub_health",
     "runtime_hub_diagnose",
     "runtime_hub_set_default",
+    "runtime_hub_preview_config",
+    "runtime_hub_apply_config",
+    "runtime_hub_start_config_watch",
+    "runtime_hub_stop_config_watch",
 ];
 
 fn repo_root() -> std::path::PathBuf {
@@ -43,41 +43,40 @@ fn read_repo_file(rel: &str) -> Option<String> {
 }
 
 #[test]
-fn runtime_hub_command_count_is_exactly_four() {
-    // Spec §8 says exactly 4 commands. Any more or less is a
-    // contract violation. Today the file is empty (dormant),
-    // so this test passes trivially.
+fn runtime_hub_command_count_is_exactly_eight() {
+    // Spec §8 says exactly 8 commands. All 8 must be registered
+    // inside `tauri::generate_handler![ ... ]`.
     let lib_rs = read_repo_file("src-tauri/src/lib.rs");
     assert!(lib_rs.is_some(), "src-tauri/src/lib.rs must be readable");
     let lib_rs = lib_rs.unwrap();
 
-    let mut found: Vec<&str> = Vec::new();
+    let mut missing: Vec<&str> = Vec::new();
     for cmd in RUNTIME_HUB_COMMANDS {
-        if lib_rs.contains(cmd) {
-            found.push(cmd);
+        if !lib_rs.contains(cmd) {
+            missing.push(cmd);
         }
     }
-    // Pre-implementation: 0 found. Post-implementation: exactly
-    // 4. Anything in between (e.g. 3 commands landed, 1
-    // pending) is allowed; the test only fails if the count
-    // exceeds 4 (which would be a contract violation).
     assert!(
-        found.len() <= 4,
-        "expected at most 4 runtime_hub_* commands (spec §8), found: {:?}",
-        found
+        missing.is_empty(),
+        "expected all 8 runtime_hub_* commands (spec §8) registered, missing: {:?}",
+        missing
     );
 }
 
 #[test]
 fn runtime_hub_command_names_match_spec_exactly() {
-    // The 4 expected names. If a future agent introduces a
-    // 5th name (e.g. `runtime_hub_reload`), the test fails
+    // The 8 expected names. If a future agent introduces a
+    // 9th name (e.g. `runtime_hub_reload`), the test fails
     // until an ADR records the new command in §8.
-    assert_eq!(RUNTIME_HUB_COMMANDS.len(), 4);
+    assert_eq!(RUNTIME_HUB_COMMANDS.len(), 8);
     assert!(RUNTIME_HUB_COMMANDS.contains(&"runtime_hub_list"));
     assert!(RUNTIME_HUB_COMMANDS.contains(&"runtime_hub_health"));
     assert!(RUNTIME_HUB_COMMANDS.contains(&"runtime_hub_diagnose"));
     assert!(RUNTIME_HUB_COMMANDS.contains(&"runtime_hub_set_default"));
+    assert!(RUNTIME_HUB_COMMANDS.contains(&"runtime_hub_preview_config"));
+    assert!(RUNTIME_HUB_COMMANDS.contains(&"runtime_hub_apply_config"));
+    assert!(RUNTIME_HUB_COMMANDS.contains(&"runtime_hub_start_config_watch"));
+    assert!(RUNTIME_HUB_COMMANDS.contains(&"runtime_hub_stop_config_watch"));
 }
 
 #[test]
