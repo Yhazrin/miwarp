@@ -258,6 +258,8 @@ export interface UserSettings {
   process_visibility?: "output" | "guided" | "developer" | "expert";
   /** Visual performance mode: auto (platform default), quality, balanced, performance. */
   visual_performance_mode?: "auto" | "quality" | "balanced" | "performance";
+  /** Top session island capsule alignment. Default center. */
+  session_island_alignment?: "center" | "right";
   /** Custom session status colors. */
   session_status_colors?: SessionStatusColors;
   /** Workspace display aliases: normalized_cwd → display_name */

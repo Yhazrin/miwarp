@@ -55,6 +55,17 @@ describe("validateMermaidSource", () => {
     });
   });
 
+  it("rejects Mermaid CSS resource functions", () => {
+    expect(
+      validateMermaidSource(
+        'flowchart TD\n  A --> B\n  classDef bad fill:url("https://evil.com/x")',
+      ),
+    ).toEqual({
+      ok: false,
+      reason: "mermaid_unsafe_css",
+    });
+  });
+
   it("accepts safe diagram", () => {
     expect(validateMermaidSource("flowchart TD\n  Start --> End")).toEqual({ ok: true });
   });
@@ -89,6 +100,34 @@ describe("sanitizeMermaidSvg", () => {
       '<svg xmlns="http://www.w3.org/2000/svg"><a href="https://evil.com"><text>link</text></a></svg>';
     const clean = sanitizeMermaidSvg(dirty);
     expect(clean).not.toContain("https://evil.com");
+  });
+
+  it("preserves Mermaid theme style blocks so nodes do not fall back to black", () => {
+    const themed =
+      '<svg xmlns="http://www.w3.org/2000/svg"><style>.node rect{fill:#ececff;stroke:#9370db}.label{fill:#222}</style><g class="node"><rect width="80" height="30"/><text class="label">Node</text></g></svg>';
+    const clean = sanitizeMermaidSvg(themed);
+
+    expect(clean).toContain("<style>");
+    expect(clean).toContain("fill:#ececff");
+    expect(clean).toContain("stroke:#9370db");
+  });
+
+  it("removes unsafe CSS from SVG style blocks and inline style attributes", () => {
+    const dirty =
+      '<svg xmlns="http://www.w3.org/2000/svg"><style>@import url(https://evil.com/x.css);.node{fill:red}</style><rect style="fill:url(https://evil.com/x.svg)" width="10" height="10"/></svg>';
+    const clean = sanitizeMermaidSvg(dirty);
+
+    expect(clean).not.toContain("@import");
+    expect(clean).not.toContain("https://evil.com");
+    expect(clean).not.toContain('style="fill:url');
+  });
+
+  it("keeps fragment-only SVG CSS URLs used by local markers", () => {
+    const local =
+      '<svg xmlns="http://www.w3.org/2000/svg"><style>.edge{marker-end:url(#arrowhead)}</style><path class="edge" d="M0 0L10 10"/></svg>';
+    const clean = sanitizeMermaidSvg(local);
+
+    expect(clean).toContain("url(#arrowhead)");
   });
 });
 

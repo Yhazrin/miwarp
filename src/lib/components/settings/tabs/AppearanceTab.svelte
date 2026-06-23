@@ -18,6 +18,11 @@
   import type { UserSettings } from "$lib/types";
   import Card from "$lib/components/Card.svelte";
   import SettingsToggle from "../SettingsToggle.svelte";
+  import {
+    normalizeSessionIslandAlignment,
+    SESSION_ISLAND_ALIGNMENT_CHANGED_EVENT,
+    type SessionIslandAlignment,
+  } from "$lib/utils/session-island-alignment";
 
   let {
     settings,
@@ -75,6 +80,39 @@
     window.dispatchEvent(
       new CustomEvent("miwarp:visual-performance-changed", { detail: { mode } }),
     );
+  }
+
+  const SESSION_ISLAND_ALIGNMENTS = [
+    {
+      value: "center" as const,
+      labelKey: "settings_sessionIslandAlignment_center",
+      descKey: "settings_sessionIslandAlignment_centerDesc",
+    },
+    {
+      value: "right" as const,
+      labelKey: "settings_sessionIslandAlignment_right",
+      descKey: "settings_sessionIslandAlignment_rightDesc",
+    },
+  ];
+
+  let islandAlignmentDraft = $state<SessionIslandAlignment | null>(null);
+
+  const activeIslandAlignment = $derived(
+    normalizeSessionIslandAlignment(islandAlignmentDraft ?? settings?.session_island_alignment),
+  );
+
+  async function pickSessionIslandAlignment(alignment: SessionIslandAlignment) {
+    islandAlignmentDraft = alignment;
+    try {
+      await onSaveGeneralPatch({ session_island_alignment: alignment });
+      window.dispatchEvent(
+        new CustomEvent(SESSION_ISLAND_ALIGNMENT_CHANGED_EVENT, { detail: { alignment } }),
+      );
+    } catch {
+      // The settings orchestrator owns error reporting; do not broadcast an unsaved value.
+    } finally {
+      islandAlignmentDraft = null;
+    }
   }
 </script>
 
@@ -225,6 +263,45 @@
       description={t("settings_showTokenReportDesc")}
       onchange={(value) => onSaveGeneralPatch({ show_token_usage_report: value })}
     />
+
+    <div class="space-y-2 pt-2">
+      <div>
+        <p class="text-sm font-medium">{t("settings_sessionIslandAlignment")}</p>
+        <p class="text-xs text-muted-foreground mt-0.5">
+          {t("settings_sessionIslandAlignmentDesc")}
+        </p>
+      </div>
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {#each SESSION_ISLAND_ALIGNMENTS as opt (opt.value)}
+          {@const active = activeIslandAlignment === opt.value}
+          <button
+            type="button"
+            aria-pressed={active}
+            class="rounded-lg border p-3 text-left transition-colors {active
+              ? 'border-primary/50 bg-muted/55 shadow-sm ring-1 ring-primary/20'
+              : 'border-border/40 bg-background/40 hover:bg-muted/30'}"
+            onclick={() => pickSessionIslandAlignment(opt.value)}
+          >
+            <div
+              class="session-island-alignment-preview mb-2.5 rounded-md border border-border/35 bg-muted/25 p-2"
+              aria-hidden="true"
+            >
+              <div class="relative h-10 rounded-sm bg-background/60">
+                <span
+                  class="absolute top-1.5 h-2 rounded-full bg-primary/70 {opt.value === 'center'
+                    ? 'left-1/2 w-10 -translate-x-1/2'
+                    : 'right-1.5 w-8'}"
+                ></span>
+              </div>
+            </div>
+            <div class="text-sm font-medium text-foreground">{t(opt.labelKey as MessageKey)}</div>
+            <p class="mt-1 text-[11px] leading-snug text-muted-foreground">
+              {t(opt.descKey as MessageKey)}
+            </p>
+          </button>
+        {/each}
+      </div>
+    </div>
 
     <div class="space-y-2 pt-2">
       <div>

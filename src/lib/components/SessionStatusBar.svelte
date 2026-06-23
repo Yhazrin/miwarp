@@ -15,6 +15,8 @@
   import type { ToolActivityPanelTab } from "$lib/components/chat/tool-panel-tab";
   import type { ProcessVisibility } from "$lib/utils/process-visibility";
   import { shouldShowContextDetails } from "$lib/utils/process-visibility";
+  import type { SessionIslandAlignment } from "$lib/utils/session-island-alignment";
+  import { agentToRuntimeId, getRuntimeDescriptor } from "$lib/runtime/registry";
 
   let {
     run = null,
@@ -71,13 +73,14 @@
     onToolPanelTabChange,
     toolPanelIndicators,
     fuseToolRailCapsule: _fuseToolRailCapsule = false,
-    processVisibility = "developer" as ProcessVisibility,
+    processVisibility = "expert" as ProcessVisibility,
     onProcessVisibilityChange,
     layoutSidebarOpen = false,
     onToggleLayoutSidebar,
     onOpenSettings,
     onOpenCliImport,
     onNewChat,
+    alignment = "center" as SessionIslandAlignment,
   }: {
     run?: TaskRun | null;
     agent?: string;
@@ -139,6 +142,8 @@
     onOpenSettings?: () => void;
     onOpenCliImport?: () => void;
     onNewChat?: () => void;
+    /** Top capsule horizontal anchor within the chat pane. */
+    alignment?: SessionIslandAlignment;
   } = $props();
 
   let showChromeActions = $derived(
@@ -153,7 +158,9 @@
       contextWindow > 0 &&
       contextUtilization != null,
   );
-  let tier2HasMeta = $derived(!!(run && onRename) || !!model || !!onProcessVisibilityChange);
+  let tier2HasMeta = $derived(
+    !!(run && onRename) || !!agent || !!model || !!onProcessVisibilityChange,
+  );
 
   // ── Capsule morph: running / done / stopped / cached (flash) + waiting (persistent) ──
   type MorphFlash = "none" | "running" | "done" | "stopped" | "cached";
@@ -338,16 +345,7 @@
   let pvMenuOpen = $state(false);
 
   function processVisibilityLabel(mode: ProcessVisibility): string {
-    switch (mode) {
-      case "output":
-        return t("processVisibility_mode_output");
-      case "guided":
-        return t("processVisibility_mode_guided");
-      case "expert":
-        return t("processVisibility_mode_expert");
-      default:
-        return t("processVisibility_mode_developer");
-    }
+    return mode === "output" ? t("processVisibility_mode_chat") : t("processVisibility_mode_full");
   }
 
   // ── Island hover state (tier 2 expansion) ──
@@ -502,6 +500,13 @@
   let effortLevels = $derived(currentModelInfo?.supportedEffortLevels ?? anyModelEffortLevels);
   let effortDisabled = $derived(currentModelInfo?.supportsEffort !== true);
 
+  let runtimeLabel = $derived.by(() => {
+    const runtimeId = agentToRuntimeId(agent);
+    if (!runtimeId) return agent;
+    const descriptor = getRuntimeDescriptor(runtimeId);
+    return t(descriptor.nameKey as Parameters<typeof t>[0]);
+  });
+
   let modelLabel = $derived.by(() => {
     // Check platform models first, then CLI models
     const all = [...(platformModels ?? []), ...getCliModels(agent)];
@@ -523,7 +528,10 @@
     morphShell,
   )} {islandInteractionClass} {islandCompactClass} {tier2HasContent
     ? 'session-island-has-tier2'
-    : ''} {islandExpanded ? 'session-island-expanded' : ''}"
+    : ''} {islandExpanded ? 'session-island-expanded' : ''} {alignment === 'right'
+    ? 'session-island-align-right'
+    : ''}"
+  data-session-island-alignment={alignment}
   data-tauri-drag-region
   onpointerenter={onShellPointerEnter}
   onpointerleave={onShellPointerLeave}
@@ -776,8 +784,20 @@
           {/if}
         {/if}
 
-        {#if model}
+        {#if runtimeLabel}
           {#if run && onRename}
+            <span class="session-island-tier2-divider" aria-hidden="true">|</span>
+          {/if}
+          <span
+            class="max-w-[8rem] truncate rounded px-1 font-medium text-foreground/60"
+            title={runtimeLabel}
+          >
+            {runtimeLabel}
+          </span>
+        {/if}
+
+        {#if model}
+          {#if (run && onRename) || runtimeLabel}
             <span class="session-island-tier2-divider" aria-hidden="true">|</span>
           {/if}
           {#if onModelChange}
@@ -800,7 +820,7 @@
         {/if}
 
         {#if onProcessVisibilityChange}
-          {#if (run && onRename) || model}
+          {#if (run && onRename) || runtimeLabel || model}
             <span class="session-island-tier2-divider" aria-hidden="true">|</span>
           {/if}
           <ProcessVisibilityPicker

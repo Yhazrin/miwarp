@@ -432,6 +432,9 @@ pub struct UserSettings {
     /// Visual performance mode: auto | quality | balanced | performance (default auto).
     #[serde(default = "default_visual_performance_mode")]
     pub visual_performance_mode: String,
+    /// Top session island capsule alignment: center (default) | right.
+    #[serde(default = "default_session_island_alignment")]
+    pub session_island_alignment: String,
     /// Custom session status colors.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_status_colors: Option<SessionStatusColors>,
@@ -470,6 +473,19 @@ fn default_process_visibility() -> String {
 
 fn default_visual_performance_mode() -> String {
     "auto".to_string()
+}
+
+fn default_session_island_alignment() -> String {
+    "center".to_string()
+}
+
+/// Canonicalize persisted session island alignment — only center | right are stored.
+pub fn normalize_session_island_alignment(value: &str) -> String {
+    if value == "right" {
+        "right".to_string()
+    } else {
+        "center".to_string()
+    }
 }
 
 fn default_native_window_glass_material() -> String {
@@ -603,6 +619,7 @@ impl Default for UserSettings {
             cli_auto_sync_import_new: false,
             process_visibility: "developer".to_string(),
             visual_performance_mode: "auto".to_string(),
+            session_island_alignment: default_session_island_alignment(),
             session_status_colors: None,
             updated_at: now_iso(),
         }

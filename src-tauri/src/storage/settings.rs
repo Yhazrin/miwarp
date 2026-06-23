@@ -1,4 +1,4 @@
-use crate::models::{AgentSettings, AllSettings, UserSettings};
+use crate::models::{normalize_session_island_alignment, AgentSettings, AllSettings, UserSettings};
 use std::fs;
 use std::path::PathBuf;
 
@@ -16,6 +16,12 @@ pub fn load() -> AllSettings {
                     // Run one-time migrations on platform credentials
                     if migrate_platform_credentials(&mut settings) {
                         log::info!("[storage/settings] migrated platform credentials, saving");
+                        let _ = save(&settings);
+                    }
+                    if migrate_session_island_alignment(&mut settings) {
+                        log::info!(
+                            "[storage/settings] normalized session_island_alignment, saving"
+                        );
                         let _ = save(&settings);
                     }
                     return settings;
@@ -376,6 +382,15 @@ fn migrate_platform_credentials(settings: &mut AllSettings) -> bool {
     changed
 }
 
+fn migrate_session_island_alignment(settings: &mut AllSettings) -> bool {
+    let normalized = normalize_session_island_alignment(&settings.user.session_island_alignment);
+    if settings.user.session_island_alignment == normalized {
+        return false;
+    }
+    settings.user.session_island_alignment = normalized;
+    true
+}
+
 pub fn save(settings: &AllSettings) -> Result<(), String> {
     log::debug!("[storage/settings] saving settings");
     let path = settings_path();
@@ -400,7 +415,12 @@ pub fn save(settings: &AllSettings) -> Result<(), String> {
 }
 
 pub fn get_user_settings() -> UserSettings {
-    load().user
+    let mut user = load().user;
+    let normalized = normalize_session_island_alignment(&user.session_island_alignment);
+    if user.session_island_alignment != normalized {
+        user.session_island_alignment = normalized;
+    }
+    user
 }
 
 /// Save web server config fields. Called by restart_with_config on success.
@@ -664,6 +684,12 @@ pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, St
             all.user.visual_performance_mode = v.to_string();
         }
     }
+    if let Some(v) = patch
+        .get("session_island_alignment")
+        .and_then(|v| v.as_str())
+    {
+        all.user.session_island_alignment = normalize_session_island_alignment(v);
+    }
     if let Some(v) = patch.get("session_status_colors") {
         if v.is_null() {
             all.user.session_status_colors = None;
@@ -808,7 +834,7 @@ pub fn update_agent_settings(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{AllSettings, PlatformCredential};
+    use crate::models::{AllSettings, PlatformCredential, UserSettings};
 
     fn make_settings_with_cred(cred: PlatformCredential) -> AllSettings {
         let mut s = AllSettings::default();
@@ -918,5 +944,80 @@ mod tests {
         assert!(is_key_optional_platform("ollama"));
         assert!(!is_key_optional_platform("deepseek"));
         assert!(!is_key_optional_platform("unknown-platform"));
+    }
+
+    #[test]
+    fn user_settings_default_session_island_alignment_is_center() {
+        let settings = UserSettings::default();
+        assert_eq!(settings.session_island_alignment, "center");
+    }
+
+    #[test]
+    fn user_settings_deserialize_missing_session_island_alignment_defaults_center() {
+        let default = UserSettings::default();
+        let mut value = serde_json::to_value(&default).expect("serialize default settings");
+        value
+            .as_object_mut()
+            .expect("settings object")
+            .remove("session_island_alignment");
+        let settings: UserSettings = serde_json::from_value(value).expect("deserialize settings");
+        assert_eq!(settings.session_island_alignment, "center");
+    }
+
+    #[test]
+    fn normalize_session_island_alignment_maps_invalid_to_center() {
+        use crate::models::normalize_session_island_alignment;
+
+        assert_eq!(normalize_session_island_alignment("center"), "center");
+        assert_eq!(normalize_session_island_alignment("right"), "right");
+        assert_eq!(normalize_session_island_alignment("bogus"), "center");
+        assert_eq!(normalize_session_island_alignment(""), "center");
+    }
+
+    #[test]
+    fn migrate_session_island_alignment_rewrites_invalid_persisted_value() {
+        let mut settings = AllSettings::default();
+        settings.user.session_island_alignment = "left".to_string();
+        assert!(migrate_session_island_alignment(&mut settings));
+        assert_eq!(settings.user.session_island_alignment, "center");
+    }
+
+    #[test]
+    fn update_user_settings_patch_session_island_alignment_center_and_right() {
+        let mut all = AllSettings::default();
+        all.user.session_island_alignment = "center".to_string();
+
+        let patch = serde_json::json!({ "session_island_alignment": "right" });
+        if let Some(v) = patch
+            .get("session_island_alignment")
+            .and_then(|v| v.as_str())
+        {
+            all.user.session_island_alignment = normalize_session_island_alignment(v);
+        }
+        assert_eq!(all.user.session_island_alignment, "right");
+
+        let patch = serde_json::json!({ "session_island_alignment": "center" });
+        if let Some(v) = patch
+            .get("session_island_alignment")
+            .and_then(|v| v.as_str())
+        {
+            all.user.session_island_alignment = normalize_session_island_alignment(v);
+        }
+        assert_eq!(all.user.session_island_alignment, "center");
+    }
+
+    #[test]
+    fn update_user_settings_patch_session_island_alignment_invalid_normalizes_center() {
+        let mut all = AllSettings::default();
+        all.user.session_island_alignment = "right".to_string();
+
+        let patch = serde_json::json!({ "session_island_alignment": "top-left" });
+        if let Some(v) = patch
+            .get("session_island_alignment")
+            .and_then(|v| v.as_str())
+        {
+            all.user.session_island_alignment = normalize_session_island_alignment(v);
+        }
+        assert_eq!(all.user.session_island_alignment, "center");
     }
 }
