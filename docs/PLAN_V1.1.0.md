@@ -1272,6 +1272,10 @@ MCP Schemas / Memory / Reserved
 - Resource Governor；
 - 恢复和 fault injection。
 
+**2026-06-23 进展**：Task aggregate、run/artifact/worktree/verification/review/merge 链接已进入实现；Task 快照现具备单调 `revision` / `last_event_seq`，每项有效变更写入 typed lifecycle journal。`mutation.json → events.jsonl → task.json` 的本地 WAL 顺序支持中断后的幂等恢复，重复 link/no-op 不推进版本；桌面 IPC 与 WebSocket 均可增量读取 Task events。启动时先收敛 orphan run，再把失去活跃 run 的执行中 Task 原子迁移到 `needs_attention` 并记录 `restart_reconciled`。
+
+**2026-06-23 Run Journal 切片**：Durable Run Journal 基础层已落地——每 run 独立 `run-journal.json` / `run-journal-events.jsonl` / `run-journal-mutation.json` WAL（与 chat `events.jsonl` 分离）；typed `RunStage` / `RunActionRecord` / `RecoveryCursor` / `RunCheckpoint` 领域模型；保守幂等分类；`start_run` 在 meta 创建后初始化 journal（失败则回滚 run）；`session_actor` stdin 前检查 durable accepted IDs，stdin 成功后同步持久化 `UserMessageAccepted`；`BroadcastEmitter` 在 bus seq 分配后投影粗粒度语义事件（delta 噪声忽略，投影失败仅 degraded）；启动顺序 `reconcile_orphaned_runs → run_journal::reconcile_after_restart → tasks::reconcile_after_restart`。Attention Queue 仍属后续切片。
+
 ### Wave 3 · Visual + Artifact
 
 - Visual Intelligence 完成；

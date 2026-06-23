@@ -143,6 +143,15 @@ impl BroadcastEmitter {
                     seq: Some(seq),
                     run_id: Some(run_id.to_string()),
                 });
+                if let Err(error) =
+                    crate::storage::run_journal::project_bus_event(run_id, seq, event)
+                {
+                    log::warn!(
+                        "[emitter] run journal projection error for run_id={}: {}",
+                        run_id,
+                        error
+                    );
+                }
             }
             Err(e) => {
                 log::warn!("[emitter] persist failed for run_id={}: {}", run_id, e);

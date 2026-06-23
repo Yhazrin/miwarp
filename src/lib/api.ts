@@ -57,6 +57,24 @@ import type {
   RuntimeControlPlaneList,
   RuntimeHubHealthResponse,
 } from "./runtime-control-plane/types";
+import type {
+  TaskCreateInput,
+  TaskEvent,
+  TaskLinkArtifactInput,
+  TaskLinkRunInput,
+  TaskMergeDecision,
+  TaskQualityGate,
+  TaskReconcileReport,
+  TaskRecord,
+  TaskReviewDecision,
+  TaskStatus,
+} from "./types/task";
+import type {
+  RunCheckpoint,
+  RunJournalEvent,
+  RunJournalReconcileReport,
+  RunJournalSnapshot,
+} from "./types/run-journal";
 
 // Backend capabilities (version / IPC probe)
 export async function getBackendCapabilities(): Promise<BackendCapabilities> {
@@ -132,6 +150,7 @@ export async function startRun(
   executionPath?: string,
   creationMode?: "single" | "worktree",
   folderId?: string,
+  taskId?: string,
 ): Promise<TaskRun> {
   dbg("api", "startRun", {
     prompt: prompt.slice(0, 80),
@@ -142,6 +161,7 @@ export async function startRun(
     executionPath,
     creationMode,
     folderId,
+    taskId,
   });
   const result = await invoke<TaskRun>(CMD.start_run, {
     prompt,
@@ -153,6 +173,7 @@ export async function startRun(
     executionPath: executionPath ?? null,
     creationMode: creationMode ?? null,
     folderId: folderId ?? null,
+    taskId: taskId ?? null,
   });
   dbg("api", "startRun →", result.id);
   return result;
@@ -171,6 +192,111 @@ export async function renameRun(id: string, name: string): Promise<void> {
 export async function updateRunModel(id: string, model: string): Promise<void> {
   dbg("api", "updateRunModel", { id, model });
   return invoke<void>(CMD.update_run_model, { id, model });
+}
+
+// Task Core
+export async function createTask(input: TaskCreateInput): Promise<TaskRecord> {
+  dbg("api", "createTask", {
+    title: input.title,
+    objective: input.objective?.slice(0, 80),
+    workspace_cwd: input.workspace_cwd,
+  });
+  return invoke<TaskRecord>(CMD.task_create, { input });
+}
+
+export async function getTask(id: string): Promise<TaskRecord> {
+  dbg("api", "getTask", id);
+  return invoke<TaskRecord>(CMD.task_get, { id });
+}
+
+export async function listTasks(): Promise<TaskRecord[]> {
+  dbg("api", "listTasks");
+  return invoke<TaskRecord[]>(CMD.task_list);
+}
+
+export async function listTaskEvents(id: string, sinceSeq = 0): Promise<TaskEvent[]> {
+  dbg("api", "listTaskEvents", { id, sinceSeq });
+  return invoke<TaskEvent[]>(CMD.task_list_events, { id, sinceSeq });
+}
+
+export async function updateTaskStatus(id: string, status: TaskStatus): Promise<TaskRecord> {
+  dbg("api", "updateTaskStatus", { id, status });
+  return invoke<TaskRecord>(CMD.task_update_status, { id, status });
+}
+
+export async function linkTaskRun(input: TaskLinkRunInput): Promise<TaskRecord> {
+  dbg("api", "linkTaskRun", input);
+  return invoke<TaskRecord>(CMD.task_link_run, { input });
+}
+
+export async function linkTaskArtifact(input: TaskLinkArtifactInput): Promise<TaskRecord> {
+  dbg("api", "linkTaskArtifact", input);
+  return invoke<TaskRecord>(CMD.task_link_artifact, { input });
+}
+
+export async function setTaskQualityGate(id: string, gate: TaskQualityGate): Promise<TaskRecord> {
+  dbg("api", "setTaskQualityGate", { id, verdict: gate.verdict });
+  return invoke<TaskRecord>(CMD.task_set_quality_gate, { id, gate });
+}
+
+export async function setTaskReviewDecision(
+  id: string,
+  decision: TaskReviewDecision,
+): Promise<TaskRecord> {
+  dbg("api", "setTaskReviewDecision", { id, outcome: decision.outcome });
+  return invoke<TaskRecord>(CMD.task_set_review_decision, { id, decision });
+}
+
+export async function setTaskMergeDecision(
+  id: string,
+  decision: TaskMergeDecision,
+): Promise<TaskRecord> {
+  dbg("api", "setTaskMergeDecision", { id, decision: decision.decision });
+  return invoke<TaskRecord>(CMD.task_set_merge_decision, { id, decision });
+}
+
+export async function reconcileTasksAfterRestart(): Promise<TaskReconcileReport> {
+  dbg("api", "reconcileTasksAfterRestart");
+  return invoke<TaskReconcileReport>(CMD.task_reconcile_after_restart);
+}
+
+export async function setTaskWorktree(
+  id: string,
+  worktreePath: string,
+  worktreeBranch: string,
+): Promise<TaskRecord> {
+  dbg("api", "setTaskWorktree", { id, worktreePath, worktreeBranch });
+  return invoke<TaskRecord>(CMD.task_set_worktree, { id, worktreePath, worktreeBranch });
+}
+
+export async function trackTaskChangedFile(id: string, path: string): Promise<TaskRecord> {
+  dbg("api", "trackTaskChangedFile", { id, path });
+  return invoke<TaskRecord>(CMD.task_track_changed_file, { id, path });
+}
+
+// Run Journal
+
+export async function getRunJournal(runId: string): Promise<RunJournalSnapshot> {
+  dbg("api", "getRunJournal", { runId });
+  return invoke<RunJournalSnapshot>(CMD.run_journal_get, { runId });
+}
+
+export async function listRunJournalEvents(
+  runId: string,
+  sinceSeq = 0,
+): Promise<RunJournalEvent[]> {
+  dbg("api", "listRunJournalEvents", { runId, sinceSeq });
+  return invoke<RunJournalEvent[]>(CMD.run_journal_list_events, { runId, sinceSeq });
+}
+
+export async function createRunCheckpoint(runId: string, label?: string): Promise<RunCheckpoint> {
+  dbg("api", "createRunCheckpoint", { runId, label });
+  return invoke<RunCheckpoint>(CMD.run_checkpoint_create, { runId, label });
+}
+
+export async function reconcileRunJournalAfterRestart(): Promise<RunJournalReconcileReport> {
+  dbg("api", "reconcileRunJournalAfterRestart");
+  return invoke<RunJournalReconcileReport>(CMD.run_journal_reconcile);
 }
 
 export async function softDeleteRuns(ids: string[]): Promise<number> {

@@ -676,6 +676,45 @@ impl SessionActor {
             return;
         }
 
+        // v1.0.9 Phase 2: dedupe against the bounded accepted ledger FIRST.
+        // This catches retries that re-dispatch after the original turn has
+        // already moved out of queued_user (the Phase 1 dedupe only checked
+        // the still-pending queue). The ledger is FIFO-bounded by
+        // ACCEPTED_CLIENT_MESSAGE_IDS_CAP; evictions are logged.
+        if let Some(ref cid) = client_message_id {
+            if is_accepted(&self.accepted_client_message_ids, cid) {
+                log::debug!(
+                    "[turn] dedupe: client_message_id={} already accepted; resolving as accepted",
+                    cid
+                );
+                let _ = reply.send(Ok(()));
+                return;
+            }
+            match crate::storage::run_journal::is_message_accepted(&self.run_id, cid) {
+                Ok(true) => {
+                    log::debug!(
+                        "[turn] dedupe: client_message_id={} durably accepted; resolving as accepted",
+                        cid
+                    );
+                    self.record_accepted_client_message_id(cid.clone());
+                    let _ = reply.send(Ok(()));
+                    return;
+                }
+                Ok(false) => {}
+                Err(error) => {
+                    let failure = format!(
+                        "{}: cannot verify client_message_id={}: {}",
+                        crate::run_core::JOURNAL_DEDUPE_UNAVAILABLE_PREFIX,
+                        cid,
+                        error
+                    );
+                    log::error!("[turn] durable dedupe unavailable: {}", failure);
+                    let _ = reply.send(Err(failure));
+                    return;
+                }
+            }
+        }
+
         if let Some(ref registry) = self.recovery_registry {
             let recovering = {
                 let map = registry.lock().await;
@@ -702,22 +741,6 @@ impl SessionActor {
             log::debug!(
                 "[turn] barrier active, user message queued (will dispatch after internal turn)"
             );
-        }
-
-        // v1.0.9 Phase 2: dedupe against the bounded accepted ledger FIRST.
-        // This catches retries that re-dispatch after the original turn has
-        // already moved out of queued_user (the Phase 1 dedupe only checked
-        // the still-pending queue). The ledger is FIFO-bounded by
-        // ACCEPTED_CLIENT_MESSAGE_IDS_CAP; evictions are logged.
-        if let Some(ref cid) = client_message_id {
-            if is_accepted(&self.accepted_client_message_ids, cid) {
-                log::debug!(
-                    "[turn] dedupe: client_message_id={} already accepted; resolving as accepted",
-                    cid
-                );
-                let _ = reply.send(Ok(()));
-                return;
-            }
         }
 
         // v1.0.9: dedupe by client_message_id within the queued_user set so a
@@ -916,24 +939,56 @@ impl SessionActor {
         self.emit_state("running", None, None, false);
         self.persist_idle_running(RunStatus::Running);
 
-        // v1.0.9 Phase 2: record this turn as accepted so a retry that
-        // re-dispatches after we leave the queue can be deduped. Insert
-        // happens AFTER persist+emit so a panicking predecessor cannot
-        // leak a half-accepted id into the ledger.
+        let mut acceptance_error = None;
         if let Some(cid) = ticket.client_message_id.clone() {
-            self.record_accepted_client_message_id(cid);
+            // stdin has already accepted the payload. Record the in-memory ID
+            // immediately so a same-process retry cannot duplicate the turn,
+            // even if the durable journal needs WAL recovery.
+            self.record_accepted_client_message_id(cid.clone());
+            let preview = if ticket.text.chars().count() > 120 {
+                let end = ticket
+                    .text
+                    .char_indices()
+                    .nth(120)
+                    .map(|(i, _)| i)
+                    .unwrap_or(ticket.text.len());
+                Some(format!("{}...", &ticket.text[..end]))
+            } else {
+                Some(ticket.text.clone())
+            };
+            if let Err(error) = crate::storage::run_journal::record_accepted_message(
+                &self.run_id,
+                &cid,
+                preview.as_deref(),
+            ) {
+                log::error!("[turn] durable acceptance failed: {}", error);
+                let _ = crate::storage::run_journal::mark_degraded(&self.run_id, &error);
+                match crate::storage::run_journal::is_message_accepted(&self.run_id, &cid) {
+                    Ok(true) => {
+                        log::warn!(
+                            "[turn] durable acceptance recovered from WAL for client_message_id={}",
+                            cid
+                        );
+                    }
+                    Ok(false) => acceptance_error = Some(error),
+                    Err(recheck_error) => {
+                        acceptance_error = Some(format!(
+                            "{error}; durable acceptance recheck failed: {recheck_error}"
+                        ));
+                    }
+                }
+            }
         }
 
-        // Write succeeded — drop the pre-write stash entry. Recovery only
-        // needs it when write_user_to_stdin fails above.
+        // stdin succeeded, so this payload must never remain in the automatic
+        // recovery queue. An ambiguous journal outcome is surfaced to the
+        // caller, but the live actor still tracks the already-running turn.
         if self.pending_unaccepted_for_recovery.pop_back().is_none() {
             log::warn!("[turn] pending_unaccepted_for_recovery empty after successful stdin write");
         }
 
-        // Reply success to caller
-        let _ = ticket.reply.send(Ok(()));
-
-        // Set active turn
+        // Set active turn before replying. This preserves the actor state
+        // machine even when durable acceptance remains ambiguous.
         let now = Instant::now();
         self.active_turn = Some(ActiveTurn {
             turn_seq: ticket.ticket_seq,
@@ -944,6 +999,12 @@ impl SessionActor {
             hard_deadline: now + USER_HARD_TIMEOUT,
             turn_index: ticket.turn_index,
         });
+
+        if let Some(error) = acceptance_error {
+            let _ = ticket.reply.send(Err(error));
+        } else {
+            let _ = ticket.reply.send(Ok(()));
+        }
     }
 
     /// Start an internal turn (auto-context): write /context to stdin.

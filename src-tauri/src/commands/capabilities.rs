@@ -3,7 +3,7 @@
 use serde::Serialize;
 
 /// Schema version bumps when IPC payloads or semantics change materially.
-pub const SCHEMA_VERSION: u32 = 2;
+pub const SCHEMA_VERSION: u32 = 4;
 
 /// Commands the current frontend may gate on. Keep in sync when adding new IPC.
 const SUPPORTED_COMMANDS: &[&str] = &[
@@ -14,6 +14,23 @@ const SUPPORTED_COMMANDS: &[&str] = &[
     "export_claude_code_history_archive",
     "import_claude_code_history_archive",
     "scan_claude_code_history",
+    "task_create",
+    "task_get",
+    "task_list",
+    "task_list_events",
+    "task_update_status",
+    "task_link_run",
+    "task_link_artifact",
+    "task_set_quality_gate",
+    "task_set_review_decision",
+    "task_set_merge_decision",
+    "task_reconcile_after_restart",
+    "task_set_worktree",
+    "task_track_changed_file",
+    "run_journal_get",
+    "run_journal_list_events",
+    "run_checkpoint_create",
+    "run_journal_reconcile",
 ];
 
 #[derive(Debug, Clone, Serialize)]
@@ -49,5 +66,47 @@ mod tests {
         assert!(caps
             .supported_commands
             .contains(&"get_backend_capabilities".to_string()));
+    }
+
+    #[test]
+    fn supported_commands_include_task_core() {
+        let caps = get_backend_capabilities().unwrap();
+        for command in [
+            "task_create",
+            "task_get",
+            "task_list",
+            "task_list_events",
+            "task_update_status",
+            "task_link_run",
+            "task_link_artifact",
+            "task_set_quality_gate",
+            "task_set_review_decision",
+            "task_set_merge_decision",
+            "task_reconcile_after_restart",
+            "task_set_worktree",
+            "task_track_changed_file",
+        ] {
+            assert!(
+                caps.supported_commands.contains(&command.to_string()),
+                "missing {command}"
+            );
+        }
+    }
+
+    #[test]
+    fn supported_commands_include_run_journal() {
+        let caps = get_backend_capabilities().unwrap();
+        for command in [
+            "run_journal_get",
+            "run_journal_list_events",
+            "run_checkpoint_create",
+            "run_journal_reconcile",
+        ] {
+            assert!(
+                caps.supported_commands.contains(&command.to_string()),
+                "missing {command}"
+            );
+        }
+        assert_eq!(caps.schema_version, 4);
     }
 }
