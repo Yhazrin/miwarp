@@ -7,9 +7,11 @@ pub mod http_client;
 pub mod models;
 pub mod pricing;
 pub mod process_ext;
+pub mod run_core;
 pub mod scheduler;
 pub mod skill_sources;
 pub mod storage;
+pub mod task_core;
 pub mod web_server;
 pub mod window_effect;
 
@@ -88,8 +90,34 @@ pub fn run() {
     // No-op on non-Windows.
     process_ext::setup_job_kill_on_close();
 
-    // Reconcile orphaned runs on startup
+    // Reconcile orphaned runs first, then move interrupted active tasks into
+    // an explicit operator-attention state instead of silently leaving them running.
     storage::runs::reconcile_orphaned_runs();
+    let journal_reconcile = storage::run_journal::reconcile_after_restart();
+    if journal_reconcile.restart_reconciled > 0
+        || journal_reconcile.recovered_pending_mutations > 0
+        || !journal_reconcile.failures.is_empty()
+    {
+        log::info!(
+            "[run-journal] startup reconcile: scanned={}, recovered_pending={}, restart_reconciled={}, uncertain={}, impossible={}, failures={}",
+            journal_reconcile.scanned,
+            journal_reconcile.recovered_pending_mutations,
+            journal_reconcile.restart_reconciled,
+            journal_reconcile.marked_uncertain,
+            journal_reconcile.impossible_resume,
+            journal_reconcile.failures.len()
+        );
+    }
+    let task_reconcile = storage::tasks::reconcile_after_restart();
+    if task_reconcile.moved_to_needs_attention > 0 || !task_reconcile.failures.is_empty() {
+        log::info!(
+            "[task-core] startup reconcile: scanned={}, recovered_pending={}, attention={}, failures={}",
+            task_reconcile.scanned,
+            task_reconcile.recovered_pending_mutations,
+            task_reconcile.moved_to_needs_attention,
+            task_reconcile.failures.len()
+        );
+    }
 
     // Clean up legacy hook-bridge (removed: was redundant with stream-json mode)
     hooks::setup::cleanup_hook_bridge();
@@ -342,6 +370,23 @@ pub fn run() {
             commands::background::set_background_session,
             commands::background::clear_background_session,
             commands::background::pick_background_image,
+            commands::tasks::task_create,
+            commands::tasks::task_get,
+            commands::tasks::task_list,
+            commands::tasks::task_list_events,
+            commands::tasks::task_update_status,
+            commands::tasks::task_link_run,
+            commands::tasks::task_link_artifact,
+            commands::tasks::task_set_quality_gate,
+            commands::tasks::task_set_review_decision,
+            commands::tasks::task_set_merge_decision,
+            commands::tasks::task_reconcile_after_restart,
+            commands::tasks::task_set_worktree,
+            commands::tasks::task_track_changed_file,
+            commands::run_journal::run_journal_get,
+            commands::run_journal::run_journal_list_events,
+            commands::run_journal::run_checkpoint_create,
+            commands::run_journal::run_journal_reconcile,
             scheduler::list_scheduled_tasks,
             scheduler::create_scheduled_task,
             scheduler::update_scheduled_task,

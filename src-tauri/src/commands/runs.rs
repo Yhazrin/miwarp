@@ -1,8 +1,11 @@
 use crate::agent::adapter::ActorSessionMap;
 use crate::models::{
-    ExecutionPath, PromptFavorite, PromptSearchResult, RunStatus, SessionCreationMode, TaskRun,
+    now_iso, ExecutionPath, PromptFavorite, PromptSearchResult, RunStatus, SessionCreationMode,
+    TaskRun,
 };
 use crate::storage;
+use crate::storage::tasks::TaskMutation;
+use crate::task_core::{TaskEventKind, TaskEventSource, TaskRunLink, TaskRunRole};
 use std::collections::{HashMap, HashSet};
 
 /// Validate that agent supports the requested execution path.
@@ -102,6 +105,7 @@ pub fn start_run(
     execution_path: Option<String>,
     creation_mode: Option<String>,
     folder_id: Option<String>,
+    task_id: Option<String>,
 ) -> Result<TaskRun, String> {
     log::debug!(
         "[runs] start_run: agent={}, model={:?}, remote={:?}, platform={:?}, path={:?}, prompt_len={}, cwd={}",
@@ -133,6 +137,10 @@ pub fn start_run(
 
     // Validate agent/path combination
     validate_agent_path(&agent, &path)?;
+
+    if let Some(ref tid) = task_id {
+        storage::tasks::get(tid).ok_or_else(|| format!("Task {tid} not found"))?;
+    }
 
     // Snapshot remote host config at creation time (self-contained — survives renames/deletions).
     // Prefer the cwd argument as the remote path (user's just-picked folder); fall back to the
@@ -223,6 +231,19 @@ pub fn start_run(
     storage::runs::save_meta(&meta)?;
     log::debug!("[runs] start_run: created id={}", id);
 
+    if let Err(error) = storage::run_journal::init_from_run_meta(&meta) {
+        log::error!(
+            "[runs] start_run: journal init failed for id={}: {}",
+            id,
+            error
+        );
+        cleanup_worktrees_for_runs(std::slice::from_ref(&id));
+        let _ = storage::runs::hard_delete_runs(std::slice::from_ref(&id));
+        return Err(format!(
+            "Failed to initialize run journal for {id}; run creation was rolled back: {error}"
+        ));
+    }
+
     // Apply logical-folder assignment (sidebar sub-folder) if requested. The
     // session is otherwise indistinguishable from a workspace-level run — the
     // folder_id is what causes the sidebar to nest it under a logical group.
@@ -230,6 +251,78 @@ pub fn start_run(
         if let Err(e) = storage::runs::update_run_folder(&id, Some(fid.clone())) {
             log::warn!("[runs] start_run: failed to apply folder_id={}: {}", fid, e);
         }
+    }
+
+    if let Some(ref tid) = task_id {
+        let now = now_iso();
+        let run_id = id.clone();
+        let workspace_cwd = cwd.clone();
+        let agent_name = agent.clone();
+        let run_model = meta.model.clone();
+        let worktree_path = meta.worktree_path.clone();
+        let worktree_branch = meta.worktree_branch.clone();
+        let link_result = storage::tasks::mutate(tid, TaskEventSource::Runtime, |task| {
+            let role = if task.run_links.is_empty() {
+                TaskRunRole::Primary
+            } else {
+                TaskRunRole::Followup
+            };
+            let added = task.link_run(
+                TaskRunLink {
+                    run_id: run_id.clone(),
+                    role: role.clone(),
+                    linked_at: now.clone(),
+                },
+                now.clone(),
+            );
+            if task.workspace_cwd.is_none() {
+                task.workspace_cwd = Some(workspace_cwd.clone());
+            }
+            if task.agent.is_none() {
+                task.agent = Some(agent_name.clone());
+            }
+            if task.model.is_none() {
+                task.model = run_model.clone();
+            }
+            if task.worktree_path.is_none() {
+                if let (Some(path), Some(branch)) = (worktree_path.clone(), worktree_branch.clone())
+                {
+                    task.set_worktree(path, branch, now.clone());
+                }
+            }
+            task.touch(now.clone());
+            Ok(if added {
+                TaskMutation::changed(
+                    (),
+                    TaskEventKind::RunLinked {
+                        run_id: run_id.clone(),
+                        role,
+                    },
+                )
+            } else {
+                TaskMutation::unchanged(())
+            })
+        });
+        if let Err(error) = link_result {
+            log::error!(
+                "[runs] start_run: failed to link run={} to task={}: {}",
+                id,
+                tid,
+                error
+            );
+            let _ = storage::runs::update_status(
+                &id,
+                RunStatus::Failed,
+                None,
+                Some(format!("Task link failed: {error}")),
+            );
+            cleanup_worktrees_for_runs(std::slice::from_ref(&id));
+            let _ = storage::runs::hard_delete_runs(std::slice::from_ref(&id));
+            return Err(format!(
+                "Failed to link new run {id} to task {tid}; run creation was rolled back: {error}"
+            ));
+        }
+        log::debug!("[runs] start_run: linked run={} to task={}", id, tid);
     }
 
     Ok(meta.to_task_run(None, None, None))

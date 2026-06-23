@@ -58,6 +58,10 @@ pub async fn dispatch_command(
                 .get("folder_id")
                 .and_then(|v| v.as_str())
                 .map(String::from);
+            let task_id = params
+                .get("task_id")
+                .and_then(|v| v.as_str())
+                .map(String::from);
             let run = crate::commands::runs::start_run(
                 prompt,
                 cwd,
@@ -68,6 +72,7 @@ pub async fn dispatch_command(
                 execution_path,
                 creation_mode,
                 folder_id,
+                task_id,
             )?;
             serde_json::to_value(run).map_err(|e| e.to_string())
         }
@@ -187,6 +192,141 @@ pub async fn dispatch_command(
             let run_id = extract_str(&params, "run_id")?;
             let md = crate::commands::export::export_conversation(run_id)?;
             Ok(json!(md))
+        }
+
+        // ── Task Core ──
+        "task_create" => {
+            let input_val = params
+                .get("input")
+                .cloned()
+                .ok_or_else(|| "missing required param: input".to_string())?;
+            let input: crate::task_core::TaskCreateInput =
+                serde_json::from_value(input_val).map_err(|e| format!("Invalid input: {e}"))?;
+            let task = crate::commands::tasks::task_create(input)?;
+            serde_json::to_value(task).map_err(|e| e.to_string())
+        }
+        "task_get" => {
+            let id = extract_str(&params, "id")?;
+            let task = crate::commands::tasks::task_get(id)?;
+            serde_json::to_value(task).map_err(|e| e.to_string())
+        }
+        "task_list" => {
+            let tasks = crate::commands::tasks::task_list()?;
+            serde_json::to_value(tasks).map_err(|e| e.to_string())
+        }
+        "task_list_events" => {
+            let id = extract_str(&params, "id")?;
+            let since_seq = params.get("since_seq").and_then(serde_json::Value::as_u64);
+            let events = crate::commands::tasks::task_list_events(id, since_seq)?;
+            serde_json::to_value(events).map_err(|e| e.to_string())
+        }
+        "task_update_status" => {
+            let id = extract_str(&params, "id")?;
+            let status_val = params
+                .get("status")
+                .cloned()
+                .ok_or_else(|| "missing required param: status".to_string())?;
+            let status: crate::task_core::TaskStatus =
+                serde_json::from_value(status_val).map_err(|e| format!("Invalid status: {e}"))?;
+            let task = crate::commands::tasks::task_update_status(id, status)?;
+            serde_json::to_value(task).map_err(|e| e.to_string())
+        }
+        "task_link_run" => {
+            let input_val = params
+                .get("input")
+                .cloned()
+                .ok_or_else(|| "missing required param: input".to_string())?;
+            let input: crate::commands::tasks::TaskLinkRunInput =
+                serde_json::from_value(input_val).map_err(|e| format!("Invalid input: {e}"))?;
+            let task = crate::commands::tasks::task_link_run(input)?;
+            serde_json::to_value(task).map_err(|e| e.to_string())
+        }
+        "task_link_artifact" => {
+            let input_val = params
+                .get("input")
+                .cloned()
+                .ok_or_else(|| "missing required param: input".to_string())?;
+            let input: crate::commands::tasks::TaskLinkArtifactInput =
+                serde_json::from_value(input_val).map_err(|e| format!("Invalid input: {e}"))?;
+            let task = crate::commands::tasks::task_link_artifact(input)?;
+            serde_json::to_value(task).map_err(|e| e.to_string())
+        }
+        "task_set_quality_gate" => {
+            let id = extract_str(&params, "id")?;
+            let gate_val = params
+                .get("gate")
+                .cloned()
+                .ok_or_else(|| "missing required param: gate".to_string())?;
+            let gate: crate::task_core::TaskQualityGate =
+                serde_json::from_value(gate_val).map_err(|e| format!("Invalid gate: {e}"))?;
+            let task = crate::commands::tasks::task_set_quality_gate(id, gate)?;
+            serde_json::to_value(task).map_err(|e| e.to_string())
+        }
+        "task_set_review_decision" => {
+            let id = extract_str(&params, "id")?;
+            let decision_val = params
+                .get("decision")
+                .cloned()
+                .ok_or_else(|| "missing required param: decision".to_string())?;
+            let decision: crate::task_core::TaskReviewDecision =
+                serde_json::from_value(decision_val)
+                    .map_err(|e| format!("Invalid decision: {e}"))?;
+            let task = crate::commands::tasks::task_set_review_decision(id, decision)?;
+            serde_json::to_value(task).map_err(|e| e.to_string())
+        }
+        "task_set_merge_decision" => {
+            let id = extract_str(&params, "id")?;
+            let decision_val = params
+                .get("decision")
+                .cloned()
+                .ok_or_else(|| "missing required param: decision".to_string())?;
+            let decision: crate::task_core::TaskMergeDecision =
+                serde_json::from_value(decision_val)
+                    .map_err(|e| format!("Invalid merge decision: {e}"))?;
+            let task = crate::commands::tasks::task_set_merge_decision(id, decision)?;
+            serde_json::to_value(task).map_err(|e| e.to_string())
+        }
+        "task_reconcile_after_restart" => {
+            let report = crate::commands::tasks::task_reconcile_after_restart()?;
+            serde_json::to_value(report).map_err(|e| e.to_string())
+        }
+        "task_set_worktree" => {
+            let id = extract_str(&params, "id")?;
+            let worktree_path = extract_str(&params, "worktree_path")?;
+            let worktree_branch = extract_str(&params, "worktree_branch")?;
+            let task =
+                crate::commands::tasks::task_set_worktree(id, worktree_path, worktree_branch)?;
+            serde_json::to_value(task).map_err(|e| e.to_string())
+        }
+        "task_track_changed_file" => {
+            let id = extract_str(&params, "id")?;
+            let path = extract_str(&params, "path")?;
+            let task = crate::commands::tasks::task_track_changed_file(id, path)?;
+            serde_json::to_value(task).map_err(|e| e.to_string())
+        }
+        "run_journal_get" => {
+            let run_id = extract_str(&params, "runId")?;
+            let snapshot = crate::commands::run_journal::run_journal_get(run_id)?;
+            serde_json::to_value(snapshot).map_err(|e| e.to_string())
+        }
+        "run_journal_list_events" => {
+            let run_id = extract_str(&params, "runId")?;
+            let since_seq = params.get("sinceSeq").and_then(serde_json::Value::as_u64);
+            let events = crate::commands::run_journal::run_journal_list_events(run_id, since_seq)?;
+            serde_json::to_value(events).map_err(|e| e.to_string())
+        }
+        "run_checkpoint_create" => {
+            let run_id = extract_str(&params, "runId")?;
+            let label = params
+                .get("label")
+                .and_then(|value| value.as_str())
+                .map(str::to_string);
+            let checkpoint = crate::commands::run_journal::run_checkpoint_create(run_id, label)?;
+            serde_json::to_value(checkpoint).map_err(|e| e.to_string())
+        }
+        "run_journal_reconcile" => {
+            let report = crate::commands::run_journal::run_journal_reconcile()?;
+            serde_json::to_value(report).map_err(|e| e.to_string())
         }
 
         // ── Settings ──
@@ -1557,5 +1697,48 @@ mod tests {
             ]
         );
         assert_eq!(filters.sort_by.unwrap(), "cost");
+    }
+
+    #[test]
+    fn test_task_set_worktree_params_normalize() {
+        let params = normalize_top_level_keys(json!({
+            "id": "task-1",
+            "worktreePath": "/tmp/miwarp-task",
+            "worktreeBranch": "feat/task-core"
+        }));
+
+        assert_eq!(extract_str(&params, "id").unwrap(), "task-1");
+        assert_eq!(
+            extract_str(&params, "worktree_path").unwrap(),
+            "/tmp/miwarp-task"
+        );
+        assert_eq!(
+            extract_str(&params, "worktree_branch").unwrap(),
+            "feat/task-core"
+        );
+    }
+
+    #[test]
+    fn test_task_create_input_deserialization_preserves_nested_keys() {
+        let params = normalize_top_level_keys(json!({
+            "input": {
+                "title": "Implement task core",
+                "objective": "Create durable Task aggregate",
+                "workspace_cwd": "/repo",
+                "verification_commands": [
+                    { "command": "npm run check", "cwd": "/repo" }
+                ]
+            }
+        }));
+
+        let input_val = params.get("input").unwrap().clone();
+        let input: crate::task_core::TaskCreateInput =
+            serde_json::from_value(input_val).expect("task create input");
+
+        assert_eq!(input.title, "Implement task core");
+        assert_eq!(input.objective, "Create durable Task aggregate");
+        assert_eq!(input.workspace_cwd.as_deref(), Some("/repo"));
+        assert_eq!(input.verification_commands.len(), 1);
+        assert_eq!(input.verification_commands[0].command, "npm run check");
     }
 }
