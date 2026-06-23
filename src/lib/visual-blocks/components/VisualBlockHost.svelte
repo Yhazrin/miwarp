@@ -11,6 +11,7 @@
   import MiwarpProgressBlock from "./MiwarpProgressBlock.svelte";
   import MiwarpKpiBlock from "./MiwarpKpiBlock.svelte";
   import MiwarpTimelineBlock from "./MiwarpTimelineBlock.svelte";
+  import MermaidInteractive from "./MermaidInteractive.svelte";
 
   let {
     kind,
@@ -185,7 +186,7 @@
     {:else if renderState === "error" || !parsed.ok}
       <p class="visual-block-error" role="alert">{t("visual_block_renderError")}</p>
     {:else if parsed.block.kind === "mermaid"}
-      {@html mermaidSvg}
+      <MermaidInteractive svg={mermaidSvg} {source} />
     {:else if parsed.block.kind === "miwarp-progress"}
       <MiwarpProgressBlock spec={parsed.block.spec} {tone} />
     {:else if parsed.block.kind === "miwarp-kpi"}
@@ -259,9 +260,12 @@
   }
 
   .visual-block-canvas {
-    padding: 0.75rem;
+    padding: 0.875rem 1rem;
     overflow-x: auto;
     max-width: 100%;
+    /* Keep canvas transparent so the panel's muted fill shows through
+       and the SVG sits inside the existing card rhythm. */
+    background: transparent;
   }
 
   .visual-block-canvas--collapsed {
@@ -288,9 +292,16 @@
     color: hsl(var(--muted-foreground));
   }
 
-  :global(.visual-block-canvas svg) {
+  /* Center the rendered diagram horizontally and let it pick up the
+     chat's font. Mermaid embeds its own <style> with explicit fill/stroke
+     values (driven by themeVariables), so the color cascade stops at the
+     SVG root — only the font family needs CSS-level inheritance. */
+  :global(.visual-block-canvas > svg) {
+    display: block;
+    margin: 0 auto;
     max-width: 100%;
     height: auto;
+    font-family: inherit;
   }
 
   :global(.visual-block-fallback--hidden) {

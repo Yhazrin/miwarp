@@ -7,7 +7,7 @@
   import { MIWARP_SELECT_ITEM_CLASS } from "$lib/ui/miwarp-surfaces";
 
   let {
-    processVisibility = "developer",
+    processVisibility = "expert",
     open = $bindable(false),
     onchange,
     onOpenChange,
@@ -33,16 +33,11 @@
   );
 
   function visibilityLabel(mode: ProcessVisibility): string {
-    switch (mode) {
-      case "output":
-        return t("processVisibility_mode_output");
-      case "guided":
-        return t("processVisibility_mode_guided");
-      case "expert":
-        return t("processVisibility_mode_expert");
-      default:
-        return t("processVisibility_mode_developer");
-    }
+    return mode === "output" ? t("processVisibility_mode_chat") : t("processVisibility_mode_full");
+  }
+
+  function visibilityDescription(mode: ProcessVisibility): string {
+    return mode === "output" ? t("processVisibility_desc_chat") : t("processVisibility_desc_full");
   }
 
   function handleOpenChange(next: boolean) {
@@ -63,7 +58,7 @@
   onValueChange={handleValueChange}
   onOpenChange={handleOpenChange}
   items={selectItems}
-  contentClass="w-[200px]"
+  contentClass="w-[240px]"
 >
   {#snippet trigger({ props })}
     <button
@@ -72,7 +67,6 @@
       class="{triggerClass} {props.class ?? ''}"
       aria-label={t("settings_processVisibility")}
       title={t("settings_processVisibility")}
-      onclick={(e: MouseEvent) => e.stopPropagation()}
     >
       <span class="truncate font-medium">{label || visibilityLabel(processVisibility)}</span>
       <Icon
@@ -94,7 +88,12 @@
         {:else}
           <span class="h-3.5 w-3.5 shrink-0"></span>
         {/if}
-        <span class="flex-1">{visibilityLabel(mode)}</span>
+        <span class="min-w-0 flex-1">
+          <span class="block font-medium">{visibilityLabel(mode)}</span>
+          <span class="mt-0.5 block text-[10px] leading-4 text-foreground/50">
+            {visibilityDescription(mode)}
+          </span>
+        </span>
       {/snippet}
     </Select.Item>
   {/each}

@@ -27,6 +27,7 @@
   import SessionStatusBar from "$lib/components/SessionStatusBar.svelte";
   import McpStatusPanel from "$lib/components/McpStatusPanel.svelte";
   import PromptInput from "$lib/components/PromptInput.svelte";
+  import { setChatInputHandle } from "$lib/chat/chat-input-registry";
 
   import ToolActivity from "$lib/components/ToolActivity.svelte";
   import ShortcutHelpPanel from "$lib/components/ShortcutHelpPanel.svelte";
@@ -44,7 +45,13 @@
   import {
     normalizeProcessVisibility,
     getCachedProcessVisibility,
+    type ProcessVisibility,
   } from "$lib/utils/process-visibility";
+  import {
+    normalizeSessionIslandAlignment,
+    SESSION_ISLAND_ALIGNMENT_CHANGED_EVENT,
+    type SessionIslandAlignment,
+  } from "$lib/utils/session-island-alignment";
   import {
     handleVirtualCommand as execVirtualCommand,
     type VirtualCommandContext,
@@ -119,11 +126,40 @@
   let promptRef: PromptInput | undefined = $state();
   let sidebarCollapsed = $state(chatViewCache.sidebarCollapsed);
 
-  /** Use server settings when loaded; until then last-known cache avoids a dev-mode flash for Output users. */
-  const processVisibility = $derived(
-    settings != null
-      ? normalizeProcessVisibility(settings.process_visibility)
-      : getCachedProcessVisibility(),
+  // Publish the prompt input handle so deep descendants (MermaidInteractive's
+  // popover, future slash-menu extras, etc.) can route actions through the
+  // live input without prop-drilling. Cleared on unmount via the cleanup.
+  $effect(() => {
+    const handle = promptRef
+      ? {
+          setValue: (text: string) => promptRef?.setValue(text),
+          focus: () => promptRef?.focus(),
+        }
+      : undefined;
+    setChatInputHandle(handle);
+    return () => setChatInputHandle(undefined);
+  });
+
+  /** Use server settings when loaded; until then last-known cache avoids a dev-mode flash for Output users.
+   *  Modeled as $state + $effect (rather than $derived) so the dependency on
+   *  `settings.process_visibility` is established unconditionally — the
+   *  ternary `$derived` would skip that branch on first evaluation when
+   *  `settings` is still null, leaving the picker stuck on its initial value
+   *  after the user switches modes. */
+  let processVisibility = $state<ProcessVisibility>(getCachedProcessVisibility());
+  $effect(() => {
+    const s = settings;
+    processVisibility =
+      s != null ? normalizeProcessVisibility(s.process_visibility) : getCachedProcessVisibility();
+  });
+
+  let sessionIslandAlignmentOverride = $state<SessionIslandAlignment | null>(null);
+
+  const sessionIslandAlignment = $derived(
+    sessionIslandAlignmentOverride ??
+      (settings != null
+        ? normalizeSessionIslandAlignment(settings.session_island_alignment)
+        : "center"),
   );
 
   $effect(() => {
@@ -250,6 +286,21 @@
     // owns the i18n + showToast pipeline, so the store just gets the key.
     splitWorkspaceStore.onToast = (key, kind) => {
       _showToast(t(key as never), kind ?? "info");
+    };
+
+    const onSessionIslandAlignmentChanged = (event: Event) => {
+      const detail = (event as CustomEvent<{ alignment?: unknown }>).detail;
+      sessionIslandAlignmentOverride = normalizeSessionIslandAlignment(detail?.alignment);
+    };
+    window.addEventListener(
+      SESSION_ISLAND_ALIGNMENT_CHANGED_EVENT,
+      onSessionIslandAlignmentChanged,
+    );
+    return () => {
+      window.removeEventListener(
+        SESSION_ISLAND_ALIGNMENT_CHANGED_EVENT,
+        onSessionIslandAlignmentChanged,
+      );
     };
   });
 
@@ -1270,6 +1321,7 @@
     getSettings: () => settings,
     setSettings: (v) => {
       settings = v;
+      sessionIslandAlignmentOverride = null;
     },
     getPromptRef: () => promptRef,
   });
@@ -1502,6 +1554,7 @@
     getSettings: () => settings,
     setSettings: (v) => {
       settings = v;
+      sessionIslandAlignmentOverride = null;
     },
     setRemoteHosts: (v) => {
       remoteHosts = v;
@@ -1677,6 +1730,7 @@
       }}
       {toolPanelIndicators}
       {processVisibility}
+      alignment={sessionIslandAlignment}
       onProcessVisibilityChange={handleProcessVisibilityChange}
       layoutSidebarOpen={layoutChrome.state.sidebarOpen}
       onToggleLayoutSidebar={layoutChrome.toggleSidebar}

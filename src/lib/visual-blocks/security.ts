@@ -11,7 +11,11 @@ const MERMAID_CLICK = /^\s*click\s+/im;
 const MERMAID_CALL = /\bcall\s+\w+/i;
 const MERMAID_UNSAFE_INIT = /securityLevel\s*:\s*['"]?(?:antiscript|loose)['"]?/i;
 const MERMAID_HTML_TAG = /<\s*\/?\s*(?:script|iframe|object|embed|link|style)\b/i;
-const MERMAID_STYLE_URL = /style\s*=\s*['"][^'"]*url\s*\(/i;
+const MERMAID_UNSAFE_CSS =
+  /(?:@import|expression\s*\(|(?:javascript|vbscript|data)\s*:|-moz-binding|behavior\s*:|url\s*\()/i;
+const SVG_UNSAFE_CSS_TOKEN =
+  /(?:@import|expression\s*\(|(?:javascript|vbscript|data)\s*:|-moz-binding|behavior\s*:)/i;
+const CSS_URL_FUNCTION = /url\s*\(\s*(['"]?)(.*?)\1\s*\)/gi;
 
 export type SourceSecurityResult = { ok: true } | { ok: false; reason: string };
 
@@ -41,7 +45,7 @@ export function validateMermaidSource(source: string): SourceSecurityResult {
   if (MERMAID_CALL.test(source)) return { ok: false, reason: "mermaid_callback" };
   if (MERMAID_UNSAFE_INIT.test(source)) return { ok: false, reason: "mermaid_unsafe_init" };
   if (MERMAID_HTML_TAG.test(source)) return { ok: false, reason: "mermaid_html_tag" };
-  if (MERMAID_STYLE_URL.test(source)) return { ok: false, reason: "mermaid_style_url" };
+  if (MERMAID_UNSAFE_CSS.test(source)) return { ok: false, reason: "mermaid_unsafe_css" };
   if (EXTERNAL_URL.test(source)) return { ok: false, reason: "external_url" };
   return { ok: true };
 }
@@ -54,14 +58,49 @@ export function sanitizeMermaidForRender(source: string): string {
     .join("\n");
 }
 
+function hasUnsafeSvgCss(css: string): boolean {
+  if (SVG_UNSAFE_CSS_TOKEN.test(css)) return true;
+
+  CSS_URL_FUNCTION.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = CSS_URL_FUNCTION.exec(css)) !== null) {
+    const target = match[2]?.trim() ?? "";
+    // Mermaid uses fragment-only references for local SVG markers/gradients.
+    // Any other CSS URL could trigger an external resource request.
+    if (!target.startsWith("#")) return true;
+  }
+  return false;
+}
+
+function stripUnsafeSvgCss(svg: string): string {
+  if (typeof DOMParser === "undefined" || typeof XMLSerializer === "undefined") return svg;
+
+  const document = new DOMParser().parseFromString(svg, "image/svg+xml");
+  if (document.querySelector("parsererror")) return "";
+
+  for (const styleElement of document.querySelectorAll("style")) {
+    if (hasUnsafeSvgCss(styleElement.textContent ?? "")) styleElement.remove();
+  }
+
+  for (const element of document.querySelectorAll<SVGElement>("[style]")) {
+    const style = element.getAttribute("style");
+    if (style && hasUnsafeSvgCss(style)) element.removeAttribute("style");
+  }
+
+  return new XMLSerializer().serializeToString(document.documentElement);
+}
+
 /** Sanitize rendered Mermaid SVG before {@html} injection. */
 export function sanitizeMermaidSvg(svg: string): string {
-  return DOMPurify.sanitize(svg, {
+  const sanitized = DOMPurify.sanitize(svg, {
     USE_PROFILES: { svg: true, svgFilters: true },
-    ADD_TAGS: ["foreignObject"],
-    FORBID_TAGS: ["script", "iframe", "object", "embed", "link", "style"],
+    // Mermaid's generated theme is carried in an SVG <style> element. Removing
+    // it makes every unstyled SVG shape fall back to a solid black fill.
+    ADD_TAGS: ["foreignObject", "style"],
+    FORBID_TAGS: ["script", "iframe", "object", "embed", "link"],
     FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "href", "xlink:href"],
   });
+  return stripUnsafeSvgCss(sanitized);
 }
 
 type JsonWalkResult = { ok: true } | { ok: false; reason: string };

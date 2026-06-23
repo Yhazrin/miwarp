@@ -69,7 +69,7 @@ export interface TimelineStateHandle {
 // ── Composable ──
 
 export function useTimelineState(ctx: TimelineStateContext): TimelineStateHandle {
-  const { store, burstCollapse, getChatAreaRef, loadMoreEarlier } = ctx;
+  const { store, burstCollapse, getChatAreaRef, getProcessVisibility, loadMoreEarlier } = ctx;
 
   // ── Mutable state ──
 
@@ -81,6 +81,19 @@ export function useTimelineState(ctx: TimelineStateContext): TimelineStateHandle
 
   // DOM ref for IntersectionObserver — bindable via bind:this from the template.
   let topSentinel = $state<HTMLDivElement | null>(null);
+
+  // Re-anchor the progressive render window when the user toggles
+  // output ↔ expert. Without this, switching modes leaves renderLimit at
+  // the old mode's cap (or a loadMoreEarlier-grown value), so the chat
+  // surface keeps the same row count and density — looks like the
+  // style change "didn't apply". Read store.timeline inside untrack so
+  // streaming entries don't churn renderLimit on every event.
+  $effect(() => {
+    const mode = getProcessVisibility();
+    untrack(() => {
+      renderLimit = getInitialRenderLimit(mode, store.timeline);
+    });
+  });
 
   // ── Derived: timeline metadata (full scan — only when timeline changes) ──
 

@@ -6,21 +6,20 @@ export type ProcessVisibility = "output" | "guided" | "developer" | "expert";
 /** Last-known visibility for instant first paint before `getUserSettings()` resolves. */
 const PROCESS_VISIBILITY_LS_KEY = "ocv:process-visibility";
 
-export const PROCESS_VISIBILITY_LEVELS: ProcessVisibility[] = [
-  "output",
-  "guided",
-  "developer",
-  "expert",
-];
+export const PROCESS_VISIBILITY_LEVELS: ProcessVisibility[] = ["output", "expert"];
 
+/**
+ * Canonicalize the legacy four-level setting into the two user-facing presets.
+ * - output / guided   -> output (conversation-first)
+ * - developer / expert -> expert (show everything)
+ */
 export function normalizeProcessVisibility(value: unknown): ProcessVisibility {
-  if (value === "output" || value === "guided" || value === "developer" || value === "expert") {
-    return value;
-  }
-  return "developer";
+  if (value === "output" || value === "guided") return "output";
+  if (value === "developer" || value === "expert") return "expert";
+  return "expert";
 }
 
-/** Read persisted visibility (same-tab / next visit). Invalid or missing → developer. */
+/** Read persisted visibility (same-tab / next visit). Invalid or missing → full display. */
 export function getCachedProcessVisibility(): ProcessVisibility {
   if (typeof localStorage === "undefined") return "developer";
   try {
@@ -40,35 +39,35 @@ export function persistCachedProcessVisibility(mode: ProcessVisibility): void {
 }
 
 export function shouldShowThinking(mode: ProcessVisibility): boolean {
-  return mode === "developer" || mode === "expert";
+  return normalizeProcessVisibility(mode) === "expert";
 }
 
 export function shouldShowToolCards(mode: ProcessVisibility): boolean {
-  return mode === "guided" || mode === "developer" || mode === "expert";
+  return normalizeProcessVisibility(mode) === "expert";
 }
 
-export function shouldUseCompactToolCards(mode: ProcessVisibility): boolean {
-  return mode === "guided";
+export function shouldUseCompactToolCards(_mode: ProcessVisibility): boolean {
+  return false;
 }
 
 export function shouldHideToolCards(mode: ProcessVisibility): boolean {
-  return mode === "output";
+  return normalizeProcessVisibility(mode) === "output";
 }
 
 export function shouldShowRawDebug(mode: ProcessVisibility): boolean {
-  return mode === "expert";
+  return normalizeProcessVisibility(mode) === "expert";
 }
 
 export function shouldShowContextDetails(mode: ProcessVisibility): boolean {
-  return mode === "developer" || mode === "expert";
+  return normalizeProcessVisibility(mode) === "expert";
 }
 
 export function shouldShowFullToolPayload(mode: ProcessVisibility): boolean {
-  return mode === "expert";
+  return normalizeProcessVisibility(mode) === "expert";
 }
 
 export function shouldShowAgentTaskStack(mode: ProcessVisibility): boolean {
-  return mode === "guided" || mode === "developer" || mode === "expert";
+  return normalizeProcessVisibility(mode) === "expert";
 }
 
 /** User must see / act (permissions, questions, failures). Never hide these in Output. */

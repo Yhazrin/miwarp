@@ -5,7 +5,7 @@
   import { mountVisualBlocks } from "$lib/visual-blocks";
   import { onDestroy } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
-  import StreamingSkeleton from "./StreamingSkeleton.svelte";
+  import StreamingVisualContent from "$lib/visual-blocks/components/StreamingVisualContent.svelte";
 
   const MARKDOWN_HTML_CACHE_MAX = 256;
   const MARKDOWN_HTML_CACHE_MAX_SOURCE_CHARS = 32_000;
@@ -69,10 +69,6 @@
       prose-code:rounded prose-code:bg-muted/70 prose-code:px-1 prose-code:py-0.5 prose-code:text-xs prose-code:font-mono prose-code:before:content-none prose-code:after:content-none
       prose-pre:m-0 prose-pre:p-0 prose-pre:bg-transparent prose-pre:border-0
       prose-li:text-foreground`,
-  );
-
-  const lazyPreToneClass = $derived(
-    tone === "on-primary" ? "text-primary-foreground/90" : "text-foreground/90",
   );
 
   let container: HTMLDivElement | undefined = $state();
@@ -318,20 +314,10 @@
 </script>
 
 {#if !renderMarkdownNow}
-  <!-- v1.0.6 / 5.8: show shimmer skeleton when streaming with very little content -->
-  {#if streaming && displayText.length < 100}
-    <div class="min-h-[3em] {className}">
-      {#if displayText}
-        <pre
-          class="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed m-0 {lazyPreToneClass}">{displayText}</pre>
-      {/if}
-      <StreamingSkeleton class="mt-2" />
-    </div>
-  {:else}
-    <pre
-      bind:this={lazyEl}
-      class="whitespace-pre-wrap break-words font-sans text-sm leading-relaxed m-0 min-h-[3em] {lazyPreToneClass} {className}">{displayText}</pre>
-  {/if}
+  <!-- Streaming: render completed visual fences immediately; rest stays safe plain text. -->
+  <div bind:this={lazyEl} class="min-h-[3em]">
+    <StreamingVisualContent text={displayText} {tone} class={className} />
+  </div>
 {:else}
   <div bind:this={container} class="{proseClasses} {className}">
     {@html html}

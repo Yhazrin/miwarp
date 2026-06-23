@@ -12,15 +12,18 @@ describe("built-in skill catalog", () => {
     expect(skills.every((skill) => skill.isBuiltIn && skill.source === "builtin")).toBe(true);
   });
 
-  it.each(["visualize-data", "architecture-diagram", "project-status-dashboard", "decision-map"])(
-    "preinstalls %s",
-    (name) => {
-      const skill = createBuiltInSkills().find((candidate) => candidate.name === name);
-      expect(skill).toBeDefined();
-      expect(skill?.author).toBe("MiWarp");
-      expect(skill?.version).toBe("1.0.0");
-    },
-  );
+  it.each([
+    "visualize-data",
+    "architecture-diagram",
+    "project-status-dashboard",
+    "decision-map",
+    "mind-map",
+  ])("preinstalls %s", (name) => {
+    const skill = createBuiltInSkills().find((candidate) => candidate.name === name);
+    expect(skill).toBeDefined();
+    expect(skill?.author).toBe("MiWarp");
+    expect(skill?.version).toBe("1.0.0");
+  });
 
   it("returns independent copies", () => {
     const first = createBuiltInSkills();

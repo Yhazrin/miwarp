@@ -391,6 +391,8 @@ html.theme-transitioning .theme-fade {
   .miwarp-main-surface {
     background: hsl(var(--background));
     background-image: none;
+    border-top-left-radius: 0.75rem;
+    border-bottom-left-radius: 0.75rem;
   }
 
   /* When the user has the native window glass effect on, drop the
@@ -1369,13 +1371,20 @@ code.hljs {
   }
 }
 
-/* Main content shell — flex:1 so it expands/shrinks with sidebar animation */
+/* Main content shell — flex:1 so it expands/shrinks with sidebar animation.
+   background + left border-radius create the "sidebar bg extends under" effect:
+   the shell paints the sidebar color underneath, and the .miwarp-main-surface
+   child fills the rounded shape. The corner gap reveals the shell's bg
+   (matching the sidebar) rather than transparency. */
 .app-main-shell {
   flex: 1 1 auto;
   min-width: 0;
   height: 100%;
   position: relative;
   z-index: 30;
+  background: hsl(var(--sidebar-background));
+  border-top-left-radius: 0.75rem;
+  border-bottom-left-radius: 0.75rem;
 }
 
 /* Respect reduced-motion preference — comprehensive */
@@ -1484,7 +1493,8 @@ textarea,
 }
 
 @property --session-island-tier2-max-width {
-  syntax: "<length>";
+  /* The cap may be relative to the chat pane, so percentages must remain valid and animatable. */
+  syntax: "<length-percentage>";
   inherits: true;
   initial-value: 0px;
 }
@@ -1504,8 +1514,8 @@ textarea,
   --session-chrome-slot-width: 0px;
   /* Single gap between every tier-1 capsule (tabs, chrome, center pill columns) */
   --session-island-rail-gap: 6px;
-  --session-island-tier2-width-cap: min(calc(100vw - 96px), 42rem);
-  --session-island-morph-width: min(180px, calc(100vw - 32px));
+  --session-island-tier2-width-cap: min(calc(100% - 24px), 42rem);
+  --session-island-morph-width: min(180px, calc(100% - 24px));
 }
 
 .session-island-shell {
@@ -1525,7 +1535,7 @@ textarea,
   flex-direction: column;
   align-items: center;
   width: max-content;
-  max-width: calc(100vw - 80px);
+  max-width: calc(100% - 24px);
   padding-inline: 6px;
   overflow: hidden;
   backface-visibility: hidden;
@@ -1556,6 +1566,38 @@ textarea,
     0 4px 24px rgba(0, 0, 0, 0.12),
     0 0 0 1px rgba(255, 255, 255, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Right-anchored capsule: pinned to chat pane top-right; width grows leftward. */
+.session-island-shell.session-island-align-right {
+  left: auto;
+  right: clamp(12px, 1.5vw, 20px);
+  transform: none;
+  transform-origin: top right;
+  align-items: flex-end;
+}
+
+.session-island-shell.session-island-align-right.session-island-has-tier2 {
+  justify-items: end;
+}
+
+.session-island-shell.session-island-align-right .session-island-tier1-frame {
+  align-self: end;
+  justify-content: flex-end;
+}
+
+.session-island-shell.session-island-align-right .session-island-tier1 {
+  justify-content: flex-end;
+}
+
+.session-island-shell.session-island-align-right .tier-2-content {
+  align-self: end;
+  margin-inline: 0 0;
+}
+
+.session-island-shell.session-island-align-right .session-island-tier2 {
+  justify-content: flex-end;
+  margin-inline: 0;
 }
 
 .session-island-shell.session-island-active {
