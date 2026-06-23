@@ -27,6 +27,7 @@ import {
   type ContinuityDraft,
   type ContinuityInspector,
 } from "./continuity-capsule";
+import { systemTimers, type TimeoutApi } from "$lib/transport/timer-api";
 import type { ProcessVisibility } from "$lib/utils/process-visibility";
 
 export const DEFAULT_SAVE_DEBOUNCE_MS = 500;
@@ -60,7 +61,7 @@ export interface ContinuityCapsuleControllerOptions {
   /** Debounce window for `scheduleSave`. Default 500ms. */
   debounceMs?: number;
   /** Override `setTimeout` / `clearTimeout` for tests. */
-  timers?: { setTimeout: typeof setTimeout; clearTimeout: typeof clearTimeout };
+  timers?: TimeoutApi;
   /** Capture a snapshot of the current run's state. */
   capture: () => ContinuitySaveInput | null;
   /** Optional sink for diagnostics (e.g. `dbg`). */
@@ -68,7 +69,7 @@ export interface ContinuityCapsuleControllerOptions {
 }
 
 export class ContinuityCapsuleController {
-  private readonly timers: { setTimeout: typeof setTimeout; clearTimeout: typeof clearTimeout };
+  private readonly timers: TimeoutApi;
   private readonly debounceMs: number;
   private readonly capture: () => ContinuitySaveInput | null;
   private readonly onLog: (event: string, detail: Record<string, unknown>) => void;
@@ -89,7 +90,7 @@ export class ContinuityCapsuleController {
   private disposed = false;
 
   constructor(opts: ContinuityCapsuleControllerOptions) {
-    this.timers = opts.timers ?? { setTimeout, clearTimeout };
+    this.timers = opts.timers ?? systemTimers;
     this.debounceMs = opts.debounceMs ?? DEFAULT_SAVE_DEBOUNCE_MS;
     this.capture = opts.capture;
     this.onLog = opts.onLog ?? (() => {});

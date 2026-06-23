@@ -1358,6 +1358,66 @@ fn find_cli_session_path(session_id: &str, cwd: &str) -> Result<PathBuf, String>
     Err(format!("CLI session file not found: {}", filename))
 }
 
+// ── Sync pre-check ────────────────────────────────────────────────
+
+fn file_mtime_ns_from_metadata(meta: &fs::Metadata) -> u128 {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        (meta.mtime() as u128) * 1_000_000_000 + (meta.mtime_nsec() as u128)
+    }
+    #[cfg(not(unix))]
+    {
+        meta.modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    }
+}
+
+/// Source JSONL mtime in nanoseconds (for auto-sync prioritization).
+pub fn source_file_mtime_ns(path: &str) -> Option<u128> {
+    fs::metadata(path)
+        .ok()
+        .map(|meta| file_mtime_ns_from_metadata(&meta))
+}
+
+/// Pure watermark vs file-metadata check: true when `sync_session` may do work
+/// (append, reconcile, or error). False only when identity is OK and size unchanged.
+pub fn watermark_indicates_pending_sync(
+    watermark: &ImportWatermark,
+    current_size: u64,
+    current_mtime_ns: u128,
+) -> bool {
+    let file_identity_ok =
+        current_size >= watermark.offset && current_mtime_ns >= watermark.mtime_ns;
+    if !file_identity_ok {
+        return true;
+    }
+    current_size > watermark.offset
+}
+
+/// Lightweight pre-check before `sync_session`: reads RunMeta + file stat only.
+pub fn session_has_pending_sync(run_id: &str) -> Result<bool, String> {
+    let meta = super::runs::get_run(run_id).ok_or_else(|| format!("run {} not found", run_id))?;
+    let watermark = meta
+        .cli_import_watermark
+        .ok_or("no cli_import_watermark in RunMeta")?;
+    let cli_path_str = meta
+        .cli_session_path
+        .ok_or("no cli_session_path in RunMeta")?;
+    let cli_path = PathBuf::from(&cli_path_str);
+    let file_meta = fs::metadata(&cli_path).map_err(|e| format!("stat: {}", e))?;
+    let current_size = file_meta.len();
+    let current_mtime_ns = file_mtime_ns_from_metadata(&file_meta);
+    Ok(watermark_indicates_pending_sync(
+        &watermark,
+        current_size,
+        current_mtime_ns,
+    ))
+}
+
 // ── Sync ──────────────────────────────────────────────────────────
 
 /// Incremental sync — import new events since last watermark.
@@ -1392,19 +1452,7 @@ pub fn sync_session(
 
     let file_meta = fs::metadata(&cli_path).map_err(|e| format!("stat: {}", e))?;
     let current_size = file_meta.len();
-
-    #[cfg(unix)]
-    let current_mtime_ns = {
-        use std::os::unix::fs::MetadataExt;
-        (file_meta.mtime() as u128) * 1_000_000_000 + (file_meta.mtime_nsec() as u128)
-    };
-    #[cfg(not(unix))]
-    let current_mtime_ns = file_meta
-        .modified()
-        .ok()
-        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
+    let current_mtime_ns = file_mtime_ns_from_metadata(&file_meta);
 
     // 2. Determine sync strategy
     let file_identity_ok =
@@ -1634,18 +1682,7 @@ fn sync_reconcile(
 
     // Rebuild watermark
     let file_meta = fs::metadata(cli_path).map_err(|e| format!("stat: {}", e))?;
-    #[cfg(unix)]
-    let mtime_ns = {
-        use std::os::unix::fs::MetadataExt;
-        (file_meta.mtime() as u128) * 1_000_000_000 + (file_meta.mtime_nsec() as u128)
-    };
-    #[cfg(not(unix))]
-    let mtime_ns = file_meta
-        .modified()
-        .ok()
-        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
+    let mtime_ns = file_mtime_ns_from_metadata(&file_meta);
 
     let new_watermark = ImportWatermark {
         offset: byte_offset,
@@ -2074,5 +2111,41 @@ mod tests {
         assert_eq!(json["total"], 42);
         assert_eq!(json["truncated"], true);
         assert!(json["sessions"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_watermark_indicates_pending_sync_no_change() {
+        let wm = ImportWatermark {
+            offset: 1000,
+            mtime_ns: 500,
+            file_size: 1000,
+            last_uuid: None,
+        };
+        assert!(!watermark_indicates_pending_sync(&wm, 1000, 500));
+        assert!(!watermark_indicates_pending_sync(&wm, 1000, 600));
+    }
+
+    #[test]
+    fn test_watermark_indicates_pending_sync_append() {
+        let wm = ImportWatermark {
+            offset: 1000,
+            mtime_ns: 500,
+            file_size: 1000,
+            last_uuid: None,
+        };
+        assert!(watermark_indicates_pending_sync(&wm, 1500, 600));
+    }
+
+    #[test]
+    fn test_watermark_indicates_pending_sync_reconcile() {
+        let wm = ImportWatermark {
+            offset: 1000,
+            mtime_ns: 500,
+            file_size: 1000,
+            last_uuid: None,
+        };
+        // Shrunk or mtime rolled back → reconcile path
+        assert!(watermark_indicates_pending_sync(&wm, 800, 500));
+        assert!(watermark_indicates_pending_sync(&wm, 1000, 400));
     }
 }
