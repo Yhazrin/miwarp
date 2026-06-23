@@ -1768,3 +1768,55 @@ export function isElementSelection(v: unknown): v is ElementSelection {
     return false;
   return true;
 }
+
+// ── Fleet View types (v1.2.0) ──
+// Mirror of the Rust `FleetMemberSummary` / `FleetMemberDetail` / `FleetMetrics`
+// shapes produced by `commands::fleet` and `mcp::fleet_server`.
+
+export type FleetStatus =
+  | "idle"
+  | "running"
+  | "awaiting_permission"
+  | "error"
+  | "stopped"
+  | "detached";
+
+export interface FleetMemberMetrics {
+  uptimeSecs: number;
+  toolCalls: number;
+  tokensUsed: number;
+  costUsdEstimate: number;
+  messageCount: number;
+}
+
+export interface FleetMemberSummary {
+  id: string;
+  agent: string;
+  status: FleetStatus;
+  cwd: string;
+  workspaceAlias?: string;
+  startedAt: string;
+  lastActivityAt: string;
+  currentTaskPreview?: string;
+  metrics: FleetMemberMetrics;
+  model?: string;
+}
+
+export interface FleetMemberDetail extends FleetMemberSummary {
+  permissionMode?: string;
+  teamIds: string[];
+  recentRuns: TaskRun[];
+}
+
+export interface FleetMetrics {
+  total: number;
+  byStatus: Record<string, number>;
+  byAgent: Record<string, number>;
+  totalTokensToday: number;
+  totalCostTodayUsd: number;
+}
+
+export interface FleetSendResult {
+  runId: string;
+  accepted: boolean;
+}

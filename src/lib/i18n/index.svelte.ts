@@ -30,8 +30,8 @@ const LEGACY_STORAGE_KEY = "PARAGLIDE_LOCALE";
 // ── Message cache ───────────────────────────────────────────────
 // Core locales pre-cached (zero flicker). Future locales async-load via loaders.
 const messageCache: Record<string, Record<string, string>> = {
-  en: en as Record<string, string>,
-  "zh-CN": zhCN as Record<string, string>,
+  en: en as unknown as Record<string, string>,
+  "zh-CN": zhCN as unknown as Record<string, string>,
 };
 
 // Explicit loader map — one line per locale, deterministic bundling.
@@ -174,6 +174,15 @@ export function currentLocale(): string {
  * Variables use `{name}` syntax: `t('greeting', { name: 'World' })`.
  */
 export function t(key: MessageKey, params?: MessageParams): string {
+  return tRaw(key, params);
+}
+
+/**
+ * Untyped variant of `t` — accepts any string. Use for dynamic keys
+ * (e.g. `tRaw("fleet_status_" + status)`) where the caller knows the key
+ * exists at runtime but the type system can't prove it.
+ */
+export function tRaw(key: string, params?: MessageParams): string {
   // 1. Try current locale
   let value = messageCache[_locale]?.[key];
 

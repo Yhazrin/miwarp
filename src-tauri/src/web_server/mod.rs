@@ -1,6 +1,8 @@
 pub mod auth;
 pub mod broadcaster;
 pub mod dispatch;
+pub mod fleet_api;
+pub mod fleet_ws;
 pub mod router;
 pub mod state;
 pub mod ws;

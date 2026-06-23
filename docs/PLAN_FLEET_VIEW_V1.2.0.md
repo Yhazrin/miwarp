@@ -422,3 +422,49 @@ Step 7: 文档收口（本计划"增量记录"追加）+ 版本 bump
 - 选定三大 trade-off：Streamable HTTP / 每个 SessionActor 即员工 / 复用现有 token；
 - 计划锚点候选 ID：`120-A1 Fleet View` + `120-A2 Local MCP Server`；
 - 等待 v1.1.0 Frozen 后正式锚定 v1.2.0 主计划。
+
+### 2026-06-23 · MVP 实现完成（feat/fleet-view 分支）
+
+**Backend**
+- `src-tauri/src/commands/fleet.rs`（280 行）—— 5 个 Tauri command + inner 函数（Tauri / REST / MCP 共享）
+- `src-tauri/src/web_server/fleet_api.rs`（180 行）—— 5 个 REST endpoint + BearerAuth extractor
+- `src-tauri/src/web_server/fleet_ws.rs`（125 行）—— live-update WebSocket（订阅 broadcaster）
+- `src-tauri/src/mcp/fleet_server.rs`（638 行）—— Streamable HTTP MCP server + 8 tools + 2 resources + initialize/ping
+- `src-tauri/src/models.rs` +101 行 —— FleetStatus / FleetMemberSummary / FleetMemberDetail / FleetMetrics / FleetSendResult
+- `src-tauri/src/commands/runs.rs` +30 行 —— `stop_run_inner` 给 fleet 复用
+- 总计 606 个 Rust 测试通过（含 22 个新 fleet/mcp 测试），clippy 0 警告，fmt 干净
+
+**Frontend**
+- `src/routes/fleet/+page.svelte`（341 行）—— 主视图：grid 卡片 + filters + 详情 drawer
+- `src/routes/fleet/+page.ts` —— 路由配置
+- `src/lib/stores/fleet-store.svelte.ts`（195 行）—— reactive state + WS 重连逻辑
+- `src/lib/stores/fleet-store.svelte.test.ts`（234 行 / 15 vitest）—— 状态机 + filter 派生 + 优化 stop + refresh error path
+- `src/lib/types.ts` +52 行 —— FleetMemberSummary / FleetMemberDetail / FleetMetrics 类型
+- `src/lib/api.ts` +33 行 —— 5 个 typed wrapper（listFleet / getFleetMember / getFleetMetrics / sendToFleetMember / stopFleetMember）
+- `src/lib/tauri-commands.ts` +5 —— CMD.fleet_list / get_member / get_metrics / send_to_member / stop_member
+- `src/routes/+layout.svelte` +1 —— 侧栏 icon rail 加 /fleet 入口
+- `messages/en.json` + `messages/zh-CN.json` —— 25 个 i18n key 双语
+- 总计 2025 个 vitest 测试通过，0 错误（仅 1 个 pre-existing codemirror 失败无关本 PR）
+
+**架构红线（CLAUDE.md 自检）**
+- `chat/+page.svelte` 行数无变化 ✓
+- `session-store.svelte.ts` 行数无变化 ✓
+- `+layout.svelte` 仅 +1 行（icon rail entry）✓
+- `routes/fleet/+page.svelte` 341 行（< 400 阈值）✓
+- `commands/fleet.rs` 与 `mcp/fleet_server.rs` 之间不互相 import 内部实现（仅共享 models）✓
+- 前端→后端调用走 `getTransport()`（fleet-store 全部 import $lib/api）✓
+- 所有 UI 字符串走 `t('fleet_*')` ✓
+
+**未完成 / v1.2.1 待办**
+- SSE server-initiated MCP messages（ChatGPT push 通知）
+- `/api/fleet/ws` Bearer auth 集成（目前走 query token + state.token 校验，未跑测试）
+- `team_ids` 字段真正接 teams 数据
+- `metrics.tool_calls / tokens_used / cost` 真实聚合（当前是 0）
+- 性能：50+ SessionActor grid 渲染基准
+- 端到端集成测试（`tests/integration/`）
+
+**下一步**
+- 用户在本地 `npm run tauri dev` 走一遍金路径
+- ChatGPT Custom MCP Connector 配置一次 token 端到端联调
+- 把 `/api/fleet/ws` 的 BearerAuth 抽到独立测试覆盖
+

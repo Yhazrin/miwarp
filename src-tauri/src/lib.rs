@@ -4,6 +4,7 @@ pub mod commands;
 pub mod diagnostics;
 pub mod hooks;
 pub mod http_client;
+pub mod mcp;
 pub mod models;
 pub mod pricing;
 pub mod process_ext;
@@ -241,6 +242,11 @@ pub fn run() {
             commands::stats::clear_usage_cache,
             commands::stats::get_heatmap_daily,
             commands::stats::get_changelog,
+            commands::fleet::list_fleet,
+            commands::fleet::get_fleet_member,
+            commands::fleet::get_fleet_metrics,
+            commands::fleet::send_to_fleet_member,
+            commands::fleet::stop_fleet_member,
             commands::diagnostics::check_agent_cli,
             commands::diagnostics::test_remote_host,
             commands::diagnostics::get_cli_dist_tags,

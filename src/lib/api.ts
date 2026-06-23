@@ -1847,3 +1847,28 @@ export async function runtimeHubStartConfigWatch(runtimeId: string): Promise<num
 export async function runtimeHubStopConfigWatch(runtimeId: string): Promise<boolean> {
   return invoke<boolean>(CMD.runtime_hub_stop_config_watch, { runtimeId });
 }
+
+// ── Fleet View (v1.2.0) ──
+// See `docs/PLAN_FLEET_VIEW_V1.2.0.md` for the design.
+
+import type { FleetMemberDetail, FleetMemberSummary, FleetMetrics, FleetSendResult } from "./types";
+
+export async function listFleet(): Promise<FleetMemberSummary[]> {
+  return invoke<FleetMemberSummary[]>(CMD.fleet_list, {});
+}
+
+export async function getFleetMember(id: string): Promise<FleetMemberDetail> {
+  return invoke<FleetMemberDetail>(CMD.fleet_get_member, { id });
+}
+
+export async function getFleetMetrics(): Promise<FleetMetrics> {
+  return invoke<FleetMetrics>(CMD.fleet_get_metrics, {});
+}
+
+export async function sendToFleetMember(id: string, prompt: string): Promise<FleetSendResult> {
+  return invoke<FleetSendResult>(CMD.fleet_send_to_member, { id, prompt });
+}
+
+export async function stopFleetMember(id: string): Promise<boolean> {
+  return invoke<boolean>(CMD.fleet_stop_member, { id });
+}

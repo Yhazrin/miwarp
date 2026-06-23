@@ -895,6 +895,7 @@
     // Core
     { path: "/chat", label: () => t("nav_chat"), icon: "message", group: "core" },
     { path: "/teams", label: () => t("nav_teams"), icon: "users", group: "core" },
+    { path: "/fleet", label: () => t("nav_fleet"), icon: "cpu", group: "core" },
     {
       path: "/scheduled-tasks",
       label: () => t("nav_scheduledTasks"),

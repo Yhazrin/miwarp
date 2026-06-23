@@ -7,7 +7,10 @@ use serde_json::json;
 use std::sync::atomic::Ordering;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
+use crate::mcp::fleet_server;
 use crate::web_server::auth;
+use crate::web_server::fleet_api;
+use crate::web_server::fleet_ws;
 use crate::web_server::state::AppState;
 use crate::web_server::ws;
 
@@ -25,6 +28,17 @@ pub fn build_router(state: AppState) -> Router {
     // WebSocket route (self-authenticating inside handler)
     let ws_routes = Router::new().route("/ws", get(ws::ws_handler));
 
+    // Fleet REST + WS (v1.2.0) — bearer-token authenticated.
+    // REST sub-router uses a custom BearerAuth extractor; the WS upgrade
+    // self-authenticates inside its handler (same pattern as /ws).
+    let fleet_routes = Router::new()
+        .merge(fleet_api::build_fleet_router())
+        .route("/ws", get(fleet_ws::fleet_ws_handler));
+
+    // Local MCP server for ChatGPT / external MCP clients (v1.2.0).
+    // Bearer-authenticated at the handler level (same BearerAuth extractor).
+    let mcp_routes = fleet_server::build_mcp_router();
+
     // Cookie-protected routes (SPA static files)
     let cookie_routes =
         Router::new()
@@ -40,6 +54,8 @@ pub fn build_router(state: AppState) -> Router {
     Router::new()
         .merge(public_routes)
         .merge(ws_routes)
+        .nest("/api/fleet", fleet_routes)
+        .merge(mcp_routes)
         .merge(cookie_routes)
         .layer(cors_layer)
         .with_state(state)

@@ -354,14 +354,24 @@ pub async fn stop_run(
     process_map: tauri::State<'_, crate::agent::stream::ProcessMap>,
 ) -> Result<bool, String> {
     log::debug!("[runs] stop_run: id={}", id);
+    stop_run_inner(id, sessions.inner().clone(), process_map.inner().clone()).await
+}
 
+/// Inner (non-Tauri) variant of `stop_run` — accepts plain `Arc`s so callers
+/// outside the Tauri command system (REST handlers, MCP server, fleet commands)
+/// can reuse the same stop logic without faking `tauri::State`.
+pub async fn stop_run_inner(
+    id: String,
+    sessions: ActorSessionMap,
+    process_map: crate::agent::stream::ProcessMap,
+) -> Result<bool, String> {
     // Try actor session first (primary mode)
     let actor_stopped = super::session::stop_actor(&sessions, &id)
         .await
         .unwrap_or(false);
 
     if actor_stopped {
-        log::debug!("[runs] stop_run: stopped actor session for id={}", id);
+        log::debug!("[runs] stop_run_inner: stopped actor session for id={}", id);
     } else {
         // Fall through to pipe mode (Codex)
         crate::agent::stream::stop_process(&process_map, &id).await;
@@ -374,7 +384,7 @@ pub async fn stop_run(
         None,
         Some("Stopped by user".to_string()),
     ) {
-        log::warn!("[runs] stop_run: failed to update status: {}", e);
+        log::warn!("[runs] stop_run_inner: failed to update status: {}", e);
     }
     Ok(true)
 }
