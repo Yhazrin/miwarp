@@ -1299,6 +1299,19 @@ MCP Schemas / Memory / Reserved
 | `110-R1`  | PARTIAL | architecture-lifecycle skill + 模块拆分进行中                                 |
 | `110-A17` | PARTIAL | 后端 + store + **Workspace UI** 在；实时 push 未接                            |
 
+**2026-06-25 第三次审计 · D3 前端切片**：Worktree Task Lab 派生 + a11y 完成（TaskListPanel 键盘导航 + ARIA，store 暴露 `needsAttention` / `inReview` / `completed` / `failed` / `archived` 派生与 `countByStatus` / `filterBy`）；`/specs` 页面（`SpecStore` + `SpecListPanel` + `SpecDetailPanel`，42 个新 i18n key 覆盖 status / priority / plan / gate）落地 Spec → Plan → Task → Gate 简版；`/artifacts` 页面（`ArtifactStore` 支持 `applyFilter` / `countByKind` / `togglePin` / `remove` / `groupByRun/Kind/Task`，28 个新 i18n key）按 run 聚合 artifact 列表，支持打开/下载/固定；`/diagnostics` Doctor UI（`DiagnosticsStore` + `DiagnosticsFilterBar` + `DiagnosticsEventList` + `DiagnosticsHealthPanel`，24 个新 i18n key）落地 trace 包列表与脱敏导出按钮；`miwarp-mindmap` 视觉 host 接入 `VisualBlockHost`（`MiwarpMindMapBlock.svelte`，递归树 + 深度色阶），KPI / Timeline / Mind Map 三种 host 完整；`ResourceGovernorIndicator` + `ResourceGovernorStore` 准备就绪（concurrent runs / 预算占位 / 状态徽章 60 行），等待 `SessionStatusBar` 集成点接入。前端锚点状态：
+
+| ID         | Before   | After   | 增量                                                                                                       |
+| ---------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------- |
+| `110-A2`   | PARTIAL  | PARTIAL | `miwarp-mindmap` host 完成；KPI/Timeline/Mind Map 完整；MCP App 容器 / Vega host 仍待办                    |
+| `110-A8`   | PARTIAL  | DONE    | Task Lab UI / 验证闭环 / merge-keep-discard UI 完整；`TaskListPanel` 键盘 + a11y；store 派生补全            |
+| `110-A13`  | PARTIAL  | DONE    | Artifact Center 核心 UI / 打开 / 下载 / 固定 / 移除 / 按 run 聚合全部完整                                  |
+| `110-A20`  | Anchored | DONE    | Spec → Plan → Task → Gate 简版全部完整；mock 数据 + store，Tauri command 后续接                            |
+| `110-S2`   | PARTIAL  | PARTIAL | Doctor UI / 脱敏导出按钮 / trace 包列表完整；导出命令的真实 Tauri command 仍待后端 worker                  |
+| `110-S5`   | Anchored | PARTIAL | Resource Governor 状态条 + store + i18n 完整；`SessionStatusBar` 集成点由 chrome worker 后续接入          |
+
+后续：浏览器 / Tauri 端 `export_diagnostics` / `governor_snapshot` 命令；KPI / Timeline / Mind Map 真实内容管道；MCP App Canvas；Attention Queue 实时 bus 订阅；macOS 截图回归门禁。
+
 ### Wave 3 · Visual + Artifact
 
 - Visual Intelligence 完成；
