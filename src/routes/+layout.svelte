@@ -143,6 +143,7 @@
   } from "$lib/layout-chrome-context";
   import { themeStore } from "$lib/stores/theme-store.svelte";
   import { workspacesStore } from "$lib/stores/workspaces-store.svelte";
+  import { attentionQueueStore } from "$lib/stores/attention-queue-store.svelte";
   import ToastHost from "$lib/components/ToastHost.svelte";
   import Spinner from "$lib/components/Spinner.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
@@ -1134,6 +1135,15 @@
     void loadCliInfo();
     themeStore.init();
 
+    void (async () => {
+      try {
+        await attentionQueueStore.reconcile();
+        await attentionQueueStore.loadSnapshot();
+      } catch {
+        // Desktop-only durable queue; ignore when transport unavailable.
+      }
+    })();
+
     // Read the local version only. Update discovery is owned by AppUpdateCoordinator.
     void readBundledAppVersion().then((version) => {
       bundledAppVersion = version;
@@ -1815,6 +1825,10 @@
    *  the sidebar falls back to the legacy opaque `glass-sidebar` look. */
   const nativeWindowGlassEnabled = $derived(settings?.native_window_glass_enabled !== false);
 
+  const attentionQueueBadgeCount = $derived(
+    attentionQueueStore.openItems.length + attentionQueueStore.acknowledgedItems.length,
+  );
+
   // Toggle an html-level class so app.css can flip body/html to transparent
   // when the native glass effect is on. The right pane keeps its own
   // `miwarp-main-surface` opaque background.
@@ -2250,6 +2264,29 @@
                 >
               {:else if item.icon === "clock"}
                 <Icon name="clock" class="h-[18px] w-[18px]" />
+              {:else if item.icon === "layout"}
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><rect width="7" height="9" x="3" y="3" rx="1" /><rect
+                    width="7"
+                    height="5"
+                    x="14"
+                    y="3"
+                    rx="1"
+                  /><rect width="7" height="9" x="14" y="12" rx="1" /><rect
+                    width="7"
+                    height="5"
+                    x="3"
+                    y="16"
+                    rx="1"
+                  /></svg
+                >
               {:else if item.icon === "settings"}
                 <svg
                   class="h-[18px] w-[18px]"
@@ -2282,6 +2319,14 @@
                     d="M16 3.13a4 4 0 0 1 0 7.75"
                   /></svg
                 >
+              {/if}
+              {#if item.path === "/workspace" && attentionQueueBadgeCount > 0}
+                <span
+                  class="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-miwarp-status-warning px-1 text-[10px] font-bold text-primary-foreground"
+                  aria-label={t("attention_queue_title")}
+                >
+                  {attentionQueueBadgeCount > 9 ? "9+" : attentionQueueBadgeCount}
+                </span>
               {/if}
               <!-- team count badge removed by user request -->
               <span class="sr-only">{item.label()}</span>
@@ -3116,6 +3161,8 @@
         ></div>
       </div>
     {/if}
+    <!-- Paint sidebar surface under chat panel rounded corners (see app.css). -->
+    <div class="sidebar-main-corner-bridge" aria-hidden="true"></div>
   </aside>
 
   <!-- Ghost line during sidebar drag (zero-reflow preview) -->

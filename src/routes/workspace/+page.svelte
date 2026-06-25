@@ -5,7 +5,9 @@
   import EmptyState from "$lib/components/EmptyState.svelte";
   import WorkspaceCapsulePanel from "$lib/components/workspace/WorkspaceCapsulePanel.svelte";
   import WorkspaceListPanel from "$lib/components/workspace/WorkspaceListPanel.svelte";
+  import AttentionQueuePanel from "$lib/components/workspace/AttentionQueuePanel.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import { attentionQueueStore } from "$lib/stores/attention-queue-store.svelte";
   import { getNoSessionPersistence } from "$lib/stores/agent-settings-cache.svelte";
   import { canResumeNow } from "$lib/stores/types";
   import { hasAttention } from "$lib/stores/attention-store.svelte";
@@ -89,6 +91,12 @@
         settings = null;
       }
       await workspaceInboxStore.refreshRuns();
+      try {
+        await attentionQueueStore.reconcile();
+        await attentionQueueStore.loadSnapshot();
+      } catch {
+        // Attention queue is desktop-only; browser transport may not expose it yet.
+      }
     })();
   });
 
@@ -127,6 +135,8 @@
       </button>
     </div>
   {/if}
+
+  <AttentionQueuePanel />
 
   <div class="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[18rem_1fr]">
     <WorkspaceListPanel

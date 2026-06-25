@@ -1276,7 +1276,28 @@ MCP Schemas / Memory / Reserved
 
 **2026-06-23 Run Journal 切片**：Durable Run Journal 基础层已落地——每 run 独立 `run-journal.json` / `run-journal-events.jsonl` / `run-journal-mutation.json` WAL（与 chat `events.jsonl` 分离）；typed `RunStage` / `RunActionRecord` / `RecoveryCursor` / `RunCheckpoint` 领域模型；保守幂等分类；`start_run` 在 meta 创建后初始化 journal（失败则回滚 run）；`session_actor` stdin 前检查 durable accepted IDs，stdin 成功后同步持久化 `UserMessageAccepted`；`BroadcastEmitter` 在 bus seq 分配后投影粗粒度语义事件（delta 噪声忽略，投影失败仅 degraded）；启动顺序 `reconcile_orphaned_runs → run_journal::reconcile_after_restart → tasks::reconcile_after_restart → attention_queue::reconcile`。
 
-**2026-06-23 Attention Queue 切片**：Durable Attention Queue + HITL 基础层已落地——单一全局 aggregate（`~/.miwarp/attention/queue.json` / `events.jsonl` / `mutation.json`），typed `AttentionKind` / `AttentionSeverity` / `AttentionStatus` / `AttentionAction` 领域模型与 `stable_key` 幂等 upsert；来源映射覆盖 `Task.needs_attention`、run journal `pending_approvals` / `manual_confirmation` / `impossible_resume` / `journal_degraded`（只读已有 journal，corrupt journal 投影 `impossible_resume`）；`retry_task` / `mark_task_failed` 采用“来源聚合先变更、Attention WAL 后审计”的收敛编排，且不持有跨聚合嵌套锁；pending approval 仅 acknowledge、不可由队列伪装成已批准；其他恢复决定只记录 operator disposition，不改写或伪造 Run action 成功；run journal 发生语义投影 / degraded 与 task status 变更后 best-effort `sync_run` / `sync_task`；桌面 IPC + WebSocket + 前端 `AttentionQueueStore`（load / incremental events / ack / resolve / reconcile / single-flight / derived 查询）。**仍未做**：Attention Queue 可见 UI 与实时 push 订阅、历史事件压缩/归档、Run 级恢复执行编排、Worktree Task Lab、完整 v1.1.0 闭环。
+**2026-06-23 Attention Queue 切片**：Durable Attention Queue + HITL 基础层已落地——单一全局 aggregate（`~/.miwarp/attention/queue.json` / `events.jsonl` / `mutation.json`），typed `AttentionKind` / `AttentionSeverity` / `AttentionStatus` / `AttentionAction` 领域模型与 `stable_key` 幂等 upsert；来源映射覆盖 `Task.needs_attention`、run journal `pending_approvals` / `manual_confirmation` / `impossible_resume` / `journal_degraded`（只读已有 journal，corrupt journal 投影 `impossible_resume`）；`retry_task` / `mark_task_failed` 采用“来源聚合先变更、Attention WAL 后审计”的收敛编排，且不持有跨聚合嵌套锁；pending approval 仅 acknowledge、不可由队列伪装成已批准；其他恢复决定只记录 operator disposition，不改写或伪造 Run action 成功；run journal 发生语义投影 / degraded 与 task status 变更后 best-effort `sync_run` / `sync_task`；桌面 IPC + WebSocket + 前端 `AttentionQueueStore`（load / incremental events / ack / resolve / reconcile / single-flight / derived 查询）。**仍未做**：实时 push 订阅、历史事件压缩/归档、Run 级恢复执行编排、Worktree Task Lab UI、完整 v1.1.0 闭环。
+
+**2026-06-25 Wave 2 审计 · Attention Queue UI 落地**：`/workspace` 集成 `AttentionQueuePanel`（open/acknowledged 列表、allowed_actions 按钮、打开会话、手动 Sync/reconcile）；根 layout 启动时 reconcile + loadSnapshot，工作台 nav badge 显示待处理计数；macOS 圆角 sidebar underlay 修复（`app-main-shell` / `sidebar-main-corner-bridge` 与 native glass wash 对齐）。**Wave 2 仍缺**：Worktree Task Lab 页面、Spec & Acceptance Workspace、Change Graph 基础、Resource Governor、Attention Queue 实时 bus 订阅。
+
+**2026-06-25 v1.1.0 P0 锚点落地快照**（代码审计，非 RC 签字）：
+
+| ID        | 状态    | 说明                                                                          |
+| --------- | ------- | ----------------------------------------------------------------------------- |
+| `110-A0`  | PARTIAL | v1.0.9 基线 + 单测在；7 天 soak / 完整 fault injection / Tier1 E2E 矩阵未毕业 |
+| `110-A1`  | PARTIAL | 对话/全部视图、progressive timeline 已有；阶段模型与 10k FPS 预算未验收       |
+| `110-A2`  | PARTIAL | Mermaid 交互已有；Vega/KPI/Timeline Host 与 MCP App 容器未齐                  |
+| `110-A3`  | PARTIAL | Diff/Inspector 基础在；行级评论、Checkpoint 比较、change lanes 未齐           |
+| `110-A4`  | PARTIAL | Runtime Control Center 在；capability matrix 最近验证时间未自动化             |
+| `110-A8`  | PARTIAL | Task/RUN 后端 + store 在；Worktree Task Lab UI / 验证闭环 UI 未齐             |
+| `110-A10` | PARTIAL | 权限/AskUser/Stop 在；Plan Review / Checkpoint 干预未齐                       |
+| `110-A13` | PARTIAL | 文件预览/导出部分在；Artifact Center 聚合未齐                                 |
+| `110-A21` | PARTIAL | 圆角 + underlay 已修；截图回归门禁未入库                                      |
+| `110-S1`  | DONE    | Run Journal WAL + reconcile + IPC + store + 测试                              |
+| `110-S2`  | PARTIAL | Trace 存储/导出部分在；Doctor UI / 脱敏导出未齐                               |
+| `110-G1`  | PARTIAL | perf tier + benchmark harness 在；发布门禁 p95 未齐                           |
+| `110-R1`  | PARTIAL | architecture-lifecycle skill + 模块拆分进行中                                 |
+| `110-A17` | PARTIAL | 后端 + store + **Workspace UI** 在；实时 push 未接                            |
 
 ### Wave 3 · Visual + Artifact
 

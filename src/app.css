@@ -44,6 +44,7 @@ html.theme-transitioning .theme-fade {
   /* ── Light mode (legacy fallback) ── */
   :root {
     --radius: 0.625rem;
+    --miwarp-chat-corner-radius: 0.75rem;
   }
 
   /* ── Neutral scheme overrides ── */
@@ -229,24 +230,42 @@ html.theme-transitioning .theme-fade {
     overflow: hidden;
   }
   /* Tint layer (readability control). 0.32-0.44 alpha — explicitly
-     NOT 0.55+ so the wallpaper still reads through. */
-  .native-glass-sidebar::before {
+     NOT 0.55+ so the wallpaper still reads through. Shared by the
+     sidebar, the main-shell corner underpaint, and the corner bridge
+     so rounded chat edges never reveal a mismatched gray strip. */
+  .native-glass-sidebar::before,
+  html.native-glass-enabled .app-main-shell::before,
+  html.native-glass-enabled .sidebar-main-corner-bridge::before {
     content: "";
     position: absolute;
     inset: 0;
     pointer-events: none;
     z-index: 0;
   }
+  html.native-glass-enabled .app-main-shell::before {
+    border-top-left-radius: var(--miwarp-chat-corner-radius);
+    border-bottom-left-radius: var(--miwarp-chat-corner-radius);
+  }
+  html.native-glass-enabled .sidebar-main-corner-bridge::before {
+    border-top-right-radius: var(--miwarp-chat-corner-radius);
+    border-bottom-right-radius: var(--miwarp-chat-corner-radius);
+  }
   /* Light theme: white wash, 0.42-0.58 — pale tint that still
      lets the wallpaper bleed through visibly. Mirrors the dark
      theme's 0.36-0.48 range (slightly higher because white washes
      tend to flatten the underlying image more than dark ones). */
-  :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar::before {
+  :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar::before,
+  html.native-glass-enabled:is(:not(.dark), [data-color-scheme="light"]) .app-main-shell::before,
+  html.native-glass-enabled:is(:not(.dark), [data-color-scheme="light"])
+    .sidebar-main-corner-bridge::before {
     background: linear-gradient(180deg, hsl(250 8% 100% / 0.42) 0%, hsl(250 8% 100% / 0.58) 100%);
   }
   /* Dark theme: dark wash within 0.36-0.48 range (slightly higher
      to keep text readable on top of dark desktop backgrounds). */
-  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar::before {
+  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar::before,
+  html.native-glass-enabled:is(.dark, [data-color-scheme="dark"]) .app-main-shell::before,
+  html.native-glass-enabled:is(.dark, [data-color-scheme="dark"])
+    .sidebar-main-corner-bridge::before {
     background: linear-gradient(
       180deg,
       hsl(var(--miwarp-bg-deepest) / 0.36) 0%,
@@ -389,10 +408,12 @@ html.theme-transitioning .theme-fade {
      whether the native glass is on. Keeps chat / settings / etc. on a
      solid surface so the wallpaper doesn't bleed through. */
   .miwarp-main-surface {
+    position: relative;
+    z-index: 1;
     background: hsl(var(--background));
     background-image: none;
-    border-top-left-radius: 0.75rem;
-    border-bottom-left-radius: 0.75rem;
+    border-top-left-radius: var(--miwarp-chat-corner-radius);
+    border-bottom-left-radius: var(--miwarp-chat-corner-radius);
   }
 
   /* When the user has the native window glass effect on, drop the
@@ -1372,19 +1393,54 @@ code.hljs {
 }
 
 /* Main content shell — flex:1 so it expands/shrinks with sidebar animation.
-   background + left border-radius create the "sidebar bg extends under" effect:
-   the shell paints the sidebar color underneath, and the .miwarp-main-surface
-   child fills the rounded shape. The corner gap reveals the shell's bg
-   (matching the sidebar) rather than transparency. */
+   Left border-radius clips the chat pane; the shell underpaint + corner bridge
+   must match the sidebar surface (glass wash or fallback blur), not a flat
+   --sidebar-background token, or the curve shows a gray intermediate strip. */
 .app-main-shell {
   flex: 1 1 auto;
   min-width: 0;
   height: 100%;
   position: relative;
   z-index: 30;
+  isolation: isolate;
   background: hsl(var(--sidebar-background));
-  border-top-left-radius: 0.75rem;
-  border-bottom-left-radius: 0.75rem;
+  border-top-left-radius: var(--miwarp-chat-corner-radius);
+  border-bottom-left-radius: var(--miwarp-chat-corner-radius);
+}
+
+/* Fallback sidebar mode: mirror .glass-sidebar under the rounded chat edge. */
+html:not(.native-glass-enabled) .app-main-shell,
+html:not(.native-glass-enabled) .sidebar-main-corner-bridge {
+  background: hsl(var(--miwarp-bg-base) / 0.55);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+
+:is(html.dark, html[data-color-scheme="dark"]):not(.native-glass-enabled) .app-main-shell,
+:is(html.dark, html[data-color-scheme="dark"]):not(.native-glass-enabled)
+  .sidebar-main-corner-bridge {
+  background: hsl(var(--miwarp-bg-base) / 0.92);
+  border-right-color: hsl(var(--miwarp-glass-border) / 0.5);
+}
+
+/* Native glass: transparent shell + shared wash (::before above). */
+html.native-glass-enabled .app-main-shell,
+html.native-glass-enabled .sidebar-main-corner-bridge {
+  background: transparent;
+}
+
+/* Extend sidebar surface under the chat panel's rounded top/bottom corners. */
+.sidebar-main-corner-bridge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: var(--miwarp-chat-corner-radius);
+  height: 100%;
+  transform: translateX(100%);
+  pointer-events: none;
+  z-index: 25;
+  border-top-right-radius: var(--miwarp-chat-corner-radius);
+  border-bottom-right-radius: var(--miwarp-chat-corner-radius);
 }
 
 /* Respect reduced-motion preference — comprehensive */
@@ -2177,6 +2233,21 @@ pre,
 .perf-performance .native-glass-sidebar::before,
 .perf-performance .native-glass-sidebar::after {
   display: none !important;
+}
+html.perf-performance.native-glass-enabled .app-main-shell,
+html.perf-performance.native-glass-enabled .sidebar-main-corner-bridge {
+  background: hsl(var(--background) / 0.88) !important;
+}
+html.perf-performance.native-glass-enabled .app-main-shell::before,
+html.perf-performance.native-glass-enabled .sidebar-main-corner-bridge::before {
+  display: none !important;
+}
+html.perf-performance:not(.native-glass-enabled) .app-main-shell,
+html.perf-performance:not(.native-glass-enabled) .sidebar-main-corner-bridge {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: hsl(var(--background)) !important;
+  box-shadow: none !important;
 }
 
 /* ── Fallback sidebar (Mode B) per tier ── */
