@@ -36,6 +36,9 @@ const SUPPORTED_COMMANDS: &[&str] = &[
     "attention_queue_acknowledge",
     "attention_queue_resolve",
     "attention_queue_reconcile",
+    "browser_navigate",
+    "browser_screenshot",
+    "browser_get_dom",
 ];
 
 #[derive(Debug, Clone, Serialize)]

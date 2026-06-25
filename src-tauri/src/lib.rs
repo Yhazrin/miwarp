@@ -195,6 +195,7 @@ pub fn run() {
         .manage(SpawnLocks::new())
         .manage(crate::agent::runtime_recovery::new_recovery_registry())
         .manage(crate::agent::runtime_health::RuntimeHealthStore::new())
+        .manage(Arc::new(commands::browser::BrowserLiteState::default()))
         .manage(ShutdownGate::new())
         .manage(cancel_token)
         .manage(ws_shutdown_sender)
@@ -452,6 +453,10 @@ pub fn run() {
             commands::runtime_diagnostics::diagnostics_export,
             commands::runtime_diagnostics::diagnostics_export_bundle,
             commands::runtime_diagnostics::diagnostics_clear,
+            // v1.1.0 / 110-A9 Browser Verification Lite (placeholder IPC).
+            commands::browser::browser_navigate,
+            commands::browser::browser_screenshot,
+            commands::browser::browser_get_dom,
         ])
         .setup(move |app| {
             // Initialize runtime diagnostics observer (bounded ring buffer)

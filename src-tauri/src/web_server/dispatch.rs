@@ -1548,6 +1548,13 @@ pub async fn dispatch_command(
         "diagnostics_export" => Err("desktop only".to_string()),
         "diagnostics_export_bundle" => Err("desktop only".to_string()),
         "diagnostics_clear" => Err("desktop only".to_string()),
+        // v1.1.0 / 110-A9 Browser Verification Lite — placeholder. Desktop
+        // has the real (currently placeholder) implementation; web falls
+        // through to "desktop only" so remote clients don't silently
+        // launch browser sessions on the server.
+        "browser_navigate" => Err("desktop only".to_string()),
+        "browser_screenshot" => Err("desktop only".to_string()),
+        "browser_get_dom" => Err("desktop only".to_string()),
         "capture_screenshot"
         | "update_screenshot_hotkey"
         | "get_clipboard_files"

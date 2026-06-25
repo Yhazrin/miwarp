@@ -2,6 +2,7 @@ pub mod agents;
 pub mod artifacts;
 pub mod attention_queue;
 pub mod background;
+pub mod browser;
 pub mod capabilities;
 pub mod chat;
 pub mod claude_history_migration;
