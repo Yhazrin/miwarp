@@ -450,6 +450,7 @@ pub fn run() {
             commands::runtime_diagnostics::diagnostics_summary,
             commands::runtime_diagnostics::diagnostics_preview,
             commands::runtime_diagnostics::diagnostics_export,
+            commands::runtime_diagnostics::diagnostics_export_bundle,
             commands::runtime_diagnostics::diagnostics_clear,
         ])
         .setup(move |app| {

@@ -1529,6 +1529,7 @@ pub async fn dispatch_command(
         "diagnostics_summary" => Err("desktop only".to_string()),
         "diagnostics_preview" => Err("desktop only".to_string()),
         "diagnostics_export" => Err("desktop only".to_string()),
+        "diagnostics_export_bundle" => Err("desktop only".to_string()),
         "diagnostics_clear" => Err("desktop only".to_string()),
         "capture_screenshot"
         | "update_screenshot_hotkey"

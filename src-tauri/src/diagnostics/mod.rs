@@ -9,9 +9,10 @@ pub mod observer;
 pub mod ring_buffer;
 
 pub use export::{
-    build_manifest, default_export_path, estimate_export_size, serialize_events_bounded,
-    validate_export_path, write_export, DiagnosticExportError, DiagnosticExportManifest,
-    DiagnosticExportOutput, ExportTimeRange, MAX_EXPORT_BYTES,
+    build_manifest, bundle_diagnostics, default_export_path, estimate_export_size,
+    serialize_events_bounded, since_hours_to_from_ms, validate_export_path, write_export,
+    DiagnosticExportError, DiagnosticExportManifest, DiagnosticExportOutput, ExportTimeRange,
+    MAX_EXPORT_BYTES,
 };
 pub use observer::{make_event, record_event, DiagnosticObserver, DiagnosticObserverImpl};
 pub use ring_buffer::{

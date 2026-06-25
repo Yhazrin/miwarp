@@ -392,6 +392,117 @@ pub async fn diagnostics_clear() -> Result<(), String> {
     Ok(())
 }
 
+/// v1.1.0 / 110-S2: Doctor bundle export — packs the recent trace window
+/// into a ZIP at `~/Downloads/miwarp-diagnostics-{ts}.zip` (or
+/// `~/.miwarp/exports/miwarp-diagnostics-{ts}.zip` if `~/Downloads` is
+/// missing). The bundle contains `events.json`, `manifest.json`, and
+/// `metadata.json`. All event metadata is already redacted by the
+/// `DiagnosticRingBuffer` at push time; the bundle is a pure packaging
+/// layer.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct DiagnosticsBundleRequest {
+    /// Optional window: only events newer than `now - since_hours` are
+    /// included. `None` exports the full buffer.
+    #[serde(default)]
+    pub since_hours: Option<u32>,
+    /// Optional explicit output path. Overrides the default location
+    /// (`~/Downloads/miwarp-diagnostics-{ts}.zip`).
+    #[serde(default)]
+    pub output_path: Option<String>,
+}
+
+/// Result returned to the frontend after a bundle export.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct DiagnosticsBundleResult {
+    pub success: bool,
+    pub path: String,
+    pub event_count: usize,
+    pub truncated: bool,
+    pub bundle_size_bytes: u64,
+    pub redaction_rules_applied: usize,
+}
+
+#[tauri::command]
+pub async fn diagnostics_export_bundle(
+    request: Option<DiagnosticsBundleRequest>,
+) -> Result<DiagnosticsBundleResult, String> {
+    use crate::diagnostics::{bundle_diagnostics, since_hours_to_from_ms};
+
+    let observer = get_global_observer().ok_or("diagnostics not initialized")?;
+    let req = request.unwrap_or(DiagnosticsBundleRequest {
+        since_hours: None,
+        output_path: None,
+    });
+
+    let now_ms = chrono::Utc::now().timestamp_millis() as u64;
+    let from_ms = since_hours_to_from_ms(now_ms, req.since_hours);
+    let to_ms = Some(now_ms);
+    let mut events = observer.snapshot_range(from_ms, to_ms).await;
+
+    let all_count = events.len();
+
+    // If the caller asked for an explicit path, we don't use the bundle
+    // helper (which chooses Downloads / exports automatically). Fall back
+    // to writing a plain JSON file at that location.
+    if let Some(out) = req.output_path.as_ref() {
+        let path = std::path::PathBuf::from(out);
+        let allowed_base = crate::storage::data_dir();
+        let safe_path = validate_export_path(&path, &allowed_base).map_err(|e| e.to_string())?;
+
+        let manifest = build_manifest(&events, all_count, false, None);
+        if let Err(e) = write_export_at(&safe_path, &events, &manifest) {
+            return Err(e.to_string());
+        }
+        return Ok(DiagnosticsBundleResult {
+            success: true,
+            path: safe_path.display().to_string(),
+            event_count: manifest.event_count,
+            truncated: manifest.truncated,
+            bundle_size_bytes: std::fs::metadata(&safe_path).map(|m| m.len()).unwrap_or(0),
+            redaction_rules_applied: manifest.redaction_rules_applied.len(),
+        });
+    }
+
+    let time_range = if events.is_empty() {
+        None
+    } else {
+        let first = events.first().unwrap().timestamp_ms;
+        let last = events.last().unwrap().timestamp_ms;
+        Some(ExportTimeRange {
+            from_ms: first,
+            to_ms: last,
+        })
+    };
+
+    let bundle_path = bundle_diagnostics(&events, time_range, None).map_err(|e| e.to_string())?;
+    let size = std::fs::metadata(&bundle_path)
+        .map(|m| m.len())
+        .unwrap_or(0);
+    let truncated = events.len() != all_count;
+    events.clear();
+
+    Ok(DiagnosticsBundleResult {
+        success: true,
+        path: bundle_path.display().to_string(),
+        event_count: all_count,
+        truncated,
+        bundle_size_bytes: size,
+        redaction_rules_applied: crate::diagnostics::default_rules().len(),
+    })
+}
+
+// Small adapter so the bundle path with `output_path` doesn't pull in the
+// public `write_export` (which takes a permission flag we don't expose here).
+fn write_export_at(
+    path: &std::path::Path,
+    events: &[DiagnosticEvent],
+    manifest: &crate::diagnostics::DiagnosticExportManifest,
+) -> Result<(), DiagnosticExportError> {
+    crate::diagnostics::write_export(path, events, manifest, true)
+}
+
 // ── Global observer singleton ──
 
 use std::sync::OnceLock;

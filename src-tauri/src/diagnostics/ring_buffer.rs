@@ -116,9 +116,11 @@ pub struct RedactionRule {
 /// Default redaction rule set. The pattern list is a deliberate
 /// frozen contract — adding a rule is a CLI / settings change,
 /// not a code path. The list covers the most common leaks from
-/// the legacy logging system plus the v1.0.9 contract:
+/// the legacy logging system plus the v1.0.9 / 110-S2 contract:
 /// - API keys (sk-…, claude-…, anthropic-…)
-/// - Bearer / Authorization headers (whole value, not just prefix)
+/// - HTTP auth headers: Authorization, x-api-key, api-key, Proxy-Authorization
+/// - Credential field assignments in logs / configs (api_key=…, password=…, secret=…, token=…)
+/// - Generic bearer / OAuth tokens
 /// - prompt text markers (the legacy "[prompt]" prefix)
 /// - file body markers (whole body)
 /// - terminal output dumps (whole dump)
@@ -150,6 +152,46 @@ pub fn default_rules() -> Vec<RedactionRule> {
             trailing: RedactionTrailing::ToEnd,
         },
         RedactionRule {
+            pattern: "x-api-key:",
+            reason: "x-api-key header",
+            trailing: RedactionTrailing::ToEnd,
+        },
+        RedactionRule {
+            pattern: "x-api-key=",
+            reason: "x-api-key field",
+            trailing: RedactionTrailing::NonWhitespace,
+        },
+        RedactionRule {
+            pattern: "api_key=",
+            reason: "api_key field",
+            trailing: RedactionTrailing::NonWhitespace,
+        },
+        RedactionRule {
+            pattern: "api-key=",
+            reason: "api-key field",
+            trailing: RedactionTrailing::NonWhitespace,
+        },
+        RedactionRule {
+            pattern: "password=",
+            reason: "password field",
+            trailing: RedactionTrailing::NonWhitespace,
+        },
+        RedactionRule {
+            pattern: "secret=",
+            reason: "secret field",
+            trailing: RedactionTrailing::NonWhitespace,
+        },
+        RedactionRule {
+            pattern: "token=",
+            reason: "token field",
+            trailing: RedactionTrailing::NonWhitespace,
+        },
+        RedactionRule {
+            // Note: Proxy-Authorization is already covered by the
+            // generic "Authorization:" rule — the substring matches
+            // inside the longer header. Adding an explicit rule would
+            // just duplicate work and risk partial redaction if rules
+            // are reordered.
             pattern: "[prompt]",
             reason: "prompt text marker",
             trailing: RedactionTrailing::ToEnd,
@@ -456,6 +498,14 @@ mod tests {
         // Headers
         assert!(patterns.contains(&"Bearer "));
         assert!(patterns.contains(&"Authorization:"));
+        // v1.1.0 / 110-S2 credential fields requested by the spec
+        assert!(patterns.contains(&"x-api-key:"));
+        assert!(patterns.contains(&"x-api-key="));
+        assert!(patterns.contains(&"api_key="));
+        assert!(patterns.contains(&"api-key="));
+        assert!(patterns.contains(&"password="));
+        assert!(patterns.contains(&"secret="));
+        assert!(patterns.contains(&"token="));
         // v1.0.9 markers
         assert!(patterns.contains(&"[prompt]"));
         assert!(patterns.contains(&"[file-body]"));
@@ -479,5 +529,91 @@ mod tests {
         let r = Redactor::default();
         let out = r.redact("harmless log line without secrets");
         assert_eq!(out, "harmless log line without secrets");
+    }
+
+    // v1.1.0 / 110-S2: explicit coverage for the field names listed in the
+    // requirements (Authorization, x-api-key, api_key, token, password, secret).
+    // Each test ensures the value is removed from the metadata and replaced
+    // with [REDACTED:<reason>].
+    #[test]
+    fn redactor_strips_x_api_key_header() {
+        let r = Redactor::default();
+        let out = r.redact("request x-api-key: sk-supersecretvalue");
+        assert!(!out.contains("sk-supersecretvalue"));
+        assert!(out.contains("[REDACTED:x-api-key header]"));
+    }
+
+    #[test]
+    fn redactor_strips_x_api_key_field() {
+        let r = Redactor::default();
+        let out = r.redact("config: x-api-key=sk-supersecretvalue mode=fast");
+        assert!(!out.contains("sk-supersecretvalue"));
+        assert!(out.contains("[REDACTED:x-api-key field]"));
+    }
+
+    #[test]
+    fn redactor_strips_api_key_field() {
+        let r = Redactor::default();
+        let out = r.redact("env: api_key=mysecretvalue123 next=foo");
+        assert!(!out.contains("mysecretvalue123"));
+        assert!(out.contains("[REDACTED:api_key field]"));
+    }
+
+    #[test]
+    fn redactor_strips_api_key_dash_field() {
+        let r = Redactor::default();
+        let out = r.redact("header api-key=anothersecret next=bar");
+        assert!(!out.contains("anothersecret"));
+        assert!(out.contains("[REDACTED:api-key field]"));
+    }
+
+    #[test]
+    fn redactor_strips_password_field() {
+        let r = Redactor::default();
+        let out = r.redact("login password=hunter2 user=alice");
+        assert!(!out.contains("hunter2"));
+        assert!(out.contains("[REDACTED:password field]"));
+    }
+
+    #[test]
+    fn redactor_strips_secret_field() {
+        let r = Redactor::default();
+        let out = r.redact("vault secret=topsecret-data env=prod");
+        assert!(!out.contains("topsecret-data"));
+        assert!(out.contains("[REDACTED:secret field]"));
+    }
+
+    #[test]
+    fn redactor_strips_token_field() {
+        let r = Redactor::default();
+        let out = r.redact("session token=abcdef0123456789 expires=0");
+        assert!(!out.contains("abcdef0123456789"));
+        assert!(out.contains("[REDACTED:token field]"));
+    }
+
+    #[test]
+    fn redactor_strips_proxy_authorization_via_authorization_rule() {
+        // Proxy-Authorization is matched by the generic Authorization:
+        // rule because it's a substring; we assert the redaction still
+        // hides the credential.
+        let r = Redactor::default();
+        let out = r.redact("upstream Proxy-Authorization: Basic cHJveHk6eA==");
+        assert!(!out.contains("cHJveHk6eA=="));
+        assert!(out.contains("[REDACTED:authorization header]"));
+    }
+
+    #[test]
+    fn redactor_strips_combined_credential_log() {
+        let r = Redactor::default();
+        let line = "POST /api Authorization: Bearer abc.def.ghi x-api-key: kv-1 api_key=kv-2 password=pw token=tok secret=s";
+        let out = r.redact(line);
+        assert!(!out.contains("abc.def.ghi"));
+        assert!(!out.contains("kv-1"));
+        assert!(!out.contains("kv-2"));
+        assert!(!out.contains("pw"));
+        assert!(!out.contains("tok"));
+        assert!(!out.contains("secret=s"));
+        // The verb / path are still preserved for context.
+        assert!(out.contains("POST /api"));
     }
 }

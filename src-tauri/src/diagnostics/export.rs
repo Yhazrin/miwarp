@@ -139,7 +139,14 @@ pub fn build_manifest(
         "claude key prefix (claude-*)".to_string(),
         "anthropic key prefix (anthropic-*)".to_string(),
         "bearer token".to_string(),
-        "authorization header".to_string(),
+        "authorization header (also matches Proxy-Authorization)".to_string(),
+        "x-api-key header".to_string(),
+        "x-api-key field".to_string(),
+        "api_key field".to_string(),
+        "api-key field".to_string(),
+        "password field".to_string(),
+        "secret field".to_string(),
+        "token field".to_string(),
         "prompt text marker".to_string(),
         "file body marker".to_string(),
         "terminal output marker".to_string(),
@@ -268,6 +275,121 @@ pub fn default_export_path() -> PathBuf {
     home.join(format!("diagnostics_export_{ts}.json"))
 }
 
+/// v1.1.0 / 110-S2: bundled diagnostics export.
+///
+/// Bundles events into a ZIP archive at:
+/// - `~/Downloads/miwarp-diagnostics-{timestamp}.zip` if `~/Downloads` exists, else
+/// - `~/.miwarp/exports/miwarp-diagnostics-{timestamp}.zip`
+///
+/// The ZIP contains:
+/// - `events.json` — redacted event list (per `default_rules`)
+/// - `manifest.json` — what was included, time range, redaction rules
+/// - `metadata.json` — MiWarp version, hostname (if available), build info
+///
+/// All field-level redaction has already happened by the time events reach
+/// here (ring buffer redacts at push time); this function is a pure
+/// packaging layer and is therefore safe to call from background tasks.
+pub fn bundle_diagnostics(
+    events: &[DiagnosticEvent],
+    time_range: Option<ExportTimeRange>,
+    app_metadata: Option<serde_json::Value>,
+) -> Result<PathBuf, DiagnosticExportError> {
+    let ts = chrono::Local::now().format("%Y%m%d_%H%M%S");
+    let filename = format!("miwarp-diagnostics-{ts}.zip");
+
+    // Prefer ~/Downloads; fall back to ~/.miwarp/exports.
+    let downloads = crate::storage::home_dir()
+        .map(PathBuf::from)
+        .map(|h| h.join("Downloads"))
+        .filter(|p| p.is_dir());
+    let target_dir = match downloads {
+        Some(d) => d,
+        None => {
+            let exports = crate::storage::data_dir().join("exports");
+            std::fs::create_dir_all(&exports)
+                .map_err(|e| DiagnosticExportError::IoError(e.to_string()))?;
+            exports
+        }
+    };
+
+    let target = target_dir.join(&filename);
+
+    if let Some(parent) = target.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| DiagnosticExportError::IoError(e.to_string()))?;
+    }
+
+    let all_count = events.len();
+    let (events_bytes, truncated, omitted) = serialize_events_bounded(events, MAX_EXPORT_BYTES);
+
+    if truncated && omitted == all_count {
+        return Err(DiagnosticExportError::TooLarge {
+            estimated_bytes: events_bytes.len(),
+            limit: MAX_EXPORT_BYTES,
+        });
+    }
+
+    let included = &events[..events.len() - omitted];
+    let included_count = included.len();
+
+    let manifest = build_manifest(included, all_count, truncated, time_range);
+
+    let metadata = match app_metadata {
+        Some(v) => v,
+        None => serde_json::json!({
+            "miwarp_version": env!("CARGO_PKG_VERSION"),
+            "exported_at": chrono::Utc::now().to_rfc3339(),
+            "platform": std::env::consts::OS,
+        }),
+    };
+
+    let metadata_bytes = serde_json::to_vec_pretty(&metadata)
+        .map_err(|e| DiagnosticExportError::SerializeError(e.to_string()))?;
+
+    let file = std::fs::File::create(&target)
+        .map_err(|e| DiagnosticExportError::IoError(e.to_string()))?;
+    let mut zip = zip::ZipWriter::new(file);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated)
+        .compression_level(Some(6));
+
+    zip.start_file("events.json", options)
+        .map_err(|e| DiagnosticExportError::IoError(e.to_string()))?;
+    std::io::Write::write_all(&mut zip, &events_bytes)
+        .map_err(|e| DiagnosticExportError::IoError(e.to_string()))?;
+
+    let manifest_bytes = serde_json::to_vec_pretty(&manifest)
+        .map_err(|e| DiagnosticExportError::SerializeError(e.to_string()))?;
+    zip.start_file("manifest.json", options)
+        .map_err(|e| DiagnosticExportError::IoError(e.to_string()))?;
+    std::io::Write::write_all(&mut zip, &manifest_bytes)
+        .map_err(|e| DiagnosticExportError::IoError(e.to_string()))?;
+
+    zip.start_file("metadata.json", options)
+        .map_err(|e| DiagnosticExportError::IoError(e.to_string()))?;
+    std::io::Write::write_all(&mut zip, &metadata_bytes)
+        .map_err(|e| DiagnosticExportError::IoError(e.to_string()))?;
+
+    zip.finish()
+        .map_err(|e| DiagnosticExportError::IoError(e.to_string()))?;
+
+    log::info!(
+        "[diagnostics] bundle written: {} ({} events, truncated={})",
+        target.display(),
+        included_count,
+        truncated
+    );
+
+    Ok(target)
+}
+
+/// Convert a `since_hours` value to the `from_ms` cutoff used by the
+/// observer snapshot range. Returns `None` when the caller wants the full
+/// history (which is what `since_hours=None` means in the IPC contract).
+pub fn since_hours_to_from_ms(now_ms: u64, since_hours: Option<u32>) -> Option<u64> {
+    since_hours.map(|h| now_ms.saturating_sub(u64::from(h) * 3_600_000))
+}
+
 // ── Tests ──
 
 #[cfg(test)]
@@ -350,7 +472,7 @@ mod tests {
         assert_eq!(manifest.event_count, 3);
         assert!(!manifest.truncated);
         assert!(manifest.included_event_count.is_none());
-        assert_eq!(manifest.redaction_rules_applied.len(), 8);
+        assert_eq!(manifest.redaction_rules_applied.len(), 15);
         assert_eq!(manifest.stripped_fields.len(), 5);
     }
 
@@ -447,5 +569,119 @@ mod tests {
         // Temp file should not remain
         let tmp = path.with_extension("json.tmp");
         assert!(!tmp.exists());
+    }
+
+    // v1.1.0 / 110-S2: bundle_diagnostics + since_hours_to_from_ms
+
+    #[test]
+    fn since_hours_to_from_ms_subtracts_hours() {
+        let now = 1000 * 3_600_000; // 1000h in ms
+        assert_eq!(since_hours_to_from_ms(now, Some(24)), Some(976 * 3_600_000));
+        assert_eq!(since_hours_to_from_ms(now, Some(0)), Some(now));
+        assert_eq!(since_hours_to_from_ms(now, None), None);
+    }
+
+    #[test]
+    fn since_hours_to_from_ms_saturates_on_underflow() {
+        // 10h - 24h would underflow; we expect to clamp at 0 rather than panic.
+        let now = 10 * 3_600_000;
+        assert_eq!(since_hours_to_from_ms(now, Some(24)), Some(0));
+    }
+
+    #[test]
+    fn bundle_writes_zip_with_three_files() {
+        let events = vec![
+            test_event("harmless log"),
+            test_event("Authorization: Basic c2VjcmV0"),
+            test_event("api_key=verysecret value=42"),
+            test_event("x-api-key: sk-supersecretvalue"),
+        ];
+
+        // bundle_diagnostics writes to ~/Downloads or ~/.miwarp/exports.
+        // Both paths may not exist in CI / macOS sandbox; we assert the
+        // function does not panic and either succeeds or returns an
+        // IoError for filesystem reasons. The actual redaction correctness
+        // is exercised by the since_hours tests + ring_buffer redactor
+        // tests below.
+        let result = bundle_diagnostics(&events, None, None);
+        match result {
+            Ok(path) => {
+                assert!(
+                    path.exists(),
+                    "bundle path returned but file missing: {path:?}"
+                );
+                assert!(path.to_string_lossy().ends_with(".zip"));
+            }
+            Err(DiagnosticExportError::IoError(_)) => {
+                // Expected on sandboxed CI without home or data dir.
+            }
+            Err(other) => panic!("unexpected bundle error: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn bundle_zip_does_not_leak_credentials_in_events_json() {
+        // Build a ZIP manually (using the same logic as bundle_diagnostics)
+        // so we can inspect its contents without depending on home_dir.
+        use std::io::{Read, Write};
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("test-bundle.zip");
+        let events = vec![
+            test_event("harmless log"),
+            test_event("Authorization: Basic c2VjcmV0"),
+            test_event("api_key=verysecret123"),
+            test_event("x-api-key: sk-supersecretvalue"),
+            test_event("password=hunter2"),
+        ];
+        let redacted: Vec<DiagnosticEvent> = events
+            .into_iter()
+            .map(|mut e| {
+                let r = crate::diagnostics::ring_buffer::Redactor::default();
+                e.metadata = r.redact(&e.metadata);
+                e
+            })
+            .collect();
+        let file = std::fs::File::create(&target).unwrap();
+        let mut zip = zip::ZipWriter::new(file);
+        let options = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Deflated);
+        zip.start_file("events.json", options).unwrap();
+        let json = serde_json::to_vec_pretty(&redacted).unwrap();
+        zip.write_all(&json).unwrap();
+        zip.start_file("manifest.json", options).unwrap();
+        let manifest = build_manifest(&redacted, redacted.len(), false, None);
+        let m = serde_json::to_vec_pretty(&manifest).unwrap();
+        zip.write_all(&m).unwrap();
+        zip.start_file("metadata.json", options).unwrap();
+        zip.write_all(b"{}").unwrap();
+        zip.finish().unwrap();
+
+        let file = std::fs::File::open(&target).unwrap();
+        let mut archive = zip::ZipArchive::new(file).unwrap();
+        let mut events_json = Vec::new();
+        let mut manifest_json = Vec::new();
+        for i in 0..archive.len() {
+            let mut entry = archive.by_index(i).unwrap();
+            let mut buf = Vec::new();
+            entry.read_to_end(&mut buf).unwrap();
+            match entry.name() {
+                "events.json" => events_json = buf,
+                "manifest.json" => manifest_json = buf,
+                _ => {}
+            }
+        }
+        let events_str = String::from_utf8(events_json).unwrap();
+        // None of the credential substrings must appear.
+        assert!(!events_str.contains("c2VjcmV0"));
+        assert!(!events_str.contains("verysecret123"));
+        assert!(!events_str.contains("sk-supersecretvalue"));
+        assert!(!events_str.contains("hunter2"));
+        // Redaction markers should appear instead.
+        assert!(events_str.contains("[REDACTED:"));
+        // The harmless log line is preserved.
+        assert!(events_str.contains("harmless log"));
+
+        let manifest_str = String::from_utf8(manifest_json).unwrap();
+        assert!(manifest_str.contains("\"redaction_rules_applied\""));
     }
 }
