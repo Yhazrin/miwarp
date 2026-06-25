@@ -25,7 +25,6 @@
   import ChatStreamingText from "$lib/components/ChatStreamingText.svelte";
   import ChatThinkingIndicator from "$lib/components/ChatThinkingIndicator.svelte";
   import ChatForkOverlay from "$lib/components/ChatForkOverlay.svelte";
-  import ChatErrorCard from "$lib/components/ChatErrorCard.svelte";
   import RecoveringBanner from "$lib/components/RecoveringBanner.svelte";
   import ElicitationDialog from "$lib/components/ElicitationDialog.svelte";
   import ForwardToSessionDialog from "./ForwardToSessionDialog.svelte";
@@ -608,17 +607,6 @@
 
     {#if store.recoveryNotice}
       <RecoveringBanner message={store.recoveryNotice} />
-    {/if}
-
-    {#if store.error && !forkOverlay}
-      <ChatErrorCard
-        error={store.error}
-        resultSubtype={store.run?.result_subtype}
-        sessionId={store.run?.session_id}
-        phase={store.phase}
-        onDismiss={() => (store.error = "")}
-        onGotoSettings={goto}
-      />
     {/if}
   </div>
 
