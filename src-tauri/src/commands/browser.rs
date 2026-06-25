@@ -163,9 +163,7 @@ fn screenshot_inner(
         return Err("browser_screenshot: session_id must not be empty".to_string());
     }
     if state.get_session(trimmed).is_none() {
-        return Err(format!(
-            "browser_screenshot: unknown session_id {trimmed}"
-        ));
+        return Err(format!("browser_screenshot: unknown session_id {trimmed}"));
     }
     Ok(BrowserScreenshotResult {
         session_id: trimmed.to_string(),
@@ -197,9 +195,7 @@ fn get_dom_inner(
         return Err("browser_get_dom: session_id must not be empty".to_string());
     }
     if state.get_session(trimmed_sid).is_none() {
-        return Err(format!(
-            "browser_get_dom: unknown session_id {trimmed_sid}"
-        ));
+        return Err(format!("browser_get_dom: unknown session_id {trimmed_sid}"));
     }
     let trimmed_sel = selector.trim();
     if trimmed_sel.is_empty() {
@@ -235,7 +231,8 @@ pub fn browser_get_dom(
 /// 1x1 transparent PNG encoded as base64. Used as the placeholder
 /// payload so the frontend IPC contract is verifiable without a
 /// real browser.
-const TRANSPARENT_PNG_BASE64: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+const TRANSPARENT_PNG_BASE64: &str =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 
 #[cfg(test)]
 mod tests {
@@ -353,7 +350,10 @@ mod tests {
         let bytes = base64_decode(TRANSPARENT_PNG_BASE64);
         assert!(bytes.len() > 8, "expected non-trivial PNG bytes");
         // PNG magic: 89 50 4E 47 0D 0A 1A 0A
-        assert_eq!(&bytes[..8], &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+        assert_eq!(
+            &bytes[..8],
+            &[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        );
     }
 
     fn base64_decode(input: &str) -> Vec<u8> {

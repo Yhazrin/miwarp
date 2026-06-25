@@ -135,4 +135,15 @@ mod tests {
         }
         assert_eq!(caps.schema_version, 5);
     }
+
+    #[test]
+    fn supported_commands_include_browser_lite() {
+        let caps = get_backend_capabilities().unwrap();
+        for command in ["browser_navigate", "browser_screenshot", "browser_get_dom"] {
+            assert!(
+                caps.supported_commands.contains(&command.to_string()),
+                "missing {command}"
+            );
+        }
+    }
 }
