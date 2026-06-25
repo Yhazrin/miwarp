@@ -27,6 +27,7 @@ pub mod remote_fs;
 pub mod run_journal;
 pub mod runs;
 pub mod runtime_diagnostics;
+pub mod runtime_health;
 pub mod runtime_hub;
 pub mod screenshot;
 pub mod session;

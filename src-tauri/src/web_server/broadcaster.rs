@@ -244,5 +244,8 @@ fn event_type_name(event: &BusEvent) -> &'static str {
         BusEvent::SessionRecovered { .. } => "session_recovered",
         BusEvent::ProtocolDesync { .. } => "protocol_desync",
         BusEvent::SessionLifecycle { .. } => "session_lifecycle",
+        BusEvent::AttentionChanged { .. } => "attention_changed",
+        BusEvent::RuntimeHealthChanged { .. } => "runtime_health_changed",
+        BusEvent::GovernorBudgetExceeded { .. } => "governor_budget_exceeded",
     }
 }

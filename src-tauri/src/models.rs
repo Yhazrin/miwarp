@@ -1730,6 +1730,70 @@ pub enum BusEvent {
         /// First 200 bytes of the most recent bad line, for debugging.
         sample: String,
     },
+    /// v1.1.0 / 110-A17: emitted whenever the durable Attention Queue mutates
+    /// (raise / refresh / acknowledge / resolve / reopen / reconcile). The
+    /// payload carries just the revision and counts so listeners can decide
+    /// whether to refetch the full snapshot via `attention_queue_get`.
+    /// The realtime `attention_queue_changed` event remains as a lossy
+    /// B-class hint; this variant is the persistent A-class event used by
+    /// replay and audit.
+    AttentionChanged {
+        /// New queue revision after the mutation.
+        revision: u64,
+        /// Last `last_event_seq` value (for delta replay).
+        last_event_seq: u64,
+        /// Number of items in `Open` status after the mutation.
+        open_count: u32,
+        /// Number of items in `Acknowledged` status.
+        acknowledged_count: u32,
+        /// Number of items in `Resolved` status.
+        resolved_count: u32,
+        /// Optional stable_key of the most recently changed item (if any).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        last_changed_key: Option<String>,
+    },
+    /// v1.1.0 / 110-A4: emitted when a runtime health probe (claude / codex /
+    /// other CLI provider) returns a result that differs from the previous
+    /// snapshot. Used by the frontend capability matrix to surface degraded
+    /// or unhealthy states without polling.
+    RuntimeHealthChanged {
+        /// Provider key (e.g. "claude", "codex", "opencode").
+        agent: String,
+        /// Current health state: "healthy" | "degraded" | "unhealthy".
+        health: String,
+        /// Optional reason string for unhealthy / degraded.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        reason: Option<String>,
+        /// Resolved binary path, when known.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        binary_path: Option<String>,
+        /// Resolved version string, when known.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        version: Option<String>,
+        /// Whether the user is currently logged in to this provider.
+        logged_in: bool,
+        /// Wall-clock millis when this snapshot was taken.
+        timestamp_ms: u64,
+    },
+    /// v1.1.0 / 110-S5: emitted when a run is denied or aborted because the
+    /// Resource Governor budget was exceeded. The frontend uses this to show
+    /// "并发上限已满" / "内存上限已触发" toasts and offer to retry / queue.
+    GovernorBudgetExceeded {
+        /// Stable identifier for the run that was rejected (empty when an
+        /// already-running run was forcibly cancelled by the governor).
+        run_id: String,
+        /// Which budget was exceeded: "concurrent_runs" | "memory_bytes".
+        budget_kind: String,
+        /// Current effective value when the budget tripped.
+        current_value: u64,
+        /// Configured ceiling that was crossed.
+        limit_value: u64,
+        /// Optional human-readable reason (free-form, may be shown in UI).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        reason: Option<String>,
+        /// Wall-clock millis when the budget tripped.
+        timestamp_ms: u64,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

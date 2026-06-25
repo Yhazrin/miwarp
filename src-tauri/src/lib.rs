@@ -28,6 +28,7 @@ use tauri::tray::TrayIconEvent;
 use tauri::Manager;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
+use web_server::broadcaster::BroadcastEmitter;
 
 /// Effective web server port (may differ from configured port if busy)
 pub type EffectiveWebPort = Arc<AtomicU16>;
@@ -192,6 +193,7 @@ pub fn run() {
         .manage(Arc::new(EventWriter::new()))
         .manage(SpawnLocks::new())
         .manage(crate::agent::runtime_recovery::new_recovery_registry())
+        .manage(crate::agent::runtime_health::RuntimeHealthStore::new())
         .manage(ShutdownGate::new())
         .manage(cancel_token)
         .manage(ws_shutdown_sender)
@@ -311,6 +313,8 @@ pub fn run() {
             commands::runtime_hub::runtime_hub_apply_config,
             commands::runtime_hub::runtime_hub_start_config_watch,
             commands::runtime_hub::runtime_hub_stop_config_watch,
+            commands::runtime_health::runtime_health_get,
+            commands::runtime_health::runtime_health_probe_now,
             commands::teams::list_teams,
             commands::teams::get_team_config,
             commands::teams::list_team_tasks,
@@ -477,6 +481,22 @@ pub fn run() {
                 cancel.clone(),
                 app.state::<Arc<EventWriter>>().inner().clone(),
             );
+
+            // Start periodic runtime health probe (110-A4 Capability Matrix).
+            // Initial probe runs immediately; subsequent rounds every 10 minutes.
+            {
+                let health_store = app
+                    .state::<crate::agent::runtime_health::RuntimeHealthStore>()
+                    .inner()
+                    .clone();
+                let emitter_for_probe = app.state::<Arc<BroadcastEmitter>>().inner().clone();
+                crate::agent::runtime_health::spawn_probe_loop(
+                    health_store,
+                    emitter_for_probe,
+                    crate::agent::runtime_health::DEFAULT_PROBE_INTERVAL_SECS,
+                    cancel.clone(),
+                );
+            }
 
             // Start background scheduler for scheduled tasks
             scheduler::start_scheduler_loop(app.handle().clone(), cancel);

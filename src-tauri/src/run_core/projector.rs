@@ -147,7 +147,10 @@ pub fn plan_projection(
         | BusEvent::RalphStarted { .. }
         | BusEvent::RalphIteration { .. }
         | BusEvent::RalphComplete { .. }
-        | BusEvent::ProtocolDesync { .. } => return Ok((ProjectOutcome::Ignored, None)),
+        | BusEvent::ProtocolDesync { .. }
+        | BusEvent::AttentionChanged { .. }
+        | BusEvent::RuntimeHealthChanged { .. }
+        | BusEvent::GovernorBudgetExceeded { .. } => return Ok((ProjectOutcome::Ignored, None)),
     };
 
     let Some(kind) = kind else {

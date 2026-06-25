@@ -13,6 +13,7 @@ pub mod pipe_parser;
 pub mod protocol;
 pub mod recovery;
 pub mod runtime;
+pub mod runtime_health;
 pub mod runtime_recovery;
 pub mod session_actor;
 pub mod spawn;
