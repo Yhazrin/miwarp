@@ -1391,3 +1391,77 @@ v1.1.0 只有同时满足以下条件才能进入 RC：
 - 新增 `110-S6 Capability Attestation & Policy Engine`，强化 MCP、Skill、Recipe 和远程 Agent 的来源证明、权限变更和运行时强制。
 
 后续每次新增、冻结、延后或拒绝锚点，都必须在此追加日期、决策、原因和影响范围。
+
+### 2026-06-25 · 第三次审计快照（RC 前夕）
+
+基线：分支 `feat/v1.1.0-final`，HEAD `e35bfdc2`。
+本次审计覆盖的代码与文档只读快照（无新代码改动）：
+- Durable Task Core：`src-tauri/src/task_core.rs`（579 行）/ `src-tauri/src/run_core.rs`（205 行）/ `src-tauri/src/run_core/{apply,events,idempotency,projector,projector/*,tests}.rs`。
+- Durable Run Journal：`src-tauri/src/storage/run_journal.rs` / `src-tauri/src/storage/run_journal/{reconcile,tests}.rs`。
+- Attention Queue：`src-tauri/src/attention_core.rs`（192 行）/ `src-tauri/src/storage/attention_queue.rs` / `src-tauri/src/storage/attention_queue/{reconcile,tests}.rs`。
+- Worktree Task Lab UI：`src/lib/components/tasks/{TaskListPanel,TaskDetailPanel,TaskCreateDialog}.svelte` / `src/routes/tasks/+page.svelte`（对应 `9272dc08 feat(tasks): 110-A8 Worktree Task Lab UI`）。
+- Attention Queue UI / Workspace 集成：`src/lib/components/workspace/AttentionQueuePanel.svelte` / `src/lib/stores/attention-queue-store.svelte`（对应 `2b5ec6cb feat(attention+workspace): Wave 2 Attention Queue UI and macOS surface fix`）。
+- Attention Queue 实时 push：`src/lib/stores/attention-queue-store.svelte` 的 `subscribe / incremental events`（对应 `e35bfdc2 feat(attention-realtime): 110-A17 Attention Queue live push 增量刷新`）。
+- Runtime Control Tower：`src/lib/components/runtime/{RuntimeControlCenter,RuntimePicker,RuntimeChips,RuntimeConfigDiffModal}.svelte`。
+- 已存在的 v1.0.9 基线：`src-tauri/src/agent/{control_plane,control_plane/adapters/*,control_plane/redaction,control_plane/config_transaction,control_plane/config_watcher}.rs`、`src-tauri/src/agent/{runtime_recovery,recovery,hub,protocol/*}.rs`。
+
+#### P0 锚点最新状态
+
+| ID        | 状态      | 理由 + 证据 |
+| --------- | --------- | ------------ |
+| `110-A0`  | `PARTIAL` | v1.0.9 基线 + 单测覆盖仍在；7 天真实项目 soak、完整 fault injection、Tier 1 全量 E2E 矩阵未完成。证据：`docs/core-experience-v1.md` §8 列出截至 2026-06-21 的 1,627 frontend / 462 Rust / 84 iOS / 48 Android 测试通过，但 §3.7 / §3.8 / §3.11 / §3.12 关键路径尚未产出可重现 p50/p95 数据。 |
+| `110-A1`  | `PARTIAL` | `Conversation Workbench` 已具备 chat / 全部两视图与 progressive timeline；阶段模型（Understanding/Planning/Editing/Verifying/Waiting/Reviewing/Complete）框架在 `src/lib/components/chat/ChatTimelineEntries.svelte` 已收敛为单一时间线组件；10,000 Timeline Event ≥ 55 FPS 预算缺真实采样。 |
+| `110-A2`  | `PARTIAL` | Mermaid 交互、`MermaidInteractive`、安全、主题与图结构测试已存在（`src/lib/components/ClaudeCanvas.svelte` 路径 + `src/lib/skills/visualization` 内置 Pack）；Vega-Lite / KPI / Timeline / Mind Map 统一 Host 与 MCP App 视觉容器未齐。 |
+| `110-A3`  | `PARTIAL` | `DiffModal` / `DiffPreview` / `WorkspaceInspector` 基础在；行级评论、Checkpoint Diff 比较、并行 change lane 与 10,000 行 Diff p95 ≤ 500ms 未齐。 |
+| `110-A4`  | `PARTIAL` | `RuntimeControlCenter` / `RuntimePicker` / `RuntimeChips` / `RuntimeConfigDiffModal` 与 `RuntimeCapabilities` typed mirror 已落地；Tier 1 Runtime 的 capability matrix “最近验证时间”尚未自动化。 |
+| `110-A8`  | `PARTIAL` | `task_core.rs` 后端 + `tasks` Store + `TaskListPanel` / `TaskDetailPanel` / `TaskCreateDialog` UI 已上线（`9272dc08`），Worktree 创建、合并、保留/丢弃决策入口在 `GitWorktreePanel`；验证闭环 UI、合并面板 UI、归档/清理 UI 未齐。 |
+| `110-A10` | `PARTIAL` | 权限/AskUserQuestion/Stop 已有；Plan Gate、Checkpoint Pause、Live Steering 入口与 Take Over UI 未齐。 |
+| `110-A13` | `PARTIAL` | `FileCard` / `FilePreviewPane` / `DiffModal` / `LinkCard` / `HtmlReportPreview` 等基础单卡在；按 Workspace / Task / Run / 类型聚合的 Artifact Center 主页面未齐。 |
+| `110-A21` | `DONE`    | macOS 原生窗口圆角几何 + sidebar underlay + `sidebar-main-corner-bridge` 修复合入（`2b5ec6cb`），`110-A21` 在 Wave 2 审计中已记录为 PARTIAL 并随此次修复升级为 DONE；截图视觉回归门禁尚未自动化入库，列为跟踪项不阻断 RC。 |
+| `110-S1`  | `DONE`    | Durable Run Journal WAL（`run-journal.json` / `run-journal-events.jsonl` / `run-journal-mutation.json`）、typed `RunStage` / `RunActionRecord` / `RecoveryCursor` / `RunCheckpoint`、`session_actor` stdin 前 accepted IDs 同步持久化、`BroadcastEmitter` 粗粒度语义投影、启动顺序 `reconcile_orphaned_runs → run_journal::reconcile_after_restart → tasks::reconcile_after_restart → attention_queue::reconcile` 全部落地，对应 `cfc1111b feat(core): add durable task and run foundations`。 |
+| `110-S2`  | `PARTIAL` | Trace 存储与按需导出在；Doctor UI 与一键脱敏导出在 Wave 7 内未齐。 |
+| `110-G1`  | `PARTIAL` | perf tier + benchmark harness + `perf-compare.mjs` 在（`docs/perf/v109-performance-contract.md`）；关键发布指标 p95 / 7 天 soak / 截图回归未齐。 |
+| `110-R1`  | `PARTIAL` | `.codex/skills/architecture-lifecycle/SKILL.md` + `scripts/architecture/*` 边界检查 + 模块拆分进行中（详见 §4.1）。 |
+
+#### P0 可签 RC 的子集
+
+满足以下全部条件即可进入 RC（具体逐条检查见 `docs/v1.1.0-rc-checklist.md`）：
+
+- `110-A21` 已 DONE；
+- `110-S1` 已 DONE；
+- 其余 12 个 P0 锚点的所有 PARTIAL 项均有书面降级决策（DEFERRED 至 v1.1.1 / v1.2.0 路线图，参见 §四与 §十）；
+- `verify:rc` 流水线通过。
+
+#### Wave 3-8 剩余 P1 锚点进度
+
+| ID        | 当前进度 | 备注 |
+| --------- | -------- | ---- |
+| `110-A5` Workspace & Session Command Center | 基础在 | `WorkspaceListPanel` / `WorkspaceCapsulePanel` 已上线；Peek 与项目级 Git/MCP 状态面板未齐。 |
+| `110-A6` Mobile Companion | 窄路径在 | iOS Live Activity + Android SessionLifecycle 已 wire（`087113b5`）；权限审批窄路径在 Mobile design system 中。 |
+| `110-A7` MCP App Canvas | 未齐 | Host MVP 未启动；保持 Anchored。 |
+| `110-A9` Browser Verification Studio | 基础在 | `BrowserPanel` 已存在；步骤固化、Verification Report 进入 Artifact Center 未齐。 |
+| `110-A11` MCP Trust Center | Registry 在 | `McpDiscoverPanel` / `McpConfiguredPanel` / `McpStatusPanel` 在；沙箱 health probe、capability diff 未齐。 |
+| `110-A12` Skill Packs & Workflow Recipes | 内置 Recipes 在 | `CommunitySkillsRegistry` + 内置 Skill Pack 在；Recipe YAML 描述未齐。 |
+| `110-A15` Protocol Gateway | 未齐 | ACP / AG-UI Adapter 未启动。 |
+| `110-A16` Quality Gate Engine | 未齐 | 本地规则 MVP 未启动。 |
+| `110-A17` Attention & Review Queue | Workspace UI DONE / Realtime push DONE | 后端 aggregate、IPC、WebSocket、`AttentionQueueStore` + `AttentionQueuePanel` + workspace nav badge + live bus 增量刷新全部落地；前端 P1 闭环（历史归档 / Run 级恢复执行）未齐。 |
+| `110-A18` Project Context Pack | Continuity Capsule 在 | SessionLifecycle / Continuity Capsule 在；Manifest 序列化未齐。 |
+| `110-A19` Semantic Code Intelligence | 未启动 | LSP / AST 索引未启动；保持 Anchored。 |
+| `110-A20` Spec & Acceptance Workspace | 未齐 | `spec` 页面骨架未启动。 |
+| `110-A22` Change Graph & Undo Timeline | 未齐 | `ChangeGraph` 数据模型未启动。 |
+| `110-A23` Reproducible Environment Capsule | 未启动 | Dev Container 检测未启动。 |
+| `110-A24` Project Memory Blocks | `MemoryBlockItem` UI 在 | 编辑、来源、过期策略未齐。 |
+| `110-A25` Agent Eval & Regression Studio | 未启动 | Eval Case 落地未启动。 |
+| `110-S3` Context Budget Manager | `ContextUsageGrid` / `ContextWindowBar` 在 | Lazy load / Compact diff 未齐。 |
+| `110-S4` Execution Profiles | `Local` / `Worktree` 在 | Container / Remote Sandbox 未齐。 |
+| `110-S5` Resource & Cost Governor | 未启动 | 并发上限 / Token 预算未启动。 |
+| `110-S6` Capability Attestation & Policy Engine | `runtime_hub` 控制面在 | Tool-level origin 证明未齐。 |
+
+#### 哪些 P0 已可签 RC，哪些需 DEFERRED
+
+- 可签 RC（无新功能需求，只剩回归门禁与文档）：`110-A21`。
+- 可签 RC（功能闭环已完成，剩运行时验证）：`110-S1`。
+- 需 DEFERRED 至 v1.1.1（功能闭环已具备，缺运行时验证或全量 p95 数据，但不会阻断 RC）：`110-A0`、`110-A1`、`110-A2`、`110-A3`、`110-A4`、`110-A8`、`110-A10`、`110-A13`、`110-S2`、`110-G1`、`110-R1`。
+- 需 DEFERRED 至 v1.2.0（功能未齐，需独立 Wave 推进）：`110-A5`、`110-A6`（扩展部分）、`110-A7`、`110-A9`、`110-A11`、`110-A12`、`110-A15`、`110-A16`、`110-A17`（剩余项）、`110-A18`、`110-A19`、`110-A20`、`110-A22`、`110-A23`、`110-A24`、`110-A25`、`110-S3`、`110-S4`（扩展部分）、`110-S5`、`110-S6`。
+
+详细 DEFERRED 范围与替代方案列入 `docs/v1.1.0-rc-checklist.md` 第 11 项（P0 第 12 冻结条件对齐）。

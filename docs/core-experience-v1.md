@@ -343,3 +343,156 @@ This evidence proves a stronger foundation. It does **not** by itself complete t
 5. Complete diagnostics export with secret-redaction tests.
 6. Run the seven-day soak and close every blocker.
 7. Only then increase investment in Mission, multi-agent orchestration, Personal Memory, Life Mission, and Personal Inbox.
+
+---
+
+## 10. v1.1.0-rc.1 self-check (2026-06-25)
+
+> **基线**：分支 `feat/v1.1.0-final`，HEAD `e35bfdc2 feat(attention-realtime): 110-A17 Attention Queue live push 增量刷新`。
+> **范围**：对 §3 全部 12 个领域逐条列出当前实现证据（文件路径 + commit hash），与冻结条件一一对应。
+> **配套**：`docs/PLAN_V1.1.0.md` §十一 + `docs/v1.1.0-rc-checklist.md`。
+
+### 3.1 Startup
+
+- CLI 检测 / 版本报告 / 启动失败分类：`src-tauri/src/agent/spawn.rs`、`src-tauri/src/agent/spawn_locks.rs`（typed failure）。
+- 凭证与端点连通性：`src-tauri/src/agent/control_plane/state.rs` + `runtime_hub_*` 命令。
+- 冷启动 / 工作区打开 / 会话启动 / 首 Token 指标：`docs/perf/v109-performance-contract.md` + `scripts/perf-compare.mjs`。
+- 状态：`PARTIAL` → 7 天 soak 未做。
+
+### 3.2 Chat and event consistency
+
+- 用户消息提交唯一性 + 流式顺序：v1.0.9 send transaction + 幂等（`src/lib/chat/send-coordinator`）。
+- 重连 / 重放不重复：`src-tauri/src/agent/session_actor.rs` 持久化 accepted IDs。
+- Session 切换不串写：`src/lib/stores/session-store.svelte.ts` 单订阅模型。
+- 长输出不阻塞：`src/lib/components/chat/ChatTimelineEntries.svelte` 收敛为单一时间线 + progressive timeline（`src/lib/chat/`）。
+- 草稿保留：v1.0.9 SendCoordinator 草稿分支。
+- 状态：`PARTIAL` → 长会话 10k 事件 FPS 预算缺真实采样。
+
+### 3.3 Tool calls
+
+- Read / Edit / Write / Bash / Grep / Glob / task / MCP 类型化卡片：`src/lib/components/InlineToolCard.svelte` + `src/lib/components/AskUserQuestionCard.svelte`。
+- 未知 Tool 降级：generic card 分支。
+- 并行 Tool 独立 ID / progress / result / cancel：`src-tauri/src/agent/turn_engine.rs`。
+- 状态：`DONE`（v1.0.9 已签字）。
+
+### 3.4 Permissions
+
+- `PermissionPanel` / `PermissionsModal` 提供完整 action / reason / 影响范围 / 风险 / 一次性 vs 持久 / 拒绝后果 / 计数。
+- 原始终止 JSON 仅作诊断显示（`src/lib/components/HookReviewCard.svelte`）。
+- 状态：`DONE`。
+
+### 3.5 Files and diff
+
+- 文件级 / 行级 Diff：`src/lib/components/DiffModal.svelte` + `src/lib/components/DiffPreview.svelte`。
+- Agent 修改 / 用户修改 / 预存在修改分离：`src/lib/components/inspector/WorkspaceInspector.svelte`。
+- Disk 状态匹配：`src-tauri/src/commands/git.rs` + `src-tauri/src/commands/files.rs`。
+- 回滚边界：`src/lib/components/RewindModal.svelte`。
+- 大 Diff 虚拟化：`src/lib/components/DynamicVirtualList.svelte`。
+- 状态：`PARTIAL` → 行级评论 / Checkpoint Diff 未齐。
+
+### 3.6 Terminal
+
+- stdout / stderr / ANSI / 命令 / cwd / exit / 终止原因：`src-tauri/src/process_ext.rs` + `src/lib/components/XTerminal.svelte`。
+- Stop 终止进程树：`src-tauri/src/agent/spawn_locks.rs`。
+- 交互命令限制前置显示：`src-tauri/src/agent/ssh.rs`。
+- 输出背压：`src-tauri/src/agent/stream.rs`。
+- 状态：`DONE`。
+
+### 3.7 Git
+
+- Status / Diff 来自仓库而非 agent 消息：`src-tauri/src/commands/git.rs`。
+- Commit scope preview + 未推送检查：`src/lib/components/GitWorktreePanel.svelte`。
+- Push 显示 remote / branch：`src-tauri/src/commands/git.rs::preview_push`。
+- Merge conflict / detached HEAD 显式状态：`src/lib/components/git/*`。
+- Rollback 不静默丢失：`src-tauri/src/agent/runtime_recovery.rs`。
+- 状态：`DONE`。
+
+### 3.8 Provider compatibility
+
+- Tier 1 / Tier 2 / Tier 3 三档 + capability matrix：`src-tauri/src/agent/control_plane/state.rs` + `RuntimeCapabilities` typed mirror。
+- 9 项 capability + 必需证据：`docs/architecture/cross-platform-capability-matrix.md`。
+- 最近验证时间字段已在 matrix，但由手工填写，自动化采集脚本列为 v1.1.1。
+- 状态：`PARTIAL`。
+
+### 3.9 History and recovery
+
+- 持久化 / 重建关键 ID：`src-tauri/src/run_core.rs` + `src-tauri/src/storage/run_journal.rs` + `src-tauri/src/attention_core.rs`。
+- CLI conversation ID：`src-tauri/src/agent/recovery.rs`。
+- cwd / worktree 身份：`src-tauri/src/commands/worktree.rs`。
+- provider / model / 启动设置：`src-tauri/src/agent/hub.rs`。
+- 上次提交事件序列号：bus seq。
+- 权限 / tool 状态：`run_journal::pending_approvals`。
+- 文件 mutation provenance：`run_journal::file_mutations`。
+- Git identity / divergence：`src-tauri/src/commands/git.rs::snapshot_git_identity`。
+- 无法安全恢复 → 只读 history：Attention Queue `impossible_resume` 投影。
+- 状态：`DONE`。
+
+### 3.10 Web and mobile
+
+- 跨端窄契约：v1.1.0 范围（见 `docs/PLAN_V1.1.0.md` §六 `110-A6`）。
+- iOS Live Activity + Android SessionLifecycle 已 wire：`087113b5 feat(mobile): wire v1.0.9 SessionLifecycle BusEvent into iOS Swift and Android Kotlin clients`。
+- Desktop 权威 + 序列号对齐：WebSocket 单飞恢复。
+- 状态：`PARTIAL` → 完整移动状态收敛在 v1.1.1。
+
+### 3.11 Performance
+
+- p50 / p95 覆盖项：`docs/perf/v109-performance-contract.md`。
+- 性能工具链：`scripts/perf-compare.mjs` + `src/lib/perf/*`。
+- 长会话 / 大 Diff / 内存 / 重连预算：性能契约已建立，但真实采样数据缺。
+- 状态：`PARTIAL` → 7 天 soak + 真实采样 DEFERRED 至 v1.1.1。
+
+### 3.12 Diagnostics and observability
+
+- Trace ID / session / run / request / tool-call ID：`src-tauri/src/run_core/events.rs`。
+- 应用 / CLI / adapter / 协议版本：`src-tauri/src/diagnostics/*`。
+- Provider 分类脱敏：`src-tauri/src/agent/control_plane/redaction.rs`。
+- 连接状态 / 上次转换 / 进程状态 / 退出原因：`src-tauri/src/diagnostics/*`。
+- 事件序列 / 重放决策：`src-tauri/src/run_core.rs::recovery_cursor`。
+- 权限状态：`run_journal::pending_approvals`。
+- 网络 / 代理摘要：`src-tauri/src/http_client.rs`。
+- 错误分类 + 安全原始 detail：`src-tauri/src/agent/permission_error.rs` + `agent::constants.rs`。
+- 脱敏支持：v1.0.9 bounded ring buffer + redaction（`0a87f279`、`8eee6f99`）。
+- Doctor UI / 一键脱敏导出：DEFERRED 至 v1.1.1。
+- 状态：`PARTIAL`。
+
+### 汇总
+
+| 领域          | 状态        | 关键证据 |
+| ------------- | ----------- | -------- |
+| 3.1 Startup   | `PARTIAL`  | 启动失败类型化、Runtime Hub；soak 未做 |
+| 3.2 Chat      | `PARTIAL`  | progressive timeline + 单时间线；10k FPS 缺采样 |
+| 3.3 Tools     | `DONE`     | v1.0.9 已签字 |
+| 3.4 Permissions| `DONE`    | `PermissionPanel` / `PermissionsModal` |
+| 3.5 Files/Diff| `PARTIAL` | Diff 基础；行级评论未齐 |
+| 3.6 Terminal  | `DONE`     | `XTerminal` + `spawn_locks` |
+| 3.7 Git       | `DONE`     | `GitWorktreePanel` + `git.rs` |
+| 3.8 Providers | `PARTIAL` | capability matrix 在；自动化验证时间未齐 |
+| 3.9 History   | `DONE`     | Run Journal WAL + reconcile |
+| 3.10 Mobile   | `PARTIAL` | Live Activity + SessionLifecycle；完整收敛 v1.1.1 |
+| 3.11 Perf     | `PARTIAL` | harness 在；真实采样 DEFERRED |
+| 3.12 Diag     | `PARTIAL` | Trace 在；Doctor UI / 一键脱敏导出未齐 |
+
+> **签字建议**：3 个 `DONE` + 9 个 `PARTIAL`。所有 PARTIAL 项均有书面 DEFERRED 决策；不阻断 v1.1.0-rc.1 标签，但 v1.1.1 RC 前置门禁清单必须包含 9 项 PARTIAL 升级。## 8. Current v1.0.8 foundation evidence
+
+As of 2026-06-21:
+
+- browser/desktop: 1,627 tests pass;
+- Rust: 462 library tests pass, formatting and Clippy are clean;
+- iOS: 84 SwiftPM tests and 84 simulator tests pass;
+- Android: 48 JVM tests pass, Lint has 0 errors, Debug APK builds;
+- WebSocket connection lifecycle, request registry, run subscription ownership, single-flight recovery, and bounded cross-platform chunk assembly are documented and tested;
+- architecture and cross-platform command contracts run in CI;
+- version alignment covers npm, Tauri, Rust, iOS, and Android;
+- GitHub Actions now contains frontend, Rust, Android, and iOS gates.
+
+This evidence proves a stronger foundation. It does **not** by itself complete the seven-day soak, the full provider matrix, performance budgets, or every scenario E2E flow.
+
+## 9. Next execution order
+
+1. Build the scenario E2E harness around session start, permission, edit, test, diff, commit, stop, and resume.
+2. Establish Tier 1 provider fixtures and publish the compatibility matrix.
+3. Add process, network, sleep/wake, and crash fault injection.
+4. Instrument startup, first-token, long-session, history, diff, memory, and reconnect budgets.
+5. Complete diagnostics export with secret-redaction tests.
+6. Run the seven-day soak and close every blocker.
+7. Only then increase investment in Mission, multi-agent orchestration, Personal Memory, Life Mission, and Personal Inbox.

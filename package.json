@@ -50,6 +50,8 @@
     "test:contract": "vitest run scripts/architecture/__tests__/runtime-contract.test.ts src/lib/bus/__tests__/bus-contract.test.ts scripts/architecture/__tests__/contract-lib.test.ts",
     "fix": "npm run lint:fix && npm run format && cargo fmt --manifest-path src-tauri/Cargo.toml",
     "verify": "npm run check:root && npm run lint && npm run format:check && npm run check && npm run i18n:check && npm run test && npm run build && npm run rust:check",
+    "verify:rc": "bash scripts/verify-rc.sh",
+    "verify:rc:skip-dev": "bash scripts/verify-rc.sh --skip-dev",
     "version:sync": "node scripts/sync-version.mjs",
     "version:check": "node scripts/check-versions.mjs",
     "release:notes": "node scripts/generate-release-notes.mjs",
