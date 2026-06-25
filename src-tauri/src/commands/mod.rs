@@ -18,6 +18,7 @@ pub mod fleet;
 pub mod folders;
 pub mod fs;
 pub mod git;
+pub mod governor;
 pub mod history;
 pub mod mcp;
 pub mod notification;

@@ -72,6 +72,7 @@ async fn tick(app: &AppHandle) {
         let spawn_locks = app.state::<crate::agent::spawn_locks::SpawnLocks>();
         let cancel_token = app.state::<CancellationToken>();
         let recovery_registry = app.state::<crate::agent::runtime_recovery::RecoveryRegistry>();
+        let governor = app.state::<crate::governor::ResourceGovernor>();
 
         let task_run = runner::execute_task(
             task,
@@ -80,6 +81,7 @@ async fn tick(app: &AppHandle) {
             spawn_locks.inner(),
             cancel_token.inner(),
             recovery_registry.inner(),
+            governor.inner(),
         )
         .await;
 
@@ -322,6 +324,7 @@ pub async fn run_scheduled_task_now(
     let spawn_locks = app.state::<crate::agent::spawn_locks::SpawnLocks>();
     let cancel_token = app.state::<CancellationToken>();
     let recovery_registry = app.state::<crate::agent::runtime_recovery::RecoveryRegistry>();
+    let governor = app.state::<crate::governor::ResourceGovernor>();
 
     let task_run = runner::execute_task(
         &task,
@@ -330,6 +333,7 @@ pub async fn run_scheduled_task_now(
         spawn_locks.inner(),
         cancel_token.inner(),
         recovery_registry.inner(),
+        governor.inner(),
     )
     .await;
 

@@ -346,6 +346,10 @@ async fn spawn_server(
             .clone(),
         emitter,
         broadcaster,
+        governor: app
+            .state::<crate::governor::ResourceGovernor>()
+            .inner()
+            .clone(),
         token: live_token,
         token_version,
         http_sessions: Arc::new(Mutex::new(HashMap::new())),

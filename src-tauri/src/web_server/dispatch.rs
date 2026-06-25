@@ -1124,6 +1124,7 @@ pub async fn dispatch_command(
                 &state.spawn_locks,
                 &state.cancel_token,
                 &state.recovery_registry,
+                &state.governor,
                 run_id,
                 mode,
                 session_id,
@@ -1180,6 +1181,7 @@ pub async fn dispatch_command(
                 &state.emitter,
                 &state.sessions,
                 &state.spawn_locks,
+                &state.governor,
                 run_id,
             )
             .await?;

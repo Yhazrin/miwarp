@@ -7,6 +7,7 @@ use crate::agent::control::CliInfoCache;
 use crate::agent::runtime_recovery::RecoveryRegistry;
 use crate::agent::spawn_locks::SpawnLocks;
 use crate::agent::stream::ProcessMap;
+use crate::governor::ResourceGovernor;
 use crate::storage::events::EventWriter;
 use crate::web_server::broadcaster::{BroadcastEmitter, EventBroadcaster};
 use tokio_util::sync::CancellationToken;
@@ -33,6 +34,7 @@ pub struct AppState {
     pub cli_info_cache: CliInfoCache,
     pub emitter: Arc<BroadcastEmitter>,
     pub broadcaster: EventBroadcaster,
+    pub governor: ResourceGovernor,
 
     /// Authentication token for web server access (hot-swappable for rotation)
     pub token: Arc<tokio::sync::RwLock<String>>,

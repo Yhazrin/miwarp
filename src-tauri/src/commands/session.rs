@@ -8,6 +8,7 @@ use crate::agent::runtime_recovery::{
 };
 use crate::agent::session_actor::{self, ActorCommand, RalphCancelResult};
 use crate::agent::spawn_locks::SpawnLocks;
+use crate::governor::{Admission, ResourceGovernor};
 use crate::models::{
     AgentRuntimeKind, BusEvent, RemoteHost, RunMeta, RunStatus, SessionMode, UserSettings,
 };
@@ -506,6 +507,7 @@ pub(crate) async fn start_session_impl(
     spawn_locks: &SpawnLocks,
     cancel_token: &CancellationToken,
     recovery_registry: &RecoveryRegistry,
+    governor: &ResourceGovernor,
     run_id: String,
     mode: Option<SessionMode>,
     session_id: Option<String>,
@@ -545,6 +547,17 @@ pub(crate) async fn start_session_impl(
         meta.cwd,
         exec_path
     );
+
+    // 1b. Resource Governor admission check (110-S5) — refuse to spawn
+    //     when the concurrent-run budget is exhausted. Emit a typed
+    //     BusEvent so the frontend can surface the reason in a toast.
+    let admission = governor.try_admit().await;
+    if let Admission::Deny { .. } = &admission {
+        governor.emit_budget_exceeded(&run_id, &admission);
+        return Err(admission
+            .deny_reason()
+            .unwrap_or_else(|| "budget exceeded".into()));
+    }
 
     // 2. Read settings and build unified adapter settings
     let agent_settings = storage::settings::get_agent_settings(&meta.agent);
@@ -730,6 +743,9 @@ pub(crate) async fn start_session_impl(
     )
     .await;
 
+    // Resource Governor: capture the OS PID before the child is consumed by
+    // the actor. Best-effort; remote runs may yield None.
+    let child_pid = child.id();
     let mut actor_handle = session_actor::spawn_actor_with_runtime(
         Arc::clone(emitter),
         sessions.clone(),
@@ -746,6 +762,10 @@ pub(crate) async fn start_session_impl(
         Some(recovery_registry.clone()),
         None,
     );
+    // Resource Governor: register the run as active now that the actor is
+    // spawned. We only do this after spawn_actor succeeds so we don't leak
+    // governor slots on admission-denied or spawn-failed runs.
+    governor.register_run(&run_id, child_pid).await;
     let cmd_tx = actor_handle.cmd_tx.clone();
     let shutdown_rx = {
         let (tx, rx) = tokio::sync::oneshot::channel();
@@ -828,6 +848,7 @@ pub async fn start_session(
     spawn_locks: State<'_, SpawnLocks>,
     cancel_token: State<'_, CancellationToken>,
     recovery_registry: State<'_, RecoveryRegistry>,
+    governor: State<'_, ResourceGovernor>,
     run_id: String,
     mode: Option<SessionMode>,
     session_id: Option<String>,
@@ -843,6 +864,7 @@ pub async fn start_session(
         spawn_locks.inner(),
         cancel_token.inner(),
         recovery_registry.inner(),
+        governor.inner(),
         run_id,
         mode,
         session_id,
@@ -923,6 +945,7 @@ pub(crate) async fn stop_session_impl(
     emitter: &Arc<BroadcastEmitter>,
     sessions: &ActorSessionMap,
     spawn_locks: &SpawnLocks,
+    governor: &ResourceGovernor,
     run_id: String,
 ) -> Result<(), String> {
     let _guard = spawn_locks.acquire(&run_id).await;
@@ -940,6 +963,8 @@ pub(crate) async fn stop_session_impl(
         storage::runs::update_status(&run_id, RunStatus::Stopped, None, None).ok();
     }
 
+    // Resource Governor (110-S5): free the slot on user-initiated stop.
+    governor.release_run(&run_id).await;
     Ok(())
 }
 
@@ -948,12 +973,14 @@ pub async fn stop_session(
     emitter: State<'_, Arc<BroadcastEmitter>>,
     sessions: State<'_, ActorSessionMap>,
     spawn_locks: State<'_, SpawnLocks>,
+    governor: State<'_, ResourceGovernor>,
     run_id: String,
 ) -> Result<(), String> {
     stop_session_impl(
         emitter.inner(),
         sessions.inner(),
         spawn_locks.inner(),
+        governor.inner(),
         run_id,
     )
     .await

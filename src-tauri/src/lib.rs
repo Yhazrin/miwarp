@@ -3,6 +3,7 @@ pub mod attention_core;
 pub mod cli_auto_sync;
 pub mod commands;
 pub mod diagnostics;
+pub mod governor;
 pub mod hooks;
 pub mod http_client;
 pub mod mcp;
@@ -315,6 +316,10 @@ pub fn run() {
             commands::runtime_hub::runtime_hub_stop_config_watch,
             commands::runtime_health::runtime_health_get,
             commands::runtime_health::runtime_health_probe_now,
+            commands::governor::governor_get_config,
+            commands::governor::governor_update_config,
+            commands::governor::governor_active_runs,
+            commands::governor::governor_snapshot,
             commands::teams::list_teams,
             commands::teams::get_team_config,
             commands::teams::list_team_tasks,
@@ -460,7 +465,13 @@ pub fn run() {
                 broadcaster.clone(),
             ));
             app.manage(broadcaster);
-            app.manage(emitter);
+            app.manage(emitter.clone());
+
+            // Resource Governor (110-S5) — manages concurrent run + memory
+            // budgets. Must come after the emitter so budget-denied events
+            // can be persisted + broadcast.
+            let governor = crate::governor::ResourceGovernor::new(emitter.clone());
+            app.manage(governor.clone());
 
             // Start web server (non-blocking, spawns async task)
             let app_handle = app.handle().clone();
@@ -496,6 +507,16 @@ pub fn run() {
                     crate::agent::runtime_health::DEFAULT_PROBE_INTERVAL_SECS,
                     cancel.clone(),
                 );
+            }
+
+            // Start Resource Governor memory probe loop (110-S5). The
+            // admission check itself runs synchronously inside start_session.
+            {
+                let governor_for_probe = app
+                    .state::<crate::governor::ResourceGovernor>()
+                    .inner()
+                    .clone();
+                crate::governor::spawn_probe_loop(governor_for_probe, cancel.clone());
             }
 
             // Start background scheduler for scheduled tasks
