@@ -3260,6 +3260,8 @@
   "tasks_filter_done": "Done",
   "tasks_filter_failed": "Failed",
   "tasks_filter_archived": "Archived",
+  "tasks_filter_group_label": "Task status filter",
+  "tasks_select_task_aria": "Select task {title}",
   "tasks_status_draft": "Draft",
   "tasks_status_ready": "Ready",
   "tasks_status_running": "Running",

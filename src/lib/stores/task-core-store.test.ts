@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TaskEvent } from "$lib/types/task";
+import type { TaskEvent, TaskRecord } from "$lib/types/task";
 
 const apiMocks = vi.hoisted(() => ({
   listTaskEvents: vi.fn(),
+  listTasks: vi.fn(),
 }));
 
 vi.mock("$lib/api", () => apiMocks);
@@ -17,6 +18,39 @@ function event(seq: number): TaskEvent {
     source: "system",
     event: { type: "created" },
     timestamp: `2026-06-23T00:00:0${seq}.000Z`,
+  };
+}
+
+function task(
+  id: string,
+  status: TaskRecord["status"],
+  updatedAt: string,
+  overrides: Partial<TaskRecord> = {},
+): TaskRecord {
+  return {
+    id,
+    title: id,
+    description: "",
+    constraints: [],
+    allowed_dirs: [],
+    verification_commands: [],
+    verification_results: [],
+    changed_files: [],
+    checkpoints: [],
+    dev_servers: [],
+    status,
+    priority: "medium",
+    tags: [],
+    run_links: [],
+    artifact_links: [],
+    quality_gate: { verdict: "pending", checks: [] },
+    review: { outcome: "pending" },
+    merge_decision: { decision: "pending" },
+    revision: 1,
+    last_event_seq: 0,
+    created_at: updatedAt,
+    updated_at: updatedAt,
+    ...overrides,
   };
 }
 
@@ -65,5 +99,70 @@ describe("TaskCoreStore lifecycle events", () => {
     expect(apiMocks.listTaskEvents).toHaveBeenCalledTimes(1);
     resolveRequest?.([event(1)]);
     await expect(first).resolves.toEqual([event(1)]);
+  });
+});
+
+describe("TaskCoreStore derivations", () => {
+  beforeEach(() => {
+    apiMocks.listTaskEvents.mockReset();
+    apiMocks.listTasks.mockReset();
+  });
+
+  it("segments tasks by lifecycle bucket", () => {
+    const store = new TaskCoreStore();
+    store.tasks = [
+      task("a", "running", "2026-06-23T01:00:00Z"),
+      task("b", "needs_attention", "2026-06-23T02:00:00Z"),
+      task("c", "review", "2026-06-23T03:00:00Z"),
+      task("d", "done", "2026-06-23T04:00:00Z"),
+      task("e", "failed", "2026-06-23T05:00:00Z"),
+      task("f", "archived", "2026-06-23T06:00:00Z"),
+    ];
+
+    expect(store.active.map((item) => item.id).sort()).toEqual(["a", "b", "c"]);
+    expect(store.needsAttention.map((item) => item.id)).toEqual(["b"]);
+    expect(store.inReview.map((item) => item.id)).toEqual(["c"]);
+    expect(store.completed.map((item) => item.id)).toEqual(["d"]);
+    expect(store.failed.map((item) => item.id)).toEqual(["e"]);
+    expect(store.archived.map((item) => item.id)).toEqual(["f"]);
+  });
+
+  it("counts tasks by status", () => {
+    const store = new TaskCoreStore();
+    store.tasks = [
+      task("a", "running", "2026-06-23T01:00:00Z"),
+      task("b", "running", "2026-06-23T02:00:00Z"),
+      task("c", "done", "2026-06-23T03:00:00Z"),
+    ];
+
+    const counts = store.countByStatus();
+    expect(counts.running).toBe(2);
+    expect(counts.done).toBe(1);
+    expect(counts.failed).toBe(0);
+    expect(counts.draft).toBe(0);
+  });
+
+  it("filters by predicate bucket", () => {
+    const store = new TaskCoreStore();
+    store.tasks = [
+      task("a", "running", "2026-06-23T01:00:00Z"),
+      task("b", "needs_attention", "2026-06-23T02:00:00Z"),
+      task("c", "review", "2026-06-23T03:00:00Z"),
+      task("d", "done", "2026-06-23T04:00:00Z"),
+      task("e", "failed", "2026-06-23T05:00:00Z"),
+    ];
+
+    expect(store.filterBy("all").length).toBe(5);
+    expect(
+      store
+        .filterBy("active")
+        .map((item) => item.id)
+        .sort(),
+    ).toEqual(["a", "b", "c"]);
+    expect(store.filterBy("attention").map((item) => item.id)).toEqual(["b"]);
+    expect(store.filterBy("review").map((item) => item.id)).toEqual(["c"]);
+    expect(store.filterBy("done").map((item) => item.id)).toEqual(["d"]);
+    expect(store.filterBy("failed").map((item) => item.id)).toEqual(["e"]);
+    expect(store.filterBy("archived")).toEqual([]);
   });
 });

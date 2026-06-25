@@ -69,6 +69,37 @@
     if (tone === "info") return "bg-sky-500/15 text-sky-600 dark:text-sky-300";
     return "bg-muted text-muted-foreground";
   };
+
+  function moveSelection(delta: number): void {
+    if (filteredTasks.length === 0) return;
+    const currentIndex = filteredTasks.findIndex((task) => task.id === selectedTaskId);
+    const nextIndex =
+      currentIndex < 0
+        ? delta > 0
+          ? 0
+          : filteredTasks.length - 1
+        : (currentIndex + delta + filteredTasks.length) % filteredTasks.length;
+    const nextTask = filteredTasks[nextIndex];
+    if (nextTask) onSelect(nextTask.id);
+  }
+
+  function onListKeydown(event: KeyboardEvent): void {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveSelection(1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveSelection(-1);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      const first = filteredTasks[0];
+      if (first) onSelect(first.id);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      const last = filteredTasks[filteredTasks.length - 1];
+      if (last) onSelect(last.id);
+    }
+  }
 </script>
 
 <div class="flex h-full flex-col border-r border-border">
@@ -81,12 +112,13 @@
       <button
         type="button"
         class="shrink-0 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        aria-label={t("tasks_create_button")}
         onclick={onCreate}
       >
         {t("tasks_create_button")}
       </button>
     </div>
-    <div class="flex flex-wrap gap-1.5">
+    <div class="flex flex-wrap gap-1.5" role="tablist" aria-label={t("tasks_filter_group_label")}>
       {#each filters as option (option.id)}
         <button
           type="button"
@@ -94,6 +126,8 @@
             {filter === option.id
             ? 'border-primary bg-primary/10 text-primary'
             : 'border-border text-muted-foreground hover:bg-muted'}"
+          aria-pressed={filter === option.id}
+          aria-label={t(option.labelKey)}
           onclick={() => onFilterChange(option.id)}
         >
           {t(option.labelKey)}
@@ -102,7 +136,13 @@
     </div>
   </div>
 
-  <div class="flex-1 overflow-y-auto p-2">
+  <div
+    class="flex-1 overflow-y-auto p-2"
+    role="listbox"
+    aria-label={t("tasks_title")}
+    tabindex="0"
+    onkeydown={onListKeydown}
+  >
     {#if loading && tasks.length === 0}
       <p class="px-3 py-6 text-xs text-muted-foreground">{t("common_loading")}</p>
     {:else if filteredTasks.length === 0}
@@ -117,6 +157,8 @@
                 {selectedTaskId === task.id
                 ? 'border-primary/40 bg-primary/10'
                 : 'border-transparent hover:border-border hover:bg-muted/40'}"
+              aria-current={selectedTaskId === task.id ? "true" : undefined}
+              aria-label={t("tasks_select_task_aria", { title: task.title })}
               onclick={() => onSelect(task.id)}
             >
               <div class="flex items-start justify-between gap-2">

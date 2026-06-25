@@ -11,6 +11,9 @@ import type {
   TaskReviewDecision,
   TaskStatus,
 } from "$lib/types/task";
+import { isActiveStatus } from "$lib/chat/task-status-helpers";
+
+export type TaskFilter = "all" | "active" | "attention" | "review" | "done" | "failed" | "archived";
 
 export class TaskCoreStore {
   tasks = $state<TaskRecord[]>([]);
@@ -28,9 +31,66 @@ export class TaskCoreStore {
   }
 
   get active(): TaskRecord[] {
-    return this.tasks.filter((task) =>
-      ["running", "needs_attention", "verifying", "review"].includes(task.status),
-    );
+    return this.tasks.filter((task) => isActiveStatus(task.status));
+  }
+
+  get needsAttention(): TaskRecord[] {
+    return this.tasks.filter((task) => task.status === "needs_attention");
+  }
+
+  get inReview(): TaskRecord[] {
+    return this.tasks.filter((task) => task.status === "review");
+  }
+
+  get completed(): TaskRecord[] {
+    return this.tasks.filter((task) => task.status === "done");
+  }
+
+  get failed(): TaskRecord[] {
+    return this.tasks.filter((task) => task.status === "failed");
+  }
+
+  get archived(): TaskRecord[] {
+    return this.tasks.filter((task) => task.status === "archived");
+  }
+
+  countByStatus(): Record<TaskStatus, number> {
+    const counts: Record<TaskStatus, number> = {
+      draft: 0,
+      ready: 0,
+      running: 0,
+      needs_attention: 0,
+      verifying: 0,
+      review: 0,
+      done: 0,
+      failed: 0,
+      archived: 0,
+    };
+    for (const task of this.tasks) {
+      counts[task.status] += 1;
+    }
+    return counts;
+  }
+
+  filterBy(predicate: TaskFilter): TaskRecord[] {
+    switch (predicate) {
+      case "all":
+        return this.tasks;
+      case "active":
+        return this.active;
+      case "attention":
+        return this.needsAttention;
+      case "review":
+        return this.inReview;
+      case "done":
+        return this.completed;
+      case "failed":
+        return this.failed;
+      case "archived":
+        return this.archived;
+      default:
+        return this.tasks;
+    }
   }
 
   refresh(): Promise<void> {
