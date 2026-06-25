@@ -697,6 +697,7 @@ fn run_import_pipeline(
         cli_session_path: Some(relative_path.to_string()), // Store relative path from archive
         cli_usage_incomplete: None,
         deleted_at: None,
+        archived_at: None,
         no_session_persistence: false,
         execution_path: Some(ExecutionPath::SessionActor),
         conversation_ref: Some(ConversationRef::ClaudeSession(session_id.to_string())),

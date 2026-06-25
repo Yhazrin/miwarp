@@ -1,11 +1,11 @@
 /**
  * Auto-name gating logic for chat sessions.
  *
- * Extracted as pure functions so the latch/guard semantics can be
- * unit-tested without DOM or Svelte runtime.
+ * Titles are generated asynchronously via a one-shot Claude print call
+ * once the first turn reaches idle; `deriveAutoName` remains the fallback.
  */
 
-/** Derive an auto-name from the first line of a prompt. Truncates at 40 chars. */
+/** Derive a fallback title from the first line of a prompt. Truncates at 40 chars. */
 export function deriveAutoName(prompt: string): string {
   const firstLine = prompt.split("\n")[0].trim();
   if (!firstLine) return "";
@@ -21,22 +21,29 @@ export interface AutoNameState {
 }
 
 /**
- * Determine whether auto-name should fire for the current state.
+ * Determine whether auto-title generation should start.
  *
- * Returns `{ fire: true, autoName }` when all conditions are met:
- * - phase is "idle"
- * - run exists with a prompt but no name yet
- * - auto-name has not already been attempted for this run (`autoNameDone` is false)
+ * Fires when:
+ * - phase is "idle" (first turn finished)
+ * - run exists with a prompt but no custom name yet
+ * - auto-name has not already been attempted for this run
+ * - prompt is not a slash command
  */
+export function shouldTriggerAutoTitle(state: AutoNameState): boolean {
+  if (state.phase !== "idle") return false;
+  if (!state.runId) return false;
+  if (state.runName?.trim()) return false;
+  if (state.autoNameDone) return false;
+  const prompt = state.prompt?.trim();
+  if (!prompt) return false;
+  if (prompt.startsWith("/")) return false;
+  return true;
+}
+
+/** @deprecated Use {@link shouldTriggerAutoTitle} — kept for older tests/callers. */
 export function shouldAutoName(state: AutoNameState): { fire: boolean; autoName?: string } {
-  if (state.phase !== "idle") return { fire: false };
-  if (!state.runId) return { fire: false };
-  if (state.runName) return { fire: false };
-  if (state.autoNameDone) return { fire: false };
-  if (!state.prompt) return { fire: false };
-
-  const autoName = deriveAutoName(state.prompt);
+  if (!shouldTriggerAutoTitle(state)) return { fire: false };
+  const autoName = deriveAutoName(state.prompt ?? "");
   if (!autoName) return { fire: false };
-
   return { fire: true, autoName };
 }

@@ -247,10 +247,17 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
 
     if (bootstrap) {
       dbg("chat", "bootstrap from settings return (skip cold API)");
-      applyLoadedSettings(bootstrap.settings);
       if (bootstrap.agentSettings) {
         setAgentSettings(bootstrap.agentSettings);
         setCurrentEffort("");
+      }
+      // Snapshot is taken before /settings edits — always reload persisted user settings.
+      try {
+        const freshSettings = await api.getUserSettings();
+        applyLoadedSettings(freshSettings);
+      } catch (e) {
+        dbgWarn("chat", "failed to load settings after settings hop:", e);
+        applyLoadedSettings(bootstrap.settings);
       }
       api
         .getAuthOverview()

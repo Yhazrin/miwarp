@@ -83,6 +83,17 @@ pub async fn dispatch_command(
             crate::commands::runs::rename_run(id, name)?;
             Ok(json!(true))
         }
+        "generate_run_title" => {
+            let run_id = extract_str(&params, "runId")?;
+            // Web-server path: pass the session map so the title can route
+            // through the actor mailbox when the session is alive.
+            let title = crate::agent::title_generator::generate_for_run(
+                &run_id,
+                Some(state.sessions.clone()),
+            )
+            .await?;
+            Ok(json!({ "title": title }))
+        }
         "soft_delete_runs" => {
             let ids: Vec<String> = params
                 .get("ids")

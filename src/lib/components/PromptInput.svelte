@@ -287,6 +287,25 @@
     scheduleAutoResize();
   });
 
+  // ── v1.0.9: collapse the multi-line composer back to a capsule when the
+  //  textarea is blanked (after send, after a virtual slash command, etc.).
+  //  The capsule → multi-line transition is driven by autoResize via input
+  //  events; the reverse is normally triggered by the same code path, but
+  //  programmatic clears (handleSend, /btw, /model) don't fire input events,
+  //  so we watch the text length here as a safety net. We compare prev/cur
+  //  to avoid collapsing on initial mount or while the user is typing.
+  let _prevInputLen = 0;
+  $effect(() => {
+    const len = store.inputText.length;
+    const wasNonEmpty = _prevInputLen > 0;
+    const isEmpty = len === 0;
+    _prevInputLen = len;
+    if (wasNonEmpty && isEmpty && capsuleExpanded && !pendingPermission) {
+      capsuleExpanded = false;
+      scheduleAutoResize();
+    }
+  });
+
   // Auto-close BTW mode when agent stops running
   $effect(() => {
     if (!running) btwMode = false;
@@ -1298,6 +1317,7 @@
     store.pendingPathRefs = [];
     resetHistory(histState);
     if (store.textareaEl) store.textareaEl.style.height = "auto";
+    // capsuleExpanded is collapsed by the inputText-watcher $effect below.
 
     Promise.resolve()
       .then(() => onSend(text, attachments))

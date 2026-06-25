@@ -6,7 +6,7 @@
  *   Expanded  → same 4 core icons stay centered; flanked by workspace + system icons.
  *
  *  Three groups separated by dividers:
- *    [files, memory, history]  |  [new-session, workspace, model, slash]  |  [progress, scheduled, plugins, settings]
+ *    [files, personal, history]  |  [new-session, workspace, model, slash]  |  [progress, scheduled, plugins, settings]
  */
 import type { LucideIconName } from "$lib/lucide-icon";
 
@@ -17,7 +17,7 @@ export type ToolbarIconId =
   | "slash"
   | "progress"
   | "files"
-  | "memory"
+  | "personal"
   | "history"
   | "scheduled"
   | "plugins"
@@ -38,7 +38,13 @@ export interface ToolbarIconDef {
 // ── Left flanking group (workspace tools) ──
 const LEFT_GROUP: ToolbarIconDef[] = [
   { id: "files", labelKey: "nav_explorer", icon: "folder-open", href: "/explorer", group: "left" },
-  { id: "memory", labelKey: "nav_memory", icon: "scroll-text", href: "/memory", group: "left" },
+  {
+    id: "personal",
+    labelKey: "nav_personal",
+    icon: "circle-user",
+    href: "/personal",
+    group: "left",
+  },
   { id: "history", labelKey: "nav_history", icon: "clock", href: "/history", group: "left" },
 ];
 

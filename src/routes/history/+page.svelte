@@ -222,9 +222,9 @@
 
 <div class="flex h-full flex-col overflow-hidden">
   <!-- Header -->
-  <div class="shrink-0 border-b border-border px-6 py-4">
-    <h1 class="text-xl font-semibold text-foreground">{t("history_title")}</h1>
-    <p class="mt-1 text-sm text-muted-foreground">{t("history_subtitle")}</p>
+  <div class="shrink-0 px-6 py-4">
+    <h1 class="text-xl font-semibold text-sidebar-foreground">{t("history_title")}</h1>
+    <p class="mt-1 text-sm text-sidebar-foreground/70">{t("history_subtitle")}</p>
   </div>
 
   <div class="flex-1 overflow-y-auto px-6 py-4">
@@ -233,7 +233,7 @@
       <div class="relative flex-1">
         <Icon
           name="search"
-          class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-sidebar-foreground/70"
         />
         <input
           type="text"
@@ -242,10 +242,12 @@
           placeholder={searchMode === "semantic"
             ? t("history_searchPlaceholderSemantic")
             : t("history_searchPlaceholder")}
-          class="w-full rounded-lg border border-border bg-background py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          class="w-full rounded-lg border border-sidebar-border bg-sidebar py-2 pl-10 pr-4 text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
         />
       </div>
-      <div class="flex items-center rounded-lg border border-border text-xs overflow-hidden">
+      <div
+        class="flex items-center rounded-lg border border-sidebar-border text-xs overflow-hidden"
+      >
         <button
           type="button"
           onclick={() => {
@@ -253,7 +255,7 @@
           }}
           class="px-2.5 py-1.5 transition-colors {searchMode === 'keyword'
             ? 'bg-primary text-primary-foreground'
-            : 'text-muted-foreground hover:bg-muted/50'}"
+            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50'}"
         >
           {t("history_searchKeyword")}
         </button>
@@ -264,7 +266,7 @@
           }}
           class="px-2.5 py-1.5 transition-colors {searchMode === 'semantic'
             ? 'bg-primary text-primary-foreground'
-            : 'text-muted-foreground hover:bg-muted/50'}"
+            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50'}"
           title={t("history_searchSemanticTooltip")}
         >
           {t("history_searchSemantic")}
@@ -274,9 +276,9 @@
       <button
         type="button"
         onclick={() => (showAdvancedFilters = !showAdvancedFilters)}
-        class="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm transition-colors {showAdvancedFilters
+        class="flex items-center gap-1.5 rounded-lg border border-sidebar-border px-3 py-2 text-sm transition-colors {showAdvancedFilters
           ? 'bg-primary/10 text-primary'
-          : 'text-muted-foreground hover:bg-muted/50'}"
+          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/50'}"
       >
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z" />
@@ -294,7 +296,7 @@
           class="rounded-full px-3 py-1 text-xs font-medium transition-colors {activeStatusFilter ===
           pill.key
             ? 'bg-primary text-primary-foreground'
-            : 'bg-muted text-muted-foreground hover:bg-muted/80'}"
+            : 'bg-sidebar-accent/30 text-sidebar-foreground/70 hover:bg-sidebar-accent/50'}"
         >
           {pill.label}
         </button>
@@ -304,7 +306,7 @@
     <!-- Advanced filters (collapsible) -->
     {#if showAdvancedFilters}
       <div
-        class="mb-4 rounded-lg border border-border bg-muted/20 p-4"
+        class="mb-4 rounded-lg border border-sidebar-border bg-sidebar-accent/20 p-4"
         transition:slide={{ duration: 200 }}
       >
         <!-- Row 1: Dropdowns + Date range -->
@@ -313,14 +315,14 @@
           <div>
             <label
               for="history-project-filter"
-              class="mb-1.5 block text-xs font-medium text-muted-foreground"
+              class="mb-1.5 block text-xs font-medium text-sidebar-foreground/70"
               >{t("history_project")}</label
             >
             <div class="relative">
               <select
                 id="history-project-filter"
                 onchange={(e) => onProjectFilter(e.currentTarget.value || undefined)}
-                class="h-8 w-full appearance-none rounded-md border border-border bg-background px-2.5 pr-7 text-[13px] text-foreground transition-colors hover:border-muted-foreground/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+                class="h-8 w-full appearance-none rounded-md border border-sidebar-border bg-sidebar px-2.5 pr-7 text-[13px] text-sidebar-foreground transition-colors hover:border-sidebar-foreground/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
               >
                 <option value="">{t("history_allProjects")}</option>
                 {#if response?.facets}
@@ -330,7 +332,7 @@
                 {/if}
               </select>
               <svg
-                class="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                class="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sidebar-foreground/70"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -345,14 +347,14 @@
           <div>
             <label
               for="history-agent-filter"
-              class="mb-1.5 block text-xs font-medium text-muted-foreground"
+              class="mb-1.5 block text-xs font-medium text-sidebar-foreground/70"
               >{t("history_agent")}</label
             >
             <div class="relative">
               <select
                 id="history-agent-filter"
                 onchange={(e) => onAgentFilter(e.currentTarget.value || undefined)}
-                class="h-8 w-full appearance-none rounded-md border border-border bg-background px-2.5 pr-7 text-[13px] text-foreground transition-colors hover:border-muted-foreground/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+                class="h-8 w-full appearance-none rounded-md border border-sidebar-border bg-sidebar px-2.5 pr-7 text-[13px] text-sidebar-foreground transition-colors hover:border-sidebar-foreground/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
               >
                 <option value="">{t("history_allAgents")}</option>
                 {#if response?.facets}
@@ -362,7 +364,7 @@
                 {/if}
               </select>
               <svg
-                class="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+                class="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sidebar-foreground/70"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -375,7 +377,7 @@
 
           <!-- Date range presets -->
           <div class="col-span-2">
-            <span class="mb-1.5 block text-xs font-medium text-muted-foreground"
+            <span class="mb-1.5 block text-xs font-medium text-sidebar-foreground/70"
               >{t("history_dateRange")}</span
             >
             <div class="flex gap-1">
@@ -385,8 +387,8 @@
                   onclick={() => onDateRange(opt.key)}
                   class="h-8 rounded-md px-3 text-[13px] transition-colors {activeDateRange ===
                   opt.key
-                    ? 'bg-foreground/10 text-foreground font-medium'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
+                    ? 'bg-sidebar-foreground/10 text-sidebar-foreground font-medium'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'}"
                 >
                   {opt.label}
                 </button>
@@ -400,12 +402,12 @@
           <div>
             <label
               for="history-cost-min"
-              class="mb-1.5 block text-xs font-medium text-muted-foreground"
+              class="mb-1.5 block text-xs font-medium text-sidebar-foreground/70"
               >{t("history_costMin")}</label
             >
             <div class="relative">
               <span
-                class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground"
+                class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] text-sidebar-foreground/70"
                 >$</span
               >
               <input
@@ -415,19 +417,19 @@
                 min="0"
                 placeholder="0.00"
                 onchange={(e) => onCostChange("costMin", e.currentTarget.value)}
-                class="h-8 w-full rounded-md border border-border bg-background pl-6 pr-2.5 text-[13px] text-foreground transition-colors hover:border-muted-foreground/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                class="h-8 w-full rounded-md border border-sidebar-border bg-sidebar pl-6 pr-2.5 text-[13px] text-sidebar-foreground transition-colors hover:border-sidebar-foreground/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
             </div>
           </div>
           <div>
             <label
               for="history-cost-max"
-              class="mb-1.5 block text-xs font-medium text-muted-foreground"
+              class="mb-1.5 block text-xs font-medium text-sidebar-foreground/70"
               >{t("history_costMax")}</label
             >
             <div class="relative">
               <span
-                class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] text-muted-foreground"
+                class="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] text-sidebar-foreground/70"
                 >$</span
               >
               <input
@@ -437,7 +439,7 @@
                 min="0"
                 placeholder="∞"
                 onchange={(e) => onCostChange("costMax", e.currentTarget.value)}
-                class="h-8 w-full rounded-md border border-border bg-background pl-6 pr-2.5 text-[13px] text-foreground transition-colors hover:border-muted-foreground/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                class="h-8 w-full rounded-md border border-sidebar-border bg-sidebar pl-6 pr-2.5 text-[13px] text-sidebar-foreground transition-colors hover:border-sidebar-foreground/40 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
             </div>
           </div>
@@ -446,7 +448,7 @@
             <button
               type="button"
               onclick={clearFilters}
-              class="rounded-md px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              class="rounded-md px-3 py-1 text-xs text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
             >
               {t("history_clearFilters")}
             </button>
@@ -455,8 +457,8 @@
 
         <!-- Row 3: Tool chips -->
         {#if stableTools.length}
-          <div class="mt-3 border-t border-border/50 pt-3">
-            <span class="mb-2 block text-xs font-medium text-muted-foreground"
+          <div class="mt-3 border-t border-sidebar-border/50 pt-3">
+            <span class="mb-2 block text-xs font-medium text-sidebar-foreground/70"
               >{t("history_tools")}</span
             >
             <div class="flex flex-wrap gap-1.5">
@@ -468,10 +470,10 @@
                     tool.value,
                   )
                     ? 'bg-primary/15 text-primary border border-primary/30 font-medium'
-                    : 'bg-muted/50 text-muted-foreground border border-transparent hover:bg-muted hover:text-foreground'}"
+                    : 'bg-sidebar-accent/50 text-sidebar-foreground/70 border border-transparent hover:bg-sidebar-accent hover:text-sidebar-foreground'}"
                 >
                   {tool.value}
-                  <span class="ml-0.5 text-muted-foreground/70">{tool.count}</span>
+                  <span class="ml-0.5 text-sidebar-foreground/70">{tool.count}</span>
                 </button>
               {/each}
             </div>
@@ -483,7 +485,7 @@
     <!-- Summary bar (always visible once we have data; subtle opacity during reload) -->
     {#if response}
       <div
-        class="mb-3 flex items-center justify-between text-sm text-muted-foreground transition-opacity"
+        class="mb-3 flex items-center justify-between text-sm text-sidebar-foreground/70 transition-opacity"
         class:opacity-50={loading}
       >
         <span>
@@ -500,8 +502,8 @@
               class="rounded px-2 py-0.5 text-xs transition-colors {filters.sortBy ===
                 sortOpt.key ||
               (!filters.sortBy && sortOpt.key === 'date')
-                ? 'bg-muted text-foreground'
-                : 'hover:bg-muted/50'}"
+                ? 'bg-sidebar-accent/50 text-sidebar-foreground'
+                : 'hover:bg-sidebar-accent/50'}"
             >
               {sortOpt.label}
               {#if filters.sortBy === sortOpt.key || (!filters.sortBy && sortOpt.key === "date")}
@@ -517,7 +519,7 @@
     {#if loading && !response}
       <div class="space-y-2">
         {#each Array(6) as _}
-          <div class="rounded-lg border border-border/50 bg-card/50 p-3 space-y-2">
+          <div class="rounded-lg border border-sidebar-border/50 bg-sidebar/50 p-3 space-y-2">
             <div class="flex items-center justify-between">
               <SkeletonLine width="40%" height="0.875rem" />
               <SkeletonLine width="4rem" height="1rem" rounded="rounded-full" />
@@ -541,14 +543,14 @@
           <button
             type="button"
             onclick={() => goToRun(run.runId)}
-            class="w-full rounded-lg border border-border bg-card p-4 text-left transition-colors hover:bg-muted/30"
+            class="w-full rounded-lg border border-sidebar-border bg-sidebar p-4 text-left transition-colors hover:bg-sidebar-accent/30"
           >
             <div class="flex items-start justify-between gap-3">
               <!-- Left side -->
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
                   <span class="h-2 w-2 shrink-0 rounded-full {statusColor(run.status)}"></span>
-                  <span class="truncate text-sm font-medium text-foreground">
+                  <span class="truncate text-sm font-medium text-sidebar-foreground">
                     {run.name || run.promptPreview || t("history_untitled")}
                   </span>
                   {#if run.hasErrors}
@@ -559,7 +561,7 @@
                     </span>
                   {/if}
                 </div>
-                <div class="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                <div class="mt-1 flex items-center gap-2 text-xs text-sidebar-foreground/70">
                   <span>{projectDisplayName(run.cwd)}</span>
                   <span>·</span>
                   <span>{relativeTime(run.startedAt)}</span>
@@ -573,14 +575,14 @@
                   <div class="mt-2 flex flex-wrap gap-1">
                     {#each run.toolsUsed.slice(0, 6) as tool}
                       <span
-                        class="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                        class="rounded bg-sidebar-accent px-1.5 py-0.5 text-[10px] text-sidebar-foreground/70"
                       >
                         {tool}
                       </span>
                     {/each}
                     {#if run.toolsUsed.length > 6}
                       <span
-                        class="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                        class="rounded bg-sidebar-accent px-1.5 py-0.5 text-[10px] text-sidebar-foreground/70"
                       >
                         +{run.toolsUsed.length - 6}
                       </span>
@@ -591,14 +593,14 @@
 
               <!-- Right side -->
               <div class="shrink-0 text-right">
-                <div class="text-sm font-medium text-foreground">
+                <div class="text-sm font-medium text-sidebar-foreground">
                   {formatCost(run.totalCostUsd)}
                 </div>
-                <div class="mt-0.5 text-xs text-muted-foreground">
+                <div class="mt-0.5 text-xs text-sidebar-foreground/70">
                   {t("history_turns", { count: String(run.numTurns) })}
                 </div>
                 {#if run.filesTouchedCount > 0}
-                  <div class="text-xs text-muted-foreground">
+                  <div class="text-xs text-sidebar-foreground/70">
                     {t("history_files", { count: String(run.filesTouchedCount) })}
                   </div>
                 {/if}
@@ -614,7 +616,7 @@
           <button
             type="button"
             onclick={() => loadData(true)}
-            class="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
+            class="rounded-lg border border-sidebar-border px-4 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
             disabled={loading}
           >
             {#if loading}

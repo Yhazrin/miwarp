@@ -282,6 +282,12 @@ export interface UserSettings {
    * heavier traditional macOS sidebar material. Only consulted on
    * macOS; ignored on Windows/Linux. */
   native_window_glass_material?: "header_view" | "sidebar";
+  /** Display name appended to every session's system prompt. */
+  user_display_name?: string;
+  /** Role / occupation appended to every session's system prompt. */
+  user_role?: string;
+  /** IANA time zone (e.g. "Asia/Shanghai") appended to every session's system prompt. */
+  user_timezone?: string;
   updated_at: string;
 }
 
@@ -1583,6 +1589,20 @@ export interface AuthOverview {
   app_has_credentials: boolean;
   app_platform_id?: string;
   app_platform_name?: string;
+}
+
+export interface ProductBootstrapStatus {
+  version: number;
+  targetVersion: number;
+  skillsInstalled: string[];
+  appendPromptApplied: boolean;
+  completedAt?: string | null;
+}
+
+export interface ProductBootstrapRunResult {
+  skillsInstalled: string[];
+  appendPromptApplied: boolean;
+  skipped: boolean;
 }
 
 export interface InstallMethod {

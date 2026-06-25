@@ -21,17 +21,17 @@
   }
 </script>
 
-<div class="flex h-full flex-col border-r border-border">
-  <div class="shrink-0 border-b border-border px-4 py-3">
-    <h2 class="text-sm font-semibold text-foreground">{t("workspace_list_title")}</h2>
-    <p class="mt-0.5 text-xs text-muted-foreground">{t("workspace_list_subtitle")}</p>
+<div class="flex h-full flex-col">
+  <div class="shrink-0 border-b border-sidebar-border/70 px-4 py-3">
+    <h2 class="text-sm font-semibold text-sidebar-foreground">{t("workspace_list_title")}</h2>
+    <p class="mt-0.5 text-xs text-sidebar-foreground/70">{t("workspace_list_subtitle")}</p>
   </div>
 
   <div class="flex-1 overflow-y-auto p-2">
     {#if loading && entries.length === 0}
-      <div class="px-3 py-6 text-xs text-muted-foreground">{t("common_loading")}</div>
+      <div class="px-3 py-6 text-xs text-sidebar-foreground/70">{t("common_loading")}</div>
     {:else if entries.length === 0}
-      <div class="px-3 py-6 text-xs text-muted-foreground">{t("workspace_empty_list")}</div>
+      <div class="px-3 py-6 text-xs text-sidebar-foreground/70">{t("workspace_empty_list")}</div>
     {:else}
       <ul class="space-y-1">
         {#each entries as entry (entry.folderKey)}
@@ -41,17 +41,17 @@
               class="w-full rounded-lg border px-3 py-2.5 text-left transition-colors
                 {selectedCwd === entry.cwd
                 ? 'border-primary/40 bg-primary/10'
-                : 'border-transparent hover:border-border hover:bg-muted/40'}"
+                : 'border-transparent hover:border-sidebar-border hover:bg-sidebar-accent/40'}"
               onclick={() => onSelect(entry.cwd)}
             >
               <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
-                  <p class="truncate text-sm font-medium text-foreground">
+                  <p class="truncate text-sm font-medium text-sidebar-foreground">
                     {displayLabel(entry)}
                   </p>
                   {#if !entry.isUncategorized}
                     <p
-                      class="truncate font-mono text-[10px] text-muted-foreground"
+                      class="truncate font-mono text-[10px] text-sidebar-foreground/70"
                       title={entry.cwd}
                     >
                       {entry.cwd}
@@ -84,7 +84,7 @@
                 </div>
               </div>
               <div
-                class="mt-1 flex items-center justify-between gap-2 text-[10px] text-muted-foreground"
+                class="mt-1 flex items-center justify-between gap-2 text-[10px] text-sidebar-foreground/70"
               >
                 <span>{entry.conversationCount} {t("workspace_sessions_count")}</span>
                 {#if entry.latestActivityAt}

@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "name": "schedule",
+      "description": "Create a scheduled task that runs on a recurring schedule or at a specific time",
+      "category": "automation",
+      "icon": "clock",
+      "tags": ["task", "schedule", "automation"]
+    },
+    {
+      "name": "consolidate-memory",
+      "description": "Review memory files, merge duplicates, flag stale facts, and preserve provenance",
+      "category": "memory",
+      "icon": "brain",
+      "tags": ["memory", "organization", "cleanup"]
+    },
+    {
+      "name": "setup-cowork",
+      "description": "Guide the user through workspace, runtime, skill, and integration setup",
+      "category": "integrations",
+      "icon": "rocket",
+      "tags": ["setup", "runtime", "integration"]
+    },
+    {
+      "name": "visualize-data",
+      "description": "Turn structured data into a bounded KPI view, chart specification, and written conclusion",
+      "category": "development",
+      "icon": "bar-chart-2",
+      "tags": ["visualization", "data", "chart", "kpi", "vega-lite"]
+    },
+    {
+      "name": "mind-map",
+      "description": "Produce hierarchical mind maps with Mermaid mindmap syntax and a plain-text outline",
+      "category": "productivity",
+      "icon": "network",
+      "tags": ["mindmap", "brainstorm", "hierarchy", "mermaid", "outline"]
+    },
+    {
+      "name": "architecture-diagram",
+      "description": "Explain system structure and runtime behavior with safe Mermaid diagrams and supporting prose",
+      "category": "development",
+      "icon": "workflow",
+      "tags": ["architecture", "diagram", "mermaid", "sequence", "flowchart"]
+    },
+    {
+      "name": "project-status-dashboard",
+      "description": "Summarize delivery health with milestones, progress, risks, and measurable evidence",
+      "category": "productivity",
+      "icon": "gauge",
+      "tags": ["project", "status", "dashboard", "progress", "milestone"]
+    },
+    {
+      "name": "decision-map",
+      "description": "Compare options, constraints, consequences, and a recommended decision visually",
+      "category": "productivity",
+      "icon": "git-branch",
+      "tags": ["decision", "tradeoff", "options", "mermaid", "adr"]
+    }
+  ]
+}

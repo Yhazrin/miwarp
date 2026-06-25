@@ -25,6 +25,7 @@ pub mod mcp;
 pub mod notification;
 pub mod onboarding;
 pub mod plugins;
+pub mod product_bootstrap;
 pub mod remote_fs;
 pub mod run_journal;
 pub mod runs;

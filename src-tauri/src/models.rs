@@ -266,6 +266,11 @@ pub struct TaskRun {
     /// Soft-delete timestamp. Populated by incremental sync so frontend can remove deleted runs.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deleted_at: Option<String>,
+    /// Archive timestamp. Mirrors `RunMeta.archived_at`; archived members are
+    /// hidden from the default fleet view but stay discoverable with
+    /// `include_archived=true`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archived_at: Option<String>,
     /// Session creation mode (single-branch or worktree).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub creation_mode: Option<SessionCreationMode>,
@@ -438,6 +443,15 @@ pub struct UserSettings {
     /// Custom session status colors.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_status_colors: Option<SessionStatusColors>,
+    /// Display name appended to every session's system prompt.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_display_name: Option<String>,
+    /// Role / occupation appended to every session's system prompt.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_role: Option<String>,
+    /// IANA time zone (e.g. "Asia/Shanghai") appended to every session's system prompt.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_timezone: Option<String>,
     pub updated_at: String,
 }
 
@@ -468,7 +482,7 @@ fn default_ssh_port() -> u16 {
 }
 
 fn default_process_visibility() -> String {
-    "developer".to_string()
+    "output".to_string()
 }
 
 fn default_visual_performance_mode() -> String {
@@ -617,10 +631,13 @@ impl Default for UserSettings {
             native_window_glass_enabled: true,
             native_window_glass_material: "header_view".to_string(),
             cli_auto_sync_import_new: false,
-            process_visibility: "developer".to_string(),
+            process_visibility: "output".to_string(),
             visual_performance_mode: "auto".to_string(),
             session_island_alignment: default_session_island_alignment(),
             session_status_colors: None,
+            user_display_name: None,
+            user_role: None,
+            user_timezone: None,
             updated_at: now_iso(),
         }
     }
@@ -800,6 +817,12 @@ pub struct RunMeta {
     /// Soft-delete timestamp (ISO 8601). When set, run is hidden from all read paths.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deleted_at: Option<String>,
+    /// Archive timestamp (ISO 8601). Set by the fleet view's opportunistic reaper
+    /// when a non-running member sits idle past the threshold. Archived members
+    /// stay in storage (history-preserving) but are excluded from the default
+    /// fleet listing and metrics. Pass `include_archived=true` to surface them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub archived_at: Option<String>,
     /// Session creation mode (single-branch or worktree).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub creation_mode: Option<SessionCreationMode>,
@@ -923,6 +946,7 @@ impl RunMeta {
             conversation_ref: self.resolved_conversation_ref(),
             folder_id: self.folder_id.clone(),
             deleted_at: self.deleted_at.clone(),
+            archived_at: self.archived_at.clone(),
             creation_mode: self.creation_mode.clone(),
             worktree_path: self.worktree_path.clone(),
             worktree_branch: self.worktree_branch.clone(),

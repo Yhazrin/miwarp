@@ -9,10 +9,8 @@
     USER_SETTINGS_CHANGED_EVENT,
     updateUserSettings,
     listDirectory,
-    getGitSummary,
     listPromptFavorites,
     searchPrompts,
-    listMemoryFiles,
     softDeleteRuns,
     hardDeleteRuns,
     listAllSessionFolders,
@@ -37,12 +35,16 @@
   import UpdateBanner from "$lib/components/UpdateBanner.svelte";
   import VersionMismatchBanner from "$lib/components/VersionMismatchBanner.svelte";
   import { appUpdateCoordinator } from "$lib/stores/app-update-coordinator.svelte";
+  import { showToast } from "$lib/stores/toast-store.svelte";
   import {
     initBackendCapabilities,
     useIncrementalRunsSync,
   } from "$lib/backend-capabilities.svelte";
   import WindowDragArea from "$lib/components/WindowDragArea.svelte";
   import TopWindowDrag from "$lib/components/TopWindowDrag.svelte";
+  import SettingsSidebar from "$lib/components/settings/SettingsSidebar.svelte";
+  import ScheduledTasksSidebar from "$lib/components/ScheduledTasksSidebar.svelte";
+  import WorkspaceSidebar from "$lib/components/workspace/WorkspaceSidebar.svelte";
   import { IS_MAC } from "$lib/utils/platform";
   import {
     LS_PROJECT_CWD,
@@ -64,11 +66,7 @@
     EVT_FAVORITES_CHANGED,
     EVT_OPEN_PERMISSIONS,
     EVT_SHOW_WIZARD,
-    EVT_MEMORY_FILE_SELECTED,
-    EVT_MEMORY_FILE_SAVED,
-    EVT_MEMORY_SELECT,
     EVT_EXPLORER_FILE,
-    EVT_EXPLORER_DIFF,
     EVT_EXPLORER_FILE_SELECTED,
   } from "$lib/utils/bus-events";
   import { clampUiZoom, layoutPx } from "$lib/utils/ui-zoom";
@@ -87,14 +85,11 @@
     TaskRun,
     UserSettings,
     DirEntry,
-    GitSummary,
     PromptFavorite,
     PromptSearchResult,
-    MemoryFileCandidate,
     SessionFolder,
   } from "$lib/types";
   import { cwdDisplayLabel, truncate, snippetAround, relativeTime } from "$lib/utils/format";
-  import { filterVisibleCandidates } from "$lib/utils/memory-helpers";
   import {
     buildEnrichedProjectFolders,
     normalizeSessionFolderList,
@@ -260,10 +255,6 @@
   const sidebarModals = makeModalSlot(
     () => import("$lib/components/sidebar/SidebarModals.svelte"),
     "SidebarModals",
-  );
-  const memorySidebarGroup = makeModalSlot(
-    () => import("$lib/components/MemorySidebarGroup.svelte"),
-    "MemorySidebarGroup",
   );
 
   $effect(() => {
@@ -664,20 +655,6 @@
   let fileTree = $state<TreeNode[]>([]);
   let treeLoading = $state(false);
   let explorerSelectedFile = $state("");
-  let explorerTab = $state<"files" | "git">("files");
-  let explorerProjectOpen = $state(false);
-
-  // ── Git state (shown in sidebar Git tab when on /explorer) ──
-  let gitSummary = $state<GitSummary | null>(null);
-  let gitLoading = $state(false);
-
-  const GIT_STATUS_COLORS: Record<string, string> = {
-    M: "text-miwarp-status-info",
-    A: "text-miwarp-status-success",
-    D: "text-miwarp-status-error",
-    R: "text-miwarp-accent-violet",
-    "?": "text-muted-foreground",
-  };
 
   function entriesToNodes(entries: DirEntry[], parentPath: string, depth: number): TreeNode[] {
     return entries.map((e) => ({
@@ -736,103 +713,7 @@
     window.dispatchEvent(new CustomEvent(EVT_EXPLORER_FILE, { detail: { path: node.fullPath } }));
   }
 
-  let _gitSeq = 0;
-  let _gitLoadedCwd = "";
-  async function loadGitSummary() {
-    if (!projectCwd) {
-      gitSummary = null;
-      _gitLoadedCwd = "";
-      return;
-    }
-    const requestedCwd = projectCwd;
-    const seq = ++_gitSeq;
-    gitLoading = true;
-    try {
-      const result = await getGitSummary(requestedCwd);
-      if (seq !== _gitSeq) return; // stale response, discard
-      gitSummary = result;
-      _gitLoadedCwd = requestedCwd;
-      dbg("layout", "git summary loaded", {
-        branch: result.branch,
-        files: result.total_files,
-      });
-    } catch (e) {
-      if (seq !== _gitSeq) return;
-      dbgWarn("layout", "git summary load error", e);
-      gitSummary = null;
-      _gitLoadedCwd = "";
-    } finally {
-      if (seq === _gitSeq) gitLoading = false;
-    }
-  }
-
-  function selectDiffFile(filePath: string) {
-    // Notify explorer page to show diff
-    window.dispatchEvent(new CustomEvent(EVT_EXPLORER_DIFF, { detail: { path: filePath } }));
-  }
-
-  // ── Memory sidebar state (shown when on /memory) ──
-  let memoryCandidates = $state<MemoryFileCandidate[]>([]);
-  let memorySelectedFile = $state("");
-  let memoryLoading = $state(false);
-  let memoryScopeExpanded = $state<Record<string, boolean>>({
-    global: false,
-  });
-
-  let _partitioned = $derived.by(() => {
-    const project: typeof memoryCandidates = [];
-    const global: typeof memoryCandidates = [];
-    const memory: typeof memoryCandidates = [];
-    for (const c of memoryCandidates) {
-      if (c.scope === "project") project.push(c);
-      else if (c.scope === "global") global.push(c);
-      else if (c.scope === "memory") memory.push(c);
-    }
-    return { project, global, memory, folder: [...project, ...memory] };
-  });
-  let memoryScopeGlobal = $derived(_partitioned.global);
-  let memoryScopeFolder = $derived(_partitioned.folder);
-
-  let memoryCandidateSeq = 0;
-
-  async function loadMemoryCandidates(opts?: { soft?: boolean }) {
-    const seq = ++memoryCandidateSeq;
-    if (!opts?.soft) memoryLoading = true;
-    try {
-      const result = await listMemoryFiles(projectCwd || undefined);
-      if (seq !== memoryCandidateSeq) return; // stale — discard
-      memoryCandidates = result;
-      dbg("layout", "memory candidates loaded", {
-        count: result.length,
-        existing: result.filter((f) => f.exists).length,
-      });
-    } catch (e) {
-      if (seq !== memoryCandidateSeq) return;
-      if (opts?.soft) {
-        dbgWarn("layout", "soft memory refresh failed, keeping old data", e);
-      } else {
-        dbgWarn("layout", "memory candidates load error", e);
-        memoryCandidates = [];
-      }
-    } finally {
-      if (seq === memoryCandidateSeq) memoryLoading = false;
-    }
-  }
-
-  function selectMemoryFile(file: MemoryFileCandidate) {
-    // Don't set highlight immediately — page will confirm dirty state first.
-    // If confirmed, page sends ocv:memory-file-selected to ack the switch.
-    window.dispatchEvent(
-      new CustomEvent(EVT_MEMORY_SELECT, { detail: { path: file.path, exists: file.exists } }),
-    );
-  }
-
-  function toggleMemoryScope(scope: string) {
-    memoryScopeExpanded = { ...memoryScopeExpanded, [scope]: !memoryScopeExpanded[scope] };
-  }
-
   // Load tree when switching to explorer page or changing project
-  // Git summary is lazy-loaded when user clicks the Git tab (see below)
   let _prevExplorerCwd: string | undefined;
   $effect(() => {
     const _path = currentPath;
@@ -840,54 +721,15 @@
     if (_path?.startsWith("/explorer")) {
       if (_cwd) {
         loadRootTree();
-        // Invalidate git cache when cwd changes so Git tab reloads on next switch
-        if (_prevExplorerCwd !== undefined && _prevExplorerCwd !== _cwd) {
-          ++_gitSeq; // cancel in-flight request so it can't backfill _gitLoadedCwd
-          gitLoading = false;
-          _gitLoadedCwd = "";
-        }
         _prevExplorerCwd = _cwd;
       } else {
         // Increment seq to invalidate any in-flight requests
         ++_treeSeq;
-        ++_gitSeq;
         // Clear state
         fileTree = [];
-        gitSummary = null;
-        gitLoading = false;
         treeLoading = false;
-        _gitLoadedCwd = "";
         _prevExplorerCwd = _cwd;
       }
-    }
-  });
-
-  // Lazy-load git summary when user switches to Git tab (only on Explorer page)
-  $effect(() => {
-    if (
-      currentPath?.startsWith("/explorer") &&
-      explorerTab === "git" &&
-      projectCwd &&
-      _gitLoadedCwd !== projectCwd
-    ) {
-      loadGitSummary();
-    }
-  });
-
-  // Load memory candidates when switching to memory page or changing project
-  let _prevMemoryCwd: string | undefined;
-  $effect(() => {
-    const _path = currentPath;
-    const _cwd = projectCwd;
-    if (_path?.startsWith("/memory")) {
-      const cwdChanged = _cwd !== _prevMemoryCwd;
-      _prevMemoryCwd = _cwd;
-      if (cwdChanged) {
-        // Only clear project scope, keep Global/Memory to avoid visual jitter
-        // Use untrack to read memoryCandidates without adding it as a dependency
-        memoryCandidates = untrack(() => memoryCandidates).filter((c) => c.scope !== "project");
-      }
-      loadMemoryCandidates();
     }
   });
 
@@ -896,27 +738,18 @@
     // Core
     { path: "/chat", label: () => t("nav_chat"), icon: "message", group: "core" },
     { path: "/teams", label: () => t("nav_teams"), icon: "users", group: "core" },
-    { path: "/fleet", label: () => t("nav_fleet"), icon: "cpu", group: "core" },
+    { path: "/fleet", label: () => t("nav_fleet"), icon: "bot", group: "core" },
     {
       path: "/scheduled-tasks",
       label: () => t("nav_scheduledTasks"),
       icon: "schedule",
       group: "core",
     },
-    // Workspace
+    // Workspace hub + project tools (tasks/artifacts/specs/diagnostics reachable via /workspace or direct URL)
     { path: "/workspace", label: () => t("nav_workspace"), icon: "layout", group: "workspace" },
-    { path: "/tasks", label: () => t("nav_tasks"), icon: "task", group: "workspace" },
-    { path: "/artifacts", label: () => t("nav_artifacts"), icon: "artifact", group: "workspace" },
     { path: "/explorer", label: () => t("nav_explorer"), icon: "folder", group: "workspace" },
-    { path: "/memory", label: () => t("nav_memory"), icon: "book", group: "workspace" },
+    { path: "/personal", label: () => t("nav_personal"), icon: "circle-user", group: "workspace" },
     { path: "/history", label: () => t("nav_history"), icon: "clock", group: "workspace" },
-    { path: "/specs", label: () => t("nav_specs"), icon: "spec", group: "workspace" },
-    {
-      path: "/diagnostics",
-      label: () => t("nav_diagnostics"),
-      icon: "diagnostics",
-      group: "workspace",
-    },
     // Extensions
     { path: "/plugins", label: () => t("nav_extend"), icon: "zap", group: "extensions" },
     // System
@@ -1211,14 +1044,6 @@
     function onRunsChanged() {
       loadRuns();
       loadSessionFolders();
-      // Invalidate git cache unconditionally; if currently viewing Git tab on Explorer,
-      // reload immediately — otherwise lazy $effect picks it up on next visit.
-      ++_gitSeq; // cancel in-flight request so it can't backfill _gitLoadedCwd
-      gitLoading = false;
-      _gitLoadedCwd = "";
-      if (currentPath?.startsWith("/explorer") && explorerTab === "git") {
-        loadGitSummary();
-      }
     }
     window.addEventListener(EVT_RUNS_CHANGED, onRunsChanged);
 
@@ -1233,19 +1058,6 @@
       showSetupWizard = true;
     }
     window.addEventListener(EVT_SHOW_WIZARD, onShowWizard);
-
-    // Memory page signals which file it selected (for sidebar highlight sync)
-    function onMemoryFileSelected(e: Event) {
-      const path = (e as CustomEvent).detail?.path ?? "";
-      if (path) memorySelectedFile = path;
-    }
-    window.addEventListener(EVT_MEMORY_FILE_SELECTED, onMemoryFileSelected);
-
-    // Memory page signals a file was saved (refresh candidates to update exists status)
-    function onMemoryFileSaved() {
-      if (currentPath?.startsWith("/memory")) loadMemoryCandidates({ soft: true });
-    }
-    window.addEventListener(EVT_MEMORY_FILE_SAVED, onMemoryFileSaved);
 
     // Sync projectCwd when chat page picks a folder via dialog
     function handleCwdChanged() {
@@ -1340,6 +1152,34 @@
         unlistenCliAutoSync = fn;
       });
 
+    let unlistenProductBootstrap: (() => void) | undefined;
+    transport
+      .listen("product-bootstrap-applied", (payload: unknown) => {
+        const result = payload as {
+          skillsInstalled?: string[];
+          appendPromptApplied?: boolean;
+        };
+        const skillCount = result.skillsInstalled?.length ?? 0;
+        if (skillCount > 0 || result.appendPromptApplied) {
+          showToast(
+            t("productBootstrap_appliedToast", {
+              skills: String(skillCount),
+              style: result.appendPromptApplied
+                ? t("productBootstrap_styleOn")
+                : t("productBootstrap_styleOff"),
+            }),
+            "success",
+          );
+        }
+      })
+      .then((fn) => {
+        if (destroyed) {
+          fn();
+          return;
+        }
+        unlistenProductBootstrap = fn;
+      });
+
     // Visual performance mode hot-update (dispatched from settings page)
     const onPerfModeChanged = (e: Event) => {
       const mode = (e as CustomEvent).detail?.mode;
@@ -1361,6 +1201,7 @@
       resizeCleanup?.(); // Clean up resize drag if component unmounts mid-drag
       unlistenStatus?.();
       unlistenCliAutoSync?.();
+      unlistenProductBootstrap?.();
       clearInterval(interval);
       teamSubscription?.dispose();
       teamSubscription = null;
@@ -1371,8 +1212,6 @@
       window.removeEventListener(EVT_FAVORITES_CHANGED, onFavoritesChanged);
       window.removeEventListener(EVT_SHOW_WIZARD, onShowWizard);
       window.removeEventListener(EVT_CWD_CHANGED, handleCwdChanged);
-      window.removeEventListener(EVT_MEMORY_FILE_SELECTED, onMemoryFileSelected);
-      window.removeEventListener(EVT_MEMORY_FILE_SAVED, onMemoryFileSaved);
       window.removeEventListener(EVT_OPEN_PERMISSIONS, onOpenPermissions);
       document.removeEventListener("click", handleExternalLink, true);
       window.removeEventListener(EVT_EXPLORER_FILE_SELECTED, onExplorerFileSelected);
@@ -1681,7 +1520,7 @@
 
   // v1.0.9 perf: SidebarModals hosts 7 confirm dialogs. Any of the 7 open
   // flags may open it, so aggregate into one boolean that the loader's
-  // $effect can track. MemorySidebarGroup only matters on the memory route.
+  // $effect can track.
   let anySidebarModalOpen = $derived(
     deleteConfirmOpen ||
       batchDeleteConfirmOpen ||
@@ -1693,9 +1532,6 @@
   );
   $effect(() => {
     if (anySidebarModalOpen) void sidebarModals.ensure();
-  });
-  $effect(() => {
-    if (isMemoryPage) void memorySidebarGroup.ensure();
   });
 
   async function saveWorkspaceAlias(cwd: string, alias: string) {
@@ -1716,10 +1552,8 @@
     }
   }
 
-  // v1.0.9 perf: skip expensive folder tree computation on pages that don't
-  // render the sidebar content panel (settings, usage, release-notes, etc.).
-  // On those routes the sidebar only shows the icon rail; building the enriched
-  // tree from runs + sessionFolders + favorites + scheduledTasks is wasted work.
+  // v1.0.9 perf: skip expensive folder tree computation on pages that only show
+  // the icon rail or own their page-specific layout.
   let enrichedProjectFolders = $derived.by(() => {
     if (!needsLayoutContentPanel) return [] as ReturnType<typeof buildEnrichedProjectFolders>;
     return buildEnrichedProjectFolders(
@@ -1798,8 +1632,11 @@
   let isChatPage = $derived(currentPath === "/chat" || currentPath === "/");
   let isPluginsPage = $derived(currentPath.startsWith("/plugins"));
   let isExplorerPage = $derived(currentPath.startsWith("/explorer"));
-  let isMemoryPage = $derived(currentPath.startsWith("/memory"));
   let isTeamsPage = $derived(currentPath.startsWith("/teams"));
+  let isScheduledTasksPage = $derived(currentPath.startsWith("/scheduled-tasks"));
+  let isWorkspacePage = $derived(currentPath.startsWith("/workspace"));
+  // Whether the current page uses the layout's content panel (vs managing its own layout)
+  let needsLayoutContentPanel = $derived(routeNeedsLayoutContentPanel(currentPath));
 
   // Tracks the active team subscription so onMount can dispose it on unmount.
   // v1.0.9 perf: extracted from a 90-line inline block in onMount into a
@@ -1809,13 +1646,9 @@
   let teamSubscription: TeamSubscription | null = null;
 
   let isSettingsPage = $derived(currentPath.startsWith("/settings"));
-  // Whether the current page uses the layout's content panel (vs managing its own layout)
-  let needsLayoutContentPanel = $derived(routeNeedsLayoutContentPanel(currentPath));
 
   // v1.0.9 perf: deferred sidebar data — load session folders and scheduled
-  // tasks when the user first navigates to a sidebar-dependent page. On cold
-  // start at /settings this avoids 3 IPC calls that would otherwise run in
-  // onMount for data the settings page never renders.
+  // tasks when the user first navigates to a layout-sidebar page.
   let _sidebarDataLoaded = false;
   $effect(() => {
     if (!needsLayoutContentPanel || _sidebarDataLoaded) return;
@@ -2177,8 +2010,10 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<!-- eslint-disable-next-line svelte/no-dupe-style-properties — 100vh is a fallback for browsers without dvh support -->
-<div class="flex w-screen overflow-hidden" style="height: 100vh; height: 100dvh;">
+<div
+  class="relative flex w-screen overflow-hidden"
+  style="min-height: 100vh; height: 100dvh; --sidebar-effective-width: {sidebarEffectiveWidth}px;"
+>
   <!-- Sidebar: Icon Rail + Content Panel -->
   <aside
     class="sidebar-container shrink-0 text-sidebar-foreground"
@@ -2251,7 +2086,7 @@
                   stroke-linejoin="round"
                   ><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg
                 >
-              {:else if item.icon === "book"}
+              {:else if item.icon === "circle-user"}
                 <svg
                   class="h-[18px] w-[18px]"
                   viewBox="0 0 24 24"
@@ -2260,7 +2095,7 @@
                   stroke-width="2"
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  ><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg
+                  ><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /></svg
                 >
               {:else if item.icon === "chart"}
                 <svg
@@ -2329,6 +2164,8 @@
                     d="M16 3.13a4 4 0 0 1 0 7.75"
                   /></svg
                 >
+              {:else if item.icon === "bot"}
+                <Icon name="bot" class="h-[18px] w-[18px]" />
               {:else if item.icon === "task"}
                 <svg
                   class="h-[18px] w-[18px]"
@@ -2694,327 +2531,30 @@
               {/each}
             </div>
           {:else if isExplorerPage}
-            <!-- Explorer tab bar: Files / Git -->
-            <div class="flex shrink-0 border-b border-sidebar-border">
-              <button
-                type="button"
-                class="flex-1 py-1.5 text-xs font-medium text-center transition-colors
-              {explorerTab === 'files'
-                  ? 'text-sidebar-foreground border-b-2 border-primary'
-                  : 'text-muted-foreground hover:text-sidebar-foreground'}"
-                onclick={() => (explorerTab = "files")}>{t("sidebar_files")}</button
-              >
-              <button
-                type="button"
-                class="relative flex-1 py-1.5 text-xs font-medium text-center transition-colors
-              {explorerTab === 'git'
-                  ? 'text-sidebar-foreground border-b-2 border-primary'
-                  : 'text-muted-foreground hover:text-sidebar-foreground'}"
-                onclick={() => (explorerTab = "git")}
-                >{t("sidebar_git")}
-                {#if gitSummary && gitSummary.total_files > 0}
-                  <span
-                    class="ml-0.5 inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-[hsl(var(--miwarp-status-info)/0.8)] px-1 text-[10px] font-bold text-primary-foreground"
-                    >{gitSummary.total_files}</span
-                  >
-                {/if}
-              </button>
-            </div>
-
-            <!-- Compact project picker (below tabs) -->
-            <div class="relative shrink-0 border-b border-sidebar-border">
-              <button
-                type="button"
-                class="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-xs transition-colors hover:bg-sidebar-accent/50"
-                onclick={() => (explorerProjectOpen = !explorerProjectOpen)}
-              >
-                <svg
-                  class="h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  ><path
-                    d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
-                  /></svg
-                >
-                <span class="min-w-0 truncate text-sidebar-foreground"
-                  >{projectCwd
-                    ? cwdDisplayLabel(projectCwd)
-                    : t("sidebar_selectProjectBrowse")}</span
-                >
-                <Icon
-                  name="chevron-down"
-                  size="xs"
-                  class="ml-auto shrink-0 text-muted-foreground/50 transition-transform {explorerProjectOpen
-                    ? 'rotate-180'
-                    : ''}"
-                />
-              </button>
-              {#if explorerProjectOpen}
-                <div class="border-b border-sidebar-border bg-sidebar">
-                  {#each selectableFolders as folder (folder.folderKey)}
-                    <button
-                      type="button"
-                      class="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-xs transition-colors
-                      {folder.cwd === projectCwd
-                        ? 'bg-sidebar-accent text-sidebar-foreground'
-                        : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
-                      onclick={() => {
-                        projectCwd = folder.cwd;
-                        explorerProjectOpen = false;
-                      }}
-                    >
-                      <svg
-                        class="h-3 w-3 shrink-0 text-muted-foreground/70"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        ><path
-                          d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
-                        /></svg
-                      >
-                      <span class="min-w-0 truncate">{cwdDisplayLabel(folder.cwd)}</span>
-                    </button>
-                  {/each}
-                  <button
-                    type="button"
-                    class="flex w-full items-center gap-1.5 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-                    onclick={() => {
-                      pickFolder();
-                      explorerProjectOpen = false;
-                    }}
-                  >
-                    <Icon name="plus" size="xs" class="shrink-0" />
-                    <span>{t("project_openFolder")}</span>
-                  </button>
-                </div>
-              {/if}
-            </div>
-
-            <!-- Explorer tab content -->
-            {#if explorerTab === "files"}
-              <div class="flex-1 overflow-y-auto px-1 py-1">
-                {#if !projectCwd}
-                  {@const lastRemote = getLastTarget()}
-                  <EmptyState
-                    iconName="folder-open"
-                    title={lastRemote
-                      ? t("layout_remoteFileTreeUnavailable")
-                      : t("sidebar_selectProjectBrowse")}
-                    class="py-8"
-                  />
-                {:else if treeLoading}
-                  <div class="flex items-center justify-center py-12">
-                    <Spinner size="sm" />
-                  </div>
-                {:else if fileTree.length === 0}
-                  <EmptyState
-                    iconName="folder-open"
-                    title={t("sidebar_emptyDirectory")}
-                    class="py-8"
-                  />
-                {:else}
-                  {@render treeNodes(fileTree)}
-                {/if}
-              </div>
-            {:else}
-              <!-- Git tab -->
+            <!-- Explorer file tree -->
+            <div class="flex-1 overflow-y-auto px-1 py-1">
               {#if !projectCwd}
-                <div class="flex-1 flex items-center justify-center px-3">
-                  <EmptyState
-                    iconName="git-merge"
-                    title={t("sidebar_selectProjectGit")}
-                    class="py-8"
-                  />
-                </div>
-              {:else if gitLoading}
-                <div class="flex-1 flex items-center justify-center">
+                {@const lastRemote = getLastTarget()}
+                <EmptyState
+                  iconName="folder-open"
+                  title={lastRemote
+                    ? t("layout_remoteFileTreeUnavailable")
+                    : t("sidebar_selectProjectBrowse")}
+                  class="py-8"
+                />
+              {:else if treeLoading}
+                <div class="flex items-center justify-center py-12">
                   <Spinner size="sm" />
                 </div>
-              {:else if !gitSummary}
-                <div class="flex-1 flex items-center justify-center px-3">
-                  <EmptyState iconName="git-merge" title={t("sidebar_notGitRepo")} class="py-8" />
-                </div>
-              {:else}
-                <!-- Branch info -->
-                <div
-                  class="flex items-center gap-1.5 px-3 py-2 border-b border-sidebar-border shrink-0"
-                >
-                  <svg
-                    class="h-3 w-3 shrink-0 text-muted-foreground"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    ><circle cx="12" cy="12" r="3" /><line x1="3" x2="9" y1="12" y2="12" /><line
-                      x1="15"
-                      x2="21"
-                      y1="12"
-                      y2="12"
-                    /></svg
-                  >
-                  <span class="text-[12px] font-medium text-sidebar-foreground min-w-0 truncate"
-                    >{gitSummary.branch || t("sidebar_detached")}</span
-                  >
-                  <button
-                    type="button"
-                    class="ml-auto flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-                    onclick={loadGitSummary}
-                    aria-label={t("sidebar_refresh")}
-                    title={t("sidebar_refresh")}
-                  >
-                    <Icon name="refresh-cw" size="xs" />
-                  </button>
-                </div>
-                <!-- Summary -->
-                {#if gitSummary.total_files > 0}
-                  <div
-                    class="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground border-b border-sidebar-border shrink-0"
-                  >
-                    <span class="tabular-nums"
-                      >{gitSummary.total_files !== 1
-                        ? t("sidebar_changedFiles", { count: String(gitSummary.total_files) })
-                        : t("sidebar_changedFile", { count: String(gitSummary.total_files) })}</span
-                    >
-                    {#if gitSummary.total_insertions > 0}
-                      <span class="text-miwarp-status-success tabular-nums"
-                        >+{gitSummary.total_insertions}</span
-                      >
-                    {/if}
-                    {#if gitSummary.total_deletions > 0}
-                      <span class="text-miwarp-status-error tabular-nums"
-                        >-{gitSummary.total_deletions}</span
-                      >
-                    {/if}
-                  </div>
-                  <!-- Changed files list -->
-                  <div class="flex-1 overflow-y-auto">
-                    {#each gitSummary.files as file}
-                      <button
-                        type="button"
-                        class="flex w-full items-center gap-1.5 px-3 py-1 text-[12px] hover:bg-sidebar-accent/50 transition-colors"
-                        onclick={() => selectDiffFile(file.path)}
-                      >
-                        <span
-                          class="w-3 shrink-0 text-center font-mono text-[10px] font-bold {GIT_STATUS_COLORS[
-                            file.status
-                          ] ?? 'text-muted-foreground'}">{file.status}</span
-                        >
-                        <span class="flex-1 min-w-0 truncate text-sidebar-foreground text-left"
-                          >{file.path}</span
-                        >
-                        {#if file.insertions > 0}
-                          <span class="text-[10px] text-miwarp-status-success"
-                            >+{file.insertions}</span
-                          >
-                        {/if}
-                        {#if file.deletions > 0}
-                          <span class="text-[10px] text-miwarp-status-error">-{file.deletions}</span
-                          >
-                        {/if}
-                      </button>
-                    {/each}
-                  </div>
-                {:else}
-                  <div class="flex-1 flex items-center justify-center px-3">
-                    <div class="flex flex-col items-center gap-1.5 text-center">
-                      <Icon name="check" size="md" class="text-muted-foreground/30" />
-                      <p class="text-xs text-muted-foreground">{t("sidebar_workingTreeClean")}</p>
-                    </div>
-                  </div>
-                {/if}
-              {/if}
-            {/if}
-          {:else if isMemoryPage}
-            <!-- Memory file tree -->
-            <div class="flex-1 overflow-y-auto py-1">
-              <!-- Project folders (accordion: only one expanded at a time) -->
-              {#each selectableFolders as folder (folder.folderKey)}
-                <ProjectFolderItem
-                  {folder}
-                  label={cwdDisplayLabel(folder.cwd)}
-                  expanded={folder.cwd === projectCwd}
-                  showCount={false}
-                  onToggle={() => {
-                    projectCwd = projectCwd === folder.cwd ? "" : folder.cwd;
-                  }}
-                >
-                  {#if memoryLoading}
-                    <div class="flex items-center justify-center py-6">
-                      <Spinner size="sm" />
-                    </div>
-                  {:else if memoryScopeFolder.length > 0}
-                    {#each filterVisibleCandidates(memoryScopeFolder, true, memorySelectedFile) as file}
-                      <button
-                        type="button"
-                        class="flex w-full items-center gap-1.5 py-1 pl-4 pr-3 text-xs transition-colors
-                        {memorySelectedFile === file.path
-                          ? 'bg-sidebar-accent text-sidebar-foreground'
-                          : 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'}"
-                        onclick={() => selectMemoryFile(file)}
-                        title={file.path}
-                      >
-                        <svg
-                          class="h-3 w-3 shrink-0 {file.scope === 'memory'
-                            ? 'text-miwarp-status-warning'
-                            : file.exists
-                              ? 'text-miwarp-status-info'
-                              : 'text-muted-foreground/40'}"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          ><path
-                            d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"
-                          /><path d="M14 2v4a2 2 0 0 0 2 2h4" /></svg
-                        >
-                        <span class="min-w-0 truncate">{file.label}</span>
-                        {#if !file.exists}
-                          <span class="ml-auto text-[10px] text-muted-foreground shrink-0"
-                            >{t("memory_new")}</span
-                          >
-                        {/if}
-                      </button>
-                    {/each}
-                  {:else}
-                    <p class="px-2 py-3 text-xs text-muted-foreground">
-                      {t("memory_noProjectFiles")}
-                    </p>
-                  {/if}
-                </ProjectFolderItem>
-              {/each}
-              <!-- Global scope (MemorySidebarGroup) — deferred chunk, only
-                   loaded after the first visit to the memory route. -->
-              {#if memorySidebarGroup.Component}
-                {@const C = memorySidebarGroup.Component}
-                <C
-                  candidates={memoryScopeGlobal}
-                  selectedFile={memorySelectedFile}
-                  loading={memoryLoading}
-                  bind:expanded={memoryScopeExpanded}
-                  onSelectFile={selectMemoryFile}
+              {:else if fileTree.length === 0}
+                <EmptyState
+                  iconName="folder-open"
+                  title={t("sidebar_emptyDirectory")}
+                  class="py-8"
                 />
+              {:else}
+                {@render treeNodes(fileTree)}
               {/if}
-
-              <!-- Open folder button -->
-              <button
-                type="button"
-                class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors"
-                onclick={pickFolder}
-              >
-                <Icon name="plus" size="sm" class="shrink-0" />
-                <span>+ {t("project_openFolder")}</span>
-              </button>
             </div>
           {:else if isTeamsPage}
             <!-- Teams sidebar -->
@@ -3063,6 +2603,12 @@
                 {/each}
               {/if}
             </div>
+          {:else if isSettingsPage}
+            <SettingsSidebar />
+          {:else if isScheduledTasksPage}
+            <ScheduledTasksSidebar />
+          {:else if isWorkspacePage}
+            <WorkspaceSidebar {settings} />
           {:else if isChatPage}
             {#if runSearchQuery.trim()}
               <!-- Search results -->
@@ -3218,9 +2764,10 @@
         ></div>
       </div>
     {/if}
-    <!-- Paint sidebar surface under chat panel rounded corners (see app.css). -->
-    <div class="sidebar-main-corner-bridge" aria-hidden="true"></div>
   </aside>
+
+  <!-- Paint sidebar surface under chat panel rounded corners (see app.css). -->
+  <div class="sidebar-main-corner-bridge" aria-hidden="true"></div>
 
   <!-- Ghost line during sidebar drag (zero-reflow preview) -->
   {#if sidebarResizing}

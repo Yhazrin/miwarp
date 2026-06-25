@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ConversationGroup } from "$lib/utils/sidebar-groups";
-  import { TERMINAL_PHASES } from "$lib/stores";
+  import { canDeleteRun } from "$lib/stores";
   import { EVT_RUNS_CHANGED } from "$lib/utils/bus-events";
   import { relativeTime, truncate } from "$lib/utils/format";
   import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
@@ -57,7 +57,7 @@
   const run = $derived(conversation.latestRun);
   const label = $derived(truncate(conversation.title, 28));
   const time = $derived(relativeTime(run.last_activity_at ?? run.started_at));
-  const canDelete = $derived(conversation.runs.every((r) => TERMINAL_PHASES.includes(r.status)));
+  const canDelete = $derived(conversation.runs.every((r) => canDeleteRun(r.status)));
   const _needsAttention = $derived(hasAttention(run.id));
 
   // Compact status dot for non-selected items

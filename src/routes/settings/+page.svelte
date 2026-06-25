@@ -4,10 +4,7 @@
    * deferHeavy IPC. Heavy work runs only when a tab is first activated.
    */
   import { getContext, onMount } from "svelte";
-  import { goto } from "$app/navigation";
   import { page } from "$app/stores";
-  import { beginRouteTransition, endRouteTransition } from "$lib/utils/route-transition";
-  import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
   import { disarmChatSettingsHop } from "$lib/utils/chat-settings-nav";
   import * as api from "$lib/api";
   import type { AgentSettings, RemoteHost, UserSettings } from "$lib/types";
@@ -15,7 +12,6 @@
   import { dbg, dbgWarn, redactSensitive } from "$lib/utils/debug";
   import { perfMark, perfMarkAsync } from "$lib/utils/perf";
   import { t } from "$lib/i18n/index.svelte";
-  import Icon from "$lib/components/Icon.svelte";
   import { getTransport } from "$lib/transport";
   import {
     SETTINGS_CACHE_CONTEXT_KEY,
@@ -27,13 +23,7 @@
     applySoundFeedbackLevel,
     normalizeSoundFeedbackLevel,
   } from "$lib/services/sound-feedback-service";
-  import {
-    LEGACY_TAB_MAP,
-    SETTINGS_TABS,
-    SETTINGS_NAV_GROUPS,
-    resolveTabId,
-    type SettingsTabId,
-  } from "$lib/components/settings/tabs/registry";
+  import { resolveTabId, type SettingsTabId } from "$lib/components/settings/tabs/registry";
   import SettingsPanels from "$lib/components/settings/SettingsPanels.svelte";
   import {
     SettingsTabLoadController,
@@ -47,87 +37,9 @@
   import { agentToRuntimeId } from "$lib/runtime/registry";
   import { runtimeHubStore } from "$lib/stores/runtime-hub-store.svelte";
 
-  type SettingsTab =
-    | "general"
-    | "connection"
-    | "mobile"
-    | "cli-config"
-    | "shortcuts"
-    | "remote"
-    | "notifications"
-    | "debug"
-    | "theme"
-    | "data";
-
-  const VALID_TABS: SettingsTab[] = [
-    "general",
-    "connection",
-    "mobile",
-    "cli-config",
-    "shortcuts",
-    "remote",
-    "notifications",
-    "debug",
-    "theme",
-    "data",
-  ];
-
-  const urlTab = $page.url.searchParams.get("tab");
-  const initialTab: SettingsTab = (() => {
-    if (!urlTab) return "general";
-    if (Object.values(LEGACY_TAB_MAP).includes(urlTab as SettingsTabId)) {
-      const legacy = Object.entries(LEGACY_TAB_MAP).find(([, v]) => v === urlTab);
-      if (legacy) return legacy[0] as SettingsTab;
-    }
-    if (VALID_TABS.includes(urlTab as SettingsTab)) return urlTab as SettingsTab;
-    return "general";
-  })();
-
-  let activeTab = $state<SettingsTab>(initialTab);
   let mounted = $state(false);
   let pageGeneration = 0;
   const tabLoadController = new SettingsTabLoadController();
-
-  function setActiveTab(tabId: SettingsTab) {
-    activeTab = tabId;
-    const url = new URL($page.url);
-    url.searchParams.set("tab", tabId);
-    history.replaceState(null, "", url.toString());
-  }
-
-  const settingsNavGroups = SETTINGS_NAV_GROUPS.map((g) => ({
-    label: () => {
-      const key = g.labelKey as Parameters<typeof t>[0];
-      return t(key) ?? g.fallbackLabel;
-    },
-    tabs: SETTINGS_TABS.filter((tab) => tab.groupId === g.id),
-  }));
-
-  const NEW_TO_LEGACY: Record<string, string> = Object.fromEntries(
-    Object.entries(LEGACY_TAB_MAP).map(([legacy, next]) => [next, legacy]),
-  ) as Record<string, string>;
-
-  function newIdToLegacy(id: string): string {
-    return NEW_TO_LEGACY[id] ?? id;
-  }
-
-  let searchQuery = $state("");
-  const trimmedQuery = $derived(searchQuery.trim().toLowerCase());
-  const filteredNavGroups = $derived(
-    trimmedQuery
-      ? settingsNavGroups
-          .map((g) => ({
-            ...g,
-            tabs: g.tabs.filter((tab) => {
-              const hay = (
-                t(tab.labelKey as Parameters<typeof t>[0]) ?? tab.fallbackLabel
-              ).toLowerCase();
-              return hay.includes(trimmedQuery);
-            }),
-          }))
-          .filter((g) => g.tabs.length > 0)
-      : settingsNavGroups,
-  );
 
   let settings = $state<UserSettings | null>(null);
   let authMode = $state("cli");
@@ -312,7 +224,7 @@
     await tabLoadController.ensureTabLoaded(tab, guard, (target) => applyTabLoad(target, gen));
   }
 
-  const resolvedTab = $derived(resolveTabId(activeTab));
+  const resolvedTab = $derived(resolveTabId($page.url.searchParams.get("tab")));
 
   $effect(() => {
     if (!mounted) return;
@@ -659,12 +571,6 @@
     }
   }
 
-  function navigateBackFromSettings() {
-    const target = chatViewCache.lastChatHref || "/chat";
-    beginRouteTransition();
-    void goto(target).finally(endRouteTransition);
-  }
-
   /** Stable reference — mutate fields in place to avoid prop churn. */
   const panelsState = {
     get settings() {
@@ -899,87 +805,6 @@
 </script>
 
 <div class="flex h-full animate-slide-up">
-  <aside
-    class="w-56 shrink-0 border-r border-border/50 overflow-y-auto flex flex-col bg-background/50"
-  >
-    <div class="shrink-0 h-[var(--miwarp-titlebar-band)]" aria-hidden="true"></div>
-    <div class="relative flex shrink-0 items-center gap-2 border-b border-border/40 px-3 py-2.5">
-      <button
-        type="button"
-        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-        onclick={navigateBackFromSettings}
-        title={t("common_back")}
-        aria-label={t("common_back")}
-      >
-        <Icon name="chevron-left" size="sm" />
-      </button>
-      <h1
-        class="min-w-0 truncate text-[13px] font-semibold leading-snug tracking-tight text-foreground"
-      >
-        {t("settings_title")}
-      </h1>
-    </div>
-    <nav class="flex flex-1 flex-col gap-5 px-2.5 pb-4 pt-3">
-      <div class="relative px-1">
-        <input
-          type="text"
-          placeholder={t("settings_search_placeholder")}
-          bind:value={searchQuery}
-          aria-label={t("settings_search_placeholder")}
-          class="w-full rounded-md border border-border/60 bg-background/60 px-2.5 py-1.5 pr-6 text-xs placeholder:text-muted-foreground/60 focus:border-ring focus:outline-none"
-        />
-        {#if searchQuery}
-          <button
-            type="button"
-            class="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Clear"
-            onclick={() => (searchQuery = "")}
-          >
-            <Icon name="x" size="xs" />
-          </button>
-        {/if}
-      </div>
-
-      {#each filteredNavGroups as group (group.label())}
-        <section class="flex flex-col gap-1.5">
-          <p
-            class="px-2 text-[11px] font-medium leading-none tracking-wide text-muted-foreground/70"
-          >
-            {group.label()}
-          </p>
-          <div class="flex flex-col gap-0.5">
-            {#each group.tabs as tab (tab.id)}
-              <button
-                type="button"
-                class="flex min-h-[32px] w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13px] leading-snug transition-colors
-                  {activeTab === newIdToLegacy(tab.id)
-                  ? 'bg-accent/90 font-medium text-foreground'
-                  : 'font-normal text-muted-foreground hover:bg-accent/45 hover:text-foreground'}"
-                onclick={() => setActiveTab(newIdToLegacy(tab.id) as SettingsTab)}
-              >
-                <svg
-                  class="h-3.5 w-3.5 shrink-0 opacity-80"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d={tab.iconPath} />
-                </svg>
-                <span class="min-w-0 truncate"
-                  >{t(tab.labelKey as Parameters<typeof t>[0]) ?? tab.fallbackLabel}</span
-                >
-              </button>
-            {/each}
-          </div>
-        </section>
-      {/each}
-    </nav>
-  </aside>
-
   <main class="scrollbar-hide flex-1 overflow-y-auto">
     <div class="max-w-3xl mx-auto p-6">
       <SettingsPanels tab={resolvedTab} panelState={panelsState} />

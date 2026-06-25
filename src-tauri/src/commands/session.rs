@@ -2183,6 +2183,132 @@ async fn spawn_cli_process(
 
 // ── Side question (BTW) ──
 
+/// Run a one-shot local/remote `claude --print` command for a run's cwd/auth context.
+pub(crate) async fn run_claude_print_prompt(
+    meta: &RunMeta,
+    prompt: String,
+    configure: impl FnOnce(&mut adapter::AdapterSettings),
+) -> Result<String, String> {
+    use tokio::process::Command;
+    use tokio::time::{timeout, Duration};
+
+    let user_settings = storage::settings::get_user_settings();
+    let remote = resolve_remote_host(meta)?;
+    let effective_pid = if user_settings.auth_mode == "cli" {
+        None
+    } else {
+        meta.platform_id.as_deref()
+    };
+    let resolved = resolve_auth_env_for_platform(&remote, &user_settings, effective_pid);
+    let resolved = augment_with_shell_auth(
+        resolved,
+        &user_settings.auth_mode,
+        remote.is_some(),
+        &meta.cwd,
+    );
+
+    let claude_bin = claude_stream::resolve_claude_path();
+    let effective_cwd = meta.remote_cwd.as_deref().unwrap_or(&meta.cwd);
+
+    let agent_settings = storage::settings::get_agent_settings(&meta.agent);
+    let mut adapter = adapter::build_adapter_settings(&agent_settings, &user_settings, None);
+    adapter::clear_model_if_provider_overrides(
+        &mut adapter,
+        &None,
+        &agent_settings.model,
+        &resolved.models,
+    );
+    configure(&mut adapter);
+
+    let mut claude_args: Vec<String> = vec!["--print".into()];
+    claude_args.extend(adapter::build_settings_args(&adapter, true));
+    claude_args.push(prompt);
+
+    let mut cmd = if let Some(ref remote_host) = remote {
+        let remote_cmd = crate::agent::ssh::build_remote_claude_command(
+            remote_host,
+            effective_cwd,
+            &claude_args,
+            resolved.api_key.as_deref(),
+            resolved.auth_token.as_deref(),
+            resolved.base_url.as_deref(),
+            resolved.models.as_deref(),
+            resolved.extra_env.as_ref(),
+        );
+        let mut ssh_cmd = crate::agent::ssh::build_ssh_command(remote_host, &remote_cmd);
+        ssh_cmd
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .kill_on_drop(true);
+        ssh_cmd
+    } else {
+        let mut local_cmd = Command::new(&claude_bin);
+        for arg in &claude_args {
+            local_cmd.arg(arg);
+        }
+        let path_env = claude_stream::augmented_path();
+        local_cmd
+            .current_dir(effective_cwd)
+            .env("PATH", &path_env)
+            .env_remove("CLAUDECODE")
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .kill_on_drop(true);
+        if let Some(key) = &resolved.api_key {
+            local_cmd.env("ANTHROPIC_API_KEY", key);
+            local_cmd.env_remove("ANTHROPIC_AUTH_TOKEN");
+        } else if let Some(token) = &resolved.auth_token {
+            local_cmd.env("ANTHROPIC_AUTH_TOKEN", token);
+            local_cmd.env_remove("ANTHROPIC_API_KEY");
+        }
+        if let Some(url) = &resolved.base_url {
+            local_cmd.env("ANTHROPIC_BASE_URL", url);
+        }
+        if let Some(models) = &resolved.models {
+            for (k, v) in resolve_model_tiers(models) {
+                local_cmd.env(k, v);
+            }
+        }
+        if let Some(extra) = &resolved.extra_env {
+            for (k, v) in extra {
+                if k.chars()
+                    .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')
+                {
+                    local_cmd.env(k, v);
+                }
+            }
+        }
+        local_cmd
+    };
+
+    log::debug!(
+        "[session] run_claude_print_prompt: run_id={}, cwd={}",
+        meta.id,
+        effective_cwd
+    );
+
+    // kill_on_drop(true) was set on the local_cmd / ssh_cmd builder above so
+    // that if the future is dropped (e.g. the actor task is dropped on
+    // session stop, or the IPC caller cancels), the spawned `claude --print`
+    // child process is reaped by the OS instead of leaking.
+
+    let output = timeout(Duration::from_secs(25), cmd.output())
+        .await
+        .map_err(|_| "Title generation timed out".to_string())?
+        .map_err(|e| format!("Title generation spawn failed: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!(
+            "Title generation failed (exit {:?}): {}",
+            output.status.code(),
+            shared::truncate_str(stderr.trim(), 200)
+        ));
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
 /// Spawn a one-shot forked CLI process to answer a side question without
 /// polluting the original session. Streams text deltas back via Tauri events.
 #[tauri::command]

@@ -235,13 +235,13 @@
   <div class="max-w-[90%] mx-auto p-6 space-y-5 animate-slide-up flex-1">
     <!-- Scope tabs: App / Global -->
     <div class="flex items-center gap-4">
-      <div class="flex gap-1 bg-muted/40 rounded-lg p-0.5">
+      <div class="flex gap-1 bg-sidebar-accent/30 rounded-lg p-0.5">
         <button
           type="button"
           class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors
           {scope === 'global'
-            ? 'bg-background text-foreground shadow-sm'
-            : 'text-muted-foreground hover:text-foreground'}"
+            ? 'bg-sidebar text-sidebar-foreground shadow-sm'
+            : 'text-sidebar-foreground/70 hover:text-sidebar-foreground'}"
           onclick={() => selectScope("global")}
         >
           {t("usage_scopeGlobal")}
@@ -250,8 +250,8 @@
           type="button"
           class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors
           {scope === 'app'
-            ? 'bg-background text-foreground shadow-sm'
-            : 'text-muted-foreground hover:text-foreground'}"
+            ? 'bg-sidebar text-sidebar-foreground shadow-sm'
+            : 'text-sidebar-foreground/70 hover:text-sidebar-foreground'}"
           onclick={() => selectScope("app")}
         >
           {t("usage_scopeApp")}
@@ -266,7 +266,7 @@
             class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors
             {selectedDays === range.days
               ? 'bg-primary text-primary-foreground'
-              : 'bg-muted/50 text-muted-foreground hover:bg-muted'}"
+              : 'bg-sidebar-accent/50 text-sidebar-foreground/70 hover:bg-sidebar-accent'}"
             onclick={() => selectRange(range.days)}
           >
             {range.label}
@@ -277,7 +277,7 @@
       <!-- Refresh button (global scope only, stays in DOM to avoid layout shift) -->
       <button
         type="button"
-        class="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40 {scope !==
+        class="p-1.5 rounded-md text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50 transition-colors disabled:opacity-40 {scope !==
         'global'
           ? 'invisible'
           : ''}"
@@ -295,14 +295,14 @@
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {#each Array(4) as _}
             <div
-              class="rounded-lg border border-border/50 bg-card/50 p-4 flex flex-col items-center gap-2"
+              class="rounded-lg border border-sidebar-border/50 bg-sidebar/50 p-4 flex flex-col items-center gap-2"
             >
               <SkeletonLine width="4rem" height="2rem" rounded="rounded-md" />
               <SkeletonLine width="5rem" height="0.5rem" />
             </div>
           {/each}
         </div>
-        <div class="rounded-lg border border-border/50 bg-card/50 p-4">
+        <div class="rounded-lg border border-sidebar-border/50 bg-sidebar/50 p-4">
           <SkeletonLine width="8rem" height="1rem" class="mb-3" />
           <div class="grid grid-cols-7 gap-1">
             {#each Array(49) as _}
@@ -311,7 +311,7 @@
           </div>
         </div>
         {#if showFullScanMessage}
-          <p class="text-sm text-muted-foreground animate-fade-in text-center">
+          <p class="text-sm text-sidebar-foreground/70 animate-fade-in text-center">
             {t("usage_firstLoadMessage")}
           </p>
         {/if}
@@ -336,7 +336,7 @@
           <p class="text-3xl font-bold tabular-nums tracking-tight">
             {formatCost(data.totalCostUsd)}
           </p>
-          <p class="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+          <p class="text-[10px] text-sidebar-foreground/70 font-medium uppercase tracking-wider">
             {t("usage_totalCost")}
           </p>
         </Card>
@@ -344,33 +344,33 @@
           <p class="text-3xl font-bold tabular-nums tracking-tight">
             {formatTokenCount(data.totalTokens)}
           </p>
-          <p class="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+          <p class="text-[10px] text-sidebar-foreground/70 font-medium uppercase tracking-wider">
             {t("usage_totalTokens")}
           </p>
         </Card>
         <Card class="p-4 flex flex-col items-center justify-center text-center gap-1">
           <p class="text-3xl font-bold tabular-nums tracking-tight">{data.totalRuns}</p>
-          <p class="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+          <p class="text-[10px] text-sidebar-foreground/70 font-medium uppercase tracking-wider">
             {scope === "global" ? t("usage_sessions") : t("usage_runs")}
           </p>
         </Card>
         <Card class="p-4 flex flex-col items-center justify-center text-center gap-1">
           {#if data.currentStreak > 0}
             <p class="text-3xl font-bold tabular-nums tracking-tight">
-              {data.currentStreak}<span class="text-base font-normal text-muted-foreground ml-0.5"
-                >d</span
+              {data.currentStreak}<span
+                class="text-base font-normal text-sidebar-foreground/70 ml-0.5">d</span
               >
             </p>
-            <p class="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+            <p class="text-[10px] text-sidebar-foreground/70 font-medium uppercase tracking-wider">
               {t("usage_currentStreak", { count: String(data.longestStreak) })}
             </p>
           {:else}
             <p class="text-3xl font-bold tabular-nums tracking-tight">
-              {data.activeDays}<span class="text-base font-normal text-muted-foreground ml-0.5"
+              {data.activeDays}<span class="text-base font-normal text-sidebar-foreground/70 ml-0.5"
                 >d</span
               >
             </p>
-            <p class="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+            <p class="text-[10px] text-sidebar-foreground/70 font-medium uppercase tracking-wider">
               {scope === "global" ? t("usage_sessions") : t("usage_runs")}
             </p>
           {/if}
@@ -381,10 +381,10 @@
       {#if heatmapDaily}
         <Card class="p-6 space-y-3">
           <div class="flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            <h2 class="text-sm font-semibold text-sidebar-foreground/70 uppercase tracking-wider">
               {t("usage_activityHeatmap")}
             </h2>
-            <div class="flex gap-3 text-xs text-muted-foreground">
+            <div class="flex gap-3 text-xs text-sidebar-foreground/70">
               {#if data.activeDays > 0}
                 <span>{t("usage_activeDays", { count: String(data.activeDays) })}</span>
               {/if}
@@ -400,7 +400,7 @@
       <!-- Daily trend chart -->
       <Card class="p-6 space-y-4">
         <div class="flex items-center justify-between">
-          <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          <h2 class="text-sm font-semibold text-sidebar-foreground/70 uppercase tracking-wider">
             {t("usage_dailyTrend")}
           </h2>
           <div class="flex gap-1">
@@ -409,7 +409,7 @@
               class="px-2 py-0.5 text-[10px] font-medium rounded transition-colors
               {chartMode === 'cost'
                 ? 'bg-primary/20 text-primary'
-                : 'text-muted-foreground hover:text-foreground'}"
+                : 'text-sidebar-foreground/70 hover:text-sidebar-foreground'}"
               onclick={() => (chartMode = "cost")}
             >
               {t("usage_chartCost")}
@@ -419,7 +419,7 @@
               class="px-2 py-0.5 text-[10px] font-medium rounded transition-colors
               {chartMode === 'tokens'
                 ? 'bg-primary/20 text-primary'
-                : 'text-muted-foreground hover:text-foreground'}"
+                : 'text-sidebar-foreground/70 hover:text-sidebar-foreground'}"
               onclick={() => (chartMode = "tokens")}
             >
               {t("usage_chartTokens")}
@@ -430,7 +430,7 @@
                 class="px-2 py-0.5 text-[10px] font-medium rounded transition-colors
                 {chartMode === 'messages'
                   ? 'bg-primary/20 text-primary'
-                  : 'text-muted-foreground hover:text-foreground'}"
+                  : 'text-sidebar-foreground/70 hover:text-sidebar-foreground'}"
                 onclick={() => (chartMode = "messages")}
               >
                 {t("usage_chartMessages")}
@@ -440,7 +440,7 @@
                 class="px-2 py-0.5 text-[10px] font-medium rounded transition-colors
                 {chartMode === 'sessions'
                   ? 'bg-primary/20 text-primary'
-                  : 'text-muted-foreground hover:text-foreground'}"
+                  : 'text-sidebar-foreground/70 hover:text-sidebar-foreground'}"
                 onclick={() => (chartMode = "sessions")}
               >
                 {t("usage_chartSessions")}
@@ -455,7 +455,7 @@
             <div class="flex h-40">
               <!-- Y-axis labels -->
               <div
-                class="flex flex-col justify-between items-end pr-2 text-[10px] text-muted-foreground tabular-nums shrink-0 py-0.5"
+                class="flex flex-col justify-between items-end pr-2 text-[10px] text-sidebar-foreground/70 tabular-nums shrink-0 py-0.5"
               >
                 <span>{formatAxisValue(maxDailyValue)}</span>
                 <span>{formatAxisValue(maxDailyValue / 2)}</span>
@@ -463,10 +463,12 @@
               </div>
               <!-- Bars + X-axis -->
               <div class="flex-1 flex flex-col min-w-0">
-                <div class="flex-1 flex gap-[2px] border-l border-b border-border/50 relative">
+                <div
+                  class="flex-1 flex gap-[2px] border-l border-b border-sidebar-border/50 relative"
+                >
                   <!-- 50% gridline -->
                   <div
-                    class="absolute inset-x-0 top-1/2 border-t border-border/30 pointer-events-none"
+                    class="absolute inset-x-0 top-1/2 border-t border-sidebar-border/30 pointer-events-none"
                   ></div>
                   {#each data.daily.slice(-30) as day (day.date)}
                     {@const value = getDailyValue(day)}
@@ -490,7 +492,7 @@
                       i % Math.ceil(data.daily.slice(-30).length / 10) === 0}
                     <div class="flex-1 min-w-0 text-center">
                       {#if showLabel}
-                        <span class="text-[10px] text-muted-foreground tabular-nums">
+                        <span class="text-[10px] text-sidebar-foreground/70 tabular-nums">
                           {formatShortDate(day.date)}
                         </span>
                       {/if}
@@ -501,20 +503,20 @@
             </div>
           {/if}
         {:else}
-          <p class="text-sm text-muted-foreground">{t("usage_noDailyData")}</p>
+          <p class="text-sm text-sidebar-foreground/70">{t("usage_noDailyData")}</p>
         {/if}
       </Card>
 
       <!-- By Model -->
       <Card class="p-6 space-y-4">
-        <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+        <h2 class="text-sm font-semibold text-sidebar-foreground/70 uppercase tracking-wider">
           {t("usage_byModel")}
         </h2>
         {#if data.byModel.length > 0}
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
-                <tr class="text-xs text-muted-foreground border-b border-border">
+                <tr class="text-xs text-sidebar-foreground/70 border-b border-sidebar-border">
                   <th class="text-left py-2 font-medium">{t("usage_thModel")}</th>
                   {#if scope === "app"}
                     <th class="text-right py-2 font-medium">{t("usage_thRuns")}</th>
@@ -529,7 +531,7 @@
               </thead>
               <tbody>
                 {#each data.byModel as modelRow (modelRow.model)}
-                  <tr class="border-b border-border/50 hover:bg-muted/30">
+                  <tr class="border-b border-sidebar-border/50 hover:bg-sidebar-accent/30">
                     <td
                       class="py-2 font-mono text-xs truncate max-w-[180px]"
                       title={modelRow.model}
@@ -546,12 +548,12 @@
                       {formatTokenCount(modelRow.outputTokens)}
                     </td>
                     <td
-                      class="py-2 text-right tabular-nums font-mono text-xs text-muted-foreground"
+                      class="py-2 text-right tabular-nums font-mono text-xs text-sidebar-foreground/70"
                     >
                       {formatTokenCount(modelRow.cacheReadTokens)}
                     </td>
                     <td
-                      class="py-2 text-right tabular-nums font-mono text-xs text-muted-foreground"
+                      class="py-2 text-right tabular-nums font-mono text-xs text-sidebar-foreground/70"
                     >
                       {formatTokenCount(modelRow.cacheWriteTokens)}
                     </td>
@@ -560,13 +562,15 @@
                     </td>
                     <td class="py-2 text-right">
                       <div class="flex items-center justify-end gap-2">
-                        <div class="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div class="w-12 h-1.5 bg-sidebar-accent/40 rounded-full overflow-hidden">
                           <div
                             class="h-full bg-primary rounded-full"
                             style="width: {Math.min(modelRow.pct, 100)}%"
                           ></div>
                         </div>
-                        <span class="text-xs tabular-nums text-muted-foreground w-8 text-right">
+                        <span
+                          class="text-xs tabular-nums text-sidebar-foreground/70 w-8 text-right"
+                        >
                           {modelRow.pct.toFixed(0)}%
                         </span>
                       </div>
@@ -577,23 +581,23 @@
             </table>
           </div>
         {:else}
-          <p class="text-sm text-muted-foreground">{t("usage_noModelData")}</p>
+          <p class="text-sm text-sidebar-foreground/70">{t("usage_noModelData")}</p>
         {/if}
       </Card>
 
       <!-- Run History (App mode only) -->
       {#if scope === "app"}
         <Card class="p-6 space-y-4">
-          <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          <h2 class="text-sm font-semibold text-sidebar-foreground/70 uppercase tracking-wider">
             {t("usage_runHistory")}
           </h2>
           {#if sortedRuns.length > 0}
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
                 <thead>
-                  <tr class="text-xs text-muted-foreground border-b border-border">
+                  <tr class="text-xs text-sidebar-foreground/70 border-b border-sidebar-border">
                     <th
-                      class="text-left py-2 font-medium cursor-pointer select-none hover:text-foreground"
+                      class="text-left py-2 font-medium cursor-pointer select-none hover:text-sidebar-foreground"
                       onclick={() => toggleSort("date")}
                     >
                       {t("usage_thDate")}{sortIndicator("date")}
@@ -601,19 +605,19 @@
                     <th class="text-left py-2 font-medium">{t("usage_thName")}</th>
                     <th class="text-left py-2 font-medium">{t("usage_thModel")}</th>
                     <th
-                      class="text-right py-2 font-medium cursor-pointer select-none hover:text-foreground"
+                      class="text-right py-2 font-medium cursor-pointer select-none hover:text-sidebar-foreground"
                       onclick={() => toggleSort("tokens")}
                     >
                       {t("usage_thTokens")}{sortIndicator("tokens")}
                     </th>
                     <th
-                      class="text-right py-2 font-medium cursor-pointer select-none hover:text-foreground"
+                      class="text-right py-2 font-medium cursor-pointer select-none hover:text-sidebar-foreground"
                       onclick={() => toggleSort("cost")}
                     >
                       {t("usage_thCost")}{sortIndicator("cost")}
                     </th>
                     <th
-                      class="text-right py-2 font-medium cursor-pointer select-none hover:text-foreground"
+                      class="text-right py-2 font-medium cursor-pointer select-none hover:text-sidebar-foreground"
                       onclick={() => toggleSort("turns")}
                     >
                       {t("usage_thTurns")}{sortIndicator("turns")}
@@ -623,7 +627,7 @@
                 <tbody>
                   {#each sortedRuns as run}
                     <tr
-                      class="border-b border-border/50 hover:bg-muted/30 cursor-pointer"
+                      class="border-b border-sidebar-border/50 hover:bg-sidebar-accent/30 cursor-pointer"
                       role="button"
                       tabindex="0"
                       onclick={() => goto(`/chat?run=${run.runId}`)}
@@ -634,14 +638,14 @@
                         }
                       }}
                     >
-                      <td class="py-2 text-xs text-muted-foreground whitespace-nowrap">
+                      <td class="py-2 text-xs text-sidebar-foreground/70 whitespace-nowrap">
                         {formatDate(run.startedAt)}
                       </td>
                       <td class="py-2 truncate max-w-[200px]" title={run.name}>
                         {run.name}
                       </td>
                       <td
-                        class="py-2 font-mono text-xs text-muted-foreground truncate max-w-[120px]"
+                        class="py-2 font-mono text-xs text-sidebar-foreground/70 truncate max-w-[120px]"
                         title={run.model ?? run.agent}
                       >
                         {run.model ?? run.agent}
@@ -661,7 +665,7 @@
               </table>
             </div>
           {:else}
-            <p class="text-sm text-muted-foreground">
+            <p class="text-sm text-sidebar-foreground/70">
               {t("usage_noUsageData")}
             </p>
           {/if}

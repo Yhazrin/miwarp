@@ -4,63 +4,97 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>MiWarp</title>
-    <style>
-      #app-splash {
-        position: fixed;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: hsl(0 0% 7.1%);
-        z-index: 9999;
-        transition: opacity 0.3s ease;
-      }
-      :root:not(.dark) #app-splash {
-        background: hsl(0 0% 100%);
-      }
-      #app-splash img {
-        width: 64px;
-        height: 64px;
-        margin-bottom: 24px;
-      }
-      #app-splash .spinner {
-        width: 24px;
-        height: 24px;
-        border: 2.5px solid hsl(0 0% 30%);
-        border-top-color: hsl(38 86% 64%);
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-        margin-bottom: 16px;
-      }
-      :root:not(.dark) #app-splash .spinner {
-        border-color: hsl(0 0% 85%);
-        border-top-color: hsl(38 86% 64%);
-      }
-      #app-splash .hint {
-        font-family:
-          -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei",
-          "Noto Sans CJK SC", "WenQuanYi Micro Hei", sans-serif;
-        font-size: 13px;
-        color: hsl(0 0% 54.5%);
-      }
-      :root:not(.dark) #app-splash .hint {
-        color: hsl(0 0% 42%);
-      }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-    </style>
+    <script src="%sveltekit.assets%/splash-boot.js"></script>
+    <link rel="stylesheet" href="%sveltekit.assets%/design-tokens.css" />
+    <link rel="stylesheet" href="%sveltekit.assets%/splash.css" />
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">
-    <div id="app-splash">
-      <img src="%sveltekit.assets%/logo.png" alt="MiWarp" />
-      <div class="spinner"></div>
-      <div class="hint">Initializing...</div>
+    <div id="app-splash" role="status" aria-live="polite" aria-label="Loading MiWarp">
+      <div class="splash-backdrop" aria-hidden="true">
+        <div class="splash-glow splash-glow--a"></div>
+        <div class="splash-glow splash-glow--b"></div>
+      </div>
+      <div class="splash-stage">
+        <div class="splash-mark-wrap" aria-hidden="true">
+          <svg
+            class="splash-mark-svg"
+            viewBox="0 0 80 80"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <linearGradient
+                id="splash-grad"
+                x1="8"
+                y1="8"
+                x2="72"
+                y2="72"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stop-color="hsl(var(--miwarp-accent-primary))" />
+                <stop offset="1" stop-color="hsl(var(--miwarp-accent-violet))" />
+              </linearGradient>
+            </defs>
+            <circle
+              class="splash-ring"
+              cx="40"
+              cy="40"
+              r="30"
+              stroke="url(#splash-grad)"
+              stroke-width="1.5"
+              stroke-opacity="0.35"
+            />
+            <circle
+              class="splash-ring splash-ring--inner"
+              cx="40"
+              cy="40"
+              r="22"
+              stroke="url(#splash-grad)"
+              stroke-width="1"
+              stroke-opacity="0.22"
+              stroke-dasharray="4 7"
+            />
+            <circle
+              class="splash-orbit"
+              cx="40"
+              cy="10"
+              r="3.5"
+              fill="hsl(var(--miwarp-accent-primary))"
+            />
+            <path
+              class="splash-core"
+              d="M27 49 L40 24 L53 49"
+              stroke="url(#splash-grad)"
+              stroke-width="4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <circle
+              class="splash-core"
+              cx="40"
+              cy="40"
+              r="4"
+              fill="hsl(var(--miwarp-accent-primary))"
+            />
+          </svg>
+        </div>
+        <p class="splash-brand">MiWarp</p>
+        <div class="splash-loader" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <p class="splash-hint" id="splash-hint">Loading…</p>
+      </div>
     </div>
+    <script>
+      (function () {
+        var hint = document.documentElement.getAttribute("data-splash-hint");
+        var el = document.getElementById("splash-hint");
+        if (hint && el) el.textContent = hint;
+      })();
+    </script>
     <div id="app-root">%sveltekit.body%</div>
   </body>
 </html>

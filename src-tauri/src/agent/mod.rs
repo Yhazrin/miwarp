@@ -20,6 +20,7 @@ pub mod spawn;
 pub mod spawn_locks;
 pub mod ssh;
 pub mod stream;
+pub mod title_generator;
 pub mod turn_engine;
 
 pub use recovery::{

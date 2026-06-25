@@ -195,6 +195,11 @@ export async function renameRun(id: string, name: string): Promise<void> {
   return invoke<void>(CMD.rename_run, { id, name });
 }
 
+export async function generateRunTitle(runId: string): Promise<string> {
+  dbg("api", "generateRunTitle", { runId });
+  return invoke<string>(CMD.generate_run_title, { runId });
+}
+
 export async function updateRunModel(id: string, model: string): Promise<void> {
   dbg("api", "updateRunModel", { id, model });
   return invoke<void>(CMD.update_run_model, { id, model });
@@ -521,6 +526,9 @@ export const USER_SETTINGS_CHANGED_EVENT = "miwarp:user-settings-changed";
 
 export function notifyUserSettingsChanged(settings: UserSettings): void {
   if (typeof window === "undefined") return;
+  void import("$lib/chat/chat-bootstrap-cache").then(({ refreshChatBootstrapSettings }) => {
+    refreshChatBootstrapSettings(settings);
+  });
   window.dispatchEvent(new CustomEvent(USER_SETTINGS_CHANGED_EVENT, { detail: settings }));
 }
 
@@ -1637,6 +1645,20 @@ export async function removeCliApiKey(): Promise<void> {
   return invoke<void>(CMD.remove_cli_api_key);
 }
 
+export async function getProductBootstrapStatus(): Promise<
+  import("./types").ProductBootstrapStatus
+> {
+  dbg("api", "getProductBootstrapStatus");
+  return invoke<import("./types").ProductBootstrapStatus>(CMD.get_product_bootstrap_status);
+}
+
+export async function runProductBootstrap(
+  force = false,
+): Promise<import("./types").ProductBootstrapRunResult> {
+  dbg("api", "runProductBootstrap", { force });
+  return invoke<import("./types").ProductBootstrapRunResult>(CMD.run_product_bootstrap, { force });
+}
+
 // ── Screenshot ──
 
 export async function captureScreenshot(): Promise<void> {
@@ -1905,16 +1927,33 @@ export async function runtimeHubStopConfigWatch(runtimeId: string): Promise<bool
 
 import type { FleetMemberDetail, FleetMemberSummary, FleetMetrics, FleetSendResult } from "./types";
 
-export async function listFleet(): Promise<FleetMemberSummary[]> {
-  return invoke<FleetMemberSummary[]>(CMD.fleet_list, {});
+export interface ListFleetOptions {
+  /**
+   * Surface auto-archived members (older than 24h, not running). The desktop
+   * UI hides these by default; the option is exposed for power users and
+   * MCP/REST callers that want full visibility.
+   */
+  includeArchived?: boolean;
+}
+
+export async function listFleet(opts: ListFleetOptions = {}): Promise<FleetMemberSummary[]> {
+  return invoke<FleetMemberSummary[]>(CMD.fleet_list, {
+    includeArchived: opts.includeArchived ?? false,
+  });
 }
 
 export async function getFleetMember(id: string): Promise<FleetMemberDetail> {
   return invoke<FleetMemberDetail>(CMD.fleet_get_member, { id });
 }
 
-export async function getFleetMetrics(): Promise<FleetMetrics> {
-  return invoke<FleetMetrics>(CMD.fleet_get_metrics, {});
+export interface GetFleetMetricsOptions {
+  includeArchived?: boolean;
+}
+
+export async function getFleetMetrics(opts: GetFleetMetricsOptions = {}): Promise<FleetMetrics> {
+  return invoke<FleetMetrics>(CMD.fleet_get_metrics, {
+    includeArchived: opts.includeArchived ?? false,
+  });
 }
 
 export async function sendToFleetMember(id: string, prompt: string): Promise<FleetSendResult> {

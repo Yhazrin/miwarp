@@ -1,11 +1,12 @@
 import { sveltekit } from "@sveltejs/kit/vite";
 import { defineConfig } from "vite";
 import path from "node:path";
+import { copyDesignTokensPlugin } from "./src/lib/vite/copy-design-tokens";
 
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
-  plugins: [sveltekit()],
+  plugins: [copyDesignTokensPlugin(), sveltekit()],
   build: {
     target: ["safari16", "chrome105", "edge105"],
     rollupOptions: {

@@ -172,7 +172,7 @@
         runId,
         `请对这个工作区的变更进行提交并推送。\n\n请执行以下步骤：\n1. 查看当前的变更状态（git status）\n2. 分析变更内容\n3. 根据变更内容撰写合适的提交信息（使用中文）\n4. 执行 git add、git commit（使用你撰写的提交信息）、git push\n\n如果没有任何变更需要提交，请直接说明。`,
       );
-      showToast(t("gitWorktree_commit_push_started") || "提交并推送已启动", "success");
+      showToast(t("gitWorktree_commit_push_started"), "success");
       // Refresh after a short delay to show the new commit
       setTimeout(() => {
         if (effectiveCwd) void loadPanel(effectiveCwd, listAnchor);

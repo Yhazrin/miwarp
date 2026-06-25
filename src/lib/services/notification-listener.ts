@@ -90,7 +90,9 @@ async function handleBusEvent(ev: BusEvent): Promise<void> {
     const title = run?.name || run?.prompt?.slice(0, 50) || "Task";
 
     // Toast: always show in-app
-    showToast(`Task completed: ${title}`, "success");
+    showToast(t("notif_task_completed"), "success", 3500, {
+      description: t("notif_task_completed_desc", { title }),
+    });
 
     // System notification: only if app not focused and task was long enough
     if (
@@ -99,14 +101,14 @@ async function handleBusEvent(ev: BusEvent): Promise<void> {
     ) {
       notifyUser({
         kind: "run_completed",
-        title: "MiWarp",
-        body: `Task completed: ${title}`,
+        title: t("notif_task_completed"),
+        body: t("notif_task_completed_desc", { title }),
       });
     }
 
     // Feishu webhook
     if (shouldSendFeishu("run_completed")) {
-      trySendFeishu("Task completed", title, "completed");
+      trySendFeishu(t("notif_task_completed"), title, "completed");
     }
     _runs.delete(runId);
   } else if (state === "failed" || state === "stopped" || state === "error") {
@@ -118,19 +120,21 @@ async function handleBusEvent(ev: BusEvent): Promise<void> {
     const run = _runs.get(runId);
     const title = run?.name || run?.prompt?.slice(0, 50) || "Task";
 
-    showToast(`Task failed: ${title}`, "error");
+    showToast(t("notif_task_failed"), "error", 5000, {
+      description: t("notif_task_failed_desc", { title }),
+    });
 
     if (shouldNotify("run_failed", _settings)) {
       notifyUser({
         kind: "run_failed",
-        title: "MiWarp",
-        body: `Task failed: ${title}`,
+        title: t("notif_task_failed"),
+        body: t("notif_task_failed_desc", { title }),
       });
     }
 
     // Feishu webhook
     if (shouldSendFeishu("run_failed")) {
-      trySendFeishu("Task failed", title, "failed");
+      trySendFeishu(t("notif_task_failed"), title, "failed");
     }
     _runs.delete(runId);
   } else if (state === "running" || state === "spawning") {
@@ -146,10 +150,10 @@ function handlePermissionPrompt(ev: BusEvent): void {
   if (shouldNotify("approval_required", _settings)) {
     notifyUser({
       kind: "approval_required",
-      title: "MiWarp",
-      body: "Claude is waiting for your approval",
+      title: t("notif_approval_required"),
+      body: t("notif_approval_required"),
     });
-    showToast("Waiting for your approval", "warning");
+    showToast(t("notif_approval_required"), "warning", 6000);
   }
 }
 
@@ -193,9 +197,9 @@ export async function startNotificationListener(): Promise<void> {
         const tn = ev as Extract<BusEvent, { type: "task_notification" }>;
         const status = (tn as { status?: string }).status ?? "";
         if (status === "completed" || status === "success") {
-          showToast("定时任务完成", "success");
+          showToast(t("notif_scheduled_completed"), "success", 3500);
         } else if (status === "failed" || status === "error") {
-          showToast("定时任务失败", "error");
+          showToast(t("notif_scheduled_failed"), "error", 5000);
         }
       }
     });

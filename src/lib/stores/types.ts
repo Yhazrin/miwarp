@@ -51,6 +51,14 @@ export const TERMINAL_PHASES: readonly string[] = [
   "cached",
   "stale_cached",
 ];
+
+/** Run statuses that are still actively executing and should block sidebar delete. */
+export const DELETE_BLOCKED_RUN_STATUSES: readonly string[] = ["pending", "running"];
+
+/** Whether a run can be deleted from the sidebar right now. */
+export function canDeleteRun(status: string): boolean {
+  return !DELETE_BLOCKED_RUN_STATUSES.includes(status);
+}
 export const SESSION_ALIVE_PHASES: readonly string[] = [
   "spawning",
   "running",

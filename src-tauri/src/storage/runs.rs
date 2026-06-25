@@ -110,6 +110,7 @@ pub fn create_run(
         cli_usage_incomplete: None,
         folder_id: None,
         deleted_at: None,
+        archived_at: None,
         creation_mode: None,   // Caller sets after create_run
         worktree_path: None,   // Caller sets after create_run
         worktree_branch: None, // Caller sets after create_run
@@ -581,6 +582,27 @@ pub fn reconcile_orphaned_runs() {
             }
         }
     }
+}
+
+/// Mark a single run as archived (sets `archived_at = now`). Idempotent: re-archive
+/// of an already-archived run is a no-op. Returns Ok(false) when the run is
+/// already archived (caller can skip the writeback cost); Ok(true) when newly
+/// archived. Errors propagate normally.
+pub fn mark_archived(id: &str) -> Result<bool, String> {
+    let raw = get_run_raw(id).ok_or_else(|| format!("Run {} not found", id))?;
+    if raw.archived_at.is_some() || raw.deleted_at.is_some() {
+        // Don't archive runs that are already archived or already soft-deleted.
+        return Ok(false);
+    }
+    let now = now_iso();
+    with_meta(id, |meta| {
+        if meta.deleted_at.is_some() {
+            return Ok(());
+        }
+        meta.archived_at = Some(now.clone());
+        Ok(())
+    })?;
+    Ok(true)
 }
 
 /// Soft-delete runs by ID list. Pre-checks all IDs, then writes deleted_at.

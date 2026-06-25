@@ -5,7 +5,7 @@ export { memoryStore } from "./memory-store.svelte";
 export { getEventMiddleware, EventMiddleware } from "./event-middleware";
 export type { PipeHandler, RunEventHandler } from "./event-middleware";
 export type { SessionPhase, UsageState } from "./types";
-export { TERMINAL_PHASES, canResumeNow, getResumeWarning } from "./types";
+export { TERMINAL_PHASES, canDeleteRun, canResumeNow, getResumeWarning } from "./types";
 export {
   loadCliInfo,
   getCliModels,

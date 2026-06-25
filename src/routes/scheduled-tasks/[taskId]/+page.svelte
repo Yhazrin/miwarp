@@ -100,7 +100,7 @@
       default:
         return {
           iconName: "circle",
-          color: "text-muted-foreground",
+          color: "text-sidebar-foreground/70",
           label: t("sched_runQueued"),
         };
     }
@@ -129,14 +129,16 @@
 </svelte:head>
 
 <div class="flex h-full flex-col">
-  <div class="flex items-center gap-3 border-b px-6 py-4">
+  <div class="flex items-center gap-3 border-b border-sidebar-border px-6 py-4">
     <Button variant="ghost" size="sm" onclick={() => goto("/scheduled-tasks")}>
       ← {t("schedHub_backToList")}
     </Button>
     <div class="min-w-0 flex-1">
-      <h1 class="truncate text-xl font-semibold">{task?.name ?? t("schedHub_loading")}</h1>
+      <h1 class="truncate text-xl font-semibold text-sidebar-foreground">
+        {task?.name ?? t("schedHub_loading")}
+      </h1>
       {#if task?.description}
-        <p class="truncate text-sm text-muted-foreground">{task.description}</p>
+        <p class="truncate text-sm text-sidebar-foreground/70">{task.description}</p>
       {/if}
     </div>
     {#if task}
@@ -144,7 +146,7 @@
         <span
           class="rounded-full px-2 py-1 text-xs {task.enabled
             ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success'
-            : 'bg-muted text-muted-foreground'}"
+            : 'bg-sidebar-accent/40 text-sidebar-foreground/70'}"
         >
           {task.enabled ? t("sched_active") : t("sched_paused")}
         </span>
@@ -163,51 +165,56 @@
   </div>
 
   {#if !task}
-    <div class="flex flex-1 items-center justify-center text-muted-foreground">
+    <div class="flex flex-1 items-center justify-center text-sidebar-foreground/70">
       {loadingRuns ? t("schedHub_loading") : t("schedHub_taskNotFound")}
     </div>
   {:else}
     <div
       class="grid flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]"
     >
-      <div class="space-y-6 overflow-y-auto border-r p-6">
+      <div class="space-y-6 overflow-y-auto border-r border-sidebar-border p-6">
         <div class="grid grid-cols-2 gap-3">
-          <div class="rounded-lg bg-muted/30 p-3">
-            <span class="text-xs text-muted-foreground">{t("sched_agent")}</span>
-            <p class="text-sm font-medium uppercase">{task.agent}</p>
+          <div class="rounded-lg bg-sidebar-accent/30 p-3">
+            <span class="text-xs text-sidebar-foreground/70">{t("sched_agent")}</span>
+            <p class="text-sm font-medium uppercase text-sidebar-foreground">{task.agent}</p>
           </div>
-          <div class="rounded-lg bg-muted/30 p-3">
-            <span class="text-xs text-muted-foreground">{t("sched_workspace")}</span>
-            <p class="truncate font-mono text-sm" title={task.workspace.cwd}>
+          <div class="rounded-lg bg-sidebar-accent/30 p-3">
+            <span class="text-xs text-sidebar-foreground/70">{t("sched_workspace")}</span>
+            <p
+              class="truncate font-mono text-sm text-sidebar-foreground"
+              title={task.workspace.cwd}
+            >
               {task.workspace.cwd.split(/[/\\]/).pop() || task.workspace.cwd}
             </p>
           </div>
         </div>
 
-        <div class="space-y-2 rounded-lg bg-muted/30 p-4">
-          <h2 class="text-sm font-medium text-muted-foreground">{t("sched_schedule")}</h2>
+        <div class="space-y-2 rounded-lg bg-sidebar-accent/30 p-4">
+          <h2 class="text-sm font-medium text-sidebar-foreground/70">{t("sched_schedule")}</h2>
           {#if task.schedule.type === "cron" && task.schedule.cronExpression}
-            <p class="font-mono text-sm">{task.schedule.cronExpression}</p>
-            <p class="text-xs text-muted-foreground">
+            <p class="font-mono text-sm text-sidebar-foreground">{task.schedule.cronExpression}</p>
+            <p class="text-xs text-sidebar-foreground/70">
               {ScheduledTasksService.describeCronExpression(task.schedule.cronExpression)}
             </p>
           {:else if task.schedule.type === "interval"}
-            <p class="text-sm">
+            <p class="text-sm text-sidebar-foreground">
               {t("sched_everyMinutes", { n: String(task.schedule.intervalMinutes ?? 60) })}
             </p>
           {:else if task.schedule.type === "one-time" && task.schedule.fireAt}
-            <p class="text-sm">{new Date(task.schedule.fireAt).toLocaleString()}</p>
+            <p class="text-sm text-sidebar-foreground">
+              {new Date(task.schedule.fireAt).toLocaleString()}
+            </p>
           {/if}
           <div class="grid grid-cols-2 gap-3 pt-2">
             <div>
-              <span class="text-xs text-muted-foreground">{t("sched_nextRun")}</span>
-              <p class="text-sm">
+              <span class="text-xs text-sidebar-foreground/70">{t("sched_nextRun")}</span>
+              <p class="text-sm text-sidebar-foreground">
                 {task.nextRunAt ? new Date(task.nextRunAt).toLocaleString() : t("sched_never")}
               </p>
             </div>
             <div>
-              <span class="text-xs text-muted-foreground">{t("sched_lastRun")}</span>
-              <p class="text-sm">
+              <span class="text-xs text-sidebar-foreground/70">{t("sched_lastRun")}</span>
+              <p class="text-sm text-sidebar-foreground">
                 {task.lastRunAt ? new Date(task.lastRunAt).toLocaleString() : t("sched_never")}
               </p>
             </div>
@@ -215,15 +222,16 @@
         </div>
 
         <div class="space-y-2">
-          <h2 class="text-sm font-medium text-muted-foreground">{t("sched_prompt")}</h2>
-          <div class="rounded-lg bg-muted/30 p-4">
-            <pre class="whitespace-pre-wrap font-mono text-sm">{task.prompt}</pre>
+          <h2 class="text-sm font-medium text-sidebar-foreground/70">{t("sched_prompt")}</h2>
+          <div class="rounded-lg bg-sidebar-accent/30 p-4">
+            <pre
+              class="whitespace-pre-wrap font-mono text-sm text-sidebar-foreground">{task.prompt}</pre>
           </div>
         </div>
 
         <div class="space-y-2">
           <div class="flex items-center justify-between">
-            <h2 class="text-sm font-medium text-muted-foreground">{t("sched_execHistory")}</h2>
+            <h2 class="text-sm font-medium text-sidebar-foreground/70">{t("sched_execHistory")}</h2>
             <Button
               variant="ghost"
               size="sm"
@@ -242,7 +250,7 @@
                 <div
                   role="button"
                   tabindex="0"
-                  class="flex w-full items-center gap-3 rounded-lg bg-muted/30 p-3 text-left transition-colors hover:bg-muted/50 cursor-pointer
+                  class="flex w-full items-center gap-3 rounded-lg bg-sidebar-accent/30 p-3 text-left transition-colors hover:bg-sidebar-accent/50 cursor-pointer
                     {selectedRunId === execution.id ? 'ring-1 ring-primary/40' : ''}"
                   onclick={() => {
                     selectedRunId = execution.id;
@@ -257,12 +265,12 @@
                   <Icon name={statusInfo.iconName} size="sm" class={statusInfo.color} />
                   <div class="min-w-0 flex-1">
                     <div class="flex flex-wrap items-center gap-2 text-sm">
-                      <span>{statusInfo.label}</span>
-                      <span class="text-muted-foreground">
+                      <span class="text-sidebar-foreground">{statusInfo.label}</span>
+                      <span class="text-sidebar-foreground/70">
                         {new Date(execution.startedAt).toLocaleString()}
                       </span>
                       {#if execution.endedAt}
-                        <span class="text-muted-foreground/50">
+                        <span class="text-sidebar-foreground/50">
                           ({formatDuration(execution.startedAt, execution.endedAt)})
                         </span>
                       {/if}
@@ -270,7 +278,9 @@
                     {#if execution.error}
                       <p class="mt-1 truncate text-xs text-destructive">{execution.error}</p>
                     {:else if execution.summary}
-                      <p class="mt-1 truncate text-xs text-muted-foreground">{execution.summary}</p>
+                      <p class="mt-1 truncate text-xs text-sidebar-foreground/70">
+                        {execution.summary}
+                      </p>
                     {/if}
                   </div>
                   {#if execution.runId}
@@ -296,8 +306,10 @@
         {#if selectedExecution}
           <div class="space-y-4">
             <div>
-              <h2 class="text-lg font-semibold">{t("schedHub_executionDetail")}</h2>
-              <p class="text-sm text-muted-foreground">
+              <h2 class="text-lg font-semibold text-sidebar-foreground">
+                {t("schedHub_executionDetail")}
+              </h2>
+              <p class="text-sm text-sidebar-foreground/70">
                 {relativeTime(selectedExecution.startedAt)} · {runStatusIcon(
                   selectedExecution.status,
                 ).label}
@@ -305,9 +317,10 @@
             </div>
 
             <div class="space-y-2">
-              <h3 class="text-sm font-medium text-muted-foreground">{t("sched_prompt")}</h3>
-              <div class="rounded-lg bg-muted/30 p-4">
-                <pre class="whitespace-pre-wrap font-mono text-sm">{task.prompt}</pre>
+              <h3 class="text-sm font-medium text-sidebar-foreground/70">{t("sched_prompt")}</h3>
+              <div class="rounded-lg bg-sidebar-accent/30 p-4">
+                <pre
+                  class="whitespace-pre-wrap font-mono text-sm text-sidebar-foreground">{task.prompt}</pre>
               </div>
             </div>
 
@@ -322,10 +335,12 @@
 
             {#if selectedExecution.summary}
               <div class="space-y-2">
-                <h3 class="text-sm font-medium text-muted-foreground">
+                <h3 class="text-sm font-medium text-sidebar-foreground/70">
                   {t("schedHub_outputSummary")}
                 </h3>
-                <div class="rounded-lg bg-muted/30 p-4 text-sm whitespace-pre-wrap">
+                <div
+                  class="rounded-lg bg-sidebar-accent/30 p-4 text-sm whitespace-pre-wrap text-sidebar-foreground"
+                >
                   {selectedExecution.summary}
                 </div>
               </div>
@@ -333,9 +348,11 @@
 
             {#if selectedLinkedRun}
               <div class="space-y-2">
-                <h3 class="text-sm font-medium text-muted-foreground">{t("schedHub_session")}</h3>
-                <div class="rounded-lg bg-muted/30 p-4 text-sm">
-                  <p class="font-mono text-xs text-muted-foreground">{selectedLinkedRun.id}</p>
+                <h3 class="text-sm font-medium text-sidebar-foreground/70">
+                  {t("schedHub_session")}
+                </h3>
+                <div class="rounded-lg bg-sidebar-accent/30 p-4 text-sm text-sidebar-foreground">
+                  <p class="font-mono text-xs text-sidebar-foreground/70">{selectedLinkedRun.id}</p>
                   <p class="mt-2">{selectedLinkedRun.prompt}</p>
                 </div>
                 <Button variant="outline" onclick={() => openInChat(selectedLinkedRun.id)}>

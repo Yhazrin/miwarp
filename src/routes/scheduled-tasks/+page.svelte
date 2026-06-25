@@ -4,7 +4,6 @@
   import { t } from "$lib/i18n/index.svelte";
   import Button from "$lib/components/Button.svelte";
   import EmptyState from "$lib/components/EmptyState.svelte";
-  import ScheduledTaskCard from "$lib/components/ScheduledTaskCard.svelte";
   import ScheduledTaskEditor from "$lib/components/ScheduledTaskEditor.svelte";
   import TaskExecutionMonitor from "$lib/components/TaskExecutionMonitor.svelte";
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
@@ -13,12 +12,7 @@
   import Icon from "$lib/components/Icon.svelte";
   import type { LucideIconName } from "$lib/lucide-icon";
 
-  let activeTab = $state<"all" | "active" | "paused">("all");
   let runningNow = $state(false);
-
-  // Local state for which taskId's card should scroll into view next.
-  // Decoupled from selectedTaskId so it can run on demand, not just on click.
-  let scrollTargetId = $state<string | null>(null);
 
   // Read monitor state from the store so navigating away and back doesn't
   // reset the in-flight progress (#5).
@@ -133,31 +127,6 @@
     }
   }
 
-  const filteredTasks = $derived.by(() => {
-    switch (activeTab) {
-      case "active":
-        return scheduledTasksStore.activeTasks;
-      case "paused":
-        return scheduledTasksStore.inactiveTasks;
-      default:
-        return scheduledTasksStore.tasks;
-    }
-  });
-
-  // Scroll the currently selected card into view (#6).
-  $effect(() => {
-    const id = scheduledTasksStore.selectedTaskId ?? scrollTargetId;
-    if (!id) return;
-    scrollTargetId = null;
-    // Defer to next frame so the DOM has the freshly-selected class.
-    queueMicrotask(() => {
-      const el = document.querySelector(`[data-task-card-id="${id}"]`);
-      if (el && "scrollIntoView" in el) {
-        (el as HTMLElement).scrollIntoView({ block: "nearest" });
-      }
-    });
-  });
-
   onMount(() => {
     scheduledTasksStore.loadTasks();
     scheduledTasksStore.loadAllRuns();
@@ -196,7 +165,7 @@
       case "queued":
         return {
           iconName: "circle",
-          color: "text-muted-foreground",
+          color: "text-sidebar-foreground/70",
           label: t("sched_runQueued"),
         };
     }
@@ -221,12 +190,10 @@
 
 <div class="flex flex-col h-full">
   <!-- Header -->
-  <div
-    class="flex items-center justify-between px-6 py-4 border-b bg-background/50 backdrop-blur-sm"
-  >
+  <div class="flex items-center justify-between px-6 py-4">
     <div>
-      <h1 class="text-2xl font-bold">{t("sched_title")}</h1>
-      <p class="text-sm text-muted-foreground">{t("sched_description")}</p>
+      <h1 class="text-2xl font-bold text-sidebar-foreground">{t("sched_title")}</h1>
+      <p class="text-sm text-sidebar-foreground/70">{t("sched_description")}</p>
     </div>
     <Button variant="default" onclick={() => scheduledTasksStore.openCreateEditor()}>
       <svg
@@ -245,85 +212,13 @@
 
   <!-- Content -->
   <div class="flex flex-1 overflow-hidden">
-    <!-- Task List -->
-    <div class="flex flex-col w-[40%] border-r overflow-hidden">
-      <!-- Tabs -->
-      <div class="flex items-center gap-1 px-4 py-2 border-b bg-muted/20">
-        <button
-          type="button"
-          class="px-3 py-1.5 text-sm rounded-md transition-colors
-            {activeTab === 'all' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}"
-          onclick={() => (activeTab = "all")}
-        >
-          {t("sched_tabAll")} ({scheduledTasksStore.tasks.length})
-        </button>
-        <button
-          type="button"
-          class="px-3 py-1.5 text-sm rounded-md transition-colors
-            {activeTab === 'active' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}"
-          onclick={() => (activeTab = "active")}
-        >
-          {t("sched_tabActive")} ({scheduledTasksStore.activeTasks.length})
-        </button>
-        <button
-          type="button"
-          class="px-3 py-1.5 text-sm rounded-md transition-colors
-            {activeTab === 'paused' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}"
-          onclick={() => (activeTab = "paused")}
-        >
-          {t("sched_tabPaused")} ({scheduledTasksStore.inactiveTasks.length})
-        </button>
-      </div>
-
-      <!-- Task List -->
-      <div class="flex-1 overflow-y-auto p-4 space-y-2">
-        {#if scheduledTasksStore.loading}
-          <div class="flex items-center justify-center py-8 text-muted-foreground">
-            <svg
-              class="w-5 h-5 animate-spin mr-2"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-            >
-              <circle cx="12" cy="12" r="10" stroke-opacity="0.25" />
-              <path d="M12 2a10 10 0 0 1 10 10" />
-            </svg>
-            {t("sched_loading")}
-          </div>
-        {:else if filteredTasks.length === 0}
-          <div class="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <svg
-              class="w-12 h-12 mb-4 opacity-50"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.5"
-            >
-              <rect x="3" y="4" width="18" height="18" rx="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-            <p class="text-sm">{t("sched_noTasks")}</p>
-            <Button variant="link" onclick={() => scheduledTasksStore.openCreateEditor()}>
-              {t("sched_createFirst")}
-            </Button>
-          </div>
-        {:else}
-          {#each filteredTasks as task (task.id)}
-            <div data-task-card-id={task.id}>
-              <ScheduledTaskCard {task} selected={scheduledTasksStore.selectedTaskId === task.id} />
-            </div>
-          {/each}
-        {/if}
-      </div>
-    </div>
-
     <!-- Execution Monitor Panel -->
     {#if activeMonitor}
-      <div class="w-[35%] border-r overflow-hidden p-4" transition:slide={{ duration: 200 }}>
-        <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
+      <div
+        class="w-[35%] border-r border-sidebar-border overflow-hidden p-4"
+        transition:slide={{ duration: 200 }}
+      >
+        <h3 class="text-sm font-medium mb-3 flex items-center gap-2 text-sidebar-foreground">
           <span class="h-2 w-2 rounded-full bg-miwarp-status-info animate-pulse"></span>
           {t("scheduledTasks_executionMonitor")}
         </h3>
@@ -353,12 +248,12 @@
           <!-- Task Info -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <h2 class="text-xl font-semibold">{task.name}</h2>
+              <h2 class="text-xl font-semibold text-sidebar-foreground">{task.name}</h2>
               <div class="flex items-center gap-2">
                 <span
                   class="px-2 py-1 text-xs rounded-full {task.enabled
                     ? 'bg-[hsl(var(--miwarp-status-success)/0.1)] text-miwarp-status-success'
-                    : 'bg-muted text-muted-foreground'}"
+                    : 'bg-sidebar-accent/40 text-sidebar-foreground/70'}"
                 >
                   {task.enabled ? t("sched_active") : t("sched_paused")}
                 </span>
@@ -374,58 +269,65 @@
               </div>
             </div>
             {#if task.description}
-              <p class="text-muted-foreground">{task.description}</p>
+              <p class="text-sidebar-foreground/70">{task.description}</p>
             {/if}
           </div>
 
           <!-- Meta -->
           <div class="grid grid-cols-3 gap-4">
-            <div class="p-3 rounded-lg bg-muted/30">
-              <span class="text-xs text-muted-foreground">{t("sched_agent")}</span>
-              <p class="text-sm font-medium uppercase">{task.agent}</p>
+            <div class="p-3 rounded-lg bg-sidebar-accent/30">
+              <span class="text-xs text-sidebar-foreground/70">{t("sched_agent")}</span>
+              <p class="text-sm font-medium uppercase text-sidebar-foreground">{task.agent}</p>
             </div>
-            <div class="p-3 rounded-lg bg-muted/30">
-              <span class="text-xs text-muted-foreground">{t("sched_workspace")}</span>
-              <p class="text-sm font-mono truncate" title={task.workspace.cwd}>
+            <div class="p-3 rounded-lg bg-sidebar-accent/30">
+              <span class="text-xs text-sidebar-foreground/70">{t("sched_workspace")}</span>
+              <p
+                class="text-sm font-mono truncate text-sidebar-foreground"
+                title={task.workspace.cwd}
+              >
                 {task.workspace.cwd.split(/[/\\]/).pop() || task.workspace.cwd}
               </p>
             </div>
             {#if task.model}
-              <div class="p-3 rounded-lg bg-muted/30">
-                <span class="text-xs text-muted-foreground">{t("sched_model")}</span>
-                <p class="text-sm">{task.model}</p>
+              <div class="p-3 rounded-lg bg-sidebar-accent/30">
+                <span class="text-xs text-sidebar-foreground/70">{t("sched_model")}</span>
+                <p class="text-sm text-sidebar-foreground">{task.model}</p>
               </div>
             {/if}
           </div>
 
           <!-- Schedule Info -->
-          <div class="p-4 rounded-lg bg-muted/30 space-y-2">
-            <h3 class="text-sm font-medium text-muted-foreground">{t("sched_schedule")}</h3>
+          <div class="p-4 rounded-lg bg-sidebar-accent/30 space-y-2">
+            <h3 class="text-sm font-medium text-sidebar-foreground/70">{t("sched_schedule")}</h3>
             {#if task.schedule.type === "cron" && task.schedule.cronExpression}
               <div class="flex items-center gap-2">
-                <span class="font-mono text-sm">{task.schedule.cronExpression}</span>
-                <span class="text-xs text-muted-foreground">
+                <span class="font-mono text-sm text-sidebar-foreground"
+                  >{task.schedule.cronExpression}</span
+                >
+                <span class="text-xs text-sidebar-foreground/70">
                   ({ScheduledTasksService.describeCronExpression(task.schedule.cronExpression)})
                 </span>
               </div>
             {:else if task.schedule.type === "interval"}
-              <p class="text-sm">
+              <p class="text-sm text-sidebar-foreground">
                 {t("sched_everyMinutes", { n: String(task.schedule.intervalMinutes ?? 60) })}
               </p>
             {:else if task.schedule.type === "one-time" && task.schedule.fireAt}
-              <p class="text-sm">{new Date(task.schedule.fireAt).toLocaleString()}</p>
+              <p class="text-sm text-sidebar-foreground">
+                {new Date(task.schedule.fireAt).toLocaleString()}
+              </p>
             {/if}
 
             <div class="grid grid-cols-2 gap-4 pt-2">
               <div>
-                <span class="text-xs text-muted-foreground">{t("sched_nextRun")}</span>
-                <p class="text-sm">
+                <span class="text-xs text-sidebar-foreground/70">{t("sched_nextRun")}</span>
+                <p class="text-sm text-sidebar-foreground">
                   {task.nextRunAt ? new Date(task.nextRunAt).toLocaleString() : t("sched_never")}
                 </p>
               </div>
               <div>
-                <span class="text-xs text-muted-foreground">{t("sched_lastRun")}</span>
-                <p class="text-sm">
+                <span class="text-xs text-sidebar-foreground/70">{t("sched_lastRun")}</span>
+                <p class="text-sm text-sidebar-foreground">
                   {task.lastRunAt ? new Date(task.lastRunAt).toLocaleString() : t("sched_never")}
                 </p>
               </div>
@@ -434,16 +336,19 @@
 
           <!-- Prompt Preview -->
           <div class="space-y-2">
-            <h3 class="text-sm font-medium text-muted-foreground">{t("sched_prompt")}</h3>
-            <div class="p-4 rounded-lg bg-muted/30">
-              <pre class="text-sm whitespace-pre-wrap font-mono">{task.prompt}</pre>
+            <h3 class="text-sm font-medium text-sidebar-foreground/70">{t("sched_prompt")}</h3>
+            <div class="p-4 rounded-lg bg-sidebar-accent/30">
+              <pre
+                class="text-sm whitespace-pre-wrap font-mono text-sidebar-foreground">{task.prompt}</pre>
             </div>
           </div>
 
           <!-- Execution Runs -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <h3 class="text-sm font-medium text-muted-foreground">{t("sched_execHistory")}</h3>
+              <h3 class="text-sm font-medium text-sidebar-foreground/70">
+                {t("sched_execHistory")}
+              </h3>
               <Button
                 variant="ghost"
                 size="sm"
@@ -459,16 +364,16 @@
               <div class="space-y-2">
                 {#each scheduledTasksStore.selectedTaskRuns as run (run.id)}
                   {@const statusInfo = runStatusIcon(run.status)}
-                  <div class="p-3 rounded-lg bg-muted/30 flex items-center gap-3">
+                  <div class="p-3 rounded-lg bg-sidebar-accent/30 flex items-center gap-3">
                     <Icon name={statusInfo.iconName} size="sm" class={statusInfo.color} />
                     <div class="flex-1 min-w-0">
                       <div class="flex items-center gap-2 text-sm">
-                        <span>{statusInfo.label}</span>
-                        <span class="text-muted-foreground">
+                        <span class="text-sidebar-foreground">{statusInfo.label}</span>
+                        <span class="text-sidebar-foreground/70">
                           {new Date(run.startedAt).toLocaleString()}
                         </span>
                         {#if run.endedAt}
-                          <span class="text-muted-foreground/50">
+                          <span class="text-sidebar-foreground/50">
                             ({formatDuration(run.startedAt, run.endedAt)})
                           </span>
                         {/if}
@@ -476,7 +381,9 @@
                       {#if run.error}
                         <p class="text-xs text-destructive mt-1 truncate">{run.error}</p>
                       {:else if run.summary}
-                        <p class="text-xs text-muted-foreground mt-1 truncate">{run.summary}</p>
+                        <p class="text-xs text-sidebar-foreground/70 mt-1 truncate">
+                          {run.summary}
+                        </p>
                       {/if}
                     </div>
                   </div>
@@ -486,7 +393,7 @@
           </div>
         </div>
       {:else}
-        <div class="flex flex-col items-center justify-center h-full text-muted-foreground">
+        <div class="flex flex-col items-center justify-center h-full text-sidebar-foreground/70">
           <svg
             class="w-16 h-16 mb-4 opacity-50"
             viewBox="0 0 24 24"

@@ -13,6 +13,7 @@ export type LucideIconName =
   | "chevron-right"
   | "circle"
   | "circle-dot"
+  | "circle-user"
   | "clipboard-list"
   | "clock"
   | "code"
@@ -85,6 +86,7 @@ const LUCIDE_ICON_SET = new Set<string>([
   "chevron-right",
   "circle",
   "circle-dot",
+  "circle-user",
   "clipboard-list",
   "clock",
   "code",

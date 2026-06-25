@@ -19,13 +19,13 @@ export function normalizeProcessVisibility(value: unknown): ProcessVisibility {
   return "expert";
 }
 
-/** Read persisted visibility (same-tab / next visit). Invalid or missing → full display. */
+/** Read persisted visibility (same-tab / next visit). Invalid or missing → chat-first. */
 export function getCachedProcessVisibility(): ProcessVisibility {
-  if (typeof localStorage === "undefined") return "developer";
+  if (typeof localStorage === "undefined") return "output";
   try {
     return normalizeProcessVisibility(localStorage.getItem(PROCESS_VISIBILITY_LS_KEY));
   } catch {
-    return "developer";
+    return "output";
   }
 }
 

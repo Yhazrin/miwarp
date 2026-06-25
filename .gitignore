@@ -8,6 +8,7 @@ node_modules/
 # Frontend build output
 build/
 .svelte-kit/
+static/design-tokens.css
 
 # Mobile build state
 apps/android/MiWarpMobile/.gradle/

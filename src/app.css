@@ -1433,10 +1433,9 @@ html.native-glass-enabled .sidebar-main-corner-bridge {
 .sidebar-main-corner-bridge {
   position: absolute;
   top: 0;
-  right: 0;
-  width: var(--miwarp-chat-corner-radius);
-  height: 100%;
-  transform: translateX(100%);
+  bottom: 0;
+  left: var(--sidebar-effective-width, 0px);
+  width: calc(var(--miwarp-chat-corner-radius) + 1px);
   pointer-events: none;
   z-index: 25;
   border-top-right-radius: var(--miwarp-chat-corner-radius);
@@ -1555,6 +1554,12 @@ textarea,
   initial-value: 0px;
 }
 
+@property --session-island-tier1-max-width {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 7rem;
+}
+
 :root {
   /* Shared island motion — shell + children share one duration/easing */
   --session-island-duration: 560ms;
@@ -1572,6 +1577,9 @@ textarea,
   --session-island-rail-gap: 6px;
   --session-island-tier2-width-cap: min(calc(100% - 24px), 42rem);
   --session-island-morph-width: min(180px, calc(100% - 24px));
+  /* Tier-1 track caps — animated in lockstep with tier-2 width on collapse. */
+  --session-island-tier1-max-width-expanded: 20rem;
+  --session-island-tier1-max-width-collapsed: 7rem;
 }
 
 .session-island-shell {
@@ -1681,6 +1689,7 @@ textarea,
     grid-template-rows var(--session-island-duration) var(--session-island-ease),
     --context-pill-slot-width var(--session-island-duration) var(--session-island-ease),
     --session-chrome-slot-width var(--session-island-duration) var(--session-island-ease) 80ms,
+    --session-island-tier1-max-width var(--session-island-duration) var(--session-island-ease),
     --session-island-tier2-max-width var(--session-island-duration) var(--session-island-ease),
     border-radius var(--session-island-duration) var(--session-island-ease),
     min-height var(--session-island-duration) var(--session-island-ease),
@@ -1704,18 +1713,20 @@ textarea,
   --context-pill-slot-width: var(--context-pill-width-compact);
 }
 
-/* Tier 2 row: grid 0fr ↔ 1fr; width 0 ↔ cap (never eases to tier-1 width on collapse) */
+/* Tier 2 row: grid 0fr ↔ 1fr; tier-1 + tier-2 widths animate together on collapse */
 .session-island-shell.session-island-has-tier2 {
   display: grid;
   grid-template-columns: minmax(0, max-content);
   justify-items: center;
   align-content: start;
   grid-template-rows: auto 0fr;
+  --session-island-tier1-max-width: var(--session-island-tier1-max-width-collapsed);
   --session-island-tier2-max-width: 0px;
   transition:
     grid-template-rows var(--session-island-duration) var(--session-island-ease),
     --context-pill-slot-width var(--session-island-duration) var(--session-island-ease),
     --session-chrome-slot-width var(--session-island-duration) var(--session-island-ease),
+    --session-island-tier1-max-width var(--session-island-duration) var(--session-island-ease),
     --session-island-tier2-max-width var(--session-island-duration) var(--session-island-ease),
     border-radius var(--session-island-duration) var(--session-island-ease),
     min-height var(--session-island-duration) var(--session-island-ease),
@@ -1725,7 +1736,13 @@ textarea,
 
 .session-island-shell.session-island-active.session-island-has-tier2 {
   grid-template-rows: auto 1fr;
+  --session-island-tier1-max-width: var(--session-island-tier1-max-width-expanded);
   --session-island-tier2-max-width: var(--session-island-tier2-width-cap);
+}
+
+.session-island-shell.session-island-has-tier2 .session-island-tier1-frame {
+  max-width: var(--session-island-tier1-max-width);
+  overflow: hidden;
 }
 
 /* Collapse: tier-2 must not keep layout width while row height animates.
@@ -1791,16 +1808,13 @@ textarea,
   margin: 0;
   padding: 0;
   border: 0;
-  /* Collapse uses ease-in (slow start, fast end) — the mirror of the base
-     ease-out (fast start, slow end) used when the reveal grows in. height
-     and margin are included so the element does not snap to 0-height
-     (overflow:hidden would otherwise clip the content instantly). */
+  /* Collapse shares the same easing/duration as tier-2 so both rows shrink together. */
   transition:
-    opacity var(--session-island-duration) ease-in,
-    transform var(--session-island-duration) ease-in,
-    width var(--session-island-duration) ease-in,
-    height var(--session-island-duration) ease-in,
-    margin var(--session-island-duration) ease-in;
+    opacity var(--session-island-duration) var(--session-island-ease),
+    transform var(--session-island-duration) var(--session-island-ease),
+    width var(--session-island-duration) var(--session-island-ease),
+    height var(--session-island-duration) var(--session-island-ease),
+    margin var(--session-island-duration) var(--session-island-ease);
 }
 
 .session-island-shell.session-island-active .session-island-reveal {
@@ -2069,16 +2083,14 @@ textarea,
   transform: translate3d(0, 0, 0) scale(1);
 }
 
-/* Collapse tier-2 visuals in parallel with row height + tier-1 width (no extra delay).
-   ease-in mirrors the base ease-out, matching the tier-1 reveal collapse
-   curve so both rows feel symmetric on hover-out. */
+/* Collapse tier-2 visuals in parallel with row height + tier-1 width. */
 .session-island-shell.session-island-has-tier2:not(.session-island-active) .session-island-tier2 {
   opacity: 0;
   transform: translate3d(0, -8px, 0) scale(0.92);
   transition-delay: 0ms;
   transition:
-    opacity var(--session-island-duration) ease-in,
-    transform var(--session-island-duration) ease-in;
+    opacity var(--session-island-duration) var(--session-island-ease),
+    transform var(--session-island-duration) var(--session-island-ease);
 }
 
 .session-island-tier2-divider {
@@ -2141,6 +2153,113 @@ textarea,
   .session-island-reveal,
   .session-context-ctx-label {
     transition-duration: 180ms;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Notification Capsule
+   Reuses .session-island-shell for shell layout (radius, blur, easing,
+   transitions) but overrides color/background per toast severity so a
+   notification morph matches the chat status bar's start/end flash.
+   ═══════════════════════════════════════════════════════════ */
+.notification-capsule {
+  /* Override the absolute positioning inherited from session-island-shell —
+     the host wrapper already positions us; the shell stays inline-flow. */
+  position: relative;
+  left: auto;
+  right: auto;
+  top: auto;
+  transform: none;
+
+  /* Lighter glass than the chat island (no chat-only chrome inside). */
+  min-height: 36px;
+  border-radius: 18px;
+  padding: 0;
+
+  /* Tighter border-radius / blur for a chip that hovers above content. */
+  background-color: hsl(var(--background) / 0.82);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.16),
+    0 0 0 1px hsl(var(--miwarp-glass-border) / 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+
+  /* The morph flash reads as a quick color + glow pulse. */
+  transition:
+    background-color 260ms var(--session-island-ease),
+    border-color 260ms var(--session-island-ease),
+    box-shadow 260ms var(--session-island-ease);
+}
+
+/* Status overlays share the language of .session-island-running/done/etc.
+   — solid status fill, soft glow, ~200ms color crossfade. */
+.notification-capsule-success {
+  background-color: hsl(152 70% 42% / 0.95);
+  color: hsl(0 0% 100%);
+  box-shadow:
+    0 10px 32px hsl(152 70% 42% / 0.32),
+    0 0 0 1px hsl(152 60% 32% / 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.notification-capsule-success :global(.text-foreground) {
+  color: hsl(0 0% 100%);
+}
+.notification-capsule-success :global(.text-muted-foreground) {
+  color: hsl(0 0% 100% / 0.78);
+}
+
+.notification-capsule-error {
+  background-color: hsl(0 72% 50% / 0.95);
+  color: hsl(0 0% 100%);
+  box-shadow:
+    0 10px 32px hsl(0 72% 50% / 0.34),
+    0 0 0 1px hsl(0 65% 40% / 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.notification-capsule-error :global(.text-foreground) {
+  color: hsl(0 0% 100%);
+}
+.notification-capsule-error :global(.text-muted-foreground) {
+  color: hsl(0 0% 100% / 0.78);
+}
+
+.notification-capsule-warning {
+  background-color: hsl(38 92% 50% / 0.96);
+  color: hsl(30 30% 12%);
+  box-shadow:
+    0 10px 32px hsl(38 92% 50% / 0.32),
+    0 0 0 1px hsl(32 80% 40% / 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.notification-capsule-warning :global(.text-foreground) {
+  color: hsl(30 30% 12%);
+}
+.notification-capsule-warning :global(.text-muted-foreground) {
+  color: hsl(30 30% 12% / 0.72);
+}
+.notification-capsule-warning :global(button) {
+  color: hsl(30 30% 12%);
+}
+
+.notification-capsule-info {
+  background-color: hsl(199 89% 48% / 0.95);
+  color: hsl(0 0% 100%);
+  box-shadow:
+    0 10px 32px hsl(199 89% 48% / 0.32),
+    0 0 0 1px hsl(199 80% 38% / 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.notification-capsule-info :global(.text-foreground) {
+  color: hsl(0 0% 100%);
+}
+.notification-capsule-info :global(.text-muted-foreground) {
+  color: hsl(0 0% 100% / 0.78);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notification-capsule {
+    transition: none;
   }
 }
 

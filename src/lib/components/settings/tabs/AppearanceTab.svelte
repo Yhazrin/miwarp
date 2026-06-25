@@ -18,6 +18,8 @@
   import type { UserSettings } from "$lib/types";
   import Card from "$lib/components/Card.svelte";
   import SettingsToggle from "../SettingsToggle.svelte";
+  import SettingsOptionCard from "../SettingsOptionCard.svelte";
+  import SettingsWireframePreview from "../SettingsWireframePreview.svelte";
   import {
     normalizeSessionIslandAlignment,
     SESSION_ISLAND_ALIGNMENT_CHANGED_EVENT,
@@ -57,21 +59,55 @@
       value: "auto",
       labelKey: "settings_visualPerfMode_auto",
       descKey: "settings_visualPerfMode_autoDesc",
+      preview: "visual-perf-auto" as const,
     },
     {
       value: "quality",
       labelKey: "settings_visualPerfMode_quality",
       descKey: "settings_visualPerfMode_qualityDesc",
+      preview: "visual-perf-quality" as const,
     },
     {
       value: "balanced",
       labelKey: "settings_visualPerfMode_balanced",
       descKey: "settings_visualPerfMode_balancedDesc",
+      preview: "visual-perf-balanced" as const,
     },
     {
       value: "performance",
       labelKey: "settings_visualPerfMode_performance",
       descKey: "settings_visualPerfMode_performanceDesc",
+      preview: "visual-perf-performance" as const,
+    },
+  ] as const;
+
+  const WINDOW_MATERIALS = [
+    {
+      value: "header_view",
+      labelKey: "settings_appearance_materialHeaderView",
+      descKey: "settings_appearance_materialHeaderViewDesc",
+      preview: "window-material-header" as const,
+    },
+    {
+      value: "sidebar",
+      labelKey: "settings_appearance_materialSidebar",
+      descKey: "settings_appearance_materialSidebarDesc",
+      preview: "window-material-sidebar" as const,
+    },
+  ] as const;
+
+  const ICON_RAIL_OPTIONS = [
+    {
+      value: true,
+      labelKey: "settings_iconRailEnabled_on",
+      descKey: "settings_iconRailEnabled_onDesc",
+      preview: "icon-rail-on" as const,
+    },
+    {
+      value: false,
+      labelKey: "settings_iconRailEnabled_off",
+      descKey: "settings_iconRailEnabled_offDesc",
+      preview: "icon-rail-off" as const,
     },
   ] as const;
 
@@ -87,11 +123,13 @@
       value: "center" as const,
       labelKey: "settings_sessionIslandAlignment_center",
       descKey: "settings_sessionIslandAlignment_centerDesc",
+      preview: "session-island-center" as const,
     },
     {
       value: "right" as const,
       labelKey: "settings_sessionIslandAlignment_right",
       descKey: "settings_sessionIslandAlignment_rightDesc",
+      preview: "session-island-right" as const,
     },
   ];
 
@@ -206,25 +244,27 @@
       onchange={(value) => onSaveGeneralPatch({ native_window_glass_enabled: value })}
     />
     {#if settings?.native_window_glass_enabled !== false}
-      <div class="flex items-center justify-between gap-4 pt-2">
-        <div class="flex-1 min-w-0">
+      <div class="space-y-2 pt-2">
+        <div>
           <p class="text-sm font-medium">{t("settings_appearance_nativeWindowMaterial")}</p>
           <p class="text-xs text-muted-foreground mt-0.5">
             {t("settings_appearance_nativeWindowMaterialDesc")}
           </p>
         </div>
-        <div class="flex flex-wrap gap-1">
-          {#each [{ value: "header_view", labelKey: "settings_appearance_materialHeaderView" }, { value: "sidebar", labelKey: "settings_appearance_materialSidebar" }] as opt (opt.value)}
-            <button
-              type="button"
-              class="rounded-md px-3 py-1.5 text-xs font-medium transition-all duration-150
-                {(settings?.native_window_glass_material ?? 'header_view') === opt.value
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'}"
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {#each WINDOW_MATERIALS as opt (opt.value)}
+            {@const active =
+              (settings?.native_window_glass_material ?? "header_view") === opt.value}
+            <SettingsOptionCard
+              {active}
+              title={t(opt.labelKey as MessageKey)}
+              description={t(opt.descKey as MessageKey)}
               onclick={() => onSaveGeneralPatch({ native_window_glass_material: opt.value })}
             >
-              {t(opt.labelKey as MessageKey)}
-            </button>
+              {#snippet preview()}
+                <SettingsWireframePreview variant={opt.preview} />
+              {/snippet}
+            </SettingsOptionCard>
           {/each}
         </div>
       </div>
@@ -243,12 +283,27 @@
       {t("settings_general_display")}
     </h2>
 
-    <SettingsToggle
-      checked={settings?.icon_rail_enabled !== false}
-      label={t("settings_iconRailEnabled")}
-      description={t("settings_iconRailEnabledDesc")}
-      onchange={(value) => onSaveGeneralPatch({ icon_rail_enabled: value })}
-    />
+    <div class="space-y-2">
+      <div>
+        <p class="text-sm font-medium">{t("settings_iconRailEnabled")}</p>
+        <p class="text-xs text-muted-foreground mt-0.5">{t("settings_iconRailEnabledDesc")}</p>
+      </div>
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {#each ICON_RAIL_OPTIONS as opt (opt.labelKey)}
+          {@const active = (settings?.icon_rail_enabled !== false) === opt.value}
+          <SettingsOptionCard
+            {active}
+            title={t(opt.labelKey as MessageKey)}
+            description={t(opt.descKey as MessageKey)}
+            onclick={() => onSaveGeneralPatch({ icon_rail_enabled: opt.value })}
+          >
+            {#snippet preview()}
+              <SettingsWireframePreview variant={opt.preview} />
+            {/snippet}
+          </SettingsOptionCard>
+        {/each}
+      </div>
+    </div>
 
     <SettingsToggle
       checked={settings?.mascot_enabled !== false}
@@ -274,31 +329,16 @@
       <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {#each SESSION_ISLAND_ALIGNMENTS as opt (opt.value)}
           {@const active = activeIslandAlignment === opt.value}
-          <button
-            type="button"
-            aria-pressed={active}
-            class="rounded-lg border p-3 text-left transition-colors {active
-              ? 'border-primary/50 bg-muted/55 shadow-sm ring-1 ring-primary/20'
-              : 'border-border/40 bg-background/40 hover:bg-muted/30'}"
+          <SettingsOptionCard
+            {active}
+            title={t(opt.labelKey as MessageKey)}
+            description={t(opt.descKey as MessageKey)}
             onclick={() => pickSessionIslandAlignment(opt.value)}
           >
-            <div
-              class="session-island-alignment-preview mb-2.5 rounded-md border border-border/35 bg-muted/25 p-2"
-              aria-hidden="true"
-            >
-              <div class="relative h-10 rounded-sm bg-background/60">
-                <span
-                  class="absolute top-1.5 h-2 rounded-full bg-primary/70 {opt.value === 'center'
-                    ? 'left-1/2 w-10 -translate-x-1/2'
-                    : 'right-1.5 w-8'}"
-                ></span>
-              </div>
-            </div>
-            <div class="text-sm font-medium text-foreground">{t(opt.labelKey as MessageKey)}</div>
-            <p class="mt-1 text-[11px] leading-snug text-muted-foreground">
-              {t(opt.descKey as MessageKey)}
-            </p>
-          </button>
+            {#snippet preview()}
+              <SettingsWireframePreview variant={opt.preview} />
+            {/snippet}
+          </SettingsOptionCard>
         {/each}
       </div>
     </div>
@@ -313,18 +353,16 @@
       <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {#each VISUAL_PERF_MODES as mode (mode.value)}
           {@const active = (settings?.visual_performance_mode ?? "auto") === mode.value}
-          <button
-            type="button"
-            class="rounded-lg border p-3 text-left transition-colors {active
-              ? 'border-border bg-muted/55 shadow-sm'
-              : 'border-border/40 bg-background/40 hover:bg-muted/30'}"
+          <SettingsOptionCard
+            {active}
+            title={t(mode.labelKey as MessageKey)}
+            description={t(mode.descKey as MessageKey)}
             onclick={() => pickVisualPerfMode(mode.value)}
           >
-            <div class="text-sm font-medium text-foreground">{t(mode.labelKey as MessageKey)}</div>
-            <p class="mt-1 text-[11px] leading-snug text-muted-foreground">
-              {t(mode.descKey as MessageKey)}
-            </p>
-          </button>
+            {#snippet preview()}
+              <SettingsWireframePreview variant={mode.preview} />
+            {/snippet}
+          </SettingsOptionCard>
         {/each}
       </div>
     </div>

@@ -136,7 +136,21 @@ pub fn build_adapter_settings(
         }
     };
 
-    let append_system_prompt = agent.append_system_prompt.clone();
+    let mut append_system_prompt = agent.append_system_prompt.clone();
+
+    // Append personal identity (display name / role / time zone) so the model
+    // can address the user and reason about timestamps consistently.
+    let identity_block = build_user_identity_block(
+        &user.user_display_name,
+        &user.user_role,
+        &user.user_timezone,
+    );
+    if !identity_block.is_empty() {
+        append_system_prompt = Some(match append_system_prompt {
+            Some(existing) => format!("{}\n\n{}", existing, identity_block),
+            None => identity_block,
+        });
+    }
 
     // Budget: agent-level overrides user-level
     let max_budget_usd = agent.max_budget_usd.or(user.max_budget_usd);
@@ -364,6 +378,33 @@ pub fn validate_session_params(
         return Err("Cannot resume/continue with no_session_persistence enabled".into());
     }
     Ok(())
+}
+
+/// Compose the personal-identity block that gets appended to the system prompt.
+/// Returns an empty string when the user hasn't filled in any field, so the
+/// caller can detect the "nothing to inject" case and skip the wrapper.
+fn build_user_identity_block(
+    name: &Option<String>,
+    role: &Option<String>,
+    tz: &Option<String>,
+) -> String {
+    let mut lines: Vec<String> = Vec::new();
+    if let Some(n) = name.as_ref().filter(|s| !s.trim().is_empty()) {
+        lines.push(format!("- Display name: {}", n.trim()));
+    }
+    if let Some(r) = role.as_ref().filter(|s| !s.trim().is_empty()) {
+        lines.push(format!("- Role: {}", r.trim()));
+    }
+    if let Some(t) = tz.as_ref().filter(|s| !s.trim().is_empty()) {
+        lines.push(format!("- Timezone: {}", t.trim()));
+    }
+    if lines.is_empty() {
+        return String::new();
+    }
+    format!(
+        "User identity (MiWarp personal profile):\n{}",
+        lines.join("\n")
+    )
 }
 
 #[cfg(test)]
@@ -680,5 +721,38 @@ mod tests {
             &Some(vec!["MiniMax-M2.7".into()]),
         );
         assert_eq!(adapter.model, None);
+    }
+
+    // ── build_user_identity_block tests ──
+
+    #[test]
+    fn identity_block_empty_when_no_fields() {
+        let block = build_user_identity_block(&None, &None, &None);
+        assert_eq!(block, "");
+    }
+
+    #[test]
+    fn identity_block_skips_blank_fields() {
+        let block = build_user_identity_block(
+            &Some("   ".into()),
+            &Some("Engineer".into()),
+            &Some("".into()),
+        );
+        assert!(block.contains("- Role: Engineer"));
+        assert!(!block.contains("Display name"));
+        assert!(!block.contains("Timezone"));
+    }
+
+    #[test]
+    fn identity_block_trims_values() {
+        let block = build_user_identity_block(
+            &Some("  Alex  ".into()),
+            &Some(" PM ".into()),
+            &Some(" UTC+8 ".into()),
+        );
+        assert!(block.contains("- Display name: Alex"));
+        assert!(block.contains("- Role: PM"));
+        assert!(block.contains("- Timezone: UTC+8"));
+        assert!(block.starts_with("User identity (MiWarp personal profile):"));
     }
 }

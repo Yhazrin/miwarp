@@ -11,6 +11,7 @@ pub mod favorites;
 pub mod folders;
 pub mod mcp_registry;
 pub mod plugins;
+pub mod product_bootstrap;
 pub mod prompt_index;
 pub mod run_index;
 pub mod run_journal;

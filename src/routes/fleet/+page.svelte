@@ -11,6 +11,7 @@
    * data + state to `fleetStore`. No direct API calls.
    */
   import { onMount, onDestroy } from "svelte";
+  import AgentIdentity from "$lib/components/AgentIdentity.svelte";
   import { fleetStore } from "$lib/stores/fleet-store.svelte";
   import { t, tRaw } from "$lib/i18n/index.svelte";
   import * as api from "$lib/api";
@@ -96,7 +97,7 @@
         onclick={() => (fleetStore.selectedMemberId = member.id)}
       >
         <div class="card-header">
-          <span class="agent-badge">{member.agent}</span>
+          <AgentIdentity agent={member.agent} size="sm" showName={true} />
           <span class="status-dot status-{member.status}"></span>
         </div>
         <div class="card-cwd" title={member.cwd}>{member.cwd}</div>
@@ -123,7 +124,7 @@
         </header>
         <dl>
           <dt>{t("fleet_field_agent")}</dt>
-          <dd>{selected.agent}</dd>
+          <dd><AgentIdentity agent={selected.agent} size="sm" showName={true} /></dd>
           <dt>{t("fleet_field_status")}</dt>
           <dd>{tRaw("fleet_status_" + selected.status)}</dd>
           <dt>{t("fleet_field_cwd")}</dt>
@@ -242,13 +243,6 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-  }
-  .agent-badge {
-    font-size: 0.75rem;
-    padding: 0.1rem 0.4rem;
-    background: var(--surface-3, #222);
-    border-radius: 3px;
-    text-transform: uppercase;
   }
   .status-dot {
     width: 0.6rem;

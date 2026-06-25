@@ -192,7 +192,8 @@ fn handle_tools_list(id: Value) -> Value {
                         "type": "object",
                         "properties": {
                             "status": { "type": "string", "enum": ["idle", "running", "awaiting_permission", "error", "stopped", "detached"] },
-                            "agent": { "type": "string" }
+                            "agent": { "type": "string" },
+                            "include_archived": { "type": "boolean", "default": false, "description": "Include members auto-archived by the fleet reaper (older than 24h and not running)." }
                         }
                     }),
                 ),
@@ -249,7 +250,12 @@ fn handle_tools_list(id: Value) -> Value {
                 tool_schema(
                     "fleet_metrics",
                     "Get aggregate fleet metrics (total / by-status / by-agent / today's tokens + cost).",
-                    json!({ "type": "object", "properties": {} }),
+                    json!({
+                        "type": "object",
+                        "properties": {
+                            "include_archived": { "type": "boolean", "default": false, "description": "Include members auto-archived by the fleet reaper in the totals." }
+                        }
+                    }),
                 ),
                 tool_schema(
                     "search_memory",
@@ -291,7 +297,11 @@ async fn handle_tools_call(id: Value, params: Option<Value>, state: AppState) ->
     match tool_name.as_str() {
         "list_employees" => {
             let sessions = state.sessions.clone();
-            match fleet::list_fleet_inner(sessions).await {
+            let include_archived = args
+                .get("include_archived")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            match fleet::list_fleet_inner(sessions, include_archived).await {
                 Ok(mut members) => {
                     // Client-side filter (server-side filter would need query parsing
                     // — deferring to v1.2.1)
@@ -342,7 +352,8 @@ async fn handle_tools_call(id: Value, params: Option<Value>, state: AppState) ->
                     "arguments.id and arguments.prompt are required",
                 );
             };
-            match fleet::send_to_fleet_member(emp_id, prompt).await {
+            let sessions = state.sessions.clone();
+            match fleet::send_to_fleet_member_inner(sessions, emp_id, prompt).await {
                 Ok(r) => tool_ok(
                     id,
                     &serde_json::to_string(&r).unwrap_or_else(|_| "{}".into()),
@@ -364,7 +375,11 @@ async fn handle_tools_call(id: Value, params: Option<Value>, state: AppState) ->
         }
         "fleet_metrics" => {
             let sessions = state.sessions.clone();
-            match fleet::get_fleet_metrics_inner(sessions).await {
+            let include_archived = args
+                .get("include_archived")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            match fleet::get_fleet_metrics_inner(sessions, include_archived).await {
                 Ok(m) => tool_ok(
                     id,
                     &serde_json::to_string(&m).unwrap_or_else(|_| "{}".into()),
@@ -497,7 +512,7 @@ async fn handle_resources_read(id: Value, params: Option<Value>, state: AppState
     match uri {
         "miwarp://employees" => {
             let sessions = state.sessions.clone();
-            match fleet::list_fleet_inner(sessions).await {
+            match fleet::list_fleet_inner(sessions, false).await {
                 Ok(members) => ok(
                     id,
                     json!({
@@ -513,7 +528,7 @@ async fn handle_resources_read(id: Value, params: Option<Value>, state: AppState
         }
         "miwarp://metrics" => {
             let sessions = state.sessions.clone();
-            match fleet::get_fleet_metrics_inner(sessions).await {
+            match fleet::get_fleet_metrics_inner(sessions, false).await {
                 Ok(m) => ok(
                     id,
                     json!({

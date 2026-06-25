@@ -48,8 +48,18 @@
     type SupportedRuntimeId,
   } from "$lib/runtime";
   import { runtimeHubStore } from "$lib/stores/runtime-hub-store.svelte";
+  import { browser } from "$app/environment";
 
   const t = tFn;
+
+  const reduceMotion =
+    browser && typeof window !== "undefined"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      : false;
+  const sessionLoadingFade = { duration: reduceMotion ? 0 : 200 };
+  const conversationFadeIn = { duration: reduceMotion ? 0 : 320 };
+  const conversationFadeOut = { duration: reduceMotion ? 0 : 160 };
+  const welcomeFade = { duration: reduceMotion ? 0 : 220 };
 
   let {
     store,
@@ -142,6 +152,11 @@
     rewindMarkers,
     activeTeamRuns,
   } = $derived(loadingVm);
+
+  const sessionLoading = $derived(
+    routeRunPending || (store.phase === "loading" && store.timeline.length === 0 && !!runId),
+  );
+  const conversationSurfaceKey = $derived(runId || store.run?.id || "empty");
 
   const { thinkingElapsed, thinkingVisible, spinnerVerb, processingSlashCmd, approving, sending } =
     $derived(thinkingVm);
@@ -306,60 +321,62 @@
         onwheel={handlers.handleChatWheel}
       >
         {#if welcomeVisible}
-          <ChatWelcomeScreen
-            {lastContinuableRun}
-            onContinueSession={(id) => goto(`/chat?run=${id}&resume=continue`)}
-            onQuickAnalyze={(mode, runtimeId) => {
-              applyRuntimeBeforeSend(runtimeId);
-              sendMessage(t("chat_quickAnalyzePrompt"), [], mode);
-            }}
-            onQuickFix={() => fillPrompt(t("chat_quickFixPrompt"))}
-            onQuickDaily={(mode, runtimeId) => {
-              applyRuntimeBeforeSend(runtimeId);
-              sendMessage(t("chat_quickDailyPrompt"), [], mode);
-            }}
-            onGotoSchedule={() => goto("/scheduled-tasks")}
-            {authOverview}
-            authSourceLabel={store.authSourceLabel}
-            authSourceCategory={store.authSourceCategory}
-            apiKeySource={store.apiKeySource}
-            authMode={store.authMode}
-            platformCredentials={settings?.platform_credentials ?? []}
-            platformId={store.platformId ?? "anthropic"}
-            onAuthModeChange={handleAuthModeChange}
-            onPlatformChange={handlePlatformChange}
-            {localProxyStatuses}
-            {availableWorkspaces}
-            {selectedCwd}
-            onCwdChange={handlers.onCwdChange}
-            onAddWorkspace={handlers.onAddWorkspace}
-            {runtimes}
-            {runtimesLoading}
-            {selectedRuntime}
-            onRuntimeChange={handleRuntimeChange}
-            onManageRuntimes={() => goto("/settings?tab=runtimes")}
-          >
-            {#snippet initHint()}
-              <ChatInitHint
-                visible={showInitHint}
-                onRunInit={() => sendMessage("/init", [])}
-                onDismiss={dismissInitHint}
-              />
-            {/snippet}
-            {#snippet heroMeta()}
-              <ChatHeroMeta
-                {cliVersionInfo}
-                {channelLatest}
-                {remoteHosts}
-                currentRemoteHostName={store.remoteHostName}
-                onTargetChange={(hostName) => {
-                  store.remoteHostName = hostName;
-                  setLastTarget(hostName);
-                }}
-                onNavigate={goto}
-              />
-            {/snippet}
-          </ChatWelcomeScreen>
+          <div in:fade={welcomeFade} out:fade={sessionLoadingFade}>
+            <ChatWelcomeScreen
+              {lastContinuableRun}
+              onContinueSession={(id) => goto(`/chat?run=${id}&resume=continue`)}
+              onQuickAnalyze={(mode, runtimeId) => {
+                applyRuntimeBeforeSend(runtimeId);
+                sendMessage(t("chat_quickAnalyzePrompt"), [], mode);
+              }}
+              onQuickFix={() => fillPrompt(t("chat_quickFixPrompt"))}
+              onQuickDaily={(mode, runtimeId) => {
+                applyRuntimeBeforeSend(runtimeId);
+                sendMessage(t("chat_quickDailyPrompt"), [], mode);
+              }}
+              onGotoSchedule={() => goto("/scheduled-tasks")}
+              {authOverview}
+              authSourceLabel={store.authSourceLabel}
+              authSourceCategory={store.authSourceCategory}
+              apiKeySource={store.apiKeySource}
+              authMode={store.authMode}
+              platformCredentials={settings?.platform_credentials ?? []}
+              platformId={store.platformId ?? "anthropic"}
+              onAuthModeChange={handleAuthModeChange}
+              onPlatformChange={handlePlatformChange}
+              {localProxyStatuses}
+              {availableWorkspaces}
+              {selectedCwd}
+              onCwdChange={handlers.onCwdChange}
+              onAddWorkspace={handlers.onAddWorkspace}
+              {runtimes}
+              {runtimesLoading}
+              {selectedRuntime}
+              onRuntimeChange={handleRuntimeChange}
+              onManageRuntimes={() => goto("/settings?tab=runtimes")}
+            >
+              {#snippet initHint()}
+                <ChatInitHint
+                  visible={showInitHint}
+                  onRunInit={() => sendMessage("/init", [])}
+                  onDismiss={dismissInitHint}
+                />
+              {/snippet}
+              {#snippet heroMeta()}
+                <ChatHeroMeta
+                  {cliVersionInfo}
+                  {channelLatest}
+                  {remoteHosts}
+                  currentRemoteHostName={store.remoteHostName}
+                  onTargetChange={(hostName) => {
+                    store.remoteHostName = hostName;
+                    setLastTarget(hostName);
+                  }}
+                  onNavigate={goto}
+                />
+              {/snippet}
+            </ChatWelcomeScreen>
+          </div>
         {:else if routeRunLoadFailed}
           <div class="flex h-full flex-col items-center justify-center gap-3 px-4">
             <p class="text-sm text-destructive">{t("chat_sessionLoadFailed")}</p>
@@ -374,133 +391,145 @@
               {t("common_retry")}
             </button>
           </div>
-        {:else if routeRunPending || (store.phase === "loading" && store.timeline.length === 0 && !!runId)}
-          <div class="flex h-full flex-col items-center justify-center gap-3">
-            <Spinner size="md" class="border-muted-foreground/30" />
-            <p class="text-xs text-muted-foreground">{t("chat_loadingSession")}</p>
-          </div>
         {:else}
-          <div data-conversation-root>
-            {#if store.run?.parent_run_id}
-              <ChatForkedBanner
-                onViewParent={() => goto(`/chat?run=${store.run!.parent_run_id}`)}
-              />
-            {/if}
-            {#if notificationVisible && latestNotification}
-              <ChatNotificationBanner
-                taskId={latestNotification.task_id}
-                status={latestNotification.status}
-                onDismiss={handlers.dismissTaskNotificationBanner}
-              />
-            {/if}
-            {#if filteredTimeline.length - renderLimit > 0}
-              <div use:onTopSentinelMount aria-hidden="true" class="h-px w-full"></div>
-            {/if}
-            <ChatTimelineEntries
-              contentVisibilityEnabled={!readingHistory}
-              {visibleTimeline}
-              {store}
-              {burstCollapse}
-              {toolBursts}
-              {lastClearSepId}
-              {timelineIdIndex}
-              {batchGroups}
-              {processVisibility}
-              {usageAnnotations}
-              {settings}
-              {lastAssistantIdx}
-              {claudeTurnStarts}
-              {latestPlanToolId}
-              {showPermissionPanel}
-              {permissionCoordinator}
-              {fetchToolResult}
-              {handleRewindToMessage}
-              {handleToolAnswer}
-              {handleToolApprove}
-              {handlePermissionRespond}
-              {handleExitPlanClearContext}
-              {handleExitPlanBypass}
-              {getPlanContentForExitPlan}
-              {openPreviewForPath}
-              toggleBurst={burstCollapse.toggleBurst}
-            />
-
-            {#if processVisibility === "output" && store.isRunning && timelineHasHiddenRoutineWorkRunning(store.timeline)}
-              <ChatOutputWorkingHint />
-            {/if}
-
-            <ChatRewindMarkers markers={rewindMarkers} />
-
-            {#if lastTurnUsage && !store.isRunning && settings?.show_token_usage_report !== false}
-              <ChatUsageAnnotation usage={lastTurnUsage} />
-            {/if}
-
-            {#each activeTeamRuns as teamRun (teamRun.id)}
-              <div class="w-full py-2">
-                <div class="chat-content-width pl-7">
-                  <TeamRunCard {teamRun} />
-                </div>
+          {#key conversationSurfaceKey}
+            {#if sessionLoading}
+              <div
+                class="flex h-full flex-col items-center justify-center gap-3"
+                in:fade={sessionLoadingFade}
+                out:fade={sessionLoadingFade}
+              >
+                <Spinner size="md" class="border-muted-foreground/30" />
+                <p class="text-xs text-muted-foreground">{t("chat_loadingSession")}</p>
               </div>
-            {/each}
-
-            {#each store.hookEvents.filter((h) => h.status === "hook_pending") as hookEvent (hookEvent.request_id)}
-              <div class="w-full py-1">
-                <div class="chat-content-width pl-7" data-export-exclude>
-                  <HookReviewCard {hookEvent} onRespond={handleHookCallbackRespond} />
-                </div>
-              </div>
-            {/each}
-
-            {#if store.hasElicitation && store.sessionAlive}
-              <div class="w-full py-1">
-                <div class="chat-content-width pl-7" data-export-exclude>
-                  <ElicitationDialog
-                    elicitations={store.pendingElicitations}
-                    onRespond={handleElicitationRespond}
+            {:else}
+              <div
+                data-conversation-root
+                in:fade={conversationFadeIn}
+                out:fade={conversationFadeOut}
+              >
+                {#if store.run?.parent_run_id}
+                  <ChatForkedBanner
+                    onViewParent={() => goto(`/chat?run=${store.run!.parent_run_id}`)}
                   />
-                </div>
-              </div>
-            {/if}
+                {/if}
+                {#if notificationVisible && latestNotification}
+                  <ChatNotificationBanner
+                    taskId={latestNotification.task_id}
+                    status={latestNotification.status}
+                    onDismiss={handlers.dismissTaskNotificationBanner}
+                  />
+                {/if}
+                {#if filteredTimeline.length - renderLimit > 0}
+                  <div use:onTopSentinelMount aria-hidden="true" class="h-px w-full"></div>
+                {/if}
+                <ChatTimelineEntries
+                  contentVisibilityEnabled={!readingHistory}
+                  {visibleTimeline}
+                  {store}
+                  {burstCollapse}
+                  {toolBursts}
+                  {lastClearSepId}
+                  {timelineIdIndex}
+                  {batchGroups}
+                  {processVisibility}
+                  {usageAnnotations}
+                  {settings}
+                  {lastAssistantIdx}
+                  {claudeTurnStarts}
+                  {latestPlanToolId}
+                  {showPermissionPanel}
+                  {permissionCoordinator}
+                  {fetchToolResult}
+                  {handleRewindToMessage}
+                  {handleToolAnswer}
+                  {handleToolApprove}
+                  {handlePermissionRespond}
+                  {handleExitPlanClearContext}
+                  {handleExitPlanBypass}
+                  {getPlanContentForExitPlan}
+                  {openPreviewForPath}
+                  toggleBurst={burstCollapse.toggleBurst}
+                />
 
-            {#if store.thinkingText}
-              <ChatThinkingPanel
-                thinkingText={store.thinkingText}
-                expanded={thinkingExpanded}
-                onToggleExpand={() => (thinkingExpanded = !thinkingExpanded)}
-              />
-            {/if}
+                {#if processVisibility === "output" && store.isRunning && timelineHasHiddenRoutineWorkRunning(store.timeline)}
+                  <ChatOutputWorkingHint />
+                {/if}
 
-            {#if store.streamingText}
-              <ChatStreamingText
-                text={store.streamingText}
-                agent={store.agent}
-                platformId={store.platformId ?? undefined}
-                model={store.run?.model ?? store.model}
-              />
-            {/if}
+                <ChatRewindMarkers markers={rewindMarkers} />
 
-            {#if processingSlashCmd && !thinkingVisible && !store.streamingText && !store.thinkingText}
-              <div class="w-full animate-fade-in" data-export-exclude>
-                <div class="chat-content-width py-2">
-                  <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Spinner size="sm" class="border-border border-t-muted-foreground" />
-                    <span>{t("chat_processingCommand", { command: processingSlashCmd })}</span>
+                {#if lastTurnUsage && !store.isRunning && settings?.show_token_usage_report !== false}
+                  <ChatUsageAnnotation usage={lastTurnUsage} />
+                {/if}
+
+                {#each activeTeamRuns as teamRun (teamRun.id)}
+                  <div class="w-full py-2">
+                    <div class="chat-content-width pl-7">
+                      <TeamRunCard {teamRun} />
+                    </div>
                   </div>
-                </div>
+                {/each}
+
+                {#each store.hookEvents.filter((h) => h.status === "hook_pending") as hookEvent (hookEvent.request_id)}
+                  <div class="w-full py-1">
+                    <div class="chat-content-width pl-7" data-export-exclude>
+                      <HookReviewCard {hookEvent} onRespond={handleHookCallbackRespond} />
+                    </div>
+                  </div>
+                {/each}
+
+                {#if store.hasElicitation && store.sessionAlive}
+                  <div class="w-full py-1">
+                    <div class="chat-content-width pl-7" data-export-exclude>
+                      <ElicitationDialog
+                        elicitations={store.pendingElicitations}
+                        onRespond={handleElicitationRespond}
+                      />
+                    </div>
+                  </div>
+                {/if}
+
+                {#if store.thinkingText}
+                  <ChatThinkingPanel
+                    thinkingText={store.thinkingText}
+                    expanded={thinkingExpanded}
+                    onToggleExpand={() => (thinkingExpanded = !thinkingExpanded)}
+                  />
+                {/if}
+
+                {#if store.streamingText}
+                  <ChatStreamingText
+                    text={store.streamingText}
+                    agent={store.agent}
+                    platformId={store.platformId ?? undefined}
+                    model={store.run?.model ?? store.model}
+                  />
+                {/if}
+
+                {#if processingSlashCmd && !thinkingVisible && !store.streamingText && !store.thinkingText}
+                  <div class="w-full animate-fade-in" data-export-exclude>
+                    <div class="chat-content-width py-2">
+                      <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Spinner size="sm" class="border-border border-t-muted-foreground" />
+                        <span>{t("chat_processingCommand", { command: processingSlashCmd })}</span>
+                      </div>
+                    </div>
+                  </div>
+                {/if}
+
+                {#if thinkingVisible && !store.thinkingText}
+                  <ChatThinkingIndicator
+                    elapsed={thinkingElapsed}
+                    activeToolName={store.activeToolName}
+                    thinkingDurationSec={store.thinkingEndMs ? store.thinkingDurationSec : null}
+                    {approving}
+                    {sending}
+                    {spinnerVerb}
+                  />
+                {/if}
               </div>
             {/if}
-
-            {#if thinkingVisible && !store.thinkingText}
-              <ChatThinkingIndicator
-                elapsed={thinkingElapsed}
-                activeToolName={store.activeToolName}
-                thinkingDurationSec={store.thinkingEndMs ? store.thinkingDurationSec : null}
-                {approving}
-                {sending}
-                {spinnerVerb}
-              />
-            {/if}
-          </div>
+          {/key}
         {/if}
       </div>
       {#if showChatScrollHint}

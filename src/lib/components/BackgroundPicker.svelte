@@ -2,6 +2,9 @@
   import { backgroundStore } from "../stores/background-store.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import type { SizingMode, BackgroundConfig } from "../types/background";
+  import SettingsOptionCard from "$lib/components/settings/SettingsOptionCard.svelte";
+  import SettingsWireframePreview from "$lib/components/settings/SettingsWireframePreview.svelte";
+  import type { SettingsWireframeVariant } from "$lib/components/settings/SettingsWireframePreview.svelte";
 
   interface Props {
     /** Session ID for per-session override, or empty for global */
@@ -19,12 +22,16 @@
   let previewStyle = $derived(backgroundStore.getStyle(sessionId || undefined));
   let overlayStyle = $derived(backgroundStore.getOverlayStyle(sessionId || undefined));
 
-  const sizingModes: { value: SizingMode; label: string }[] = [
-    { value: "cover", label: t("background_cover") },
-    { value: "fill", label: t("background_fill") },
-    { value: "fit", label: t("background_fit") },
-    { value: "stretch", label: t("background_stretch") },
-    { value: "tile", label: t("background_tile") },
+  const sizingModes: {
+    value: SizingMode;
+    label: string;
+    preview: SettingsWireframeVariant;
+  }[] = [
+    { value: "cover", label: t("background_cover"), preview: "bg-sizing-cover" },
+    { value: "fill", label: t("background_fill"), preview: "bg-sizing-fill" },
+    { value: "fit", label: t("background_fit"), preview: "bg-sizing-fit" },
+    { value: "stretch", label: t("background_stretch"), preview: "bg-sizing-stretch" },
+    { value: "tile", label: t("background_tile"), preview: "bg-sizing-tile" },
   ];
 
   function update(partial: Partial<BackgroundConfig>) {
@@ -187,22 +194,25 @@
   </div>
 
   <!-- Sizing Mode -->
-  <div class="space-y-1.5">
-    <label class="text-xs font-medium text-miwarp-text-secondary" for="bg-sizing">
+  <fieldset class="space-y-2">
+    <legend class="text-xs font-medium text-miwarp-text-secondary">
       {t("bgPicker_sizingMode")}
-    </label>
-    <select
-      id="bg-sizing"
-      class="w-full rounded-md border border-border bg-miwarp-bg-elevated px-3 py-1.5
-             text-sm text-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      value={config.sizingMode}
-      onchange={(e) => update({ sizingMode: (e.target as HTMLSelectElement).value as SizingMode })}
-    >
-      {#each sizingModes as mode}
-        <option value={mode.value}>{mode.label}</option>
+    </legend>
+    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {#each sizingModes as mode (mode.value)}
+        {@const active = config.sizingMode === mode.value}
+        <SettingsOptionCard
+          {active}
+          title={mode.label}
+          onclick={() => update({ sizingMode: mode.value })}
+        >
+          {#snippet preview()}
+            <SettingsWireframePreview variant={mode.preview} />
+          {/snippet}
+        </SettingsOptionCard>
       {/each}
-    </select>
-  </div>
+    </div>
+  </fieldset>
 
   <!-- Color Overlay -->
   <div class="space-y-1.5">

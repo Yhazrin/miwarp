@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ConversationGroup } from "$lib/utils/sidebar-groups";
-  import { TERMINAL_PHASES, canResumeNow } from "$lib/stores";
+  import { canDeleteRun, canResumeNow } from "$lib/stores";
   import { EVT_RUNS_CHANGED } from "$lib/utils/bus-events";
   import { getNoSessionPersistence } from "$lib/stores/agent-settings-cache.svelte";
   import { relativeTime, truncate } from "$lib/utils/format";
@@ -50,7 +50,7 @@
   const label = $derived(truncate(conversation.title, 28));
   const time = $derived(relativeTime(run.last_activity_at ?? run.started_at));
   const canResume = $derived(canResumeNow(run, run.status, getNoSessionPersistence(run.agent)));
-  const canDelete = $derived(conversation.runs.every((r) => TERMINAL_PHASES.includes(r.status)));
+  const canDelete = $derived(conversation.runs.every((r) => canDeleteRun(r.status)));
   const runCount = $derived(conversation.runs.length);
   const _needsAttention = $derived(hasAttention(run.id));
 

@@ -12,16 +12,16 @@ describe("routeNeedsLayoutContentPanel", () => {
     expect(routeNeedsLayoutContentPanel("/chat")).toBe(true);
     expect(routeNeedsLayoutContentPanel("/plugins")).toBe(true);
     expect(routeNeedsLayoutContentPanel("/explorer")).toBe(true);
-    expect(routeNeedsLayoutContentPanel("/memory")).toBe(true);
     expect(routeNeedsLayoutContentPanel("/teams")).toBe(true);
+    expect(routeNeedsLayoutContentPanel("/settings")).toBe(true);
+    expect(routeNeedsLayoutContentPanel("/scheduled-tasks")).toBe(true);
+    expect(routeNeedsLayoutContentPanel("/workspace")).toBe(true);
   });
 
-  it("returns false for routes that only show the icon rail", () => {
-    expect(routeNeedsLayoutContentPanel("/settings")).toBe(false);
-    expect(routeNeedsLayoutContentPanel("/settings/general")).toBe(false);
+  it("returns false for routes without a layout sidebar content panel", () => {
     expect(routeNeedsLayoutContentPanel("/usage")).toBe(false);
     expect(routeNeedsLayoutContentPanel("/release-notes")).toBe(false);
-    expect(routeNeedsLayoutContentPanel("/scheduled-tasks")).toBe(false);
+    expect(routeNeedsLayoutContentPanel("/api/skills")).toBe(false);
   });
 });
 

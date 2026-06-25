@@ -335,6 +335,15 @@ pub fn rename_run(id: String, name: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn generate_run_title(
+    run_id: String,
+    sessions: tauri::State<'_, ActorSessionMap>,
+) -> Result<String, String> {
+    log::debug!("[runs] generate_run_title: run_id={}", run_id);
+    crate::agent::title_generator::generate_for_run(&run_id, Some(sessions.inner().clone())).await
+}
+
+#[tauri::command]
 pub fn soft_delete_runs(ids: Vec<String>) -> Result<u32, String> {
     log::debug!("[cmd/runs] soft_delete_runs: ids={:?}", ids);
     cleanup_worktrees_for_runs(&ids);

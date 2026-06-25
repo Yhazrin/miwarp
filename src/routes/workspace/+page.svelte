@@ -4,7 +4,6 @@
   import { getUserSettings } from "$lib/api";
   import EmptyState from "$lib/components/EmptyState.svelte";
   import WorkspaceCapsulePanel from "$lib/components/workspace/WorkspaceCapsulePanel.svelte";
-  import WorkspaceListPanel from "$lib/components/workspace/WorkspaceListPanel.svelte";
   import AttentionQueuePanel from "$lib/components/workspace/AttentionQueuePanel.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { attentionQueueStore } from "$lib/stores/attention-queue-store.svelte";
@@ -115,9 +114,9 @@
 </script>
 
 <div class="flex h-full flex-col overflow-hidden">
-  <div class="shrink-0 border-b border-border px-6 py-4">
-    <h1 class="text-xl font-semibold text-foreground">{t("workspace_title")}</h1>
-    <p class="mt-1 text-sm text-muted-foreground">{t("workspace_subtitle")}</p>
+  <div class="shrink-0 px-6 py-4">
+    <h1 class="text-xl font-semibold text-sidebar-foreground">{t("workspace_title")}</h1>
+    <p class="mt-1 text-sm text-sidebar-foreground/70">{t("workspace_subtitle")}</p>
   </div>
 
   {#if workspaceInboxStore.error}
@@ -138,37 +137,28 @@
 
   <AttentionQueuePanel />
 
-  <div class="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[18rem_1fr]">
-    <WorkspaceListPanel
-      entries={listEntries}
-      {selectedCwd}
-      loading={workspaceInboxStore.loading}
-      onSelect={selectWorkspace}
-    />
-
-    <div class="min-h-0 overflow-hidden">
-      {#if listEntries.length === 0 && !workspaceInboxStore.loading}
-        <div class="flex h-full items-center justify-center p-6">
-          <EmptyState
-            iconName="layout"
-            title={t("workspace_empty_title")}
-            description={t("workspace_empty_desc")}
-          />
-        </div>
-      {:else if !selectedCwd && listEntries.length > 0}
-        <div class="flex h-full items-center justify-center p-6 text-sm text-muted-foreground">
-          {t("workspace_select_hint")}
-        </div>
-      {:else}
-        <WorkspaceCapsulePanel
-          label={capsule.label}
-          cwd={capsule.cwd}
-          sessions={capsule.sessions}
-          git={gitSnapshot}
-          onOpenChat={openChat}
-          onContinue={openChat}
+  <div class="min-h-0 flex-1 overflow-hidden">
+    {#if listEntries.length === 0 && !workspaceInboxStore.loading}
+      <div class="flex h-full items-center justify-center p-6">
+        <EmptyState
+          iconName="layout"
+          title={t("workspace_empty_title")}
+          description={t("workspace_empty_desc")}
         />
-      {/if}
-    </div>
+      </div>
+    {:else if !selectedCwd && listEntries.length > 0}
+      <div class="flex h-full items-center justify-center p-6 text-sm text-sidebar-foreground/70">
+        {t("workspace_select_hint")}
+      </div>
+    {:else}
+      <WorkspaceCapsulePanel
+        label={capsule.label}
+        cwd={capsule.cwd}
+        sessions={capsule.sessions}
+        git={gitSnapshot}
+        onOpenChat={openChat}
+        onContinue={openChat}
+      />
+    {/if}
   </div>
 </div>

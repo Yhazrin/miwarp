@@ -335,6 +335,10 @@ export const LUCIDE_PATHS: Record<LucideIconName, SvgPart[]> = {
     { t: "circle", cx: 12, cy: 12, r: 10 },
     { t: "circle", cx: 12, cy: 12, r: 1 },
   ],
+  "circle-user": [
+    { t: "circle", cx: 12, cy: 8, r: 5 },
+    { t: "path", d: "M20 21a8 8 0 0 0-16 0" },
+  ],
   target: [
     { t: "circle", cx: 12, cy: 12, r: 10 },
     { t: "circle", cx: 12, cy: 12, r: 6 },

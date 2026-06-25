@@ -14,12 +14,14 @@ export const LAYOUT_CHROME_CONTEXT_KEY = "layoutChrome";
 /** Routes that render the layout sidebar content panel (project tree + sessions). */
 export function routeNeedsLayoutContentPanel(pathname: string): boolean {
   return (
-    pathname === "/chat" ||
     pathname === "/" ||
+    pathname === "/chat" ||
     pathname.startsWith("/plugins") ||
     pathname.startsWith("/explorer") ||
-    pathname.startsWith("/memory") ||
-    pathname.startsWith("/teams")
+    pathname.startsWith("/teams") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/scheduled-tasks") ||
+    pathname.startsWith("/workspace")
   );
 }
 

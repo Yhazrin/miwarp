@@ -15,6 +15,12 @@ export function snapshotChatBootstrap(
   snapshot = { settings, agentSettings };
 }
 
+/** Keep the pre-navigation snapshot in sync while the user edits /settings. */
+export function refreshChatBootstrapSettings(settings: UserSettings): void {
+  if (!snapshot) return;
+  snapshot = { ...snapshot, settings };
+}
+
 /** One-shot restore after returning from settings; clears the snapshot. */
 export function consumeChatBootstrap(): ChatBootstrapSnapshot | null {
   const s = snapshot;

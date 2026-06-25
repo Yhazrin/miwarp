@@ -45,6 +45,7 @@ fn sample_meta(id: &str, status: RunStatus) -> RunMeta {
         cli_usage_incomplete: None,
         folder_id: None,
         deleted_at: None,
+        archived_at: None,
         creation_mode: None,
         worktree_path: None,
         worktree_branch: None,

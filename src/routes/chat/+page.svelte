@@ -40,7 +40,8 @@
   import { dbg, dbgWarn } from "$lib/utils/debug";
   import { perfMarkAsync } from "$lib/utils/perf";
   import { setLastTarget, setStoredRemoteCwd } from "$lib/utils/remote-cwd";
-  import { shouldAutoName } from "$lib/utils/auto-name";
+  import { shouldTriggerAutoTitle, deriveAutoName } from "$lib/utils/auto-name";
+  import { generateRunTitle } from "$lib/api";
   import { normalizeCwd } from "$lib/utils/sidebar-groups";
   import {
     normalizeProcessVisibility,
@@ -292,15 +293,23 @@
       const detail = (event as CustomEvent<{ alignment?: unknown }>).detail;
       sessionIslandAlignmentOverride = normalizeSessionIslandAlignment(detail?.alignment);
     };
+    const onUserSettingsChanged = (event: Event) => {
+      const detail = (event as CustomEvent<UserSettings>).detail;
+      if (!detail) return;
+      settings = detail;
+      sessionIslandAlignmentOverride = null;
+    };
     window.addEventListener(
       SESSION_ISLAND_ALIGNMENT_CHANGED_EVENT,
       onSessionIslandAlignmentChanged,
     );
+    window.addEventListener(api.USER_SETTINGS_CHANGED_EVENT, onUserSettingsChanged);
     return () => {
       window.removeEventListener(
         SESSION_ISLAND_ALIGNMENT_CHANGED_EVENT,
         onSessionIslandAlignmentChanged,
       );
+      window.removeEventListener(api.USER_SETTINGS_CHANGED_EVENT, onUserSettingsChanged);
     };
   });
 
@@ -1361,19 +1370,31 @@
 
   const { handleResume, handleForkCancel, handleForkRetry } = forkLifecycle;
 
-  // Auto-name: on first idle, generate title from prompt (one-shot per run)
+  // Auto-name: after first idle, ask Claude once for a concise title (fallback: prompt excerpt)
   $effect(() => {
-    const result = shouldAutoName({
+    const shouldStart = shouldTriggerAutoTitle({
       phase: store.phase,
       runId: store.run?.id,
       runName: store.run?.name,
       prompt: store.run?.prompt,
       autoNameDone,
     });
-    if (result.fire && result.autoName) {
-      autoNameDone = true;
-      handleRename(result.autoName);
-    }
+    if (!shouldStart) return;
+
+    const runId = store.run?.id;
+    const prompt = store.run?.prompt?.trim() ?? "";
+    if (!runId || !prompt) return;
+
+    autoNameDone = true;
+    void generateRunTitle(runId)
+      .then((title) => {
+        const resolved = title.trim() || deriveAutoName(prompt);
+        if (resolved) handleRename(resolved);
+      })
+      .catch(() => {
+        const fallback = deriveAutoName(prompt);
+        if (fallback) handleRename(fallback);
+      });
   });
 
   async function handleVirtualCommand(action: string, args: string) {

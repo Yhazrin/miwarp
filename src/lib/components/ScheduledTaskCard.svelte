@@ -107,8 +107,8 @@
 <div
   class="group p-3 rounded-lg border transition-all duration-200 cursor-pointer
     {selected
-    ? 'border-primary bg-primary/5'
-    : 'border-transparent hover:border-border hover:bg-muted/30'}"
+    ? 'border-sidebar-border bg-sidebar-accent text-sidebar-foreground'
+    : 'border-transparent text-sidebar-foreground hover:border-sidebar-border hover:bg-sidebar-accent/40'}"
   role="button"
   tabindex="0"
   aria-label={task.name}
@@ -119,7 +119,8 @@
   <div class="mb-2">
     <!-- Name and Status -->
     <div class="flex items-center gap-2 mb-1">
-      <span class="text-sm font-medium text-foreground truncate" title={task.name}>{task.name}</span
+      <span class="text-sm font-medium text-sidebar-foreground truncate" title={task.name}
+        >{task.name}</span
       >
       <span class="flex items-center gap-1 {statusColor} shrink-0">
         <span
@@ -140,8 +141,10 @@
     </div>
 
     <!-- Agent + Workspace -->
-    <div class="flex items-center gap-2 text-[10px] text-muted-foreground mb-1 overflow-hidden">
-      <span class="px-1.5 py-0.5 rounded bg-muted/80 uppercase font-medium shrink-0"
+    <div
+      class="flex items-center gap-2 text-[10px] text-sidebar-foreground/70 mb-1 overflow-hidden"
+    >
+      <span class="px-1.5 py-0.5 rounded bg-sidebar-accent/70 uppercase font-medium shrink-0"
         >{task.agent}</span
       >
       <span class="truncate shrink-0" title={task.workspace.cwd}>
@@ -153,19 +156,19 @@
     </div>
 
     <!-- Schedule -->
-    <p class="text-[10px] text-muted-foreground/50 truncate mb-1" title={scheduleDescription}>
+    <p class="text-[10px] text-sidebar-foreground/50 truncate mb-1" title={scheduleDescription}>
       {scheduleDescription}
     </p>
 
     <!-- Prompt preview (#6, #9) — show first line of prompt as muted text -->
     {#if promptPreview}
-      <p class="text-[10px] text-muted-foreground/70 truncate mb-1" title={task.prompt}>
+      <p class="text-[10px] text-sidebar-foreground/70 truncate mb-1" title={task.prompt}>
         {promptPreview}
       </p>
     {/if}
 
     <!-- Timing info -->
-    <div class="flex items-center gap-4 text-[10px] text-muted-foreground/40 overflow-hidden">
+    <div class="flex items-center gap-4 text-[10px] text-sidebar-foreground/45 overflow-hidden">
       {#if task.nextRunAt}
         <span class="shrink-0">{t("schedCard_next")}: {formatRelativeTime(task.nextRunAt)}</span>
       {:else if task.enabled}

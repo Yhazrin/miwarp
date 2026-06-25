@@ -17,14 +17,14 @@
 //! into `router::build_router` directly (not via this module).
 
 use axum::body::Body;
-use axum::extract::{FromRequestParts, Path, State};
+use axum::extract::{FromRequestParts, Path, Query, State};
 use axum::http::header::AUTHORIZATION;
 use axum::http::request::Parts;
 use axum::http::{Response, StatusCode};
 use axum::response::{IntoResponse, Json};
 use axum::routing::{get, post};
 use axum::Router;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::commands::fleet;
@@ -105,12 +105,21 @@ pub fn build_fleet_router() -> Router<AppState> {
 
 // ── Handlers ────────────────────────────────────────────────────────
 
+/// Query string for `GET /members`. `include_archived=true` is opt-in; the
+/// default is to hide archived members, matching the desktop UI.
+#[derive(Debug, Deserialize, Default)]
+struct ListMembersQuery {
+    #[serde(default)]
+    include_archived: bool,
+}
+
 async fn list_members_handler(
     State(state): State<AppState>,
     _auth: BearerAuth,
+    Query(q): Query<ListMembersQuery>,
 ) -> impl IntoResponse {
     let sessions = state.sessions.clone();
-    match fleet::list_fleet_inner(sessions).await {
+    match fleet::list_fleet_inner(sessions, q.include_archived).await {
         Ok(v) => Json(json!(v)).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e}))).into_response(),
     }
@@ -132,6 +141,7 @@ async fn get_member_handler(
 }
 
 async fn send_to_member_handler(
+    State(state): State<AppState>,
     _auth: BearerAuth,
     Path(id): Path<String>,
     Json(body): Json<serde_json::Value>,
@@ -148,7 +158,8 @@ async fn send_to_member_handler(
         )
             .into_response();
     }
-    match fleet::send_to_fleet_member_inner(id, prompt).await {
+    let sessions = state.sessions.clone();
+    match fleet::send_to_fleet_member_inner(sessions, id, prompt).await {
         Ok(v) => Json(json!(v)).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e}))).into_response(),
     }
@@ -167,9 +178,13 @@ async fn stop_member_handler(
     }
 }
 
-async fn metrics_handler(State(state): State<AppState>, _auth: BearerAuth) -> impl IntoResponse {
+async fn metrics_handler(
+    State(state): State<AppState>,
+    _auth: BearerAuth,
+    Query(q): Query<ListMembersQuery>,
+) -> impl IntoResponse {
     let sessions = state.sessions.clone();
-    match fleet::get_fleet_metrics_inner(sessions).await {
+    match fleet::get_fleet_metrics_inner(sessions, q.include_archived).await {
         Ok(v) => Json(json!(v)).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e}))).into_response(),
     }
