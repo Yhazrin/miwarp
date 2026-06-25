@@ -13,6 +13,8 @@ export const VISUAL_LIMITS = {
   MAX_PROGRESS_ITEMS: 50,
   MAX_KPI_ITEMS: 20,
   MAX_TIMELINE_ITEMS: 100,
+  MAX_MINDMAP_CHILDREN: 50,
+  MAX_MINDMAP_DEPTH: 6,
   /** Collapse visualization panel when content exceeds this height (px). */
   COLLAPSE_HEIGHT_PX: 320,
 } as const;

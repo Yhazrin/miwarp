@@ -12,6 +12,9 @@ const LANG_ALIASES: Record<string, VisualBlockKind> = {
   kpi: "miwarp-kpi",
   "miwarp-timeline": "miwarp-timeline",
   timeline: "miwarp-timeline",
+  "miwarp-mindmap": "miwarp-mindmap",
+  mindmap: "miwarp-mindmap",
+  "mind-map": "miwarp-mindmap",
 };
 
 /** Map a fenced-code language tag to a visual block kind, if supported. */
@@ -31,6 +34,7 @@ export const VISUAL_SUMMARY_I18N_KEYS = {
   "miwarp-progress": "visual_block_progress_summary",
   "miwarp-kpi": "visual_block_kpi_summary",
   "miwarp-timeline": "visual_block_timeline_summary",
+  "miwarp-mindmap": "visual_block_mindmap_summary",
 } as const satisfies Record<VisualBlockKind, MessageKey>;
 
 export type VisualSummaryKey = (typeof VISUAL_SUMMARY_I18N_KEYS)[VisualBlockKind];

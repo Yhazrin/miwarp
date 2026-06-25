@@ -918,6 +918,7 @@
   "visual_block_progress_summary": "Progress tracker",
   "visual_block_renderError": "Could not render visualization",
   "visual_block_timeline_summary": "Timeline visualization",
+  "visual_block_mindmap_summary": "Mind map",
   "visual_block_vega_summary": "Vega-Lite chart",
   "inspector_tabContext": "Context",
   "inspector_tabPreview": "Preview",

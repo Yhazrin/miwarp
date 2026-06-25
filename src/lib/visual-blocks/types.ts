@@ -4,7 +4,8 @@ export type VisualBlockKind =
   | "vega-lite"
   | "miwarp-progress"
   | "miwarp-kpi"
-  | "miwarp-timeline";
+  | "miwarp-timeline"
+  | "miwarp-mindmap";
 
 export type VisualBlockTone = "default" | "on-primary";
 
@@ -54,12 +55,24 @@ export interface MiwarpTimelineSpec {
   items: MiwarpTimelineItem[];
 }
 
+export interface MiwarpMindMapNode {
+  id: string;
+  label: string;
+  children?: MiwarpMindMapNode[];
+}
+
+export interface MiwarpMindMapSpec {
+  title?: string;
+  root: MiwarpMindMapNode;
+}
+
 export type VisualBlockSpec =
   | { kind: "mermaid"; source: string }
   | { kind: "vega-lite"; spec: Record<string, unknown> }
   | { kind: "miwarp-progress"; spec: MiwarpProgressSpec }
   | { kind: "miwarp-kpi"; spec: MiwarpKpiSpec }
-  | { kind: "miwarp-timeline"; spec: MiwarpTimelineSpec };
+  | { kind: "miwarp-timeline"; spec: MiwarpTimelineSpec }
+  | { kind: "miwarp-mindmap"; spec: MiwarpMindMapSpec };
 
 export type VisualParseResult =
   | { ok: true; block: VisualBlockSpec }

@@ -238,3 +238,56 @@ describe("parseVisualBlock — vega-lite", () => {
     expect(result.reason).toBe("vega_expression");
   });
 });
+
+describe("parseVisualBlock — miwarp-mindmap", () => {
+  it("accepts a tree of nodes", () => {
+    const result = parseVisualBlock(
+      "miwarp-mindmap",
+      JSON.stringify({
+        title: "Strategy",
+        root: {
+          id: "root",
+          label: "Open Workbench",
+          children: [
+            {
+              id: "observe",
+              label: "Observe",
+              children: [
+                { id: "traces", label: "Traces" },
+                { id: "metrics", label: "Metrics" },
+              ],
+            },
+            { id: "intervene", label: "Intervene" },
+          ],
+        },
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.block.kind).toBe("miwarp-mindmap");
+    if (result.block.kind !== "miwarp-mindmap") return;
+    expect(result.block.spec.title).toBe("Strategy");
+    expect(result.block.spec.root.label).toBe("Open Workbench");
+    expect(result.block.spec.root.children).toHaveLength(2);
+  });
+
+  it("falls back to generated id when missing", () => {
+    const result = parseVisualBlock("miwarp-mindmap", JSON.stringify({ root: { label: "Solo" } }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    if (result.block.kind !== "miwarp-mindmap") return;
+    expect(result.block.spec.root.id).toMatch(/^mm-0-0$/);
+  });
+
+  it("rejects missing root", () => {
+    const result = parseVisualBlock("miwarp-mindmap", JSON.stringify({ title: "no root" }));
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe("mindmap_missing_root");
+  });
+
+  it("rejects empty label", () => {
+    const result = parseVisualBlock("miwarp-mindmap", JSON.stringify({ root: { label: "" } }));
+    expect(result.ok).toBe(false);
+  });
+});

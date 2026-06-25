@@ -11,6 +11,7 @@
   import MiwarpProgressBlock from "./MiwarpProgressBlock.svelte";
   import MiwarpKpiBlock from "./MiwarpKpiBlock.svelte";
   import MiwarpTimelineBlock from "./MiwarpTimelineBlock.svelte";
+  import MiwarpMindMapBlock from "./MiwarpMindMapBlock.svelte";
   import MermaidInteractive from "./MermaidInteractive.svelte";
 
   let {
@@ -85,7 +86,8 @@
     if (
       block.kind === "miwarp-progress" ||
       block.kind === "miwarp-kpi" ||
-      block.kind === "miwarp-timeline"
+      block.kind === "miwarp-timeline" ||
+      block.kind === "miwarp-mindmap"
     ) {
       renderState = "ready";
       requestAnimationFrame(measureCollapse);
@@ -193,6 +195,8 @@
       <MiwarpKpiBlock spec={parsed.block.spec} {tone} />
     {:else if parsed.block.kind === "miwarp-timeline"}
       <MiwarpTimelineBlock spec={parsed.block.spec} {tone} />
+    {:else if parsed.block.kind === "miwarp-mindmap"}
+      <MiwarpMindMapBlock spec={parsed.block.spec} {tone} />
     {/if}
   </div>
 </div>

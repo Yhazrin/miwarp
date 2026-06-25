@@ -952,6 +952,7 @@
   "visual_block_progress_summary": "进度追踪",
   "visual_block_renderError": "无法渲染可视化",
   "visual_block_timeline_summary": "时间线可视化",
+  "visual_block_mindmap_summary": "思维导图",
   "visual_block_vega_summary": "Vega-Lite 图表",
   "inspector_tabContext": "上下文",
   "inspector_tabPreview": "预览",

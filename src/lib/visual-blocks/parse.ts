@@ -9,6 +9,8 @@ import type {
   KpiItemStatus,
   KpiTrend,
   MiwarpKpiSpec,
+  MiwarpMindMapNode,
+  MiwarpMindMapSpec,
   MiwarpProgressSpec,
   MiwarpTimelineSpec,
   ProgressItemStatus,
@@ -220,6 +222,47 @@ function parseMermaidSpec(source: string): VisualParseResult {
   return { ok: true, block: { kind: "mermaid", source } };
 }
 
+function parseMindMapNode(value: unknown, depth: number, index: number): MiwarpMindMapNode {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`mindmap_node_${depth}_${index}`);
+  }
+  if (depth > VISUAL_LIMITS.MAX_MINDMAP_DEPTH) {
+    throw new Error("mindmap_too_deep");
+  }
+  const record = value as Record<string, unknown>;
+  const id = asString(record.id ?? record.key).trim();
+  const label = asString(record.label ?? record.text ?? record.title).trim();
+  if (!label) throw new Error(`mindmap_label_${depth}_${index}`);
+  const childrenRaw = record.children ?? record.branches ?? record.nodes;
+  let children: MiwarpMindMapNode[] | undefined;
+  if (Array.isArray(childrenRaw)) {
+    if (childrenRaw.length > VISUAL_LIMITS.MAX_MINDMAP_CHILDREN) {
+      throw new Error(`mindmap_too_many_children_${depth}_${index}`);
+    }
+    children = childrenRaw.map((child, childIndex) =>
+      parseMindMapNode(child, depth + 1, childIndex),
+    );
+  }
+  return {
+    id: id || `mm-${depth}-${index}`,
+    label,
+    children,
+  };
+}
+
+function parseMindMapSpec(source: string): VisualParseResult {
+  const json = parseJsonObject(source);
+  if (!json.ok) return { ok: false, reason: json.reason };
+  const rootCandidate = json.value.root ?? json.value.tree ?? json.value.node;
+  if (!rootCandidate) return { ok: false, reason: "mindmap_missing_root" };
+  const root = parseMindMapNode(rootCandidate, 0, 0);
+  const spec: MiwarpMindMapSpec = {
+    title: asString(json.value.title).trim() || undefined,
+    root,
+  };
+  return { ok: true, block: { kind: "miwarp-mindmap", spec } };
+}
+
 /** Parse and validate a fenced visual block. Invalid specs return `{ ok: false }`. */
 export function parseVisualBlock(kind: VisualBlockKind, source: string): VisualParseResult {
   const base = validateSourceText(source);
@@ -240,6 +283,8 @@ export function parseVisualBlock(kind: VisualBlockKind, source: string): VisualP
         return parseKpiSpec(source);
       case "miwarp-timeline":
         return parseTimelineSpec(source);
+      case "miwarp-mindmap":
+        return parseMindMapSpec(source);
       default:
         return { ok: false, reason: "unknown_kind" };
     }
