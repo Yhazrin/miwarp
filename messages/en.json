@@ -3438,5 +3438,11 @@
   "diagnostics_bundles_none": "No bundles exported yet.",
   "diagnostics_export_in_progress": "Exporting…",
   "diagnostics_export_button_aria": "Export redacted diagnostics bundle",
-  "diagnostics_event_aria": "Open diagnostics event {title}"
+  "diagnostics_event_aria": "Open diagnostics event {title}",
+  "governor_concurrent_runs": "concurrent runs",
+  "governor_status_ok": "ok",
+  "governor_status_warning": "warning",
+  "governor_status_exceeded": "exceeded",
+  "governor_status_unknown": "unknown",
+  "governor_indicator_aria": "{runs} concurrent runs in flight"
 }

@@ -3335,5 +3335,11 @@
   "diagnostics_bundles_none": "暂无导出包。",
   "diagnostics_export_in_progress": "导出中…",
   "diagnostics_export_button_aria": "导出脱敏诊断包",
-  "diagnostics_event_aria": "打开诊断事件 {title}"
+  "diagnostics_event_aria": "打开诊断事件 {title}",
+  "governor_concurrent_runs": "并发运行",
+  "governor_status_ok": "正常",
+  "governor_status_warning": "注意",
+  "governor_status_exceeded": "超限",
+  "governor_status_unknown": "未知",
+  "governor_indicator_aria": "当前 {runs} 个并发运行"
 }
