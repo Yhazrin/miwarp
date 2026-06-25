@@ -3,7 +3,7 @@
 use serde::Serialize;
 
 /// Schema version bumps when IPC payloads or semantics change materially.
-pub const SCHEMA_VERSION: u32 = 4;
+pub const SCHEMA_VERSION: u32 = 5;
 
 /// Commands the current frontend may gate on. Keep in sync when adding new IPC.
 const SUPPORTED_COMMANDS: &[&str] = &[
@@ -31,6 +31,11 @@ const SUPPORTED_COMMANDS: &[&str] = &[
     "run_journal_list_events",
     "run_checkpoint_create",
     "run_journal_reconcile",
+    "attention_queue_get",
+    "attention_queue_list_events",
+    "attention_queue_acknowledge",
+    "attention_queue_resolve",
+    "attention_queue_reconcile",
 ];
 
 #[derive(Debug, Clone, Serialize)]
@@ -107,6 +112,24 @@ mod tests {
                 "missing {command}"
             );
         }
-        assert_eq!(caps.schema_version, 4);
+        assert_eq!(caps.schema_version, 5);
+    }
+
+    #[test]
+    fn supported_commands_include_attention_queue() {
+        let caps = get_backend_capabilities().unwrap();
+        for command in [
+            "attention_queue_get",
+            "attention_queue_list_events",
+            "attention_queue_acknowledge",
+            "attention_queue_resolve",
+            "attention_queue_reconcile",
+        ] {
+            assert!(
+                caps.supported_commands.contains(&command.to_string()),
+                "missing {command}"
+            );
+        }
+        assert_eq!(caps.schema_version, 5);
     }
 }

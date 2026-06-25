@@ -328,6 +328,49 @@ pub async fn dispatch_command(
             let report = crate::commands::run_journal::run_journal_reconcile()?;
             serde_json::to_value(report).map_err(|e| e.to_string())
         }
+        "attention_queue_get" => {
+            let snapshot = crate::commands::attention_queue::attention_queue_get()?;
+            serde_json::to_value(snapshot).map_err(|e| e.to_string())
+        }
+        "attention_queue_list_events" => {
+            let since_seq = params.get("since_seq").and_then(|value| value.as_u64());
+            let events = crate::commands::attention_queue::attention_queue_list_events(since_seq)?;
+            serde_json::to_value(events).map_err(|e| e.to_string())
+        }
+        "attention_queue_acknowledge" => {
+            let id = extract_str(&params, "id")?;
+            let actor = params
+                .get("actor")
+                .and_then(|value| value.as_str())
+                .map(str::to_string);
+            let snapshot =
+                crate::commands::attention_queue::attention_queue_acknowledge(id, actor)?;
+            serde_json::to_value(snapshot).map_err(|e| e.to_string())
+        }
+        "attention_queue_resolve" => {
+            let id = extract_str(&params, "id")?;
+            let action: crate::attention_core::AttentionAction = params
+                .get("action")
+                .ok_or_else(|| "action is required".to_string())
+                .and_then(|value| {
+                    serde_json::from_value(value.clone()).map_err(|e| e.to_string())
+                })?;
+            let actor = params
+                .get("actor")
+                .and_then(|value| value.as_str())
+                .map(str::to_string);
+            let note = params
+                .get("note")
+                .and_then(|value| value.as_str())
+                .map(str::to_string);
+            let snapshot =
+                crate::commands::attention_queue::attention_queue_resolve(id, action, actor, note)?;
+            serde_json::to_value(snapshot).map_err(|e| e.to_string())
+        }
+        "attention_queue_reconcile" => {
+            let report = crate::commands::attention_queue::attention_queue_reconcile()?;
+            serde_json::to_value(report).map_err(|e| e.to_string())
+        }
 
         // ── Settings ──
         "get_user_settings" => {

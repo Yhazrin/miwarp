@@ -1,4 +1,5 @@
 pub mod agent;
+pub mod attention_core;
 pub mod cli_auto_sync;
 pub mod commands;
 pub mod diagnostics;
@@ -117,6 +118,32 @@ pub fn run() {
             task_reconcile.recovered_pending_mutations,
             task_reconcile.moved_to_needs_attention,
             task_reconcile.failures.len()
+        );
+    }
+    let attention_reconcile = match storage::attention_queue::reconcile() {
+        Ok(report) => report,
+        Err(error) => {
+            log::warn!("[attention-queue] startup reconcile failed: {error}");
+            crate::attention_core::AttentionReconcileReport::default()
+        }
+    };
+    if attention_reconcile.raised > 0
+        || attention_reconcile.refreshed > 0
+        || attention_reconcile.reopened > 0
+        || attention_reconcile.auto_resolved > 0
+        || attention_reconcile.recovered_pending_mutations > 0
+        || !attention_reconcile.failures.is_empty()
+    {
+        log::info!(
+            "[attention-queue] startup reconcile: tasks={}, runs={}, raised={}, refreshed={}, reopened={}, auto_resolved={}, recovered_pending={}, failures={}",
+            attention_reconcile.scanned_tasks,
+            attention_reconcile.scanned_runs,
+            attention_reconcile.raised,
+            attention_reconcile.refreshed,
+            attention_reconcile.reopened,
+            attention_reconcile.auto_resolved,
+            attention_reconcile.recovered_pending_mutations,
+            attention_reconcile.failures.len()
         );
     }
 
@@ -393,6 +420,11 @@ pub fn run() {
             commands::run_journal::run_journal_list_events,
             commands::run_journal::run_checkpoint_create,
             commands::run_journal::run_journal_reconcile,
+            commands::attention_queue::attention_queue_get,
+            commands::attention_queue::attention_queue_list_events,
+            commands::attention_queue::attention_queue_acknowledge,
+            commands::attention_queue::attention_queue_resolve,
+            commands::attention_queue::attention_queue_reconcile,
             scheduler::list_scheduled_tasks,
             scheduler::create_scheduled_task,
             scheduler::update_scheduled_task,

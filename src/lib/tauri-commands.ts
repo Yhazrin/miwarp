@@ -14,6 +14,11 @@
  */
 export const CMD = {
   add_marketplace: "add_marketplace",
+  attention_queue_acknowledge: "attention_queue_acknowledge",
+  attention_queue_get: "attention_queue_get",
+  attention_queue_list_events: "attention_queue_list_events",
+  attention_queue_reconcile: "attention_queue_reconcile",
+  attention_queue_resolve: "attention_queue_resolve",
   add_mcp_server: "add_mcp_server",
   add_prompt_favorite: "add_prompt_favorite",
   auto_commit: "auto_commit",

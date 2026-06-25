@@ -115,6 +115,9 @@ pub fn task_update_status(id: String, status: TaskStatus) -> Result<TaskRecord, 
             TaskEventKind::StatusTransition { from, to: status },
         ))
     })?;
+    if let Err(error) = storage::attention_queue::sync_task(&id) {
+        log::debug!("[attention-queue] sync_task after status update failed for {id}: {error}");
+    }
     Ok(task)
 }
 

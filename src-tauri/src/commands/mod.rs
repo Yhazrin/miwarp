@@ -1,5 +1,6 @@
 pub mod agents;
 pub mod artifacts;
+pub mod attention_queue;
 pub mod background;
 pub mod capabilities;
 pub mod chat;

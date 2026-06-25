@@ -291,6 +291,15 @@ pub fn init_from_run_meta(meta: &RunMeta) -> Result<RunJournalSnapshot, String> 
     })
 }
 
+pub fn get_existing(run_id: &str) -> Result<Option<RunJournalSnapshot>, String> {
+    validate_run_id(run_id)?;
+    let lock = lock_for(run_id);
+    let _guard = lock.lock().map_err(|e| format!("run journal lock: {e}"))?;
+    let run_dir = run_dir_for(run_id);
+    recover_pending(&run_dir, run_id)?;
+    load_existing_journal(&run_dir, run_id)
+}
+
 pub fn get_or_init(run_id: &str) -> Result<RunJournalSnapshot, String> {
     with_lock(run_id, |run_dir| {
         if let Some(snapshot) = load_existing_journal(run_dir, run_id)? {
@@ -361,19 +370,19 @@ pub fn project_bus_event(run_id: &str, bus_seq: u64, event: &BusEvent) -> Result
         with_lock(run_id, |run_dir| {
             let mut snapshot = match get_raw_in(run_dir) {
                 Some(snapshot) => snapshot,
-                None => return Ok(()),
+                None => return Ok(false),
             };
             let now = now_iso();
             let (outcome, kind) = plan_projection(&snapshot, bus_seq, event, &now)?;
             if outcome != ProjectOutcome::Applied {
-                return Ok(());
+                return Ok(false);
             }
             let Some(kind) = kind else {
-                return Ok(());
+                return Ok(false);
             };
             let apply_result = apply_event(&mut snapshot, &kind, now.clone())?;
             if apply_result == ApplyOutcome::NoOp {
-                return Ok(());
+                return Ok(false);
             }
             finish_projection(&mut snapshot, bus_seq);
             let journal_event = make_event(&mut snapshot, run_id, kind, now);
@@ -384,20 +393,28 @@ pub fn project_bus_event(run_id: &str, bus_seq: u64, event: &BusEvent) -> Result
                     event: journal_event,
                 },
             )?;
-            Ok(())
+            Ok(true)
         })
     });
-    if let Err(error) = result {
-        log::warn!(
-            "[run-journal] projection failed for run_id={run_id} bus_seq={bus_seq}: {error}"
-        );
-        let degradation = mark_degraded(run_id, &format!("projection failed: {error}"));
-        return match degradation {
-            Ok(()) => Err(error),
-            Err(degraded_error) => Err(format!(
-                "{error}; additionally failed to mark journal degraded: {degraded_error}"
-            )),
-        };
+    let projected = match result {
+        Ok(projected) => projected,
+        Err(error) => {
+            log::warn!(
+                "[run-journal] projection failed for run_id={run_id} bus_seq={bus_seq}: {error}"
+            );
+            let degradation = mark_degraded(run_id, &format!("projection failed: {error}"));
+            return match degradation {
+                Ok(()) => Err(error),
+                Err(degraded_error) => Err(format!(
+                    "{error}; additionally failed to mark journal degraded: {degraded_error}"
+                )),
+            };
+        }
+    };
+    if projected {
+        if let Err(error) = crate::storage::attention_queue::sync_run(run_id) {
+            log::debug!("[attention-queue] sync_run after projection failed for {run_id}: {error}");
+        }
     }
     Ok(())
 }
@@ -427,7 +444,7 @@ pub fn create_checkpoint(run_id: &str, label: Option<String>) -> Result<RunCheck
 
 pub fn mark_degraded(run_id: &str, reason: &str) -> Result<(), String> {
     let _ = get_or_init(run_id)?;
-    with_lock(run_id, |run_dir| {
+    let result = with_lock(run_id, |run_dir| {
         let mut snapshot =
             get_raw_in(run_dir).ok_or_else(|| format!("run journal missing for {run_id}"))?;
         let kind = RunJournalEventKind::Degraded {
@@ -436,7 +453,15 @@ pub fn mark_degraded(run_id: &str, reason: &str) -> Result<(), String> {
         match commit_mutation(run_dir, &mut snapshot, kind, now_iso())? {
             ApplyOutcome::Changed | ApplyOutcome::NoOp => Ok(()),
         }
-    })
+    });
+    if result.is_ok() {
+        if let Err(error) = crate::storage::attention_queue::sync_run(run_id) {
+            log::debug!(
+                "[attention-queue] sync_run after mark_degraded failed for {run_id}: {error}"
+            );
+        }
+    }
+    result
 }
 
 mod reconcile;

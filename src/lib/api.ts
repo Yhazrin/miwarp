@@ -75,6 +75,12 @@ import type {
   RunJournalReconcileReport,
   RunJournalSnapshot,
 } from "./types/run-journal";
+import type {
+  AttentionAction,
+  AttentionEvent,
+  AttentionQueueSnapshot,
+  AttentionReconcileReport,
+} from "./types/attention-queue";
 
 // Backend capabilities (version / IPC probe)
 export async function getBackendCapabilities(): Promise<BackendCapabilities> {
@@ -297,6 +303,52 @@ export async function createRunCheckpoint(runId: string, label?: string): Promis
 export async function reconcileRunJournalAfterRestart(): Promise<RunJournalReconcileReport> {
   dbg("api", "reconcileRunJournalAfterRestart");
   return invoke<RunJournalReconcileReport>(CMD.run_journal_reconcile);
+}
+
+// Attention Queue
+
+export async function getAttentionQueue(): Promise<AttentionQueueSnapshot> {
+  dbg("api", "getAttentionQueue");
+  return invoke<AttentionQueueSnapshot>(CMD.attention_queue_get);
+}
+
+export async function listAttentionQueueEvents(sinceSeq = 0): Promise<AttentionEvent[]> {
+  dbg("api", "listAttentionQueueEvents", { sinceSeq });
+  return invoke<AttentionEvent[]>(CMD.attention_queue_list_events, { sinceSeq });
+}
+
+export async function acknowledgeAttentionItem(
+  id: string,
+  actor?: string,
+): Promise<AttentionQueueSnapshot> {
+  dbg("api", "acknowledgeAttentionItem", { id, actor });
+  return invoke<AttentionQueueSnapshot>(CMD.attention_queue_acknowledge, { id, actor });
+}
+
+export async function resolveAttentionItem(
+  id: string,
+  action: AttentionAction,
+  actor?: string,
+  note?: string,
+): Promise<AttentionQueueSnapshot> {
+  dbg("api", "resolveAttentionItem", {
+    id,
+    action,
+    actor,
+    notePresent: Boolean(note),
+    noteLength: note?.length ?? 0,
+  });
+  return invoke<AttentionQueueSnapshot>(CMD.attention_queue_resolve, {
+    id,
+    action,
+    actor,
+    note,
+  });
+}
+
+export async function reconcileAttentionQueue(): Promise<AttentionReconcileReport> {
+  dbg("api", "reconcileAttentionQueue");
+  return invoke<AttentionReconcileReport>(CMD.attention_queue_reconcile);
 }
 
 export async function softDeleteRuns(ids: string[]): Promise<number> {
