@@ -434,7 +434,7 @@ pub fn spawn_probe_loop(
     cancel: CancellationToken,
 ) {
     let interval = Duration::from_secs(interval_secs.max(30));
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         // Initial probe at startup
         if let Err(e) = run_round(&store, &emitter).await {
             log::warn!("[runtime-health] initial probe failed: {e}");

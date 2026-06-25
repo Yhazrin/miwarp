@@ -351,7 +351,7 @@ pub async fn probe_active_runs(governor: &ResourceGovernor) -> usize {
 /// Spawn the periodic memory probe loop. Returns immediately; the loop runs
 /// until the cancellation token fires.
 pub fn spawn_probe_loop(governor: ResourceGovernor, cancel: tokio_util::sync::CancellationToken) {
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         let mut ticker = tokio::time::interval(Duration::from_secs(1));
         ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         let mut last_tick = Instant::now();
