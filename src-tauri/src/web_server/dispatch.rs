@@ -345,7 +345,11 @@ pub async fn dispatch_command(
                 .and_then(|value| value.as_str())
                 .map(str::to_string);
             let snapshot = storage::attention_queue::acknowledge(&id, actor)?;
-            crate::commands::attention_queue::emit_changed(&state.emitter);
+            crate::commands::attention_queue::emit_changed(
+                &state.emitter,
+                &snapshot,
+                Some(id.clone()),
+            );
             serde_json::to_value(snapshot).map_err(|e| e.to_string())
         }
         "attention_queue_resolve" => {
@@ -365,12 +369,25 @@ pub async fn dispatch_command(
                 .and_then(|value| value.as_str())
                 .map(str::to_string);
             let snapshot = storage::attention_queue::resolve(&id, action, actor, note)?;
-            crate::commands::attention_queue::emit_changed(&state.emitter);
+            crate::commands::attention_queue::emit_changed(
+                &state.emitter,
+                &snapshot,
+                Some(id.clone()),
+            );
             serde_json::to_value(snapshot).map_err(|e| e.to_string())
         }
         "attention_queue_reconcile" => {
             let report = storage::attention_queue::reconcile()?;
-            crate::commands::attention_queue::emit_changed(&state.emitter);
+            // Refetch snapshot for typed AttentionChanged counts.
+            if let Ok(snapshot) = storage::attention_queue::get() {
+                crate::commands::attention_queue::emit_changed(&state.emitter, &snapshot, None);
+            } else {
+                state.emitter.emit_realtime(
+                    "attention_queue_changed",
+                    &serde_json::json!({}),
+                    None,
+                );
+            }
             serde_json::to_value(report).map_err(|e| e.to_string())
         }
 
