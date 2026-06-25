@@ -1343,6 +1343,43 @@ export type BusEvent =
       run_id: string;
       fail_count: number;
       sample: string;
+    }
+  // v1.1.0 / 110-A17: durable Attention Queue mutated; payload carries the
+  // new revision + open/ack/resolved counts so the frontend can decide whether
+  // to refetch the full snapshot.
+  | {
+      type: "attention_changed";
+      revision: number;
+      last_event_seq: number;
+      open_count: number;
+      acknowledged_count: number;
+      resolved_count: number;
+      last_changed_key?: string;
+    }
+  // v1.1.0 / 110-A4: runtime health probe (claude / codex / ...) changed
+  // state. Frontend capability matrix listens and refreshes the row.
+  | {
+      type: "runtime_health_changed";
+      agent: string;
+      /** "healthy" | "degraded" | "unhealthy" */
+      health: string;
+      reason?: string;
+      binary_path?: string;
+      version?: string;
+      logged_in: boolean;
+      timestamp_ms: number;
+    }
+  // v1.1.0 / 110-S5: Resource Governor budget exceeded. Frontend surfaces a
+  // toast and may offer to queue / retry.
+  | {
+      type: "governor_budget_exceeded";
+      run_id: string;
+      /** "concurrent_runs" | "memory_bytes" */
+      budget_kind: string;
+      current_value: number;
+      limit_value: number;
+      reason?: string;
+      timestamp_ms: number;
     };
 
 export type RalphCompleteReason =

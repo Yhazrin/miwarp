@@ -107,7 +107,8 @@ export class EventMiddleware {
 
     // 1. Bus events (stream session mode) — microbatched
     await reg<BusEvent>("bus-event", (ev) => {
-      dbg("middleware", "bus-event", { type: ev.type, run_id: ev.run_id });
+      const runId = "run_id" in ev ? ev.run_id : undefined;
+      dbg("middleware", "bus-event", { type: ev.type, run_id: runId });
       this._handleBusEvent(ev);
     });
 
@@ -264,6 +265,18 @@ export class EventMiddleware {
   // ── Internal ──
 
   private _handleBusEvent(ev: BusEvent): void {
+    // v1.1.0 / 110-A17, 110-A4: `attention_changed` and
+    // `runtime_health_changed` are global notifications (no run_id) —
+    // they don't belong to a single run, so the per-run buffering path
+    // below doesn't apply. Track attention state and return early;
+    // observers refresh via the AttentionStore / capability matrix.
+    if (ev.type === "attention_changed" || ev.type === "runtime_health_changed") {
+      if (ev.type === "attention_changed") {
+        this._trackAttention(ev);
+      }
+      return;
+    }
+
     // Only call _trackAttention for event types that can change attention state.
     // Skipping the ~20 other event types avoids a function call + switch on every token.
     if (ATTENTION_EVENT_TYPES.has(ev.type)) {
@@ -462,7 +475,10 @@ export class EventMiddleware {
     store: SessionStore,
     inspection: ProtocolInspectResult,
   ): boolean {
-    const runId = ev.run_id;
+    // `_handleBusEvent` short-circuits global events (no run_id) before
+    // getting here, so every per-run event that reaches this function
+    // must have one. Read defensively for type narrowing.
+    const runId = "run_id" in ev ? ev.run_id : "(global)";
     if (inspection.evidence) {
       dbgWarn("protocol-quarantine", "inspection", {
         runId,

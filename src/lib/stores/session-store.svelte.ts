@@ -1136,6 +1136,14 @@ export class SessionStore {
 
   /** Apply a single live bus event (mutates $state directly). */
   applyEvent(ev: BusEvent): void {
+    // v1.1.0 / 110-A17, 110-A4: `attention_changed` and
+    // `runtime_health_changed` are global snapshot signals (no run_id)
+    // — they don't belong to a single run, so SessionStore ignores
+    // them. Observers on the AttentionStore / capability matrix
+    // refresh themselves.
+    if (ev.type === "attention_changed" || ev.type === "runtime_health_changed") {
+      return;
+    }
     // Guard: drop events for a run we're no longer viewing
     if (!this.run || ev.run_id !== this.run.id) {
       dbg("store", "drop stale event", ev.type, "run_id=", ev.run_id, "current=", this.run?.id);
@@ -2535,7 +2543,12 @@ export class SessionStore {
     // a now-stale `this.timeline`.
     const allForkEvents = await api.getBusEvents(newRunId);
     if (this._asyncLifecycle.isStale(loadGen)) throw new Error("Unmounted during fork");
-    const newEvents = allForkEvents.filter((ev) => ev.run_id === newRunId);
+    const newEvents = allForkEvents.filter(
+      (ev) =>
+        ev.type === "attention_changed" ||
+        ev.type === "runtime_health_changed" ||
+        ev.run_id === newRunId,
+    );
     if (newEvents.length > 0) {
       dbg("store", "fork: replaying", newEvents.length, "parent events");
       const ms = await this.applyEventBatchAsync(newEvents, {
