@@ -134,4 +134,42 @@ describe("AttentionQueueStore", () => {
     expect(store.itemsForTask("task-1")).toHaveLength(1);
     expect(store.itemsForRun("run-1")).toHaveLength(2);
   });
+
+  it("subscribes to live queue changes and refreshes incrementally", async () => {
+    vi.resetModules();
+    const transportHandlers: Array<(payload: unknown) => void> = [];
+    const listenMock = vi.fn((_event: string, handler: (payload: unknown) => void) => {
+      transportHandlers.push(handler);
+      return Promise.resolve(() => {
+        const index = transportHandlers.indexOf(handler);
+        if (index >= 0) transportHandlers.splice(index, 1);
+      });
+    });
+    vi.doMock("$lib/transport", () => ({
+      getTransport: () => ({ listen: listenMock }),
+    }));
+    const mod = await import("./attention-queue-store.svelte");
+    const store = new mod.AttentionQueueStore();
+
+    vi.mocked(api.getAttentionQueue).mockResolvedValue(baseSnapshot());
+    vi.mocked(api.listAttentionQueueEvents).mockResolvedValue([]);
+
+    await store.subscribe();
+    expect(listenMock).toHaveBeenCalledWith("attention_queue_changed", expect.any(Function));
+    expect(transportHandlers).toHaveLength(1);
+
+    // Fire backend change -> store should refresh.
+    transportHandlers[0]({});
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(api.getAttentionQueue).toHaveBeenCalledTimes(1);
+    expect(api.listAttentionQueueEvents).toHaveBeenCalledTimes(1);
+
+    // Re-subscribing is a no-op (single listener guarantee).
+    await store.subscribe();
+    expect(transportHandlers).toHaveLength(1);
+
+    store.unsubscribe();
+    expect(transportHandlers).toHaveLength(0);
+  });
 });

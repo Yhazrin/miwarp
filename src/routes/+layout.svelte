@@ -1148,6 +1148,7 @@
       try {
         await attentionQueueStore.reconcile();
         await attentionQueueStore.loadSnapshot();
+        await attentionQueueStore.subscribe();
       } catch {
         // Desktop-only durable queue; ignore when transport unavailable.
       }

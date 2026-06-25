@@ -4,6 +4,7 @@ use std::time::Instant;
 use crate::agent::attachment::AttachmentData;
 use crate::agent::session_actor::ActorCommand;
 use crate::models::SessionMode;
+use crate::storage;
 use crate::web_server::state::AppState;
 
 /// Dispatch a JSON-RPC method call to the corresponding command handler.
@@ -343,8 +344,8 @@ pub async fn dispatch_command(
                 .get("actor")
                 .and_then(|value| value.as_str())
                 .map(str::to_string);
-            let snapshot =
-                crate::commands::attention_queue::attention_queue_acknowledge(id, actor)?;
+            let snapshot = storage::attention_queue::acknowledge(&id, actor)?;
+            crate::commands::attention_queue::emit_changed(&state.emitter);
             serde_json::to_value(snapshot).map_err(|e| e.to_string())
         }
         "attention_queue_resolve" => {
@@ -363,12 +364,13 @@ pub async fn dispatch_command(
                 .get("note")
                 .and_then(|value| value.as_str())
                 .map(str::to_string);
-            let snapshot =
-                crate::commands::attention_queue::attention_queue_resolve(id, action, actor, note)?;
+            let snapshot = storage::attention_queue::resolve(&id, action, actor, note)?;
+            crate::commands::attention_queue::emit_changed(&state.emitter);
             serde_json::to_value(snapshot).map_err(|e| e.to_string())
         }
         "attention_queue_reconcile" => {
-            let report = crate::commands::attention_queue::attention_queue_reconcile()?;
+            let report = storage::attention_queue::reconcile()?;
+            crate::commands::attention_queue::emit_changed(&state.emitter);
             serde_json::to_value(report).map_err(|e| e.to_string())
         }
 
