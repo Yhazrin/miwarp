@@ -43,15 +43,32 @@ pub fn next_cron_time(expr: &str, after: DateTime<Utc>) -> Option<DateTime<Utc>>
 
 /// Validate a 5-field cron expression.
 pub fn validate_cron(expr: &str) -> bool {
+    first_invalid_field(expr).is_none()
+}
+
+/// Return the first cron field that fails to parse, with a human-readable label.
+/// Returns `None` when the expression is valid. Used to give clearer error
+/// messages when the user types e.g. "60 0 * * *".
+pub fn first_invalid_field(expr: &str) -> Option<&'static str> {
     let fields: Vec<&str> = expr.split_whitespace().collect();
     if fields.len() != 5 {
-        return false;
+        return Some("expected 5 space-separated fields");
     }
-    let ranges = [(0, 59), (0, 23), (1, 31), (1, 12), (0, 6)];
-    fields
-        .iter()
-        .zip(ranges.iter())
-        .all(|(f, &(min, max))| parse_field(f, min, max).is_some())
+    let labels = ["minute", "hour", "day-of-month", "month", "day-of-week"];
+    let ranges = [(0u32, 59u32), (0, 23), (1, 31), (1, 12), (0, 6)];
+    for (i, (field, (min, max))) in fields.iter().zip(ranges.iter()).enumerate() {
+        if parse_field(field, *min, *max).is_none() {
+            return Some(match i {
+                0 => "minute must be 0-59",
+                1 => "hour must be 0-23",
+                2 => "day-of-month must be 1-31",
+                3 => "month must be 1-12",
+                4 => "day-of-week must be 0-6",
+                _ => labels[i],
+            });
+        }
+    }
+    None
 }
 
 /// Format a time from hour and minute values.
@@ -242,6 +259,30 @@ mod tests {
         assert!(validate_cron("*/5 * * * *"));
         assert!(!validate_cron("invalid"));
         assert!(!validate_cron("60 * * * *"));
+    }
+
+    #[test]
+    fn test_first_invalid_field_messages() {
+        assert_eq!(
+            first_invalid_field("60 0 * * *"),
+            Some("minute must be 0-59")
+        );
+        assert_eq!(first_invalid_field("0 24 * * *"), Some("hour must be 0-23"));
+        assert_eq!(
+            first_invalid_field("0 0 32 * *"),
+            Some("day-of-month must be 1-31")
+        );
+        assert_eq!(
+            first_invalid_field("0 0 * 13 *"),
+            Some("month must be 1-12")
+        );
+        assert_eq!(
+            first_invalid_field("0 0 * * 7"),
+            Some("day-of-week must be 0-6")
+        );
+        assert_eq!(first_invalid_field("0 0 * * *"), None);
+        // Leading zero is allowed.
+        assert_eq!(first_invalid_field("00 09 * * *"), None);
     }
 
     #[test]

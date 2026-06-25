@@ -1,5 +1,10 @@
 use serde::{Deserialize, Serialize};
 
+/// Maximum value (inclusive) accepted for the `intervalMinutes` schedule field.
+/// 10080 = 7 days. Anything higher is almost certainly a misconfiguration and
+/// would saturate the scheduler's catch-up window.
+pub const MAX_INTERVAL_MINUTES: u32 = 10_080;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "kebab-case")]
 pub enum Agent {
@@ -67,6 +72,11 @@ pub struct ScheduledTask {
     pub next_run_at: Option<String>,
     #[serde(default)]
     pub last_run_at: Option<String>,
+    /// When true, the next time the task is due, the scheduler consumes the
+    /// fire without executing and immediately advances `next_run_at`. The flag
+    /// is reset to false after consumption.
+    #[serde(default)]
+    pub skip_next_run: bool,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -126,6 +136,8 @@ pub struct ScheduledTaskInput {
     pub provider: Option<String>,
     #[serde(default = "default_true")]
     pub notify_on_completion: bool,
+    #[serde(default)]
+    pub skip_next_run: bool,
 }
 
 /// Partial update for an existing scheduled task.
@@ -154,4 +166,6 @@ pub struct ScheduledTaskPatch {
     pub provider: Option<Option<String>>,
     #[serde(default)]
     pub notify_on_completion: Option<bool>,
+    #[serde(default)]
+    pub skip_next_run: Option<bool>,
 }

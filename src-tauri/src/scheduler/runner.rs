@@ -10,7 +10,21 @@ use crate::storage;
 use crate::web_server::broadcaster::BroadcastEmitter;
 use chrono::Utc;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio_util::sync::CancellationToken;
+
+/// Initial poll interval for the run-completion monitor. Sessions need a few
+/// seconds to actually attach, so we poll quickly at the start.
+const MONITOR_INITIAL_POLL_SECS: u64 = 5;
+/// After this many seconds we back off to a slower poll cadence.
+const MONITOR_BACKOFF_THRESHOLD_SECS: u64 = 5 * 60;
+/// After this many seconds we back off further — at this point any active run
+/// is likely long-running and we don't want to waste IPCs polling it.
+const MONITOR_DEEP_BACKOFF_THRESHOLD_SECS: u64 = 60 * 60;
+/// Total hard deadline. Past this point we stop polling and mark the task run
+/// as Failed — but we first do a final terminal check so a run that just
+/// finished in the last few seconds is still marked Completed.
+const MONITOR_TIMEOUT_SECS: u64 = 24 * 60 * 60;
 
 /// Execute a scheduled task: create a run, start a session, and track the execution.
 pub async fn execute_task(
@@ -120,13 +134,15 @@ pub async fn execute_task(
     let mut task_run = task_run;
     task_run.run_id = Some(run_uuid.clone());
 
-    // Start the session using existing infrastructure.
-    // Scheduled tasks run unattended, so default to "auto-accept-all" if not set.
-    // The "auto-accept-all" string is mapped to "bypassPermissions" by map_permission_mode.
+    // Start the session using existing infrastructure. Scheduled tasks run
+    // unattended, so we default to "acceptEdits" when the user hasn't picked
+    // one — this lets the agent edit files in the workspace but still prompts
+    // for non-edit operations. The "acceptEdits" string is mapped to the
+    // appropriate CLI value by map_permission_mode.
     let permission_mode = task
         .permission_mode
         .clone()
-        .or_else(|| Some("auto-accept-all".to_string()));
+        .or_else(|| Some("acceptEdits".to_string()));
     // Normalize through the shared mapping so CLI always gets a valid value.
     let permission_mode = permission_mode.map(|m| crate::agent::adapter::map_permission_mode(&m));
 
@@ -185,29 +201,30 @@ pub async fn execute_task(
 }
 
 /// Poll the MiWarp run status and update the ScheduledTaskRun when it finishes.
-/// Times out after 24 hours.
+/// Uses an adaptive poll interval so long-running tasks don't burn thousands
+/// of IPCs, but still polls fast at the start to catch quick completions.
 async fn monitor_run_completion(
     task_run_id: &str,
     run_id: &str,
     notify_on_completion: bool,
     task_name: &str,
 ) {
-    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(24 * 3600);
+    let started_at = tokio::time::Instant::now();
+    let deadline = started_at + Duration::from_secs(MONITOR_TIMEOUT_SECS);
 
     // Wait a bit before first check — session needs time to start
-    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+    tokio::time::sleep(Duration::from_secs(MONITOR_INITIAL_POLL_SECS)).await;
 
     loop {
-        if tokio::time::Instant::now() >= deadline {
-            log::warn!("[scheduler] monitor timeout for run {run_id}, marking as failed");
-            if let Some(mut task_run) = store::load_run(task_run_id) {
-                task_run.status = RunStatus::Failed;
-                task_run.error = Some("Timed out after 24 hours".into());
-                task_run.ended_at = Some(Utc::now().to_rfc3339());
-                let _ = store::save_run(&task_run);
-            }
-            return;
-        }
+        let elapsed = started_at.elapsed();
+        // Pick the right poll interval based on how long the run has been going.
+        let poll_secs = if elapsed >= Duration::from_secs(MONITOR_DEEP_BACKOFF_THRESHOLD_SECS) {
+            super::MONITOR_POLL_INTERVAL_DEEP_BACKOFF_SECS
+        } else if elapsed >= Duration::from_secs(MONITOR_BACKOFF_THRESHOLD_SECS) {
+            super::MONITOR_POLL_INTERVAL_BACKOFF_SECS
+        } else {
+            MONITOR_INITIAL_POLL_SECS
+        };
 
         // Check the MiWarp run status
         let terminal = storage::runs::get_run(run_id).and_then(|meta| {
@@ -225,8 +242,18 @@ async fn monitor_run_completion(
             if let Some(mut task_run) = store::load_run(task_run_id) {
                 task_run.status = status.clone();
                 task_run.error = error;
-                task_run.ended_at = Some(Utc::now().to_rfc3339());
+                let ended_at = Utc::now().to_rfc3339();
+                task_run.ended_at = Some(ended_at.clone());
                 let _ = store::save_run(&task_run);
+
+                // Refresh `lastRunAt` on the task. This is the canonical
+                // "last completed" time (not the last started time, which can
+                // be earlier if the run took a while to settle).
+                if let Some(mut task) = store::load_task(&task_run.task_id) {
+                    task.last_run_at = Some(ended_at);
+                    task.updated_at = Utc::now().to_rfc3339();
+                    let _ = store::save_task(&task);
+                }
 
                 // Send notification if enabled
                 if notify_on_completion {
@@ -254,7 +281,50 @@ async fn monitor_run_completion(
             return;
         }
 
-        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+        // Hit the hard deadline. Do one final check so runs that just finished
+        // in the last `MONITOR_GRACE_PERIOD_SECS` are recorded correctly
+        // rather than being misclassified as "Timed out".
+        if started_at.elapsed() + Duration::from_secs(poll_secs)
+            >= Duration::from_secs(MONITOR_TIMEOUT_SECS)
+        {
+            let final_check = storage::runs::get_run(run_id).and_then(|meta| {
+                use crate::models::RunStatus as S;
+                match meta.status {
+                    S::Completed => Some((RunStatus::Completed, None)),
+                    S::Failed => Some((RunStatus::Failed, meta.error_message.clone())),
+                    S::Stopped => Some((RunStatus::Cancelled, None)),
+                    _ => None,
+                }
+            });
+            let ended_at = Utc::now().to_rfc3339();
+            if let Some((status, error)) = final_check {
+                log::warn!(
+                    "[scheduler] run {run_id} hit 24h deadline but finished with {status:?} — recording real status"
+                );
+                if let Some(mut task_run) = store::load_run(task_run_id) {
+                    task_run.status = status;
+                    task_run.error = error;
+                    task_run.ended_at = Some(ended_at.clone());
+                    let _ = store::save_run(&task_run);
+                    if let Some(mut task) = store::load_task(&task_run.task_id) {
+                        task.last_run_at = Some(ended_at);
+                        let _ = store::save_task(&task);
+                    }
+                }
+            } else {
+                log::warn!("[scheduler] monitor timeout for run {run_id}, marking as failed");
+                if let Some(mut task_run) = store::load_run(task_run_id) {
+                    task_run.status = RunStatus::Failed;
+                    task_run.error = Some("Timed out after 24 hours".into());
+                    task_run.ended_at = Some(ended_at);
+                    let _ = store::save_run(&task_run);
+                }
+            }
+            let _ = deadline; // silence unused — kept for future extension
+            return;
+        }
+
+        tokio::time::sleep(Duration::from_secs(poll_secs)).await;
     }
 }
 

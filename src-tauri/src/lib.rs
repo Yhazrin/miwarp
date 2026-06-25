@@ -26,6 +26,7 @@ use std::sync::atomic::{AtomicBool, AtomicU16, AtomicU64, Ordering};
 use std::sync::Arc;
 use storage::events::EventWriter;
 use tauri::tray::TrayIconEvent;
+use tauri::Emitter;
 use tauri::Manager;
 use tokio::sync::broadcast;
 use tokio_util::sync::CancellationToken;
@@ -220,6 +221,7 @@ pub fn run() {
             commands::runs::stop_run,
             commands::runs::update_run_model,
             commands::runs::rename_run,
+            commands::runs::generate_run_title,
             commands::runs::soft_delete_runs,
             commands::runs::search_prompts,
             commands::folders::list_all_session_folders,
@@ -394,6 +396,8 @@ pub fn run() {
             commands::onboarding::get_auth_overview,
             commands::onboarding::set_cli_api_key,
             commands::onboarding::remove_cli_api_key,
+            commands::product_bootstrap::get_product_bootstrap_status,
+            commands::product_bootstrap::run_product_bootstrap,
             commands::screenshot::capture_screenshot,
             commands::screenshot::update_screenshot_hotkey,
             commands::cli_sync::discover_cli_sessions,
@@ -440,8 +444,10 @@ pub fn run() {
             scheduler::update_scheduled_task,
             scheduler::delete_scheduled_task,
             scheduler::set_scheduled_task_enabled,
+            scheduler::set_scheduled_task_skip_next,
             scheduler::run_scheduled_task_now,
             scheduler::list_scheduled_task_runs,
+            scheduler::get_scheduled_task_run,
             commands::worktree::create_worktree,
             commands::worktree::auto_commit,
             commands::worktree::create_pull_request,
@@ -563,6 +569,30 @@ pub fn run() {
 
             // Register screenshot hotkey from settings (must come after plugin init)
             commands::screenshot::init_screenshot_hotkey(app.handle());
+
+            // Seed MiWarp recommended skills + default Claude append prompt on first run.
+            {
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let result =
+                        tokio::task::spawn_blocking(storage::product_bootstrap::run_if_needed)
+                            .await
+                            .map_err(|e| format!("bootstrap join error: {e}"));
+                    match result {
+                        Ok(Ok(run)) if !run.skipped => {
+                            log::info!(
+                                "[app] product bootstrap applied: skills={}, append_prompt={}",
+                                run.skills_installed.len(),
+                                run.append_prompt_applied
+                            );
+                            let _ = app_handle.emit("product-bootstrap-applied", &run);
+                        }
+                        Ok(Ok(_)) => {}
+                        Ok(Err(e)) => log::warn!("[app] product bootstrap failed: {e}"),
+                        Err(e) => log::warn!("[app] product bootstrap task failed: {e}"),
+                    }
+                });
+            }
 
             Ok(())
         })
