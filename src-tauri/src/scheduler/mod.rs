@@ -677,7 +677,10 @@ mod tests {
             timezone: None,
         };
         let next = compute_next_run(&sched);
-        assert!(next.is_some(), "future one-time should produce a next_run_at");
+        assert!(
+            next.is_some(),
+            "future one-time should produce a next_run_at"
+        );
         // Past fire_at → no reschedule.
         let past = (Utc::now() - chrono::Duration::hours(1)).to_rfc3339();
         let sched = ScheduleConfig {

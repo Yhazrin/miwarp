@@ -50,6 +50,10 @@ export interface ScheduledTaskHubGroup {
   latestStatus: TaskRun["status"];
   executionCount: number;
   latestActivityAt: string;
+  /** One-line summary shown in the sidebar item. Prefer the most recent
+   * execution's `summary` or `error`; fall back to the first line of the
+   * task prompt. Empty string when neither is available. */
+  latestSummary: string;
 }
 
 const LEGACY_DEFAULT_WORKSPACE = "default";
@@ -417,6 +421,14 @@ function buildScheduledTaskHubsForCwd(
     const executions = scheduledTaskRuns
       .filter((r) => r.taskId === taskId)
       .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+    // Latest execution summary: prefer the most recent run's summary/error,
+    // otherwise fall back to the first line of the task prompt (#9). Trim
+    // long text so the sidebar item stays compact.
+    const latestExec = executions[0];
+    const rawSummary = latestExec?.summary?.trim() || latestExec?.error?.trim() || "";
+    const firstLine = (task?.prompt ?? "").trim().split(/\r?\n/, 1)[0] ?? "";
+    const promptSummary = firstLine.length > 60 ? `${firstLine.slice(0, 60)}…` : firstLine;
+    const latestSummary = (rawSummary || promptSummary).trim();
     hubs.push({
       hubKey: `sched:${taskId}:${cwd}`,
       taskId,
@@ -429,6 +441,7 @@ function buildScheduledTaskHubsForCwd(
       latestStatus: latestRun.status,
       executionCount: taskRuns.length,
       latestActivityAt: sortKey(latestRun),
+      latestSummary,
     });
   }
 

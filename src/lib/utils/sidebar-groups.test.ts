@@ -516,4 +516,83 @@ describe("buildEnrichedProjectFolders", () => {
     expect(folder!.scheduledTaskHubs[0].enabled).toBe(false);
     expect(folder!.conversationCount).toBe(1);
   });
+
+  it("scheduled_hub_latestSummary_falls_back_to_prompt", () => {
+    const cwd = "/project/summary";
+    const taskId = "task-summary";
+    const runs = [
+      makeRun({
+        id: "r-sum-1",
+        cwd,
+        scheduled_task_id: taskId,
+        started_at: "2024-01-02T00:00:00Z",
+      }),
+    ];
+    const scheduledTasks: ScheduledTask[] = [
+      {
+        id: taskId,
+        name: "Summary Task",
+        prompt: "First line of the prompt\nSecond line should not appear",
+        workspace: { cwd },
+        agent: "claude",
+        schedule: { type: "cron", cronExpression: "0 9 * * *" },
+        enabled: true,
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+    const enriched = buildEnrichedProjectFolders(runs, [], NO_FAVS, [], [], scheduledTasks, []);
+    const folder = enriched.find((f) => f.cwd === cwd);
+    expect(folder).toBeDefined();
+    const hub = folder!.scheduledTaskHubs[0];
+    expect(hub.latestSummary).toBe("First line of the prompt");
+  });
+
+  it("scheduled_hub_latestSummary_prefers_run_summary_when_present", () => {
+    const cwd = "/project/prefer-summary";
+    const taskId = "task-prefer";
+    const runs = [
+      makeRun({
+        id: "r-pref-1",
+        cwd,
+        scheduled_task_id: taskId,
+        started_at: "2024-01-02T00:00:00Z",
+      }),
+    ];
+    const scheduledTasks: ScheduledTask[] = [
+      {
+        id: taskId,
+        name: "Prefer Summary",
+        prompt: "Should not appear",
+        workspace: { cwd },
+        agent: "claude",
+        schedule: { type: "cron", cronExpression: "0 9 * * *" },
+        enabled: true,
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+    const scheduledTaskRuns = [
+      {
+        id: "exec-1",
+        taskId,
+        runId: "r-pref-1",
+        startedAt: "2024-01-02T00:00:00Z",
+        status: "completed" as const,
+        summary: "Last run output",
+      },
+    ];
+    const enriched = buildEnrichedProjectFolders(
+      runs,
+      [],
+      NO_FAVS,
+      [],
+      [],
+      scheduledTasks,
+      scheduledTaskRuns,
+    );
+    const folder = enriched.find((f) => f.cwd === cwd);
+    expect(folder).toBeDefined();
+    expect(folder!.scheduledTaskHubs[0].latestSummary).toBe("Last run output");
+  });
 });

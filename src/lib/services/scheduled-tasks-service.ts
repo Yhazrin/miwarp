@@ -98,47 +98,91 @@ export class ScheduledTasksService {
     }
   }
 
+  /** Fetch a single run by id — used by the live monitor to avoid refetching
+   * the whole run history on every poll. */
+  async getRun(runId: string): Promise<ScheduledTaskRun | null> {
+    try {
+      const run = await invoke<ScheduledTaskRun | null>("get_scheduled_task_run", {
+        runId,
+      });
+      return run;
+    } catch (e) {
+      dbgWarn("scheduled-tasks", "getRun error", e);
+      return null;
+    }
+  }
+
+  /** Toggle the `skip_next_run` flag on a task. */
+  async setSkipNextRun(id: string, skip: boolean): Promise<ScheduledTask | null> {
+    try {
+      const task = await invoke<ScheduledTask>("set_scheduled_task_skip_next", {
+        id,
+        skipNextRun: skip,
+      });
+      dbg("scheduled-tasks", "setSkipNextRun", { id, skip });
+      return task;
+    } catch (e) {
+      dbgWarn("scheduled-tasks", "setSkipNextRun error", e);
+      throw e;
+    }
+  }
+
   /**
-   * Validate a 5-field cron expression client-side.
+   * Validate a 5-field cron expression client-side. Returns `null` when the
+   * expression is valid, or a key identifying the field that failed. The
+   * frontend uses the key to surface a per-field error message.
    */
   static validateCronExpression(expr: string): boolean {
+    return ScheduledTasksService.cronFieldError(expr) === null;
+  }
+
+  /** Identical to `validateCronExpression` but returns the failing field label
+   * instead of a boolean — useful when the UI wants to render a specific
+   * error like "minute must be 0-59, got 60". */
+  static cronFieldError(expr: string): string | null {
     const parts = expr.trim().split(/\s+/);
-    if (parts.length !== 5) return false;
-    const ranges = [
+    if (parts.length !== 5) return "shape";
+    const labels = ["minute", "hour", "day", "month", "weekday"];
+    const ranges: Array<[number, number]> = [
       [0, 59],
       [0, 23],
       [1, 31],
       [1, 12],
       [0, 6],
     ];
-    return parts.every((part, i) => {
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
       const [min, max] = ranges[i];
-      for (const seg of part.split(",")) {
-        if (seg === "*") continue;
-        if (seg.includes("/")) {
-          const [range, step] = seg.split("/");
-          if (!step || isNaN(+step) || +step === 0) return false;
-          if (range !== "*") {
-            if (range.includes("-")) {
-              const [a, b] = range.split("-").map(Number);
-              if (isNaN(a) || isNaN(b) || a < min || b > max) return false;
-            } else {
-              const v = +range;
-              if (isNaN(v) || v < min || v > max) return false;
-            }
-          }
-          continue;
-        }
-        if (seg.includes("-")) {
-          const [a, b] = seg.split("-").map(Number);
-          if (isNaN(a) || isNaN(b) || a < min || b > max) return false;
-          continue;
-        }
-        const v = +seg;
-        if (isNaN(v) || v < min || v > max) return false;
+      if (!ScheduledTasksService.cronFieldInRange(part, min, max)) {
+        return labels[i];
       }
-      return true;
-    });
+    }
+    return null;
+  }
+
+  private static cronFieldInRange(part: string, min: number, max: number): boolean {
+    for (const seg of part.split(",")) {
+      if (seg === "*") continue;
+      if (seg.includes("/")) {
+        const slash = seg.indexOf("/");
+        const range = seg.slice(0, slash);
+        const step = seg.slice(slash + 1);
+        if (!step || isNaN(+step) || +step === 0) return false;
+        if (range !== "*") {
+          if (!ScheduledTasksService.cronFieldInRange(range, min, max)) return false;
+        }
+        continue;
+      }
+      if (seg.includes("-")) {
+        const [a, b] = seg.split("-").map(Number);
+        if (isNaN(a) || isNaN(b) || a < min || b > max) return false;
+        continue;
+      }
+      // Allow leading zero — `parseInt("09")` returns 9, which is in range.
+      const v = parseInt(seg, 10);
+      if (isNaN(v) || v < min || v > max) return false;
+    }
+    return true;
   }
 
   /**

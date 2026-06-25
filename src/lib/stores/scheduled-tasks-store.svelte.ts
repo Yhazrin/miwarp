@@ -11,6 +11,12 @@ import type {
   ScheduledTaskPatch,
 } from "$lib/types/scheduled-task";
 import { scheduledTasksService } from "$lib/services/scheduled-tasks-service";
+import type {
+  TaskExecutionMonitor as MonitorType,
+  ExecutionLog,
+} from "$lib/types/task-execution-monitor";
+
+const DEFAULT_TOTAL_STEPS = 4;
 
 export class ScheduledTasksStore {
   tasks = $state<ScheduledTask[]>([]);
@@ -25,6 +31,15 @@ export class ScheduledTasksStore {
 
   // Selected task for details view
   selectedTaskId = $state<string | null>(null);
+
+  // Live execution monitor state. Lives in the store (not the page) so
+  // navigating away and back doesn't lose the in-flight progress.
+  activeMonitor = $state<MonitorType | null>(null);
+  monitorLogs = $state<ExecutionLog[]>([]);
+  monitorStatus = $state<"queued" | "running" | "paused" | "completed" | "failed">("queued");
+  monitorProgress = $state(0);
+  monitorStep = $state(0);
+  monitorTotalSteps = $state(DEFAULT_TOTAL_STEPS);
 
   activeTasks = $derived.by(() => this.tasks.filter((t) => t.enabled));
 
@@ -58,6 +73,7 @@ export class ScheduledTasksStore {
       if (task) {
         this.tasks = [...this.tasks, task];
         this.showEditor = false;
+        this.editingTask = null;
         dbg("scheduled-tasks-store", "createTask", task.name);
         return true;
       }
@@ -95,6 +111,7 @@ export class ScheduledTasksStore {
       if (ok) {
         this.tasks = this.tasks.filter((t) => t.id !== id);
         if (this.selectedTaskId === id) this.selectedTaskId = null;
+        if (this.activeMonitor?.taskId === id) this.resetMonitor();
         dbg("scheduled-tasks-store", "deleteTask", id);
         return true;
       }
@@ -110,6 +127,21 @@ export class ScheduledTasksStore {
     const task = this.tasks.find((t) => t.id === id);
     if (!task) return;
     await this.updateTask(id, { enabled: !task.enabled });
+  }
+
+  async toggleSkipNextRun(id: string): Promise<void> {
+    const task = this.tasks.find((t) => t.id === id);
+    if (!task) return;
+    try {
+      const updated = await scheduledTasksService.setSkipNextRun(id, !task.skipNextRun);
+      if (updated) {
+        this.tasks = this.tasks.map((t) => (t.id === id ? updated : t));
+        dbg("scheduled-tasks-store", "toggleSkipNextRun", { id, skip: updated.skipNextRun });
+      }
+    } catch (e) {
+      dbgWarn("scheduled-tasks-store", "toggleSkipNextRun error", e);
+      this.error = e instanceof Error ? e.message : "Failed to update task";
+    }
   }
 
   async runTaskNow(
@@ -154,7 +186,19 @@ export class ScheduledTasksStore {
     }
   }
 
+  /** Cheap single-run poll used by the live monitor. Updates the cached run
+   * in place if the returned record is fresher. */
+  async pollRun(runId: string): Promise<ScheduledTaskRun | null> {
+    const run = await scheduledTasksService.getRun(runId);
+    if (!run) return null;
+    this.runs = [run, ...this.runs.filter((r) => r.id !== run.id)];
+    return run;
+  }
+
   openCreateEditor(): void {
+    // Clear any stale editor state BEFORE flipping showEditor so the effect
+    // sees a clean slate on its first run (#1 — avoid leaking form state from
+    // a previous create/edit).
     this.editingTask = null;
     this.editorMode = "create";
     this.showEditor = true;
@@ -178,6 +222,76 @@ export class ScheduledTasksStore {
 
   clearError(): void {
     this.error = null;
+  }
+
+  // ── Live monitor helpers ──
+
+  startMonitor(taskId: string, taskName: string, totalSteps = DEFAULT_TOTAL_STEPS): void {
+    this.monitorTotalSteps = totalSteps;
+    this.monitorStep = 0;
+    this.monitorProgress = 0;
+    this.monitorStatus = "running";
+    this.monitorLogs = [];
+    this.activeMonitor = {
+      taskId,
+      taskName,
+      status: "running",
+      progress: 0,
+      currentStep: 0,
+      totalSteps,
+      logs: [],
+      startedAt: new Date().toISOString(),
+      estimatedDuration: "1-2 min",
+    };
+  }
+
+  addMonitorLog(level: ExecutionLog["level"], message: string, stepId?: string): void {
+    const log: ExecutionLog = {
+      id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+      timestamp: new Date().toISOString(),
+      level,
+      message,
+      stepId,
+    };
+    this.monitorLogs = [...this.monitorLogs, log];
+    dbg("scheduled-task-monitor", level, { message, stepId });
+  }
+
+  setMonitorStatus(status: typeof this.monitorStatus): void {
+    this.monitorStatus = status;
+    if (this.activeMonitor) {
+      this.activeMonitor = { ...this.activeMonitor, status };
+    }
+  }
+
+  setMonitorProgress(step: number, progress: number): void {
+    this.monitorStep = step;
+    this.monitorProgress = progress;
+    if (this.activeMonitor) {
+      this.activeMonitor = {
+        ...this.activeMonitor,
+        currentStep: step,
+        progress,
+      };
+    }
+  }
+
+  endMonitor(): void {
+    if (this.activeMonitor) {
+      this.activeMonitor = {
+        ...this.activeMonitor,
+        endedAt: new Date().toISOString(),
+      };
+    }
+  }
+
+  resetMonitor(): void {
+    this.activeMonitor = null;
+    this.monitorLogs = [];
+    this.monitorStatus = "queued";
+    this.monitorProgress = 0;
+    this.monitorStep = 0;
+    this.monitorTotalSteps = DEFAULT_TOTAL_STEPS;
   }
 }
 

@@ -10,84 +10,40 @@
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
   import { ScheduledTasksService } from "$lib/services/scheduled-tasks-service";
   import type { ScheduledTaskRun } from "$lib/types/scheduled-task";
-  import type {
-    TaskExecutionMonitor as MonitorType,
-    ExecutionLog,
-  } from "$lib/types/task-execution-monitor";
-  import { dbg } from "$lib/utils/debug";
   import Icon from "$lib/components/Icon.svelte";
   import type { LucideIconName } from "$lib/lucide-icon";
 
   let activeTab = $state<"all" | "active" | "paused">("all");
   let runningNow = $state(false);
 
-  // Execution monitoring state
-  let activeMonitor = $state<MonitorType | null>(null);
-  let monitorLogs = $state<ExecutionLog[]>([]);
-  let monitorStatus = $state<"queued" | "running" | "paused" | "completed" | "failed">("queued");
-  let monitorProgress = $state(0);
-  let monitorStep = $state(0);
-  let monitorTotalSteps = $state(3);
+  // Local state for which taskId's card should scroll into view next.
+  // Decoupled from selectedTaskId so it can run on demand, not just on click.
+  let scrollTargetId = $state<string | null>(null);
 
-  function createMonitor(taskId: string, taskName: string, totalSteps: number): MonitorType {
-    return {
-      taskId,
-      taskName,
-      status: "running",
-      progress: 0,
-      currentStep: 0,
-      totalSteps,
-      logs: [],
-      startedAt: new Date().toISOString(),
-      estimatedDuration: "1-2 min",
-    };
-  }
-
-  function addLog(level: ExecutionLog["level"], message: string, stepId?: string) {
-    const log: ExecutionLog = {
-      id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date().toISOString(),
-      level,
-      message,
-      stepId,
-    };
-    monitorLogs = [...monitorLogs, log];
-    dbg("scheduled-task-monitor", level, { message, stepId });
-  }
-
-  function updateMonitorStatus(status: typeof monitorStatus) {
-    monitorStatus = status;
-    if (activeMonitor) {
-      activeMonitor.status = status;
-    }
-  }
-
-  function updateProgress(step: number, progress: number) {
-    monitorStep = step;
-    monitorProgress = progress;
-    if (activeMonitor) {
-      activeMonitor.currentStep = step;
-      activeMonitor.progress = progress;
-    }
-  }
+  // Read monitor state from the store so navigating away and back doesn't
+  // reset the in-flight progress (#5).
+  const activeMonitor = $derived(scheduledTasksStore.activeMonitor);
+  const monitorLogs = $derived(scheduledTasksStore.monitorLogs);
+  const monitorStatus = $derived(scheduledTasksStore.monitorStatus);
+  const monitorProgress = $derived(scheduledTasksStore.monitorProgress);
+  const monitorStep = $derived(scheduledTasksStore.monitorStep);
+  const monitorTotalSteps = $derived(scheduledTasksStore.monitorTotalSteps);
 
   const TERMINAL_STATUSES = new Set(["completed", "failed", "cancelled"]);
 
-  /** Poll task runs every `intervalMs` until a terminal status is reached or timeout. */
+  /** Poll a single run by id (cheap IPC) until terminal or timeout. */
   async function pollUntilDone(
-    taskId: string,
     runId: string,
     intervalMs = 3000,
     timeoutMs = 10 * 60 * 1000, // 10 min
-  ): Promise<import("$lib/types/scheduled-task").ScheduledTaskRun | null> {
+  ): Promise<ScheduledTaskRun | null> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
-      await scheduledTasksStore.loadTaskRuns(taskId);
-      const run = scheduledTasksStore.runs.find((r) => r.id === runId);
+      const run = await scheduledTasksStore.pollRun(runId);
       if (run && TERMINAL_STATUSES.has(run.status)) return run;
       await new Promise<void>((res) => setTimeout(res, intervalMs));
     }
-    return null; // timeout
+    return null;
   }
 
   async function handleRunNow(taskId: string) {
@@ -97,76 +53,78 @@
     if (!task) return;
 
     runningNow = true;
-    monitorTotalSteps = 3;
-
-    activeMonitor = createMonitor(taskId, task.name, monitorTotalSteps);
-    monitorLogs = [];
-    monitorStatus = "running";
-    monitorProgress = 0;
-    monitorStep = 0;
+    scheduledTasksStore.startMonitor(taskId, task.name, 4);
 
     try {
-      // Step 1: Initialising
-      addLog("info", `Starting task: ${task.name}`, "init");
-      updateProgress(1, 15);
+      // Step 1: init
+      scheduledTasksStore.addMonitorLog("info", `Starting task: ${task.name}`, "init");
+      scheduledTasksStore.setMonitorProgress(1, 15);
 
-      // Step 2: Trigger execution on Rust side
-      addLog("info", `Loading workspace: ${task.workspace.cwd}`, "workspace");
-      updateProgress(1, 30);
-      addLog("info", "Launching Claude session…", "execute");
-      updateProgress(2, 45);
+      // Step 2: workspace
+      scheduledTasksStore.addMonitorLog(
+        "info",
+        `Loading workspace: ${task.workspace.cwd}`,
+        "workspace",
+      );
+      scheduledTasksStore.setMonitorProgress(2, 30);
+
+      // Step 3: execute (start session)
+      scheduledTasksStore.addMonitorLog("info", "Launching Claude session…", "execute");
+      scheduledTasksStore.setMonitorProgress(3, 45);
 
       const taskRun = await scheduledTasksStore.runTaskNow(taskId);
-      // runTaskNow may return undefined on error (store catches and sets store.error)
       if (!taskRun) {
         throw new Error(scheduledTasksStore.error ?? "Failed to start task");
       }
 
-      addLog("info", `Session started (run: ${taskRun.runId ?? taskRun.id})`, "session");
-      updateProgress(2, 55);
+      scheduledTasksStore.addMonitorLog(
+        "info",
+        `Session started (run: ${taskRun.runId ?? taskRun.id})`,
+        "session",
+      );
+      scheduledTasksStore.setMonitorProgress(3, 55);
 
-      // Step 3: Poll until Claude finishes (session is async)
-      addLog("info", "Waiting for task to complete…", "poll");
-      const finalRun = await pollUntilDone(taskId, taskRun.id);
+      // Step 4: poll for terminal status
+      scheduledTasksStore.addMonitorLog("info", "Waiting for task to complete…", "poll");
+      const finalRun = await pollUntilDone(taskRun.id);
 
-      updateProgress(3, 100);
+      scheduledTasksStore.setMonitorProgress(4, 100);
 
       if (!finalRun) {
-        // Timed out — still show running in real list
-        updateMonitorStatus("failed");
-        addLog(
+        scheduledTasksStore.setMonitorStatus("failed");
+        scheduledTasksStore.addMonitorLog(
           "warn",
           "Timed out waiting for result — task may still be running in background",
           "timeout",
         );
       } else if (finalRun.status === "failed") {
-        updateMonitorStatus("failed");
-        addLog("error", finalRun.error || "Task execution failed", "error");
+        scheduledTasksStore.setMonitorStatus("failed");
+        scheduledTasksStore.addMonitorLog(
+          "error",
+          finalRun.error || "Task execution failed",
+          "error",
+        );
       } else if (finalRun.status === "cancelled") {
-        updateMonitorStatus("failed");
-        addLog("warn", "Task was cancelled", "cancel");
+        scheduledTasksStore.setMonitorStatus("failed");
+        scheduledTasksStore.addMonitorLog("warn", "Task was cancelled", "cancel");
       } else {
-        updateMonitorStatus("completed");
-        addLog("info", "Task completed successfully", "done");
+        scheduledTasksStore.setMonitorStatus("completed");
+        scheduledTasksStore.addMonitorLog("info", "Task completed successfully", "done");
       }
     } catch (err) {
-      updateMonitorStatus("failed");
-      addLog("error", `Execution error: ${err}`, "error");
-      monitorProgress = 100;
+      scheduledTasksStore.setMonitorStatus("failed");
+      scheduledTasksStore.addMonitorLog("error", `Execution error: ${err}`, "error");
+      scheduledTasksStore.setMonitorProgress(monitorTotalSteps, 100);
     } finally {
       runningNow = false;
-      if (activeMonitor) {
-        activeMonitor.endedAt = new Date().toISOString();
-      }
+      scheduledTasksStore.endMonitor();
+      // Refresh task so updated lastRunAt / nextRunAt is visible.
+      await scheduledTasksStore.loadTasks();
     }
   }
 
   function closeMonitor() {
-    activeMonitor = null;
-    monitorLogs = [];
-    monitorStatus = "queued";
-    monitorProgress = 0;
-    monitorStep = 0;
+    scheduledTasksStore.resetMonitor();
   }
 
   function retryTask() {
@@ -184,6 +142,20 @@
       default:
         return scheduledTasksStore.tasks;
     }
+  });
+
+  // Scroll the currently selected card into view (#6).
+  $effect(() => {
+    const id = scheduledTasksStore.selectedTaskId ?? scrollTargetId;
+    if (!id) return;
+    scrollTargetId = null;
+    // Defer to next frame so the DOM has the freshly-selected class.
+    queueMicrotask(() => {
+      const el = document.querySelector(`[data-task-card-id="${id}"]`);
+      if (el && "scrollIntoView" in el) {
+        (el as HTMLElement).scrollIntoView({ block: "nearest" });
+      }
+    });
   });
 
   onMount(() => {
@@ -340,7 +312,9 @@
           </div>
         {:else}
           {#each filteredTasks as task (task.id)}
-            <ScheduledTaskCard {task} selected={scheduledTasksStore.selectedTaskId === task.id} />
+            <div data-task-card-id={task.id}>
+              <ScheduledTaskCard {task} selected={scheduledTasksStore.selectedTaskId === task.id} />
+            </div>
           {/each}
         {/if}
       </div>
@@ -363,7 +337,7 @@
           logs={monitorLogs}
           onClose={closeMonitor}
           onCancel={() => {
-            addLog("warn", "Task cancelled by user", "cancel");
+            scheduledTasksStore.addMonitorLog("warn", "Task cancelled by user", "cancel");
             closeMonitor();
           }}
           onRetry={retryTask}

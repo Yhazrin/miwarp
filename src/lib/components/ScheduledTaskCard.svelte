@@ -1,5 +1,6 @@
 <script lang="ts">
   import Button from "./Button.svelte";
+  import { goto } from "$app/navigation";
   import { scheduledTasksStore } from "$lib/stores/scheduled-tasks-store.svelte";
   import { ScheduledTasksService } from "$lib/services/scheduled-tasks-service";
   import type { ScheduledTask } from "$lib/types/scheduled-task";
@@ -31,6 +32,15 @@
       default:
         return t("schedCard_unknownSchedule");
     }
+  });
+
+  /** First line of the prompt (or first 60 chars) — used as a hover preview
+   * and shown muted below the schedule row (#6, #9). */
+  const promptPreview = $derived.by(() => {
+    const trimmed = (task.prompt ?? "").trim();
+    if (!trimmed) return "";
+    const firstLine = trimmed.split(/\r?\n/, 1)[0];
+    return firstLine.length > 60 ? `${firstLine.slice(0, 60)}…` : firstLine;
   });
 
   function formatRelativeTime(isoStr: string): string {
@@ -65,8 +75,8 @@
     scheduledTasksStore.openEditEditor(task);
   }
 
-  function _handleToggle() {
-    scheduledTasksStore.toggleTaskEnabled(task.id);
+  function handleSkipNext() {
+    scheduledTasksStore.toggleSkipNextRun(task.id);
   }
 
   function handleDelete() {
@@ -78,6 +88,20 @@
   function handleSelect() {
     scheduledTasksStore.selectTask(task.id);
   }
+
+  /** Click on the card body: select + navigate to detail. Buttons stop
+   * propagation so they keep their primary behavior. (#6) */
+  function handleCardClick() {
+    handleSelect();
+    goto(`/scheduled-tasks/${task.id}`);
+  }
+
+  function handleCardKey(e: KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleCardClick();
+    }
+  }
 </script>
 
 <div
@@ -88,8 +112,8 @@
   role="button"
   tabindex="0"
   aria-label={task.name}
-  onclick={handleSelect}
-  onkeydown={(e) => e.key === "Enter" && handleSelect()}
+  onclick={handleCardClick}
+  onkeydown={handleCardKey}
 >
   <!-- Info section - full width -->
   <div class="mb-2">
@@ -105,6 +129,14 @@
           >{task.enabled ? t("schedCard_active") : t("schedCard_paused")}</span
         >
       </span>
+      {#if task.skipNextRun}
+        <span
+          class="shrink-0 px-1.5 py-0.5 text-[9px] rounded bg-miwarp-status-warning/15 text-miwarp-status-warning uppercase"
+          title={t("sched_skipNextDesc")}
+        >
+          {t("sched_skipNext")}
+        </span>
+      {/if}
     </div>
 
     <!-- Agent + Workspace -->
@@ -125,6 +157,13 @@
       {scheduleDescription}
     </p>
 
+    <!-- Prompt preview (#6, #9) — show first line of prompt as muted text -->
+    {#if promptPreview}
+      <p class="text-[10px] text-muted-foreground/70 truncate mb-1" title={task.prompt}>
+        {promptPreview}
+      </p>
+    {/if}
+
     <!-- Timing info -->
     <div class="flex items-center gap-4 text-[10px] text-muted-foreground/40 overflow-hidden">
       {#if task.nextRunAt}
@@ -142,6 +181,29 @@
 
   <!-- Actions - below info, right aligned -->
   <div class="flex justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+    <Button
+      variant="ghost"
+      size="icon"
+      title={task.skipNextRun ? t("sched_skipNextDisable") : t("sched_skipNextEnable")}
+      aria-label={task.skipNextRun ? t("sched_skipNextDisable") : t("sched_skipNextEnable")}
+      onclick={(e) => {
+        e.stopPropagation();
+        handleSkipNext();
+      }}
+    >
+      <svg
+        class="w-3.5 h-3.5"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <polygon points="5,4 15,12 5,20" />
+        <line x1="19" y1="5" x2="19" y2="19" />
+      </svg>
+    </Button>
+
     <Button
       variant="ghost"
       size="icon"

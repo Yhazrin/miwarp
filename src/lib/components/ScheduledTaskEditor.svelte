@@ -75,16 +75,25 @@
   let model = $state("");
   let workspaceCwd = $state("");
   let remoteHostName = $state<string>("");
+  let skipNextRun = $state(false);
 
-  const WEEKDAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
+  const WEEKDAY_LABELS = [
+    t("cron_sun"),
+    t("cron_mon"),
+    t("cron_tue"),
+    t("cron_wed"),
+    t("cron_thu"),
+    t("cron_fri"),
+    t("cron_sat"),
+  ];
   const FREQUENCY_OPTIONS: { value: FrequencyType; label: string }[] = [
-    { value: "minutely", label: "每分钟" },
-    { value: "interval_min", label: "每隔N分钟" },
-    { value: "hourly", label: "每小时" },
-    { value: "daily", label: "每天" },
-    { value: "weekly", label: "每周" },
-    { value: "monthly", label: "每月" },
-    { value: "custom_cron", label: "自定义" },
+    { value: "minutely", label: t("cron_everyMinute") },
+    { value: "interval_min", label: t("cron_intervalMin") },
+    { value: "hourly", label: t("cron_everyHour") },
+    { value: "daily", label: t("cron_daily") },
+    { value: "weekly", label: t("cron_weekly") },
+    { value: "monthly", label: t("cron_monthly") },
+    { value: "custom_cron", label: t("cron_custom") },
   ];
 
   function toggleWeekday(day: number) {
@@ -155,55 +164,74 @@
     }
   });
 
-  // Initialize from editing task
+  // Reset every form field back to its default. Called by the open effect and
+  // also exposed so the store can invoke it before flipping showEditor.
+  function resetForm() {
+    name = "";
+    description = "";
+    prompt = "";
+    agent = "claude";
+    scheduleType = "cron";
+    frequency = "daily";
+    schedHour = 9;
+    schedMinute = 0;
+    schedWeekdays = [1, 2, 3, 4, 5];
+    schedMonthDay = 1;
+    schedIntervalMin = 30;
+    customCronExpr = "";
+    intervalMinutes = 60;
+    fireAtDate = "";
+    fireAtTime = "09:00";
+    permissionMode = "";
+    model = "";
+    workspaceCwd = "";
+    remoteHostName = "";
+    skipNextRun = false;
+    errors = {};
+  }
+
+  function hydrateFromTask(task: NonNullable<typeof scheduledTasksStore.editingTask>) {
+    name = task.name;
+    description = task.description ?? "";
+    prompt = task.prompt;
+    agent = task.agent;
+    scheduleType = task.schedule.type;
+    if (task.schedule.cronExpression) {
+      parseCronToFriendly(task.schedule.cronExpression);
+    }
+    intervalMinutes = task.schedule.intervalMinutes ?? 60;
+    permissionMode = task.permissionMode ?? "";
+    model = task.model ?? "";
+    workspaceCwd = task.workspace.cwd;
+    remoteHostName = task.workspace.remoteHostName ?? "";
+    skipNextRun = task.skipNextRun ?? false;
+
+    if (task.schedule.fireAt) {
+      const date = new Date(task.schedule.fireAt);
+      fireAtDate = date.toISOString().split("T")[0];
+      fireAtTime = date.toTimeString().slice(0, 5);
+    } else {
+      fireAtDate = "";
+      fireAtTime = "09:00";
+    }
+  }
+
+  // Initialize from editing task. The store's openCreateEditor/openEditEditor
+  // already pre-clears the state, so this effect is only responsible for
+  // (re)hydrating when `editingTask` changes — and resetting when the user
+  // closes the editor (#1).
   $effect(() => {
     const task = scheduledTasksStore.editingTask;
     if (task) {
-      name = task.name;
-      description = task.description ?? "";
-      prompt = task.prompt;
-      agent = task.agent;
-      scheduleType = task.schedule.type;
-      if (task.schedule.cronExpression) {
-        parseCronToFriendly(task.schedule.cronExpression);
-      }
-      intervalMinutes = task.schedule.intervalMinutes ?? 60;
-      permissionMode = task.permissionMode ?? "";
-      model = task.model ?? "";
-      workspaceCwd = task.workspace.cwd;
-      remoteHostName = task.workspace.remoteHostName ?? "";
-
-      if (task.schedule.fireAt) {
-        const date = new Date(task.schedule.fireAt);
-        fireAtDate = date.toISOString().split("T")[0];
-        fireAtTime = date.toTimeString().slice(0, 5);
-      } else {
-        fireAtDate = "";
-        fireAtTime = "09:00";
-      }
+      hydrateFromTask(task);
     } else {
-      // Reset for new task
-      name = "";
-      description = "";
-      prompt = "";
-      agent = "claude";
-      scheduleType = "cron";
-      frequency = "daily";
-      schedHour = 9;
-      schedMinute = 0;
-      schedWeekdays = [1, 2, 3, 4, 5];
-      schedMonthDay = 1;
-      schedIntervalMin = 30;
-      customCronExpr = "";
-      intervalMinutes = 60;
-      fireAtDate = "";
-      fireAtTime = "09:00";
-      permissionMode = "";
-      model = "";
-      workspaceCwd = "";
-      remoteHostName = "";
+      // No editing task — keep a clean form (only reset when the editor is
+      // actually open so we don't blow away the user's in-progress typing
+      // during incidental re-renders).
+      if (scheduledTasksStore.showEditor) {
+        resetForm();
+      }
     }
-    errors = {};
   });
 
   // Detect context-dependent phrases in prompt
@@ -227,8 +255,25 @@
     if (!workspaceCwd.trim()) e.workspace = t("schedEditor_errorWorkspace");
 
     if (scheduleType === "cron") {
-      if (!ScheduledTasksService.validateCronExpression(cronExpression)) {
+      const field = ScheduledTasksService.cronFieldError(cronExpression);
+      if (field === "shape") {
         e.cronExpression = t("schedEditor_errorCron");
+      } else if (field) {
+        // field is one of: "minute" | "hour" | "day" | "month" | "weekday".
+        // Use a type-narrowed switch to keep the keys as a string literal union
+        // that t() can validate.
+        const detail = t(`schedEditor_cronField_${field}` as "schedEditor_cronField_minute");
+        const errorKey =
+          field === "minute"
+            ? "schedEditor_errorCron_minute"
+            : field === "hour"
+              ? "schedEditor_errorCron_hour"
+              : field === "day"
+                ? "schedEditor_errorCron_day"
+                : field === "month"
+                  ? "schedEditor_errorCron_month"
+                  : "schedEditor_errorCron_weekday";
+        e.cronExpression = t(errorKey, { detail });
       }
     } else if (scheduleType === "one-time") {
       if (!fireAtDate) e.fireAtDate = t("schedEditor_errorDate");
@@ -236,6 +281,8 @@
     } else if (scheduleType === "interval") {
       if (!intervalMinutes || intervalMinutes < 1) {
         e.intervalMinutes = t("schedEditor_errorInterval");
+      } else if (intervalMinutes > 10080) {
+        e.intervalMinutes = t("schedEditor_errorIntervalMax");
       }
     }
 
@@ -279,6 +326,7 @@
           enabled: true,
           permissionMode: permissionMode || undefined,
           model: model || undefined,
+          skipNextRun,
         };
         await scheduledTasksStore.createTask(input);
       } else {
@@ -292,6 +340,7 @@
           schedule,
           permissionMode: permissionMode || null,
           model: model || null,
+          skipNextRun,
         };
         await scheduledTasksStore.updateTask(task.id, patch);
       }
@@ -549,7 +598,7 @@
             <!-- Frequency selector -->
             <div class="space-y-1.5">
               <span class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
-                >执行频率</span
+                >{t("schedEditor_frequency")}</span
               >
               <div class="flex flex-wrap gap-1.5">
                 {#each FREQUENCY_OPTIONS as opt}
@@ -570,23 +619,25 @@
             <!-- Interval minutes -->
             {#if frequency === "interval_min"}
               <div class="flex items-center gap-2">
-                <span class="text-sm text-muted-foreground">每隔</span>
+                <span class="text-sm text-muted-foreground">{t("schedEditor_every")}</span>
                 <select
                   bind:value={schedIntervalMin}
                   class="px-2 py-1 rounded-md border border-input bg-background text-sm"
                 >
                   {#each [5, 10, 15, 20, 30, 45] as m}
-                    <option value={m}>{m} 分钟</option>
+                    <option value={m}>{t("schedEditor_minutesShort", { n: String(m) })}</option>
                   {/each}
                 </select>
-                <span class="text-sm text-muted-foreground">执行一次</span>
+                <span class="text-sm text-muted-foreground">{t("schedEditor_executeOnce")}</span>
               </div>
             {/if}
 
             <!-- Weekday picker -->
             {#if frequency === "weekly"}
               <div class="space-y-1.5">
-                <span class="text-xs font-medium text-muted-foreground">执行日</span>
+                <span class="text-xs font-medium text-muted-foreground"
+                  >{t("schedEditor_weekdays")}</span
+                >
                 <div class="flex gap-1.5">
                   {#each [0, 1, 2, 3, 4, 5, 6] as day}
                     <button
@@ -608,7 +659,7 @@
             <!-- Month day picker -->
             {#if frequency === "monthly"}
               <div class="flex items-center gap-2">
-                <span class="text-sm text-muted-foreground">每月第</span>
+                <span class="text-sm text-muted-foreground">{t("schedEditor_monthDay")}</span>
                 <select
                   bind:value={schedMonthDay}
                   class="px-2 py-1 rounded-md border border-input bg-background text-sm"
@@ -617,7 +668,7 @@
                     <option value={d}>{d}</option>
                   {/each}
                 </select>
-                <span class="text-sm text-muted-foreground">日</span>
+                <span class="text-sm text-muted-foreground">{t("schedEditor_dayShort")}</span>
               </div>
             {/if}
 
@@ -625,7 +676,9 @@
             {#if frequency === "daily" || frequency === "weekly" || frequency === "monthly" || frequency === "hourly"}
               <div class="flex items-center gap-2">
                 <span class="text-sm text-muted-foreground"
-                  >{frequency === "hourly" ? "整点后" : "时间"}</span
+                  >{frequency === "hourly"
+                    ? t("schedEditor_afterHour")
+                    : t("schedEditor_time")}</span
                 >
                 {#if frequency !== "hourly"}
                   <select
@@ -633,7 +686,9 @@
                     class="px-2 py-1 rounded-md border border-input bg-background text-sm"
                   >
                     {#each Array.from({ length: 24 }, (_, i) => i) as h}
-                      <option value={h}>{h.toString().padStart(2, "0")} 时</option>
+                      <option value={h}
+                        >{t("schedEditor_hourShort", { h: h.toString().padStart(2, "0") })}</option
+                      >
                     {/each}
                   </select>
                 {/if}
@@ -642,7 +697,9 @@
                   class="px-2 py-1 rounded-md border border-input bg-background text-sm"
                 >
                   {#each [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55] as m}
-                    <option value={m}>{m.toString().padStart(2, "0")} 分</option>
+                    <option value={m}
+                      >{t("schedEditor_minuteShort", { m: m.toString().padStart(2, "0") })}</option
+                    >
                   {/each}
                 </select>
               </div>
@@ -757,10 +814,22 @@
             class="w-full px-3 py-2 rounded-md border border-input bg-background text-sm"
           >
             <option value="">{t("schedEditor_default")}</option>
+            <option value="acceptEdits">{t("schedEditor_acceptEdits")}</option>
             <option value="auto-accept-all">{t("schedEditor_autoAccept")}</option>
             <option value="plan">{t("schedEditor_planMode")}</option>
           </select>
         </div>
+
+        <!-- Skip next run -->
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" bind:checked={skipNextRun} class="text-primary" />
+          <span class="text-sm">
+            {t("sched_skipNext")}
+            <span class="text-muted-foreground text-xs ml-1">
+              {t("sched_skipNextDesc")}
+            </span>
+          </span>
+        </label>
 
         <!-- Actions -->
         <div class="flex justify-end gap-2 pt-4 border-t">

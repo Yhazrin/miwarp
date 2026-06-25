@@ -60,6 +60,10 @@ export interface ScheduledTask {
   // Additional task settings
   nextRunAt?: string;
   lastRunAt?: string;
+  /** When true, the next time the task is due the scheduler consumes the fire
+   * without executing and advances `nextRunAt`. The flag is reset to false
+   * after consumption. */
+  skipNextRun?: boolean;
   createdAt: string;
   updatedAt: string;
 
@@ -114,6 +118,7 @@ export interface ScheduledTaskInput {
   model?: string;
   provider?: string;
   notifyOnCompletion?: boolean;
+  skipNextRun?: boolean;
   // New fields
   dependencies?: TaskDependency[];
   triggerOnEvent?: TaskEventTrigger;
@@ -134,6 +139,7 @@ export interface ScheduledTaskPatch {
   model?: string | null;
   provider?: string | null;
   notifyOnCompletion?: boolean | null;
+  skipNextRun?: boolean;
   // New fields
   dependencies?: TaskDependency[] | null;
   triggerOnEvent?: TaskEventTrigger | null;
