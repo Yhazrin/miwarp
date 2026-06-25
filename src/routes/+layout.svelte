@@ -722,6 +722,27 @@
       if (_cwd) {
         loadRootTree();
         _prevExplorerCwd = _cwd;
+      } else if (!runsLoadSucceededOnce) {
+        // Wait until runs finish loading so we can auto-pick a recent cwd.
+        // The effect re-runs once `runsLoadSucceededOnce` flips to true.
+        return;
+      } else if (runs.length > 0) {
+        // Auto-pick the most recently active cwd from existing runs so the
+        // sidebar file tree isn't permanently gated behind a manual folder pick.
+        const fallback = runs
+          .filter((r) => r.cwd && r.cwd !== "/")
+          .map((r) => ({ cwd: normalizeCwd(r.cwd), ts: r.started_at }))
+          .filter((r): r is { cwd: string; ts: string } => Boolean(r.cwd))
+          .sort((a, b) => b.ts.localeCompare(a.ts))[0];
+        if (fallback) {
+          projectCwd = fallback.cwd;
+          _prevExplorerCwd = fallback.cwd;
+          return;
+        }
+        ++_treeSeq;
+        fileTree = [];
+        treeLoading = false;
+        _prevExplorerCwd = _cwd;
       } else {
         // Increment seq to invalidate any in-flight requests
         ++_treeSeq;
@@ -733,23 +754,27 @@
     }
   });
 
-  // Navigation items grouped by function (declared before pageName derivation)
+  // Navigation items grouped by function (declared before pageName derivation).
+  // `workspace` = per-project tools (single-user, your own projects).
+  // `collaboration` = multi-agent resources you share/operate (teams + digital workforce).
+  // Keeping them in distinct groups reduces the "workspace vs teams/fleet" overlap feeling.
   const navItems = [
     // Core
     { path: "/chat", label: () => t("nav_chat"), icon: "message", group: "core" },
-    { path: "/teams", label: () => t("nav_teams"), icon: "users", group: "core" },
-    { path: "/fleet", label: () => t("nav_fleet"), icon: "bot", group: "core" },
     {
       path: "/scheduled-tasks",
       label: () => t("nav_scheduledTasks"),
       icon: "schedule",
       group: "core",
     },
-    // Workspace hub + project tools (tasks/artifacts/specs/diagnostics reachable via /workspace or direct URL)
+    // Workspace hub + project tools (single-user, per-cwd)
     { path: "/workspace", label: () => t("nav_workspace"), icon: "layout", group: "workspace" },
     { path: "/explorer", label: () => t("nav_explorer"), icon: "folder", group: "workspace" },
-    { path: "/personal", label: () => t("nav_personal"), icon: "circle-user", group: "workspace" },
     { path: "/history", label: () => t("nav_history"), icon: "clock", group: "workspace" },
+    { path: "/personal", label: () => t("nav_personal"), icon: "circle-user", group: "workspace" },
+    // Collaboration: teams + digital workforce (multi-agent resources)
+    { path: "/teams", label: () => t("nav_teams"), icon: "users", group: "collaboration" },
+    { path: "/fleet", label: () => t("nav_fleet"), icon: "bot", group: "collaboration" },
     // Extensions
     { path: "/plugins", label: () => t("nav_extend"), icon: "zap", group: "extensions" },
     // System
@@ -1957,6 +1982,18 @@
   }
 </script>
 
+{#snippet explorerEmptyAction()}
+  {#if !getLastTarget()}
+    <button
+      type="button"
+      class="mt-2 rounded-md border border-sidebar-border bg-sidebar px-3 py-1.5 text-xs font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent"
+      onclick={() => pickFolder()}
+    >
+      {t("sidebar_openFolder")}
+    </button>
+  {/if}
+{/snippet}
+
 {#snippet treeNodes(nodes: TreeNode[])}
   {#each nodes as node}
     <button
@@ -2540,6 +2577,7 @@
                   title={lastRemote
                     ? t("layout_remoteFileTreeUnavailable")
                     : t("sidebar_selectProjectBrowse")}
+                  action={explorerEmptyAction}
                   class="py-8"
                 />
               {:else if treeLoading}

@@ -1031,6 +1031,7 @@
   "nav_teams": "Teams",
   "nav_fleet": "Fleet",
   "fleet_title": "Digital Workforce",
+  "fleet_subtitle": "Long-running digital employees (CLI sessions) you can stop, monitor, or hand tasks to.",
   "fleet_total": "employees",
   "fleet_refresh": "Refresh",
   "fleet_refreshing": "Refreshing…",

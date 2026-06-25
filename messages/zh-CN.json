@@ -1071,6 +1071,7 @@
   "nav_teams": "团队",
   "nav_fleet": "员工",
   "fleet_title": "数字员工",
+  "fleet_subtitle": "长驻的数字员工 (CLI 会话),可停止、监控或分配任务。",
   "fleet_total": "名",
   "fleet_refresh": "刷新",
   "fleet_refreshing": "刷新中…",
