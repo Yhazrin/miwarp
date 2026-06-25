@@ -905,9 +905,18 @@
     },
     // Workspace
     { path: "/workspace", label: () => t("nav_workspace"), icon: "layout", group: "workspace" },
+    { path: "/tasks", label: () => t("nav_tasks"), icon: "task", group: "workspace" },
+    { path: "/artifacts", label: () => t("nav_artifacts"), icon: "artifact", group: "workspace" },
     { path: "/explorer", label: () => t("nav_explorer"), icon: "folder", group: "workspace" },
     { path: "/memory", label: () => t("nav_memory"), icon: "book", group: "workspace" },
     { path: "/history", label: () => t("nav_history"), icon: "clock", group: "workspace" },
+    { path: "/specs", label: () => t("nav_specs"), icon: "spec", group: "workspace" },
+    {
+      path: "/diagnostics",
+      label: () => t("nav_diagnostics"),
+      icon: "diagnostics",
+      group: "workspace",
+    },
     // Extensions
     { path: "/plugins", label: () => t("nav_extend"), icon: "zap", group: "extensions" },
     // System
@@ -2318,6 +2327,53 @@
                   /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path
                     d="M16 3.13a4 4 0 0 1 0 7.75"
                   /></svg
+                >
+              {:else if item.icon === "task"}
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><path d="M9 11l3 3L22 4" /><path
+                    d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
+                  /></svg
+                >
+              {:else if item.icon === "artifact"}
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><path d="M21 8v13H3V3h7" /><path d="M21 3l-9 9" /><path d="M15 3h6v6" /></svg
+                >
+              {:else if item.icon === "spec"}
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path
+                    d="M14 2v6h6"
+                  /><path d="M9 13h6" /><path d="M9 17h6" /></svg
+                >
+              {:else if item.icon === "diagnostics"}
+                <svg
+                  class="h-[18px] w-[18px]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg
                 >
               {/if}
               {#if item.path === "/workspace" && attentionQueueBadgeCount > 0}
