@@ -894,6 +894,7 @@
       await migrateCredentialsIfNeeded(settings);
       applyZoom(settings.ui_zoom);
       applyVisualPerformance(settings.visual_performance_mode);
+      appUpdateCoordinator.startAutoCheck(settings.app_auto_update_check_enabled ?? true);
     } catch (e) {
       dbgWarn("layout", "loadAndApplySettings failed", e);
     }
@@ -959,9 +960,6 @@
     // Apply performance mode immediately (before settings load) to avoid
     // brief flash of heavy CSS effects on Windows/Linux.
     applyVisualPerformance();
-
-    // Start silent update check on startup
-    appUpdateCoordinator.startAutoCheck();
 
     // Fire all three concurrently — they are independent.
     void initBackendCapabilities().then(() => loadRuns());
@@ -1219,6 +1217,7 @@
       persistCachedProcessVisibility(normalizeProcessVisibility(next.process_visibility));
       applyZoom(next.ui_zoom);
       applyVisualPerformance(next.visual_performance_mode);
+      appUpdateCoordinator.setAutoCheckEnabled(next.app_auto_update_check_enabled ?? true);
     };
     window.addEventListener(USER_SETTINGS_CHANGED_EVENT, onUserSettingsChanged);
 

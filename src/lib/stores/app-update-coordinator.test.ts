@@ -324,10 +324,10 @@ describe("AppUpdateCoordinator", () => {
   });
 
   describe("auto-check preferences", () => {
-    it("respects auto-check disabled", () => {
+    it("respects auto-check disabled in memory", () => {
       appUpdateCoordinator.setAutoCheckEnabled(false);
       expect(appUpdateCoordinator.getAutoCheckEnabled()).toBe(false);
-      expect(localStorageStore.get("ocv:update-auto-check")).toBe("0");
+      expect(localStorageStore.get("ocv:update-auto-check")).toBeUndefined();
     });
 
     it("defaults to enabled", () => {
@@ -351,6 +351,35 @@ describe("AppUpdateCoordinator", () => {
       // Advance past startup delay (5s)
       await vi.advanceTimersByTimeAsync(5100);
       expect(mockCheck).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps pending startup check when enabled setting is re-applied", async () => {
+      mockCheck.mockResolvedValue({
+        offer: null,
+        error: null,
+        upToDateVersion: "1.0.8",
+      });
+
+      appUpdateCoordinator.startAutoCheck(true);
+      await vi.advanceTimersByTimeAsync(1000);
+      appUpdateCoordinator.setAutoCheckEnabled(true);
+      await vi.advanceTimersByTimeAsync(4100);
+
+      expect(mockCheck).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not schedule startup check when disabled by settings", async () => {
+      mockCheck.mockResolvedValue({
+        offer: null,
+        error: null,
+        upToDateVersion: "1.0.8",
+      });
+
+      appUpdateCoordinator.startAutoCheck(false);
+
+      await vi.advanceTimersByTimeAsync(5100);
+      expect(mockCheck).not.toHaveBeenCalled();
+      expect(appUpdateCoordinator.getAutoCheckEnabled()).toBe(false);
     });
 
     it("destroy clears timers", () => {

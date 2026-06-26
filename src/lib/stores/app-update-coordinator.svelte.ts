@@ -9,7 +9,7 @@
  * - Progress tracking during download/install
  * - Retry on failure
  * - Snooze/dismiss with localStorage persistence
- * - Silent startup check with configurable timer
+ * - Silent startup check controlled by persisted user settings
  * - Timer cleanup on destroy
  */
 import {
@@ -43,7 +43,6 @@ export interface AppUpdateState {
 
 const SNOOZE_KEY = "ocv:update-snoozed";
 const SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
-const AUTO_CHECK_KEY = "ocv:update-auto-check";
 const AUTO_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 hours
 const STARTUP_CHECK_DELAY_MS = 5000;
 
@@ -68,14 +67,6 @@ function writeSnooze(version: string): void {
     );
   } catch {
     // storage full or private mode — silently ignore
-  }
-}
-
-function isAutoCheckEnabled(): boolean {
-  try {
-    return localStorage.getItem(AUTO_CHECK_KEY) !== "0";
-  } catch {
-    return true;
   }
 }
 
@@ -112,6 +103,7 @@ class AppUpdateCoordinator {
   private _startupTimer: ReturnType<typeof setTimeout> | null = null;
   private _intervalTimer: ReturnType<typeof setInterval> | null = null;
   private _destroyed = false;
+  private _autoCheckEnabled = $state(true);
 
   get phase(): AppUpdatePhase {
     return this._state.phase;
@@ -137,9 +129,16 @@ class AppUpdateCoordinator {
     );
   }
 
-  /** Start silent startup check + periodic interval. Call once from root layout. */
-  startAutoCheck(): void {
+  /** Start silent startup check + periodic interval. Call after user settings load. */
+  startAutoCheck(enabled = true): void {
     this._destroyed = false;
+    if (this._startupTimer) {
+      clearTimeout(this._startupTimer);
+      this._startupTimer = null;
+    }
+    this.setAutoCheckEnabled(enabled);
+
+    if (!enabled) return;
 
     this._startupTimer = setTimeout(() => {
       if (this._destroyed) return;
@@ -164,7 +163,7 @@ class AppUpdateCoordinator {
 
   private _scheduleInterval(): void {
     if (this._intervalTimer) clearInterval(this._intervalTimer);
-    if (!isAutoCheckEnabled()) return;
+    if (!this._autoCheckEnabled) return;
     const ms = readAutoCheckInterval();
     this._intervalTimer = setInterval(() => {
       if (this._destroyed) return;
@@ -365,14 +364,14 @@ class AppUpdateCoordinator {
   // ── Preference accessors ──
 
   getAutoCheckEnabled(): boolean {
-    return isAutoCheckEnabled();
+    return this._autoCheckEnabled;
   }
 
   setAutoCheckEnabled(enabled: boolean): void {
-    try {
-      localStorage.setItem(AUTO_CHECK_KEY, enabled ? "1" : "0");
-    } catch {
-      // ignore
+    this._autoCheckEnabled = enabled;
+    if (!enabled && this._startupTimer) {
+      clearTimeout(this._startupTimer);
+      this._startupTimer = null;
     }
     if (enabled) {
       this._scheduleInterval();

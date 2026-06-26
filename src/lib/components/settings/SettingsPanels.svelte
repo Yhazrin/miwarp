@@ -246,6 +246,6 @@
       onImportHistory={panelState.onImportHistory}
     />
   {:else if tab === "updates"}
-    <C />
+    <C settings={panelState.settings} onSaveGeneralPatch={panelState.saveGeneralPatch} />
   {/if}
 {/if}

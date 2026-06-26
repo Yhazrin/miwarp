@@ -660,6 +660,9 @@ pub fn update_user_settings(patch: serde_json::Value) -> Result<UserSettings, St
     if let Some(v) = patch.get("cli_auto_sync_import_new") {
         all.user.cli_auto_sync_import_new = v.as_bool().unwrap_or(false);
     }
+    if let Some(v) = patch.get("app_auto_update_check_enabled") {
+        all.user.app_auto_update_check_enabled = v.as_bool().unwrap_or(true);
+    }
     if let Some(v) = patch.get("native_window_glass_enabled") {
         all.user.native_window_glass_enabled = v.as_bool().unwrap_or(true);
     }
