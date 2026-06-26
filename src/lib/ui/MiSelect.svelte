@@ -61,11 +61,32 @@
 
   let panelClass = $derived(`${MIWARP_POPOVER_CONTENT_CLASS} ${contentClass}`.trim());
 
+  // Bits UI can fire onValueChange multiple times for the same selection in
+  // a single microtask burst (once from the item click, once from the value
+  // binding settling). We coalesce by deferring the callback through a
+  // microtask and dropping repeats of the most recently-forwarded value.
+  // This keeps real selections snappy (the first call in a burst wins)
+  // while suppressing the redundant follow-up.
+  let lastForwarded: string | null = null;
+  let pendingValue: string | null = null;
+  let pendingTick: Promise<void> | null = null;
+
   function handleValueChange(next: string | undefined) {
-    if (next !== undefined && next !== value) {
+    if (next === undefined) return;
+    if (next !== value) {
       value = next;
-      onValueChange?.(next);
     }
+    if (next === lastForwarded) return;
+    pendingValue = next;
+    if (pendingTick) return;
+    pendingTick = Promise.resolve().then(() => {
+      pendingTick = null;
+      const toForward = pendingValue;
+      pendingValue = null;
+      if (toForward === null || toForward === lastForwarded) return;
+      lastForwarded = toForward;
+      onValueChange?.(toForward);
+    });
   }
 
   function handleOpenChange(next: boolean) {

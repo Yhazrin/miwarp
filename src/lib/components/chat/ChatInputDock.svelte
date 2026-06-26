@@ -87,11 +87,14 @@
 
   let dockEl = $state<HTMLDivElement | undefined>();
 
-  /** Sync scroll fade / padding with real dock height (fixed 11rem was much taller than the capsule). */
+  /** Sync scroll fade / padding with real dock height (fixed 11rem was much taller than the capsule).
+   *  Targets the chat pane (the flex column hosting both conversation + dock) so
+   *  CSS variables inherit through the timeline scroll wrapper regardless of
+   *  which subtree the dock currently lives in (page-level vs split-pane). */
   $effect(() => {
     const dock = dockEl;
     if (!dock) return;
-    const stage = dock.closest(".chat-conversation-stage") as HTMLElement | null;
+    const stage = dock.closest(".chat-pane, .chat-conversation-stage") as HTMLElement | null;
     if (!stage) return;
 
     const sync = () => {

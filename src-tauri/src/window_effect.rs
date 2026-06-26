@@ -2,10 +2,8 @@
 //!
 //! - macOS: NSVisualEffectMaterial on the whole window so the left
 //!   sidebar can show desktop content through the chrome. Material is
-//!   user-selectable: `header_view` (default, lighter) or `sidebar`
-//!   (heavier, traditional macOS sidebar look). The CSS wash layer is
-//!   the dominant visual layer; the OS blur is only a subtle complement
-//!   so the two never stack into a mushy result.
+//!   user-selectable: `sidebar` (default, heavier frost) or `header_view`
+//!   (lighter). CSS perf tiers add a complementary backdrop blur on top.
 //! - Windows: mica (preferred), acrylic (fallback), blur (last resort).
 //! - Linux / unsupported: no-op; CSS `backdrop-filter` still gives a
 //!   pleasant glass look in the fallback layer.
@@ -58,13 +56,11 @@ fn apply<R: tauri::Runtime>(window: &WebviewWindow<R>, material: &str) -> Result
     #[cfg(target_os = "macos")]
     {
         use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
-        // `header_view` is the default — lighter blur (~15-20px), pairs
-        // cleanly with the CSS wash layer. `sidebar` is the heavier
-        // traditional material (~30-40px blur) for users who want a
-        // stronger effect and don't mind the slightly "糊" feel.
+        // `sidebar` is the default — traditional material (~30–40px blur).
+        // `header_view` is lighter (~15–20px) for users who want less frost.
         let mat = match material {
-            "sidebar" => NSVisualEffectMaterial::Sidebar,
-            _ => NSVisualEffectMaterial::HeaderView,
+            "header_view" => NSVisualEffectMaterial::HeaderView,
+            _ => NSVisualEffectMaterial::Sidebar,
         };
         apply_vibrancy(window, mat, Some(NSVisualEffectState::Active), None)
             .map_err(|e| e.to_string())

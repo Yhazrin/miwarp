@@ -11,6 +11,7 @@
     model = "",
     models = [] as CliModelInfo[],
     modelLabel = "",
+    modelSubLabel = "",
     effort = "",
     effortLevels = [] as string[],
     effortDisabled = true,
@@ -23,6 +24,9 @@
     model?: string;
     models?: CliModelInfo[];
     modelLabel?: string;
+    /** Small secondary label rendered next to the model name (e.g. the alias
+     *  "Default (recommended)" when the underlying model "Sonnet 4.5" is shown as primary). */
+    modelSubLabel?: string;
     effort?: string;
     effortLevels?: string[];
     effortDisabled?: boolean;
@@ -48,7 +52,7 @@
   });
 
   let triggerClass = $derived(
-    `inline-flex max-w-[11rem] shrink-0 items-center gap-1 truncate rounded-md border border-transparent px-1.5 py-0.5 font-medium text-foreground/85 transition-colors hover:border-border/50 hover:bg-muted/50 hover:text-foreground data-[state=open]:border-border/60 data-[state=open]:bg-muted/60 data-[state=open]:text-foreground`,
+    `no-drag inline-flex max-w-[11rem] shrink-0 items-center gap-1 truncate rounded-md border border-transparent px-1.5 py-0.5 font-medium text-foreground/85 transition-colors hover:border-border/50 hover:bg-muted/50 hover:text-foreground data-[state=open]:border-border/60 data-[state=open]:bg-muted/60 data-[state=open]:text-foreground`,
   );
 
   function handleOpenChange(next: boolean) {
@@ -79,10 +83,19 @@
       {...props}
       type="button"
       class="{triggerClass} {props.class ?? ''}"
-      aria-label={modelLabel}
-      onclick={(e: MouseEvent) => e.stopPropagation()}
+      aria-label={modelSubLabel ? `${modelLabel} (${modelSubLabel})` : modelLabel}
+      title={modelSubLabel ? `${modelLabel} · ${modelSubLabel}` : modelLabel}
+      onmousedown={(e) => e.stopPropagation()}
     >
-      <span class="truncate">{modelLabel}</span>
+      <span class="min-w-0 truncate font-medium text-foreground/85">{modelLabel}</span>
+      {#if modelSubLabel}
+        <span
+          class="shrink-0 truncate text-[10px] font-normal text-foreground/50"
+          aria-hidden="true"
+        >
+          {modelSubLabel}
+        </span>
+      {/if}
       {#if !effortDisabled && effort}
         <span class="text-[10px] font-normal text-foreground/55">{effort}</span>
       {/if}
@@ -149,7 +162,7 @@
             >{/if}
         </div>
         <div class="flex gap-1">
-          {#each effortLevels as level}
+          {#each effortLevels as level (level)}
             <button
               type="button"
               class="flex-1 rounded-[10px] px-2 py-1.5 text-xs transition-colors

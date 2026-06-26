@@ -83,16 +83,16 @@
 
   const WINDOW_MATERIALS = [
     {
-      value: "header_view",
-      labelKey: "settings_appearance_materialHeaderView",
-      descKey: "settings_appearance_materialHeaderViewDesc",
-      preview: "window-material-header" as const,
-    },
-    {
       value: "sidebar",
       labelKey: "settings_appearance_materialSidebar",
       descKey: "settings_appearance_materialSidebarDesc",
       preview: "window-material-sidebar" as const,
+    },
+    {
+      value: "header_view",
+      labelKey: "settings_appearance_materialHeaderView",
+      descKey: "settings_appearance_materialHeaderViewDesc",
+      preview: "window-material-header" as const,
     },
   ] as const;
 
@@ -253,8 +253,7 @@
         </div>
         <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {#each WINDOW_MATERIALS as opt (opt.value)}
-            {@const active =
-              (settings?.native_window_glass_material ?? "header_view") === opt.value}
+            {@const active = (settings?.native_window_glass_material ?? "sidebar") === opt.value}
             <SettingsOptionCard
               {active}
               title={t(opt.labelKey as MessageKey)}

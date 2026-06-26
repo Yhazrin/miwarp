@@ -28,6 +28,7 @@
   import McpStatusPanel from "$lib/components/McpStatusPanel.svelte";
   import PromptInput from "$lib/components/PromptInput.svelte";
   import { setChatInputHandle } from "$lib/chat/chat-input-registry";
+  import { setChatTimelineResetHandle } from "$lib/chat/chat-timeline-reset-registry";
 
   import ToolActivity from "$lib/components/ToolActivity.svelte";
   import ShortcutHelpPanel from "$lib/components/ShortcutHelpPanel.svelte";
@@ -139,6 +140,22 @@
       : undefined;
     setChatInputHandle(handle);
     return () => setChatInputHandle(undefined);
+  });
+
+  // Publish a timeline-shrink handle so the layout's newChat click can
+  // collapse the visible render window before navigating to /chat?new=1.
+  // Without this, runs with >500 messages stall the click while Svelte
+  // tears down the existing timeline DOM mid-navigation.
+  $effect(() => {
+    const handle = {
+      shrinkVisibleRender(cap = 24) {
+        if (store.timeline.length > cap) {
+          tl.setRenderLimit(cap);
+        }
+      },
+    };
+    setChatTimelineResetHandle(handle);
+    return () => setChatTimelineResetHandle(undefined);
   });
 
   /** Use server settings when loaded; until then last-known cache avoids a dev-mode flash for Output users.
@@ -1673,6 +1690,66 @@
   </div>
 {/snippet}
 
+<!-- v1.0.10: chat input dock lives OUTSIDE ChatConversationStage so it stays
+     mounted when the conversation body (welcome ↔ timeline) swaps. The
+     dock is absolutely positioned and overlays the bottom of the chat pane;
+     CSS variables on the `.chat-pane` ancestor sync dock height to the
+     timeline's bottom padding without forcing a remount. -->
+{#snippet chatInputDock()}
+  <ChatInputDock
+    {store}
+    {settings}
+    inputVm={{
+      processVisibility,
+      agentSettings,
+      effectiveModels: sd.effectiveModels,
+      folderCwdOverride,
+      welcomeVisible,
+      skillItems: sd.skillItems,
+      preloadedAgents,
+      teamHintVisible: team.teamHintVisible,
+      userHistory: sd.userHistory,
+      projectCommands,
+      authOverview,
+      localProxyStatuses,
+    }}
+    permissionVm={{
+      pendingToolPermissions: sd.pendingToolPermissions,
+      inputBlockedByPermission: sd.inputBlockedByPermission,
+    }}
+    sidePanelsVm={{
+      btwState,
+      insight,
+      hasCreatedFiles: tl.hasCreatedFiles,
+      createdFiles: tl.createdFiles,
+      setBtwState: (v) => {
+        btwState = v;
+      },
+    }}
+    handlers={{
+      sendMessage,
+      handleModelChange,
+      handlePermissionModeChange,
+      handleVirtualCommand,
+      handleFastModeSwitch,
+      handlePlatformChange,
+      handleAuthModeChange,
+      handleInputValueChange: handleInputValueChangeWithContinuity,
+      handlePermissionRespond,
+      handleElicitationRespond,
+      handleBtwSend,
+      handleRalphCancel,
+      showChatToast: _showToast,
+    }}
+    sendCoordinator={send.coordinator}
+    sendBusy={send.inFlight}
+    onSendRetry={(event) => handleSendRetry(event)}
+    bind:stashedInput
+    bind:shortcutHelpOpen
+    bind:promptRef
+  />
+{/snippet}
+
 <div class="relative flex h-full overflow-hidden bg-background">
   <!-- Page-level drag overlay (drag-hover or processing spinner) -->
   <ChatDragOverlay {pageDragActive} {dragProcessing} />
@@ -1683,7 +1760,7 @@
   <SplitDropOverlay />
 
   <!-- Main content area -->
-  <div class="flex flex-1 flex-col min-w-0 relative">
+  <div class="chat-pane flex flex-1 flex-col min-w-0 relative">
     <!-- Status bar -->
     <SessionStatusBar
       bind:this={statusBarRef}
@@ -1783,7 +1860,10 @@
     <!-- Conversation: messages extend under a soft-fade input dock.
          When split mode is enabled, this whole block lives inside a
          SplitWorkspace active-pane snippet so the active pane uses the
-         exact same chat surface as the non-split path. -->
+         exact same chat surface as the non-split path. The input dock
+         is rendered as a sibling (via activePaneInput on split mode,
+         direct child otherwise) so the dock stays mounted when the
+         conversation body swaps. -->
     {#if splitWorkspaceStore.enabled}
       <SplitWorkspace onActivate={(id) => void handlePaneActivate(id)}>
         {#snippet activePaneBody()}
@@ -1902,61 +1982,10 @@
             {#snippet heroMetaFooter()}
               {@render heroMetaFooterContent()}
             {/snippet}
-            {#snippet inputDock()}
-              <ChatInputDock
-                {store}
-                {settings}
-                inputVm={{
-                  processVisibility,
-                  agentSettings,
-                  effectiveModels: sd.effectiveModels,
-                  folderCwdOverride,
-                  welcomeVisible,
-                  skillItems: sd.skillItems,
-                  preloadedAgents,
-                  teamHintVisible: team.teamHintVisible,
-                  userHistory: sd.userHistory,
-                  projectCommands,
-                  authOverview,
-                  localProxyStatuses,
-                }}
-                permissionVm={{
-                  pendingToolPermissions: sd.pendingToolPermissions,
-                  inputBlockedByPermission: sd.inputBlockedByPermission,
-                }}
-                sidePanelsVm={{
-                  btwState,
-                  insight,
-                  hasCreatedFiles: tl.hasCreatedFiles,
-                  createdFiles: tl.createdFiles,
-                  setBtwState: (v) => {
-                    btwState = v;
-                  },
-                }}
-                handlers={{
-                  sendMessage,
-                  handleModelChange,
-                  handlePermissionModeChange,
-                  handleVirtualCommand,
-                  handleFastModeSwitch,
-                  handlePlatformChange,
-                  handleAuthModeChange,
-                  handleInputValueChange: handleInputValueChangeWithContinuity,
-                  handlePermissionRespond,
-                  handleElicitationRespond,
-                  handleBtwSend,
-                  handleRalphCancel,
-                  showChatToast: _showToast,
-                }}
-                sendCoordinator={send.coordinator}
-                sendBusy={send.inFlight}
-                onSendRetry={(event) => handleSendRetry(event)}
-                bind:stashedInput
-                bind:shortcutHelpOpen
-                bind:promptRef
-              />
-            {/snippet}
           </ChatConversationStage>
+        {/snippet}
+        {#snippet activePaneInput()}
+          {@render chatInputDock()}
         {/snippet}
       </SplitWorkspace>
     {:else}
@@ -2076,61 +2105,8 @@
         {#snippet heroMetaFooter()}
           {@render heroMetaFooterContent()}
         {/snippet}
-        {#snippet inputDock()}
-          <ChatInputDock
-            {store}
-            {settings}
-            inputVm={{
-              processVisibility,
-              agentSettings,
-              effectiveModels: sd.effectiveModels,
-              folderCwdOverride,
-              welcomeVisible,
-              skillItems: sd.skillItems,
-              preloadedAgents,
-              teamHintVisible: team.teamHintVisible,
-              userHistory: sd.userHistory,
-              projectCommands,
-              authOverview,
-              localProxyStatuses,
-            }}
-            permissionVm={{
-              pendingToolPermissions: sd.pendingToolPermissions,
-              inputBlockedByPermission: sd.inputBlockedByPermission,
-            }}
-            sidePanelsVm={{
-              btwState,
-              insight,
-              hasCreatedFiles: tl.hasCreatedFiles,
-              createdFiles: tl.createdFiles,
-              setBtwState: (v) => {
-                btwState = v;
-              },
-            }}
-            handlers={{
-              sendMessage,
-              handleModelChange,
-              handlePermissionModeChange,
-              handleVirtualCommand,
-              handleFastModeSwitch,
-              handlePlatformChange,
-              handleAuthModeChange,
-              handleInputValueChange: handleInputValueChangeWithContinuity,
-              handlePermissionRespond,
-              handleElicitationRespond,
-              handleBtwSend,
-              handleRalphCancel,
-              showChatToast: _showToast,
-            }}
-            sendCoordinator={send.coordinator}
-            sendBusy={send.inFlight}
-            onSendRetry={(event) => handleSendRetry(event)}
-            bind:stashedInput
-            bind:shortcutHelpOpen
-            bind:promptRef
-          />
-        {/snippet}
       </ChatConversationStage>
+      {@render chatInputDock()}
     {/if}
 
     {#if showScrollButton}

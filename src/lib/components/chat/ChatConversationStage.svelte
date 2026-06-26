@@ -82,7 +82,6 @@
     readingHistory = false,
     // Snippets
     heroMetaFooter,
-    inputDock,
   }: {
     store: SessionStore;
     settings: UserSettings | null;
@@ -101,7 +100,6 @@
     isChatAutoScroll?: boolean;
     readingHistory?: boolean;
     heroMetaFooter: import("svelte").Snippet;
-    inputDock: import("svelte").Snippet;
   } = $props();
 
   // Destructure VMs so template references stay flat (no behavior change).
@@ -198,6 +196,10 @@
   let selectedRuntime = $state<SupportedRuntimeId>("claude");
   let runtimes = $state<ResolvedRuntime[]>(mergeRuntimeAvailability({}));
   let runtimesLoading = $state(false);
+  // Tracks whether the user has explicitly chosen a runtime during this
+  // session. While true, loadRuntimeAvailability() will not overwrite the
+  // manual selection with the configured default (typically Claude).
+  let userPickedRuntime = $state(false);
 
   async function loadRuntimeAvailability() {
     runtimesLoading = true;
@@ -205,6 +207,12 @@
       runtimeHubStore.init();
       await runtimeHubStore.refresh();
       runtimes = runtimeHubStore.runtimes;
+      if (userPickedRuntime) {
+        // Preserve the user's manual pick; still reconcile `store.agent` so
+        // any pre-mount state stays consistent with `selectedRuntime`.
+        store.agent = runtimeIdToAgent(selectedRuntime);
+        return;
+      }
       const configured = agentToRuntimeId(settings?.default_agent ?? "");
       const active = agentToRuntimeId(store.agent);
       const preferred = configured ?? runtimeHubStore.defaultRuntime ?? active ?? "claude";
@@ -222,15 +230,24 @@
 
   $effect(() => {
     if (!welcomeVisible) return;
-    void loadRuntimeAvailability();
+    // Defer the CLI probe one frame so the cached runtimes list (already
+    // populated by mergeRuntimeAvailability) gets first paint. Without
+    // this, the welcome screen blocks its own first frame on the probe
+    // round-trip and feels sluggish when navigation lands here.
+    const raf = requestAnimationFrame(() => {
+      void loadRuntimeAvailability();
+    });
+    return () => cancelAnimationFrame(raf);
   });
 
   function handleRuntimeChange(runtimeId: SupportedRuntimeId) {
+    userPickedRuntime = true;
     selectedRuntime = runtimeId;
     store.agent = runtimeIdToAgent(runtimeId);
   }
 
   function applyRuntimeBeforeSend(runtimeId: SupportedRuntimeId) {
+    userPickedRuntime = true;
     selectedRuntime = runtimeId;
     store.agent = runtimeIdToAgent(runtimeId);
   }
@@ -613,6 +630,4 @@
   <ForwardToSessionDialog bind:open={showForwardDialog} onSelect={forwardToRun} />
 
   <div class="chat-scroll-fade" aria-hidden="true"></div>
-
-  {@render inputDock()}
 </div>

@@ -149,6 +149,18 @@ fn extra_path_dirs() -> Vec<PathBuf> {
             PathBuf::from("/usr/local/bin"),
         ]);
 
+        // Codex.app bundled CLI (macOS). The bundled codex binary is shipped
+        // inside the Codex.app bundle; the exact location has varied across
+        // versions, so include both parent directories as fallbacks so the
+        // binary inside either layout is discoverable via which_binary().
+        #[cfg(target_os = "macos")]
+        {
+            dirs.extend([
+                PathBuf::from("/Applications/Codex.app/Contents/MacOS"),
+                PathBuf::from("/Applications/Codex.app/Contents/Resources/bin"),
+            ]);
+        }
+
         dirs
     }
 }

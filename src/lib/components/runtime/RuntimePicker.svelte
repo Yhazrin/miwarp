@@ -25,14 +25,6 @@
 
   const current = $derived(runtimes.find((r) => r.id === selected) ?? runtimes[0] ?? null);
 
-  const selectItems = $derived(
-    runtimes.map((runtime) => ({
-      value: runtime.id,
-      label: t(runtime.nameKey),
-      disabled: !runtime.selectable,
-    })),
-  );
-
   function statusBadgeClass(status: ResolvedRuntime["status"]): string {
     switch (status) {
       case "available":
@@ -50,6 +42,10 @@
     if (!value || value === selected) return;
     const runtime = runtimes.find((r) => r.id === value);
     if (!runtime?.selectable) return;
+    // Close the menu FIRST so the parent's rerender doesn't catch the
+    // picker in an open state (Bits UI races the bindable onValueChange
+    // with Bits UI's internal open change).
+    open = false;
     onchange?.(value as SupportedRuntimeId);
   }
 </script>
@@ -60,7 +56,6 @@
     value={selected}
     disabled={loading || runtimes.length === 0}
     onValueChange={handleValueChange}
-    items={selectItems}
     contentClass="w-[min(100vw-2rem,22rem)] p-0"
     viewportClass="p-0"
     ariaLabel={t("runtime_picker_label")}

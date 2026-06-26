@@ -507,14 +507,31 @@
     return t(descriptor.nameKey as Parameters<typeof t>[0]);
   });
 
-  let modelLabel = $derived.by(() => {
-    // Check platform models first, then CLI models
+  // Status bar pill: show the actual model in use; alias (e.g. "Default") as subtitle.
+  // Claude CLI catalog puts the resolved model id in `description` for route aliases.
+  const CLAUDE_MODEL_ALIASES = new Set(["default", "opus", "haiku"]);
+  let modelPill = $derived.by(() => {
     const all = [...(platformModels ?? []), ...getCliModels(agent)];
     const found = all.find((m) => m.value === model);
-    if (found) return found.displayName;
-    const fuzzy = all.find((m) => model.includes(m.value) && m.value !== "default");
-    if (fuzzy) return fuzzy.displayName;
-    return model;
+
+    if (
+      agent === "claude" &&
+      found &&
+      CLAUDE_MODEL_ALIASES.has(found.value) &&
+      found.description &&
+      found.description !== found.displayName
+    ) {
+      return {
+        primary: found.description,
+        secondary: found.displayName,
+      };
+    }
+
+    if (found && found.displayName && found.displayName !== model) {
+      return { primary: model, secondary: found.displayName };
+    }
+
+    return { primary: model, secondary: null as string | null };
   });
 </script>
 
@@ -805,7 +822,8 @@
               bind:open={modelMenuOpen}
               {model}
               {models}
-              {modelLabel}
+              modelLabel={modelPill.primary}
+              modelSubLabel={modelPill.secondary ?? ""}
               {effort}
               {effortLevels}
               {effortDisabled}
@@ -815,7 +833,12 @@
               onOpenChange={handleModelMenuOpenChange}
             />
           {:else}
-            <span class="max-w-[11rem] truncate font-medium text-foreground/85">{model}</span>
+            <span class="max-w-[11rem] truncate font-medium text-foreground/85"
+              >{modelPill.primary}{#if modelPill.secondary}<span
+                  class="ml-1 text-[10px] font-normal text-foreground/50"
+                  aria-hidden="true">{modelPill.secondary}</span
+                >{/if}</span
+            >
           {/if}
         {/if}
 

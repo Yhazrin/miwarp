@@ -329,19 +329,29 @@
     };
   });
 
-  // Clear the tooltip whenever the transform changes — the tooltip is
-  // anchored to the node's hover-time screen position, and a pan/zoom
-  // would leave it stuck in mid-air while the node moves out from under.
+  // The tooltip is anchored to the hovered node's screen position. A pan
+  // or zoom would leave it stuck in mid-air as the node moves out from
+  // under it, so we clear it on every transform tick. We intentionally
+  // track scale/translateX/translateY so the effect re-runs on each
+  // transform update — that re-run is the whole point. The cost is
+  // bounded: the work is a single $state write of `tooltip = null`,
+  // short-circuited when tooltip is already null. (Previously this
+  // also wrote a new Map reference for `tooltip` on every pointer-move
+  // event; the guard below makes that a no-op for the common case of
+  // "nothing is hovered during a drag".)
   $effect(() => {
-    // Touch the three transform values so Svelte tracks them as deps.
     void scale;
     void translateX;
     void translateY;
-    tooltip = null;
+    if (tooltip !== null) tooltip = null;
   });
 
   onDestroy(() => {
     dragOrigin = null;
+    tooltip = null;
+    popover = null;
+    copiedFlag = null;
+    isFullscreen = false;
   });
 </script>
 

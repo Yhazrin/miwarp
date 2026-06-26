@@ -80,6 +80,7 @@
     type TeamSubscription,
   } from "$lib/layout/team-subscription.svelte";
   import { chatViewCache } from "$lib/chat/chat-view-cache.svelte";
+  import { getChatTimelineResetHandle } from "$lib/chat/chat-timeline-reset-registry";
   import { readActiveSessionId, writeActiveSessionId } from "$lib/utils/chat-persistence";
   import type {
     TaskRun,
@@ -587,9 +588,7 @@
   let sidebarGhostX = $state(0);
   let resizeCleanup: (() => void) | null = null;
 
-  /** Ghost line DOM element — bound after sidebarResizing toggles true.
-   *  Used only for imperative DOM writes during drag, but declared as $state to satisfy
-   *  Svelte 5's bind:this reactivity contract (silences non_reactive_update warning). */
+  /** Ghost line DOM element — bound after sidebarResizing toggles true. */
   let sidebarGhostEl: HTMLElement | null = $state(null);
 
   function startResize(e: PointerEvent) {
@@ -598,7 +597,7 @@
     const startWidth = sidebarWidth;
     let pendingWidth = startWidth;
     sidebarResizing = true;
-    sidebarGhostX = e.clientX; // initial position via Svelte (single render)
+    sidebarGhostX = e.clientX;
     const handle = e.currentTarget as HTMLElement;
     handle.setPointerCapture?.(e.pointerId);
     dbg("layout", "sidebar resize start", { startWidth });
@@ -609,11 +608,8 @@
     function onMove(ev: PointerEvent) {
       pendingWidth = Math.min(500, Math.max(180, startWidth + (ev.clientX - startX)));
       const x = startX + (pendingWidth - startWidth);
-      // BYPASS Svelte: write DOM directly. Svelte's reactive batching + WKWebView's pointer
-      // capture don't cooperate during drag — updates pile up until pointerup. Direct DOM
-      // write is synchronous and the browser repaints on the next frame regardless.
       if (sidebarGhostEl) {
-        sidebarGhostEl.style.left = x - 1 + "px";
+        sidebarGhostEl.style.left = `${x - 1}px`;
       }
     }
     function cleanup() {
@@ -1765,7 +1761,15 @@
   function newChat() {
     // Always land on the welcome screen so the user picks a workspace
     // (and creation mode) before a session starts — never resume the last run.
-    goto("/chat?new=1");
+    // Before navigating, ask the chat route (if mounted) to collapse the
+    // visible timeline to 24 rows so a long-running session doesn't stall
+    // the click while Svelte tears down hundreds of DOM nodes mid-navigation.
+    // The shrink happens synchronously so Svelte can flush + paint the
+    // shrunken DOM in the frame between this call and the next-frame goto.
+    getChatTimelineResetHandle()?.shrinkVisibleRender(24);
+    requestAnimationFrame(() => {
+      goto("/chat?new=1");
+    });
   }
 
   function getNavItemHref(item: { path: string; icon: string }): string {
@@ -2803,10 +2807,9 @@
     {/if}
   </aside>
 
-  <!-- Paint sidebar surface under chat panel rounded corners (see app.css). -->
+  <!-- Sidebar wash under chat rounded corners (pointer-events: none — see app.css). -->
   <div class="sidebar-main-corner-bridge" aria-hidden="true"></div>
 
-  <!-- Ghost line during sidebar drag (zero-reflow preview) -->
   {#if sidebarResizing}
     <div
       bind:this={sidebarGhostEl}

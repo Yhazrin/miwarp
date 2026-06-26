@@ -279,9 +279,8 @@ export interface UserSettings {
   /** Enable native window-level glass material for the left sidebar
    * (macOS vibrancy / Windows mica-acrylic). Default true. */
   native_window_glass_enabled?: boolean;
-  /** macOS NSVisualEffectMaterial choice. `header_view` (default) is a
-   * lighter blur that pairs with the CSS wash layer; `sidebar` is the
-   * heavier traditional macOS sidebar material. Only consulted on
+  /** macOS NSVisualEffectMaterial choice. `sidebar` (default) is the heavier
+   * frost (~30–40px); `header_view` is lighter (~15–20px). Only consulted on
    * macOS; ignored on Windows/Linux. */
   native_window_glass_material?: "header_view" | "sidebar";
   /** Display name appended to every session's system prompt. */

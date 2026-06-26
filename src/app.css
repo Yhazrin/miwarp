@@ -209,30 +209,24 @@ html.theme-transitioning .theme-fade {
 
   /* ════════════════════════════════════════════════════════════
      Sidebar glass — two clean, non-overlapping modes.
-     v1.0.6: native window glass and CSS blur fallback are now
-     independent paths; the native mode does NOT stack a CSS blur on
-     top of the OS material (the cause of the "mushy" feel), and the
-     fallback uses a single 18px blur — no 28px legacy path.
+     Native mode: OS vibrancy + a complementary CSS blur tier (see perf-*).
+     Fallback mode: CSS blur only (28px baseline).
      ════════════════════════════════════════════════════════════ */
 
   /* ── Mode A: native window glass ACTIVE (Tauri desktop)
-     * macOS: HeaderView (default) or Sidebar, applied by Rust.
+     * macOS: Sidebar (default) or HeaderView, applied by Rust.
      * Windows: mica / acrylic / blur, applied by Rust.
      * CSS does NOT blur. The OS already provides the vibrancy.
-     * Readability comes entirely from the ::before wash alpha
-     * (0.32-0.44 range) plus a strong text color. */
+     * Readability comes from the ::before wash alpha plus strong text color. */
   .native-glass-sidebar {
     position: relative;
     background: transparent !important;
-    /* No backdrop-filter on purpose: the OS provides the blur. */
     box-shadow: inset 1px 0 0 hsl(0 0% 100% / 0.04);
     isolation: isolate;
     overflow: hidden;
   }
-  /* Tint layer (readability control). 0.32-0.44 alpha — explicitly
-     NOT 0.55+ so the wallpaper still reads through. Shared by the
-     sidebar, the main-shell corner underpaint, and the corner bridge
-     so rounded chat edges never reveal a mismatched gray strip. */
+  /* Tint layer — shared by sidebar, main-shell corner underpaint, and corner bridge
+     so rounded chat edges never reveal a mismatched strip. */
   .native-glass-sidebar::before,
   html.native-glass-enabled .app-main-shell::before,
   html.native-glass-enabled .sidebar-main-corner-bridge::before {
@@ -250,26 +244,20 @@ html.theme-transitioning .theme-fade {
     border-top-right-radius: var(--miwarp-chat-corner-radius);
     border-bottom-right-radius: var(--miwarp-chat-corner-radius);
   }
-  /* Light theme: white wash, 0.42-0.58 — pale tint that still
-     lets the wallpaper bleed through visibly. Mirrors the dark
-     theme's 0.36-0.48 range (slightly higher because white washes
-     tend to flatten the underlying image more than dark ones). */
   :is(html:not(.dark), html[data-color-scheme="light"]) .native-glass-sidebar::before,
   html.native-glass-enabled:is(:not(.dark), [data-color-scheme="light"]) .app-main-shell::before,
   html.native-glass-enabled:is(:not(.dark), [data-color-scheme="light"])
     .sidebar-main-corner-bridge::before {
     background: linear-gradient(180deg, hsl(250 8% 100% / 0.42) 0%, hsl(250 8% 100% / 0.58) 100%);
   }
-  /* Dark theme: dark wash within 0.36-0.48 range (slightly higher
-     to keep text readable on top of dark desktop backgrounds). */
   :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar::before,
   html.native-glass-enabled:is(.dark, [data-color-scheme="dark"]) .app-main-shell::before,
   html.native-glass-enabled:is(.dark, [data-color-scheme="dark"])
     .sidebar-main-corner-bridge::before {
     background: linear-gradient(
       180deg,
-      hsl(var(--miwarp-bg-deepest) / 0.36) 0%,
-      hsl(var(--miwarp-bg-deepest) / 0.48) 100%
+      hsl(var(--miwarp-bg-deepest) / 0.54) 0%,
+      hsl(var(--miwarp-bg-deepest) / 0.72) 100%
     );
   }
   /* Top edge highlight — the only thing mimicking the native
@@ -381,15 +369,12 @@ html.theme-transitioning .theme-fade {
   }
 
   /* ── Mode B: native window glass INACTIVE / browser fallback
-     * One path only: 18px blur + 140% saturate. The 28px legacy
-     * blur is gone — single source of truth. The disabled variant
-     * and the legacy `.glass-sidebar` class are merged here so we
-     * never run two glass systems side by side. */
+     * High-frost CSS blur — primary visual when OS material is off. */
   .native-glass-sidebar-disabled,
   .glass-sidebar {
     background: hsl(var(--miwarp-bg-base) / 0.55);
-    backdrop-filter: blur(18px) saturate(140%);
-    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    backdrop-filter: blur(28px) saturate(150%);
+    -webkit-backdrop-filter: blur(28px) saturate(150%);
     border-right: 1px solid hsl(var(--miwarp-glass-border) / 0.3);
     box-shadow: inset -1px 0 0 hsl(0 0% 0% / 0.06);
   }
@@ -399,7 +384,7 @@ html.theme-transitioning .theme-fade {
      through and the sidebar looks "washed out" rather than properly black. */
   .dark .glass-sidebar,
   .dark .native-glass-sidebar-disabled {
-    background: hsl(var(--miwarp-bg-base) / 0.92);
+    background: hsl(var(--miwarp-bg-deepest) / 0.94);
     border-right-color: hsl(var(--miwarp-glass-border) / 0.5);
     box-shadow: inset -1px 0 0 hsl(0 0% 0% / 0.4);
   }
@@ -416,9 +401,8 @@ html.theme-transitioning .theme-fade {
     border-bottom-left-radius: var(--miwarp-chat-corner-radius);
   }
 
-  /* When the user has the native window glass effect on, drop the
-     html/body backgrounds so the OS-blurred desktop shows through. The
-     `<main class="miwarp-main-surface">` keeps the right pane solid. */
+  /* Native glass: keep html/body transparent so macOS/Windows vibrancy
+     reaches the sidebar column. Main-pane wash lives on .app-main-shell::before. */
   html.native-glass-enabled,
   html.native-glass-enabled body,
   html.native-glass-enabled #app-root {
@@ -1394,8 +1378,7 @@ code.hljs {
 
 /* Main content shell — flex:1 so it expands/shrinks with sidebar animation.
    Left border-radius clips the chat pane; the shell underpaint + corner bridge
-   must match the sidebar surface (glass wash or fallback blur), not a flat
-   --sidebar-background token, or the curve shows a gray intermediate strip. */
+   must match the sidebar surface (glass wash or fallback blur). */
 .app-main-shell {
   flex: 1 1 auto;
   min-width: 0;
@@ -1408,7 +1391,6 @@ code.hljs {
   border-bottom-left-radius: var(--miwarp-chat-corner-radius);
 }
 
-/* Fallback sidebar mode: mirror .glass-sidebar under the rounded chat edge. */
 html:not(.native-glass-enabled) .app-main-shell,
 html:not(.native-glass-enabled) .sidebar-main-corner-bridge {
   background: hsl(var(--miwarp-bg-base) / 0.55);
@@ -1423,13 +1405,13 @@ html:not(.native-glass-enabled) .sidebar-main-corner-bridge {
   border-right-color: hsl(var(--miwarp-glass-border) / 0.5);
 }
 
-/* Native glass: transparent shell + shared wash (::before above). */
 html.native-glass-enabled .app-main-shell,
 html.native-glass-enabled .sidebar-main-corner-bridge {
   background: transparent;
 }
 
-/* Extend sidebar surface under the chat panel's rounded top/bottom corners. */
+/* Corner bridge — sidebar-colored underlay for chat rounded corners only.
+   Sibling of sidebar + main shell; never receives pointer events. */
 .sidebar-main-corner-bridge {
   position: absolute;
   top: 0;
@@ -1437,6 +1419,8 @@ html.native-glass-enabled .sidebar-main-corner-bridge {
   left: var(--sidebar-effective-width, 0px);
   width: calc(var(--miwarp-chat-corner-radius) + 1px);
   pointer-events: none;
+  touch-action: none;
+  user-select: none;
   z-index: 25;
   border-top-right-radius: var(--miwarp-chat-corner-radius);
   border-bottom-right-radius: var(--miwarp-chat-corner-radius);
@@ -1949,7 +1933,11 @@ textarea,
 }
 
 /* Chat: full-height scroll; bottom fade overlay (not a dock background panel) */
-.chat-conversation-stage {
+.chat-conversation-stage,
+/* v1.0.10: the page-level pane (flex column hosting both conversation + dock)
+   inherits the same CSS vars so .chat-messages-scroll inside the conversation
+   subtree picks them up while the input dock lives outside the conversation. */
+.chat-pane {
   /* Gap between input dock and window bottom (larger = dock sits higher). */
   --chat-input-dock-bottom-gap: 1.5rem;
   /* Overwritten at runtime by ChatInputDock ResizeObserver; fallback ≈ capsule + bottom gap */
@@ -2327,20 +2315,17 @@ pre,
 
 /* ── Native glass sidebar (Mode A) per tier ── */
 
-/* perf-quality: keep the OS native blur, optionally add a very light
-   CSS layer (max 4px) to subtly enhance the desktop look. */
 .perf-quality .native-glass-sidebar {
   backdrop-filter: blur(4px) saturate(120%) !important;
   -webkit-backdrop-filter: blur(4px) saturate(120%) !important;
 }
 
-/* perf-balanced: native blur only, no CSS layer on top. */
 .perf-balanced .native-glass-sidebar {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
 
-/* perf-performance: solid 0.88 themed background, no blur. The OS
+/* perf-performance: solid themed background, no blur. The OS
    material is still applied by Rust (cheap GPU composite) but the
    CSS overrides the visual to be a clean solid tint. */
 .perf-performance .native-glass-sidebar {
@@ -2348,6 +2333,9 @@ pre,
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
+}
+:is(html.dark, html[data-color-scheme="dark"]).perf-performance .native-glass-sidebar {
+  background: hsl(var(--miwarp-bg-deepest) / 0.94) !important;
 }
 .perf-performance .native-glass-sidebar::before,
 .perf-performance .native-glass-sidebar::after {

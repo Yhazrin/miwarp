@@ -418,11 +418,9 @@ pub struct UserSettings {
     #[serde(default = "default_true")]
     pub native_window_glass_enabled: bool,
     /// v1.0.6: which macOS NSVisualEffectMaterial to apply when the
-    /// native glass is enabled. `header_view` (default) is a much
-    /// lighter blur than `sidebar` and combines cleanly with the CSS
-    /// wash layer. `sidebar` is the heavy traditional macOS sidebar
-    /// material (~30-40px native blur) for users who want a
-    /// stronger effect.
+    /// native glass is enabled. `sidebar` (default) is the heavy traditional
+    /// macOS sidebar material (~30–40px native blur). `header_view` is a
+    /// lighter alternative (~15–20px) for users who want less frost.
     #[serde(default = "default_native_window_glass_material")]
     pub native_window_glass_material: String,
     /// Minutes between automatic CLI sync passes.
@@ -506,11 +504,10 @@ pub fn normalize_session_island_alignment(value: &str) -> String {
 }
 
 fn default_native_window_glass_material() -> String {
-    // Default to the lighter HeaderView (macOS 10.14+). It's a much
-    // softer native blur than Sidebar and combines cleanly with the
-    // CSS wash layer (no double-stacking of blur). The user can opt
-    // into the heavier Sidebar material from Settings → Appearance.
-    "header_view".to_string()
+    // Sidebar material (~30–40px native blur) is the product default —
+    // pairs with the CSS perf-tier complement for a high-frost look.
+    // Users who prefer a lighter feel can switch to HeaderView in Settings.
+    "sidebar".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -632,7 +629,7 @@ impl Default for UserSettings {
             cli_auto_sync_enabled: true,
             cli_auto_sync_interval_minutes: 5,
             native_window_glass_enabled: true,
-            native_window_glass_material: "header_view".to_string(),
+            native_window_glass_material: "sidebar".to_string(),
             cli_auto_sync_import_new: false,
             app_auto_update_check_enabled: true,
             process_visibility: "output".to_string(),
