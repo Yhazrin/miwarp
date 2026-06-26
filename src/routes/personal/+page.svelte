@@ -1,196 +1,164 @@
 <script lang="ts">
+  /**
+   * Personal Profile — single scrollable page that aggregates everything
+   * that is "about you as a MiWarp user":
+   *   - Identity (name, handle, role, timezone, email)
+   *   - AI preferences (default runtime, default + fallback model)
+   *   - Memory & Skills (links)
+   *   - Sessions defaults (mode + worktree automation)
+   *   - Provider connections (read-only summary)
+   *   - Activity (7-day cost / runs)
+   *   - Notifications (top-level toggles)
+   *   - Display & Locale (language + zoom)
+   *   - Data (export JSON, reset to defaults)
+   *
+   * Every editable field is persisted via the existing `updateUserSettings`
+   * partial-patch command — no new backend surface area is required.
+   */
   import { onMount } from "svelte";
   import { t } from "$lib/i18n/index.svelte";
-  import { getUserSettings, updateUserSettings } from "$lib/api";
+  import type { MessageKey } from "$lib/i18n/types";
+  import {
+    getUserSettings,
+    resetUserSettings,
+    updateUserSettings,
+    getUsageOverview,
+    runtimeHubList,
+  } from "$lib/api";
   import { showToast } from "$lib/stores/toast-store.svelte";
-  import { dbgWarn } from "$lib/utils/debug";
+  import { dbg, dbgWarn } from "$lib/utils/debug";
+  import { skillStore } from "$lib/stores/skill-store.svelte";
+  import { runtimeHubStore } from "$lib/stores/runtime-hub-store.svelte";
   import type { UserSettings } from "$lib/types";
 
+  import PersonalHero from "$lib/components/personal/PersonalHero.svelte";
+  import PersonalIdentityCard from "$lib/components/personal/PersonalIdentityCard.svelte";
+  import PersonalAiPrefsCard from "$lib/components/personal/PersonalAiPrefsCard.svelte";
+  import PersonalMemoryCard from "$lib/components/personal/PersonalMemoryCard.svelte";
+  import PersonalSessionsCard from "$lib/components/personal/PersonalSessionsCard.svelte";
+  import PersonalProvidersCard from "$lib/components/personal/PersonalProvidersCard.svelte";
+  import PersonalActivityCard from "$lib/components/personal/PersonalActivityCard.svelte";
+  import PersonalNotificationsCard from "$lib/components/personal/PersonalNotificationsCard.svelte";
+  import PersonalDisplayCard from "$lib/components/personal/PersonalDisplayCard.svelte";
+  import PersonalDataCard from "$lib/components/personal/PersonalDataCard.svelte";
+
   let loading = $state(true);
-  let saving = $state(false);
+  let settings = $state<UserSettings | null>(null);
+  let runtimes = $state<string[]>([]);
 
-  let displayName = $state("");
-  let role = $state("");
-  let timezone = $state("");
+  // Activity (7d)
+  let activity = $state<{
+    runs7d: number | null;
+    totalCostUsd: number | null;
+    dailyCost: number[];
+  }>({ runs7d: null, totalCostUsd: null, dailyCost: [] });
 
-  let original = $state<{ displayName: string; role: string; timezone: string } | null>(null);
+  function lk(key: string): string {
+    return t(key as MessageKey);
+  }
+
+  function applyZoom(factor: number) {
+    if (typeof document === "undefined") return;
+    document.documentElement.style.setProperty("--miwarp-ui-zoom", String(factor));
+  }
 
   onMount(async () => {
     try {
-      const settings = await getUserSettings();
-      const detectedTz = detectBrowserTimezone();
-      displayName = settings.user_display_name ?? "";
-      role = settings.user_role ?? "";
-      timezone = settings.user_timezone ?? detectedTz;
-      original = {
-        displayName: settings.user_display_name ?? "",
-        role: settings.user_role ?? "",
-        timezone: settings.user_timezone ?? detectedTz,
-      };
+      const [s, hub] = await Promise.all([
+        getUserSettings(),
+        runtimeHubList(false).catch(() => null),
+      ]);
+      settings = s;
+      if (hub?.runtimes) {
+        runtimes = hub.runtimes.map((r) => r.runtimeId).filter(Boolean);
+      }
     } catch (e) {
       dbgWarn("personal", "load settings failed", e);
     } finally {
       loading = false;
     }
+
+    // Background loads — never block first paint on these.
+    void loadActivity();
+    void skillStore.loadSkills().catch((e) => dbgWarn("personal", "load skills failed", e));
+    void runtimeHubStore.refresh().catch(() => {});
   });
 
-  function detectBrowserTimezone(): string {
+  async function loadActivity() {
     try {
-      return Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-    } catch {
-      return "";
-    }
-  }
-
-  function normalize(value: string): string {
-    return value.trim();
-  }
-
-  let previewText = $derived.by(() => {
-    const lines: string[] = [];
-    const name = normalize(displayName);
-    const r = normalize(role);
-    const tz = normalize(timezone);
-    if (name) lines.push(`- Display name: ${name}`);
-    if (r) lines.push(`- Role: ${r}`);
-    if (tz) lines.push(`- Timezone: ${tz}`);
-    if (lines.length === 0) return "";
-    return `User identity (MiWarp personal profile):\n${lines.join("\n")}`;
-  });
-
-  let hasAnyValue = $derived(previewText !== "");
-
-  let isDirty = $derived.by(() => {
-    if (!original) return false;
-    return (
-      normalize(displayName) !== original.displayName ||
-      normalize(role) !== original.role ||
-      normalize(timezone) !== original.timezone
-    );
-  });
-
-  async function save() {
-    if (saving) return;
-    saving = true;
-    try {
-      const patch: Partial<UserSettings> = {
-        user_display_name: normalize(displayName) || undefined,
-        user_role: normalize(role) || undefined,
-        user_timezone: normalize(timezone) || undefined,
+      const overview = await getUsageOverview(7);
+      const daily = (overview.daily ?? []).slice(-7).map((d) => d.costUsd ?? 0);
+      activity = {
+        runs7d: overview.totalRuns ?? null,
+        totalCostUsd: overview.totalCostUsd ?? null,
+        dailyCost: daily,
       };
-      const next = await updateUserSettings(patch);
-      const detectedTz = detectBrowserTimezone();
-      original = {
-        displayName: next.user_display_name ?? "",
-        role: next.user_role ?? "",
-        timezone: next.user_timezone ?? detectedTz,
-      };
-      showToast(t("personal_saved"), "success");
     } catch (e) {
-      dbgWarn("personal", "save failed", e);
-    } finally {
-      saving = false;
+      dbgWarn("personal", "load activity failed", e);
+      activity = { runs7d: null, totalCostUsd: null, dailyCost: [] };
     }
   }
+
+  async function commit(patch: Partial<UserSettings>): Promise<void> {
+    if (!settings) return;
+    const next = await updateUserSettings(patch);
+    settings = next;
+    dbg("personal", "settings patched", Object.keys(patch));
+  }
+
+  async function handleReset(): Promise<void> {
+    if (!settings) return;
+    const next = await resetUserSettings();
+    settings = next;
+    showToast(lk("personal_reset_done"), "success");
+  }
+
+  const skillCount = $derived(skillStore.skills?.length ?? 0);
+  const providerCount = $derived(settings?.platform_credentials?.length ?? 0);
+  const sinceDays = $derived.by(() => {
+    if (!settings?.updated_at) return null;
+    const ts = Date.parse(settings.updated_at);
+    if (Number.isNaN(ts)) return null;
+    const diff = Date.now() - ts;
+    return Math.max(0, Math.floor(diff / 86_400_000));
+  });
+
+  const heroStats = $derived({
+    runs7d: activity.runs7d,
+    skills: skillCount,
+    providers: providerCount,
+    sinceDays,
+  });
 </script>
 
 <svelte:head>
-  <title>{t("personal_title")} · MiWarp</title>
+  <title>{lk("personal_title")} · MiWarp</title>
 </svelte:head>
 
 <div class="min-h-full px-6 py-10 sm:px-10 sm:py-14">
-  <div class="mx-auto w-full max-w-2xl space-y-8">
-    <header class="space-y-3">
-      <h1 class="text-2xl font-semibold tracking-tight text-sidebar-foreground">
-        {t("personal_title")}
-      </h1>
-      <p class="text-sm text-sidebar-foreground/70">{t("personal_subtitle")}</p>
-      <p class="text-xs leading-relaxed text-sidebar-foreground/80">
-        {t("personal_consent")}
-      </p>
-    </header>
-
-    {#if loading}
-      <div class="rounded-xl border border-sidebar-border/60 bg-sidebar/40 p-8">
-        <div class="space-y-4">
-          <div class="h-4 w-1/3 animate-pulse rounded bg-sidebar-accent/40"></div>
-          <div class="h-10 w-full animate-pulse rounded-md bg-sidebar-accent/30"></div>
-          <div class="h-4 w-1/3 animate-pulse rounded bg-sidebar-accent/40"></div>
-          <div class="h-10 w-full animate-pulse rounded-md bg-sidebar-accent/30"></div>
-        </div>
+  <div class="mx-auto w-full max-w-3xl space-y-6">
+    {#if loading || !settings}
+      <div class="space-y-4">
+        <div class="h-40 animate-pulse rounded-xl bg-sidebar/40"></div>
+        <div class="h-64 animate-pulse rounded-xl bg-sidebar/40"></div>
+        <div class="h-48 animate-pulse rounded-xl bg-sidebar/40"></div>
       </div>
     {:else}
-      <section class="rounded-xl border border-sidebar-border/60 bg-sidebar/40 p-6 space-y-5">
-        <div class="space-y-1.5">
-          <label
-            for="personal-display-name"
-            class="block text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70"
-          >
-            {t("personal_displayName")}
-          </label>
-          <input
-            id="personal-display-name"
-            type="text"
-            bind:value={displayName}
-            placeholder={t("personal_displayNamePlaceholder")}
-            autocomplete="off"
-            class="w-full rounded-md border border-sidebar-border/70 bg-sidebar/60 px-3 py-2 text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/50 focus:border-ring/60 focus:outline-none focus:ring-1 focus:ring-ring/40"
-          />
-        </div>
+      <PersonalHero {settings} stats={heroStats} />
 
-        <div class="space-y-1.5">
-          <label
-            for="personal-role"
-            class="block text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70"
-          >
-            {t("personal_role")}
-          </label>
-          <input
-            id="personal-role"
-            type="text"
-            bind:value={role}
-            placeholder={t("personal_rolePlaceholder")}
-            autocomplete="off"
-            class="w-full rounded-md border border-sidebar-border/70 bg-sidebar/60 px-3 py-2 text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/50 focus:border-ring/60 focus:outline-none focus:ring-1 focus:ring-ring/40"
-          />
-        </div>
-
-        <div class="space-y-1.5">
-          <label
-            for="personal-timezone"
-            class="block text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70"
-          >
-            {t("personal_timezone")}
-          </label>
-          <input
-            id="personal-timezone"
-            type="text"
-            bind:value={timezone}
-            placeholder={t("personal_timezonePlaceholder")}
-            autocomplete="off"
-            class="w-full rounded-md border border-sidebar-border/70 bg-sidebar/60 px-3 py-2 text-sm text-sidebar-foreground placeholder:text-sidebar-foreground/50 focus:border-ring/60 focus:outline-none focus:ring-1 focus:ring-ring/40"
-          />
-        </div>
-      </section>
-
-      <section class="rounded-xl border border-sidebar-border/60 bg-sidebar/40 p-6 space-y-3">
-        <h2 class="text-sm font-semibold text-sidebar-foreground">{t("personal_previewTitle")}</h2>
-        <pre
-          class="overflow-x-auto rounded-md border border-sidebar-border/40 bg-sidebar-accent/30 p-4 text-xs leading-relaxed text-sidebar-foreground/90">{hasAnyValue
-            ? previewText
-            : t("personal_previewEmpty")}</pre>
-      </section>
-
-      <div class="flex items-center justify-end gap-3">
-        <button
-          type="button"
-          class="rounded-md bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-50"
-          onclick={save}
-          disabled={!isDirty || saving}
-        >
-          {saving ? `${t("personal_save")}…` : t("personal_save")}
-        </button>
-      </div>
+      <PersonalIdentityCard {settings} onCommit={commit} />
+      <PersonalAiPrefsCard {settings} {runtimes} onCommit={commit} />
+      <PersonalMemoryCard {skillCount} />
+      <PersonalSessionsCard {settings} onCommit={commit} />
+      <PersonalProvidersCard {settings} />
+      <PersonalActivityCard
+        totalRuns={activity.runs7d}
+        totalCostUsd={activity.totalCostUsd}
+        dailyCost={activity.dailyCost}
+      />
+      <PersonalNotificationsCard {settings} onCommit={commit} />
+      <PersonalDisplayCard {settings} onCommit={commit} onZoom={applyZoom} />
+      <PersonalDataCard {settings} onReset={handleReset} />
     {/if}
   </div>
 </div>

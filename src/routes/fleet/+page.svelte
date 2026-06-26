@@ -9,6 +9,10 @@
    *
    * Per CLAUDE.md "高内聚低耦合": this page owns the layout, defers all
    * data + state to `fleetStore`. No direct API calls.
+   *
+   * Theming: every color reads from the project's design tokens
+   * (`hsl(var(--miwarp-…)` / `hsl(var(--foreground))` etc.) so the page
+   * adapts to every light/dark theme without per-theme overrides.
    */
   import { onMount, onDestroy } from "svelte";
   import AgentIdentity from "$lib/components/AgentIdentity.svelte";
@@ -42,7 +46,7 @@
     {#if fleetStore.metrics}
       <div class="metrics">
         <span class="metric-total">{fleetStore.metrics.total} {t("fleet_total")}</span>
-        {#each Object.entries(fleetStore.statusCounts) as [status, count]}
+        {#each Object.entries(fleetStore.statusCounts) as [status, count] (status)}
           <span class="metric-chip metric-{status}">
             {tRaw("fleet_status_" + status)}: {count}
           </span>
@@ -71,7 +75,7 @@
       {t("fleet_filter_agent")}
       <select bind:value={fleetStore.filters.agent}>
         <option value="all">{t("fleet_filter_all")}</option>
-        {#each fleetStore.availableAgents as agent}
+        {#each fleetStore.availableAgents as agent (agent)}
           <option value={agent}>{agent}</option>
         {/each}
       </select>
@@ -145,6 +149,11 @@
 </div>
 
 <style>
+  /*
+   * All color references resolve through design tokens defined in
+   * src/lib/styles/design-tokens.css so the page inherits every
+   * light / dark / accent theme the user picks.
+   */
   .fleet-view {
     padding: 1.5rem;
     max-width: 1400px;
@@ -170,29 +179,41 @@
   .metric-chip {
     padding: 0.25rem 0.5rem;
     border-radius: 4px;
-    background: var(--surface-2, #1a1a1a);
+    background: hsl(var(--miwarp-bg-elevated));
+    color: hsl(var(--miwarp-text-primary));
     font-size: 0.85rem;
   }
+  /* Status chip colors map directly onto the project's status tokens so
+     they stay consistent with chat / history / sidebar status pills. */
   .metric-running {
-    color: #4ade80;
+    color: hsl(var(--miwarp-status-running));
   }
   .metric-idle {
-    color: #94a3b8;
+    color: hsl(var(--miwarp-status-idle));
   }
   .metric-error {
-    color: #f87171;
+    color: hsl(var(--miwarp-status-error));
   }
   .metric-stopped {
-    color: #475569;
+    color: hsl(var(--miwarp-status-paused));
+  }
+  .metric-awaiting_permission {
+    color: hsl(var(--miwarp-status-pending));
+  }
+  .metric-detached {
+    color: hsl(var(--miwarp-text-tertiary));
   }
   .refresh-btn {
     margin-left: auto;
     padding: 0.4rem 0.8rem;
-    border: 1px solid var(--border, #333);
-    background: var(--surface-2, #1a1a1a);
-    color: inherit;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--miwarp-bg-elevated));
+    color: hsl(var(--miwarp-text-primary));
     border-radius: 4px;
     cursor: pointer;
+  }
+  .refresh-btn:hover:not(:disabled) {
+    background: hsl(var(--miwarp-bg-hover));
   }
   .refresh-btn:disabled {
     opacity: 0.5;
@@ -209,15 +230,26 @@
     display: flex;
     flex-direction: column;
     font-size: 0.8rem;
-    color: var(--text-2, #aaa);
+    color: hsl(var(--miwarp-text-secondary));
   }
   .filters select,
   .filters input {
     padding: 0.4rem;
-    border: 1px solid var(--border, #333);
-    background: var(--surface-2, #1a1a1a);
-    color: inherit;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--miwarp-bg-elevated));
+    color: hsl(var(--miwarp-text-primary));
     border-radius: 4px;
+  }
+  .filters button {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--miwarp-bg-elevated));
+    color: hsl(var(--miwarp-text-primary));
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .filters button:hover {
+    background: hsl(var(--miwarp-bg-hover));
   }
   .member-grid {
     display: grid;
@@ -227,17 +259,21 @@
   .member-card {
     text-align: left;
     padding: 0.75rem;
-    border: 1px solid var(--border, #333);
+    border: 1px solid hsl(var(--border));
     border-radius: 6px;
-    background: var(--surface-1, #141414);
-    color: inherit;
+    background: hsl(var(--miwarp-bg-base));
+    color: hsl(var(--miwarp-text-primary));
     cursor: pointer;
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
+    transition:
+      border-color 200ms ease,
+      background-color 200ms ease;
   }
   .member-card:hover {
-    border-color: var(--accent, #3b82f6);
+    border-color: hsl(var(--miwarp-accent-primary) / 0.6);
+    background: hsl(var(--miwarp-bg-hover));
   }
   .card-header {
     display: flex;
@@ -249,52 +285,56 @@
     height: 0.6rem;
     border-radius: 50%;
   }
+  /* Status dot colors mirror the chip colors above. */
   .status-running {
-    background: #4ade80;
+    background: hsl(var(--miwarp-status-running));
   }
   .status-idle {
-    background: #94a3b8;
+    background: hsl(var(--miwarp-status-idle));
   }
   .status-awaiting_permission {
-    background: #fbbf24;
+    background: hsl(var(--miwarp-status-pending));
   }
   .status-error {
-    background: #f87171;
+    background: hsl(var(--miwarp-status-error));
   }
   .status-stopped {
-    background: #475569;
+    background: hsl(var(--miwarp-status-paused));
   }
   .status-detached {
-    background: #1e293b;
+    background: hsl(var(--miwarp-text-tertiary));
   }
   .card-cwd {
     font-size: 0.75rem;
-    color: var(--text-2, #888);
+    color: hsl(var(--miwarp-text-secondary));
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .card-task {
     font-size: 0.85rem;
-    color: var(--text-1, #ddd);
+    color: hsl(var(--miwarp-text-primary));
     font-style: italic;
   }
   .card-meta {
     display: flex;
     justify-content: space-between;
     font-size: 0.7rem;
-    color: var(--text-3, #666);
+    color: hsl(var(--miwarp-text-tertiary));
   }
   .empty {
     grid-column: 1 / -1;
     text-align: center;
     padding: 2rem;
-    color: var(--text-2, #888);
+    color: hsl(var(--miwarp-text-secondary));
   }
+  /* Error banner uses the destructive token + status-error text — readable in
+     both light and dark themes because the token alpha is theme-aware. */
   .error {
     padding: 0.75rem;
-    background: #7f1d1d33;
-    border: 1px solid #f87171;
+    background: hsl(var(--miwarp-status-error) / 0.12);
+    border: 1px solid hsl(var(--miwarp-status-error) / 0.55);
+    color: hsl(var(--miwarp-status-error));
     border-radius: 4px;
     margin-bottom: 1rem;
   }
@@ -305,8 +345,9 @@
     width: 400px;
     max-width: 90vw;
     height: 100vh;
-    background: var(--surface-1, #141414);
-    border-left: 1px solid var(--border, #333);
+    background: hsl(var(--miwarp-bg-base));
+    border-left: 1px solid hsl(var(--border));
+    color: hsl(var(--miwarp-text-primary));
     padding: 1.5rem;
     overflow-y: auto;
   }
@@ -319,7 +360,7 @@
   .detail-drawer header button {
     background: none;
     border: none;
-    color: inherit;
+    color: hsl(var(--miwarp-text-primary));
     font-size: 1.5rem;
     cursor: pointer;
   }
@@ -330,7 +371,7 @@
     font-size: 0.85rem;
   }
   .detail-drawer dt {
-    color: var(--text-2, #888);
+    color: hsl(var(--miwarp-text-secondary));
   }
   .detail-drawer .actions {
     margin-top: 1.5rem;
@@ -339,10 +380,13 @@
   }
   .detail-drawer .actions button {
     padding: 0.5rem 1rem;
-    background: #7f1d1d;
-    color: white;
+    background: hsl(var(--destructive));
+    color: hsl(var(--destructive-foreground));
     border: none;
     border-radius: 4px;
     cursor: pointer;
+  }
+  .detail-drawer .actions button:hover {
+    background: hsl(var(--destructive) / 0.85);
   }
 </style>

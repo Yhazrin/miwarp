@@ -277,28 +277,28 @@
         plugins = results[0].value;
       } else {
         dbgWarn("plugins", "marketplace load error", results[0].reason);
-        warnings.push("marketplace plugins");
+        warnings.push(t("plugin_loadWarn_marketplacePlugins"));
       }
 
       if (results[1].status === "fulfilled") {
         installedPlugins = results[1].value;
       } else {
         dbgWarn("plugins", "installed plugins load error", results[1].reason);
-        warnings.push("installed plugins");
+        warnings.push(t("plugin_loadWarn_installedPlugins"));
       }
 
       if (results[2].status === "fulfilled") {
         skills = results[2].value;
       } else {
         dbgWarn("plugins", "skills load error", results[2].reason);
-        warnings.push("standalone skills");
+        warnings.push(t("plugin_loadWarn_standaloneSkills"));
       }
 
       if (results[3].status === "fulfilled") {
         marketplaces = results[3].value;
       } else {
         dbgWarn("plugins", "marketplaces load error", results[3].reason);
-        warnings.push("marketplaces");
+        warnings.push(t("plugin_loadWarn_marketplaces"));
       }
 
       loadWarnings = warnings;

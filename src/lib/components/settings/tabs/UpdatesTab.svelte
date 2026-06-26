@@ -3,6 +3,17 @@
   import { appUpdateCoordinator } from "$lib/stores/app-update-coordinator.svelte";
   import { cliUpdateRegistry, type CliToolEntry } from "$lib/stores/cli-update-registry.svelte";
   import { openExternalUpdateUrl } from "$lib/utils/app-updater";
+  import type { UserSettings } from "$lib/types";
+
+  let {
+    settings = null,
+    onSaveGeneralPatch = async () => {},
+  }: {
+    settings?: UserSettings | null;
+    onSaveGeneralPatch?: (patch: Partial<UserSettings>) => Promise<void>;
+  } = $props();
+
+  const autoCheckEnabled = $derived(settings?.app_auto_update_check_enabled ?? true);
 
   const phaseLabel = $derived.by(() => {
     const phase = appUpdateCoordinator.phase;
@@ -80,6 +91,11 @@
 
   async function openDocs(url: string) {
     await openExternalUpdateUrl(url);
+  }
+
+  async function handleAutoCheckChange(enabled: boolean) {
+    appUpdateCoordinator.setAutoCheckEnabled(enabled);
+    await onSaveGeneralPatch({ app_auto_update_check_enabled: enabled });
   }
 </script>
 
@@ -208,9 +224,8 @@
         <span class="text-sm text-foreground">{t("updateCenter_autoCheck")}</span>
         <input
           type="checkbox"
-          checked={appUpdateCoordinator.getAutoCheckEnabled()}
-          onchange={(e) =>
-            appUpdateCoordinator.setAutoCheckEnabled((e.target as HTMLInputElement).checked)}
+          checked={autoCheckEnabled}
+          onchange={(e) => handleAutoCheckChange((e.target as HTMLInputElement).checked)}
           class="h-4 w-4 rounded border-border text-primary focus:ring-primary"
         />
       </div>

@@ -274,6 +274,8 @@ export interface UserSettings {
   cli_auto_sync_interval_minutes?: number;
   /** Also import newly discovered CLI sessions, not only sync existing imports. */
   cli_auto_sync_import_new?: boolean;
+  /** Automatically check GitHub-backed MiWarp app updates on startup and periodically. */
+  app_auto_update_check_enabled?: boolean;
   /** Enable native window-level glass material for the left sidebar
    * (macOS vibrancy / Windows mica-acrylic). Default true. */
   native_window_glass_enabled?: boolean;
@@ -284,6 +286,10 @@ export interface UserSettings {
   native_window_glass_material?: "header_view" | "sidebar";
   /** Display name appended to every session's system prompt. */
   user_display_name?: string;
+  /** Optional social-style handle (e.g. "alex"). Local-only. */
+  user_handle?: string;
+  /** Optional contact email. Local-only, never sent to the model. */
+  user_email?: string;
   /** Role / occupation appended to every session's system prompt. */
   user_role?: string;
   /** IANA time zone (e.g. "Asia/Shanghai") appended to every session's system prompt. */

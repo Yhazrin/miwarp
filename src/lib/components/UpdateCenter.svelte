@@ -5,11 +5,14 @@
   import MiDialog from "$lib/ui/MiDialog.svelte";
   import { appUpdateCoordinator } from "$lib/stores/app-update-coordinator.svelte";
   import { cliUpdateRegistry, type CliToolEntry } from "$lib/stores/cli-update-registry.svelte";
+  import { getUserSettings, updateUserSettings } from "$lib/api";
   import { openExternalUpdateUrl } from "$lib/utils/app-updater";
 
   let { open = $bindable(false) }: { open: boolean } = $props();
 
   let appVersion = $state("");
+  let autoCheckEnabled = $state(true);
+  let savingAutoCheck = $state(false);
 
   onMount(async () => {
     try {
@@ -17,6 +20,13 @@
       appVersion = await getVersion();
     } catch {
       appVersion = "";
+    }
+    try {
+      const settings = await getUserSettings();
+      autoCheckEnabled = settings.app_auto_update_check_enabled ?? true;
+      appUpdateCoordinator.setAutoCheckEnabled(autoCheckEnabled);
+    } catch {
+      autoCheckEnabled = appUpdateCoordinator.getAutoCheckEnabled();
     }
     cliUpdateRegistry.loadCache();
   });
@@ -101,6 +111,18 @@
 
   async function openDocs(url: string) {
     await openExternalUpdateUrl(url);
+  }
+
+  async function handleAutoCheckChange(enabled: boolean) {
+    autoCheckEnabled = enabled;
+    appUpdateCoordinator.setAutoCheckEnabled(enabled);
+    savingAutoCheck = true;
+    try {
+      const settings = await updateUserSettings({ app_auto_update_check_enabled: enabled });
+      autoCheckEnabled = settings.app_auto_update_check_enabled ?? enabled;
+    } finally {
+      savingAutoCheck = false;
+    }
   }
 </script>
 
@@ -317,9 +339,9 @@
           <span class="text-sm text-foreground">{t("updateCenter_autoCheck")}</span>
           <input
             type="checkbox"
-            checked={appUpdateCoordinator.getAutoCheckEnabled()}
-            onchange={(e) =>
-              appUpdateCoordinator.setAutoCheckEnabled((e.target as HTMLInputElement).checked)}
+            checked={autoCheckEnabled}
+            disabled={savingAutoCheck}
+            onchange={(e) => handleAutoCheckChange((e.target as HTMLInputElement).checked)}
             class="h-4 w-4 rounded border-border text-primary focus:ring-primary"
           />
         </label>

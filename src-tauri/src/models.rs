@@ -431,6 +431,9 @@ pub struct UserSettings {
     /// Also import newly discovered CLI sessions (not only sync existing imports).
     #[serde(default)]
     pub cli_auto_sync_import_new: bool,
+    /// Automatically check GitHub-backed MiWarp app updates on startup and periodically.
+    #[serde(default = "default_true")]
+    pub app_auto_update_check_enabled: bool,
     /// Process visibility: output | guided | developer | expert (default developer).
     #[serde(default = "default_process_visibility")]
     pub process_visibility: String,
@@ -631,6 +634,7 @@ impl Default for UserSettings {
             native_window_glass_enabled: true,
             native_window_glass_material: "header_view".to_string(),
             cli_auto_sync_import_new: false,
+            app_auto_update_check_enabled: true,
             process_visibility: "output".to_string(),
             visual_performance_mode: "auto".to_string(),
             session_island_alignment: default_session_island_alignment(),
