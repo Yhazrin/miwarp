@@ -11,6 +11,7 @@ export const EVT_RUNS_CHANGED = "ocv:runs-changed";
 // ── CWD / project ──────────────────────────────────────────────────────
 export const EVT_CWD_CHANGED = "ocv:cwd-changed";
 export const EVT_PROJECT_CHANGED = "ocv:project-changed";
+export const EVT_WORKBENCH_STAGE_PROMPT = "ocv:workbench-stage-prompt";
 
 // ── Favorites ───────────────────────────────────────────────────────────
 export const EVT_FAVORITES_CHANGED = "ocv:favorites-changed";

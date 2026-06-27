@@ -29,6 +29,9 @@ export type RunEventType = "system" | "stdout" | "stderr" | "command" | "user" |
 /** App-internal execution path for a run (materialized in TaskRun, never undefined). */
 export type ExecutionPath = "session_actor" | "pipe_exec";
 
+/** First-class MiWarp surface that created or owns a run. */
+export type RunSurface = "chat" | "project_desk";
+
 /** Unified resume/fork identity across agents. */
 export type ConversationRef =
   | { kind: "claude_session"; id: string }
@@ -82,6 +85,8 @@ export interface TaskRun {
   execution_path: ExecutionPath;
   /** Unified resume identity. Undefined = not resumable. */
   conversation_ref?: ConversationRef;
+  /** MiWarp surface that created this run. Undefined means the default chat surface. */
+  run_surface?: RunSurface;
   /** User-created folder ID for organizing sessions. */
   folder_id?: string;
   /** Soft-delete timestamp. Populated by incremental sync. */

@@ -53,6 +53,7 @@ fn sample_meta(id: &str, status: RunStatus) -> RunMeta {
         execution_path: None,
         no_session_persistence: false,
         conversation_ref: None,
+        run_surface: None,
         scheduled_task_id: None,
         scheduled_task_run_id: None,
         runtime_kind: None,

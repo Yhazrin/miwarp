@@ -1,15 +1,14 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import { workbenchStore } from "$lib/workbench/workbench-store.svelte";
+  import { workspacesStore } from "$lib/stores/workspaces-store.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import WorkbenchProjectHero from "$lib/components/workbench/WorkbenchProjectHero.svelte";
   import WorkbenchProjectChat from "$lib/components/workbench/WorkbenchProjectChat.svelte";
+  import WorkbenchControlPanel from "$lib/components/workbench/WorkbenchControlPanel.svelte";
 
-  onMount(() => {
-    const projectId = workbenchStore.selectedProjectId;
-    if (projectId) {
-      void workbenchStore.loadSessionsFor(projectId);
-    }
+  $effect(() => {
+    const workspaces = workspacesStore.list;
+    void workbenchStore.refresh(workspaces);
   });
 </script>
 
@@ -23,10 +22,13 @@
 <main class="flex h-full min-w-0 flex-1 flex-col gap-2 p-3">
   {#if workbenchStore.selectedProject}
     <WorkbenchProjectHero />
-    <div
-      class="flex min-h-0 flex-1 flex-col rounded-3xl border border-border/40 bg-card/40 p-2 shadow-sm backdrop-blur-xl"
-    >
-      <WorkbenchProjectChat />
+    <div class="grid min-h-0 flex-1 grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div
+        class="flex min-h-[520px] flex-col overflow-hidden rounded-3xl border border-border/40 bg-card/40 shadow-sm backdrop-blur-xl xl:min-h-0"
+      >
+        <WorkbenchProjectChat />
+      </div>
+      <WorkbenchControlPanel />
     </div>
   {:else}
     <div class="flex flex-1 items-center justify-center">

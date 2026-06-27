@@ -1,7 +1,7 @@
 use crate::agent::adapter::ActorSessionMap;
 use crate::models::{
     now_iso, AgentRuntimeKind, ExecutionPath, PromptFavorite, PromptSearchResult, RunStatus,
-    SessionCreationMode, TaskRun,
+    RunSurface, SessionCreationMode, TaskRun,
 };
 use crate::storage;
 use crate::storage::tasks::TaskMutation;
@@ -88,17 +88,19 @@ pub fn start_run(
     remote_host_name: Option<String>,
     platform_id: Option<String>,
     execution_path: Option<String>,
+    run_surface: Option<String>,
     creation_mode: Option<String>,
     folder_id: Option<String>,
     task_id: Option<String>,
 ) -> Result<TaskRun, String> {
     log::debug!(
-        "[runs] start_run: agent={}, model={:?}, remote={:?}, platform={:?}, path={:?}, prompt_len={}, cwd={}",
+        "[runs] start_run: agent={}, model={:?}, remote={:?}, platform={:?}, path={:?}, surface={:?}, prompt_len={}, cwd={}",
         agent,
         model,
         remote_host_name,
         platform_id,
         execution_path,
+        run_surface,
         prompt.len(),
         cwd
     );
@@ -118,6 +120,18 @@ pub fn start_run(
 
     // Validate agent/path combination
     validate_agent_path(&agent, &path)?;
+
+    let surface: Option<RunSurface> = match run_surface {
+        Some(s) => Some(
+            serde_json::from_value(serde_json::Value::String(s.clone())).map_err(|_| {
+                format!(
+                    "invalid run_surface '{}': expected 'chat' or 'project_desk'",
+                    s
+                )
+            })?,
+        ),
+        None => None,
+    };
 
     if let Some(ref tid) = task_id {
         storage::tasks::get(tid).ok_or_else(|| format!("Task {tid} not found"))?;
@@ -165,6 +179,7 @@ pub fn start_run(
         platform_id,
     )?;
     meta.execution_path = Some(path);
+    meta.run_surface = surface;
 
     // ── Worktree mode: auto-create isolated branch + worktree ──
     // v1.0.6 follow-up: prefer the explicit `creation_mode` parameter

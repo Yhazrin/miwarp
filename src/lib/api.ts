@@ -9,6 +9,7 @@ function invoke<T>(cmd: CmdName | string, args?: Record<string, unknown>): Promi
 }
 import type {
   TaskRun,
+  RunSurface,
   RunEvent,
   RunArtifact,
   UserSettings,
@@ -157,6 +158,7 @@ export async function startRun(
   creationMode?: "single" | "worktree",
   folderId?: string,
   taskId?: string,
+  runSurface?: RunSurface,
 ): Promise<TaskRun> {
   dbg("api", "startRun", {
     prompt: prompt.slice(0, 80),
@@ -168,6 +170,7 @@ export async function startRun(
     creationMode,
     folderId,
     taskId,
+    runSurface,
   });
   const result = await invoke<TaskRun>(CMD.start_run, {
     prompt,
@@ -180,6 +183,7 @@ export async function startRun(
     creationMode: creationMode ?? null,
     folderId: folderId ?? null,
     taskId: taskId ?? null,
+    runSurface: runSurface ?? null,
   });
   dbg("api", "startRun →", result.id);
   return result;

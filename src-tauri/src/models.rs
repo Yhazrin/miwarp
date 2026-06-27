@@ -242,6 +242,14 @@ pub enum ConversationRef {
     OpenCodeSession(String),
 }
 
+/// First-class MiWarp surface that created or owns a run.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum RunSurface {
+    Chat,
+    ProjectDesk,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskRun {
     pub id: String,
@@ -308,6 +316,9 @@ pub struct TaskRun {
     /// Resolved conversation identity (None = not resumable).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conversation_ref: Option<ConversationRef>,
+    /// MiWarp surface that created this run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_surface: Option<RunSurface>,
     /// User-created folder ID for organizing sessions.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub folder_id: Option<String>,
@@ -894,6 +905,9 @@ pub struct RunMeta {
     /// Unified resume identity. None = not resumable. Written by runtime events (session_init / thread.started).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conversation_ref: Option<ConversationRef>,
+    /// MiWarp surface that created this run. None means the default chat surface.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_surface: Option<RunSurface>,
     /// Scheduled task definition id when this run was created by the scheduler.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scheduled_task_id: Option<String>,
@@ -993,6 +1007,7 @@ impl RunMeta {
             no_session_persistence: self.no_session_persistence,
             execution_path: self.resolved_execution_path(),
             conversation_ref: self.resolved_conversation_ref(),
+            run_surface: self.run_surface.clone(),
             folder_id: self.folder_id.clone(),
             deleted_at: self.deleted_at.clone(),
             archived_at: self.archived_at.clone(),

@@ -17,6 +17,7 @@ import type {
   McpServerInfo,
   ElicitationSchema,
   SessionMode,
+  RunSurface,
 } from "$lib/types";
 import { usesStreamSession } from "$lib/runtime";
 import { isKeyOptionalPlatform } from "$lib/utils/platform-presets";
@@ -2161,6 +2162,7 @@ export class SessionStore {
     permissionModeOverride?: string,
     creationMode?: "single" | "worktree",
     folderId?: string,
+    runSurface?: RunSurface,
   ): Promise<string> {
     this.error = "";
     this._setPhase("spawning");
@@ -2225,6 +2227,8 @@ export class SessionStore {
         executionPath,
         creationMode,
         folderId,
+        undefined,
+        runSurface,
       );
       this.run = run;
 

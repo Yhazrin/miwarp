@@ -701,6 +701,7 @@ fn run_import_pipeline(
         no_session_persistence: false,
         execution_path: Some(ExecutionPath::SessionActor),
         conversation_ref: Some(ConversationRef::ClaudeSession(session_id.to_string())),
+        run_surface: None,
         folder_id: None,
         creation_mode: None,
         worktree_path: None,

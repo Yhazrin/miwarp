@@ -51,6 +51,10 @@ pub async fn dispatch_command(
                 .get("execution_path")
                 .and_then(|v| v.as_str())
                 .map(String::from);
+            let run_surface = params
+                .get("run_surface")
+                .and_then(|v| v.as_str())
+                .map(String::from);
             let creation_mode = params
                 .get("creation_mode")
                 .and_then(|v| v.as_str())
@@ -71,6 +75,7 @@ pub async fn dispatch_command(
                 remote_host_name,
                 platform_id,
                 execution_path,
+                run_surface,
                 creation_mode,
                 folder_id,
                 task_id,

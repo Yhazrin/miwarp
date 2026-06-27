@@ -23,6 +23,26 @@
   <header class="shrink-0 border-b border-sidebar-border/60 px-4 py-3">
     <h2 class="text-sm font-semibold text-sidebar-foreground">{t("workbench_projects")}</h2>
     <p class="mt-0.5 text-xs text-muted-foreground">{t("workbench_projectsSubtitle")}</p>
+    <div class="mt-3 grid grid-cols-3 gap-1.5">
+      <div class="rounded-xl border border-sidebar-border/60 bg-sidebar-accent/30 px-2 py-1.5">
+        <p class="text-[10px] text-muted-foreground">{t("workbench_metricProjects")}</p>
+        <p class="mt-0.5 text-sm font-semibold text-sidebar-foreground">
+          {workbenchStore.projects.length}
+        </p>
+      </div>
+      <div class="rounded-xl border border-sidebar-border/60 bg-sidebar-accent/30 px-2 py-1.5">
+        <p class="text-[10px] text-muted-foreground">{t("workbench_metricActive")}</p>
+        <p class="mt-0.5 text-sm font-semibold text-sidebar-foreground">
+          {workbenchStore.activeProjectCount}
+        </p>
+      </div>
+      <div class="rounded-xl border border-sidebar-border/60 bg-sidebar-accent/30 px-2 py-1.5">
+        <p class="text-[10px] text-muted-foreground">{t("workbench_metricAttention")}</p>
+        <p class="mt-0.5 text-sm font-semibold text-sidebar-foreground">
+          {workbenchStore.attentionRunCount}
+        </p>
+      </div>
+    </div>
   </header>
 
   <div class="sidebar-scroll flex-1 overflow-y-auto p-2">

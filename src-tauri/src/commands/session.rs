@@ -10,7 +10,8 @@ use crate::agent::session_actor::{self, ActorCommand, RalphCancelResult};
 use crate::agent::spawn_locks::SpawnLocks;
 use crate::governor::{Admission, ResourceGovernor};
 use crate::models::{
-    AgentRuntimeKind, BusEvent, RemoteHost, RunMeta, RunStatus, SessionMode, UserSettings,
+    AgentRuntimeKind, BusEvent, RemoteHost, RunMeta, RunStatus, RunSurface, SessionMode,
+    UserSettings,
 };
 use crate::process_ext::HideConsole;
 use crate::storage;
@@ -111,6 +112,159 @@ fn resolve_remote_host(meta: &RunMeta) -> Result<Option<RemoteHost>, String> {
         }
         None => Ok(None),
     }
+}
+
+fn append_adapter_context(target: &mut Option<String>, context: &str) {
+    *target = Some(match target.take() {
+        Some(existing) if !existing.trim().is_empty() => format!("{}\n\n{}", existing, context),
+        _ => context.to_string(),
+    });
+}
+
+struct ProjectDeskRunSummary {
+    total_runs: usize,
+    active_runs: usize,
+    idle_runs: usize,
+    project_desk_runs: usize,
+    recent_runs: Vec<String>,
+}
+
+fn run_project_cwd(meta: &RunMeta) -> &str {
+    meta.parent_cwd.as_deref().unwrap_or(&meta.cwd)
+}
+
+fn is_active_status(status: &RunStatus) -> bool {
+    matches!(
+        status,
+        RunStatus::Running | RunStatus::Pending | RunStatus::Idle
+    )
+}
+
+fn is_idle_status(status: &RunStatus) -> bool {
+    matches!(status, RunStatus::Idle)
+}
+
+fn run_label(meta: &RunMeta) -> String {
+    let label = meta
+        .name
+        .as_deref()
+        .or_else(|| {
+            let trimmed = meta.prompt.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed)
+            }
+        })
+        .unwrap_or(&meta.id);
+
+    let mut chars = label.chars();
+    let shortened: String = chars.by_ref().take(72).collect();
+    if chars.next().is_some() {
+        format!("{}...", shortened)
+    } else {
+        shortened
+    }
+}
+
+fn summarize_project_runs(current: &RunMeta) -> ProjectDeskRunSummary {
+    let project_cwd = run_project_cwd(current);
+    let mut runs: Vec<RunMeta> = storage::runs::list_all_run_metas()
+        .into_iter()
+        .filter(|meta| run_project_cwd(meta) == project_cwd)
+        .collect();
+
+    runs.sort_by(|a, b| b.started_at.cmp(&a.started_at));
+
+    ProjectDeskRunSummary {
+        total_runs: runs.len(),
+        active_runs: runs
+            .iter()
+            .filter(|meta| is_active_status(&meta.status))
+            .count(),
+        idle_runs: runs
+            .iter()
+            .filter(|meta| is_idle_status(&meta.status))
+            .count(),
+        project_desk_runs: runs
+            .iter()
+            .filter(|meta| matches!(meta.run_surface.as_ref(), Some(RunSurface::ProjectDesk)))
+            .count(),
+        recent_runs: runs
+            .iter()
+            .take(5)
+            .map(|meta| format!("{} [{}] {}", run_label(meta), meta.status, meta.started_at))
+            .collect(),
+    }
+}
+
+fn build_project_desk_system_context(meta: &RunMeta) -> String {
+    let project_cwd = meta.parent_cwd.as_deref().unwrap_or(&meta.cwd);
+    let execution_cwd = meta.remote_cwd.as_deref().unwrap_or(&meta.cwd);
+    let summary = summarize_project_runs(meta);
+    let recent_runs = if summary.recent_runs.is_empty() {
+        "- none".to_string()
+    } else {
+        summary
+            .recent_runs
+            .iter()
+            .map(|line| format!("- {}", line))
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    format!(
+        r#"You are running inside MiWarp's Project Desk surface.
+
+Project Desk is a first-class personal workspace for managing the whole MiWarp app and the selected project, not a generic chat tab.
+
+Operate with this posture:
+- Treat the selected project as the primary working context.
+- Help the user manage project state, next actions, risks, files, sessions, tasks, and verification.
+- Prefer concrete repo actions when the user's intent is actionable.
+- Keep ordinary user prompts clean; do not mention this hidden context unless it is directly useful.
+- When reporting status, connect your answer to the selected project and the broader MiWarp workspace.
+
+Runtime context:
+- run_id: {run_id}
+- project_cwd: {project_cwd}
+- execution_cwd: {execution_cwd}
+- surface: project_desk
+
+Project state snapshot:
+- total_runs_for_project: {total_runs}
+- active_runs_for_project: {active_runs}
+- idle_runs_for_project: {idle_runs}
+- project_desk_runs_for_project: {project_desk_runs}
+- recent_runs:
+{recent_runs}"#,
+        run_id = meta.id,
+        project_cwd = project_cwd,
+        execution_cwd = execution_cwd,
+        total_runs = summary.total_runs,
+        active_runs = summary.active_runs,
+        idle_runs = summary.idle_runs,
+        project_desk_runs = summary.project_desk_runs,
+        recent_runs = recent_runs
+    )
+}
+
+pub(crate) fn apply_project_desk_context(settings: &mut adapter::AdapterSettings, meta: &RunMeta) {
+    if !matches!(meta.run_surface.as_ref(), Some(RunSurface::ProjectDesk)) {
+        return;
+    }
+
+    let context = build_project_desk_system_context(meta);
+    if settings.system_prompt.is_some() {
+        append_adapter_context(&mut settings.system_prompt, &context);
+    } else {
+        append_adapter_context(&mut settings.append_system_prompt, &context);
+    }
+
+    log::debug!(
+        "[session] project desk context injected for run_id={}, cwd={}",
+        meta.id,
+        meta.cwd
+    );
 }
 
 /// Resolved authentication and environment info for spawning CLI.
@@ -688,6 +842,7 @@ pub(crate) async fn start_session_impl(
         );
         adapter_settings.permission_mode = Some(mapped);
     }
+    apply_project_desk_context(&mut adapter_settings, &meta);
 
     // 2b. Resolve remote host from RunMeta (audit #2: single truth source)
     let remote = resolve_remote_host(&meta)?;

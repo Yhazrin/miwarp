@@ -190,8 +190,9 @@ pub async fn send_chat_message(
     // Build unified adapter settings
     let agent_settings = storage::settings::get_agent_settings(&run.agent);
     let user_settings = storage::settings::get_user_settings();
-    let adapter_settings =
+    let mut adapter_settings =
         crate::agent::adapter::build_adapter_settings(&agent_settings, &user_settings, model);
+    super::session::apply_project_desk_context(&mut adapter_settings, &run);
 
     // OpenCode resumes by starting a new turn process with the persisted session ID.
     let conversation_id = match run.resolved_conversation_ref() {

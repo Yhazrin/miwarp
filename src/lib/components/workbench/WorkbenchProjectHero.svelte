@@ -8,10 +8,7 @@
   function openInChat(): void {
     const cwd = workbenchStore.selectedProject?.cwd;
     if (!cwd) return;
-    // TODO(workspace): navigate to /chat?cwd=<encoded cwd> once the chat page
-    // supports project-scoped entry. For now we hop to /chat and let it pick up
-    // the most recent session.
-    void goto("/chat");
+    void goto(`/chat?new=1&folder=${encodeURIComponent(cwd)}`);
   }
 </script>
 

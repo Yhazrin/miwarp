@@ -595,6 +595,7 @@ mod tests {
             no_session_persistence: false,
             execution_path: None,
             conversation_ref: None,
+            run_surface: None,
             scheduled_task_id: None,
             scheduled_task_run_id: None,
             runtime_kind: None,

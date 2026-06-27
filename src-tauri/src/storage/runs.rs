@@ -118,6 +118,7 @@ pub fn create_run(
         no_session_persistence,
         execution_path: None,   // Caller sets after create_run
         conversation_ref: None, // Written by runtime events (session_init / thread.started)
+        run_surface: None,
         scheduled_task_id: None,
         scheduled_task_run_id: None,
         runtime_kind: Some(crate::models::AgentRuntimeKind::from_agent(agent)),

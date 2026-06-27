@@ -1230,6 +1230,7 @@ pub fn import_session(
         conversation_ref: Some(crate::models::ConversationRef::ClaudeSession(
             session_id.to_string(),
         )),
+        run_surface: None,
         folder_id: None,
         creation_mode: None,
         worktree_path: None,

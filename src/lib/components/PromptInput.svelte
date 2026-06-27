@@ -206,6 +206,7 @@
     contextWindow = 0,
     processVisibility = "developer" as ProcessVisibility,
     inputStore,
+    placeholder = "",
   }: {
     agent?: string;
     disabled?: boolean;
@@ -262,6 +263,7 @@
     contextWindow?: number;
     processVisibility?: ProcessVisibility;
     inputStore?: PromptInputStore;
+    placeholder?: string;
   } = $props();
 
   // ── Store ──
@@ -318,7 +320,7 @@
         ? t("prompt_pendingPermission")
         : hasRun
           ? t("prompt_hasRunPlaceholder")
-          : t("prompt_newPlaceholder"),
+          : placeholder || t("prompt_newPlaceholder"),
   );
 
   // ── Git branch (fetched from cwd) ──
