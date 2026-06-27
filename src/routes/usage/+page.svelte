@@ -12,6 +12,42 @@
   import SkeletonLine from "$lib/components/SkeletonLine.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { fmtDate, fmtNumber } from "$lib/i18n/format";
+  import { LS_USAGE_RUN_HISTORY_SORT } from "$lib/utils/storage-keys";
+
+  type SortCol = "date" | "cost" | "tokens" | "turns";
+  type SortPref = { col: SortCol; asc: boolean };
+
+  // P2-4：把 RunHistory 排序状态持久化到 localStorage，避免刷新页面回到默认 date desc。
+  function loadSortPref(): SortPref {
+    if (typeof localStorage === "undefined") return { col: "date", asc: false };
+    try {
+      const raw = localStorage.getItem(LS_USAGE_RUN_HISTORY_SORT);
+      if (!raw) return { col: "date", asc: false };
+      const parsed = JSON.parse(raw) as Partial<SortPref>;
+      const col: SortCol =
+        parsed.col === "cost" ||
+        parsed.col === "tokens" ||
+        parsed.col === "turns" ||
+        parsed.col === "date"
+          ? parsed.col
+          : "date";
+      const asc = parsed.asc === true;
+      return { col, asc };
+    } catch {
+      return { col: "date", asc: false };
+    }
+  }
+
+  function saveSortPref(pref: SortPref) {
+    if (typeof localStorage === "undefined") return;
+    try {
+      localStorage.setItem(LS_USAGE_RUN_HISTORY_SORT, JSON.stringify(pref));
+    } catch {
+      // localStorage 配额满 / 隐私模式 → 静默忽略
+    }
+  }
+
+  const initialSort = loadSortPref();
 
   let data = $state<UsageOverview | null>(null);
   let loading = $state(true);
@@ -57,9 +93,14 @@
     return Math.max(...data.daily.map((d) => d.inputTokens + d.outputTokens), 1);
   });
 
+  // DailyTrend 图固定的最近 30 天窗口：抽成 $derived 避免在 each 块里重复
+  // slice 计算（旧实现里同一份 slice(-30) 在 :473 / :489 / :490 三处都跑）。
+  let last30 = $derived(data?.daily.slice(-30) ?? []);
+
   // Sort state for run history
-  let sortCol = $state<"date" | "cost" | "tokens" | "turns">("date");
-  let sortAsc = $state(false);
+  // P2-4：初始值从 localStorage 取，避免刷新页面回到默认 date desc。
+  let sortCol = $state<SortCol>(initialSort.col);
+  let sortAsc = $state(initialSort.asc);
 
   let sortedRuns = $derived.by(() => {
     if (!data?.runs) return [];
@@ -85,6 +126,24 @@
     return runs;
   });
 
+  // 临时虚拟化方案：先硬限到 50 行 + "显示更多" 按钮。
+  // 后续要换成正经虚拟滚动（svelte-virtual / 自实现 visible window），
+  // 避免上千行表格一次性 mount 把 DOM 顶到几百 KB。
+  // TODO: replace with proper windowed virtualization.
+  const RUN_HISTORY_PAGE_SIZE = 50;
+  let runHistoryLimit = $state(RUN_HISTORY_PAGE_SIZE);
+  let visibleRuns = $derived(sortedRuns.slice(0, runHistoryLimit));
+  let runHistoryHasMore = $derived(sortedRuns.length > runHistoryLimit);
+  function showMoreRuns() {
+    runHistoryLimit += RUN_HISTORY_PAGE_SIZE;
+  }
+  // 切换 scope / 时间范围时把 limit 重置回初值，避免一次性渲染被 cached 的大表。
+  $effect(() => {
+    void scope;
+    void selectedDays;
+    runHistoryLimit = RUN_HISTORY_PAGE_SIZE;
+  });
+
   function toggleSort(col: typeof sortCol) {
     if (sortCol === col) {
       sortAsc = !sortAsc;
@@ -92,6 +151,8 @@
       sortCol = col;
       sortAsc = false;
     }
+    // P2-4：每次排序变化都写回 localStorage，跨刷新保持用户偏好。
+    saveSortPref({ col: sortCol, asc: sortAsc });
   }
 
   function sortIndicator(col: typeof sortCol): string {
@@ -281,8 +342,8 @@
         'global'
           ? 'invisible'
           : ''}"
-        title={t("usage_refreshTitle")}
-        aria-label={t("usage_refreshTitle")}
+        title={scope === "global" ? t("usage_refreshTitle") : t("usage_refreshAppScopeHint")}
+        aria-label={scope === "global" ? t("usage_refreshTitle") : t("usage_refreshAppScopeHint")}
         disabled={refreshing || scope !== "global"}
         onclick={refreshCache}
       >
@@ -293,7 +354,7 @@
     {#if loading}
       <div class="space-y-4">
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {#each Array(4) as _}
+          {#each Array.from({ length: 4 }, (_, i) => i) as i (i)}
             <div
               class="rounded-lg border border-sidebar-border/50 bg-sidebar/50 p-4 flex flex-col items-center gap-2"
             >
@@ -305,7 +366,7 @@
         <div class="rounded-lg border border-sidebar-border/50 bg-sidebar/50 p-4">
           <SkeletonLine width="8rem" height="1rem" class="mb-3" />
           <div class="grid grid-cols-7 gap-1">
-            {#each Array(49) as _}
+            {#each Array.from({ length: 49 }, (_, i) => i) as i (i)}
               <SkeletonLine height="1.25rem" rounded="rounded-sm" />
             {/each}
           </div>
@@ -470,7 +531,7 @@
                   <div
                     class="absolute inset-x-0 top-1/2 border-t border-sidebar-border/30 pointer-events-none"
                   ></div>
-                  {#each data.daily.slice(-30) as day (day.date)}
+                  {#each last30 as day (day.date)}
                     {@const value = getDailyValue(day)}
                     {@const pct = Math.max((value / maxDailyValue) * 100, 2)}
                     <div
@@ -486,10 +547,9 @@
                 </div>
                 <!-- X-axis date labels -->
                 <div class="flex gap-[2px] mt-1">
-                  {#each data.daily.slice(-30) as day, i}
+                  {#each last30 as day, i (day.date)}
                     {@const showLabel =
-                      data.daily.slice(-30).length <= 10 ||
-                      i % Math.ceil(data.daily.slice(-30).length / 10) === 0}
+                      last30.length <= 10 || i % Math.ceil(last30.length / 10) === 0}
                     <div class="flex-1 min-w-0 text-center">
                       {#if showLabel}
                         <span class="text-[10px] text-sidebar-foreground/70 tabular-nums">
@@ -625,7 +685,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  {#each sortedRuns as run}
+                  {#each visibleRuns as run (run.runId)}
                     <tr
                       class="border-b border-sidebar-border/50 hover:bg-sidebar-accent/30 cursor-pointer"
                       role="button"
@@ -651,13 +711,25 @@
                         {run.model ?? run.agent}
                       </td>
                       <td class="py-2 text-right tabular-nums font-mono text-xs">
-                        {formatTokenCount(run.inputTokens + run.outputTokens)}
+                        {#if run.inputTokens + run.outputTokens > 0}
+                          {formatTokenCount(run.inputTokens + run.outputTokens)}
+                        {:else}
+                          <span class="text-sidebar-foreground/40" title="no token data">—</span>
+                        {/if}
                       </td>
                       <td class="py-2 text-right tabular-nums font-mono text-xs">
-                        {formatCost(run.totalCostUsd)}
+                        {#if run.totalCostUsd > 0}
+                          {formatCost(run.totalCostUsd)}
+                        {:else}
+                          <span class="text-sidebar-foreground/40" title="no cost data">—</span>
+                        {/if}
                       </td>
                       <td class="py-2 text-right tabular-nums">
-                        {run.numTurns}
+                        {#if run.numTurns > 0}
+                          {run.numTurns}
+                        {:else}
+                          <span class="text-sidebar-foreground/40" title="no turn data">—</span>
+                        {/if}
                       </td>
                     </tr>
                   {/each}
@@ -668,6 +740,25 @@
             <p class="text-sm text-sidebar-foreground/70">
               {t("usage_noUsageData")}
             </p>
+          {/if}
+          {#if runHistoryHasMore}
+            <div
+              class="flex items-center justify-between pt-2 text-[11px] text-sidebar-foreground/60"
+            >
+              <span>
+                {t("usage_showingRuns", {
+                  shown: String(visibleRuns.length),
+                  total: String(sortedRuns.length),
+                })}
+              </span>
+              <button
+                type="button"
+                class="rounded-md border border-sidebar-border/60 px-3 py-1 text-xs font-medium text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/40"
+                onclick={showMoreRuns}
+              >
+                {t("usage_showMoreRuns")}
+              </button>
+            </div>
           {/if}
         </Card>
       {/if}

@@ -39,3 +39,6 @@ export const LS_DEBUG = "ocv:debug";
 
 // ── Tool activity ───────────────────────────────────────────────────────
 export const LS_TOOLACTIVITY_WIDTH = "ocv:toolactivity-width";
+
+// ── Usage page ──────────────────────────────────────────────────────────
+export const LS_USAGE_RUN_HISTORY_SORT = "ocv:usage-run-history-sort";
