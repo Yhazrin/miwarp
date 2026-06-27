@@ -319,6 +319,11 @@ export function isCustomPlatform(platformId: string): boolean {
   return platformId.startsWith("custom-");
 }
 
+/** Local proxies that work without an API key (mirrors backend is_key_optional_platform). */
+export function isKeyOptionalPlatform(platformId: string): boolean {
+  return platformId === "ccswitch" || platformId === "ccr" || platformId === "ollama";
+}
+
 /** Find a credential by platform_id. */
 export function findCredential(
   credentials: import("$lib/types").PlatformCredential[],

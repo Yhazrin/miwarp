@@ -125,6 +125,15 @@ export function createPlatformHandlers(ctx: PlatformHandlerContext) {
     });
     setLocalProxyStatuses(statuses);
     dbg("chat", "checkAllLocalProxies", statuses);
+
+    if (
+      statuses.ccswitch?.running &&
+      settings?.auth_mode === "cli" &&
+      (!settings.active_platform_id || settings.active_platform_id === "anthropic")
+    ) {
+      dbg("chat", "CC Switch running — syncing platform to ccswitch");
+      void handlePlatformChange("ccswitch");
+    }
   }
 
   async function handlePlatformChange(platformId: string): Promise<void> {

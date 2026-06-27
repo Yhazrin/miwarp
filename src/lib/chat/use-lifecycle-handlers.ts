@@ -11,7 +11,11 @@ import {
   EVT_SUMMARIZE_CHAT_ACK,
 } from "$lib/utils/bus-events";
 import { dbg, dbgWarn } from "$lib/utils/debug";
-import { PLATFORM_PRESETS, findCredential } from "$lib/utils/platform-presets";
+import {
+  PLATFORM_PRESETS,
+  findCredential,
+  isKeyOptionalPlatform,
+} from "$lib/utils/platform-presets";
 import { APP_TO_CLI_MODE } from "$lib/chat/utils/permission-modes";
 import {
   normalizeProcessVisibility,
@@ -214,10 +218,15 @@ export function initLifecycleHandlers(ctx: LifecycleHandlerContext): void {
         store.remoteHostName = lastTarget;
       }
     }
-    if (!store.platformId) {
+    const activePid = loadedSettings.active_platform_id ?? "anthropic";
+    if (
+      !store.platformId ||
+      loadedSettings.auth_mode === "api" ||
+      isKeyOptionalPlatform(activePid)
+    ) {
       store.platformId =
-        loadedSettings.auth_mode === "api"
-          ? (loadedSettings.active_platform_id ?? "anthropic")
+        loadedSettings.auth_mode === "api" || isKeyOptionalPlatform(activePid)
+          ? activePid
           : "anthropic";
     }
     const runId = getRunId();

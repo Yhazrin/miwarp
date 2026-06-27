@@ -104,17 +104,25 @@
   );
 
   function selectMode(mode: string) {
-    if (mode !== "api") open = false;
     onAuthModeChange?.(mode);
+    if (mode !== "api") {
+      // Defer the close so Svelte 5's bindable prop sync from the parent's
+      // `authMode` change doesn't race against our write to `open`.
+      queueMicrotask(() => {
+        open = false;
+      });
+    }
   }
 
   function selectPlatform(id: string) {
     dbg("auth-badge", "selectPlatform", { id });
-    open = false;
     onPlatformChange?.(id);
     if (authOverview?.auth_mode !== "api") {
       onAuthModeChange?.("api");
     }
+    queueMicrotask(() => {
+      open = false;
+    });
   }
 </script>
 
