@@ -31,7 +31,7 @@ describe("v1.1.0-rc.1 perf snapshot", () => {
         `- ${sc.scenario} (n=${sc.n}) — p50=${sc.p50.toFixed(2)}ms p95=${sc.p95.toFixed(2)}ms max=${sc.max.toFixed(2)}ms mean=${sc.mean.toFixed(2)}ms fail=${(sc.failureRate * 100).toFixed(1)}%`,
       );
     }
-    // eslint-disable-next-line no-console
+
     console.log("\n" + lines.join("\n") + `\n\nWrote ${dest}`);
 
     expect(summary.byScenario.length).toBeGreaterThan(0);

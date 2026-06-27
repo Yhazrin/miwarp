@@ -7,6 +7,7 @@
   职责:展示 workbench 项目列表 + 选中态 + meta 行,不负责右侧 hero / chat 主区。
 -->
 <script lang="ts">
+  import { goto } from "$app/navigation";
   import { workbenchStore } from "$lib/workbench/workbench-store.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { relativeTime } from "$lib/utils/format";
@@ -16,6 +17,10 @@
     if (status === "active") return "bg-[hsl(var(--miwarp-status-info))]";
     if (status === "idle") return "bg-[hsl(var(--miwarp-status-warning))]";
     return "bg-muted-foreground/40";
+  }
+
+  function openWorkspace(): void {
+    void goto("/workspace");
   }
 </script>
 
@@ -47,7 +52,31 @@
 
   <div class="sidebar-scroll flex-1 overflow-y-auto p-2">
     {#if workbenchStore.projects.length === 0}
-      <p class="px-3 py-6 text-xs text-muted-foreground">{t("workbench_noProjects")}</p>
+      <!--
+        空项目态 onboarding：居中 icon + 文案 + 一个跳转按钮。
+        侧边栏窄时不喧宾夺主；点击后跳到 /workspace 让用户先添加工作区。
+      -->
+      <div class="flex flex-col items-center justify-center gap-3 px-3 py-8 text-center">
+        <span
+          class="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-border/45 bg-background/55 text-muted-foreground"
+        >
+          <Icon name="folder-up" size="lg" />
+        </span>
+        <div class="space-y-1">
+          <p class="text-xs font-semibold text-foreground">{t("workbench_onboardingTitle")}</p>
+          <p class="text-[11px] leading-4 text-muted-foreground">
+            {t("workbench_noProjectsHint")}
+          </p>
+        </div>
+        <button
+          type="button"
+          class="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          onclick={openWorkspace}
+        >
+          <Icon name="folder-open" size="sm" />
+          {t("workbench_openWorkspace")}
+        </button>
+      </div>
     {:else}
       <ul class="space-y-1">
         {#each workbenchStore.projects as project (project.id)}

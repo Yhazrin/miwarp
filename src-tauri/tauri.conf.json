@@ -54,7 +54,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": ["../README.md", "../README.zh-CN.md"],
+    "resources": [
+      "../README.md",
+      "../README.zh-CN.md"
+    ],
     "category": "DeveloperTool",
     "shortDescription": "AI-assisted vibe coding desktop app",
     "longDescription": "MiWarp wraps AI coding CLIs (Claude Code, Codex) with a visual chat interface, run management, and activity monitoring. Local-first, no cloud required.",

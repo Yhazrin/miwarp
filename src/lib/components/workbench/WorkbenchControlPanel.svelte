@@ -148,6 +148,22 @@
       }),
     );
   }
+
+  /**
+   * Estimate the size of the injected project-desk system prompt.
+   * MiWarp injects ~480 chars of scaffold + the cwd, plus a short descriptor.
+   * Without a dedicated API, this deterministic estimate is enough to give
+   * users a feel for how much context their session starts with.
+   */
+  function estimateSystemPromptTokens(cwd: string): number {
+    const baseChars = 480 + (cwd?.length ?? 0) + (project?.label?.length ?? 0);
+    // Conservative ~3 chars per token for English-leaning system prompts.
+    return Math.max(120, Math.round(baseChars / 3));
+  }
+
+  const projectDeskContextTokens = $derived(
+    hasProjectDeskContext && project ? estimateSystemPromptTokens(project.cwd) : 0,
+  );
 </script>
 
 <aside
@@ -155,23 +171,51 @@
   aria-label={t("workbench_controlPanel")}
 >
   <header class="shrink-0 border-b border-border/40 px-4 py-3">
-    <div class="flex items-center justify-between gap-3">
+    <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
-        <p class="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+        <p class="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
           {t("workbench_controlPanel")}
         </p>
-        <h2 class="mt-1 truncate text-sm font-semibold text-foreground">
-          {project?.label ?? t("workbench_selectProject")}
-        </h2>
+        {#if project}
+          <h2 class="mt-1 truncate text-sm font-semibold text-foreground">{project.label}</h2>
+          <p
+            class="mt-0.5 truncate font-mono text-[10px] text-muted-foreground"
+            title={project.cwd}
+          >
+            {project.cwd}
+          </p>
+        {:else}
+          <h2 class="mt-1 truncate text-sm font-semibold text-foreground">
+            {t("workbench_selectProject")}
+          </h2>
+        {/if}
       </div>
-      <button
-        type="button"
-        class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/50 bg-background/50 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
-        onclick={openActiveRun}
-        aria-label={t("workbench_openActiveRun")}
-      >
-        <Icon name="external-link" size="sm" />
-      </button>
+      <div class="flex shrink-0 flex-col items-end gap-1.5">
+        {#if project}
+          <div class="flex items-center gap-1.5">
+            <span
+              class="h-2 w-2 rounded-full {project.status === 'active'
+                ? 'bg-[hsl(var(--miwarp-status-info))]'
+                : project.status === 'idle'
+                  ? 'bg-[hsl(var(--miwarp-status-warning))]'
+                  : 'bg-muted-foreground/40'}"
+              aria-label={project.status}
+            ></span>
+            {#if activeRun}
+              <StatusBadge status={activeRun.status} shortLabel={true} />
+            {/if}
+          </div>
+        {/if}
+        <button
+          type="button"
+          class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border/50 bg-background/50 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
+          onclick={openActiveRun}
+          aria-label={t("workbench_openActiveRun")}
+          title={t("workbench_openActiveRun")}
+        >
+          <Icon name="external-link" size="xs" />
+        </button>
+      </div>
     </div>
   </header>
 
@@ -235,6 +279,67 @@
               </div>
             </button>
           {/each}
+        </div>
+      </section>
+
+      <section class="mt-5">
+        <div class="mb-2 flex items-center justify-between gap-2">
+          <h3 class="text-xs font-semibold text-foreground">
+            {t("workbench_projectDeskContextEnabled")}
+          </h3>
+          <span class="text-[10px] text-muted-foreground">
+            {t("workbench_takeoverHint")}
+          </span>
+        </div>
+        <div
+          class="rounded-2xl border px-3 py-2.5 {hasProjectDeskContext
+            ? 'border-primary/25 bg-primary/8'
+            : 'border-border/40 bg-background/45'}"
+        >
+          <div class="flex items-start gap-2.5">
+            <span
+              class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border {hasProjectDeskContext
+                ? 'border-primary/25 bg-primary/15 text-primary'
+                : 'border-border/40 bg-background/45 text-muted-foreground'}"
+            >
+              <Icon name={hasProjectDeskContext ? "layout" : "message-square"} size="sm" />
+            </span>
+            <span class="min-w-0">
+              <span class="block text-xs font-semibold text-foreground">
+                {hasProjectDeskContext
+                  ? t("workbench_projectDeskSystemContextEnabled")
+                  : t("workbench_standardChatContext")}
+              </span>
+              <span class="mt-0.5 line-clamp-3 block text-[11px] leading-4 text-muted-foreground">
+                {#if hasProjectDeskContext && project}
+                  {t("workbench_projectDeskSystemContextHint", {
+                    tokens: String(projectDeskContextTokens),
+                  })}
+                {:else}
+                  {t("workbench_projectDeskSystemContextFallback")}
+                {/if}
+              </span>
+              <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                <span
+                  class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] {hasProjectDeskContext
+                    ? 'border-primary/25 bg-primary/10 text-primary'
+                    : 'border-border/40 bg-muted/35 text-muted-foreground'}"
+                  title={project?.cwd ?? ""}
+                >
+                  <Icon name="folder-open" size="xs" />
+                  <span class="truncate">{project?.cwd ?? ""}</span>
+                </span>
+                {#if hasProjectDeskContext}
+                  <span
+                    class="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/8 px-2 py-0.5 text-[10px] font-medium text-primary"
+                  >
+                    <Icon name="sparkles" size="xs" />
+                    ~{projectDeskContextTokens} tokens
+                  </span>
+                {/if}
+              </div>
+            </span>
+          </div>
         </div>
       </section>
 
@@ -422,8 +527,12 @@
                 type="button"
                 class="w-full rounded-2xl border px-3 py-2 text-left transition-colors hover:border-border/45 hover:bg-muted/40 {session.id ===
                 activeRunId
-                  ? 'border-primary/25 bg-primary/10'
-                  : 'border-transparent'}"
+                  ? 'border-primary/30 bg-primary/10'
+                  : session.status === 'running' || session.status === 'pending'
+                    ? 'border-[hsl(var(--miwarp-status-info)/0.28)] bg-[hsl(var(--miwarp-status-info)/0.06)]'
+                    : session.status === 'waiting_approval' || session.status === 'waiting_input'
+                      ? 'border-[hsl(var(--miwarp-status-warning)/0.3)] bg-[hsl(var(--miwarp-status-warning)/0.08)]'
+                      : 'border-transparent'}"
                 onclick={() => workbenchStore.setActiveRun(project.id, session.id)}
               >
                 <div class="flex items-center justify-between gap-2">

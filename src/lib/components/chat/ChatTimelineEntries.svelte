@@ -5,27 +5,19 @@
   import type { SessionStore } from "$lib/stores/session-store.svelte";
   import type { BurstCollapseHandle } from "$lib/chat/use-tool-burst-collapse.svelte";
   import type { TurnUsage } from "$lib/stores/types";
-  import ChatMessage from "$lib/components/ChatMessage.svelte";
-  import InlineToolCard from "$lib/components/InlineToolCard.svelte";
   import BatchProgressBar from "$lib/components/BatchProgressBar.svelte";
   import ToolBurstHeader from "$lib/components/ToolBurstHeader.svelte";
   import GuidedToolTimelineRow from "$lib/components/GuidedToolTimelineRow.svelte";
   import ChatUsageAnnotation from "$lib/components/ChatUsageAnnotation.svelte";
-  import ContextUsageGrid from "$lib/components/ContextUsageGrid.svelte";
-  import CostSummaryView from "$lib/components/CostSummaryView.svelte";
-  import ReleaseNotesCard from "$lib/components/ReleaseNotesCard.svelte";
   import MarkdownContent from "$lib/components/MarkdownContent.svelte";
   import ChatRenderBoundary from "$lib/components/chat/ChatRenderBoundary.svelte";
+  import ConversationTimeline from "$lib/components/chat/ConversationTimeline.svelte";
   import { TAIL_LIVE_ENTRIES } from "$lib/chat/selectors/timeline-presentation";
-  import { ansiToHtml, hasAnsiCodes } from "$lib/utils/ansi";
   import {
-    isTimelineSeparatorContent,
-    shouldShowTimelineCommandOutput,
     shouldMountFullToolCardInOutputMode,
     shouldMountFullToolCardInGuidedMode,
     shouldShowContextDetails,
   } from "$lib/utils/process-visibility";
-  import { t as tFn } from "$lib/i18n/index.svelte";
   import { IS_WEBKIT } from "$lib/utils/platform";
 
   let {
@@ -95,8 +87,6 @@
 
   const useCvAuto = $derived(contentVisibilityEnabled && !IS_WEBKIT);
 
-  const t = tFn;
-
   function reloadFromEventLog() {
     return store.recoverFromEventLog();
   }
@@ -105,6 +95,13 @@
   function isFrozenEntry(index: number): boolean {
     return index < visibleTimeline.length - TAIL_LIVE_ENTRIES;
   }
+
+  /**
+   * Tool-result cache handle shape that satisfies ConversationTimeline.
+   * Only `fetchToolResult` is read by the renderer; the chat page owns
+   * the cache lifecycle via its existing `createToolResultCache` instance.
+   */
+  const toolResultCache = $derived({ fetchToolResult });
 </script>
 
 {#each visibleTimeline as entry, i (entry.id)}
@@ -157,14 +154,28 @@
             componentName="ChatMessage"
             onReload={reloadFromEventLog}
           >
-            <ChatMessage
-              message={{
-                id: entry.id,
-                role: "user",
-                content: entry.content,
-                timestamp: entry.ts,
-              }}
-              attachments={entry.attachments}
+            <ConversationTimeline
+              {entry}
+              agent={store.agent}
+              model={store.run?.model ?? store.model}
+              platformId={store.platformId ?? undefined}
+              animated={false}
+              debugRunId={store.run?.id}
+              debugSessionId={store.run?.session_id ?? undefined}
+              lastToolId=""
+              {processVisibility}
+              {permissionCoordinator}
+              permissionMode={store.permissionMode}
+              {toolResultCache}
+              onApprove={handleToolApprove}
+              onPermissionRespond={handlePermissionRespond}
+              onExitPlanClearContext={() => handleExitPlanClearContext("")}
+              onExitPlanBypass={handleExitPlanBypass}
+              onToolAnswer={handleToolAnswer}
+              getPlanContentForExitPlan={(id) => getPlanContentForExitPlan(id)}
+              taskNotifications={store.taskNotifications}
+              showPermissionInPanel={showPermissionPanel}
+              onPreviewFile={openPreviewForPath}
               frozen={isFrozenEntry(i)}
               onRewind={entry.cliUuid && store.sessionAlive && !store.isRunning
                 ? () =>
@@ -185,22 +196,29 @@
             componentName="ChatMessage"
             onReload={reloadFromEventLog}
           >
-            <ChatMessage
-              message={{
-                id: entry.id,
-                role: "assistant",
-                content: entry.content,
-                timestamp: entry.ts,
-              }}
-              thinkingText={entry.thinkingText}
+            <ConversationTimeline
+              {entry}
               agent={store.agent}
-              platformId={store.platformId ?? undefined}
               model={store.run?.model ?? store.model}
+              platformId={store.platformId ?? undefined}
               animated={!isFrozenEntry(i) && i === lastAssistantIdx && store.isRunning}
-              frozen={isFrozenEntry(i)}
-              {processVisibility}
               debugRunId={store.run?.id}
               debugSessionId={store.run?.session_id ?? undefined}
+              lastToolId=""
+              {processVisibility}
+              {permissionCoordinator}
+              permissionMode={store.permissionMode}
+              {toolResultCache}
+              onApprove={handleToolApprove}
+              onPermissionRespond={handlePermissionRespond}
+              onExitPlanClearContext={() => handleExitPlanClearContext("")}
+              onExitPlanBypass={handleExitPlanBypass}
+              onToolAnswer={handleToolAnswer}
+              getPlanContentForExitPlan={(id) => getPlanContentForExitPlan(id)}
+              taskNotifications={store.taskNotifications}
+              showPermissionInPanel={showPermissionPanel}
+              onPreviewFile={openPreviewForPath}
+              frozen={isFrozenEntry(i)}
             />
           </ChatRenderBoundary>
         </div>
@@ -227,85 +245,67 @@
               id="tool-{entry.tool.tool_use_id}"
               class:collapsing-burst-tool={burstCollapse.collapsingIndices.has(i)}
             >
-              <div class="chat-content-width">
-                <InlineToolCard
-                  tool={entry.tool}
-                  subTimeline={entry.subTimeline}
-                  runId={store.run?.id ?? ""}
-                  {fetchToolResult}
-                  {processVisibility}
-                  onAnswer={entry.tool.tool_name === "AskUserQuestion" &&
-                  (entry.tool.status === "running" || entry.tool.status === "ask_pending")
-                    ? (answer) => handleToolAnswer(entry.tool.tool_use_id, answer)
-                    : undefined}
-                  onApprove={handleToolApprove}
-                  onPermissionRespond={handlePermissionRespond}
-                  onExitPlanClearContext={() => handleExitPlanClearContext(entry.tool.tool_use_id)}
-                  onExitPlanBypass={handleExitPlanBypass}
-                  taskNotifications={store.taskNotifications}
-                  planContent={entry.tool.tool_name === "ExitPlanMode" &&
-                  (entry.tool.status === "permission_prompt" || entry.tool.status === "success")
-                    ? getPlanContentForExitPlan(entry.id)
-                    : undefined}
-                  latestPlanTool={entry.kind === "tool" &&
-                    entry.tool.tool_use_id === latestPlanToolId}
-                  showPermissionInPanel={showPermissionPanel}
-                  {permissionCoordinator}
-                  permissionMode={store.permissionMode}
-                  onPreviewFile={openPreviewForPath}
-                />
-              </div>
+              <ConversationTimeline
+                {entry}
+                agent={store.agent}
+                model={store.run?.model ?? store.model}
+                platformId={store.platformId ?? undefined}
+                animated={false}
+                debugRunId={store.run?.id}
+                debugSessionId={store.run?.session_id ?? undefined}
+                lastToolId={latestPlanToolId ?? ""}
+                {processVisibility}
+                {permissionCoordinator}
+                permissionMode={store.permissionMode}
+                {toolResultCache}
+                onApprove={handleToolApprove}
+                onPermissionRespond={handlePermissionRespond}
+                onExitPlanClearContext={() => handleExitPlanClearContext(entry.tool.tool_use_id)}
+                onExitPlanBypass={handleExitPlanBypass}
+                onToolAnswer={handleToolAnswer}
+                getPlanContentForExitPlan={(id) => getPlanContentForExitPlan(id)}
+                taskNotifications={store.taskNotifications}
+                showPermissionInPanel={showPermissionPanel}
+                onPreviewFile={openPreviewForPath}
+              />
             </div>
           {/if}
         {/if}
       {:else if entry.kind === "command_output" || entry.kind === "separator"}
-        {#if isTimelineSeparatorContent(entry.content)}
-          <div class="w-full py-3">
-            <div class="chat-content-width">
-              <div class="flex items-center gap-3">
-                <div class="h-px flex-1 bg-[hsl(var(--miwarp-status-warning)/0.2)]"></div>
-                <span
-                  class="text-xs text-[hsl(var(--miwarp-status-warning)/0.7)] font-medium whitespace-nowrap"
-                >
-                  {t("chat_contextCleared")}
-                </span>
-                <div class="h-px flex-1 bg-[hsl(var(--miwarp-status-warning)/0.2)]"></div>
-              </div>
-            </div>
-          </div>
-        {:else if shouldShowTimelineCommandOutput(processVisibility, entry.content)}
-          <div class="w-full py-2">
-            <div class="chat-content-width pl-7">
-              <div
-                class="command-output rounded-lg border border-border/40 bg-miwarp-bg-deepest px-4 py-3 text-sm overflow-x-auto"
-              >
-                {#if entry.content.includes("## Context Usage")}
-                  <ContextUsageGrid text={entry.content} />
-                {:else if entry.content.includes("Total cost:") && entry.content.includes("Total duration")}
-                  <CostSummaryView text={entry.content} />
-                {:else if entry.content
-                  .trimStart()
-                  .startsWith("Version ") && entry.content.includes("•")}
-                  <ReleaseNotesCard text={entry.content} />
-                {:else if hasAnsiCodes(entry.content)}
-                  <pre
-                    class="whitespace-pre font-mono text-xs leading-relaxed text-miwarp-text-primary m-0">{@html ansiToHtml(
-                      entry.content,
-                    )}</pre>
-                {:else}
-                  <ChatRenderBoundary
-                    runId={store.run?.id ?? null}
-                    entryId={entry.id}
-                    componentName="MarkdownContent"
-                    onReload={reloadFromEventLog}
-                  >
-                    <MarkdownContent text={entry.content} lazy={isFrozenEntry(i)} />
-                  </ChatRenderBoundary>
-                {/if}
-              </div>
-            </div>
-          </div>
-        {/if}
+        <ConversationTimeline
+          {entry}
+          agent={store.agent}
+          model={store.run?.model ?? store.model}
+          platformId={store.platformId ?? undefined}
+          animated={false}
+          debugRunId={store.run?.id}
+          debugSessionId={store.run?.session_id ?? undefined}
+          lastToolId=""
+          {processVisibility}
+          {permissionCoordinator}
+          permissionMode={store.permissionMode}
+          {toolResultCache}
+          onApprove={handleToolApprove}
+          onPermissionRespond={handlePermissionRespond}
+          onExitPlanClearContext={() => handleExitPlanClearContext("")}
+          onExitPlanBypass={handleExitPlanBypass}
+          onToolAnswer={handleToolAnswer}
+          getPlanContentForExitPlan={(id) => getPlanContentForExitPlan(id)}
+          taskNotifications={store.taskNotifications}
+          showPermissionInPanel={showPermissionPanel}
+          onPreviewFile={openPreviewForPath}
+        >
+          {#snippet commandOutputMarkdown(text)}
+            <ChatRenderBoundary
+              runId={store.run?.id ?? null}
+              entryId={entry.id}
+              componentName="MarkdownContent"
+              onReload={reloadFromEventLog}
+            >
+              <MarkdownContent {text} lazy={isFrozenEntry(i)} />
+            </ChatRenderBoundary>
+          {/snippet}
+        </ConversationTimeline>
       {/if}
     </div>
   {/if}

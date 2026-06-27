@@ -22,19 +22,9 @@
   import { relativeTime, truncate } from "$lib/utils/format";
   import { createPermissionHandlers } from "$lib/chat/use-permission-handlers";
   import { createToolResultCache } from "$lib/chat/use-tool-result-cache";
-  import { ansiToHtml, hasAnsiCodes } from "$lib/utils/ansi";
-  import {
-    isTimelineSeparatorContent,
-    shouldShowTimelineCommandOutput,
-  } from "$lib/utils/process-visibility";
-  import ChatMessage from "$lib/components/ChatMessage.svelte";
-  import InlineToolCard from "$lib/components/InlineToolCard.svelte";
-  import ContextUsageGrid from "$lib/components/ContextUsageGrid.svelte";
-  import CostSummaryView from "$lib/components/CostSummaryView.svelte";
   import Icon from "$lib/components/Icon.svelte";
-  import MarkdownContent from "$lib/components/MarkdownContent.svelte";
   import PromptInput from "$lib/components/PromptInput.svelte";
-  import ReleaseNotesCard from "$lib/components/ReleaseNotesCard.svelte";
+  import ConversationTimeline from "$lib/components/chat/ConversationTimeline.svelte";
   import type { LucideIconName } from "$lib/lucide-icon";
 
   type QuickAction = {
@@ -368,6 +358,40 @@
 </script>
 
 <div class="project-desk-chat relative flex min-h-0 flex-1 flex-col">
+  <!--
+    工作台顶部黄色审批条：仅在 store.hasInlinePermission 时显示。
+    这是显眼的“全局警示”，位于 timeline 之上，提醒用户整个项目在等他们。
+    点按钮会跳到 timeline 里 pendingTool 的位置（如果已经在 timeline 中）；
+    否则通过 EVT_WORKBENCH_STAGE_PROMPT 让 PromptInput 准备好焦点。
+  -->
+  {#if store.hasInlinePermission}
+    <div
+      class="shrink-0 border-b border-[hsl(var(--miwarp-status-warning)/0.32)] bg-[hsl(var(--miwarp-status-warning)/0.1)] px-4 py-2"
+      role="status"
+    >
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex min-w-0 items-center gap-2">
+          <Icon name="triangle-alert" size="sm" class="shrink-0 text-miwarp-status-warning" />
+          <div class="min-w-0">
+            <p class="truncate text-xs font-semibold text-foreground">
+              {t("workbench_approvalBarTitle")}
+            </p>
+            <p class="truncate text-[11px] text-muted-foreground">
+              {t("workbench_approvalBarHint")}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border border-[hsl(var(--miwarp-status-warning)/0.4)] bg-background/80 px-2.5 text-[11px] font-medium text-foreground shadow-sm transition-colors hover:bg-background"
+          onclick={() => promptRef?.focus()}
+        >
+          <Icon name="target" size="xs" />
+          {t("workbench_focusPending")}
+        </button>
+      </div>
+    </div>
+  {/if}
   <div bind:this={streamRef} class="min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-40">
     {#if !ownsCurrentRun && timeline.length === 0}
       <div
@@ -477,110 +501,53 @@
             </button>
           {/each}
         </div>
+        {#if workbenchStore.selectedActiveRunId}
+          {@const lastRun = workbenchStore.allRuns.find(
+            (run) => run.id === workbenchStore.selectedActiveRunId,
+          )}
+          {#if lastRun && lastRun.run_surface === "project_desk"}
+            <button
+              type="button"
+              class="mt-1 inline-flex h-10 w-full items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 text-sm font-medium text-primary shadow-sm transition-colors hover:bg-primary/15"
+              onclick={() => {
+                workbenchStore.setActiveRun(projectId, lastRun.id);
+                promptRef?.focus();
+              }}
+            >
+              <Icon name="message-square" size="sm" />
+              {t("workbench_continueLastSession")}
+              <span class="ml-auto text-[10px] font-normal text-primary/70">
+                {relativeTime(lastRun.last_activity_at || lastRun.started_at)}
+              </span>
+            </button>
+          {/if}
+        {/if}
       </div>
     {:else}
-      <div class="mx-auto flex max-w-4xl flex-col gap-1">
-        {#each timeline as entry (entry.id)}
-          {#if entry.kind === "user"}
-            <ChatMessage
-              message={{
-                id: entry.id,
-                role: "user",
-                content: entry.content,
-                timestamp: entry.ts,
-              }}
-              attachments={entry.attachments}
-            />
-          {:else if entry.kind === "assistant"}
-            <ChatMessage
-              message={{
-                id: entry.id,
-                role: "assistant",
-                content: entry.content,
-                timestamp: entry.ts,
-              }}
-              thinkingText={entry.thinkingText}
-              agent={store.agent}
-              platformId={store.platformId ?? undefined}
-              model={store.run?.model ?? store.model}
-              animated={store.isRunning}
-              debugRunId={store.run?.id}
-              debugSessionId={store.run?.session_id ?? undefined}
-            />
-          {:else if entry.kind === "tool"}
-            <div class="w-full py-1">
-              <div class="chat-content-width">
-                <InlineToolCard
-                  tool={entry.tool}
-                  subTimeline={entry.subTimeline}
-                  runId={store.run?.id ?? ""}
-                  fetchToolResult={toolResultCache.fetchToolResult}
-                  processVisibility="developer"
-                  onAnswer={entry.tool.tool_name === "AskUserQuestion" &&
-                  (entry.tool.status === "running" || entry.tool.status === "ask_pending")
-                    ? (answer) => handleToolAnswer(entry.tool.tool_use_id, answer)
-                    : undefined}
-                  onApprove={handleToolApprove}
-                  onPermissionRespond={handlePermissionRespond}
-                  onExitPlanClearContext={() => handleExitPlanClearContext()}
-                  onExitPlanBypass={handleExitPlanBypass}
-                  taskNotifications={store.taskNotifications}
-                  planContent={entry.tool.tool_name === "ExitPlanMode" &&
-                  (entry.tool.status === "permission_prompt" || entry.tool.status === "success")
-                    ? getPlanContentForExitPlan(entry.id)
-                    : undefined}
-                  latestPlanTool={entry.tool.tool_use_id === lastToolId}
-                  showPermissionInPanel={false}
-                  {permissionCoordinator}
-                  permissionMode={store.permissionMode}
-                  onPreviewFile={openPreviewInFullChat}
-                  isLastTool={entry.tool.tool_use_id === lastToolId}
-                />
-              </div>
-            </div>
-          {:else if entry.kind === "separator" || entry.kind === "command_output"}
-            {#if isTimelineSeparatorContent(entry.content)}
-              <div class="w-full py-3">
-                <div class="chat-content-width">
-                  <div class="flex items-center gap-3">
-                    <div class="h-px flex-1 bg-[hsl(var(--miwarp-status-warning)/0.2)]"></div>
-                    <span
-                      class="whitespace-nowrap text-xs font-medium text-[hsl(var(--miwarp-status-warning)/0.7)]"
-                    >
-                      {t("chat_contextCleared")}
-                    </span>
-                    <div class="h-px flex-1 bg-[hsl(var(--miwarp-status-warning)/0.2)]"></div>
-                  </div>
-                </div>
-              </div>
-            {:else if shouldShowTimelineCommandOutput("developer", entry.content)}
-              <div class="w-full py-2">
-                <div class="chat-content-width pl-7">
-                  <div
-                    class="command-output overflow-x-auto rounded-lg border border-border/40 bg-miwarp-bg-deepest px-4 py-3 text-sm"
-                  >
-                    {#if entry.content.includes("## Context Usage")}
-                      <ContextUsageGrid text={entry.content} />
-                    {:else if entry.content.includes("Total cost:") && entry.content.includes("Total duration")}
-                      <CostSummaryView text={entry.content} />
-                    {:else if entry.content
-                      .trimStart()
-                      .startsWith("Version ") && entry.content.includes("•")}
-                      <ReleaseNotesCard text={entry.content} />
-                    {:else if hasAnsiCodes(entry.content)}
-                      <pre
-                        class="m-0 whitespace-pre font-mono text-xs leading-relaxed text-miwarp-text-primary">{@html ansiToHtml(
-                          entry.content,
-                        )}</pre>
-                    {:else}
-                      <MarkdownContent text={entry.content} />
-                    {/if}
-                  </div>
-                </div>
-              </div>
-            {/if}
-          {/if}
-        {/each}
+      <div class="mx-auto w-full max-w-4xl">
+        <ConversationTimeline
+          {timeline}
+          agent={store.agent}
+          model={store.run?.model ?? store.model}
+          platformId={store.platformId ?? undefined}
+          animated={store.isRunning}
+          debugRunId={store.run?.id}
+          debugSessionId={store.run?.session_id ?? undefined}
+          {lastToolId}
+          processVisibility="developer"
+          {permissionCoordinator}
+          permissionMode={store.permissionMode}
+          {toolResultCache}
+          onApprove={handleToolApprove}
+          onPermissionRespond={handlePermissionRespond}
+          onExitPlanClearContext={() => handleExitPlanClearContext()}
+          onExitPlanBypass={handleExitPlanBypass}
+          onToolAnswer={handleToolAnswer}
+          getPlanContentForExitPlan={(entryId) => getPlanContentForExitPlan(entryId) ?? undefined}
+          taskNotifications={store.taskNotifications}
+          showPermissionInPanel={false}
+          onPreviewFile={openPreviewInFullChat}
+        />
         {#if store.isActivelyRunning && timeline.length === 0}
           <div
             class="mx-auto mt-10 inline-flex items-center gap-2 rounded-full border border-border/50 bg-background/60 px-3 py-2 text-xs text-muted-foreground"
