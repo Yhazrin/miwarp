@@ -106,9 +106,15 @@
   import { loadRemovedCwds } from "$lib/utils/removed-cwds";
   import {
     findSessionDropTarget,
+    findSessionSplitDropTarget,
     setSessionDragActive,
+    setSessionDragOverSplit,
     type SessionDropTarget,
   } from "$lib/utils/session-drag-state";
+  import { initSplitWorkspaceLifecycle } from "$lib/split/split-workspace-lifecycle";
+  import { sessionStore } from "$lib/stores";
+  import { get } from "svelte/store";
+  import { replaceState } from "$app/navigation";
   import {
     getLastTarget,
     setLastTarget,
@@ -371,21 +377,43 @@
     dragOverUnfolderedKey = target?.type === "unfoldered" ? target.workspaceKey : null;
   }
 
+  function isChatRoutePath(pathname: string): boolean {
+    return pathname === "/chat" || pathname === "/";
+  }
+
   function handleSessionDragMove(e: PointerEvent) {
     sessionDragX = e.clientX;
     sessionDragY = e.clientY;
-    applySessionDropHighlight(findSessionDropTarget(e.clientX, e.clientY));
+    const pathname = get(page).url.pathname;
+    const overSplit = isChatRoutePath(pathname) && findSessionSplitDropTarget(e.clientX, e.clientY);
+    setSessionDragOverSplit(overSplit);
+    if (overSplit) {
+      applySessionDropHighlight(null);
+    } else {
+      applySessionDropHighlight(findSessionDropTarget(e.clientX, e.clientY));
+    }
   }
 
   async function handleSessionDragEnd(e: PointerEvent) {
     const runId = dragRunId;
-    const dropTarget = findSessionDropTarget(e.clientX, e.clientY);
+    const pathname = get(page).url.pathname;
+    const overSplit = isChatRoutePath(pathname) && findSessionSplitDropTarget(e.clientX, e.clientY);
+    const dropTarget = overSplit ? null : findSessionDropTarget(e.clientX, e.clientY);
     dragRunId = null;
     dragOverFolderId = null;
     dragOverUnfolderedKey = null;
     sessionDragLabel = "";
+    setSessionDragOverSplit(false);
     setSessionDragActive(false);
-    if (!runId || !dropTarget) return;
+    if (!runId) return;
+
+    if (overSplit) {
+      const { addSplitPane } = await import("$lib/split/split-workspace-lifecycle");
+      await addSplitPane(runId);
+      return;
+    }
+
+    if (!dropTarget) return;
 
     const run = runs.find((r) => r.id === runId);
     if (!run) return;
@@ -765,12 +793,17 @@
     },
     // Workspace hub + project tools (single-user, per-cwd)
     { path: "/workspace", label: () => t("nav_workspace"), icon: "layout", group: "workspace" },
+    {
+      path: "/workbench",
+      label: () => t("nav_workbench"),
+      icon: "monitor",
+      group: "workspace",
+    },
     { path: "/explorer", label: () => t("nav_explorer"), icon: "folder", group: "workspace" },
     { path: "/history", label: () => t("nav_history"), icon: "clock", group: "workspace" },
     { path: "/personal", label: () => t("nav_personal"), icon: "circle-user", group: "workspace" },
-    // Collaboration: teams + digital workforce (multi-agent resources)
+    // Collaboration: teams (fleet / digital-workforce page hidden — UX still rough)
     { path: "/teams", label: () => t("nav_teams"), icon: "users", group: "collaboration" },
-    { path: "/fleet", label: () => t("nav_fleet"), icon: "bot", group: "collaboration" },
     // Extensions
     { path: "/plugins", label: () => t("nav_extend"), icon: "zap", group: "extensions" },
     // System
@@ -946,6 +979,13 @@
     // Prevent root overscroll / rubber-band on macOS
     const cleanupOverscroll = installPreventRootOverscroll();
 
+    initSplitWorkspaceLifecycle({
+      getPageUrl: () => get(page).url,
+      replaceState,
+      getCwd: () => sessionStore.effectiveCwd,
+      getCurrentRunId: () => sessionStore.run?.id ?? get(page).url.searchParams.get("run"),
+    });
+
     // Remove splash screen
     const splash = document.getElementById("app-splash");
     if (splash) {
@@ -971,7 +1011,7 @@
         const lastSession = readActiveSessionId();
         if (lastSession) {
           dbg("layout", "auto-restore last session", { lastSession });
-          goto(`/chat?run=${lastSession}`, { replaceState: true });
+          navigateToChatRun(lastSession, { replaceState: true });
         }
       }
     }
@@ -1758,14 +1798,25 @@
     return t("layout_appName");
   });
 
+  /** Collapse the chat timeline before route changes so only message rows
+   *  re-render — the input dock / status bar stay mounted. */
+  function navigateToChatRun(
+    targetRunId: string,
+    opts?: { scrollTo?: string; replaceState?: boolean },
+  ) {
+    getChatTimelineResetHandle()?.shrinkVisibleRender(24);
+    requestAnimationFrame(() => {
+      let href = `/chat?run=${encodeURIComponent(targetRunId)}`;
+      if (opts?.scrollTo) {
+        href += `&scrollTo=${encodeURIComponent(opts.scrollTo)}`;
+      }
+      goto(href, opts?.replaceState ? { replaceState: true } : undefined);
+    });
+  }
+
   function newChat() {
     // Always land on the welcome screen so the user picks a workspace
     // (and creation mode) before a session starts — never resume the last run.
-    // Before navigating, ask the chat route (if mounted) to collapse the
-    // visible timeline to 24 rows so a long-running session doesn't stall
-    // the click while Svelte tears down hundreds of DOM nodes mid-navigation.
-    // The shrink happens synchronously so Svelte can flush + paint the
-    // shrunken DOM in the frame between this call and the next-frame goto.
     getChatTimelineResetHandle()?.shrinkVisibleRender(24);
     requestAnimationFrame(() => {
       goto("/chat?new=1");
@@ -2434,12 +2485,17 @@
           {/if}
 
           {#if isPluginsPage}
-            <!-- Plugin section navigation (replaces Chats/Files when on /plugins) -->
+            <!-- Plugin section navigation (replaces Chats/Files when on /plugins).
+                 v1.0.x: removed the i===1 `border-t` divider that used to sit between
+                 `overview` and `skills`. The hairline was meant to split the dashboard
+                 ("overview") from the six management sections (skills…agents), but
+                 on glass-mode sidebars the 1px line read as a stray white slash
+                 floating under the perceived "扩展" group — `border-sidebar-border`
+                 is theme-tinted yet the wash behind it is bright enough that the
+                 edge aliased to white. Drop the divider so the seven sections read
+                 as one continuous list. -->
             <div class="flex-1 overflow-y-auto py-2">
-              {#each pluginSections as section, i}
-                {#if i === 1}
-                  <div class="mx-3 my-1 border-t border-sidebar-border"></div>
-                {/if}
+              {#each pluginSections as section}
                 {@const isActive = pluginActiveSection === section.id}
                 <button
                   type="button"
@@ -2599,13 +2655,20 @@
             </div>
           {:else if isTeamsPage}
             <!-- Teams sidebar -->
-            <div class="px-2 pt-2 pb-1 shrink-0">
+            <div class="px-2 pt-2 pb-1 shrink-0 flex items-center justify-between gap-2">
               <input
                 type="text"
                 bind:value={teamStoreSearchQuery}
                 placeholder={t("sidebar_searchTeams")}
-                class="w-full rounded-md border border-sidebar-border bg-sidebar px-2 py-1 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
+                class="flex-1 rounded-md border border-sidebar-border bg-sidebar px-2 py-1 text-xs text-sidebar-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-ring/50"
               />
+              <a
+                href="/teams"
+                class="shrink-0 rounded-md border border-sidebar-border bg-sidebar px-2 py-1 text-[10px] font-medium text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                title={t("teamsPage_quickLaunch")}
+              >
+                +
+              </a>
             </div>
             <div class="flex-1 overflow-y-auto px-2 py-1">
               {#if teamStore.loading}
@@ -2613,9 +2676,14 @@
                   <Spinner size="sm" />
                 </div>
               {:else if filteredTeams.length === 0}
-                <div class="flex flex-col items-center gap-1 px-3 py-6 text-center">
+                <div class="flex flex-col items-center gap-1.5 px-3 py-6 text-center">
                   <p class="text-xs text-muted-foreground">{t("sidebar_noActiveTeams")}</p>
-                  <p class="text-[10px] text-muted-foreground/60">{t("sidebar_startTeamHint")}</p>
+                  <a
+                    href="/teams"
+                    class="text-[10px] font-medium text-primary hover:text-primary/80 transition-colors"
+                  >
+                    {t("teamsPage_quickLaunch")} →
+                  </a>
                 </div>
               {:else}
                 {#each filteredTeams as team}
@@ -2670,9 +2738,9 @@
                       onclick={() => {
                         runSearchQuery = "";
                         searchResults = [];
-                        goto(
-                          `/chat?run=${result.runId}&scrollTo=${encodeURIComponent(result.matchedEventId || result.matchedTs)}`,
-                        );
+                        navigateToChatRun(result.runId, {
+                          scrollTo: result.matchedEventId || result.matchedTs,
+                        });
                       }}
                     >
                       <p class="text-[12px] min-w-0 line-clamp-2 break-all">
@@ -2704,7 +2772,7 @@
                     expanded={expandedProjects.has(folder.folderKey)}
                     {selectedRunId}
                     onToggle={() => toggleProject(folder.folderKey)}
-                    onSelectConversation={(runId) => goto(`/chat?run=${runId}`)}
+                    onSelectConversation={navigateToChatRun}
                     onDelete={requestDeleteConversation}
                     onMoveToFolder={requestMoveToFolder}
                     {selectedGroupKeys}
@@ -2890,7 +2958,7 @@
   onCliBrowserImported={(runId) => {
     showCliBrowser = false;
     loadRuns();
-    goto(`/chat?run=${runId}`);
+    navigateToChatRun(runId);
   }}
 />
 
