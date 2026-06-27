@@ -7,6 +7,12 @@
  * Single source of truth: all theme state lives here.
  */
 import { t } from "$lib/i18n/index.svelte";
+import {
+  DEFAULT_THEME_ID,
+  migrateThemeIdSuffix,
+  resolveAppliedDataTheme,
+  resolveThemeEntry,
+} from "$lib/theme/resolve-theme";
 import { LS_LEGACY_THEME, LS_LEGACY_COLOR_SCHEME } from "$lib/utils/storage-keys";
 import { dbgWarn } from "$lib/utils/debug";
 
@@ -149,8 +155,7 @@ class ThemeStore {
 
   /** Compute the actual `data-theme` value to apply (combines base id + mode). */
   get resolvedDataTheme(): string {
-    const base = this.themes.find((t) => t.id === this.currentTheme)?.id ?? "codex";
-    return this.effectiveMode === "light" ? `${base}-light` : base;
+    return resolveAppliedDataTheme(this.currentTheme, this.themes, this.effectiveMode);
   }
 
   /** Set the global theme (base id, no -light suffix). */
@@ -176,21 +181,8 @@ class ThemeStore {
 
   /** Set light/dark/system mode. Re-applies the current theme with the new variant. */
   setMode(next: "light" | "dark" | "system") {
-    const wasSystem = this.mode === "system";
     this.mode = next;
-    const isSystem = next === "system";
-
-    // Keep the OS subscription in sync with the user's intent. Add on the
-    // system→system / non-system→system transitions, remove on the
-    // system→non-system transition. No-op on non-system→non-system.
-    if (this._systemMql && this._systemListener) {
-      if (!wasSystem && isSystem) {
-        this._systemMql.addEventListener("change", this._systemListener);
-      } else if (wasSystem && !isSystem) {
-        this._systemMql.removeEventListener("change", this._systemListener);
-      }
-    }
-
+    this._syncSystemListener();
     this._applyTheme();
     this._persistSettings();
   }
@@ -330,7 +322,11 @@ class ThemeStore {
       const config = JSON.parse(json);
       if (config.currentTheme) {
         const migrated = this._migrateThemeId(config.currentTheme);
-        this.currentTheme = migrated.base;
+        if (config.customThemes) {
+          const builtins = [...BUILTIN_THEMES];
+          this.themes = [...builtins, ...config.customThemes];
+        }
+        this.currentTheme = this._normalizeThemeId(migrated.base);
         // Only override mode if not explicitly set in the imported config.
         if (!config.mode) {
           this.mode = migrated.mode;
@@ -345,13 +341,14 @@ class ThemeStore {
       if (config.sessionThemes) {
         this.sessionThemes = new Map(Object.entries(config.sessionThemes));
       }
-      if (config.customThemes) {
+      if (config.customThemes && !config.currentTheme) {
         const builtins = [...BUILTIN_THEMES];
         this.themes = [...builtins, ...config.customThemes];
       }
       if (config.themeOverrides) {
         this.themeOverrides = config.themeOverrides;
       }
+      this._syncSystemListener();
       this._applyTheme();
       this._applyColorScheme(this.colorScheme);
       // Persist after import so settings aren't lost on refresh
@@ -363,16 +360,25 @@ class ThemeStore {
 
   /** Initialize: load persisted settings, migrate old keys, and apply theme */
   async init() {
+    let shouldPersist = false;
+
     // Try new miwarp-theme key first
     try {
       const stored = localStorage.getItem("miwarp-theme");
       if (stored) {
         const config = JSON.parse(stored);
+        if (config.customThemes) {
+          this.themes = [...BUILTIN_THEMES, ...config.customThemes];
+        }
         // Migrate: old theme ids had a "-light" suffix; strip it and store
         // the variant intent in `mode` instead.
         if (config.currentTheme) {
           const migrated = this._migrateThemeId(config.currentTheme);
-          this.currentTheme = migrated.base;
+          const normalized = this._normalizeThemeId(migrated.base);
+          if (normalized !== migrated.base) {
+            shouldPersist = true;
+          }
+          this.currentTheme = normalized;
           this.mode = migrated.mode;
         }
         if (config.mode) this.mode = config.mode;
@@ -380,14 +386,15 @@ class ThemeStore {
         if (config.sessionThemes) {
           this.sessionThemes = new Map(Object.entries(config.sessionThemes));
         }
-        if (config.customThemes) {
-          this.themes = [...BUILTIN_THEMES, ...config.customThemes];
-        }
         if (config.themeOverrides) {
           this.themeOverrides = config.themeOverrides;
         }
+        this._syncSystemListener();
         this._applyTheme();
         this._applyColorScheme(this.colorScheme);
+        if (shouldPersist) {
+          this._persistSettings();
+        }
         this.initialized = true;
         return;
       }
@@ -418,9 +425,29 @@ class ThemeStore {
       dbgWarn("theme", "migration failed, using defaults", e);
     }
 
+    this._syncSystemListener();
     this._applyTheme();
     this._applyColorScheme(this.colorScheme);
     this.initialized = true;
+  }
+
+  private _normalizeThemeId(themeId: ThemeId): ThemeId {
+    return resolveThemeEntry(themeId, this.themes).id;
+  }
+
+  private _syncSystemListener() {
+    if (!this._systemMql || !this._systemListener) return;
+
+    this._systemMql.removeEventListener("change", this._systemListener);
+    if (this.mode === "system") {
+      this._systemMql.addEventListener("change", this._systemListener);
+    }
+  }
+
+  private _clearThemeInlineVars(root: HTMLElement) {
+    for (const varName of _TOKEN_VARS) {
+      root.style.removeProperty(varName);
+    }
   }
 
   private _applyColorScheme(scheme: ColorScheme) {
@@ -433,12 +460,15 @@ class ThemeStore {
   private _applyTheme() {
     if (typeof document === "undefined") return;
     const root = document.documentElement;
-    const base = this.currentTheme;
+    const themeEntry = resolveThemeEntry(this.currentTheme, this.themes);
     const effective = this.effectiveMode;
-    const dataThemeValue = effective === "light" ? `${base}-light` : base;
+    const dataThemeValue = resolveAppliedDataTheme(themeEntry.id, this.themes, effective);
 
     // Enable smooth transition during theme switch
     root.classList.add("theme-transitioning");
+
+    // Clear stale inline overrides before swapping CSS blocks.
+    this._clearThemeInlineVars(root);
 
     // Step 1: Set data-theme attribute — CSS applies built-in theme variables
     root.setAttribute("data-theme", dataThemeValue);
@@ -455,7 +485,7 @@ class ThemeStore {
     root.setAttribute("data-color-scheme", effective);
 
     // Step 3: Apply user overrides on top of the new theme's CSS vars
-    const overrides = this.themeOverrides[base];
+    const overrides = this.themeOverrides[themeEntry.id];
     if (overrides) {
       for (const [varName, hslValue] of Object.entries(overrides)) {
         root.style.setProperty(varName, hslValue);
@@ -490,11 +520,11 @@ class ThemeStore {
    * dark + base id.
    */
   private _migrateThemeId(id: string): { base: ThemeId; mode: "light" | "dark" | "system" } {
-    if (id.endsWith("-light")) {
-      return { base: id.slice(0, -"-light".length), mode: "light" };
-    }
-    return { base: id, mode: "dark" };
+    const { base, impliedMode } = migrateThemeIdSuffix(id);
+    return { base, mode: impliedMode ?? "dark" };
   }
 }
+
+export { DEFAULT_THEME_ID };
 
 export const themeStore = new ThemeStore();
