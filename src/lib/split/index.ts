@@ -40,7 +40,19 @@ export {
   getActiveSplitDragRunId,
 } from "./split-dnd";
 
-export { buildChatUrl, isSplitModeUrl, SPLIT_QUERY_PARAM } from "./split-workspace-url";
+export {
+  buildChatUrl,
+  isSplitModeUrl,
+  SPLIT_QUERY_PARAM,
+  RUN_QUERY_PARAM,
+  PANES_QUERY_PARAM,
+  LAYOUT_QUERY_PARAM,
+  buildSplitPanes,
+  parseSplitPanes,
+  readPaneSetFromUrl,
+  readLayoutFromUrl,
+} from "./split-workspace-url";
+export type { PaneRef, PaneSetPayload, BuildChatUrlOptions } from "./split-workspace-url";
 
 export {
   registerSplitWorkspaceLifecycle,
@@ -55,8 +67,9 @@ export {
   syncSplitUrlFromStore,
   setSplitLayoutMode,
   isSplitUrlSyncLocked,
+  withSplitUrlSyncLock,
+  refreshInactivePaneSnapshot,
 } from "./split-workspace-lifecycle";
 export type { SplitWorkspaceLifecycleDeps } from "./split-workspace-lifecycle";
 
-export { layoutGridClass, layoutDescription, slotPosition } from "./split-layout";
-export type { SlotPosition } from "./split-layout";
+export { layoutDescription } from "./split-layout";

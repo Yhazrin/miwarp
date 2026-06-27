@@ -12,17 +12,32 @@
   only — no IO). Chat page can override it to also call
   `splitPaneSessionAdapter.switchActive` which captures the leaving pane's
   snapshot and loads the entering pane into sessionStore.
+
+  Live header data: `activeRunData` (when pane is active) is forwarded to
+  the header so the title + status reflect the live sessionStore, not the
+  stale cached snapshot. The header gracefully ignores it for inactive panes.
+
+  Inactive pane refresh (P2-3): when this pane is inactive and has a
+  cached snapshot, a 30s interval re-fetches the snapshot via
+  `splitPaneSessionAdapter.fetchSnapshot(force=true)`. The interval is
+  cleared when the pane becomes active (the adapter handles its own
+  activate path) or when the component unmounts.
 -->
 <script lang="ts">
   import type { PaneId, PaneState } from "$lib/split";
-  import { splitWorkspaceStore } from "$lib/split";
+  import { refreshInactivePaneSnapshot, splitWorkspaceStore } from "$lib/split";
   import SplitPaneHeader from "./SplitPaneHeader.svelte";
   import SplitPaneSnapshotView from "./SplitPaneSnapshotView.svelte";
   import type { PaneSnapshotWithRaw } from "$lib/split";
+  import type { TaskRun } from "$lib/types";
   import Spinner from "$lib/components/Spinner.svelte";
   import Icon from "$lib/components/Icon.svelte";
   import { t } from "$lib/i18n/index.svelte";
+  import { onDestroy } from "svelte";
   import type { Snippet } from "svelte";
+
+  /** Polling interval (ms) for refreshing inactive pane snapshots. */
+  const REFRESH_INTERVAL_MS = 30_000;
 
   let {
     pane,
@@ -30,6 +45,7 @@
     activeContent,
     activeInput,
     onActivate,
+    activeRunData = null,
   }: {
     pane: PaneState;
     onClose: () => void;
@@ -43,6 +59,8 @@
      * Override from chat page to also load the run into sessionStore.
      */
     onActivate?: (paneId: PaneId) => void;
+    /** Live { name, status } for the active pane — fed to the header. */
+    activeRunData?: { name: string; status: TaskRun["status"] } | null;
   } = $props();
 
   function activate() {
@@ -51,7 +69,53 @@
     else splitWorkspaceStore.setActive(pane.paneId);
   }
 
+  function handleHeaderKeydown(e: KeyboardEvent) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      activate();
+    }
+  }
+
   const snapshot = $derived(pane.cachedSnapshot as PaneSnapshotWithRaw | null);
+  // Only the active pane should forward live data; inactive panes render
+  // their cached snapshot instead, so passing the data through is wasted work.
+  const headerActiveRunData = $derived(pane.runtimeState === "active" ? activeRunData : null);
+
+  // New-content indicator: shown on inactive panes whose cached snapshot's
+  // `latestEventTime` is newer than its `fetchedAt` (i.e. the bus saw
+  // something we haven't replayed yet).
+  const hasNewContent = $derived.by(() => {
+    if (pane.runtimeState === "active") return false;
+    if (!pane.cachedSnapshot) return false;
+    return pane.cachedSnapshot.latestEventTime > pane.cachedSnapshot.fetchedAt;
+  });
+
+  // Reactive polling: start/stop the 30s interval based on whether this
+  // pane is inactive and has a snapshot to refresh. Clear on transitions
+  // out of inactive and on unmount.
+  let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  $effect(() => {
+    const shouldPoll =
+      pane.runtimeState === "inactive" &&
+      pane.cachedSnapshot !== null &&
+      pane.loadState === "ready";
+    if (shouldPoll && pollTimer === null) {
+      pollTimer = setInterval(() => {
+        void refreshInactivePaneSnapshot(pane.paneId);
+      }, REFRESH_INTERVAL_MS);
+    } else if (!shouldPoll && pollTimer !== null) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  });
+
+  onDestroy(() => {
+    if (pollTimer !== null) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  });
 </script>
 
 <div
@@ -62,17 +126,21 @@
   role="region"
   aria-label={`Pane ${pane.runId}`}
 >
-  <!-- Header is a button so click + keyboard activation both work. -->
-  <button
-    type="button"
-    class="w-full text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+  <!-- Header is keyboard-activatable but uses div+role="button" so the inner
+       close button can stay a real <button> without nesting interactive
+       controls (which is invalid HTML and trips a11y tools). -->
+  <div
+    role="button"
+    tabindex="0"
+    class="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
     aria-label={pane.runtimeState === "active"
       ? t("split_mode_activeBadge")
       : `${t("split_mode_activate")} ${pane.runId}`}
     onclick={activate}
+    onkeydown={handleHeaderKeydown}
   >
-    <SplitPaneHeader {pane} {onClose} />
-  </button>
+    <SplitPaneHeader {pane} {onClose} activeRunData={headerActiveRunData} {hasNewContent} />
+  </div>
   <div class="flex-1 min-h-0 overflow-hidden">
     {#if pane.runtimeState === "active"}
       {#if activeContent}

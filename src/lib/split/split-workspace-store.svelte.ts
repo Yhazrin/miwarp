@@ -15,9 +15,19 @@
  * - `rightSidebarSuspended` must be true while `enabled` to disable file tree
  *   / git / memory / tool activity / deep search fetches.
  *
- * Gen guard: every async write to a pane goes through `markLoadResult`,
- * which checks `pane.loadGeneration` against the gen captured at call site
- * and discards stale results. Mirrors `sessionStore._loadGen`.
+ * Gen guards (defense in depth):
+ * - `pane.loadGeneration` — per-pane; bumped on remove/cancel. The adapter
+ *   captures it at call site and `markLoadResult` discards stale writes.
+ * - `switchGeneration` — store-wide; bumped on every `setActive` / `removePane`
+ *   / `exit`. The adapter captures it and aborts in-flight IO when the user
+ *   has switched away mid-await. The store passes the current value into the
+ *   adapter through method parameters (dependency injection), so the adapter
+ *   stays decoupled from the singleton — keeps test setup trivial.
+ *
+ * PaneScrollState (v1.0.9 P2-2): `scrollTop` and `pinned` were never read by
+ * any caller — inactive panes are read-only snapshots with no scroll surface
+ * to control, and the active pane reuses the chat page's main scroll, not a
+ * per-pane one. Only `renderLimit` survived (used by `SplitPaneTimelineView`).
  */
 
 import type { TimelineEntry, TaskRun, HookEvent } from "$lib/types";
@@ -31,8 +41,7 @@ export type PaneLoadState = "idle" | "loading" | "ready" | "error";
 export type PaneRuntimeState = "active" | "inactive";
 
 export interface PaneScrollState {
-  scrollTop: number;
-  pinned: boolean;
+  /** Max entries to render at once; consumed by `SplitPaneTimelineView`. */
   renderLimit: number;
 }
 
@@ -50,7 +59,14 @@ export interface PaneSnapshot {
   timeline: TimelineEntry[];
   tools: HookEvent[];
   turnUsages: TurnUsage[];
+  /** Wall-clock time the snapshot was fetched. */
   fetchedAt: number;
+  /**
+   * Latest event timestamp observed in the bus events that built this
+   * snapshot. Compared against `fetchedAt` to detect new content the user
+   * hasn't seen yet (drives the "new content" red dot in P2-3).
+   */
+  latestEventTime: number;
 }
 
 export interface PaneState {
@@ -111,6 +127,15 @@ export class SplitWorkspaceStore {
   /** Toast sink — chat page wires `showToast` here on init. */
   onToast: SplitToastFn | null = null;
 
+  /**
+   * Store-wide switch generation. Bumped on every transaction that changes
+   * the active pane or the pane set (setActive / removePane / exit). The
+   * adapter captures this value at call site and aborts in-flight IO when
+   * the user has switched away mid-await. Independent from `pane.loadGeneration`
+   * so a stale write can be rejected even when the pane itself is still around.
+   */
+  switchGeneration: number = 0;
+
   // ── Lifecycle ───────────────────────────────────────────────────────────
 
   /**
@@ -146,6 +171,9 @@ export class SplitWorkspaceStore {
     this.layoutMode = "single";
     this.rightSidebarSuspended = false;
     this.preSplitCwd = null;
+    // Store-wide gen bump — any adapter call that captured the previous value
+    // will see the mismatch and discard its post-await write.
+    this.switchGeneration++;
   }
 
   // ── Pane ops ────────────────────────────────────────────────────────────
@@ -177,7 +205,7 @@ export class SplitWorkspaceStore {
       loadState: "loading",
       runtimeState: opts.makeActive === false ? "inactive" : "active",
       loadGeneration: 1,
-      scrollState: { scrollTop: 0, pinned: true, renderLimit: 200 },
+      scrollState: { renderLimit: 200 },
       errorState: null,
       cachedSnapshot: null,
     };
@@ -224,6 +252,9 @@ export class SplitWorkspaceStore {
       }
     }
     this.layoutMode = this._inferLayoutMode();
+    // Store-wide gen bump so any in-flight adapter work for the removed pane
+    // (or any other pane mid-switch) is discarded post-await.
+    this.switchGeneration++;
   }
 
   /**
@@ -244,6 +275,9 @@ export class SplitWorkspaceStore {
     }
     target.runtimeState = "active";
     this.activePaneId = paneId;
+    // Store-wide gen bump — any in-flight adapter call that captured the
+    // previous gen will abort its post-await state write.
+    this.switchGeneration++;
   }
 
   // ── Layout ──────────────────────────────────────────────────────────────

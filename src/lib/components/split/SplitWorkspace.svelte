@@ -25,11 +25,13 @@
   import SplitChatPane from "./SplitChatPane.svelte";
   import SplitWorkspaceToolbar from "./SplitWorkspaceToolbar.svelte";
   import { fly } from "svelte/transition";
+  import type { TaskRun } from "$lib/types";
 
   let {
     activePaneBody,
     activePaneInput,
     onActivate,
+    activeRunData = null,
   }: {
     /** Snippet invoked for the single active pane's body (ChatConversationStage). */
     activePaneBody?: Snippet;
@@ -42,6 +44,8 @@
      * sessionStore.loadRun runs.
      */
     onActivate?: (paneId: PaneId) => void;
+    /** Live data for the active pane — forwarded to its header. */
+    activeRunData?: { name: string; status: TaskRun["status"] } | null;
   } = $props();
 
   const split = splitWorkspaceStore;
@@ -67,6 +71,7 @@
             activeContent={pane.runtimeState === "active" ? activePaneBody : undefined}
             activeInput={pane.runtimeState === "active" ? activePaneInput : undefined}
             onActivate={onActivate ?? ((id) => void activateSplitPane(id))}
+            {activeRunData}
           />
         </div>
       {/each}

@@ -1890,7 +1890,13 @@
          direct child otherwise) so the dock stays mounted when the
          conversation body swaps. -->
     {#if splitWorkspaceStore.enabled}
-      <SplitWorkspace onActivate={(id) => void activateSplitPane(id)}>
+      <SplitWorkspace
+        onActivate={(id) => void activateSplitPane(id)}
+        activeRunData={{
+          name: store.run?.name ?? "",
+          status: store.run?.status ?? "pending",
+        }}
+      >
         {#snippet activePaneBody()}
           <ChatConversationStage
             {store}

@@ -16,6 +16,13 @@
   a card while not in split mode, we `enter({activeRunId: runId})`
   first, then `addPane`. The visual hint also shows on the first drop
   so users see what's about to happen.
+
+  DnD double-trigger: the overlay's own `ondrop` handler (on the
+  `<div bind:this={overlayEl}>` element) is the authoritative path —
+  the window-level fallback below uses target-based deduplication
+  (`overlayEl.contains(e.target)`) so it only handles drops whose
+  target is OUTSIDE the overlay. Without this guard the same drop
+  fires twice and we'd add the same runId pane twice.
 -->
 <script lang="ts">
   import { addSplitPane } from "$lib/split/split-workspace-lifecycle";
@@ -53,7 +60,11 @@
     if (!runId) return;
     void addSplitPane(runId);
   }
-  // Also handle window-level events as fallback (covers Tauri WebView edge cases)
+  // Also handle window-level events as fallback (covers Tauri WebView edge cases).
+  // The fallback only acts on drops whose target is OUTSIDE the overlay; drops
+  // landing inside the overlay element are owned by the overlay's own `onDrop`
+  // handler above. Target check (not stopPropagation) keeps the inner handler
+  // the source of truth and avoids the double-add that earlier versions hit.
   function onWindowDragEnter(e: DragEvent) {
     if (isSplitDrag(e)) {
       e.preventDefault();
@@ -71,6 +82,9 @@
   }
   function onWindowDrop(e: DragEvent) {
     if (!isSplitDrag(e)) return;
+    // If the drop happened INSIDE the overlay, the overlay's own onDrop already
+    // handled it. Without this guard we'd addSplitPane twice.
+    if (overlayEl && e.target instanceof Node && overlayEl.contains(e.target)) return;
     e.preventDefault();
     dragDepth = 0;
     const runId = readSplitDragRunId(e);

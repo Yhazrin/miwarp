@@ -100,7 +100,7 @@ describe("SplitWorkspaceStore — pane limits & dedup", () => {
     const { store, toastSpy } = makeStore();
     store.enter();
     const a = store.addPane("run-1");
-    const b = store.addPane("run-2", { makeActive: false });
+    store.addPane("run-2", { makeActive: false });
     expect(store.panes).toHaveLength(2);
     expect(store.activePaneId).toBe(a!.paneId);
 
@@ -306,5 +306,65 @@ describe("SplitWorkspaceStore — toast sink", () => {
     const store = new SplitWorkspaceStore();
     store.enter();
     expect(() => store.addPane("run-1")).not.toThrow();
+  });
+});
+
+describe("SplitWorkspaceStore — switchGeneration (P0-1)", () => {
+  it("starts at 0", () => {
+    const { store } = makeStore();
+    expect(store.switchGeneration).toBe(0);
+  });
+
+  it("setActive bumps switchGeneration when active pane changes", () => {
+    const { store } = makeStore();
+    store.enter();
+    store.addPane("run-1");
+    const b = store.addPane("run-2", { makeActive: false });
+    const before = store.switchGeneration;
+    store.setActive(b!.paneId);
+    expect(store.switchGeneration).toBe(before + 1);
+  });
+
+  it("setActive on the same pane is a no-op for switchGeneration", () => {
+    const { store } = makeStore();
+    store.enter();
+    const a = store.addPane("run-1");
+    const before = store.switchGeneration;
+    store.setActive(a!.paneId);
+    expect(store.switchGeneration).toBe(before);
+  });
+
+  it("removePane bumps switchGeneration", () => {
+    const { store } = makeStore();
+    store.enter();
+    store.addPane("run-1");
+    const b = store.addPane("run-2", { makeActive: false });
+    const before = store.switchGeneration;
+    store.removePane(b!.paneId);
+    expect(store.switchGeneration).toBe(before + 1);
+  });
+
+  it("exit() bumps switchGeneration", () => {
+    const { store } = makeStore();
+    store.enter({ activeRunId: "run-1" });
+    const before = store.switchGeneration;
+    store.exit();
+    expect(store.switchGeneration).toBe(before + 1);
+  });
+
+  it("setActive on unknown paneId does NOT bump switchGeneration", () => {
+    const { store } = makeStore();
+    store.enter();
+    store.addPane("run-1");
+    const before = store.switchGeneration;
+    store.setActive("ghost");
+    expect(store.switchGeneration).toBe(before);
+  });
+
+  it("exit() on a non-enabled store does NOT bump switchGeneration", () => {
+    const { store } = makeStore();
+    const before = store.switchGeneration;
+    store.exit();
+    expect(store.switchGeneration).toBe(before);
   });
 });

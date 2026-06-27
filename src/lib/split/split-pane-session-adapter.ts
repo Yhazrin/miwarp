@@ -5,13 +5,19 @@
  * Strategy (v1.0.8 P0):
  * - Active pane: delegated to `sessionStore.loadRun` which has its own
  *   `_loadGen` guard. After load completes, we re-check `pane.loadGeneration`
- *   so a switch-active that happens during the await is correctly discarded.
+ *   AND a store-wide `switchGeneration` captured at call site, so a
+ *   switch-active during the await is correctly discarded.
  * - Inactive pane: fetches `getRun + getBusEvents` once into `cachedSnapshot`.
  *   The raw bus events are kept on the snapshot so PR-3's
  *   `SplitPaneSnapshotView` can replay them into TimelineEntry rows on
  *   demand (without holding the live sessionStore reference).
  * - `cancel(pane)` bumps `pane.loadGeneration` so any in-flight post-await
  *   assignments to that pane are dropped.
+ *
+ * Dependency injection: the adapter never imports the `splitWorkspaceStore`
+ * singleton. The current `switchGeneration` is passed in by the caller
+ * (typically the lifecycle layer that already holds the store reference).
+ * This keeps the adapter testable in isolation — pass whatever gen you want.
  *
  * Why a separate adapter: sessionStore is a 3932-line god store. Adding
  * multi-pane state directly into it would explode complexity. The adapter
@@ -39,25 +45,38 @@ export interface PaneSnapshotWithRaw extends PaneSnapshot {
   rawBusEvents: BusEvent[];
 }
 
+/** Caller-provided store switch generation. Bundled so callers pass one arg. */
+export interface AdapterCtx {
+  /** Value of `splitWorkspaceStore.switchGeneration` at call time. */
+  switchGeneration: number;
+}
+
 class SplitPaneSessionAdapter {
   // ── Active pane path ─────────────────────────────────────────────────────
 
   /**
    * Load `pane.runId` into the shared sessionStore so it becomes the live
-   * active session. Captures the pane's `loadGeneration` at call time and
-   * discards any post-await state writes that no longer match it.
+   * active session. Captures the pane's `loadGeneration` AND the store-wide
+   * `switchGeneration` at call time; discards post-await writes that no
+   * longer match either guard.
    */
-  async activate(store: SessionStore, pane: PaneState, xtermRef?: XtermLike): Promise<void> {
+  async activate(
+    store: SessionStore,
+    pane: PaneState,
+    ctx: AdapterCtx,
+    xtermRef?: XtermLike,
+  ): Promise<void> {
     const gen = pane.loadGeneration;
+    const txGen = ctx.switchGeneration;
     try {
       await store.loadRun(pane.runId, xtermRef);
-      // sessionStore.loadRun has its own _loadGen; we layer our own on top
-      // so a switch-active during the await is correctly discarded here too.
-      if (pane.loadGeneration !== gen) return;
+      // Two-tier guard: pane may have been reloaded (gen) OR the user may
+      // have switched panes (txGen). Either mismatch means "stale, abort".
+      if (pane.loadGeneration !== gen || ctx.switchGeneration !== txGen) return;
       pane.loadState = "ready";
       pane.errorState = null;
     } catch (e) {
-      if (pane.loadGeneration !== gen) return;
+      if (pane.loadGeneration !== gen || ctx.switchGeneration !== txGen) return;
       pane.loadState = "error";
       pane.errorState = { code: "load_failed", message: String(e) };
     }
@@ -72,18 +91,32 @@ class SplitPaneSessionAdapter {
   async fetchSnapshot(
     sessionStore: SessionStore,
     pane: PaneState,
+    ctx: AdapterCtx,
     force = false,
   ): Promise<PaneSnapshot | null> {
     if (!force && pane.cachedSnapshot) return pane.cachedSnapshot;
     const gen = pane.loadGeneration;
+    const txGen = ctx.switchGeneration;
     try {
       const run = await api.getRun(pane.runId);
-      if (pane.loadGeneration !== gen) return null;
+      if (pane.loadGeneration !== gen || ctx.switchGeneration !== txGen) return null;
 
       const events = await api.getBusEvents(pane.runId);
-      if (pane.loadGeneration !== gen) return null;
+      if (pane.loadGeneration !== gen || ctx.switchGeneration !== txGen) return null;
 
       const { timeline, tools, turnUsages } = sessionStore.buildSnapshotFromEvents(run, events);
+
+      // Track the latest event timestamp so P2-3 can show a "new content"
+      // indicator when fetchedAt < latestEventTime (i.e. the bus saw
+      // something newer than what the snapshot covers).
+      let latestEventTime = 0;
+      for (const ev of events) {
+        // Bus events use `timestamp_ms` (epoch millis). Some events omit
+        // it; skip those — `fetchedAt` will always be > 0 for a real fetch
+        // so we never false-positive on "newer than snapshot".
+        const ts = (ev as { timestamp_ms?: number }).timestamp_ms ?? 0;
+        if (ts > latestEventTime) latestEventTime = ts;
+      }
 
       const snapshot: PaneSnapshotWithRaw = {
         run,
@@ -92,13 +125,14 @@ class SplitPaneSessionAdapter {
         turnUsages,
         rawBusEvents: events,
         fetchedAt: Date.now(),
+        latestEventTime,
       };
       pane.cachedSnapshot = snapshot as PaneSnapshot;
       pane.loadState = "ready";
       pane.errorState = null;
       return pane.cachedSnapshot;
     } catch (e) {
-      if (pane.loadGeneration !== gen) return null;
+      if (pane.loadGeneration !== gen || ctx.switchGeneration !== txGen) return null;
       pane.loadState = "error";
       pane.errorState = { code: "load_failed", message: String(e) };
       return null;
@@ -120,6 +154,8 @@ class SplitPaneSessionAdapter {
   /**
    * Cancel any in-flight work for `pane`. Safe to call multiple times.
    * Bumps `pane.loadGeneration` so adapter post-await writes are dropped.
+   * Does NOT bump switchGeneration — that's only for store-wide events
+   * (setActive / removePane / exit), not per-pane cancellation.
    */
   cancel(pane: PaneState): void {
     pane.loadGeneration++;
@@ -130,20 +166,22 @@ class SplitPaneSessionAdapter {
    * Switch the active pane: capture a snapshot of the leaving pane (if any),
    * then load the entering pane into sessionStore. `setActive` must have
    * already updated `pane.runtimeState` so the UI sees consistent state
-   * during the await.
+   * during the await. The `ctx` is read again after each await via the
+   * latest `switchGeneration` value, so a re-entrant switch is handled.
    */
   async switchActive(
     store: SessionStore,
     leaving: PaneState | null,
     entering: PaneState,
+    ctx: AdapterCtx,
     xtermRef?: XtermLike,
   ): Promise<void> {
     // Snapshot the leaving pane BEFORE awaiting so we don't miss events that
     // arrive between the await below and the snapshot.
     if (leaving && !leaving.cachedSnapshot) {
-      await this.fetchSnapshot(store, leaving);
+      await this.fetchSnapshot(store, leaving, ctx);
     }
-    await this.activate(store, entering, xtermRef);
+    await this.activate(store, entering, ctx, xtermRef);
   }
 
   /**
