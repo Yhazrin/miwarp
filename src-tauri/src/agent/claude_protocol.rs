@@ -1231,6 +1231,10 @@ impl ProtocolState {
                     // like DeepSeek, MiniMax, etc.
                     let (cost, model_usage) = if let Some(mut mu) = model_usage {
                         let mut total = 0.0_f64;
+                        let mut rebuilt: std::collections::HashMap<
+                            String,
+                            crate::models::ModelUsageEntry,
+                        > = std::collections::HashMap::with_capacity(mu.len());
                         for (model_name, entry) in mu.iter_mut() {
                             let recalculated = crate::pricing::estimate_cost(
                                 model_name,
@@ -1241,8 +1245,21 @@ impl ProtocolState {
                             );
                             entry.cost_usd = recalculated;
                             total += recalculated;
+                            // P1-2：归一化 model ID 再写回 map，避免不同 provider 风格
+                            // 的同名模型被拆成两条聚合记录。
+                            let key = crate::pricing::normalize_model_id(model_name);
+                            rebuilt
+                                .entry(key)
+                                .and_modify(|e| {
+                                    e.input_tokens += entry.input_tokens;
+                                    e.output_tokens += entry.output_tokens;
+                                    e.cache_read_tokens += entry.cache_read_tokens;
+                                    e.cache_write_tokens += entry.cache_write_tokens;
+                                    e.cost_usd += entry.cost_usd;
+                                })
+                                .or_insert_with(|| entry.clone());
                         }
-                        (total, Some(mu))
+                        (total, Some(rebuilt))
                     } else {
                         (cost, None)
                     };
@@ -1565,6 +1582,116 @@ impl ProtocolState {
             "step_start" => {
                 // Skip — no BusEvent needed
             }
+            "tool_result" => {
+                // P1-4：CLI 单独发 tool_result 事件时（不在 user 消息里时）也要
+                // 记一条 ToolEnd，否则 tool_use 永远停在 running。
+                let part = match raw.get("part") {
+                    Some(p) => p,
+                    None => return events,
+                };
+                let call_id = part
+                    .get("callID")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                if call_id.is_empty() {
+                    return events;
+                }
+                let output = part.get("output").cloned().unwrap_or(Value::Null);
+                let status = part
+                    .get("status")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("completed")
+                    .to_string();
+                let tool_name = self
+                    .mimo_tool_starts
+                    .remove(&call_id)
+                    .map(|i| i.tool_name)
+                    .unwrap_or_else(|| "tool".to_string());
+                events.push(BusEvent::ToolEnd {
+                    run_id: run_id.to_string(),
+                    tool_use_id: call_id,
+                    tool_name,
+                    output,
+                    status,
+                    duration_ms: None,
+                    parent_tool_use_id: None,
+                    tool_use_result: None,
+                });
+            }
+            "usage" => {
+                // P1-4：部分 provider（MiMo / openrouter 等）会发单独的 usage 事件
+                // 而不是把它塞到 step_finish.part.tokens 里。
+                let part = match raw.get("part") {
+                    Some(p) => p,
+                    None => return events,
+                };
+                let input = part.get("input").and_then(|v| v.as_u64()).unwrap_or(0);
+                let output = part.get("output").and_then(|v| v.as_u64()).unwrap_or(0);
+                let cache_read = part.get("cache_read").and_then(|v| v.as_u64());
+                let cache_write = part.get("cache_write").and_then(|v| v.as_u64());
+                let cost = part.get("cost").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                events.push(BusEvent::UsageUpdate {
+                    run_id: run_id.to_string(),
+                    input_tokens: input,
+                    output_tokens: output,
+                    cache_read_tokens: cache_read,
+                    cache_write_tokens: cache_write,
+                    total_cost_usd: cost,
+                    turn_index: None,
+                    model_usage: None,
+                    context_window_used_percentage: None,
+                    context_window_remaining_percentage: None,
+                    duration_api_ms: None,
+                    duration_ms: None,
+                    num_turns: None,
+                    stop_reason: None,
+                    service_tier: None,
+                    speed: None,
+                    web_fetch_requests: None,
+                    cache_creation_5m: None,
+                    cache_creation_1h: None,
+                });
+            }
+            "progress" => {
+                // P1-4：长任务 progress 事件，不影响用量统计但要分类记入。
+                let msg = raw
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                if msg.is_empty() {
+                    return events;
+                }
+                events.push(BusEvent::MessageDelta {
+                    run_id: run_id.to_string(),
+                    text: format!("[progress] {msg}"),
+                    parent_tool_use_id: None,
+                });
+            }
+            "retry" => {
+                // P1-4：CLI 报告一次重试，计入 unknown 之外的明确分类。
+                let attempt = raw.get("attempt").and_then(|v| v.as_u64()).unwrap_or(0);
+                let msg = raw
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("retry");
+                log::debug!(
+                    "[mimo] run {} retry attempt={} msg={}",
+                    run_id,
+                    attempt,
+                    msg
+                );
+            }
+            "init" => {
+                // P1-4：旧版 provider 单独发 init 而不是 system/subtype=init。
+                // 兼容用：把 init 转发为 Raw，避免被计入 unknown 桶。
+                events.push(BusEvent::Raw {
+                    run_id: run_id.to_string(),
+                    source: "mimo_stdout".to_string(),
+                    data: raw.clone(),
+                });
+            }
             "tool_use" => {
                 let part = match raw.get("part") {
                     Some(p) => p,
@@ -1845,6 +1972,125 @@ mod tests {
     use serde_json::json;
 
     const RUN: &str = "run-test";
+
+    // ══════════════════════════════════════════════════════════════════
+    //  P1-4：覆盖 MiMo/CLI 已知事件类型，确保不被 unknown 分支吞掉
+    // ══════════════════════════════════════════════════════════════════
+
+    #[test]
+    fn test_p1_4_tool_result_standalone_completes_tool() {
+        let mut ps = ProtocolState::with_runtime(false, AgentRuntimeKind::MiMoCode);
+        // 先发 tool_use running
+        let running = json!({
+            "type": "tool_use",
+            "part": {
+                "tool": "Read",
+                "callID": "call-1",
+                "state": {
+                    "status": "running",
+                    "time": {"start": 100},
+                    "input": {"path": "/x"}
+                }
+            },
+            "timestamp": 100
+        });
+        ps.map_event(RUN, &running);
+        let standalone_result = json!({
+            "type": "tool_result",
+            "part": {
+                "callID": "call-1",
+                "status": "completed",
+                "output": "file contents"
+            }
+        });
+        let events = ps.map_event(RUN, &standalone_result);
+        assert_eq!(events.len(), 1, "应该单独发 ToolEnd");
+        match &events[0] {
+            BusEvent::ToolEnd {
+                tool_use_id,
+                status,
+                ..
+            } => {
+                assert_eq!(tool_use_id, "call-1");
+                assert_eq!(status, "completed");
+            }
+            other => panic!("expected ToolEnd, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_p1_4_usage_event_emits_usage_update() {
+        let mut ps = ProtocolState::with_runtime(false, AgentRuntimeKind::MiMoCode);
+        let raw = json!({
+            "type": "usage",
+            "part": {
+                "input": 100,
+                "output": 50,
+                "cache_read": 30,
+                "cost": 0.0123
+            }
+        });
+        let events = ps.map_event(RUN, &raw);
+        assert_eq!(events.len(), 1);
+        match &events[0] {
+            BusEvent::UsageUpdate {
+                input_tokens,
+                output_tokens,
+                cache_read_tokens,
+                total_cost_usd,
+                ..
+            } => {
+                assert_eq!(*input_tokens, 100);
+                assert_eq!(*output_tokens, 50);
+                assert_eq!(*cache_read_tokens, Some(30));
+                assert!((total_cost_usd - 0.0123).abs() < 1e-9);
+            }
+            other => panic!("expected UsageUpdate, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_p1_4_progress_event_classified() {
+        let mut ps = ProtocolState::with_runtime(false, AgentRuntimeKind::MiMoCode);
+        let raw = json!({
+            "type": "progress",
+            "message": "compacting context..."
+        });
+        let before = ps.stats.unknown_event_count;
+        let events = ps.map_event(RUN, &raw);
+        assert_eq!(events.len(), 1);
+        assert_eq!(
+            ps.stats.unknown_event_count, before,
+            "progress 不应该进 unknown 分支"
+        );
+    }
+
+    #[test]
+    fn test_p1_4_retry_event_classified() {
+        let mut ps = ProtocolState::with_runtime(false, AgentRuntimeKind::MiMoCode);
+        let raw = json!({
+            "type": "retry",
+            "attempt": 2,
+            "message": "rate limited"
+        });
+        let before = ps.stats.unknown_event_count;
+        let _ = ps.map_event(RUN, &raw);
+        assert_eq!(
+            ps.stats.unknown_event_count, before,
+            "retry 不应该进 unknown 分支"
+        );
+    }
+
+    #[test]
+    fn test_p1_4_init_event_emits_raw_without_unknown() {
+        let mut ps = ProtocolState::with_runtime(false, AgentRuntimeKind::MiMoCode);
+        let raw = json!({"type": "init", "model": "opus-4"});
+        let before = ps.stats.unknown_event_count;
+        let events = ps.map_event(RUN, &raw);
+        assert_eq!(events.len(), 1);
+        assert_eq!(ps.stats.unknown_event_count, before);
+        assert!(matches!(&events[0], BusEvent::Raw { .. }));
+    }
 
     // ══════════════════════════════════════════════════════════════════
     //  Group A: Golden tests — one per event type, locks current behavior
