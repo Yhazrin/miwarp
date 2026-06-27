@@ -248,7 +248,9 @@ html.theme-transitioning .theme-fade {
   html.native-glass-enabled:is(:not(.dark), [data-color-scheme="light"]) .app-main-shell::before,
   html.native-glass-enabled:is(:not(.dark), [data-color-scheme="light"])
     .sidebar-main-corner-bridge::before {
-    background: linear-gradient(180deg, hsl(250 8% 100% / 0.42) 0%, hsl(250 8% 100% / 0.58) 100%);
+    /* Light: frosted white — higher alpha than legacy 0.42–0.58 so the
+       sidebar reads solid on bright wallpapers while OS vibrancy still peeks through. */
+    background: linear-gradient(180deg, hsl(250 8% 100% / 0.68) 0%, hsl(250 8% 100% / 0.84) 100%);
   }
   :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar::before,
   html.native-glass-enabled:is(.dark, [data-color-scheme="dark"]) .app-main-shell::before,
@@ -309,7 +311,7 @@ html.theme-transitioning .theme-fade {
     .native-glass-sidebar
     .sidebar-content-panel
     input[type="text"] {
-    background: hsl(0 0% 100% / 0.45) !important;
+    background: hsl(0 0% 100% / 0.62) !important;
   }
   :is(html.dark, html[data-color-scheme="dark"])
     .native-glass-sidebar
@@ -366,6 +368,31 @@ html.theme-transitioning .theme-fade {
     .sidebar-icon-rail
     button:hover {
     background: hsl(var(--miwarp-bg-hover) / 0.3) !important;
+  }
+
+  /* Sidebar session rows — meta/time/status readable on glass wash. */
+  .sidebar-session-meta,
+  .sidebar-session-time {
+    color: hsl(var(--sidebar-foreground) / 0.56);
+  }
+  html.native-glass-enabled:is(:not(.dark), [data-color-scheme="light"])
+    .native-glass-sidebar
+    .sidebar-session-meta,
+  html.native-glass-enabled:is(:not(.dark), [data-color-scheme="light"])
+    .native-glass-sidebar
+    .sidebar-session-time {
+    color: hsl(var(--sidebar-foreground) / 0.5);
+  }
+  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar .sidebar-session-meta,
+  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar .sidebar-session-time {
+    color: hsl(var(--sidebar-foreground) / 0.68);
+  }
+  .native-glass-sidebar .sidebar-status-dot {
+    box-shadow: 0 0 0 1px hsl(var(--sidebar-foreground) / 0.14);
+  }
+  :is(html.dark, html[data-color-scheme="dark"]) .native-glass-sidebar .sidebar-session-badge {
+    background: hsl(var(--sidebar-foreground) / 0.12) !important;
+    color: hsl(var(--sidebar-foreground) / 0.72) !important;
   }
 
   /* ── Mode B: native window glass INACTIVE / browser fallback
@@ -1867,7 +1894,10 @@ textarea,
 .session-island-running,
 .session-island-done,
 .session-island-waiting,
-.session-island-stopped {
+.session-island-stopped,
+.session-island-send-failed,
+.session-island-send-warning,
+.session-island-send-pending {
   width: var(--session-island-morph-width);
   min-height: 48px;
   border-radius: 24px;
@@ -1932,6 +1962,47 @@ textarea,
     0 0 0 1px hsl(220 14% 28% / 0.4);
 }
 
+/* Unified send-status overlay (merged from SendStatusBanner). */
+.session-island-send-failed,
+.session-island-send-warning,
+.session-island-send-pending {
+  width: min(520px, calc(100% - 24px));
+}
+
+.session-island-send-failed {
+  background-color: hsl(0 72% 51%);
+  box-shadow:
+    0 8px 32px hsl(0 72% 51% / 0.35),
+    0 0 0 1px hsl(0 65% 42% / 0.4);
+}
+
+.session-island-send-warning {
+  background-color: hsl(45 93% 47%);
+  box-shadow:
+    0 8px 32px hsl(45 93% 47% / 0.35),
+    0 0 0 1px hsl(45 80% 40% / 0.4);
+}
+
+.session-island-send-pending {
+  background-color: hsl(217 91% 55%);
+  box-shadow:
+    0 8px 32px hsl(217 91% 55% / 0.35),
+    0 0 0 1px hsl(217 91% 45% / 0.4);
+}
+
+/* Permission-mode notification overlay — same color/shadow language as send
+   statuses, but widths shrink to the content (Chinese labels are 2–6 chars;
+   stretching to 520px looks empty). Cap at 360px so very long localized
+   strings still get a graceful fade instead of running off-screen. */
+.session-island-send-failed.session-island-permission-shell,
+.session-island-send-warning.session-island-permission-shell,
+.session-island-send-pending.session-island-permission-shell {
+  width: auto;
+  max-width: min(360px, calc(100% - 24px));
+  min-width: 0;
+  padding: 0 18px;
+}
+
 /* Chat: full-height scroll; bottom fade overlay (not a dock background panel) */
 .chat-conversation-stage,
 /* v1.0.10: the page-level pane (flex column hosting both conversation + dock)
@@ -1976,6 +2047,24 @@ textarea,
   );
 }
 
+/* Chat input — dark mode contrast on opaque main surface. */
+:is(html.dark, html[data-color-scheme="dark"]) .prompt-input-shell {
+  background: hsl(var(--miwarp-bg-surface) / 0.92) !important;
+  border-color: hsl(var(--miwarp-glass-border) / 0.42) !important;
+}
+:is(html.dark, html[data-color-scheme="dark"]) .prompt-input-shell textarea::placeholder {
+  color: hsl(var(--muted-foreground) / 0.72);
+}
+:is(html.dark, html[data-color-scheme="dark"]) .prompt-input-chip {
+  background: hsl(var(--miwarp-bg-hover) / 0.35);
+  border-color: hsl(var(--miwarp-glass-border) / 0.35);
+  color: hsl(var(--foreground) / 0.78);
+}
+:is(html.dark, html[data-color-scheme="dark"]) .prompt-input-chip:hover {
+  background: hsl(var(--miwarp-bg-hover) / 0.48);
+  color: hsl(var(--foreground) / 0.92);
+}
+
 /* Status bar floating popovers (model picker, process visibility) */
 .statusbar-popover {
   border-radius: 14px;
@@ -1989,19 +2078,33 @@ textarea,
     inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
-/* Open state slides the popover down from the trigger (top-edge anchored),
-   matching the natural reading flow for menus that hang below the status
-   bar at the bottom of the window. The base .animate-fade-in handles the
-   close transition (Bits UI removes the element when data-state flips to
-   closed, so close is instant). */
-.statusbar-popover[data-state="open"] {
+/* Open state: motion follows anchor side (Bits UI sets data-side on content).
+   - bottom: menu hangs below trigger → slides down from trigger edge.
+   - top: menu sits above trigger (e.g. chat-dock permission picker) → rises up. */
+.statusbar-popover[data-state="open"][data-side="bottom"],
+.statusbar-popover[data-state="open"]:not([data-side]) {
   animation: statusbar-popover-in 200ms ease-out both;
+}
+
+.statusbar-popover[data-state="open"][data-side="top"] {
+  animation: statusbar-popover-up 200ms ease-out both;
 }
 
 @keyframes statusbar-popover-in {
   from {
     opacity: 0;
     transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes statusbar-popover-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -2318,6 +2421,13 @@ pre,
 .perf-quality .native-glass-sidebar {
   backdrop-filter: blur(4px) saturate(120%) !important;
   -webkit-backdrop-filter: blur(4px) saturate(120%) !important;
+}
+
+/* Light native glass: a touch more frost on the quality tier only. */
+html.native-glass-enabled.perf-quality:is(:not(.dark), [data-color-scheme="light"])
+  .native-glass-sidebar {
+  backdrop-filter: blur(6px) saturate(135%) !important;
+  -webkit-backdrop-filter: blur(6px) saturate(135%) !important;
 }
 
 .perf-balanced .native-glass-sidebar {

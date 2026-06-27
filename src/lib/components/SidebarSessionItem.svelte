@@ -4,11 +4,12 @@
   import { EVT_RUNS_CHANGED } from "$lib/utils/bus-events";
   import { getNoSessionPersistence } from "$lib/stores/agent-settings-cache.svelte";
   import { relativeTime, truncate } from "$lib/utils/format";
+  import { getSidebarStatusDot } from "$lib/utils/sidebar-status-dot";
   import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
   import { hasAttention } from "$lib/stores/attention-store.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
-  import { SPLIT_DRAG_MIME } from "$lib/split";
+  import { SPLIT_DRAG_MIME, beginSplitDrag, endSplitDrag } from "$lib/split";
   import ContextMenu from "./ContextMenu.svelte";
   import Icon from "./Icon.svelte";
 
@@ -54,16 +55,7 @@
   const runCount = $derived(conversation.runs.length);
   const _needsAttention = $derived(hasAttention(run.id));
 
-  // Compact status dot for non-selected items
-  const statusDot = $derived.by(() => {
-    const s = run.status;
-    if (s === "running" || s === "waiting_input" || s === "waiting_approval")
-      return { color: "hsl(var(--miwarp-status-info))", animated: true };
-    if (s === "completed") return { color: "hsl(var(--miwarp-status-success))", animated: false };
-    if (s === "error") return { color: "hsl(var(--miwarp-status-error))", animated: false };
-    if (s === "stopped") return { color: "hsl(var(--muted-foreground))", animated: false };
-    return { color: "hsl(var(--muted-foreground))", animated: false };
-  });
+  const statusDot = $derived(getSidebarStatusDot(run.status));
 
   // ── Inline rename ──────────────────────────────────────────────────────────
 
@@ -186,6 +178,7 @@
   function handleDragStart(e: DragEvent) {
     if (!e.dataTransfer) return;
     const runId = run.id;
+    beginSplitDrag(runId);
     // Legacy folder-drag protocol (kept for any existing folder-drop targets).
     e.dataTransfer.setData("application/x-miwarp-run", runId);
     // Split-pane drop target (SplitDropOverlay). Both MIMEs are written so
@@ -194,8 +187,11 @@
     // Surface a generic text fallback for OS-level / devtools inspection.
     e.dataTransfer.setData("text/plain", runId);
     e.dataTransfer.effectAllowed = "copyMove";
-    console.log("[split-dnd] dragstart", { runId, mime: SPLIT_DRAG_MIME });
     _ondragstart?.(e, runId);
+  }
+
+  function handleDragEnd() {
+    endSplitDrag();
   }
 </script>
 
@@ -213,11 +209,12 @@
   onkeydown={handleKeydown}
   oncontextmenu={openContextMenu}
   ondragstart={handleDragStart}
+  ondragend={handleDragEnd}
 >
   <div class="flex items-center justify-between gap-1.5 h-full">
     <div class="flex items-center gap-1.5 min-w-0 flex-1">
       <span
-        class="inline-block h-[6px] w-[6px] rounded-full shrink-0 {statusDot.animated
+        class="sidebar-status-dot inline-block h-[6px] w-[6px] rounded-full shrink-0 {statusDot.animated
           ? 'animate-slow-pulse'
           : ''}"
         style:background-color={statusDot.color}
@@ -270,7 +267,7 @@
       {/if}
       {#if runCount > 1}
         <span
-          class="inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted/70 px-1 text-[10px] font-normal text-muted-foreground/70"
+          class="sidebar-session-badge inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-muted/70 px-1 text-[10px] font-normal text-muted-foreground/70"
           title={t("sidebar_runs", { count: String(runCount) })}
         >
           {runCount}
@@ -321,15 +318,15 @@
     </div>
   </div>
   <!-- Preview / meta row -->
-  <div class="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground/50 pl-[14px]">
-    <div class="flex items-center gap-1 min-w-0">
+  <div class="sidebar-session-meta mt-0.5 flex items-center gap-1.5 pl-[14px] text-[11px]">
+    <div class="flex min-w-0 items-center gap-1">
       <span class="shrink-0">{run.agent}</span>
       {#if run.platform_id && run.platform_id !== "anthropic"}
         <span class="shrink-0">&middot;</span>
         <span class="truncate">{platformLabel(run.platform_id)}</span>
       {/if}
     </div>
-    <span class="ml-auto shrink-0">{time}</span>
+    <span class="sidebar-session-time ml-auto shrink-0 tabular-nums">{time}</span>
   </div>
 </div>
 

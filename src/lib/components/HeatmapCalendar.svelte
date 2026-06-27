@@ -60,8 +60,8 @@
       class="overflow-x-auto overflow-y-hidden"
       style="display: grid; grid-template-rows: repeat(7, {CELL}px); grid-template-columns: repeat({grid.weeks}, {CELL}px); gap: {GAP}px;"
     >
-      {#each { length: grid.weeks } as _, col}
-        {#each { length: 7 } as _, row}
+      {#each { length: grid.weeks } as _, col (col)}
+        {#each { length: 7 } as _, row (row)}
           {@const cell = grid.cells[row][col]}
           {#if cell}
             <div

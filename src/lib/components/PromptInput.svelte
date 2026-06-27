@@ -2081,7 +2081,7 @@
           {#each quickActions as cmd (cmd.name)}
             <button
               type="button"
-              class="shrink-0 rounded-md border border-border/50 px-2 py-0.5 text-[11px]
+              class="prompt-input-chip shrink-0 rounded-md border border-border/50 px-2 py-0.5 text-[11px]
                 bg-background/60 backdrop-blur-sm text-muted-foreground/70
                 hover:text-foreground hover:bg-background/80 hover:border-border/50
                 active:bg-background/50 active:scale-[0.97]
@@ -2094,7 +2094,7 @@
           {/each}
           <button
             type="button"
-            class="shrink-0 rounded-md border border-border/50 px-2 py-0.5 text-[11px]
+            class="prompt-input-chip shrink-0 rounded-md border border-border/50 px-2 py-0.5 text-[11px]
               bg-background/60 backdrop-blur-sm text-muted-foreground/70
               hover:text-foreground hover:bg-background/80 hover:border-border/50
               active:bg-background/50 active:scale-[0.97]
@@ -2325,7 +2325,7 @@
 
   <!-- Unified input container -->
   <div
-    class="overflow-hidden border border-primary bg-background/72 backdrop-blur-2xl transition-[border-radius,border-color] duration-200 {useCapsuleStrip
+    class="prompt-input-shell overflow-hidden border border-primary bg-background/72 backdrop-blur-2xl transition-[border-radius,border-color] duration-200 {useCapsuleStrip
       ? 'rounded-full'
       : 'rounded-[1.75rem]'} {btwMode ? 'border-miwarp-status-info/80' : ''} {pendingPermission
       ? 'motion-attention-pulse'

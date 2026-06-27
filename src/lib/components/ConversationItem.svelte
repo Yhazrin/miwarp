@@ -3,6 +3,7 @@
   import { canDeleteRun } from "$lib/stores";
   import { EVT_RUNS_CHANGED } from "$lib/utils/bus-events";
   import { relativeTime, truncate } from "$lib/utils/format";
+  import { getSidebarStatusDot } from "$lib/utils/sidebar-status-dot";
   import { PLATFORM_PRESETS } from "$lib/utils/platform-presets";
   import { t } from "$lib/i18n/index.svelte";
   import { dbg, dbgWarn } from "$lib/utils/debug";
@@ -60,16 +61,7 @@
   const canDelete = $derived(conversation.runs.every((r) => canDeleteRun(r.status)));
   const _needsAttention = $derived(hasAttention(run.id));
 
-  // Compact status dot for non-selected items
-  const statusDot = $derived.by(() => {
-    const s = run.status;
-    if (s === "running" || s === "waiting_input" || s === "waiting_approval")
-      return { color: "hsl(var(--miwarp-status-info))", animated: true };
-    if (s === "completed") return { color: "hsl(var(--miwarp-status-success))", animated: false };
-    if (s === "error") return { color: "hsl(var(--miwarp-status-error))", animated: false };
-    if (s === "stopped") return { color: "hsl(var(--muted-foreground))", animated: false };
-    return { color: "hsl(var(--muted-foreground))", animated: false };
-  });
+  const statusDot = $derived(getSidebarStatusDot(run.status));
 
   // ── Inline rename ──────────────────────────────────────────────────────────
 
@@ -352,9 +344,9 @@
       {/if}
     </div>
     <div class="flex items-center gap-1.5 shrink-0">
-      <span class="tabular-nums text-muted-foreground/60 text-[10.5px]">{time}</span>
+      <span class="sidebar-session-time tabular-nums text-[10.5px]">{time}</span>
       <span
-        class="inline-block h-[6px] w-[6px] rounded-full shrink-0 {statusDot.animated
+        class="sidebar-status-dot inline-block h-[6px] w-[6px] shrink-0 rounded-full {statusDot.animated
           ? 'animate-slow-pulse'
           : ''}"
         style:background-color={statusDot.color}
@@ -364,9 +356,9 @@
   </div>
   <!-- Meta row: branch / platform / remote / time -->
   <div
-    class="flex items-center gap-1.5 text-muted-foreground/45 leading-snug {isSidebar
+    class="sidebar-session-meta flex items-center gap-1.5 leading-snug {isSidebar
       ? 'mt-1.5 text-[11px]'
-      : 'mt-0.5 text-[10.5px]'}"
+      : 'mt-0.5 text-[10.5px] text-muted-foreground/45'}"
   >
     <div class="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
       {#if run.worktree_branch}

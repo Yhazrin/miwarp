@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ScheduledTaskHubGroup } from "$lib/utils/sidebar-groups";
   import { relativeTime } from "$lib/utils/format";
+  import { getSidebarStatusDot } from "$lib/utils/sidebar-status-dot";
   import { t } from "$lib/i18n/index.svelte";
   import Icon from "$lib/components/Icon.svelte";
 
@@ -12,14 +13,7 @@
 
   let { hub, selected = false, onclick }: Props = $props();
 
-  const statusDot = $derived.by(() => {
-    const s = hub.latestStatus;
-    if (s === "running" || s === "waiting_input" || s === "waiting_approval")
-      return { color: "hsl(var(--miwarp-status-info))", animated: true };
-    if (s === "completed") return { color: "hsl(var(--miwarp-status-success))", animated: false };
-    if (s === "error") return { color: "hsl(var(--miwarp-status-error))", animated: false };
-    return { color: "hsl(var(--muted-foreground))", animated: false };
-  });
+  const statusDot = $derived(getSidebarStatusDot(hub.latestStatus));
 
   const timeLabel = $derived(
     relativeTime(hub.latestRun.last_activity_at ?? hub.latestRun.started_at),
@@ -67,24 +61,26 @@
     {/if}
 
     <span
-      class="inline-flex h-3.5 min-w-[14px] shrink-0 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground"
+      class="sidebar-session-badge inline-flex h-3.5 min-w-[14px] shrink-0 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground"
       title={t("schedHub_executionCount", { count: String(hub.executionCount) })}
     >
       {hub.executionCount}
     </span>
 
     <span
-      class="h-1.5 w-1.5 shrink-0 rounded-full {statusDot.animated ? 'animate-pulse' : ''}"
+      class="sidebar-status-dot h-1.5 w-1.5 shrink-0 rounded-full {statusDot.animated
+        ? 'animate-pulse'
+        : ''}"
       style="background-color: {statusDot.color}"
       aria-hidden="true"
     ></span>
 
-    <span class="shrink-0 text-[10px] text-muted-foreground/70 tabular-nums">{timeLabel}</span>
+    <span class="sidebar-session-time shrink-0 text-[10px] tabular-nums">{timeLabel}</span>
   </div>
 
   {#if hub.latestSummary}
-    <p class="ml-5 truncate text-[10px] text-muted-foreground/70" title={hub.latestSummary}>
-      <span class="opacity-70">{statusLabel} ·</span>
+    <p class="sidebar-session-meta ml-5 truncate text-[10px]" title={hub.latestSummary}>
+      <span class="opacity-80">{statusLabel} ·</span>
       {hub.latestSummary}
     </p>
   {/if}

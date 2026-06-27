@@ -89,7 +89,7 @@
     <div class="flex-1 flex flex-col min-w-0">
       <div class="flex-1 flex gap-[2px] border-l border-b border-border/50 relative">
         <div class="absolute inset-x-0 top-1/2 border-t border-border/30 pointer-events-none"></div>
-        {#each sliced as day}
+        {#each sliced as day (day.date)}
           {@const hasBreakdown = day.modelBreakdown && Object.keys(day.modelBreakdown).length > 0}
           {@const totalTokens = hasBreakdown
             ? Object.values(day.modelBreakdown!).reduce(
@@ -104,7 +104,7 @@
               style="height: {pct}%"
             >
               {#if hasBreakdown}
-                {#each allModels as model}
+                {#each allModels as model (model)}
                   {@const mt = day.modelBreakdown![model]}
                   {#if mt}
                     {@const segTokens = mt.inputTokens + mt.outputTokens}
@@ -127,7 +127,7 @@
 
       <!-- X-axis -->
       <div class="flex gap-[2px] mt-1">
-        {#each sliced as day, i}
+        {#each sliced as day, i (day.date)}
           {@const showLabel = sliced.length <= 10 || i % Math.ceil(sliced.length / 10) === 0}
           <div class="flex-1 min-w-0 text-center">
             {#if showLabel}
@@ -144,7 +144,7 @@
   <!-- Legend -->
   {#if allModels.length > 0}
     <div class="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-      {#each allModels as model}
+      {#each allModels as model (model)}
         <div class="flex items-center gap-1">
           <div
             class="w-2.5 h-2.5 rounded-sm shrink-0"
