@@ -38,11 +38,6 @@
     prompt: string;
   };
 
-  type BriefingAction = QuickAction & {
-    value: string;
-    tone: "default" | "attention" | "active";
-  };
-
   type DeskMode = QuickAction & {
     description: string;
   };
@@ -68,45 +63,6 @@
   const ownsCurrentRun = $derived(!!activeRunId && store.run?.id === activeRunId);
   const timeline = $derived(ownsCurrentRun ? store.timeline : []);
   const effectiveModels = $derived(getCliModels(store.agent));
-  // Reuse the store's already-filtered + sorted per-project runs so Hero,
-  // Chat and ControlPanel don't each re-run the same filter.
-  const projectRuns = $derived(workbenchStore.selectedProjectRuns);
-  /** Single reduce pass computing every briefing counter + latest activity
-   *  from the same loop, instead of 4 separate `.filter()` scans. */
-  const briefing = $derived.by(() => {
-    let active = 0;
-    let attention = 0;
-    let desk = 0;
-    let latestTs = 0;
-    for (const run of projectRuns) {
-      if (
-        run.status === "running" ||
-        run.status === "pending" ||
-        run.status === "waiting_input" ||
-        run.status === "waiting_approval"
-      ) {
-        active++;
-      }
-      if (run.status === "waiting_input" || run.status === "waiting_approval") {
-        attention++;
-      }
-      if (run.run_surface === "project_desk") desk++;
-      const ts = new Date(run.last_activity_at ?? run.ended_at ?? run.started_at).getTime();
-      if (ts > latestTs) latestTs = ts;
-    }
-    return {
-      activeProjectRunsCount: active,
-      attentionProjectRunsCount: attention,
-      projectDeskRunCount: desk,
-      latestProjectActivityText: latestTs
-        ? relativeTime(new Date(latestTs).toISOString())
-        : t("workbench_noProjectActivity"),
-    };
-  });
-  const activeProjectRunsCount = $derived(briefing.activeProjectRunsCount);
-  const attentionProjectRunsCount = $derived(briefing.attentionProjectRunsCount);
-  const projectDeskRunCount = $derived(briefing.projectDeskRunCount);
-  const latestProjectActivity = $derived(briefing.latestProjectActivityText);
   const cliCommands = $derived(
     store.sessionInitReceived && store.sessionCommands.length > 0
       ? store.sessionCommands
@@ -141,40 +97,6 @@
             icon: "shield",
             label: t("workbench_quickAudit"),
             prompt: t("workbench_quickAuditPrompt", { project: project.label }),
-          },
-        ]
-      : [],
-  );
-  const briefingActions: BriefingAction[] = $derived(
-    project
-      ? [
-          {
-            icon: "triangle-alert",
-            label: t("workbench_briefingNeedsYou"),
-            value: String(attentionProjectRunsCount),
-            prompt: t("workbench_briefingNeedsYouPrompt", { project: project.label }),
-            tone: attentionProjectRunsCount > 0 ? "attention" : "default",
-          },
-          {
-            icon: "radio",
-            label: t("workbench_briefingActive"),
-            value: String(activeProjectRunsCount),
-            prompt: t("workbench_briefingActivePrompt", { project: project.label }),
-            tone: activeProjectRunsCount > 0 ? "active" : "default",
-          },
-          {
-            icon: "layout",
-            label: t("workbench_briefingDeskRuns"),
-            value: String(projectDeskRunCount),
-            prompt: t("workbench_briefingDeskRunsPrompt", { project: project.label }),
-            tone: "default",
-          },
-          {
-            icon: "clock",
-            label: t("workbench_briefingLastSignal"),
-            value: latestProjectActivity,
-            prompt: t("workbench_quickCatchUpPrompt", { project: project.label }),
-            tone: "default",
           },
         ]
       : [],
@@ -418,48 +340,32 @@
       </div>
     </div>
   {/if}
+  <!--
+    v1.0.10 redesign: the empty-state ("!ownsCurrentRun && timeline.length === 0")
+    used to repeat the same counters as the hero (Needs you / Active / Desk runs
+    / Last signal) before listing mode cards. Those briefing tiles now live
+    only in the hero + control panel. The chat empty state is reduced to:
+      1) one short headline asking the user to start
+      2) 4 mode cards (the *how* — distinct from the *what* in the hero)
+      3) quick action chips
+      4) recent session cards (jump back in)
+      5) continue-last-session CTA
+    The PromptInput below stays fixed; we leave room for it via pb-40.
+  -->
   <div bind:this={streamRef} class="min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-40">
     {#if !ownsCurrentRun && timeline.length === 0}
       <div
-        class="mx-auto flex h-full max-w-3xl flex-col justify-center gap-5 px-2 text-center sm:text-left"
+        class="mx-auto flex h-full max-w-3xl flex-col justify-center gap-4 px-2 text-center sm:text-left"
       >
-        <div class="space-y-2">
-          <p class="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+        <div class="space-y-1.5">
+          <p class="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
             {t("workbench_projectChat")}
           </p>
-          <h2 class="text-2xl font-semibold tracking-normal text-foreground">
+          <h2 class="text-xl font-semibold tracking-normal text-foreground">
             {t("workbench_projectDeskHeadline")}
           </h2>
-          <p class="max-w-2xl text-sm leading-6 text-muted-foreground">
-            {t("workbench_projectDeskDescription")}
-          </p>
         </div>
-        <div class="grid gap-2 sm:grid-cols-4">
-          {#each briefingActions as item (item.label)}
-            <button
-              type="button"
-              class="group rounded-2xl border px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 {item.tone ===
-              'attention'
-                ? 'border-[hsl(var(--miwarp-status-warning)/0.32)] bg-[hsl(var(--miwarp-status-warning)/0.08)] hover:bg-[hsl(var(--miwarp-status-warning)/0.12)]'
-                : item.tone === 'active'
-                  ? 'border-[hsl(var(--miwarp-status-info)/0.28)] bg-[hsl(var(--miwarp-status-info)/0.07)] hover:bg-[hsl(var(--miwarp-status-info)/0.11)]'
-                  : 'border-border/45 bg-background/45 hover:border-primary/30 hover:bg-primary/5'}"
-              onclick={() => fillPrompt(item.prompt)}
-              aria-label={t("workbench_stagePromptAria", { label: item.label, value: item.value })}
-            >
-              <div class="mb-2 flex items-center justify-between gap-2">
-                <Icon name={item.icon} size="sm" class="text-muted-foreground" />
-                <span class="truncate text-[10px] font-medium text-muted-foreground">
-                  {item.label}
-                </span>
-              </div>
-              <p class="truncate text-lg font-semibold tracking-normal text-foreground">
-                {item.value}
-              </p>
-            </button>
-          {/each}
-        </div>
-        <div class="space-y-2">
+        <div class="space-y-1.5">
           <div class="flex items-center justify-between gap-3">
             <h3 class="text-xs font-semibold text-foreground">{t("workbench_deskModes")}</h3>
             <span class="text-[10px] text-muted-foreground">{t("workbench_deskModesHint")}</span>
@@ -468,7 +374,7 @@
             {#each deskModes as mode (mode.label)}
               <button
                 type="button"
-                class="group flex min-h-[74px] items-start gap-3 rounded-2xl border border-border/45 bg-background/45 px-3 py-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                class="group flex min-h-[70px] items-start gap-3 rounded-2xl border border-border/45 bg-background/45 px-3 py-2.5 text-left transition-colors hover:border-primary/30 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 onclick={() => fillPrompt(mode.prompt)}
                 aria-label={t("workbench_stagePromptAria", {
                   label: mode.label,
@@ -476,19 +382,34 @@
                 })}
               >
                 <span
-                  class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border/45 bg-card/60 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary"
+                  class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-border/45 bg-card/60 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary"
                 >
                   <Icon name={mode.icon} size="sm" />
                 </span>
                 <span class="min-w-0">
                   <span class="block text-sm font-semibold text-foreground">{mode.label}</span>
-                  <span class="mt-1 line-clamp-2 block text-xs leading-5 text-muted-foreground">
+                  <span
+                    class="mt-0.5 line-clamp-2 block text-[11px] leading-4 text-muted-foreground"
+                  >
                     {mode.description}
                   </span>
                 </span>
               </button>
             {/each}
           </div>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          {#each quickActions as action}
+            <button
+              type="button"
+              class="inline-flex h-8 items-center gap-1.5 rounded-full border border-border/45 bg-background/50 px-2.5 text-[11px] font-medium text-foreground transition-colors hover:border-primary/35 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              onclick={() => fillPrompt(action.prompt)}
+              aria-label={t("workbench_stagePromptAria", { label: action.label, value: "" })}
+            >
+              <Icon name={action.icon} size="xs" class="text-muted-foreground" />
+              {action.label}
+            </button>
+          {/each}
         </div>
         {#if workbenchStore.selectedSessions.length > 0}
           <div class="grid gap-2 sm:grid-cols-2">
@@ -521,19 +442,6 @@
             {/each}
           </div>
         {/if}
-        <div class="flex flex-wrap gap-2">
-          {#each quickActions as action}
-            <button
-              type="button"
-              class="inline-flex h-9 items-center gap-2 rounded-full border border-border/45 bg-background/50 px-3 text-xs font-medium text-foreground transition-colors hover:border-primary/35 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              onclick={() => fillPrompt(action.prompt)}
-              aria-label={t("workbench_stagePromptAria", { label: action.label, value: "" })}
-            >
-              <Icon name={action.icon} size="sm" class="text-muted-foreground" />
-              {action.label}
-            </button>
-          {/each}
-        </div>
         {#if workbenchStore.selectedActiveRunId}
           {@const lastRun = workbenchStore.allRuns.find(
             (run) => run.id === workbenchStore.selectedActiveRunId,
@@ -541,7 +449,7 @@
           {#if lastRun && lastRun.run_surface === "project_desk"}
             <button
               type="button"
-              class="motion-soft-pop mt-1 inline-flex h-10 w-full items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 text-sm font-medium text-primary shadow-sm transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              class="motion-soft-pop inline-flex h-9 w-full items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-4 text-xs font-medium text-primary shadow-sm transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               onclick={() => {
                 workbenchStore.setActiveRun(projectId, lastRun.id);
                 promptRef?.focus();
@@ -596,7 +504,16 @@
     {/if}
   </div>
 
-  <div class="pointer-events-none absolute inset-x-0 bottom-0 z-20">
+  <!--
+    v1.0.10 redesign: the input area is the page's only true action, so it
+    earns a stronger visual frame — a soft top divider + a glassy background
+    that lifts the input above the timeline / empty state. The previous
+    bottom-0 absolute position was correct but visually unmoored; this gives
+    it a clear "this is the desk surface" feel.
+  -->
+  <div
+    class="pointer-events-none absolute inset-x-0 bottom-0 z-20 border-t border-border/40 bg-gradient-to-b from-transparent via-background/60 to-background/85 pt-3 backdrop-blur-xl"
+  >
     {#if activeRunId}
       <div class="pointer-events-auto mx-auto mb-2 flex w-full max-w-3xl justify-end px-4">
         <button

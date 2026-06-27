@@ -37,9 +37,7 @@
   {#if workbenchStore.selectedProject}
     <WorkbenchProjectHero />
     <div class="grid min-h-0 flex-1 grid-cols-1 gap-2 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <div
-        class="wb-frame flex min-h-[520px] flex-col overflow-hidden xl:min-h-0"
-      >
+      <div class="wb-frame flex min-h-[520px] flex-col overflow-hidden xl:min-h-0">
         <WorkbenchProjectChat />
       </div>
       <WorkbenchControlPanel />

@@ -176,41 +176,20 @@
   class="wb-frame flex min-h-0 w-full flex-col overflow-hidden xl:w-[320px]"
   aria-label={t("workbench_controlPanel")}
 >
-  <header class="shrink-0 border-b border-border/40 px-4 py-3">
-    <div class="flex items-start justify-between gap-3">
-      <div class="min-w-0">
-        <p class="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-          {t("workbench_controlPanel")}
-        </p>
-        {#if project}
-          <h2 class="mt-1 truncate text-sm font-semibold text-foreground">{project.label}</h2>
-          <p
-            class="mt-0.5 truncate font-mono text-[10px] text-muted-foreground"
-            title={project.cwd}
-          >
-            {project.cwd}
-          </p>
-        {:else}
-          <h2 class="mt-1 truncate text-sm font-semibold text-foreground">
-            {t("workbench_selectProject")}
-          </h2>
-        {/if}
-      </div>
-      <div class="flex shrink-0 flex-col items-end gap-1.5">
-        {#if project}
-          <div class="flex items-center gap-1.5">
-            <span
-              class="h-2 w-2 rounded-full {project.status === 'active'
-                ? 'bg-[hsl(var(--miwarp-status-info))]'
-                : project.status === 'idle'
-                  ? 'bg-[hsl(var(--miwarp-status-warning))]'
-                  : 'bg-muted-foreground/40'}"
-              aria-label={project.status}
-            ></span>
-            {#if activeRun}
-              <StatusBadge status={activeRun.status} shortLabel={true} />
-            {/if}
-          </div>
+  <header class="shrink-0 border-b border-border/40 px-4 py-2.5">
+    <!--
+      v1.0.10 redesign: control panel header now only carries the section
+      label and the open-active-run button. Project name + cwd + status dot
+      + status badge are already in the hero (the single source of truth);
+      repeating them here made the right column feel like a duplicate.
+    -->
+    <div class="flex items-center justify-between gap-2">
+      <p class="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+        {t("workbench_controlPanel")}
+      </p>
+      <div class="flex items-center gap-1.5">
+        {#if activeRun}
+          <StatusBadge status={activeRun.status} shortLabel={true} />
         {/if}
         <button
           type="button"
@@ -227,31 +206,7 @@
 
   <div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
     {#if project}
-      <section class="space-y-2">
-        <div class="grid grid-cols-3 gap-2">
-          <div class="wb-card">
-            <p class="text-[10px] text-muted-foreground">{t("workbench_metricSessions")}</p>
-            <p class="mt-1 text-lg font-semibold text-foreground">{project.sessionCount}</p>
-          </div>
-          <div class="wb-card">
-            <p class="text-[10px] text-muted-foreground">{t("workbench_metricTools")}</p>
-            <p class="mt-1 text-lg font-semibold text-foreground">{store.tools.length}</p>
-          </div>
-          <div class="wb-card">
-            <p class="text-[10px] text-muted-foreground">{t("workbench_metricPending")}</p>
-            <p class="mt-1 text-lg font-semibold text-foreground">{pendingTimelineItems.length}</p>
-          </div>
-        </div>
-
-        <div class="wb-card wb-card--lg">
-          <p class="text-[10px] text-muted-foreground">{t("workbench_projectPath")}</p>
-          <p class="mt-1 break-all font-mono text-[11px] leading-4 text-foreground/80">
-            {project.cwd}
-          </p>
-        </div>
-      </section>
-
-      <section class="mt-5">
+      <section>
         <div class="mb-2 flex items-center justify-between gap-2">
           <h3 class="text-xs font-semibold text-foreground">{t("workbench_takeoverChecklist")}</h3>
           <span class="text-[10px] text-muted-foreground">{t("workbench_takeoverHint")}</span>
@@ -293,67 +248,6 @@
       </section>
 
       <section class="mt-5">
-        <div class="mb-2 flex items-center justify-between gap-2">
-          <h3 class="text-xs font-semibold text-foreground">
-            {t("workbench_projectDeskContextEnabled")}
-          </h3>
-          <span class="text-[10px] text-muted-foreground">
-            {t("workbench_takeoverHint")}
-          </span>
-        </div>
-        <div
-          class="rounded-2xl border px-3 py-2.5 {hasProjectDeskContext
-            ? 'border-primary/25 bg-primary/8'
-            : 'border-border/40 bg-background/45'}"
-        >
-          <div class="flex items-start gap-2.5">
-            <span
-              class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border {hasProjectDeskContext
-                ? 'border-primary/25 bg-primary/15 text-primary'
-                : 'border-border/40 bg-background/45 text-muted-foreground'}"
-            >
-              <Icon name={hasProjectDeskContext ? "layout" : "message-square"} size="sm" />
-            </span>
-            <span class="min-w-0">
-              <span class="block text-xs font-semibold text-foreground">
-                {hasProjectDeskContext
-                  ? t("workbench_projectDeskSystemContextEnabled")
-                  : t("workbench_standardChatContext")}
-              </span>
-              <span class="mt-0.5 line-clamp-3 block text-[11px] leading-4 text-muted-foreground">
-                {#if hasProjectDeskContext && project}
-                  {t("workbench_projectDeskSystemContextHint", {
-                    tokens: String(projectDeskContextTokens),
-                  })}
-                {:else}
-                  {t("workbench_projectDeskSystemContextFallback")}
-                {/if}
-              </span>
-              <div class="mt-2 flex flex-wrap items-center gap-1.5">
-                <span
-                  class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] {hasProjectDeskContext
-                    ? 'border-primary/25 bg-primary/10 text-primary'
-                    : 'border-border/40 bg-muted/35 text-muted-foreground'}"
-                  title={project?.cwd ?? ""}
-                >
-                  <Icon name="folder-open" size="xs" />
-                  <span class="truncate">{project?.cwd ?? ""}</span>
-                </span>
-                {#if hasProjectDeskContext}
-                  <span
-                    class="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/8 px-2 py-0.5 text-[10px] font-medium text-primary"
-                  >
-                    <Icon name="sparkles" size="xs" />
-                    ~{projectDeskContextTokens} tokens
-                  </span>
-                {/if}
-              </div>
-            </span>
-          </div>
-        </div>
-      </section>
-
-      <section class="mt-5">
         <h3 class="mb-2 text-xs font-semibold text-foreground">{t("workbench_outputFiles")}</h3>
         {#if recentFiles.length > 0}
           <div class="space-y-1.5">
@@ -376,9 +270,7 @@
             {/each}
           </div>
         {:else}
-          <div
-            class="wb-empty"
-          >
+          <div class="wb-empty">
             {t("workbench_noOutputFiles")}
           </div>
         {/if}
@@ -405,9 +297,7 @@
             {/each}
           </div>
         {:else}
-          <div
-            class="wb-empty"
-          >
+          <div class="wb-empty">
             {t("workbench_noBackgroundTasks")}
           </div>
         {/if}
@@ -440,9 +330,7 @@
             {/each}
           </div>
         {:else}
-          <div
-            class="wb-empty"
-          >
+          <div class="wb-empty">
             {t("workbench_noRisks")}
           </div>
         {/if}
@@ -451,9 +339,6 @@
       <section class="mt-5">
         <div class="mb-2 flex items-center justify-between gap-2">
           <h3 class="text-xs font-semibold text-foreground">{t("workbench_activeSession")}</h3>
-          {#if activeRun}
-            <StatusBadge status={activeRun.status} shortLabel={true} />
-          {/if}
         </div>
         {#if activeRun}
           <button
@@ -490,6 +375,12 @@
                   ? t("workbench_projectDeskContextEnabled")
                   : t("workbench_standardChatContext")}
               </span>
+              {#if hasProjectDeskContext}
+                <span class="ml-0.5 inline-flex items-center gap-1 text-[10px] text-primary/80">
+                  <Icon name="sparkles" size="xs" />
+                  ~{projectDeskContextTokens}
+                </span>
+              {/if}
             </div>
           </button>
         {:else}
@@ -528,9 +419,7 @@
             {/each}
           </div>
         {:else}
-          <div
-            class="wb-empty"
-          >
+          <div class="wb-empty">
             {t("workbench_noPendingWork")}
           </div>
         {/if}
@@ -580,9 +469,7 @@
             {/each}
           </div>
         {:else}
-          <div
-            class="wb-empty"
-          >
+          <div class="wb-empty">
             {t("workbench_noSessionsYet")}
           </div>
         {/if}

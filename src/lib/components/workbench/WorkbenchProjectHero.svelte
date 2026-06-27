@@ -1,6 +1,5 @@
 <script lang="ts">
   import { workbenchStore } from "$lib/workbench/workbench-store.svelte";
-  import { sessionStore } from "$lib/stores";
   import { t } from "$lib/i18n/index.svelte";
   import { relativeTime } from "$lib/utils/format";
   import { goto } from "$app/navigation";
@@ -17,31 +16,20 @@
     await workbenchStore.refresh(workspacesStore.list);
   }
 
-  const store = sessionStore;
   const project = $derived(workbenchStore.selectedProject);
-  const activeRunId = $derived(workbenchStore.selectedActiveRunId);
   // Reuse the store-derived, already-filtered + sorted runs so we don't
   // recompute the same per-cwd filter in Hero, Chat, and ControlPanel.
   const projectRuns = $derived(workbenchStore.selectedProjectRuns);
-  // Single reduce pass for all hero counters (desk / approval / input / running).
-  const heroCounts = $derived.by(() => {
-    let desk = 0;
-    let waitingApproval = 0;
-    let waitingInput = 0;
-    let running = 0;
+  /** Single reduce pass for the only hero counter that matters at a glance:
+   *  the attention badge. Operational detail (sessions / running / desk) lives
+   *  on the control panel to keep the hero a slim identity strip. */
+  const attentionCount = $derived.by(() => {
+    let count = 0;
     for (const run of projectRuns) {
-      if (run.run_surface === "project_desk") desk++;
-      if (run.status === "waiting_approval") waitingApproval++;
-      else if (run.status === "waiting_input") waitingInput++;
-      else if (run.status === "running" || run.status === "pending") running++;
+      if (run.status === "waiting_approval" || run.status === "waiting_input") count++;
     }
-    return { desk, waitingApproval, waitingInput, running };
+    return count;
   });
-  const deskSessionCount = $derived(heroCounts.desk);
-  const waitingApprovalCount = $derived(heroCounts.waitingApproval);
-  const waitingInputCount = $derived(heroCounts.waitingInput);
-  const runningCount = $derived(heroCounts.running);
-  const attentionCount = $derived(waitingApprovalCount + waitingInputCount);
   const status = $derived(project?.status ?? "idle");
   const statusDotClass = $derived(
     status === "active"
@@ -50,20 +38,18 @@
         ? "bg-[hsl(var(--miwarp-status-warning))]"
         : "bg-muted-foreground/40",
   );
-  const ownsCurrentRun = $derived(!!activeRunId && store.run?.id === activeRunId);
 </script>
 
 {#if project}
   <!--
-    Hero — 三段式条带（左：项目身份；中：核心计数；右：操作 + 关注标记）。
-    整体高度通过 min-h 与内边距控制在 88–110px，给消息流让出空间。
+    Hero — 一行身份条（左：项目名 + cwd + 状态点 + 上次活跃 + 关注标记；右：操作）。
+    v1.0.10 redesign: drop the 3 central metric tiles (Sessions / Waiting / Running)
+    — they're echoed on the control panel top strip and on the chat briefing
+    cards. The hero's only job is "where am I, what project, any blockers?".
+    Operational counters live in the control panel.
   -->
-  <section
-    class="wb-frame motion-fade-in shrink-0 px-4 py-3"
-    aria-label={t("workbench_hero")}
-  >
+  <section class="wb-frame motion-fade-in shrink-0 px-4 py-2.5" aria-label={t("workbench_hero")}>
     <div class="flex items-center justify-between gap-3">
-      <!-- 左侧：项目名 + cwd + 上次活跃 + 状态点 -->
       <div class="flex min-w-0 items-center gap-3">
         <span class="h-2 w-2 shrink-0 rounded-full {statusDotClass}" aria-label={status}></span>
         <div class="min-w-0">
@@ -93,56 +79,6 @@
         </div>
       </div>
 
-      <!-- 中间：3 个核心计数卡片 -->
-      <div class="hidden items-stretch gap-1.5 md:flex">
-        <div
-          class="flex flex-col justify-center rounded-xl border border-border/40 bg-background/45 px-3 py-1.5 min-w-[88px]"
-        >
-          <p class="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
-            {t("workbench_metricSessions")}
-          </p>
-          <div class="mt-0.5 flex items-baseline gap-1.5">
-            <span class="text-sm font-semibold text-foreground">{project.sessionCount}</span>
-            <span class="text-[10px] text-muted-foreground">
-              · {t("workbench_metricDeskRuns")}
-              {deskSessionCount}
-            </span>
-          </div>
-        </div>
-        <div
-          class="flex flex-col justify-center rounded-xl border border-[hsl(var(--miwarp-status-warning)/0.28)] bg-[hsl(var(--miwarp-status-warning)/0.06)] px-3 py-1.5 min-w-[92px]"
-        >
-          <p
-            class="text-[9px] font-medium uppercase tracking-wide text-[hsl(var(--miwarp-status-warning))]"
-          >
-            {t("workbench_metricWaitingApproval")}
-          </p>
-          <div class="mt-0.5 flex items-baseline gap-1.5">
-            <span class="text-sm font-semibold text-foreground">{waitingApprovalCount}</span>
-            <span class="text-[10px] text-muted-foreground">
-              · {t("workbench_metricWaitingInput")}
-              {waitingInputCount}
-            </span>
-          </div>
-        </div>
-        <div
-          class="flex flex-col justify-center rounded-xl border border-[hsl(var(--miwarp-status-info)/0.25)] bg-[hsl(var(--miwarp-status-info)/0.06)] px-3 py-1.5 min-w-[88px]"
-        >
-          <p
-            class="text-[9px] font-medium uppercase tracking-wide text-[hsl(var(--miwarp-status-info))]"
-          >
-            {t("workbench_metricRunning")}
-          </p>
-          <div class="mt-0.5 flex items-baseline gap-1.5">
-            <span class="text-sm font-semibold text-foreground">{runningCount}</span>
-            <span class="text-[10px] text-muted-foreground">
-              · desk {ownsCurrentRun ? 1 : 0}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 右侧：操作按钮组 -->
       <div class="flex shrink-0 items-center gap-2">
         <button
           type="button"
