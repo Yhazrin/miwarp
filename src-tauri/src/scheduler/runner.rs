@@ -200,6 +200,125 @@ pub async fn execute_task(
     }
 }
 
+/// Map a terminal MiWarp run status to scheduler run status + error text.
+fn map_app_run_terminal(meta: &crate::models::RunMeta) -> Option<(RunStatus, Option<String>)> {
+    match meta.status {
+        AppRunStatus::Completed => Some((RunStatus::Completed, None)),
+        AppRunStatus::Failed => Some((RunStatus::Failed, meta.error_message.clone())),
+        AppRunStatus::Stopped => Some((RunStatus::Cancelled, meta.error_message.clone())),
+        _ => None,
+    }
+}
+
+fn app_run_terminal_status(run_id: &str) -> Option<(RunStatus, Option<String>)> {
+    storage::runs::get_run(run_id).and_then(|meta| map_app_run_terminal(&meta))
+}
+
+struct FinalizeTaskRunOptions {
+    notify_on_completion: bool,
+    task_name: Option<String>,
+    auto_disable_one_time: bool,
+}
+
+/// Persist terminal status on a scheduler task run and refresh parent task metadata.
+fn finalize_task_run(
+    task_run: &mut ScheduledTaskRun,
+    status: RunStatus,
+    error: Option<String>,
+    opts: FinalizeTaskRunOptions,
+) {
+    let ended_at = Utc::now().to_rfc3339();
+    task_run.status = status.clone();
+    task_run.error = error;
+    task_run.ended_at = Some(ended_at.clone());
+    let _ = store::save_run(task_run);
+
+    if let Some(mut task) = store::load_task(&task_run.task_id) {
+        task.last_run_at = Some(ended_at);
+        task.updated_at = Utc::now().to_rfc3339();
+        if opts.auto_disable_one_time
+            && task.schedule.schedule_type == super::model::ScheduleType::OneTime
+        {
+            task.enabled = false;
+            log::info!(
+                "[scheduler] one-time task {} auto-disabled after completion",
+                task.name
+            );
+        }
+        let _ = store::save_task(&task);
+    }
+
+    if opts.notify_on_completion {
+        if let Some(ref name) = opts.task_name {
+            send_feishu_schedule_notification(name, status);
+        }
+    }
+}
+
+/// Reconcile scheduler runs still marked running/queued whose MiWarp run already
+/// finished (e.g. monitor died on app restart while `reconcile_orphaned_runs`
+/// marked the underlying run Stopped).
+pub fn reconcile_stale_runs() -> u32 {
+    let mut reconciled = 0u32;
+    for mut task_run in store::load_all_runs(Some(500)) {
+        if !matches!(task_run.status, RunStatus::Running | RunStatus::Queued) {
+            continue;
+        }
+        let Some(ref miwarp_run_id) = task_run.run_id else {
+            continue;
+        };
+        let Some((status, error)) = app_run_terminal_status(miwarp_run_id) else {
+            continue;
+        };
+        log::info!(
+            "[scheduler] reconciled stale task run {} (miwarp {miwarp_run_id}) -> {status:?}",
+            task_run.id
+        );
+        let task_name = store::load_task(&task_run.task_id).map(|t| t.name);
+        finalize_task_run(
+            &mut task_run,
+            status,
+            error,
+            FinalizeTaskRunOptions {
+                notify_on_completion: false,
+                task_name,
+                auto_disable_one_time: true,
+            },
+        );
+        reconciled += 1;
+    }
+    reconciled
+}
+
+fn reconcile_stale_runs_for_task(task_id: &str) {
+    for mut task_run in store::load_runs_for_task(task_id, Some(10)) {
+        if !matches!(task_run.status, RunStatus::Running | RunStatus::Queued) {
+            continue;
+        }
+        let Some(ref miwarp_run_id) = task_run.run_id else {
+            continue;
+        };
+        let Some((status, error)) = app_run_terminal_status(miwarp_run_id) else {
+            continue;
+        };
+        log::info!(
+            "[scheduler] reconciled stale task run {} (miwarp {miwarp_run_id}) -> {status:?}",
+            task_run.id
+        );
+        let task_name = store::load_task(&task_run.task_id).map(|t| t.name);
+        finalize_task_run(
+            &mut task_run,
+            status,
+            error,
+            FinalizeTaskRunOptions {
+                notify_on_completion: false,
+                task_name,
+                auto_disable_one_time: true,
+            },
+        );
+    }
+}
+
 /// Poll the MiWarp run status and update the ScheduledTaskRun when it finishes.
 /// Uses an adaptive poll interval so long-running tasks don't burn thousands
 /// of IPCs, but still polls fast at the start to catch quick completions.
@@ -226,57 +345,21 @@ async fn monitor_run_completion(
             MONITOR_INITIAL_POLL_SECS
         };
 
-        // Check the MiWarp run status
-        let terminal = storage::runs::get_run(run_id).and_then(|meta| {
-            use crate::models::RunStatus as S;
-            match meta.status {
-                S::Completed => Some((RunStatus::Completed, None)),
-                S::Failed => Some((RunStatus::Failed, meta.error_message.clone())),
-                S::Stopped => Some((RunStatus::Cancelled, None)),
-                _ => None,
-            }
-        });
+        let terminal = app_run_terminal_status(run_id);
 
         if let Some((status, error)) = terminal {
             log::info!("[scheduler] run {run_id} finished with status {status:?}");
             if let Some(mut task_run) = store::load_run(task_run_id) {
-                task_run.status = status.clone();
-                task_run.error = error;
-                let ended_at = Utc::now().to_rfc3339();
-                task_run.ended_at = Some(ended_at.clone());
-                let _ = store::save_run(&task_run);
-
-                // Refresh `lastRunAt` on the task. This is the canonical
-                // "last completed" time (not the last started time, which can
-                // be earlier if the run took a while to settle).
-                if let Some(mut task) = store::load_task(&task_run.task_id) {
-                    task.last_run_at = Some(ended_at);
-                    task.updated_at = Utc::now().to_rfc3339();
-                    let _ = store::save_task(&task);
-                }
-
-                // Send notification if enabled
-                if notify_on_completion {
-                    send_feishu_schedule_notification(task_name, status);
-                }
-
-                // Auto-disable one-time tasks after completion
-                if let Some(mut task) = store::load_task(&task_run.task_id) {
-                    if task.schedule.schedule_type == super::model::ScheduleType::OneTime {
-                        task.enabled = false;
-                        if let Err(e) = store::save_task(&task) {
-                            log::error!(
-                                "[scheduler] failed to disable one-time task {}: {e}",
-                                task_run.task_id
-                            );
-                        } else {
-                            log::info!(
-                                "[scheduler] one-time task {} auto-disabled after completion",
-                                task.name
-                            );
-                        }
-                    }
-                }
+                finalize_task_run(
+                    &mut task_run,
+                    status,
+                    error,
+                    FinalizeTaskRunOptions {
+                        notify_on_completion,
+                        task_name: Some(task_name.to_string()),
+                        auto_disable_one_time: true,
+                    },
+                );
             }
             return;
         }
@@ -287,37 +370,36 @@ async fn monitor_run_completion(
         if started_at.elapsed() + Duration::from_secs(poll_secs)
             >= Duration::from_secs(MONITOR_TIMEOUT_SECS)
         {
-            let final_check = storage::runs::get_run(run_id).and_then(|meta| {
-                use crate::models::RunStatus as S;
-                match meta.status {
-                    S::Completed => Some((RunStatus::Completed, None)),
-                    S::Failed => Some((RunStatus::Failed, meta.error_message.clone())),
-                    S::Stopped => Some((RunStatus::Cancelled, None)),
-                    _ => None,
-                }
-            });
-            let ended_at = Utc::now().to_rfc3339();
+            let final_check = app_run_terminal_status(run_id);
             if let Some((status, error)) = final_check {
                 log::warn!(
                     "[scheduler] run {run_id} hit 24h deadline but finished with {status:?} — recording real status"
                 );
                 if let Some(mut task_run) = store::load_run(task_run_id) {
-                    task_run.status = status;
-                    task_run.error = error;
-                    task_run.ended_at = Some(ended_at.clone());
-                    let _ = store::save_run(&task_run);
-                    if let Some(mut task) = store::load_task(&task_run.task_id) {
-                        task.last_run_at = Some(ended_at);
-                        let _ = store::save_task(&task);
-                    }
+                    finalize_task_run(
+                        &mut task_run,
+                        status,
+                        error,
+                        FinalizeTaskRunOptions {
+                            notify_on_completion,
+                            task_name: Some(task_name.to_string()),
+                            auto_disable_one_time: true,
+                        },
+                    );
                 }
             } else {
                 log::warn!("[scheduler] monitor timeout for run {run_id}, marking as failed");
                 if let Some(mut task_run) = store::load_run(task_run_id) {
-                    task_run.status = RunStatus::Failed;
-                    task_run.error = Some("Timed out after 24 hours".into());
-                    task_run.ended_at = Some(ended_at);
-                    let _ = store::save_run(&task_run);
+                    finalize_task_run(
+                        &mut task_run,
+                        RunStatus::Failed,
+                        Some("Timed out after 24 hours".into()),
+                        FinalizeTaskRunOptions {
+                            notify_on_completion,
+                            task_name: Some(task_name.to_string()),
+                            auto_disable_one_time: true,
+                        },
+                    );
                 }
             }
             let _ = deadline; // silence unused — kept for future extension
@@ -330,9 +412,10 @@ async fn monitor_run_completion(
 
 /// Check if a task has a currently running execution.
 pub fn has_running_run(task_id: &str) -> bool {
-    let runs = store::load_runs_for_task(task_id, Some(5));
-    runs.iter()
-        .any(|r| r.status == RunStatus::Running || r.status == RunStatus::Queued)
+    reconcile_stale_runs_for_task(task_id);
+    store::load_runs_for_task(task_id, Some(5))
+        .iter()
+        .any(|r| matches!(r.status, RunStatus::Running | RunStatus::Queued))
 }
 
 /// Send a Feishu webhook notification when a scheduled task finishes.
@@ -350,4 +433,77 @@ fn send_feishu_schedule_notification(task_name: &str, status: RunStatus) {
         status_str,
         None,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{ExecutionPath, RunMeta, RunSource, RunStatus as AppRunStatus};
+
+    fn sample_meta(status: AppRunStatus, error: Option<&str>) -> RunMeta {
+        RunMeta {
+            id: "run-1".to_string(),
+            prompt: "p".to_string(),
+            cwd: "/tmp".to_string(),
+            agent: "claude".to_string(),
+            auth_mode: "default".to_string(),
+            status,
+            started_at: "2024-01-01T00:00:00Z".to_string(),
+            ended_at: None,
+            exit_code: None,
+            error_message: error.map(str::to_string),
+            session_id: None,
+            result_subtype: None,
+            model: None,
+            parent_run_id: None,
+            name: None,
+            remote_host_name: None,
+            remote_cwd: None,
+            remote_host_snapshot: None,
+            platform_id: None,
+            platform_base_url: None,
+            source: Some(RunSource::Native),
+            cli_import_watermark: None,
+            cli_session_path: None,
+            cli_usage_incomplete: None,
+            folder_id: None,
+            deleted_at: None,
+            archived_at: None,
+            creation_mode: None,
+            worktree_path: None,
+            worktree_branch: None,
+            parent_cwd: None,
+            no_session_persistence: false,
+            execution_path: Some(ExecutionPath::SessionActor),
+            conversation_ref: None,
+            scheduled_task_id: None,
+            scheduled_task_run_id: None,
+            runtime_kind: None,
+            protocol_kind: None,
+        }
+    }
+
+    #[test]
+    fn map_app_run_terminal_completed() {
+        let (status, err) =
+            map_app_run_terminal(&sample_meta(AppRunStatus::Completed, None)).unwrap();
+        assert_eq!(status, RunStatus::Completed);
+        assert!(err.is_none());
+    }
+
+    #[test]
+    fn map_app_run_terminal_stopped_preserves_error() {
+        let (status, err) = map_app_run_terminal(&sample_meta(
+            AppRunStatus::Stopped,
+            Some("Recovered after app restart"),
+        ))
+        .unwrap();
+        assert_eq!(status, RunStatus::Cancelled);
+        assert_eq!(err.as_deref(), Some("Recovered after app restart"));
+    }
+
+    #[test]
+    fn map_app_run_terminal_pending_is_none() {
+        assert!(map_app_run_terminal(&sample_meta(AppRunStatus::Pending, None)).is_none());
+    }
 }

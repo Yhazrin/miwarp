@@ -34,6 +34,10 @@ pub fn start_scheduler_loop(app: AppHandle, cancel: CancellationToken) {
     if backfilled > 0 {
         log::info!("[scheduler] startup backfill complete: {backfilled} runs tagged");
     }
+    let reconciled = runner::reconcile_stale_runs();
+    if reconciled > 0 {
+        log::info!("[scheduler] startup reconcile complete: {reconciled} stale runs closed");
+    }
     tauri::async_runtime::spawn(async move {
         log::info!("[scheduler] loop started");
         loop {
@@ -91,6 +95,11 @@ fn next_tick_delay_secs() -> i64 {
 
 /// Single tick: find and execute due tasks.
 async fn tick(app: &AppHandle) {
+    let reconciled = runner::reconcile_stale_runs();
+    if reconciled > 0 {
+        log::info!("[scheduler] tick reconcile closed {reconciled} stale run(s)");
+    }
+
     let now = Utc::now();
     let tasks = store::load_tasks();
 
