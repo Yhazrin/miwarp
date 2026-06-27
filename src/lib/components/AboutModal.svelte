@@ -1,11 +1,11 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { readAppReadme } from "$lib/api";
   import { appUpdateCoordinator } from "$lib/stores/app-update-coordinator.svelte";
   import { renderMarkdown } from "$lib/utils/markdown";
   import { currentLocale, t } from "$lib/i18n/index.svelte";
   import MiDialog from "$lib/ui/MiDialog.svelte";
-  import readmeEn from "../../../README.md?raw";
-  import readmeZhCN from "../../../README.zh-CN.md?raw";
+  import Spinner from "$lib/components/Spinner.svelte";
 
   let {
     open = $bindable(false),
@@ -13,6 +13,9 @@
   }: { open: boolean; onOpenUpdateCenter?: () => void } = $props();
 
   let appVersion = $state("");
+  let readmeSource = $state("");
+  let readmeLoading = $state(false);
+  let readmeError = $state("");
 
   const updateButtonLabel = $derived.by(() => {
     if (appUpdateCoordinator.isBusy) {
@@ -40,12 +43,25 @@
       .trim();
   }
 
-  const readmeHtmlMap: Record<string, string> = {
-    en: processReadme(renderMarkdown(readmeEn)),
-    "zh-CN": processReadme(renderMarkdown(readmeZhCN)),
-  };
+  let readmeHtml = $derived(readmeSource ? processReadme(renderMarkdown(readmeSource)) : "");
 
-  let readmeHtml = $derived(readmeHtmlMap[currentLocale()] ?? readmeHtmlMap.en);
+  async function loadReadme(locale = currentLocale()) {
+    readmeLoading = true;
+    readmeError = "";
+    try {
+      readmeSource = await readAppReadme(locale);
+    } catch (err) {
+      readmeSource = "";
+      readmeError = err instanceof Error ? err.message : String(err);
+    } finally {
+      readmeLoading = false;
+    }
+  }
+
+  $effect(() => {
+    if (!open) return;
+    void loadReadme(currentLocale());
+  });
 
   async function updateToLatest() {
     if (appUpdateCoordinator.isBusy) return;
@@ -70,9 +86,28 @@
   </div>
 
   <div class="flex-1 overflow-y-auto px-6 py-4">
-    <article class="prose prose-sm dark:prose-invert max-w-none">
-      {@html readmeHtml}
-    </article>
+    {#if readmeLoading}
+      <div class="flex h-40 items-center justify-center gap-3">
+        <Spinner size="sm" />
+        <span class="text-sm text-muted-foreground">{t("common_loading")}</span>
+      </div>
+    {:else if readmeError}
+      <div class="flex h-40 flex-col items-center justify-center gap-3 text-center">
+        <p class="text-sm text-destructive">{t("release_loadFailed")}</p>
+        <p class="max-w-md text-xs text-muted-foreground break-words">{readmeError}</p>
+        <button
+          type="button"
+          class="rounded-md border border-border px-3 py-1.5 text-xs hover:bg-muted"
+          onclick={() => void loadReadme()}
+        >
+          {t("common_retry")}
+        </button>
+      </div>
+    {:else}
+      <article class="prose prose-sm dark:prose-invert max-w-none">
+        {@html readmeHtml}
+      </article>
+    {/if}
   </div>
 
   <div

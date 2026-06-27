@@ -1,4 +1,5 @@
 pub mod agents;
+pub mod app_readme;
 pub mod artifacts;
 pub mod attention_queue;
 pub mod background;

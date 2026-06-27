@@ -997,7 +997,12 @@ pub async fn dispatch_command(
                 .get("days")
                 .and_then(|v| v.as_u64())
                 .map(|n| n as u32);
-            let result = crate::commands::stats::get_usage_overview(days)?;
+            let project_id = params
+                .get("project_id")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let tz = params.get("tz").and_then(|v| v.as_str()).map(String::from);
+            let result = crate::commands::stats::get_usage_overview(days, project_id, tz).await?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
         "get_global_usage_overview" => {
@@ -1014,12 +1019,21 @@ pub async fn dispatch_command(
         }
         "get_heatmap_daily" => {
             let scope = extract_str(&params, "scope")?;
-            let result = crate::commands::stats::get_heatmap_daily(scope)?;
+            let result = crate::commands::stats::get_heatmap_daily(scope).await?;
             serde_json::to_value(result).map_err(|e| e.to_string())
         }
         "get_changelog" => {
             let result = crate::commands::stats::get_changelog().await?;
             serde_json::to_value(result).map_err(|e| e.to_string())
+        }
+        "read_app_readme" => {
+            let locale = params
+                .get("locale")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let result =
+                crate::commands::app_readme::read_app_readme_impl(locale.as_deref(), None)?;
+            Ok(json!(result))
         }
 
         // ── Onboarding ──

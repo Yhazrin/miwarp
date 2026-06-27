@@ -756,9 +756,17 @@ export async function readTaskOutput(path: string): Promise<string> {
 }
 
 // Stats
-export async function getUsageOverview(days?: number): Promise<UsageOverview> {
-  dbg("api", "getUsageOverview", { days });
-  return invoke<UsageOverview>(CMD.get_usage_overview, { days: days ?? null });
+export async function getUsageOverview(
+  days?: number,
+  projectId?: string | null,
+  tz?: string | null,
+): Promise<UsageOverview> {
+  dbg("api", "getUsageOverview", { days, projectId, tz });
+  return invoke<UsageOverview>(CMD.get_usage_overview, {
+    days: days ?? null,
+    projectId: projectId ?? null,
+    tz: tz ?? null,
+  });
 }
 
 export async function getGlobalUsageOverview(days?: number): Promise<UsageOverview> {
@@ -1611,6 +1619,12 @@ export async function checkForUpdates(): Promise<import("./types").UpdateInfo> {
 export async function getChangelog(): Promise<ChangelogEntry[]> {
   dbg("api", "getChangelog");
   return invoke<ChangelogEntry[]>(CMD.get_changelog);
+}
+
+/** Load app README markdown from repo root (dev) or bundled resources (release). */
+export async function readAppReadme(locale?: string): Promise<string> {
+  dbg("api", "readAppReadme", { locale });
+  return invoke<string>(CMD.read_app_readme, { locale: locale ?? null });
 }
 
 // ── Onboarding ──
