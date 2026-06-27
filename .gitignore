@@ -67,5 +67,8 @@ AGENTS.md
 # Harness: local Claude Code screenshots / scratch dir
 .harness/
 
+# Playwright worker test artifacts (chat-active.png etc.)
+.playwright-screenshots/
+
 # Unrelated binaries
 forget_ptr
