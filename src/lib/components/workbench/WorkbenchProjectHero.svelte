@@ -17,36 +17,39 @@
 
 {#if workbenchStore.selectedProject}
   {@const project = workbenchStore.selectedProject}
+  <!-- 紧凑工具条风格 hero：只占视口顶部 ~80px，给消息流让出更多空间。
+       文案 i18n key 全部保留，即便此处不再渲染也方便以后复用。 -->
   <section
-    class="shrink-0 rounded-3xl border border-border/40 bg-card/70 p-6 shadow-sm backdrop-blur-xl"
+    class="shrink-0 rounded-2xl border border-border/40 bg-card/60 px-4 py-3 shadow-sm backdrop-blur-xl"
     aria-label={t("workbench_hero")}
   >
-    <div class="flex items-start justify-between gap-4">
-      <div class="min-w-0">
-        <h1 class="truncate text-2xl font-semibold text-foreground">{project.label}</h1>
-        <p class="mt-1 truncate font-mono text-xs text-muted-foreground" title={project.cwd}>
-          {project.cwd}
-        </p>
-        <p class="mt-3 max-w-2xl text-sm text-muted-foreground">{project.description}</p>
+    <div class="flex items-center justify-between gap-3">
+      <div class="flex min-w-0 items-center gap-3">
+        <div class="min-w-0">
+          <h1 class="truncate text-base font-semibold text-foreground">{project.label}</h1>
+          <p class="truncate font-mono text-[11px] text-muted-foreground" title={project.cwd}>
+            {project.cwd}
+          </p>
+        </div>
       </div>
-      <button
-        type="button"
-        class="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-        onclick={openInChat}
-      >
-        <Icon name="external-link" size="sm" />
-        {t("workbench_openInChat")}
-      </button>
-    </div>
-
-    <div class="mt-4 flex items-center gap-3 text-[11px] text-muted-foreground">
-      <span class="inline-flex items-center gap-1.5">
-        <span class="h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))]"></span>
-        {t("workbench_sessionsCount", { count: String(workbenchStore.selectedSessions.length) })}
-      </span>
-      {#if project.lastActiveAt}
-        <span>· {t("workbench_lastActive", { time: relativeTime(project.lastActiveAt) })}</span>
-      {/if}
+      <div class="flex shrink-0 items-center gap-3">
+        <span class="hidden items-center gap-1.5 text-[10px] text-muted-foreground sm:inline-flex">
+          <span class="h-1.5 w-1.5 rounded-full bg-[hsl(var(--miwarp-status-info))]"></span>
+          {t("workbench_sessionsCount", { count: String(workbenchStore.selectedSessions.length) })}
+          {#if project.lastActiveAt}
+            <span class="text-muted-foreground/60">·</span>
+            <span>{t("workbench_lastActive", { time: relativeTime(project.lastActiveAt) })}</span>
+          {/if}
+        </span>
+        <button
+          type="button"
+          class="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+          onclick={openInChat}
+        >
+          <Icon name="external-link" size="sm" />
+          {t("workbench_openInChat")}
+        </button>
+      </div>
     </div>
   </section>
 {/if}

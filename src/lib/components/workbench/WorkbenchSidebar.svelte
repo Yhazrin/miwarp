@@ -1,3 +1,11 @@
+<!--
+  WorkbenchSidebar — 全局 workbench 侧边栏组件,被 `src/routes/+layout.svelte`
+  渲染在统一的 `<aside class:glass-sidebar>` 容器内(和 SettingsSidebar /
+  WorkspaceSidebar / ScheduledTasksSidebar 同位),不再自己包 `<aside>` 也不需要
+  `border-r` / `backdrop-blur` —— 这些由全局容器提供。
+
+  职责:展示 workbench 项目列表 + 选中态 + meta 行,不负责右侧 hero / chat 主区。
+-->
 <script lang="ts">
   import { workbenchStore } from "$lib/workbench/workbench-store.svelte";
   import { t } from "$lib/i18n/index.svelte";
@@ -11,20 +19,13 @@
   }
 </script>
 
-<aside
-  class="flex h-full w-full flex-col gap-3 bg-transparent p-3"
-  aria-label={t("workbench_projectTree")}
->
-  <header
-    class="shrink-0 rounded-2xl border border-border/40 bg-card/70 px-4 py-3 shadow-sm backdrop-blur-xl"
-  >
-    <h2 class="text-sm font-semibold text-foreground">{t("workbench_projects")}</h2>
+<div class="flex h-full w-full flex-col" aria-label={t("workbench_projectTree")}>
+  <header class="shrink-0 border-b border-sidebar-border/60 px-4 py-3">
+    <h2 class="text-sm font-semibold text-sidebar-foreground">{t("workbench_projects")}</h2>
     <p class="mt-0.5 text-xs text-muted-foreground">{t("workbench_projectsSubtitle")}</p>
   </header>
 
-  <div
-    class="flex-1 overflow-y-auto rounded-2xl border border-border/40 bg-card/60 p-2 shadow-sm backdrop-blur-xl"
-  >
+  <div class="sidebar-scroll flex-1 overflow-y-auto p-2">
     {#if workbenchStore.projects.length === 0}
       <p class="px-3 py-6 text-xs text-muted-foreground">{t("workbench_noProjects")}</p>
     {:else}
@@ -72,4 +73,4 @@
       </ul>
     {/if}
   </div>
-</aside>
+</div>

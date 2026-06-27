@@ -45,6 +45,7 @@
   import SettingsSidebar from "$lib/components/settings/SettingsSidebar.svelte";
   import ScheduledTasksSidebar from "$lib/components/ScheduledTasksSidebar.svelte";
   import WorkspaceSidebar from "$lib/components/workspace/WorkspaceSidebar.svelte";
+  import WorkbenchSidebar from "$lib/components/workbench/WorkbenchSidebar.svelte";
   import { IS_MAC } from "$lib/utils/platform";
   import {
     LS_PROJECT_CWD,
@@ -1695,6 +1696,7 @@
   let isTeamsPage = $derived(currentPath.startsWith("/teams"));
   let isScheduledTasksPage = $derived(currentPath.startsWith("/scheduled-tasks"));
   let isWorkspacePage = $derived(currentPath.startsWith("/workspace"));
+  let isWorkbenchPage = $derived(currentPath.startsWith("/workbench"));
   // Whether the current page uses the layout's content panel (vs managing its own layout)
   let needsLayoutContentPanel = $derived(routeNeedsLayoutContentPanel(currentPath));
 
@@ -2718,6 +2720,8 @@
             <ScheduledTasksSidebar />
           {:else if isWorkspacePage}
             <WorkspaceSidebar {settings} />
+          {:else if isWorkbenchPage}
+            <WorkbenchSidebar />
           {:else if isChatPage}
             {#if runSearchQuery.trim()}
               <!-- Search results -->
