@@ -12,6 +12,7 @@ pub mod pricing;
 pub mod process_ext;
 pub mod run_core;
 pub mod scheduler;
+pub mod session;
 pub mod skill_sources;
 pub mod storage;
 pub mod task_core;

@@ -537,7 +537,7 @@ mod tests {
     fn test_p1_3_cache_round_trip() {
         let key = AppOverviewCacheKey {
             scope: "app".to_string(),
-            days: Some(7),
+            days: Some(7133),
             project_id: None,
             tz: None,
         };

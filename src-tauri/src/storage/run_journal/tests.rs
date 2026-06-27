@@ -58,6 +58,7 @@ fn sample_meta(id: &str, status: RunStatus) -> RunMeta {
         scheduled_task_run_id: None,
         runtime_kind: None,
         protocol_kind: None,
+        project_desk_context: None,
     }
 }
 
